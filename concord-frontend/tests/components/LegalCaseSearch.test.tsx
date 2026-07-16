@@ -170,6 +170,75 @@ describe('LegalCaseSearch', () => {
     await waitFor(() => expect(screen.getAllByText(/COURTLISTENER_API_TOKEN/).length).toBeGreaterThanOrEqual(1));
   });
 
+  describe('Citing opinions panel (law.citation-graph)', () => {
+    async function renderWithOneHit() {
+      runDomain.mockResolvedValueOnce({ data: { ok: true, result: { ok: true, result: {
+        query: 'x', results: [MOCK_HIT], count: 1, totalHits: 1, authenticatedWithToken: false, source: 'courtlistener',
+      } } } });
+      renderWithQuery(<LegalCaseSearch />);
+      fireEvent.change(screen.getByPlaceholderText(/Brown v\. Board/), { target: { value: 'x' } });
+      fireEvent.click(screen.getByRole('button', { name: /^Search$/ }));
+      await waitFor(() => expect(screen.getByText('Brown v. Board of Education')).toBeInTheDocument());
+    }
+
+    it('is collapsed by default and does not call the macro until expanded', async () => {
+      await renderWithOneHit();
+      expect(runDomain).toHaveBeenCalledTimes(1); // only the search call so far
+      expect(screen.getByRole('button', { name: /Citing opinions/i })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('shows a loading state, then the real populated citation list', async () => {
+      await renderWithOneHit();
+      let resolveFetch: (v: unknown) => void = () => {};
+      runDomain.mockReturnValueOnce(new Promise((res) => { resolveFetch = res; }));
+
+      fireEvent.click(screen.getByRole('button', { name: /Citing opinions/i }));
+      await waitFor(() => expect(screen.getByText(/Loading citing opinions/i)).toBeInTheDocument());
+
+      resolveFetch({ data: { ok: true, result: { ok: true, result: {
+        opinionId: MOCK_HIT.id, direction: 'citedBy',
+        citations: [
+          { id: 1, citingOpinionId: 10008139, citingOpinionUrl: 'https://www.courtlistener.com/api/rest/v4/opinions/10008139/', citedOpinionId: MOCK_HIT.id, citedOpinionUrl: null, otherOpinionId: 10008139, depth: 4 },
+          { id: 2, citingOpinionId: 9000001, citingOpinionUrl: 'https://www.courtlistener.com/api/rest/v4/opinions/9000001/', citedOpinionId: MOCK_HIT.id, citedOpinionUrl: null, otherOpinionId: 9000001, depth: 1 },
+        ],
+        count: 2, totalHits: 2, authenticatedWithToken: false, source: 'courtlistener',
+      } } } });
+
+      await waitFor(() => expect(screen.queryByText(/Loading citing opinions/i)).not.toBeInTheDocument());
+      expect(screen.getByText(/Opinion #10008139/)).toBeInTheDocument();
+      expect(screen.getByText(/cited 4×/)).toBeInTheDocument();
+      expect(screen.getByText(/Opinion #9000001/)).toBeInTheDocument();
+      expect(screen.getByText(/cited 1×/)).toBeInTheDocument();
+
+      // Verifies the exact macro call shape.
+      const lastCall = runDomain.mock.calls[runDomain.mock.calls.length - 1];
+      expect(lastCall[0]).toBe('law');
+      expect(lastCall[1]).toBe('citation-graph');
+      expect((lastCall[2] as { input?: { opinionId?: number; direction?: string } }).input?.opinionId).toBe(MOCK_HIT.id);
+      expect((lastCall[2] as { input?: { opinionId?: number; direction?: string } }).input?.direction).toBe('citedBy');
+    });
+
+    it('shows an honest empty state when CourtListener has zero citing opinions', async () => {
+      await renderWithOneHit();
+      runDomain.mockResolvedValueOnce({ data: { ok: true, result: { ok: true, result: {
+        opinionId: MOCK_HIT.id, direction: 'citedBy', citations: [], count: 0, totalHits: 0,
+        authenticatedWithToken: false, source: 'courtlistener',
+      } } } });
+      fireEvent.click(screen.getByRole('button', { name: /Citing opinions/i }));
+      await waitFor(() => expect(screen.getByText(/No opinions on CourtListener currently cite this one/i)).toBeInTheDocument());
+    });
+
+    it('shows an honest error state on a failed lookup — never a fabricated empty/zero result', async () => {
+      await renderWithOneHit();
+      runDomain.mockResolvedValueOnce({ data: { ok: true, result: { ok: false,
+        error: 'courtlistener rate limit — set COURTLISTENER_API_TOKEN env',
+      } } });
+      fireEvent.click(screen.getByRole('button', { name: /Citing opinions/i }));
+      await waitFor(() => expect(screen.getByText(/COURTLISTENER_API_TOKEN/i)).toBeInTheDocument());
+      expect(screen.queryByText(/No opinions on CourtListener currently cite this one/i)).not.toBeInTheDocument();
+    });
+  });
+
   describe('semantic search toggle', () => {
     it('defaults to Keyword mode and omits `semantic` from the macro params', async () => {
       runDomain.mockResolvedValue({ data: { ok: true, result: { ok: true, result: {

@@ -815,6 +815,117 @@ export default function registerLawActions(registerLensAction) {
     }
   });
 
+  /**
+   * citation-graph — real "who cites this opinion" (and, optionally, "what
+   * this opinion cites") via CourtListener's `opinions-cited` viewset. This
+   * closes docs/lens-specs/law-capability-map.md's "Citation graph" gap:
+   * `LegalCaseSearch.tsx`'s own header comment already disclosed that the
+   * Good-Law/Caution/Negative-Treatment signal-flag proxy needs
+   * CourtListener's `cited_by` data "via a separate call" that the original
+   * `courtlistener-search` response doesn't carry — this macro IS that
+   * separate call.
+   *
+   * Network to courtlistener.com is policy-blocked in this sandbox (the
+   * same constraint documented on `recapDocketSearchHandler` above), so the
+   * field shape below was verified against the Free Law Project's own
+   * open-source Django repo (github.com/freelawproject/courtlistener)
+   * rather than a live request:
+   *   - `cl/search/filters.py`'s `OpinionsCitedFilter` exposes exactly
+   *     three filters on the `opinions-cited` viewset: `id` (integer
+   *     lookups), `citing_opinion` (RelatedFilter → Opinion), and
+   *     `cited_opinion` (RelatedFilter → Opinion) — confirmed by fetching
+   *     the file's raw source directly.
+   *   - The underlying `OpinionsCited` model (`cl/search/models.py`,
+   *     table `search_opinionscited`) is a citation EDGE: `citing_opinion`
+   *     is the opinion doing the citing, `cited_opinion` is the opinion
+   *     being cited, and `depth` counts how many times the citing opinion
+   *     references the cited one. So "who cites opinion X" is the rows
+   *     where `cited_opinion == X` (the API's own worked example: "to see
+   *     what cites Obergefell [id 2812209], use ... `?cited_opinion=2812209`"),
+   *     and "what X cites" is the rows where `citing_opinion == X`.
+   *   - The v4 REST response for each row is `{ resource_uri, id,
+   *     citing_opinion, cited_opinion, depth }`, where `citing_opinion`/
+   *     `cited_opinion` are themselves resource URLs (e.g.
+   *     "https://www.courtlistener.com/api/rest/v4/opinions/2812209/"),
+   *     NOT nested case-name objects — CourtListener's own docs note case
+   *     names live on the separate `/clusters/` resource, not `/opinions/`.
+   *   - These two facts (model source + REST docs text) were independently
+   *     confirmed via web search against courtlistener.com's own "Legal
+   *     Citation APIs" help page, whose direct fetch is also blocked here,
+   *     so the two sources triangulate rather than substitute for each
+   *     other.
+   *
+   * Because the API only returns opinion IDs + resource URLs (never case
+   * names) at this endpoint, this macro does NOT invent a case name for
+   * the citing/cited opinions — the UI renders the honest id + a real
+   * CourtListener link, never a fabricated title. A future follow-up could
+   * add a second bounded batch of `/opinions/{id}/` calls to resolve
+   * `absolute_url`/case metadata; out of scope here (would be its own
+   * "opinion full fetch" macro per the header comment this closes).
+   *
+   * params: { opinionId: number, direction?: "citedBy" (default, who
+   *           cites this opinion) | "cites" (what this opinion cites),
+   *           limit?: 1-50 }
+   */
+  registerLensAction("law", "citation-graph", async (_ctx, _artifact, params = {}) => {
+    const opinionId = Number(params.opinionId);
+    if (!opinionId || !Number.isFinite(opinionId)) return { ok: false, error: "opinionId required" };
+    const direction = params.direction === "cites" ? "cites" : "citedBy";
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 20));
+    const token = process.env.COURTLISTENER_API_TOKEN;
+    const qs = new URLSearchParams({ page_size: String(limit) });
+    // citedBy ("who cites this opinion"): rows where THIS opinion is the
+    // one being cited, i.e. filter on cited_opinion.
+    // cites ("what this opinion cites"): rows where THIS opinion is doing
+    // the citing, i.e. filter on citing_opinion.
+    if (direction === "citedBy") qs.set("cited_opinion", String(opinionId));
+    else qs.set("citing_opinion", String(opinionId));
+    try {
+      const headers = token ? { Authorization: `Token ${token}` } : {};
+      const r = await fetch(`${COURTLISTENER_BASE}/opinions-cited/?${qs.toString()}`, { headers });
+      if (!r.ok) {
+        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
+        throw new Error(`courtlistener ${r.status}`);
+      }
+      const data = await r.json();
+      const extractOpinionId = (v) => {
+        if (v == null) return null;
+        if (typeof v === "number") return v;
+        if (typeof v === "object") return extractOpinionId(v.id ?? v.resource_uri ?? v.url ?? null);
+        const m = String(v).match(/\/opinions\/(\d+)\/?/);
+        return m ? Number(m[1]) : null;
+      };
+      const citations = (data.results || []).map((c) => {
+        const citingOpinionId = extractOpinionId(c.citing_opinion);
+        const citedOpinionId = extractOpinionId(c.cited_opinion);
+        return {
+          id: c.id ?? null,
+          citingOpinionId,
+          citingOpinionUrl: typeof c.citing_opinion === "string" ? c.citing_opinion : null,
+          citedOpinionId,
+          citedOpinionUrl: typeof c.cited_opinion === "string" ? c.cited_opinion : null,
+          // The "other" opinion relative to the queried id + direction —
+          // convenience field so the UI doesn't need to know the edge
+          // semantics to render a flat citing-opinions list.
+          otherOpinionId: direction === "citedBy" ? citingOpinionId : citedOpinionId,
+          depth: typeof c.depth === "number" ? c.depth : null,
+        };
+      });
+      return {
+        ok: true,
+        result: {
+          opinionId, direction,
+          citations, count: citations.length,
+          totalHits: data.count ?? citations.length,
+          authenticatedWithToken: !!token,
+          source: "courtlistener",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
   // ─── Contract lifecycle management (Ironclad / LegalZoom 2026 parity) ───
   // Per-user STATE-backed contract repository: draft, compose from a
   // clause library, review for risk, sign, and track to expiry.
