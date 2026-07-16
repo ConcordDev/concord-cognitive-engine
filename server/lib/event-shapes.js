@@ -361,6 +361,21 @@ export const EVENT_SHAPES = Object.freeze({
   "macro:started":   { required: ["runId", "domain", "action"], optional: [] },
   "macro:stage":     { required: ["runId", "stage"], optional: ["domain", "action", "detail", "index", "total"] },
   "macro:completed": { required: ["runId", "domain", "action", "ok"], optional: ["ms", "error"] },
+
+  // ── Productivity reminders — live socket delivery (Wave 4) ────────
+  // Emitted by server/domains/productivity.js's productivity-reminder-sweep
+  // heartbeat (~30s cadence) to room `user:${userId}` the instant a
+  // reminder becomes due — real-time delivery to whichever tab(s) that
+  // user currently has open. This is deliberately NOT framed as an
+  // OS-level push notification: this codebase has no service-worker Web
+  // Push pipeline, so a user with no connected socket receives no live
+  // event (the reminder is still correctly marked fired server-side,
+  // matching reminders-due's existing markFired semantics — see the
+  // heartbeat's own comment for why that is honest, not a gap).
+  "productivity:reminder-fired": {
+    required: ["userId", "reminder"],
+    optional: [],
+  },
 });
 
 /**
