@@ -352,6 +352,7 @@ export default function registerOfflineActions(registerLensAction) {
     if (!(o.seq instanceof Map)) o.seq = new Map();          // userId -> number
     if (!(o.changes instanceof Map)) o.changes = new Map();  // userId -> Array(change)
     if (!(o.checkpoints instanceof Map)) o.checkpoints = new Map(); // userId -> Map(replicationId -> {seq,at})
+    if (!(o.filters instanceof Map)) o.filters = new Map();  // userId -> Map(filterId -> savedFilter)
     return o;
   }
   function saveOffline() {
@@ -371,10 +372,91 @@ export default function registerOfflineActions(registerLensAction) {
     for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; }
     return `${generation}-${(h >>> 0).toString(16).padStart(8, "0")}`;
   }
+  function ofUserFilters(o, uid) { if (!o.filters.has(uid)) o.filters.set(uid, new Map()); return o.filters.get(uid); }
+  // Documents in this store have no schema and no dedicated "collection"/"type"
+  // column (confirmed by reading replicationPush + local-store.ts: a doc is
+  // exactly { id, body }, body is caller-supplied free-form JSON). The one
+  // real, always-present, convention-carrying field is the document `id`
+  // itself — the UI's own placeholder ("document id (e.g. note:trip-plan)")
+  // and every CouchDB deployment that lacks native collections uses the same
+  // `type:localId` prefix idiom for exactly this purpose. So "collection"
+  // scoping is derived honestly from the real `id`, never invented: the
+  // segment before the first ':' if one is present, else uncategorized (null).
+  function ofDocCollection(id) {
+    const s = String(id == null ? "" : id);
+    const idx = s.indexOf(":");
+    return idx > 0 ? s.slice(0, idx) : null;
+  }
+  // Dotted-path lookup against a real stored doc body (no invented fields —
+  // only whatever the caller actually put in `body` is ever inspected).
+  function ofFieldValue(body, field) {
+    if (!field || body == null || typeof body !== "object") return undefined;
+    let cur = body;
+    for (const part of String(field).split(".")) {
+      if (cur == null || typeof cur !== "object") return undefined;
+      cur = cur[part];
+    }
+    return cur;
+  }
+  const OF_FILTER_OPS = new Set(["eq", "contains", "gt", "lt"]);
+  function ofMatchCondition(body, cond) {
+    const val = ofFieldValue(body, cond.field);
+    switch (cond.op) {
+      case "eq":
+        return val !== undefined && String(val) === String(cond.value);
+      case "contains":
+        if (Array.isArray(val)) return val.some((v) => String(v) === String(cond.value));
+        if (typeof val === "string") return val.includes(String(cond.value));
+        return false;
+      case "gt": {
+        const n = typeof val === "number" ? val : Number(val);
+        return Number.isFinite(n) && n > Number(cond.value);
+      }
+      case "lt": {
+        const n = typeof val === "number" ? val : Number(val);
+        return Number.isFinite(n) && n < Number(cond.value);
+      }
+      default:
+        return false;
+    }
+  }
+  /**
+   * ofChangeMatchesFilter — evaluate a saved filter against one change-feed
+   * entry. `collection` is derivable even for a deletion (it only needs the
+   * doc id, which the change record always carries). `fieldMatch` conditions
+   * need the real body, which a deletion no longer has (the store entry is
+   * removed on delete — see replicationPush) — so a deletion can only pass a
+   * fieldMatch-bearing filter if it has zero fieldMatch conditions (i.e. the
+   * filter is collection-only). This mirrors real CouchDB `_filter` behavior:
+   * a deleted doc is delivered as a bare tombstone, so filters that inspect
+   * fields other than the id/collection generally can't match it either.
+   */
+  function ofChangeMatchesFilter(o, uid, change, filter) {
+    if (!filter) return true;
+    if (filter.collection && ofDocCollection(change.id) !== filter.collection) return false;
+    if (Array.isArray(filter.fieldMatch) && filter.fieldMatch.length) {
+      if (change.deleted) return false;
+      const body = ofUserDocs(o, uid).get(change.id)?.body;
+      if (body == null || typeof body !== "object") return false;
+      for (const cond of filter.fieldMatch) {
+        if (!ofMatchCondition(body, cond)) return false;
+      }
+    }
+    return true;
+  }
 
   /**
    * replicationPull — return all changes after `since` (continuous changes feed).
    * params.since = last-seen update_seq (default 0); params.limit = max docs (default 200)
+   * params.filterId = optional saved filter (see filterCreate) — a CouchDB
+   * `_filter`-style scoped replication. When given, only changes whose real
+   * document matches the filter's real predicate are returned. `since`/
+   * `lastSeq` stay absolute change-feed sequence numbers (never a filtered
+   * index), so a client doing incremental filtered sync can safely persist
+   * `lastSeq` as its next `since` — the next pull re-scans forward from that
+   * real position and re-applies the same filter, which is exactly how the
+   * unfiltered path already behaves. A `filterId` that doesn't resolve for
+   * the caller is a hard error, never a silent "treat as unfiltered".
    */
   registerLensAction("offline", "replicationPull", (ctx, _artifact, params = {}) => {
     try {
@@ -383,7 +465,14 @@ export default function registerOfflineActions(registerLensAction) {
       const uid = ofActor(ctx);
       const since = Math.max(0, Math.round(Number(params.since) || 0));
       const limit = Math.max(1, Math.min(1000, Math.round(Number(params.limit) || 200)));
-      const all = ofUserChanges(o, uid).filter((c) => c.seq > since);
+      let filter = null;
+      if (params.filterId !== undefined && params.filterId !== null && ofClean(params.filterId, 120) !== "") {
+        const filterId = ofClean(params.filterId, 120);
+        filter = ofUserFilters(o, uid).get(filterId);
+        if (!filter) return { ok: false, error: "filter_not_found", filterId };
+      }
+      let all = ofUserChanges(o, uid).filter((c) => c.seq > since);
+      if (filter) all = all.filter((c) => ofChangeMatchesFilter(o, uid, c, filter));
       const slice = all.slice(0, limit);
       return {
         ok: true,
@@ -396,6 +485,7 @@ export default function registerOfflineActions(registerLensAction) {
           lastSeq: slice.length ? slice[slice.length - 1].seq : since,
           pending: Math.max(0, all.length - slice.length),
           updateSeq: o.seq.get(uid) || 0,
+          filterId: filter ? filter.id : null,
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -507,6 +597,82 @@ export default function registerOfflineActions(registerLensAction) {
       }
       const cp = cps.get(rid);
       return { ok: true, result: { replicationId: rid, seq: cp?.seq || 0, at: cp?.at || null, saved: false } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * filterCreate — save a named, real predicate for scoped ("_filter"-style)
+   * replication. params.name (required), params.collection (optional — the
+   * id-prefix convention, see ofDocCollection above), params.fieldMatch
+   * (optional array of { field, op: 'eq'|'contains'|'gt'|'lt', value }
+   * conditions evaluated against the real stored document body). At least
+   * one of collection/fieldMatch must be given — a filter with neither
+   * predicate would just be "everything", which is what omitting filterId
+   * already means, so we reject the ambiguous/no-op case honestly instead
+   * of silently accepting a filter that matches nothing distinctively.
+   */
+  registerLensAction("offline", "filterCreate", (ctx, _artifact, params = {}) => {
+    try {
+      const o = getOfflineState();
+      if (!o) return { ok: false, error: "STATE unavailable" };
+      const uid = ofActor(ctx);
+      const name = ofClean(params.name, 120);
+      if (!name) return { ok: false, error: "filter name required" };
+      const collection = params.collection != null && ofClean(params.collection, 120) !== ""
+        ? ofClean(params.collection, 120) : null;
+      const rawConditions = Array.isArray(params.fieldMatch) ? params.fieldMatch : [];
+      const fieldMatch = [];
+      for (const c of rawConditions) {
+        if (!c || typeof c !== "object") continue;
+        const field = ofClean(c.field, 200);
+        const op = OF_FILTER_OPS.has(c.op) ? c.op : null;
+        if (!field || !op || c.value === undefined || c.value === null) continue;
+        fieldMatch.push({ field, op, value: c.value });
+      }
+      if (!collection && fieldMatch.length === 0) {
+        return { ok: false, error: "filter requires a collection and/or at least one fieldMatch condition" };
+      }
+      const filters = ofUserFilters(o, uid);
+      const id = `filter_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      const filter = { id, name, collection, fieldMatch, createdAt: new Date().toISOString() };
+      filters.set(id, filter);
+      saveOffline();
+      return { ok: true, result: { filter } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * filterList — every saved filter for the caller (per-user scoped storage,
+   * same Map-of-Map pattern as docs/changes/checkpoints — no cross-user leak).
+   */
+  registerLensAction("offline", "filterList", (ctx, _artifact, _params = {}) => {
+    try {
+      const o = getOfflineState();
+      if (!o) return { ok: false, error: "STATE unavailable" };
+      const uid = ofActor(ctx);
+      const filters = [...ofUserFilters(o, uid).values()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+      return { ok: true, result: { filters } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * filterDelete — params.id (or params.filterId). Honest rejection when the
+   * filter doesn't exist for THIS caller — never a silent no-op, since a
+   * caller that thinks it just deleted a filter but didn't would keep
+   * pulling a scoped feed it believes is gone.
+   */
+  registerLensAction("offline", "filterDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const o = getOfflineState();
+      if (!o) return { ok: false, error: "STATE unavailable" };
+      const uid = ofActor(ctx);
+      const id = ofClean(params.id ?? params.filterId, 120);
+      if (!id) return { ok: false, error: "filter id required" };
+      const filters = ofUserFilters(o, uid);
+      if (!filters.has(id)) return { ok: false, error: "filter_not_found", id };
+      filters.delete(id);
+      saveOffline();
+      return { ok: true, result: { id, deleted: true } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
