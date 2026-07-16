@@ -31,6 +31,7 @@ export default function registerPlumbingActions(registerLensAction) {
     if (!(s.notices instanceof Map)) s.notices = new Map();     // userId -> Array<notification>
     if (!(s.workflows instanceof Map)) s.workflows = new Map(); // assignmentId -> workflow
     if (!(s.clients instanceof Map)) s.clients = new Map();     // userId -> Array<client>
+    if (!(s.inspections instanceof Map)) s.inspections = new Map(); // userId -> Array<inspection>
     return s;
   }
   function savePlumb() {
@@ -709,6 +710,149 @@ export default function registerPlumbingActions(registerLensAction) {
           lowStockParts: parts.filter(p => p.onHand <= p.reorderAt).length,
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Municipal / AHJ inspections (dispatch-job-linked) ─────────────
+  // Closes the "Inspections" gap (docs/lens-specs/plumbing-capability-map.md):
+  // workflowStart/workflowUpdate above are the TECHNICIAN's own on-site
+  // checklist + photo + signature — a self-certification flow. This is a
+  // different thing: a real municipal inspection scheduled with a
+  // jurisdiction's building department, with an inspector-of-record who
+  // passes or fails the work against code, independent of what the tech
+  // self-certified. The tech workflow and this substrate coexist and don't
+  // overlap.
+  //
+  // Modeled directly on masonry's inspection-add/inspection-list/
+  // inspection-update (server/domains/masonry.js) and landscaping's copy of
+  // the same shape (server/domains/landscaping.js) — both shipped earlier
+  // this session — adapted two ways: (1) plumbing's own camelCase macro
+  // convention (inspectionAdd/inspectionList/inspectionUpdate — NOT the
+  // hyphenated inspection-add/inspection-list/inspection-update those two
+  // domains use; confirmed against every other macro in this file, e.g.
+  // techCertAdd/clientAdd/dispatchAssign), and (2) plumbing's own dispatch
+  // vocabulary: the link field is `assignmentId`, matching workflowStart/
+  // workflowUpdate/jobComplete/dispatchUpdate's own param name for "the
+  // dispatch-board record this refers to" — NOT `jobId`, which on a dispatch
+  // record is a DIFFERENT, unrelated free-text external job-number field
+  // (see dispatchAssign's own `jobId` param). An inspection with no
+  // assignment reference is a genuinely free-floating record (the same
+  // departure from a soft `|| "general"` default the two precedents made) —
+  // assignmentId is REQUIRED. jobTitle/jobFound/address are re-derived LIVE
+  // against the current dispatch board on every add/list call, never
+  // fabricated or frozen at creation time — an inspection against a
+  // since-cancelled or since-deleted dispatch record still displays that
+  // honestly (jobFound:false, jobTitle:null) instead of silently losing its
+  // link or inventing a title.
+  //
+  // Real municipal/AHJ inspection checkpoints a plumbing contractor actually
+  // schedules with a jurisdiction — permit-triggering points, not internal
+  // QA (contrast masonry/landscaping's broader internal-QA + AHJ mix):
+  // rough-in (supply/DWV piping visible before walls close), top-out/DWV
+  // (drain-waste-vent system pressure-tested before cover), water-service/
+  // backflow (potable supply + cross-connection control), gas-line pressure
+  // test, water heater installation, and final plumbing (close-out before
+  // occupancy). `jurisdiction` (the AHJ/municipality) is a REQUIRED field —
+  // it's the specific thing that makes this a *municipal* inspection instead
+  // of an internal QA pass, per the capability-map's own framing ("municipal
+  // inspection scheduling... pass/fail records against a jurisdiction").
+  // `permitNumber` is optional (not every jurisdiction requires it recorded
+  // per-inspection, and some early-scheduled inspections predate permit
+  // issuance).
+  const INSPECTION_TYPES = [
+    "rough_in", "top_out_dwv", "water_service_backflow",
+    "gas_line_pressure_test", "water_heater_install", "final_plumbing",
+  ];
+  const INSPECTION_RESULTS = ["pending", "pass", "fail"];
+  function deriveInspectionJobFields(insp, dispatchById) {
+    const assignment = dispatchById.get(insp.assignmentId);
+    return {
+      ...insp,
+      jobTitle: assignment ? assignment.jobTitle : null,
+      jobFound: !!assignment,
+      address: assignment ? assignment.address : null,
+    };
+  }
+  registerLensAction("plumbing", "inspectionAdd", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const userId = actor(ctx);
+      const assignmentId = clean(params.assignmentId, 64);
+      if (!assignmentId) return { ok: false, error: "assignmentId_required" };
+      const inspectionType = clean(params.inspectionType, 40).toLowerCase();
+      if (!inspectionType) return { ok: false, error: "inspectionType_required" };
+      if (!INSPECTION_TYPES.includes(inspectionType)) return { ok: false, error: "invalid_inspectionType" };
+      const inspector = clean(params.inspector, 120);
+      if (!inspector) return { ok: false, error: "inspector_required" };
+      const jurisdiction = clean(params.jurisdiction, 120);
+      if (!jurisdiction) return { ok: false, error: "jurisdiction_required" };
+      const scheduledDate = clean(params.scheduledDate, 16);
+      if (!scheduledDate) return { ok: false, error: "scheduledDate_required" };
+      const dispatchById = new Map(list(g.s.dispatch, userId).map(d => [d.id, d]));
+      const inspections = list(g.s.inspections, userId);
+      const number = `INSP-${String(inspections.length + 1).padStart(3, "0")}`;
+      const insp = {
+        id: pid("insp"), number, assignmentId,
+        inspectionType, inspector, jurisdiction,
+        permitNumber: clean(params.permitNumber, 60),
+        scheduledDate,
+        result: "pending", deficiencyNotes: null, reInspectionDate: null,
+        notes: clean(params.notes, 500),
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), completedAt: null,
+      };
+      inspections.push(insp); savePlumb();
+      return { ok: true, result: { inspection: deriveInspectionJobFields(insp, dispatchById) } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "inspectionList", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const userId = actor(ctx);
+      let rows = list(g.s.inspections, userId);
+      if (params.assignmentId) rows = rows.filter(i => i.assignmentId === params.assignmentId);
+      const dispatchById = new Map(list(g.s.dispatch, userId).map(d => [d.id, d]));
+      const enriched = rows.map(i => deriveInspectionJobFields(i, dispatchById));
+      return {
+        ok: true,
+        result: {
+          inspections: enriched, count: enriched.length,
+          passCount: enriched.filter(i => i.result === "pass").length,
+          failCount: enriched.filter(i => i.result === "fail").length,
+          pendingCount: enriched.filter(i => i.result === "pending").length,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "inspectionUpdate", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const userId = actor(ctx);
+      const rows = list(g.s.inspections, userId);
+      const insp = rows.find(i => i.id === params.id);
+      if (!insp) return { ok: false, error: "inspection_not_found" };
+      if (!params.result) return { ok: false, error: "result_required" };
+      if (!INSPECTION_RESULTS.includes(params.result)) return { ok: false, error: "invalid_result" };
+      const result = params.result;
+      if (result === "fail") {
+        const deficiencyNotes = clean(params.deficiencyNotes, 1000);
+        if (!deficiencyNotes) return { ok: false, error: "deficiencyNotes_required_on_fail" };
+        insp.deficiencyNotes = deficiencyNotes;
+        insp.reInspectionDate = clean(params.reInspectionDate, 16) || null;
+      } else if (result === "pass") {
+        insp.deficiencyNotes = null;
+        insp.reInspectionDate = null;
+      } else {
+        // back to pending — keep any prior deficiency notes visible, but
+        // allow the caller to update them (e.g. re-inspection notes).
+        if (params.deficiencyNotes != null) insp.deficiencyNotes = clean(params.deficiencyNotes, 1000) || null;
+        if (params.reInspectionDate != null) insp.reInspectionDate = clean(params.reInspectionDate, 16) || null;
+      }
+      insp.result = result;
+      insp.updatedAt = new Date().toISOString();
+      insp.completedAt = result === "pending" ? null : new Date().toISOString();
+      savePlumb();
+      const dispatchById = new Map(list(g.s.dispatch, userId).map(d => [d.id, d]));
+      return { ok: true, result: { inspection: deriveInspectionJobFields(insp, dispatchById) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 }
