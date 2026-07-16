@@ -13,6 +13,14 @@
  *                         urban/suburban/rural classification, transit fit
  *   - trafficImpact    → new housing/commercial sqft → new daily/peak
  *                         trips, % increase, impact level, mitigation list
+ *   - shadowStudy      → lat/lng + a massing envelope → real hourly
+ *                         NOAA-algorithm sun position (altitude/azimuth)
+ *                         crossed with basic shadow trig into a shadow
+ *                         length/direction path across one UTC day. This
+ *                         is honestly a 2D shadow-path study, NOT a
+ *                         rendered 3D massing study — see the backend
+ *                         macro's `label`/`method` fields, which this tool
+ *                         renders verbatim rather than re-describing.
  *
  * Each tool is a real designed form (not a JSON-paste textarea, not a
  * generic macro-button wall) that calls its own macro and renders the
@@ -20,17 +28,18 @@
  */
 
 import { useState } from 'react';
-import { Loader2, Building2, Footprints, Users, Car, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Building2, Footprints, Users, Car, Sun, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-type Tool = 'zoning' | 'walkability' | 'density' | 'traffic';
+type Tool = 'zoning' | 'walkability' | 'density' | 'traffic' | 'sun-study';
 
 const TOOLS: { id: Tool; label: string; icon: typeof Building2 }[] = [
   { id: 'zoning', label: 'Zoning Analysis', icon: Building2 },
   { id: 'walkability', label: 'Walkability Score', icon: Footprints },
   { id: 'density', label: 'Density Calculator', icon: Users },
   { id: 'traffic', label: 'Traffic Impact', icon: Car },
+  { id: 'sun-study', label: 'Sun / Shadow Study', icon: Sun },
 ];
 
 const ZONES = ['residential', 'commercial', 'mixed', 'industrial'];
@@ -70,6 +79,27 @@ interface TrafficResult {
   percentIncrease: number;
   impactLevel: string;
   mitigation: string[];
+}
+
+interface ShadowSample {
+  hourUtc: number;
+  sunUp: boolean;
+  altitudeDeg: number;
+  azimuthDeg: number;
+  shadowLengthFt: number | null;
+  shadowDirectionDeg: number | null;
+}
+
+interface ShadowStudyResult {
+  label: string;
+  location: { lat: number; lng: number; source: string };
+  date: string;
+  envelope: { widthFt: number; depthFt: number; heightFt: number };
+  method: string;
+  resolution: string;
+  samples: ShadowSample[];
+  daylightHours: number;
+  approxSolarNoon: { hourUtc: number; altitudeDeg: number; note: string } | null;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -358,6 +388,156 @@ function TrafficImpactTool() {
   );
 }
 
+/**
+ * Top-down 2D shadow-fan schematic — one ray per daylight hourly sample,
+ * angle = real shadowDirectionDeg, length scaled to the day's longest
+ * shadow. This is explicitly a flat compass diagram, not a 3D render: it
+ * exists to make the real per-hour direction/length data visually
+ * scannable, not to simulate massing geometry.
+ */
+function ShadowFanDiagram({ samples, maxShadowFt }: { samples: ShadowSample[]; maxShadowFt: number }) {
+  const rays = samples.filter((s) => s.sunUp && s.shadowDirectionDeg != null && s.shadowLengthFt != null);
+  if (rays.length === 0) return null;
+  const size = 180;
+  const center = size / 2;
+  const maxRadius = center - 18;
+  return (
+    <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2">
+      <div className="mb-1 text-[9px] uppercase tracking-wider text-zinc-500">
+        Shadow directions — top-down 2D schematic (not a 3D render, not to scale)
+      </div>
+      <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto h-36 w-36" role="img"
+        aria-label="Shadow direction fan diagram">
+        <circle cx={center} cy={center} r={maxRadius} fill="none" stroke="currentColor" strokeWidth={1} className="text-zinc-800" />
+        <text x={center} y={12} textAnchor="middle" className="fill-zinc-600" style={{ fontSize: 8 }}>N</text>
+        {rays.map((s) => {
+          const r = maxRadius * Math.min(1, (s.shadowLengthFt as number) / Math.max(1, maxShadowFt));
+          // Compass bearing (0deg = north, clockwise) -> SVG coordinates (0deg = up/-y).
+          const rad = ((s.shadowDirectionDeg as number) * Math.PI) / 180;
+          const x = center + r * Math.sin(rad);
+          const y = center - r * Math.cos(rad);
+          return (
+            <line key={s.hourUtc} x1={center} y1={center} x2={x} y2={y}
+              stroke="currentColor" strokeWidth={1.5} className="text-amber-500/70" />
+          );
+        })}
+        <rect x={center - 5} y={center - 5} width={10} height={10} className="fill-zinc-500" />
+      </svg>
+    </div>
+  );
+}
+
+function SunStudyTool() {
+  const [lat, setLat] = useState('40.7128');
+  const [lng, setLng] = useState('-74.0060');
+  const [zoneType, setZoneType] = useState('commercial');
+  const [lotSizeSqFt, setLotSizeSqFt] = useState('20000');
+  const [date, setDate] = useState('2026-06-21');
+  const [result, setResult] = useState<ShadowStudyResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setLoading(true); setError(null);
+    const r = await lensRun<ShadowStudyResult>('urban-planning', 'shadowStudy', {
+      lat: Number(lat), lng: Number(lng), zoneType, lotSizeSqFt: Number(lotSizeSqFt), date,
+    });
+    setLoading(false);
+    if (r.data.ok === false || !r.data.result) { setError(r.data.error || 'sun study failed'); return; }
+    setResult(r.data.result);
+  };
+
+  const daylight = result?.samples.filter((s) => s.sunUp) ?? [];
+  const maxShadowFt = daylight.reduce((m, s) => Math.max(m, s.shadowLengthFt ?? 0), 1);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-zinc-400">
+        Real NOAA solar-position algorithm crossed with basic shadow trig, sampled hourly across
+        one UTC day — an honest 2D shadow-path study (length + direction per daylight hour), not a
+        rendered 3D massing study.
+      </p>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <Field label="Latitude">
+          <input inputMode="decimal" value={lat} onChange={(e) => setLat(e.target.value)} className={inputCls} />
+        </Field>
+        <Field label="Longitude">
+          <input inputMode="decimal" value={lng} onChange={(e) => setLng(e.target.value)} className={inputCls} />
+        </Field>
+        <Field label="Zone type">
+          <select value={zoneType} onChange={(e) => setZoneType(e.target.value)} className={inputCls}>
+            {ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
+          </select>
+        </Field>
+        <Field label="Lot size (sqft)">
+          <input inputMode="numeric" value={lotSizeSqFt} onChange={(e) => setLotSizeSqFt(e.target.value)} className={inputCls} />
+        </Field>
+        <Field label="Date (UTC)">
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
+        </Field>
+      </div>
+      {error && <div className={errCls}>{error}</div>}
+      <button type="button" onClick={run} disabled={loading} className={runBtnCls}>
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sun className="w-3.5 h-3.5" />} Run Sun Study
+      </button>
+
+      {result && (
+        <div className={cn(resultCardCls, 'space-y-3')}>
+          <div className="text-[10px] font-medium text-amber-300">{result.label}</div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] md:grid-cols-4">
+            <div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Envelope height</div>
+              <div className="font-mono text-sm text-emerald-300">{result.envelope.heightFt} ft</div>
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Daylight hours</div>
+              <div className="font-mono text-sm text-emerald-300">{result.daylightHours}</div>
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Peak sun (UTC)</div>
+              <div className="font-mono text-sm text-emerald-300">
+                {result.approxSolarNoon ? `${String(result.approxSolarNoon.hourUtc).padStart(2, '0')}:00 @ ${result.approxSolarNoon.altitudeDeg}°` : 'n/a'}
+              </div>
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Resolution</div>
+              <div className="font-mono text-sm text-emerald-300">{result.resolution}</div>
+            </div>
+          </div>
+
+          <ShadowFanDiagram samples={result.samples} maxShadowFt={maxShadowFt} />
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-zinc-400">
+                  <th className="py-1 pr-3 text-left font-normal">UTC hour</th>
+                  <th className="py-1 pr-3 text-left font-normal">Altitude</th>
+                  <th className="py-1 pr-3 text-left font-normal">Azimuth</th>
+                  <th className="py-1 pr-3 text-left font-normal">Shadow length</th>
+                  <th className="py-1 text-left font-normal">Shadow direction</th>
+                </tr>
+              </thead>
+              <tbody>
+                {daylight.map((s) => (
+                  <tr key={s.hourUtc} className="border-t border-zinc-800/60">
+                    <td className="py-1 pr-3 font-mono text-zinc-300">{String(s.hourUtc).padStart(2, '0')}:00</td>
+                    <td className="py-1 pr-3 font-mono text-emerald-300">{s.altitudeDeg}°</td>
+                    <td className="py-1 pr-3 font-mono text-emerald-300">{s.azimuthDeg}°</td>
+                    <td className="py-1 pr-3 font-mono text-emerald-300">{s.shadowLengthFt?.toLocaleString()} ft</td>
+                    <td className="py-1 font-mono text-emerald-300">{s.shadowDirectionDeg}°</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] leading-relaxed text-zinc-500">{result.method}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ZoningSiteAnalysis() {
   const [tool, setTool] = useState<Tool>('zoning');
 
@@ -386,6 +566,7 @@ export function ZoningSiteAnalysis() {
         {tool === 'walkability' && <WalkabilityScoreTool />}
         {tool === 'density' && <DensityCalculatorTool />}
         {tool === 'traffic' && <TrafficImpactTool />}
+        {tool === 'sun-study' && <SunStudyTool />}
       </div>
     </div>
   );
