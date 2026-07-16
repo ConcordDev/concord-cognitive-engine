@@ -9,10 +9,11 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   MessageSquare, GitPullRequest, Search, Users, SlidersHorizontal,
   BarChart3, Workflow, FolderGit2, Loader2, AlertTriangle, CheckCircle2,
-  ShieldCheck,
+  ShieldCheck, FileJson,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
+import { downloadFile } from '@/lib/utils';
 
 interface CodebaseRow {
   id: string; name: string; fileCount: number; totalLines: number;
@@ -361,6 +362,9 @@ interface GateResult {
   passed: boolean; failOn: string; minSeverity: number;
   totalFindings: number; blockingFindings: number; verdict: string; summary: string;
 }
+interface SarifExportResult {
+  sarif: Record<string, unknown>; findingCount: number; ruleCount: number;
+}
 
 function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
   const [diff, setDiff] = useState('');
@@ -371,6 +375,9 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
   const [gateFailOn, setGateFailOn] = useState<'error' | 'warning' | 'any'>('error');
   const [gate, setGate] = useState<GateResult | null>(null);
   const [gateLoading, setGateLoading] = useState(false);
+  const [sarifLoading, setSarifLoading] = useState(false);
+  const [sarifError, setSarifError] = useState<string | null>(null);
+  const [sarifExported, setSarifExported] = useState(false);
 
   const run = async () => {
     if (!diff.trim()) return;
@@ -416,6 +423,30 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
       if (r.data?.ok && r.data.result) setGate(r.data.result as GateResult);
     } finally {
       setGateLoading(false);
+    }
+  };
+
+  const exportSarif = async () => {
+    if (!result) return;
+    setSarifLoading(true); setSarifError(null); setSarifExported(false);
+    try {
+      // Same findings already on screen from this review — no re-fetch, no
+      // invented data. codebaseId is the same optional context reviewDiff used.
+      const r = await lensRun('dx-platform', 'exportSarif', {
+        findings: result.findings,
+        codebaseId: codebaseId || undefined,
+      });
+      if (r.data?.ok && r.data.result) {
+        const { sarif } = r.data.result as SarifExportResult;
+        downloadFile(JSON.stringify(sarif, null, 2), 'concord-dx-findings.sarif', 'application/sarif+json');
+        setSarifExported(true);
+      } else {
+        setSarifError(r.data?.error || 'SARIF export failed.');
+      }
+    } catch {
+      setSarifError('Network error exporting SARIF.');
+    } finally {
+      setSarifLoading(false);
     }
   };
 
@@ -489,6 +520,26 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
                     : 'border-red-500/30 bg-red-500/10 text-red-300'}`}
                 >
                   {gate.verdict.toUpperCase()} — {gate.blockingFindings}/{gate.totalFindings} blocking at S{gate.minSeverity}+
+                </span>
+              )}
+              <span className="mx-1 h-4 w-px bg-zinc-800" aria-hidden />
+              <button
+                type="button"
+                onClick={exportSarif}
+                disabled={sarifLoading}
+                className="flex items-center gap-1.5 rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-200 hover:border-zinc-600 disabled:opacity-40"
+              >
+                <FileJson className="h-3 w-3" aria-hidden />
+                {sarifLoading ? 'Exporting…' : 'Export SARIF'}
+              </button>
+              {sarifExported && !sarifError && (
+                <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+                  Downloaded concord-dx-findings.sarif
+                </span>
+              )}
+              {sarifError && (
+                <span className="rounded border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[11px] text-red-300">
+                  {sarifError}
                 </span>
               )}
             </div>

@@ -710,4 +710,114 @@ export default function registerDxPlatformActions(register) {
       },
     };
   });
+
+  // ── 8. SARIF export ─────────────────────────────────────────────────
+  // exportSarif — transform a reviewDiff-shaped findings array into a
+  // genuinely well-formed SARIF 2.1.0 document (the OASIS standard GitHub
+  // code scanning / SonarQube / most CI security dashboards consume
+  // natively), so findings can leave Concord as more than Concord-shaped
+  // JSON. This is a pure transform over caller-supplied `findings` — it
+  // does not re-run detectors and does not read/write STATE.
+  //
+  // Severity -> SARIF `level` mapping. SARIF only defines four levels
+  // (error/warning/note/none); this project already has a 3-way severity
+  // taxonomy baked into ciGateCheck's failOn thresholds (error->minSeverity
+  // 4, warning->minSeverity 3, any->minSeverity 1), so the mapping below is
+  // not invented — it's the same cut reused honestly:
+  //   severity >= 4        -> "error"   (blocks generateCiConfig's default gate)
+  //   severity === 3        -> "warning" (blocks the "warning" gate)
+  //   severity <= 2 (1 or 2) -> "note"    (below the strictest real gate)
+  // `none` is never emitted — nothing in this project's findings is
+  // "not a problem", so there is no honest use for that level here.
+  function sarifLevelForSeverity(sev) {
+    const n = Number(sev);
+    if (!Number.isFinite(n)) return "warning";
+    if (n >= 4) return "error";
+    if (n === 3) return "warning";
+    return "note";
+  }
+  // params: { findings: [{path, line, detectorId, detectorLabel?, severity, snippet?}], toolName?, repoUri?, commitSha? }
+  registerLensAction("dx-platform", "exportSarif", (ctx, _a, params = {}) => {
+  try {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const findings = Array.isArray(params.findings) ? params.findings : [];
+    const toolName = String(params.toolName || "Concord DX Detectors").slice(0, 200);
+    const repoUri = params.repoUri ? String(params.repoUri).slice(0, 500) : null;
+    const commitSha = params.commitSha ? String(params.commitSha).slice(0, 100) : null;
+
+    // rules: one entry per distinct ruleId (detectorId), deduplicated — a
+    // SARIF consumer resolves every results[].ruleId against this array, so
+    // repeating one entry per FINDING (instead of per distinct detector)
+    // would still "look" JSON-shaped but silently break rule lookups for
+    // any consumer that treats duplicate ids as ambiguous/invalid.
+    const ruleMap = new Map(); // detectorId -> SARIF reportingDescriptor
+    const results = [];
+    for (const f of findings) {
+      if (!f || typeof f !== "object") continue;
+      const detectorId = String(f.detectorId || "unknown_rule").slice(0, 200);
+      const path = String(f.path || "(unknown)").slice(0, 500);
+      const rawLine = Number(f.line);
+      const lineNo = Number.isFinite(rawLine) && rawLine > 0 ? Math.floor(rawLine) : 1;
+      const level = sarifLevelForSeverity(f.severity);
+      const message = String(f.snippet || f.detectorLabel || detectorId).slice(0, 2000);
+
+      if (!ruleMap.has(detectorId)) {
+        // Prefer the canonical detector's own (fixed) severity for the
+        // rule's default level so it stays stable regardless of which
+        // finding happened to be first in the array; fall back to this
+        // finding's severity for caller-supplied/unknown detector ids.
+        const known = DETECTOR_BY_ID.get(detectorId);
+        const label = known?.label || String(f.detectorLabel || detectorId);
+        ruleMap.set(detectorId, {
+          id: detectorId,
+          name: label,
+          shortDescription: { text: label },
+          defaultConfiguration: { level: sarifLevelForSeverity(known ? known.severity : f.severity) },
+        });
+      }
+
+      results.push({
+        ruleId: detectorId,
+        level,
+        message: { text: message },
+        locations: [
+          {
+            physicalLocation: {
+              artifactLocation: { uri: path },
+              region: { startLine: lineNo },
+            },
+          },
+        ],
+      });
+    }
+
+    const driver = {
+      name: toolName,
+      informationUri: "https://concord-os.org/dx-platform",
+      version: "1.0.0",
+      rules: [...ruleMap.values()],
+    };
+    const run = { tool: { driver }, results };
+    if (repoUri || commitSha) {
+      run.versionControlProvenance = [
+        { repositoryUri: repoUri || "unknown", revisionId: commitSha || "unknown" },
+      ];
+    }
+    const sarif = {
+      $schema: "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+      version: "2.1.0",
+      runs: [run],
+    };
+
+    return {
+      ok: true,
+      result: {
+        sarif,
+        findingCount: results.length,
+        ruleCount: ruleMap.size,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }
