@@ -295,6 +295,7 @@ export default function registerTravelActions(registerLensAction) {
     for (const k of [
       "trips", "itinerary", "places", "placeReviews", "bookings",
       "priceWatches", "budgets", "travelDocs", "checklists",
+      "travelDocAttachments",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -729,15 +730,111 @@ export default function registerTravelActions(registerLensAction) {
   registerLensAction("travel", "travel-doc-list", (ctx, _a, _params = {}) => {
   try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tvaid(ctx);
     const today = tvday(tvnow());
     const soon = tvday(new Date(Date.now() + 180 * TV_DAY).toISOString());
-    const documents = (s.travelDocs.get(tvaid(ctx)) || []).map((d) => ({
+    // Embed attachment metadata (never the heavy base64 blob) per document
+    // so the UI can render "2 files attached" without a second round-trip.
+    const attByDoc = new Map();
+    for (const a of s.travelDocAttachments.get(userId) || []) {
+      if (!attByDoc.has(a.docId)) attByDoc.set(a.docId, []);
+      attByDoc.get(a.docId).push({ id: a.id, fileName: a.fileName, mimeType: a.mimeType, bytes: a.bytes, createdAt: a.createdAt });
+    }
+    const documents = (s.travelDocs.get(userId) || []).map((d) => ({
       ...d,
       expiryStatus: !d.expiryDate ? "none" : d.expiryDate < today ? "expired" : d.expiryDate <= soon ? "expiring_soon" : "valid",
+      attachments: attByDoc.get(d.id) || [],
+      attachmentCount: (attByDoc.get(d.id) || []).length,
     }));
     return { ok: true, result: { documents, count: documents.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Travel document binary attachments ──────────────────────────────
+  // Structurally cloned from projects.js's "[M] Binary file attachments"
+  // pair (attachment-upload / attachment-download, ~server/domains/
+  // projects.js:1456-1502): base64 payload validation (optional `data:`
+  // prefix stripped), a 5 MB per-file cap, and the heavy `data` blob
+  // never returned from list views. Scoped to a travel document instead
+  // of a project task; stored per-user like every other travelLens
+  // sub-state bucket (tvlistB(s.travelDocAttachments, userId)), so
+  // ownership isolation falls out of the same per-user Map pattern
+  // projects.js relies on — a caller can only ever see the entries under
+  // their own userId key.
+  const TV_MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5 MB cap per file
+
+  registerLensAction("travel", "travel-doc-attachment-upload", (ctx, _a, params = {}) => {
+  try {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tvaid(ctx);
+    const doc = (s.travelDocs.get(userId) || []).find((d) => d.id === params.docId);
+    if (!doc) return { ok: false, error: "travel document not found" };
+    const fileName = tvclean(params.fileName, 160);
+    if (!fileName) return { ok: false, error: "fileName required" };
+    const data = String(params.data || "");
+    if (!data) return { ok: false, error: "file data required" };
+    // base64 payload, optionally with a data: prefix.
+    const b64 = data.includes(",") ? data.slice(data.indexOf(",") + 1) : data;
+    if (!/^[A-Za-z0-9+/=\s]+$/.test(b64)) return { ok: false, error: "data must be base64" };
+    const bytes = Math.floor((b64.replace(/\s/g, "").length * 3) / 4);
+    if (bytes > TV_MAX_ATTACHMENT_BYTES) return { ok: false, error: "file exceeds 5 MB limit" };
+    const attachment = {
+      id: tvid("att"), docId: doc.id, kind: "binary",
+      fileName, mimeType: tvclean(params.mimeType, 100) || "application/octet-stream",
+      bytes, data: b64.replace(/\s/g, ""),
+      createdAt: tvnow(),
+    };
+    tvlistB(s.travelDocAttachments, userId).push(attachment);
+    saveTravelState();
+    // Return without the heavy data blob.
+    const { data: _d, ...meta } = attachment;
+    return { ok: true, result: { attachment: meta } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // Doc-scoped attachment list (metadata only) — complements the
+  // embedded attachments already returned by travel-doc-list, for
+  // callers that only have a docId and want a filtered, fresh view
+  // (e.g. right after an upload) without re-fetching every document.
+  registerLensAction("travel", "travel-doc-attachment-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tvaid(ctx);
+    if (!(s.travelDocs.get(userId) || []).find((d) => d.id === params.docId)) {
+      return { ok: false, error: "travel document not found" };
+    }
+    const attachments = (s.travelDocAttachments.get(userId) || [])
+      .filter((a) => a.docId === String(params.docId))
+      .map(({ data: _d, ...meta }) => meta);
+    return { ok: true, result: { attachments, count: attachments.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // Fetch a single binary attachment's data for download/preview.
+  // Ownership-checked implicitly — the lookup is scoped to the caller's
+  // own per-user bucket, so another user's attachment id simply isn't
+  // present in the array being searched.
+  registerLensAction("travel", "travel-doc-attachment-download", (ctx, _a, params = {}) => {
+  try {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const att = (s.travelDocAttachments.get(tvaid(ctx)) || []).find((a) => a.id === params.id);
+    if (!att) return { ok: false, error: "attachment not found" };
+    return {
+      ok: true,
+      result: { id: att.id, fileName: att.fileName, mimeType: att.mimeType, bytes: att.bytes, data: att.data },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("travel", "travel-doc-attachment-delete", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.travelDocAttachments.get(tvaid(ctx)) || [];
+    const i = arr.findIndex((a) => a.id === params.id);
+    if (i < 0) return { ok: false, error: "attachment not found" };
+    arr.splice(i, 1);
+    saveTravelState();
+    return { ok: true, result: { deleted: params.id } };
+  });
 
   // ── Packing / trip checklist ────────────────────────────────────────
   registerLensAction("travel", "checklist-add", (ctx, _a, params = {}) => {
