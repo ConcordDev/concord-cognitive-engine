@@ -41349,7 +41349,19 @@ registerLensAction("collab", "extract_actions", (ctx, artifact, _params) => {
 
 // === Experience ===
 registerLensAction("experience", "endorse", (ctx, artifact, params) => {
-  const endorsement = { id: uid("end"), skillId: params.skillId, endorserId: ctx.actor?.userId || "anon", comment: params.comment || "", endorsedAt: nowISO() };
+  const endorserId = ctx.actor?.userId || "anon";
+  // Peer-endorsement semantic (closes the "only self-endorsement is
+  // currently reachable" gap in docs/lens-specs/experience-capability-map.md).
+  // `_lensArtifactVisible` already lets any caller act on another user's
+  // *published* portfolio via `lens.run` — visibility alone doesn't stop
+  // someone from endorsing their own skills, so a genuine peer-endorsement
+  // rule needs an explicit check here: the endorser must not be the
+  // portfolio's owner. Anonymous/system-owned artifacts (no ownerId) are
+  // unaffected — there's no "self" to guard against there.
+  if (artifact.ownerId && artifact.ownerId !== "anon" && endorserId === artifact.ownerId) {
+    return { ok: false, error: "cannot_self_endorse" };
+  }
+  const endorsement = { id: uid("end"), skillId: params.skillId, endorserId, comment: params.comment || "", endorsedAt: nowISO() };
   artifact.data = { ...artifact.data, endorsements: [...(artifact.data?.endorsements || []), endorsement] };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
