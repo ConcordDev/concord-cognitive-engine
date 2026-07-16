@@ -429,6 +429,7 @@ export default function registerArtistryActions(registerLensAction) {
     for (const k of [
       "projects", "follows", "comments", "appreciations",
       "collections", "profiles", "jobs", "galleries", "analyticsSnapshots",
+      "projectImages",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -445,6 +446,40 @@ export default function registerArtistryActions(registerLensAction) {
   const artClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const artArr = (v) => (Array.isArray(v) ? v : []);
   const artList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+
+  // ── Native image upload/blob-storage pipeline for project images ────
+  // Closes docs/WAVE4_INVENTORY.md line 101 / artistry-capability-map.md
+  // item 12: "No native image upload/blob-storage pipeline for project
+  // images (URL-only)". Structurally cloned from travel.js's "Travel
+  // document binary attachments" trio (travel-doc-attachment-upload/
+  // -download/-delete, server/domains/travel.js:945-1016): base64 payload
+  // validation (optional `data:` prefix stripped), a per-file size cap,
+  // and the heavy `data` blob never returned from anything but the
+  // dedicated download macro. Deliberately NOT the misfiled
+  // `apiHelpers.artistry.blobs` facility in server.js (~lines 73021-73145)
+  // — that is a different, cross-lens DAW (audio) blob system; this store
+  // is artistry-native and lives entirely in this file.
+  //
+  // Stored per-user (s.projectImages, a userId -> array Map) exactly like
+  // every other artistryLens sub-state bucket, so ownership isolation
+  // falls out of the same per-user Map pattern the rest of this domain
+  // relies on. An uploaded image is referenced from `images[].url` (both
+  // at projectCreate and projectUpdate) via a stable `artistry-img:<id>`
+  // scheme, resolved back to real bytes through project-image-download.
+  // External URLs keep working unchanged — the two are additive, not a
+  // schema break.
+  const ART_MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB cap per image
+  const ART_IMG_REF_PREFIX = "artistry-img:";
+  // A url is either a plain external URL/string (always valid) or an
+  // `artistry-img:<id>` reference, which is only valid when it points at
+  // an image the CALLING user actually uploaded — this is what makes the
+  // reference scheme "wired" rather than a free-text string that happens
+  // to look structured.
+  const artImgRefValid = (s, uid, url) => {
+    if (!url.startsWith(ART_IMG_REF_PREFIX)) return true;
+    const id = url.slice(ART_IMG_REF_PREFIX.length);
+    return (s.projectImages.get(uid) || []).some((img) => img.id === id);
+  };
 
   // ── Project pages — multi-image case studies ────────────────────────
   registerLensAction("artistry", "projectCreate", (ctx, artifact, params) => {
@@ -465,7 +500,7 @@ export default function registerArtistryActions(registerLensAction) {
           url: artClean(typeof im === "string" ? im : im.url, 600),
           caption: artClean(typeof im === "object" ? im.caption : "", 280),
           order: typeof im === "object" && Number.isFinite(Number(im.order)) ? Number(im.order) : i,
-        })).filter((im) => im.url),
+        })).filter((im) => im.url && artImgRefValid(s, uid, im.url)),
         processSteps: artArr(p.processSteps).map((st) => ({
           title: artClean(typeof st === "string" ? st : st.title, 120),
           detail: artClean(typeof st === "object" ? st.detail : "", 1000),
@@ -503,7 +538,7 @@ export default function registerArtistryActions(registerLensAction) {
           url: artClean(typeof im === "string" ? im : im.url, 600),
           caption: artClean(typeof im === "object" ? im.caption : "", 280),
           order: typeof im === "object" && Number.isFinite(Number(im.order)) ? Number(im.order) : i,
-        })).filter((im) => im.url);
+        })).filter((im) => im.url && artImgRefValid(s, uid, im.url));
       }
       if (p.processSteps !== undefined) {
         proj.processSteps = artArr(p.processSteps).map((st) => ({
@@ -573,6 +608,93 @@ export default function registerArtistryActions(registerLensAction) {
           appreciated: appreciations.some((a) => a.userId === artAid(ctx)),
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Project image blob storage (native upload pipeline) ─────────────
+  // See the ART_MAX_IMAGE_BYTES / artImgRefValid header comment above for
+  // context. Upload is intentionally NOT scoped to an existing project —
+  // exactly like a real portfolio tool, you select/attach photos before
+  // (or independent of) saving the project draft; projectCreate/Update
+  // then reference the resulting id via `artistry-img:<id>` in images[].url.
+  registerLensAction("artistry", "project-image-upload", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const uid = artAid(ctx);
+      const fileName = artClean(p.fileName, 160);
+      if (!fileName) return { ok: false, error: "fileName required" };
+      const data = String(p.data || "");
+      if (!data) return { ok: false, error: "file data required" };
+      // base64 payload, optionally with a data: prefix.
+      const b64 = data.includes(",") ? data.slice(data.indexOf(",") + 1) : data;
+      if (!/^[A-Za-z0-9+/=\s]+$/.test(b64)) return { ok: false, error: "data must be base64" };
+      const bytes = Math.floor((b64.replace(/\s/g, "").length * 3) / 4);
+      if (bytes > ART_MAX_IMAGE_BYTES) return { ok: false, error: "image exceeds 8 MB limit" };
+      const image = {
+        id: artId("img"),
+        userId: uid,
+        fileName,
+        mimeType: artClean(p.mimeType, 100) || "application/octet-stream",
+        bytes,
+        data: b64.replace(/\s/g, ""),
+        createdAt: artNow(),
+      };
+      artList(s.projectImages, uid).push(image);
+      saveArtState();
+      // Return without the heavy data blob, plus the stable reference
+      // string projectCreate/Update's images[].url slot accepts.
+      const { data: _d, ...meta } = image;
+      return { ok: true, result: { image: { ...meta, ref: `${ART_IMG_REF_PREFIX}${image.id}` } } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Metadata-only list of the caller's uploaded images (for a "reuse a
+  // previously uploaded photo" picker) — never returns the blob.
+  registerLensAction("artistry", "project-image-list", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const images = (s.projectImages.get(uid) || [])
+        .map(({ data: _d, ...meta }) => ({ ...meta, ref: `${ART_IMG_REF_PREFIX}${meta.id}` }));
+      return { ok: true, result: { images, count: images.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Fetch a single uploaded image's real bytes for <img src> display.
+  // Ownership-checked implicitly — the lookup is scoped to the caller's
+  // own per-user bucket, so another user's image id simply isn't present
+  // in the array being searched. Accepts either a raw id or a full
+  // `artistry-img:<id>` reference string for caller convenience.
+  registerLensAction("artistry", "project-image-download", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const raw = artClean((params || {}).id, 200);
+      const id = raw.startsWith(ART_IMG_REF_PREFIX) ? raw.slice(ART_IMG_REF_PREFIX.length) : raw;
+      const img = (s.projectImages.get(artAid(ctx)) || []).find((x) => x.id === id);
+      if (!img) return { ok: false, error: "image not found" };
+      return {
+        ok: true,
+        result: { id: img.id, fileName: img.fileName, mimeType: img.mimeType, bytes: img.bytes, data: img.data },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "project-image-delete", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const raw = artClean((params || {}).id, 200);
+      const id = raw.startsWith(ART_IMG_REF_PREFIX) ? raw.slice(ART_IMG_REF_PREFIX.length) : raw;
+      const arr = s.projectImages.get(artAid(ctx)) || [];
+      const idx = arr.findIndex((x) => x.id === id);
+      if (idx === -1) return { ok: false, error: "image not found" };
+      arr.splice(idx, 1);
+      saveArtState();
+      return { ok: true, result: { deleted: id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
