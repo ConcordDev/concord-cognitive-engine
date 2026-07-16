@@ -335,6 +335,21 @@ export default function registerWorldCreatorActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  registerLensAction("world-creator", "spawn-move", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const draft = findDraft(s, aid(ctx), clean(params.draftId, 80));
+      if (!draft) return { ok: false, error: "draft not found" };
+      const spawn = draft.spawnPoints.find((sp) => sp.id === clean(params.spawnId, 80));
+      if (!spawn) return { ok: false, error: "spawn point not found" };
+      if (params.x != null) spawn.x = clamp(params.x, -250, 250, spawn.x);
+      if (params.z != null) spawn.z = clamp(params.z, -250, 250, spawn.z);
+      draft.updatedAt = now();
+      save();
+      return { ok: true, result: { spawn } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   registerLensAction("world-creator", "spawn-remove", (ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -371,6 +386,22 @@ export default function registerWorldCreatorActions(registerLensAction) {
       draft.updatedAt = now();
       save();
       return { ok: true, result: { zone, zoneCount: draft.zones.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("world-creator", "zone-move", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const draft = findDraft(s, aid(ctx), clean(params.draftId, 80));
+      if (!draft) return { ok: false, error: "draft not found" };
+      const zone = draft.zones.find((z) => z.id === clean(params.zoneId, 80));
+      if (!zone) return { ok: false, error: "zone not found" };
+      if (params.x != null) zone.x = clamp(params.x, -250, 250, zone.x);
+      if (params.z != null) zone.z = clamp(params.z, -250, 250, zone.z);
+      if (params.radius != null) zone.radius = clamp(params.radius, 5, 250, zone.radius);
+      draft.updatedAt = now();
+      save();
+      return { ok: true, result: { zone } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -411,6 +442,21 @@ export default function registerWorldCreatorActions(registerLensAction) {
       draft.updatedAt = now();
       save();
       return { ok: true, result: { npc, npcCount: draft.npcs.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("world-creator", "npc-move", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const draft = findDraft(s, aid(ctx), clean(params.draftId, 80));
+      if (!draft) return { ok: false, error: "draft not found" };
+      const npc = draft.npcs.find((n) => n.id === clean(params.npcId, 80));
+      if (!npc) return { ok: false, error: "NPC not found" };
+      if (params.x != null) npc.x = clamp(params.x, -250, 250, npc.x);
+      if (params.z != null) npc.z = clamp(params.z, -250, 250, npc.z);
+      draft.updatedAt = now();
+      save();
+      return { ok: true, result: { npc } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

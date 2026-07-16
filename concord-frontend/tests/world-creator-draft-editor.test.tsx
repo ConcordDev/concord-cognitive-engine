@@ -45,12 +45,16 @@ vi.mock('@/components/world-creator/SceneCanvas', () => ({
     lastSceneCanvasProps = props;
     const onCanvasClick = props.onCanvasClick as (x: number, z: number) => void;
     const onSelect = props.onSelect as (kind: string, id: string) => void;
-    const onMove = props.onMove as (kind: 'prop', id: string, x: number, z: number) => void;
+    const onMove = props.onMove as (kind: 'prop' | 'zone' | 'spawn' | 'npc', id: string, x: number, z: number) => void;
     return React.createElement('div', { 'data-testid': 'scene-canvas' }, [
       React.createElement('button', { key: 'click', 'data-testid': 'click-canvas', onClick: () => onCanvasClick(10, 20) }, 'click'),
       React.createElement('button', { key: 'select', 'data-testid': 'select-prop', onClick: () => onSelect('prop', 'prop_1') }, 'select'),
       React.createElement('button', { key: 'drag', 'data-testid': 'drag-prop', onClick: () => onMove('prop', 'prop_1', 33, 44) }, 'drag'),
       React.createElement('button', { key: 'drag-same', 'data-testid': 'drag-prop-same', onClick: () => onMove('prop', 'prop_1', 33, 44) }, 'drag-same'),
+      React.createElement('button', { key: 'drag-zone', 'data-testid': 'drag-zone', onClick: () => onMove('zone', 'zone_1', 5, 6) }, 'drag-zone'),
+      React.createElement('button', { key: 'drag-zone-same', 'data-testid': 'drag-zone-same', onClick: () => onMove('zone', 'zone_1', 5, 6) }, 'drag-zone-same'),
+      React.createElement('button', { key: 'drag-spawn', 'data-testid': 'drag-spawn', onClick: () => onMove('spawn', 'spawn_1', 7, 8) }, 'drag-spawn'),
+      React.createElement('button', { key: 'drag-npc', 'data-testid': 'drag-npc', onClick: () => onMove('npc', 'npc_1', 9, 10) }, 'drag-npc'),
     ]);
   },
 }));
@@ -68,7 +72,9 @@ const DRAFT = {
   rules: { combatLethality: 1, refusalSensitivity: 1, questDensity: 1, weatherIntensity: 1 },
   props: [{ id: 'prop_1', kind: 'rock', x: 0, z: 0, rotation: 0, scale: 1 }],
   spawnPoints: [{ id: 'spawn_1', name: 'Camp', x: 0, z: 0, isDefault: true }],
-  zones: [], npcs: [], factions: [],
+  zones: [{ id: 'zone_1', name: 'Haven', kind: 'safe', x: 0, z: 0, radius: 40 }],
+  npcs: [{ id: 'npc_1', name: 'Gorman', archetype: 'warrior', x: 0, z: 0, factionId: null, level: 1, backstory: '' }],
+  factions: [],
   terrain: { seed: 1, roughness: 0.5, waterLevel: 0.3 },
   visibility: 'private', publishedWorldId: null,
 };
@@ -145,6 +151,97 @@ describe('DraftEditor — scene wiring (Wave-3 audit fixes)', () => {
     fireEvent.click(getByTestId('drag-prop'));
     fireEvent.click(getByTestId('drag-prop-same'));
     await waitFor(() => expect(lensRun.mock.calls.filter((c) => c[1] === 'prop-move').length).toBe(1));
+  });
+
+  it('dragging a zone calls zone-move with the new x/z (was a silent no-op — zones only supported click-to-select before)', async () => {
+    lensRun.mockImplementation(routed({
+      'zone-move': (params) => { expect(params).toMatchObject({ draftId: 'draft_1', zoneId: 'zone_1', x: 5, z: 6 }); return reply({ zone: { ...DRAFT.zones[0], x: 5, z: 6 } }); },
+    }));
+    const { getByTestId } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'zone-move': (params) => { expect(params).toMatchObject({ draftId: 'draft_1', zoneId: 'zone_1', x: 5, z: 6 }); return reply({ zone: { ...DRAFT.zones[0], x: 5, z: 6 } }); },
+    }));
+    fireEvent.click(getByTestId('drag-zone'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('world-creator', 'zone-move',
+      expect.objectContaining({ draftId: 'draft_1', zoneId: 'zone_1', x: 5, z: 6 })));
+  });
+
+  it('dragging a zone to the same integer cell twice fires zone-move only once (dedupe keyed by kind+id)', async () => {
+    lensRun.mockImplementation(routed({
+      'zone-move': () => reply({ zone: { ...DRAFT.zones[0], x: 5, z: 6 } }),
+    }));
+    const { getByTestId } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    lensRun.mockClear();
+    fireEvent.click(getByTestId('drag-zone'));
+    fireEvent.click(getByTestId('drag-zone-same'));
+    await waitFor(() => expect(lensRun.mock.calls.filter((c) => c[1] === 'zone-move').length).toBe(1));
+  });
+
+  it('dragging a spawn point calls spawn-move with the new x/z (was a silent no-op before)', async () => {
+    lensRun.mockImplementation(routed({}));
+    const { getByTestId } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'spawn-move': (params) => { expect(params).toMatchObject({ draftId: 'draft_1', spawnId: 'spawn_1', x: 7, z: 8 }); return reply({ spawn: { ...DRAFT.spawnPoints[0], x: 7, z: 8 } }); },
+    }));
+    fireEvent.click(getByTestId('drag-spawn'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('world-creator', 'spawn-move',
+      expect.objectContaining({ draftId: 'draft_1', spawnId: 'spawn_1', x: 7, z: 8 })));
+  });
+
+  it('dragging an NPC calls npc-move with the new x/z (was a silent no-op before)', async () => {
+    lensRun.mockImplementation(routed({}));
+    const { getByTestId } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'npc-move': (params) => { expect(params).toMatchObject({ draftId: 'draft_1', npcId: 'npc_1', x: 9, z: 10 }); return reply({ npc: { ...DRAFT.npcs[0], x: 9, z: 10 } }); },
+    }));
+    fireEvent.click(getByTestId('drag-npc'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('world-creator', 'npc-move',
+      expect.objectContaining({ draftId: 'draft_1', npcId: 'npc_1', x: 9, z: 10 })));
+  });
+
+  it('a failed zone-move surfaces the error and re-pulls the draft (optimistic rollback, not a frozen/silent control)', async () => {
+    lensRun.mockImplementation(routed({}));
+    const { getByTestId, findByRole } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    let refetched = false;
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'zone-move': () => Promise.resolve({ data: { ok: false, error: 'zone not found' } }),
+      'draft-get': () => { refetched = true; return reply({ draft: DRAFT }); },
+    }));
+    fireEvent.click(getByTestId('drag-zone'));
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toMatch(/zone not found/);
+    expect(refetched).toBe(true);
+  });
+
+  it('a failed npc-move surfaces the error and re-pulls the draft (optimistic rollback, not a frozen/silent control)', async () => {
+    lensRun.mockImplementation(routed({}));
+    const { getByTestId, findByRole } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    let refetched = false;
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'npc-move': () => Promise.resolve({ data: { ok: false, error: 'NPC not found' } }),
+      'draft-get': () => { refetched = true; return reply({ draft: DRAFT }); },
+    }));
+    fireEvent.click(getByTestId('drag-npc'));
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toMatch(/NPC not found/);
+    expect(refetched).toBe(true);
   });
 });
 
