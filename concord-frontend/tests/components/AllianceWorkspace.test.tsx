@@ -8,6 +8,12 @@ vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRunMock(...args),
 }));
 
+// The DM member-picker excludes "self" via useAuth() — stub it so tests
+// don't depend on a real network fetch to /api/auth/me.
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'u1' }, isLoading: false, isAuthenticated: true }),
+}));
+
 vi.mock('framer-motion', () => ({
   motion: {
     // eslint-disable-next-line react/display-name
