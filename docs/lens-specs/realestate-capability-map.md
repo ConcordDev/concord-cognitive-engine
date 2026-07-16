@@ -204,15 +204,15 @@ macro.
   of scope for a field-mapping/wiring pass; building a new comparative
   analysis engine is new backend behavior, which this pass's brief
   restricted to "correctly wiring what already exists."
-- **`tick_rentals` has no heartbeat.** `grep -rn "tick_rentals|tickRentals" server/` shows
-  it's called from nowhere except the domain macro itself — no
-  `registerHeartbeat` wires it to run on a schedule, so rent is never
-  collected automatically. Surfaced as a manual "Collect due rent" button
-  in `WorldPropertiesPanel` (a real, honest use of the existing macro) but
-  the missing automatic collection is a genuine backend gap, **left alone**
-  per the brief's "don't invent new behavior beyond correctly wiring
-  `real-estate.js`" constraint — adding a `registerHeartbeat` call is
-  backend engine behavior, not frontend wiring.
+- ~~**`tick_rentals` has no heartbeat.**~~ **CLOSED (2026-07-16, `e1a7c52a`)** — new
+  self-registering `real-estate-rent-collection` heartbeat (~1h cadence)
+  calls the real `tickRentals` engine on a schedule; the manual "Collect
+  due rent" button remains as an honest fallback. Also fixed a genuine
+  pre-existing production bug found while verifying this: `real-estate.js`
+  was never imported by `server/domains/index.js`, so the entire
+  `real_estate` domain — including this button and every other macro in
+  this file — was dead code since it shipped. Fixed with a two-line
+  additive registration, verified against a real server boot.
 - **`RealtorShell.tsx`** — a Zillow/Redfin rival-shape silhouette, mounted
   only inside `ShellPreview` (the standard per-lens hub-preview pattern used
   across many lenses) with representative static props, never in the live
