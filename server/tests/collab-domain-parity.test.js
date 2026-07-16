@@ -190,6 +190,32 @@ describe("collab presence + cursors + follow-mode", () => {
     assert.equal(r.result.online, 2);
   });
 
+  it("presenceState never adds the caller to the presence map (read-only peek)", () => {
+    // Regression for the "who's viewing" peek affordance: a caller who has
+    // never heartbeated a cursor into a doc must be able to read its
+    // presence roster without becoming part of it.
+    const doc = call("docCreate", ctxA, { title: "T", text: "abc" }).result;
+    call("cursorUpdate", ctxB, { docId: doc.id, cursor: 3 });
+    // ctxC never calls cursorUpdate — only peeks via presenceState, repeatedly.
+    const peek1 = call("presenceState", ctxC, { docId: doc.id });
+    assert.equal(peek1.ok, true);
+    assert.equal(peek1.result.online, 1);
+    assert.deepEqual(peek1.result.presence.map((p) => p.userId), ["user_b"]);
+    const peek2 = call("presenceState", ctxC, { docId: doc.id });
+    assert.equal(peek2.result.online, 1);
+    assert.deepEqual(peek2.result.presence.map((p) => p.userId), ["user_b"]);
+    // ctxC is nowhere in the roster after any number of peeks.
+    assert.ok(!peek2.result.presence.some((p) => p.userId === "user_c"));
+  });
+
+  it("presenceState is a safe no-op read for a document with zero live viewers", () => {
+    const doc = call("docCreate", ctxA, { title: "T", text: "abc" }).result;
+    const r = call("presenceState", ctxB, { docId: doc.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.online, 0);
+    assert.deepEqual(r.result.presence, []);
+  });
+
   it("setFollow locks a viewer onto a present user", () => {
     const doc = call("docCreate", ctxA, { title: "T", text: "abc" }).result;
     call("cursorUpdate", ctxB, { docId: doc.id, cursor: 5 });
