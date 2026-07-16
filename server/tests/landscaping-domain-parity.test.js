@@ -720,3 +720,261 @@ describe("landscaping — persisted Client (CRM) entity", () => {
     assert.equal(found.totalBilled, 138);
   });
 });
+
+// ─── Feature 12 — Job inspections ────────────────────────────────────
+describe("landscaping — job inspections", () => {
+  it("inspection-add requires a real jobId, a valid inspectionType, an inspector, and a scheduledDate", () => {
+    const job = call("job-schedule", ctxA, { title: "Backyard reno" }).result.job;
+    assert.match(call("inspection-add", ctxA, {}).error, /jobId required/);
+    assert.match(
+      call("inspection-add", ctxA, { jobId: job.id, inspectionType: "bogus", inspector: "Sam", scheduledDate: "2026-06-10" }).error,
+      /invalid inspectionType/,
+    );
+    assert.match(
+      call("inspection-add", ctxA, { jobId: job.id, inspectionType: "final_walkthrough", scheduledDate: "2026-06-10" }).error,
+      /inspector required/,
+    );
+    assert.match(
+      call("inspection-add", ctxA, { jobId: job.id, inspectionType: "final_walkthrough", inspector: "Sam" }).error,
+      /scheduledDate required/,
+    );
+    const r = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "final_walkthrough", inspector: "Sam", scheduledDate: "2026-06-10", notes: "Client onsite",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.inspection.number, "INSP-001");
+    assert.equal(r.result.inspection.jobId, job.id);
+    assert.equal(r.result.inspection.jobTitle, "Backyard reno");
+    assert.equal(r.result.inspection.jobFound, true);
+    assert.equal(r.result.inspection.result, "pending");
+    assert.equal(r.result.inspection.notes, "Client onsite");
+  });
+
+  it("inspection-add: jobId referencing an unknown job still creates the record, but jobFound is honestly false", () => {
+    const r = call("inspection-add", ctxA, {
+      jobId: "job_ghost", inspectionType: "irrigation_system_check", inspector: "Pat", scheduledDate: "2026-06-11",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.inspection.jobFound, false);
+    assert.equal(r.result.inspection.jobTitle, null);
+  });
+
+  it("inspection-list re-derives jobTitle/jobFound live — a since-renamed or since-deleted job is reflected honestly", () => {
+    const job = call("job-schedule", ctxA, { title: "Original title" }).result.job;
+    call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "final_walkthrough", inspector: "Sam", scheduledDate: "2026-06-10",
+    });
+    // Simulate the job being renamed after the inspection was scheduled —
+    // job-schedule has no rename macro, so poke the in-memory record.
+    globalThis._concordSTATE.landscapingLens.jobs.get("user_a").find((j) => j.id === job.id).title = "Renamed job";
+    let list = call("inspection-list", ctxA, {});
+    assert.equal(list.result.inspections[0].jobTitle, "Renamed job");
+    assert.equal(list.result.inspections[0].jobFound, true);
+
+    // Now delete the job entirely.
+    globalThis._concordSTATE.landscapingLens.jobs.set("user_a", []);
+    list = call("inspection-list", ctxA, {});
+    assert.equal(list.result.inspections[0].jobFound, false);
+    assert.equal(list.result.inspections[0].jobTitle, null);
+  });
+
+  it("inspection-list filters by jobId and reports pass/fail/pending counts", () => {
+    const jobA = call("job-schedule", ctxA, { title: "Job A" }).result.job;
+    const jobB = call("job-schedule", ctxA, { title: "Job B" }).result.job;
+    call("inspection-add", ctxA, { jobId: jobA.id, inspectionType: "final_walkthrough", inspector: "Sam", scheduledDate: "2026-06-10" });
+    call("inspection-add", ctxA, { jobId: jobB.id, inspectionType: "hardscape_drainage", inspector: "Sam", scheduledDate: "2026-06-11" });
+    const onlyA = call("inspection-list", ctxA, { jobId: jobA.id });
+    assert.equal(onlyA.result.count, 1);
+    assert.equal(onlyA.result.inspections[0].jobId, jobA.id);
+    const all = call("inspection-list", ctxA, {});
+    assert.equal(all.result.pendingCount, 2);
+    assert.equal(all.result.passCount, 0);
+    assert.equal(all.result.failCount, 0);
+  });
+
+  it("inspection-update: pass clears any prior deficiency notes and stamps completedAt", () => {
+    const job = call("job-schedule", ctxA, { title: "Job" }).result.job;
+    const insp = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "plant_health_establishment", inspector: "Sam", scheduledDate: "2026-06-10",
+    }).result.inspection;
+    const r = call("inspection-update", ctxA, { id: insp.id, result: "pass" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.inspection.result, "pass");
+    assert.equal(r.result.inspection.deficiencyNotes, null);
+    assert.equal(r.result.inspection.reInspectionDate, null);
+    assert.ok(r.result.inspection.completedAt);
+  });
+
+  it("inspection-update: fail requires deficiencyNotes and accepts an optional reInspectionDate", () => {
+    const job = call("job-schedule", ctxA, { title: "Job" }).result.job;
+    const insp = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "erosion_sediment_control", inspector: "Sam", scheduledDate: "2026-06-10",
+    }).result.inspection;
+    const rejected = call("inspection-update", ctxA, { id: insp.id, result: "fail" });
+    assert.equal(rejected.ok, false);
+    assert.match(rejected.error, /deficiencyNotes required/);
+    const r = call("inspection-update", ctxA, {
+      id: insp.id, result: "fail", deficiencyNotes: "Silt fence undersized", reInspectionDate: "2026-06-20",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.inspection.result, "fail");
+    assert.equal(r.result.inspection.deficiencyNotes, "Silt fence undersized");
+    assert.equal(r.result.inspection.reInspectionDate, "2026-06-20");
+    assert.ok(r.result.inspection.completedAt);
+  });
+
+  it("inspection-update: rejects an invalid result and an unknown inspection id", () => {
+    const job = call("job-schedule", ctxA, { title: "Job" }).result.job;
+    const insp = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "final_walkthrough", inspector: "Sam", scheduledDate: "2026-06-10",
+    }).result.inspection;
+    assert.equal(call("inspection-update", ctxA, { id: insp.id, result: "bogus" }).ok, false);
+    assert.equal(call("inspection-update", ctxA, { id: "nope", result: "pass" }).ok, false);
+  });
+
+  it("inspection-update: pending re-transition preserves prior notes unless explicitly overwritten", () => {
+    const job = call("job-schedule", ctxA, { title: "Job" }).result.job;
+    const insp = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "final_walkthrough", inspector: "Sam", scheduledDate: "2026-06-10",
+    }).result.inspection;
+    call("inspection-update", ctxA, { id: insp.id, result: "fail", deficiencyNotes: "Grading issue", reInspectionDate: "2026-06-20" });
+    const back = call("inspection-update", ctxA, { id: insp.id, result: "pending" });
+    assert.equal(back.ok, true);
+    assert.equal(back.result.inspection.result, "pending");
+    assert.equal(back.result.inspection.deficiencyNotes, "Grading issue");
+    assert.equal(back.result.inspection.completedAt, null);
+  });
+
+  it("inspections are scoped per-user", () => {
+    const job = call("job-schedule", ctxA, { title: "Job" }).result.job;
+    call("inspection-add", ctxA, { jobId: job.id, inspectionType: "final_walkthrough", inspector: "Sam", scheduledDate: "2026-06-10" });
+    const listB = call("inspection-list", ctxB, {});
+    assert.equal(listB.ok, true);
+    assert.equal(listB.result.count, 0);
+  });
+
+  it("inspection-add / inspection-list / inspection-update degrade-graceful when STATE is gone", () => {
+    const savedState = globalThis._concordSTATE;
+    globalThis._concordSTATE = undefined;
+    try {
+      for (const [name, input] of [
+        ["inspection-add", { jobId: "j", inspectionType: "final_walkthrough", inspector: "Sam", scheduledDate: "2026-06-10" }],
+        ["inspection-list", {}],
+        ["inspection-update", { id: "i", result: "pass" }],
+      ]) {
+        let r;
+        assert.doesNotThrow(() => { r = call(name, ctxA, input); }, `${name} must not throw`);
+        assert.equal(r.ok, false, `${name} should fail-soft`);
+        assert.equal(typeof r.error, "string");
+      }
+    } finally {
+      globalThis._concordSTATE = savedState;
+    }
+  });
+});
+
+// ─── Feature 13 — Crew certifications ────────────────────────────────
+describe("landscaping — crew certifications", () => {
+  it("cert-add requires crewMemberName, certType, and issuingBody", () => {
+    assert.match(call("cert-add", ctxA, {}).error, /crewMemberName required/);
+    assert.match(call("cert-add", ctxA, { crewMemberName: "Alex Rivera" }).error, /certType required/);
+    assert.match(call("cert-add", ctxA, { crewMemberName: "Alex Rivera", certType: "ISA Certified Arborist" }).error, /issuingBody required/);
+    const r = call("cert-add", ctxA, {
+      crewMemberName: "Alex Rivera", certType: "ISA Certified Arborist", issuingBody: "International Society of Arboriculture",
+      licenseNumber: "ISA-12345", issueDate: "2024-01-01", expiryDate: "2027-01-01",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.certification.crewMemberName, "Alex Rivera");
+    assert.equal(r.result.certification.certType, "ISA Certified Arborist");
+    assert.equal(r.result.certification.expiryStatus, "valid");
+    assert.equal(r.result.certification.isExpired, false);
+  });
+
+  it("cert-list derives a de-duplicated crew roster and expiry counts, and filters by crewMemberName", () => {
+    call("cert-add", ctxA, { crewMemberName: "Alex Rivera", certType: "OSHA 10-Hour Construction Safety", issuingBody: "OSHA" });
+    call("cert-add", ctxA, { crewMemberName: "Alex Rivera", certType: "ISA Certified Arborist", issuingBody: "ISA" });
+    call("cert-add", ctxA, { crewMemberName: "Jordan Lee", certType: "State Pesticide Applicator License", issuingBody: "State Dept. of Agriculture" });
+    const all = call("cert-list", ctxA, {});
+    assert.equal(all.ok, true);
+    assert.equal(all.result.count, 3);
+    assert.deepEqual(all.result.roster, ["Alex Rivera", "Jordan Lee"]);
+    const filtered = call("cert-list", ctxA, { crewMemberName: "alex rivera" }); // case-insensitive
+    assert.equal(filtered.result.count, 2);
+    assert.ok(filtered.result.certifications.every((c) => c.crewMemberName === "Alex Rivera"));
+  });
+
+  it("cert expiry status is boundary-correct: expired < today <= 30 days = expiring_soon, > 30 days = valid, no date = no_expiry", () => {
+    const today = new Date();
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const yesterday = iso(new Date(today.getTime() - 86400000));
+    const in10Days = iso(new Date(today.getTime() + 10 * 86400000));
+    const in29Days = iso(new Date(today.getTime() + 29 * 86400000));
+    const in31Days = iso(new Date(today.getTime() + 31 * 86400000));
+
+    const expired = call("cert-add", ctxA, { crewMemberName: "Boundary", certType: "First Aid / CPR", issuingBody: "Red Cross", expiryDate: yesterday }).result.certification;
+    assert.equal(expired.expiryStatus, "expired");
+    assert.equal(expired.isExpired, true);
+
+    const soon10 = call("cert-add", ctxA, { crewMemberName: "Boundary", certType: "First Aid / CPR", issuingBody: "Red Cross", expiryDate: in10Days }).result.certification;
+    assert.equal(soon10.expiryStatus, "expiring_soon");
+
+    const soon29 = call("cert-add", ctxA, { crewMemberName: "Boundary", certType: "First Aid / CPR", issuingBody: "Red Cross", expiryDate: in29Days }).result.certification;
+    assert.equal(soon29.expiryStatus, "expiring_soon");
+
+    const valid31 = call("cert-add", ctxA, { crewMemberName: "Boundary", certType: "First Aid / CPR", issuingBody: "Red Cross", expiryDate: in31Days }).result.certification;
+    assert.equal(valid31.expiryStatus, "valid");
+    assert.equal(valid31.isExpired, false);
+
+    const noExpiry = call("cert-add", ctxA, { crewMemberName: "Boundary", certType: "First Aid / CPR", issuingBody: "Red Cross" }).result.certification;
+    assert.equal(noExpiry.expiryStatus, "no_expiry");
+    assert.equal(noExpiry.isExpired, false);
+
+    const list = call("cert-list", ctxA, { crewMemberName: "Boundary" });
+    assert.equal(list.result.expiredCount, 1);
+    assert.equal(list.result.expiringSoonCount, 2);
+  });
+
+  it("cert-list expiry status is derived at read time, not persisted (a cert added as valid reports expired once its date passes)", () => {
+    const cert = call("cert-add", ctxA, { crewMemberName: "Drift", certType: "Backflow Prevention Assembly Tester Certification", issuingBody: "State", expiryDate: "2020-01-01" }).result.certification;
+    // stored record itself carries no expiryStatus field pre-read-derivation
+    const raw = globalThis._concordSTATE.landscapingLens.certifications.get("user_a").find((c) => c.id === cert.id);
+    assert.equal(raw.expiryStatus, undefined);
+    const listed = call("cert-list", ctxA, {}).result.certifications.find((c) => c.id === cert.id);
+    assert.equal(listed.expiryStatus, "expired");
+  });
+
+  it("cert-remove deletes a certification and rejects an unknown id", () => {
+    const cert = call("cert-add", ctxA, { crewMemberName: "Sam", certType: "OSHA 10-Hour Construction Safety", issuingBody: "OSHA" }).result.certification;
+    const bad = call("cert-remove", ctxA, { id: "nope" });
+    assert.equal(bad.ok, false);
+    const r = call("cert-remove", ctxA, { id: cert.id });
+    assert.equal(r.ok, true);
+    assert.equal(call("cert-list", ctxA, {}).result.count, 0);
+  });
+
+  it("certifications are scoped per-user", () => {
+    call("cert-add", ctxA, { crewMemberName: "Alex Rivera", certType: "OSHA 10-Hour Construction Safety", issuingBody: "OSHA" });
+    const listB = call("cert-list", ctxB, {});
+    assert.equal(listB.ok, true);
+    assert.equal(listB.result.count, 0);
+  });
+
+  it("cert-add / cert-list / cert-remove degrade-graceful when STATE is gone", () => {
+    const savedState = globalThis._concordSTATE;
+    globalThis._concordSTATE = undefined;
+    try {
+      for (const [name, input] of [
+        ["cert-add", { crewMemberName: "x", certType: "x", issuingBody: "x" }],
+        ["cert-list", {}],
+        ["cert-remove", { id: "x" }],
+      ]) {
+        let r;
+        assert.doesNotThrow(() => { r = call(name, ctxA, input); }, `${name} must not throw`);
+        assert.equal(r.ok, false, `${name} should fail-soft`);
+        assert.equal(typeof r.error, "string");
+      }
+    } finally {
+      globalThis._concordSTATE = savedState;
+    }
+  });
+});

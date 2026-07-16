@@ -369,6 +369,10 @@ describe("landscaping lens — degrade-graceful when STATE is unavailable", () =
       ["invoice-send", { id: "x" }], ["invoice-accept", { id: "x" }],
       ["invoice-record-payment", { id: "x", amount: 10 }],
       ["client-add", { name: "x" }], ["client-list", {}],
+      ["inspection-add", { jobId: "x", inspectionType: "final_walkthrough", inspector: "x", scheduledDate: "2026-06-01" }],
+      ["inspection-list", {}], ["inspection-update", { id: "x", result: "pass" }],
+      ["cert-add", { crewMemberName: "x", certType: "x", issuingBody: "x" }],
+      ["cert-list", {}], ["cert-remove", { id: "x" }],
     ];
     for (const [name, input] of stateBacked) {
       let r;
