@@ -231,10 +231,33 @@ code in a shared tree; a UI decision only.
 Real Shopify/Square-parity concepts the removed fake tabs were standing in
 for, with **zero backend macro** anywhere in the 85-macro surface — per
 the honesty invariant these are relabeled as deferred, not faked:
-- **CRM / sales pipeline** — a persisted lead/deal record (name, company,
-  value, probability, stage, assignee). `pipelineValue` computes stats
-  from a pasted book (`RetailActionPanel`) but no macro creates or lists
-  an individual deal.
+- ~~**CRM / sales pipeline**~~ **BUILT (2026-07-16, `cb45c52b`) — Wave 4
+  larger-unit build.** New `deals-list`/`deals-upsert`/`deals-stage-move`/
+  `deals-delete` macro family: a real SMB CRM funnel
+  (lead→contacted→qualified→proposal→negotiation→won/lost), every stage
+  change auditable via an appended `stageHistory` entry (never a mutable
+  label), won/lost terminal with an explicit `reopen: true` path back into
+  an open stage only (a closed deal can't skip won→lost directly), and
+  `deals-list` rollups (total/weighted pipeline value, per-stage
+  count/value/weighted, won/lost totals) computed server-side only —
+  never a client-invented number. `pipelineValue`'s pre-existing
+  pasted-book calculator now falls back to reading this persisted book,
+  but ONLY on true omission of both the `deals`/`opportunities` keys —
+  a caller who pastes any value under either key (even malformed
+  garbage) still gets the exact pre-existing "invalid → empty pipeline,
+  never crash" behavior, verified against the pre-existing test that
+  covers exactly that case (`retail-lens-macros.test.js`'s "a non-array
+  deals payload yields an empty pipeline, never crashes"). New
+  `PipelinePanel.tsx`: a real kanban board by stage with per-column
+  totals, a designed create form, a stage-move select per card (no
+  drag-and-drop primitive existed anywhere in the codebase to reuse —
+  building one from scratch was out of this unit's scope), and a
+  won/lost archive with a reopen action. Mounted as a new "Pipeline" tab
+  in the retail workbench, next to Customers. Tests: 28 new backend
+  (`retail-deals-pipeline.test.js`, incl. exact rollup-math assertions
+  and per-user isolation) + all 5 retail backend test files re-run
+  together (148/148, 0 regressions) + 7 new frontend
+  (`PipelinePanel.test.tsx`).
 - **Support tickets** — a persisted ticket queue (subject, priority, SLA
   deadline, assignee, replies). `slaStatus` computes compliance from
   pasted incidents but no macro creates or lists a ticket.
