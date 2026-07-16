@@ -502,11 +502,14 @@ export default function registerCommandCenterActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  registerLensAction("command-center", "vitalHistory", (ctx, _artifact, params = {}) => {
+  // Shared vital-series resolver — both the standalone `vitalHistory` macro
+  // and `dashboardData`'s per-widget resolution call this so there is one
+  // real implementation of "windowed points + stats for a metric", not two.
+  function computeVitalHistory(ctx, params = {}) {
     const metric = String(params.metric || "").trim();
     const series = userMap("series", ctx);
     if (!metric || !series.has(metric)) {
-      return { ok: true, result: { metric, points: [], count: 0, message: "no data yet" } };
+      return { metric, points: [], count: 0, message: "no data yet" };
     }
     const windowMs = clampNum(params.windowMinutes, 1, 4320, 60) * 60000;
     const cutoff = Date.now() - windowMs;
@@ -525,7 +528,11 @@ export default function registerCommandCenterActions(registerLensAction) {
           latest: values[values.length - 1],
         }
       : null;
-    return { ok: true, result: { metric, points, count: points.length, stats } };
+    return { metric, points, count: points.length, stats };
+  }
+
+  registerLensAction("command-center", "vitalHistory", (ctx, _artifact, params = {}) => {
+    return { ok: true, result: computeVitalHistory(ctx, params) };
   });
 
   registerLensAction("command-center", "vitalMetrics", (ctx, _artifact, _params = {}) => {
@@ -653,6 +660,83 @@ export default function registerCommandCenterActions(registerLensAction) {
     dashboards.delete(params.dashboardId);
     return { ok: true, result: { deleted: params.dashboardId, remaining: dashboards.size } };
   });
+
+  // Resolve one saved widget id to real current data. A widget id is a
+  // freeform string the operator typed when saving the dashboard (see
+  // saveDashboard) — it isn't schema-bound to any particular data source,
+  // so this checks the real sources this domain actually has, in order:
+  // (1) a recorded vital metric with this exact name, via the same
+  //     computeVitalHistory logic vitalHistory uses; (2) an alert rule
+  //     matched by id or name. Anything else is honestly unresolvable —
+  //     never fabricate a graph for it.
+  function resolveWidgetData(ctx, widget) {
+    const type = (widget && widget.type) || "panel";
+    const id = String((widget && widget.id) || "").trim();
+    if (!id) return { id: null, type, data: null, error: "widget_missing_id" };
+
+    const series = userMap("series", ctx);
+    if (series.has(id)) {
+      const history = computeVitalHistory(ctx, { metric: id, windowMinutes: 1440, maxPoints: 240 });
+      return { id, type, kind: "vital", data: history };
+    }
+
+    const rules = userMap("rules", ctx);
+    const rule = rules.get(id) || [...rules.values()].find((r) => r.name === id);
+    if (rule) {
+      return {
+        id,
+        type,
+        kind: "alert-rule",
+        data: {
+          ruleId: rule.id,
+          name: rule.name,
+          metric: rule.metric,
+          comparator: rule.comparator,
+          threshold: rule.threshold,
+          severity: rule.severity,
+          state: rule.state,
+          lastValue: rule.lastValue,
+          lastFiredAt: rule.lastFiredAt,
+          acknowledged: rule.acknowledged,
+          fireCount: rule.fireCount,
+        },
+      };
+    }
+
+    return { id, type, data: null, error: "no data source for this widget" };
+  }
+
+  /**
+   * dashboardData
+   * Resolves a saved dashboard's widget-id list into real current data —
+   * the live-grid counterpart to the bookmark-list `listDashboards` view.
+   * params.dashboardId (required). Each widget is resolved independently;
+   * a widget with no matching data source reports an honest per-widget
+   * error instead of failing the whole call or fabricating a graph.
+   */
+  registerLensAction("command-center", "dashboardData", (ctx, _artifact, params = {}) => {
+  try {
+    const dashboardId = String(params.dashboardId || "").trim();
+    if (!dashboardId) return { ok: false, error: "dashboardId_required" };
+    const dashboards = userMap("dashboards", ctx);
+    const dash = dashboards.get(dashboardId);
+    if (!dash) return { ok: false, error: "dashboard_not_found" };
+
+    const widgets = (dash.widgets || []).map((w) => resolveWidgetData(ctx, w));
+
+    return {
+      ok: true,
+      result: {
+        dashboardId: dash.id,
+        name: dash.name,
+        widgets,
+        count: widgets.length,
+        resolvedCount: widgets.filter((w) => !w.error).length,
+        unresolvedCount: widgets.filter((w) => w.error).length,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ---------------------------------------------------------------------------
   // Feature 4 — Incident timeline with status updates + postmortem notes.

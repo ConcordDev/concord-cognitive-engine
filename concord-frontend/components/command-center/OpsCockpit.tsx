@@ -31,6 +31,24 @@ interface AlertRule {
   acknowledged: boolean; fireCount: number; lastValue: number | null; lastFiredAt: string | null;
 }
 interface Dashboard { id: string; name: string; widgets: unknown[]; updatedAt: string }
+interface DashboardWidgetVitalData {
+  metric: string; points: VitalPoint[]; count: number;
+  stats: { min: number; max: number; avg: number; latest: number } | null;
+}
+interface DashboardWidgetAlertData {
+  ruleId: string; name: string; metric: string; comparator: string; threshold: number;
+  severity: string; state: string; lastValue: number | null; lastFiredAt: string | null;
+  acknowledged: boolean; fireCount: number;
+}
+interface DashboardWidget {
+  id: string; type: string; kind?: 'vital' | 'alert-rule';
+  data: DashboardWidgetVitalData | DashboardWidgetAlertData | null;
+  error?: string;
+}
+interface DashboardData {
+  dashboardId: string; name: string; widgets: DashboardWidget[];
+  count: number; resolvedCount: number; unresolvedCount: number;
+}
 interface IncidentUpdate { id: string; status: string; message: string; at: string; by: string }
 interface Postmortem { summary: string; rootCause: string | null; actionItems: string[]; writtenAt: string }
 interface Incident {
@@ -592,10 +610,71 @@ function CorrelationSection() {
 
 // ── 3 — Saved dashboards ─────────────────────────────────────────────────────
 
-function DashboardsSection() {
+/** One live tile in the dashboard grid — real resolved data, or an honest
+ * "no data available" tile for a widget id that matches no real source.
+ * Never renders a fabricated graph. */
+function DashboardWidgetTile({ widget }: { widget: DashboardWidget }) {
+  if (widget.error || !widget.data) {
+    return (
+      <div className="bg-[#0a0f18] rounded-lg border border-amber-900/30 p-3 min-h-[9rem] flex flex-col items-center justify-center text-center gap-1">
+        <AlertTriangle className="w-4 h-4 text-amber-500/70" />
+        <p className="text-xs text-cyan-100 font-medium truncate max-w-full">{widget.id}</p>
+        <p className="text-[10px] text-amber-400/80">no data available for this panel</p>
+      </div>
+    );
+  }
+
+  if (widget.kind === 'vital') {
+    const d = widget.data as DashboardWidgetVitalData;
+    const chartData = d.points.map((p) => ({
+      t: new Date(p.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      v: p.v,
+    }));
+    return (
+      <div className="bg-[#0a0f18] rounded-lg border border-cyan-900/25 p-2.5">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-cyan-100 font-medium truncate">{d.metric}</span>
+          {d.stats && <span className="text-[11px] font-mono text-cyan-300">{d.stats.latest}</span>}
+        </div>
+        {d.points.length === 0 ? (
+          <p className="text-[11px] text-cyan-700/50 py-6 text-center">no data yet</p>
+        ) : (
+          <ChartKit kind="area" data={chartData} xKey="t" series={[{ key: 'v', label: d.metric }]} height={140} showLegend={false} showGrid={false} />
+        )}
+      </div>
+    );
+  }
+
+  if (widget.kind === 'alert-rule') {
+    const d = widget.data as DashboardWidgetAlertData;
+    const breaching = d.state === 'breaching';
+    return (
+      <div className={`rounded-lg border p-3 min-h-[9rem] flex flex-col gap-1.5 ${breaching ? 'border-red-500/30 bg-red-500/5' : 'border-cyan-900/25 bg-[#0a0f18]'}`}>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-cyan-100 font-medium truncate">{d.name}</span>
+          <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded border ${SEV_COLOR[d.severity] || SEV_COLOR.medium}`}>{d.severity}</span>
+        </div>
+        <p className="text-[11px] text-cyan-600/60">{d.metric} {d.comparator} {d.threshold}</p>
+        <p className={`text-sm font-mono ${breaching ? 'text-red-300' : 'text-emerald-300'}`}>
+          {d.lastValue == null ? 'no data yet' : d.lastValue}
+        </p>
+        <p className="text-[10px] text-cyan-700/50 mt-auto">
+          {breaching ? (d.acknowledged ? 'breaching · acknowledged' : 'breaching · unacknowledged') : 'ok'} · fired {d.fireCount}×
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+export function DashboardsSection() {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [name, setName] = useState('');
   const [widgetText, setWidgetText] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [grid, setGrid] = useState<DashboardData | null>(null);
+  const [gridLoading, setGridLoading] = useState(false);
 
   const load = useCallback(async () => {
     const r = await run<{ dashboards: Dashboard[] }>('listDashboards');
@@ -615,8 +694,19 @@ function DashboardsSection() {
   }, [name, widgetText, load]);
 
   const remove = useCallback(async (id: string) => {
-    await run('deleteDashboard', { dashboardId: id }); await load();
-  }, [load]);
+    await run('deleteDashboard', { dashboardId: id });
+    if (selectedId === id) { setSelectedId(null); setGrid(null); }
+    await load();
+  }, [load, selectedId]);
+
+  const view = useCallback(async (id: string) => {
+    if (selectedId === id) { setSelectedId(null); setGrid(null); return; }
+    setSelectedId(id);
+    setGridLoading(true);
+    const r = await run<DashboardData>('dashboardData', { dashboardId: id });
+    setGrid(r);
+    setGridLoading(false);
+  }, [selectedId]);
 
   return (
     <section className="space-y-3">
@@ -639,11 +729,11 @@ function DashboardsSection() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {dashboards.map((d) => (
-            <div key={d.id} className="bg-[#0a0f18] rounded-lg border border-cyan-900/25 p-2.5">
+            <div key={d.id} className={`bg-[#0a0f18] rounded-lg border p-2.5 cursor-pointer ${selectedId === d.id ? 'border-cyan-500/50' : 'border-cyan-900/25 hover:border-cyan-700/40'}`} onClick={() => view(d.id)}>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-cyan-50 font-medium flex-1 truncate">{d.name}</span>
                 <button
-                  onClick={() => remove(d.id)}
+                  onClick={(e) => { e.stopPropagation(); remove(d.id); }}
                   className="text-cyan-700/60 hover:text-red-400"
                   aria-label="Delete dashboard"
                 >
@@ -653,6 +743,27 @@ function DashboardsSection() {
               <p className="text-[11px] text-cyan-600/60 mt-1">{d.widgets.length} panel{d.widgets.length !== 1 ? 's' : ''}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedId && (
+        <div className="rounded-lg border border-cyan-900/25 bg-black/20 p-3 space-y-2">
+          {gridLoading ? (
+            <p className="text-xs text-cyan-700/50 py-3">Loading live grid…</p>
+          ) : !grid ? (
+            <p className="text-xs text-amber-400/80 py-3">Could not load this dashboard.</p>
+          ) : grid.widgets.length === 0 ? (
+            <p className="text-xs text-cyan-700/50 py-3">This layout has no panels yet.</p>
+          ) : (
+            <>
+              <p className="text-[11px] text-cyan-600/60">
+                {grid.name} · {grid.resolvedCount}/{grid.count} panel{grid.count !== 1 ? 's' : ''} resolved
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {grid.widgets.map((w, i) => <DashboardWidgetTile key={`${w.id}-${i}`} widget={w} />)}
+              </div>
+            </>
+          )}
         </div>
       )}
     </section>
