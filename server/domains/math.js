@@ -488,6 +488,114 @@ function factorial(n) {
   return f;
 }
 
+/* ───── complex-number arithmetic (Durand-Kerner root-finder needs this —
+   the method produces complex intermediate/final values even for a
+   polynomial whose roots are all real) ───── */
+function cxAdd(a, b) { return { re: a.re + b.re, im: a.im + b.im }; }
+function cxSub(a, b) { return { re: a.re - b.re, im: a.im - b.im }; }
+function cxMul(a, b) { return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re }; }
+function cxDiv(a, b) {
+  const d = b.re * b.re + b.im * b.im;
+  if (d === 0) return { re: NaN, im: NaN };
+  return { re: (a.re * b.re + a.im * b.im) / d, im: (a.im * b.re - a.re * b.im) / d };
+}
+function cxAbs(a) { return Math.hypot(a.re, a.im); }
+function cxPow(a, n) {
+  // Integer power via repeated multiplication — n is always small here
+  // (seed exponents run 0..degree-1), so this is not a hot loop.
+  let result = { re: 1, im: 0 };
+  for (let i = 0; i < n; i++) result = cxMul(result, a);
+  return result;
+}
+
+/**
+ * durandKerner — simultaneous-iteration root-finder for an arbitrary-degree
+ * polynomial (the Durand-Kerner / Weierstrass method). Finds ALL n roots of
+ * a degree-n polynomial at once, real or complex, without needing a
+ * derivative or a bracketing interval.
+ *
+ * `coeffsHighToLow` uses the same convention as the rest of this file
+ * (highest-degree coefficient first). The polynomial is monic-normalized
+ * internally (divided by the leading coefficient) — this does not change
+ * its roots.
+ *
+ * Seeding: x_k^(0) = (0.4 + 0.9i)^k for k = 0..degree-1 — the standard
+ * Durand-Kerner starting-point choice (a point of modulus < 1 that is not a
+ * root of unity, so successive powers spiral out to distinct, non-degenerate
+ * starting positions instead of colliding with each other or with the real
+ * axis).
+ *
+ * Iteration: x_i ← x_i - p(x_i) / Π_{j≠i}(x_i - x_j), applied to all n
+ * roots simultaneously each pass, until every root's step size drops below
+ * `tol` or `maxIter` passes are used up.
+ *
+ * Honesty: this method is known to converge slowly (or fail to reach a
+ * tight tolerance within a bounded iteration budget) for polynomials with
+ * very close or repeated roots — the denominator product shrinks toward
+ * zero for those roots, which both slows convergence and makes the update
+ * step numerically noisy. Rather than silently presenting a stale estimate
+ * as exact, each returned root carries its own `lastStep` (the magnitude of
+ * its final update) and `residual` (|p(root)| at the final estimate); a
+ * root is only marked `converged: true` when BOTH are below `convergeEps`.
+ * The AND is deliberate: near a repeated root the residual can look small
+ * (the polynomial is locally flat there) while the step size is still
+ * large — residual alone would over-report confidence.
+ *
+ * @param {number[]} coeffsHighToLow
+ * @param {{maxIter?:number, tol?:number, convergeEps?:number}} [opts]
+ * @returns {{roots: Array<{re:number,im:number,lastStep:number,residual:number,converged:boolean}>, iterations:number}}
+ */
+function durandKerner(coeffsHighToLow, opts = {}) {
+  const maxIter = opts.maxIter ?? 500;
+  const tol = opts.tol ?? 1e-12;
+  const convergeEps = opts.convergeEps ?? 1e-8;
+  const lead = coeffsHighToLow[0];
+  const c = coeffsHighToLow.map((v) => v / lead);
+  const degree = c.length - 1;
+
+  function evalC(x) {
+    // Horner's method, complex arithmetic — same shape as polynomialAnalysis's
+    // real-valued `evaluate` above, generalized to complex x.
+    let result = { re: 0, im: 0 };
+    for (let i = 0; i < c.length; i++) result = cxAdd(cxMul(result, x), { re: c[i], im: 0 });
+    return result;
+  }
+
+  let roots = [];
+  for (let k = 0; k < degree; k++) roots.push(cxPow({ re: 0.4, im: 0.9 }, k));
+  const lastStep = new Array(degree).fill(Infinity);
+
+  let iterations = 0;
+  for (; iterations < maxIter; iterations++) {
+    const next = roots.slice();
+    let globalMax = 0;
+    for (let i = 0; i < degree; i++) {
+      let denom = { re: 1, im: 0 };
+      for (let j = 0; j < degree; j++) { if (j !== i) denom = cxMul(denom, cxSub(roots[i], roots[j])); }
+      const denomMag = cxAbs(denom);
+      // Denominator collapsing to ~0 means two root estimates have nearly
+      // coincided (the repeated/close-root case) — skip this root's update
+      // for this pass rather than dividing by (near-)zero and injecting
+      // garbage into a numerically fragile spot.
+      if (denomMag < 1e-14) { lastStep[i] = Infinity; continue; }
+      const delta = cxDiv(evalC(roots[i]), denom);
+      next[i] = cxSub(roots[i], delta);
+      const deltaMag = cxAbs(delta);
+      lastStep[i] = deltaMag;
+      if (deltaMag > globalMax) globalMax = deltaMag;
+    }
+    roots = next;
+    if (globalMax < tol) { iterations++; break; }
+  }
+
+  const result = roots.map((root, i) => {
+    const residual = cxAbs(evalC(root));
+    const converged = lastStep[i] < convergeEps && residual < convergeEps;
+    return { re: root.re, im: root.im, lastStep: lastStep[i], residual, converged };
+  });
+  return { roots: result, iterations };
+}
+
 /* ───────────── natural-language query → structured plan ───────────── */
 function parseNaturalQuery(query) {
   const q = String(query || "").trim().toLowerCase();
@@ -880,6 +988,89 @@ export default function registerMathActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  /**
+   * polynomialRootsGeneral
+   * Find ALL roots (real and complex) of an arbitrary-degree polynomial via
+   * the Durand-Kerner (Weierstrass) simultaneous-iteration method — the
+   * general-purpose counterpart to polynomialAnalysis's degree<=4-only root
+   * finding (analytic for degree<=2, Newton-Raphson-from-many-starts for
+   * degree 3-4, "Root-finding for degree > 4 not implemented" above that).
+   * Coefficients use the same [a_n, ..., a_0] (highest degree first)
+   * convention as polynomialAnalysis.
+   */
+  registerLensAction("math", "polynomialRootsGeneral", (ctx, artifact, params) => {
+    try {
+      const raw = artifact.data?.coefficients || params.coefficients || [];
+      if (!Array.isArray(raw) || raw.length === 0) return { ok: false, error: "No coefficients provided." };
+      const numeric = raw.map(Number);
+      if (numeric.some((v) => !Number.isFinite(v))) return { ok: false, error: "Coefficients must be finite numbers." };
+
+      // Leading zero coefficients don't change the polynomial — they just mean
+      // the caller over-specified the degree (e.g. [0,1,-3,2] is really degree
+      // 2). Strip them rather than rejecting the request outright.
+      let coefficients = numeric;
+      let leadingZerosStripped = 0;
+      while (coefficients.length > 1 && coefficients[0] === 0) {
+        coefficients = coefficients.slice(1);
+        leadingZerosStripped++;
+      }
+      if (coefficients.length === 1) {
+        if (coefficients[0] === 0) return { ok: false, error: "The zero polynomial has infinitely many roots — not a well-posed root-finding request." };
+        return {
+          ok: true,
+          result: {
+            degree: 0, coefficients: raw, roots: [], allConverged: true, method: "durand-kerner",
+            note: "Constant (non-zero) polynomial has no roots.", leadingZerosStripped,
+          },
+        };
+      }
+
+      const degree = coefficients.length - 1;
+      const MAX_DEGREE = 60;
+      if (degree > MAX_DEGREE) {
+        return { ok: false, error: `Degree ${degree} exceeds the supported maximum of ${MAX_DEGREE} for Durand-Kerner root-finding.` };
+      }
+
+      const r = (v) => Math.round(v * 1e8) / 1e8;
+      const { roots: dkRoots, iterations } = durandKerner(coefficients);
+
+      // A root is classified real when its imaginary part is negligible
+      // relative to its own magnitude — an absolute epsilon alone would
+      // misclassify large-magnitude roots with a proportionally tiny (but
+      // not truly zero) numerical residue, and a purely relative one would
+      // misclassify roots near the origin, so this floors the comparison
+      // scale at 1.
+      const REAL_EPS = 1e-7;
+      const roots = dkRoots
+        .map((rt) => {
+          const magnitude = Math.max(1, Math.abs(rt.re), Math.abs(rt.im));
+          const isReal = Math.abs(rt.im) < REAL_EPS * magnitude;
+          return {
+            re: r(rt.re),
+            im: isReal ? 0 : r(rt.im),
+            isReal,
+            converged: rt.converged,
+            lastStep: rt.lastStep,
+            residual: rt.residual,
+          };
+        })
+        .sort((a, b) => (a.re - b.re) || (a.im - b.im));
+
+      const allConverged = roots.every((rt) => rt.converged);
+
+      return {
+        ok: true,
+        result: {
+          degree, coefficients: raw, leadingZerosStripped,
+          roots, allConverged, iterations, method: "durand-kerner", maxIterations: 500,
+          ...(allConverged ? {} : {
+            note: "One or more roots did not converge below tolerance within the iteration budget — a known Durand-Kerner limitation for polynomials with very close or repeated roots. Treat roots with converged:false as approximate, not exact.",
+          }),
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 
   /**
    * regressionFit

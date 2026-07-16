@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import {
   Sigma, Calculator, Grid3x3, FunctionSquare, TrendingUp,
-  Sparkles, Send, Globe, Wand2,
+  Sparkles, Send, Globe, Wand2, Orbit,
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,7 +29,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'stats' | 'matrix' | 'poly' | 'regress' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'stats' | 'matrix' | 'poly' | 'polyGeneral' | 'regress' | 'mint' | 'dm' | 'publish' | 'agent';
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
@@ -42,7 +42,21 @@ interface MatrixEigenvalue { real?: number; imag?: number }
 // (transpose/multiply/inverse) — not `result`. rank/eigenvalues have their own fields.
 interface MatrixResult { matrix?: number[][]; determinant?: number; rank?: number; fullRank?: boolean; eigenvalues?: Array<number | MatrixEigenvalue> }
 interface PolyResult { roots?: number[]; derivative?: string; degree?: number }
+// server/domains/math.js#polynomialRootsGeneral — Durand-Kerner arbitrary-degree
+// root-finder. Every root reports its own `converged` flag: a numeric
+// root-finder that reports confident-looking numbers for a case it didn't
+// actually converge on is a correctness bug, not a display detail, so the
+// UI must surface `converged`/`allConverged` honestly rather than hide them.
+interface PolyGeneralRoot { re: number; im: number; isReal: boolean; converged: boolean }
+interface PolyGeneralResult { degree?: number; roots?: PolyGeneralRoot[]; allConverged?: boolean; iterations?: number; method?: string; note?: string }
 interface RegressResult { coefficients?: number[]; rSquared?: number; equation?: string }
+
+/** Format a Durand-Kerner root as `2 + 3i` / `2 − 3i` / a plain real number. */
+function formatComplexRoot(root: PolyGeneralRoot): string {
+  if (root.isReal) return root.re.toFixed(4);
+  const sign = root.im >= 0 ? '+' : '−';
+  return `${root.re.toFixed(4)} ${sign} ${Math.abs(root.im).toFixed(4)}i`;
+}
 
 export function MathActionPanel() {
   const [problem, setProblem] = useState('');
@@ -60,6 +74,7 @@ export function MathActionPanel() {
   const [statsResult, setStatsResult] = useState<StatsResult | null>(null);
   const [matrixResult, setMatrixResult] = useState<MatrixResult | null>(null);
   const [polyResult, setPolyResult] = useState<PolyResult | null>(null);
+  const [polyGeneralResult, setPolyGeneralResult] = useState<PolyGeneralResult | null>(null);
   const [regressResult, setRegressResult] = useState<RegressResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
@@ -112,6 +127,27 @@ export function MathActionPanel() {
     const c = parseList(polyCoef); if (c.length < 2) { err('Add polynomial coefficients (highest power first).'); return; }
     setBusy('poly'); setFeedback(null);
     try { const r = await callMacro<PolyResult>('polynomialAnalysis', { coefficients: c }); if (r.ok && r.result) { setPolyResult(r.result); pipe.publish('math.poly', r.result, { label: `deg ${r.result.degree}` }); ok(`Degree ${r.result.degree}, ${r.result.roots?.length ?? 0} roots.`); } else err(r.error ?? 'poly failed'); }
+    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actPolyGeneral() {
+    // server/domains/math.js#polynomialRootsGeneral — the arbitrary-degree
+    // (Durand-Kerner) companion to polynomialAnalysis, which only solves
+    // degree<=4 in closed form / Newton-Raphson. Same input coefficients
+    // (highest power first), works for any degree including >4.
+    const c = parseList(polyCoef); if (c.length < 2) { err('Add polynomial coefficients (highest power first).'); return; }
+    setBusy('polyGeneral'); setFeedback(null);
+    try {
+      const r = await callMacro<PolyGeneralResult>('polynomialRootsGeneral', { coefficients: c });
+      if (r.ok && r.result) {
+        setPolyGeneralResult(r.result);
+        pipe.publish('math.polyGeneral', r.result, { label: `deg ${r.result.degree} · ${r.result.roots?.length ?? 0} roots` });
+        if (r.result.allConverged === false) {
+          err(`Degree ${r.result.degree}: ${r.result.roots?.length ?? 0} roots found, but not all converged — treat as approximate.`);
+        } else {
+          ok(`Degree ${r.result.degree}, ${r.result.roots?.length ?? 0} roots (all converged).`);
+        }
+      } else err(r.error ?? 'general root-finding failed');
+    }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRegress() {
@@ -171,6 +207,7 @@ export function MathActionPanel() {
     { id: 'stats' as ActionId, label: 'Stats', desc: 'statisticalAnalysis μ, σ, quartiles', icon: Calculator, accent: '#06b6d4', handler: actStats },
     { id: 'matrix' as ActionId, label: 'Matrix', desc: 'matrixOperations det / transpose / inverse', icon: Grid3x3, accent: '#8b5cf6', handler: actMatrix },
     { id: 'poly' as ActionId, label: 'Poly', desc: 'polynomialAnalysis roots + derivative', icon: FunctionSquare, accent: '#22c55e', handler: actPoly },
+    { id: 'polyGeneral' as ActionId, label: 'Poly⁺', desc: 'polynomialRootsGeneral — any degree, complex roots (Durand-Kerner)', icon: Orbit, accent: '#14b8a6', handler: actPolyGeneral },
     { id: 'regress' as ActionId, label: 'Regress', desc: 'regressionFit R² + equation', icon: TrendingUp, accent: '#f97316', handler: actRegress },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private analysis DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send analysis brief', icon: Send, accent: '#ec4899', handler: actDm },
@@ -266,6 +303,32 @@ export function MathActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Polynomial · deg {polyResult.degree}</div>
             {polyResult.roots && <div className="text-[11px] text-zinc-300">Roots: {polyResult.roots.map(r => r.toFixed(3)).join(', ')}</div>}
             {polyResult.derivative && <div className="text-[11px] text-zinc-300 font-mono">f'(x) = {polyResult.derivative}</div>}
+          </div>
+        )}
+        {polyGeneralResult && (
+          <div className="rounded-md border border-teal-500/30 bg-teal-500/5 p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-teal-300 font-semibold flex items-center gap-1.5">
+              Poly⁺ (Durand-Kerner) · deg {polyGeneralResult.degree}
+              {polyGeneralResult.allConverged === false && (
+                <span className="inline-flex items-center gap-1 text-amber-400 normal-case tracking-normal font-semibold">
+                  <AlertTriangle className="w-3 h-3" /> not all roots converged
+                </span>
+              )}
+            </div>
+            {polyGeneralResult.roots && polyGeneralResult.roots.length > 0 ? (
+              <ul className="text-[11px] text-zinc-300 font-mono space-y-0.5 mt-1">
+                {polyGeneralResult.roots.map((root, i) => (
+                  <li key={i} className={cn('flex items-center gap-1.5', root.converged === false && 'text-amber-300')}>
+                    <span>{formatComplexRoot(root)}</span>
+                    <span className="text-zinc-500">{root.isReal ? '(real)' : '(complex)'}</span>
+                    {root.converged === false && <span title="This root did not converge below tolerance — treat as approximate.">⚠</span>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-[11px] text-zinc-400">No roots (constant polynomial).</div>
+            )}
+            {polyGeneralResult.note && <div className="text-[10px] text-amber-400/90 mt-1">{polyGeneralResult.note}</div>}
           </div>
         )}
         {regressResult && (
