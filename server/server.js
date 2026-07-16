@@ -6576,6 +6576,20 @@ function authMiddleware(req, res, next) {
   if (req.method === "GET" && /^\/api\/welding\/portal\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/welding\/portal\/[^/]+\/(approve|pay)$/.test(req.path)) return next();
 
+  // Animation public share viewer (Wave 4 gap closure,
+  // `docs/lens-specs/animation-capability-map.md` checklist item 17) — an
+  // anonymous visitor with a share link opens `/share/animation/:token`.
+  // The token IS the authentication (an unguessable id minted server-side
+  // by `animation.share-create`, scoped to exactly one animation — see
+  // `server/domains/animation.js`'s `getShares`/`share-create`/`share-get`).
+  // This route never goes through `/api/lens/run` — it calls the
+  // `animation.share-get` LENS_ACTIONS handler directly with the token as
+  // the only caller-supplied identifier (see `_runAnimationShareAction`
+  // near `/api/welding/portal` below), so there is no domain/macro
+  // passthrough an anonymous caller could widen to reach any other
+  // animation action.
+  if (req.method === "GET" && /^\/api\/animation\/share\/[^/]+$/.test(req.path)) return next();
+
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
   const apiKey = req.headers["x-api-key"] || "";
@@ -6719,7 +6733,7 @@ function requireRole(...roles) {
 // comment on the Gate-1 bypass above). No Concord account exists to
 // authenticate, and the token itself is the access control, scoped
 // server-side to exactly one estimate/invoice.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/"];
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/animation/share/"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -49662,6 +49676,53 @@ app.post("/api/welding/portal/:token/pay", async (req, res) => {
       reason: "payment_capture_not_wired",
       message: "Online payment isn't available yet for this invoice. Please contact the business directly to arrange payment.",
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// ── Animation public share viewer (Wave 4 gap closure) ──────────────────
+// `docs/lens-specs/animation-capability-map.md` "GENUINELY MISSING —
+// scoped, deferred" (checklist item 17, "Fully public (logged-out) share
+// viewing"): `animation.share-get` (server/domains/animation.js) already
+// implements a token-based public share (a random unguessable token minted
+// by `share-create`), but the only way to reach a `registerLensAction`
+// handler was the authenticated `/api/lens/run` surface — `_lensActionForbiddenForAnon`
+// (above) hard-rejects any anonymous caller in production before `runMacro`
+// even runs, regardless of `publicReadDomains`. Widening `publicReadDomains`
+// to include `animation` was considered and rejected: that would open EVERY
+// animation macro (including the mutating frame/stroke/rig/export ones) to
+// anonymous callers, not just this one read. This route is the same
+// narrowly-scoped fix as the welding client portal directly above: a
+// dedicated public GET that can only ever invoke `animation.share-get`.
+//
+// Security shape (mirrors `_runWeldingPortalAction` exactly): the
+// LENS_ACTIONS handler is invoked DIRECTLY, never via `runMacro`/`lens.run`
+// — no generic domain/macro passthrough an anonymous caller could widen to
+// reach anything else. The action name is hardcoded in the helper, never
+// accepted as a request param, so this route can never be abused to call a
+// different animation action. The only caller-supplied identifier is the
+// token itself; `share-get` (server/domains/animation.js) resolves the
+// owner/animation from its own server-side `shares` Map keyed by the
+// token — a valid token for animation A can only ever resolve animation
+// A's frames, never anyone else's. `share-get`'s own logic (unchanged
+// here) already redacts `frames` when the owner disabled downloads, and
+// never returns anything beyond the single share record + its animation.
+function _runAnimationShareAction(token) {
+  const handler = LENS_ACTIONS.get("animation.share-get");
+  if (!handler) return { ok: false, error: "portal_unavailable" };
+  const data = { token: String(token == null ? "" : token).slice(0, 120) };
+  const virtualCtx = { db: STATE?.db || globalThis._concordDB, actor: null, state: STATE };
+  const virtualArtifact = { id: null, domain: "animation", type: "domain_action", data, meta: {} };
+  return handler(virtualCtx, virtualArtifact, data);
+}
+
+// GET — anyone with the share link opens it. Public, no auth.
+app.get("/api/animation/share/:token", async (req, res) => {
+  try {
+    const result = await _runAnimationShareAction(req.params.token);
+    if (!result?.ok) return res.status(404).json(result);
+    res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
