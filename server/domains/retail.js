@@ -206,9 +206,37 @@ export default function registerRetailActions(registerLensAction) {
   try {
     const finNum = (v, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
     const round2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
-    const deals = Array.isArray(artifact.data.deals)
-      ? artifact.data.deals
-      : (Array.isArray(artifact.data.opportunities) ? artifact.data.opportunities : []);
+    // Book source resolution (2026-07 CRM unit): the ORIGINAL contract treated
+    // ANY non-Array `deals`/`opportunities` (including garbage like `{boom:true}`)
+    // as an empty pasted book — that exact "malformed input → empty pipeline,
+    // never crash" behavior is preserved byte-identically here by falling back
+    // to the persisted book ONLY when the caller supplied NEITHER key at all
+    // (checked via `in`, not truthiness/shape) — a real book was "pasted" the
+    // moment either key is present, even if its value is invalid, and an
+    // invalid pasted value still degrades to an empty active-deals list exactly
+    // as before. Only true omission of both keys reads the caller's PERSISTED
+    // deals (the deals-* macro family below), mapped into the same
+    // {name,value,probability,stage,expectedCloseDate} shape this calculator
+    // has always consumed. `dealSource` is stamped on the result so the UI can
+    // honestly attribute the numbers.
+    let deals;
+    let dealSource;
+    const dealsKeyPresent = "deals" in artifact.data;
+    const opportunitiesKeyPresent = "opportunities" in artifact.data;
+    if (dealsKeyPresent || opportunitiesKeyPresent) {
+      deals = Array.isArray(artifact.data.deals)
+        ? artifact.data.deals
+        : (Array.isArray(artifact.data.opportunities) ? artifact.data.opportunities : []);
+      dealSource = "pasted";
+    } else {
+      const s = getRetailState();
+      const persisted = s ? ensureRetailBucket(s, "deals", retailActor(ctx)) : [];
+      deals = persisted.map((d) => ({
+        name: d.name, value: d.value, probability: d.probability,
+        stage: d.stage, expectedCloseDate: d.expectedCloseDate || null,
+      }));
+      dealSource = "persisted";
+    }
     const includeClosed = params.includeClosed || false;
 
     const isClosed = (st) => st === "closed-won" || st === "closed-lost" || st === "won" || st === "lost";
@@ -271,6 +299,7 @@ export default function registerRetailActions(registerLensAction) {
 
     const result = {
       generatedAt: new Date().toISOString(),
+      dealSource,
       // ── component-exact fields (the rendered Pipeline card) ──
       totalDeals: dealCount,
       totalUnweighted: totalUnweightedR,
@@ -2317,5 +2346,231 @@ export default function registerRetailActions(registerLensAction) {
     if (!member) return { ok: false, error: "staff member not found" };
     const allowed = member.status === "active" && member.permissions.includes(permission);
     return { ok: true, result: { allowed, role: member.role, status: member.status } };
+  });
+
+  // ── CRM / sales pipeline — persisted deals (2026-07 Wave-4 unit) ──────────
+  //
+  // The persisted lead/deal record family the removed fake "Pipeline" tab was
+  // standing in for (docs/lens-specs/retail-capability-map.md "Genuinely
+  // missing, deferred" #1). Design decisions, documented here because tests pin
+  // them:
+  //   • Stage enum is a real SMB retail/wholesale CRM funnel:
+  //     lead → contacted → qualified → proposal → negotiation → won | lost.
+  //     Unknown stages are REJECTED, never coerced.
+  //   • probability is a PERCENT (0–100) — the same unit `pipelineValue`'s
+  //     pasted-book contract has always used, so persisted deals can feed that
+  //     calculator without a unit conversion. When omitted at create it
+  //     defaults per stage (HubSpot-style: lead 10 … negotiation 80).
+  //   • Every stage change goes through `deals-stage-move` and APPENDS to
+  //     `stageHistory` ({from, to, at, note?, reopened?}) — the pipeline is
+  //     auditable, not a mutable label. `deals-upsert` therefore REJECTS a
+  //     stage change on update instead of silently applying it.
+  //   • won/lost are TERMINAL: moving out requires an explicit `reopen: true`
+  //     and the target must be an OPEN stage (won→lost directly is rejected —
+  //     reopen first, then close the other way; keeps every closure auditable).
+  //     Closing forces probability (won→100, lost→0) and stamps `closedAt`;
+  //     reopening clears `closedAt` and leaves probability for the owner to
+  //     re-estimate.
+  //   • `deals-list` returns computed rollups (total open pipeline value,
+  //     probability-weighted value, per-stage count/value/weighted, won/lost
+  //     totals) — the UI renders ONLY these, never client-invented numbers.
+  //     Weighted math matches `pipelineValue` exactly: per-deal
+  //     round2(value × probability/100), summed, then round2.
+  //   • Relationship to `pipelineValue`: that calculator keeps its pasted-book
+  //     behavior byte-identical, and now falls back to READING this persisted
+  //     book when no book is pasted (see `dealSource` above) — one math, two
+  //     entry points, no silent duplication.
+
+  const DEAL_STAGES = ["lead", "contacted", "qualified", "proposal", "negotiation", "won", "lost"];
+  const DEAL_OPEN_STAGES = DEAL_STAGES.slice(0, 5);
+  const DEAL_TERMINAL_STAGES = new Set(["won", "lost"]);
+  const DEAL_DEFAULT_PROBABILITY = { lead: 10, contacted: 20, qualified: 40, proposal: 60, negotiation: 80, won: 100, lost: 0 };
+  const dealRound2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+  const dealWeighted = (d) => dealRound2(d.value * (d.probability / 100));
+
+  function validateDealNumbers(params, out) {
+    if (params.value !== undefined) {
+      const value = Number(params.value);
+      if (!Number.isFinite(value) || value < 0) return "value must be a finite number >= 0";
+      out.value = dealRound2(value);
+    }
+    if (params.probability !== undefined) {
+      const probability = Number(params.probability);
+      if (!Number.isFinite(probability) || probability < 0 || probability > 100) return "probability must be 0–100 (percent)";
+      out.probability = dealRound2(probability);
+    }
+    return null;
+  }
+
+  registerLensAction("retail", "deals-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const all = ensureRetailBucket(s, "deals", userId);
+    const stageFilter = params.stage !== undefined ? String(params.stage) : null;
+    if (stageFilter && !DEAL_STAGES.includes(stageFilter)) {
+      return { ok: false, error: `unknown stage: ${stageFilter} (expected one of ${DEAL_STAGES.join(", ")})` };
+    }
+
+    // Rollups are computed from the FULL book (never the stage filter) so the
+    // header numbers stay stable while the user narrows the card list.
+    const byStage = {};
+    for (const st of DEAL_STAGES) byStage[st] = { count: 0, value: 0, weighted: 0 };
+    let totalPipelineValue = 0;   // open deals only
+    let weightedPipelineValue = 0;
+    let wonValue = 0; let lostValue = 0;
+    for (const d of all) {
+      const bucket = byStage[d.stage];
+      bucket.count++;
+      bucket.value = dealRound2(bucket.value + d.value);
+      bucket.weighted = dealRound2(bucket.weighted + dealWeighted(d));
+      if (DEAL_TERMINAL_STAGES.has(d.stage)) {
+        if (d.stage === "won") wonValue += d.value; else lostValue += d.value;
+      } else {
+        totalPipelineValue += d.value;
+        weightedPipelineValue += dealWeighted(d);
+      }
+    }
+
+    const deals = (stageFilter ? all.filter((d) => d.stage === stageFilter) : all.slice())
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+
+    return {
+      ok: true,
+      result: {
+        deals,
+        stages: DEAL_STAGES,
+        openStages: DEAL_OPEN_STAGES,
+        rollup: {
+          totalDeals: all.length,
+          openCount: all.length - byStage.won.count - byStage.lost.count,
+          totalPipelineValue: dealRound2(totalPipelineValue),
+          weightedPipelineValue: dealRound2(weightedPipelineValue),
+          wonCount: byStage.won.count,
+          wonValue: dealRound2(wonValue),
+          lostCount: byStage.lost.count,
+          lostValue: dealRound2(lostValue),
+          byStage,
+        },
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "deals-upsert", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const deals = ensureRetailBucket(s, "deals", userId);
+    const id = params.id ? String(params.id) : null;
+
+    const numeric = {};
+    const numErr = validateDealNumbers(params, numeric);
+    if (numErr) return { ok: false, error: numErr };
+
+    if (id) {
+      // ── update ──
+      const deal = deals.find((d) => d.id === id);
+      if (!deal) return { ok: false, error: "deal not found" };
+      if (params.stage !== undefined && String(params.stage) !== deal.stage) {
+        return { ok: false, error: "stage changes go through deals-stage-move (auditable stageHistory)" };
+      }
+      if (params.name !== undefined) {
+        const name = String(params.name).trim();
+        if (!name) return { ok: false, error: "name required" };
+        deal.name = name.slice(0, 120);
+      }
+      if (params.company !== undefined) deal.company = String(params.company).trim().slice(0, 80);
+      if (params.contactName !== undefined) deal.contactName = String(params.contactName).trim().slice(0, 80);
+      if (params.assignee !== undefined) deal.assignee = String(params.assignee).trim().slice(0, 80);
+      if (params.notes !== undefined) deal.notes = String(params.notes).slice(0, 2000);
+      if (params.expectedCloseDate !== undefined) deal.expectedCloseDate = params.expectedCloseDate ? String(params.expectedCloseDate) : null;
+      if (numeric.value !== undefined) deal.value = numeric.value;
+      if (numeric.probability !== undefined) deal.probability = numeric.probability;
+      deal.updatedAt = nowIsoRet();
+      saveRetailState();
+      return { ok: true, result: { deal } };
+    }
+
+    // ── create ──
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const stage = params.stage !== undefined ? String(params.stage) : "lead";
+    if (!DEAL_STAGES.includes(stage)) {
+      return { ok: false, error: `unknown stage: ${stage} (expected one of ${DEAL_STAGES.join(", ")})` };
+    }
+    const now = nowIsoRet();
+    const deal = {
+      id: nextRetailId("deal"),
+      name: name.slice(0, 120),
+      company: String(params.company || "").trim().slice(0, 80),
+      contactName: String(params.contactName || "").trim().slice(0, 80),
+      assignee: String(params.assignee || "").trim().slice(0, 80),
+      notes: String(params.notes || "").slice(0, 2000),
+      value: numeric.value !== undefined ? numeric.value : 0,
+      probability: numeric.probability !== undefined ? numeric.probability : DEAL_DEFAULT_PROBABILITY[stage],
+      stage,
+      expectedCloseDate: params.expectedCloseDate ? String(params.expectedCloseDate) : null,
+      stageHistory: [{ from: null, to: stage, at: now }],
+      closedAt: DEAL_TERMINAL_STAGES.has(stage) ? now : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    deals.push(deal);
+    saveRetailState();
+    return { ok: true, result: { deal } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "deals-stage-move", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const deal = ensureRetailBucket(s, "deals", userId).find((d) => d.id === id);
+    if (!deal) return { ok: false, error: "deal not found" };
+    const stage = String(params.stage || "");
+    if (!DEAL_STAGES.includes(stage)) {
+      return { ok: false, error: `unknown stage: ${stage} (expected one of ${DEAL_STAGES.join(", ")})` };
+    }
+    if (stage === deal.stage) return { ok: false, error: `deal is already in stage: ${stage}` };
+
+    const reopening = DEAL_TERMINAL_STAGES.has(deal.stage);
+    if (reopening) {
+      if (params.reopen !== true) {
+        return { ok: false, error: `deal is closed (${deal.stage}) — pass reopen: true to move it back into the pipeline` };
+      }
+      if (DEAL_TERMINAL_STAGES.has(stage)) {
+        return { ok: false, error: "a closed deal reopens into an open stage only (won→lost directly is not allowed)" };
+      }
+    }
+
+    const entry = { from: deal.stage, to: stage, at: nowIsoRet() };
+    if (params.note) entry.note = String(params.note).slice(0, 500);
+    if (reopening) entry.reopened = true;
+    if (!Array.isArray(deal.stageHistory)) deal.stageHistory = [];
+    deal.stageHistory.push(entry);
+
+    deal.stage = stage;
+    if (stage === "won") { deal.probability = 100; deal.closedAt = entry.at; }
+    else if (stage === "lost") { deal.probability = 0; deal.closedAt = entry.at; }
+    else deal.closedAt = null;
+    deal.updatedAt = entry.at;
+    saveRetailState();
+    return { ok: true, result: { deal, moved: entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "deals-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "deals", userId);
+    const idx = list.findIndex((d) => d.id === id);
+    if (idx < 0) return { ok: false, error: "deal not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
   });
 };

@@ -25,6 +25,7 @@ import { LivePosTerminal } from '@/components/retail/LivePosTerminal';
 import { RetailActionPanel } from '@/components/retail/RetailActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import CustomersPanel from '@/components/retail/CustomersPanel';
+import PipelinePanel from '@/components/retail/PipelinePanel';
 import DiscountsManager from '@/components/retail/DiscountsManager';
 import AbandonedCartsPanel from '@/components/retail/AbandonedCartsPanel';
 import ShippingZonesEditor from '@/components/retail/ShippingZonesEditor';
@@ -154,10 +155,11 @@ export default function RetailLensPage() {
 /* ------------------------------------------------------------------ */
 
 function RetailWorkbenchSection() {
-  const [active, setActive] = useState<'analytics' | 'customers' | 'discounts' | 'abandoned' | 'shipping' | 'gift' | 'refunds' | 'collections' | 'transfers'>('analytics');
+  const [active, setActive] = useState<'analytics' | 'customers' | 'pipeline' | 'discounts' | 'abandoned' | 'shipping' | 'gift' | 'refunds' | 'collections' | 'transfers'>('analytics');
   const TABS = [
     { id: 'analytics', label: 'Analytics' },
     { id: 'customers', label: 'Customers' },
+    { id: 'pipeline', label: 'Pipeline' },
     { id: 'discounts', label: 'Discounts' },
     { id: 'abandoned', label: 'Abandoned' },
     { id: 'shipping', label: 'Shipping' },
@@ -188,6 +190,7 @@ function RetailWorkbenchSection() {
       <div>
         {active === 'analytics' && <SalesAnalytics />}
         {active === 'customers' && <CustomersPanel />}
+        {active === 'pipeline' && <PipelinePanel />}
         {active === 'discounts' && <DiscountsManager />}
         {active === 'abandoned' && <AbandonedCartsPanel />}
         {active === 'shipping' && <ShippingZonesEditor />}
