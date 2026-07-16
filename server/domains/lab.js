@@ -527,7 +527,7 @@ export default function registerLabActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.labLens) STATE.labLens = {};
     const L = STATE.labLens;
-    for (const k of ["notebook", "reagents", "protocols", "plates", "runs", "constructs"]) {
+    for (const k of ["notebook", "reagents", "protocols", "plates", "runs", "constructs", "labels"]) {
       if (!(L[k] instanceof Map)) L[k] = new Map(); // userId -> Array
     }
     return L;
@@ -1049,6 +1049,90 @@ export default function registerLabActions(registerLensAction) {
           motifPositions: motifHits.slice(0, 100),
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /* ── Barcode / 2D-Barcode Label Printing ─────────────────────────────── */
+  //
+  // No physical-printer or PDF-rendering integration exists (out of scope —
+  // see docs/lens-specs/lab-capability-map.md). What IS real: a deterministic
+  // barcode PAYLOAD STRING (the text a Code128/QR scanner would decode back
+  // to this exact record) plus the structured label metadata a client renders
+  // into an actual visual barcode. "sample" maps to the `constructs` store —
+  // this file has no separate persistent "sample" collection (only reagents,
+  // protocols, plates, runs, constructs); DNA/plasmid constructs are the
+  // closest analog to a physical lab sample that gets tube-barcoded in a
+  // real LIMS, so label-generate treats them as the sample record type.
+
+  const LAB_LABEL_STORE_BY_TYPE = { reagent: "reagents", sample: "constructs" };
+
+  // buildLabelPayload — deterministic, scanner-parseable text payload.
+  // Format: LAB:<TYPE>:<recordId>:<secondary> where secondary is the lot
+  // number (reagent) or construct type (sample) — never blank-padded, so a
+  // scan round-trips unambiguously back to the exact record.
+  function buildLabelPayload(recordType, record) {
+    const tag = recordType === "sample" ? "SAMPLE" : "REAGENT";
+    const secondary = recordType === "sample" ? (record.type || "") : (record.lot || "");
+    return `LAB:${tag}:${record.id}:${labClean(secondary, 40)}`;
+  }
+
+  // label-generate — produce a barcode payload + label metadata for a real
+  // stored reagent or construct ("sample"). Never fabricates a label for a
+  // record that doesn't exist or isn't owned by the caller.
+  registerLensAction("lab", "label-generate", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const recordType = params.recordType === "sample" ? "sample"
+        : params.recordType === "reagent" ? "reagent" : null;
+      if (!recordType) return { ok: false, error: "recordType must be 'reagent' or 'sample'" };
+      const id = labClean(params.id, 64);
+      if (!id) return { ok: false, error: "record id required" };
+      const store = LAB_LABEL_STORE_BY_TYPE[recordType];
+      const record = labFind(labArr(L, store, labActor(ctx)), id);
+      if (!record) return { ok: false, error: `${recordType} not found` };
+
+      const payload = buildLabelPayload(recordType, record);
+      const label = {
+        id: labId("lbl"),
+        recordType,
+        recordId: record.id,
+        payload,
+        symbology: "code128",
+        name: record.name,
+        generatedAt: new Date().toISOString(),
+        generatedBy: labActor(ctx),
+      };
+      if (recordType === "reagent") {
+        Object.assign(label, {
+          lot: record.lot || null,
+          catalogNumber: record.catalogNumber || null,
+          vendor: record.vendor || null,
+          location: record.freezerBox || record.location || null,
+          expiry: record.expiry || null,
+          hazard: record.hazard || null,
+        });
+      } else {
+        Object.assign(label, {
+          constructType: record.type || null,
+          resistance: record.resistance || null,
+          lengthBp: record.length ?? null,
+          gcContent: record.gcContent ?? null,
+        });
+      }
+
+      labArr(L, "labels", labActor(ctx)).push(label);
+      saveLab();
+      return { ok: true, result: { label } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // label-list — previously generated labels for the caller, most recent first.
+  registerLensAction("lab", "label-list", (ctx, _a, _params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const labels = labArr(L, "labels", labActor(ctx))
+        .slice().sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""));
+      return { ok: true, result: { labels, total: labels.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
