@@ -295,7 +295,7 @@ export default function registerTravelActions(registerLensAction) {
     for (const k of [
       "trips", "itinerary", "places", "placeReviews", "bookings",
       "priceWatches", "budgets", "travelDocs", "checklists",
-      "travelDocAttachments",
+      "travelDocAttachments", "loyaltyAccounts", "loyaltyPointsLog",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -747,6 +747,128 @@ export default function registerTravelActions(registerLensAction) {
       attachmentCount: (attByDoc.get(d.id) || []).length,
     }));
     return { ok: true, result: { documents, count: documents.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── Loyalty / frequent-flyer programs (TripIt Pro parity) ───────────
+  // Accounts are per-user with an OPTIONAL trip link, cloned directly
+  // from the travel-doc-* idiom above (tvlistB(s.loyaltyAccounts,
+  // tvaid(ctx)), optional `tripId`). Points are a SEPARATE append-only
+  // ledger keyed by accountId — cloned from the booking-* idiom (keyed
+  // by parent id, ownership checked via a find-by-parent helper before
+  // any read/write, same as findTrip gates s.bookings). The account
+  // itself never stores a "points balance" field: balance is DERIVED by
+  // summing the ledger every time it's read, the same "derive, don't
+  // store a driftable value" principle travel-doc's `expiryStatus`
+  // already follows for expiry. A stored balance could silently drift
+  // from the ledger (double-count, lost update); summing it live cannot.
+  const LOYALTY_TIERS = ["none", "basic", "silver", "gold", "platinum", "diamond"];
+  const findLoyaltyAccount = (s, userId, accountId) =>
+    (s.loyaltyAccounts.get(userId) || []).find((a) => a.id === accountId) || null;
+  const loyaltyBalance = (s, accountId) =>
+    (s.loyaltyPointsLog.get(accountId) || []).reduce((sum, e) => sum + tvnum(e.delta), 0);
+
+  registerLensAction("travel", "loyalty-account-add", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const program = tvclean(params.program, 120);
+    if (!program) return { ok: false, error: "program required (e.g. 'United MileagePlus')" };
+    const tier = LOYALTY_TIERS.includes(String(params.tier || "").toLowerCase())
+      ? String(params.tier).toLowerCase() : "none";
+    const account = {
+      id: tvid("loy"), program,
+      accountNumber: tvclean(params.accountNumber, 60) || null,
+      tier,
+      notes: tvclean(params.notes, 300) || null,
+      tripId: params.tripId ? String(params.tripId) : null,
+      createdAt: tvnow(),
+    };
+    tvlistB(s.loyaltyAccounts, tvaid(ctx)).push(account);
+    saveTravelState();
+    return { ok: true, result: { account: { ...account, balance: 0, entries: 0, lastActivity: null } } };
+  });
+
+  registerLensAction("travel", "loyalty-account-list", (ctx, _a, _params = {}) => {
+  try {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tvaid(ctx);
+    const accounts = (s.loyaltyAccounts.get(userId) || []).map((a) => {
+      const log = s.loyaltyPointsLog.get(a.id) || [];
+      return {
+        ...a,
+        balance: log.reduce((sum, e) => sum + tvnum(e.delta), 0),
+        entries: log.length,
+        lastActivity: log.length ? log[log.length - 1].at : null,
+      };
+    });
+    return {
+      ok: true,
+      result: { accounts, count: accounts.length, totalBalance: accounts.reduce((sum, a) => sum + a.balance, 0) },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("travel", "loyalty-account-update", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const account = findLoyaltyAccount(s, tvaid(ctx), params.id);
+    if (!account) return { ok: false, error: "loyalty account not found" };
+    if (params.program != null) { const p = tvclean(params.program, 120); if (p) account.program = p; }
+    if (params.accountNumber != null) account.accountNumber = tvclean(params.accountNumber, 60) || null;
+    if (params.tier != null) {
+      const t = String(params.tier).toLowerCase();
+      if (LOYALTY_TIERS.includes(t)) account.tier = t;
+    }
+    if (params.notes != null) account.notes = tvclean(params.notes, 300) || null;
+    if (params.tripId != null) account.tripId = params.tripId ? String(params.tripId) : null;
+    saveTravelState();
+    return {
+      ok: true,
+      result: { account: { ...account, balance: loyaltyBalance(s, account.id) } },
+    };
+  });
+
+  registerLensAction("travel", "loyalty-account-remove", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tvaid(ctx);
+    const arr = s.loyaltyAccounts.get(userId) || [];
+    const i = arr.findIndex((a) => a.id === params.id);
+    if (i < 0) return { ok: false, error: "loyalty account not found" };
+    const [removed] = arr.splice(i, 1);
+    s.loyaltyPointsLog.delete(removed.id); // cascade — no orphaned ledger entries
+    saveTravelState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Loyalty points ledger (append-only) ──────────────────────────────
+  registerLensAction("travel", "loyalty-points-log-add", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const account = findLoyaltyAccount(s, tvaid(ctx), params.accountId);
+    if (!account) return { ok: false, error: "loyalty account not found" };
+    const delta = Math.round(tvnum(params.delta));
+    if (!delta) return { ok: false, error: "delta must be a non-zero integer (positive=earned, negative=redeemed)" };
+    const entry = {
+      id: tvid("lpe"), accountId: account.id,
+      delta,
+      kind: delta > 0 ? "earned" : "redeemed",
+      bookingId: params.bookingId ? String(params.bookingId) : null,
+      note: tvclean(params.note, 300) || null,
+      at: tvnow(),
+    };
+    tvlistB(s.loyaltyPointsLog, account.id).push(entry);
+    saveTravelState();
+    return { ok: true, result: { entry, balance: loyaltyBalance(s, account.id) } };
+  });
+
+  registerLensAction("travel", "loyalty-points-log-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const account = findLoyaltyAccount(s, tvaid(ctx), params.accountId);
+    if (!account) return { ok: false, error: "loyalty account not found" };
+    const entries = (s.loyaltyPointsLog.get(account.id) || [])
+      .slice().sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    return {
+      ok: true,
+      result: { entries, count: entries.length, balance: entries.reduce((sum, e) => sum + tvnum(e.delta), 0) },
+    };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 

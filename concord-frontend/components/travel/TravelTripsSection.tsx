@@ -6,25 +6,27 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plane, Map, Compass, TrendingDown, FileText, Loader2 } from 'lucide-react';
+import { Plane, Map, Compass, TrendingDown, FileText, Award, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { TripWorkspaceSection } from './TripWorkspaceSection';
 import { TravelExplorePanel } from './TravelExplorePanel';
 import { TravelWatchesPanel } from './TravelWatchesPanel';
 import { TravelDocsPanel } from './TravelDocsPanel';
+import { LoyaltyProgramsPanel } from './LoyaltyProgramsPanel';
 
 interface Dash {
   trips: number; upcomingTrips: number;
   nextTrip: { name: string; destination: string; startDate: string } | null;
   priceWatches: number; watchesTriggered: number; savedPlaces: number; totalBooked: number;
 }
-type TabId = 'trips' | 'explore' | 'watches' | 'docs';
+type TabId = 'trips' | 'explore' | 'watches' | 'docs' | 'loyalty';
 const TABS: { id: TabId; label: string; icon: typeof Map }[] = [
   { id: 'trips', label: 'My Trips', icon: Map },
   { id: 'explore', label: 'Explore', icon: Compass },
   { id: 'watches', label: 'Price Watch', icon: TrendingDown },
   { id: 'docs', label: 'Documents', icon: FileText },
+  { id: 'loyalty', label: 'Loyalty', icon: Award },
 ];
 
 export function TravelTripsSection() {
@@ -85,6 +87,7 @@ export function TravelTripsSection() {
         {tab === 'explore' && <TravelExplorePanel />}
         {tab === 'watches' && <TravelWatchesPanel onChange={refreshDash} />}
         {tab === 'docs' && <TravelDocsPanel />}
+        {tab === 'loyalty' && <LoyaltyProgramsPanel />}
       </div>
     </div>
   );
