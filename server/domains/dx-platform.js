@@ -88,6 +88,7 @@ export default function registerDxPlatformActions(register) {
     if (!(s.codebases instanceof Map)) s.codebases = new Map();   // userId -> Map<codebaseId, codebase>
     if (!(s.teams instanceof Map)) s.teams = new Map();           // teamId  -> team
     if (!(s.analytics instanceof Map)) s.analytics = new Map();   // userId -> { fires:[], outcomes:[] }
+    if (!(s.findingHistory instanceof Map)) s.findingHistory = new Map(); // userId -> commit snapshot[]
     return s;
   }
   function save() {
@@ -106,6 +107,93 @@ export default function registerDxPlatformActions(register) {
   function userAnalytics(s, userId) {
     if (!s.analytics.has(userId)) s.analytics.set(userId, { fires: [], outcomes: [] });
     return s.analytics.get(userId);
+  }
+
+  // ── Finding-history persistence (Wave 4 gap-closure — docs/WAVE4_INVENTORY.md
+  // "No historical issue-trend / 'new vs. existing' tracking (leak period)" /
+  // dx-platform-capability-map.md's matching GENUINELY MISSING item). Sonar's
+  // leak period, at its simplest: a set-diff on finding identity between the
+  // two most recent commit-scoped `reviewDiff` snapshots for a codebase.
+  //
+  // Provenance-only, not a findings warehouse: one row per (user, codebase,
+  // commit), upserted by commitSha so re-reviewing the same commit overwrites
+  // rather than accumulating duplicate history. Finding identity for the
+  // set-diff is `${detectorId}:${path}:${line}` — the same fields reviewDiff's
+  // own finding shape already carries; no new identity scheme invented.
+  //
+  // Persists ONLY when reviewDiff is called WITH a commitSha. The far more
+  // common call-without-commitSha path (ad-hoc diff review, no CI context) is
+  // byte-identical to before this addition: pure in-memory computation, zero
+  // persistence. Same db-or-memory store facade idiom as domains/education.js
+  // (migration 363) / domains/tournaments.js (migration 360) / domains/admin.js
+  // (migration 364).
+  function getDxDb(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db) return null;
+    try { db.prepare("SELECT 1 FROM dx_finding_history LIMIT 1").get(); }
+    catch { return null; }
+    return db;
+  }
+  function safeParseJsonDx(json, fallback) {
+    try { const v = JSON.parse(json); return v == null ? fallback : v; }
+    catch { return fallback; }
+  }
+  function rowToSnapshot(r) {
+    return {
+      id: r.id, userId: r.user_id, codebaseId: r.codebase_id, commitSha: r.commit_sha,
+      findingCount: r.finding_count,
+      findingKeys: safeParseJsonDx(r.finding_keys_json, []),
+      bySeverity: safeParseJsonDx(r.by_severity_json, {}),
+      createdAt: r.created_at,
+    };
+  }
+  const UPSERT_FINDING_HISTORY_SQL = `
+    INSERT INTO dx_finding_history
+      (id, user_id, codebase_id, commit_sha, finding_count, finding_keys_json, by_severity_json, created_at)
+    VALUES
+      (@id, @user_id, @codebase_id, @commit_sha, @finding_count, @finding_keys_json, @by_severity_json, @created_at)
+    ON CONFLICT(user_id, codebase_id, commit_sha) DO UPDATE SET
+      finding_count = excluded.finding_count,
+      finding_keys_json = excluded.finding_keys_json,
+      by_severity_json = excluded.by_severity_json,
+      created_at = excluded.created_at
+  `;
+  function dbFindingHistoryStore(db) {
+    return {
+      put(snap) {
+        db.prepare(UPSERT_FINDING_HISTORY_SQL).run({
+          id: snap.id, user_id: snap.userId, codebase_id: snap.codebaseId, commit_sha: snap.commitSha,
+          finding_count: snap.findingCount,
+          finding_keys_json: JSON.stringify(snap.findingKeys || []),
+          by_severity_json: JSON.stringify(snap.bySeverity || {}),
+          created_at: snap.createdAt,
+        });
+      },
+      listForUserCodebase(userId, codebaseId) {
+        return db.prepare(
+          "SELECT * FROM dx_finding_history WHERE user_id = ? AND codebase_id = ? ORDER BY created_at ASC, rowid ASC"
+        ).all(userId, codebaseId).map(rowToSnapshot);
+      },
+    };
+  }
+  function memFindingHistoryStore(s) {
+    if (!(s.findingHistory instanceof Map)) s.findingHistory = new Map(); // userId -> snapshot[]
+    return {
+      put(snap) {
+        if (!s.findingHistory.has(snap.userId)) s.findingHistory.set(snap.userId, []);
+        const arr = s.findingHistory.get(snap.userId);
+        const idx = arr.findIndex((x) => x.codebaseId === snap.codebaseId && x.commitSha === snap.commitSha);
+        if (idx >= 0) arr[idx] = snap; else arr.push(snap);
+      },
+      listForUserCodebase(userId, codebaseId) {
+        const arr = s.findingHistory.get(userId) || [];
+        return arr.filter((x) => x.codebaseId === codebaseId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      },
+    };
+  }
+  function findingHistoryStore(ctx, s) {
+    const db = getDxDb(ctx);
+    return db ? dbFindingHistoryStore(db) : memFindingHistoryStore(s);
   }
 
   // ── Detector grid (static rule definitions — NOT data) ──────────────
@@ -340,6 +428,27 @@ export default function registerDxPlatformActions(register) {
     const bySeverity = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
     for (const f of findings) bySeverity[f.severity] = (bySeverity[f.severity] || 0) + 1;
     const blocking = findings.filter((f) => f.severity >= 4).length;
+    // Optional commit-scoped provenance write — see the finding-history block
+    // above. Only fires when the caller supplies commitSha; omitting it keeps
+    // this call byte-identical to before this addition (no persistence, no
+    // behavior change). Best-effort: a persistence failure never fails the
+    // review itself, since the review result is already fully computed above.
+    const commitSha = params.commitSha ? String(params.commitSha).trim().slice(0, 100) : "";
+    if (commitSha) {
+      try {
+        findingHistoryStore(ctx, s).put({
+          id: uid("dxsnap"),
+          userId,
+          codebaseId: params.codebaseId ? String(params.codebaseId) : "",
+          commitSha,
+          findingCount: findings.length,
+          findingKeys: findings.map((f) => `${f.detectorId}:${f.path}:${f.line}`),
+          bySeverity,
+          createdAt: now(),
+        });
+        save();
+      } catch { /* best-effort provenance write; never fails the review */ }
+    }
     return {
       ok: true,
       result: {
@@ -351,6 +460,68 @@ export default function registerDxPlatformActions(register) {
         bySeverity,
         blockingCount: blocking,
         verdict: blocking > 0 ? "changes_requested" : findings.length > 0 ? "advisory" : "clean",
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── 2b. Issue trend ("new vs. existing" across commits — the leak-period
+  // concept) ───────────────────────────────────────────────────────────
+  // params: { codebaseId? } — reads the last two commit-scoped reviewDiff
+  // snapshots persisted for this (user, codebaseId) and set-diffs their
+  // finding identities. Honest by construction: with 0 snapshots there is no
+  // baseline at all; with exactly 1 there is a baseline but nothing to
+  // compare against yet; only 2+ snapshots produce a real new/existing/
+  // resolved split. Never fabricates a comparison it doesn't have data for.
+  registerLensAction("dx-platform", "issueTrend", (ctx, _a, params = {}) => {
+  try {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const codebaseId = params.codebaseId ? String(params.codebaseId) : "";
+    const s = getState();
+    const snapshots = findingHistoryStore(ctx, s).listForUserCodebase(userId, codebaseId);
+    const snapshotCount = snapshots.length;
+    const base = { codebaseId: codebaseId || null, snapshotCount };
+    if (snapshotCount === 0) {
+      return {
+        ok: true,
+        result: {
+          ...base, hasTrend: false, latest: null, previous: null,
+          newCount: null, existingCount: null, resolvedCount: null,
+          newFindingKeys: [], resolvedFindingKeys: [],
+        },
+      };
+    }
+    const latest = snapshots[snapshotCount - 1];
+    const latestSummary = { commitSha: latest.commitSha, findingCount: latest.findingCount, createdAt: latest.createdAt };
+    if (snapshotCount === 1) {
+      return {
+        ok: true,
+        result: {
+          ...base, hasTrend: false, latest: latestSummary, previous: null,
+          newCount: null, existingCount: null, resolvedCount: null,
+          newFindingKeys: [], resolvedFindingKeys: [],
+        },
+      };
+    }
+    const previous = snapshots[snapshotCount - 2];
+    const latestSet = new Set(latest.findingKeys);
+    const prevSet = new Set(previous.findingKeys);
+    const newKeys = [...latestSet].filter((k) => !prevSet.has(k));
+    const existingKeys = [...latestSet].filter((k) => prevSet.has(k));
+    const resolvedKeys = [...prevSet].filter((k) => !latestSet.has(k));
+    return {
+      ok: true,
+      result: {
+        ...base,
+        hasTrend: true,
+        latest: latestSummary,
+        previous: { commitSha: previous.commitSha, findingCount: previous.findingCount, createdAt: previous.createdAt },
+        newCount: newKeys.length,
+        existingCount: existingKeys.length,
+        resolvedCount: resolvedKeys.length,
+        newFindingKeys: newKeys.slice(0, 100),
+        resolvedFindingKeys: resolvedKeys.slice(0, 100),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

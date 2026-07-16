@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   MessageSquare, GitPullRequest, Search, Users, SlidersHorizontal,
   BarChart3, Workflow, FolderGit2, Loader2, AlertTriangle, CheckCircle2,
-  ShieldCheck, FileJson,
+  ShieldCheck, FileJson, TrendingUp,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
@@ -365,10 +365,18 @@ interface GateResult {
 interface SarifExportResult {
   sarif: Record<string, unknown>; findingCount: number; ruleCount: number;
 }
+interface TrendSnapshot { commitSha: string; findingCount: number; createdAt: string }
+interface TrendResult {
+  codebaseId: string | null; snapshotCount: number; hasTrend: boolean;
+  latest: TrendSnapshot | null; previous: TrendSnapshot | null;
+  newCount: number | null; existingCount: number | null; resolvedCount: number | null;
+  newFindingKeys: string[]; resolvedFindingKeys: string[];
+}
 
 function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
   const [diff, setDiff] = useState('');
   const [codebaseId, setCodebaseId] = useState('');
+  const [commitSha, setCommitSha] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReviewResult | null>(null);
   const [decisions, setDecisions] = useState<Record<string, FixDecision>>({});
@@ -378,12 +386,17 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
   const [sarifLoading, setSarifLoading] = useState(false);
   const [sarifError, setSarifError] = useState<string | null>(null);
   const [sarifExported, setSarifExported] = useState(false);
+  const [trend, setTrend] = useState<TrendResult | null>(null);
+  const [trendLoading, setTrendLoading] = useState(false);
 
   const run = async () => {
     if (!diff.trim()) return;
-    setLoading(true); setResult(null); setDecisions({}); setGate(null);
+    setLoading(true); setResult(null); setDecisions({}); setGate(null); setTrend(null);
     try {
-      const r = await lensRun('dx-platform', 'reviewDiff', { diff, codebaseId: codebaseId || undefined });
+      const sha = commitSha.trim();
+      const r = await lensRun('dx-platform', 'reviewDiff', {
+        diff, codebaseId: codebaseId || undefined, commitSha: sha || undefined,
+      });
       if (r.data?.ok && r.data.result) {
         const rr = r.data.result as ReviewResult;
         setResult(rr);
@@ -399,6 +412,19 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
             lensRun('dx-platform', 'recordDetectorFire', { detectorId, count, codebaseId: codebaseId || undefined }).catch(() => null),
           ),
         );
+        // Issue trend only exists once a commit SHA was supplied — reviewDiff
+        // just persisted this commit's snapshot server-side when it was.
+        // Without a SHA there is nothing to look up; the Trend section stays
+        // unrendered (no fetch, no fabricated empty card) in that case.
+        if (sha) {
+          setTrendLoading(true);
+          try {
+            const tr = await lensRun('dx-platform', 'issueTrend', { codebaseId: codebaseId || undefined });
+            if (tr.data?.ok && tr.data.result) setTrend(tr.data.result as TrendResult);
+          } finally {
+            setTrendLoading(false);
+          }
+        }
       }
     } finally {
       setLoading(false);
@@ -460,6 +486,13 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
         <CodebasePicker codebases={codebases} value={codebaseId} onChange={setCodebaseId} />
         <span className="text-[11px] text-zinc-400">Optional — uses the codebase&apos;s detector config if selected.</span>
       </div>
+      <input
+        value={commitSha}
+        onChange={(e) => setCommitSha(e.target.value)}
+        placeholder="Commit SHA (optional — enables issue trend tracking)"
+        className="w-full max-w-sm rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 font-mono text-xs text-white"
+        aria-label="Commit SHA"
+      />
       <textarea
         value={diff}
         onChange={(e) => setDiff(e.target.value)}
@@ -541,6 +574,44 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
                 <span className="rounded border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[11px] text-red-300">
                   {sarifError}
                 </span>
+              )}
+            </div>
+          )}
+
+          {trendLoading && (
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <Spinner /> Checking issue trend…
+            </div>
+          )}
+          {trend && !trendLoading && (
+            <div
+              data-testid={trend.hasTrend ? 'dx-review-trend' : 'dx-review-trend-empty'}
+              className="rounded border border-zinc-800 bg-zinc-900/60 p-3 space-y-2"
+            >
+              <h4 className="flex items-center gap-2 text-xs font-medium text-white">
+                <TrendingUp className="h-3.5 w-3.5 text-amber-400" aria-hidden /> Issue trend (leak period)
+              </h4>
+              {trend.hasTrend ? (
+                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="rounded border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-red-300">
+                    {trend.newCount} new
+                  </span>
+                  <span className="rounded border border-zinc-700 bg-zinc-800/60 px-2 py-0.5 text-zinc-300">
+                    {trend.existingCount} existing
+                  </span>
+                  <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-300">
+                    {trend.resolvedCount} resolved
+                  </span>
+                  {trend.previous && (
+                    <span className="font-mono text-zinc-500">vs. {trend.previous.commitSha.slice(0, 10)}</span>
+                  )}
+                </div>
+              ) : (
+                <Empty>
+                  {trend.snapshotCount <= 1
+                    ? 'Baseline recorded for this commit. Issue trend appears once a second commit is reviewed with a commit SHA.'
+                    : 'No baseline yet for this codebase — review a diff with a commit SHA to start tracking issue trend.'}
+                </Empty>
               )}
             </div>
           )}
