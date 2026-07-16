@@ -12,11 +12,11 @@ import {
   Loader2, Undo2, Redo2, Plus, Eye, EyeOff, Trash2, ChevronUp, ChevronDown, ArrowLeft,
   Eraser, Brush, PaintBucket, Square, Circle, Minus, Type, Pipette, BoxSelect,
   Copy, Layers as LayersIcon, Lock, Unlock, Download, FlipHorizontal2, Upload,
-  Lasso, Pencil, Sparkles, X,
+  Lasso, Pencil, Sparkles, X, ClipboardCopy, ClipboardPaste,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { ProStudioPanel } from './ProStudioPanel';
+import { ProStudioPanel, type Guides } from './ProStudioPanel';
 import { PublishAsTextureDialog } from './PublishAsTextureDialog';
 
 interface El {
@@ -29,6 +29,14 @@ interface Artwork { id: string; title: string; width: number; height: number; ba
 interface BrushPreset { id: string; name: string; tool: string; size: number; opacity: number; custom?: boolean }
 
 const BRUSH_TOOLS = ['pencil', 'ink', 'marker', 'airbrush'];
+// Guide kinds the backend's symmetry-mirror-stroke macro actually mirrors
+// across. perspective-1pt/2pt are drawing aids, not symmetry axes — the
+// macro itself rejects them ("active guide is not a symmetry guide"), so
+// don't waste a round-trip calling it while one of those is active.
+const MIRROR_GUIDE_KINDS = new Set(['vertical', 'horizontal', 'quadrant', 'radial']);
+// Visual offset applied to pasted strokes so a paste is never invisibly
+// stacked exactly on top of the copied originals.
+const PASTE_OFFSET_PX = 24;
 function gco(blendMode: string): GlobalCompositeOperation {
   return (blendMode === 'normal' ? 'source-over' : blendMode) as GlobalCompositeOperation;
 }
@@ -125,6 +133,8 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const [panel, setPanel] = useState<'none' | 'transform' | 'adjust' | 'canvas' | 'pro'>('none');
   const [publishOpen, setPublishOpen] = useState(false);
   const [adjust, setAdjust] = useState({ hueShift: 0, satScale: 1, lightScale: 1 });
+  const [guides, setGuides] = useState<Guides | null>(null);
+  const [clipboard, setClipboard] = useState<El[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const offRef = useRef<HTMLCanvasElement | null>(null);
@@ -142,10 +152,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   useEffect(() => {
     let active = true;
     (async () => {
-      const [a, b, p] = await Promise.all([
+      const [a, b, p, g] = await Promise.all([
         lensRun('art', 'artwork-get', { id: artworkId }),
         lensRun('art', 'brush-presets', {}),
         lensRun('art', 'palette-list', {}),
+        lensRun('art', 'guides-get', { artworkId }),
       ]);
       if (!active) return;
       const aw = (a.data?.result?.artwork as Artwork) || null;
@@ -155,6 +166,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       setBlendModes(b.data?.result?.blendModes || []);
       const pals = (p.data?.result?.palettes || []) as { colors: string[] }[];
       setSwatches([...new Set<string>(pals.flatMap((x) => x.colors))].slice(0, 18));
+      setGuides((g.data?.result as { guides?: Guides } | undefined)?.guides || null);
       setLoading(false);
     })();
     return () => { active = false; };
@@ -221,6 +233,16 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
 
   useEffect(() => { render(); }, [render]);
 
+  // Re-fetch the full artwork. Used after any mutation whose resulting
+  // strokes aren't fully knowable from the mutation's own response (symmetry
+  // mirrors, batch pastes, redo, layer ops) — the server is the source of
+  // truth for what strokes now exist, and `render()` already draws whatever
+  // `artwork` holds, so a reload is how those new strokes actually show up.
+  const reload = useCallback(async () => {
+    const r = await lensRun('art', 'artwork-get', { id: artworkId });
+    setArtwork((r.data?.result?.artwork as Artwork) || null);
+  }, [artworkId]);
+
   const toPoint = (e: React.PointerEvent): number[] => {
     const cv = canvasRef.current!;
     const r = cv.getBoundingClientRect();
@@ -252,8 +274,20 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       setArtwork((prev) => prev && ({
         ...prev, layers: prev.layers.map((l) => (l.id === activeLayer ? { ...l, strokes: l.strokes.filter((x) => x.id !== withId.id) } : l)),
       }));
+      return;
     }
-  }, [artwork, activeLayer]);
+    // Live symmetry: when a mirror-shaped guide (vertical / horizontal /
+    // quadrant / radial — never the perspective guides, which the backend
+    // rejects for this macro) is active, ask the backend to mirror the
+    // just-committed stroke for real and persist the copies into the same
+    // layer, then reload so they render. A full-canvas fill has no geometry
+    // to mirror, so it's skipped rather than wasting a duplicate-fill call.
+    const strokeId = (r.data?.result as { strokeId?: string } | undefined)?.strokeId;
+    if (strokeId && el.kind !== 'fill' && guides && MIRROR_GUIDE_KINDS.has(guides.kind)) {
+      const m = await lensRun('art', 'symmetry-mirror-stroke', { artworkId: artwork.id, layerId: activeLayer, strokeId });
+      if (m.data?.ok) await reload();
+    }
+  }, [artwork, activeLayer, guides, reload]);
 
   const drawLivePreview = (kind: string, a: number[], b: number[]) => {
     render();
@@ -423,10 +457,6 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     await lensRun('art', 'stroke-redo', { artworkId: artwork.id, layerId: activeLayer });
     await reload();
   };
-  const reload = async () => {
-    const r = await lensRun('art', 'artwork-get', { id: artworkId });
-    setArtwork((r.data?.result?.artwork as Artwork) || null);
-  };
 
   // ── layer ops ──
   const addLayer = async () => {
@@ -481,6 +511,39 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     setSelectedIds(new Set());
     await reload();
   };
+
+  // ── copy / paste (art.stroke-batch) ──
+  // Copy is purely client-side (nothing to persist — it's just a clipboard
+  // snapshot of the selected strokes' real data). Paste is the actual wire:
+  // it posts the serialized strokes through stroke-batch so what lands in
+  // the layer is genuinely server-minted, offset so it's visibly distinct
+  // from the strokes it was copied from rather than stacking invisibly.
+  const copySelection = useCallback(() => {
+    if (!artwork || !selectedIds.size) return;
+    const layer = artwork.layers.find((l) => l.id === activeLayer);
+    if (!layer) return;
+    const copied = layer.strokes.filter((el) => el.id && selectedIds.has(el.id));
+    setClipboard(copied);
+  }, [artwork, activeLayer, selectedIds]);
+
+  const pasteClipboard = useCallback(async () => {
+    if (!artwork || !clipboard.length) return;
+    const strokes = clipboard.map((el) => ({
+      ...el,
+      points: el.points
+        ? el.points.map((pt) => (pt.length >= 3
+          ? [pt[0] + PASTE_OFFSET_PX, pt[1] + PASTE_OFFSET_PX, pt[2]]
+          : [pt[0] + PASTE_OFFSET_PX, pt[1] + PASTE_OFFSET_PX]))
+        : undefined,
+      x: typeof el.x === 'number' ? el.x + PASTE_OFFSET_PX : el.x,
+      y: typeof el.y === 'number' ? el.y + PASTE_OFFSET_PX : el.y,
+    }));
+    const r = await lensRun('art', 'stroke-batch', { artworkId: artwork.id, layerId: activeLayer, strokes });
+    if (r.data?.ok) {
+      setSelectedIds(new Set());
+      await reload();
+    }
+  }, [artwork, activeLayer, clipboard, reload]);
   const resizeCanvas = async (w: number, h: number) => {
     await lensRun('art', 'artwork-resize', { id: artwork!.id, width: w, height: h });
     await reload();
@@ -605,6 +668,15 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         )}
         <button type="button" onClick={undo} className={topBtn}><Undo2 className="w-3.5 h-3.5" /> Undo</button>
         <button type="button" onClick={redo} className={topBtn}><Redo2 className="w-3.5 h-3.5" /> Redo</button>
+        <button
+          type="button"
+          onClick={() => void pasteClipboard()}
+          disabled={!clipboard.length}
+          title="Paste the copied strokes into the active layer, offset so you can see them land"
+          className={cn(topBtn, 'disabled:opacity-40')}
+        >
+          <ClipboardPaste className="w-3.5 h-3.5" /> Paste{clipboard.length ? ` (${clipboard.length})` : ''}
+        </button>
         <button type="button" onClick={exportPNG} className={topBtn}><Download className="w-3.5 h-3.5" /> PNG</button>
         <button
           type="button"
@@ -667,6 +739,9 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-2 bg-violet-950/40 border border-violet-900/50 rounded-lg px-3 py-1.5">
           <span className="text-[11px] text-violet-200">{selectedIds.size} selected</span>
+          <button type="button" onClick={copySelection} className="flex items-center gap-1 text-[11px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+            <ClipboardCopy className="w-3 h-3" /> Copy
+          </button>
           <button type="button" onClick={deleteSelection} className="text-[11px] px-2 py-0.5 bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded">Delete</button>
           <span className="text-[10px] text-zinc-400">Transform panel applies to the selection.</span>
           <button type="button" onClick={() => setSelectedIds(new Set())} className="text-[11px] text-zinc-400 ml-auto">Clear</button>
@@ -827,6 +902,8 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
           selectedIds={[...selectedIds]}
           onApplied={reload}
           canvas={canvasRef.current}
+          guides={guides}
+          onGuidesChange={setGuides}
         />
       )}
       {publishOpen && (
