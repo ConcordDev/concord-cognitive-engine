@@ -2923,4 +2923,329 @@ export default function registerRetailActions(registerLensAction) {
     saveRetailState();
     return { ok: true, result: { id, deleted: true } };
   });
+
+  // ── In-store marketing displays — persisted display/endcap records (2026-07 Wave-4 unit) ──
+  //
+  // The persisted display/endcap record family the removed fake retail
+  // "Displays" surface was standing in for
+  // (docs/lens-specs/retail-capability-map.md "Genuinely missing, deferred"
+  // #3: "a persisted display/endcap record (location, budget, impressions,
+  // conversions). No macro anywhere."). This is a DISTINCT, PHYSICAL concept
+  // from the existing `campaigns-*` family above (digital email/SMS/discount
+  // sends) — a real endcap/window/floor display placed at a physical store
+  // location, not a channel send. Deliberately mirrors the deals-*/tickets-*
+  // families' proven shape, diverging only where a physical merchandising
+  // display's real lifecycle actually differs:
+  //   • `displayType` is a real retail-merchandising enum (endcap / window /
+  //     checkout-counter / floor-display / shelf-talker / promotional-table)
+  //     — validated, unknown values rejected.
+  //   • `status` is a real 3-state physical lifecycle: planned → active →
+  //     removed. `removed` is a locked terminal (mirrors tickets' `closed`)
+  //     — leaving it requires an explicit `reopen: true` back into an open
+  //     status (planned/active). Every status change goes through
+  //     `displays-status-move` and APPENDS to `statusHistory` — auditable,
+  //     never a mutable label. `displays-upsert` REJECTS a status change on
+  //     update, exactly like deals-upsert/tickets-upsert.
+  //   • `productSkus` links a display to the REAL product catalog
+  //     (`product-list`/`product-upsert`'s SKUs) rather than a free-text
+  //     product name — every SKU listed must already exist in the caller's
+  //     catalog, or the whole upsert is rejected. This keeps "what is this
+  //     display promoting" honestly tied to real inventory instead of a
+  //     hand-typed string nobody validates.
+  //   • `impressions` is a MANUALLY LOGGED count, not a fabricated sensor
+  //     feed — there is no automated foot-traffic-counting system anywhere
+  //     in Concord. `displays-log-impressions` takes a staff-entered count +
+  //     optional note and APPENDS to `impressionLog` (a display gets
+  //     checked multiple times over its run), accumulating into a running
+  //     `impressions` total. The macro name deliberately says "log", not
+  //     "track" or "count", so the UI/naming never implies a sensor exists.
+  //   • `conversions` follows the EXACT honesty discipline
+  //     `campaigns-record-conversion` (above) already established: a
+  //     conversion is NEVER a free-floating incremented counter —
+  //     `displays-record-conversion` requires a real `orderId` that exists
+  //     in the caller's `orders-list` book, rejects an unknown/fake orderId,
+  //     and prevents double-attribution of the same order via
+  //     `attributedOrderIds` (identical shape to the campaigns family).
+  //   • `displays-list` rollups (total impressions/conversions/conversion
+  //     rate/attributed revenue, and — since budget is real —
+  //     revenue-per-budget-dollar) are computed server-side ONLY, from the
+  //     FULL book (never the status filter), so the UI renders nothing a
+  //     client could invent. `revenuePerBudgetDollar` is honestly `null`
+  //     (never Infinity/NaN) whenever budget is 0, both per-display and in
+  //     the aggregate rollup.
+
+  const DISPLAY_TYPES = ["endcap", "window", "checkout-counter", "floor-display", "shelf-talker", "promotional-table"];
+  const DISPLAY_STATUSES = ["planned", "active", "removed"];
+  const DISPLAY_OPEN_STATUSES = ["planned", "active"];
+  const DISPLAY_LOCKED_STATUS = "removed";
+  const displayRound2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+
+  registerLensAction("retail", "displays-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const all = ensureRetailBucket(s, "displays", userId);
+    const statusFilter = params.status !== undefined ? String(params.status) : null;
+    if (statusFilter && !DISPLAY_STATUSES.includes(statusFilter)) {
+      return { ok: false, error: `unknown status: ${statusFilter} (expected one of ${DISPLAY_STATUSES.join(", ")})` };
+    }
+
+    // Rollups are computed from the FULL book (never the status filter) so
+    // the header numbers stay stable while the user narrows the card list —
+    // same discipline as deals-list/tickets-list.
+    let totalImpressions = 0;
+    let totalConversions = 0;
+    let totalBudget = 0;
+    let totalAttributedRevenue = 0;
+    let plannedCount = 0, activeCount = 0, removedCount = 0;
+    const withComputed = all.map((d) => {
+      totalImpressions += d.impressions;
+      totalConversions += d.conversions;
+      totalBudget += d.budget;
+      totalAttributedRevenue = displayRound2(totalAttributedRevenue + d.attributedRevenue);
+      if (d.status === "planned") plannedCount++;
+      else if (d.status === "active") activeCount++;
+      else removedCount++;
+      const conversionRate = d.impressions > 0 ? displayRound2((d.conversions / d.impressions) * 100) : 0;
+      const revenuePerBudgetDollar = d.budget > 0 ? displayRound2(d.attributedRevenue / d.budget) : null;
+      return { ...d, conversionRate, revenuePerBudgetDollar };
+    });
+
+    const displays = (statusFilter ? withComputed.filter((d) => d.status === statusFilter) : withComputed)
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+
+    return {
+      ok: true,
+      result: {
+        displays,
+        statuses: DISPLAY_STATUSES,
+        openStatuses: DISPLAY_OPEN_STATUSES,
+        displayTypes: DISPLAY_TYPES,
+        rollup: {
+          totalDisplays: all.length,
+          plannedCount, activeCount, removedCount,
+          totalImpressions, totalConversions,
+          conversionRate: totalImpressions > 0 ? displayRound2((totalConversions / totalImpressions) * 100) : 0,
+          totalBudget: displayRound2(totalBudget),
+          totalAttributedRevenue,
+          revenuePerBudgetDollar: totalBudget > 0 ? displayRound2(totalAttributedRevenue / totalBudget) : null,
+        },
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "displays-upsert", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const displays = ensureRetailBucket(s, "displays", userId);
+    const id = params.id ? String(params.id) : null;
+
+    // Shared validation for both create + update.
+    let budget;
+    if (params.budget !== undefined) {
+      budget = Number(params.budget);
+      if (!Number.isFinite(budget) || budget < 0) return { ok: false, error: "budget must be a finite number >= 0" };
+      budget = displayRound2(budget);
+    }
+    let displayType;
+    if (params.displayType !== undefined) {
+      displayType = String(params.displayType);
+      if (!DISPLAY_TYPES.includes(displayType)) {
+        return { ok: false, error: `unknown displayType: ${displayType} (expected one of ${DISPLAY_TYPES.join(", ")})` };
+      }
+    }
+    let startDate;
+    if (params.startDate !== undefined) {
+      if (params.startDate === null || params.startDate === "") { startDate = null; }
+      else {
+        const d = new Date(params.startDate);
+        if (Number.isNaN(d.getTime())) return { ok: false, error: "invalid startDate" };
+        startDate = String(params.startDate);
+      }
+    }
+    let endDate;
+    if (params.endDate !== undefined) {
+      if (params.endDate === null || params.endDate === "") { endDate = null; }
+      else {
+        const d = new Date(params.endDate);
+        if (Number.isNaN(d.getTime())) return { ok: false, error: "invalid endDate" };
+        endDate = String(params.endDate);
+      }
+    }
+    let productSkus;
+    if (params.productSkus !== undefined) {
+      if (!Array.isArray(params.productSkus)) return { ok: false, error: "productSkus must be an array of SKUs" };
+      const catalog = s.products.get(userId);
+      const skus = [...new Set(params.productSkus.map((x) => String(x).trim()).filter(Boolean))];
+      const missing = skus.filter((sku) => !catalog || !catalog.has(sku));
+      if (missing.length > 0) {
+        return { ok: false, error: `unknown productSku(s): ${missing.join(", ")} (must exist in your product catalog)` };
+      }
+      productSkus = skus;
+    }
+
+    if (id) {
+      // ── update ──
+      const display = displays.find((d) => d.id === id);
+      if (!display) return { ok: false, error: "display not found" };
+      if (params.status !== undefined && String(params.status) !== display.status) {
+        return { ok: false, error: "status changes go through displays-status-move (auditable statusHistory)" };
+      }
+      if (params.location !== undefined) {
+        const location = String(params.location).trim();
+        if (!location) return { ok: false, error: "location required" };
+        display.location = location.slice(0, 160);
+      }
+      if (displayType !== undefined) display.displayType = displayType;
+      if (budget !== undefined) display.budget = budget;
+      if (startDate !== undefined) display.startDate = startDate;
+      if (endDate !== undefined) display.endDate = endDate;
+      const finalStart = startDate !== undefined ? startDate : display.startDate;
+      const finalEnd = endDate !== undefined ? endDate : display.endDate;
+      if (finalStart && finalEnd && new Date(finalEnd).getTime() < new Date(finalStart).getTime()) {
+        return { ok: false, error: "endDate must be on or after startDate" };
+      }
+      if (productSkus !== undefined) display.productSkus = productSkus;
+      if (params.notes !== undefined) display.notes = String(params.notes).slice(0, 2000);
+      display.updatedAt = nowIsoRet();
+      saveRetailState();
+      return { ok: true, result: { display } };
+    }
+
+    // ── create ──
+    const location = String(params.location || "").trim();
+    if (!location) return { ok: false, error: "location required" };
+    if (displayType === undefined) {
+      return { ok: false, error: `displayType required (expected one of ${DISPLAY_TYPES.join(", ")})` };
+    }
+    if (startDate && endDate && new Date(endDate).getTime() < new Date(startDate).getTime()) {
+      return { ok: false, error: "endDate must be on or after startDate" };
+    }
+    const now = nowIsoRet();
+    const display = {
+      id: nextRetailId("disp"),
+      location: location.slice(0, 160),
+      displayType,
+      budget: budget !== undefined ? budget : 0,
+      startDate: startDate !== undefined ? startDate : null,
+      endDate: endDate !== undefined ? endDate : null,
+      productSkus: productSkus !== undefined ? productSkus : [],
+      notes: String(params.notes || "").slice(0, 2000),
+      status: "planned",
+      statusHistory: [{ from: null, to: "planned", at: now }],
+      impressions: 0,
+      impressionLog: [],
+      conversions: 0,
+      attributedOrderIds: [],
+      attributedRevenue: 0,
+      removedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    displays.push(display);
+    saveRetailState();
+    return { ok: true, result: { display } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "displays-status-move", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const display = ensureRetailBucket(s, "displays", userId).find((d) => d.id === id);
+    if (!display) return { ok: false, error: "display not found" };
+    const status = String(params.status || "");
+    if (!DISPLAY_STATUSES.includes(status)) {
+      return { ok: false, error: `unknown status: ${status} (expected one of ${DISPLAY_STATUSES.join(", ")})` };
+    }
+    if (status === display.status) return { ok: false, error: `display is already in status: ${status}` };
+
+    const reopening = display.status === DISPLAY_LOCKED_STATUS;
+    if (reopening) {
+      if (params.reopen !== true) {
+        return { ok: false, error: "display is removed — pass reopen: true to move it back into planning/active" };
+      }
+      if (!DISPLAY_OPEN_STATUSES.includes(status)) {
+        return { ok: false, error: "a removed display reopens into an open status only (planned/active)" };
+      }
+    }
+
+    const at = nowIsoRet();
+    const entry = { from: display.status, to: status, at };
+    if (params.note) entry.note = String(params.note).slice(0, 500);
+    if (reopening) entry.reopened = true;
+    if (!Array.isArray(display.statusHistory)) display.statusHistory = [];
+    display.statusHistory.push(entry);
+
+    display.status = status;
+    if (status === DISPLAY_LOCKED_STATUS) display.removedAt = at;
+    else if (reopening) display.removedAt = null;
+    display.updatedAt = at;
+    saveRetailState();
+    return { ok: true, result: { display, moved: entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "displays-log-impressions", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const display = ensureRetailBucket(s, "displays", userId).find((d) => d.id === id);
+    if (!display) return { ok: false, error: "display not found" };
+    const count = Number(params.count);
+    if (!Number.isInteger(count) || count <= 0) return { ok: false, error: "count must be a positive integer" };
+    const entry = { count, note: params.note ? String(params.note).slice(0, 500) : "", at: nowIsoRet() };
+    if (!Array.isArray(display.impressionLog)) display.impressionLog = [];
+    display.impressionLog.push(entry);
+    display.impressions = (display.impressions || 0) + count;
+    display.updatedAt = entry.at;
+    saveRetailState();
+    return { ok: true, result: { display, logged: entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // Attribute an order's revenue to a display (conversion tracking) — mirrors
+  // campaigns-record-conversion exactly: a conversion requires a REAL order.
+  registerLensAction("retail", "displays-record-conversion", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const orderId = String(params.orderId || "");
+    if (!id) return { ok: false, error: "id required" };
+    if (!orderId) return { ok: false, error: "orderId required" };
+    const display = ensureRetailBucket(s, "displays", userId).find((d) => d.id === id);
+    if (!display) return { ok: false, error: "display not found" };
+    const order = (s.orders.get(userId) || []).find((o) => o.id === orderId);
+    if (!order) return { ok: false, error: "order not found" };
+    if (!Array.isArray(display.attributedOrderIds)) display.attributedOrderIds = [];
+    if (display.attributedOrderIds.includes(orderId)) {
+      return { ok: false, error: "order already attributed to this display" };
+    }
+    display.attributedOrderIds.push(orderId);
+    display.conversions = (display.conversions || 0) + 1;
+    display.attributedRevenue = displayRound2((display.attributedRevenue || 0) + order.total);
+    display.updatedAt = nowIsoRet();
+    saveRetailState();
+    return { ok: true, result: { display } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "displays-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "displays", userId);
+    const idx = list.findIndex((d) => d.id === id);
+    if (idx < 0) return { ok: false, error: "display not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
 };
