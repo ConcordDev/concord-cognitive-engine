@@ -18,6 +18,7 @@ import { TreeDiagram, TreeNode, TimelineView, TimelineEvent, ChartKit } from '@/
 import {
   Play, Loader2, ListTree, GitBranch, CalendarClock, MessageSquare, Wallet,
   Package, Plus, Trash2, Power, Send, RefreshCw, Zap, AlertTriangle, Download,
+  ListChecks,
 } from 'lucide-react';
 
 const DOMAIN = 'agents';
@@ -63,8 +64,12 @@ interface RuntimeOverview {
 }
 
 interface AgentLite { id: string; name: string; tools?: string[]; type?: string }
+interface TaskDefinition {
+  id: string; name: string; requiredSkills: string[]; priority: string;
+  description: string; createdAt: string;
+}
 
-type RuntimeTab = 'runs' | 'orchestration' | 'schedules' | 'threads' | 'budgets' | 'templates';
+type RuntimeTab = 'runs' | 'orchestration' | 'schedules' | 'threads' | 'budgets' | 'templates' | 'taskDefs';
 
 const TABS: { id: RuntimeTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'runs', label: 'Run Loop', icon: Play },
@@ -73,6 +78,7 @@ const TABS: { id: RuntimeTab; label: string; icon: React.ComponentType<{ classNa
   { id: 'threads', label: 'Threads', icon: MessageSquare },
   { id: 'budgets', label: 'Budgets', icon: Wallet },
   { id: 'templates', label: 'Templates', icon: Package },
+  { id: 'taskDefs', label: 'Task Definitions', icon: ListChecks },
 ];
 
 export function AgentRuntime({ agents }: { agents: AgentLite[] }) {
@@ -135,6 +141,7 @@ export function AgentRuntime({ agents }: { agents: AgentLite[] }) {
       {tab === 'threads' && <ThreadsPanel agents={agents} />}
       {tab === 'budgets' && <BudgetsPanel agents={agents} onChange={loadOverview} />}
       {tab === 'templates' && <TemplatesPanel />}
+      {tab === 'taskDefs' && <TaskDefinitionsPanel onChange={loadOverview} />}
     </div>
   );
 }
@@ -856,6 +863,145 @@ function TemplatesPanel() {
           <TimelineView events={events} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Feature 8: task definitions (skill-based routing input) ──────────────
+// Wave 4 fix (docs/WAVE4_INVENTORY.md line 87 / agents-capability-map.md):
+// routeTask's `requiredSkills` filter had no UI to author a task definition,
+// so every real call sent an empty array and ranking never actually
+// reflected a skill filter. This tab lets a user author + persist a
+// reusable task definition; the agent detail page's "Route Task" action
+// (app/lenses/agents/page.tsx) reads the saved list to pass a real
+// `taskDefinitionId` into routeTask instead of a hardcoded empty array.
+function TaskDefinitionsPanel({ onChange }: { onChange: () => void }) {
+  const [taskDefs, setTaskDefs] = useState<TaskDefinition[]>([]);
+  const [name, setName] = useState('');
+  const [priority, setPriority] = useState('normal');
+  const [description, setDescription] = useState('');
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillDraft, setSkillDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await lensRun<{ taskDefinitions: TaskDefinition[] }>(DOMAIN, 'listTaskDefinitions', {});
+    if (r.data?.ok && r.data.result) setTaskDefs(r.data.result.taskDefinitions || []);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const addSkill = () => {
+    const s = skillDraft.trim();
+    if (!s || skills.includes(s)) return;
+    setSkills((x) => [...x, s]);
+    setSkillDraft('');
+  };
+
+  const create = async () => {
+    setErr(null);
+    if (!name.trim()) { setErr('Task name required'); return; }
+    setBusy(true);
+    const r = await lensRun(DOMAIN, 'createTaskDefinition', {
+      name: name.trim(), requiredSkills: skills, priority, description: description.trim() || undefined,
+    });
+    setBusy(false);
+    if (r.data?.ok) {
+      setName(''); setSkills([]); setSkillDraft(''); setDescription(''); setPriority('normal');
+      await load(); onChange();
+    } else {
+      setErr(r.data?.error || 'Create failed');
+    }
+  };
+
+  const remove = async (id: string) => {
+    await lensRun(DOMAIN, 'deleteTaskDefinition', { id });
+    await load(); onChange();
+  };
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+        <h3 className="text-xs font-semibold text-white">New task definition</h3>
+        <input
+          value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="Task name (e.g. Parse nightly logs)"
+          className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
+        />
+        <select
+          value={priority} onChange={(e) => setPriority(e.target.value)}
+          className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
+        >
+          {(['low', 'normal', 'high', 'urgent'] as const).map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <textarea
+          value={description} onChange={(e) => setDescription(e.target.value)}
+          placeholder="Description (optional)"
+          className="h-14 w-full resize-none rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
+        />
+        <div>
+          <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Required skills</p>
+          {skills.length > 0 && (
+            <div className="mb-1.5 flex flex-wrap gap-1">
+              {skills.map((s) => (
+                <span key={s} className="inline-flex items-center gap-1 rounded bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">
+                  {s}
+                  <button onClick={() => setSkills((x) => x.filter((y) => y !== s))} className="text-cyan-400 hover:text-white" aria-label={`Remove ${s}`}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <input
+              value={skillDraft} onChange={(e) => setSkillDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
+              placeholder="Add a skill, press Enter"
+              className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
+            />
+            <button onClick={addSkill} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-1.5 text-[10px] text-zinc-400 hover:text-white">
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+          <p className="mt-1 text-[10px] text-zinc-400">An empty skill list is valid — routeTask then ranks agents by load/reliability alone.</p>
+        </div>
+        <button
+          onClick={create} disabled={busy}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ListChecks className="h-3.5 w-3.5" />} Save task definition
+        </button>
+        {err && <p className="text-[11px] text-rose-400">{err}</p>}
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+        <h3 className="text-xs font-semibold text-white">Saved task definitions</h3>
+        <p className="text-[10px] text-zinc-400">Pick one from the Route Task action on the agent detail page to make skill-based routing real instead of an empty filter.</p>
+        {taskDefs.length === 0 && <p className="text-[11px] text-zinc-400">No task definitions yet.</p>}
+        <div className="max-h-72 space-y-1 overflow-y-auto">
+          {taskDefs.map((td) => (
+            <div key={td.id} className="rounded border border-zinc-800 bg-zinc-900 p-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs text-white">{td.name}</span>
+                <span className="shrink-0 rounded bg-zinc-800 px-1 font-mono text-[9px] uppercase text-zinc-400">{td.priority}</span>
+              </div>
+              {td.description && <p className="mt-0.5 text-[10px] text-zinc-400">{td.description}</p>}
+              <div className="mt-1 flex flex-wrap gap-1">
+                {td.requiredSkills.length === 0 && <span className="text-[10px] text-zinc-500">no skill requirement</span>}
+                {td.requiredSkills.map((s) => (
+                  <span key={s} className="rounded bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[9px] text-cyan-300">{s}</span>
+                ))}
+              </div>
+              <div className="mt-1.5 flex gap-1">
+                <button onClick={() => remove(td.id)} className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20">
+                  <Trash2 className="h-3 w-3" /> delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

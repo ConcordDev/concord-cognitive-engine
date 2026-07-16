@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -15,7 +16,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useMutation } from '@tanstack/react-query';
 import { useUIStore } from '@/store/ui';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot, Plus, Play, Power, Activity, Clock, Zap, Settings, Search,
@@ -74,6 +75,13 @@ interface AgentRunResult {
   id: string; agentId: string; agentName: string; goal: string; status: string;
   stoppedReason: string | null; steps: AgentRunStep[]; stepCount: number;
   totalLatencyMs: number; totalTokens: number; startedAt: string; finishedAt: string;
+}
+
+// Shape returned by `agents.listTaskDefinitions` (server/domains/agents.js)
+// — a saved task-requirements definition routeTask can filter/rank by.
+interface TaskDefinition {
+  id: string; name: string; requiredSkills: string[]; priority: string;
+  description: string; createdAt: string;
 }
 
 // --- Seed Data (persisted via backend on first use) ---
@@ -145,6 +153,27 @@ export default function AgentsLensPage() {
   const runAction = useRunArtifact('agents');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  // Wave 4 fix (docs/WAVE4_INVENTORY.md line 87 / agents-capability-map.md):
+  // routeTask's `requiredSkills` input had no UI to author a task definition,
+  // so this lens always sent an empty array and the skill filter never
+  // narrowed the ranking. Load the user's saved task definitions (authored
+  // in the "Task Definitions" tab of the Agent Runtime panel below) so
+  // Route Task can pass a real `taskDefinitionId` instead.
+  const [taskDefinitions, setTaskDefinitions] = useState<TaskDefinition[]>([]);
+  const [selectedTaskDefId, setSelectedTaskDefId] = useState<string>('');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun<{ taskDefinitions: TaskDefinition[] }>('agents', 'listTaskDefinitions', {});
+      if (!cancelled && r.data?.ok && r.data.result) setTaskDefinitions(r.data.result.taskDefinitions || []);
+    })();
+    return () => { cancelled = true; };
+    // Re-fetch on mount AND whenever the detail view opens for a different
+    // agent — a task definition authored in the dashboard's Task Definitions
+    // tab (AgentRuntime) should show up as soon as the user routes a task,
+    // not only on the initial page load.
+  }, [selectedAgent?.id]);
 
   // Persist agents via lens data (auto-seeds on first use)
   const { items: lensAgentItems, isLoading, isError, error, isSeeding: _isSeeding, refetch, create: createLensAgent, update: updateLensAgent, remove: removeLensAgent } = useLensData<Record<string, unknown>>('agents', 'agent', {
@@ -350,8 +379,22 @@ export default function AgentsLensPage() {
           },
         };
       }
-      case 'routeTask':
-        return { task: { name: `Best-fit agent for ${agent?.name || 'task'}`, requiredSkills: [] }, agents: roster };
+      case 'routeTask': {
+        // Wave 4 fix: previously always sent `requiredSkills: []`, so the
+        // skill-match term in routeTask's scoring never actually filtered
+        // anything. Resolve the user-selected saved task definition (see
+        // the selector rendered next to the Route Task button) and pass its
+        // id — server/domains/agents.js#routeTask looks it up and uses its
+        // real requiredSkills to filter/rank candidates. Falls back to the
+        // prior generic task name + no filter when nothing is selected, so
+        // the action still works before any task definition exists.
+        const selectedDef = taskDefinitions.find(d => d.id === selectedTaskDefId) || null;
+        return {
+          task: { name: selectedDef ? selectedDef.name : `Best-fit agent for ${agent?.name || 'task'}` },
+          agents: roster,
+          taskDefinitionId: selectedDef ? selectedDef.id : undefined,
+        };
+      }
       case 'swarmStatus':
         return { agents: roster };
       default:
@@ -805,6 +848,28 @@ export default function AgentsLensPage() {
                   <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-neon-yellow" /> Computational Actions
                   </h3>
+                  <div className="mb-3 flex items-center gap-2">
+                    <Route className="w-4 h-4 text-neon-purple shrink-0" />
+                    <label htmlFor="route-task-definition" className="text-xs text-gray-400 shrink-0">Route Task filter</label>
+                    <select
+                      id="route-task-definition"
+                      value={selectedTaskDefId}
+                      onChange={(e) => setSelectedTaskDefId(e.target.value)}
+                      className="flex-1 bg-lattice-bg border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-gray-300"
+                    >
+                      <option value="">No skill filter (rank by load/reliability only)</option>
+                      {taskDefinitions.map(td => (
+                        <option key={td.id} value={td.id}>
+                          {td.name}{td.requiredSkills.length > 0 ? ` — ${td.requiredSkills.join(', ')}` : ' — no skills required'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {taskDefinitions.length === 0 && (
+                    <p className="text-xs text-gray-500 mb-3">
+                      No saved task definitions yet — author one in the Agent Runtime panel&apos;s &quot;Task Definitions&quot; tab below to give Route Task a real skill filter.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <button
                       onClick={() => handleAgentAction('evaluateCapability')}
