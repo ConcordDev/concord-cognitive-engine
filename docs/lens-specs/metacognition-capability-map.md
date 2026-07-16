@@ -374,15 +374,33 @@ fabrication signatures found.
   Predictions Analysis panel rather than left calling into an always-empty
   result (see defect 13) — leaving a button that can only ever say "no bias
   data" is a worse outcome than an honest omission with this note.
-- **`select_strategy` and `adjust_confidence` have no designed UI entry
-  point.** Both are functional, correctly-shaped macros (fixed this pass —
-  see above) but nothing in `page.tsx` currently offers a "pick a reasoning
-  strategy for this problem" or "get a domain-adjusted confidence estimate"
-  interaction. Triage: **ENGINEERING** — no external data or curation
-  dependency, just an unbuilt UI affordance. Deferred rather than bolted on
-  as a generic button, since a designed feature (matching invariant 2) needs
-  real UI thought about where in the flow a user would reach for either —
-  left as a named gap rather than a rushed addition.
+- ~~**`select_strategy` and `adjust_confidence` have no designed UI entry
+  point.**~~ **CLOSED (2026-07-12, `f2800b32`) — Wave 4 gap-closure.** Built
+  to this note's own bar (a designed feature, not a bolted-on generic
+  button): new `components/metacognition/ReasoningToolkit.tsx`, a
+  page-level panel mounted after Predictions Analysis, with two bespoke
+  sub-cards. **Strategy Advisor** — a labeled "What's your problem?"
+  textarea calls `select_strategy` and renders the returned strategy as a
+  named badge + description, with the alternatives as hover-titled chips.
+  **Confidence Adjuster** — a domain input + starting-confidence slider
+  calls `adjust_confidence` and renders original vs. adjusted percentages
+  with a directional indicator (green up-arrow boosted / red down-arrow
+  reduced / gray unchanged, keyed off the returned `factor`) plus the
+  macro's real `explanation` text. Both flows have real loading states and
+  honest error rendering (an `ok:false` or network failure surfaces the
+  real message; no fabricated strategy or estimate ever renders).
+  Wire-path verified end-to-end before trusting the shapes:
+  `select_strategy` returns `{ok, strategy, alternatives}` (no `result`
+  key, so `server.js#_unwrapLensEnvelope` passes it through and
+  `lib/api/client.ts#lensRun`'s unwrap loop stops at it);
+  `adjust_confidence` returns a bare `{original, adjusted, factor, domain,
+  explanation}` object that unwraps cleanly; both error paths (handler
+  `ok:false` and `runMacro`'s `macro_uncaught_throw` envelope) land in the
+  client's terminal `ok === false` branch. Tests:
+  `ReasoningToolkit.test.tsx` 11/11 (macro-call params, result rendering,
+  boosted-direction rendering, disabled-until-input with macro never
+  called on empty, in-flight loading states, honest `ok:false` +
+  network-rejection errors with no fabricated output — for both cards).
 
 ## Verification
 
