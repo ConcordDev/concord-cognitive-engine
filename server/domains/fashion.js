@@ -1,6 +1,7 @@
 // server/domains/fashion.js
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { listFriends, areFriends } from "../lib/friendships.js";
 
 export default function registerFashionActions(registerLensAction) {
   registerLensAction("fashion", "vision", async (ctx, artifact, _params) => {
@@ -859,7 +860,14 @@ export default function registerFashionActions(registerLensAction) {
       id: p.id, ownerId: p.ownerId,
       ownerLabel: p.ownerId === userId ? "You" : `Stylist ${String(p.ownerId).slice(-4)}`,
       caption: p.caption, occasion: p.occasion, season: p.season,
-      itemNames: p.itemNames, photo: p.photo,
+      // itemIds is a same-index companion to itemNames (added alongside
+      // "clone item from a friend's closet" — fashion-capability-map.md
+      // #16) so the UI can offer a real per-item clone action, not just a
+      // display label. Older posts persisted before this field existed
+      // have no itemIds — default to [] so clone honestly reports "not
+      // part of this post" rather than crashing on undefined.
+      itemNames: p.itemNames, itemIds: p.itemIds || [],
+      photo: p.photo,
       likes: p.likedBy.length, saves: p.savedBy.length,
       likedByMe: p.likedBy.includes(userId),
       savedByMe: p.savedBy.includes(userId),
@@ -873,11 +881,17 @@ export default function registerFashionActions(registerLensAction) {
     const outfit = findOutfit(s, userId, params.outfitId);
     if (!outfit) return { ok: false, error: "outfit not found" };
     const itemName = new Map((s.items.get(userId) || []).map((i) => [i.id, i.name]));
+    // Keep itemNames/itemIds strictly parallel (same filter, same order)
+    // so a UI index-pairs them safely for the clone action.
+    const sharedItems = outfit.itemIds
+      .map((id) => ({ id, name: itemName.get(id) }))
+      .filter((x) => x.name);
     const post = {
       id: fsId("fp"), ownerId: userId, outfitId: outfit.id,
       caption: fsClean(params.caption, 280) || outfit.name,
       occasion: outfit.occasion, season: outfit.season,
-      itemNames: outfit.itemIds.map((id) => itemName.get(id)).filter(Boolean),
+      itemNames: sharedItems.map((x) => x.name),
+      itemIds: sharedItems.map((x) => x.id),
       photo: fsClean(params.photo, 500) || null,
       likedBy: [], savedBy: [], createdAt: fsNow(),
     };
@@ -894,12 +908,25 @@ export default function registerFashionActions(registerLensAction) {
     if (params.mine === true) posts = posts.filter((p) => p.ownerId === userId);
     if (params.savedOnly === true) posts = posts.filter((p) => p.savedBy.includes(userId));
     if (params.occasion) posts = posts.filter((p) => p.occasion === String(params.occasion).toLowerCase());
+    // Friends-scoped feed (fashion-capability-map.md #16 — "Social feed is
+    // global, not friends-scoped"). Piggybacks on Concord's real friend
+    // graph (server/lib/friendships.js) exactly the way timeline.js's
+    // friends-tier post-privacy gate already does — never a client-
+    // supplied friend list. No db handle available (should not happen
+    // outside a misconfigured caller) fails CLOSED to an honest empty
+    // feed; it never silently falls back to showing everyone's posts.
+    let friendsOnly = false;
+    if (params.friendsOnly === true) {
+      friendsOnly = true;
+      const friendIds = ctx?.db ? new Set(listFriends(ctx.db, userId).map((f) => f.friendUserId)) : new Set();
+      posts = posts.filter((p) => friendIds.has(p.ownerId));
+    }
     if (sort === "popular") posts.sort((a, b) => (b.likedBy.length + b.savedBy.length) - (a.likedBy.length + a.savedBy.length));
     else posts.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     const limit = Math.max(1, Math.min(60, Math.round(Number(params.limit) || 30)));
     return {
       ok: true,
-      result: { posts: posts.slice(0, limit).map((p) => communityPostView(p, userId)), count: posts.length },
+      result: { posts: posts.slice(0, limit).map((p) => communityPostView(p, userId)), count: posts.length, friendsOnly },
     };
   });
   registerLensAction("fashion", "social-like", (ctx, _a, params = {}) => {
@@ -930,6 +957,60 @@ export default function registerFashionActions(registerLensAction) {
     s.communityPosts.splice(i, 1);
     saveFashionState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── [E] Social clone — "clone this item straight into my closet" ────
+  // Whering/Stylebook parity gap (fashion-capability-map.md #16, the
+  // other half of the friends-scoped-feed gap above). The community feed
+  // has no per-post privacy tier of its own — social-feed/social-like/
+  // social-save all resolve a post purely by id, with no owner/visibility
+  // check beyond "does it exist" — it's a real GLOBAL feed by design,
+  // exactly per the capability-map's "give a real global community feed"
+  // finding. So "is this item visible to the caller" mirrors that same
+  // model rather than inventing a new permission tier: any post + item
+  // still reachable through the existing feed can be cloned (the
+  // globally-shared case). `viaFriend` below additionally records,
+  // informationally only, whether the source is a confirmed friend via
+  // the real friend graph — never used to grant or deny the clone itself.
+  //
+  // Cloning reuses buildWardrobeItem — the ONE shared item constructor
+  // (see its header comment; already used by item-add and
+  // wishlist-convert-to-item) — as its THIRD caller, so the result is a
+  // genuine independent item in the caller's own closet: a fresh id,
+  // fresh createdAt, timesWorn reset to 0, laundryStatus reset to
+  // "clean". Nothing here mutates the friend's original item, and
+  // nothing on the clone references it except the informational
+  // `clonedFrom` provenance stamp.
+  registerLensAction("fashion", "social-clone-item", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const post = s.communityPosts.find((p) => p.id === params.postId);
+    if (!post) return { ok: false, error: "post not found" };
+    const itemId = String(params.itemId || "");
+    if (!itemId || !(post.itemIds || []).includes(itemId)) {
+      return { ok: false, error: "item was not part of this shared outfit" };
+    }
+    const sourceItem = findItem(s, post.ownerId, itemId);
+    if (!sourceItem) return { ok: false, error: "item no longer exists in that closet" };
+    const clone = buildWardrobeItem({
+      name: sourceItem.name,
+      category: sourceItem.category,
+      brand: sourceItem.brand,
+      color: sourceItem.color,
+      season: sourceItem.season,
+      cost: sourceItem.cost,
+      photo: sourceItem.photo,
+    });
+    if (!clone) return { ok: false, error: "clone failed" };
+    clone.clonedFrom = {
+      postId: post.id,
+      ownerId: post.ownerId,
+      itemId: sourceItem.id,
+      viaFriend: ctx?.db ? areFriends(ctx.db, post.ownerId, userId) : false,
+    };
+    fsListB(s.items, userId).push(clone);
+    saveFashionState();
+    return { ok: true, result: { item: itemView(clone) } };
   });
 
   // ── [S] Capsule-wardrobe planner + #30wears challenge tracking ──────
