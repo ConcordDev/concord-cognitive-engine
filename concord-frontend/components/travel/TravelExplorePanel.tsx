@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Star, Bookmark, ChevronLeft } from 'lucide-react';
+import { Loader2, Plus, Star, Bookmark, ChevronLeft, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +38,8 @@ export function TravelExplorePanel() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [myRating, setMyRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -50,11 +52,29 @@ export function TravelExplorePanel() {
 
   const open = async (p: Place) => {
     setSelected(p);
+    setConfirmingDelete(false);
+    setDeleteError(null);
     const r = await lensRun('travel', 'place-detail', { id: p.id });
     if (r.data?.ok !== false) {
       setSelected((r.data?.result?.place as Place) || p);
       setReviews(r.data?.result?.reviews || []);
     }
+  };
+  // `place-delete` is contributor-gated server-side (addedBy must match the
+  // caller) — the server is the ownership authority, so the button is always
+  // offered and a non-contributor sees the server's real rejection, never a
+  // client-side guess.
+  const deletePlace = async () => {
+    if (!selected) return;
+    const r = await lensRun('travel', 'place-delete', { id: selected.id });
+    if (r.data?.ok === false) {
+      setDeleteError(r.data?.error || 'Could not remove this place.');
+      setConfirmingDelete(false);
+      return;
+    }
+    setSelected(null);
+    setConfirmingDelete(false);
+    await refresh();
   };
   const addPlace = async () => {
     if (!form.name.trim()) { setError('Place name is required.'); return; }
@@ -100,15 +120,35 @@ export function TravelExplorePanel() {
                 {selected.priceLevel > 0 ? ` · ${'$'.repeat(selected.priceLevel)}` : ''}
               </p>
             </div>
-            <button aria-label="Save" type="button" onClick={() => save(selected)}
-              className={cn('p-1.5 rounded-lg', selected.saved ? 'text-sky-400' : 'text-zinc-600 hover:text-sky-400')}>
-              <Bookmark className={cn('w-4 h-4', selected.saved && 'fill-sky-400')} />
-            </button>
+            <div className="flex items-center">
+              <button aria-label="Save" type="button" onClick={() => save(selected)}
+                className={cn('p-1.5 rounded-lg', selected.saved ? 'text-sky-400' : 'text-zinc-600 hover:text-sky-400')}>
+                <Bookmark className={cn('w-4 h-4', selected.saved && 'fill-sky-400')} />
+              </button>
+              <button aria-label="Remove place" type="button" onClick={() => setConfirmingDelete(true)}
+                className="p-1.5 rounded-lg text-zinc-600 hover:text-rose-400">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2 mt-1">
             <Stars rating={selected.rating} />
             <span className="text-[11px] text-zinc-400">{selected.rating || 'unrated'} · {selected.reviewCount} reviews</span>
           </div>
+          {confirmingDelete && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2">
+              <span className="text-xs text-rose-300">Remove this place and its reviews? Only the contributor can.</span>
+              <button type="button" onClick={deletePlace}
+                className="text-xs px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white">Remove</button>
+              <button type="button" onClick={() => setConfirmingDelete(false)}
+                className="text-xs px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">Keep</button>
+            </div>
+          )}
+          {deleteError && (
+            <div role="alert" className="mt-2 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">
+              {deleteError}
+            </div>
+          )}
         </div>
 
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
