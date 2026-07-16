@@ -114,10 +114,20 @@ group" action, not part of `/lenses/lfg`) — fetches `GET /api/lfg?worldId=…`
 `/api/lfg/:lfgId/invite` are registered), so that panel's fetch will 404.
 This is a real defect but lives in a different file/surface than the one
 this task scoped (the `/lenses/lfg` page itself is unaffected — it correctly
-calls `/api/lfg/open`). Flagging for a separate, small follow-up fix
-(`LFGBoardPanel.tsx:52` — change `/api/lfg?` to `/api/lfg/open?`), not
-addressed in this verify-pass per the task's small-scope guidance (this
-lives outside the audited lens's own files).
+calls `/api/lfg/open`). ~~Flagging for a separate, small follow-up fix~~
+**FIXED (2026-07-12, `977aaab0`, Wave 4)** — and the defect turned out to
+run deeper than the one flagged line: the panel's POST also hit a
+nonexistent bare `/api/lfg` (real route `/api/lfg/post`), the posted
+`partySize` body field was never read by `postLfg` (it reads
+`partyMaxSize` + `partyType` — party sizes above 8 now honestly post as
+raids instead of being silently clamped to 8 server-side), and the panel's
+row interface expected snake_case fields (`user_id`/`party_size`) where
+`listOpenLfg` returns camelCase aliases — so even with the URL fixed, a
+non-empty list would have crashed on `user_id` access. All four seams
+fixed against the real server contracts and pinned by
+`tests/components/LFGBoardPanelWiring.test.tsx` (3/3 — list via
+`/api/lfg/open` + real camelCase render, post body contract incl. the
+raid rule, and a bare-`/api/lfg`-never-touched guard).
 
 ## Verification run
 
