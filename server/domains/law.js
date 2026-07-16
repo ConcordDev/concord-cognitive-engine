@@ -1159,6 +1159,141 @@ export default function registerLawActions(registerLensAction) {
     };
   });
 
+  // ─── Deeper trend analytics (closes law-capability-map.md's Ironclad gap:
+  // cycle-time-to-signature / renewal-rate-over-time / spend-by-counterparty
+  // trend lines) ───
+  // A SEPARATE macro from contract-dashboard (rather than additive fields on
+  // it) — the dashboard is a cheap point-in-time tally called on every
+  // refresh; trend computation walks every contract's signatures +
+  // obligations and is naturally heavier, so it's a distinct opt-in call the
+  // UI fires once per panel-open instead of on every dashboard poll.
+  // Every number below is derived from real contract/obligation fields
+  // (createdAt, signatures[].signedAt, value, counterparty, obligations
+  // kind='renewal' done/dueDate) — nothing here is fabricated or estimated.
+  // Each bucket carries its own `hasData` (real data exists) and, where a
+  // "trend" implies change over time, `hasTrend` (>=2 distinct periods) so
+  // the caller can render an honest "not enough data yet" state instead of
+  // a misleading single-point line — the same discipline as
+  // `dx-platform.issueTrend`'s 0/1-snapshot honesty.
+  function _lwMonthKey(iso) {
+    const t = new Date(iso);
+    if (Number.isNaN(t.getTime())) return null;
+    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  const _lwRound2 = (n) => Math.round(n * 100) / 100;
+
+  registerLensAction("law", "contract-trends", (ctx, _a, _params = {}) => {
+  try {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cs = lwList(s, lwActor(ctx));
+
+    // ---- Cycle-time-to-signature: createdAt → first signatures[].signedAt,
+    // only for contracts that actually have >=1 signature. ----
+    const cycleSamples = [];
+    for (const c of cs) {
+      if (!Array.isArray(c.signatures) || c.signatures.length === 0) continue;
+      const created = new Date(c.createdAt).getTime();
+      if (Number.isNaN(created)) continue;
+      let firstSigned = null;
+      for (const sig of c.signatures) {
+        const t = new Date(sig.signedAt).getTime();
+        if (!Number.isNaN(t) && (firstSigned === null || t < firstSigned)) firstSigned = t;
+      }
+      if (firstSigned === null) continue;
+      const days = (firstSigned - created) / 86400000;
+      if (days >= 0) cycleSamples.push({ contractId: c.id, contractTitle: c.title, days: _lwRound2(days) });
+    }
+    let cycleTime = { hasData: false, count: 0, avgDays: null, medianDays: null, minDays: null, maxDays: null, samples: [] };
+    if (cycleSamples.length > 0) {
+      const sorted = [...cycleSamples].sort((a, b) => a.days - b.days);
+      const nums = sorted.map((x) => x.days);
+      const sum = nums.reduce((a, b) => a + b, 0);
+      const mid = Math.floor(nums.length / 2);
+      const median = nums.length % 2 === 0 ? (nums[mid - 1] + nums[mid]) / 2 : nums[mid];
+      cycleTime = {
+        hasData: true,
+        count: nums.length,
+        avgDays: _lwRound2(sum / nums.length),
+        medianDays: _lwRound2(median),
+        minDays: nums[0],
+        maxDays: nums[nums.length - 1],
+        samples: sorted,
+      };
+    }
+
+    // ---- Spend-by-counterparty-by-month: group value by counterparty x
+    // month-of-createdAt. ----
+    const spendByMonth = new Map(); // month -> (counterparty -> value)
+    const counterpartyTotals = new Map();
+    for (const c of cs) {
+      const m = _lwMonthKey(c.createdAt);
+      if (!m) continue;
+      const cp = c.counterparty || "Unspecified";
+      if (!spendByMonth.has(m)) spendByMonth.set(m, new Map());
+      const byCp = spendByMonth.get(m);
+      byCp.set(cp, (byCp.get(cp) || 0) + c.value);
+      counterpartyTotals.set(cp, (counterpartyTotals.get(cp) || 0) + c.value);
+    }
+    const spendMonths = [...spendByMonth.keys()].sort();
+    // Cap series count so the chart stays readable; rank by total spend.
+    const MAX_COUNTERPARTY_SERIES = 8;
+    const spendCounterparties = [...counterpartyTotals.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, MAX_COUNTERPARTY_SERIES)
+      .map(([name]) => name);
+    let spendTrend = { hasData: false, hasTrend: false, months: [], counterparties: [], series: [] };
+    if (spendMonths.length > 0 && spendCounterparties.length > 0) {
+      const series = spendMonths.map((m) => {
+        const row = { month: m };
+        const byCp = spendByMonth.get(m) || new Map();
+        for (const cp of spendCounterparties) row[cp] = byCp.get(cp) || 0;
+        return row;
+      });
+      spendTrend = {
+        hasData: true,
+        hasTrend: spendMonths.length >= 2,
+        months: spendMonths,
+        counterparties: spendCounterparties,
+        series,
+      };
+    }
+
+    // ---- Renewal-rate-by-month: kind='renewal' obligations, completed vs
+    // total bucketed by due month. ----
+    const renewalByMonth = new Map(); // month -> { total, completed }
+    for (const c of cs) {
+      for (const ob of c.obligations || []) {
+        if (ob.kind !== "renewal") continue;
+        const m = _lwMonthKey(ob.dueDate);
+        if (!m) continue;
+        if (!renewalByMonth.has(m)) renewalByMonth.set(m, { total: 0, completed: 0 });
+        const bucket = renewalByMonth.get(m);
+        bucket.total += 1;
+        if (ob.done) bucket.completed += 1;
+      }
+    }
+    const renewalMonths = [...renewalByMonth.keys()].sort();
+    let renewalTrend = { hasData: false, hasTrend: false, series: [] };
+    if (renewalMonths.length > 0) {
+      renewalTrend = {
+        hasData: true,
+        hasTrend: renewalMonths.length >= 2,
+        series: renewalMonths.map((m) => {
+          const b = renewalByMonth.get(m);
+          return {
+            month: m,
+            total: b.total,
+            completed: b.completed,
+            renewalRate: _lwRound2((b.completed / b.total) * 100),
+          };
+        }),
+      };
+    }
+
+    return { ok: true, result: { cycleTime, spendTrend, renewalTrend } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ─── Backlog item 1: Visual contract editor with redline / version diff ───
   // Each contract carries a versions[] array — a snapshot of the full
   // clause text at the moment of save. contract-version-save snapshots,
