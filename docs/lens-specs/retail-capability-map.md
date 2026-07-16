@@ -287,8 +287,36 @@ the honesty invariant these are relabeled as deferred, not faked:
   "Tickets" tab next to Pipeline. Tests: 24 new backend (standalone) +
   all 6 retail backend test files re-run together (206/206, 0
   regressions) + 9 new frontend (`TicketQueuePanel.test.tsx`).
-- **In-store marketing displays** — a persisted display/endcap record
-  (location, budget, impressions, conversions). No macro anywhere.
+- ~~**In-store marketing displays**~~ **BUILT (2026-07-16, `3f0dfc3d`) —
+  Wave 4 larger-unit build.** New `displays-list`/`displays-upsert`/
+  `displays-status-move`/`displays-log-impressions`/
+  `displays-record-conversion`/`displays-delete` macro family: a real
+  physical-merchandising record (`displayType` enum — endcap/window/
+  checkout-counter/floor-display/shelf-talker/promotional-table —
+  validated, unknown rejected), genuinely distinct from the pre-existing
+  digital `campaigns-*` family (email/SMS sends) rather than a
+  duplicate. `productSkus` validated against the real product catalog
+  (`s.products`), not free text. A `planned→active→removed` lifecycle
+  with an auditable `statusHistory` (mirrors deals'/tickets' pattern),
+  `removed` a locked terminal requiring `reopen: true` back into an
+  open status. Two honesty design points carried through from the
+  sibling units: impressions are a MANUALLY LOGGED, accumulating count
+  (`displays-log-impressions`, deliberately named "log" not "track" —
+  no automated foot-traffic sensor exists anywhere in Concord), and
+  conversions mirror `campaigns-record-conversion`'s existing discipline
+  exactly — `displays-record-conversion` requires a real `orderId` that
+  exists in the caller's own order book (`s.orders`), rejects an
+  unknown/fake id, and guards double-attribution via
+  `attributedOrderIds`. `revenuePerBudgetDollar` is honestly `null`
+  (never `Infinity`/`NaN`) whenever budget is 0, both per-display and in
+  the aggregate rollup. New `DisplaysPanel.tsx`: a real merchandising
+  board with status filters, a create form, a log-impressions quick
+  action, and a record-conversion flow gated on picking a real order via
+  `orders-list`. Mounted as a new "Displays" tab next to Tickets. Tests:
+  42 new backend + all 7 retail backend test files re-run together
+  (248/248, 0 regressions) + 12 new frontend + 33/33 combined retail
+  frontend regression (`PipelinePanel`/`TicketQueuePanel`/
+  `DisplaysPanel`/`retail-lens-states`).
 - **Richer product schema** — variants (size/color/style sub-SKUs), price-
   change history, supplier + lead-time fields, daily-sales-rate/turnover-
   rate for ABC-analysis-style inventory forecasting. The real
