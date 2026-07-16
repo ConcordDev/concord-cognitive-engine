@@ -34136,7 +34136,7 @@ try {
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
 import registerHelpersExtendedRoutes from "./routes/helpers-extended.js";
-try { registerHelpersExtendedRoutes(app, { db, requireAuth, STATE, structuredLog }); } catch (e) { structuredLog("warn", "helpers_extended_routes_skip", { error: e.message }); }
+try { registerHelpersExtendedRoutes(app, { db, requireAuth, requireRole, STATE, structuredLog }); } catch (e) { structuredLog("warn", "helpers_extended_routes_skip", { error: e.message }); }
 
 import createMediaRouter from "./routes/media.js";
 try { app.use("/api/media", createMediaRouter({ STATE })); } catch (e) { structuredLog("warn", "media_routes_skip", { error: e.message }); }
