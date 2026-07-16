@@ -535,7 +535,11 @@ export default function registerLawActions(registerLensAction) {
    * `semantic` key is added at all) — existing keyword-search callers are
    * unaffected.
    */
-  registerLensAction("law", "courtlistener-search", async (_ctx, _artifact, params = {}) => {
+  // Named (not anonymous) so `search-alert-check` below can invoke this SAME
+  // handler directly, in-process, with no macro-dispatch round trip — the
+  // alert-check path re-runs the real case-law search, not a re-implementation
+  // of it. See the `search-alert-*` family for the caller.
+  const courtlistenerSearchHandler = async (_ctx, _artifact, params = {}) => {
     const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
     const limit = Math.max(1, Math.min(50, Number(params.limit) || 10));
@@ -589,7 +593,8 @@ export default function registerLawActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-  });
+  };
+  registerLensAction("law", "courtlistener-search", courtlistenerSearchHandler);
 
   /**
    * recap-docket-search — Real federal court DOCKET search via
@@ -632,7 +637,10 @@ export default function registerLawActions(registerLensAction) {
    *           dateAfter?: "YYYY-MM-DD", dateBefore?: "YYYY-MM-DD", limit?: 1-50 }
    * requires query OR docketNumber.
    */
-  registerLensAction("law", "recap-docket-search", async (_ctx, _artifact, params = {}) => {
+  // Named for the same reason as courtlistenerSearchHandler above —
+  // `search-alert-check` calls this SAME handler directly for docket-type
+  // alerts, in-process, no macro-dispatch round trip.
+  const recapDocketSearchHandler = async (_ctx, _artifact, params = {}) => {
     const query = String(params.query || "").trim();
     const docketNumber = String(params.docketNumber || "").trim();
     if (!query && !docketNumber) return { ok: false, error: "query or docketNumber required" };
@@ -695,7 +703,8 @@ export default function registerLawActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-  });
+  };
+  registerLensAction("law", "recap-docket-search", recapDocketSearchHandler);
 
   /**
    * recap-docket-documents — page a single docket's full RECAP document
@@ -765,6 +774,7 @@ export default function registerLawActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.lawLens) STATE.lawLens = {};
     if (!(STATE.lawLens.contracts instanceof Map)) STATE.lawLens.contracts = new Map();
+    if (!(STATE.lawLens.searchAlerts instanceof Map)) STATE.lawLens.searchAlerts = new Map();
     return STATE.lawLens;
   }
   function saveLaw() {
@@ -777,6 +787,7 @@ export default function registerLawActions(registerLensAction) {
   const lwActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const lwClean = (v, max = 280) => String(v == null ? "" : v).trim().slice(0, max);
   const lwList = (s, userId) => { if (!s.contracts.has(userId)) s.contracts.set(userId, []); return s.contracts.get(userId); };
+  const lwAlerts = (s, userId) => { if (!s.searchAlerts.has(userId)) s.searchAlerts.set(userId, []); return s.searchAlerts.get(userId); };
 
   const CONTRACT_TYPES = ["nda", "services", "employment", "license", "lease", "sale", "partnership", "other"];
   const CONTRACT_STATUSES = ["draft", "in_review", "sent", "signed", "active", "expired", "terminated"];
@@ -1637,6 +1648,205 @@ export default function registerLawActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // ─── Backlog item: Saved search alerts (search / docket alerts) ───
+  // Closes docs/WAVE4_INVENTORY.md row 219 / law-capability-map.md's
+  // "GENUINELY MISSING — no persistence/notification substrate for saved
+  // searches" gap. Triaged ENGINEERING (per CLAUDE.md's gap-closure
+  // triage classes): the real external data source already exists
+  // (CourtListener, wired above as courtlistener-search / recap-docket-
+  // search) — what was missing is Concord-side persistence + a "what's
+  // new since I last looked" diff. No new external dependency needed.
+  //
+  // READ BEFORE EXTENDING — what this family honestly does and does not do:
+  //
+  //   1. NO background delivery. This domain's contracts/alerts substrate
+  //      is a per-user IN-MEMORY STATE.lawLens map (same shape as the
+  //      `contracts` map above) — not a DB table on the heartbeat-registry
+  //      dispatch this project's CLAUDE.md documents for per-world/global
+  //      cron work. A heartbeat COULD technically iterate every user's
+  //      alerts on a timer, but there is no notification channel (no
+  //      push/email/toast wired for this lens) to actually tell a user
+  //      "new results landed" once such a sweep ran — it would just
+  //      silently consume the "new" flag before anyone saw it, which is
+  //      WORSE than no automation: the user's next manual "Check now"
+  //      would then dishonestly report nothing new. So this is
+  //      deliberately left MANUAL-CHECK-ONLY: `search-alert-check` runs
+  //      only when explicitly called (the frontend's "Check now" button
+  //      today; a future scheduled job could call the exact same macro
+  //      once a real delivery channel exists, without changing this
+  //      contract one bit).
+  //   2. `search-alert-check` calls the REAL underlying handler in-process
+  //      — literally the same function `law.courtlistener-search` /
+  //      `law.recap-docket-search` run (courtlistenerSearchHandler /
+  //      recapDocketSearchHandler, captured above). A network/API failure
+  //      surfaces as `{ ok:false, error }` and is NEVER papered over as a
+  //      fabricated "0 new results" — on failure, `lastSeenResultIds` /
+  //      `lastCheckedAt` are left untouched so a transient CourtListener
+  //      outage can't silently eat real novelty from the next successful
+  //      check's diff.
+  //   3. Only two alert types exist: `case_law` (re-runs
+  //      courtlistener-search) and `docket` (re-runs recap-docket-search).
+  //      A third "citation" type was considered (the WAVE4_INVENTORY row's
+  //      own phrasing says "search/docket/citation alerts") but there is
+  //      no DISTINCT real "citation search" macro in this file to re-run —
+  //      CourtListener citation lookups ARE case-law opinion search (the
+  //      same `/search/?type=o` endpoint, just with a citation string as
+  //      the query text). Rather than fabricate a third type that secretly
+  //      aliases the first, this family exposes only the two genuinely
+  //      distinct underlying searches. Watching a citation is achievable
+  //      today as a `case_law` alert whose `query` IS the citation string.
+  const SEARCH_ALERT_TYPES = ["case_law", "docket"];
+
+  // Pull the stable per-item id a search handler's result carries, keyed by
+  // alert type — courtlistener-search results key on `id` (opinion id),
+  // recap-docket-search results key on `docketId`.
+  function alertResultId(alertType, item) {
+    if (alertType === "docket") return item?.docketId != null ? String(item.docketId) : null;
+    return item?.id != null ? String(item.id) : null;
+  }
+
+  registerLensAction("law", "search-alert-add", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const query = lwClean(params.query, 300);
+    if (!query) return { ok: false, error: "query required" };
+    // Unknown alertType silently falls back to "case_law" — same convention
+    // this file already uses for contract `type` (unknown → "other").
+    const alertType = SEARCH_ALERT_TYPES.includes(params.alertType) ? params.alertType : "case_law";
+    const alert = {
+      id: lwId("alt"),
+      query,
+      alertType,
+      label: lwClean(params.label, 160) || query,
+      // Optional passthrough filters — only fields the two real handlers
+      // (courtlistenerSearchHandler / recapDocketSearchHandler) read.
+      court: lwClean(params.court, 40) || null,
+      dateAfter: lwClean(params.dateAfter, 30) || null,
+      dateBefore: lwClean(params.dateBefore, 30) || null,
+      docketNumber: alertType === "docket" ? (lwClean(params.docketNumber, 60) || null) : null,
+      // Informational only (see the honesty note above the alert family) —
+      // nothing reads this field to schedule anything. Stored purely so the
+      // UI can echo the user's stated cadence preference back to them.
+      checkInterval: lwClean(params.checkInterval || params.frequency, 40) || "manual",
+      lastSeenResultIds: [],
+      lastCheckedAt: null,
+      lastCheckTotalResults: null,
+      checkCount: 0,
+      createdAt: lwNow(),
+      updatedAt: lwNow(),
+    };
+    lwAlerts(s, lwActor(ctx)).push(alert);
+    saveLaw();
+    return { ok: true, result: { alert } };
+  });
+
+  registerLensAction("law", "search-alert-list", (ctx, _a, _params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const alerts = [...lwAlerts(s, lwActor(ctx))].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const now = Date.now();
+    const shaped = alerts.map((a) => ({
+      id: a.id, query: a.query, alertType: a.alertType, label: a.label,
+      court: a.court, dateAfter: a.dateAfter, dateBefore: a.dateBefore, docketNumber: a.docketNumber,
+      checkInterval: a.checkInterval,
+      lastCheckedAt: a.lastCheckedAt,
+      neverChecked: !a.lastCheckedAt,
+      hoursSinceLastCheck: a.lastCheckedAt ? Math.round((now - new Date(a.lastCheckedAt).getTime()) / 3600000) : null,
+      lastCheckTotalResults: a.lastCheckTotalResults,
+      seenResultCount: (a.lastSeenResultIds || []).length,
+      checkCount: a.checkCount || 0,
+      createdAt: a.createdAt,
+    }));
+    return { ok: true, result: { alerts: shaped, count: shaped.length } };
+  });
+
+  registerLensAction("law", "search-alert-remove", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lwAlerts(s, lwActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "alert not found" };
+    arr.splice(i, 1);
+    saveLaw();
+    return { ok: true, result: { removed: params.id } };
+  });
+
+  // search-alert-check — THE core piece. Re-runs the alert's saved query
+  // against the REAL underlying CourtListener handler (in-process, same
+  // function the standalone macro runs — see the family header comment for
+  // why this is a direct call, not a fabricated re-implementation), diffs
+  // the fresh result-id set against `lastSeenResultIds` from the previous
+  // successful check, and reports what's genuinely new. Manual/on-demand
+  // only — see point 1 in the family header comment.
+  registerLensAction("law", "search-alert-check", async (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const alert = lwAlerts(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!alert) return { ok: false, error: "alert not found" };
+
+    const searchParams = { query: alert.query, limit: 20 };
+    if (alert.court) searchParams.court = alert.court;
+    if (alert.dateAfter) searchParams.dateAfter = alert.dateAfter;
+    if (alert.dateBefore) searchParams.dateBefore = alert.dateBefore;
+    if (alert.alertType === "docket" && alert.docketNumber) searchParams.docketNumber = alert.docketNumber;
+
+    const virtualArtifact = { id: null, data: {}, meta: {} };
+    let searchResult;
+    try {
+      searchResult = alert.alertType === "docket"
+        ? await recapDocketSearchHandler(ctx, virtualArtifact, searchParams)
+        : await courtlistenerSearchHandler(ctx, virtualArtifact, searchParams);
+    } catch (e) {
+      // The two real handlers already catch their own fetch errors and
+      // return {ok:false,...} rather than throwing — this catch is defense
+      // in depth only. Either path is an honest failure, never a
+      // fabricated "0 new results".
+      return { ok: false, error: `search failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    if (!searchResult || searchResult.ok !== true) {
+      // The real search genuinely failed (network down, CourtListener rate
+      // limit, etc). Do NOT touch lastSeenResultIds/lastCheckedAt — a
+      // failed check must never read as "checked, nothing new" to the
+      // caller, and the next successful check must still diff against the
+      // last KNOWN-GOOD baseline, not an emptied one.
+      return { ok: false, error: searchResult?.error || "underlying search failed" };
+    }
+
+    const wasFirstCheck = (alert.checkCount || 0) === 0;
+    const items = Array.isArray(searchResult.result?.results) ? searchResult.result.results : [];
+    const previouslySeen = new Set(alert.lastSeenResultIds || []);
+    const newResults = [];
+    const currentIds = [];
+    for (const item of items) {
+      const rid = alertResultId(alert.alertType, item);
+      if (rid == null) continue;
+      currentIds.push(rid);
+      if (!previouslySeen.has(rid)) newResults.push(item);
+    }
+
+    const checkedAt = lwNow();
+    alert.lastSeenResultIds = currentIds;
+    alert.lastCheckedAt = checkedAt;
+    alert.lastCheckTotalResults = searchResult.result?.totalHits ?? items.length;
+    alert.checkCount = (alert.checkCount || 0) + 1;
+    alert.updatedAt = checkedAt;
+    saveLaw();
+
+    return {
+      ok: true,
+      result: {
+        alertId: alert.id,
+        alertType: alert.alertType,
+        query: alert.query,
+        newResults,
+        newCount: newResults.length,
+        totalResults: items.length,
+        totalHits: searchResult.result?.totalHits ?? null,
+        checkedAt,
+        // First-ever check has no prior baseline, so every fetched result
+        // is reported as "new" by construction — surfaced explicitly so
+        // the UI doesn't read a big first-check count as suspicious.
+        firstCheck: wasFirstCheck,
+      },
+    };
   });
 }
 
