@@ -137,7 +137,7 @@ export default function registerUrbanplanningActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.urbanPlanningLens) STATE.urbanPlanningLens = {};
     const s = STATE.urbanPlanningLens;
-    for (const k of ["scenarios", "parcels", "comments"]) {
+    for (const k of ["scenarios", "parcels", "comments", "projects"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -524,6 +524,157 @@ export default function registerUrbanplanningActions(registerLensAction) {
       c.resolvedAt = upNow();
       saveUpState();
       return { ok: true, result: { comment: c } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Projects — honest permit-status tracking (proposed→approved→built) ─
+  // Closes the "Genuinely missing" gap in
+  // docs/lens-specs/urban-planning-capability-map.md: the prior "Projects"
+  // tab faked this with a client-only artifact store. This is the real
+  // backing macro set. Lifecycle is a HARD-validated enum on
+  // project-status-update (unlike comment-resolve's soft default above)
+  // because a civic project's proposed→approved→built status is a
+  // load-bearing public record, not a stakeholder-comment triage label —
+  // silently coercing an unrecognized status to the wrong stage is a more
+  // serious honesty violation here than it is for `comment-resolve`.
+  const PROJECT_TYPES = [
+    "residential_development", "commercial_development", "mixed_use",
+    "infrastructure", "public_space", "transit", "rezoning", "other",
+  ];
+  // Six-stage lifecycle. The capability-map's own framing names
+  // proposed→approved→built as the minimum arc, but a real civic project
+  // also needs a construction stage (approved projects don't teleport to
+  // built) and two honest non-happy-path terminals — most real projects
+  // that don't get built were DENIED or CANCELLED, not silently stuck.
+  const PROJECT_STATUSES = [
+    "proposed", "approved", "under_construction", "built", "denied", "cancelled",
+  ];
+
+  registerLensAction("urban-planning", "project-add", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const name = upClean(params.name, 200);
+      if (!name) return { ok: false, error: "project name required" };
+      let parcelId = null, parcelApn = null, parcelAddress = null;
+      if (params.parcelId != null && upClean(params.parcelId, 40)) {
+        parcelId = upClean(params.parcelId, 40);
+        const parcels = upList(s.parcels, upAid(ctx));
+        const parcel = parcels.find((p) => p.id === parcelId);
+        if (!parcel) return { ok: false, error: "parcel not found" };
+        parcelApn = parcel.apn;
+        parcelAddress = parcel.address;
+      }
+      const projectType = String(params.projectType || "other").toLowerCase();
+      const now = upNow();
+      const project = {
+        id: upId("proj"),
+        name,
+        description: upClean(params.description, 2000),
+        parcelId,
+        parcelApn,
+        parcelAddress,
+        projectType: PROJECT_TYPES.includes(projectType) ? projectType : "other",
+        budget: Math.max(0, upNum(params.budget, 0)),
+        permitNumber: upClean(params.permitNumber, 80),
+        targetCompletionDate: upClean(params.targetCompletionDate, 30),
+        status: "proposed",
+        statusHistory: [{ status: "proposed", at: now, note: null }],
+        createdAt: now,
+        updatedAt: now,
+      };
+      upList(s.projects, upAid(ctx)).push(project);
+      saveUpState();
+      return { ok: true, result: { project } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("urban-planning", "project-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let projects = upList(s.projects, upAid(ctx));
+      const status = params.status ? String(params.status).toLowerCase() : null;
+      if (status) projects = projects.filter((p) => p.status === status);
+      const projectType = params.projectType ? String(params.projectType).toLowerCase() : null;
+      if (projectType) projects = projects.filter((p) => p.projectType === projectType);
+      const byStatus = {};
+      let totalBudget = 0;
+      for (const p of projects) {
+        byStatus[p.status] = (byStatus[p.status] || 0) + 1;
+        totalBudget += upNum(p.budget, 0);
+      }
+      return {
+        ok: true,
+        result: { projects, count: projects.length, byStatus, totalBudget: round(totalBudget, 2) },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("urban-planning", "project-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = upList(s.projects, upAid(ctx));
+      const project = arr.find((p) => p.id === params.id);
+      if (!project) return { ok: false, error: "project not found" };
+      if (params.name !== undefined) {
+        const name = upClean(params.name, 200);
+        if (!name) return { ok: false, error: "project name required" };
+        project.name = name;
+      }
+      if (params.description !== undefined) project.description = upClean(params.description, 2000);
+      if (params.budget !== undefined) project.budget = Math.max(0, upNum(params.budget, project.budget));
+      if (params.permitNumber !== undefined) project.permitNumber = upClean(params.permitNumber, 80);
+      if (params.targetCompletionDate !== undefined) {
+        project.targetCompletionDate = upClean(params.targetCompletionDate, 30);
+      }
+      project.updatedAt = upNow();
+      saveUpState();
+      return { ok: true, result: { project } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("urban-planning", "project-status-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = upList(s.projects, upAid(ctx));
+      const project = arr.find((p) => p.id === params.id);
+      if (!project) return { ok: false, error: "project not found" };
+      const status = String(params.status || "").toLowerCase();
+      // HARD rejection (unlike comment-resolve's soft default) — see the
+      // section comment above for why this field doesn't tolerate a silent
+      // fallback.
+      if (!PROJECT_STATUSES.includes(status)) {
+        return { ok: false, error: `unrecognized status: ${params.status ?? "(none)"}` };
+      }
+      const note = params.note != null ? upClean(params.note, 500) : null;
+      const now = upNow();
+      project.status = status;
+      project.statusHistory.push({ status, at: now, note });
+      project.updatedAt = now;
+      saveUpState();
+      return { ok: true, result: { project } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("urban-planning", "project-remove", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = upList(s.projects, upAid(ctx));
+      const before = arr.length;
+      const found = arr.some((p) => p.id === params.id);
+      if (!found) return { ok: false, error: "project not found" };
+      s.projects.set(upAid(ctx), arr.filter((p) => p.id !== params.id));
+      saveUpState();
+      return { ok: true, result: { removed: before - s.projects.get(upAid(ctx)).length } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
