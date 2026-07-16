@@ -12,6 +12,23 @@ import { createHash } from "node:crypto";
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
 
+// USPTO PatentsView field → column mapping, shared by the single-field
+// quick-search path and the multi-field boolean query builder below (closes
+// docs/lens-specs/law-capability-map.md's "Combined multi-field boolean
+// query builder" gap — the macro previously accepted exactly one `field` at
+// a time with no combinator, even though PatentsView's own query DSL
+// natively supports `_and`/`_or` of nested clauses).
+const USPTO_FIELD_COLUMN = {
+  title: "patent_title",
+  abstract: "patent_abstract",
+  inventor: "inventor_name_last",
+  assignee: "assignee_organization",
+};
+function _usptoFieldClause(field, value) {
+  const column = USPTO_FIELD_COLUMN[field] || USPTO_FIELD_COLUMN.title;
+  return { _text_phrase: { [column]: value } };
+}
+
 export default function registerLawActions(registerLensAction) {
   /**
    * caseAnalysis
@@ -456,19 +473,51 @@ export default function registerLawActions(registerLensAction) {
    * inventor, assignee.
    *
    * params: { query: string, field?: "title"|"abstract"|"inventor"|"assignee", limit?: 1-100 }
+   *
+   * Advanced mode — combined multi-field boolean query builder (closes
+   * docs/lens-specs/law-capability-map.md's "Combined multi-field boolean
+   * query builder" gap): pass `params.filters: [{ field, value }]` +
+   * optional `params.combinator: "and"|"or"` (default "and") instead of
+   * the single `query`/`field` pair. Each filter reuses the exact same
+   * `_text_phrase` clause the single-field path builds via
+   * `_usptoFieldClause`, wrapped in PatentsView's native `_and`/`_or`
+   * combinator — e.g. two filters combined with "and" produce:
+   *   { _and: [ { _text_phrase: { patent_title: "..." } },
+   *             { _text_phrase: { assignee_organization: "..." } } ] }
+   * Filter rows missing a recognized `field` or an empty/whitespace-only
+   * `value` are dropped; if that leaves zero valid filters, this
+   * byte-identically falls back to the pre-existing single-`query`/`field`
+   * behavior below (honest degrade, never a silent empty query) — so
+   * `filters: []` or `filters: [{field:'bogus', value:''}]` behaves
+   * exactly as if `filters` had never been passed.
    */
   registerLensAction("law", "uspto-patent-search", async (_ctx, _artifact, params = {}) => {
-    const query = String(params.query || "").trim();
-    if (!query) return { ok: false, error: "query required" };
-    const field = ["title", "abstract", "inventor", "assignee"].includes(params.field) ? params.field : "title";
     const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
-    const queryShape = field === "title"
-      ? { _text_phrase: { patent_title: query } }
-      : field === "abstract"
-      ? { _text_phrase: { patent_abstract: query } }
-      : field === "inventor"
-      ? { _text_phrase: { inventor_name_last: query } }
-      : { _text_phrase: { assignee_organization: query } };
+
+    const rawFilters = Array.isArray(params.filters) ? params.filters : [];
+    const validFilters = rawFilters
+      .map((f) => ({
+        field: Object.prototype.hasOwnProperty.call(USPTO_FIELD_COLUMN, f?.field) ? f.field : null,
+        value: String(f?.value || "").trim(),
+      }))
+      .filter((f) => f.field && f.value);
+
+    let query, field, queryShape, combinator = null, filters = null;
+
+    if (validFilters.length > 0) {
+      combinator = params.combinator === "or" ? "or" : "and";
+      const clauses = validFilters.map((f) => _usptoFieldClause(f.field, f.value));
+      queryShape = combinator === "or" ? { _or: clauses } : { _and: clauses };
+      field = "combined";
+      query = validFilters.map((f) => f.value).join(combinator === "or" ? " OR " : " AND ");
+      filters = validFilters;
+    } else {
+      query = String(params.query || "").trim();
+      if (!query) return { ok: false, error: "query required" };
+      field = ["title", "abstract", "inventor", "assignee"].includes(params.field) ? params.field : "title";
+      queryShape = _usptoFieldClause(field, query);
+    }
+
     try {
       const url = `${USPTO_PATENTSVIEW}/patent/?q=${encodeURIComponent(JSON.stringify(queryShape))}&f=${encodeURIComponent(JSON.stringify(["patent_id","patent_title","patent_abstract","patent_date","inventors","assignees"]))}&o=${encodeURIComponent(JSON.stringify({ per_page: limit }))}`;
       const r = await fetch(url);
@@ -486,6 +535,7 @@ export default function registerLawActions(registerLensAction) {
         ok: true,
         result: {
           query, field,
+          ...(filters ? { filters, combinator } : {}),
           patents, count: patents.length,
           totalHits: data.count || data.total_patent_count,
           source: "uspto-patentsview",
