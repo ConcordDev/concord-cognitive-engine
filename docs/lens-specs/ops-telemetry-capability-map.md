@@ -120,22 +120,19 @@ placeholder.
 
 ## Real findings documented, not fixed (with reasoning)
 
-- **`/api/admin/liveness` (mounted via `LivenessPanel`, first panel on the
-  page) uses `requireAuth()` only — not `requireRole(...)`** — every other
-  `/api/admin/*` route on this exact page uses the owner/admin/sovereign/
-  founder role gate. `server/routes/helpers-extended.js:299`'s own comment
-  frames it as "Auth-gated, observe-only" (deliberately, by the look of the
-  comment, distinct from "admin-gated"), and the aggregate business metrics
-  it returns (records-living, conversion rate, K-factor, economy solvency)
-  carry no PII. This reads like an intentional, lower-sensitivity tier
-  rather than an oversight, but it IS inconsistent with the rest of the
-  page's uniform role gate, and it means any logged-in user (not just
-  owner/admin/sovereign/founder) can `curl` this specific operator metric
-  even though the ops-telemetry *page* itself gates its whole render behind
-  the heartbeat-stats 403 check. **Triage: ENGINEERING**, deferred — an
-  auth-level change on a shared route file is a security-relevant edit that
-  deserves dedicated review outside a single-lens rebuild pass, not a
-  same-diff fix.
+- ~~**`/api/admin/liveness` (mounted via `LivenessPanel`, first panel on the
+  page) uses `requireAuth()` only — not `requireRole(...)`**~~ **CLOSED
+  (2026-07-16, `67ed6e90`).** This was a real gap, not intentional lower
+  sensitivity: fixed to `requireRole("owner", "admin", "sovereign",
+  "founder")`, matching every sibling `/api/admin/*` route on this page
+  exactly. Required a one-line companion fix at the route's registration
+  call site in `server.js` (`requireRole` was declared as a parameter but
+  never actually passed in — calling it inside the route file would have
+  thrown synchronously and silently dropped every route registered after it
+  in that file; verified empirically both before and after). A new E2E test
+  independently reproduces the original bug: reverting only the route's
+  middleware turns 2 of 4 assertions red, with the concrete failure being
+  `200` where `403` is now correctly returned for a non-privileged caller.
 - **Inference-cost metering has narrow coverage.** `aggregateInferenceCosts()`
   reads real DB rows and the field shapes are correct, but only 3 call sites
   in the whole codebase (`lib/oracle-brain.js`, `lib/chat-agent.js`,

@@ -120,7 +120,7 @@ hand-off notes and added one correction:
 | `material` | `GET /api/atlas/material` | **GENUINELY MISSING — DEFERRED**, same reasoning as `volume`. (`AtlasResearchView`'s "material" panel is driven from the already-fetched `tile` response's `layers.surface.dominantMaterial`, not a direct call to this endpoint — that's an honest reuse, not a substitute.) |
 | `subsurface` | `GET /api/atlas/subsurface` | **GENUINELY MISSING — DEFERRED**, same reasoning. |
 | `change` | `GET /api/atlas/change` | **GENUINELY MISSING — DELIBERATELY NOT WIRED**, see §0.2. Surfacing this macro's `layers_affected`/`magnitude` fields in a "polished" UI would present self-disclosed-simulated values as measured data, which the honest-by-construction rule forbids. The correct fix is a backend voxel-diff implementation, out of scope for this frontend rebuild. |
-| `query` | `POST` (custom spatial query) | **GENUINELY MISSING — DEFERRED.** A power-user ad-hoc query macro; no frontend caller pre- or post-rebuild. Low priority given the empty substrate. |
+| `query` | `POST` (custom spatial query) | **CLOSED (2026-07-16, `a408ad2a`).** Pure frontend-wiring gap — the macro, its `executeSpatialQuery` engine, and the rate-limited REST route were already real. New `SpatialQueryForm` mirrors the backend's own six-case dispatch with a real per-type field set (not a JSON-paste box); the empty substrate now honestly returns zero results per query rather than staying unreachable. |
 | `metrics` | (no route in `atlas.js`; reachable via macro dispatch) | **GENUINELY MISSING — DEFERRED**, same reasoning. |
 
 ### 1d. `server.js` inline "Atlas Signal Cortex" — macro domain `cortex` (9 macros)
