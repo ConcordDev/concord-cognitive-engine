@@ -459,7 +459,7 @@ export default function registerFashionActions(registerLensAction) {
   function getFashionStateExt() {
     const s = getFashionState();
     if (!s) return null;
-    for (const k of ["styleProfiles", "challenges", "capsules", "wishlist"]) {
+    for (const k of ["styleProfiles", "challenges", "capsules", "wishlist", "moodboards"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     if (!Array.isArray(s.communityPosts)) s.communityPosts = [];
@@ -1106,6 +1106,120 @@ export default function registerFashionActions(registerLensAction) {
     arr.splice(idx, 1);
     saveFashionState();
     return { ok: true, result: { item: itemView(item), removedWishlistId: entry.id } };
+  });
+
+  // ── [E] Moodboards — pin inspiration to a canvas ────────────────────
+  // Whering/Stylebook parity gap (docs/lens-specs/fashion-capability-map.md
+  // "No moodboards (pin inspiration to a canvas)"). Distinct from the
+  // existing SaveAsDtuButton "save one item" capability: a moodboard is a
+  // named board holding MANY pinned items, each an external image
+  // reference + optional note + a simple x/y position on a bounded
+  // virtual canvas. Real per-user persistence, same
+  // STATE.fashionLens.moodboards Map-per-user shape as items/outfits/
+  // wishlist/capsules — not client-side useState. Items are embedded
+  // directly on their board (not referenced by id into a separate
+  // top-level Map) because a pin is a freeform external reference, not a
+  // link to another first-class entity the way a lookbook's outfitIds
+  // are — so deleting a board can never leave a dangling item reference.
+  const MOODBOARD_CANVAS_MAX = 1000;
+  const findMoodboard = (s, userId, id) => (s.moodboards.get(userId) || []).find((b) => b.id === id) || null;
+  // Honest validation: reject anything that isn't a real http(s) URL or an
+  // inline data:image URI — never silently accept an empty/garbage pin.
+  function isValidImageRef(v) {
+    const cleaned = fsClean(v, 500);
+    if (!cleaned) return null;
+    return /^(https?:\/\/|data:image\/)/i.test(cleaned) ? cleaned : null;
+  }
+  function moodboardView(b) {
+    return { ...b, itemCount: b.items.length };
+  }
+
+  registerLensAction("fashion", "moodboard-create", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = fsClean(params.name, 120);
+    if (!name) return { ok: false, error: "moodboard name required" };
+    const board = {
+      id: fsId("mb"), name, items: [],
+      createdAt: fsNow(), updatedAt: fsNow(),
+    };
+    fsListB(s.moodboards, fsAid(ctx)).push(board);
+    saveFashionState();
+    return { ok: true, result: { moodboard: moodboardView(board) } };
+  });
+
+  registerLensAction("fashion", "moodboard-list", (ctx, _a, _params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const boards = [...(s.moodboards.get(fsAid(ctx)) || [])]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map(moodboardView);
+    return { ok: true, result: { moodboards: boards, count: boards.length } };
+  });
+
+  registerLensAction("fashion", "moodboard-update", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findMoodboard(s, fsAid(ctx), params.id);
+    if (!board) return { ok: false, error: "moodboard not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "moodboard name cannot be empty" };
+      board.name = n;
+    }
+    board.updatedAt = fsNow();
+    saveFashionState();
+    return { ok: true, result: { moodboard: moodboardView(board) } };
+  });
+
+  registerLensAction("fashion", "moodboard-delete", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.moodboards.get(fsAid(ctx)) || [];
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "moodboard not found" };
+    // Items are embedded on the board, so removing the board removes its
+    // pins in the same splice — no separate cleanup pass, no dangling refs.
+    arr.splice(i, 1);
+    saveFashionState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("fashion", "moodboard-add-item", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const board = findMoodboard(s, userId, params.boardId);
+    if (!board) return { ok: false, error: "moodboard not found" };
+    const imageUrl = isValidImageRef(params.imageUrl);
+    if (!imageUrl) return { ok: false, error: "a valid imageUrl (http(s):// or data:image/...) is required" };
+    // Honest minimal canvas: an explicit x/y position when given (clamped
+    // to the bounded virtual canvas), otherwise a deterministic cascade so
+    // new pins don't stack exactly on top of each other.
+    const idx = board.items.length;
+    const defaultX = (idx * 60) % (MOODBOARD_CANVAS_MAX - 120);
+    const defaultY = Math.floor(idx / 15) * 140;
+    const clamp = (n) => Math.max(0, Math.min(MOODBOARD_CANVAS_MAX, Math.round(n)));
+    const x = Number.isFinite(Number(params.x)) ? clamp(Number(params.x)) : clamp(defaultX);
+    const y = Number.isFinite(Number(params.y)) ? clamp(Number(params.y)) : clamp(defaultY);
+    const pin = {
+      id: fsId("pin"), imageUrl,
+      note: fsClean(params.note, 300) || null,
+      x, y,
+      createdAt: fsNow(),
+    };
+    board.items.push(pin);
+    board.updatedAt = fsNow();
+    saveFashionState();
+    return { ok: true, result: { moodboardId: board.id, item: pin, itemCount: board.items.length } };
+  });
+
+  registerLensAction("fashion", "moodboard-remove-item", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const board = findMoodboard(s, userId, params.boardId);
+    if (!board) return { ok: false, error: "moodboard not found" };
+    const i = board.items.findIndex((p) => p.id === params.itemId);
+    if (i < 0) return { ok: false, error: "pinned item not found" };
+    board.items.splice(i, 1);
+    board.updatedAt = fsNow();
+    saveFashionState();
+    return { ok: true, result: { moodboardId: board.id, deleted: params.itemId, itemCount: board.items.length } };
   });
 
   // feed — ingest real fashion / costume pieces from The Metropolitan
