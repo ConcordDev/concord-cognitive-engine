@@ -12,9 +12,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   RefreshCw, Trash2, HardDrive, AlertTriangle, CheckCircle2,
-  WifiOff, Wifi, Loader2, Plus, FolderTree, Gauge, Clock, GitMerge,
+  WifiOff, Wifi, Loader2, Plus, FolderTree, Gauge, Clock, GitMerge, Download,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { downloadFile } from '@/lib/utils';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 
 const DOMAIN = 'sync';
@@ -33,6 +34,23 @@ interface Device {
   quotaPct: number;
   dtusSynced: number;
   revoked: boolean;
+}
+
+interface ExportPackResult {
+  deviceId: string;
+  scoped: boolean;
+  deviceScopes: string[];
+  note: string;
+  envelope: {
+    spec: string;
+    exported_at: number;
+    creator_id: string;
+    dtus: unknown[];
+    citations: unknown[];
+    hashes: Record<string, string>;
+    counts: { dtus: number; citations: number; economy: number; attachments: number };
+  };
+  counts: { dtus: number; citations: number; economy: number; attachments: number };
 }
 
 interface Conflict {
@@ -176,6 +194,28 @@ export function SyncDashboard() {
       await refresh();
     } else {
       flash(`Sync failed: ${r.data?.error || 'unknown'}`);
+    }
+  };
+
+  const exportPack = async (id: string, label: string) => {
+    setBusy(`export:${id}`);
+    const r = await lensRun<ExportPackResult>(DOMAIN, 'export_pack', { deviceId: id });
+    setBusy(null);
+    if (r.data?.ok && r.data.result) {
+      const res = r.data.result;
+      // Real portable-pack download — the same SHA-256-hashed envelope
+      // `dtu_portability.export` produces, downloaded via the shared
+      // downloadFile helper (Blob + anchor-click). It is the user's FULL
+      // corpus, not filtered to this device's selective-sync scopes (see
+      // `res.note` / `res.scoped`) — never claim a scoped pack we didn't
+      // actually produce.
+      const safeLabel = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'device';
+      const filename = `concord-sync-pack-${safeLabel}-${new Date().toISOString().slice(0, 10)}.json`;
+      downloadFile(JSON.stringify(res.envelope, null, 2), filename, 'application/json');
+      flash(`Downloaded portable pack for "${label}" — ${res.counts.dtus} DTU(s), ${res.counts.citations} citation(s) (full corpus, not device-scoped)`);
+      await refresh();
+    } else {
+      flash(`Export failed: ${r.data?.error || 'unknown'}`);
     }
   };
 
@@ -450,6 +490,15 @@ export function SyncDashboard() {
                         ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         : <RefreshCw className="h-3.5 w-3.5" />}
                       Sync now
+                    </button>
+                    <button
+                      type="button" onClick={() => exportPack(d.id, d.label)} disabled={busy === `export:${d.id}`}
+                      className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700/60 disabled:opacity-50"
+                    >
+                      {busy === `export:${d.id}`
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Download className="h-3.5 w-3.5" />}
+                      Download portable pack
                     </button>
                     <label className="flex items-center gap-1.5 text-xs text-zinc-400">
                       <input
