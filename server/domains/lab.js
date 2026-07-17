@@ -2,6 +2,20 @@
 // Domain actions for laboratory work: experiment design, calibration curves,
 // sample tracking, and assay analysis with quality control.
 
+// Multi-user lab roles/permissions (PI / tech / guest) reuse the existing
+// org/membership substrate (server/lib/world-organizations.js) instead of a
+// new parallel permissions layer — that substrate already has a "lab" org
+// type and 4 member roles. See the LAB_TIER_* mapping below.
+import {
+  createOrganization,
+  getOrganization,
+  joinOrganization,
+  leaveOrganization,
+  getOrgMembers,
+  getOrgsForUser,
+  setMemberRole,
+} from "../lib/world-organizations.js";
+
 export default function registerLabActions(registerLensAction) {
   /**
    * calibrationCurve
@@ -527,8 +541,14 @@ export default function registerLabActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.labLens) STATE.labLens = {};
     const L = STATE.labLens;
-    for (const k of ["notebook", "reagents", "protocols", "plates", "runs", "constructs", "labels"]) {
-      if (!(L[k] instanceof Map)) L[k] = new Map(); // userId -> Array
+    for (const k of [
+      "notebook", "reagents", "protocols", "plates", "runs", "constructs", "labels",
+      // org-shared parallel stores — keyed by orgId instead of userId. Only
+      // ever read/written through requireLabOrgAccess()-gated macros below;
+      // the per-user stores above are untouched when no orgId is supplied.
+      "orgNotebook", "orgReagents", "orgProtocols",
+    ]) {
+      if (!(L[k] instanceof Map)) L[k] = new Map(); // userId -> Array (org* keyed by orgId -> Array)
     }
     return L;
   }
@@ -547,12 +567,182 @@ export default function registerLabActions(registerLensAction) {
   };
   const labFind = (arr, id) => arr.find(x => x.id === id);
 
+  /* ── Multi-user lab roles (PI / tech / guest) ──────────────────────────
+   *
+   * Concord already has a generic organization/membership substrate
+   * (server/lib/world-organizations.js) — ORG_TYPES includes "lab" and
+   * MEMBER_ROLES is [leader, officer, member, apprentice]. Rather than
+   * build a new permissions layer, a "lab" org IS the multi-user lab; this
+   * is the single, one-way tier mapping every gated macro below reads:
+   *
+   *   org role     lab tier   capabilities
+   *   ──────────   ────────   ──────────────────────────────────────────
+   *   leader       pi         read + edit notebook/inventory/protocols
+   *   officer      pi         + manage members (promote/demote)
+   *   member       tech       read + edit notebook/inventory, NOT protocols
+   *   apprentice   guest      read-only everywhere
+   *
+   * Org membership/roster data itself lives entirely in
+   * world-organizations.js — this file never duplicates it, only maps an
+   * org role onto a lab-flavoured tier + capability set.
+   */
+  const LAB_TIER_BY_ORG_ROLE = Object.freeze({ leader: "pi", officer: "pi", member: "tech", apprentice: "guest" });
+  const LAB_ORG_ROLE_BY_TIER = Object.freeze({ pi: "officer", tech: "member", guest: "apprentice" });
+  const LAB_TIER_CAPS = Object.freeze({
+    pi: Object.freeze({ read: true, editNotebook: true, editInventory: true, editProtocols: true, manageMembers: true }),
+    tech: Object.freeze({ read: true, editNotebook: true, editInventory: true, editProtocols: false, manageMembers: false }),
+    guest: Object.freeze({ read: true, editNotebook: false, editInventory: false, editProtocols: false, manageMembers: false }),
+  });
+  function labTierForOrgRole(orgRole) {
+    return LAB_TIER_BY_ORG_ROLE[orgRole] || null;
+  }
+
+  // requireLabOrgAccess — the single gate every org-scoped lab macro calls
+  // before touching org-shared state. Honest failures only, never throws:
+  //   org_not_found / not_a_lab_org / not_a_member / insufficient_role
+  function requireLabOrgAccess(orgId, userId, capKey) {
+    const org = getOrganization(orgId);
+    if (!org) return { ok: false, error: "org_not_found" };
+    if (org.type !== "lab") return { ok: false, error: "not_a_lab_org" };
+    const members = getOrgMembers(orgId);
+    const membership = members.find(m => m.userId === userId);
+    if (!membership) return { ok: false, error: "not_a_member" };
+    const tier = labTierForOrgRole(membership.role) || "guest";
+    const caps = LAB_TIER_CAPS[tier];
+    if (capKey && !caps[capKey]) return { ok: false, error: "insufficient_role" };
+    return { ok: true, tier, orgRole: membership.role, caps, org };
+  }
+
+  // lab.org-create — start a new lab org; caller becomes leader (PI tier).
+  // Thin wrapper over the existing org substrate — no parallel roster.
+  registerLensAction("lab", "org-create", (ctx, _a, params = {}) => {
+    try {
+      const userId = labActor(ctx);
+      const name = labClean(params.name, 160);
+      if (!name) return { ok: false, error: "lab name required" };
+      const result = createOrganization({
+        name,
+        type: "lab",
+        description: labClean(params.description, 2000) || "",
+        leaderId: userId,
+        districtId: params.districtId || null,
+        purpose: labClean(params.purpose, 400) || "",
+      });
+      if (!result.ok) return result;
+      return { ok: true, result: { organization: result.organization, tier: "pi" } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // lab.org-list-mine — every lab org the caller belongs to, with tier.
+  registerLensAction("lab", "org-list-mine", (ctx, _a, _params = {}) => {
+    try {
+      const userId = labActor(ctx);
+      const labs = getOrgsForUser(userId)
+        .map(m => ({ membership: m, org: getOrganization(m.orgId) }))
+        .filter(x => x.org && x.org.type === "lab")
+        .map(x => ({
+          orgId: x.org.id,
+          name: x.org.name,
+          description: x.org.description,
+          memberCount: x.org.memberCount,
+          orgRole: x.membership.role,
+          tier: labTierForOrgRole(x.membership.role) || "guest",
+          createdAt: x.org.createdAt,
+        }));
+      return { ok: true, result: { labs, total: labs.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // lab.org-join — self-service join. Always enters at guest tier
+  // (apprentice) — a joiner can never self-elevate to tech/PI; a PI must
+  // promote them afterward via org-set-role.
+  registerLensAction("lab", "org-join", (ctx, _a, params = {}) => {
+    try {
+      const userId = labActor(ctx);
+      const orgId = labClean(params.orgId, 64);
+      if (!orgId) return { ok: false, error: "orgId required" };
+      const org = getOrganization(orgId);
+      if (!org) return { ok: false, error: "org_not_found" };
+      if (org.type !== "lab") return { ok: false, error: "not_a_lab_org" };
+      const result = joinOrganization(orgId, userId, "apprentice");
+      if (!result.ok) return result;
+      return { ok: true, result: { orgId, orgRole: result.role, tier: "guest" } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // lab.org-leave — leave a lab org. The org leader cannot leave (matches
+  // the underlying org substrate's rule — reused, not reimplemented).
+  registerLensAction("lab", "org-leave", (ctx, _a, params = {}) => {
+    try {
+      const userId = labActor(ctx);
+      const orgId = labClean(params.orgId, 64);
+      if (!orgId) return { ok: false, error: "orgId required" };
+      const result = leaveOrganization(orgId, userId);
+      return result.ok ? { ok: true, result: { orgId } } : result;
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // lab.org-members — roster with roles + lab tiers. Any member (incl.
+  // guest) can view; membership itself is required to view at all.
+  registerLensAction("lab", "org-members", (ctx, _a, params = {}) => {
+    try {
+      const userId = labActor(ctx);
+      const orgId = labClean(params.orgId, 64);
+      if (!orgId) return { ok: false, error: "orgId required" };
+      const gate = requireLabOrgAccess(orgId, userId, null);
+      if (!gate.ok) return gate;
+      const members = getOrgMembers(orgId).map(m => ({
+        userId: m.userId,
+        orgRole: m.role,
+        tier: labTierForOrgRole(m.role) || "guest",
+      }));
+      return {
+        ok: true, result: {
+          orgId, members, total: members.length,
+          callerTier: gate.tier, canManageMembers: gate.caps.manageMembers,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // lab.org-set-role — PI-only (leader/officer). Promotes/demotes a member
+  // between pi/tech/guest, mapped onto officer/member/apprentice. The
+  // founding "leader" role is never assigned through this macro — it can
+  // only be set at org-create time, matching the org substrate.
+  registerLensAction("lab", "org-set-role", (ctx, _a, params = {}) => {
+    try {
+      const userId = labActor(ctx);
+      const orgId = labClean(params.orgId, 64);
+      const targetUserId = labClean(params.userId, 120);
+      const tier = params.tier;
+      if (!orgId || !targetUserId) return { ok: false, error: "orgId and userId required" };
+      if (!LAB_ORG_ROLE_BY_TIER[tier]) return { ok: false, error: "tier must be pi, tech, or guest" };
+      const gate = requireLabOrgAccess(orgId, userId, "manageMembers");
+      if (!gate.ok) return gate;
+      const orgRole = LAB_ORG_ROLE_BY_TIER[tier];
+      const result = setMemberRole(orgId, targetUserId, orgRole, userId);
+      if (!result.ok) return result;
+      return { ok: true, result: { orgId, userId: targetUserId, tier, orgRole: result.role } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   /* ── Electronic Lab Notebook ─────────────────────────────────────────── */
 
   // notebook-create — start a new notebook entry (rich experiment page).
+  // Optional params.orgId scopes the entry into a lab org's SHARED
+  // notebook instead of the caller's personal one; requires editNotebook
+  // (tech/PI). Omitting orgId is byte-identical to the pre-org behavior.
   registerLensAction("lab", "notebook-create", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "notebook", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, "editNotebook");
+        if (!gate.ok) return gate;
+        store = "orgNotebook"; key = orgId;
+      }
       const title = labClean(params.title, 200);
       if (!title) return { ok: false, error: "entry title required" };
       const entry = {
@@ -563,24 +753,34 @@ export default function registerLabActions(registerLensAction) {
         tags: Array.isArray(params.tags) ? params.tags.map(t => labClean(t, 40)).filter(Boolean).slice(0, 16) : [],
         protocolId: labClean(params.protocolId, 64) || null,
         status: "draft", // draft | witnessed | signed
-        author: labActor(ctx),
+        orgId: orgId || null,
+        author: userId,
         signedBy: null, signedAt: null,
         witnessedBy: null, witnessedAt: null,
         revisions: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      labArr(L, "notebook", labActor(ctx)).push(entry);
+      labArr(L, store, key).push(entry);
       saveLab();
       return { ok: true, result: { entry } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  // notebook-list — all notebook entries for the user.
-  registerLensAction("lab", "notebook-list", (ctx, _a, _params = {}) => {
+  // notebook-list — all notebook entries for the user, or (with orgId) the
+  // lab org's shared notebook — any member tier, including guest, may read.
+  registerLensAction("lab", "notebook-list", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
-      const entries = labArr(L, "notebook", labActor(ctx))
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "notebook", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, null);
+        if (!gate.ok) return gate;
+        store = "orgNotebook"; key = orgId;
+      }
+      const entries = labArr(L, store, key)
         .slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
       return {
         ok: true, result: {
@@ -594,11 +794,20 @@ export default function registerLabActions(registerLensAction) {
   });
 
   // notebook-update — edit body/title; keeps a revision snapshot. A
-  // signed page is immutable (GLP requirement) — reject the edit.
+  // signed page is immutable (GLP requirement) — reject the edit. With
+  // orgId, requires editNotebook (guest write attempts are rejected).
   registerLensAction("lab", "notebook-update", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
-      const arr = labArr(L, "notebook", labActor(ctx));
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "notebook", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, "editNotebook");
+        if (!gate.ok) return gate;
+        store = "orgNotebook"; key = orgId;
+      }
+      const arr = labArr(L, store, key);
       const entry = labFind(arr, labClean(params.id, 64));
       if (!entry) return { ok: false, error: "entry not found" };
       if (entry.status === "signed") return { ok: false, error: "signed entries are immutable" };
@@ -614,15 +823,24 @@ export default function registerLabActions(registerLensAction) {
   });
 
   // notebook-sign — author signs (or a witness counter-signs) a page.
-  // role: "author" → status signed; "witness" → records witness.
+  // role: "author" → status signed; "witness" → records witness. With
+  // orgId, requires editNotebook — a guest cannot sign.
   registerLensAction("lab", "notebook-sign", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
-      const arr = labArr(L, "notebook", labActor(ctx));
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "notebook", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, "editNotebook");
+        if (!gate.ok) return gate;
+        store = "orgNotebook"; key = orgId;
+      }
+      const arr = labArr(L, store, key);
       const entry = labFind(arr, labClean(params.id, 64));
       if (!entry) return { ok: false, error: "entry not found" };
       const role = params.role === "witness" ? "witness" : "author";
-      const who = labClean(params.name, 120) || labActor(ctx);
+      const who = labClean(params.name, 120) || userId;
       const now = new Date().toISOString();
       if (role === "witness") {
         entry.witnessedBy = who; entry.witnessedAt = now;
@@ -639,10 +857,20 @@ export default function registerLabActions(registerLensAction) {
 
   /* ── Reagent Inventory ───────────────────────────────────────────────── */
 
-  // inventory-add — register a reagent / consumable lot.
+  // inventory-add — register a reagent / consumable lot. Optional
+  // params.orgId scopes it into the lab org's SHARED inventory (requires
+  // editInventory — tech/PI); omitting orgId is the original per-user path.
   registerLensAction("lab", "inventory-add", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "reagents", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, "editInventory");
+        if (!gate.ok) return gate;
+        store = "orgReagents"; key = orgId;
+      }
       const name = labClean(params.name, 160);
       if (!name) return { ok: false, error: "reagent name required" };
       const item = {
@@ -658,21 +886,32 @@ export default function registerLabActions(registerLensAction) {
         lowThreshold: Math.max(0, labNum(params.lowThreshold)),
         expiry: labClean(params.expiry, 32) || null, // ISO date
         hazard: labClean(params.hazard, 40) || "none",
+        orgId: orgId || null,
+        addedBy: userId,
         createdAt: new Date().toISOString(),
       };
-      labArr(L, "reagents", labActor(ctx)).push(item);
+      labArr(L, store, key).push(item);
       saveLab();
       return { ok: true, result: { item } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  // inventory-list — reagents with computed expiry + low-stock alerts.
-  registerLensAction("lab", "inventory-list", (ctx, _a, _params = {}) => {
+  // inventory-list — reagents with computed expiry + low-stock alerts, or
+  // (with orgId) the lab org's shared inventory — any member tier may read.
+  registerLensAction("lab", "inventory-list", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "reagents", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, null);
+        if (!gate.ok) return gate;
+        store = "orgReagents"; key = orgId;
+      }
       const now = Date.now();
       const DAY = 86400000;
-      const items = labArr(L, "reagents", labActor(ctx)).map(it => {
+      const items = labArr(L, store, key).map(it => {
         let expiryStatus = "ok", daysToExpiry = null;
         if (it.expiry) {
           const t = Date.parse(it.expiry);
@@ -698,10 +937,19 @@ export default function registerLabActions(registerLensAction) {
   });
 
   // inventory-consume — debit/restock a reagent quantity (delta can be ±).
+  // With orgId, requires editInventory — a guest cannot consume/restock.
   registerLensAction("lab", "inventory-consume", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
-      const arr = labArr(L, "reagents", labActor(ctx));
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "reagents", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, "editInventory");
+        if (!gate.ok) return gate;
+        store = "orgReagents"; key = orgId;
+      }
+      const arr = labArr(L, store, key);
       const item = labFind(arr, labClean(params.id, 64));
       if (!item) return { ok: false, error: "reagent not found" };
       const delta = labNum(params.delta);
@@ -716,12 +964,20 @@ export default function registerLabActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  // inventory-remove — delete a reagent record.
+  // inventory-remove — delete a reagent record. With orgId, requires
+  // editInventory — a guest cannot remove.
   registerLensAction("lab", "inventory-remove", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
       const userId = labActor(ctx);
-      const arr = labArr(L, "reagents", userId);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "reagents", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, "editInventory");
+        if (!gate.ok) return gate;
+        store = "orgReagents"; key = orgId;
+      }
+      const arr = labArr(L, store, key);
       const id = labClean(params.id, 64);
       const idx = arr.findIndex(x => x.id === id);
       if (idx === -1) return { ok: false, error: "reagent not found" };
@@ -734,9 +990,21 @@ export default function registerLabActions(registerLensAction) {
   /* ── Protocol / SOP Library ──────────────────────────────────────────── */
 
   // protocol-create — author a protocol with ordered, timed steps.
+  // Optional params.orgId scopes it into the lab org's SHARED SOP library;
+  // requires editProtocols, which ONLY the PI tier has (tech cannot author
+  // protocols — matches the mapping doc above). Omitting orgId is the
+  // original per-user path, unchanged.
   registerLensAction("lab", "protocol-create", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "protocols", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, "editProtocols");
+        if (!gate.ok) return gate;
+        store = "orgProtocols"; key = orgId;
+      }
       const name = labClean(params.name, 200);
       if (!name) return { ok: false, error: "protocol name required" };
       const steps = (Array.isArray(params.steps) ? params.steps : []).map((s, i) => ({
@@ -753,20 +1021,31 @@ export default function registerLabActions(registerLensAction) {
         version: 1,
         steps,
         history: [],
+        orgId: orgId || null,
+        author: userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      labArr(L, "protocols", labActor(ctx)).push(protocol);
+      labArr(L, store, key).push(protocol);
       saveLab();
       return { ok: true, result: { protocol } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  // protocol-list — SOP library with step + duration summary.
-  registerLensAction("lab", "protocol-list", (ctx, _a, _params = {}) => {
+  // protocol-list — SOP library with step + duration summary, or (with
+  // orgId) the lab org's shared SOP library — any member tier may read.
+  registerLensAction("lab", "protocol-list", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
-      const protocols = labArr(L, "protocols", labActor(ctx)).map(p => ({
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "protocols", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, null);
+        if (!gate.ok) return gate;
+        store = "orgProtocols"; key = orgId;
+      }
+      const protocols = labArr(L, store, key).map(p => ({
         ...p,
         stepCount: p.steps.length,
         totalMinutes: p.steps.reduce((s, st) => s + (st.durationMinutes || 0), 0),
@@ -775,11 +1054,20 @@ export default function registerLabActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  // protocol-revise — publish a new version; prior version archived to history.
+  // protocol-revise — publish a new version; prior version archived to
+  // history. With orgId, requires editProtocols (PI-only).
   registerLensAction("lab", "protocol-revise", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
-      const arr = labArr(L, "protocols", labActor(ctx));
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "protocols", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, "editProtocols");
+        if (!gate.ok) return gate;
+        store = "orgProtocols"; key = orgId;
+      }
+      const arr = labArr(L, store, key);
       const p = labFind(arr, labClean(params.id, 64));
       if (!p) return { ok: false, error: "protocol not found" };
       p.history.push({ version: p.version, steps: p.steps, at: p.updatedAt });
@@ -801,10 +1089,21 @@ export default function registerLabActions(registerLensAction) {
   });
 
   // protocol-run — start a step-by-step run; returns a guided run object.
+  // This EXECUTES a protocol without editing its definition, so with orgId
+  // it only requires membership (any tier, including guest, may run it) —
+  // distinct from protocol-create/-revise which are PI-only.
   registerLensAction("lab", "protocol-run", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
-      const arr = labArr(L, "protocols", labActor(ctx));
+      const userId = labActor(ctx);
+      const orgId = params.orgId ? labClean(params.orgId, 64) : null;
+      let store = "protocols", key = userId;
+      if (orgId) {
+        const gate = requireLabOrgAccess(orgId, userId, null);
+        if (!gate.ok) return gate;
+        store = "orgProtocols"; key = orgId;
+      }
+      const arr = labArr(L, store, key);
       const p = labFind(arr, labClean(params.id, 64));
       if (!p) return { ok: false, error: "protocol not found" };
       if (p.steps.length === 0) return { ok: false, error: "protocol has no steps" };

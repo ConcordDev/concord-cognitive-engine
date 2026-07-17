@@ -11,6 +11,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ArxivLabFeed } from '@/components/lab/ArxivLabFeed';
 import { ELNWorkbench } from '@/components/lab/ELNWorkbench';
+import { LabOrgPanel } from '@/components/lab/LabOrgPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -236,6 +237,14 @@ export default function LabLensPage() {
       </div>
 
       <RealtimeDataPanel data={realtimeInsights} />
+
+      {/* Multi-user lab roles/permissions (PI / tech / guest tiers) — reuses
+          the org/roster substrate (server/lib/world-organizations.js) via
+          the additive lab.org-* macros; switches the notebook/inventory
+          view into a lab's shared state instead of the personal one. */}
+      <section className="space-y-2">
+        <LabOrgPanel />
+      </section>
 
       {/* Electronic Lab Notebook + LIMS — Benchling-shaped workbench:
           notebook, reagent inventory, protocol library, plate designer,
