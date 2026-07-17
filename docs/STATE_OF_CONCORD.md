@@ -185,8 +185,10 @@ The ConKay-as-builder + safety + distribution stack, all tested + dark-by-defaul
 
 Core engine ~7 · builder spine ~6 · safety ~6 · distribution wedge ~5 · connectors
 **~6** (Gmail + Google Calendar real two-way as of 2026-06-09; other connectors
-still to wire). **Code-complete and prod-config-correct, sitting at the deploy line.** The
-remaining gate is operational (secrets, a public URL, provider accounts), not
-engineering — see `.env.example` go-live section. The flag posture is
+still to wire). **Deployed and live at [concord-os.org](https://concord-os.org) — deployment is
+proven and repeatable, and real users' requests drive the work.** The remaining
+hardening is about *scale*, not shipping: heavy concurrent load and high-volume
+external traffic are still ahead, and provider-gated features (e.g. some connectors)
+turn on as their secrets are provisioned — see `.env.example` go-live section. The flag posture is
 production-correct: secrets hard-required where loss = compromise, dangerous modes
 prod-blocked, features on, infra/secret-gated features off until provisioned.

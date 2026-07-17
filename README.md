@@ -181,7 +181,7 @@ one economy:
 
 ## Maturity — honest
 
-**Code-complete and prod-config-correct, sitting at the deploy line.** What's left is operational (secrets, a public URL, a GPU host, provider accounts), not engineering — plus the normal first-contact-with-reality pass (it has never met a real user, real Google traffic, or real load). A handful of systems (the Foundation signal-layer, some emergent-civilization systems) are research-grade — built and wired, not battle-tested. *(Full caveats: [`docs/WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md) · [`docs/STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md).)*
+**Deployed and live at [concord-os.org](https://concord-os.org) — deployment is proven and repeatable.** This backlog is built and shipped through that deploy path, and real users' requests drive the work. What's still ahead is *scale*, not shipping: it hasn't yet been hardened against heavy concurrent load or high-volume external/Google traffic. A handful of systems (the Foundation signal-layer, some emergent-civilization systems) are research-grade — built, wired, and running, but not yet stress-proven against the physical world. *(Full caveats: [`docs/WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md) · [`docs/STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md).)*
 
 ---
 

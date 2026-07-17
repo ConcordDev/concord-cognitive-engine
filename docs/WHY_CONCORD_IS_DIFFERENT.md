@@ -123,9 +123,11 @@ Two facts that an audit corrected — both load-bearing for a pitch:
 
 A pitch that hides these gets found out; one that names them gets believed:
 
-- **It is pre-deploy.** Code-complete and prod-config-correct, but it has never met a
-  real user, real Google traffic, real money, or real load at scale. First contact will
-  surface work. (`docs/STATE_OF_CONCORD.md §7`.)
+- **It is live, but not yet hardened at scale.** Deployed and running at
+  [concord-os.org](https://concord-os.org) with real users, and the deploy path is proven
+  and repeatable. What's still ahead is *scale* — heavy concurrent load, high-volume
+  external/Google traffic, and real money movement at volume will surface work.
+  (`docs/STATE_OF_CONCORD.md §7`.)
 - **A handful of systems are research-grade** — the Foundation signal-layer (signal
   tomography, EM-fingerprint identity) and some emergent-civilization systems are built
   and wired but not battle-tested against the physical world. Flagged as such in the
