@@ -465,33 +465,49 @@ export default function registerServicesActions(registerLensAction) {
 
   /* ---- 3. Payment capture at POS ---------------------------------- */
 
+  // Shared money math for the POS quick-capture path AND the real Stripe
+  // PaymentIntent flow below — one formula, so a card charged through Stripe
+  // and a card recorded pay-on-site always land on the same total.
+  function calcPaymentTotals(p) {
+    const subtotal = Math.max(0, Number(p.subtotal ?? p.amount) || 0);
+    if (subtotal <= 0) return { error: "subtotal must be positive" };
+    const tipPct = Math.max(0, Number(p.tipPercent) || 0);
+    const tip = Number(p.tip) > 0 ? Number(p.tip) : Math.round(subtotal * tipPct) / 100;
+    const taxRate = Math.max(0, Number(p.taxRate) || 0);
+    const tax = Math.round(subtotal * taxRate) / 100;
+    const discount = Math.max(0, Number(p.discount) || 0);
+    const total = Math.round((subtotal + tax + tip - discount) * 100) / 100;
+    if (total < 0) return { error: "discount exceeds total" };
+    return { subtotal, tax, tip, discount, total };
+  }
+
   registerLensAction("services", "paymentCapture", (ctx, artifact, params) => {
     try {
       const s = svcStore();
       const userId = svcActor(ctx);
       const p = params || {};
-      const subtotal = Math.max(0, Number(p.subtotal ?? p.amount) || 0);
-      if (subtotal <= 0) return { ok: false, error: "subtotal must be positive" };
-      const tipPct = Math.max(0, Number(p.tipPercent) || 0);
-      const tip = Number(p.tip) > 0 ? Number(p.tip) : Math.round(subtotal * tipPct) / 100;
-      const taxRate = Math.max(0, Number(p.taxRate) || 0);
-      const tax = Math.round(subtotal * taxRate) / 100;
-      const discount = Math.max(0, Number(p.discount) || 0);
-      const total = Math.round((subtotal + tax + tip - discount) * 100) / 100;
-      if (total < 0) return { ok: false, error: "discount exceeds total" };
+      const totals = calcPaymentTotals(p);
+      if (totals.error) return { ok: false, error: totals.error };
+      const { subtotal, tax, tip, discount, total } = totals;
       const method = String(p.method || "card");
       const last4 = String(p.cardLast4 || "").slice(-4);
 
-      // HONEST PAYMENT GATE — card tenders require a real payment processor.
-      // A previous build "captured" any card (declining only a magic last4 of
-      // "0000") with NO processor behind it — a fabricated charge + receipt.
-      // Per "everything must be real" (see domains/retail.js Stripe POS and
-      // domains/healthcare.js copay for the env-gated pattern): Concord never
-      // claims a charge it did not make. This macro receives only a card
-      // last4 — never a confirmable payment token — so even with Stripe
-      // configured it cannot honestly capture; card sales are recorded as
-      // pay-on-site until a client-side Stripe confirmation flow (Elements /
-      // Terminal, like retail's cart-create-payment-intent) is wired here.
+      // HONEST PAYMENT GATE — card tenders through THIS quick-capture macro
+      // never claim a charge. It receives only a card last4 — never a
+      // confirmable payment token — so no matter how Stripe is configured it
+      // cannot honestly capture funds; a previous build "captured" any card
+      // (declining only a magic last4 of "0000") with NO processor behind
+      // it — a fabricated charge + receipt. Per "everything must be real"
+      // (see domains/retail.js Stripe POS and domains/healthcare.js copay
+      // for the env-gated pattern): Concord never claims a charge it did
+      // not make.
+      //
+      // For a REAL card charge, use the two-step client-confirmation flow
+      // below instead: bookingCreatePaymentIntent creates a Stripe
+      // PaymentIntent + returns a client_secret for Stripe Elements to
+      // confirm with the customer's card; bookingConfirmPayment (or the
+      // payment_intent.succeeded webhook) then re-verifies the PaymentIntent
+      // actually reached status:"succeeded" before marking anything paid.
       if (method === "card") {
         const payment = {
           id: svcId("pmt"),
@@ -515,7 +531,7 @@ export default function registerServicesActions(registerLensAction) {
           if (bk) bk.pendingPaymentId = payment.id;
         }
         const note = process.env.STRIPE_SECRET_KEY
-          ? "Stripe is configured, but this POS surface has no client-side card confirmation flow yet — booking recorded without charge; collect payment on site."
+          ? "Stripe is configured — for a real card charge, use services.bookingCreatePaymentIntent + bookingConfirmPayment (Stripe Elements) instead. This entry records the booking without charge; collect payment on site, or use the card-intent flow to actually charge the card."
           : "Card processing not configured — booking recorded without charge. Configure Stripe to enable payments.";
         return {
           ok: true,
@@ -542,6 +558,173 @@ export default function registerServicesActions(registerLensAction) {
       if (payment.bookingId) {
         const bk = svcList(s.bookings, userId).find(b => b.id === payment.bookingId);
         if (bk) { bk.status = "completed"; bk.paymentId = payment.id; }
+      }
+      return { ok: true, result: { payment } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Stripe Elements — real client-confirmation card flow ──
+  //
+  // Clones domains/retail.js's PaymentIntent pattern exactly:
+  //   1. bookingCreatePaymentIntent → server-side POST to Stripe creates a
+  //      PaymentIntent for the booking total. Returns { clientSecret }.
+  //      Frontend mounts Stripe Elements (components/payment/StripePaymentForm)
+  //      to confirm with the customer's card.
+  //   2. bookingConfirmPayment → server re-fetches the PaymentIntent from
+  //      Stripe and verifies status:"succeeded" before flipping the local
+  //      payment + linked booking to paid. Never trusts the client alone.
+  //   3. Webhook payment_intent.succeeded (server/economy/stripe.js,
+  //      concord_purpose==="services_booking" branch) auto-confirms
+  //      async/out-of-band captures the same way, for idempotent safety.
+  //
+  // No synthesized auth codes, no skip-the-network fast path.
+  // STRIPE_SECRET_KEY env required — absent, both macros return an honest
+  // stripe_not_configured error and the paymentCapture pay-on-site path
+  // above remains the fallback.
+
+  async function stripePostServices(path, formBody) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+    const url = `https://api.stripe.com/v1${path}`;
+    const body = new URLSearchParams(formBody).toString();
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${stripeKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Stripe-Version": "2025-09-30.acacia",
+      },
+      body,
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(`stripe ${path} ${r.status}: ${data?.error?.message || "unknown"}`);
+    return data;
+  }
+
+  async function stripeGetServices(path) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+    const url = `https://api.stripe.com/v1${path}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${stripeKey}` } });
+    const data = await r.json();
+    if (!r.ok) throw new Error(`stripe ${path} ${r.status}: ${data?.error?.message || "unknown"}`);
+    return data;
+  }
+
+  registerLensAction("services", "bookingCreatePaymentIntent", async (ctx, artifact, params) => {
+    try {
+      const s = svcStore();
+      const userId = svcActor(ctx);
+      const p = params || {};
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return { ok: false, error: "stripe_not_configured" };
+      }
+      const totals = calcPaymentTotals(p);
+      if (totals.error) return { ok: false, error: totals.error };
+      const { subtotal, tax, tip, discount, total } = totals;
+      const amountCents = Math.round(total * 100);
+      if (amountCents < 50) return { ok: false, error: "amount below Stripe minimum ($0.50 USD)" };
+
+      const bookingId = p.bookingId ? String(p.bookingId) : null;
+      let booking = null;
+      if (bookingId) {
+        booking = svcList(s.bookings, userId).find(b => b.id === bookingId);
+        if (!booking) return { ok: false, error: "booking not found" };
+      }
+
+      // Local payment record created BEFORE the Stripe call so its id can be
+      // stamped into the PaymentIntent metadata for correlation — but it is
+      // only persisted (pushed into s.payments) once Stripe confirms the
+      // PaymentIntent itself was created; a failed create leaves no orphan
+      // "awaiting_confirmation" row behind.
+      const payment = {
+        id: svcId("pmt"),
+        receiptNumber: `RCP-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+        client: String(p.client || booking?.client || "Walk-in"),
+        bookingId,
+        staff: String(p.staff || booking?.staff || ""),
+        lineItems: Array.isArray(p.lineItems) ? p.lineItems : [],
+        subtotal, tax, tip, discount, total,
+        method: "card", cardLast4: null,
+        status: "awaiting_confirmation",
+        paymentStatus: "awaiting_confirmation",
+        stripePaymentIntentId: null,
+        capturedAt: null,
+        recordedAt: new Date().toISOString(),
+      };
+
+      try {
+        const formBody = {
+          amount: String(amountCents),
+          currency: "usd",
+          "automatic_payment_methods[enabled]": "true",
+          "metadata[concord_user_id]": userId,
+          "metadata[concord_purpose]": "services_booking",
+          "metadata[concord_payment_id]": payment.id,
+        };
+        if (bookingId) formBody["metadata[concord_booking_id]"] = bookingId;
+        const pi = await stripePostServices("/payment_intents", formBody);
+        payment.stripePaymentIntentId = pi.id;
+        svcList(s.payments, userId).push(payment);
+        if (booking) booking.pendingPaymentId = payment.id;
+        return {
+          ok: true,
+          result: {
+            clientSecret: pi.client_secret,
+            paymentIntentId: pi.id,
+            paymentId: payment.id,
+            subtotal, tax, tip, discount, total,
+            status: pi.status,
+          },
+        };
+      } catch (e) {
+        return { ok: false, error: `stripe payment-intent creation failed: ${e instanceof Error ? e.message : String(e)}` };
+      }
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("services", "bookingConfirmPayment", async (ctx, artifact, params) => {
+    try {
+      const s = svcStore();
+      const userId = svcActor(ctx);
+      const p = params || {};
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return { ok: false, error: "stripe_not_configured" };
+      }
+      const paymentIntentId = String(p.paymentIntentId || "");
+      if (!paymentIntentId) return { ok: false, error: "paymentIntentId required" };
+      const list = svcList(s.payments, userId);
+      const payment = list.find(x => x.stripePaymentIntentId === paymentIntentId);
+      if (!payment) return { ok: false, error: "no pending payment found for this paymentIntentId" };
+      if (payment.status === "captured") {
+        // Idempotent — webhook or a retried confirm click may race the
+        // caller here; already-captured is success, not an error.
+        return { ok: true, result: { payment, alreadyCaptured: true } };
+      }
+
+      // Verify with Stripe — never trust the client about payment status.
+      let pi;
+      try {
+        pi = await stripeGetServices(`/payment_intents/${paymentIntentId}`);
+      } catch (e) {
+        return { ok: false, error: `stripe payment-intent fetch failed: ${e instanceof Error ? e.message : String(e)}` };
+      }
+      if (pi.status !== "succeeded") {
+        return { ok: false, error: `payment not succeeded (status=${pi.status}); cannot mark paid` };
+      }
+      if (pi.metadata?.concord_user_id !== userId || pi.metadata?.concord_payment_id !== payment.id) {
+        return { ok: false, error: "payment-intent metadata mismatch (user/payment)" };
+      }
+
+      payment.status = "captured";
+      payment.paymentStatus = "paid";
+      payment.capturedAt = new Date().toISOString();
+      payment.stripePaymentStatus = pi.status;
+      payment.stripeChargeId = pi.latest_charge || null;
+
+      if (payment.bookingId) {
+        const bk = svcList(s.bookings, userId).find(b => b.id === payment.bookingId);
+        if (bk) { bk.status = "completed"; bk.paymentId = payment.id; delete bk.pendingPaymentId; }
       }
       return { ok: true, result: { payment } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
