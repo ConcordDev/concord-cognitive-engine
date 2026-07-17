@@ -1102,4 +1102,50 @@ describe("Ledger conservation — purchaseArtifact", () => {
       "no CC minted or destroyed"
     );
   });
+
+  it("a remixed DTU-backed asset sale PAYS the royalty_lineage ancestor + conserves (cross-rail bridge)", () => {
+    // royalty_lineage is Increment 1's canonical remix-lineage table
+    // (registerCitation). createTestDb doesn't include it — create + seed here.
+    db.exec(`CREATE TABLE IF NOT EXISTS royalty_lineage (
+      id TEXT PRIMARY KEY, child_id TEXT, parent_id TEXT, generation INTEGER,
+      creator_id TEXT, parent_creator TEXT, created_at TEXT DEFAULT (datetime('now')));`);
+    // creator2 (a funded user) is the remix-parent; creator1 remixes it.
+    db.prepare(`INSERT INTO royalty_lineage (id, child_id, parent_id, generation, creator_id, parent_creator) VALUES (?,?,?,?,?,?)`)
+      .run("rl_1", "remix_dtu_1", "orig_dtu_1", 1, "creator1", "creator2");
+
+    // Publish creator1's remix as a DTU-backed artifact (file_path=dtu://<id>,
+    // price 100). Non-derivative -> the bridge sources ancestors from lineage.
+    const pub = publishArtifact(db, {
+      creatorId: "creator1", type: "beat", title: "Remixed Lagos Beat",
+      description: "A remix sold with usage rights so further remixers everywhere can build on it.",
+      filePath: "dtu://remix_dtu_1", fileSize: 1024, fileHash: "remixhash1",
+      price: 100, creative: { genre: "afrobeats", tags: ["remix"] }, license: { type: "standard" },
+    });
+    assert.ok(pub.ok, JSON.stringify(pub));
+
+    const bal = () => ({
+      buyer: getBalance(db, "buyer1").balance,
+      remixer: getBalance(db, "creator1").balance,
+      ancestor: getBalance(db, "creator2").balance,
+      platform: getBalance(db, PLATFORM_ACCOUNT_ID).balance,
+    });
+    const before = bal();
+    const res = purchaseArtifact(db, { buyerId: "buyer1", artifactId: pub.artifact.id });
+    assert.ok(res.ok, JSON.stringify(res));
+    const after = bal();
+
+    assert.equal(r2(after.buyer - before.buyer), -100, "buyer pays the price");
+    assert.equal(r2(after.platform - before.platform), 5.46, "platform nets exactly the 5.46% fee");
+    assert.ok(after.ancestor - before.ancestor > 0, "the remix-parent (ancestor) is PAID on the sale");
+    assert.equal(
+      r2((after.remixer - before.remixer) + (after.ancestor - before.ancestor)),
+      94.54,
+      "remixer + ancestor split the remaining-after-fees",
+    );
+    assert.equal(
+      r2(before.buyer - after.buyer),
+      r2((after.remixer - before.remixer) + (after.ancestor - before.ancestor) + (after.platform - before.platform)),
+      "no CC minted or destroyed on a remix sale",
+    );
+  });
 });

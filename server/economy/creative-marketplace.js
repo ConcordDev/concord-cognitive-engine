@@ -22,6 +22,7 @@ import { economyAudit } from "./audit.js";
 import { validateBalance } from "./validators.js";
 import { grantLicense as grantDtuLicense } from "./rights-enforcement.js";
 import { validatePricing as validateTierPricing, getTier as getLicenseTier } from "./license-tiers.js";
+import { getAncestorChain } from "./royalty-cascade.js";
 import { batchLookup } from "./_batch-lookup.js";
 import {
   ARTIFACT_TYPES, CREATIVE_MARKETPLACE, CREATIVE_FEDERATION,
@@ -486,10 +487,22 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
   const MAX_ROYALTY_RATE = 0.30;
   const maxRoyaltyPool = Math.round(price * MAX_ROYALTY_RATE * 100) / 100;
 
+  // Cascade source: rail-B's own creative_artifact_derivatives, OR — cross-rail
+  // bridge — a DTU-backed asset's royalty_lineage ancestors (Increment 1's
+  // registerCitation remix lineage), so a remixed asset sold on THIS rail
+  // genuinely pays the remix-parent via the SAME canonical cascade (30% cap,
+  // halving). Mutually exclusive (is_derivative -> derivatives table; a
+  // non-derivative DTU-backed asset -> royalty_lineage); never both, no double-pay.
+  let rawCascade = [];
   if (artifact.is_derivative) {
-    cascadePayments = calculateCascadePayments(db, artifactId, remainingAfterFees);
+    rawCascade = calculateCascadePayments(db, artifactId, remainingAfterFees);
+  } else {
+    const dtuId = _dtuIdFromArtifact(artifact);
+    if (dtuId) rawCascade = _lineageCascadePayments(db, dtuId, remainingAfterFees);
+  }
+  if (rawCascade.length > 0) {
     // Anti-gaming: filter out self-citing (creator earning royalties on their own chain)
-    cascadePayments = cascadePayments.filter(p => p.recipientId !== artifact.creator_id && p.recipientId !== buyerId);
+    cascadePayments = rawCascade.filter(p => p.recipientId !== artifact.creator_id && p.recipientId !== buyerId);
 
     // Apply 30% cap — trim payments from deepest generation first
     cascadePayments.sort((a, b) => a.generation - b.generation); // pay closest ancestors first
@@ -915,6 +928,45 @@ function calculateConcordSplit(db, artifact, remainingAfterFees) {
 // ═══════════════════════════════════════════════════════════════════════════
 // ROYALTY CASCADE CALCULATION
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Cross-rail bridge helpers — a marketplace artifact whose file_path is a
+ * `dtu://<id>` reference (Increment 1 building blueprints + other DTU-backed
+ * assets listed via list-on-marketplace) resolves its ancestors from the
+ * canonical `royalty_lineage` table (populated by registerCitation on remix),
+ * NOT from creative_artifact_derivatives. This is what makes a remixed asset
+ * sold on this rail actually pay the remix-parent per the owner's model.
+ */
+function _dtuIdFromArtifact(artifact) {
+  const fp = artifact?.file_path || "";
+  return fp.startsWith("dtu://") ? fp.slice("dtu://".length) : null;
+}
+
+/**
+ * royalty_lineage-sourced cascade payments, shaped identically to
+ * calculateCascadePayments so both flow through the same filter/cap/ledger
+ * path. Rate is the canonical generational rate from getAncestorChain; amount
+ * is rate × remainingAfterFees (the 30% cap is applied by the caller). Never
+ * throws — a missing royalty_lineage table (minimal builds) yields no payments.
+ */
+function _lineageCascadePayments(db, dtuId, remainingAfterFees) {
+  let ancestors = [];
+  try { ancestors = getAncestorChain(db, dtuId); } catch { return []; }
+  const payments = [];
+  for (const a of ancestors) {
+    const amount = Math.round(remainingAfterFees * a.rate * 100) / 100;
+    if (amount >= 0.01) {
+      payments.push({
+        recipientId: a.creatorId,
+        recipientArtifactId: a.contentId,
+        amount,
+        generation: a.generation,
+        rate: a.rate,
+      });
+    }
+  }
+  return payments;
+}
 
 /**
  * Calculate cascade payments for all ancestors of a derivative artifact.
