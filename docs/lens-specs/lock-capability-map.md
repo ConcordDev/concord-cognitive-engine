@@ -301,9 +301,13 @@ within this lens's scope. The concurrency profiler (the lens's namesake
 feature) is fully built to a JFR/lock-profiler-parity bar. The sovereignty
 dashboard's defining gap — a genuinely live, runtime-checked invariant
 status (vs. the frozen-constant "enforced by construction" status this fix
-surfaces) — would require instrumenting `enforceEthosInvariant`'s actual
-call sites to record pass/fail history per invariant, which is a
-substrate-level change bigger than this lens's UI; noted here as a
-DATA-SOURCING-adjacent follow-up (internal telemetry, not external data)
+surfaces) — **CLOSED (2026-07-17, `f7dd1e6b`)**: `enforceEthosInvariant`'s
+function body now records every real pass/blocked event (blocked recorded
+BEFORE the throw, exact message preserved) into a bounded (500) since-boot
+in-memory ring buffer, surfaced via `GET /api/sovereignty/status`
+(`recentEnforcement` + honest counters, labeled runtime-vs-CI) and a live
+feed in the lock lens with an honest empty state; the CI/detector feed was
+honestly OMITTED rather than mislabel a stale baseline. (Originally noted as a
+DATA-SOURCING-adjacent follow-up — internal telemetry, not external data)
 for whoever owns the ethos-invariant enforcement path, not fixed in this
 pass.

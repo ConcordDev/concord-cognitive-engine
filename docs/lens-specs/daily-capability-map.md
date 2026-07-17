@@ -49,8 +49,12 @@ All five fixes are scoped to `app/lenses/daily/page.tsx` only; no shared
 infrastructure (`server/lib/media-dtu.js`) was touched (that file's own
 `generateWaveform()` — used by the general media-upload path for *every*
 lens's audio uploads, not daily-specific — is itself a synthetic waveform
-generator; fixing it is a shared-infra change out of this unit's scope,
-noted here for a future audit rather than touched).
+generator; **CLOSED (2026-07-17, `7176be9e`)**: it now returns `null` (the
+server has no audio decoder — documented, not silently worked around), audio
+DTUs carry `waveform:null`, and the feed/voice synthetic-curve render sites were
+converted to real `decodeAudioData` peaks / a real live-mic `AnalyserNode` / an
+honest flat placeholder. A SECOND fabrication was flagged for a separate unit:
+`artifact-store.js#extractWaveformPeaks` reads compressed bytes as raw PCM).
 
 ## 1.5 Reference-parity checklist
 

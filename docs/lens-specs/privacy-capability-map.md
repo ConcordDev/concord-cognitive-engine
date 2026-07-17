@@ -199,7 +199,7 @@ per the sixth hard invariant:
   silently vanished on restart. The consent-gate/tracker-blocking half was
   investigated and explicitly not built — a codebase-wide search confirmed
   zero real analytics/advertising tracker call sites exist to gate.
-- **Access log depends on other subsystems calling `recordAccess`.** The read/
+- **Access log depends on other subsystems calling `recordAccess`.** ~~[open]~~ **CLOSED (2026-07-17, `bf5ffa83`)** — a shared `appendAccessEvent` recorder (O(1), 500-per-user capped ring buffer, never-throws) is now called at the `runMacro` chokepoint (co-located with `recordInvocation`), skipping internal/system callers and stamping `source:"lens-action"`; the panel copy was corrected to say "a lens-action log, not a complete record of every backend data touch." Disclosed limit: `LENS_ACTIONS` macros via `/api/lens/run` bypass `runMacro` and aren't captured. The read/
   render path is real; population breadth depends on more call sites across the
   platform invoking the append hook. Triage: **ENGINEERING** (instrument more
   read paths). Not faked — an empty log honestly shows "No data accesses

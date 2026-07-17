@@ -133,7 +133,7 @@ placeholder.
   independently reproduces the original bug: reverting only the route's
   middleware turns 2 of 4 assertions red, with the concrete failure being
   `200` where `403` is now correctly returned for a non-privileged caller.
-- **Inference-cost metering has narrow coverage.** `aggregateInferenceCosts()`
+- **Inference-cost metering has narrow coverage.** ~~[open]~~ **CLOSED (2026-07-17, `862e482c`)** — the two central `ctx.llm.chat` builders (makeCtx's BYO + default Ollama branches, and the socket chat handler — the chokepoints carrying the bulk of chat traffic) now call `recordInferenceSpan` with the provider's OWN reported usage (never an estimate); failure paths record an honest error span with tokens omitted; all try/catch-wrapped so metering can never break a chat. The long tail of direct `BRAIN.*`/`callBrain` sites stays honest per-site future work. `aggregateInferenceCosts()`
   reads real DB rows and the field shapes are correct, but only 3 call sites
   in the whole codebase (`lib/oracle-brain.js`, `lib/chat-agent.js`,
   `routes/worlds.js`) call `recordInferenceSpan()` to write those rows,
