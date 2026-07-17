@@ -6554,7 +6554,11 @@ function authMiddleware(req, res, next) {
     // RBAC & compliance
     "/api/rbac", "/api/compliance",
     // Studio & artistry
-    "/api/studio", "/api/artistry",
+    // "/api/creative-commerce" is the WAVE4 forward-facing alias for the
+    // /api/artistry namespace below (same handlers, second mount point —
+    // see the alias-mount block right after the artistry routes). Listed
+    // here so the Gate-1 GET bypass parity holds for both names.
+    "/api/studio", "/api/artistry", "/api/creative-commerce",
     // Misc
     "/api/heal", "/api/cache", "/api/redis", "/api/efficiency",
     "/api/model-optimizer", "/api/lens-items", "/api/mobile",
@@ -11830,7 +11834,10 @@ async function runMacro(domain, name, input, ctx) {
     "/api/lens-items", "/api/lens-actions", "/api/ml", "/api/db", "/api/preview-action", "/api/pwa",
     "/api/obsidian", "/api/integrations", "/api/distribution", "/api/backpressure",
     "/api/embeddings", "/api/perf", "/api/precompute", "/api/distillation",
-    "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/rbac",
+    // "/api/creative-commerce" mirrors "/api/artistry" (WAVE4 dual-mount
+    // alias — same handlers, second address; see the alias-mount block
+    // right after the /api/artistry route registrations).
+    "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/creative-commerce", "/api/rbac",
     "/api/compliance", "/api/voice", "/api/visual", "/api/autocrawl",
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
     "/api/utility", "/api/swarm", "/api/forge", "/api/ask",
@@ -74999,6 +75006,60 @@ app.get('/api/artistry/stats', (_req, res) => {
 
 structuredLog("info", "artistry_init", { detail: "Phase 10: AI Production Assistant initialized" });
 structuredLog("info", "artistry_init", { detail: "All phases (1-10) initialized successfully" });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WAVE4 — /api/creative-commerce ALIAS (safe dual-mount, additive-only)
+//
+// The DAW/Studio/Marketplace/Distribution/Collab/AI-production backend above
+// is misfiled under the historical "/api/artistry" name — it's a general
+// shared creative-commerce backend (music, art, splits, licenses, blob
+// storage), not an art-specific one. Renaming any of the 68 routes above in
+// place would touch the live commerce path (marketplace purchases, royalty
+// splits, wallet debits) for zero behavioral gain, so instead of a rename
+// this block mounts a SECOND, purely-additive path prefix —
+// "/api/creative-commerce" — over the EXACT SAME handler functions already
+// registered above under "/api/artistry". Nothing about the existing
+// "/api/artistry/*" registrations above is modified: this walks the
+// already-built Express router stack (it runs after every
+// "/api/artistry/*" app.<method>(...) call above has executed) and
+// re-registers each matched (method, path, handler-chain) tuple under the
+// new prefix — so both names dispatch to the literal same function
+// reference(s), byte-identical behavior by construction, not by
+// copy-paste. "/api/artistry" remains a permanent back-compat alias;
+// "/api/creative-commerce" is the forward-facing name. No fee/royalty/
+// ledger logic is touched or duplicated — mounting a route doesn't clone
+// its body, just adds a second address for the same code.
+function mountArtistryNamespaceAlias(targetApp, fromPrefix, toPrefix) {
+  const stack = targetApp?._router?.stack;
+  if (!Array.isArray(stack)) {
+    structuredLog("warn", "artistry_alias_init", { detail: "router stack unavailable — /api/creative-commerce alias mount skipped" });
+    return 0;
+  }
+  // Snapshot the matching layers BEFORE mounting anything — registering the
+  // alias routes appends new layers to this same stack, and iterating a
+  // live array while pushing to it would otherwise re-visit (and re-alias)
+  // the very routes this loop just added.
+  const artistryLayers = stack.filter(layer =>
+    layer && layer.route && typeof layer.route.path === "string" && layer.route.path.startsWith(fromPrefix)
+  );
+  let mounted = 0;
+  for (const layer of artistryLayers) {
+    const aliasPath = toPrefix + layer.route.path.slice(fromPrefix.length);
+    const methods = Object.keys(layer.route.methods || {}).filter(m => layer.route.methods[m]);
+    const handlers = layer.route.stack.map(l => l.handle);
+    if (!handlers.length) continue;
+    for (const method of methods) {
+      if (typeof targetApp[method] !== "function") continue;
+      targetApp[method](aliasPath, ...handlers);
+      mounted++;
+    }
+  }
+  return mounted;
+}
+const _artistryAliasMountedCount = mountArtistryNamespaceAlias(app, "/api/artistry", "/api/creative-commerce");
+structuredLog("info", "artistry_init", {
+  detail: `Namespace alias: /api/creative-commerce mounted over ${_artistryAliasMountedCount} existing /api/artistry route registration(s) — additive only, /api/artistry unchanged`,
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // END ARTISTRY GLOBAL
