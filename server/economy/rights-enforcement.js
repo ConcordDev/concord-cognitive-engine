@@ -13,13 +13,21 @@ import { createHash } from "crypto";
 
 // ── License tier hierarchy (lower index = lower access level) ──────────────
 // Tiers are cumulative: commercial includes download includes stream.
-const TIER_HIERARCHY = {
+// Exported so callers that mint a tier value (e.g. the plugin marketplace
+// checkout macro) can validate against the same source of truth instead of
+// hand-copying the ladder and risking drift.
+export const TIER_HIERARCHY = {
   music:    ["listen", "download", "remix", "commercial", "exclusive", "stems"],
   art:      ["view", "download", "print", "commercial", "exclusive", "source_file"],
   code:     ["view", "personal", "commercial", "resale", "full_source"],
   document: ["read", "download", "citation", "commercial"],
   "3d_asset": ["view", "use_in_concord", "download", "commercial"],
   film:     ["view", "download", "commercial", "exclusive", "stems"],
+  // Plugin marketplace (Wave 6 wiring — owner's model: "download rights" is
+  // the base install right, higher tiers are purchased usage rights on top
+  // of the same DTU-licensing substrate every other content type uses).
+  // "install" is the equivalent of "download" for the other ladders above.
+  plugin:   ["install", "commercial", "resale", "source"],
 };
 
 // Capabilities granted at each tier level
@@ -60,6 +68,12 @@ const TIER_CAPABILITIES = {
   "film:commercial":  ["stream", "download", "commercial"],
   "film:exclusive":   ["stream", "download", "commercial", "exclusive"],
   "film:stems":       ["stream", "download", "stems"],
+  // Plugin (cumulative — each tier includes every capability of the
+  // tiers below it, same shape as every other content type above).
+  "plugin:install":    ["view", "install"],
+  "plugin:commercial": ["view", "install", "commercial"],
+  "plugin:resale":     ["view", "install", "commercial", "resale"],
+  "plugin:source":     ["view", "install", "commercial", "resale", "source"],
 };
 
 // Actions that require specific capabilities
@@ -77,6 +91,7 @@ const ACTION_REQUIREMENTS = {
   access_stems:      "stems",
   use_in_concord:    "use_in_concord",
   exclusive_use:     "exclusive",
+  install:           "install",
 };
 
 // ── Ensure license tables ─────────────────────────────────────────────────

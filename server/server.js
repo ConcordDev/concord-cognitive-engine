@@ -1430,7 +1430,12 @@ import { BoundedMap } from "./lib/bounded-map.js";
 import { generateEntityName, migrateEntityNames as runEntityNameMigration, isFunctionLabel as isEntityFunctionLabel } from "./lib/entity-naming.js";
 import { validateSafeFetchUrl as _ssrfValidate, isUrlSafeAsync as _ssrfIsSafeAsync, fetchWithPinnedIp as _ssrfFetchPinned } from "./lib/ssrf-guard.js";
 import { registerCitation as economyRegisterCitation } from "./economy/royalty-cascade.js";
-import { checkAccess as economyCheckAccess } from "./economy/rights-enforcement.js";
+import { checkAccess as economyCheckAccess, TIER_HIERARCHY as ECONOMY_TIER_HIERARCHY } from "./economy/rights-enforcement.js";
+// Wave 6 — plugin marketplace checkout reuses the SAME purchase primitive
+// every other creative-artifact content type (music/art/code/...) already
+// goes through. No parallel payment path; see the `marketplace.purchasePlugin`
+// macro below.
+import { purchaseArtifact as economyPurchaseArtifact } from "./economy/creative-marketplace.js";
 // DX Platform Phase A1 — per-call billing + per-user quota for macros.
 // Wired into runMacro below (rate-limit check + macro:afterExecute hook).
 import { billMacroCall } from "./lib/macro-billing.js";
@@ -37267,15 +37272,66 @@ const PLUGIN_MARKETPLACE = {
   categories: ["productivity", "visualization", "integration", "ai", "governance", "export", "theme", "automation"]
 };
 
+// ── Plugin checkout wiring (Wave 6) ─────────────────────────────────────
+// The owner's model: "download rights" (here: install rights) are what you
+// get for a straight purchase; users can additionally purchase usage rights
+// (commercial/resale/source) — that's the SAME cumulative license-tier
+// ladder every other content type (music/art/code/...) already uses via
+// `server/economy/rights-enforcement.js` + `purchaseArtifact()`. A priced
+// plugin listing is backed by a real `creative_artifacts` row (type
+// 'plugin') so checkout flows through that existing purchase primitive —
+// no parallel payment path, no new fee/royalty math. Free (price 0)
+// listings stay listing-only and install directly, unchanged from before.
+const PLUGIN_TIER_LADDER = ECONOMY_TIER_HIERARCHY.plugin; // ["install","commercial","resale","source"]
+
+function _ensurePluginArtifactRow(listing) {
+  if (!db) return false; // no DB in this boot mode — treat as free-only, no gate to enforce
+  const now = nowISO().replace("T", " ").replace("Z", "");
+  db.prepare(`
+    INSERT INTO creative_artifacts (
+      id, creator_id, type, title, description, tags_json,
+      file_path, file_size, file_hash,
+      location_regional, location_national, federation_tier,
+      license_type, license_json,
+      marketplace_status, price, created_at, updated_at
+    ) VALUES (?, ?, 'plugin', ?, ?, ?, ?, ?, ?, NULL, NULL, 'regional', 'standard', '{}', 'active', ?, ?, ?)
+  `).run(
+    listing.id,
+    listing.creatorId || "anonymous",
+    listing.name,
+    listing.description || "",
+    JSON.stringify([listing.category]),
+    listing.githubUrl,
+    // Plugins aren't a stored binary artifact in this table's sense — the
+    // "file" is the GitHub source referenced above. file_size/file_hash
+    // are NOT NULL bookkeeping columns on the shared schema, not a claim
+    // about a stored asset; 0 size is honest ("not applicable"), the hash
+    // is a real deterministic digest of the listing identity (dedup-safe,
+    // not a fabricated content hash).
+    0,
+    crypto.createHash("sha256").update(`plugin:${listing.id}:${listing.githubUrl}`).digest("hex"),
+    listing.price,
+    now, now,
+  );
+  return true;
+}
+
 register("marketplace", "submit", (ctx, input) => {
-  const { name, description, version, author, githubUrl, category, macros } = input;
+  const { name, description, version, author, githubUrl, category, macros, price } = input;
   if (!name || !githubUrl) return { ok: false, error: "Name and GitHub URL required" };
+  const normalizedPrice = Number.isFinite(Number(price)) && Number(price) > 0
+    ? Math.round(Number(price) * 100) / 100
+    : 0;
   const listing = {
     id: uid("plugin"),
     name: normalizeText(name),
     description: description || "",
     version: version || "1.0.0",
     author: author || "anonymous",
+    // Real submitting user (for the rights-enforcement "creator always has
+    // access" gate) — distinct from `author`, which is a free-text display
+    // credit and not necessarily the authenticated caller.
+    creatorId: ctx?.actor?.userId || ctx?.actor?.id || null,
     githubUrl,
     category: PLUGIN_MARKETPLACE.categories.includes(category) ? category : "productivity",
     macros: macros || [],
@@ -37284,13 +37340,61 @@ register("marketplace", "submit", (ctx, input) => {
     reviews: [],
     ethosCompliant: null,
     submittedAt: nowISO(),
-    status: "pending_review"
+    status: "pending_review",
+    price: normalizedPrice,
   };
+  if (normalizedPrice > 0) {
+    try {
+      listing.artifactBacked = _ensurePluginArtifactRow(listing);
+      if (!listing.artifactBacked) {
+        // No DB in this boot mode — can't honestly promise a paid,
+        // license-gated listing (nothing would enforce the gate or move
+        // money). Reject rather than silently downgrading to "free".
+        return { ok: false, error: "pricing_unavailable", message: "Paid plugin listings require a database connection." };
+      }
+    } catch (e) {
+      logger.error("server", "plugin_artifact_backing_failed", { pluginId: listing.id, error: e?.message });
+      return { ok: false, error: "listing_failed" };
+    }
+  }
   PLUGIN_MARKETPLACE.listings.set(listing.id, listing);
   STATE.queues.macroProposals = STATE.queues.macroProposals || [];
   STATE.queues.macroProposals.push({ type: "plugin_review", pluginId: listing.id, name: listing.name, githubUrl: listing.githubUrl, submittedAt: nowISO() });
   saveStateDebounced();
   return { ok: true, listing, message: "Plugin submitted for Chicken3 ethos review" };
+});
+
+// Checkout — purchases usage rights on a priced plugin listing via the
+// EXISTING creative-marketplace purchase primitive (fees, royalty cascade,
+// ledger entries, license grant all unchanged/untouched). Free listings
+// have no artifact backing and are rejected here — call `marketplace.install`
+// directly, no purchase needed.
+// Named `purchasePlugin` (not `purchase`) — `marketplace.purchase` is
+// already registered below for the unrelated DTU-marketplace clone-on-buy
+// flow (dtuId-keyed); reusing that name would silently shadow one of the
+// two macros (register() logs `macro_duplicate_registration` and the
+// later registration wins).
+register("marketplace", "purchasePlugin", (ctx, input) => {
+  const { pluginId, tier } = input || {};
+  const listing = PLUGIN_MARKETPLACE.listings.get(pluginId);
+  if (!listing) return { ok: false, error: "Plugin not found" };
+  if (!listing.price || listing.price <= 0 || !listing.artifactBacked) {
+    return { ok: false, error: "listing_is_free", message: "This plugin is free — call marketplace.install directly, no purchase needed." };
+  }
+  const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
+  if (!buyerId) return { ok: false, error: "authentication_required" };
+  const resolvedTier = tier && PLUGIN_TIER_LADDER.includes(tier) ? tier : "install";
+  const result = economyPurchaseArtifact(db, {
+    buyerId,
+    artifactId: listing.id,
+    tier: resolvedTier,
+    requestId: ctx?.requestId,
+    ip: ctx?.ip,
+  });
+  if (result.ok) {
+    saveStateDebounced();
+  }
+  return result;
 });
 
 register("marketplace", "browse", (ctx, input) => {
@@ -37318,6 +37422,34 @@ register("marketplace", "install", (ctx, input) => {
   }
   const listing = PLUGIN_MARKETPLACE.listings.get(pluginId);
   if (!listing) return { ok: false, error: "Plugin not found" };
+
+  // Rights gate — priced plugins require the "install" tier license
+  // (granted by `marketplace.purchasePlugin`, or held already). Free (price 0)
+  // listings were never backed by a creative_artifacts row, so they keep
+  // installing directly, exactly as before this wiring existed.
+  if (listing.price > 0 && listing.artifactBacked) {
+    const userId = ctx?.actor?.userId || ctx?.actor?.id;
+    if (!userId) return { ok: false, error: "authentication_required" };
+    const access = economyCheckAccess(db, {
+      userId,
+      dtuId: listing.id,
+      contentType: "plugin",
+      action: "install",
+      creatorId: listing.creatorId,
+    });
+    if (!access.allowed) {
+      return {
+        ok: false,
+        reason: "license_required",
+        error: "license_required",
+        requiredTier: access.requiredTier || "install",
+        currentTier: access.currentTier || null,
+        price: listing.price,
+        message: "Purchase install rights to this plugin (marketplace.purchasePlugin) before installing.",
+      };
+    }
+  }
+
   listing.downloads++;
   const installed = { id: listing.id, name: listing.name, version: listing.version, source: listing.githubUrl, installedAt: nowISO(), enabled: true, autoUpdate: true };
   PLUGIN_MARKETPLACE.installed.set(installed.id, installed);
