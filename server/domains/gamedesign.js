@@ -1944,13 +1944,32 @@ export default function registerGameDesignActions(registerLensAction) {
     // collapses to exactly `[remixOfDtuId]` in that case.
     const remixParentIds = gdNormalizeParentIds(remixOfDtuId, params.remixOfDtuIds);
 
-    // Remix parents must genuinely exist — validated up front so an invalid
-    // id (in either field) is an honest rejection, not a silently-dropped
-    // lineage. No insert has happened yet at this point.
+    // Concept→asset lineage (Increment 3): an optional dtuId minted by
+    // art.artwork-publish-as-concept (server/domains/art.js). Cited the
+    // same way as a remix parent — folded into the same
+    // gdRegisterParentCitations pass below — but validated + reported
+    // under its own name so a caller can tell "my concept art id was
+    // wrong" apart from "my remix parent was wrong". A concept-art id
+    // that's already also a remix parent isn't double-cited (dedup by
+    // gdNormalizeParentIds-style `includes` check).
+    const conceptArtDtuId = params.conceptArtDtuId ? String(params.conceptArtDtuId) : null;
+    if (conceptArtDtuId && !remixParentIds.includes(conceptArtDtuId)) {
+      remixParentIds.push(conceptArtDtuId);
+    }
+
+    // Remix (+ concept-art) parents must genuinely exist — validated up
+    // front so an invalid id (in any field) is an honest rejection, not a
+    // silently-dropped lineage. No insert has happened yet at this point.
     let parentRows = new Map();
     if (remixParentIds.length > 0) {
       const lookup = gdLookupParentRows(db, remixParentIds);
-      if (lookup.missingId) return { ok: false, error: "remix_parent_not_found", parentId: lookup.missingId };
+      if (lookup.missingId) {
+        return {
+          ok: false,
+          error: lookup.missingId === conceptArtDtuId ? "concept_art_dtu_not_found" : "remix_parent_not_found",
+          parentId: lookup.missingId,
+        };
+      }
       parentRows = lookup.rows;
     }
 
@@ -1988,6 +2007,10 @@ export default function registerGameDesignActions(registerLensAction) {
       human: { summary: `${name} — an authored ${archetype} building${feature ? ` with a ${feature}` : ""}.` },
     };
     if (remixParentIds.length > 0) body.lineage = { parents: remixParentIds };
+    // Stamp the concept-art id separately too (in addition to living inside
+    // `parents` above) so a reader doesn't have to guess which parent, if
+    // any, was the originating concept sketch versus a plain remix.
+    if (conceptArtDtuId) body.lineage = { ...(body.lineage || { parents: remixParentIds }), conceptArtDtuId };
     db.prepare(`
       INSERT INTO dtus (id, owner_user_id, title, body_json, tags_json, visibility, tier, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, 'public', 'regular', ?, ?)
@@ -2022,6 +2045,14 @@ export default function registerGameDesignActions(registerLensAction) {
       ? gdRegisterParentCitations(db, { parentIds: remixParentIds, parentRows, childId: dtuId, userId })
       : [];
     const citation = citations.length > 0 ? citations[0] : null;
+    // The concept-art-specific citation result, pulled out of the same
+    // `citations` pass so a caller building the concept→asset lineage UI
+    // doesn't have to re-derive which entry was the concept art. `null`
+    // when no conceptArtDtuId was passed, OR when it was self-owned
+    // (skipped, not an error — see gdRegisterParentCitations).
+    const conceptArtCitation = conceptArtDtuId
+      ? citations.find((c) => c.parentId === conceptArtDtuId) || null
+      : null;
 
     // ── 6. Realtime — live worlds pick up the new building immediately ──
     try {
@@ -2033,7 +2064,7 @@ export default function registerGameDesignActions(registerLensAction) {
       });
     } catch { /* realtime best-effort */ }
 
-    return { ok: true, dtuId, buildingId, spawned: true, citation, citations };
+    return { ok: true, dtuId, buildingId, spawned: true, citation, citations, conceptArtCitation };
   });
 
   // ─── Asset Studio Increment 5 — game-design.asset-fuse ───────────────

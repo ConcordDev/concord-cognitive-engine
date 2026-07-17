@@ -18,6 +18,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ProStudioPanel, type Guides } from './ProStudioPanel';
 import { PublishAsTextureDialog } from './PublishAsTextureDialog';
+import { PublishAsConceptDialog } from './PublishAsConceptDialog';
 
 interface El {
   id?: string; kind?: string; tool: string; color: string; size?: number; opacity: number;
@@ -132,6 +133,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [panel, setPanel] = useState<'none' | 'transform' | 'adjust' | 'canvas' | 'pro'>('none');
   const [publishOpen, setPublishOpen] = useState(false);
+  const [conceptOpen, setConceptOpen] = useState(false);
   const [adjust, setAdjust] = useState({ hueShift: 0, satScale: 1, lightScale: 1 });
   const [guides, setGuides] = useState<Guides | null>(null);
   const [clipboard, setClipboard] = useState<El[]>([]);
@@ -695,6 +697,14 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         >
           <Upload className="w-3.5 h-3.5" /> Publish material
         </button>
+        <button
+          type="button"
+          onClick={() => setConceptOpen(true)}
+          className={topBtn}
+          title="Publish as concept art — mints a real, citable DTU other asset macros (e.g. a building blueprint) can cite as their origin"
+        >
+          <Upload className="w-3.5 h-3.5" /> Publish as concept
+        </button>
       </div>
 
       {critique && (
@@ -911,6 +921,14 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
           canvas={canvasRef.current}
           artworkId={artwork?.id}
           onClose={() => setPublishOpen(false)}
+        />
+      )}
+      {conceptOpen && (
+        <PublishAsConceptDialog
+          canvas={canvasRef.current}
+          artworkId={artwork?.id}
+          artworkTitle={artwork?.title}
+          onClose={() => setConceptOpen(false)}
         />
       )}
     </div>
