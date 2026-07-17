@@ -13,15 +13,61 @@
 // badge instead of being silently rendered as if present — the same honesty
 // FoundryPreview shows.
 
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { ConkayFoundryArtifact } from '@/lib/conkay/artifact-kinds';
+import { worldToScene } from '@/lib/world-lens/coord-frame';
+import {
+  mapWorldBuildingToRendererDTU,
+  type WorldBuildingRow,
+  type RendererBuildingDTU,
+} from '@/lib/world-lens/world-building-dto';
 
 const ConcordiaScene = dynamic(
   () => import('@/components/world-lens/ConcordiaScene'),
   { ssr: false, loading: () => null },
 );
 
+// Headless — dispatches concordia:buildings-ready with the built 3D group for the
+// ConcordiaScene above to consume. WebGL/three must never SSR.
+const BuildingRenderer3D = dynamic(
+  () => import('@/components/world-lens/BuildingRenderer3D'),
+  { ssr: false, loading: () => null },
+);
+
 export function FoundryAdapter({ artifact }: { artifact: ConkayFoundryArtifact }) {
+  // Load the compiled preview world's buildings the same way the world lens does
+  // (server [0,2000] frame → origin-centred scene frame → renderer DTU) so the
+  // authored buildings actually appear, not just terrain. Honest failure: any
+  // non-ok/throw/timeout → NO buildings, never a fabricated stand-in.
+  const [buildings, setBuildings] = useState<RendererBuildingDTU[]>([]);
+  useEffect(() => {
+    const worldId = artifact.previewWorldId;
+    if (!worldId) {
+      setBuildings([]);
+      return;
+    }
+    let alive = true;
+    fetch(`/api/worlds/${encodeURIComponent(worldId)}/buildings`, {
+      signal: AbortSignal.timeout(8000),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`buildings ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (!alive) return;
+        const rows: WorldBuildingRow[] = Array.isArray(d?.buildings) ? d.buildings : [];
+        setBuildings(rows.map(worldToScene).map(mapWorldBuildingToRendererDTU));
+      })
+      .catch(() => {
+        if (alive) setBuildings([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [artifact.previewWorldId]);
+
   return (
     <div data-testid="ck-adapter-foundry-worldspec" className="relative h-[340px] w-full overflow-hidden rounded-lg">
       {artifact.skippedStubs.length > 0 && (
@@ -33,6 +79,9 @@ export function FoundryAdapter({ artifact }: { artifact: ConkayFoundryArtifact }
         </span>
       )}
       <ConcordiaScene districtId={artifact.previewWorldId} cameraMode="free" quality="medium" />
+      {/* Headless — dispatches concordia:buildings-ready for the scene above to
+          consume. Empty `buildings` renders no group (honest terrain-only). */}
+      <BuildingRenderer3D buildings={buildings} viewMode="normal" />
     </div>
   );
 }
