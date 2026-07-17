@@ -920,7 +920,7 @@
     "id": "gen_cyber_0001",
     "name": "Quill Eaves",
     "archetype": "guard",
-    "faction_id": "cyber_arasacorp",
+    "faction_id": "cyber_nevex",
     "level": 6,
     "job": "drone-tech",
     "wealth_tier": "well-off",
@@ -1484,7 +1484,7 @@
     "level": 34,
     "job": "netrunner",
     "wealth_tier": "comfortable",
-    "backstory": "A comfortable netrunner of cyber. Tied to ArasaCorp. Lived through \"Silver Vey's First Identity\". Known to trusts animals more than people.",
+    "backstory": "A comfortable netrunner of cyber. Tied to Nevex Corp. Lived through \"Silver Vey's First Identity\". Known to trusts animals more than people.",
     "personality_traits": [
       "trusts animals more than people"
     ],
@@ -1493,7 +1493,7 @@
       "wealth_tier": "comfortable",
       "secret": "is not who they claim to be",
       "quirk": "trusts animals more than people",
-      "bio": "Netrunner · comfortable · ArasaCorp",
+      "bio": "Netrunner · comfortable · Nevex Corp",
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,

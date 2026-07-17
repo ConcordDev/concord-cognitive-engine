@@ -568,10 +568,10 @@
     "appearance": "Small, fast, dirty linen tunic, rebel ribbon around the left wrist.",
     "background": "Calla's only sibling. The rebellion's youngest active member.",
     "narrative_context": {
-      "secret": "Finn runs messages cross-world via the Verge bog (with Nymeria's witch knowledge).",
+      "secret": "Finn runs messages cross-world via the Verge bog (with Maeris's witch knowledge).",
       "weaponise_at": "Trace Finn; the cross-world messenger chain breaks."
     },
-    "concord_link_resonance": "fantasy:witch_nymeria",
+    "concord_link_resonance": "fantasy:witch_maeris",
     "dialogue_style": "fast, brave, occasionally young",
     "needs": [
       {

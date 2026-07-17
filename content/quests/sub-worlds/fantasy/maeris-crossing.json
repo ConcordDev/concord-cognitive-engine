@@ -1,9 +1,9 @@
 [
   {
-    "id": "fantasy_nymeria_01_fragment",
+    "id": "fantasy_maeris_01_fragment",
     "title": "The Bog — A Lattice Fragment",
-    "description": "Nymeria will teach you to cross to the Crucible — but you need to bring her a lattice-fragment first. Any size.",
-    "giver_npc_id": "witch_nymeria",
+    "description": "Maeris will teach you to cross to the Crucible — but you need to bring her a lattice-fragment first. Any size.",
+    "giver_npc_id": "witch_maeris",
     "difficulty": "intermediate",
     "estimated_time": "15m",
     "objectives": [
@@ -17,9 +17,9 @@
       {
         "id": "obj_nym1_bring",
         "type": "deliver",
-        "target": "fragment_to_nymeria",
+        "target": "fragment_to_maeris",
         "required_count": 1,
-        "description": "Bring it to Nymeria in the bog at any phase."
+        "description": "Bring it to Maeris in the bog at any phase."
       }
     ],
     "rewards": {
@@ -34,7 +34,7 @@
       }
     ],
     "follow_up_quest_ids": [
-      "fantasy_nymeria_02_steps"
+      "fantasy_maeris_02_steps"
     ],
     "prerequisites": [],
     "tags": [
@@ -43,10 +43,10 @@
     ]
   },
   {
-    "id": "fantasy_nymeria_02_steps",
+    "id": "fantasy_maeris_02_steps",
     "title": "The Bog — Eight Steps",
-    "description": "Nymeria teaches you eight steps. Three she makes up each time. You'll walk the bog with her at moonrise.",
-    "giver_npc_id": "witch_nymeria",
+    "description": "Maeris teaches you eight steps. Three she makes up each time. You'll walk the bog with her at moonrise.",
+    "giver_npc_id": "witch_maeris",
     "difficulty": "intermediate",
     "estimated_time": "15m",
     "objectives": [
@@ -55,7 +55,7 @@
         "type": "reach_location",
         "target": "fantasy_bog_crossing",
         "required_count": 1,
-        "description": "Walk the eight steps under Nymeria's guidance."
+        "description": "Walk the eight steps under Maeris's guidance."
       },
       {
         "id": "obj_nym2_emerge",
@@ -70,10 +70,10 @@
     },
     "breadcrumbs": [],
     "follow_up_quest_ids": [
-      "fantasy_nymeria_03_return"
+      "fantasy_maeris_03_return"
     ],
     "prerequisites": [
-      "fantasy_nymeria_01_fragment"
+      "fantasy_maeris_01_fragment"
     ],
     "tags": [
       "fantasy",
@@ -81,10 +81,10 @@
     ]
   },
   {
-    "id": "fantasy_nymeria_03_return",
+    "id": "fantasy_maeris_03_return",
     "title": "The Bog — The Return Path",
-    "description": "The path back is the path in. Nymeria warned you. The path has changed.",
-    "giver_npc_id": "witch_nymeria",
+    "description": "The path back is the path in. Maeris warned you. The path has changed.",
+    "giver_npc_id": "witch_maeris",
     "difficulty": "intermediate",
     "estimated_time": "15m",
     "objectives": [
@@ -98,7 +98,7 @@
       {
         "id": "obj_nym3_report",
         "type": "talk_to",
-        "target": "witch_nymeria",
+        "target": "witch_maeris",
         "required_count": 1,
         "description": "Report what you saw on the other side."
       }
@@ -109,13 +109,13 @@
         "lattice_awareness": 60
       },
       "items": [
-        "nymeria_crossing_token"
+        "maeris_crossing_token"
       ]
     },
     "breadcrumbs": [],
     "follow_up_quest_ids": [],
     "prerequisites": [
-      "fantasy_nymeria_02_steps"
+      "fantasy_maeris_02_steps"
     ],
     "tags": [
       "fantasy",

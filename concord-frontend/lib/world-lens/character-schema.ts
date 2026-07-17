@@ -750,7 +750,7 @@ export const FACTION_TO_STYLE: Record<string, FactionStyleId> = {
   'nil':              'tunya-savanna',
   'akeia_of_kahlay':  'tunya-savanna',
   // Cyber
-  'cyber_arasacorp':         'cyber-corp',
+  'cyber_nevex':         'cyber-corp',
   'zero_collective':         'cyber-street',
   'blackout_resistance':     'cyber-blackout',
   'cyber_fixer_guild':       'cyber-street',

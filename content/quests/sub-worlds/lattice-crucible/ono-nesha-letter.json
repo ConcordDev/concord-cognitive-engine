@@ -38,7 +38,7 @@
   {
     "id": "lattice_ono_02_carry",
     "title": "The Bog — Carry the Letter",
-    "description": "Carry Ono's letter to Nesha in the hub. The bog is the fastest route — Nymeria will let you through.",
+    "description": "Carry Ono's letter to Nesha in the hub. The bog is the fastest route — Maeris will let you through.",
     "giver_npc_id": "sage_ono_kell",
     "difficulty": "intermediate",
     "estimated_time": "15m",
@@ -48,7 +48,7 @@
         "type": "reach_location",
         "target": "fantasy_bog_clearing",
         "required_count": 1,
-        "description": "Pass through the bog (Nymeria will recognize Ono's seal)."
+        "description": "Pass through the bog (Maeris will recognize Ono's seal)."
       },
       {
         "id": "obj_ono2_arrive",

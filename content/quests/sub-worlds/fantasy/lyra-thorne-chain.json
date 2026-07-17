@@ -83,7 +83,7 @@
   {
     "id": "fantasy_lyra_03_master",
     "title": "The Verge Apothecary — Master and Student",
-    "description": "Lyra's teacher disappeared into the Moonleaf Vigil twenty years ago. She thinks the bog witch Nymeria knows what happened.",
+    "description": "Lyra's teacher disappeared into the Moonleaf Vigil twenty years ago. She thinks the bog witch Maeris knows what happened.",
     "giver_npc_id": "apothecary_lyra_thorne",
     "difficulty": "intermediate",
     "estimated_time": "15m",
@@ -93,12 +93,12 @@
         "type": "reach_location",
         "target": "fantasy_bog_clearing",
         "required_count": 1,
-        "description": "Visit Nymeria in the bog at twilight."
+        "description": "Visit Maeris in the bog at twilight."
       },
       {
         "id": "obj_lyra3_ask",
         "type": "talk_to",
-        "target": "witch_nymeria",
+        "target": "witch_maeris",
         "required_count": 1,
         "description": "Ask about Lyra's teacher."
       },

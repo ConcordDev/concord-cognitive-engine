@@ -89,8 +89,8 @@
       }
     ]
   },
-  "witch_nymeria:idle": {
-    "greeting": "Nymeria is barefoot in two inches of bog water, humming. She turns when you arrive but does not move. \"Walker. The mud will tell me what you want; you only have to wait.\"",
+  "witch_maeris:idle": {
+    "greeting": "Maeris is barefoot in two inches of bog water, humming. She turns when you arrive but does not move. \"Walker. The mud will tell me what you want; you only have to wait.\"",
     "nodes": [
       {
         "id": "node_1",
