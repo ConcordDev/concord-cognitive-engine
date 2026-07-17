@@ -50,9 +50,13 @@ white space (grounded in `docs/SCIFI_FEASIBILITY_MAP.md §2`):
 | **Controllable memory** | Notion | ✅ DTU substrate, scope/consent gates |
 | **Owned / no-subscription** | (grievance, unowned) | ✅ free + local + creator take-rate |
 
-Concord's defensible claim is **the combination × depth**, never any single checkbox.
-Pick any one column and a better-funded incumbent wins it. The intersection is empty,
-and the intersection is the product.
+The intersection is a real moat — no incumbent ships all five vectors at once, and that
+combination × depth is the product. But it is **no longer the only claim.** Post-WAVE4,
+each of the 260 lenses is built and judged to stand alone against its own category leader
+(CLAUDE.md's per-lens-category-leadership invariant — "would this hold up shipped alone
+against Bloomberg Terminal / Linear / Ableton / EEGLAB"), and many match or beat it on
+capability. So Concord competes on individual surfaces *and* on the intersection — the
+intersection is the compounding advantage layered on top, not a hedge for lenses that lose.
 
 ---
 
@@ -134,8 +138,14 @@ A pitch that hides these gets found out; one that names them gets believed:
   inventory.
 - **"Novel" ≠ "global-first."** The inventory claims *distinctive / distinctively-
   composed*, grounded in the cited file — not that each item was invented here.
-- **No single checkbox wins.** Against any one incumbent on their home turf, Concord
-  loses. The whole thesis is the intersection.
+- **The honest residual is external data + platform maturity, not a per-feature loss.**
+  Post-WAVE4 every lens is built and judged to stand alone against its category leader
+  (CLAUDE.md's 4th/6th hard invariants), and many match or beat it on capability — so the
+  old "loses on any single checkbox" framing is retired as stale. What genuinely still
+  trails is narrower and specific: a set of lenses have documented **external-data gaps**
+  (no free/open feed for e.g. live flight pricing or CAD-grade parcel tiles — the
+  DATA-SOURCING rows in `docs/WAVE4_INVENTORY.md`), and platform *maturity* — scale,
+  ecosystem, brand — trails the incumbents. Those are the real limits, named honestly.
 
 ---
 

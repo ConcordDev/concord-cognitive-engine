@@ -444,5 +444,8 @@ and a handful (e.g. the Foundation signal-layer, some emergent-civilization syst
 are **research-grade / aspirational** — built and wired, but not all battle-tested
 against the physical world. Read each against its source file before quoting it
 externally. The conservative, defensible framing remains: *the invention is the
-combination × depth × the couplings between systems*, not any single checkbox.
+combination × depth × the couplings between systems* — the composition is what's
+inventive, not a claim that any one item is globally-first. (That is a statement about
+*novelty attribution*, distinct from competitive parity: on the *product* axis,
+post-WAVE4 each lens is built and judged to stand alone against its category leader.)
 

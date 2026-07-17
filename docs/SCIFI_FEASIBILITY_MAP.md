@@ -111,8 +111,10 @@ Legends conception, not current canon.
 
 **The white space (from the companion's landscape):** every incumbent owns exactly *one* vector
 (Perplexity=grounded, ChatGPT=general, Copilot=enterprise, Ollama=privacy, Notion=PKM). No one ships
-the *intersection*. Concord's defensible claim is the combination × depth — never any single checkbox
-(this restates Honesty Caveat #2 below with market evidence behind it).
+the *intersection*, and that combination × depth is the deepest moat. Post-WAVE4 it is no longer the
+only claim: each lens is also built to stand alone against its category leader (CLAUDE.md's per-lens-
+category-leadership invariant), many matching or beating it — so Concord competes per-surface AND on
+the intersection (see Honesty Caveat #2 below, now corrected).
 
 ---
 
@@ -176,8 +178,11 @@ is closed for the marquee pair — see below.)**
 1. **"Built in code" ≠ "polished product."** The remaining work for the software half is
    *integration + polish + QA*, not new capability. Demo quality is its own lift.
 2. **Demand ≠ victory.** "Private AI" is a contested category. The edge is the **combination +
-   depth** (private AND verifiable AND agentic AND creator-economy AND world-sim on one substrate),
-   never any single checkbox.
+   depth** (private AND verifiable AND agentic AND creator-economy AND world-sim on one substrate)
+   — and, post-WAVE4, each lens also stands alone against its category leader (many match or beat
+   it), so the intersection is the *compounding* edge, not a hedge for lenses that lose. The honest
+   residual is specific external-data gaps + platform maturity (scale/ecosystem/brand), not a
+   per-feature loss.
 3. **Cite paths, not counts.** File counts drift and inflate; this map cites anchor files + a depth
    verdict so any claim is one `grep` from being checked. Keep it that way.
 4. **Verify-before-pitch (now resolved here):** Gmail/Calendar connectors = **real two-way** (other
