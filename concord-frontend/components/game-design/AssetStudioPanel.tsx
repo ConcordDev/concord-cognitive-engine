@@ -23,15 +23,31 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
 import {
   Boxes, Home, BookOpen, Flame, ShoppingBag, Landmark, Loader2,
-  CheckCircle2, AlertTriangle, Info, GitBranch, MapPin,
+  CheckCircle2, AlertTriangle, Info, GitBranch, MapPin, Tag,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { BuildingArchetype, IconicFeature } from '@/lib/world-lens/procedural-buildings';
 import { BuildingPreview } from './BuildingPreview';
+import { AssetMarketplaceBrowser } from './AssetMarketplaceBrowser';
+
+/** Extracts the real backend reason from a failed axios call — never a
+ * generic "Request failed with status code 400". `list-on-marketplace`
+ * (like most write routes in this codebase) returns its `{ ok:false,
+ * error }` body on an HTTP 400/500, which axios treats as a rejection,
+ * not a resolved response — so the reason has to be read off
+ * `error.response.data`, not off the thrown Error's own `.message`. */
+function apiErrorMessage(e: unknown, fallback: string): string {
+  if (axios.isAxiosError(e)) {
+    const data = e.response?.data as { error?: string; message?: string; reason?: string } | undefined;
+    return data?.error || data?.message || data?.reason || e.message || fallback;
+  }
+  return e instanceof Error ? e.message : fallback;
+}
 
 const ARCHETYPES: { id: BuildingArchetype; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'tavern', label: 'Tavern', icon: Home, blurb: 'Warm wood + thatch, hearth glow' },
@@ -57,7 +73,28 @@ interface MyBuilding {
   feature: string | null;
   worldId: string;
   createdAt?: string | null;
+  /** 'public' until listed; the list-on-marketplace route flips the
+   * underlying DTU's visibility to 'marketplace' on success — read that
+   * real field back rather than tracking listed-state client-side. */
+  visibility?: string;
 }
+
+interface ListingArtifact {
+  id?: string;
+  price?: number;
+}
+
+interface ListingFormState {
+  price: string;
+  description: string;
+  submitting: boolean;
+  error: string | null;
+  success: ListingArtifact | null;
+}
+
+const EMPTY_LISTING_FORM: ListingFormState = {
+  price: '', description: '', submitting: false, error: null, success: null,
+};
 
 interface PublishResult {
   dtuId?: string;
@@ -110,6 +147,17 @@ export function AssetStudioPanel({ onChange }: { gameId: string; onChange: () =>
   const [mineLoading, setMineLoading] = useState(true);
   const [mineError, setMineError] = useState<string | null>(null);
 
+  // List-for-sale — the economic surface on a published building. One
+  // real endpoint: POST /api/personal-locker/dtus/:id/list-on-marketplace
+  // (server/routes/personal-locker.js). Per-DTU form state so multiple
+  // authored buildings can each carry independent list/submit/error state.
+  const [listingOpenId, setListingOpenId] = useState<string | null>(null);
+  const [listingForms, setListingForms] = useState<Record<string, ListingFormState>>({});
+  const formFor = (dtuId: string): ListingFormState => listingForms[dtuId] || EMPTY_LISTING_FORM;
+  const patchForm = (dtuId: string, patch: Partial<ListingFormState>) => {
+    setListingForms((prev) => ({ ...prev, [dtuId]: { ...formFor(dtuId), ...patch } }));
+  };
+
   const refreshMine = useCallback(async () => {
     setMineLoading(true);
     const r = await lensRun('game-design', 'building-list-mine', {});
@@ -125,6 +173,41 @@ export function AssetStudioPanel({ onChange }: { gameId: string; onChange: () =>
   }, []);
 
   useEffect(() => { void refreshMine(); }, [refreshMine]);
+
+  // Lists a published building's blueprint DTU for sale. Real request:
+  // POST /api/personal-locker/dtus/:dtuId/list-on-marketplace
+  //   body: { type: 'blueprint', price, description? }
+  // On success the server itself flips dtus.visibility to 'marketplace'
+  // and mints a `creative_artifacts` row via publishArtifact() — the
+  // real primitive purchaseArtifact() (buy side) reads from. Royalties on
+  // a downstream SALE flow to remix ancestors (30% cap, halving per
+  // generation, server/economy/royalty-cascade.js) — never for someone
+  // merely using the design, which is why "does not yet earn money" below
+  // still describes the Publish action alone.
+  const submitListing = async (dtuId: string) => {
+    const f = formFor(dtuId);
+    const price = Number(f.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      patchForm(dtuId, { error: 'Price must be a positive number of Concord Coin.' });
+      return;
+    }
+    patchForm(dtuId, { submitting: true, error: null });
+    try {
+      const body: Record<string, unknown> = { type: 'blueprint', price };
+      if (f.description.trim()) body.description = f.description.trim();
+      const res = await api.post(`/api/personal-locker/dtus/${encodeURIComponent(dtuId)}/list-on-marketplace`, body);
+      if (res.data?.ok === false) {
+        patchForm(dtuId, { submitting: false, error: res.data?.error || 'Listing failed.' });
+        return;
+      }
+      const artifact = (res.data?.listing?.artifact as ListingArtifact | undefined) || null;
+      setListingForms((prev) => ({ ...prev, [dtuId]: { ...EMPTY_LISTING_FORM, success: artifact } }));
+      setListingOpenId((open) => (open === dtuId ? null : open));
+      await refreshMine();
+    } catch (e) {
+      patchForm(dtuId, { submitting: false, error: apiErrorMessage(e, 'Listing failed.') });
+    }
+  };
 
   const widthNum = Number(form.width) || 0;
   const heightNum = Number(form.height) || 0;
@@ -190,8 +273,9 @@ export function AssetStudioPanel({ onChange }: { gameId: string; onChange: () =>
         <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
         <p>
           Published assets are creator-attributed and royalty-eligible — remixing another authored
-          building registers a real citation lineage. Paid marketplace listing comes in a later increment;
-          publishing here does not yet earn money.
+          building registers a real citation lineage. Publishing itself does not yet earn money; list a
+          published building for sale below to open it to buyers. A sale pays royalties to remix
+          ancestors (30% cap, halving each generation) — never just for someone using the design.
         </p>
       </div>
 
@@ -415,19 +499,82 @@ export function AssetStudioPanel({ onChange }: { gameId: string; onChange: () =>
         )}
         {mine.length > 0 && (
           <ul className="space-y-1.5">
-            {mine.map((b) => (
-              <li key={b.dtuId} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px]">
-                <span className="font-semibold text-zinc-200">{b.name || b.dtuId}</span>
-                <span className="text-zinc-500 capitalize">
-                  {b.archetype}{b.feature ? ` · ${b.feature}` : ''}
-                </span>
-                <div className="flex-1" />
-                <span className="text-zinc-500 font-mono">{b.worldId}</span>
-              </li>
-            ))}
+            {mine.map((b) => {
+              const isListed = b.visibility === 'marketplace';
+              const isOpen = listingOpenId === b.dtuId;
+              const f = formFor(b.dtuId);
+              return (
+                <li key={b.dtuId} className="flex flex-col gap-1.5 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-zinc-200">{b.name || b.dtuId}</span>
+                    <span className="text-zinc-500 capitalize">
+                      {b.archetype}{b.feature ? ` · ${b.feature}` : ''}
+                    </span>
+                    <div className="flex-1" />
+                    <span className="text-zinc-500 font-mono">{b.worldId}</span>
+                    {isListed ? (
+                      <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                        <Tag className="w-3 h-3" /> Listed for sale
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setListingOpenId(isOpen ? null : b.dtuId)}
+                        className="px-2 py-1 text-[10px] font-semibold bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 rounded-md"
+                      >
+                        {isOpen ? 'Cancel' : 'List for sale'}
+                      </button>
+                    )}
+                  </div>
+
+                  {isOpen && !isListed && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1.5 mt-0.5 border-t border-zinc-800/70">
+                      <input
+                        aria-label={`List price for ${b.name || b.dtuId}`}
+                        inputMode="decimal"
+                        placeholder="Price (CC)"
+                        value={f.price}
+                        onChange={(e) => patchForm(b.dtuId, { price: e.target.value })}
+                        className={cn(inputCls, 'w-24')}
+                      />
+                      <input
+                        aria-label={`Listing description for ${b.name || b.dtuId}`}
+                        placeholder="Description (optional — 50+ chars if set)"
+                        value={f.description}
+                        onChange={(e) => patchForm(b.dtuId, { description: e.target.value })}
+                        className={cn(inputCls, 'flex-1 min-w-[180px]')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => submitListing(b.dtuId)}
+                        disabled={f.submitting}
+                        className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold bg-lime-600 hover:bg-lime-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md"
+                      >
+                        {f.submitting && <Loader2 className="w-3 h-3 animate-spin" />}
+                        {f.submitting ? 'Listing…' : 'Confirm listing'}
+                      </button>
+                    </div>
+                  )}
+                  {f.error && (
+                    <p role="alert" className="flex items-center gap-1 text-rose-400">
+                      <AlertTriangle className="w-3 h-3 shrink-0" /> {f.error}
+                    </p>
+                  )}
+                  {f.success && (
+                    <p className="flex items-center gap-1 text-emerald-400">
+                      <CheckCircle2 className="w-3 h-3 shrink-0" />
+                      Listed at {f.success.price ?? '—'} CC — live on the marketplace
+                      {f.success.id ? ` (artifact ${f.success.id.slice(0, 10)}…)` : ''}.
+                    </p>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
+
+      <AssetMarketplaceBrowser />
     </div>
   );
 }

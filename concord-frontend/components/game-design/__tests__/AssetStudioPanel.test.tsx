@@ -20,8 +20,22 @@ import { render, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 const lensRunMock = vi.fn();
+// AssetStudioPanel now mounts AssetMarketplaceBrowser (the "buy" half of
+// the economic surface), which uses `api` + `useAuth` — stubbed here as
+// inert/empty so this file stays focused on the authoring form it was
+// written to pin; AssetMarketplaceBrowser's own behavior is pinned in
+// AssetMarketplaceBrowser.test.tsx.
+const apiGetMock = vi.fn().mockResolvedValue({ data: { items: [], total: 0, limit: 25, offset: 0 } });
+const apiPostMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRunMock(...args),
+  api: {
+    get: (...args: unknown[]) => apiGetMock(...args),
+    post: (...args: unknown[]) => apiPostMock(...args),
+  },
+}));
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: null, isAuthenticated: false, isLoading: false }),
 }));
 
 // Import AFTER the mock is registered.
@@ -175,5 +189,69 @@ describe('AssetStudioPanel — honest failure states', () => {
     mockDispatch({ 'game-design.building-list-mine': () => runReject('database unavailable') });
     const { findByText } = render(<AssetStudioPanel gameId="g1" onChange={() => {}} />);
     expect(await findByText(/database unavailable/i)).toBeInTheDocument();
+  });
+});
+
+const oneBuilding = (visibility: string) => ({
+  buildings: [{
+    dtuId: 'dtu-1', buildingId: 'bld-1', name: 'Riverside Inn',
+    archetype: 'tavern', feature: null, worldId: 'concordia-hub', visibility,
+  }],
+});
+
+describe('AssetStudioPanel — List for sale wires the real personal-locker endpoint', () => {
+  it('submits the real { type, price } payload and renders exactly what the backend returned', async () => {
+    mockDispatch({ 'game-design.building-list-mine': () => runOk(oneBuilding('public')) });
+    apiPostMock.mockResolvedValueOnce({ data: { ok: true, listing: { artifact: { id: 'ca-123', price: 40 } } } });
+
+    const { getByText, getByLabelText, findByText } = render(<AssetStudioPanel gameId="g1" onChange={() => {}} />);
+    await findByText('Riverside Inn');
+
+    fireEvent.click(getByText('List for sale'));
+    fireEvent.change(getByLabelText('List price for Riverside Inn'), { target: { value: '40' } });
+    fireEvent.click(getByText('Confirm listing'));
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledWith(
+      '/api/personal-locker/dtus/dtu-1/list-on-marketplace',
+      { type: 'blueprint', price: 40 },
+    ));
+    expect(await findByText(/Listed at 40 CC — live on the marketplace/i)).toBeInTheDocument();
+  });
+
+  it('requires a positive price before calling the endpoint (client-side validation, not a silent no-op)', async () => {
+    mockDispatch({ 'game-design.building-list-mine': () => runOk(oneBuilding('public')) });
+    const { getByText, findByText } = render(<AssetStudioPanel gameId="g1" onChange={() => {}} />);
+    await findByText('Riverside Inn');
+
+    fireEvent.click(getByText('List for sale'));
+    fireEvent.click(getByText('Confirm listing'));
+
+    expect(await findByText(/Price must be a positive number/i)).toBeInTheDocument();
+    expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it('renders the real backend rejection reason on listing failure, never a fabricated success', async () => {
+    mockDispatch({ 'game-design.building-list-mine': () => runOk(oneBuilding('public')) });
+    apiPostMock.mockRejectedValueOnce(Object.assign(new Error('Request failed with status code 400'), {
+      isAxiosError: true,
+      response: { data: { ok: false, error: 'description_too_short' } },
+    }));
+
+    const { getByText, getByLabelText, findByText, queryByText } = render(<AssetStudioPanel gameId="g1" onChange={() => {}} />);
+    await findByText('Riverside Inn');
+
+    fireEvent.click(getByText('List for sale'));
+    fireEvent.change(getByLabelText('List price for Riverside Inn'), { target: { value: '40' } });
+    fireEvent.click(getByText('Confirm listing'));
+
+    expect(await findByText(/description_too_short/i)).toBeInTheDocument();
+    expect(queryByText(/Listed at/i)).toBeNull();
+  });
+
+  it('shows "Listed for sale" instead of the listing form once a building is already on the marketplace', async () => {
+    mockDispatch({ 'game-design.building-list-mine': () => runOk(oneBuilding('marketplace')) });
+    const { findByText, queryByText } = render(<AssetStudioPanel gameId="g1" onChange={() => {}} />);
+    expect(await findByText('Listed for sale')).toBeInTheDocument();
+    expect(queryByText('List for sale')).toBeNull();
   });
 });
