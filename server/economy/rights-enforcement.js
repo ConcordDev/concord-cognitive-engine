@@ -28,6 +28,21 @@ export const TIER_HIERARCHY = {
   // of the same DTU-licensing substrate every other content type uses).
   // "install" is the equivalent of "download" for the other ladders above.
   plugin:   ["install", "commercial", "resale", "source"],
+  // Blueprint / generic asset (owner's tiered-rights model — additive,
+  // no fee/royalty constants involved). "download" is the base consume-only
+  // right (play/use — same base-tier role "install" plays for plugin above);
+  // "usage" is the tier that unlocks remix + relist and is the tier
+  // registerCitation's consent gate (economy/royalty-cascade.js
+  // hasPurchasedLicense) checks for before admitting a citation/derivative;
+  // commercial + resale build on top, same cumulative shape as every other
+  // ladder in this file. "blueprint" is the DTU `kind` used across
+  // domains/crafting.js, domains/whiteboard.js, domains/gamedesign.js for
+  // building/schematic outputs; "asset" is the general content-type key for
+  // any other DTU/song/creative-asset sale that doesn't fit a more specific
+  // ladder above (kept as a distinct entry so it can diverge later without
+  // touching the blueprint ladder).
+  blueprint: ["download", "usage", "commercial", "resale"],
+  asset:     ["download", "usage", "commercial", "resale"],
 };
 
 // Capabilities granted at each tier level
@@ -74,9 +89,26 @@ const TIER_CAPABILITIES = {
   "plugin:commercial": ["view", "install", "commercial"],
   "plugin:resale":     ["view", "install", "commercial", "resale"],
   "plugin:source":     ["view", "install", "commercial", "resale", "source"],
+  // Blueprint / generic asset — "usage" is the remix+relist tier (grants
+  // both the "remix" capability the `remix` action checks and the
+  // "derivative" capability `create_derivative`/checkDerivativeRights
+  // checks — a citation/relist must pass both). "download" deliberately
+  // omits both, so a download-only holder can consume but never remix
+  // or relist, per the owner's model.
+  "blueprint:download":   ["view", "download"],
+  "blueprint:usage":      ["view", "download", "remix", "derivative"],
+  "blueprint:commercial": ["view", "download", "remix", "derivative", "commercial"],
+  "blueprint:resale":     ["view", "download", "remix", "derivative", "commercial", "resale"],
+  "asset:download":   ["view", "download"],
+  "asset:usage":      ["view", "download", "remix", "derivative"],
+  "asset:commercial": ["view", "download", "remix", "derivative", "commercial"],
+  "asset:resale":     ["view", "download", "remix", "derivative", "commercial", "resale"],
 };
 
 // Actions that require specific capabilities
+// (content-type-agnostic — the blueprint/asset ladder above reuses
+// `download`, `remix`, and `create_derivative` unchanged; no new action
+// key was needed for those tiers).
 const ACTION_REQUIREMENTS = {
   stream:            "stream",
   view:              "view",
@@ -188,7 +220,7 @@ export function getHighestTier(db, userId, dtuId, contentType) {
  * @param {object} opts
  * @param {string} opts.userId
  * @param {string} opts.dtuId
- * @param {string} opts.contentType - music, art, code, document, 3d_asset, film
+ * @param {string} opts.contentType - music, art, code, document, 3d_asset, film, plugin, blueprint, asset
  * @param {string} opts.action - stream, download, remix, create_derivative, etc.
  * @param {string} [opts.creatorId] - DTU creator (creators always have full access)
  * @param {string} [opts.distributionMode] - marketplace_only, stream_and_marketplace, etc.
