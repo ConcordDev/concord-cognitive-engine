@@ -16,7 +16,7 @@ own owner review, not a re-litigation of what's already decided).
 | §3 | Joint DTU ownership vs. single-`creator_id` cascade | **Approved: DEFER.** No joint-ownership schema/algorithm change ships in Wave 1. | Any backlog item whose delta is "needs joint/multi-party ownership" (e.g. Mesh Soul Binding) stays blocked. Single-creator-with-citation remains the only supported model. |
 | §4 | Retroactive / cross-temporal royalties | **Approved: REJECT.** Flat reject, including the "fundable variant" sketch in §4.4 — not adopted, not even as a future default. | Cross-Temporal Citation (D.1) and any similar idea stay blocked/deprioritized; this is a durable rejection, not a Wave-1-only deferral, unless a future owner review explicitly revisits it with a real funded-reserve proposal. |
 | §5 | Fork rental terms | **Approved as written, in full** — 5.1 (blanket existence/non-commercial consent at fork-creation + a *separate*, revocable monetization consent for paid rental), 5.3 (merge-back insights default to the original person as sole `creator_id`, renter's contribution captured as a citation — explicitly avoiding the §3 joint-ownership build), 5.4 (a rented fork auto-suspends from rental, not killed, on a `value_drift` flag per migration 330), and 5.5 (**no monetary fork rental ships in Wave 1** — sandboxes stay non-commercial/preview-only). | Preview-only forks (existence + non-commercial sandbox via S6's `lattice-fork.js`, disclosed via `is_agent`) are approved to build/extend. A *rental market* (paid access) does not ship until a future review — the terms above are pre-approved for whenever that build happens, so that later work doesn't need a fresh consent-shape debate, only the actual implementation. |
-| §6 | Shadow Parliament advisory → auto-execute | **Approved: advisory-forever.** No auto-execute capability ships; §6.2's criteria remain a recorded menu, not a green light. | Shadow Parliament continues producing `shadow_reasoning` DTUs only. Any future request to let it *act* needs a fresh, explicit owner review against §6.2's criteria — this sign-off does not pre-approve that. |
+| §6 | Shadow Parliament advisory → auto-execute | **Approved: advisory-forever (2026-07-03).** ⚠️ **AMENDED 2026-07-17 — see §6.3 amendment: bounded auto-execution now ships, with money/auth/destructive structurally fenced.** | Superseded: the Parliament may now autonomously execute a conservative, reversible allow-set (initially the single tagged `dtu.create`), gated by dissent-veto + audit-DTU + a default-OFF kill-switch. Money/auth/irreversible remain permanently blocked by capability confinement. |
 
 **How to use this table when pulling a backlog item:** check the item's stated
 blocker against this table before treating it as "P-D gates it, therefore
@@ -464,6 +464,34 @@ not a green light. The dissent-preserving design is the feature — the moment a
 deliberation can spend or govern, the minority report stops being a philosophical
 nicety and becomes a safety interlock, and that transition needs deliberate owner
 consent.
+
+### 6.3-A — AMENDMENT (2026-07-17): bounded auto-execution, owner-authorized
+
+The owner explicitly authorized moving the Parliament from advisory-forever to
+**bounded autonomous execution**, on the condition that **money, auth/permissions,
+and irreversible/destructive actions stay fenced** — enforced structurally, not by
+convention. Shipped in `server/lib/shadow-parliament.js` (`enact()`), pinned by
+`server/tests/shadow-parliament.test.js` (27/27), with these interlocks — exactly
+the §6.2 shape, now made real:
+
+- **Capability confinement is the fence.** Execution runs through `confined-ctx.js`;
+  `economy.mint/withdraw/transfer` are denied by its `NEVER_ALLOW` set and `admin.*`
+  by `AGENT_FORBIDDEN_DOMAINS`, independent of any manifest.
+- **Allow-set = one frozen, per-exact-macro entry** (`dtu.create`, requiring a
+  `shadow_parliament_action` tag). `dtu.delete` — same domain — is denied, proving
+  the fence is per-macro, not per-domain. Extending the allow-set is a deliberate,
+  reviewed act; only reversible actions qualify.
+- **Dissent-veto** (`score ≤ 0.15` against the verdict) blocks execution and routes
+  to a human — the minority report is now the safety interlock §6.3 anticipated.
+- **Audit-by-construction:** every auto-action mints a `shadow_reasoning` DTU with
+  the full deliberation + minority report before acting.
+- **Kill-switch** `CONCORD_SHADOW_PARLIAMENT_AUTOEXEC`, default **OFF**.
+
+Also shipped alongside: optional local-LLM enrichment of each voice's prose
+(`CONCORD_SHADOW_COUNCIL_LLM`, default OFF), structurally verdict-immutable (the
+verdict is finalized by pure council math before enrichment ever runs). This
+amendment does **not** touch §3/§4/§5 — joint ownership, retroactive royalties, and
+paid fork rental remain blocked/deferred as recorded above.
 
 ---
 
