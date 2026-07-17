@@ -6,6 +6,24 @@
 // below operate on real per-user state stored in globalThis._concordSTATE so a
 // user can actually exercise the controls (DSAR, per-lens sharing, access log,
 // data export, cookie banner config, retention policy, federation flow map).
+//
+// Default retention windows (days) per data category. 0 = keep forever.
+// Exported so server/emergent/privacy-retention-sweep.js (the heartbeat that
+// actually ENFORCES this config — see that file for the honest scope of what
+// it can and can't act on) has a single source of truth instead of a second,
+// driftable copy.
+export const RETENTION_CATEGORIES = [
+  { category: "chat_history", defaultDays: 365 },
+  { category: "world_activity", defaultDays: 180 },
+  { category: "access_logs", defaultDays: 90 },
+  { category: "dsar_records", defaultDays: 730 },
+  { category: "search_queries", defaultDays: 30 },
+  { category: "drafts", defaultDays: 0 },
+];
+
+// The three enforcement actions a user can attach to a retention category.
+export const RETENTION_ACTIONS = ["delete", "anonymize", "archive"];
+
 export default function registerPrivacyActions(registerLensAction) {
   registerLensAction("privacy", "dataInventory", (ctx, artifact, _params) => { const items = artifact.data?.dataItems || []; if (items.length === 0) return { ok: true, result: { message: "Add data items to inventory." } }; const byCategory = {}; const sensitive = items.filter(i => i.sensitive || i.pii); for (const i of items) { const c = i.category || "other"; byCategory[c] = (byCategory[c] || 0) + 1; } return { ok: true, result: { totalItems: items.length, sensitiveItems: sensitive.length, categories: byCategory, riskLevel: sensitive.length > items.length * 0.5 ? "high" : sensitive.length > 0 ? "moderate" : "low", gdprRelevant: sensitive.length > 0, recommendations: sensitive.length > 0 ? ["Implement encryption at rest", "Review access controls", "Document data processing purposes", "Ensure deletion capability"] : ["Continue monitoring data collection"] } }; });
   registerLensAction("privacy", "consentAudit", (ctx, artifact, _params) => { const consents = artifact.data?.consents || []; const active = consents.filter(c => c.status === "active" || c.granted); const expired = consents.filter(c => c.expiry && new Date(c.expiry) < new Date()); const withdrawn = consents.filter(c => c.status === "withdrawn"); return { ok: true, result: { totalConsents: consents.length, active: active.length, expired: expired.length, withdrawn: withdrawn.length, complianceRate: consents.length > 0 ? Math.round((active.length / consents.length) * 100) : 100, issues: expired.map(c => ({ user: c.user || c.subject, expiredOn: c.expiry })), action: expired.length > 0 ? "Re-consent required for expired records" : "All consents current" } }; });
@@ -60,16 +78,6 @@ export default function registerPrivacyActions(registerLensAction) {
   const SHAREABLE_LENSES = [
     "chat", "world", "music", "code", "marketplace", "atlas", "healthcare",
     "crypto", "message", "accounting", "research", "legal",
-  ];
-
-  // Default retention windows (days) per data category. 0 = keep forever.
-  const RETENTION_CATEGORIES = [
-    { category: "chat_history", defaultDays: 365 },
-    { category: "world_activity", defaultDays: 180 },
-    { category: "access_logs", defaultDays: 90 },
-    { category: "dsar_records", defaultDays: 730 },
-    { category: "search_queries", defaultDays: 30 },
-    { category: "drafts", defaultDays: 0 },
   ];
 
   // ── DSAR — data subject access request handler ────────────────────────────
@@ -350,8 +358,7 @@ export default function registerPrivacyActions(registerLensAction) {
       if (!RETENTION_CATEGORIES.some(c => c.category === category)) {
         return { ok: false, error: "unknown retention category" };
       }
-      const actions = ["delete", "anonymize", "archive"];
-      const action = actions.includes(params?.action) ? params.action : "delete";
+      const action = RETENTION_ACTIONS.includes(params?.action) ? params.action : "delete";
       let windowDays = parseInt(params?.windowDays);
       if (!Number.isFinite(windowDays) || windowDays < 0) windowDays = 0;
       windowDays = Math.min(windowDays, 3650); // cap at 10 years
@@ -361,6 +368,39 @@ export default function registerPrivacyActions(registerLensAction) {
       bucket.set(category, policy);
       save();
       return { ok: true, result: { category, ...policy } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Observability for the retention-sweep heartbeat
+  // (server/emergent/privacy-retention-sweep.js). Lets the retention-policy
+  // UI honestly show "last swept: <time>, N records actioned" instead of the
+  // config being a write-only register nobody can verify is enforced.
+  // ENFORCED_CATEGORIES / DECLARED_ONLY_CATEGORIES are duplicated (not
+  // imported) from the sweep module deliberately — this macro must stay
+  // readable/callable even if the sweep module fails to load, and the split
+  // is a stable, documented fact about the data model (which categories have
+  // a real per-user store this domain owns), not sweep implementation detail.
+  const ENFORCEABLE_CATEGORIES = ["access_logs", "dsar_records"];
+  const DECLARED_ONLY_CATEGORIES = RETENTION_CATEGORIES
+    .map(c => c.category)
+    .filter(c => !ENFORCEABLE_CATEGORIES.includes(c));
+  registerLensAction("privacy", "retentionSweepStatus", (_ctx, _artifact, _params) => {
+    try {
+      const s = privacyState();
+      const sweep = s.retentionSweep || null;
+      return {
+        ok: true,
+        result: {
+          hasRun: !!sweep,
+          lastRunAt: sweep?.lastRunAt || null,
+          totalRuns: sweep?.totalRuns || 0,
+          lastActioned: sweep?.lastActioned || 0,
+          totalActionedAllTime: sweep?.totalActionedAllTime || 0,
+          byCategory: sweep?.byCategory || {},
+          enforcedCategories: ENFORCEABLE_CATEGORIES,
+          declaredOnlyCategories: DECLARED_ONLY_CATEGORIES,
+        },
+      };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

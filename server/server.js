@@ -367,6 +367,20 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Wave-4 gap-closure — privacy lens retention-policy enforcement. Reads each
+// user's declared { windowDays, action } per retention category (privacy
+// lens "Retention" editor) and actually acts on data past its window for the
+// two categories that have a real per-user store this domain owns
+// (access_logs, dsar_records — see the module header for why the other four
+// declared categories are honestly left un-enforced). Frequency 240 (~1h);
+// cheap in-memory Map walk. Kill-switch: CONCORD_PRIVACY_RETENTION_SWEEP=0.
+import { runPrivacyRetentionSweep } from "./emergent/privacy-retention-sweep.js";
+registerHeartbeat("privacy-retention-sweep", {
+  frequency: 240,
+  handler: runPrivacyRetentionSweep,
+  scope: "global",
+});
+
 // Phase W — disease tick cycle (~75s cadence per world). Advances
 // severity of every active infection in the world.
 registerHeartbeat("disease-tick-cycle", {
