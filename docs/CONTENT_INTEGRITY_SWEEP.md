@@ -44,7 +44,7 @@ is doing that for the not-yet-mechanized classes.
 | Schema drift | ✅ mechanized + gated | `scripts/verify-schema-drift.mjs --ci` |
 | Behavioral depth floor | ◑ measured, grind-to-ceiling | `scripts/grade-macro-depth.mjs --honest` (depth-fleet loop) |
 | Capability-map "genuinely missing" gaps | ◑ per-lens manual triage | Frontend-Rebuild Wave-4 gap-closure (DATA-SOURCING / ENGINEERING / CURATION) |
-| **Real-name / IP-name collisions** | **◑ NOT yet mechanized — this doc** | **manual sweep now; `content-name-collision-detector` gate (E3) to finish the class** |
+| **Real-name / IP-name collisions** | **✅ mechanized + gated (2026-07-17)** | `scripts/check-name-collisions.mjs --ci` (E3 gate, wired in `audits.yml`), pinned by `name-collision-gate.test.js` |
 
 The last row is the one this doc opens. The base rate matters: **tunya alone
 carried ≥3 collisions** (Cree, Kree, Naheya/Wiyowak) in a single sub-world, which
@@ -89,9 +89,9 @@ replacement name), exactly like Cree→Corre. Ranked:
 
 | # | Finding | Class | Footprint | Confidence | Disposition |
 |---|---|---|---|---|---|
-| 1 | **ArasaCorp** (cyber) — one-letter lift of *Arasaka*, the Cyberpunk 2020/2077 megacorp | (c) IP | faction + VP NPC + district/item ids (~37 refs) | **HIGH** | owner-name → sweep |
-| 2 | **Medici** — real Florentine dynasty as an alien ice-healer people/species/faction | (b) real dynasty | **cross-world**: tunya 158 + concordia-hub 8 + _shared 2 ≈ 168 refs | **MED** | owner-name → sweep at tunya source, propagate |
-| 3 | **Nymeria** (fantasy) — signature GRRM/GoT name on a bog-witch NPC | (c) IP | **cross-cutting**: fantasy + quests (`nymeria-crossing.json`) + dialogues + festivals | **MED** | owner-name → sweep |
+| 1 | ✅ **ArasaCorp → Nevex Corp** (cyber, `353fef39`) — *Arasaka*/Cyberpunk | (c) IP | ~40 refs incl. ids + cross-refs; 0 residual | **HIGH** | DONE |
+| 2 | ✅ **Medici → Vessine** (`360cf381`) — real Florentine dynasty | (b) real dynasty | ~332 cross-world refs + bloodline engine + frontend + forward-repair migration 367; 0 functional residual | **MED** | DONE |
+| 3 | ✅ **Nymeria → Maeris of the Bog** (`353fef39`) — GRRM/GoT | (c) IP | cross-cutting fantasy + quests (file renamed) + dialogues + festivals; 0 residual | **MED** | DONE |
 | 4 | **Thunder Brahmin** (concord-link-frontier) — real Hindu caste for a beast of burden (+ Fallout echo) | (a) real living group | creature name+id (2 refs) | **LOW-MED / sensitivity** | owner-verify — same class as Cree ("Brahman cattle-breed" is the defense) |
 | 5 | Wintersday (festivals+achievements) — Guild Wars 2 coined holiday | (c) IP | 3 refs | LOW | owner-verify (content generic; neutral coinage drops it) |
 | 6 | Mournhold (fantasy) — Elder Scrolls city as a Great House | (c) IP | 2 refs | LOW | owner-verify |
