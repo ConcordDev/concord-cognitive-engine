@@ -108,7 +108,7 @@ genuine honesty gap found while auditing:
 | Model evaluation / feature importance / dataset profiling / hyperparameter suggestion bench | ALREADY REAL | `MlActionPanel` (`modelEvaluate`/`featureImportance`/`datasetProfile`/`hyperparameterSuggest`) |
 | Real-world tooling reference (PyTorch/TF/HF repos) | ALREADY REAL | `MlRepos` (live GitHub search) |
 | Cross-community research feed | ALREADY REAL | `ArxivPanel` (arXiv cs.LG) |
-| Actual GPU-backed model training (submit a training job, watch it run) | GENUINELY MISSING | Concord has no training-cluster/job-scheduler substrate behind `ml.js` — `experiment-log` only accepts caller-supplied metric points, it doesn't run a model. Deferred — this would be a new backend subsystem (job queue + compute backend), well beyond a UI-parity pass. The honest fix within scope was making the browser-side placeholder clearly labeled as simulated (done above) rather than pretending to train. |
+| Actual GPU-backed model training (submit a training job, watch it run) | **CLOSED (2026-07-17, `63bd69b4`)** as real *CPU* training (GPU/job-cluster remains genuinely out of scope) | New `server/lib/ml-trainer.js` runs a genuine seeded, deterministic small-scale CPU trainer (logistic regression + k-means), fail-closed on sparse/degenerate data. The `experiment-train` macro logs its REAL per-epoch loss curve into the existing experiment record shape. Explicitly labeled "small in-process CPU training — no GPU, no deep learning, no hub model," so it never borrows the HuggingFace hub's credibility. 26 tests incl. convergence/determinism/honest-failure proofs. GPU-backed distributed training (a job queue + compute cluster) is still correctly out of scope. |
 
 ## Verify-gate results
 

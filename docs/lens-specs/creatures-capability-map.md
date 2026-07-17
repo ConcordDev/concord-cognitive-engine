@@ -109,7 +109,15 @@ end-to-end.
   same key the same way); `garage` is the outlier that also offers a
   manual edit field. Not treated as a defect specific to this lens —
   consistent with the majority of sibling Phase-D lenses.
-- **No creature portrait/thumbnail imagery.** Concord's creature system is
+- **No creature portrait/thumbnail imagery.** **CLOSED (2026-07-17,
+  `c59e7a4f`)** — solved WITHOUT an art pipeline or image model (either would
+  fabricate detail for a fictional species). `server/lib/creature-portrait.js`
+  projects the REAL body-plan geometry (`generateCreature()`'s parts tree,
+  tinted by `coatFor`) into a deterministic SVG schematic at a fixed
+  real-world scale (size reflects real mass/height); surfaced via a new
+  `creatures.portrait` macro. Every visual feature derives from a real param;
+  no per-topology template, no `Math.random`. Original reasoning retained:
+  Concord's creature system is
   procedural-body-plan-based (topology + mass + parts), not 2D-art-based;
   there is no art asset pipeline this lens could honestly draw from. The
   taxonomy/topology/diet/aquatic columns plus the coat-color hash
