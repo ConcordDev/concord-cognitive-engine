@@ -66,9 +66,13 @@ export function compileManifest(grants = []) {
  * @param {object}   [o.db]      — used ONLY by the scoped KV; never exposed raw.
  * @param {object}   [o.manifest]— { macros: [grant...] } capability declaration.
  * @param {object}   [o.actionCap] — a makeActorActionCap() bucket (shared optional).
+ * @param {Function} [o.log]     — diagnostic log(type,message,meta) DI (see the
+ *                                 no-op fallback in confinedRunMacro below); optional,
+ *                                 never a capability, just avoids crashing macros that
+ *                                 unconditionally call ctx.log(...).
  * @returns a frozen ctx: { userId, actor, llm?, runMacro, sdk, confined:true }.
  */
-export function makeConfinedCtx({ userId, runMacro, llm, db, manifest, actionCap, userIntent = null } = {}) {
+export function makeConfinedCtx({ userId, runMacro, llm, db, manifest, actionCap, userIntent = null, log = null } = {}) {
   if (!userId) throw new Error("makeConfinedCtx: userId required");
   if (typeof runMacro !== "function") throw new Error("makeConfinedCtx: runMacro required");
 
@@ -113,7 +117,23 @@ export function makeConfinedCtx({ userId, runMacro, llm, db, manifest, actionCap
     }
     // Delegate to the REAL runMacro with the confined actor. We hand it the actor
     // + userId + llm — NEVER a db handle, mintCoins, or internal flag.
-    return runMacro(d, n, input, { actor, userId, llm });
+    //
+    // `log` is a narrow, deliberate exception to that minimalism: every
+    // normal ctx in this codebase (makeCtx/makeInternalCtx) carries a `log`
+    // function — a bounded in-memory diagnostic ring buffer
+    // (server.js#log -> STATE.logs, capped at 2000 entries; read-only
+    // observability, no side effect on money/auth/app data, nothing a
+    // confined program couldn't already infer about its own call). Many real
+    // macro handlers call `ctx.log(...)` unconditionally on their success/
+    // reject paths (e.g. `dtu.create`), so its absence here isn't a security
+    // boundary — it's a ctx-shape gap that makes otherwise-safe, allow-listed
+    // macros throw `macro_uncaught_throw` before ever reaching their own
+    // logic. A no-op fallback keeps the SAME capability surface (nothing new
+    // is reachable — `log` grants no access) while letting ordinary macros
+    // actually run through confinement instead of crashing on a missing
+    // utility method.
+    const _log = typeof log === "function" ? log : () => {};
+    return runMacro(d, n, input, { actor, userId, llm, log: _log });
   }
 
   const sdk = makeConcordSdk({ userId, db, runMacro: confinedRunMacro, llm });
