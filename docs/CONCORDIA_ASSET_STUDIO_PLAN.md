@@ -1,7 +1,11 @@
 # Concordia Asset Studio — design → live-in-world creation pipeline (design doc)
 
-> STATUS: **Increment 1 SHIPPED (2026-07-17)** — see the Increments section.
-> The rest remains DESIGN DOC / vision + scoped increments.
+> STATUS: **Increments 1, 4, 5 SHIPPED (2026-07-17)** — see the Increments
+> section. The design→live-in-world loop is proven (Inc 1), authored assets now
+> **earn** on sale with a conservation-correct money core + cross-rail royalty
+> bridge (Inc 4), and the composition/remix flywheel (multi-parent citation +
+> `asset-fuse`) is live (Inc 5). Increments **2 (level/scene design)** and
+> **3 (concept board)** remain scoped-but-unbuilt.
 > Captured 2026-07-17 at the owner's direction. This is a **growth track**,
 > distinct from the WAVE4 honesty close-out — it adds a net-new capability
 > rather than closing an existing gap.
@@ -175,13 +179,37 @@ Same "honest by construction" law as the rest of Concord, applied here:
    make it walkable in Concordia.
 3. **Increment 3 — Concept board.** ArtCanvas-backed concept/design board
    attachable to an asset or level as its real design record (honest strokes).
-4. **Increment 4 — Asset marketplace surface + license tiers.** Surface
-   authored assets in the marketplace with the `rights-enforcement` tier model
-   (download rights vs. purchased usage rights) — the same model the WAVE4
-   marketplace-plugin unit uses.
-5. **Increment 5 — Composition / remix (the flywheel).** Wire evo-asset fusion
-   so creators build assets on others' assets, with royalties cascading up the
-   lineage — the compounding moat, fully realized.
+4. **Increment 4 — Asset marketplace surface + license tiers. ✅ SHIPPED
+   2026-07-17** (money core `893a38ed`, cross-rail bridge `f2557602`, blueprint/
+   asset license tiers `05977748`, list/buy UI `4084a3b2`; Stripe-mint
+   idempotency hardening `8cd5049e`). Authored buildings now **earn**: a
+   per-DTU "List for sale" form in Asset Studio → the real
+   `POST /api/personal-locker/dtus/:id/list-on-marketplace` (`publishArtifact`,
+   flips `dtus.visibility` to `marketplace`), and an `AssetMarketplaceBrowser`
+   buy surface → the real `purchaseArtifact` rights-ladder primitive. The money
+   core was made conservation-correct (buyer→creator direct debit, creator
+   credit now visible via `CREDIT_ROW_PREDICATE`, explicit FEE row) and a
+   **cross-rail royalty bridge** routes DTU-backed asset sales through the
+   canonical `royalty_lineage` cascade so a remixed asset pays its ancestor on
+   sale. `rights-enforcement.js` gained `blueprint`/`asset` tier ladders
+   (download consumes, usage unlocks remix). **Honest scope:** single-price
+   only — the blueprint tier ladder has no matching entry in
+   `creative-marketplace.js`'s tier-key map / `license-tiers.js` catalog and the
+   purchase route forwards no `tier`; both documented in-code as out-of-scope
+   backend gaps, not faked. Verified by ledger-conservation + license-tier +
+   17/17 component tests; consolidated tsc green.
+5. **Increment 5 — Composition / remix (the flywheel). ✅ SHIPPED 2026-07-17**
+   (commit `2a90343c`). Corrected the doc's premise: `evo-asset` is NOT a
+   fusion engine (single-parent, no creator column) — the real multi-parent
+   primitive is `registerCitation`. `building-publish` now accepts
+   `remixOfDtuIds: string[]` (one `registerCitation` per parent, single-id path
+   byte-identical), and a new `game-design.asset-fuse` macro mints a
+   creator-attributed `kind:"fusion"` blueprint DTU from 2+ parents with a real
+   royalty citation to each valid non-self parent — royalties cascade up the
+   lineage on a downstream sale (via the Inc-4 bridge), the compounding moat.
+   Honest-by-construction spawn (only with full archetype+dims+world+position;
+   partial info mints DTU+lineage, `spawned:false`). Pinned by 12/12 fusion
+   tests + 14/14 building-publish regression.
 
 ## Open decisions (for the owner, when this track starts)
 
