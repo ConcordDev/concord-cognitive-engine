@@ -84,8 +84,16 @@ const MODE_TABS: {
   label: string;
   icon: typeof Lightbulb;
   artifactType: ArtifactType;
+  tooltip?: string;
 }[] = [
-  { id: 'engagements', label: 'Engagements', icon: Briefcase, artifactType: 'Engagement' },
+  {
+    id: 'engagements',
+    label: 'Engagement Records',
+    icon: Briefcase,
+    artifactType: 'Engagement',
+    tooltip:
+      'Freeform engagement briefs, scope notes, and fee terms — for live engagement status and time tracking, see the Engagement Tracker panel below.',
+  },
   { id: 'proposals', label: 'Proposals', icon: FileText, artifactType: 'Proposal' },
   { id: 'deliverables', label: 'Deliverables', icon: Target, artifactType: 'Deliverable' },
   { id: 'clients', label: 'Clients', icon: Users, artifactType: 'Client' },
@@ -682,6 +690,7 @@ export default function ConsultingLensPage() {
               setActiveTab(tab.id);
               setShowDashboard(false);
             }}
+            title={tab.tooltip}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
               activeTab === tab.id && !showDashboard
@@ -694,6 +703,12 @@ export default function ConsultingLensPage() {
           </button>
         ))}
       </nav>
+      {!showDashboard && activeTab === 'engagements' && (
+        <p className={cn(ds.textMuted, 'text-xs -mt-2')}>
+          Freeform engagement briefs, scope notes, and fee terms — for live engagement status
+          and time tracking, see the Engagement Tracker panel below.
+        </p>
+      )}
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

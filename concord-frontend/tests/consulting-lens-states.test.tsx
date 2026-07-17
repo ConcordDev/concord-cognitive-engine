@@ -163,3 +163,22 @@ describe('consulting lens — four UX states', () => {
     expect(getAllByText(/Strategy Refresh/i).length).toBeGreaterThan(0);
   });
 });
+
+describe('consulting lens — Engagement Records vs Engagement Tracker disambiguation', () => {
+  // Wave-4 gap-closure: the generic DTU-backed artifact tab and the real,
+  // purpose-built EngagementTracker panel both use the word "Engagement" on
+  // the same page. This pins the relabel + explanatory copy that tells them
+  // apart, without touching the underlying 'Engagement' artifact-type key.
+  it('labels the generic DTU tab "Engagement Records", not the bare "Engagements"', () => {
+    const { getByText, queryByText } = render(<ConsultingLens />);
+    expect(getByText('Engagement Records')).toBeInTheDocument();
+    expect(queryByText(/^Engagements$/)).not.toBeInTheDocument();
+  });
+
+  it('shows a subtitle distinguishing engagement records from the live Engagement Tracker', () => {
+    const { getByText } = render(<ConsultingLens />);
+    expect(
+      getByText(/for live engagement status\s+and time tracking, see the Engagement Tracker panel below/i)
+    ).toBeInTheDocument();
+  });
+});
