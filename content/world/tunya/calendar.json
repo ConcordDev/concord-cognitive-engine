@@ -179,7 +179,7 @@
       "weather": "humid_thunderstorms_begin",
       "cultural_notes": "Harvest celebration. Aekon hosts its high feast — twelve districts, twelve dishes, the twelfth still secret. Corre hosts its Harvest market.",
       "agricultural": ["main_grain_harvest", "root_harvest"],
-      "festivals": ["harvest_high_feast_aekon", "harvest_market_cree"],
+      "festivals": ["harvest_high_feast_aekon", "harvest_market_corre"],
       "political_gates": ["tax_assessment_all_kingdoms"]
     },
     {
@@ -241,7 +241,7 @@
     "key_anchors_by_annum": {
       "0": "ancient_tunyan_calendar_origin (per Nil's reckoning)",
       "313": "africa_first_arrival",
-      "320": "asbir_cree_disembarkation",
+      "320": "asbir_corre_disembarkation",
       "324": "medici_crash",
       "327": "eurasia_arrival",
       "337": "aekon_stranded_arrival",

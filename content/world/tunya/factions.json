@@ -108,10 +108,10 @@
     "goal": "Maintain coastal independence near Kree without joining it. Preserve the oral memory of what was lost on the North American ark before the curators got to it.",
     "values": ["land-as-relative", "oral memory", "non-participation in continental politics", "small-scale alliance with Sanguire (Sanguire never tried to claim them)"],
     "fears": ["Asbir asking what their ancestors deleted", "Kree formal annexation", "Fluxom's sea-trade returning"],
-    "controlled_districts": ["cree_coastal_villages", "cree_inland_woods", "cree_ark_walking_route"],
+    "controlled_districts": ["corre_coastal_villages", "corre_inland_woods", "corre_ark_walking_route"],
     "rival_factions": ["asbir"],
     "allied_factions": ["sandrun_sanguire", "nil"],
-    "npc_ids": ["elder_walker_neyahwetin", "fisher-singer_okimaw", "cree_ark_guardian"],
+    "npc_ids": ["elder_walker_neyahwetin", "fisher-singer_okimaw", "corre_ark_guardian"],
     "dialogue_style": "deliberate",
     "reputation_currency": "shell_strands",
     "world_id": "tunya",
@@ -131,7 +131,7 @@
       "preferred_weapon_archetypes": ["bow", "knife", "fishing-spear"],
       "preferred_armor_silhouette": "hide",
       "sigil_path": "M-20,10 Q0,-20 20,10 Z",
-      "banner_sigil_id": "cree_arrival_arc",
+      "banner_sigil_id": "corre_arrival_arc",
       "ornamentation_motifs": ["arrival_arc", "shore_braid"]
     }
   },

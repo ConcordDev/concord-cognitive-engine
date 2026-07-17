@@ -102,7 +102,7 @@
       "source_location": "every kingdom can produce — the most accessible dye on Tunya",
       "supply_chain": ["horticulturalists or any household grass-cutter", "dye-paste prepared at the household level"],
       "monopoly": "none. Green is the everyday color.",
-      "uses": ["nil_robes", "cree_longhouse_banners", "dinye_elder_paint", "general_use"]
+      "uses": ["nil_robes", "corre_longhouse_banners", "dinye_elder_paint", "general_use"]
     },
     {
       "id": "orange",

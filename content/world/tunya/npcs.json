@@ -527,14 +527,14 @@
         "satisfaction_method": "morning_walker_circle"
       },
       {
-        "id": "cree_oral_memory_preservation",
+        "id": "corre_oral_memory_preservation",
         "priority": "primary",
         "satisfaction_method": "evening_storytelling_with_youth"
       },
       {
         "id": "food_lodging",
         "priority": "secondary",
-        "satisfaction_method": "cree_coastal_villages_pooled"
+        "satisfaction_method": "corre_coastal_villages_pooled"
       }
     ],
     "daily_schedule": [
@@ -544,7 +544,7 @@
           5,
           8
         ],
-        "location": "cree_coastal_villages",
+        "location": "corre_coastal_villages",
         "activity": "wakes; morning walker-circle with elders",
         "need_addressed": "elder_council_continuity",
         "interactable_by_player": true
@@ -555,7 +555,7 @@
           9,
           12
         ],
-        "location": "cree_coastal_villages",
+        "location": "corre_coastal_villages",
         "activity": "village rounds; ocean-watching; intake of any visiting traders",
         "need_addressed": "elder_council_continuity",
         "interactable_by_player": true
@@ -566,7 +566,7 @@
           13,
           16
         ],
-        "location": "cree_inland_woods",
+        "location": "corre_inland_woods",
         "activity": "afternoon walk to the inland woods; consults with the inland elders",
         "need_addressed": "elder_council_continuity",
         "interactable_by_player": false
@@ -577,9 +577,9 @@
           17,
           20
         ],
-        "location": "cree_coastal_villages_main_longhouse",
+        "location": "corre_coastal_villages_main_longhouse",
         "activity": "evening storytelling with youth; carries the deletion-memory orally",
-        "need_addressed": "cree_oral_memory_preservation",
+        "need_addressed": "corre_oral_memory_preservation",
         "interactable_by_player": true
       },
       {
@@ -606,19 +606,19 @@
       }
     ],
     "home": {
-      "district": "cree_coastal_villages",
+      "district": "corre_coastal_villages",
       "dwelling_type": "elder_longhouse_with_attached_council_circle"
     },
     "job": {
-      "profession_id": "cree_eldest_walker",
+      "profession_id": "corre_eldest_walker",
       "wage_per_diurnal_sparks": 0,
-      "wage_source": "cree_villages_no_internal_currency"
+      "wage_source": "corre_villages_no_internal_currency"
     },
     "apparel": [
       "hide_cloak_embroidered_with_bay_shells",
       "long_gray_braid_undone_for_storytelling",
       "soft_leather_inland_walking_boots",
-      "scarf_of_cree_cedar_dye"
+      "scarf_of_corre_cedar_dye"
     ],
     "gear": [
       "fishing_spear_used_only_as_walking_staff",
