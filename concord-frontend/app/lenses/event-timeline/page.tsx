@@ -21,14 +21,23 @@
  *   - exportEvents — filtered slice → CSV / JSON download
  *   - saveView / listViews / deleteView — per-user filter presets
  *
- * The `OnThisDay` section at the bottom is deliberately NOT one of these
- * — it queries Wikipedia's public /feed/onthisday REST API directly
- * (real, honestly-labeled external data, not a `event_timeline` macro)
- * and lets the user capture an entry into their own DTU corpus via
+ * The `OnThisDay` section is deliberately NOT one of these — it queries
+ * Wikipedia's public /feed/onthisday REST API directly (real,
+ * honestly-labeled external data, not a `event_timeline` macro) and lets
+ * the user capture an entry into their own DTU corpus via
  * SaveAsDtuButton (provenance-stamped ingest: apiSource/apiUrl/rawData).
  * It shares the "on this day" concept with `history/WikipediaOnThisDayPanel`
  * and `reflection/RfOnThisDayPanel` — see the capability map at
  * docs/lens-specs/event-timeline-capability-map.md for the full note.
+ *
+ * `MyOnThisDay` (WAVE4) IS backed by a real `event_timeline` macro —
+ * `on_this_day` — and is the Concord-native answer the capability-map's
+ * "Deliberately left as-is" section flagged as future work: it queries the
+ * caller's own real `dtus` for entries created on today's month+day in a
+ * prior year. It's intentionally DTU-scoped, not the full cross-source
+ * event firehose (that would need a retention/storage decision the
+ * 30-day-capped `event_timeline_log` doesn't have — see the comment above
+ * the `on_this_day` macro in server/domains/event-timeline.js).
  */
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors.
 // Empty state: handled inline when data is empty.
@@ -42,6 +51,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OnThisDay } from '@/components/event-timeline/OnThisDay';
+import { MyOnThisDay } from '@/components/event-timeline/MyOnThisDay';
 import { ChannelTrends } from '@/components/event-timeline/ChannelTrends';
 import { EventDetailPanel } from '@/components/event-timeline/EventDetailPanel';
 import { SavedViewsBar, type TimelineFilterState } from '@/components/event-timeline/SavedViewsBar';
@@ -600,6 +610,10 @@ export default function EventTimelineLens() {
               onToggleChannel={toggleChannel}
             />
           </div>
+
+          <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <MyOnThisDay />
+          </section>
 
           <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
             <OnThisDay />

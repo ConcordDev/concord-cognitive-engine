@@ -58,6 +58,80 @@ function payloadHaystack(payloadJson) {
   return String(payloadJson).toLowerCase();
 }
 
+// ── on_this_day helpers ──────────────────────────────────────────────
+//
+// `dtus.created_at` is NOT a single consistent format across the codebase
+// (confirmed by direct grep, not assumed): the canonical `dtu.create` path
+// (`economy/dtu-pipeline.js#nowISO()`) writes a TEXT UTC datetime string
+// with milliseconds ("YYYY-MM-DD HH:MM:SS.sss"); several lib writers
+// (`skill-progression.js`, `starter-content.js`, `embodied/dream-engine.js`)
+// write a unix-seconds INTEGER via `Math.floor(Date.now()/1000)` or SQLite's
+// `unixepoch()`; the migration-001 DEFAULT is `datetime('now')` (TEXT, no
+// ms). Rather than trust one shape (which would silently drop real rows
+// written by the other paths), normalize every row in JS.
+function normalizeCreatedAt(raw) {
+  if (raw == null) return null;
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw > 1e12 ? Math.floor(raw / 1000) : Math.floor(raw);
+  }
+  const s = String(raw).trim();
+  if (!s) return null;
+  // Plain unix-epoch digits, OR the "1689584400.0"-style shape SQLite
+  // produces when a plain JS `number` (better-sqlite3 binds it as REAL by
+  // default) is written into this TEXT-affinity column — confirmed by
+  // direct runtime test, not assumed: TEXT affinity converts an inserted
+  // REAL to its float-text form, so `Math.floor(Date.now()/1000)` passed
+  // straight into `.run(...)` (the real shape several writers use, e.g.
+  // skill-progression.js, starter-content.js) lands on disk as
+  // "1689584400.0", not "1689584400". Both must parse as epoch seconds.
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const n = Number(s);
+    return n > 1e12 ? Math.floor(n / 1000) : Math.floor(n);
+  }
+  // SQLite TEXT datetime shapes: "YYYY-MM-DD HH:MM:SS[.sss]" (UTC, no
+  // offset). Normalize to ISO-8601 with an explicit Z so Date.parse treats
+  // it as UTC instead of guessing the local zone.
+  let iso = s.includes("T") ? s : s.replace(" ", "T");
+  if (!/Z$|[+-]\d\d:\d\d$/.test(iso)) iso += "Z";
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? Math.floor(t / 1000) : null;
+}
+
+// Day-of-year within a fixed leap reference year (2000) so Feb 29 sources
+// are representable; used only for the circular distance in the optional
+// dayWindow fuzz-match.
+function dayOfYearUTC(month, day) {
+  return Math.floor((Date.UTC(2000, month - 1, day) - Date.UTC(2000, 0, 1)) / 86400000);
+}
+
+function matchesDay(month, day, targetMonth, targetDay, window) {
+  if (!window) return month === targetMonth && day === targetDay;
+  const a = dayOfYearUTC(month, day);
+  const b = dayOfYearUTC(targetMonth, targetDay);
+  const diff = Math.abs(a - b);
+  return Math.min(diff, 366 - diff) <= window;
+}
+
+// Best-effort short preview text pulled from whatever the row's data/body
+// actually contains. Never invents content — empty string when there's
+// nothing real to show.
+function dtuPreview(row) {
+  const raw = row.data || row.body_json || row.content;
+  if (!raw) return "";
+  try {
+    const obj = JSON.parse(raw);
+    if (typeof obj === "string") return obj.slice(0, 160);
+    if (obj && typeof obj === "object") {
+      const cand = obj.human || obj.summary || obj.text || obj.description || null;
+      if (typeof cand === "string") return cand.slice(0, 160);
+    }
+    return "";
+  } catch {
+    // Not JSON — plain text content (e.g. dtu-pipeline's `content` column).
+    return String(raw).slice(0, 160);
+  }
+}
+
 export default function registerEventTimelineMacros(register, deps) {
   const { listRecent, stats } = deps;
 
@@ -106,6 +180,98 @@ export default function registerEventTimelineMacros(register, deps) {
       return { ok: false, reason: "channels_failed", error: String(err?.message || err) };
     }
   }, { note: "Distinct channels in a window with counts + last-seen timestamp." });
+
+  // ── on_this_day ─────────────────────────────────────────────────────
+  // WAVE4 (event-timeline row): "on this day" / "a year ago" over REAL
+  // data, honestly. This is the DTU-scoped half of that gap, closed now:
+  // for the calling user, find their own real `dtus` rows whose
+  // created_at falls on today's month+day in a PRIOR year. Deterministic,
+  // no fabrication — an empty result honestly means "you haven't composed
+  // or authored anything on this date in a prior year," not "loading" or
+  // a placeholder.
+  //
+  // Scope: `creator_id = caller` (their own corpus) AND `tier != 'shadow'`
+  // — shadow-tier rows are federation-propagated signals from OTHER
+  // users'/worlds' activity that merely touched this instance, not
+  // something this user composed or authored, so they're excluded to keep
+  // the "your own history" framing honest. regular/mega/hyper tiers all
+  // count — a MEGA/HYPER consolidation is still built from this user's own
+  // originals, and a system-composed-but-user-owned row (e.g. a `dream`
+  // DTU from `embodied/dream-engine.js`, always inserted with
+  // `creator_id = userId`) is honestly "composed for you, in your name,"
+  // which is exactly the "composed/authored" framing this macro targets.
+  //
+  // GATED / NOT built here (documented, not silently dropped): a full
+  // cross-source "a year ago" firehose — every socket-emitted event across
+  // every lens (combat, quests, NPC activity, world state, not just DTUs)
+  // — would read from `event_timeline_log`, but that table is capped at a
+  // 30-day retention (`PRUNE_OLDER_THAN_SECONDS` in
+  // `server/lib/event-timeline.js`) and swept by a heartbeat, so no
+  // year-over-year data exists there to query. Building that surface for
+  // real needs an explicit retention/storage decision (e.g. a dedicated
+  // append-only timeline archive table with a multi-year TTL, or lifting
+  // the 30-day cap for a sampled/summarized slice) — a real infra/cost
+  // tradeoff, not a query-shape problem, so it's out of scope for this
+  // macro. This on_this_day macro is the honest DTU-scoped close; the
+  // firehose-wide version is future work gated on that storage decision.
+  register("event_timeline", "on_this_day", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId || ctx?.userId || null;
+    if (!userId) return { ok: false, reason: "auth_required" };
+    try {
+      const nowMs = Number.isFinite(Number(input?.now)) ? Number(input.now) : Date.now();
+      const nowDate = new Date(nowMs);
+      const todayMonth = nowDate.getUTCMonth() + 1;
+      const todayDay = nowDate.getUTCDate();
+      const todayYear = nowDate.getUTCFullYear();
+      // Optional fuzz-window (± N days, circular over the year) — default
+      // 0 keeps the primary contract exact: today's month+day, no more.
+      const dayWindow = Math.min(7, Math.max(0, Number(input?.dayWindow) || 0));
+      const limit = Math.min(200, Math.max(1, Number(input?.limit) || 50));
+
+      const rows = db.prepare(`
+        SELECT id, type, title, data, body_json, content, created_at
+        FROM dtus
+        WHERE creator_id = ?
+          AND (tier IS NULL OR tier != 'shadow')
+      `).all(userId);
+
+      const entries = [];
+      for (const r of rows) {
+        const ts = normalizeCreatedAt(r.created_at);
+        if (ts == null) continue;
+        const d = new Date(ts * 1000);
+        const y = d.getUTCFullYear();
+        if (y >= todayYear) continue; // strictly PRIOR years — never "today"
+        const m = d.getUTCMonth() + 1;
+        const day = d.getUTCDate();
+        if (!matchesDay(m, day, todayMonth, todayDay, dayWindow)) continue;
+        entries.push({
+          id: r.id,
+          kind: r.type || null,
+          title: r.title || null,
+          createdAt: ts,
+          yearsAgo: todayYear - y,
+          preview: dtuPreview(r),
+        });
+      }
+      entries.sort((a, b) => b.createdAt - a.createdAt);
+      const truncated = entries.length > limit;
+
+      return {
+        ok: true,
+        month: todayMonth,
+        day: todayDay,
+        dayWindow,
+        count: Math.min(entries.length, limit),
+        truncated,
+        entries: entries.slice(0, limit),
+      };
+    } catch (err) {
+      return { ok: false, reason: "on_this_day_failed", error: String(err?.message || err) };
+    }
+  }, { note: "Real DTUs the caller created on today's month+day in a prior year. DTU-scoped; the full cross-source firehose version needs a retention/storage decision (see comment above) and is not built here." });
 
   // ── search ──────────────────────────────────────────────────────────
   // Full-text search across the channel name + serialised payload. SQLite
