@@ -23,6 +23,8 @@ import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
 import { useConkayHudStore, feaResultFromRun } from './conkayHudStore';
 import { detectArtifact } from '@/lib/conkay/artifact-kinds';
+import { isMutatingMacro } from '@/lib/conkay/mutating-macros';
+import { ConKayActionConfirm } from './ConKayActionConfirm';
 import { ConKayCockpit } from './ConKayCockpit';
 import { CONKAY_SIGNATURE_GREETING, type ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
@@ -133,6 +135,14 @@ export function ConKayOverlay() {
   // The correlation id of the macro run currently in flight. The lifecycle
   // subscription below only reacts to events tagged with this id.
   const liveRunRef = useRef<string | null>(null);
+  // Unit A2 — pre-execution confirmation gate for the CLIENT-INITIATED macro
+  // path (executeMacro / resolveAndOperate). When `isMutatingMacro` flags the
+  // proposed call as a write, this holds the REAL {domain, macro, input}
+  // ConKay is about to send and blocks execution until the user explicitly
+  // confirms or cancels via <ConKayActionConfirm>. `pendingConfirmResolveRef`
+  // is the in-flight promise's resolver — never a fabricated auto-approve.
+  const [pendingConfirm, setPendingConfirm] = useState<{ domain: string; macro: string; input: Record<string, unknown> } | null>(null);
+  const pendingConfirmResolveRef = useRef<((confirmed: boolean) => void) | null>(null);
 
   const lens = activeLensFromPath(pathname);
   // ConKay should not double up inside the chat lens (which has its own ConKay mode).
@@ -249,6 +259,27 @@ export function ConKayOverlay() {
     if (status) setWorkStatus(status);
   }, []);
   const clearWork = useCallback(() => { setTimeout(() => { setSteps([]); setWorkStatus(''); }, 1400); }, []);
+
+  // Unit A2 — the gate itself. Resolves immediately (true) for a macro
+  // `isMutatingMacro` doesn't flag as a write — reads run instantly, never
+  // gated. For a mutating macro it renders <ConKayActionConfirm> with the
+  // REAL proposed call and suspends until the user clicks Run it (resolve
+  // true) or Cancel (resolve false); only one confirm can be pending at a
+  // time (the `running` gate in `submit()` already serializes macro calls).
+  const confirmIfMutating = useCallback((domain: string, macro: string, inputObj: Record<string, unknown>): Promise<boolean> => {
+    if (!isMutatingMacro(domain, macro)) return Promise.resolve(true);
+    setWorkStatus('Waiting for your confirmation…');
+    return new Promise<boolean>((resolve) => {
+      pendingConfirmResolveRef.current = resolve;
+      setPendingConfirm({ domain, macro, input: inputObj });
+    });
+  }, [setWorkStatus]);
+  const resolvePendingConfirm = useCallback((confirmed: boolean) => {
+    const resolve = pendingConfirmResolveRef.current;
+    pendingConfirmResolveRef.current = null;
+    setPendingConfirm(null);
+    resolve?.(confirmed);
+  }, []);
 
   // ── verification climax (Track B / Phase 1) ──────────────────────────
   // Run a reply's citations through the REAL reason.verify macro and stamp the
@@ -399,7 +430,19 @@ export function ConKayOverlay() {
   }, [append, persistArtifact, beginWork, setStep, clearWork, verifyMessage]);
 
   // ── execute a lens macro (shared by explicit "run X" + the NL resolver) ──
+  // Unit A2: this is the CLIENT-INITIATED path — the client itself decides
+  // to call `/api/lens/run` (via `lensRun` below), so a pre-execution
+  // confirm here genuinely runs BEFORE the mutation, unlike the server-side
+  // agent-loop path (see the honesty note at chatWithBrain's tool_call
+  // handling further down). The confirm gate runs FIRST, before the preface
+  // is even appended — narrating "On it — running X" ahead of a confirm the
+  // user hasn't given yet would be a small dishonesty in itself.
   const executeMacro = useCallback(async (domain: string, macro: string, inputObj: Record<string, unknown>, preface?: string) => {
+    const allowed = await confirmIfMutating(domain, macro, inputObj);
+    if (!allowed) {
+      append({ id: `a-${Date.now()}-cancelled`, role: 'assistant', content: `Cancelled — I didn't run ${domain}.${macro}.`, brain: 'kay' });
+      return false;
+    }
     if (preface) append({ id: `a-${Date.now()}-p`, role: 'assistant', content: preface, brain: 'kay' });
     try {
       // Opt into the honest lifecycle: the server will emit macro:started/
@@ -449,7 +492,7 @@ export function ConKayOverlay() {
       append({ id: `a-${Date.now()}`, role: 'assistant', content: `I couldn't run ${domain}.${macro} just now.` });
       return false;
     }
-  }, [append, persistArtifact]);
+  }, [append, persistArtifact, confirmIfMutating]);
 
   const runLensMacro = useCallback(async (domain: string, macro: string, inputObj: Record<string, unknown>) => {
     append({ id: `u-${Date.now()}`, role: 'user', content: `run ${domain}.${macro}` });
@@ -591,6 +634,21 @@ export function ConKayOverlay() {
           let data: Record<string, unknown> = {};
           try { data = JSON.parse(line.slice(6)); } catch { continue; }
           if (event === 'tool_call') {
+            // Unit A2 — deliberately NO pre-execution confirm on this path.
+            // `tool_call` is a RECEIPT: the server's runAgentLoop
+            // (server/lib/chat-agent.js) already invoked this tool —
+            // including any run_lens_action mutation — server-side, before
+            // this SSE event was even emitted. A "confirm before running"
+            // rendered here would fire AFTER the mutation already happened:
+            // a fabricated safety gate, which is exactly what this unit's
+            // honesty constraint forbids building. The real fix is a
+            // server-side pause/resume protocol (the agent loop halting
+            // before a mutating tool call and waiting for a client ack) —
+            // that's a separate, future unit; A2 intentionally does not
+            // fake it here. What this branch CAN honestly do — and does —
+            // is render the tool call as a truthful after-the-fact receipt
+            // (the step line below + the artifact/DTU rendering further
+            // down), never implying the user was asked first.
             liveToolCalls.push(data);
             toolCount += 1;
             const tc = data as {
@@ -774,6 +832,19 @@ export function ConKayOverlay() {
               </div>
             </div>
           ))}
+          {/* Unit A2 — pre-execution confirm for a mutating client-initiated
+              macro call. Only ever set by confirmIfMutating with the REAL
+              proposed {domain, macro, input}; resolvePendingConfirm(true|false)
+              is the ONLY way execution proceeds or is skipped. */}
+          {pendingConfirm && (
+            <ConKayActionConfirm
+              domain={pendingConfirm.domain}
+              macro={pendingConfirm.macro}
+              input={pendingConfirm.input}
+              onConfirm={() => resolvePendingConfirm(true)}
+              onCancel={() => resolvePendingConfirm(false)}
+            />
+          )}
           {/* JARVIS "you can see it building" — live arc-reactor + step spine */}
           <ConKayWorkStatus phase={conkayState} status={workStatus} steps={steps} active={running} />
           <div ref={bottomRef} aria-hidden />
