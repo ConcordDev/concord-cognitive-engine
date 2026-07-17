@@ -113,7 +113,7 @@ describe("Phase F1 — NPC depth floor", () => {
 
     const npcIds = [
       // fantasy
-      "lady_seraphine_voss", "apothecary_lyra_thorne", "witch_nymeria", "knight_corin_hale",
+      "lady_seraphine_voss", "apothecary_lyra_thorne", "witch_maeris", "knight_corin_hale",
       // crime
       "detective_iniko_voss", "mob_boss_silas_thorpe", "judge_pia_haldane",
       // cyber
