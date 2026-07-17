@@ -54,12 +54,17 @@ real corpus-wide class, not a tunya quirk.
 ## Live findings queue (name/IP-collision class)
 
 ### CLOSED
-- **`tunya` faction "Cree" → "Corre"** (2026-07-17, `b94154db`). Real living
-  Indigenous nation (the Cree Nation) reused for a fictional ark-arrived people.
-  Renamed corpus-wide (16 files incl. the lowercase `cree` faction id, the
-  cross-world test, and the `world-lens/character-schema.ts` archetype map).
-  Verified: `Kree`/`kree` untouched, all tunya JSON valid, `correspondent` and
-  other substrings untouched (word-boundary rename), cross-world test 12/12.
+- **`tunya` faction "Cree" → "Corre"** (2026-07-17). Real living Indigenous
+  nation (the Cree Nation) reused for a fictional ark-arrived people. Renamed in
+  two passes: display name + faction id + cross-world test +
+  `character-schema.ts` (`b94154db`), then **21 residual `cree_*` snake_case
+  identifiers** the E2 audit caught (`cree_eldest_walker`,
+  `scarf_of_cree_cedar_dye`, `give_to_cree`, …) that the `\bcree\b` regex missed
+  because `cree_` has no word boundary — swept with a boundary-precise
+  `[_"]cree[_"]` pattern that provably left `decree`/`screened` (5) and `Kree`
+  (72) untouched (`6799d4fc`). Verified: repo-wide ethnonym-cree count = 0 at
+  BOTH display and identifier level, JSON valid, cross-world test 12/12. **This
+  is the class-to-zero worked example.**
 
 ### OPEN — owner-decision-gated (each fix is a creative call, like Cree→Corre)
 - **`tunya` faction "Kree" vs. Marvel's trademarked *Kree***. A real **IP**
@@ -74,9 +79,39 @@ real corpus-wide class, not a tunya quirk.
   — *Naheya* ≈ *Nēhiyaw* (the Cree autonym). Owner-decision: deliberate homage
   or incidental? If swept, rename to non-derived coinages in the same pass.
 
-### OPEN — not yet audited (the corpus-wide sweep, E2)
-- Every other authored sub-world + `content/quests/`, `content/festivals/`,
-  faction/NPC/lore JSON, seeded catalogs — **not yet swept** for this class.
+### E2 corpus-wide audit RESULTS (2026-07-17 — 6 read-only agents; 11 worlds + 12 non-world dirs; ~700+ proper nouns assessed)
+
+**The thesis held: the class is finite.** Fully-clean worlds/dirs: **superhero,
+sere, lattice-crucible** + 10 of 12 non-world dirs (incl. `karaoke-lyrics`, which
+turned out to be all original). The complete actionable queue is **1 HIGH + 2 MED
++ 1 sensitivity + a LOW tail** — every fix is an owner creative call (a
+replacement name), exactly like Cree→Corre. Ranked:
+
+| # | Finding | Class | Footprint | Confidence | Disposition |
+|---|---|---|---|---|---|
+| 1 | **ArasaCorp** (cyber) — one-letter lift of *Arasaka*, the Cyberpunk 2020/2077 megacorp | (c) IP | faction + VP NPC + district/item ids (~37 refs) | **HIGH** | owner-name → sweep |
+| 2 | **Medici** — real Florentine dynasty as an alien ice-healer people/species/faction | (b) real dynasty | **cross-world**: tunya 158 + concordia-hub 8 + _shared 2 ≈ 168 refs | **MED** | owner-name → sweep at tunya source, propagate |
+| 3 | **Nymeria** (fantasy) — signature GRRM/GoT name on a bog-witch NPC | (c) IP | **cross-cutting**: fantasy + quests (`nymeria-crossing.json`) + dialogues + festivals | **MED** | owner-name → sweep |
+| 4 | **Thunder Brahmin** (concord-link-frontier) — real Hindu caste for a beast of burden (+ Fallout echo) | (a) real living group | creature name+id (2 refs) | **LOW-MED / sensitivity** | owner-verify — same class as Cree ("Brahman cattle-breed" is the defense) |
+| 5 | Wintersday (festivals+achievements) — Guild Wars 2 coined holiday | (c) IP | 3 refs | LOW | owner-verify (content generic; neutral coinage drops it) |
+| 6 | Mournhold (fantasy) — Elder Scrolls city as a Great House | (c) IP | 2 refs | LOW | owner-verify |
+| 7 | Marcus Holloway (_shared/superhero) — Watch Dogs 2 protagonist | (c) IP | 2 refs | LOW | owner-verify (common name parts; maybe coincidence) |
+| 8 | Pyke (GoT/common surname); Karthal (obscure M&M, likely coincidental) — fantasy | (c) IP | 1–2 refs | LOW | owner-verify |
+| 9 | Gloom Stalker (fantasy + sovereign-ruins) — D&D subclass; generic "gloom"+"stalker" | (c) IP | 2 refs | LOW | likely keep |
+| 10 | Polysteel (cyber, coined org/surname); Jorah Dunmore (sovereign-ruins, biblical/GoT echo) | (c) IP | few | LOW | likely keep |
+| 11 | Mercury (tunya alien goddess) — Roman god, **public domain** | (c) | 25 refs | LOW | likely keep (public-domain myth) |
+| 12 | Okimaw (tunya) — Cree-language word "chief" in the now-Corre faction | (a) | 1 NPC | LOW | owner-verify (loose end of the Cree decouple) |
+| 13 | Firearm brand item ids (crime): `glock_19`, `sig_p229` | (c) brand | ~8 refs | LOW | owner-preference (de-brand to generic) |
+
+**Not a name collision but flagged:** the fantasy `meta.json` calls the world
+**"Skyrim-class"** — shipped content naming a competitor product (Bethesda).
+Worth an edit for the same "deliberate not derivative" reason.
+
+### Still owner-decision-gated from the original tunya find
+- **`tunya` "Kree" vs. Marvel's trademarked *Kree*** (69 refs) — owner-chosen
+  replacement needed; woven through the most-developed lore, ripples hard.
+- **`tunya` "Wiyowak Bay" / "Naheya Plain"** — Cree-language-adjacent place-name
+  coinages (*Naheya* ≈ *Nēhiyaw*); deliberate homage or incidental?
 
 ## Execution plan for the name/IP-collision class
 
