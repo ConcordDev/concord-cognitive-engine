@@ -8,6 +8,7 @@
 // require a free COURTLISTENER_API_TOKEN env (courtlistener.com/help/api/rest/).
 
 import { createHash } from "node:crypto";
+import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
 
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
@@ -27,6 +28,43 @@ const USPTO_FIELD_COLUMN = {
 function _usptoFieldClause(field, value) {
   const column = USPTO_FIELD_COLUMN[field] || USPTO_FIELD_COLUMN.title;
   return { _text_phrase: { [column]: value } };
+}
+
+// ─── Contract redlining — pure helpers, module-scope + exported ───
+// Hoisted out of the registerLawActions closure (unchanged implementation,
+// just relocated) so they're independently importable: the
+// contract-version-save/-list/-diff macros below use them exactly as
+// before, and WAVE4's collaborative redlining reuses `clauseTextBlock` to
+// seed the shared Yjs Y.Text with the live contract body and `lineDiff` to
+// power a real accept/reject tracked-changes UI on top of `contract-diff`
+// (server/tests + concord-frontend/tests import this directly so expected
+// diffs are computed from the real engine, never pasted output).
+export function clauseTextBlock(c) {
+  return c.clauses.map((cl) => `[${cl.title}]\n${cl.text}`).join("\n\n");
+}
+// Line-level diff — classic LCS over arrays of trimmed lines.
+export function lineDiff(oldText, newText) {
+  const a = String(oldText || "").split("\n");
+  const b = String(newText || "").split("\n");
+  const m = a.length, n = b.length;
+  const lcs = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      lcs[i][j] = a[i] === b[j]
+        ? lcs[i + 1][j + 1] + 1
+        : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const ops = [];
+  let i = 0, j = 0;
+  while (i < m && j < n) {
+    if (a[i] === b[j]) { ops.push({ op: "same", text: a[i] }); i++; j++; }
+    else if (lcs[i + 1][j] >= lcs[i][j + 1]) { ops.push({ op: "remove", text: a[i] }); i++; }
+    else { ops.push({ op: "add", text: b[j] }); j++; }
+  }
+  while (i < m) { ops.push({ op: "remove", text: a[i] }); i++; }
+  while (j < n) { ops.push({ op: "add", text: b[j] }); j++; }
+  return ops;
 }
 
 export default function registerLawActions(registerLensAction) {
@@ -1299,34 +1337,8 @@ export default function registerLawActions(registerLensAction) {
   // clause text at the moment of save. contract-version-save snapshots,
   // contract-version-list lists, contract-diff produces a line-level
   // redline between any two versions (or a version vs. current).
-
-  function clauseTextBlock(c) {
-    return c.clauses.map((cl) => `[${cl.title}]\n${cl.text}`).join("\n\n");
-  }
-  // Line-level diff — classic LCS over arrays of trimmed lines.
-  function lineDiff(oldText, newText) {
-    const a = String(oldText || "").split("\n");
-    const b = String(newText || "").split("\n");
-    const m = a.length, n = b.length;
-    const lcs = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-    for (let i = m - 1; i >= 0; i--) {
-      for (let j = n - 1; j >= 0; j--) {
-        lcs[i][j] = a[i] === b[j]
-          ? lcs[i + 1][j + 1] + 1
-          : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
-      }
-    }
-    const ops = [];
-    let i = 0, j = 0;
-    while (i < m && j < n) {
-      if (a[i] === b[j]) { ops.push({ op: "same", text: a[i] }); i++; j++; }
-      else if (lcs[i + 1][j] >= lcs[i][j + 1]) { ops.push({ op: "remove", text: a[i] }); i++; }
-      else { ops.push({ op: "add", text: b[j] }); j++; }
-    }
-    while (i < m) { ops.push({ op: "remove", text: a[i] }); i++; }
-    while (j < n) { ops.push({ op: "add", text: b[j] }); j++; }
-    return ops;
-  }
+  // `clauseTextBlock`/`lineDiff` are the module-scope exports above —
+  // same implementation, just hoisted so they're independently importable.
 
   registerLensAction("law", "contract-version-save", (ctx, _a, params = {}) => {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1386,6 +1398,73 @@ export default function registerLawActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ─── WAVE4: real-time multi-party collaborative redlining ───
+  // Reuses the generic scope-parameterized Yjs CRDT layer
+  // (server/lib/yjs-realtime.js — the same one `code:liveshare` and
+  // `collab:doc` already use, whose own docstring invites reuse "by any
+  // future realtime editor") under a new scope, `KNOWN_SCOPES.LAW_CONTRACT`
+  // ('law:contract'), keyed by contract id. No parallel realtime transport
+  // is built here — `contract-redline-init` only hands the client the seed
+  // text + scope name; the client binds `getDoc('law:contract', contractId)`
+  // via the existing `useYjsDoc` hook exactly like the Collab lens does.
+  //
+  // Presence/cursors and threaded redline-suggestion discussion reuse the
+  // `collab` domain's already-real primitives (cursorUpdate/presenceState,
+  // addComment/listComments/resolveThread) rather than duplicating them —
+  // those require a `collab.docCreate`-minted "shadow" doc id, which the
+  // frontend creates once and links back here via `contract-redline-link`
+  // so re-opening the contract reuses the same comment thread + presence
+  // roster instead of losing it. `collabDocId` is metadata on the law
+  // contract; it is never treated as authoritative contract content.
+  registerLensAction("law", "contract-redline-init", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const body = clauseTextBlock(c);
+    // Seed the shared Y.Text with the current contract body the FIRST time
+    // anyone opens the redline tab for this contract, so the initial peer
+    // doesn't have to type a character before the CRDT doc has real
+    // content (see useYjsDoc/CollabDocWorkspace's lazy-seed-on-first-edit
+    // pattern — seeding it here instead avoids that race entirely, since
+    // this handler runs synchronously to completion with no `await`
+    // between the length check and the insert). Idempotent: once the
+    // Y.Text has ANY content (from this seed or real edits), later
+    // contract-redline-init calls never touch it again — the CRDT draft
+    // is the live source of truth for an in-progress redlining session,
+    // decoupled from further out-of-band clause edits.
+    try {
+      const yText = getDoc(KNOWN_SCOPES.LAW_CONTRACT, c.id).getText("content");
+      if (yText.length === 0 && body.length > 0) yText.insert(0, body);
+    } catch (_e) { /* CRDT seed is best-effort; the client still gets `body` below */ }
+    return {
+      ok: true,
+      result: {
+        contractId: c.id,
+        scope: KNOWN_SCOPES.LAW_CONTRACT,
+        body,
+        collabDocId: c.collabDocId || null,
+      },
+    };
+  });
+
+  // Persist the collab "shadow" doc id (minted client-side via
+  // `collab.docCreate`) onto the contract so presence + comment threads
+  // survive re-opening the redline tab. Idempotent — re-linking to the
+  // same id is a no-op write; re-linking to a DIFFERENT id (e.g. the
+  // client lost track and created a fresh shadow doc) overwrites, which
+  // is the honest behavior — we never fabricate a link that wasn't real.
+  registerLensAction("law", "contract-redline-link", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const collabDocId = lwClean(params.collabDocId, 80);
+    if (!collabDocId) return { ok: false, error: "collabDocId required" };
+    c.collabDocId = collabDocId;
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { collabDocId } };
+  });
 
   // ─── Backlog item 2: AI clause extraction from an uploaded contract ───
   // Parses raw pasted/uploaded contract text into structured clauses,

@@ -10,12 +10,13 @@
 import { useCallback, useEffect, useImperativeHandle, forwardRef, useState } from 'react';
 import {
   FileText, Plus, Trash2, ShieldCheck, PenLine, Loader2, AlertTriangle, X,
-  History, Users, PenTool, ScanText, TrendingUp,
+  History, Users, PenTool, ScanText, TrendingUp, Users2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { ContractVersions } from './ContractVersions';
+import { ContractRedline } from './ContractRedline';
 import { ApprovalWorkflow } from './ApprovalWorkflow';
 import { ContractEsign } from './ContractEsign';
 import { ClauseExtractor } from './ClauseExtractor';
@@ -55,7 +56,7 @@ interface Trends { cycleTime: CycleTimeTrend; spendTrend: SpendTrend; renewalTre
 const TYPES = ['nda', 'services', 'employment', 'license', 'lease', 'sale', 'partnership', 'other'];
 const STATUSES = ['draft', 'in_review', 'sent', 'signed', 'active', 'expired', 'terminated'];
 
-type DetailTab = 'clauses' | 'versions' | 'approvals' | 'esign' | 'extract';
+type DetailTab = 'clauses' | 'redline' | 'versions' | 'approvals' | 'esign' | 'extract';
 
 export interface LawContractsHandle {
   refresh: () => Promise<void>;
@@ -316,6 +317,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
               {([
                 ['clauses', 'Clauses', FileText],
                 ['extract', 'Extract', ScanText],
+                ['redline', 'Redline', Users2],
                 ['versions', 'Versions', History],
                 ['approvals', 'Approvals', Users],
                 ['esign', 'E-Sign', PenTool],
@@ -366,6 +368,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
             {tab === 'extract' && (
               <ClauseExtractor contractId={active.id} onApplied={() => { void reloadActive(); void refresh(); }} />
             )}
+            {tab === 'redline' && <ContractRedline contractId={active.id} contractTitle={active.title} />}
             {tab === 'versions' && <ContractVersions contractId={active.id} />}
             {tab === 'approvals' && (
               <ApprovalWorkflow contractId={active.id} onChange={() => { void reloadActive(); void refresh(); }} />
