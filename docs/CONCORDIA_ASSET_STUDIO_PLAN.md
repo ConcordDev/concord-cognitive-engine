@@ -22,8 +22,11 @@
 
 Let people **truly design games inside Concord** — assets, levels, concept
 work, mechanics — and have that work go **live in Concordia** (the owned 3D
-world), with the creator **paid via perpetual royalties** every time their work
-is used or remixed. That is a *creation flywheel*: a competitor can copy
+world), with the creator **paid via perpetual royalties** every time a
+descendant of their work is **sold** (royalties fire on a downstream sale, never
+on mere use — you get paid when the next person gets paid, halving per
+generation, ≤30% of the sale split across the cascade). That is a *creation
+flywheel*: a competitor can copy
 features, but cannot copy the accumulated, compounding library of creator-made
 assets — especially when the creators are paid to keep making and remixing
 them. The pro tools in this space (Unity/Unreal marketplaces, Substance,
@@ -61,9 +64,11 @@ UX + a clean creator-facing "publish → live" flow.
   `builder-extras.js`) — the Foundry compiles a worldspec into a playable
   world; the seed of level/scene design.
 - **Creator economy / payout rail (already real):**
-  `server/economy/royalty-cascade.js` — perpetual, cascading royalties on
-  citation/use, plus the `rights-enforcement.js` license-tier model
-  (download vs. usage/commercial/resale/source tiers) verified this session.
+  `server/economy/royalty-cascade.js` — perpetual, cascading royalties that fire
+  on a downstream **sale** of a descendant work (never on mere use; `registerCitation`
+  records lineage on remix, `distributeRoyalties` pays on the descendant's sale —
+  30% cap, halving per generation), plus the `rights-enforcement.js` license-tier
+  model (download vs. usage/commercial/resale/source tiers) verified this session.
   This is the "creator gets paid when their asset is used or remixed" rail —
   already load-bearing.
 - **3D renderers to make assets visible in-world:**
