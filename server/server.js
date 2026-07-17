@@ -50216,12 +50216,13 @@ app.get("/api/tutorial/first-cycle", async (req, res) => {
     const userId = req.user?.id || `anon-${req.ip}`;
     const worldId = String(req.query.worldId || "concordia-hub");
 
-    let questEngine = null;
-    try { questEngine = await import("./emergent/quest-engine.js"); }
-    catch { /* loader varies between builds; helper handles the missing-engine path */ }
-
+    // System A's emergent/quest-engine.js is no longer consulted here — it
+    // never held any real player's progress on this route (its
+    // getQuestProgress is a 1-arg signature the helper always detected and
+    // skipped past). Progress now reads System B directly; see
+    // lib/tutorial-first-cycle.js's header note.
     const { deriveFirstCycleProgress } = await import("./lib/tutorial-first-cycle.js");
-    res.json(deriveFirstCycleProgress({ db, userId, worldId, questEngine }));
+    res.json(deriveFirstCycleProgress({ db, userId, worldId }));
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -54736,19 +54737,43 @@ app.get("/api/quests/mine", asyncHandler(async (req, res) => {
 
 // Quest acceptance — players click Accept on the dialogue panel and we
 // register the quest as their active goal + bind progress to their userId.
+//
+// Retargeted to System B (server/lib/quests/quest-engine.js) — the dialogue
+// offer this button responds to (`questOffered`, built at
+// routes/worlds.js's `/dialogue` + `/dialogue/respond` handlers) is always
+// read from `world_quests`, so `questOffered.id` is a `world_quests.id`,
+// never a System-A `quest_<hex>` id. The prior implementation called
+// System A's `qe.startQuest(questId, userId)`, which can never find that id
+// — a 100%-failure-rate call masked by the frontend's silent fallback to
+// the legacy `/api/worlds/:worldId/quests/:questId/accept` route. See
+// Finding 2, docs/QUESTS_ENGINE_INVESTIGATION.md.
+//
+// Unlike that legacy route, this does NOT mutate `world_quests.status` /
+// `accepted_by` — an authored quest's `world_quests` row is one shared
+// catalog entry every player must be able to accept independently; only
+// `player_quests` (per-user state) is written here.
 app.post("/api/quests/accept", requireAuth(), asyncHandler(async (req, res) => {
   const userId = req.user?.id;
   const { questId } = req.body || {};
   if (!questId) return res.status(400).json({ ok: false, error: "questId_required" });
   try {
-    const qe = await import("./emergent/quest-engine.js");
-    const start = qe.startQuest?.(questId, userId);
-    if (start?.ok) {
-      try { REALTIME?.io?.to(`user:${userId}`).emit("quest:accepted", { questId, ts: nowISO() }); }
-      catch { /* realtime best-effort */ }
-      return res.json({ ok: true, quest: start.quest });
+    const quest = db.prepare("SELECT * FROM world_quests WHERE id = ?").get(questId);
+    if (!quest) return res.status(404).json({ ok: false, error: "quest_not_found" });
+    const worldId = String(quest.world_id || req.body?.worldId || "concordia-hub");
+
+    const existing = db.prepare(`
+      SELECT * FROM player_quests WHERE user_id = ? AND world_id = ? AND quest_id = ?
+    `).get(userId, worldId, questId);
+    if (!existing) {
+      db.prepare(`
+        INSERT INTO player_quests (id, user_id, quest_id, world_id, status)
+        VALUES (?, ?, ?, ?, 'active')
+      `).run(crypto.randomUUID(), userId, questId, worldId);
     }
-    res.status(400).json(start || { ok: false, error: "start_failed" });
+
+    try { REALTIME?.io?.to(`user:${userId}`).emit("quest:accepted", { questId, ts: nowISO() }); }
+    catch { /* realtime best-effort */ }
+    return res.json({ ok: true, quest: { ...quest, status: existing?.status || "active" } });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

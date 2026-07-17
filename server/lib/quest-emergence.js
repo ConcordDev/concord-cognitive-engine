@@ -4,6 +4,7 @@
 
 import crypto from "crypto";
 import { spawnQuestNPC } from "./npc-spawning.js";
+import { addQuestObjectives, addQuestRewards } from "./quests/quest-engine.js";
 
 const URGENCY_THRESHOLD = 0.5;
 
@@ -97,6 +98,34 @@ Generate a quest this NPC would give to a player. Return JSON only:
 
 
   const questRow = db.prepare("SELECT * FROM world_quests WHERE id = ?").get(id);
+
+  // Bridge into System B's typed tables (quest_objectives / quest_rewards) —
+  // see docs/QUESTS_ENGINE_INVESTIGATION.md Finding 3, which found this was
+  // the ONLY class of quest that already reached `world_quests` yet still
+  // had zero rows in either table (its objectives lived only as free-form
+  // objectives_json the completion/progress machinery never reads). The
+  // LLM's objectives[] here are freeform per-step text with no type/target
+  // the recordObjectiveProgress hooks can match against, so rather than
+  // guess a parse of arbitrary prose, we seed the ONE objective every
+  // NPC-need quest genuinely shares: talking to the NPC that raised the
+  // need. That is a real, always-live hook — routes/worlds.js's
+  // `/dialogue/respond` calls `recordObjectiveProgress(db, userId, worldId,
+  // null, 'talk_to', npcId, 1)` on every response to any NPC — not a
+  // fabricated mechanic. LOSSY MAPPING: the LLM's multi-step objective text
+  // (e.g. "gather 3 herbs") is not parsed into matching gather/deliver
+  // objectives; only the single talk_to beat is tracked in System B.
+  try {
+    addQuestObjectives(db, id, [{
+      type: "talk_to",
+      target: npc.id,
+      requiredCount: 1,
+      description: `Speak with ${npc.npcType || "the NPC"} about their need`,
+    }]);
+    const xp = questData.reward?.xp;
+    if (typeof xp === "number" && xp > 0) {
+      addQuestRewards(db, id, [{ rewardType: "xp", amount: Math.round(xp) }]);
+    }
+  } catch { /* System B bridge is best-effort — the world_quests row above is still valid */ }
 
   // 20% chance: spawn a dedicated target NPC for this quest
   // (gives players something to find, rescue, or protect — not just an abstract objective)
