@@ -6,6 +6,7 @@
 // (set MATERIALS_PROJECT_API_KEY env).
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { ELEMENTS, getElement, categoryGroup } from "../lib/periodic-table-data.js";
 
 const MP_BASE = "https://api.materialsproject.org";
 
@@ -680,6 +681,56 @@ export default function registerMaterialsActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `materials project unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // ─── Periodic table element browser ─────────────────────────────────
+  // A real, cited 118-element dataset (server/lib/periodic-table-data.js —
+  // see that file's header for sources: IUPAC 2021 standard atomic
+  // weights, NIST, CRC Handbook). Pure reads, no external call, no LLM.
+  // `element-detail` also returns a ready-to-run mp-search pointer so the
+  // frontend can deep-link "find materials containing this element" into
+  // the real Materials Project search above instead of duplicating it.
+
+  registerLensAction("materials", "element-list", (_ctx, _artifact, params = {}) => {
+    try {
+      const categoryFilter = params.category ? String(params.category).trim().toLowerCase() : null;
+      const blockFilter = params.block ? String(params.block).trim().toLowerCase() : null;
+      const periodFilter = params.period != null && params.period !== "" ? Number(params.period) : null;
+      let list = ELEMENTS;
+      if (categoryFilter) list = list.filter((e) => categoryGroup(e.category) === categoryFilter);
+      if (blockFilter) list = list.filter((e) => e.block === blockFilter);
+      if (Number.isFinite(periodFilter)) list = list.filter((e) => e.period === periodFilter);
+      return {
+        ok: true,
+        result: {
+          elements: list.map((e) => ({ ...e, categoryGroup: categoryGroup(e.category) })),
+          count: list.length,
+          totalElements: ELEMENTS.length,
+          source: "curated-iupac-nist-crc-periodic-table",
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("materials", "element-detail", (_ctx, _artifact, params = {}) => {
+    try {
+      const query = params.symbol ?? params.z ?? params.atomicNumber ?? params.query;
+      if (query == null || query === "") return { ok: false, error: "symbol or atomic number (z) required" };
+      const el = getElement(query);
+      if (!el) return { ok: false, error: `unknown element: ${query}` };
+      return {
+        ok: true,
+        result: {
+          element: { ...el, categoryGroup: categoryGroup(el.category) },
+          findMaterials: {
+            note: "Run materials.mp-search with these params to find real Materials Project entries containing this element.",
+            macro: "materials.mp-search",
+            params: { elements: [el.symbol] },
+          },
+          source: "curated-iupac-nist-crc-periodic-table",
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   // ─── Saved materials shortlist (Granta MI-shape comparison set) ──────
