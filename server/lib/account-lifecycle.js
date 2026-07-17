@@ -123,17 +123,28 @@ export function executeAccountDeletion(db, userId) {
 
   const now = nowISO();
   const deletionId = uid("del");
+  const tombstone = `deleted_${deletionId}`;
   const stats = { anonymized: 0, deleted: 0 };
   const errors = [];
 
   const doDelete = db.transaction(() => {
-    // 1. Anonymize DTUs that are cited by others (can't delete — others depend on them)
+    // 1. Anonymize DTUs that are cited by others (can't delete — others depend on them).
+    // Snapshot the cited-DTU id list into JS BEFORE calling anonymizeAttribution: that
+    // function re-points royalty_lineage.parent_creator from userId to an anon-wallet id
+    // (server/lib/consent.js#anonymizeAttribution), so a SQL subquery in step 2 that re-reads
+    // "royalty_lineage WHERE parent_creator = userId" AFTER this loop runs would no longer find
+    // these rows and would wrongly treat the just-anonymized DTU as "uncited" — hard-deleting a
+    // DTU this same step just tombstoned. Confirmed by this file's functional test
+    // (tests/account-lifecycle-deletion.test.js) BEFORE this fix, real bug, not hypothetical:
+    // the DTU-tombstone invariant (CLAUDE.md) requires this never happens.
+    let citedDtuIds = [];
     try {
       const citedDtus = db.prepare(`
         SELECT DISTINCT rl.parent_id as dtu_id
         FROM royalty_lineage rl
         WHERE rl.parent_creator = ?
       `).all(userId);
+      citedDtuIds = citedDtus.map((row) => row.dtu_id);
 
       for (const row of citedDtus) {
         anonymizeAttribution(db, row.dtu_id, userId);
@@ -141,9 +152,13 @@ export function executeAccountDeletion(db, userId) {
       }
     } catch (err) { console.error('[account-lifecycle] failed to anonymize cited DTUs', { userId, err: err.message }); errors.push({ step: 'anonymize_cited_dtus', err }); }
 
-    // 2. Delete uncited DTUs
+    // 2. Delete uncited DTUs — excludes exactly the pre-mutation snapshot from step 1 (via
+    // json_each, not a re-query of the now-mutated royalty_lineage table, and not a parameter
+    // list, which would risk SQLite's bound-parameter limit for a prolific creator).
     try {
-      const result = db.prepare("DELETE FROM dtus WHERE owner_user_id = ? AND id NOT IN (SELECT DISTINCT parent_id FROM royalty_lineage WHERE parent_creator = ?)").run(userId, userId);
+      const result = db.prepare(
+        "DELETE FROM dtus WHERE owner_user_id = ? AND id NOT IN (SELECT value FROM json_each(?))"
+      ).run(userId, JSON.stringify(citedDtuIds));
       stats.deleted += result.changes;
     } catch (err) {
       console.warn('[account-lifecycle] failed to delete uncited DTUs with lineage check, falling back', { userId, err: err.message });
@@ -157,38 +172,121 @@ export function executeAccountDeletion(db, userId) {
       db.prepare("UPDATE creative_artifacts SET marketplace_status = 'delisted', updated_at = ? WHERE creator_id = ?").run(now, userId);
     } catch (err) { console.error('[account-lifecycle] failed to delist marketplace listings', { userId, err: err.message }); errors.push({ step: 'delist_marketplace', err }); }
 
-    // 4. Delete social content (posts, comments, DMs)
-    for (const table of ["social_posts", "social_comments", "direct_messages", "forum_posts"]) {
-      try {
-        // @resource-leak-ok: iterates fixed PII_DELETE_TABLES list — bounded enumeration
-        db.prepare(`DELETE FROM ${table} WHERE user_id = ? OR author_id = ? OR sender_id = ?`).run(userId, userId, userId);
-      } catch (err) { console.warn(`[account-lifecycle] failed to delete from ${table}`, { userId, err: err.message }); errors.push({ step: `delete_${table}`, err }); }
-    }
+    // 4. HARD-DELETE own social posts. Real schema (server/migrations/315_missing_tables_repair.js)
+    // is `social_posts(id, user_id, author_id, content, created_at)` — there is no `sender_id`
+    // column on this table. Single-author content, no cross-user dependency, per the deletion
+    // policy table in docs/PRIVACY_DSAR_DELETION_INVESTIGATION.md.
+    //
+    // `social_comments` and `forum_posts` are deliberately absent from this step — they do NOT
+    // exist anywhere in the schema (grepped every server/migrations/*.js, zero CREATE TABLE
+    // hits). The prior loop referenced all four table names with a query that mentioned
+    // `user_id`/`author_id`/`sender_id` together; SQLite resolves every column in a compound
+    // WHERE clause at *prepare* time regardless of which OR-branch would match, so the query
+    // failed to compile against social_posts (no sender_id) and direct_messages (no user_id/
+    // author_id) too, and failed outright against the two nonexistent tables — all four errors
+    // silently swallowed by the surrounding try/catch (empirically confirmed — see Finding 3 of
+    // the investigation doc). If social_comments/forum_posts are ever migrated in, add their own
+    // explicit DELETE here rather than re-adding them to a shared multi-column query.
+    try {
+      const r = db.prepare("DELETE FROM social_posts WHERE user_id = ? OR author_id = ?").run(userId, userId);
+      stats.deleted += r.changes;
+    } catch (err) { console.warn('[account-lifecycle] failed to delete social_posts', { userId, err: err.message }); errors.push({ step: 'delete_social_posts', err }); }
 
-    // 5. Revoke all sessions
+    // 5. ANONYMIZE direct messages — not a hard-delete. Real schema is
+    // `direct_messages(id, sender_id, recipient_id, content, created_at)`: ONE row per message,
+    // not a per-party copy. Hard-deleting by `sender_id OR recipient_id` (what the old, broken
+    // query attempted) would also erase the OTHER party's copy of a conversation they never
+    // asked to have erased — the investigation flagged this as an unresolved two-party-data
+    // policy question, not just a column-name bug. Resolution adopted here (matches what real
+    // messaging products do, and reuses the exact tombstone-not-hard-delete pattern this file
+    // already applies to economy_ledger in step 13 below): replace only the identifying
+    // sender_id/recipient_id with the deletion tombstone, wherever this user appears in either
+    // role. Message content and the surviving party's half of the conversation are preserved,
+    // attributed to a deleted user rather than vanished out from under them.
+    try {
+      const rSender = db.prepare("UPDATE direct_messages SET sender_id = ? WHERE sender_id = ?").run(tombstone, userId);
+      const rRecipient = db.prepare("UPDATE direct_messages SET recipient_id = ? WHERE recipient_id = ?").run(tombstone, userId);
+      stats.anonymized += rSender.changes + rRecipient.changes;
+    } catch (err) { console.warn('[account-lifecycle] failed to anonymize direct_messages', { userId, err: err.message }); errors.push({ step: 'anonymize_direct_messages', err }); }
+
+    // 6. HARD-DELETE sign-in identity links (Google/Apple OAuth, `oauth_connections`).
+    // Single-user-scoped, zero cross-user dependency (Finding 5 — previously not touched at all;
+    // the declared `ON DELETE CASCADE` on this table is inert without `PRAGMA foreign_keys=ON`,
+    // which Concord never sets — Finding 4 — so this must be an explicit delete).
+    try {
+      const r = db.prepare("DELETE FROM oauth_connections WHERE user_id = ?").run(userId);
+      stats.deleted += r.changes;
+    } catch (err) { console.warn('[account-lifecycle] failed to delete oauth_connections', { userId, err: err.message }); errors.push({ step: 'delete_oauth_connections', err }); }
+
+    // 7. HARD-DELETE connector OAuth credentials (Gmail / Google Calendar access+refresh tokens,
+    // `connector_oauth_tokens`). High priority per Finding 5: these are LIVE external
+    // credentials, not just internal state — leaving them behind after "deleting everything" is
+    // a security liability on top of a privacy one. Zero cross-user dependency.
+    try {
+      const r = db.prepare("DELETE FROM connector_oauth_tokens WHERE user_id = ?").run(userId);
+      stats.deleted += r.changes;
+    } catch (err) { console.warn('[account-lifecycle] failed to delete connector_oauth_tokens', { userId, err: err.message }); errors.push({ step: 'delete_connector_oauth_tokens', err }); }
+
+    // 8. HARD-DELETE the encrypted personal locker (`personal_dtus` — journal/context entries).
+    // The most private category on the platform by design: the encryption key itself is never
+    // stored, derived at login from password + salt (server/migrations/036_personal_locker.js).
+    // Never touched before this fix (Finding 5). Zero cross-user dependency.
+    try {
+      const r = db.prepare("DELETE FROM personal_dtus WHERE user_id = ?").run(userId);
+      stats.deleted += r.changes;
+    } catch (err) { console.warn('[account-lifecycle] failed to delete personal_dtus', { userId, err: err.message }); errors.push({ step: 'delete_personal_dtus', err }); }
+
+    // 9. HARD-DELETE chat history (`chat_sessions` + `chat_messages`). Verified single-owner
+    // scoped before treating this as safe to hard-delete — `chat_sessions` keys by `owner_id`
+    // alone with no participant/shared-session list (server/migrations/193_chat_sessions.js), so
+    // there is no counterparty-copy problem here the way there is for direct_messages. Children
+    // deleted first: the declared `ON DELETE CASCADE` from chat_messages.session_id is inert
+    // without `PRAGMA foreign_keys=ON` (Finding 4) — never rely on it to clean these up.
+    try {
+      const rMsg = db.prepare("DELETE FROM chat_messages WHERE session_id IN (SELECT session_id FROM chat_sessions WHERE owner_id = ?)").run(userId);
+      const rSess = db.prepare("DELETE FROM chat_sessions WHERE owner_id = ?").run(userId);
+      stats.deleted += rMsg.changes + rSess.changes;
+    } catch (err) { console.warn('[account-lifecycle] failed to delete chat history', { userId, err: err.message }); errors.push({ step: 'delete_chat_history', err }); }
+
+    // NOT touched, by design (Finding 5 — deliberately left undecided, not forgotten):
+    //   - World/avatar/player state (avatars, player_inventory, player_houses, player_mail,
+    //     player_equipment). Per CLAUDE.md's "player inventory is user-global" + crafting/trade
+    //     invariants, items may carry cross-user trade/gift/craft provenance this investigation
+    //     did not trace end-to-end — an unqualified hard-delete here could strand another
+    //     player's legitimate trade history or corrupt auction/gifting integrity. This needs an
+    //     explicit owner ruling, not an inferred one. Leaving it out is the honest disposition
+    //     until that ruling lands — never a fabricated "deleted".
+    //   - `STATE.privacyLens` (the DSAR bucket + cookie/retention/sharing config) — in-memory
+    //     JS state, not reachable from this SQL-only module. The policy table recommends
+    //     retaining the DSAR records themselves as compliance evidence anyway.
+    //   - Federation-propagated shadow DTUs on peer instances — no cross-instance erasure
+    //     protocol exists yet; a federation-protocol-level gap, not an account-lifecycle one.
+    //   - Purchased licenses as buyer (`creative_usage_licenses`) — correctly untouched by a
+    //     seller's own deletion; the buyer's purchase should survive the seller's departure.
+
+    // 10. Revoke all sessions
     try {
       db.prepare("UPDATE sessions SET is_revoked = 1 WHERE user_id = ?").run(userId);
     } catch (err) { console.error('[account-lifecycle] failed to revoke sessions', { userId, err: err.message }); errors.push({ step: 'revoke_sessions', err }); }
 
-    // 6. Delete API keys
+    // 11. Delete API keys
     try {
       db.prepare("DELETE FROM api_keys WHERE user_id = ?").run(userId);
     } catch (err) { console.error('[account-lifecycle] failed to delete API keys', { userId, err: err.message }); errors.push({ step: 'delete_api_keys', err }); }
 
-    // 7. Delete consent records
+    // 12. Delete consent records
     try {
       db.prepare("DELETE FROM user_consent WHERE user_id = ?").run(userId);
     } catch (err) { console.error('[account-lifecycle] failed to delete consent records', { userId, err: err.message }); errors.push({ step: 'delete_consent', err }); }
 
-    // 8. Anonymize transaction records (retained 7 years per legal requirement)
+    // 13. Anonymize transaction records (retained 7 years per legal requirement)
     // Replace userId with deletion tombstone — keeps ledger integrity
-    const tombstone = `deleted_${deletionId}`;
     try {
       db.prepare("UPDATE economy_ledger SET from_user_id = ? WHERE from_user_id = ?").run(tombstone, userId);
       db.prepare("UPDATE economy_ledger SET to_user_id = ? WHERE to_user_id = ?").run(tombstone, userId);
     } catch (err) { console.error('[account-lifecycle] failed to anonymize transaction records', { userId, err: err.message }); errors.push({ step: 'anonymize_transactions', err }); }
 
-    // 9. Delete user federation preferences, XP, quest completions
+    // 14. Delete user federation preferences, XP, quest completions
     for (const table of ["user_xp", "quest_completions", "creative_xp"]) {
       // @resource-leak-ok: iterates fixed PII_DELETE_TABLES list — bounded enumeration
       try {
@@ -196,15 +294,15 @@ export function executeAccountDeletion(db, userId) {
       } catch (err) { console.warn(`[account-lifecycle] failed to delete from ${table}`, { userId, err: err.message }); errors.push({ step: `delete_${table}`, err }); }
     }
 
-    // 10. Remove from leaderboards
+    // 15. Remove from leaderboards
     try {
       db.prepare("DELETE FROM leaderboard_entries WHERE user_id = ?").run(userId);
     } catch (err) { console.warn('[account-lifecycle] failed to remove from leaderboards', { userId, err: err.message }); errors.push({ step: 'delete_leaderboard', err }); }
 
-    // 11. Delete the user record itself
+    // 16. Delete the user record itself
     db.prepare("DELETE FROM users WHERE id = ?").run(userId);
 
-    // 12. Record the deletion in audit log
+    // 17. Record the deletion in audit log
     try {
       db.prepare(`
         INSERT INTO audit_log (id, timestamp, category, action, user_id, details)
@@ -212,7 +310,7 @@ export function executeAccountDeletion(db, userId) {
       `).run(uid("aud"), now, tombstone, JSON.stringify({ deletionId, anonymized: stats.anonymized, deleted: stats.deleted }));
     } catch (err) { console.error('[account-lifecycle] failed to write audit log for deletion', { userId, err: err.message }); errors.push({ step: 'audit_log', err }); }
 
-    // 13. Mark deletion request as completed
+    // 18. Mark deletion request as completed
     try {
       db.prepare(
         "UPDATE account_deletion_requests SET status = 'completed', updated_at = ? WHERE user_id = ?"

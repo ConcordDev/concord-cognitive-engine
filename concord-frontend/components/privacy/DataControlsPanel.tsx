@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { TimelineView, TreeDiagram } from '@/components/viz';
 import type { TimelineEvent, TreeNode } from '@/components/viz';
 import {
@@ -31,7 +31,17 @@ import {
   RefreshCw,
   CheckCircle2,
   X,
+  AlertTriangle,
+  Trash2,
+  Undo2,
 } from 'lucide-react';
+
+// Extracts the real backend error message from an axios rejection — same
+// idiom as components/settings/AccountSecurityPanel.tsx#pickMessage.
+function pickMessage(e: unknown): string {
+  const ax = e as { response?: { data?: { error?: string; detail?: string } }; message?: string };
+  return ax?.response?.data?.detail ?? ax?.response?.data?.error ?? ax?.message ?? 'request failed';
+}
 
 // ── Wire types ────────────────────────────────────────────────────────────
 
@@ -836,6 +846,148 @@ function FlowMapSection() {
   );
 }
 
+// ── Real account deletion ────────────────────────────────────────────────
+//
+// The DSAR "deletion" request above (DsarSection, kind:'deletion') is a
+// pure status-tracker — advancing it to "completed" does not touch any real
+// user data (see docs/PRIVACY_DSAR_DELETION_INVESTIGATION.md). The REAL,
+// executable deletion pipeline is a separate system: `POST /api/account/delete`
+// → server/lib/account-lifecycle.js#requestAccountDeletion. This section is
+// the "start real account deletion" link the investigation recommended
+// (Option 4) instead of silently auto-triggering it from a DSAR status
+// change: the requester explicitly comes here, types the exact confirmation
+// phrase the real route requires, and sees the REAL response — including the
+// honest 90-day balance-forfeit warning verbatim — never a fabricated
+// "deleted" message.
+const DELETE_CONFIRM_PHRASE = 'DELETE_MY_ACCOUNT';
+
+interface DeletionResult {
+  ok: boolean;
+  scheduled?: boolean;
+  deletedImmediately?: boolean;
+  balance?: number;
+  forfeitDate?: string;
+  detail?: string;
+  error?: string;
+}
+
+function AccountDeletionSection() {
+  const [confirmText, setConfirmText] = useState('');
+  const [busy, setBusy] = useState<'delete' | 'cancel' | null>(null);
+  const [result, setResult] = useState<DeletionResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const canDelete = confirmText === DELETE_CONFIRM_PHRASE;
+
+  const startDeletion = useCallback(async () => {
+    if (!canDelete) return;
+    setBusy('delete');
+    setError(null);
+    setResult(null);
+    try {
+      const r = await api.post<DeletionResult>('/api/account/delete', {
+        confirm: DELETE_CONFIRM_PHRASE,
+      });
+      setResult(r.data);
+      if (r.data.ok) setConfirmText('');
+    } catch (e) {
+      setError(pickMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  }, [canDelete]);
+
+  const cancelDeletion = useCallback(async () => {
+    setBusy('cancel');
+    setError(null);
+    try {
+      const r = await api.post<{ ok: boolean; cancelled?: boolean; error?: string }>(
+        '/api/account/cancel-deletion',
+        {},
+      );
+      if (r.data.ok) {
+        setResult(null);
+      } else {
+        setError(r.data.error || 'no pending deletion to cancel');
+      }
+    } catch (e) {
+      setError(pickMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  }, []);
+
+  return (
+    <SectionCard
+      icon={AlertTriangle}
+      title="Account Deletion"
+      subtitle="The real, executable deletion pipeline — separate from the DSAR tracker above. Irreversible once it runs."
+    >
+      {error && <p className="text-xs text-rose-400">{error}</p>}
+
+      {!result && (
+        <div className="space-y-2">
+          <p className="text-[11px] text-gray-400">
+            This permanently deletes or anonymizes your account data per Concord&apos;s
+            deletion policy (social posts, sign-in links, connector credentials, personal
+            locker, chat history, sessions, API keys and more are hard-deleted; cited content
+            and financial records are anonymized and retained where legally required). If you
+            hold a wallet balance, deletion is scheduled 90 days out so you can withdraw first —
+            it is not applied immediately.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={`Type ${DELETE_CONFIRM_PHRASE} to confirm`}
+              className="flex-1 min-w-[220px] bg-black/40 border border-rose-500/30 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-500 font-mono"
+            />
+            <button
+              onClick={startDeletion}
+              disabled={!canDelete || busy !== null}
+              className="px-3 py-1.5 text-xs bg-rose-500/15 border border-rose-500/30 rounded-lg hover:bg-rose-500/25 disabled:opacity-40 flex items-center gap-1.5 text-rose-300"
+            >
+              {busy === 'delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+              Start Real Account Deletion
+            </button>
+          </div>
+        </div>
+      )}
+
+      {result && result.ok && (
+        <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+          {result.scheduled && (
+            <>
+              <p className="text-xs text-amber-300 font-medium">Deletion scheduled — not deleted yet.</p>
+              <p className="text-[11px] text-gray-300">{result.detail}</p>
+              <p className="text-[10px] text-gray-400">
+                Balance at request: {result.balance} CC · forfeit date: {fmt(result.forfeitDate ? Date.parse(result.forfeitDate) : null)}
+              </p>
+              <button
+                onClick={cancelDeletion}
+                disabled={busy !== null}
+                className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-40 flex items-center gap-1.5 text-gray-300"
+              >
+                {busy === 'cancel' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}
+                Cancel Scheduled Deletion
+              </button>
+            </>
+          )}
+          {result.deletedImmediately && (
+            <p className="text-xs text-emerald-300 font-medium">
+              Account deleted. This cannot be undone.
+            </p>
+          )}
+        </div>
+      )}
+
+      {result && !result.ok && (
+        <p className="text-xs text-rose-400">{result.detail || result.error || 'deletion request failed'}</p>
+      )}
+    </SectionCard>
+  );
+}
+
 // ── Panel ─────────────────────────────────────────────────────────────────
 
 export function DataControlsPanel() {
@@ -854,6 +1006,7 @@ export function DataControlsPanel() {
         <DataExportSection />
         <CookieConfigSection />
         <RetentionSection />
+        <AccountDeletionSection />
         <div className="lg:col-span-2">
           <FlowMapSection />
         </div>
