@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Workflow, PlayCircle, Boxes, Users2, Store, BarChart3, UserPlus,
   Loader2, RefreshCw, Plus, Trash2, Star, Check, AlertTriangle, Radio,
+  MapPin, Building2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
@@ -52,6 +53,17 @@ interface PresenceEntry { userId: string; node: string; at: number }
 
 type TabId = 'scripting' | 'playtest' | 'assets' | 'multiplayer' | 'marketplace' | 'analytics' | 'collab';
 type Note = { kind: 'ok' | 'err'; text: string } | null;
+
+// Building-publish vocabulary — the EXACT 5 archetypes + 4 iconic features
+// `game-design.building-publish` validates against (server/domains/gamedesign.js:
+// GD_BUILDING_ARCHETYPES / GD_BUILDING_FEATURES). Anything off this list is an
+// honest `invalid_archetype` / `invalid_feature` rejection from the backend.
+const BUILD_ARCHETYPES = ['tavern', 'archive', 'forge', 'market', 'tower'] as const;
+const BUILD_FEATURES = ['none', 'dome', 'spire', 'colonnade', 'belfry'] as const;
+type BuildArchetype = (typeof BUILD_ARCHETYPES)[number];
+type BuildFeature = (typeof BUILD_FEATURES)[number];
+
+interface PublishedBuilding { dtuId: string; buildingId: string | null; spawned?: boolean }
 
 const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'scripting', label: 'Scripting', icon: Workflow },
@@ -453,6 +465,10 @@ function AssetsTab({ worldId, ok, err }: TabProps) {
 
   return (
     <div className="space-y-3">
+      <PlaceBuildingCard worldId={worldId} ok={ok} err={err} />
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5 space-y-3">
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">Import a media asset</div>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
         <select value={kind} onChange={(e) => setKind(e.target.value)}
           className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-[11px] text-white">
@@ -487,6 +503,182 @@ function AssetsTab({ worldId, ok, err }: TabProps) {
             ))}
           </ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── 3.5 Place an authored building into this Foundry world ────────────────────
+// Closes the loop with Increment 2-A: a building placed here spawns a real
+// `world_buildings` row in the selected Foundry world, which the Foundry
+// preview (FoundryPreview.tsx) then renders and Playtest can walk. Mirrors the
+// AssetStudioPanel publish payload EXACTLY, but binds worldId to the Foundry
+// world (never 'concordia-hub') and exposes world-frame x/y/z placement — the
+// point of this feature is choosing WHERE the structure lands.
+function PlaceBuildingCard({ worldId, ok, err }: TabProps) {
+  const [archetype, setArchetype] = useState<BuildArchetype>('tavern');
+  const [feature, setFeature] = useState<BuildFeature>('none');
+  const [name, setName] = useState('');
+  const [width, setWidth] = useState('8');
+  const [height, setHeight] = useState('6');
+  const [depth, setDepth] = useState('8');
+  const [withInterior, setWithInterior] = useState(false);
+  // World frame is [0,2000] with origin ~1000,1000 — default to the world
+  // centre. FoundryPreview applies the −1000 scene offset when it renders, so
+  // these stay WORLD coordinates end-to-end.
+  const [posX, setPosX] = useState('1000');
+  const [posY, setPosY] = useState('0');
+  const [posZ, setPosZ] = useState('1000');
+  const [rotationY, setRotationY] = useState('0');
+  const [placing, setPlacing] = useState(false);
+  const [placed, setPlaced] = useState<PublishedBuilding | null>(null);
+  const [placeError, setPlaceError] = useState<string | null>(null);
+
+  const widthNum = Number(width);
+  const heightNum = Number(height);
+  const depthNum = Number(depth);
+  const dimsValid = [widthNum, heightNum, depthNum].every((n) => Number.isFinite(n) && n > 0);
+  const posValid = [posX, posY, posZ].every((v) => Number.isFinite(Number(v)));
+
+  async function place() {
+    setPlaced(null);
+    setPlaceError(null);
+    if (!dimsValid) { err('Width, height and depth must all be positive numbers (meters).'); return; }
+    if (!posValid) { err('Position X, Y and Z must all be numbers.'); return; }
+    setPlacing(true);
+    // Exact building-publish payload shape — worldId is THIS Foundry world.
+    const r = await lensRun<PublishedBuilding>('game-design', 'building-publish', {
+      name: name.trim(),
+      archetype,
+      feature: feature === 'none' ? null : feature,
+      withInterior,
+      dimensions: { width: widthNum, height: heightNum, depth: depthNum },
+      worldId,
+      position: { x: Number(posX), y: Number(posY), z: Number(posZ) },
+      rotationY: Number(rotationY) || 0,
+    });
+    setPlacing(false);
+    if (r.data?.ok === false || !r.data?.result) {
+      // Render the REAL backend error verbatim (overlap / world_id_required /
+      // position_required / invalid_archetype …) — never a fabricated success.
+      const reason = r.data?.error || 'place failed';
+      setPlaceError(reason);
+      err(`Could not place building: ${reason}`);
+      return;
+    }
+    const result = r.data.result;
+    setPlaced(result);
+    ok(`Placed in ${worldId} — switch to Playtest to walk it.`);
+  }
+
+  const archLabel = (a: string) => a.charAt(0).toUpperCase() + a.slice(1);
+
+  return (
+    <div className="rounded-lg border border-sky-500/25 bg-sky-500/[0.04] p-2.5 space-y-3">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-sky-300">
+        <Building2 className="h-3.5 w-3.5" /> Place a building
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
+          Archetype
+          <select aria-label="Building archetype" value={archetype}
+            onChange={(e) => setArchetype(e.target.value as BuildArchetype)}
+            className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] normal-case text-white">
+            {BUILD_ARCHETYPES.map((a) => <option key={a} value={a}>{archLabel(a)}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
+          Iconic feature
+          <select aria-label="Iconic feature" value={feature}
+            onChange={(e) => setFeature(e.target.value as BuildFeature)}
+            className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] normal-case text-white">
+            {BUILD_FEATURES.map((f) => <option key={f} value={f}>{f === 'none' ? 'None' : archLabel(f)}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
+          Name
+          <input aria-label="Building name" value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Riverside Inn"
+            className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] normal-case text-white" />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <NumField label="Width (m)" value={widthNum} min={1} max={500}
+          onChange={(v) => setWidth(String(v))} />
+        <NumField label="Height (m)" value={heightNum} min={1} max={500}
+          onChange={(v) => setHeight(String(v))} />
+        <NumField label="Depth (m)" value={depthNum} min={1} max={500}
+          onChange={(v) => setDepth(String(v))} />
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
+          <MapPin className="h-3 w-3" /> World-frame position (origin ≈ 1000, 1000)
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
+            X
+            <input aria-label="Position X" inputMode="decimal" value={posX}
+              onChange={(e) => setPosX(e.target.value)}
+              className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] text-white" />
+          </label>
+          <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
+            Y
+            <input aria-label="Position Y" inputMode="decimal" value={posY}
+              onChange={(e) => setPosY(e.target.value)}
+              className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] text-white" />
+          </label>
+          <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
+            Z
+            <input aria-label="Position Z" inputMode="decimal" value={posZ}
+              onChange={(e) => setPosZ(e.target.value)}
+              className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] text-white" />
+          </label>
+          <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
+            Rotation Y°
+            <input aria-label="Rotation Y" inputMode="decimal" value={rotationY}
+              onChange={(e) => setRotationY(e.target.value)}
+              className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] text-white" />
+          </label>
+        </div>
+      </div>
+
+      <label className="flex items-center gap-2 text-[11px] text-zinc-200">
+        <input type="checkbox" aria-label="Include interior decor" checked={withInterior}
+          onChange={(e) => setWithInterior(e.target.checked)} />
+        Include interior decor
+      </label>
+
+      <button type="button" onClick={place} disabled={placing}
+        className="flex items-center gap-1.5 rounded bg-sky-500/20 px-3 py-1.5 text-[12px] font-semibold text-sky-200 hover:bg-sky-500/30 disabled:opacity-50">
+        {placing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Building2 className="h-3.5 w-3.5" />}
+        {placing ? 'Placing…' : 'Place building'}
+      </button>
+
+      {placed && (
+        <div className="flex items-start gap-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-300">
+          <Check className="mt-0.5 h-3 w-3 shrink-0" />
+          <div>
+            <div>Placed in <span className="font-mono">{worldId}</span> — switch to Playtest to walk it.</div>
+            <div className="mt-0.5 font-mono text-[10px] text-emerald-400/80">
+              buildingId: {placed.buildingId || '—'} · dtuId: {placed.dtuId || '—'}
+            </div>
+          </div>
+        </div>
+      )}
+      {placeError && (
+        <div role="alert" className="flex items-start gap-2 rounded border border-rose-500/30 bg-rose-500/10 px-2.5 py-2 text-[11px] text-rose-300">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>Could not place building: {placeError}</span>
+        </div>
+      )}
+
+      <p className="text-[10px] text-zinc-500">
+        The placed building becomes walkable in this Foundry world&apos;s Playtest/preview and is
+        royalty-eligible on remix — it has no priced marketplace listing here.
+      </p>
     </div>
   );
 }
