@@ -319,6 +319,90 @@ export default function registerPharmacyActions(registerLensAction) {
     return { scheduled, taken, pct: scheduled > 0 ? Math.round((taken / scheduled) * 100) : null };
   }
 
+  // ── Adherence RISK score ────────────────────────────────────────────
+  // A transparent, DETERMINISTIC heuristic — fixed coefficients, no
+  // learned/trained model (Concord has no per-user clinical training
+  // corpus, so a real "AI prediction" claim here would be fabrication).
+  // Built ONLY from signals already stored above: trailing adherence %
+  // (adherenceFor), the length of the most recent run of missed/skipped
+  // doses (s.doses), days-of-supply (quantity ÷ scheduled-per-day, the
+  // same math refills-due already uses), and refillsRemaining. The same
+  // logged history always produces the same score — no Math.random, no
+  // LLM call, no per-user model weights.
+  //
+  //   score = round(
+  //       0.45 * adherenceGap        // 100 − trailing adherence% (adherenceFor), clamped [0,100]
+  //     + 0.25 * streakComponent     // min(missedOrSkippedStreak, 5) / 5 * 100
+  //     + 0.20 * supplyComponent     // daysOfSupply<=0 → 100, else clamp(100 − daysOfSupply/14*100, 0, 100)
+  //     + 0.10 * refillComponent     // refillsRemaining===0 → 100, ===1 → 40, else 0
+  //   ), clamped to [0, 100]
+  //
+  // Weights sum to 1.0. Trailing adherence dominates (0.45) because it's
+  // the single strongest, most-directly-observed signal; the other three
+  // are secondary amplifiers — a patient who is BOTH inconsistent AND out
+  // of supply/refills is a materially different (higher) risk than one
+  // who is merely inconsistent with plenty of medication on hand.
+  // Bands: score>=60 "high", score>=30 "moderate", else "low".
+  const RISK_MIN_LOGGED_DOSES = 3; // fewer real dose-log entries than this and the signal is too thin to trust
+  const RISK_STREAK_CAP = 5;
+  const RISK_SUPPLY_HORIZON_DAYS = 14;
+  const RISK_WEIGHTS = { adherence: 0.45, streak: 0.25, supply: 0.20, refill: 0.10 };
+  const RISK_DISCLAIMER = "Heuristic estimate computed from your own logged dose, refill, and supply history using a transparent fixed-weight formula — NOT an AI or machine-learned prediction (Concord has no per-user clinical training data to train one on). This is a risk indicator, not a certainty, and not medical advice; verify any concerns with a pharmacist or prescriber.";
+
+  function recentMissedOrSkippedStreak(logs) {
+    const sorted = [...logs].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    let streak = 0;
+    for (const log of sorted) {
+      if (log.status === "missed" || log.status === "skipped") streak += 1;
+      else break;
+    }
+    return streak;
+  }
+
+  function computeAdherenceRisk(s, med, days) {
+    const schedule = s.schedules.get(med.id);
+    const perDay = scheduledPerDay(schedule);
+    const logs = s.doses.get(med.id) || [];
+    if (!schedule || perDay <= 0 || logs.length < RISK_MIN_LOGGED_DOSES) {
+      return {
+        medId: med.id, name: med.name, insufficientData: true,
+        loggedDoses: logs.length,
+        reason: (!schedule || perDay <= 0)
+          ? "no dose schedule set yet"
+          : `only ${logs.length} dose${logs.length === 1 ? "" : "s"} logged (need ${RISK_MIN_LOGGED_DOSES}+ to estimate)`,
+      };
+    }
+    const adherence = adherenceFor(s, med.id, days);
+    const adherenceGap = adherence.pct == null ? 0 : Math.max(0, Math.min(100, 100 - adherence.pct));
+    const missedStreak = recentMissedOrSkippedStreak(logs);
+    const streakComponent = Math.min(missedStreak, RISK_STREAK_CAP) / RISK_STREAK_CAP * 100;
+    const daysOfSupply = Math.floor(med.quantity / perDay);
+    const supplyComponent = daysOfSupply <= 0
+      ? 100
+      : Math.max(0, Math.min(100, 100 - (daysOfSupply / RISK_SUPPLY_HORIZON_DAYS) * 100));
+    const refillsRemaining = med.refillsRemaining;
+    const refillComponent = refillsRemaining === 0 ? 100 : refillsRemaining === 1 ? 40 : 0;
+
+    const rawScore =
+      RISK_WEIGHTS.adherence * adherenceGap +
+      RISK_WEIGHTS.streak * streakComponent +
+      RISK_WEIGHTS.supply * supplyComponent +
+      RISK_WEIGHTS.refill * refillComponent;
+    const score = Math.max(0, Math.min(100, Math.round(rawScore)));
+    const band = score >= 60 ? "high" : score >= 30 ? "moderate" : "low";
+
+    return {
+      medId: med.id, name: med.name, insufficientData: false,
+      score, band,
+      factors: [
+        { factor: "trailing_adherence_pct", value: adherence.pct, windowDays: days, weight: RISK_WEIGHTS.adherence, contribution: Math.round(RISK_WEIGHTS.adherence * adherenceGap) },
+        { factor: "recent_missed_or_skipped_streak", value: missedStreak, weight: RISK_WEIGHTS.streak, contribution: Math.round(RISK_WEIGHTS.streak * streakComponent) },
+        { factor: "days_of_supply", value: daysOfSupply, weight: RISK_WEIGHTS.supply, contribution: Math.round(RISK_WEIGHTS.supply * supplyComponent) },
+        { factor: "refills_remaining", value: refillsRemaining, weight: RISK_WEIGHTS.refill, contribution: Math.round(RISK_WEIGHTS.refill * refillComponent) },
+      ],
+    };
+  }
+
   registerLensAction("pharmacy", "med-detail", (ctx, _a, params = {}) => {
   try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1524,6 +1608,44 @@ export default function registerPharmacyActions(registerLensAction) {
         totalDosesTaken: totalTaken,
         badges,
         nextMilestone: currentStreak < 3 ? 3 : currentStreak < 7 ? 7 : currentStreak < 30 ? 30 : currentStreak < 100 ? 100 : null,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // adherence-risk — a deterministic, explainable RISK score per active
+  // medication (+ an overall average across medications with enough
+  // history to score), built entirely from the real logged data above.
+  // See computeAdherenceRisk (near adherenceFor) for the formula + weights.
+  registerLensAction("pharmacy", "adherence-risk", (ctx, _a, params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const days = Math.max(7, Math.min(180, Math.round(rnum(params.days, 30))));
+    const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
+    if (!meds.length) {
+      return {
+        ok: true,
+        result: {
+          windowDays: days, overall: null, overallBand: null, insufficientData: true,
+          reason: "no medications tracked yet — add a medication and log some doses to estimate risk",
+          perMed: [], method: "deterministic-heuristic", disclaimer: RISK_DISCLAIMER,
+        },
+      };
+    }
+    const perMed = meds.map((m) => computeAdherenceRisk(s, m, days));
+    const scored = perMed.filter((x) => !x.insufficientData);
+    const overall = scored.length ? Math.round(scored.reduce((a, x) => a + x.score, 0) / scored.length) : null;
+    const overallBand = overall == null ? null : overall >= 60 ? "high" : overall >= 30 ? "moderate" : "low";
+    return {
+      ok: true,
+      result: {
+        windowDays: days, overall, overallBand,
+        insufficientData: overall == null,
+        perMed,
+        method: "deterministic-heuristic",
+        formula: "score = round(0.45*adherenceGap + 0.25*streakComponent + 0.20*supplyComponent + 0.10*refillComponent), each component clamped to [0,100], weights sum to 1.0",
+        disclaimer: RISK_DISCLAIMER,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
