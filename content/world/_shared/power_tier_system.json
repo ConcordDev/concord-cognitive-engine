@@ -72,7 +72,7 @@
         500,
         1500
       ],
-      "description": "Faction chiefs, century-old archivists, regional powers, Medici Supreme Elder tier, Concordia Envoy Chief tier."
+      "description": "Faction chiefs, century-old archivists, regional powers, Vessine Supreme Elder tier, Concordia Envoy Chief tier."
     },
     {
       "id": "boss",
@@ -369,7 +369,7 @@
           ]
         }
       },
-      "high_healer_aerasi_medici": {
+      "high_healer_aerasi_vessine": {
         "power_tier": "standard",
         "level": 80,
         "fighting_style": {

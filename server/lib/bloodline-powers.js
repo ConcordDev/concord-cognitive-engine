@@ -34,7 +34,7 @@ import logger from "../logger.js";
 
 const BLOODLINE_ELEMENTS = Object.freeze({
   sanguire:     ["fire", "lightning"],
-  medici:       ["heal", "bio", "water"],
+  vessine:       ["heal", "bio", "water"],
   sahm:         ["physical", "precision"],
   iron_warden:  ["physical", "force"],
   akeia:        ["water", "ice"],
@@ -47,7 +47,7 @@ const BLOODLINE_ELEMENTS = Object.freeze({
 
 const BLOODLINE_DESCRIPTIONS = Object.freeze({
   sanguire:     "fire-bloodline, descended from the Sangree founders",
-  medici:       "healing-bloodline, from the crash-site survivors",
+  vessine:       "healing-bloodline, from the crash-site survivors",
   sahm:         "precision-bloodline of the diaspora",
   iron_warden:  "force-bloodline of the brawler clans",
   akeia:        "water-bloodline of the matriarchy",

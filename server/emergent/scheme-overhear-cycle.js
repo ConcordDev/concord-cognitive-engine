@@ -57,7 +57,7 @@ export async function runSchemeOverhearCycle({ db, io } = {}) {
       totalFired++;
       try {
         // T2.3 — enrich the payload with who + why so the toast/bubble can say
-        // "Sandrun smith ↔ Medici guard: a debt that ends in a knife" without
+        // "Sandrun smith ↔ Vessine guard: a debt that ends in a knife" without
         // a second lookup. Secrets stay out (only archetype/faction/kind).
         let ctx = null;
         try {

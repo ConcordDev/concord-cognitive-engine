@@ -19,7 +19,7 @@ import { seedContent, getAuthoredDialogue } from "../../lib/content-seeder.js";
 const TUNYA_LEADERS = [
   "high_chancellor_xochi_aekon",
   "high_mason_torrek_masond",
-  "high_healer_aerasi_medici",
+  "high_healer_aerasi_vessine",
 ];
 
 // Secret fragments that must never appear in surfaced dialogue.

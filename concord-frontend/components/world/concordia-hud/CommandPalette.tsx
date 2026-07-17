@@ -30,7 +30,7 @@ export interface CommandItem {
 }
 
 const PANEL_COMMANDS: Array<{ id: string; label: string; keywords: string; shortcut?: string }> = [
-  { id: 'bloodline',  label: 'Bloodline',   keywords: 'ancestry blood dilution sanguire medici', shortcut: 'B' },
+  { id: 'bloodline',  label: 'Bloodline',   keywords: 'ancestry blood dilution sanguire vessine', shortcut: 'B' },
   { id: 'schemes',    label: 'Schemes',     keywords: 'plot scheme blackmail seduce assassinate', shortcut: 'S' },
   { id: 'hooks',      label: 'Hooks',       keywords: 'evidence satchel artifact' },
   { id: 'jobs',       label: 'Jobs',        keywords: 'work employment shift wage tunyan rations', shortcut: 'J' },

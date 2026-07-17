@@ -52,13 +52,13 @@ const PLOTTER = {
   archetype: "warlord",
   narrative_context: {
     secret: "Her youngest son was born without flame; she has hidden him under a borrowed name.",
-    weaponise_at: "If Sanguire-Medici tensions break into open conflict her ability to lead is contingent on the secret holding.",
+    weaponise_at: "If Sanguire-Vessine tensions break into open conflict her ability to lead is contingent on the secret holding.",
   },
   relationships: [
-    { npc_id: "medici_lord", type: "ideological_nemesis", notes: "Medici has hunted clues to her secret for years." },
+    { npc_id: "vessine_lord", type: "ideological_nemesis", notes: "Vessine has hunted clues to her secret for years." },
   ],
 };
-const TARGET = { id: "medici_lord", name: "Lord Medici", faction: "medici", archetype: "scholar" };
+const TARGET = { id: "vessine_lord", name: "Lord Vessine", faction: "vessine", archetype: "scholar" };
 
 describe("T1.3 — scheme cold-start from authored interiority", () => {
   it("derives stress >= 60, a <= -50 opinion edge, and a scheming coping trait at seed", async () => {

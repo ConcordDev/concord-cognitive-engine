@@ -5,7 +5,7 @@
   "annum_anchor": {
     "present_annum": 409,
     "first_arrival_annum": 313,
-    "medici_crash_annum": 324,
+    "vessine_crash_annum": 324,
     "bloc_registrar_demand_annum": 409,
     "note": "annum 409 is the present. The Bloc demanded more registrars in this very annum — players experience the political event live."
   },
@@ -30,7 +30,7 @@
     { "id": "factory_manager", "count_per_city": 30, "hours_per_shift": 10, "category": "manufacturing", "notes": "open and close sites every diurnal" },
     { "id": "miner", "count_per_city": 18, "hours_per_shift": 4, "category": "extraction", "hazard_cap": "poor ventilation; capped hours; stipend higher per-hour than most professions" },
     { "id": "canal_cleaner", "count_per_city": 24, "hours_per_shift": 3, "category": "public_services", "notes": "start at dead-end of each canal, rake debris toward lock gate; debris carted to forge (burn) or compost pits" },
-    { "id": "nurse", "count_per_city": 30, "hours_per_shift": 10, "category": "healthcare", "notes": "Medici visiting healers handle severe cases; nurses cover routine care, pregnancy, childhood illness" },
+    { "id": "nurse", "count_per_city": 30, "hours_per_shift": 10, "category": "healthcare", "notes": "Vessine visiting healers handle severe cases; nurses cover routine care, pregnancy, childhood illness" },
     { "id": "sanitation_worker", "count_per_city": 24, "hours_per_shift": 6, "category": "public_services" },
     { "id": "fuel_gatherer", "count_per_city": 30, "hours_per_shift": 10, "category": "extraction", "notes": "brave forests for dry firewood + peat; must fill the Fabricay before rainy season; switch to vendor-stall work in rainy season (3hr × 3 days/week to reduce arthritis)" },
     { "id": "laundress", "count_per_city": 24, "hours_per_shift": 8, "category": "domestic_services" },

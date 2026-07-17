@@ -15,7 +15,7 @@
       },
       {
         "id": "node_bloc",
-        "npcText": "An agreement old enough that no one alive signed it and no one alive would dare unsign it. Aekon governs. Masond builds. Medici heals. Dinye remembers. The Bloc is the promise that none of those four will reach for the others' work. It holds because every High office spends its life proving it does not need to.",
+        "npcText": "An agreement old enough that no one alive signed it and no one alive would dare unsign it. Aekon governs. Masond builds. Vessine heals. Dinye remembers. The Bloc is the promise that none of those four will reach for the others' work. It holds because every High office spends its life proving it does not need to.",
         "playerOptions": [
           { "text": "And if one of them did reach?", "leadsTo": "node_reach" },
           { "text": "That sounds exhausting to maintain.", "leadsTo": "node_tired" }
@@ -108,8 +108,8 @@
       }
     ]
   },
-  "high_healer_aerasi_medici:idle": {
-    "npcId": "high_healer_aerasi_medici",
+  "high_healer_aerasi_vessine:idle": {
+    "npcId": "high_healer_aerasi_vessine",
     "questId": "idle",
     "greeting": "The camp is warm in a way the air does not explain. Aerasi of the Choir sits among the convalescent, and when she speaks to them it is in a register the Tunyans call song — a healer-elder whose age no one will confirm, least of all her.",
     "nodes": [

@@ -48,38 +48,38 @@ describe("Phase F3.1 — heartbeat realtime emit contract", () => {
         .run("sandrun_sanguire", "expand", 0.5, 1);
       db.prepare(`INSERT INTO faction_strategy_state (faction_id, stance, momentum, phase, updated_at, next_move_at)
                   VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`)
-        .run("medici_clan", "consolidate", 0.0, 1);
+        .run("vessine_clan", "consolidate", 0.0, 1);
     });
 
     it("DECLARE_WAR emits faction:war-declared", () => {
       const picked = {
-        move: "DECLARE_WAR", target: "medici_clan",
-        summary: "Sandrun declares war on Medici",
+        move: "DECLARE_WAR", target: "vessine_clan",
+        summary: "Sandrun declares war on Vessine",
         deltaMomentum: -0.2, newStance: "war",
       };
       applyMove(db, "sandrun_sanguire", picked, []);
       const evt = captured.find((c) => c.event === "faction:war-declared");
       assert.ok(evt, "should emit faction:war-declared");
       assert.equal(evt.payload.factionId, "sandrun_sanguire");
-      assert.equal(evt.payload.targetFactionId, "medici_clan");
+      assert.equal(evt.payload.targetFactionId, "vessine_clan");
       assert.equal(evt.payload.move, "DECLARE_WAR");
     });
 
     it("PROPOSE_ALLIANCE emits faction:alliance-formed", () => {
       const picked = {
-        move: "PROPOSE_ALLIANCE", target: "medici_clan",
+        move: "PROPOSE_ALLIANCE", target: "vessine_clan",
         summary: "Alliance proposed",
         deltaMomentum: 0.1, newStance: "alliance",
       };
       applyMove(db, "sandrun_sanguire", picked, []);
       const evt = captured.find((c) => c.event === "faction:alliance-formed");
       assert.ok(evt, "should emit faction:alliance-formed");
-      assert.equal(evt.payload.targetFactionId, "medici_clan");
+      assert.equal(evt.payload.targetFactionId, "vessine_clan");
     });
 
     it("SEEK_TRUCE emits faction:truce-sought", () => {
       const picked = {
-        move: "SEEK_TRUCE", target: "medici_clan",
+        move: "SEEK_TRUCE", target: "vessine_clan",
         summary: "Truce sought",
         deltaMomentum: 0.0, newStance: "rebuild",
       };
@@ -120,7 +120,7 @@ describe("Phase F3.1 — heartbeat realtime emit contract", () => {
         .run("sandrun_sanguire", "expand", 0.5, 1);
       db.prepare(`INSERT INTO faction_strategy_state (faction_id, stance, momentum, phase, updated_at, next_move_at)
                   VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`)
-        .run("medici_clan", "consolidate", 0.0, 1);
+        .run("vessine_clan", "consolidate", 0.0, 1);
     });
 
     it("resolveFactionWorldId reads the world of a faction's living NPC", () => {
@@ -135,8 +135,8 @@ describe("Phase F3.1 — heartbeat realtime emit contract", () => {
     it("DECLARE_WAR stamps the real worldId when the faction's NPCs resolve one", () => {
       db.prepare(`INSERT INTO world_npcs (id, world_id, faction) VALUES ('npc_1', 'tunya', 'sandrun_sanguire')`).run();
       const picked = {
-        move: "DECLARE_WAR", target: "medici_clan",
-        summary: "Sandrun declares war on Medici",
+        move: "DECLARE_WAR", target: "vessine_clan",
+        summary: "Sandrun declares war on Vessine",
         deltaMomentum: -0.2, newStance: "war",
       };
       applyMove(db, "sandrun_sanguire", picked, []);
@@ -148,7 +148,7 @@ describe("Phase F3.1 — heartbeat realtime emit contract", () => {
     it("PROPOSE_ALLIANCE stamps worldId", () => {
       db.prepare(`INSERT INTO world_npcs (id, world_id, faction) VALUES ('npc_2', 'sovereign-ruins', 'sandrun_sanguire')`).run();
       const picked = {
-        move: "PROPOSE_ALLIANCE", target: "medici_clan",
+        move: "PROPOSE_ALLIANCE", target: "vessine_clan",
         summary: "Alliance proposed",
         deltaMomentum: 0.1, newStance: "alliance",
       };
@@ -160,7 +160,7 @@ describe("Phase F3.1 — heartbeat realtime emit contract", () => {
     it("SEEK_TRUCE stamps worldId", () => {
       db.prepare(`INSERT INTO world_npcs (id, world_id, faction) VALUES ('npc_3', 'crime', 'sandrun_sanguire')`).run();
       const picked = {
-        move: "SEEK_TRUCE", target: "medici_clan",
+        move: "SEEK_TRUCE", target: "vessine_clan",
         summary: "Truce sought",
         deltaMomentum: 0.0, newStance: "rebuild",
       };
@@ -171,8 +171,8 @@ describe("Phase F3.1 — heartbeat realtime emit contract", () => {
 
     it("never invents a worldId field when no NPC resolves one — omitted, not null/empty-string", () => {
       const picked = {
-        move: "DECLARE_WAR", target: "medici_clan",
-        summary: "Sandrun declares war on Medici",
+        move: "DECLARE_WAR", target: "vessine_clan",
+        summary: "Sandrun declares war on Vessine",
         deltaMomentum: -0.2, newStance: "war",
       };
       applyMove(db, "sandrun_sanguire", picked, []);

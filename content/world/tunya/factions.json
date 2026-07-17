@@ -5,9 +5,9 @@
     "motto": "Fire is the only truth that does not lie about itself.",
     "goal": "Hold Sandrun as the indisputable seat of fire-bloodline strength on Tunya, and remind the kingdoms — without saying so plainly — that nothing the rest of the world builds survives a Sanguire refusal.",
     "values": ["strength", "lineage purity", "ritual displays of power", "loyalty to clan over crown"],
-    "fears": ["the bloodline diluting through forced-hand intermarriages", "Medici ice ever finding a counter to their fire", "losing the Corre's quiet alliance"],
+    "fears": ["the bloodline diluting through forced-hand intermarriages", "Vessine ice ever finding a counter to their fire", "losing the Corre's quiet alliance"],
     "controlled_districts": ["sandrun_arid_capital", "sandrun_forge_quarter", "sandrun_volcanic_coast"],
-    "rival_factions": ["medici", "fluxom"],
+    "rival_factions": ["vessine", "fluxom"],
     "allied_factions": ["kree_nationalists", "corre"],
     "npc_ids": ["warlord_iyatte_sanguire", "forgemother_oren_sang", "ash-priest_uvel"],
     "dialogue_style": "terse",
@@ -37,10 +37,10 @@
     "id": "kree_nationalists",
     "name": "Kree",
     "motto": "Tunya was never ours. Kree always was.",
-    "goal": "Preserve Kree as a single nation on Tunya, even as its peoples scatter (Sanguire to Sandrun, Medici among them, Corre on the coast). The Kree state is the constant; the peoples drift.",
+    "goal": "Preserve Kree as a single nation on Tunya, even as its peoples scatter (Sanguire to Sandrun, Vessine among them, Corre on the coast). The Kree state is the constant; the peoples drift.",
     "values": ["national identity over cultural identity", "tolerance only for those who acknowledge the flag", "ritual unity festivals"],
-    "fears": ["Sanguire forgetting they are Kree first", "Medici defecting to a kingdom that learns their secret", "Corre drifting fully independent"],
-    "controlled_districts": ["kree_capital_city", "kree_medici_ward", "kree_southern_farmlands"],
+    "fears": ["Sanguire forgetting they are Kree first", "Vessine defecting to a kingdom that learns their secret", "Corre drifting fully independent"],
+    "controlled_districts": ["kree_capital_city", "kree_vessine_ward", "kree_southern_farmlands"],
     "rival_factions": ["nil", "fluxom"],
     "allied_factions": ["sandrun_sanguire"],
     "npc_ids": ["chancellor_brand_kree", "ambassador_lia_kree", "minister_van_orik"],
@@ -53,7 +53,7 @@
     "faction_state": {
       "factionName": "Kree",
       "reputation": 62,
-      "tensions": "The Medici asked, last winter, if they could leave. The chancellor said yes. The chancellor lied."
+      "tensions": "The Vessine asked, last winter, if they could leave. The chancellor said yes. The chancellor lied."
     },
     "visual": {
       "primary_color": "#3b5d8c",
@@ -68,26 +68,26 @@
     }
   },
   {
-    "id": "medici",
-    "name": "The Medici",
+    "id": "vessine",
+    "name": "The Vessine",
     "motto": "We did not arrive. We were already on the way.",
     "goal": "Survive a fifth generation. Continue healing those who reach them. Eventually, choose whether to reveal what they are.",
     "values": ["healing as duty", "ice as memory", "patience across centuries", "secrecy as armor"],
     "fears": ["the Kree formally claiming them", "Sanguire learning the counter to fire", "their own children losing the language they came with"],
-    "controlled_districts": ["kree_medici_ward", "medici_resonance_choir_grove", "medici_outpost_baahijj"],
+    "controlled_districts": ["kree_vessine_ward", "vessine_resonance_choir_grove", "vessine_outpost_baahijj"],
     "rival_factions": ["sandrun_sanguire"],
     "allied_factions": ["nil"],
-    "npc_ids": ["high_healer_aerasi_medici", "resonance_choir_master_vell", "medici_quiet_one"],
+    "npc_ids": ["high_healer_aerasi_vessine", "resonance_choir_master_vell", "vessine_quiet_one"],
     "dialogue_style": "lyrical",
     "reputation_currency": "healingmark",
     "world_id": "tunya",
     "founding_population": "alien_origin_unspecified",
     "biome_mix": ["highland_frost", "highland", "temperate_woodland"],
-    "tension_hook": "The Medici are not from Earth. The Medici are not Ancient Tunyan. They live among Kree because Kree is the only people on Tunya who would not ask why.",
+    "tension_hook": "The Vessine are not from Earth. The Vessine are not Ancient Tunyan. They live among Kree because Kree is the only people on Tunya who would not ask why.",
     "faction_state": {
-      "factionName": "Medici",
+      "factionName": "Vessine",
       "reputation": 71,
-      "tensions": "A Sanguire-Medici hybrid was born last Cull. The mother fled. The father is Sanguire. The child is somewhere. The Medici know where. They will not say."
+      "tensions": "A Sanguire-Vessine hybrid was born last Cull. The mother fled. The father is Sanguire. The child is somewhere. The Vessine know where. They will not say."
     },
     "visual": {
       "primary_color": "#c4dcec",
@@ -97,7 +97,7 @@
       "preferred_weapon_archetypes": ["staff", "thrown-shard", "healer's-blade"],
       "preferred_armor_silhouette": "robed",
       "sigil_path": "M0,-22 L11,-8 L22,0 L11,8 L0,22 L-11,8 L-22,0 L-11,-8 Z",
-      "banner_sigil_id": "medici_eight_facet",
+      "banner_sigil_id": "vessine_eight_facet",
       "ornamentation_motifs": ["facet_geometry", "pearl_resonance_facets"]
     }
   },
@@ -416,7 +416,7 @@
     "fears": ["a successful incursion", "Masond pushing harder for the other half of the memory", "their own youth choosing to leave the grove"],
     "controlled_districts": ["nil_inner_grove", "nil_outer_islands", "nil_root_caves"],
     "rival_factions": ["kree_nationalists"],
-    "allied_factions": ["masond", "medici", "corre"],
+    "allied_factions": ["masond", "vessine", "corre"],
     "npc_ids": ["grove-mother_yenna_nil", "the-eldest-who-watches", "young_tunyan_who_left_once"],
     "dialogue_style": "few words",
     "reputation_currency": "root_token",

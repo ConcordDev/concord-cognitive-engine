@@ -15,7 +15,7 @@
       "narrative": "Sanguire are a Kree people. The state and the clans share more than they admit publicly."
     },
     {
-      "from": "sandrun_sanguire", "to": "medici",
+      "from": "sandrun_sanguire", "to": "vessine",
       "trade": 0.30, "hostility": 0.40, "secrets_shared": 0.55, "mobility": 0.20, "cultural_exchange": 0.25,
       "narrative": "Wary co-tenancy. The hybrid child neither side will name strains the equilibrium."
     },
@@ -41,9 +41,9 @@
     },
 
     {
-      "from": "kree_nationalists", "to": "medici",
+      "from": "kree_nationalists", "to": "vessine",
       "trade": 0.50, "hostility": 0.20, "secrets_shared": 0.60, "mobility": 0.65, "cultural_exchange": 0.50,
-      "narrative": "Kree shelters the Medici. The arrangement has held four generations. The chancellor lied last winter when asked if Medici could leave."
+      "narrative": "Kree shelters the Vessine. The arrangement has held four generations. The chancellor lied last winter when asked if Vessine could leave."
     },
     {
       "from": "kree_nationalists", "to": "corre",
@@ -62,19 +62,19 @@
     },
 
     {
-      "from": "medici", "to": "nil",
+      "from": "vessine", "to": "nil",
       "trade": 0.20, "hostility": 0.05, "secrets_shared": 0.55, "mobility": 0.15, "cultural_exchange": 0.40,
       "narrative": "The two oldest non-arrival peoples on Tunya. They speak rarely but precisely. They share more than the kingdoms know."
     },
     {
-      "from": "medici", "to": "masond",
+      "from": "vessine", "to": "masond",
       "trade": 0.30, "hostility": 0.05, "secrets_shared": 0.25, "mobility": 0.30, "cultural_exchange": 0.30,
-      "narrative": "Medici healers occasionally treat Masond stoneworkers. Both know what the other is. Neither asks the other to confirm."
+      "narrative": "Vessine healers occasionally treat Masond stoneworkers. Both know what the other is. Neither asks the other to confirm."
     },
     {
-      "from": "medici", "to": "bahiij",
+      "from": "vessine", "to": "bahiij",
       "trade": 0.45, "hostility": 0.10, "secrets_shared": 0.15, "mobility": 0.40, "cultural_exchange": 0.50,
-      "narrative": "Bahiij imports Medici Resonance Choir services. The healing exchange is genuine. The festival master who does not smile occasionally writes Aerasi by dream-message."
+      "narrative": "Bahiij imports Vessine Resonance Choir services. The healing exchange is genuine. The festival master who does not smile occasionally writes Aerasi by dream-message."
     },
 
     {
@@ -202,10 +202,10 @@
     },
     {
       "id": "the_quiet_pact",
-      "members": ["medici", "nil", "corre"],
+      "members": ["vessine", "nil", "corre"],
       "binding_logic": "Three peoples who do not talk to the world about themselves. They talk to each other when they must.",
       "stability": 0.70,
-      "weakening_conditions": ["a public Sanguire-Medici incident forcing the Medici to choose sides", "Nil opening to outsiders", "Corre being asked publicly about the deletion"]
+      "weakening_conditions": ["a public Sanguire-Vessine incident forcing the Vessine to choose sides", "Nil opening to outsiders", "Corre being asked publicly about the deletion"]
     },
     {
       "id": "festival_axis",
@@ -217,14 +217,14 @@
   ],
   "tensions_to_watch": [
     {
-      "id": "sanguire_medici_hybrid_disclosure",
+      "id": "sanguire_vessine_hybrid_disclosure",
       "severity": 0.85,
-      "description": "If the warlord's child is identified and either Sanguire or Medici acts publicly, the equilibrium between fire and ice politics breaks. Kree the state will try to broker. Kree the state may not succeed."
+      "description": "If the warlord's child is identified and either Sanguire or Vessine acts publicly, the equilibrium between fire and ice politics breaks. Kree the state will try to broker. Kree the state may not succeed."
     },
     {
       "id": "asbir_archive_unsealing",
       "severity": 0.80,
-      "description": "If the deletion index is published, Asbir's curated tradition collapses. Corre's elders may speak. The Medici's origin star may be vindicated. The Kree chancellor's lie about Medici departure becomes a different kind of lie."
+      "description": "If the deletion index is published, Asbir's curated tradition collapses. Corre's elders may speak. The Vessine's origin star may be vindicated. The Kree chancellor's lie about Vessine departure becomes a different kind of lie."
     },
     {
       "id": "fluxom_refugee_dump_revelation",

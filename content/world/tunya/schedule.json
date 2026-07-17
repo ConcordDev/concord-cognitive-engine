@@ -53,7 +53,7 @@
       "name": "Tendus",
       "hour_range": [25, 28],
       "kind": "deep_moon_watch",
-      "tone": "rest; city quieter; only the sanitation overnight, the night-watch governance, and the Medici Resonance Choir's quiet hours work through this"
+      "tone": "rest; city quieter; only the sanitation overnight, the night-watch governance, and the Vessine Resonance Choir's quiet hours work through this"
     },
     {
       "ordinal": 8,
@@ -90,7 +90,7 @@
     { "hour": 24, "watch": "Easeus", "event": "evening_hearth" },
     { "hour": 25, "watch": "Tendus", "event": "city_quiets" },
     { "hour": 26, "watch": "Tendus", "event": "night_watch_governance_session" },
-    { "hour": 27, "watch": "Tendus", "event": "medici_resonance_choir_quiet_hour" },
+    { "hour": 27, "watch": "Tendus", "event": "vessine_resonance_choir_quiet_hour" },
     { "hour": 28, "watch": "Tendus", "event": "deep_rest" },
     { "hour": 29, "watch": "Toolus", "event": "bakers_begin" },
     { "hour": 30, "watch": "Toolus", "event": "sanitation_overnight_resumes" },
@@ -100,7 +100,7 @@
   "civic_institutions_referenced": [
     "didactic_center", "adult_center", "amphitheater", "theaters", "art_centers", "museums",
     "restaurants", "vendor_stalls", "post_office", "taxis", "canals", "stables",
-    "medici_resonance_choir_quiet_room"
+    "vessine_resonance_choir_quiet_room"
   ],
   "meal_pattern": {
     "first_meal": { "hour": 6, "watch": "Stratus" },

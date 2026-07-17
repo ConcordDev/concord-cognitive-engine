@@ -11,7 +11,7 @@
     "background": "Born to the third clan, married into the first, became warlord through a duel that lasted four hours and changed the bloodline politics of Sandrun for a generation.",
     "narrative_context": {
       "secret": "Her youngest son was born without flame. She has hidden him in a Sahm boarding-house under a Sahm name. She trusts the Sahm chancellor — a scholarly correspondence of fifteen years — more than she trusts her own clan elders. Sahm does not yet know what they are protecting.",
-      "weaponise_at": "If Sanguire-Medici tensions break into open conflict, Iyatte's ability to lead is contingent on her son's secret holding. Both Medici and Fluxom have hunted clues. The Lord Curator of Asbir saw a record once and chose not to share it."
+      "weaponise_at": "If Sanguire-Vessine tensions break into open conflict, Iyatte's ability to lead is contingent on her son's secret holding. Both Vessine and Fluxom have hunted clues. The Lord Curator of Asbir saw a record once and chose not to share it."
     },
     "concord_link_resonance": "fantasy:lady_seraphine_voss",
     "cross_world_hook": "Iyatte and Lady Seraphine Voss correspond by mirror-message. They have never met. Both run kingdoms on the strength of a hidden heir; both know what the other does. The mirror-conversations could surface in either world.",
@@ -179,18 +179,18 @@
     "starting_sparks": 12000
   },
   {
-    "id": "high_healer_aerasi_medici",
+    "id": "high_healer_aerasi_vessine",
     "name": "Aerasi of the Choir",
-    "title": "High Healer of the Medici",
-    "faction_id": "medici",
+    "title": "High Healer of the Vessine",
+    "faction_id": "vessine",
     "world_id": "tunya",
     "archetype": "healer-elder",
     "personality": "Speaks in a register most Tunyans hear as song. Will not confirm she is the eldest, will not deny it, will not say how old she is. Has healed Sanguire wounded who came to her camp at night and never returned to clan service the same person.",
     "appearance": "Slender, pale, eyes that catch and hold cold blue light. Robes of layered ice-fluted silk that crackle when she moves. Walks barefoot in winter and summer; her feet leave no footprints in fresh snow.",
     "background": "Aerasi was already an adult when the first arrivals reached Tunya four generations ago. She does not advertise this.",
     "narrative_context": {
-      "secret": "The Medici came to Tunya from a star the arrivals' ancestors used to be able to see. The last of their navigators died two generations ago. Aerasi was the navigator. The Choir is how she keeps the route alive in shared memory in case the path opens again.",
-      "weaponise_at": "If the Asbir archive is fully unsealed, the deleted material includes star-charts that match the Medici's. Aerasi's people would either be vindicated or hunted. She has not decided which would be worse."
+      "secret": "The Vessine came to Tunya from a star the arrivals' ancestors used to be able to see. The last of their navigators died two generations ago. Aerasi was the navigator. The Choir is how she keeps the route alive in shared memory in case the path opens again.",
+      "weaponise_at": "If the Asbir archive is fully unsealed, the deleted material includes star-charts that match the Vessine's. Aerasi's people would either be vindicated or hunted. She has not decided which would be worse."
     },
     "concord_link_resonance": "fantasy:thorne_blackroot",
     "cross_world_hook": "Aerasi and Thorne Blackroot have never met. Both carry a thing inside them that should kill them and does not. Both have been asked to give it up; both refused. A pilgrim could carry word between them.",
@@ -219,7 +219,7 @@
           1,
           4
         ],
-        "location": "medici_isle_supreme_elder_chamber",
+        "location": "vessine_isle_supreme_elder_chamber",
         "activity": "wakes; private morning meditation on the home-world coordinates",
         "need_addressed": "navigator_route_continuity",
         "interactable_by_player": false
@@ -230,7 +230,7 @@
           5,
           8
         ],
-        "location": "medici_resonance_choir_grove",
+        "location": "vessine_resonance_choir_grove",
         "activity": "morning Choir resonance — leads the daily session",
         "need_addressed": "supreme_elder_succession_memory_continuity",
         "interactable_by_player": true
@@ -241,7 +241,7 @@
           9,
           12
         ],
-        "location": "medici_isle_healing_pavilion",
+        "location": "vessine_isle_healing_pavilion",
         "activity": "morning healing circle — receives Tunyan supplicants",
         "need_addressed": "healing_appointments",
         "interactable_by_player": true
@@ -252,8 +252,8 @@
           13,
           16
         ],
-        "location": "kree_medici_ward_visiting_clinic",
-        "activity": "venturing healing visit to Kree Medici Ward",
+        "location": "kree_vessine_ward_visiting_clinic",
+        "activity": "venturing healing visit to Kree Vessine Ward",
         "need_addressed": "healing_appointments",
         "interactable_by_player": true
       },
@@ -263,7 +263,7 @@
           17,
           20
         ],
-        "location": "medici_resonance_choir_grove",
+        "location": "vessine_resonance_choir_grove",
         "activity": "evening advanced Choir resonance — navigators-circle invocation",
         "need_addressed": "navigator_route_continuity",
         "interactable_by_player": true
@@ -274,7 +274,7 @@
           21,
           24
         ],
-        "location": "medici_isle_supreme_elder_chamber",
+        "location": "vessine_isle_supreme_elder_chamber",
         "activity": "evening with elders' council",
         "need_addressed": "supreme_elder_succession_memory_continuity",
         "interactable_by_player": true
@@ -285,7 +285,7 @@
           25,
           28
         ],
-        "location": "medici_isle_supreme_elder_chamber",
+        "location": "vessine_isle_supreme_elder_chamber",
         "activity": "rests in the supreme elder's chamber",
         "need_addressed": "rest",
         "interactable_by_player": false
@@ -296,20 +296,20 @@
           29,
           32
         ],
-        "location": "medici_isle_supreme_elder_chamber",
+        "location": "vessine_isle_supreme_elder_chamber",
         "activity": "rests",
         "need_addressed": "rest",
         "interactable_by_player": false
       }
     ],
     "home": {
-      "district": "medici_isle_supreme_elder_chamber",
+      "district": "vessine_isle_supreme_elder_chamber",
       "dwelling_type": "supreme_elder_chamber_with_choir_resonance_focus"
     },
     "job": {
-      "profession_id": "medici_supreme_elder",
+      "profession_id": "vessine_supreme_elder",
       "wage_per_diurnal_sparks": 0,
-      "wage_source": "medici_isle_pooled — Mercury's chosen take no wages"
+      "wage_source": "vessine_isle_pooled — Mercury's chosen take no wages"
     },
     "apparel": [
       "ice_fluted_silk_robe_layered",
@@ -2526,7 +2526,7 @@
           16
         ],
         "location": "fluxom_refugee_clinic",
-        "activity": "afternoon clinic; receives Medici supplies",
+        "activity": "afternoon clinic; receives Vessine supplies",
         "need_addressed": "healing",
         "interactable_by_player": true
       },
@@ -2958,7 +2958,7 @@
           16
         ],
         "location": "sangree_war_council",
-        "activity": "afternoon council; coordinates Medici war",
+        "activity": "afternoon council; coordinates Vessine war",
         "need_addressed": "clan_war",
         "interactable_by_player": false
       },
@@ -3073,12 +3073,12 @@
     "starting_sparks": 2500
   },
   {
-    "id": "medici_archhealer_yev",
+    "id": "vessine_archhealer_yev",
     "world_id": "tunya",
     "name": "Arch-Healer Yev",
     "archetype": "healer",
-    "faction_id": "medici",
-    "faction": "medici",
+    "faction_id": "vessine",
+    "faction": "vessine",
     "is_conscious": true,
     "level": 13,
     "backstory": "Survived the crash's third generation. Carries the original ship's manifest.",
@@ -3087,7 +3087,7 @@
       "wise",
       "old"
     ],
-    "country_id": "medici",
+    "country_id": "vessine",
     "daily_schedule": [
       {
         "phase": "Dominus",
@@ -3095,7 +3095,7 @@
           1,
           4
         ],
-        "location": "medici_archhealer_private_clinic",
+        "location": "vessine_archhealer_private_clinic",
         "activity": "tends the gravely wounded through the cold hours",
         "need_addressed": "healing",
         "interactable_by_player": false
@@ -3106,7 +3106,7 @@
           5,
           8
         ],
-        "location": "medici_main_clinic",
+        "location": "vessine_main_clinic",
         "activity": "open clinic; treats the morning queue",
         "need_addressed": "healing",
         "interactable_by_player": true
@@ -3117,7 +3117,7 @@
           9,
           12
         ],
-        "location": "medici_clinic_garden",
+        "location": "vessine_clinic_garden",
         "activity": "tends the medicinal herb beds",
         "need_addressed": "healing",
         "interactable_by_player": true
@@ -3128,8 +3128,8 @@
           13,
           16
         ],
-        "location": "medici_main_clinic",
-        "activity": "afternoon clinic; receives Medici cartel envoys",
+        "location": "vessine_main_clinic",
+        "activity": "afternoon clinic; receives Vessine cartel envoys",
         "need_addressed": "healing",
         "interactable_by_player": true
       },
@@ -3139,7 +3139,7 @@
           17,
           20
         ],
-        "location": "medici_archhealer_private_clinic",
+        "location": "vessine_archhealer_private_clinic",
         "activity": "private surgeries; teaches the apprentice",
         "need_addressed": "healing",
         "interactable_by_player": true
@@ -3150,7 +3150,7 @@
           21,
           24
         ],
-        "location": "medici_archhealer_residence",
+        "location": "vessine_archhealer_residence",
         "activity": "sleeps; on emergency call",
         "need_addressed": "healing",
         "interactable_by_player": false
@@ -3159,19 +3159,19 @@
     "starting_sparks": 3500
   },
   {
-    "id": "medici_apprentice_lin",
+    "id": "vessine_apprentice_lin",
     "world_id": "tunya",
     "name": "Apprentice Lin",
     "archetype": "healer",
-    "faction_id": "medici",
-    "faction": "medici",
+    "faction_id": "vessine",
+    "faction": "vessine",
     "is_conscious": true,
     "level": 4,
     "backstory": "Learning the seven crash-rite tonics.",
     "personality_traits": [
       "earnest"
     ],
-    "country_id": "medici",
+    "country_id": "vessine",
     "daily_schedule": [
       {
         "phase": "Dominus",
@@ -3179,7 +3179,7 @@
           1,
           4
         ],
-        "location": "medici_apprentice_quarters",
+        "location": "vessine_apprentice_quarters",
         "activity": "studies the herbarium; sleeps four hours",
         "need_addressed": "apprenticeship",
         "interactable_by_player": false
@@ -3190,7 +3190,7 @@
           5,
           8
         ],
-        "location": "medici_main_clinic",
+        "location": "vessine_main_clinic",
         "activity": "morning prep; sterilises instruments; arranges the day",
         "need_addressed": "apprenticeship",
         "interactable_by_player": true
@@ -3201,7 +3201,7 @@
           9,
           12
         ],
-        "location": "medici_main_clinic",
+        "location": "vessine_main_clinic",
         "activity": "assists Arch-Healer Yev; takes notes",
         "need_addressed": "apprenticeship",
         "interactable_by_player": true
@@ -3212,7 +3212,7 @@
           13,
           16
         ],
-        "location": "medici_clinic_garden",
+        "location": "vessine_clinic_garden",
         "activity": "studies the herb beds; runs errands",
         "need_addressed": "apprenticeship",
         "interactable_by_player": true
@@ -3223,7 +3223,7 @@
           17,
           20
         ],
-        "location": "medici_archhealer_private_clinic",
+        "location": "vessine_archhealer_private_clinic",
         "activity": "evening lecture from Yev; observed surgeries",
         "need_addressed": "apprenticeship",
         "interactable_by_player": true
@@ -3234,7 +3234,7 @@
           21,
           24
         ],
-        "location": "medici_apprentice_quarters",
+        "location": "vessine_apprentice_quarters",
         "activity": "private reading; writes letters home to Sahm",
         "need_addressed": "apprenticeship",
         "interactable_by_player": false

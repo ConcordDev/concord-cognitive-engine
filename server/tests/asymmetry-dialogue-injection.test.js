@@ -28,12 +28,12 @@ describe("T1.2 prong B — oracle dialogue template surfaces asymmetry", () => {
     const out = TASK_PROMPTS.oracleDialogueTreeComposer({
       npcTraits: {
         name: "Iyatte",
-        persistent_grudge: "Medici hunted clues to her secret for years.",
+        persistent_grudge: "Vessine hunted clues to her secret for years.",
         current_preoccupation: "Her faction edges toward open war.",
         desire_for_this_player: "Carry a sealed letter to the Sahm chancellor.",
       },
     });
-    assert.match(out, /Medici hunted clues/);
+    assert.match(out, /Vessine hunted clues/);
     assert.match(out, /edges toward open war/);
     assert.match(out, /sealed letter to the Sahm chancellor/);
   });

@@ -343,7 +343,7 @@
       "theme": "fire-bloodline-homeland",
       "tech_level": "pre-industrial",
       "magic_level": "high",
-      "description": "Sangree homeland — fire-bloodline, large/furred natives. The founders of the Sanguire lineage. Tolerates Kree alongside; their coexistence with Medici is awkward.",
+      "description": "Sangree homeland — fire-bloodline, large/furred natives. The founders of the Sanguire lineage. Tolerates Kree alongside; their coexistence with Vessine is awkward.",
       "capital": {
         "name": "Sangree Fire Forge",
         "x": 0,
@@ -387,13 +387,13 @@
       "disputed_border": null
     },
     {
-      "country_id": "medici",
-      "faction_id": "medici",
-      "name": "Medici Crash Island",
+      "country_id": "vessine",
+      "faction_id": "vessine",
+      "name": "Vessine Crash Island",
       "theme": "healer-isle",
       "tech_level": "pre-industrial",
       "magic_level": "high",
-      "description": "Medici healer's island. Site of the original Medici ship crash. Males wear taboo body-coverings per local custom. Healing-bloodline majority. Visitors are screened for fire-bloodline ancestry on entry.",
+      "description": "Vessine healer's island. Site of the original Vessine ship crash. Males wear taboo body-coverings per local custom. Healing-bloodline majority. Visitors are screened for fire-bloodline ancestry on entry.",
       "capital": {
         "name": "The Crash Site",
         "x": 0,
@@ -401,15 +401,15 @@
       },
       "anchors": [
         {
-          "id": "medici_crash_site",
+          "id": "vessine_crash_site",
           "name": "The Crash Site",
           "x": 0,
           "z": 0,
           "kind": "lore_anchor"
         },
         {
-          "id": "medici_stillrooms",
-          "name": "Medici Stillrooms",
+          "id": "vessine_stillrooms",
+          "name": "Vessine Stillrooms",
           "x": 40,
           "z": 30,
           "kind": "trade_zone"

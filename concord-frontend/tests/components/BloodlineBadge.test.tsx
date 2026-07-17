@@ -31,7 +31,7 @@ describe('BloodlineBadge — no-ancestry placeholder', () => {
 });
 
 describe('BloodlineBadge — known bloodlines render meta', () => {
-  const ids = ['sanguire', 'medici', 'sahm', 'iron_warden', 'akeia', 'kree', 'asbir', 'dinye', 'aekon', 'fluxom'];
+  const ids = ['sanguire', 'vessine', 'sahm', 'iron_warden', 'akeia', 'kree', 'asbir', 'dinye', 'aekon', 'fluxom'];
   for (const id of ids) {
     it(`renders ${id}`, () => {
       const { container } = render(<BloodlineBadge bloodline={id} dilution={0.1} />);
@@ -79,9 +79,9 @@ describe('BloodlineBadge — dilution buckets', () => {
 
 describe('BloodlineBadge — ARIA accessibility', () => {
   it('aria-label includes bloodline + dilution descriptor', () => {
-    const { container } = render(<BloodlineBadge bloodline="medici" dilution={0.7} />);
+    const { container } = render(<BloodlineBadge bloodline="vessine" dilution={0.7} />);
     const label = tip(container)?.getAttribute('aria-label') || '';
-    expect(label).toMatch(/medici/);
+    expect(label).toMatch(/vessine/);
     expect(label).toMatch(/heavily diluted/);
   });
 

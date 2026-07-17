@@ -38,7 +38,7 @@ interface BloodlineMeta {
 
 const BLOODLINES: Record<string, BloodlineMeta> = {
   sanguire:    { id: 'sanguire',    glyph: '✦', tone: 'text-red-400',     ring: 'ring-red-700/50',     short: 'SANG' },
-  medici:      { id: 'medici',      glyph: '☥', tone: 'text-emerald-300', ring: 'ring-emerald-700/50', short: 'MEDI' },
+  vessine:      { id: 'vessine',      glyph: '☥', tone: 'text-emerald-300', ring: 'ring-emerald-700/50', short: 'MEDI' },
   sahm:        { id: 'sahm',        glyph: '✺', tone: 'text-amber-300',   ring: 'ring-amber-700/50',   short: 'SAHM' },
   iron_warden: { id: 'iron_warden', glyph: '✶', tone: 'text-zinc-300',    ring: 'ring-zinc-600/60',    short: 'IRON' },
   akeia:       { id: 'akeia',       glyph: '✸', tone: 'text-cyan-300',    ring: 'ring-cyan-700/50',    short: 'AKEA' },

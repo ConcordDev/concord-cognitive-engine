@@ -47,7 +47,7 @@
       },
       "honorifics": ["Chancellor", "Ambassador", "Minister", "Protector"]
     },
-    "medici": {
+    "vessine": {
       "phoneme_set": {
         "consonants": ["s", "l", "r", "th", "v", "n", "m"],
         "vowels": ["a", "e", "i", "ae", "ei"],
@@ -57,7 +57,7 @@
       "given_names": {
         "syllable_count": [3, 4],
         "examples": ["Aerasi", "Vellanae", "Selithra", "Orienthei", "Iyallae"],
-        "gender_marking": "rare in Medici names; same pool serves all"
+        "gender_marking": "rare in Vessine names; same pool serves all"
       },
       "clan_names": {
         "pattern": "[ancestor's-name]-[choir position]",
@@ -65,7 +65,7 @@
       },
       "place_names": {
         "syllable_count": [2, 3],
-        "examples": ["Medici Ward", "Selith", "Aelaen"],
+        "examples": ["Vessine Ward", "Selith", "Aelaen"],
         "common_suffixes": ["-aen", "-ith", "-ae"]
       },
       "honorifics": ["High Healer", "Choir Master", "Navigator", "Quiet One"]

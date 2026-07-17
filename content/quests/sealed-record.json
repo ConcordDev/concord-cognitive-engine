@@ -66,7 +66,7 @@
   {
     "id": "sealed_04_choice",
     "title": "The Sealed Record — Three Paths",
-    "description": "You have the record. Three things to do with it. Carry it to Iyatte in Sandrun. Return it to Asbir and confess. Sell it to the Medici cartel. Each ends differently.",
+    "description": "You have the record. Three things to do with it. Carry it to Iyatte in Sandrun. Return it to Asbir and confess. Sell it to the Vessine cartel. Each ends differently.",
     "giver_npc_id": null,
     "difficulty": "advanced",
     "domain": "hub_epic_arc",
@@ -78,9 +78,9 @@
     "moral_branch": {
       "description": "What happens to Iyatte's son?",
       "options": [
-        { "id": "deliver_to_iyatte", "trigger": "obj_seal4_choose:deliver", "consequence": "Cross-world to tunya. Find Iyatte. Reveal that you have the record. Iyatte's hand is forced. She brings her son home. Tunyan-Sahm alliance hardens. Medici-Sanguire tension defuses. Iyatte owes you a personal debt.", "reputation_change": { "warlord_iyatte_sanguire": 0.9, "sandrun_sanguire": 0.5 }, "creates_combat_style_dtu": "sandrun_honor_recipient" },
+        { "id": "deliver_to_iyatte", "trigger": "obj_seal4_choose:deliver", "consequence": "Cross-world to tunya. Find Iyatte. Reveal that you have the record. Iyatte's hand is forced. She brings her son home. Tunyan-Sahm alliance hardens. Vessine-Sanguire tension defuses. Iyatte owes you a personal debt.", "reputation_change": { "warlord_iyatte_sanguire": 0.9, "sandrun_sanguire": 0.5 }, "creates_combat_style_dtu": "sandrun_honor_recipient" },
         { "id": "return_to_asbir", "trigger": "obj_seal4_choose:return", "consequence": "Return to Asbir. Confess. Asbir is grateful. The wall is resealed. Asbir grants you the freedom of the archive for life. Isa is disappointed but understands.", "reputation_change": { "lord_curator_asbir_thelane": 0.8, "concordant_curators": 0.5 }, "creates_combat_style_dtu": "concordant_scholar_initiate" },
-        { "id": "sell_to_medici", "trigger": "obj_seal4_choose:sell", "consequence": "The Medici cartel takes the record. They weaponise it. Sandrun-Medici war ignites. Iyatte's son is hunted. You receive 30,000 sparks. Your reputation in the hub takes a permanent hit; the Curators close their doors to you forever.", "reputation_change": { "lord_curator_asbir_thelane": -1.0, "warlord_iyatte_sanguire": -0.8, "sandrun_sanguire": -0.6 }, "items": ["medici_payoff_30k"], "creates_combat_style_dtu": "medici_cartel_associate" }
+        { "id": "sell_to_vessine", "trigger": "obj_seal4_choose:sell", "consequence": "The Vessine cartel takes the record. They weaponise it. Sandrun-Vessine war ignites. Iyatte's son is hunted. You receive 30,000 sparks. Your reputation in the hub takes a permanent hit; the Curators close their doors to you forever.", "reputation_change": { "lord_curator_asbir_thelane": -1.0, "warlord_iyatte_sanguire": -0.8, "sandrun_sanguire": -0.6 }, "items": ["vessine_payoff_30k"], "creates_combat_style_dtu": "vessine_cartel_associate" }
       ]
     },
     "breadcrumbs": [

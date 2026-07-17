@@ -54,7 +54,7 @@
       "category": "secondary",
       "jobs_referenced": ["alchemist", "cactem_keeper", "fuller"],
       "inputs_per_color": "see dyes.json",
-      "outputs": ["8 dye colors + ceremonial pearl-white (medici-only)"],
+      "outputs": ["8 dye colors + ceremonial pearl-white (vessine-only)"],
       "seasonal_peak": "year-round; spikes before Amity (treaty robes) and Cares (year-end ceremonial)",
       "key_kingdoms": ["bahiij (red monopoly via Cactem Strip)", "sahm (yellow)", "fluxom + sealie hunters (deep purple)", "every kingdom (green)"]
     },
@@ -106,11 +106,11 @@
     {
       "id": "healthcare",
       "category": "tertiary",
-      "jobs_referenced": ["nurse", "midwife", "herbalist", "Medici visiting healers"],
-      "inputs": ["herbs", "tonics", "Medici healing services (paid in food trade)"],
-      "outputs": ["routine_care", "births", "Medici_severe_case_intervention"],
+      "jobs_referenced": ["nurse", "midwife", "herbalist", "Vessine visiting healers"],
+      "inputs": ["herbs", "tonics", "Vessine healing services (paid in food trade)"],
+      "outputs": ["routine_care", "births", "Vessine_severe_case_intervention"],
       "seasonal_peak": "year-round; spikes in Wound (heat illness) and Cull (cold illness + slaughter injuries)",
-      "key_kingdoms": ["all (Medici visit all)", "kree_medici_ward (resident Medici concentration)"]
+      "key_kingdoms": ["all (Vessine visit all)", "kree_vessine_ward (resident Vessine concentration)"]
     },
     {
       "id": "logistics_transport",
@@ -162,7 +162,7 @@
     { "id": "bloc_internal", "members": ["aekon", "asbir", "dinye"], "volume": "high", "stability": 0.85 },
     { "id": "bahiij_dormas_silk", "members": ["bahiij", "dormas"], "volume": "high", "stability": 0.75 },
     { "id": "sahm_bahiij_festival", "members": ["sahm", "bahiij"], "volume": "moderate", "stability": 0.70 },
-    { "id": "kree_medici_food_for_healing", "members": ["kree_nationalists", "medici"], "volume": "moderate", "stability": 0.80, "narrative": "Medici trade healing services for food. Without this, the Medici Isle cannot sustain its population." },
+    { "id": "kree_vessine_food_for_healing", "members": ["kree_nationalists", "vessine"], "volume": "moderate", "stability": 0.80, "narrative": "Vessine trade healing services for food. Without this, the Vessine Isle cannot sustain its population." },
     { "id": "sandrun_kree_iron", "members": ["sandrun_sanguire", "kree_nationalists"], "volume": "high", "stability": 0.65 },
     { "id": "fluxom_collapsed", "members": ["fluxom"], "volume": "low", "stability": 0.20, "narrative": "Fluxom's sea-trade with the kingdoms collapsed after the sealies came. Currently limited to coastal small-craft trade." }
   ]

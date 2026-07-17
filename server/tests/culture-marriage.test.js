@@ -34,10 +34,15 @@ import {
   dissolveMarriage,
 } from "../lib/culture-friction.js";
 import { up as up182 } from "../migrations/182_culture_marriage.js";
+// 367 forward-repairs the immutable 182 seed's "medici" → "vessine" (name/IP
+// collision fix — the Medici dynasty rename). 182 still seeds "medici" (it's
+// append-only); the real migrated DB always runs 367 after, so the test must too.
+import { up as up367 } from "../migrations/367_rename_medici_to_vessine.js";
 
 function setupDb() {
   const db = new Database(":memory:");
   up182(db);
+  up367(db); // repair the immutable 182 "medici" seed → "vessine"
   return db;
 }
 
@@ -45,9 +50,9 @@ describe("Phase 13 / culture — setCulture + getCulture", () => {
   it("upserts on (kind, id)", () => {
     const db = setupDb();
     setCulture(db, "player", "u_1", "sanguire", "fire_lineage");
-    setCulture(db, "player", "u_1", "medici", "crash_remembrance");
+    setCulture(db, "player", "u_1", "vessine", "crash_remembrance");
     const c = getCulture(db, "player", "u_1");
-    assert.equal(c.culture_id, "medici");
+    assert.equal(c.culture_id, "vessine");
     assert.equal(c.faith_id, "crash_remembrance");
   });
 
@@ -90,9 +95,9 @@ describe("Phase 13 / culture — seeded friction", () => {
     assert.equal(getFriction(db, "asbir", "dinye"), 0.4);
   });
 
-  it("Medici/Sangree awkward (-0.2)", () => {
+  it("Vessine/Sangree awkward (-0.2)", () => {
     const db = setupDb();
-    assert.equal(getFriction(db, "medici", "sangree"), -0.2);
+    assert.equal(getFriction(db, "vessine", "sangree"), -0.2);
   });
 });
 

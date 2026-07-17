@@ -10,11 +10,11 @@
     "appearance": "Silver-bearded, lean, wears a grey-blue overrobe with the archive's seven-spoke sigil at the collar. Carries a brass stylus and a stack of ungloved letters in his off-hand.",
     "background": "Lord Curator for nineteen years. Saw the seed of the Refusal Field carved into the dome before the public knew what a dome was. Maintains correspondences with Iyatte of Sandrun, Lady Seraphine Voss, and the Sahm chancellor; trusted by all three.",
     "narrative_context": {
-      "secret": "Asbir has seen Iyatte's record about her hidden son. He chose not to share it with Sanguire elders, Medici scouts, or Fluxom inquisitors. He keeps a copy in a sealed wall-cavity behind his audience-chamber.",
-      "weaponise_at": "If the Sanguire-Medici war breaks open, Asbir is the only neutral party who could broker. Both sides know he has the record. Both sides have offered him things to release it."
+      "secret": "Asbir has seen Iyatte's record about her hidden son. He chose not to share it with Sanguire elders, Vessine scouts, or Fluxom inquisitors. He keeps a copy in a sealed wall-cavity behind his audience-chamber.",
+      "weaponise_at": "If the Sanguire-Vessine war breaks open, Asbir is the only neutral party who could broker. Both sides know he has the record. Both sides have offered him things to release it."
     },
     "concord_link_resonance": "tunya:warlord_iyatte_sanguire",
-    "cross_world_hook": "Asbir's hidden cavity is the proof-of-concept for Concordia's cross-world memory bridge. If a player surfaces the sealed letter — by stealth, persuasion, or being given it — the Sanguire-Medici plotline shifts in tunya.",
+    "cross_world_hook": "Asbir's hidden cavity is the proof-of-concept for Concordia's cross-world memory bridge. If a player surfaces the sealed letter — by stealth, persuasion, or being given it — the Sanguire-Vessine plotline shifts in tunya.",
     "dialogue_style": "long sentences with pauses; never interrupts; reframes questions before answering",
     "needs": [
       {
@@ -208,7 +208,7 @@
     "appearance": "Broad-shouldered, copper hair coiled at the crown, wears a leather apron over a merchant's tunic, brass abacus on the belt. Mechanical right forearm — a Sahm craftwork — replaced after a market-fire seven years ago.",
     "background": "Started as a stall-hand at thirteen. Bought her first stall at twenty. Now controls the central row of the Bazaar Consortium and arbitrates disputes when guild law fails.",
     "narrative_context": {
-      "secret": "Velka quietly fences low-tier creature components for a smuggling network — but only items below a certain ethical line she defined herself. She has refused contraband from the Medici cartel three times.",
+      "secret": "Velka quietly fences low-tier creature components for a smuggling network — but only items below a certain ethical line she defined herself. She has refused contraband from the Vessine cartel three times.",
       "weaponise_at": "If a player needs a rare component, Velka is the cheapest path — but using her network leaks the player's name into the smuggling ledger."
     },
     "concord_link_resonance": "cyber:merchant_kix_orange",

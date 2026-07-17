@@ -16,7 +16,7 @@ const FACTION_TO_BLOODLINE = {
   // Tunyan core
   dinye: "dinye", aekon: "aekon", asbir: "asbir",
   fluxom: "fluxom", akeia: "akeia", nil: "tunyan_pure",
-  sangree: "sangree", kree: "kree", medici: "medici", sahm: "sahm",
+  sangree: "sangree", kree: "kree", vessine: "vessine", sahm: "sahm",
   // Cross-world fall-through — every faction without a Tunyan match
   // gets sah/sahm as the default (precision-bloodline) so combat path
   // resolves.
@@ -27,7 +27,7 @@ const FACTION_TO_BLOODLINE = {
   // falls through to defaultBloodline()
 };
 
-const KNOWN_BLOODLINES = ["sanguire", "medici", "sahm", "iron_warden", "akeia", "kree", "asbir", "dinye", "aekon", "fluxom"];
+const KNOWN_BLOODLINES = ["sanguire", "vessine", "sahm", "iron_warden", "akeia", "kree", "asbir", "dinye", "aekon", "fluxom"];
 
 function deterministicHash(id, salt = "") {
   return crypto.createHash("sha1").update(`${id}::${salt}`).digest();

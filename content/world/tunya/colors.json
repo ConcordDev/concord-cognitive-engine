@@ -7,7 +7,7 @@
     "axioms": [
       "Most children adopt a mixture of their parents' skin colors. Yellow + blue parents → green child. Red + blue → purple. Yellow + red → orange. Blends are real hue arithmetic, not melanin gradient.",
       "Throwback rule: sometimes a child takes one parent's coloring directly instead of blending. Sex-linked tendency — girls usually take their mother's coloring, boys usually take their father's. The tendency is statistical, not absolute.",
-      "After 4 generations of intermixing across arks, Ancient Tunyans, Medici, and Sanguire, Tunya's people span every color on the spectrum. Pure single-hue individuals are rare; blended hues (teal, mauve, olive, ochre, slate, pearl-rose, ash-violet) dominate.",
+      "After 4 generations of intermixing across arks, Ancient Tunyans, Vessine, and Sanguire, Tunya's people span every color on the spectrum. Pure single-hue individuals are rare; blended hues (teal, mauve, olive, ochre, slate, pearl-rose, ash-violet) dominate.",
       "Skin color carries genealogical information. A skilled observer can read parentage from a child's hue."
     ],
     "implementation": {
@@ -26,7 +26,7 @@
     },
     "species_origin_palettes": {
       "ancient_tunyan_pure": ["#8B5A2B (warm earth)", "#A0522D (sienna)", "#5D4037 (deep brown)", "#6D7B7D (slate gray)"],
-      "medici_pure": ["#C4D8E0 (pearl white-blue)", "#E0D8C8 (pearl warm)", "#B8C8C0 (pearl sage)"],
+      "vessine_pure": ["#C4D8E0 (pearl white-blue)", "#E0D8C8 (pearl warm)", "#B8C8C0 (pearl sage)"],
       "sanguire_pure": ["#A8311B (warm red)", "#C77B4A (amber)", "#9B5C2C (rich ochre)"],
       "earth_human_african_ark_descended": ["#3E1F11 to #8B4513 (Earth-spectrum brown)"],
       "earth_human_eurasian_ark_descended": ["#F5DEB3 to #8B6F47 (Earth-spectrum tan-to-olive)"],
@@ -38,7 +38,7 @@
       "comment": "Per-kingdom bias toward subsets of the full Tunyan spectrum, reflecting historical settlement patterns. Sample parent colors with these priors; child colors emerge from the genetics engine.",
       "sandrun_sanguire": ["#A8311B", "#C77B4A", "#9B5C2C", "#7D2A1A"],
       "kree_nationalists": ["#3B5D8C", "#56324A", "#9BB1C7"],
-      "medici_isle": ["#C4D8E0", "#E0D8C8", "#B8C8C0"],
+      "vessine_isle": ["#C4D8E0", "#E0D8C8", "#B8C8C0"],
       "corre": ["#5B8047", "#A0522D", "#8B5A2B"],
       "aekon": ["#D8A23B", "#A8514A", "#7A4A2A", "#5D4037"],
       "asbir": ["#9BB1C7", "#C8A25B", "#7D6A5A"],
@@ -53,9 +53,9 @@
     },
     "narrative_implications": [
       "An NPC's skin color is a readable diplomatic credential. A teal-skinned diplomat in Akeia is visibly Sahm-Bahiij descended; the queen mother knows what bloodlines stand at her court before any introduction.",
-      "Pure single-hue individuals are visibly distinctive. A pure Sanguire-red character in Dormas is unusual enough to be commented on. A pure pearl Medici walking Sahm's market is recognizable at distance.",
+      "Pure single-hue individuals are visibly distinctive. A pure Sanguire-red character in Dormas is unusual enough to be commented on. A pure pearl Vessine walking Sahm's market is recognizable at distance.",
       "Throwback children — taking one parent's color directly — are biological reminders of lineage purity. Some kingdoms (Nil, Sandrun) value them; others (Dormas, Bahiij) treat them as quaintly old-fashioned.",
-      "Cross-species blends produce species-distinctive shades — pearl-rose for Medici-Sanguire, ash-violet for Medici-Tunyan, ember-brown for Sanguire-Tunyan. Skilled observers identify rare hybrids by hue alone."
+      "Cross-species blends produce species-distinctive shades — pearl-rose for Vessine-Sanguire, ash-violet for Vessine-Tunyan, ember-brown for Sanguire-Tunyan. Skilled observers identify rare hybrids by hue alone."
     ]
   },
   "color_symbolism": {
@@ -88,23 +88,23 @@
       },
       "purple": {
         "meanings": ["power", "royalty", "nobility", "elegance", "sophistication", "artificial", "luxury", "mystery"],
-        "primary_factions_that_use": ["akeia_of_kahlay (queen mother's robes)", "dormas (high-quarter livery)", "medici (Choir master accents)"]
+        "primary_factions_that_use": ["akeia_of_kahlay (queen mother's robes)", "dormas (high-quarter livery)", "vessine (Choir master accents)"]
       },
       "brown": {
         "meanings": ["relaxing", "confident", "casual", "reassuring", "nature", "earthy", "solid", "reliable", "genuine", "autumn"],
         "primary_factions_that_use": ["masond (mason quarter)", "dinye (everyday wear)", "sahm (smith's apron)"]
       },
       "pearl_white": {
-        "meanings": ["medici sacred", "mercy", "preservation", "stillness", "the resonance"],
-        "primary_factions_that_use": ["medici (skin natural color, sacred robes)"],
-        "note": "Not in the original color table but added per the species-origin palette. Pearl-white is the Medici's signature."
+        "meanings": ["vessine sacred", "mercy", "preservation", "stillness", "the resonance"],
+        "primary_factions_that_use": ["vessine (skin natural color, sacred robes)"],
+        "note": "Not in the original color table but added per the species-origin palette. Pearl-white is the Vessine's signature."
       }
     },
     "diplomatic_color_reading": {
       "amity_courtship_ball_akeia": "Foreign delegates wear their kingdom's primary color. Akeia hosts read it: a Sahm delegate in red-trim is signaling alliance interest; in plain river-iron yellow is signaling polite distance.",
       "harvest_high_feast_aekon": "All twelve districts wear their district color. The twelfth wears no color — its dish is on the table; its presence is felt; its color is a refusal.",
       "cull_sanguire_warlord_challenge": "Challenger wears the color of their clan; warlord wears Sanguire-red. Spectators wear neutral browns. A spectator in clan-color is making a political statement and may be challenged in turn.",
-      "cares_medici_holiday_communion": "Medici procession is pure pearl-white. Foreign witnesses must wear muted neutrals. A foreigner in any saturated color on Cares-day-1 is a recorded insult."
+      "cares_vessine_holiday_communion": "Vessine procession is pure pearl-white. Foreign witnesses must wear muted neutrals. A foreigner in any saturated color on Cares-day-1 is a recorded insult."
     }
   },
   "procgen_hooks": {
@@ -112,7 +112,7 @@
       "description": "Sample parent skin colors from the kingdom_palette_priors of the parents' kingdoms (cross-kingdom unions sample from both). Apply the genetics blend_function. Apply the throwback_probability + sex-linkage. Apply the jitter. Output the child's RGB.",
       "edge_cases": {
         "pure_species_throwback": "If both parents are flagged pure_<species>, the throwback probability rises to 0.40 (the species-internal palette is more genetically stable).",
-        "cross_species_blend": "If parents are different species, label the child's hue with the species-blend tag (e.g. 'pearl_rose' for Medici-Sanguire, 'ash_violet' for Medici-Tunyan, 'ember_brown' for Sanguire-Tunyan)."
+        "cross_species_blend": "If parents are different species, label the child's hue with the species-blend tag (e.g. 'pearl_rose' for Vessine-Sanguire, 'ash_violet' for Vessine-Tunyan, 'ember_brown' for Sanguire-Tunyan)."
       }
     },
     "faction_banner_generator": {

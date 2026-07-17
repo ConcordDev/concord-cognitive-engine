@@ -47,7 +47,7 @@
         "single creature feeds two industries — paper for Asbir's archive + dye for ceremonial whites"
       ],
       "monopoly": "Pre-Fluxom-collapse, Fluxom controlled mollusca trade. Now contested between Corre and Sahm. Asbir is the primary buyer of mollusca paper.",
-      "uses": ["medici_sacred_robes", "asbir_archive_paper", "ceremonial_whites_all_kingdoms"]
+      "uses": ["vessine_sacred_robes", "asbir_archive_paper", "ceremonial_whites_all_kingdoms"]
     },
     {
       "id": "blue",
@@ -91,7 +91,7 @@
         "sealie-derived purple is the deepest tone; snail-only purple is a paler variant"
       ],
       "monopoly": "no kingdom monopolizes the sea snail. Sealie-purple is monopolized by Fluxom and select Sahm + Aekon vessels — only sealie hunters can produce the deep tone, and sealie hunting is ~1% of vessels.",
-      "uses": ["akeia_queen_mothers_robes", "dormas_high_quarter_livery", "medici_choir_master_accents"]
+      "uses": ["akeia_queen_mothers_robes", "dormas_high_quarter_livery", "vessine_choir_master_accents"]
     },
     {
       "id": "green",

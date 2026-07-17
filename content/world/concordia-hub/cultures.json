@@ -9,12 +9,12 @@
     { "id": "akeia",       "name": "Akeia",           "faction_id": "akeia",       "faith_id": "tidekeeping" },
     { "id": "sangree",     "name": "Sangree",         "faction_id": "sangree",     "faith_id": "fire_lineage" },
     { "id": "kree",        "name": "Kree",            "faction_id": "kree",        "faith_id": "fire_lineage" },
-    { "id": "medici",      "name": "Medici",          "faction_id": "medici",      "faith_id": "crash_remembrance" },
+    { "id": "vessine",      "name": "Vessine",          "faction_id": "vessine",      "faith_id": "crash_remembrance" },
     { "id": "sahm",        "name": "Sahm",            "faction_id": "sahm",        "faith_id": "merit_doctrine" },
     { "id": "tunyan_pure", "name": "Pure Tunyan",     "faction_id": "nil",         "faith_id": "ancestral_silence" }
   ],
   "extra_friction": [
-    { "a": "medici",     "b": "tunyan_pure", "friction": -0.4 },
+    { "a": "vessine",     "b": "tunyan_pure", "friction": -0.4 },
     { "a": "kree",       "b": "tunyan_pure", "friction": -0.5 }
   ]
 }

@@ -34,7 +34,7 @@
       "id": "alchemy_herb_tonic",
       "name": "Herbalist Tonic",
       "output_item": "tonic_phial",
-      "author_faction": "medici",
+      "author_faction": "vessine",
       "steps": [
         { "kind": "gather",   "name": "gather herbs", "duration_s": 1800 },
         { "kind": "process",  "name": "decoct",       "duration_s": 3600 },
