@@ -210,8 +210,14 @@ export function createMediaDTU(STATE, params) {
       endedAt: null,
     } : null,
 
-    // Waveform data (audio)
-    waveform: mediaType === "audio" ? generateWaveform(64) : null,
+    // Waveform data (audio). The server does not decode compressed audio
+    // (mp3/webm/ogg/flac — see MEDIA_MIME_MAP), so it cannot compute real
+    // peaks from the uploaded bytes. `null` is the honest value here; see
+    // `generateWaveform`'s doc comment for what would be required to make
+    // this real server-side, and the client-side real extraction path
+    // (Web Audio `decodeAudioData` + peak reduction) that fills this gap
+    // at upload/record time instead.
+    waveform: mediaType === "audio" ? generateWaveform() : null,
   };
 
   // Store in media state
@@ -875,15 +881,39 @@ function getAuthorName(STATE, authorId) {
 }
 
 /**
- * Generate a synthetic waveform for audio visualization.
- * In production, this would be computed from actual audio samples.
+ * Waveform peaks for audio visualization — honest, not fabricated.
+ *
+ * This used to synthesize a `Math.sin(...) + Math.random()` curve with no
+ * relationship to the uploaded audio and stamp it onto every audio media
+ * DTU as if it were measured data (CLAUDE.md §"honest by construction" — a
+ * decorative sensor-style readout presented as measured data is exactly the
+ * violation that rule forbids).
+ *
+ * The server genuinely cannot compute real peaks here: `createMediaDTU` is
+ * called at metadata-creation time, often before (or without) the actual
+ * compressed audio bytes (mp3/webm/ogg/flac — see MEDIA_MIME_MAP) being
+ * available, and Node has no built-in audio codec to decode them into PCM
+ * samples even when the bytes are present. Doing this for real server-side
+ * would require adding a real audio-decoding dependency (e.g. an ffmpeg
+ * shell-out or a WASM decoder) — deliberately NOT added here per the "don't
+ * fake it, and don't silently add unreviewed capability either" rule; this
+ * is a documented, deferred gap, not a bug to route around with more
+ * fabrication.
+ *
+ * The honest fix lives on the client: the browser already has the real
+ * decoded audio in hand at record/upload time (a `Blob`/`File`), so
+ * `Web Audio`'s `decodeAudioData` + a peak-reduction pass (see
+ * `concord-frontend/lib/daw/engine.ts#generateWaveformPeaks`, and the
+ * upload-time callers in the daily/voice/feed lenses) computes REAL peaks
+ * from the REAL samples and can persist/display those instead. Until a
+ * caller supplies real client-computed peaks through a dedicated field,
+ * this returns `null` — consumers must render an honest empty/placeholder
+ * state, never another fake curve.
+ *
+ * @returns {null}
  */
-function generateWaveform(length = 64) {
-  return Array.from({ length }, (_, i) => {
-    const base = Math.sin(i * 0.3) * 0.3 + 0.5;
-    const noise = Math.random() * 0.3;
-    return Math.round(Math.min(1, Math.max(0.05, base + noise - 0.15)) * 100);
-  });
+function generateWaveform() {
+  return null;
 }
 
 /**

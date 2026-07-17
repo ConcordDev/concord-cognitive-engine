@@ -72,7 +72,11 @@ describe("Integration: Media Pipeline", () => {
     assert.equal(result.mediaDTU.privacy, "public");
   });
 
-  it("creates an audio media DTU with waveform data", () => {
+  it("creates an audio media DTU with an honest null waveform (server does not decode compressed audio)", () => {
+    // Was: asserted a fabricated 64-point waveform array. The server has no
+    // audio decoder, so it cannot compute real peaks from mp3/webm/ogg/flac
+    // bytes — `null` is the honest value; real peaks are computed
+    // client-side from the decoded samples at record/upload time.
     const result = createMediaDTU(STATE, {
       authorId: "user-1",
       title: "My Track",
@@ -85,8 +89,7 @@ describe("Integration: Media Pipeline", () => {
 
     assert.ok(result.ok);
     assert.equal(result.mediaDTU.mediaType, "audio");
-    assert.ok(result.mediaDTU.waveform, "Audio should have waveform data");
-    assert.equal(result.mediaDTU.waveform.length, 64);
+    assert.equal(result.mediaDTU.waveform, null, "Server has no audio decoder — waveform must be honestly null, not fabricated");
     assert.equal(result.mediaDTU.transcodeStatus, "pending");
   });
 
