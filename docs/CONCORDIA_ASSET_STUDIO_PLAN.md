@@ -174,11 +174,33 @@ Same "honest by construction" law as the rest of Concord, applied here:
    (`reason`→`error`) caught + fixed in orchestrator review. This is the
    proof-of-loop: design → live in the owned 3D world → creator-attributed,
    royalty-ready — genuinely closed end to end for the first time.
-2. **Increment 2 — Level / scene design.** A real level editor on top of
-   Foundry + blueprint-spawn: place authored assets into a scene, publish, and
-   make it walkable in Concordia.
+2. **Increment 2 — Level / scene design. ◑ PARTIAL — building placement into
+   Foundry worlds SHIPPED 2026-07-17** (Inc 2-A `8fa466a9`, Inc 2-B `5b12f7bf`).
+   The two load-bearing pieces of "place authored assets into a scene and make
+   it walkable" now work: **2-A** wired the standalone world-agnostic preview
+   surfaces (`FoundryPreview` + ConKay `FoundryAdapter`) to render a world's
+   authored `world_buildings` via the same headless `BuildingRenderer3D` +
+   coord-offset pipeline the world lens uses (they were terrain-only before), and
+   **2-B** added a designed "Place a building" card to the Foundry builder's
+   Assets tab that calls the real `game-design.building-publish` bound to the
+   selected **Foundry** world's id with world-frame x/y/z — so a creator places a
+   building and walks it in that world's Playtest/preview. **Still open (the full
+   Inc 2):** a true multi-asset scene/level *editor* (drag-place many assets,
+   save a level artifact) on top of Foundry — placement of one building at a time
+   is the primitive, not the full editor yet.
 3. **Increment 3 — Concept board.** ArtCanvas-backed concept/design board
    attachable to an asset or level as its real design record (honest strokes).
+
+   **Creatures asset class — SHIPPED 2026-07-17** (backend `dca4328a`, Creature
+   Studio UI `2458973e`): a second authored asset class alongside buildings.
+   `creatures.creature-publish`/`creature-list-mine` mint real creator-attributed
+   `creature_blueprint` DTUs (geometry from the real `generateCreature` engine),
+   optionally spawn a live `world_npcs` creature (owner+blueprint linkage stored
+   honestly in the row's `state` JSON — verified against the live migrated
+   schema), and `creatures.breed` registers royalty lineage to owned parent-
+   creators (the cleanest fusion+cascade in the repo). A "Creature Studio" tab in
+   the game-design lens authors by real params (11-topology picker + coat color)
+   with a WYSIWYG `createCreatureMesh` preview byte-faithful to the in-world mesh.
 4. **Increment 4 — Asset marketplace surface + license tiers. ✅ SHIPPED
    2026-07-17** (money core `893a38ed`, cross-rail bridge `f2557602`, blueprint/
    asset license tiers `05977748`, list/buy UI `4084a3b2`; Stripe-mint
