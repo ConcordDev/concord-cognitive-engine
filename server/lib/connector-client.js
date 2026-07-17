@@ -388,6 +388,43 @@ export async function createGitHubIssue(db, userId, repo, issue = {}, opts = {})
   return { ok: true, number: res.data?.number || null, url: res.data?.html_url || null };
 }
 
+// GitHub's commit-status API only accepts these four literal state values —
+// reject anything else BEFORE any network call rather than letting an
+// unrecognized value reach GitHub as an ad-hoc string.
+const GITHUB_STATUS_STATES = new Set(["success", "failure", "pending", "error"]);
+
+/**
+ * Post a commit status (real two-way write) — POST
+ * /repos/{repo}/statuses/{sha}. Used by CI-gate style callers (e.g.
+ * dx-platform.postCommitStatus) to reflect a genuine pass/fail verdict on a
+ * PR's head commit. Same shape as createGitHubIssue above: SSRF-guarded,
+ * per-user-OAuth, honest failure reasons — never a faked "posted" success.
+ */
+export async function writeGitHubCommitStatus(db, userId, repo, sha, state, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  if (!sha) return { ok: false, reason: "missing_sha" };
+  if (!GITHUB_STATUS_STATES.has(state)) return { ok: false, reason: "invalid_state" };
+  const body = {
+    state,
+    context: opts.context ? String(opts.context) : "concord/dx-detectors",
+    ...(opts.description ? { description: String(opts.description).slice(0, 140) } : {}),
+    ...(opts.targetUrl ? { target_url: String(opts.targetUrl) } : {}),
+  };
+  const res = await connectorFetch(
+    db, userId, "github", `${GITHUB_BASE}/repos/${repo}/statuses/${encodeURIComponent(sha)}`,
+    { method: "POST", headers: { ...GITHUB_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify(body) },
+    opts,
+  );
+  if (!res.ok) return res;
+  return {
+    ok: true,
+    id: res.data?.id || null,
+    state: res.data?.state || state,
+    url: res.data?.url || null,
+    targetUrl: res.data?.target_url || null,
+  };
+}
+
 // ── Notion (connector_id "notion", Bearer token, Notion-Version header) ─────
 // @env-config-ok — Notion's fixed, vendor-published public API base, not
 // deployment-specific config (same shape as the GitHub/Slack API bases

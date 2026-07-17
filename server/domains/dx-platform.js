@@ -55,6 +55,8 @@ function badNumericField(input, keys) {
 // `_unwrapLensEnvelope` strips the `result` layer so the frontend reads
 // `r.data.result.<field>`).
 
+import { writeGitHubCommitStatus } from "../lib/connector-client.js";
+
 export default function registerDxPlatformActions(register) {
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, _artifact, params) handler bodies below, unchanged.
@@ -255,6 +257,50 @@ export default function registerDxPlatformActions(register) {
     return new Set(DETECTORS.filter((d) => d.default).map((d) => d.id));
   }
 
+  // Parse a unified diff into per-file ADDED-line units and run the
+  // detector grid over them. Shared by reviewDiff (ad-hoc review) and
+  // postCommitStatus (CI gate) so both run the exact same real analysis —
+  // the CI status macro never runs a lighter/different pass than the
+  // interactive review does.
+  function parseAndScanDiff(diff, enabledSet) {
+    const units = [];
+    let curPath = null;
+    let curLines = [];
+    let newLineNo = 0;
+    const flush = () => {
+      if (curPath && curLines.length) units.push({ path: curPath, lines: curLines });
+      curLines = [];
+    };
+    let addedTotal = 0;
+    let removedTotal = 0;
+    let fileCount = 0;
+    for (const raw of diff.split("\n")) {
+      if (raw.startsWith("+++ ")) {
+        flush();
+        curPath = raw.replace(/^\+\+\+ /, "").replace(/^b\//, "").trim() || "(unknown)";
+        fileCount++;
+        continue;
+      }
+      if (raw.startsWith("--- ")) continue;
+      const hunk = raw.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      if (hunk) { newLineNo = parseInt(hunk[1], 10); continue; }
+      if (raw.startsWith("+") && !raw.startsWith("+++")) {
+        addedTotal++;
+        curLines.push({ n: newLineNo, text: raw.slice(1) });
+        newLineNo++;
+      } else if (raw.startsWith("-") && !raw.startsWith("---")) {
+        removedTotal++;
+      } else if (!raw.startsWith("\\")) {
+        newLineNo++;
+      }
+    }
+    flush();
+    const findings = scanLines(units, enabledSet);
+    const bySeverity = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    for (const f of findings) bySeverity[f.severity] = (bySeverity[f.severity] || 0) + 1;
+    return { units, findings, bySeverity, addedTotal, removedTotal, fileCount };
+  }
+
   // ── 1. chat-with-codebase: index files ──────────────────────────────
   // params: { codebaseId, name?, files: [{path, content}] }
   registerLensAction("dx-platform", "indexCodebase", (ctx, _a, params = {}) => {
@@ -391,42 +437,7 @@ export default function registerDxPlatformActions(register) {
       const cb = userCodebases(s, userId).get(String(params.codebaseId));
       if (cb && Array.isArray(cb.detectorConfig)) enabledSet = new Set(cb.detectorConfig);
     }
-    // Parse the unified diff into per-file added-line units.
-    const units = [];
-    let curPath = null;
-    let curLines = [];
-    let newLineNo = 0;
-    const flush = () => {
-      if (curPath && curLines.length) units.push({ path: curPath, lines: curLines });
-      curLines = [];
-    };
-    let addedTotal = 0;
-    let removedTotal = 0;
-    let fileCount = 0;
-    for (const raw of diff.split("\n")) {
-      if (raw.startsWith("+++ ")) {
-        flush();
-        curPath = raw.replace(/^\+\+\+ /, "").replace(/^b\//, "").trim() || "(unknown)";
-        fileCount++;
-        continue;
-      }
-      if (raw.startsWith("--- ")) continue;
-      const hunk = raw.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-      if (hunk) { newLineNo = parseInt(hunk[1], 10); continue; }
-      if (raw.startsWith("+") && !raw.startsWith("+++")) {
-        addedTotal++;
-        curLines.push({ n: newLineNo, text: raw.slice(1) });
-        newLineNo++;
-      } else if (raw.startsWith("-") && !raw.startsWith("---")) {
-        removedTotal++;
-      } else if (!raw.startsWith("\\")) {
-        newLineNo++;
-      }
-    }
-    flush();
-    const findings = scanLines(units, enabledSet);
-    const bySeverity = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    for (const f of findings) bySeverity[f.severity] = (bySeverity[f.severity] || 0) + 1;
+    const { findings, bySeverity, addedTotal, removedTotal, fileCount } = parseAndScanDiff(diff, enabledSet);
     const blocking = findings.filter((f) => f.severity >= 4).length;
     // Optional commit-scoped provenance write — see the finding-history block
     // above. Only fires when the caller supplies commitSha; omitting it keeps
@@ -987,6 +998,106 @@ export default function registerDxPlatformActions(register) {
         sarif,
         findingCount: results.length,
         ruleCount: ruleMap.size,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── 9. CI commit-status posting (real GitHub write) ─────────────────
+  // Runs the SAME real detector pass reviewDiff uses (parseAndScanDiff) over
+  // a caller-supplied unified diff, computes a pass/fail verdict via the
+  // same failOn threshold ciGateCheck uses, and posts a REAL commit status
+  // to GitHub — a genuine POST to /repos/{repo}/statuses/{sha} through the
+  // SSRF-guarded, per-user-OAuth connector chokepoint
+  // (server/lib/connector-client.js#writeGitHubCommitStatus — the exact
+  // same shape as the proven createGitHubIssue writer). Honest failure: no
+  // GitHub OAuth token / no repo access -> {ok:false, reason}, NEVER a
+  // fabricated "posted" success. The state posted to GitHub is never
+  // hardcoded — it is 'failure' only when the real scan found a blocking
+  // finding at or above the failOn threshold, 'success' otherwise.
+  //
+  // GitLab half is intentionally NOT built here: this codebase has no
+  // GitLab connector at all (only google_calendar/google_gmail/slack/
+  // google_sheets/github/notion are wired in server/lib/connector-client.js
+  // — see the "── GitHub ──" / "── Slack ──" / etc. section headers there).
+  // A GitLab head SHA has nowhere honest to post a status to, so there is
+  // deliberately no GitLab branch here pretending to be one; GitLab support
+  // would need its own OAuth app + connector_id + token-refresh path before
+  // any status-posting macro could be honest about it.
+  //
+  // params: { repo, commitSha, diff, codebaseId?, failOn?, targetUrl?,
+  //           __fetchImpl? } — __fetchImpl is a same-process test seam
+  // identical to connectorFetch's own opts.fetchImpl (see
+  // lib/connector-client.js) and the one already used at
+  // domains/travel.js's Gmail-sync macro: a real HTTP JSON caller can never
+  // supply a function value inside a request body, so production traffic
+  // always takes the real SSRF-guarded egress; only a same-process test
+  // importing this module directly can set it.
+  registerLensAction("dx-platform", "postCommitStatus", async (ctx, _a, params = {}) => {
+  try {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const repo = String(params.repo || "").trim();
+    if (!repo) return { ok: false, error: "no_repo" };
+    const commitSha = String(params.commitSha || "").trim();
+    if (!commitSha) return { ok: false, error: "no_commit_sha" };
+    const diff = String(params.diff || "");
+    if (!diff.trim()) return { ok: false, error: "no_diff" };
+    if (!ctx?.db) return { ok: false, error: "db_unavailable" };
+
+    const s = getState();
+    let enabledSet = defaultEnabled();
+    if (params.codebaseId) {
+      const cb = userCodebases(s, userId).get(String(params.codebaseId));
+      if (cb && Array.isArray(cb.detectorConfig)) enabledSet = new Set(cb.detectorConfig);
+    }
+    const { findings, fileCount, addedTotal } = parseAndScanDiff(diff, enabledSet);
+
+    const failOn = ["error", "warning", "any"].includes(String(params.failOn))
+      ? String(params.failOn) : "error";
+    const minSeverity = failOn === "any" ? 1 : failOn === "warning" ? 3 : 4;
+    const blocking = findings.filter((f) => f.severity >= minSeverity);
+    const passed = blocking.length === 0;
+    const state = passed ? "success" : "failure";
+    const description = (passed
+      ? `Concord DX: clean — ${findings.length} finding(s) below threshold`
+      : `Concord DX: ${blocking.length} blocking finding(s) at/above severity ${minSeverity}`
+    ).slice(0, 140);
+
+    // Test/seam injection — see the doc comment above this macro.
+    const netOpts = typeof params.__fetchImpl === "function" ? { fetchImpl: params.__fetchImpl } : {};
+
+    let posted;
+    try {
+      posted = await writeGitHubCommitStatus(ctx.db, userId, repo, commitSha, state, {
+        context: "concord/dx-detectors",
+        description,
+        targetUrl: params.targetUrl ? String(params.targetUrl) : undefined,
+        ...netOpts,
+      });
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+    if (!posted.ok) {
+      const reason = posted.reason || "commit_status_failed";
+      return { ok: false, reason, error: reason, detail: posted };
+    }
+
+    return {
+      ok: true,
+      result: {
+        repo,
+        commitSha,
+        state,
+        passed,
+        failOn,
+        minSeverity,
+        findingCount: findings.length,
+        blockingCount: blocking.length,
+        fileCount,
+        addedTotal,
+        githubStatusId: posted.id,
+        githubStatusUrl: posted.url,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
