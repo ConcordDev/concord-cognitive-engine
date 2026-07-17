@@ -10,50 +10,56 @@
 
 import crypto from "node:crypto";
 
-export default function registerIngestActions(registerLensAction) {
-  // ── Persistent per-user pipeline state ──────────────────────────────
-  function getIngestState() {
-    const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
-    if (!STATE.ingestLens) STATE.ingestLens = {};
-    const s = STATE.ingestLens;
-    // connections: userId -> Map(connectionId -> connection)
-    // schedules:   userId -> Map(scheduleId   -> schedule)
-    // syncRuns:    userId -> Array(run)        (most-recent-first, capped)
-    // mappings:    userId -> Map(connectionId -> mapping[])
-    // dedup:       userId -> dedup config object
-    // webhooks:    userId -> Map(token        -> webhook endpoint)
-    // webhookRecords: userId -> Array(record) (capped)
-    for (const k of ["connections", "schedules", "mappings", "webhooks"]) {
-      if (!(s[k] instanceof Map)) s[k] = new Map();
-    }
-    for (const k of ["syncRuns", "webhookRecords", "dedup"]) {
-      if (!s[k]) s[k] = k === "dedup" ? new Map() : new Map();
-    }
-    return s;
+// ── Persistent per-user pipeline state ────────────────────────────────
+// Lifted to module scope (out of registerIngestActions) so the ingest
+// heartbeat drain cycle (server/emergent/ingest-drain-cycle.js) can share
+// the exact same STATE accessor + connector catalog the domain macros use —
+// one source of truth, no duplicated globalThis reads, no drift between
+// the scheduled-drain path and the manual/lens-driven path.
+export function getIngestState() {
+  const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+  if (!STATE.ingestLens) STATE.ingestLens = {};
+  const s = STATE.ingestLens;
+  // connections: userId -> Map(connectionId -> connection)
+  // schedules:   userId -> Map(scheduleId   -> schedule)
+  // syncRuns:    userId -> Array(run)        (most-recent-first, capped)
+  // mappings:    userId -> Map(connectionId -> mapping[])
+  // dedup:       userId -> dedup config object
+  // webhooks:    userId -> Map(token        -> webhook endpoint)
+  // webhookRecords: userId -> Array(record) (capped)
+  for (const k of ["connections", "schedules", "mappings", "webhooks"]) {
+    if (!(s[k] instanceof Map)) s[k] = new Map();
   }
-  function saveIngestState() {
-    if (typeof globalThis._concordSaveStateDebounced === "function") {
-      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
-    }
+  for (const k of ["syncRuns", "webhookRecords", "dedup"]) {
+    if (!s[k]) s[k] = k === "dedup" ? new Map() : new Map();
   }
-  const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
-  const now = () => Date.now();
-  const newId = (p) => `${p}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
-  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
-  function userMap(map, userId) {
-    if (!map.has(userId)) map.set(userId, new Map());
-    return map.get(userId);
+  return s;
+}
+export function saveIngestState() {
+  if (typeof globalThis._concordSaveStateDebounced === "function") {
+    try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
   }
-  function userArr(map, userId) {
-    if (!map.has(userId)) map.set(userId, []);
-    return map.get(userId);
-  }
+}
+const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+export const now = () => Date.now();
+export const newId = (p) => `${p}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+export function userMap(map, userId) {
+  if (!map.has(userId)) map.set(userId, new Map());
+  return map.get(userId);
+}
+export function userArr(map, userId) {
+  if (!map.has(userId)) map.set(userId, []);
+  return map.get(userId);
+}
 
-  // ── Connector catalog — pre-built source connectors ─────────────────
-  // Each connector declares the auth model + the config fields the UI must
-  // collect. This is a static catalog (the "what you can connect to"); a
-  // configured instance becomes a "connection".
-  const CONNECTOR_CATALOG = [
+// ── Connector catalog — pre-built source connectors ───────────────────
+// Each connector declares the auth model + the config fields the UI must
+// collect. This is a static catalog (the "what you can connect to"); a
+// configured instance becomes a "connection". Exported so the drain-cycle
+// heartbeat can classify a connection's connectorId (oauth vs credentials
+// vs api-key) without re-declaring the catalog.
+export const CONNECTOR_CATALOG = [
     {
       id: "postgres", name: "PostgreSQL", category: "database", auth: "credentials",
       icon: "database", incremental: true,
@@ -138,8 +144,9 @@ export default function registerIngestActions(registerLensAction) {
       ],
     },
   ];
-  const CATALOG_BY_ID = new Map(CONNECTOR_CATALOG.map((c) => [c.id, c]));
+export const CATALOG_BY_ID = new Map(CONNECTOR_CATALOG.map((c) => [c.id, c]));
 
+export default function registerIngestActions(registerLensAction) {
   registerLensAction("ingest", "listConnectors", (_ctx, _artifact, _params) => {
     try {
       return {

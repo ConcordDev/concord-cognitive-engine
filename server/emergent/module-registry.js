@@ -2995,6 +2995,19 @@ export const MODULE_REGISTRY = {
       "subsystem": null,
       "neverDisable": false,
       "importedBy": 0
+  },
+  "ingest-drain-cycle": {
+      "file": "ingest-drain-cycle.js",
+      "hardDeps": [],
+      "softDeps": [],
+      "globalAccess": [],
+      "exports": [
+          "DEFAULT_READERS",
+          "runIngestDrainCycle"
+      ],
+      "subsystem": null,
+      "neverDisable": false,
+      "importedBy": 0
   }
 };
 

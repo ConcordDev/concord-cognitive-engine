@@ -36,6 +36,12 @@ interface Schedule {
   id: string; connectionId: string; connectorName: string; cadence: string;
   intervalMs: number; mode: string; enabled: boolean; nextRunAt: number;
   lastRunAt: number | null; runCount: number; due: boolean; nextRunInMs: number;
+  // Written by the ingest-drain-cycle heartbeat (server/emergent/ingest-drain-cycle.js)
+  // the first time it actually processes this schedule — absent until then.
+  lastDrainAt?: number;
+  lastDrainStatus?: 'drained' | 'push_reviewed' | 'skipped' | 'error';
+  lastDrainReason?: string | null;
+  lastDrainRecordCount?: number;
 }
 interface SyncRun {
   id: string; connectionId: string; connectorName: string; mode: string;
@@ -515,6 +521,28 @@ function SchedulesTab({
               <p className="text-[11px] text-gray-400">
                 Next run {s.enabled ? fmtDur(s.nextRunInMs) : '—'} · {s.runCount} run{s.runCount !== 1 ? 's' : ''}
               </p>
+              {/* Real last-drain outcome from the ingest-drain-cycle heartbeat —
+                  never a fabricated count; absent until the heartbeat has
+                  actually processed this schedule once. */}
+              {s.lastDrainStatus && (
+                <p className="text-[11px] mt-0.5">
+                  <span className={
+                    s.lastDrainStatus === 'drained' ? 'text-neon-green'
+                      : s.lastDrainStatus === 'push_reviewed' ? 'text-neon-cyan'
+                        : s.lastDrainStatus === 'error' ? 'text-red-400'
+                          : 'text-gray-500'
+                  }>
+                    {s.lastDrainStatus === 'drained'
+                      ? `drained ${s.lastDrainRecordCount ?? 0} record${(s.lastDrainRecordCount ?? 0) === 1 ? '' : 's'}`
+                      : s.lastDrainStatus === 'push_reviewed'
+                        ? `${s.lastDrainRecordCount ?? 0} pushed record${(s.lastDrainRecordCount ?? 0) === 1 ? '' : 's'} reviewed`
+                        : s.lastDrainStatus === 'error'
+                          ? `drain error: ${s.lastDrainReason}`
+                          : `skipped: ${s.lastDrainReason}`}
+                  </span>
+                  {s.lastDrainAt && <span className="text-gray-600"> · {fmtTime(s.lastDrainAt)}</span>}
+                </p>
+              )}
             </div>
             <button
               onClick={() => remove(s.id)}

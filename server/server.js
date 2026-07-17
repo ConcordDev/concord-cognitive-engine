@@ -623,6 +623,28 @@ registerHeartbeat("forgetting-health-check", {
   scope: "global",
 });
 
+// WAVE4 — ingest drain cycle. server/domains/ingest.js already computes a
+// real `nextRunAt` per scheduled sync (`ingest.scheduleSync`), but nothing
+// ever walked due schedules on its own — `ingest.runSync` only fired when a
+// human supplied records[] by hand. This heartbeat is that drain: every ~2
+// minutes (frequency 8, well under the shortest cadence of 15 minutes) it
+// finds schedules whose nextRunAt has passed and, for the OAuth-connector
+// subset (gmail / slack / google-sheets / github), pulls real data through
+// the existing per-user connector readers in lib/connector-client.js and
+// advances the connection's cursor + sync-run log exactly like a manual
+// run. Schedules on an unwired source (postgres/s3 credential-auth
+// connectors, or an api-key connector) are honestly skipped with a
+// specific reason every cycle — never marked drained. See
+// emergent/ingest-drain-cycle.js's header for the full honesty contract.
+// Ingest state is a global in-memory structure (not per-world), so scope
+// is 'global' like the other cross-cutting cycles above.
+import { runIngestDrainCycle } from "./emergent/ingest-drain-cycle.js";
+registerHeartbeat("ingest-drain-cycle", {
+  frequency: 8,
+  handler: runIngestDrainCycle,
+  scope: "global",
+});
+
 // Code-quality detector sweep. Every 2880 ticks (~12h) runs the static
 // detector suite (stale code, invariants, macro usage, lens health,
 // secret-leak, perf hotspots) plus the runtime DB scans (DTU lineage,
