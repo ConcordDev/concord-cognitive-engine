@@ -51,7 +51,7 @@ describe("Phase BB1 — festival content load", () => {
     assert.ok(r.loaded >= 4, `expected >=4 festivals, got ${r.loaded}`);
     const all = listFestivals(db);
     const ids = all.map(f => f.id).sort();
-    assert.ok(ids.includes("wintersday"));
+    assert.ok(ids.includes("hearthtide"));
     assert.ok(ids.includes("harvest_moon"));
     assert.ok(ids.includes("lunar_dance"));
     assert.ok(ids.includes("founders_day"));
@@ -70,20 +70,20 @@ describe("Phase BB1 — trigger pass", () => {
   let db;
   beforeEach(() => { db = freshDb(); loadFestivalsFromContent(db); });
 
-  it("opens wintersday when current day is deep_winter day 0", () => {
+  it("opens hearthtide when current day is deep_winter day 0", () => {
     // day 35 = deep_winter day 0.
     const now = 35 * 86400000;
     const r = runFestivalTriggerPass(db, "tunya", { now });
     assert.equal(r.ok, true);
     const opened = r.opened.map(o => o.festivalId);
-    assert.ok(opened.includes("wintersday"));
+    assert.ok(opened.includes("hearthtide"));
   });
 
-  it("does not open wintersday when current day is in a different season", () => {
+  it("does not open hearthtide when current day is in a different season", () => {
     // day 0 = spring day 0.
     const r = runFestivalTriggerPass(db, "tunya", { now: 0 });
     const opened = r.opened.map(o => o.festivalId);
-    assert.ok(!opened.includes("wintersday"));
+    assert.ok(!opened.includes("hearthtide"));
   });
 
   it("dedupes within the same (festival, world, year)", () => {
@@ -107,7 +107,7 @@ describe("Phase BB1 — trigger pass", () => {
     runFestivalTriggerPass(db, "tunya", { now });
     const active = listActiveFestivals(db, "tunya", now);
     assert.ok(active.length > 0);
-    const wd = active.find(f => f.festival_id === "wintersday");
+    const wd = active.find(f => f.festival_id === "hearthtide");
     assert.ok(wd);
     assert.ok(wd.ends_at > Math.floor(now / 1000));
   });
@@ -127,7 +127,7 @@ describe("Phase BB1 — heartbeat handler", () => {
       const r = runFestivalTriggerCycle({ db, worldId: "tunya", io: fakeIo });
       assert.equal(r.ok, true);
       assert.ok(r.openedCount >= 1);
-      assert.ok(emits.some(e => e.name === "festival:started" && e.payload.festivalId === "wintersday"));
+      assert.ok(emits.some(e => e.name === "festival:started" && e.payload.festivalId === "hearthtide"));
     } finally {
       Date.now = origNow;
     }

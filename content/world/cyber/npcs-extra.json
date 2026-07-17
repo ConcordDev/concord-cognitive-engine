@@ -1318,7 +1318,7 @@
   },
   {
     "id": "gen_cyber_0006",
-    "name": "Rhea Pyke",
+    "name": "Rhea Wrenlow",
     "archetype": "hunter",
     "faction_id": "cyber_street_docs",
     "level": 7,
@@ -1638,7 +1638,7 @@
   },
   {
     "id": "gen_cyber_0010",
-    "name": "Sol Pyke",
+    "name": "Sol Wrenlow",
     "archetype": "trader",
     "faction_id": "cyber_fixer_guild",
     "level": 21,

@@ -340,7 +340,7 @@
         "notes": "He listens to her. The movement is real because she made it real before he was ever powered."
       },
       {
-        "npc_id": "marcus_holloway",
+        "npc_id": "marcus_vantree",
         "type": "polite_recognition",
         "notes": "Has met him twice at city council meetings. Each one knows the other is the inflection point for their respective side. Each has decided not to push it yet."
       }
@@ -626,7 +626,7 @@
         "notes": "CROSS-WORLD. They have never met. They have studied each other from across the worlds. Both consider the other the most dangerous person in any reality. Both are correct."
       },
       {
-        "npc_id": "marcus_holloway",
+        "npc_id": "marcus_vantree",
         "type": "doubting_lieutenant",
         "notes": "Marcus has been his chief of staff for six years. Vesper still trusts him. Vesper has not yet noticed that Marcus has stopped trusting Vesper."
       }
@@ -832,8 +832,8 @@
     "starting_sparks": 320000
   },
   {
-    "id": "marcus_holloway",
-    "name": "Marcus Holloway",
+    "id": "marcus_vantree",
+    "name": "Marcus Vantree",
     "alias": "Chief of Staff",
     "archetype": "doubting_lieutenant",
     "faction_id": "luminary_empire",
@@ -1685,9 +1685,9 @@
     "starting_sparks": 14000
   },
   {
-    "id": "cartel_lead_marcus_holloway",
+    "id": "cartel_lead_marcus_vantree",
     "world_id": "superhero",
-    "name": "Marcus Holloway — Cartel Apex",
+    "name": "Marcus Vantree — Cartel Apex",
     "title": "Apex of the Crimson Spire Cartel",
     "archetype": "criminal_super_apex",
     "faction_id": "superhero_criminal_supers",

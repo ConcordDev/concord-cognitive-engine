@@ -102,7 +102,7 @@ describe("Phase BA-BE — belonging sprint end-to-end", () => {
     loadFestivalsFromContent(db);
     const winterDay = 35 * 86400000;
     const pass = runFestivalTriggerPass(db, "tunya", { now: winterDay });
-    assert.ok(pass.opened.some(f => f.festivalId === "wintersday"));
+    assert.ok(pass.opened.some(f => f.festivalId === "hearthtide"));
 
     // ── BB3 — announcement publishes + dequeues exactly once ────────
     publishAnnouncement(db, { kind: "feature_drop", title: "Belonging is here", body: "All the new things." });
