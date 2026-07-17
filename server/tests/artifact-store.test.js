@@ -223,9 +223,21 @@ describe("artifact-store", () => {
       assert.equal(result.thumbnail, result.diskPath);
     });
 
-    it("generates a waveform thumbnail for audio types", async () => {
-      // Build a fake WAV-ish buffer (just needs to be large enough for readInt16LE)
-      const buf = makeBuffer(2048);
+    it("generates a REAL waveform thumbnail for genuine PCM16 WAV audio", async () => {
+      // A genuine 16-bit PCM WAV (44-byte header + real samples) — the only
+      // audio the server can honestly extract peaks from. See the honesty
+      // contract in tests/artifact-waveform-honesty.test.js.
+      const samples = new Array(1024).fill(0);
+      samples[5] = 30000; // a real, loud sample so peaks are non-trivial
+      const dataSize = samples.length * 2;
+      const buf = Buffer.alloc(44 + dataSize);
+      buf.write("RIFF", 0, "ascii"); buf.writeUInt32LE(36 + dataSize, 4); buf.write("WAVE", 8, "ascii");
+      buf.write("fmt ", 12, "ascii"); buf.writeUInt32LE(16, 16);
+      buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(44100, 24);
+      buf.writeUInt32LE(88200, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+      buf.write("data", 36, "ascii"); buf.writeUInt32LE(dataSize, 40);
+      for (let i = 0; i < samples.length; i++) buf.writeInt16LE(samples[i], 44 + i * 2);
+
       const result = await storeArtifact("dtu-aud", buf, "audio/wav", "clip.wav");
       assert.ok(result.thumbnail);
       assert.ok(result.thumbnail.endsWith("waveform.json"));
@@ -233,6 +245,16 @@ describe("artifact-store", () => {
       const peaks = JSON.parse(fs.readFileSync(result.thumbnail, "utf-8"));
       assert.ok(Array.isArray(peaks));
       assert.equal(peaks.length, 200);
+      assert.ok(Math.max(...peaks) > 0.5, "real samples must yield a real peak");
+    });
+
+    it("writes NO waveform for compressed audio (honest, not fabricated)", async () => {
+      // Non-WAV compressed audio can't be decoded to PCM server-side without a
+      // codec dep — so the honest result is no waveform thumbnail, never a
+      // fabricated curve read from encoded bytes.
+      const buf = makeBuffer(2048); // not a RIFF/WAVE buffer
+      const result = await storeArtifact("dtu-mp3", buf, "audio/mpeg", "clip.mp3");
+      assert.equal(result.thumbnail, null);
     });
 
     it("generates a text preview thumbnail for text types", async () => {
