@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import {
-  Satellite, Eye, Orbit, Timer, Rocket, Compass, Filter, Image as ImageIcon, Radar,
+  Satellite, Eye, Orbit, Timer, Rocket, Compass, Filter, Image as ImageIcon, Radar, Globe2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IssLiveTracker } from './IssLiveTracker';
@@ -23,9 +23,11 @@ import { SkyMap } from './SkyMap';
 import { LaunchExplorer } from './LaunchExplorer';
 import { ApodFeed } from './ApodFeed';
 import { OwnedSatellites } from './OwnedSatellites';
+import { SatelliteCatalog } from './SatelliteCatalog';
 
 type ObsTab =
   | 'iss'
+  | 'catalog'
   | 'passes'
   | 'mysats'
   | 'orbit3d'
@@ -37,6 +39,7 @@ type ObsTab =
 
 const TABS: { key: ObsTab; label: string; icon: typeof Satellite }[] = [
   { key: 'iss', label: 'ISS Tracker', icon: Satellite },
+  { key: 'catalog', label: 'Satellite Catalog', icon: Globe2 },
   { key: 'passes', label: 'Visible Passes', icon: Eye },
   { key: 'mysats', label: 'My Satellites', icon: Radar },
   { key: 'orbit3d', label: '3D Orbit', icon: Orbit },
@@ -78,6 +81,7 @@ export function SpaceObservatory() {
 
       <div>
         {tab === 'iss' && <IssLiveTracker />}
+        {tab === 'catalog' && <SatelliteCatalog />}
         {tab === 'passes' && <VisiblePassPredictor />}
         {tab === 'mysats' && <OwnedSatellites />}
         {tab === 'orbit3d' && <Orbit3DGlobe />}

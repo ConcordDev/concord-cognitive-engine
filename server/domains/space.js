@@ -7,11 +7,24 @@
 //   • Launch Library 2 (TheSpaceDevs): https://ll.thespacedevs.com/2.2.0
 //     — universal launch calendar across all providers. Free, no key,
 //     rate-limited (~15 req/hour anonymous).
+//   • CelesTrak GP data: https://celestrak.org/NORAD/elements/gp.php —
+//     live catalog of tracked satellites (TLE-derived orbital elements).
+//     Free, no key. Cached aggressively (≥6h TTL) via cachedFetchJson.
+
+import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const SPACEX_BASE = "https://api.spacexdata.com/v4";
 const LAUNCH_LIBRARY_BASE = "https://ll.thespacedevs.com/2.2.0";
 const ISS_API_BASE = "https://api.wheretheiss.at/v1/satellites/25544";
 const NASA_API_BASE = "https://api.nasa.gov";
+// CelesTrak GP (General Perturbations) data — the industry-standard,
+// keyless catalog of tracked orbital objects, published by the org that
+// has run this feed for the amateur/professional satellite-tracking
+// community since the 1980s. FORMAT=json returns one object per row with
+// the raw OMM/GP field names (OBJECT_NAME, NORAD_CAT_ID, EPOCH,
+// MEAN_MOTION, ...) — see https://celestrak.org/NORAD/documentation/gp-data-formats.php.
+const CELESTRAK_BASE = "https://celestrak.org/NORAD/elements/gp.php";
+const CELESTRAK_CATALOG_TTL_MS = 6 * 60 * 60 * 1000; // ≥6h per spec — this catalog changes slowly
 
 export default function registerSpaceActions(registerLensAction) {
   // Shared orbital-mechanics helper (extracted from the original inline
@@ -374,6 +387,71 @@ export default function registerSpaceActions(registerLensAction) {
         note,
       },
     };
+  });
+
+  // ─── Live satellite catalog (CelesTrak GP data) ──────────────────────
+  //
+  // `iss-track`/`iss-passes` below cover exactly one real object (the
+  // ISS). `satellite-catalog` covers the real, currently-tracked catalog
+  // of THOUSANDS of objects — active payloads, GPS constellation,
+  // Starlink shells, the ISS + other stations, etc. — from CelesTrak,
+  // the standard free/keyless source the amateur and professional
+  // satellite-tracking community has used for decades. No API key, no
+  // per-user auth; a plain public data feed like OSV.dev in repos.js.
+  //
+  // Honest by construction: `group` is sanitized to a safe URL-token
+  // shape and passed straight to CelesTrak — an unrecognized group name
+  // legitimately returns CelesTrak's own empty result (never fabricated
+  // rows); an unreachable/non-JSON response surfaces as
+  // `{ ok:false, reason:'celestrak_unreachable' }`, never a stale or
+  // invented catalog. Every mapped field is a field CelesTrak's GP JSON
+  // actually returns (see gp-data-formats.php) — no invented columns.
+  registerLensAction("space", "satellite-catalog", async (_ctx, _artifact, params = {}) => {
+    const groupRaw = spClean(params.group, 40).toLowerCase();
+    // CelesTrak group names are short lowercase tokens (active, stations,
+    // starlink, gps-ops, weather, science, ...). Reject anything outside
+    // that shape rather than interpolate arbitrary input into the URL;
+    // fall back to the documented default group.
+    const group = /^[a-z0-9-]{1,40}$/.test(groupRaw) ? groupRaw : "active";
+    const limit = Math.max(1, Math.min(500, Math.round(Number(params.limit) || 100)));
+    const url = `${CELESTRAK_BASE}?GROUP=${encodeURIComponent(group)}&FORMAT=json`;
+    try {
+      const data = await cachedFetchJson(url, { ttlMs: CELESTRAK_CATALOG_TTL_MS });
+      const rows = Array.isArray(data) ? data : [];
+      const satellites = rows.slice(0, limit).map((s) => ({
+        name: s.OBJECT_NAME ?? null,
+        objectId: s.OBJECT_ID ?? null,
+        noradId: s.NORAD_CAT_ID ?? null,
+        epoch: s.EPOCH ?? null,
+        meanMotion: s.MEAN_MOTION ?? null,
+        eccentricity: s.ECCENTRICITY ?? null,
+        inclinationDeg: s.INCLINATION ?? null,
+        raanDeg: s.RA_OF_ASC_NODE ?? null,
+        argOfPericenterDeg: s.ARG_OF_PERICENTER ?? null,
+        meanAnomalyDeg: s.MEAN_ANOMALY ?? null,
+        revAtEpoch: s.REV_AT_EPOCH ?? null,
+        bstar: s.BSTAR ?? null,
+        meanMotionDot: s.MEAN_MOTION_DOT ?? null,
+        classification: s.CLASSIFICATION_TYPE ?? null,
+      }));
+      return {
+        ok: true,
+        result: {
+          satellites,
+          count: satellites.length,
+          totalAvailable: rows.length,
+          group,
+          source: "celestrak",
+          attribution: "Source: CelesTrak (celestrak.org)",
+        },
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        reason: "celestrak_unreachable",
+        error: `celestrak unreachable: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
   });
 
   // ─── BACKLOG: live ISS tracking, passes, 3D orbit, countdowns, ───────
