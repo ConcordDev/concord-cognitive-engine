@@ -67,7 +67,7 @@ export default function LockLensPage() {
     isLive,
     lastUpdated,
   } = useRealtimeLens('lock');
-  const { lockPercentage, invariants, isLocked, invariantSummary } = use70Lock();
+  const { lockPercentage, invariants, isLocked, invariantSummary, recentEnforcement, enforcementStats } = use70Lock();
   const [showFeatures, setShowFeatures] = useState(true);
   const [showSovereigntySetup, setShowSovereigntySetup] = useState(false);
   const [sovereigntyPromptMessage, setSovereigntyPromptMessage] = useState<{
@@ -561,6 +561,62 @@ export default function LockLensPage() {
                 %
               </span>
             </div>
+          </div>
+
+          {/* Live Enforcement Feed — real enforceEthosInvariant() pass/blocked
+              events recorded server-side since process boot (bounded
+              in-memory ring buffer). Distinct from the static invariant list
+              above: that list is the frozen constant set; this feed is the
+              actual runtime history of enforcement checks firing. */}
+          <div className="mt-3 pt-3 border-t border-white/5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Activity className="w-3.5 h-3.5 text-neon-cyan" />
+                <h4 className="text-xs font-semibold">Live Enforcement</h4>
+              </div>
+              {enforcementStats && (
+                <span className="text-[10px] text-gray-500 font-mono">
+                  {enforcementStats.totalChecks} checks · {enforcementStats.totalBlocked} blocked · since boot
+                </span>
+              )}
+            </div>
+
+            {recentEnforcement.length === 0 ? (
+              <p className="text-xs text-gray-500 italic py-2">
+                No enforcement events since boot.
+              </p>
+            ) : (
+              <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                {[...recentEnforcement]
+                  .reverse()
+                  .slice(0, 25)
+                  .map((ev, idx) => (
+                    <div
+                      key={`${ev.at}-${idx}`}
+                      className="flex items-center gap-2 text-xs py-1 px-2 rounded bg-lattice-void/50"
+                    >
+                      {ev.result === 'blocked' ? (
+                        <Ban className="w-3 h-3 text-neon-pink flex-shrink-0" />
+                      ) : (
+                        <Check className="w-3 h-3 text-neon-green flex-shrink-0" />
+                      )}
+                      <span className="font-mono flex-1 truncate text-gray-300">{ev.action}</span>
+                      {ev.invariant && (
+                        <span className="text-[10px] font-mono text-neon-pink whitespace-nowrap">
+                          {ev.invariant}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                        {new Date(ev.at).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+            <p className="text-[10px] text-gray-600 mt-2">
+              Runtime, in-memory since boot{enforcementStats ? ` (${enforcementStats.bootAt ? new Date(enforcementStats.bootAt).toLocaleString() : 'unknown'})` : ''}
+              — not persisted, not a CI/detector result.
+            </p>
           </div>
         </div>
       </div>

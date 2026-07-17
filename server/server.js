@@ -2921,6 +2921,70 @@ function ethosInvariantsList() {
   }));
 }
 
+// ---- Ethos invariant enforcement history (Wave 4, 2026-07-17) ----
+//
+// docs/WAVE4_INVENTORY.md flagged the sovereignty dashboard's "invariants"
+// as frozen-constant, not a live runtime-checked pass/fail history --
+// enforceEthosInvariant() genuinely runs on every action (~139 call sites)
+// and genuinely passes/throws, but none of that was ever recorded or
+// surfaced. This is a bounded, in-memory, since-boot ring buffer of REAL
+// enforceEthosInvariant() calls -- never persisted, never seeded, never
+// fabricated. Recording is O(1) (fixed-size circular buffer, no shift/splice)
+// and MUST NEVER throw or alter enforceEthosInvariant's existing pass/throw
+// contract -- see _recordEthosEnforcement's own try/catch.
+const ETHOS_ENFORCEMENT_HISTORY_CAP = 500;
+const ETHOS_ENFORCEMENT_BOOT_AT = new Date().toISOString();
+const _ethosHistoryBuf = new Array(ETHOS_ENFORCEMENT_HISTORY_CAP);
+let _ethosHistoryHead = 0;   // next write index (circular)
+let _ethosHistoryCount = 0;  // entries written so far, capped at the buffer size
+let _ethosTotalChecks = 0;
+let _ethosTotalBlocked = 0;
+
+// Records one real enforcement event. Called from inside enforceEthosInvariant
+// ONLY -- both on the pass path and (before the throw) on every blocked path,
+// so a blocked call is captured even though its own catch (if any) never sees
+// enforceEthosInvariant return. The try/catch here is the never-throw
+// guarantee: if recording itself ever breaks, enforcement behavior (the
+// return/throw the caller sees) is completely unaffected.
+function _recordEthosEnforcement(action, invariant, result) {
+  try {
+    _ethosTotalChecks++;
+    if (result === "blocked") _ethosTotalBlocked++;
+    _ethosHistoryBuf[_ethosHistoryHead] = {
+      action: String(action || "").slice(0, 200),
+      invariant: invariant || null,
+      result,
+      at: new Date().toISOString(),
+    };
+    _ethosHistoryHead = (_ethosHistoryHead + 1) % ETHOS_ENFORCEMENT_HISTORY_CAP;
+    if (_ethosHistoryCount < ETHOS_ENFORCEMENT_HISTORY_CAP) _ethosHistoryCount++;
+  } catch (_e) {
+    // Recording must never affect enforcement. Swallow and move on.
+  }
+}
+
+// Returns the buffered events oldest-first, plus honest counters. This is a
+// RUNTIME/since-boot snapshot only -- distinct from CI/detector results,
+// which are a different timescale and must never be conflated with this.
+function getEthosEnforcementSnapshot() {
+  const events = [];
+  const start = _ethosHistoryCount < ETHOS_ENFORCEMENT_HISTORY_CAP ? 0 : _ethosHistoryHead;
+  for (let i = 0; i < _ethosHistoryCount; i++) {
+    events.push(_ethosHistoryBuf[(start + i) % ETHOS_ENFORCEMENT_HISTORY_CAP]);
+  }
+  return {
+    recentEnforcement: events,
+    enforcementStats: {
+      totalChecks: _ethosTotalChecks,
+      totalBlocked: _ethosTotalBlocked,
+      bufferedCount: _ethosHistoryCount,
+      capacity: ETHOS_ENFORCEMENT_HISTORY_CAP,
+      bootAt: ETHOS_ENFORCEMENT_BOOT_AT,
+      scope: "runtime-since-boot", // in-memory only, not persisted across restarts
+    },
+  };
+}
+
 // Guard: call before any external/persistent/monitoring-like action
 //
 // Token-boundary matching (2026-07-10 Wave 3 fix), not raw substring
@@ -2941,12 +3005,23 @@ function enforceEthosInvariant(actionName="") {
   const a = String(actionName||"").toLowerCase();
   const tokens = a.split(/[^a-z0-9]+/).filter(Boolean);
   const hasToken = (...words) => tokens.some((t) => words.includes(t));
-  if (ETHOS_INVARIANTS.NO_TELEMETRY && hasToken("telemetry")) throw new Error("Ethos invariant: telemetry forbidden");
-  if (ETHOS_INVARIANTS.NO_ADS && hasToken("ad", "ads")) throw new Error("Ethos invariant: ads forbidden");
+  if (ETHOS_INVARIANTS.NO_TELEMETRY && hasToken("telemetry")) {
+    _recordEthosEnforcement(actionName, "NO_TELEMETRY", "blocked");
+    throw new Error("Ethos invariant: telemetry forbidden");
+  }
+  if (ETHOS_INVARIANTS.NO_ADS && hasToken("ad", "ads")) {
+    _recordEthosEnforcement(actionName, "NO_ADS", "blocked");
+    throw new Error("Ethos invariant: ads forbidden");
+  }
   if (ETHOS_INVARIANTS.NO_SECRET_MONITORING && hasToken("monitor", "monitoring", "tracking", "track")) {
+    _recordEthosEnforcement(actionName, "NO_SECRET_MONITORING", "blocked");
     throw new Error("Ethos invariant: secret monitoring forbidden");
   }
-  if (ETHOS_INVARIANTS.NO_USER_PROFILING && hasToken("profile", "profiling", "fingerprint", "fingerprinting")) throw new Error("Ethos invariant: user profiling forbidden");
+  if (ETHOS_INVARIANTS.NO_USER_PROFILING && hasToken("profile", "profiling", "fingerprint", "fingerprinting")) {
+    _recordEthosEnforcement(actionName, "NO_USER_PROFILING", "blocked");
+    throw new Error("Ethos invariant: user profiling forbidden");
+  }
+  _recordEthosEnforcement(actionName, null, "pass");
   return true;
 }
 
@@ -45101,6 +45176,7 @@ app.get("/api/sovereignty/status", requireAuth(), async (req, res) => {
   const entityCount = Array.from(STATE.entities?.values() || [])
     .filter(e => e.ownerId === userId).length;
   const invariants = ethosInvariantsList();
+  const { recentEnforcement, enforcementStats } = getEthosEnforcementSnapshot();
 
   res.json({
     ok: true,
@@ -45115,6 +45191,12 @@ app.get("/api/sovereignty/status", requireAuth(), async (req, res) => {
       ? Math.round(personalCount / (personalCount + syncedCount) * 100) : 100,
     invariants,
     isHealthy: invariants.every(inv => inv.status === "enforced"),
+    // Live runtime pass/fail feed for enforceEthosInvariant() -- real events
+    // recorded since process boot, bounded + in-memory (see
+    // getEthosEnforcementSnapshot's own doc comment). Most-recent-last;
+    // frontend reverses for display.
+    recentEnforcement,
+    enforcementStats,
   });
 });
 
@@ -78860,4 +78942,14 @@ export const __TEST__ = Object.freeze({
   activateGoal,
   updateGoalProgress,
   processGoalHeartbeat,
+  // Ethos-invariant live enforcement history test surface (2026-07-17 —
+  // closing docs/WAVE4_INVENTORY.md's "lock" row). enforceEthosInvariant
+  // has no HTTP route of its own (it's called inline at ~139 call sites);
+  // behavioral tests need direct access to it plus the ring-buffer reader
+  // to observe real pass/blocked events without going through an
+  // unrelated route's auth/business logic.
+  ETHOS_INVARIANTS,
+  enforceEthosInvariant,
+  getEthosEnforcementSnapshot,
+  ETHOS_ENFORCEMENT_HISTORY_CAP,
 });

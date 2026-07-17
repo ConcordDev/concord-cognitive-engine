@@ -61,6 +61,9 @@ describe('use70Lock', () => {
       });
       expect(result.current.isAuditing).toBe(false);
       expect(typeof result.current.runAudit).toBe('function');
+      // Honest default while loading -- no fabricated enforcement rows.
+      expect(result.current.recentEnforcement).toEqual([]);
+      expect(result.current.enforcementStats).toBeUndefined();
     });
   });
 
@@ -240,6 +243,56 @@ describe('use70Lock', () => {
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
       expect(result.current.lockColor).toBe('sovereignty-danger');
+    });
+  });
+
+  describe('live enforcement feed (recentEnforcement / enforcementStats)', () => {
+    it('passes through real recentEnforcement events and enforcementStats from the server', async () => {
+      const mockEvents = [
+        { action: 'dtu_read', invariant: null, result: 'pass', at: '2026-07-17T00:00:00.000Z' },
+        { action: 'telemetry_report', invariant: 'NO_TELEMETRY', result: 'blocked', at: '2026-07-17T00:00:01.000Z' },
+      ];
+      const mockStats = {
+        totalChecks: 42,
+        totalBlocked: 3,
+        bufferedCount: 2,
+        capacity: 500,
+        bootAt: '2026-07-16T12:00:00.000Z',
+        scope: 'runtime-since-boot',
+      };
+      mockedApi.get.mockResolvedValue({
+        data: {
+          sovereigntyPct: 85,
+          invariants: [],
+          isHealthy: true,
+          recentEnforcement: mockEvents,
+          enforcementStats: mockStats,
+        },
+      });
+
+      const { result } = renderHook(() => use70Lock(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.recentEnforcement).toEqual(mockEvents);
+      expect(result.current.enforcementStats).toEqual(mockStats);
+    });
+
+    it('defaults recentEnforcement to an empty array when the server omits the field (older/degraded response)', async () => {
+      mockedApi.get.mockResolvedValue({
+        data: { sovereigntyPct: 85, invariants: [], isHealthy: true },
+      });
+
+      const { result } = renderHook(() => use70Lock(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.recentEnforcement).toEqual([]);
+      expect(result.current.enforcementStats).toBeUndefined();
     });
   });
 
