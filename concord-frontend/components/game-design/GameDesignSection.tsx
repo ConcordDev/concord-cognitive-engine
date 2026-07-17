@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Gamepad2, Plus, FileText, Cog, Swords, Grid3x3, Loader2, Repeat, GitBranch, Image as ImageIcon, Film, Zap, Play, Users, BarChart3, Pencil, Download, X, Check } from 'lucide-react';
+import { Gamepad2, Plus, FileText, Cog, Swords, Grid3x3, Loader2, Repeat, GitBranch, Image as ImageIcon, Film, Zap, Play, Users, BarChart3, Pencil, Download, X, Check, Boxes } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { GdGddPanel } from './GdGddPanel';
@@ -22,6 +22,7 @@ import { GdBehaviorPanel } from './GdBehaviorPanel';
 import { GdRuntimePanel } from './GdRuntimePanel';
 import { GdCollabPanel } from './GdCollabPanel';
 import { GdAnalysisPanel } from './GdAnalysisPanel';
+import { AssetStudioPanel } from './AssetStudioPanel';
 
 interface Game { id: string; title: string; genre: string; platform: string; pitch?: string | null }
 interface Dash {
@@ -29,7 +30,7 @@ interface Dash {
   entities: number; levels: number; narrativeNodes: number;
 }
 type TabId = 'gdd' | 'mechanics' | 'loops' | 'entities' | 'levels' | 'narrative'
-  | 'assets' | 'animation' | 'behavior' | 'runtime' | 'collab' | 'analysis';
+  | 'assets' | 'animation' | 'behavior' | 'runtime' | 'collab' | 'analysis' | 'asset-studio';
 const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'gdd', label: 'Design Doc', icon: FileText },
   { id: 'mechanics', label: 'Mechanics', icon: Cog },
@@ -43,6 +44,7 @@ const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'runtime', label: 'Play & Test', icon: Play },
   { id: 'collab', label: 'Collab', icon: Users },
   { id: 'analysis', label: 'Analysis', icon: BarChart3 },
+  { id: 'asset-studio', label: 'Asset Studio', icon: Boxes },
 ];
 const GENRES = ['platformer', 'rpg', 'puzzle', 'strategy', 'simulation', 'adventure', 'action', 'sandbox', 'other'];
 
@@ -273,6 +275,7 @@ export function GameDesignSection() {
                 {tab === 'runtime' && <GdRuntimePanel gameId={activeGame} onChange={refreshDash} />}
                 {tab === 'collab' && <GdCollabPanel gameId={activeGame} onChange={refreshDash} />}
                 {tab === 'analysis' && <GdAnalysisPanel gameId={activeGame} onChange={refreshDash} />}
+                {tab === 'asset-studio' && <AssetStudioPanel gameId={activeGame} onChange={refreshDash} />}
               </div>
             </>
           )}
