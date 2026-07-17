@@ -51,6 +51,9 @@ import {
   updateArtifactPrice,
 } from "../economy/creative-marketplace.js";
 
+import { getBalance } from "../economy/balances.js";
+import { PLATFORM_ACCOUNT_ID } from "../economy/fees.js";
+
 // ── In-Memory SQLite Helper ─────────────────────────────────────────────────
 
 let Database;
@@ -1056,5 +1059,47 @@ describe("Revenue Breakdown — Spec Validation", () => {
     assert.ok(generation >= 7);
     assert.ok(rate > floor);
     assert.ok(rate / 2 <= floor);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEDGER CONSERVATION — purchaseArtifact (money-printing / peg guard)
+// Pins the fix for the platform-intermediated topology bug: the creator's
+// earnings must be VISIBLE in getBalance() (were excluded by
+// CREDIT_ROW_PREDICATE because the credit row carried from=PLATFORM +
+// type=MARKETPLACE_PURCHASE), and buyer's loss must equal the sum of every
+// other party's gain to the penny (no CC minted or destroyed).
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Ledger conservation — purchaseArtifact", () => {
+  if (!Database) return;
+  let db;
+  const r2 = (n) => Math.round(n * 100) / 100;
+  beforeEach(() => { db = createTestDb(); seedUsers(db); });
+
+  it("a normal (non-derivative) sale conserves and pays the creator VISIBLY", () => {
+    const beat = publishTestBeat(db); // creator1, price 50, standard license
+    assert.ok(beat.ok, JSON.stringify(beat));
+
+    const bal = () => ({
+      buyer: getBalance(db, "buyer1").balance,
+      creator: getBalance(db, "creator1").balance,
+      platform: getBalance(db, PLATFORM_ACCOUNT_ID).balance,
+    });
+    const before = bal();
+    const res = purchaseArtifact(db, { buyerId: "buyer1", artifactId: beat.artifact.id });
+    assert.ok(res.ok, JSON.stringify(res));
+    const after = bal();
+
+    // price 50 → fees 2.73 (1.46% platform + 4% marketplace), creatorEarnings 47.27
+    assert.equal(r2(after.buyer - before.buyer), -50, "buyer pays exactly the price");
+    assert.equal(r2(after.creator - before.creator), 47.27, "creator earnings VISIBLE in their balance");
+    assert.equal(r2(after.platform - before.platform), 2.73, "platform nets exactly the 5.46% fee");
+    // Conservation: buyer's loss == everyone else's gain, to the penny.
+    assert.equal(
+      r2(before.buyer - after.buyer),
+      r2((after.creator - before.creator) + (after.platform - before.platform)),
+      "no CC minted or destroyed"
+    );
   });
 });

@@ -561,7 +561,13 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       id: generateTxId(),
       type: "MARKETPLACE_PURCHASE",
       from: buyerId,
-      to: PLATFORM_ACCOUNT_ID,
+      // Direct buyer->creator debit (canonical two-row pattern, mirrors
+      // transfer.js) — NOT buyer->platform. The old platform-intermediated
+      // topology did not conserve under CREDIT_ROW_PREDICATE: the platform's
+      // incoming credit was excluded while its outgoing rows counted as
+      // debits, so the platform read negative and the creator's earnings were
+      // invisible. Fees + royalties are now their own from:null credit rows.
+      to: artifact.creator_id,
       amount: price,
       fee: totalFees,
       net: remainingAfterFees,
@@ -571,11 +577,12 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       requestId, ip,
     });
 
-    // 2. Platform credits creator (after fees and cascade)
+    // 2. Creator credit — from:null credit-half of the two-row pattern, so
+    // CREDIT_ROW_PREDICATE counts it and the creator's earnings are VISIBLE.
     entries.push({
       id: generateTxId(),
       type: "MARKETPLACE_PURCHASE",
-      from: PLATFORM_ACCOUNT_ID,
+      from: null,
       to: artifact.creator_id,
       amount: creatorEarnings,
       fee: 0,
@@ -589,6 +596,25 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       requestId, ip,
     });
 
+    // 2b. Platform fee credit (5.46% = 1.46% platform + 4% marketplace).
+    // from:null credit — the platform's ONLY take now that the buyer pays the
+    // creator directly. This is what conserves the sale to the penny.
+    if (totalFees > 0) {
+      entries.push({
+        id: generateTxId(),
+        type: "FEE",
+        from: null,
+        to: PLATFORM_ACCOUNT_ID,
+        amount: totalFees,
+        fee: 0,
+        net: totalFees,
+        status: "complete",
+        refId: `creative_fee:${purchaseId}`,
+        metadata: { batchId, role: "creative_platform_fee", artifactId, purchaseId, platformFee, marketplaceFee },
+        requestId, ip,
+      });
+    }
+
     // 3. Cascade royalty payments.
     // Type MUST be "ROYALTY_PAYOUT" — economy_ledger CHECK constraint
     // (migration 002) only accepts the canonical enum. The previous
@@ -599,7 +625,7 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       entries.push({
         id: generateTxId(),
         type: "ROYALTY_PAYOUT",
-        from: PLATFORM_ACCOUNT_ID,
+        from: null,
         to: payment.recipientId,
         amount: payment.amount,
         fee: 0,
@@ -624,7 +650,7 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       entries.push({
         id: generateTxId(),
         type: "ROYALTY_PAYOUT",
-        from: PLATFORM_ACCOUNT_ID,
+        from: null,
         to: "__CONCORD__",
         amount: concordSplit.concordKeeps,
         fee: 0,
