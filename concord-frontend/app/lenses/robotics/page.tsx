@@ -16,6 +16,7 @@ import { FleetManager, type RobotRow } from '@/components/robotics/FleetManager'
 import { TelemetryDashboard } from '@/components/robotics/TelemetryDashboard';
 import { MissionSequencer } from '@/components/robotics/MissionSequencer';
 import { PathPlanner } from '@/components/robotics/PathPlanner';
+import { UrdfViewer } from '@/components/robotics/UrdfViewer';
 import { TeleopConsole } from '@/components/robotics/TeleopConsole';
 import { SensorLogPanel } from '@/components/robotics/SensorLogPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -28,7 +29,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { lensRun } from '@/lib/api/client';
 
-type Tab = 'fleet' | 'telemetry' | 'missions' | 'kinematics' | 'pathplan' | 'teleop' | 'sensors';
+type Tab = 'fleet' | 'telemetry' | 'missions' | 'kinematics' | 'pathplan' | 'urdf' | 'teleop' | 'sensors';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'fleet', label: 'Fleet' },
@@ -36,6 +37,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'missions', label: 'Missions' },
   { id: 'kinematics', label: 'Kinematics' },
   { id: 'pathplan', label: 'Path Planning' },
+  { id: 'urdf', label: '3D Viewer' },
   { id: 'teleop', label: 'Teleop' },
   { id: 'sensors', label: 'Sensor Logs' },
 ];
@@ -56,6 +58,7 @@ export default function RoboticsLensPage() {
       { id: 'tab-missions', keys: 'm', description: 'Missions', category: 'navigation', action: () => setActiveTab('missions') },
       { id: 'tab-kinematics', keys: 'k', description: 'Kinematics', category: 'navigation', action: () => setActiveTab('kinematics') },
       { id: 'tab-pathplan', keys: 'p', description: 'Path Planning', category: 'navigation', action: () => setActiveTab('pathplan') },
+      { id: 'tab-urdf', keys: 'u', description: '3D Viewer', category: 'navigation', action: () => setActiveTab('urdf') },
       { id: 'tab-teleop', keys: 't', description: 'Teleop', category: 'navigation', action: () => setActiveTab('teleop') },
       { id: 'tab-sensors', keys: 's', description: 'Sensor Logs', category: 'navigation', action: () => setActiveTab('sensors') },
     ],
@@ -145,6 +148,8 @@ export default function RoboticsLensPage() {
         {activeTab === 'kinematics' && <KinematicsStudio />}
 
         {activeTab === 'pathplan' && <PathPlanner />}
+
+        {activeTab === 'urdf' && <UrdfViewer />}
 
         {activeTab === 'teleop' && (
           robots.length === 0
