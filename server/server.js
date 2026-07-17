@@ -8617,6 +8617,30 @@ async function tryInitWebSockets(server) {
         }
       }
 
+      // SECURITY: `astronomy:session:<roomId>` rooms broadcast a shared
+      // co-observing session's live "current target" + observation log
+      // (Wave 4 astronomy multi-observer gap-closure). Membership is the
+      // SAME live roster collab's own session rooms already use —
+      // STATE.collabLens.sessionRosters, populated by
+      // collab.sessionJoin/sessionLeave (server/domains/collab.js), which
+      // astronomy's session-share/session-join/session-leave macros call
+      // directly (server/domains/astronomy.js) rather than keeping a
+      // second roster. A socket may only listen on this room once its
+      // user has genuinely joined that roster — never a fabricated
+      // "N watching" count from an unauthenticated listener.
+      const astroSessionMatch = room.match(/^astronomy:session:(.+)$/);
+      if (astroSessionMatch) {
+        const roomId = astroSessionMatch[1];
+        const uid = socket.data.userId;
+        const roster = STATE.collabLens?.sessionRosters?.get(roomId);
+        const isMember = !!(uid && roster && roster.has(uid));
+        if (!isMember) {
+          console.warn('[ws] Non-member astronomy session room join blocked:', { userId: uid, room });
+          socket.emit('error', { code: 'UNAUTHORIZED', message: 'Join the astronomy session before listening' });
+          return;
+        }
+      }
+
       socket.join(room);
       socket.emit("room:joined", { room, ts: nowISO() });
     });

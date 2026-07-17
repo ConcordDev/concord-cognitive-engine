@@ -715,6 +715,269 @@ export default function registerAstronomyActions(registerLensAction) {
     return { ok: true, result: { session, observations } };
   });
 
+  // ── Shared co-observing sessions ────────────────────────────────────
+  //
+  // Multi-observer live sessions ("co-observing"). A `session-create`
+  // record above is private (Bortle/seeing/transparency logged for
+  // yourself). `session-share` upgrades one of your own sessions into a
+  // joinable room by creating a companion cross-user artifact in the
+  // SAME `STATE.lensArtifacts` store — shape `{domain:'collab',
+  // type:'session', ...}` — that `server/domains/collab.js#getSessionArtifact`
+  // already recognizes. From there the live roster is genuinely REUSED,
+  // not reinvented: astronomy calls collab's own `sessionJoin` /
+  // `sessionLeave` / `sessionRoster` registerLensAction handlers directly
+  // (via `globalThis.__concordLensActions`, the documented cross-module
+  // call path also used by `chat-agent.js` / `agent-marathon.js`), and
+  // membership is read straight off collab's own live roster
+  // (`STATE.collabLens.sessionRosters`, an in-memory-only Map — never
+  // persisted, so a restart drops it exactly like collab's own doc
+  // presence does; no fabricated "still connected" state survives a
+  // crash). Astronomy layers exactly two things collab doesn't have on
+  // top of that reused roster: a shared "current target" (broadcast over
+  // a dedicated `astronomy:session:${roomId}` room so it never collides
+  // with collab's own `collab:${roomId}` doc/session traffic) and a
+  // shared observation log every member can post to.
+  //
+  // Honesty invariant: each observer's altitude/azimuth for the shared
+  // target is computed FRESH from THEIR OWN submitted lat/long via the
+  // real Meeus equatorialToHorizontal transform (see `session-target-get`
+  // below) — the broadcast only ever carries the target's RA/Dec (the one
+  // thing that's actually shared: what everyone is looking at), never a
+  // pre-computed alt/az that would silently mirror one observer's sky
+  // onto everyone else's.
+  //
+  // Deliberately NOT routed through the generic `lens.create` macro:
+  // `lens.create` validates `type` against `EXTENDED_DOMAIN_RULES.get
+  // ("collab").types`, which does not currently list "session" (a
+  // pre-existing gap in that unrelated validation table, confirmed by
+  // direct call — out of scope to fix here since it isn't part of the
+  // astronomy/collab realtime substrate this closes). We construct the
+  // artifact directly in the exact shape `lens.create` would have
+  // produced and `getSessionArtifact` already reads.
+  function lensActionMap() {
+    const m = globalThis.__concordLensActions;
+    return m instanceof Map ? m : null;
+  }
+  async function runCollabLensAction(name, ctx, params) {
+    const handler = lensActionMap()?.get(`collab.${name}`);
+    if (!handler) return { ok: false, error: "collab_roster_unavailable" };
+    return await handler(ctx, null, params);
+  }
+  function getSharedRoomArtifact(roomId) {
+    try {
+      const STATE = globalThis._concordSTATE;
+      const art = STATE?.lensArtifacts?.get(roomId);
+      if (art && art.domain === "collab" && art.type === "session" && art.data?.kind === "astronomy-observing") return art;
+    } catch (_e) { /* ignore */ }
+    return null;
+  }
+  function isRoomMember(roomId, userId) {
+    try {
+      const roster = globalThis._concordSTATE?.collabLens?.sessionRosters?.get(roomId);
+      return !!(roster && roster.has(userId));
+    } catch (_e) { return false; }
+  }
+  function getCoObserveState() {
+    const s = getAstroState(); if (!s) return null;
+    if (!(s.coObserve instanceof Map)) s.coObserve = new Map(); // roomId -> { target, log[] }
+    return s;
+  }
+  function coObserveRoom(s, roomId) {
+    if (!s.coObserve.has(roomId)) s.coObserve.set(roomId, { target: null, log: [] });
+    return s.coObserve.get(roomId);
+  }
+  // Distinct room prefix from collab's own `collab:${sessionId}` room so
+  // astronomy's target/log broadcasts never mix with collab's doc/session
+  // traffic on the same id. Membership-gated at the `room:join` socket
+  // handler in server.js (reads the same live collab roster above).
+  function emitToAstroRoom(roomId, name, payload) {
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`astronomy:session:${roomId}`).emit(name, { roomId, ...payload, ts: Date.now() });
+    } catch (_e) { /* best effort — clients fall back to a poll */ }
+  }
+  const asName = (ctx) => ctx?.actor?.name || ctx?.actor?.displayName || ctx?.userName || asAid(ctx);
+
+  // session-share — upgrade one of the caller's own private sessions into
+  // a joinable co-observing room. Idempotent: calling it again on an
+  // already-shared session returns the same roomId and (re)joins the
+  // caller.
+  registerLensAction("astronomy", "session-share", async (ctx, _a, params = {}) => {
+    const s = getAstroState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = asAid(ctx);
+    const sessionId = asClean(params.id ?? params.sessionId, 80);
+    if (!sessionId) return { ok: false, error: "sessionId is required" };
+    const session = (s.sessions.get(uid) || []).find((x) => x.id === sessionId);
+    if (!session) return { ok: false, error: "session not found" };
+
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!(STATE.lensArtifacts instanceof Map)) STATE.lensArtifacts = new Map();
+
+    let roomId = session.roomId;
+    if (!roomId || !getSharedRoomArtifact(roomId)) {
+      roomId = asId("lart");
+      const artifact = {
+        id: roomId, domain: "collab", type: "session",
+        ownerId: uid,
+        title: `Astronomy co-observing — ${session.date}${session.location ? ` · ${session.location}` : ""}`,
+        data: {
+          kind: "astronomy-observing",
+          astronomySessionId: session.id,
+          astronomyOwnerId: uid,
+          date: session.date, location: session.location,
+          bortle: session.bortle, seeing: session.seeing, transparency: session.transparency,
+        },
+        meta: { tags: ["astronomy", "co-observing"], status: "active", visibility: "private", scope: "local" },
+        createdAt: asNow(), updatedAt: asNow(), version: 1,
+      };
+      STATE.lensArtifacts.set(roomId, artifact);
+      session.roomId = roomId;
+      session.shared = true;
+      saveAstroState();
+    }
+    const joined = await runCollabLensAction("sessionJoin", ctx, { sessionId: roomId });
+    return {
+      ok: true,
+      result: { session, roomId, roster: joined?.ok ? joined.result.participants : [] },
+    };
+  });
+
+  // session-join / session-leave / session-observers — thin, kind-checked
+  // wrappers over collab's real live roster (see block comment above). The
+  // kind check (`getSharedRoomArtifact`) means this surface can only ever
+  // join/read an astronomy co-observing room, never an arbitrary collab
+  // session id.
+  registerLensAction("astronomy", "session-join", async (ctx, _a, params = {}) => {
+    const roomId = asClean(params.roomId ?? params.sessionId, 80);
+    if (!roomId) return { ok: false, error: "roomId is required" };
+    if (!getSharedRoomArtifact(roomId)) return { ok: false, error: "shared astronomy session not found" };
+    return await runCollabLensAction("sessionJoin", ctx, { sessionId: roomId });
+  });
+
+  registerLensAction("astronomy", "session-leave", async (ctx, _a, params = {}) => {
+    const roomId = asClean(params.roomId ?? params.sessionId, 80);
+    if (!roomId) return { ok: false, error: "roomId is required" };
+    return await runCollabLensAction("sessionLeave", ctx, { sessionId: roomId });
+  });
+
+  registerLensAction("astronomy", "session-observers", async (ctx, _a, params = {}) => {
+    const roomId = asClean(params.roomId ?? params.sessionId, 80);
+    if (!roomId) return { ok: false, error: "roomId is required" };
+    if (!getSharedRoomArtifact(roomId)) return { ok: false, error: "shared astronomy session not found" };
+    return await runCollabLensAction("sessionRoster", ctx, { sessionId: roomId });
+  });
+
+  // session-target-set — the room's shared "what are we all looking at
+  // right now" pointer. Any joined member can set it; resolved via the
+  // exact same `resolveBodyEquatorial` real ephemeris used by
+  // `celestialPosition`/`sky-chart` above — never a client-supplied
+  // alt/az. Broadcasts only RA/Dec + identity fields; alt/az is computed
+  // per-observer in `session-target-get`.
+  registerLensAction("astronomy", "session-target-set", (ctx, _a, params = {}) => {
+    const s = getCoObserveState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = asAid(ctx);
+    const roomId = asClean(params.roomId ?? params.sessionId, 80);
+    if (!roomId) return { ok: false, error: "roomId is required" };
+    if (!getSharedRoomArtifact(roomId)) return { ok: false, error: "shared astronomy session not found" };
+    if (!isRoomMember(roomId, uid)) return { ok: false, error: "join the session before setting the target" };
+    const bodyName = asClean(params.body ?? params.name, 120);
+    if (!bodyName) return { ok: false, error: "body/name is required" };
+    let when = new Date();
+    if (params.when != null) {
+      const d = new Date(String(params.when));
+      if (!Number.isNaN(d.getTime())) when = d;
+    }
+    const resolved = resolveBodyEquatorial(bodyName, when);
+    if (!resolved) return { ok: false, error: `unknown body "${bodyName}" — pass a known planet/star/Sun/Moon name` };
+
+    const rs = coObserveRoom(s, roomId);
+    const target = {
+      name: bodyName, ra: resolved.ra, dec: resolved.dec, kind: resolved.kind,
+      constellation: resolved.constellation ?? null, magnitude: resolved.magnitude ?? null,
+      setBy: uid, setByName: asName(ctx), setAt: asNow(),
+    };
+    rs.target = target;
+    const entry = {
+      id: asId("log"), kind: "target", userId: uid, userName: asName(ctx),
+      message: `set the current target to ${bodyName}`, targetName: bodyName, createdAt: asNow(),
+    };
+    rs.log.push(entry);
+    if (rs.log.length > 200) rs.log.splice(0, rs.log.length - 200);
+    saveAstroState();
+    emitToAstroRoom(roomId, "astronomy:session-target", { target });
+    emitToAstroRoom(roomId, "astronomy:session-log", { entry });
+    return { ok: true, result: { target, roomId } };
+  });
+
+  // session-target-get — read the shared target's RA/Dec, PLUS (when the
+  // caller supplies their own latitude/longitude) THAT OBSERVER'S OWN
+  // altitude/azimuth for it, computed fresh from their real coordinates.
+  // Two observers at different lat/long calling this for the same room
+  // get different `mine.altitude`/`mine.azimuth` — the whole point: a
+  // shared target, never a mirrored sky.
+  registerLensAction("astronomy", "session-target-get", (ctx, _a, params = {}) => {
+    const s = getCoObserveState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = asAid(ctx);
+    const roomId = asClean(params.roomId ?? params.sessionId, 80);
+    if (!roomId) return { ok: false, error: "roomId is required" };
+    if (!getSharedRoomArtifact(roomId)) return { ok: false, error: "shared astronomy session not found" };
+    if (!isRoomMember(roomId, uid)) return { ok: false, error: "join the session first" };
+    const rs = s.coObserve.get(roomId) || null;
+    const target = rs?.target || null;
+    let mine = null;
+    if (target) {
+      const obs = parseObserver(params);
+      if (obs) {
+        const when = parseWhen(params);
+        const h = equatorialToHorizontal(target.ra, target.dec, obs.latitude, obs.longitude, when);
+        mine = {
+          altitude: Math.round(h.altitude * 10) / 10,
+          azimuth: Math.round(((h.azimuth % 360) + 360) % 360 * 10) / 10,
+          visible: h.altitude > 0,
+          observer: obs,
+          when: when.toISOString(),
+        };
+      }
+    }
+    return { ok: true, result: { target, mine, roomId } };
+  });
+
+  // session-log-post / session-log-list — the shared observation log
+  // every joined member can read and post to.
+  registerLensAction("astronomy", "session-log-post", (ctx, _a, params = {}) => {
+    const s = getCoObserveState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = asAid(ctx);
+    const roomId = asClean(params.roomId ?? params.sessionId, 80);
+    if (!roomId) return { ok: false, error: "roomId is required" };
+    if (!getSharedRoomArtifact(roomId)) return { ok: false, error: "shared astronomy session not found" };
+    if (!isRoomMember(roomId, uid)) return { ok: false, error: "join the session before posting" };
+    const message = asClean(params.message, 500);
+    if (!message) return { ok: false, error: "message is required" };
+    const rs = coObserveRoom(s, roomId);
+    const entry = {
+      id: asId("log"), kind: "note", userId: uid, userName: asName(ctx),
+      message, targetName: rs.target?.name || null, createdAt: asNow(),
+    };
+    rs.log.push(entry);
+    if (rs.log.length > 200) rs.log.splice(0, rs.log.length - 200);
+    saveAstroState();
+    emitToAstroRoom(roomId, "astronomy:session-log", { entry });
+    return { ok: true, result: { entry, roomId } };
+  });
+
+  registerLensAction("astronomy", "session-log-list", (ctx, _a, params = {}) => {
+    const s = getCoObserveState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = asAid(ctx);
+    const roomId = asClean(params.roomId ?? params.sessionId, 80);
+    if (!roomId) return { ok: false, error: "roomId is required" };
+    if (!getSharedRoomArtifact(roomId)) return { ok: false, error: "shared astronomy session not found" };
+    if (!isRoomMember(roomId, uid)) return { ok: false, error: "join the session first" };
+    const rs = s.coObserve.get(roomId) || null;
+    const log = rs?.log ? [...rs.log].reverse() : [];
+    return { ok: true, result: { log, count: log.length, target: rs?.target || null, roomId } };
+  });
+
   // ── Equipment ───────────────────────────────────────────────────────
   registerLensAction("astronomy", "equipment-add", (ctx, _a, params = {}) => {
     const s = getAstroState(); if (!s) return { ok: false, error: "STATE unavailable" };
