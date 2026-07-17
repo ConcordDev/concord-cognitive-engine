@@ -77,8 +77,8 @@ function seedAuthoredNpcs(db) {
     { id: "iyatte", world_id: "tunya", concord_link_resonance: "fantasy:lady_seraphine_voss" },
     { id: "aerasi", world_id: "tunya", concord_link_resonance: "fantasy:thorne_blackroot" },
     { id: "renn",   world_id: "tunya", concord_link_resonance: "crime:archivist_who_keeps_other_peoples_secrets" },
-    // Cree has null resonance — should be skipped.
-    { id: "cree",   world_id: "tunya", concord_link_resonance: null },
+    // Corre has null resonance — should be skipped.
+    { id: "corre",   world_id: "tunya", concord_link_resonance: null },
     // Fantasy NPC reciprocates Iyatte.
     { id: "lady_seraphine_voss", world_id: "fantasy", concord_link_resonance: "tunya:iyatte" },
   ];

@@ -109,7 +109,7 @@
   "v2_changelog": {
     "spelling": "Sangree → Sanguire (locked).",
     "powers": "Medici corrected to healing-only; ice-as-Medici-power removed (was author invention).",
-    "timeline": "Medici crash-landing locked at Year 11 (between Asbir/Cree at Year 7 and Eurasia at Year 14). Approximately 100 Tunyan years before the Year 4G present.",
+    "timeline": "Medici crash-landing locked at Year 11 (between Asbir/Corre at Year 7 and Eurasia at Year 14). Approximately 100 Tunyan years before the Year 4G present.",
     "species_taxonomy": "3 sapient species + Earth humans. See species.json.",
     "calendar": "Full mechanical calendar with sun/moon hours + temperatures + weather + 4 seasons (Resurrection / Drought / Harvest / Fallow) locked. See calendar.json.",
     "colors": "Skin-color genetics (paint-mixing inheritance + sex-linked throwback) + color symbolism + per-kingdom palette priors locked. See colors.json.",

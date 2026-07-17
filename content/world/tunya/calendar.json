@@ -177,7 +177,7 @@
       "sun_hours": 16, "moon_hours": 16,
       "temp_low_f": 75, "temp_high_f": 84,
       "weather": "humid_thunderstorms_begin",
-      "cultural_notes": "Harvest celebration. Aekon hosts its high feast — twelve districts, twelve dishes, the twelfth still secret. Cree hosts its Harvest market.",
+      "cultural_notes": "Harvest celebration. Aekon hosts its high feast — twelve districts, twelve dishes, the twelfth still secret. Corre hosts its Harvest market.",
       "agricultural": ["main_grain_harvest", "root_harvest"],
       "festivals": ["harvest_high_feast_aekon", "harvest_market_cree"],
       "political_gates": ["tax_assessment_all_kingdoms"]
@@ -236,7 +236,7 @@
   "epoch": {
     "current_annum": 409,
     "label": "Annum 409 — present (4G)",
-    "description": "Tunyan calendar reckoning. Pre-arrival annums were counted by Ancient Tunyan tradition; the count was preserved through arrival and intermixing. Annum 313 = Africa first landfall. Annum 320 = Asbir/Cree disembarkation. Annum 324 = Medici crash. Annum 327 = Eurasia. Annum 337 = Aekon stranded arrival. Annum 409 = present. The Bloc demanded more registrars in annum 409 — the political event is happening *this annum*.",
+    "description": "Tunyan calendar reckoning. Pre-arrival annums were counted by Ancient Tunyan tradition; the count was preserved through arrival and intermixing. Annum 313 = Africa first landfall. Annum 320 = Asbir/Corre disembarkation. Annum 324 = Medici crash. Annum 327 = Eurasia. Annum 337 = Aekon stranded arrival. Annum 409 = present. The Bloc demanded more registrars in annum 409 — the political event is happening *this annum*.",
     "year_zero_event": "ancient_tunyan_calendar_origin (specifics held by Nil; annum 0 is approximately 313 annums before first arrival)",
     "key_anchors_by_annum": {
       "0": "ancient_tunyan_calendar_origin (per Nil's reckoning)",

@@ -70,7 +70,7 @@
       },
       "honorifics": ["High Healer", "Choir Master", "Navigator", "Quiet One"]
     },
-    "cree": {
+    "corre": {
       "phoneme_set": {
         "consonants": ["k", "n", "w", "y", "p", "t", "h", "m"],
         "vowels": ["a", "e", "i", "o"],
@@ -87,7 +87,7 @@
       },
       "place_names": {
         "syllable_count": [2, 3, 4],
-        "examples": ["Cree", "Wiyowak Bay", "Naheya Plain"],
+        "examples": ["Corre", "Wiyowak Bay", "Naheya Plain"],
         "common_suffixes": ["-yak", "-ya", "-mak"]
       },
       "honorifics": ["Eldest Walker", "Singer", "Keeper", "Listener"]

@@ -738,7 +738,7 @@ export const FACTION_TO_STYLE: Record<string, FactionStyleId> = {
   'sandrun_sanguire': 'tunya-bloodline-forge',
   'kree':             'tunya-savanna',
   'medici':           'tunya-medici-ice',
-  'cree':             'tunya-highland',
+  'corre':             'tunya-highland',
   'aekon':            'tunya-savanna',
   'asbir':            'tunya-coastal',
   'sahm':             'tunya-highland',

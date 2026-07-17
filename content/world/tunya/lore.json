@@ -56,7 +56,7 @@
         "sahm",
         "bahiij",
         "dinye",
-        "cree"
+        "corre"
       ],
       "hidden_truth": "The transit's non-determinism was known to the survey ship's crew. They did not include it in the briefing. The reason is in the deleted Asbir archive."
     },
@@ -85,20 +85,20 @@
       "title": "Second Arrival — North American Ark and the Walk-Off",
       "type": "founding",
       "era": "Year 7 (Tunya local)",
-      "description": "The North American ark arrived six years after Africa. On disembarkation, the Native American passengers — who had not been consulted on the curators' decisions about the archive — walked off as a body. They settled on the coast east of Kree and named themselves Cree. The remaining North Americans founded what became Asbir, in the southern dunes near the ark's resting place.",
+      "description": "The North American ark arrived six years after Africa. On disembarkation, the Native American passengers — who had not been consulted on the curators' decisions about the archive — walked off as a body. They settled on the coast east of Kree and named themselves Corre. The remaining North Americans founded what became Asbir, in the southern dunes near the ark's resting place.",
       "significance": "major",
       "factions_involved": [
         "asbir",
-        "cree"
+        "corre"
       ],
       "world_id": "tunya",
       "known_by": [
         "asbir",
-        "cree",
+        "corre",
         "kree_nationalists",
         "masond"
       ],
-      "hidden_truth": "Cree's elders walked because they knew what was deleted before launch. Asbir's curators did not realize Cree knew until two generations later, by which point asking would have made the deletion canonical."
+      "hidden_truth": "Corre's elders walked because they knew what was deleted before launch. Asbir's curators did not realize Corre knew until two generations later, by which point asking would have made the deletion canonical."
     },
     {
       "id": "lore_curated_archive",
@@ -109,7 +109,7 @@
       "significance": "major",
       "factions_involved": [
         "asbir",
-        "cree"
+        "corre"
       ],
       "world_id": "tunya",
       "known_by": [
@@ -219,7 +219,7 @@
       "id": "lore_medici_crash_landing",
       "title": "The Medici Crash",
       "type": "catastrophe",
-      "era": "Year 11 (Tunya local) — approximately 100 Tunyan years ago, in the gap between the Asbir/Cree arrival (Year 7) and the Eurasia arrival (Year 14)",
+      "era": "Year 11 (Tunya local) — approximately 100 Tunyan years ago, in the gap between the Asbir/Corre arrival (Year 7) and the Eurasia arrival (Year 14)",
       "description": "The Medici came to Tunya in their own vessel, not on an Earth ark. They crashed. The ship was beyond Tunya's pre-industrial repair capacity then; it remains beyond it now. They settled on a small island off Kree's coast — Medici Isle. They venture from the isle to heal the sick and trade healing services for food. They do not believe in Tunyan gods. Their goddess is Mercury.",
       "significance": "major",
       "factions_involved": [

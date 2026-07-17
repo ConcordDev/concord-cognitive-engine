@@ -10,7 +10,7 @@
       "inputs": ["sea_access", "vessels", "captains", "crew"],
       "outputs": ["bass", "tuna", "s_mollusca", "cephalopod (for ink + meat)", "rare: sealie blubber/ivory/bones/sac"],
       "seasonal_peak": "Fallow (deep-sea fishing) + Pisces (salting)",
-      "key_kingdoms": ["fluxom (declining)", "aekon", "sahm", "cree"],
+      "key_kingdoms": ["fluxom (declining)", "aekon", "sahm", "corre"],
       "value_extreme": "sealie hunts represent the highest-value-per-hour profession on Tunya, with single-figure-percent voyage mortality"
     },
     {

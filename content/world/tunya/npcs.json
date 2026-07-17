@@ -506,8 +506,8 @@
   {
     "id": "elder_walker_neyahwetin",
     "name": "Neyahwetin",
-    "title": "Eldest Walker of Cree",
-    "faction_id": "cree",
+    "title": "Eldest Walker of Corre",
+    "faction_id": "corre",
     "world_id": "tunya",
     "archetype": "elder-keeper",
     "personality": "Quiet, deliberate, listens longer than any visitor expects to wait. Has refused the title 'chief' her whole adult life and the council has stopped trying.",
@@ -518,7 +518,7 @@
       "weaponise_at": "When Renn's deletion index goes public, Neyahwetin will be asked. If she speaks, the deleted record's contents shift from rumor to confirmed by survivor — a different evidentiary class. If she remains silent, the truth dies with her, possibly within this season."
     },
     "concord_link_resonance": null,
-    "cross_world_hook": "Cree has not, as a matter of policy, opened any cross-world conversations. Their isolation is the protection. A player could be the first.",
+    "cross_world_hook": "Corre has not, as a matter of policy, opened any cross-world conversations. Their isolation is the protection. A player could be the first.",
     "dialogue_style": "deliberate, full sentences, leaves long pauses",
     "needs": [
       {

@@ -38,7 +38,7 @@
     "objectives": [
       { "id": "obj_aok_2_1", "type": "reach_location", "target": "asbir_southern_dunes", "required_count": 1, "description": "Reach the Asbir ark in the southern dunes" },
       { "id": "obj_aok_2_2", "type": "infiltrate_or_persuade", "target": "scholar_who_doubts", "required_count": 1, "description": "Convince the scholar to share the index of deletions" },
-      { "id": "obj_aok_2_3", "type": "branch_decision", "target": "deletion_index_disposition", "required_count": 1, "description": "Decide what to do with the deletion index: publish, sell, give to Cree, give to Renn, destroy", "branches": ["publish", "sell_crime_world", "give_to_cree", "give_to_renn", "destroy"] }
+      { "id": "obj_aok_2_3", "type": "branch_decision", "target": "deletion_index_disposition", "required_count": 1, "description": "Decide what to do with the deletion index: publish, sell, give to Corre, give to Renn, destroy", "branches": ["publish", "sell_crime_world", "give_to_cree", "give_to_renn", "destroy"] }
     ],
     "rewards": [
       { "kind": "skill_xp", "skill": "ark_archaeology", "amount": 500 },
@@ -46,9 +46,9 @@
       { "kind": "dtu", "kind_tag": "asbir_deletion_index", "amount": 1 }
     ],
     "branch_consequences": {
-      "publish": "Asbir's curated tradition collapses publicly. Reputation +20 with Sahm, Cree. Reputation -30 with Asbir. Possible Bloc weakening.",
+      "publish": "Asbir's curated tradition collapses publicly. Reputation +20 with Sahm, Corre. Reputation -30 with Asbir. Possible Bloc weakening.",
       "sell_crime_world": "Earn substantial CC. Reputation -10 across most kingdoms when traced. Crime-world fixer becomes a future contact.",
-      "give_to_cree": "Cree elders thank you in the only way they thank — silence and a token. Quiet pact strengthens. Cree+30 reputation.",
+      "give_to_cree": "Corre elders thank you in the only way they thank — silence and a token. Quiet pact strengthens. Corre+30 reputation.",
       "give_to_renn": "Renn the Curator processes the index. He may bury it; he may publish; the choice becomes his. Asbir+15.",
       "destroy": "The truth dies with you. Concord_alignment -0.05. Curated tradition holds another generation."
     }
