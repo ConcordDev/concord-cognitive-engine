@@ -37,6 +37,7 @@ import { AgentRoster } from '@/components/agents/AgentRoster';
 import { AgentRuntime } from '@/components/agents/AgentRuntime';
 import { AgentSelfPanel } from '@/components/agents/AgentSelfPanel';
 import { AgentDisclosureBadge } from '@/components/world/AgentDisclosureBadge';
+import { ForkPreviewPanel } from '@/components/agents/ForkPreviewPanel';
 
 // --- Types ---
 interface Agent {
@@ -1422,6 +1423,11 @@ export default function AgentsLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <AgentRoster />
+      </section>
+      {/* P-D — lattice-fork "forked self" preview (preview-only, non-money;
+          see docs/GOVERNANCE_DESIGN.md §5.5). */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ForkPreviewPanel />
       </section>
     </div>
           <SessionRail lensId="agents" hideWhenEmpty className="mt-4" />

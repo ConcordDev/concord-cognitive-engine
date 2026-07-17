@@ -117,7 +117,7 @@ export function captureTemperamentSnapshot(db, sourceUserId, override) {
  *
  * @returns {{agentIdentityId:(string|null), agentUserId:string}}
  */
-function ensureForkAgentDisclosure(db, { forkId, sourceUserId, snapshot }) {
+export function ensureForkAgentDisclosure(db, { forkId, sourceUserId, snapshot }) {
   const agentUserId = `agent_${forkId}`;
   const now = new Date().toISOString();
 
