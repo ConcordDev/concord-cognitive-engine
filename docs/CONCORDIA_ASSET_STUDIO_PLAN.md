@@ -1,9 +1,22 @@
 # Concordia Asset Studio — design → live-in-world creation pipeline (design doc)
 
-> STATUS: DESIGN DOC / vision + scoped increments. Not yet in execution.
+> STATUS: **Increment 1 SHIPPED (2026-07-17)** — see the Increments section.
+> The rest remains DESIGN DOC / vision + scoped increments.
 > Captured 2026-07-17 at the owner's direction. This is a **growth track**,
 > distinct from the WAVE4 honesty close-out — it adds a net-new capability
 > rather than closing an existing gap.
+>
+> **Audit correction (2026-07-17, before Increment 1):** a three-agent
+> code audit found the "loop is ~70% built" claim below was optimistic — the
+> honest figure was **~40–50%**. Every *hard primitive* existed and worked (the
+> authoritative world-spawn insert, the royalty cascade, the pure standalone
+> building renderer, the license-tier model) — but they were **never wired to
+> each other**: `whiteboard.publish-as-blueprint` only produced interior decor,
+> the real `/api/world/buildings/spawn` route had no producer/caller/test, the
+> royalty rail was disconnected from every asset-publish path, and `dtu.create`
+> writes the in-memory `STATE.dtus` map (invisible to the SQL `dtus` table the
+> spawn route reads). Increment 1's real job was the connective tissue, which is
+> exactly what shipped. Details preserved below for the historical record.
 
 ## The thesis (why this is the strongest moat)
 
@@ -118,13 +131,40 @@ Same "honest by construction" law as the rest of Concord, applied here:
 
 ## Scoped increments (each independently shippable, verified like a WAVE4 unit)
 
-1. **Increment 1 — Parametric asset → live-in-Concordia + royalty rail.**
-   An Asset Studio panel in the game-design lens to author an asset by real
-   params (building/prop/creature-adjacent), preview it via the existing
-   world-lens procedural renderer, and publish through the existing
-   `publish-as-blueprint`/`evo_asset` path so it spawns in Concordia — with the
-   royalty-cascade rail wired so the creator earns on use. **~70% reuse.** This
-   is the proof-of-loop.
+1. **Increment 1 — Parametric building → live-in-Concordia + royalty-ready DTU.
+   ✅ SHIPPED 2026-07-17** (commits `a42b44b3` Unit 3, `8624542a` Unit 1,
+   `b4901a83` Unit 2, on branch `claude/handoff-verification-bwahm0`). A new
+   "Asset Studio" tab (13th) in the game-design lens authors a **building** by
+   real params — archetype (tavern/archive/forge/market/tower), width/height/
+   depth in meters, iconic feature (dome/spire/colonnade/belfry), interior
+   toggle — with a **live Three.js preview that calls the SAME pure
+   `createBuilding()` the live world uses** and the identical
+   `scale.set(w/10,h/8,d/8)` formula, so the preview is byte-faithful to what
+   spawns (true WYSIWYG). Publish (`game-design.building-publish`) mints a
+   **real creator-attributed blueprint DTU** (`owner_user_id`, `visibility=
+   public`, `meta.type=blueprint`) and inserts a **live walkable
+   `world_buildings` row** via the spawn route's own overlap-checked logic
+   (migration 366 added nullable `archetype`/`feature` columns so the authored
+   identity round-trips to `BuildingRenderer3D`), and a **cross-user remix
+   registers a real `royalty_lineage` row** through the untouched
+   `registerCitation` cascade. Honest failure states throughout (overlap,
+   invalid input — the real reason reaches the UI). **Scope held honestly:**
+   used the archetype vocabulary the renderer actually reads (not the dormant
+   box-composite path); **colors/factionStyle deferred** (would preview a color
+   the in-world mapping can't yet carry — a WYSIWYG lie); **paid marketplace
+   listing deferred to Increment 4** — the asset is royalty-*eligible* and
+   remix-lineage is real, but nothing implies it earns on sale yet; zero
+   fabricated earnings/counts. **What this corrected vs. the original plan:**
+   the loop did NOT reuse `publish-as-blueprint`/`evo_asset` (that path is
+   decor-only + carries no creator column) — it mints a real SQL `dtus` row
+   directly, because the spawn route reads the SQL `dtus` table while
+   `dtu.create` writes only the in-memory `STATE.dtus` map. Verification: 14/14
+   backend tests (real world row + creator-attributed DTU + real cross-user
+   citation + honest zero-row rejections), 7/7 component tests, consolidated
+   `tsc --noEmit` green, a cross-unit failure-field contract bug
+   (`reason`→`error`) caught + fixed in orchestrator review. This is the
+   proof-of-loop: design → live in the owned 3D world → creator-attributed,
+   royalty-ready — genuinely closed end to end for the first time.
 2. **Increment 2 — Level / scene design.** A real level editor on top of
    Foundry + blueprint-spawn: place authored assets into a scene, publish, and
    make it walkable in Concordia.
