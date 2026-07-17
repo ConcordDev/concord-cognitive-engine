@@ -14,6 +14,7 @@ import { lensRun } from '@/lib/api/client';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
 import { Dna, Sparkles, GitBranch, Loader2, AlertCircle, RefreshCw, BookOpen, Waves, Search } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { CreaturePortraitThumb } from '@/components/creatures/CreaturePortraitThumb';
 
 interface Population {
   id: string;
@@ -124,6 +125,10 @@ export default function CreaturesLensPage() {
   };
 
   const codexColumns: DataTableColumn<SpeciesRecord>[] = [
+    {
+      id: 'portrait', header: '', align: 'left', sortable: false,
+      accessor: (s) => <CreaturePortraitThumb speciesId={s.species_id} size={28} />,
+    },
     { id: 'species_id', header: 'Species', accessor: (s) => s.species_id, sortable: true, monospace: true },
     { id: 'clade', header: 'Clade', accessor: (s) => s.clade, sortable: true },
     { id: 'topology', header: 'Rig topology', accessor: (s) => s.topology, sortable: true },
@@ -340,12 +345,15 @@ export default function CreaturesLensPage() {
                     else { setPickA(p); setPickB(null); setBreedResult(null); }
                   }}
                   className={[
-                    'rounded border p-2 text-left text-xs',
+                    'flex items-center gap-2 rounded border p-2 text-left text-xs',
                     sel ? 'border-violet-300 bg-violet-500/30 text-violet-50' : 'border-violet-500/20 bg-violet-950/20 text-violet-200 hover:border-violet-400/50',
                   ].join(' ')}
                 >
-                  <div className="font-mono font-semibold">{p.species_id}</div>
-                  <div className="text-[10px] opacity-80">{p.biome} · {p.lifestyle} · ×{p.current_count}{p.topology ? ` · ${p.topology}` : ''}</div>
+                  <CreaturePortraitThumb speciesId={p.species_id} size={36} />
+                  <div className="min-w-0">
+                    <div className="font-mono font-semibold">{p.species_id}</div>
+                    <div className="text-[10px] opacity-80">{p.biome} · {p.lifestyle} · ×{p.current_count}{p.topology ? ` · ${p.topology}` : ''}</div>
+                  </div>
                 </button>
               );
             })}
@@ -449,13 +457,22 @@ export default function CreaturesLensPage() {
             <kbd className="ml-1.5 rounded border border-violet-400/30 bg-violet-950/40 px-1 text-[9px] text-violet-300">B</kbd>
           </button>
           {breedResult && (
-            <div className="mt-2 text-xs" role="status" aria-live="polite">
+            <div className="mt-2 flex items-center gap-2 text-xs" role="status" aria-live="polite">
               {breedResult.ok && breedResult.hybrid ? (
-                <span className="text-emerald-300">
-                  ✓ hybrid {breedResult.hybrid.species_id} ({breedResult.hybrid.id?.slice(0, 14)})
-                  {typeof breedResult.stability === 'number' && <> · stability {Math.round(breedResult.stability * 100)}%</>}
-                  {breedResult.hybrid.topology && <> · {breedResult.hybrid.topology}</>}
-                </span>
+                <>
+                  {breedResult.hybrid.species_id && (
+                    <CreaturePortraitThumb
+                      speciesId={breedResult.hybrid.species_id}
+                      variant={breedResult.hybrid.variant}
+                      size={36}
+                    />
+                  )}
+                  <span className="text-emerald-300">
+                    ✓ hybrid {breedResult.hybrid.species_id} ({breedResult.hybrid.id?.slice(0, 14)})
+                    {typeof breedResult.stability === 'number' && <> · stability {Math.round(breedResult.stability * 100)}%</>}
+                    {breedResult.hybrid.topology && <> · {breedResult.hybrid.topology}</>}
+                  </span>
+                </>
               ) : (
                 <span className="text-red-300">× {breedResult.reason || 'incompatible'}</span>
               )}

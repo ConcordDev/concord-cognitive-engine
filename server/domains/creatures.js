@@ -19,6 +19,7 @@ import {
   generateHybrid,
   getLineage,
 } from "../lib/creature-crossbreeding.js";
+import { buildCreaturePortraitSvg, summarizePartCounts } from "../lib/creature-portrait.js";
 
 // Deterministic coat colour from species id + dominant affinity, so a steam
 // variant reads cool-grey, a magma variant red, etc. — no per-species art asset.
@@ -27,7 +28,7 @@ const VARIANT_TINT = {
   fire: "#c0532a", water: "#3a6ea5", ice: "#9fd6e8", bio: "#5a8a3c",
   lightning: "#d8c24a", earth: "#7a5a3a", energy: "#caa3ef",
 };
-function coatFor(speciesId, dominant) {
+export function coatFor(speciesId, dominant) {
   if (dominant && VARIANT_TINT[dominant]) return VARIANT_TINT[dominant];
   // hash the species id to a stable earthy hue.
   let h = 0;
@@ -112,6 +113,66 @@ export default function registerCreatureMacros(register) {
     if (!speciesId) return { ok: false, reason: "missing_species_id" };
     return { ok: true, taxonomy: taxonomyForSpecies(speciesId) };
   }, { note: "taxonomy record (clade/topology/diet) for a species id" });
+
+  /**
+   * creatures.portrait — a deterministic procedural SVG schematic of a
+   * species' REAL body plan. No art asset pipeline, no image model: this
+   * synthesizes the same real, physics-validated blueprint `creatures.breed`
+   * already synthesizes per species on demand (via generateCreature, seeded
+   * only by the species id text — so the SAME species always yields the
+   * SAME topology/mass/height/parts), then renders that real geometry as an
+   * SVG in server/lib/creature-portrait.js. Every visual feature — body
+   * shape, limb count, overall scale, tint — is a direct function of real
+   * generator output; nothing is invented. Framed as a "procedural
+   * schematic," never a photographic portrait.
+   *
+   * input: {
+   *   species_id,               // required
+   *   worldId?,                 // world-flavor physics modifier (default concordia-hub)
+   *   dominant?,                // real elemental affinity, e.g. from a hybrid's
+   *                             // genotype — drives coatFor's tint the same way
+   *                             // creatures.for_world does for live instances
+   *   variant?,                 // real bred-hybrid label (e.g. from creatures.breed's
+   *                             // result.hybrid.variant) — captioned when present,
+   *                             // never fabricated when absent
+   * }
+   */
+  register("creatures", "portrait", async (_ctx, input = {}) => {
+    const speciesId = input.species_id || input.speciesId;
+    if (!speciesId) return { ok: false, reason: "missing_species_id" };
+    const worldId = input.worldId || input.world_id || "concordia-hub";
+    const dominant = input.dominant || null;
+    const variant = input.variant || null;
+    try {
+      const topology = topologyForSpecies(speciesId);
+      const blueprint = generateCreature({ description: speciesId, worldId, topology, origin: "portrait" });
+      const coatColor = coatFor(speciesId, dominant);
+      const svg = buildCreaturePortraitSvg({
+        topology: blueprint.topology,
+        massKg: blueprint.massKg,
+        heightM: blueprint.heightM,
+        parts: blueprint.parts,
+        coatColor,
+        variant,
+      });
+      return {
+        ok: true,
+        svg,
+        params: {
+          species_id: String(speciesId),
+          topology: blueprint.topology,
+          massKg: blueprint.massKg,
+          heightM: blueprint.heightM,
+          coatColor,
+          variant,
+          partCount: blueprint.parts.length,
+          partCounts: summarizePartCounts(blueprint.parts),
+        },
+      };
+    } catch (e) {
+      return { ok: false, reason: "portrait_failed", error: e?.message };
+    }
+  }, { note: "deterministic SVG schematic of a species' real body plan (topology/mass/height/parts/coat) — procedural, not concept art" });
 
   // ── Lens surface ────────────────────────────────────────────────────
   // The creatures lens browses populations + the species library and breeds.
