@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, AlertTriangle, Plus, Building2, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, Plus, Building2, RefreshCw, MapPin, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +14,15 @@ interface DueRow { medId: string; name: string; quantity: number; daysOfSupply: 
 interface Refill { id: string; medName: string; pharmacy: string | null; status: string; requestedAt: string }
 interface Pharmacy { id: string; name: string; address: string | null; phone: string | null }
 interface Medication { id: string; name: string }
+
+// pharmacy.locate result row — ONLY fields the real NPPES NPI Registry
+// returns (name / npi / address / city / state / postalCode / phone). No
+// rating, hours, or distance field exists here because NPPES doesn't
+// provide them — rendering must never invent one.
+interface LocateRow {
+  name: string | null; npi: string | null; address: string | null;
+  city: string | null; state: string | null; postalCode: string | null; phone: string | null;
+}
 
 const STATUS_FLOW: Record<string, string> = {
   requested: 'processing', processing: 'ready', ready: 'picked_up',
@@ -32,6 +41,16 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [phForm, setPhForm] = useState({ name: '', address: '', phone: '' });
   const [showPh, setShowPh] = useState(false);
+
+  // Real physical-pharmacy locator (CMS NPPES NPI Registry) — see
+  // pharmacy.locate in server/domains/pharmacy.js. Keyless, federal,
+  // honest: no fabricated ratings/hours/distance.
+  const [showLocate, setShowLocate] = useState(false);
+  const [locateForm, setLocateForm] = useState({ city: '', state: '' });
+  const [locateResults, setLocateResults] = useState<LocateRow[] | null>(null);
+  const [locateLoading, setLocateLoading] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const [locateDisclaimer, setLocateDisclaimer] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -68,6 +87,36 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setPhForm({ name: '', address: '', phone: '' });
     setShowPh(false); setError(null);
+    await refresh();
+  };
+
+  const runLocate = async () => {
+    if (!locateForm.city.trim() || !locateForm.state.trim()) {
+      setLocateError('City and state are required.'); return;
+    }
+    setLocateLoading(true); setLocateError(null); setLocateResults(null); setLocateDisclaimer(null);
+    const r = await lensRun('pharmacy', 'locate', {
+      city: locateForm.city.trim(), state: locateForm.state.trim(),
+    });
+    if (r.data?.ok === false) {
+      // Honest failure surfaced verbatim — never a silently-empty list
+      // masquerading as "no pharmacies found".
+      setLocateError(r.data?.error || 'Pharmacy locator unreachable');
+      setLocateLoading(false);
+      return;
+    }
+    const result = r.data?.result as { results: LocateRow[]; disclaimer?: string } | null;
+    setLocateResults(result?.results || []);
+    setLocateDisclaimer(result?.disclaimer || null);
+    setLocateLoading(false);
+  };
+
+  const addLocatedPharmacy = async (row: LocateRow) => {
+    const name = row.name || 'Unnamed pharmacy';
+    const address = [row.address, row.city, row.state, row.postalCode].filter(Boolean).join(', ');
+    const r = await lensRun('pharmacy', 'pharmacy-add', { name, address, phone: row.phone || '' });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setError(null);
     await refresh();
   };
 
@@ -151,11 +200,71 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
             <Building2 className="w-3.5 h-3.5 text-amber-400" /> My pharmacies
           </h3>
-          <button type="button" onClick={() => setShowPh((v) => !v)}
-            className="flex items-center gap-1 px-2 py-0.5 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
-            <Plus className="w-3 h-3" /> Add
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button type="button" onClick={() => setShowLocate((v) => !v)}
+              className="flex items-center gap-1 px-2 py-0.5 text-[11px] bg-sky-900/50 hover:bg-sky-900/70 text-sky-200 rounded-lg">
+              <MapPin className="w-3 h-3" /> Find nearby
+            </button>
+            <button type="button" onClick={() => setShowPh((v) => !v)}
+              className="flex items-center gap-1 px-2 py-0.5 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
+              <Plus className="w-3 h-3" /> Add manually
+            </button>
+          </div>
         </div>
+
+        {showLocate && (
+          <div className="mb-3 rounded-lg border border-sky-900/50 bg-sky-950/20 p-2.5 space-y-2">
+            <p className="text-[10px] text-zinc-400">
+              Real search of the CMS NPPES NPI Registry (federal directory, no key required) — not a
+              live inventory, hours, or ratings feed. Verify by calling ahead.
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <input placeholder="City" value={locateForm.city}
+                onChange={(e) => setLocateForm({ ...locateForm, city: e.target.value })}
+                onKeyDown={(e) => { if (e.key === 'Enter') void runLocate(); }}
+                className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="State (e.g. CA)" maxLength={2} value={locateForm.state}
+                onChange={(e) => setLocateForm({ ...locateForm, state: e.target.value.toUpperCase() })}
+                onKeyDown={(e) => { if (e.key === 'Enter') void runLocate(); }}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 uppercase" />
+            </div>
+            <button type="button" onClick={runLocate} disabled={locateLoading}
+              className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-sky-700/60 hover:bg-sky-700/80 disabled:opacity-40 text-sky-100 rounded-lg">
+              {locateLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+              Search
+            </button>
+
+            {locateError && (
+              <p role="alert" className="text-[11px] text-rose-400">{locateError}</p>
+            )}
+
+            {locateResults && (
+              locateResults.length === 0 ? (
+                <p className="text-[11px] text-zinc-400 italic">No pharmacies matched that city/state in the NPPES registry.</p>
+              ) : (
+                <ul className="space-y-1 max-h-56 overflow-y-auto">
+                  {locateResults.map((row) => (
+                    <li key={row.npi || row.name} className="flex items-center justify-between gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+                      <div className="min-w-0">
+                        <p className="text-xs text-zinc-100 truncate">{row.name || 'Unnamed pharmacy'}</p>
+                        <p className="text-[10px] text-zinc-400 truncate">
+                          {[row.address, row.city, row.state, row.postalCode].filter(Boolean).join(', ') || 'Address not on file'}
+                          {row.phone ? ` · ${row.phone}` : ''}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => addLocatedPharmacy(row)}
+                        className="shrink-0 flex items-center gap-1 px-2 py-1 text-[10px] bg-emerald-700/50 hover:bg-emerald-700/70 text-emerald-100 rounded-lg">
+                        <Plus className="w-3 h-3" /> Add
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+            {locateDisclaimer && <p className="text-[10px] text-zinc-500 italic">{locateDisclaimer}</p>}
+          </div>
+        )}
+
         {showPh && (
           <div className="grid grid-cols-3 gap-2 mb-2">
             <input placeholder="Name" value={phForm.name} onChange={(e) => setPhForm({ ...phForm, name: e.target.value })}

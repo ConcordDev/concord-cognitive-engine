@@ -13,6 +13,8 @@
 // previously hardcoded 5 interactions; now hits the real FDA label
 // database (50,000+ drug labels with full DRUG_INTERACTIONS sections).
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 const OPENFDA_BASE = "https://api.fda.gov/drug";
 
 async function openfdaLabelLookup(name) {
@@ -777,6 +779,83 @@ export default function registerPharmacyActions(registerLensAction) {
   registerLensAction("pharmacy", "pharmacy-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { pharmacies: s.pharmacies.get(raid(ctx)) || [] } };
+  });
+
+  // ── Physical pharmacy locator (real, keyless, federal) ──────────────
+  // `pharmacy-add`/`pharmacy-list` above are user-entered contacts — not
+  // a live directory. `locate` closes that gap with the CMS NPPES NPI
+  // Registry (npiregistry.cms.hhs.gov), the free/keyless federal
+  // directory of NPI-registered healthcare organizations, filtered to
+  // taxonomy_description=Pharmacy. City + state lookup is the honest
+  // first version this ships with (no geolocation/distance yet — NPPES
+  // doesn't return lat/lng). Renders ONLY fields NPPES actually returns
+  // (name / npi / address / city / state / postalCode / phone) — no
+  // invented ratings, hours, or distance. Unreachable registry → honest
+  // {ok:false, reason:'nppes_unreachable'}; a real query with zero
+  // matches → honest {ok:true, results:[]}, never a fabricated pharmacy.
+  const NPPES_BASE = "https://npiregistry.cms.hhs.gov/api/";
+
+  function nppesAddressFor(rec) {
+    const addrs = Array.isArray(rec?.addresses) ? rec.addresses : [];
+    return addrs.find((a) => String(a?.address_purpose || "").toUpperCase() === "LOCATION") || addrs[0] || null;
+  }
+
+  registerLensAction("pharmacy", "locate", async (_ctx, _a, params = {}) => {
+    const city = rclean(params.city, 100);
+    const stateRaw = rclean(params.state, 10).toUpperCase();
+    if (!city || !stateRaw) return { ok: false, error: "city and state are required" };
+    if (!/^[A-Z]{2}$/.test(stateRaw)) return { ok: false, error: "state must be a 2-letter USPS code (e.g. CA)" };
+    const state = stateRaw;
+    const name = rclean(params.name, 120);
+    const limit = Math.max(1, Math.min(50, Math.round(rnum(params.limit, 20))));
+
+    const qs = new URLSearchParams({
+      version: "2.1",
+      taxonomy_description: "Pharmacy",
+      city, state,
+      limit: String(limit),
+    });
+    if (name) qs.set("organization_name", name);
+    const url = `${NPPES_BASE}?${qs.toString()}`;
+
+    let data;
+    try {
+      data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000, timeoutMs: 8000 });
+    } catch (e) {
+      return { ok: false, reason: "nppes_unreachable", error: `NPPES registry unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+
+    if (Array.isArray(data?.Errors) && data.Errors.length) {
+      return { ok: false, reason: "nppes_invalid_query", error: data.Errors.map((e) => e?.description || e?.field || "invalid query").join("; ") };
+    }
+
+    const rows = Array.isArray(data?.results) ? data.results : [];
+    const results = rows
+      .map((rec) => {
+        const addr = nppesAddressFor(rec);
+        const streetLine = addr ? [addr.address_1, addr.address_2].filter(Boolean).join(" ") : "";
+        return {
+          name: rec?.basic?.organization_name || rec?.basic?.name || null,
+          npi: rec?.number || null,
+          address: streetLine || null,
+          city: addr?.city || null,
+          state: addr?.state || null,
+          postalCode: addr?.postal_code || null,
+          phone: addr?.telephone_number || null,
+        };
+      })
+      .filter((r) => r.name || r.npi);
+
+    return {
+      ok: true,
+      result: {
+        query: { city, state, name: name || null, limit },
+        results,
+        count: results.length,
+        source: "nppes-npi-registry",
+        disclaimer: "Sourced from the CMS NPPES NPI Registry — a federal directory of NPI-registered organizations, not a live inventory/hours/ratings feed. Verify hours and stock by calling ahead.",
+      },
+    };
   });
 
   registerLensAction("pharmacy", "price-record", (ctx, _a, params = {}) => {
