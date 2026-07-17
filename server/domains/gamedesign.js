@@ -1835,6 +1835,73 @@ export default function registerGameDesignActions(registerLensAction) {
     return Number.isFinite(n) ? n : null;
   }
 
+  // ─── Increment 5 — composition/remix helpers (shared by building-publish's
+  // multi-parent path and the new game-design.asset-fuse macro). These
+  // create royalty LINEAGE only — they never move money. Payout happens on
+  // a later SALE via the existing cross-rail bridge (distributeRoyalties).
+
+  // Normalizes a legacy single id + a plural array into one deduped,
+  // order-preserving list of parent ids. `single` is checked first so a
+  // caller mixing both fields gets the singular id as parent[0].
+  function gdNormalizeParentIds(single, list) {
+    const ids = [];
+    if (single) ids.push(String(single));
+    if (Array.isArray(list)) {
+      for (const raw of list) {
+        if (raw == null || raw === "") continue;
+        const id = String(raw);
+        if (!ids.includes(id)) ids.push(id);
+      }
+    }
+    return ids;
+  }
+
+  // Looks up every parent id in `dtus`. Returns `{ missingId, rows }` —
+  // `missingId` is set (and `rows` is null) on the FIRST id that doesn't
+  // exist, so the caller can reject the whole publish honestly before any
+  // insert, instead of silently dropping a bad id.
+  function gdLookupParentRows(db, ids) {
+    const rows = new Map();
+    for (const id of ids) {
+      const row = db.prepare(
+        "SELECT id, owner_user_id, visibility, body_json FROM dtus WHERE id = ?",
+      ).get(id);
+      if (!row) return { missingId: id, rows: null };
+      rows.set(id, row);
+    }
+    return { missingId: null, rows };
+  }
+
+  // Registers one royalty_lineage row per valid, non-self-owned parent.
+  // Self-owned parents are skipped honestly (no royalty relationship with
+  // yourself — mirrors the pre-existing single-parent behavior); a
+  // consent/cycle failure on one parent is recorded in its own entry and
+  // never blocks the others. Never fabricates a citation — every entry in
+  // the returned array corresponds to a real registerCitation() attempt.
+  function gdRegisterParentCitations(db, { parentIds, parentRows, childId, userId }) {
+    const citations = [];
+    for (const pid of parentIds) {
+      const prow = parentRows.get(pid);
+      if (!prow?.owner_user_id || prow.owner_user_id === userId) continue; // self-owned: skipped, not an error
+      try {
+        const result = registerCitation(db, {
+          childId,
+          parentId: pid,
+          creatorId: userId,
+          parentCreatorId: prow.owner_user_id,
+          parentDtu: { ownerId: prow.owner_user_id, visibility: prow.visibility },
+          generation: 1,
+        });
+        citations.push(result?.ok
+          ? { lineageId: result.lineageId, parentId: pid }
+          : { ok: false, error: result?.error || "citation_failed", parentId: pid });
+      } catch (e) {
+        citations.push({ ok: false, error: "citation_error", message: String(e?.message || e), parentId: pid });
+      }
+    }
+    return citations;
+  }
+
   registerLensAction("game-design", "building-publish", (ctx, _a, params = {}) => {
     const db = gdBuildingDb(ctx);
     if (!db) return { ok: false, error: "db_unavailable" };
@@ -1870,15 +1937,21 @@ export default function registerGameDesignActions(registerLensAction) {
     const withInterior = !!params.withInterior;
     const name = gdClean(params.name, 160) || "Untitled Building";
     const remixOfDtuId = params.remixOfDtuId ? String(params.remixOfDtuId) : null;
+    // Multi-parent citation (Increment 5): `remixOfDtuIds` is an array
+    // alternative/addition to the legacy singular `remixOfDtuId`. Normalized
+    // together so a caller that only ever passes `remixOfDtuId` gets
+    // byte-identical behavior to before this change — `remixParentIds`
+    // collapses to exactly `[remixOfDtuId]` in that case.
+    const remixParentIds = gdNormalizeParentIds(remixOfDtuId, params.remixOfDtuIds);
 
-    // Remix parent must genuinely exist — validated up front so an invalid
-    // remixOfDtuId is an honest rejection, not a silently-dropped lineage.
-    let parentRow = null;
-    if (remixOfDtuId) {
-      parentRow = db.prepare(
-        "SELECT id, owner_user_id, visibility, body_json FROM dtus WHERE id = ?",
-      ).get(remixOfDtuId);
-      if (!parentRow) return { ok: false, error: "remix_parent_not_found" };
+    // Remix parents must genuinely exist — validated up front so an invalid
+    // id (in either field) is an honest rejection, not a silently-dropped
+    // lineage. No insert has happened yet at this point.
+    let parentRows = new Map();
+    if (remixParentIds.length > 0) {
+      const lookup = gdLookupParentRows(db, remixParentIds);
+      if (lookup.missingId) return { ok: false, error: "remix_parent_not_found", parentId: lookup.missingId };
+      parentRows = lookup.rows;
     }
 
     // ── 3. Overlap check — SAME bounding-box logic as
@@ -1914,7 +1987,7 @@ export default function registerGameDesignActions(registerLensAction) {
       },
       human: { summary: `${name} — an authored ${archetype} building${feature ? ` with a ${feature}` : ""}.` },
     };
-    if (remixOfDtuId) body.lineage = { parents: [remixOfDtuId] };
+    if (remixParentIds.length > 0) body.lineage = { parents: remixParentIds };
     db.prepare(`
       INSERT INTO dtus (id, owner_user_id, title, body_json, tags_json, visibility, tier, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, 'public', 'regular', ?, ?)
@@ -1933,27 +2006,22 @@ export default function registerGameDesignActions(registerLensAction) {
       width, height, depth, dtuId, userId, userId,
     );
 
-    // ── 5. Remix → real royalty citation ─────────────────────────────────
-    // Mirrors dtu.create's own auto-register-citation block: self-owned
-    // parents are skipped (no royalty relationship with yourself), and a
-    // consent/cycle failure never blocks the publish — the blueprint and
-    // the spawn are already committed above; citation is best-effort.
-    let citation = null;
-    if (remixOfDtuId && parentRow?.owner_user_id && parentRow.owner_user_id !== userId) {
-      try {
-        const result = registerCitation(db, {
-          childId: dtuId,
-          parentId: remixOfDtuId,
-          creatorId: userId,
-          parentCreatorId: parentRow.owner_user_id,
-          parentDtu: { ownerId: parentRow.owner_user_id, visibility: parentRow.visibility },
-          generation: 1,
-        });
-        citation = result?.ok ? { lineageId: result.lineageId, parentId: remixOfDtuId } : { ok: false, error: result?.error || "citation_failed" };
-      } catch (e) {
-        citation = { ok: false, error: "citation_error", message: String(e?.message || e) };
-      }
-    }
+    // ── 5. Remix → real royalty citations ────────────────────────────────
+    // One registerCitation() call per valid, non-self-owned parent (see
+    // gdRegisterParentCitations above) — mirrors dtu.create's own
+    // auto-register-citation block, generalized to N parents. A
+    // consent/cycle failure on one parent never blocks the others or the
+    // publish/spawn already committed above; citation is best-effort.
+    //
+    // `citation` (singular) stays byte-identical to the pre-Increment-5
+    // shape for a single-`remixOfDtuId` caller: null when there was no
+    // remix parent or the sole parent was self-owned, else the one
+    // citation result. `citations` (plural) is new — the full per-parent
+    // array, empty when there was nothing to cite.
+    const citations = remixParentIds.length > 0
+      ? gdRegisterParentCitations(db, { parentIds: remixParentIds, parentRows, childId: dtuId, userId })
+      : [];
+    const citation = citations.length > 0 ? citations[0] : null;
 
     // ── 6. Realtime — live worlds pick up the new building immediately ──
     try {
@@ -1965,7 +2033,130 @@ export default function registerGameDesignActions(registerLensAction) {
       });
     } catch { /* realtime best-effort */ }
 
-    return { ok: true, dtuId, buildingId, spawned: true, citation };
+    return { ok: true, dtuId, buildingId, spawned: true, citation, citations };
+  });
+
+  // ─── Asset Studio Increment 5 — game-design.asset-fuse ───────────────
+  // The composition/remix flywheel's fusion primitive: mint a NEW
+  // creator-attributed blueprint DTU whose lineage lists 2+ existing
+  // assets as parents, and register a real royalty citation to each valid
+  // non-self parent (reusing the exact building-publish helper path
+  // above). This creates royalty LINEAGE only — it never moves money;
+  // payout happens on a later SALE via the existing royalty-cascade
+  // distributeRoyalties() bridge. Spawning a live world_buildings row is
+  // OPTIONAL and only happens when the caller supplies everything a real
+  // spawn needs (archetype + valid dimensions + worldId + position) — the
+  // same fields building-publish requires. Partial info never fabricates a
+  // spawn; it still honestly mints the fused DTU + lineage.
+  registerLensAction("game-design", "asset-fuse", (ctx, _a, params = {}) => {
+    const db = gdBuildingDb(ctx);
+    if (!db) return { ok: false, error: "db_unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || null;
+    if (!userId || userId === "anon") return { ok: false, error: "auth_required" };
+
+    // ── 1. Validate parents — 2+ distinct, all genuinely existing ───────
+    const rawParents = Array.isArray(params.parentDtuIds) ? params.parentDtuIds : [];
+    const parentDtuIds = gdNormalizeParentIds(null, rawParents);
+    if (parentDtuIds.length < 2) {
+      return { ok: false, error: "insufficient_parents", provided: parentDtuIds.length };
+    }
+    const lookup = gdLookupParentRows(db, parentDtuIds);
+    if (lookup.missingId) return { ok: false, error: "parent_not_found", parentId: lookup.missingId };
+    const parentRows = lookup.rows;
+
+    // ── 2. Validate the optional fields ──────────────────────────────────
+    const name = gdClean(params.name, 160) || "Untitled Fusion";
+    const archetype = params.archetype == null || params.archetype === "" ? null : String(params.archetype);
+    if (archetype != null && !GD_BUILDING_ARCHETYPES.includes(archetype)) {
+      return { ok: false, error: "invalid_archetype" };
+    }
+    const feature = params.feature == null || params.feature === "" ? null : String(params.feature);
+    if (feature != null && !GD_BUILDING_FEATURES.includes(feature)) {
+      return { ok: false, error: "invalid_feature" };
+    }
+    const dims = params.dimensions && typeof params.dimensions === "object" ? params.dimensions : {};
+    const width = gdFiniteNum(dims.width);
+    const height = gdFiniteNum(dims.height);
+    const depth = gdFiniteNum(dims.depth);
+    const hasDims = width != null && height != null && depth != null && width > 0 && height > 0 && depth > 0;
+    const worldId = params.worldId ? String(params.worldId) : "";
+    const position = params.position && typeof params.position === "object" ? params.position : {};
+    const posX = gdFiniteNum(position.x);
+    const posY = gdFiniteNum(position.y);
+    const posZ = gdFiniteNum(position.z);
+    const hasPosition = posX != null && posY != null && posZ != null;
+    const rotationY = gdFiniteNum(params.rotationY) ?? 0;
+
+    // Only spawn a live building when the caller supplied everything
+    // spawning genuinely needs — never a fabricated placement.
+    const wantsSpawn = archetype != null && hasDims && !!worldId && hasPosition;
+
+    if (wantsSpawn) {
+      const halfX = Math.abs(width) / 2;
+      const halfZ = Math.abs(depth) / 2;
+      const PAD = 6;
+      const overlap = db.prepare(`
+        SELECT id FROM world_buildings
+        WHERE world_id = ?
+          AND ABS(x - ?) < ?
+          AND ABS(z - ?) < ?
+        LIMIT 1
+      `).get(worldId, posX, halfX + PAD, posZ, halfZ + PAD);
+      if (overlap) return { ok: false, error: "overlap", existingId: overlap.id };
+    }
+
+    // ── 3. Mint the fused blueprint DTU ──────────────────────────────────
+    const dtuId = gdId("dtu");
+    const now = gdNow();
+    const body = {
+      title: name,
+      meta: {
+        type: "blueprint",
+        kind: "fusion",
+        archetype,
+        feature,
+        dimensions: hasDims ? { x: width, z: depth, height } : null,
+      },
+      lineage: { parents: parentDtuIds },
+      human: { summary: `${name} — a fused asset composed from ${parentDtuIds.length} source assets.` },
+    };
+    db.prepare(`
+      INSERT INTO dtus (id, owner_user_id, title, body_json, tags_json, visibility, tier, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 'public', 'regular', ?, ?)
+    `).run(
+      dtuId, userId, name, JSON.stringify(body),
+      JSON.stringify(["fusion", "blueprint", ...(archetype ? [archetype] : [])]),
+      now, now,
+    );
+
+    // ── 4. Optionally spawn a live world_buildings row ────────────────────
+    let buildingId = null;
+    if (wantsSpawn) {
+      buildingId = gdId("wb");
+      db.prepare(`
+        INSERT INTO world_buildings
+          (id, world_id, building_type, archetype, feature, name, x, y, z, rotation, rotation_y,
+           width, height, depth, blueprint_dtu_id, spawned_by_user_id, owner_type, owner_id, state, is_seed)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'player', ?, 'standing', 0)
+      `).run(
+        buildingId, worldId, archetype, archetype, feature, name,
+        posX, posY, posZ, rotationY, rotationY,
+        width, height, depth, dtuId, userId, userId,
+      );
+      try {
+        const REALTIME = globalThis._concordREALTIME;
+        REALTIME?.io?.to(`world:${worldId}`).emit("world:building-spawned", {
+          id: buildingId, worldId, blueprintDtuId: dtuId,
+          position: { x: posX, y: posY, z: posZ }, rotationY,
+          archetype, feature,
+        });
+      } catch { /* realtime best-effort */ }
+    }
+
+    // ── 5. Fuse → real royalty citations, one per valid non-self parent ──
+    const citations = gdRegisterParentCitations(db, { parentIds: parentDtuIds, parentRows, childId: dtuId, userId });
+
+    return { ok: true, dtuId, buildingId, spawned: wantsSpawn, parents: parentDtuIds, citations };
   });
 
   registerLensAction("game-design", "building-list-mine", (ctx, _a, _params = {}) => {
