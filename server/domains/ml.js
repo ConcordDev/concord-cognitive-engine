@@ -1,5 +1,6 @@
 // server/domains/ml.js
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { buildFeatureMatrix, trainLogisticRegression, trainKMeans } from "../lib/ml-trainer.js";
 
 export default function registerMlActions(registerLensAction) {
   registerLensAction("ml", "modelEvaluate", (ctx, artifact, _params) => {
@@ -297,6 +298,106 @@ export default function registerMlActions(registerLensAction) {
     exp.metrics.push(point);
     saveMl();
     return { ok: true, result: { experiment: exp, logged: point } };
+  });
+
+  // ─── Real training run — small in-process CPU trainer ─────────────────
+  // Genuine gradient descent / Lloyd's algorithm over the caller's own
+  // numeric rows. NOT GPU-backed, NOT deep learning, NOT a hub model — a
+  // deterministic, seeded, small-scale CPU trainer (thousands of rows, not
+  // millions; see `server/lib/ml-trainer.js` for the honesty invariants).
+  // Reuses `experiment-log`'s exact metric-point shape
+  // (`{epoch,trainLoss,valLoss,accuracy,learningRate}`) so the REAL loss
+  // curve this produces renders through the same `ExperimentTracker` chart
+  // that already reads `exp.metrics` — no frontend change needed.
+  registerLensAction("ml", "experiment-train", (ctx, artifact, params = {}) => {
+    const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
+    const userId = mlActor(ctx);
+    const data = artifact?.data?.dataset || artifact?.data?.rows || params.dataset || params.rows || [];
+    if (!Array.isArray(data) || data.length === 0) {
+      return { ok: true, result: { message: "Provide dataset rows to train on (dataset/rows array).", trained: false } };
+    }
+    const algorithm = mlClean(params.algorithm || "logistic-regression", 40).toLowerCase() === "kmeans" ? "kmeans" : "logistic-regression";
+    const targetField = algorithm === "kmeans" ? null : mlClean(params.targetField || params.target, 120);
+    if (algorithm === "logistic-regression" && !targetField) {
+      return { ok: false, error: "targetField required for algorithm=logistic-regression" };
+    }
+    const seed = Number.isFinite(Number(params.seed)) ? Math.floor(Number(params.seed)) : 42;
+    const epochs = Math.max(1, Math.round(mlNum(params.epochs, algorithm === "kmeans" ? 25 : 200)));
+    const learningRate = Math.min(2, Math.max(1e-5, mlNum(params.learningRate, 0.1)));
+    const valFraction = Math.min(0.5, Math.max(0.1, mlNum(params.valFraction, 0.2)));
+
+    const { featureNames, X, yRaw, rows, droppedRows, totalRows, truncatedFrom } = buildFeatureMatrix(data, targetField);
+    if (featureNames.length === 0) {
+      return { ok: true, result: { trained: false, message: "No usable numeric feature columns found — nothing to train on.", totalRows, droppedRows } };
+    }
+
+    const trainResult = algorithm === "kmeans"
+      ? trainKMeans({ X, featureNames, k: Math.min(20, Math.max(2, Math.round(mlNum(params.k, 3)))), epochs, seed, valFraction })
+      : trainLogisticRegression({ X, y: yRaw, featureNames, epochs, learningRate, seed, valFraction });
+
+    if (!trainResult.ok) {
+      // Honest failure — never a fabricated model. Same envelope shape as
+      // the other ml.js calculators' "not enough data" replies (ok:true +
+      // a message, since this is a valid answer, not a server error).
+      return { ok: true, result: { trained: false, reason: trainResult.reason, message: trainResult.message, rows, droppedRows, totalRows, truncatedFrom, algorithm } };
+    }
+
+    // Log the REAL per-epoch curve through the same experiment record shape
+    // experiment-start/-log/-finish use, so it's indistinguishable in the UI
+    // from a manually-logged external run except for the `local-trained` tag.
+    const expId = mlClean(params.experimentId || params.id, 80);
+    const list = mlList(m.experiments, userId);
+    let exp = expId ? list.find((e) => e.id === expId) : null;
+    if (!exp) {
+      exp = {
+        id: mlId("exp"),
+        name: mlClean(params.name, 160) || `${algorithm} — ${targetField || "clusters"}`,
+        modelId: mlClean(params.modelId, 200) || `local:${algorithm}`,
+        datasetId: mlClean(params.datasetId, 200),
+        status: "running",
+        hyperparams: { learningRate, batchSize: rows, epochs: trainResult.epochs || trainResult.iterations, optimizer: algorithm === "kmeans" ? "lloyd" : "batch-gradient-descent" },
+        metrics: [],
+        tags: ["local-trained", algorithm],
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+      };
+      list.unshift(exp);
+    }
+    for (const h of trainResult.history) {
+      exp.metrics.push({
+        epoch: h.epoch,
+        trainLoss: h.trainLoss,
+        valLoss: h.valLoss,
+        accuracy: h.trainAccuracy != null ? h.trainAccuracy : 0,
+        learningRate,
+      });
+    }
+    exp.status = "completed";
+    exp.completedAt = new Date().toISOString();
+    saveMl();
+
+    const algoResult = algorithm === "kmeans"
+      ? { k: trainResult.k, centroids: trainResult.centroids, clusterSizes: trainResult.clusterSizes, finalTrainInertia: trainResult.finalTrainInertia, finalValInertia: trainResult.finalValInertia, iterations: trainResult.iterations }
+      : { weights: trainResult.weights, bias: trainResult.bias, classes: trainResult.classes, finalTrainAccuracy: trainResult.finalTrainAccuracy, finalValAccuracy: trainResult.finalValAccuracy, finalTrainLoss: trainResult.finalTrainLoss, finalValLoss: trainResult.finalValLoss };
+
+    return {
+      ok: true,
+      result: {
+        trained: true,
+        scale: "small in-process CPU training — deterministic gradient descent on your own rows (thousands of rows, not millions; no GPU, no deep learning, no hub model)",
+        algorithm,
+        seed,
+        featureNames,
+        rows,
+        droppedRows,
+        totalRows,
+        truncatedFrom,
+        trainRows: trainResult.trainRows,
+        valRows: trainResult.valRows,
+        ...algoResult,
+        experiment: exp,
+      },
+    };
   });
 
   registerLensAction("ml", "experiment-finish", (ctx, _a, params = {}) => {
