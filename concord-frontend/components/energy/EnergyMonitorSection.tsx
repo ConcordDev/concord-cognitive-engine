@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Zap, Activity, Plug, Sun, Receipt, Loader2, Radio, PieChart, Clock, BellRing } from 'lucide-react';
+import { Zap, Activity, Plug, Sun, Receipt, Loader2, Radio, PieChart, Clock, BellRing, Timer } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { EnergyUsagePanel } from './EnergyUsagePanel';
@@ -16,13 +16,14 @@ import { EnergyBillingPanel } from './EnergyBillingPanel';
 import { EnergyLivePanel } from './EnergyLivePanel';
 import { EnergyDisaggregationPanel } from './EnergyDisaggregationPanel';
 import { EnergyTouPanel } from './EnergyTouPanel';
+import { EnergyCheapestWindowPanel } from './EnergyCheapestWindowPanel';
 import { EnergyInsightsPanel } from './EnergyInsightsPanel';
 
 interface Dash {
   devices: number; monthKwh: number; monthCost: number; solarKwh: number;
   solarOffsetPct: number; ratePerKwh: number; goals: number;
 }
-type TabId = 'live' | 'usage' | 'devices' | 'perdevice' | 'solar' | 'tou' | 'billing' | 'insights';
+type TabId = 'live' | 'usage' | 'devices' | 'perdevice' | 'solar' | 'tou' | 'advisor' | 'billing' | 'insights';
 const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
   { id: 'live', label: 'Live', icon: Radio },
   { id: 'usage', label: 'Usage', icon: Activity },
@@ -30,6 +31,7 @@ const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
   { id: 'perdevice', label: 'Per-device', icon: PieChart },
   { id: 'solar', label: 'Solar', icon: Sun },
   { id: 'tou', label: 'Time-of-use', icon: Clock },
+  { id: 'advisor', label: 'Cheapest window', icon: Timer },
   { id: 'billing', label: 'Billing', icon: Receipt },
   { id: 'insights', label: 'Insights', icon: BellRing },
 ];
@@ -89,6 +91,7 @@ export function EnergyMonitorSection() {
         {tab === 'perdevice' && <EnergyDisaggregationPanel onChange={refreshDash} />}
         {tab === 'solar' && <EnergySolarPanel onChange={refreshDash} />}
         {tab === 'tou' && <EnergyTouPanel onChange={refreshDash} />}
+        {tab === 'advisor' && <EnergyCheapestWindowPanel />}
         {tab === 'billing' && <EnergyBillingPanel onChange={refreshDash} />}
         {tab === 'insights' && <EnergyInsightsPanel onChange={refreshDash} />}
       </div>

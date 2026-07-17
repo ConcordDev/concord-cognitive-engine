@@ -840,6 +840,177 @@ export default function registerEnergyActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ── Cheapest-window advisor ─────────────────────────────────────────
+  // "When should I run this?" — given a shiftable load (kWh over a
+  // contiguous duration) and a REAL time-of-day rate signal, finds the
+  // cheapest contiguous window in the 24h day to run it. Deterministic
+  // math over real inputs only:
+  //   1. an explicit `hourlyRates` array (24 numbers, $/kWh) the caller
+  //      supplies directly, OR
+  //   2. an inline TOU schedule passed in this same call
+  //      (peakRate/offPeakRate/[shoulderRate]/peak[/shoulder]Start/EndHour
+  //      — the same shape `tou-set` persists), OR
+  //   3. the user's already-saved TOU plan (`tou-set`/`tou-get`).
+  // A flat/EIA average rate alone (no time-of-day variation) can never
+  // produce a "cheapest window" — there is nothing to optimize against —
+  // so that case returns an HONEST no-data state, never a fabricated
+  // recommendation. This macro is advisory-only: it computes cost math,
+  // it does not (and cannot) switch any real device. Live hardware
+  // control (a CT-clamp / smart-plug that actually runs the load in the
+  // recommended window) needs real device hardware talking to a
+  // home-automation integration and is intentionally NOT built here —
+  // deferred/external, out of scope for this advisor.
+  function buildHourlyRatesFromTouPlan(plan) {
+    const inPeak = (h) => h >= plan.peakStartHour && h < plan.peakEndHour;
+    const inShoulder = (h) =>
+      plan.shoulderRate != null && plan.shoulderStartHour != null && plan.shoulderEndHour != null &&
+      h >= plan.shoulderStartHour && h < plan.shoulderEndHour;
+    const rates = new Array(24);
+    for (let h = 0; h < 24; h++) {
+      rates[h] = inPeak(h) ? plan.peakRate : inShoulder(h) ? plan.shoulderRate : plan.offPeakRate;
+    }
+    return rates;
+  }
+  // Builds an ephemeral (non-persisted) TOU plan from inline params —
+  // same validation shape as `tou-set` — for a one-off advisor call
+  // that doesn't require a prior `tou-set`.
+  function buildTouPlanFromParams(params) {
+    const peakRate = enNum(params.peakRate);
+    const offPeakRate = enNum(params.offPeakRate);
+    if (!(peakRate > 0) || !(offPeakRate > 0)) return null;
+    const shoulderRate = enNum(params.shoulderRate, 0);
+    let peakStart = Math.round(enNum(params.peakStartHour, 16));
+    let peakEnd = Math.round(enNum(params.peakEndHour, 21));
+    peakStart = Math.max(0, Math.min(23, peakStart));
+    peakEnd = Math.max(0, Math.min(24, peakEnd));
+    if (peakEnd <= peakStart) return null;
+    return {
+      peakRate: Math.round(peakRate * 10000) / 10000,
+      offPeakRate: Math.round(offPeakRate * 10000) / 10000,
+      shoulderRate: shoulderRate > 0 ? Math.round(shoulderRate * 10000) / 10000 : null,
+      peakStartHour: peakStart,
+      peakEndHour: peakEnd,
+      shoulderStartHour: params.shoulderStartHour != null
+        ? Math.max(0, Math.min(23, Math.round(enNum(params.shoulderStartHour)))) : null,
+      shoulderEndHour: params.shoulderEndHour != null
+        ? Math.max(0, Math.min(24, Math.round(enNum(params.shoulderEndHour)))) : null,
+    };
+  }
+  registerLensAction("energy", "cheapest-window", (ctx, _a, params = {}) => {
+  try {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureLiveState(s);
+    const userId = enAid(ctx);
+    const kWh = enNum(params.kWh ?? params.kwh);
+    if (!(kWh > 0)) return { ok: false, error: "kWh must be > 0" };
+    const durationHours = Math.round(enNum(params.durationHours, 0));
+    if (!(durationHours >= 1 && durationHours <= 24)) {
+      return { ok: false, error: "durationHours must be an integer between 1 and 24" };
+    }
+
+    let hourlyRates = null;
+    let source = null;
+
+    if (params.hourlyRates != null) {
+      const arr = params.hourlyRates;
+      const valid = Array.isArray(arr) && arr.length === 24 &&
+        arr.every((v) => Number.isFinite(Number(v)) && Number(v) >= 0);
+      if (!valid) {
+        return { ok: false, error: "hourlyRates must be an array of 24 non-negative numbers ($/kWh), one per hour of day (0-23)" };
+      }
+      hourlyRates = arr.map((v) => Number(v));
+      source = "explicit-hourly-rates";
+    } else if (params.peakRate != null || params.offPeakRate != null) {
+      const plan = buildTouPlanFromParams(params);
+      if (!plan) {
+        return { ok: false, error: "peakRate and offPeakRate must both be > 0, and peakEndHour must be after peakStartHour" };
+      }
+      hourlyRates = buildHourlyRatesFromTouPlan(plan);
+      source = "tou-schedule-param";
+    } else {
+      const stored = s.touPlans.get(userId);
+      if (stored) {
+        hourlyRates = buildHourlyRatesFromTouPlan(stored);
+        source = "tou-schedule-stored";
+      }
+    }
+
+    if (!hourlyRates) {
+      // Honest no-data state — never fabricate a recommendation. A flat
+      // rate (even a real EIA-sourced one) has no time-of-day variation,
+      // so it cannot produce a cheapest window; say so explicitly.
+      const refRate = params.referenceRatePerKwh != null
+        ? enNum(params.referenceRatePerKwh)
+        : (s.rates.get(userId)?.ratePerKwh || null);
+      return {
+        ok: true,
+        result: {
+          hasData: false,
+          message: refRate
+            ? `No time-of-use schedule found. Your on-file rate is $${refRate}/kWh, but it doesn't vary by time of day, so there is no cheapest window to compute. Enter your utility's peak/off-peak schedule (tou-set) or an hourlyRates array to get a real recommendation.`
+            : "No rate data available. Enter your utility's time-of-use schedule (tou-set / peakRate+offPeakRate) or an hourlyRates array to compute the cheapest window.",
+        },
+      };
+    }
+
+    // Spread the load's kWh evenly across durationHours, sum the
+    // real per-hour rate × per-hour kWh for every possible (wrapping)
+    // contiguous start hour, then pick the min/max. Pure deterministic
+    // math over the rate inputs resolved above — no randomness.
+    const kwhPerHour = kWh / durationHours;
+    const windows = [];
+    for (let start = 0; start < 24; start++) {
+      const hours = [];
+      let cost = 0;
+      for (let i = 0; i < durationHours; i++) {
+        const h = (start + i) % 24;
+        hours.push(h);
+        cost += kwhPerHour * hourlyRates[h];
+      }
+      windows.push({
+        startHour: start,
+        endHour: (start + durationHours) % 24,
+        hours,
+        cost: Math.round(cost * 10000) / 10000,
+      });
+    }
+    let cheapest = windows[0];
+    let worst = windows[0];
+    for (const w of windows) {
+      if (w.cost < cheapest.cost) cheapest = w;
+      if (w.cost > worst.cost) worst = w;
+    }
+    const currentHour = new Date().getHours();
+    const currentWindow = windows.find((w) => w.startHour === currentHour) || null;
+    const savingsVsWorst = Math.round((worst.cost - cheapest.cost) * 100) / 100;
+    const savingsPctVsWorst = worst.cost > 0 ? Math.round((savingsVsWorst / worst.cost) * 1000) / 10 : 0;
+    const savingsVsRunningNow = currentWindow ? Math.round((currentWindow.cost - cheapest.cost) * 100) / 100 : null;
+
+    return {
+      ok: true,
+      result: {
+        hasData: true,
+        source,
+        kWh: Math.round(kWh * 1000) / 1000,
+        durationHours,
+        kwhPerHour: Math.round(kwhPerHour * 1000) / 1000,
+        hourlyRates: hourlyRates.map((r) => Math.round(r * 10000) / 10000),
+        cheapestWindow: cheapest,
+        worstWindow: worst,
+        currentWindow,
+        savingsVsWorst,
+        savingsPctVsWorst,
+        savingsVsRunningNow,
+        allWindows: windows,
+        // Advisory-only, by design: no hardware control. Actually running
+        // the load in this window needs a real smart-plug/CT-clamp
+        // integration — genuinely external, not built here.
+        hardwareControl: { available: false, reason: "requires real smart-plug / CT-clamp hardware — advisory only" },
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ── Solar self-consumption vs export ────────────────────────────────
   // Splits solar production into the share consumed on-site versus
   // exported to the grid, and values the resulting savings vs export
