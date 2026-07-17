@@ -2,6 +2,11 @@
 // Domain actions for operations command center: situation reporting,
 // incident correlation, and escalation engine.
 
+import {
+  createOrganization, getOrganization, joinOrganization, leaveOrganization,
+  setMemberRole, getOrgMembers, getOrgsForUser,
+} from "../lib/world-organizations.js";
+
 export default function registerCommandCenterActions(registerLensAction) {
   /**
    * situationReport
@@ -418,15 +423,24 @@ export default function registerCommandCenterActions(registerLensAction) {
 
   const MAX_SERIES_POINTS = 4320; // ~3 days at 1-min cadence
 
+  // WAVE4 (command-center): state below defaults to PER-OPERATOR, keyed by
+  // userId — unchanged from before. When a macro is called with a real
+  // params.orgId, ccScope() (further down) resolves a SHARED key of the
+  // shape `org:${orgId}` instead, so an ops team's incidents/alerts/vitals/
+  // dashboards/runbooks live in the SAME Maps under a team-namespaced key
+  // rather than a second parallel state tree. `onCall` has no per-operator
+  // equivalent — an on-call rotation is inherently a team concept — so it
+  // is keyed directly by orgId.
   function ccState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
     if (!STATE.commandCenterLens) {
       STATE.commandCenterLens = {
-        series: new Map(),     // userId -> Map(metric -> [{ t, v }])
-        rules: new Map(),      // userId -> Map(ruleId -> rule)
-        dashboards: new Map(), // userId -> Map(dashboardId -> dashboard)
-        incidents: new Map(),  // userId -> Map(incidentId -> incident)
-        runbooks: new Map(),   // userId -> Map(runbookId -> runbook)
+        series: new Map(),     // (userId | `org:${orgId}`) -> Map(metric -> [{ t, v }])
+        rules: new Map(),      // (userId | `org:${orgId}`) -> Map(ruleId -> rule)
+        dashboards: new Map(), // (userId | `org:${orgId}`) -> Map(dashboardId -> dashboard)
+        incidents: new Map(),  // (userId | `org:${orgId}`) -> Map(incidentId -> incident)
+        runbooks: new Map(),   // (userId | `org:${orgId}`) -> Map(runbookId -> runbook)
+        onCall: new Map(),     // orgId -> on-call rotation schedule (team-only, no personal analog)
       };
     }
     return STATE.commandCenterLens;
@@ -436,9 +450,12 @@ export default function registerCommandCenterActions(registerLensAction) {
     return (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "anon";
   }
 
-  function userMap(bucket, ctx) {
+  // keyOverride lets an org-scoped macro read/write the shared `org:${orgId}`
+  // slot instead of the caller's personal slot. Every existing call site
+  // that omits the third argument is byte-identical to before.
+  function userMap(bucket, ctx, keyOverride) {
     const st = ccState();
-    const id = uid(ctx);
+    const id = keyOverride || uid(ctx);
     if (!st[bucket].has(id)) st[bucket].set(id, new Map());
     return st[bucket].get(id);
   }
@@ -456,6 +473,58 @@ export default function registerCommandCenterActions(registerLensAction) {
   }
 
   // ---------------------------------------------------------------------------
+  // Team scope (WAVE4) — reuses the existing org/roster substrate
+  // (server/lib/world-organizations.js) the same additive way the
+  // lab/supplychain Wave-3 units did: a "team" IS an org. Not restricted to
+  // a single org type (mirrors supplychain.js's design, not lab.js's
+  // type-locked one) — a caller's existing department/firm/crew org can
+  // double as their ops team, or they can mint a fresh one via teamCreate.
+  //
+  // ccScope(ctx, params, writeTiers) resolves the storage key + tier for a
+  // call:
+  //   - no params.orgId  -> legacy per-operator scope, unchanged, tier:null.
+  //   - params.orgId set -> verifies REAL membership via getOrgMembers,
+  //     derives a CC tier from the org role, and (when writeTiers is given)
+  //     rejects tiers not in that list. Honest failures only, never throws:
+  //     org_not_found / not_a_member / insufficient_role.
+  const CC_TIER_BY_ORG_ROLE = Object.freeze({ leader: "lead", officer: "lead", member: "responder", apprentice: "observer" });
+  const CC_ORG_ROLE_BY_TIER = Object.freeze({ lead: "officer", responder: "member", observer: "apprentice" });
+  const WRITE_LEAD = ["lead"];
+  const WRITE_RESPONDER_OR_LEAD = ["lead", "responder"];
+
+  function ccScope(ctx, params, writeTiers) {
+    const userId = uid(ctx);
+    const orgId = params && params.orgId ? String(params.orgId).trim().slice(0, 100) : null;
+    if (!orgId) return { ok: true, key: userId, scope: "user", tier: null, userId, orgId: null };
+    const org = getOrganization(orgId);
+    if (!org) return { ok: false, error: "org_not_found" };
+    const members = getOrgMembers(orgId);
+    const membership = members.find((m) => m.userId === userId);
+    if (!membership) return { ok: false, error: "not_a_member" };
+    const tier = CC_TIER_BY_ORG_ROLE[membership.role] || "observer";
+    if (writeTiers && !writeTiers.includes(tier)) return { ok: false, error: "insufficient_role" };
+    return { ok: true, key: `org:${orgId}`, scope: "org", tier, orgRole: membership.role, userId, orgId };
+  }
+
+  // Best-effort fan-out to every socket subscribed to `org:${orgId}` (see
+  // server.js's `subscribe` handler + realtimeEmit's orgId branch). Only
+  // called when a macro was actually invoked with a real orgId — the
+  // per-operator path never touches this. This is the REAL close for
+  // "shared incident visibility": the whole team sees the update live.
+  // Real SMS/phone paging (Twilio etc.) is intentionally NOT implemented
+  // here — that requires an external provider + account credentials this
+  // codebase does not have. This function only ever fans out an in-Concord
+  // realtime event to members already viewing the lens; it never claims an
+  // SMS/phone page was sent.
+  function emitOrgRealtime(event, payload, orgId) {
+    if (!orgId) return;
+    try {
+      const fn = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+      if (typeof fn === "function") fn(event, payload, { orgId });
+    } catch (_e) { /* realtime is best-effort */ }
+  }
+
+  // ---------------------------------------------------------------------------
   // Feature 1 — Time-series history for every vital.
   // recordVital ingests one real point; vitalHistory reads back a windowed
   // series; vitalMetrics lists every metric the operator has ever recorded.
@@ -463,18 +532,20 @@ export default function registerCommandCenterActions(registerLensAction) {
 
   registerLensAction("command-center", "recordVital", (ctx, _artifact, params = {}) => {
   try {
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
     const metric = String(params.metric || "").trim();
     if (!metric) return { ok: false, error: "metric_required" };
     const value = Number(params.value);
     if (!Number.isFinite(value)) return { ok: false, error: "numeric_value_required" };
-    const series = userMap("series", ctx);
+    const series = userMap("series", ctx, scope.key);
     if (!series.has(metric)) series.set(metric, []);
     const buf = series.get(metric);
     const t = params.t ? new Date(params.t).getTime() : Date.now();
     buf.push({ t, v: value });
     if (buf.length > MAX_SERIES_POINTS) buf.splice(0, buf.length - MAX_SERIES_POINTS);
     // Auto-evaluate alert rules bound to this metric.
-    const rules = userMap("rules", ctx);
+    const rules = userMap("rules", ctx, scope.key);
     const fired = [];
     for (const rule of rules.values()) {
       if (rule.metric !== metric || rule.muted) continue;
@@ -493,11 +564,16 @@ export default function registerCommandCenterActions(registerLensAction) {
         rule.fireCount = (rule.fireCount || 0) + 1;
         rule.acknowledged = false;
         fired.push({ ruleId: rule.id, name: rule.name, severity: rule.severity });
+        if (scope.scope === "org") {
+          emitOrgRealtime("command-center:alert-fired", {
+            orgId: scope.orgId, ruleId: rule.id, name: rule.name, severity: rule.severity, metric, value,
+          }, scope.orgId);
+        }
       }
     }
     return {
       ok: true,
-      result: { metric, value, t, pointCount: buf.length, rulesFired: fired },
+      result: { metric, value, t, pointCount: buf.length, rulesFired: fired, scope: scope.scope },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -505,9 +581,9 @@ export default function registerCommandCenterActions(registerLensAction) {
   // Shared vital-series resolver — both the standalone `vitalHistory` macro
   // and `dashboardData`'s per-widget resolution call this so there is one
   // real implementation of "windowed points + stats for a metric", not two.
-  function computeVitalHistory(ctx, params = {}) {
+  function computeVitalHistory(ctx, params = {}, key) {
     const metric = String(params.metric || "").trim();
-    const series = userMap("series", ctx);
+    const series = userMap("series", ctx, key);
     if (!metric || !series.has(metric)) {
       return { metric, points: [], count: 0, message: "no data yet" };
     }
@@ -532,11 +608,15 @@ export default function registerCommandCenterActions(registerLensAction) {
   }
 
   registerLensAction("command-center", "vitalHistory", (ctx, _artifact, params = {}) => {
-    return { ok: true, result: computeVitalHistory(ctx, params) };
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
+    return { ok: true, result: computeVitalHistory(ctx, params, scope.key) };
   });
 
-  registerLensAction("command-center", "vitalMetrics", (ctx, _artifact, _params = {}) => {
-    const series = userMap("series", ctx);
+  registerLensAction("command-center", "vitalMetrics", (ctx, _artifact, params = {}) => {
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
+    const series = userMap("series", ctx, scope.key);
     const metrics = [...series.entries()].map(([metric, buf]) => ({
       metric,
       pointCount: buf.length,
@@ -551,13 +631,15 @@ export default function registerCommandCenterActions(registerLensAction) {
   // ---------------------------------------------------------------------------
 
   registerLensAction("command-center", "createAlertRule", (ctx, _artifact, params = {}) => {
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
     const metric = String(params.metric || "").trim();
     const name = String(params.name || "").trim();
     if (!metric || !name) return { ok: false, error: "name_and_metric_required" };
     const comparator = ["gt", "lt", "gte", "lte", "eq"].includes(params.comparator) ? params.comparator : "gt";
     const threshold = Number(params.threshold);
     if (!Number.isFinite(threshold)) return { ok: false, error: "numeric_threshold_required" };
-    const rules = userMap("rules", ctx);
+    const rules = userMap("rules", ctx, scope.key);
     const rule = {
       id: rid("rule"),
       name,
@@ -579,8 +661,10 @@ export default function registerCommandCenterActions(registerLensAction) {
     return { ok: true, result: { rule } };
   });
 
-  registerLensAction("command-center", "listAlertRules", (ctx, _artifact, _params = {}) => {
-    const rules = [...userMap("rules", ctx).values()];
+  registerLensAction("command-center", "listAlertRules", (ctx, _artifact, params = {}) => {
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
+    const rules = [...userMap("rules", ctx, scope.key).values()];
     const breaching = rules.filter((r) => r.state === "breaching");
     return {
       ok: true,
@@ -594,7 +678,9 @@ export default function registerCommandCenterActions(registerLensAction) {
   });
 
   registerLensAction("command-center", "acknowledgeAlert", (ctx, _artifact, params = {}) => {
-    const rules = userMap("rules", ctx);
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
+    const rules = userMap("rules", ctx, scope.key);
     const rule = rules.get(params.ruleId);
     if (!rule) return { ok: false, error: "rule_not_found" };
     rule.acknowledged = true;
@@ -605,7 +691,9 @@ export default function registerCommandCenterActions(registerLensAction) {
   });
 
   registerLensAction("command-center", "muteAlertRule", (ctx, _artifact, params = {}) => {
-    const rules = userMap("rules", ctx);
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
+    const rules = userMap("rules", ctx, scope.key);
     const rule = rules.get(params.ruleId);
     if (!rule) return { ok: false, error: "rule_not_found" };
     rule.muted = params.muted !== false;
@@ -614,7 +702,9 @@ export default function registerCommandCenterActions(registerLensAction) {
   });
 
   registerLensAction("command-center", "deleteAlertRule", (ctx, _artifact, params = {}) => {
-    const rules = userMap("rules", ctx);
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
+    const rules = userMap("rules", ctx, scope.key);
     if (!rules.has(params.ruleId)) return { ok: false, error: "rule_not_found" };
     rules.delete(params.ruleId);
     return { ok: true, result: { deleted: params.ruleId, remaining: rules.size } };
@@ -625,10 +715,12 @@ export default function registerCommandCenterActions(registerLensAction) {
   // ---------------------------------------------------------------------------
 
   registerLensAction("command-center", "saveDashboard", (ctx, _artifact, params = {}) => {
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name_required" };
     const widgets = Array.isArray(params.widgets) ? params.widgets : [];
-    const dashboards = userMap("dashboards", ctx);
+    const dashboards = userMap("dashboards", ctx, scope.key);
     let dash;
     if (params.dashboardId && dashboards.has(params.dashboardId)) {
       dash = dashboards.get(params.dashboardId);
@@ -648,14 +740,18 @@ export default function registerCommandCenterActions(registerLensAction) {
     return { ok: true, result: { dashboard: dash } };
   });
 
-  registerLensAction("command-center", "listDashboards", (ctx, _artifact, _params = {}) => {
-    const dashboards = [...userMap("dashboards", ctx).values()]
+  registerLensAction("command-center", "listDashboards", (ctx, _artifact, params = {}) => {
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
+    const dashboards = [...userMap("dashboards", ctx, scope.key).values()]
       .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
     return { ok: true, result: { dashboards, count: dashboards.length } };
   });
 
   registerLensAction("command-center", "deleteDashboard", (ctx, _artifact, params = {}) => {
-    const dashboards = userMap("dashboards", ctx);
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
+    const dashboards = userMap("dashboards", ctx, scope.key);
     if (!dashboards.has(params.dashboardId)) return { ok: false, error: "dashboard_not_found" };
     dashboards.delete(params.dashboardId);
     return { ok: true, result: { deleted: params.dashboardId, remaining: dashboards.size } };
@@ -669,18 +765,18 @@ export default function registerCommandCenterActions(registerLensAction) {
   //     computeVitalHistory logic vitalHistory uses; (2) an alert rule
   //     matched by id or name. Anything else is honestly unresolvable —
   //     never fabricate a graph for it.
-  function resolveWidgetData(ctx, widget) {
+  function resolveWidgetData(ctx, widget, key) {
     const type = (widget && widget.type) || "panel";
     const id = String((widget && widget.id) || "").trim();
     if (!id) return { id: null, type, data: null, error: "widget_missing_id" };
 
-    const series = userMap("series", ctx);
+    const series = userMap("series", ctx, key);
     if (series.has(id)) {
-      const history = computeVitalHistory(ctx, { metric: id, windowMinutes: 1440, maxPoints: 240 });
+      const history = computeVitalHistory(ctx, { metric: id, windowMinutes: 1440, maxPoints: 240 }, key);
       return { id, type, kind: "vital", data: history };
     }
 
-    const rules = userMap("rules", ctx);
+    const rules = userMap("rules", ctx, key);
     const rule = rules.get(id) || [...rules.values()].find((r) => r.name === id);
     if (rule) {
       return {
@@ -716,13 +812,15 @@ export default function registerCommandCenterActions(registerLensAction) {
    */
   registerLensAction("command-center", "dashboardData", (ctx, _artifact, params = {}) => {
   try {
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
     const dashboardId = String(params.dashboardId || "").trim();
     if (!dashboardId) return { ok: false, error: "dashboardId_required" };
-    const dashboards = userMap("dashboards", ctx);
+    const dashboards = userMap("dashboards", ctx, scope.key);
     const dash = dashboards.get(dashboardId);
     if (!dash) return { ok: false, error: "dashboard_not_found" };
 
-    const widgets = (dash.widgets || []).map((w) => resolveWidgetData(ctx, w));
+    const widgets = (dash.widgets || []).map((w) => resolveWidgetData(ctx, w, scope.key));
 
     return {
       ok: true,
@@ -745,9 +843,17 @@ export default function registerCommandCenterActions(registerLensAction) {
   const INCIDENT_STATUSES = ["investigating", "identified", "monitoring", "resolved"];
 
   registerLensAction("command-center", "openIncident", (ctx, _artifact, params = {}) => {
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
     const title = String(params.title || "").trim();
     if (!title) return { ok: false, error: "title_required" };
-    const incidents = userMap("incidents", ctx);
+    const incidents = userMap("incidents", ctx, scope.key);
+    // Shared incident visibility (WAVE4): when org-scoped, stamp who was
+    // resolved as on-call at open time — a real read of the schedule below,
+    // never fabricated. No schedule set yet -> honestly null, not a guess.
+    const onCallAt = scope.scope === "org"
+      ? (resolveOnCallAt(ccState().onCall.get(scope.orgId) || null, Date.now())?.userId || null)
+      : null;
     const incident = {
       id: rid("inc"),
       title,
@@ -755,6 +861,8 @@ export default function registerCommandCenterActions(registerLensAction) {
       status: "investigating",
       openedAt: nowIso(),
       resolvedAt: null,
+      openedBy: scope.userId,
+      onCallAt,
       updates: [
         {
           id: rid("upd"),
@@ -768,11 +876,16 @@ export default function registerCommandCenterActions(registerLensAction) {
       linkedRuleId: params.linkedRuleId || null,
     };
     incidents.set(incident.id, incident);
+    if (scope.scope === "org") {
+      emitOrgRealtime("command-center:incident-opened", { orgId: scope.orgId, incident }, scope.orgId);
+    }
     return { ok: true, result: { incident } };
   });
 
   registerLensAction("command-center", "updateIncident", (ctx, _artifact, params = {}) => {
-    const incidents = userMap("incidents", ctx);
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
+    const incidents = userMap("incidents", ctx, scope.key);
     const incident = incidents.get(params.incidentId);
     if (!incident) return { ok: false, error: "incident_not_found" };
     const message = String(params.message || "").trim();
@@ -783,11 +896,16 @@ export default function registerCommandCenterActions(registerLensAction) {
     incident.status = status;
     if (status === "resolved" && !incident.resolvedAt) incident.resolvedAt = nowIso();
     if (status !== "resolved") incident.resolvedAt = null;
+    if (scope.scope === "org") {
+      emitOrgRealtime("command-center:incident-updated", { orgId: scope.orgId, incident, update }, scope.orgId);
+    }
     return { ok: true, result: { incident, update } };
   });
 
   registerLensAction("command-center", "writePostmortem", (ctx, _artifact, params = {}) => {
-    const incidents = userMap("incidents", ctx);
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
+    const incidents = userMap("incidents", ctx, scope.key);
     const incident = incidents.get(params.incidentId);
     if (!incident) return { ok: false, error: "incident_not_found" };
     const summary = String(params.summary || "").trim();
@@ -805,13 +923,15 @@ export default function registerCommandCenterActions(registerLensAction) {
   });
 
   registerLensAction("command-center", "listIncidents", (ctx, _artifact, params = {}) => {
-    let incidents = [...userMap("incidents", ctx).values()];
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
+    let incidents = [...userMap("incidents", ctx, scope.key).values()];
     if (params.status && INCIDENT_STATUSES.includes(params.status)) {
       incidents = incidents.filter((i) => i.status === params.status);
     }
     if (params.openOnly) incidents = incidents.filter((i) => i.status !== "resolved");
     incidents.sort((a, b) => (b.openedAt || "").localeCompare(a.openedAt || ""));
-    const all = [...userMap("incidents", ctx).values()];
+    const all = [...userMap("incidents", ctx, scope.key).values()];
     const resolved = all.filter((i) => i.resolvedAt);
     const mttrMs = resolved.length
       ? resolved.reduce((s, i) => s + (new Date(i.resolvedAt).getTime() - new Date(i.openedAt).getTime()), 0) / resolved.length
@@ -834,7 +954,9 @@ export default function registerCommandCenterActions(registerLensAction) {
 
   registerLensAction("command-center", "correlateVitals", (ctx, _artifact, params = {}) => {
   try {
-    const series = userMap("series", ctx);
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
+    const series = userMap("series", ctx, scope.key);
     const windowMs = clampNum(params.windowMinutes, 5, 4320, 120) * 60000;
     const cutoff = Date.now() - windowMs;
     const bucketMs = clampNum(params.bucketMinutes, 1, 60, 5) * 60000;
@@ -910,11 +1032,13 @@ export default function registerCommandCenterActions(registerLensAction) {
   // 0-100 health score and a green/amber/red verdict.
   // ---------------------------------------------------------------------------
 
-  registerLensAction("command-center", "healthRollup", (ctx, _artifact, _params = {}) => {
+  registerLensAction("command-center", "healthRollup", (ctx, _artifact, params = {}) => {
   try {
-    const series = userMap("series", ctx);
-    const rules = [...userMap("rules", ctx).values()];
-    const incidents = [...userMap("incidents", ctx).values()];
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
+    const series = userMap("series", ctx, scope.key);
+    const rules = [...userMap("rules", ctx, scope.key).values()];
+    const incidents = [...userMap("incidents", ctx, scope.key).values()];
 
     const SEV_PENALTY = { critical: 30, high: 18, medium: 9, low: 4 };
     let score = 100;
@@ -1000,6 +1124,8 @@ export default function registerCommandCenterActions(registerLensAction) {
 
   registerLensAction("command-center", "saveRunbook", (ctx, _artifact, params = {}) => {
   try {
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name_required" };
     const steps = Array.isArray(params.steps)
@@ -1011,7 +1137,7 @@ export default function registerCommandCenterActions(registerLensAction) {
           .filter((s) => s.label)
       : [];
     if (steps.length === 0) return { ok: false, error: "at_least_one_step_required" };
-    const runbooks = userMap("runbooks", ctx);
+    const runbooks = userMap("runbooks", ctx, scope.key);
     let book;
     if (params.runbookId && runbooks.has(params.runbookId)) {
       book = runbooks.get(params.runbookId);
@@ -1037,8 +1163,10 @@ export default function registerCommandCenterActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  registerLensAction("command-center", "listRunbooks", (ctx, _artifact, _params = {}) => {
-    const runbooks = [...userMap("runbooks", ctx).values()]
+  registerLensAction("command-center", "listRunbooks", (ctx, _artifact, params = {}) => {
+    const scope = ccScope(ctx, params, null);
+    if (!scope.ok) return scope;
+    const runbooks = [...userMap("runbooks", ctx, scope.key).values()]
       .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
       .map((b) => ({ ...b, executions: b.executions.slice(-5) }));
     return { ok: true, result: { runbooks, count: runbooks.length } };
@@ -1046,7 +1174,9 @@ export default function registerCommandCenterActions(registerLensAction) {
 
   registerLensAction("command-center", "runRunbook", (ctx, _artifact, params = {}) => {
   try {
-    const runbooks = userMap("runbooks", ctx);
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
+    const runbooks = userMap("runbooks", ctx, scope.key);
     const book = runbooks.get(params.runbookId);
     if (!book) return { ok: false, error: "runbook_not_found" };
     const startedAt = nowIso();
@@ -1073,7 +1203,7 @@ export default function registerCommandCenterActions(registerLensAction) {
 
     // If wired to an incident, append a remediation note to its timeline.
     if (params.incidentId) {
-      const incident = userMap("incidents", ctx).get(params.incidentId);
+      const incident = userMap("incidents", ctx, scope.key).get(params.incidentId);
       if (incident) {
         incident.updates.push({
           id: rid("upd"),
@@ -1089,9 +1219,236 @@ export default function registerCommandCenterActions(registerLensAction) {
 });
 
   registerLensAction("command-center", "deleteRunbook", (ctx, _artifact, params = {}) => {
-    const runbooks = userMap("runbooks", ctx);
+    const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
+    if (!scope.ok) return scope;
+    const runbooks = userMap("runbooks", ctx, scope.key);
     if (!runbooks.has(params.runbookId)) return { ok: false, error: "runbook_not_found" };
     runbooks.delete(params.runbookId);
     return { ok: true, result: { deleted: params.runbookId, remaining: runbooks.size } };
+  });
+
+  // ---------------------------------------------------------------------------
+  // Feature 8 — Ops team lifecycle + on-call rotation (WAVE4).
+  //
+  // A "team" is an org (server/lib/world-organizations.js), type
+  // "department" by default when minted here, but any org the caller
+  // already belongs to may be reused as their ops team (mirrors
+  // supplychain.js's design — no type lock). Every macro above this comment
+  // becomes team-shared the moment it is called with that org's id as
+  // params.orgId; nothing below is required to use the per-operator path.
+  //
+  // GATED HALF, DOCUMENTED HONESTLY: real SMS/phone paging (e.g. Twilio)
+  // needs an external provider + account credentials this codebase does not
+  // have, so it is intentionally NOT implemented. What IS real and wired:
+  // (a) a deterministic on-call resolver computed from an actual schedule
+  // against the actual wall clock (resolveOnCallAt, below — no RNG, no
+  // fabricated "who's on call"), and (b) real-time in-Concord fan-out to
+  // every team member's session via emitOrgRealtime when an incident opens/
+  // updates or an alert fires. Nothing here ever claims an SMS/phone page
+  // was sent — only that the team, and the resolved on-call operator, saw
+  // it live inside Concord.
+  // ---------------------------------------------------------------------------
+
+  const MIN_SHIFT_HOURS = 1, MAX_SHIFT_HOURS = 24 * 30; // 1 hour .. 30 days
+
+  // Pure function: given a rotation schedule and a point in wall-clock time,
+  // deterministically resolves which roster member is on call. No randomness,
+  // no fabrication — index arithmetic against schedule.startAt/shiftHours.
+  // Returns null when there's no schedule, no members, or `atMs` predates
+  // the schedule's start (honest "not yet started", never a guess).
+  function resolveOnCallAt(schedule, atMs) {
+    if (!schedule || !Array.isArray(schedule.members) || schedule.members.length === 0) return null;
+    if (!Number.isFinite(atMs) || atMs < schedule.startAt) return null;
+    const shiftMs = schedule.shiftHours * 3600000;
+    const elapsed = atMs - schedule.startAt;
+    const shiftIndex = Math.floor(elapsed / shiftMs);
+    const memberIndex = shiftIndex % schedule.members.length;
+    const shiftStartMs = schedule.startAt + shiftIndex * shiftMs;
+    return {
+      userId: schedule.members[memberIndex],
+      shiftIndex,
+      shiftStart: new Date(shiftStartMs).toISOString(),
+      shiftEnd: new Date(shiftStartMs + shiftMs).toISOString(),
+    };
+  }
+
+  // team-create — start a new ops team; caller becomes its lead.
+  registerLensAction("command-center", "teamCreate", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = uid(ctx);
+      const name = String(params.name || "").trim().slice(0, 160);
+      if (!name) return { ok: false, error: "team_name_required" };
+      const result = createOrganization({
+        name,
+        type: "department",
+        description: String(params.description || "").trim().slice(0, 2000),
+        leaderId: userId,
+        districtId: params.districtId || null,
+        purpose: String(params.purpose || "").trim().slice(0, 400) || "on-call operations",
+      });
+      if (!result.ok) return result;
+      return { ok: true, result: { team: result.organization, tier: "lead" } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // team-list-mine — every org the caller belongs to, with the derived CC
+  // tier. Not filtered to type:"department" — an existing org doubles as
+  // an ops team the moment its members start using orgId here.
+  registerLensAction("command-center", "teamListMine", (ctx, _artifact, _params = {}) => {
+    try {
+      const userId = uid(ctx);
+      const teams = getOrgsForUser(userId)
+        .map((m) => ({ membership: m, org: getOrganization(m.orgId) }))
+        .filter((x) => !!x.org)
+        .map((x) => ({
+          orgId: x.org.id,
+          name: x.org.name,
+          type: x.org.type,
+          description: x.org.description,
+          memberCount: x.org.memberCount,
+          orgRole: x.membership.role,
+          tier: CC_TIER_BY_ORG_ROLE[x.membership.role] || "observer",
+          createdAt: x.org.createdAt,
+        }));
+      return { ok: true, result: { teams, count: teams.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // team-join — self-service join. Always enters at "observer" tier
+  // (apprentice); a lead must promote via teamSetRole afterward.
+  registerLensAction("command-center", "teamJoin", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = uid(ctx);
+      const orgId = String(params.orgId || "").trim();
+      if (!orgId) return { ok: false, error: "orgId_required" };
+      if (!getOrganization(orgId)) return { ok: false, error: "org_not_found" };
+      const result = joinOrganization(orgId, userId, "apprentice");
+      if (!result.ok) return result;
+      return { ok: true, result: { orgId, orgRole: result.role, tier: "observer" } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // team-leave — the founding leader cannot leave their own org (matches
+  // the underlying org substrate's rule, reused not reimplemented).
+  registerLensAction("command-center", "teamLeave", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = uid(ctx);
+      const orgId = String(params.orgId || "").trim();
+      if (!orgId) return { ok: false, error: "orgId_required" };
+      const result = leaveOrganization(orgId, userId);
+      return result.ok ? { ok: true, result: { orgId } } : result;
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // team-members — roster with roles + derived CC tiers. Any member (incl.
+  // observer) can view; membership itself is required to view at all.
+  registerLensAction("command-center", "teamMembers", (ctx, _artifact, params = {}) => {
+    try {
+      const scope = ccScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      if (!scope.orgId) return { ok: false, error: "orgId_required" };
+      const members = getOrgMembers(scope.orgId).map((m) => ({
+        userId: m.userId, orgRole: m.role, tier: CC_TIER_BY_ORG_ROLE[m.role] || "observer",
+      }));
+      return { ok: true, result: { orgId: scope.orgId, members, count: members.length, callerTier: scope.tier } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // team-set-role — lead-only (leader/officer). Promotes/demotes a member
+  // between lead/responder/observer, mapped onto officer/member/apprentice.
+  // The founding "leader" role can only be set at team-create time.
+  registerLensAction("command-center", "teamSetRole", (ctx, _artifact, params = {}) => {
+    try {
+      const targetUserId = String(params.userId || "").trim();
+      const tier = params.tier;
+      if (!targetUserId) return { ok: false, error: "userId_required" };
+      if (!CC_ORG_ROLE_BY_TIER[tier]) return { ok: false, error: "tier_must_be_lead_responder_or_observer" };
+      const scope = ccScope(ctx, params, WRITE_LEAD);
+      if (!scope.ok) return scope;
+      const result = setMemberRole(scope.orgId, targetUserId, CC_ORG_ROLE_BY_TIER[tier], scope.userId);
+      if (!result.ok) return result;
+      return { ok: true, result: { orgId: scope.orgId, userId: targetUserId, tier, orgRole: result.role } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // onCallScheduleSet — lead-only. Defines the ordered rotation + shift
+  // length + start time. Every member named in the rotation must be a REAL
+  // roster member at the time the schedule is set (honest `unknown_member`
+  // rejection otherwise, never a phantom rotation entry).
+  registerLensAction("command-center", "onCallScheduleSet", (ctx, _artifact, params = {}) => {
+    try {
+      const scope = ccScope(ctx, params, WRITE_LEAD);
+      if (!scope.ok) return scope;
+      if (!scope.orgId) return { ok: false, error: "orgId_required" };
+      const members = Array.isArray(params.members)
+        ? params.members.map((m) => String(m).trim()).filter(Boolean)
+        : [];
+      if (members.length === 0) return { ok: false, error: "at_least_one_member_required" };
+      const roster = new Set(getOrgMembers(scope.orgId).map((m) => m.userId));
+      const unknown = members.filter((m) => !roster.has(m));
+      if (unknown.length > 0) return { ok: false, error: "unknown_member", members: unknown };
+      const shiftHours = clampNum(params.shiftHours, MIN_SHIFT_HOURS, MAX_SHIFT_HOURS, 24);
+      const startAt = params.startAt ? new Date(params.startAt).getTime() : Date.now();
+      if (!Number.isFinite(startAt)) return { ok: false, error: "invalid_startAt" };
+      const schedule = {
+        orgId: scope.orgId,
+        members,
+        shiftHours,
+        startAt,
+        updatedAt: nowIso(),
+        updatedBy: scope.userId,
+      };
+      ccState().onCall.set(scope.orgId, schedule);
+      emitOrgRealtime("command-center:oncall-updated", { orgId: scope.orgId, schedule }, scope.orgId);
+      return { ok: true, result: { schedule, onCallNow: resolveOnCallAt(schedule, Date.now()) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // onCallSchedule — read-only (any team member). Returns the stored
+  // rotation, who's on call right now, and up to the next 5 upcoming shifts
+  // computed from the same deterministic resolver.
+  registerLensAction("command-center", "onCallSchedule", (ctx, _artifact, params = {}) => {
+    try {
+      const scope = ccScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      if (!scope.orgId) return { ok: false, error: "orgId_required" };
+      const schedule = ccState().onCall.get(scope.orgId) || null;
+      if (!schedule) return { ok: true, result: { schedule: null, onCallNow: null, upcoming: [] } };
+      const now = Date.now();
+      const onCallNow = resolveOnCallAt(schedule, now);
+      const shiftMs = schedule.shiftHours * 3600000;
+      const upcoming = [];
+      if (onCallNow) {
+        const count = Math.min(5, schedule.members.length);
+        for (let i = 0; i < count; i++) {
+          const shiftIndex = onCallNow.shiftIndex + i;
+          const memberIndex = shiftIndex % schedule.members.length;
+          const shiftStartMs = schedule.startAt + shiftIndex * shiftMs;
+          upcoming.push({
+            userId: schedule.members[memberIndex],
+            shiftIndex,
+            shiftStart: new Date(shiftStartMs).toISOString(),
+            shiftEnd: new Date(shiftStartMs + shiftMs).toISOString(),
+          });
+        }
+      }
+      return { ok: true, result: { schedule, onCallNow, upcoming } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // onCallWho — "who's on call right now" (or at an optional params.at
+  // timestamp, for planning/verification). Read-only, any team member.
+  registerLensAction("command-center", "onCallWho", (ctx, _artifact, params = {}) => {
+    try {
+      const scope = ccScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      if (!scope.orgId) return { ok: false, error: "orgId_required" };
+      const schedule = ccState().onCall.get(scope.orgId) || null;
+      if (!schedule) return { ok: true, result: { onCall: null, message: "no on-call schedule set for this team yet" } };
+      const atMs = params.at ? new Date(params.at).getTime() : Date.now();
+      if (!Number.isFinite(atMs)) return { ok: false, error: "invalid_at" };
+      const onCall = resolveOnCallAt(schedule, atMs);
+      return { ok: true, result: { onCall, resolvedAt: new Date(atMs).toISOString() } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 }
