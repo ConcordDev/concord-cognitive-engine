@@ -96,8 +96,12 @@ export async function createCheckoutSession(db, { userId, tokens, requestId, ip 
   // Convert tokens to USD cents (1 token = $1 * TOKENS_PER_USD)
   const priceInCents = Math.round((tokens / TOKENS_PER_USD) * 100);
 
-  // Deterministic idempotency key: hash(userId + amount + nonce)
-  // Prevents duplicate sessions on rapid double-clicks
+  // Per-request idempotency key for THIS create call. A fresh nonce each call
+  // is intentional: two deliberate purchases of the same token amount must each
+  // open their own checkout session, so this guards a single request's network
+  // retries (Stripe recommends a key on every mutating request), NOT cross-click
+  // dedup. Authoritative double-credit prevention lives at the webhook, where
+  // executePurchase is idempotent on refId = `stripe_checkout:${event.id}`.
   const nonce = randomUUID();
   const idempotencyKey = createHash("sha256")
     .update(`${userId}:${tokens}:${nonce}`)
@@ -124,8 +128,13 @@ export async function createCheckoutSession(db, { userId, tokens, requestId, ip 
         userId,
         tokens: String(tokens),
         purpose: "TOKEN_PURCHASE",
-        idempotencyKey,
       },
+    }, {
+      // Stripe's REAL idempotency mechanism is the request-options second
+      // argument (it becomes the `Idempotency-Key` header), NOT metadata —
+      // where the key previously sat inert. Mirrors the payout side's
+      // `{ idempotencyKey: withdrawal_payout:<id> }`.
+      idempotencyKey,
     });
 
     economyAudit(db, {
