@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ExportFormatGallery } from '@/components/export/ExportFormatGallery';
 import { ExportToolkit } from '@/components/export/ExportToolkit';
+import { ObsidianVaultExport } from '@/components/export/ObsidianVaultExport';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api, lensRun } from '@/lib/api/client';
@@ -461,6 +462,9 @@ export default function ExportLensPage() {
           {exporting ? 'Exporting...' : `Export ${dtus.length} DTU${dtus.length === 1 ? '' : 's'} as ${selectedFormat.toUpperCase()}`}
         </button>
       </div>
+
+      {/* Obsidian Vault Export — real multi-file .md zip, client-built via fflate */}
+      <ObsidianVaultExport />
 
       {/* Per-DTU Export */}
       <div className="panel p-4">
