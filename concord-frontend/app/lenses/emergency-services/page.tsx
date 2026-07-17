@@ -41,11 +41,20 @@
  * tiles. `QuakeFeed` gained a bulk "Ingest to substrate" action wired to
  * the `feed` macro (server-side dedup + bulk DTU-mint), which had zero
  * frontend caller before this rebuild.
+ *
+ * ADDED (WAVE4): `AgencyMutualAidPanel` — a real cross-org "agency" surface
+ * (an agency IS an org, server/lib/world-organizations.js) with a genuine
+ * mutual-aid incident-share primitive: create/join an agency, see its
+ * shared incident + unit board, opt in to receiving mutual aid, share a
+ * real open incident with another agency, and commit a real unit to a
+ * shared incident. All additive — the CAD Console tab's per-user path is
+ * unchanged when no agency is selected. Real SMS/radio/CAD-hardware
+ * paging stays documented-external; nothing here claims one was sent.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 import { useState } from 'react';
-import { Siren, LayoutDashboard, Radio, Truck, AlertOctagon, Keyboard } from 'lucide-react';
+import { Siren, LayoutDashboard, Radio, Truck, AlertOctagon, Keyboard, Users } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -62,14 +71,16 @@ import { QuakeFeed } from '@/components/emergency-services/QuakeFeed';
 import { EmergencyServicesActionPanel } from '@/components/emergency-services/EmergencyServicesActionPanel';
 import { CADConsole } from '@/components/emergency-services/CADConsole';
 import { EmsOverviewPanel } from '@/components/emergency-services/EmsOverviewPanel';
+import { AgencyMutualAidPanel } from '@/components/emergency-services/AgencyMutualAidPanel';
 
-type ModeTab = 'Dashboard' | 'CAD' | 'Actions' | 'Seismic';
+type ModeTab = 'Dashboard' | 'CAD' | 'Agency' | 'Actions' | 'Seismic';
 
 const MODE_TABS: { key: ModeTab; label: string; icon: typeof Siren; hotkey: string }[] = [
   { key: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, hotkey: '1' },
   { key: 'CAD', label: 'CAD Console', icon: Radio, hotkey: '2' },
-  { key: 'Actions', label: 'Quick Actions', icon: Truck, hotkey: '3' },
-  { key: 'Seismic', label: 'Seismic Feed', icon: AlertOctagon, hotkey: '4' },
+  { key: 'Agency', label: 'Agency & Mutual Aid', icon: Users, hotkey: '3' },
+  { key: 'Actions', label: 'Quick Actions', icon: Truck, hotkey: '4' },
+  { key: 'Seismic', label: 'Seismic Feed', icon: AlertOctagon, hotkey: '5' },
 ];
 
 export default function EmergencyServicesLensPage() {
@@ -99,6 +110,12 @@ export default function EmergencyServicesLensPage() {
         return (
           <section className="rounded-xl border border-red-500/20 bg-zinc-950/50 p-4">
             <CADConsole />
+          </section>
+        );
+      case 'Agency':
+        return (
+          <section>
+            <AgencyMutualAidPanel />
           </section>
         );
       case 'Actions':
@@ -139,8 +156,8 @@ export default function EmergencyServicesLensPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–4 switch view">
-              <Keyboard className="w-3.5 h-3.5" /> 1–4
+            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–5 switch view">
+              <Keyboard className="w-3.5 h-3.5" /> 1–5
             </span>
             <DTUExportButton domain="emergency-services" data={{}} compact />
           </div>
