@@ -246,7 +246,14 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: "The current run's ordered real tool-call sequence, live status, and receipts",
     load: lazyNamed(() => import('@/components/conkay/panels/OrchestrationTracePanel'), 'OrchestrationTracePanel'),
   },
-  // The ConKay cockpit panels (F1/F4/F5/F7/F9/A4) are now registered.
+  'conkay.connector-status': {
+    id: 'conkay.connector-status', label: 'Connector Status', scope: 'global',
+    keywords: ['conkay', 'connector', 'integrations', 'oauth', 'connected', 'needs auth'],
+    description: 'Your own connector status — Connected vs Needs auth, per app',
+    load: lazyNamed(() => import('@/components/conkay/panels/ConnectorStatusPanel'), 'ConnectorStatusPanel'),
+  },
+
+  // The ConKay cockpit panels (F1/F4/F5/F7/F9/A4/A3) are now registered.
   // ConKayCockpit's panel slots treat an unregistered id as "render nothing"
   // (honest, not a crash), so cockpit callers may reference future ids ahead
   // of time and the lane will simply skip them until each unit lands.
