@@ -1377,6 +1377,10 @@ import { brainChat as byoBrainChat, getOverride as byoGetOverride } from "./lib/
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
 import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
+// Inference metering — the D2 cost ledger writer. ctx.llm.chat() builders call
+// this after every real completion attempt so the ops-telemetry dashboard
+// (aggregateInferenceCosts) reflects real usage instead of sitting empty.
+import { recordInferenceSpan } from "./lib/inference-metering.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
 import { traceMiddleware, startSpan, storeTrace, getRecentTraces, getTraceMetrics } from "./lib/request-trace.js";
@@ -14251,6 +14255,21 @@ const _USER_ACTIVITY = {
   },
 };
 
+// ---- Inference metering helper (Track: real LLM cost metering) ----
+// Wraps recordInferenceSpan for the ctx.llm.chat() builders below. Records
+// ONLY fields a real completion attempt actually produced — no fabricated
+// token estimates (no chars/4 guessing). tokensIn/tokensOut are omitted
+// (metering module defaults them to 0) when the provider genuinely didn't
+// report usage, which is a true statement ("unknown"), not an invented one.
+// Never throws — a metering failure must never break a chat reply.
+function _meterLlmChat(dbHandle, span) {
+  try {
+    recordInferenceSpan(dbHandle, span);
+  } catch (_e) {
+    /* metering must never break inference */
+  }
+}
+
 function makeCtx(req=null) {
   // Inject ATS affect policy into context so macros can consume depthBudget, riskBudget, etc.
   let affectPolicy = null;
@@ -14426,6 +14445,7 @@ function makeCtx(req=null) {
           let _byoOverride = null;
           try { _byoOverride = byoGetOverride(db, _byoUserId, slot); } catch { _byoOverride = null; }
           if (_byoOverride?.provider && _byoOverride.provider !== "concord_default" && _byoOverride.provider !== "ollama") {
+            const _byoStartMs = Date.now();
             try {
               const byo = await byoBrainChat({
                 db, userId: _byoUserId, slot,
@@ -14442,6 +14462,14 @@ function makeCtx(req=null) {
               // ctx.llm.chat()'s resilience contract still holds.
               if (byo.ok) {
                 structuredLog("info", "llm_byo_routed", { slot, provider: byo.provider, model: byo.model });
+                // Real per-call metering — tokensIn/tokensOut are the exact
+                // usage the provider returned (byoBrainChat/providerChat
+                // read res.json().usage from the provider's own response).
+                _meterLlmChat(db, {
+                  spanType: "chat", brainUsed: slot, modelUsed: byo.model,
+                  callerId: _byoUserId, latencyMs: Date.now() - _byoStartMs,
+                  tokensIn: byo.tokensIn, tokensOut: byo.tokensOut,
+                });
                 return {
                   ok: true,
                   content: byo.text || "",
@@ -14453,9 +14481,23 @@ function makeCtx(req=null) {
                 };
               }
               structuredLog("warn", "llm_byo_failed", { slot, provider: byo.provider, error: byo.error || "byo_provider_error" });
-              // fall through to the default conscious brain below
+              // A real attempt was made (or rejected pre-flight, e.g. rate
+              // limit) and failed — record an honest error span (0 real
+              // tokens consumed) so the dashboard's failure rate reflects
+              // reality, then fall through to the default conscious brain.
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: slot, modelUsed: byo.model,
+                callerId: _byoUserId, latencyMs: Date.now() - _byoStartMs,
+                tokensIn: byo.tokensIn, tokensOut: byo.tokensOut,
+                error: byo.error || "byo_provider_error",
+              });
             } catch (_byoErr) {
               structuredLog("warn", "llm_byo_exception", { slot, error: String(_byoErr?.message || _byoErr) });
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: slot, modelUsed: _byoOverride?.model_id || null,
+                callerId: _byoUserId, latencyMs: Date.now() - _byoStartMs,
+                error: String(_byoErr?.message || _byoErr),
+              });
               // fall through to the default conscious brain below
             }
           }
@@ -14505,15 +14547,34 @@ function makeCtx(req=null) {
             const content = json.message.content ?? "";
             _epOk = true;
             structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
+            // Real per-call metering — prompt_eval_count/eval_count are
+            // Ollama's own reported token counts for this exact completion.
+            _meterLlmChat(db, {
+              spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+              callerId: resolvedActor?.userId, latencyMs: elapsed,
+              tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
+            });
             return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
           }
           BRAIN.conscious.stats.errors++;
           structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
+          // A real HTTP round-trip happened and came back non-OK — honest
+          // error span, no fabricated token count.
+          _meterLlmChat(db, {
+            spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+            callerId: resolvedActor?.userId, latencyMs: elapsed,
+            error: json?.error || `ollama_error_${res.status}`,
+          });
           return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: "conscious", source: "ollama" };
         } catch (err) {
           BRAIN.conscious.stats.errors++;
           const elapsed = Date.now() - startMs;
           structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
+          _meterLlmChat(db, {
+            spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+            callerId: resolvedActor?.userId, latencyMs: elapsed,
+            error: String(err?.message || err),
+          });
           return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
         } finally {
           noteEndpointFinish(brainUrl, { ok: _epOk });
@@ -47137,8 +47198,9 @@ function initChatSocketHandlers(io) {
               if (!brainUrl) return { ok: false, error: 'no_llm' };
               noteEndpointStart(brainUrl);
               let _epOk = false;
+              const _socketChatStartMs = Date.now();
+              const _model = opts.model || BRAIN.conscious?.model || 'llama3';
               try {
-                const _model = opts.model || BRAIN.conscious?.model || 'llama3';
                 const _messages = [
                   ...(opts.system ? [{ role: 'system', content: opts.system }] : []),
                   ...(opts.messages || [])
@@ -47154,10 +47216,29 @@ function initChatSocketHandlers(io) {
                 const _json = await _res.json().catch(() => ({}));
                 if (_res.ok && _json.message?.content) {
                   _epOk = true;
+                  // Real per-call metering — Ollama's own prompt_eval_count/
+                  // eval_count for this exact completion. No fallback estimate.
+                  _meterLlmChat(db, {
+                    spanType: "chat", brainUsed: "conscious", modelUsed: _model,
+                    callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
+                    tokensIn: _json.prompt_eval_count, tokensOut: _json.eval_count,
+                  });
                   return { ok: true, content: _json.message.content };
                 }
+                _meterLlmChat(db, {
+                  spanType: "chat", brainUsed: "conscious", modelUsed: _model,
+                  callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
+                  error: _json?.error || `status ${_res.status}`,
+                });
                 return { ok: false, error: _json?.error || `status ${_res.status}` };
-              } catch (e) { return { ok: false, error: e.message }; }
+              } catch (e) {
+                _meterLlmChat(db, {
+                  spanType: "chat", brainUsed: "conscious", modelUsed: _model,
+                  callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
+                  error: e.message,
+                });
+                return { ok: false, error: e.message };
+              }
               finally { noteEndpointFinish(brainUrl, { ok: _epOk }); }
             },
           },
