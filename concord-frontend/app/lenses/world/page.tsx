@@ -1732,6 +1732,67 @@ const DISTRICT_TOOLS: {
   { key: 'spectator', label: 'Spectator', icon: Clapperboard, group: 'Replay' },
 ];
 
+/**
+ * Server-shaped `world_buildings` row as consumed by this page. `archetype`/
+ * `feature` (Asset Studio Increment 1, Unit 1 migration — additive, nullable
+ * columns) are only present on player-authored buildings; every existing
+ * seed/lens/legacy row has neither field.
+ */
+export interface WorldBuildingRow {
+  id: string;
+  building_type: string;
+  name: string;
+  x: number;
+  y: number;
+  z: number;
+  width: number;
+  depth: number;
+  height: number;
+  material: string;
+  is_seed: number;
+  archetype?: string;
+  feature?: string;
+}
+
+/**
+ * Pure `world_buildings` row -> BuildingRenderer3D DTU mapping (Asset Studio
+ * Increment 1, Unit 3 — in-world round-trip). Extracted to a standalone
+ * top-level function so it's independently unit-testable without importing
+ * this page's full component tree, which is too large to safely render/import
+ * in a unit test (see the source-pin convention already used for this file in
+ * tests/world-page-wind-direction-threading.test.ts).
+ *
+ * `archetype`/`feature` are set on the output ONLY when the row actually
+ * carries them (truthy) — every existing seed/lens building has neither field
+ * and therefore maps BYTE-IDENTICALLY to the pre-Unit-3 shape (no
+ * `archetype`/`feature` key at all). BuildingRenderer3D already reads
+ * `dtu.archetype` (falls back to a `building_type`-derived silhouette when
+ * absent) and `dtu.feature` at its procedural-buildings path.
+ */
+export function mapWorldBuildingToRendererDTU(b: WorldBuildingRow) {
+  return {
+    id: b.id,
+    name: b.name || b.building_type,
+    position: { x: b.x, y: b.y ?? 0, z: b.z },
+    dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
+    floors: 1,
+    material: coerceMaterial(b.material),
+    style: 'colonial' as const,
+    // building_type drives the procedural archetype + iconic silhouette.
+    building_type: b.building_type,
+    ...(b.archetype ? { archetype: b.archetype } : {}),
+    ...(b.feature ? { feature: b.feature } : {}),
+    structure: {
+      columns: { count: 0, spacing: 0, radius: 0 },
+      beams: { count: 0, height: 0 },
+      roofType: 'gable' as const,
+      hasBasement: false,
+      windowRows: 1,
+      windowsPerRow: 2,
+    },
+  };
+}
+
 // ── Component ───────────────────────────────────────────────────────
 
 export default function WorldLensPage() {
@@ -2648,21 +2709,7 @@ export default function WorldLensPage() {
   const [gatheringNode, setGatheringNode] = useState<string | null>(null);
   const [gatherResult, setGatherResult] = useState<string | null>(null);
   const [isSwimming, _setIsSwimming] = useState(false);
-  const [worldBuildings, setWorldBuildings] = useState<
-    {
-      id: string;
-      building_type: string;
-      name: string;
-      x: number;
-      y: number;
-      z: number;
-      width: number;
-      depth: number;
-      height: number;
-      material: string;
-      is_seed: number;
-    }[]
-  >([]);
+  const [worldBuildings, setWorldBuildings] = useState<WorldBuildingRow[]>([]);
   const playerPos = useRef({ x: 1000, z: 1000 }); // updated on movement
 
   // Load all surface nodes for map dots (once per world)
@@ -4483,25 +4530,7 @@ export default function WorldLensPage() {
   // dispose fix in BuildingRenderer3D.tsx) the legacy per-floor material path
   // far more often than necessary.
   const buildingRendererBuildings = useMemo(
-    () => worldBuildings.map((b) => ({
-      id: b.id,
-      name: b.name || b.building_type,
-      position: { x: b.x, y: b.y ?? 0, z: b.z },
-      dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
-      floors: 1,
-      material: coerceMaterial(b.material),
-      style: 'colonial' as const,
-      // building_type drives the procedural archetype + iconic silhouette.
-      building_type: b.building_type,
-      structure: {
-        columns: { count: 0, spacing: 0, radius: 0 },
-        beams: { count: 0, height: 0 },
-        roofType: 'gable' as const,
-        hasBasement: false,
-        windowRows: 1,
-        windowsPerRow: 2,
-      },
-    })),
+    () => worldBuildings.map(mapWorldBuildingToRendererDTU),
     [worldBuildings]
   );
 
