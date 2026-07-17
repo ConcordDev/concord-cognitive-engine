@@ -187,12 +187,18 @@ per the sixth hard invariant:
   doc's per-category policy ledger and 4 candidate fix directions need an
   owner decision before any code changes here. Deferred, not fixed.
 - **Cookie-banner + retention-policy config is stored per-user but not yet
-  enforced by a runtime consent gate.** The config round-trips honestly (real
-  state, real consent string), but no request-time middleware currently reads
-  it to actually block analytics/advertising trackers or auto-expire data at
-  the window. Triage: **ENGINEERING** — a retention-sweep heartbeat + a
-  consent-gate middleware would close it. Deferred; the editor is honest about
-  being a policy register today.
+  enforced by a runtime consent gate.** **CLOSED (2026-07-17, `1d4e08d1`,
+  retention half)** — new `privacy-retention-sweep` heartbeat actually
+  enforces the two retention categories with a real per-user store this
+  domain owns (`access_logs`, `dsar_records`); the other four declared
+  categories are honestly left un-enforced (no reachable backing store, or a
+  cross-domain/owner decision this pass doesn't make unilaterally) and this
+  split is reported live via a new `privacy.retentionSweepStatus` macro. Also
+  fixed a real persistence bug found along the way: `STATE.privacyLens` was
+  never included in the state-snapshot round-trip, so retention config
+  silently vanished on restart. The consent-gate/tracker-blocking half was
+  investigated and explicitly not built — a codebase-wide search confirmed
+  zero real analytics/advertising tracker call sites exist to gate.
 - **Access log depends on other subsystems calling `recordAccess`.** The read/
   render path is real; population breadth depends on more call sites across the
   platform invoking the append hook. Triage: **ENGINEERING** (instrument more

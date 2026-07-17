@@ -129,12 +129,14 @@ reading source alone.
   (integration by parts, trig substitution, partial fractions) is real,
   scoped future work, not something to fake client-side.
 - **LaTeX rendering in the Formulas tab is a hand-rolled Unicode substitution
-  (`renderFormula`), not a real LaTeX engine (KaTeX/MathJax).** This is a
-  pre-existing, cosmetic-only gap (superscripts/fractions render as Unicode
-  approximations); left alone this pass because it doesn't affect
-  correctness of any computed result and is a genuine "nice-to-have polish"
-  item, not a fabricated-data or dead-macro defect — out of scope for a
-  defect-finding pass per the task's own scope guidance.
+  (`renderFormula`), not a real LaTeX engine (KaTeX/MathJax).** **CLOSED
+  (2026-07-17, `8f093d84`)** — unblocked by discovering `katex@0.16.45` was
+  already physically vendored as a transitive dependency of `mermaid` (via
+  excalidraw), formalized as an explicit dependency rather than a new one.
+  New `MathFormula.tsx` renders via KaTeX's own documented safe
+  `renderToString` API (`trust:false`, `throwOnError:false`); both
+  Formulas-tab call sites now use it, and the old Unicode-substitution
+  `renderFormula` helper is deleted.
 
 ## Verification
 
