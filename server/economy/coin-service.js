@@ -33,6 +33,28 @@ export function mintCoins(db, { amount, userId, refId, requestId, ip }) {
   if (!userId) return { ok: false, error: "missing_user_id" };
 
   const doMint = db.transaction(() => {
+    // Idempotency (Stripe-webhook atomicity hardening): a MINT already recorded
+    // under this refId means this exact mint landed on a prior webhook delivery.
+    // The webhook path is executePurchase (idempotent) → mintCoins → markEventProcessed;
+    // a crash (or Stripe at-least-once re-delivery) between the mint and the
+    // markEventProcessed would re-enter here and mint a SECOND time, inflating
+    // the treasury above the ledger's credited supply. Short-circuit with the
+    // already-recorded state so the caller still sees ok:true, no double-mint.
+    // Every real caller passes a unique/idempotent-by-design refId
+    // (stripe_mint:<eventId>, admin_mint:<batchId>, event_reward:<e>:<u>, …).
+    if (refId) {
+      const prior = db.prepare(
+        "SELECT usd_before, usd_after, coins_before, coins_after FROM treasury_events WHERE ref_id = ? AND event_type = 'MINT'",
+      ).get(refId);
+      if (prior) {
+        return {
+          idempotent: true,
+          usdBefore: prior.usd_before, usdAfter: prior.usd_after,
+          coinsBefore: prior.coins_before, coinsAfter: prior.coins_after,
+        };
+      }
+    }
+
     const treasury = getTreasuryState(db);
     if (!treasury) throw new Error("treasury_not_initialized");
 
@@ -62,6 +84,7 @@ export function mintCoins(db, { amount, userId, refId, requestId, ip }) {
     const result = doMint();
     return {
       ok: true,
+      idempotent: result.idempotent === true,
       amount,
       userId,
       treasury: {
