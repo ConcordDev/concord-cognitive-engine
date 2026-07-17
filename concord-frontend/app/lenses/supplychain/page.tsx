@@ -21,7 +21,7 @@
 
 import { useState } from 'react';
 import {
-  Truck, LayoutDashboard, Network, ClipboardList, Newspaper,
+  Truck, LayoutDashboard, Network, ClipboardList, Newspaper, Users,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -34,14 +34,16 @@ import { SupplyChainOverview } from '@/components/supplychain/SupplyChainOvervie
 import { SupplyChainPlanner } from '@/components/supplychain/SupplyChainPlanner';
 import { SupplyChainActionPanel } from '@/components/supplychain/SupplyChainActionPanel';
 import { SupplyChainFeed } from '@/components/supplychain/SupplyChainFeed';
+import { OrgCollabPanel } from '@/components/supplychain/OrgCollabPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
-type Destination = 'overview' | 'tower' | 'scorecards' | 'pulse';
+type Destination = 'overview' | 'tower' | 'scorecards' | 'team' | 'pulse';
 
 const DESTINATIONS: { id: Destination; label: string; icon: typeof Truck; desc: string }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, desc: 'Live control-tower KPIs & exceptions' },
   { id: 'tower', label: 'Control Tower', icon: Network, desc: 'Shipments · network · echelon · scenarios · forecast · procurement' },
   { id: 'scorecards', label: 'Scorecards & Analysis', icon: ClipboardList, desc: 'Lead time · EOQ · supplier scorecard · demand forecast' },
+  { id: 'team', label: 'Team', icon: Users, desc: 'Planner · buyer · analyst collaboration on a shared firm' },
   { id: 'pulse', label: 'Industry Pulse', icon: Newspaper, desc: 'Real-world r/supplychain chatter' },
 ];
 
@@ -59,6 +61,7 @@ export default function SupplyChainLensPage() {
       { id: 'goto-overview', keys: 'g o', description: 'Go to Overview', category: 'navigation', action: () => setDest('overview') },
       { id: 'goto-tower', keys: 'g t', description: 'Go to Control Tower', category: 'navigation', action: () => setDest('tower') },
       { id: 'goto-scorecards', keys: 'g s', description: 'Go to Scorecards & Analysis', category: 'navigation', action: () => setDest('scorecards') },
+      { id: 'goto-team', keys: 'g u', description: 'Go to Team', category: 'navigation', action: () => setDest('team') },
       { id: 'goto-pulse', keys: 'g p', description: 'Go to Industry Pulse', category: 'navigation', action: () => setDest('pulse') },
     ],
     { lensId: 'supplychain' }
@@ -123,6 +126,12 @@ export default function SupplyChainLensPage() {
             <PipingProvider>
               <SupplyChainActionPanel />
             </PipingProvider>
+          </section>
+        )}
+
+        {dest === 'team' && (
+          <section aria-label="Team collaboration">
+            <OrgCollabPanel />
           </section>
         )}
 

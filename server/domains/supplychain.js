@@ -1,4 +1,9 @@
 // server/domains/supplychain.js
+import {
+  createOrganization, getOrganization, joinOrganization, leaveOrganization,
+  setMemberRole, getOrgMembers, getOrgsForUser, listOrganizations,
+} from "../lib/world-organizations.js";
+
 export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "leadTimeAnalysis", (ctx, artifact, _params) => { const orders = artifact.data?.orders || []; if (orders.length === 0) return { ok: true, result: { message: "Add orders with dates to analyze lead times." } }; const leadTimes = orders.map(o => { const ordered = new Date(o.orderDate || o.created); const received = o.receivedDate ? new Date(o.receivedDate) : null; const days = received ? Math.ceil((received.getTime() - ordered.getTime()) / 86400000) : null; return { order: o.id || o.name, supplier: o.supplier, leadTimeDays: days, status: received ? "delivered" : "pending" }; }).filter(o => o.leadTimeDays !== null); const avg = leadTimes.length > 0 ? Math.round(leadTimes.reduce((s,o) => s + o.leadTimeDays, 0) / leadTimes.length) : 0; return { ok: true, result: { ordersAnalyzed: leadTimes.length, avgLeadTimeDays: avg, minDays: Math.min(...leadTimes.map(o => o.leadTimeDays)), maxDays: Math.max(...leadTimes.map(o => o.leadTimeDays)), reliability: avg <= 7 ? "excellent" : avg <= 14 ? "good" : avg <= 30 ? "acceptable" : "poor" } }; });
   registerLensAction("supplychain", "inventoryOptimize", (ctx, artifact, _params) => { const items = artifact.data?.items || []; if (items.length === 0) return { ok: true, result: { message: "Add inventory items to optimize." } }; const analyzed = items.map(i => { const demand = parseFloat(i.dailyDemand) || 1; const leadTime = parseInt(i.leadTimeDays) || 7; const current = parseInt(i.currentStock) || 0; const safetyStock = Math.ceil(demand * leadTime * 0.5); const reorderPoint = Math.ceil(demand * leadTime + safetyStock); const eoq = Math.round(Math.sqrt(2 * demand * 365 * (parseFloat(i.orderCost) || 50) / (parseFloat(i.holdingCost) || 5))); return { item: i.name, currentStock: current, reorderPoint, safetyStock, eoq, daysOfStock: demand > 0 ? Math.round(current / demand) : 999, needsReorder: current <= reorderPoint }; }); return { ok: true, result: { items: analyzed, needsReorder: analyzed.filter(i => i.needsReorder).length, totalItems: analyzed.length } }; });
@@ -32,6 +37,59 @@ export default function registerSupplychainActions(registerLensAction) {
   const scNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const scArr = (s, map, userId) => { if (!map.has(userId)) map.set(userId, []); return map.get(userId); };
 
+  // ── Org-scoped collaboration (planner / buyer / analyst views) ───────
+  // WAVE4_INVENTORY.md flagged "no role-based collaboration" as needing new
+  // substrate — it doesn't. `server/lib/world-organizations.js` already has
+  // a real org/roster/role primitive (createOrganization / joinOrganization /
+  // setMemberRole / getOrgMembers). This block is additive: every
+  // state-bearing macro below still defaults to the original per-user path
+  // byte-for-byte when no `orgId` is supplied. When `orgId` IS supplied, the
+  // macro reads/writes a shared per-org slot in the SAME Maps instead of a
+  // per-user slot, keyed as `org:${orgId}` (a "parallel store keyed by
+  // orgId" implemented as a key-namespace on the existing Map rather than a
+  // second set of Maps — same storage shape, one membership source).
+  //
+  // SC role is DERIVED from the org role rather than stored as a separate
+  // field. Two designs were considered: (a) an explicit per-member `scRole`
+  // living in this domain's own state, or (b) deriving it from the org role
+  // that `world-organizations.js` already tracks. (b) was chosen: (a) would
+  // create two sources of truth for "what can this member do" that could
+  // drift (e.g. an officer demoted to member whose shadow scRole silently
+  // stays "planner"), and `world-organizations.js` already exposes a real
+  // 4-tier role ladder (leader/officer/member/apprentice) that maps cleanly
+  // onto the 3-tier planner/buyer/analyst split with no loss of intent:
+  //   leader / officer -> planner  (full read+write: demand/inventory/work-orders/network)
+  //   member            -> buyer   (read+write: suppliers/shipments/purchasing; read elsewhere)
+  //   apprentice        -> analyst (read-only across every view)
+  const ORG_ROLE_TO_SC_ROLE = { leader: "planner", officer: "planner", member: "buyer", apprentice: "analyst" };
+  // Reverse mapping used only by orgSetRole so a caller can request an SC
+  // role by its supplychain name. "planner" maps to "officer" (the highest
+  // role a setMemberRole caller can grant a peer — a second "leader" can't
+  // be created by role-change).
+  const SC_ROLE_TO_ORG_ROLE = { planner: "officer", buyer: "member", analyst: "apprentice" };
+  const PLANNER_ONLY_WRITE = ["planner"];
+  const PLANNER_OR_BUYER_WRITE = ["planner", "buyer"];
+
+  /**
+   * Resolves the storage key + SC role for a macro call.
+   * - No orgId -> legacy per-user scope, unchanged behavior, role:null.
+   * - orgId supplied -> verifies real membership via world-organizations.js,
+   *   derives the SC role from the org role, and (when `writeRoles` is
+   *   given) rejects roles not in that list.
+   */
+  function scScope(ctx, params, writeRoles) {
+    const userId = scActor(ctx);
+    const orgId = params?.orgId ? scClean(params.orgId, 100) : null;
+    if (!orgId) return { ok: true, key: userId, scope: "user", role: null };
+    if (!getOrganization(orgId)) return { ok: false, error: "org_not_found" };
+    const members = getOrgMembers(orgId);
+    const membership = members.find(m => m.userId === userId);
+    if (!membership) return { ok: false, error: "not_a_member" };
+    const scRole = ORG_ROLE_TO_SC_ROLE[membership.role] || "analyst";
+    if (writeRoles && !writeRoles.includes(scRole)) return { ok: false, error: "insufficient_role" };
+    return { ok: true, key: `org:${orgId}`, scope: "org", role: scRole, orgRole: membership.role };
+  }
+
   // Deterministic geo-coordinate lookup for common shipment hubs so the
   // network/route map renders real positions without an external API.
   const HUB_COORDS = {
@@ -59,8 +117,9 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "shipmentCreate", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const userId = scActor(ctx);
-      const arr = scArr(s, s.shipments, userId);
+      const scope = scScope(ctx, params, PLANNER_OR_BUYER_WRITE);
+      if (!scope.ok) return scope;
+      const arr = scArr(s, s.shipments, scope.key);
       const now = Date.now();
       const sh = {
         id: scId("ship"), reference: scClean(params?.reference) || `SHP-${arr.length + 1}`,
@@ -80,7 +139,9 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "shipmentCheckpoint", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const arr = scArr(s, s.shipments, scActor(ctx));
+      const scope = scScope(ctx, params, PLANNER_OR_BUYER_WRITE);
+      if (!scope.ok) return scope;
+      const arr = scArr(s, s.shipments, scope.key);
       const sh = arr.find(x => x.id === params?.shipmentId);
       if (!sh) return { ok: false, error: "shipment not found" };
       const STATUSES = ["booked", "picked_up", "in_transit", "customs", "out_for_delivery", "delivered", "exception"];
@@ -94,10 +155,12 @@ export default function registerSupplychainActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  registerLensAction("supplychain", "shipmentList", (ctx, _artifact, _params) => {
+  registerLensAction("supplychain", "shipmentList", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const arr = scArr(s, s.shipments, scActor(ctx));
+      const scope = scScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      const arr = scArr(s, s.shipments, scope.key);
       const now = Date.now();
       const shipments = arr.map(sh => {
         const delivered = sh.status === "delivered";
@@ -131,12 +194,14 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "shipmentDelete", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      if (!s.shipments.has(scActor(ctx))) return { ok: true, result: { removed: 0 } };
-      const arr = s.shipments.get(scActor(ctx));
+      const scope = scScope(ctx, params, PLANNER_OR_BUYER_WRITE);
+      if (!scope.ok) return scope;
+      if (!s.shipments.has(scope.key)) return { ok: true, result: { removed: 0 } };
+      const arr = s.shipments.get(scope.key);
       const before = arr.length;
-      s.shipments.set(scActor(ctx), arr.filter(x => x.id !== params?.shipmentId));
+      s.shipments.set(scope.key, arr.filter(x => x.id !== params?.shipmentId));
       scSave();
-      return { ok: true, result: { removed: before - s.shipments.get(scActor(ctx)).length } };
+      return { ok: true, result: { removed: before - s.shipments.get(scope.key).length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -144,7 +209,8 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "networkSet", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const userId = scActor(ctx);
+      const scope = scScope(ctx, params, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
       const nodes = Array.isArray(params?.nodes) ? params.nodes.slice(0, 200).map(n => ({
         id: scClean(n?.id) || scId("node"),
         label: scClean(n?.label) || "Node",
@@ -156,16 +222,18 @@ export default function registerSupplychainActions(registerLensAction) {
       const edges = Array.isArray(params?.edges) ? params.edges.slice(0, 400)
         .filter(e => ids.has(e?.from) && ids.has(e?.to))
         .map(e => ({ from: e.from, to: e.to, leadTimeDays: scNum(e?.leadTimeDays, 7), volume: scNum(e?.volume) })) : [];
-      s.network.set(userId, { nodes, edges });
+      s.network.set(scope.key, { nodes, edges });
       scSave();
       return { ok: true, result: { nodeCount: nodes.length, edgeCount: edges.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  registerLensAction("supplychain", "networkGraph", (ctx, _artifact, _params) => {
+  registerLensAction("supplychain", "networkGraph", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const net = s.network.get(scActor(ctx)) || { nodes: [], edges: [] };
+      const scope = scScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      const net = s.network.get(scope.key) || { nodes: [], edges: [] };
       const { nodes, edges } = net;
       // Build a supplier-rooted tree for TreeDiagram + map markers + critical-path tier.
       const outgoing = new Map();
@@ -283,7 +351,8 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "scenarioSimulate", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const userId = scActor(ctx);
+      const scope = scScope(ctx, params, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
       const baseDemand = Math.max(0, scNum(params?.baseDailyDemand, 100));
       const baseLeadTime = Math.max(1, scNum(params?.baseLeadTimeDays, 14));
       const baseUnitCost = Math.max(0, scNum(params?.baseUnitCost, 10));
@@ -334,7 +403,7 @@ export default function registerSupplychainActions(registerLensAction) {
         options, recommendation: ranked[0]?.source,
         resilient: !ranked[0]?.stocksOut, createdAt: Date.now(),
       };
-      const arr = scArr(s, s.scenarios, userId);
+      const arr = scArr(s, s.scenarios, scope.key);
       arr.unshift(scenario);
       if (arr.length > 50) arr.length = 50;
       scSave();
@@ -342,22 +411,26 @@ export default function registerSupplychainActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  registerLensAction("supplychain", "scenarioList", (ctx, _artifact, _params) => {
+  registerLensAction("supplychain", "scenarioList", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      return { ok: true, result: { scenarios: scArr(s, s.scenarios, scActor(ctx)) } };
+      const scope = scScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      return { ok: true, result: { scenarios: scArr(s, s.scenarios, scope.key) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
   registerLensAction("supplychain", "scenarioDelete", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      if (!s.scenarios.has(scActor(ctx))) return { ok: true, result: { removed: 0 } };
-      const arr = s.scenarios.get(scActor(ctx));
+      const scope = scScope(ctx, params, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
+      if (!s.scenarios.has(scope.key)) return { ok: true, result: { removed: 0 } };
+      const arr = s.scenarios.get(scope.key);
       const before = arr.length;
-      s.scenarios.set(scActor(ctx), arr.filter(x => x.id !== params?.scenarioId));
+      s.scenarios.set(scope.key, arr.filter(x => x.id !== params?.scenarioId));
       scSave();
-      return { ok: true, result: { removed: before - s.scenarios.get(scActor(ctx)).length } };
+      return { ok: true, result: { removed: before - s.scenarios.get(scope.key).length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -433,7 +506,8 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "exceptionScan", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const userId = scActor(ctx);
+      const scope = scScope(ctx, params, null);
+      if (!scope.ok) return scope;
       const now = Date.now();
       const alerts = [];
       // Stockouts / low-stock from supplied inventory rows.
@@ -446,7 +520,7 @@ export default function registerSupplychainActions(registerLensAction) {
         else if (rop > 0 && cur <= rop) alerts.push({ id: scId("alx"), severity: "warning", kind: "low_stock", subject: scClean(it?.name) || "item", message: `${scClean(it?.name) || "Item"} below reorder point`, detail: `${cur} on hand vs ROP ${rop}` });
       }
       // Late / exception shipments from STATE.
-      for (const sh of scArr(s, s.shipments, userId)) {
+      for (const sh of scArr(s, s.shipments, scope.key)) {
         if (sh.status === "delivered") continue;
         if (sh.status === "exception") alerts.push({ id: scId("alx"), severity: "critical", kind: "shipment_exception", subject: sh.reference, message: `Shipment ${sh.reference} flagged exception`, detail: `${sh.origin || "?"} -> ${sh.destination || "?"}` });
         else if (now > sh.etaAt) { const lateDays = Math.round((now - sh.etaAt) / 86400000); alerts.push({ id: scId("alx"), severity: lateDays > 5 ? "critical" : "warning", kind: "late_shipment", subject: sh.reference, message: `Shipment ${sh.reference} is ${lateDays}d late`, detail: `carrier ${sh.carrier}` }); }
@@ -458,7 +532,7 @@ export default function registerSupplychainActions(registerLensAction) {
         if (q < 50 || del < 60) alerts.push({ id: scId("alx"), severity: "warning", kind: "at_risk_supplier", subject: scClean(sup?.name) || "supplier", message: `${scClean(sup?.name) || "Supplier"} performance at risk`, detail: `quality ${q}, on-time ${del}%` });
       }
       // Overdue work orders.
-      for (const wo of scArr(s, s.workOrders, userId)) {
+      for (const wo of scArr(s, s.workOrders, scope.key)) {
         if (wo.stage === "received" || wo.stage === "closed") continue;
         if (wo.dueAt && now > wo.dueAt) alerts.push({ id: scId("alx"), severity: "warning", kind: "overdue_po", subject: wo.poNumber || wo.id, message: `PO ${wo.poNumber || wo.id} overdue at stage ${wo.stage}`, detail: scClean(wo.item) });
       }
@@ -481,8 +555,9 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "workOrderCreate", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const userId = scActor(ctx);
-      const arr = scArr(s, s.workOrders, userId);
+      const scope = scScope(ctx, params, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
+      const arr = scArr(s, s.workOrders, scope.key);
       const qty = Math.max(1, scNum(params?.quantity, 1));
       const unitCost = Math.max(0, scNum(params?.unitCost));
       const now = Date.now();
@@ -506,7 +581,9 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "workOrderAdvance", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const arr = scArr(s, s.workOrders, scActor(ctx));
+      const scope = scScope(ctx, params, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
+      const arr = scArr(s, s.workOrders, scope.key);
       const wo = arr.find(x => x.id === params?.workOrderId);
       if (!wo) return { ok: false, error: "work order not found" };
       const target = params?.stage && WO_STAGES.includes(params.stage)
@@ -523,10 +600,12 @@ export default function registerSupplychainActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  registerLensAction("supplychain", "workOrderList", (ctx, _artifact, _params) => {
+  registerLensAction("supplychain", "workOrderList", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const arr = scArr(s, s.workOrders, scActor(ctx));
+      const scope = scScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      const arr = scArr(s, s.workOrders, scope.key);
       const now = Date.now();
       const workOrders = arr.map(wo => ({
         ...wo,
@@ -548,12 +627,14 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "workOrderDelete", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      if (!s.workOrders.has(scActor(ctx))) return { ok: true, result: { removed: 0 } };
-      const arr = s.workOrders.get(scActor(ctx));
+      const scope = scScope(ctx, params, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
+      if (!s.workOrders.has(scope.key)) return { ok: true, result: { removed: 0 } };
+      const arr = s.workOrders.get(scope.key);
       const before = arr.length;
-      s.workOrders.set(scActor(ctx), arr.filter(x => x.id !== params?.workOrderId));
+      s.workOrders.set(scope.key, arr.filter(x => x.id !== params?.workOrderId));
       scSave();
-      return { ok: true, result: { removed: before - s.workOrders.get(scActor(ctx)).length } };
+      return { ok: true, result: { removed: before - s.workOrders.get(scope.key).length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -561,14 +642,15 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "spendAnalytics", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
-      const userId = scActor(ctx);
+      const scope = scScope(ctx, params, null);
+      if (!scope.ok) return scope;
       // Aggregate spend from supplied orders + STATE work orders.
       const rows = [];
       for (const o of (Array.isArray(params?.orders) ? params.orders : [])) {
         const total = scNum(o?.totalCost, scNum(o?.quantity) * scNum(o?.unitCost));
         if (total > 0) rows.push({ supplier: scClean(o?.supplier) || "Unknown", category: scClean(o?.category) || "Uncategorized", amount: total });
       }
-      for (const wo of scArr(s, s.workOrders, userId)) {
+      for (const wo of scArr(s, s.workOrders, scope.key)) {
         if (wo.totalCost > 0) rows.push({ supplier: wo.supplier || "Unknown", category: scClean(wo.category) || "Procurement", amount: wo.totalCost });
       }
       if (rows.length === 0) return { ok: true, result: { message: "Add orders or work orders with cost to analyze spend.", totalSpend: 0, bySupplier: [], byCategory: [] } };
@@ -598,6 +680,109 @@ export default function registerSupplychainActions(registerLensAction) {
           paretoConcentration: bySupplier.length > 0 ? Math.round((paretoCount / bySupplier.length) * 100) : 0,
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── 9. Org lifecycle — planner/buyer/analyst collaboration ───────────
+  // Thin wrappers over world-organizations.js; supplychain owns none of the
+  // roster state, only the SC-role interpretation of it (see ORG_ROLE_TO_SC_ROLE
+  // above). Only "firm" and "department" org types are offered here — those
+  // are the types world-organizations.js documents for business-shaped orgs;
+  // other org types (guild/crew/studio/...) are the domain of other lenses.
+  const SC_ORG_TYPES = new Set(["firm", "department"]);
+
+  registerLensAction("supplychain", "orgCreate", (ctx, _artifact, params) => {
+    try {
+      const leaderId = scActor(ctx);
+      const type = SC_ORG_TYPES.has(params?.type) ? params.type : "firm";
+      const name = scClean(params?.name, 120);
+      if (!name) return { ok: false, error: "name_required" };
+      const res = createOrganization({
+        name, type, leaderId,
+        description: scClean(params?.description, 500),
+        districtId: params?.districtId ? scClean(params.districtId, 100) : null,
+        purpose: scClean(params?.purpose, 300),
+      });
+      if (!res.ok) return res;
+      return { ok: true, result: { organization: res.organization, role: "planner", orgRole: "leader" } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("supplychain", "orgJoin", (ctx, _artifact, params) => {
+    try {
+      const userId = scActor(ctx);
+      const orgId = scClean(params?.orgId, 100);
+      if (!orgId) return { ok: false, error: "orgId_required" };
+      // Never let a joiner grant themselves a privileged org role — only
+      // "member" or "apprentice" are self-selectable on join. Promotion to
+      // officer/leader (SC "planner") requires an existing planner to call
+      // orgSetRole.
+      const requested = params?.role === "apprentice" ? "apprentice" : "member";
+      const res = joinOrganization(orgId, userId, requested);
+      if (!res.ok) return res;
+      return { ok: true, result: { role: res.role, scRole: ORG_ROLE_TO_SC_ROLE[res.role] || "analyst" } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("supplychain", "orgLeave", (ctx, _artifact, params) => {
+    try {
+      const userId = scActor(ctx);
+      const orgId = scClean(params?.orgId, 100);
+      if (!orgId) return { ok: false, error: "orgId_required" };
+      return leaveOrganization(orgId, userId);
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("supplychain", "orgMembers", (ctx, _artifact, params) => {
+    try {
+      const orgId = scClean(params?.orgId, 100);
+      if (!orgId) return { ok: false, error: "orgId_required" };
+      const scope = scScope(ctx, { orgId }, null);
+      if (!scope.ok) return scope;
+      const org = getOrganization(orgId);
+      const members = getOrgMembers(orgId).map(m => ({ ...m, scRole: ORG_ROLE_TO_SC_ROLE[m.role] || "analyst" }));
+      return { ok: true, result: { organization: org, members, myRole: scope.role, myOrgRole: scope.orgRole } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("supplychain", "orgSetRole", (ctx, _artifact, params) => {
+    try {
+      const actorId = scActor(ctx);
+      const orgId = scClean(params?.orgId, 100);
+      const targetUserId = scClean(params?.targetUserId, 200);
+      if (!orgId || !targetUserId) return { ok: false, error: "orgId_and_targetUserId_required" };
+      // Accept either a native org role (leader/officer/member/apprentice)
+      // or a supplychain-facing SC role name (planner/buyer/analyst) for
+      // frontend convenience; SC_ROLE_TO_ORG_ROLE resolves the latter.
+      const requested = params?.role;
+      const newRole = SC_ROLE_TO_ORG_ROLE[requested] || requested;
+      // setMemberRole() itself enforces "only leader/officer may change
+      // roles" (world-organizations.js) — i.e. only the planner class. We
+      // don't duplicate that gate here, only translate the role name.
+      const res = setMemberRole(orgId, targetUserId, newRole, actorId);
+      if (!res.ok) return res;
+      return { ok: true, result: { role: res.role, scRole: ORG_ROLE_TO_SC_ROLE[res.role] || "analyst" } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("supplychain", "orgMine", (ctx, _artifact, _params) => {
+    try {
+      const userId = scActor(ctx);
+      const memberships = getOrgsForUser(userId);
+      const orgs = memberships.map(m => {
+        const org = getOrganization(m.orgId);
+        return org ? { ...org, myRole: m.role, myScRole: ORG_ROLE_TO_SC_ROLE[m.role] || "analyst" } : null;
+      }).filter(Boolean);
+      return { ok: true, result: { organizations: orgs } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("supplychain", "orgList", (ctx, _artifact, params) => {
+    try {
+      const type = SC_ORG_TYPES.has(params?.type) ? params.type : undefined;
+      const orgs = listOrganizations({ type, districtId: params?.districtId, limit: Math.min(scNum(params?.limit, 50), 100) })
+        .filter(o => SC_ORG_TYPES.has(o.type));
+      return { ok: true, result: { organizations: orgs } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 }
