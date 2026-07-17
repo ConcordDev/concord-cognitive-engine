@@ -65,6 +65,10 @@ interface AccessEvent {
   lensId: string;
   dataCategory: string;
   operation: string;
+  // 'lens-action' = auto-recorded at macro dispatch (the common case now);
+  // 'manual' = an explicit privacy.recordAccess call from another subsystem.
+  source?: string;
+  macro?: string;
 }
 interface AccessLogResult {
   events: AccessEvent[];
@@ -392,7 +396,7 @@ function AccessLogSection() {
     <SectionCard
       icon={ScrollText}
       title="Privacy Activity Log"
-      subtitle="Recent data accesses — which lens or agent read what, and when."
+      subtitle="Lens macros invoked on your behalf — recorded automatically as you use Concord. This is a lens-action log, not a complete record of every backend data touch."
       action={
         <button
           onClick={reload}
@@ -404,7 +408,7 @@ function AccessLogSection() {
     >
       {error && <p className="text-xs text-rose-400">{error}</p>}
       {data && data.totalEvents === 0 ? (
-        <p className="text-xs text-gray-400">No data accesses recorded yet.</p>
+        <p className="text-xs text-gray-400">No lens-action access recorded yet.</p>
       ) : (
         <>
           <TimelineView events={events} height={110} />

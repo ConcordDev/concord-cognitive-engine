@@ -53,6 +53,10 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
 import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
+// Wave-4 gap-closure (privacy row) — shared recorder also used by the
+// `privacy.recordAccess` macro (server/domains/privacy.js); see the call
+// site at the top of runMacro() for why this is wired at the chokepoint.
+import { appendAccessEvent as _appendPrivacyAccessEvent } from "./domains/privacy.js";
 import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
 import { runNpcKnowledgeBridge } from "./lib/npc-knowledge-bridge.js";
 import {
@@ -11169,6 +11173,25 @@ async function runMacro(domain, name, input, ctx) {
   // genuinely dead even when the static parse can't tell.
   try { _macroTelemetry.recordInvocation(domain, name, ctx); }
   catch { /* telemetry must never throw */ }
+
+  // Wave-4 gap-closure (privacy row) — the privacy lens's "Privacy Activity
+  // Log" is meant to show real lens usage back to the user, but almost
+  // nothing ever called `privacy.recordAccess`, so it read as nearly empty.
+  // Record one bounded, in-memory "lens-action access" event per identifiable
+  // (non-internal) caller, right beside the telemetry call above: same cost
+  // shape (O(1) Map/array op, no DB write), same never-throw discipline.
+  // Deliberately skipped for internal/system callers (heartbeats, ticks,
+  // makeInternalCtx) — recording every engine's own macro calls under
+  // "system"/"anon" would be noise, not a user's own access history.
+  // HONEST SCOPE: this captures "a lens macro this user invoked ran" — it is
+  // NOT a record of every backend data touch. See appendAccessEvent's doc
+  // comment in domains/privacy.js.
+  try {
+    const _accessUid = ctx?.userId || ctx?.actor?.userId;
+    if (_accessUid && ctx?.actor?.internal !== true) {
+      _appendPrivacyAccessEvent(_accessUid, { domain, macro: name, source: "lens-action" });
+    }
+  } catch { /* privacy access recording must never throw */ }
 
   // v3: permissioned cognition (macro-level ACL).
   //
