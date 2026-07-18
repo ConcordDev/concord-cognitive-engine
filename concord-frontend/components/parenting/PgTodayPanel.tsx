@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Milk, Baby, Pill, Activity, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Dash {
   feedsToday: number; sleepMinToday: number; diapersToday: number;
@@ -31,6 +32,7 @@ export function PgTodayPanel({ childId }: { childId: string }) {
   const [dash, setDash] = useState<Dash | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [bottleMl, setBottleMl] = useState('');
   const [nurseMin, setNurseMin] = useState('');
   const [medName, setMedName] = useState('');
@@ -41,6 +43,12 @@ export function PgTodayPanel({ childId }: { childId: string }) {
       lensRun('parenting', 'parenting-dashboard', { childId }),
       lensRun('parenting', 'day-timeline', { childId }),
     ]);
+    if (d.data?.ok === false || t.data?.ok === false) {
+      setLoadError(d.data?.error || t.data?.error || 'Could not load today’s log.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setDash((d.data?.result as Dash | null) || null);
     setEvents(t.data?.result?.events || []);
     setLoading(false);
@@ -66,6 +74,9 @@ export function PgTodayPanel({ childId }: { childId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

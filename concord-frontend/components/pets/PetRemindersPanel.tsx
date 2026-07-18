@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, BellRing, FileText, Receipt, Trash2, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Reminder { id: string; title: string; kind: string; dueDate: string | null; done: boolean; status: string }
 interface PetDocument { id: string; title: string; kind: string }
@@ -22,6 +23,7 @@ export function PetRemindersPanel({ petId, onChange }: { petId: string; onChange
   const [documents, setDocuments] = useState<PetDocument[]>([]);
   const [expenses, setExpenses] = useState<{ total: number; thisMonth: number; byCategory: Record<string, number> }>({ total: 0, thisMonth: 0, byCategory: {} });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rem, setRem] = useState({ title: '', kind: 'general', dueDate: '' });
   const [doc, setDoc] = useState({ title: '', kind: 'medical' });
@@ -35,6 +37,12 @@ export function PetRemindersPanel({ petId, onChange }: { petId: string; onChange
       lensRun('pets', 'document-list', { petId }),
       lensRun('pets', 'expense-summary', { petId }),
     ]);
+    if (r.data?.ok === false || d.data?.ok === false || e.data?.ok === false) {
+      setLoadError(r.data?.error || d.data?.error || e.data?.error || 'Could not load reminders.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setReminders(r.data?.result?.reminders || []);
     setDocuments(d.data?.result?.documents || []);
     setExpenses({
@@ -82,6 +90,9 @@ export function PetRemindersPanel({ petId, onChange }: { petId: string; onChange
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Users, KeyRound, Copy, Check, UserMinus, Share2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Caregiver { caregiverId: string; role: string; childId: string; joinedAt: string; via: string }
 interface Invite { code: string; childId: string; childName: string; role: string }
@@ -17,6 +18,7 @@ const ROLES = ['parent', 'nanny', 'grandparent', 'caregiver'] as const;
 export function PgCaregiversPanel({ childId }: { childId: string }) {
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<string>('parent');
   const [invite, setInvite] = useState<Invite | null>(null);
@@ -26,6 +28,12 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
 
   const refresh = useCallback(async () => {
     const r = await lensRun('parenting', 'caregiver-list', { childId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load caregivers.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCaregivers(r.data?.result?.caregivers || []);
     setLoading(false);
   }, [childId]);
@@ -58,6 +66,9 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

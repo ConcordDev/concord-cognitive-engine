@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Plus, BellRing, Bell, BellOff, Trash2, Users, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Medication { id: string; name: string }
 interface Reminder { id: string; medId: string; medName: string; times: string[]; leadMinutes: number; sound: boolean; enabled: boolean; snoozeMinutes: number }
@@ -26,6 +27,7 @@ export function RxRemindersPanel({ onChange }: { onChange: () => void }) {
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [alerts, setAlerts] = useState<CaregiverAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [remForm, setRemForm] = useState({ medId: '', times: '08:00, 20:00', leadMinutes: '0' });
   const [cgForm, setCgForm] = useState({ name: '', contact: '', relationship: '', missedThreshold: '1' });
@@ -40,6 +42,12 @@ export function RxRemindersPanel({ onChange }: { onChange: () => void }) {
       lensRun('pharmacy', 'caregiver-list', {}),
       lensRun('pharmacy', 'caregiver-alerts', {}),
     ]);
+    if (m.data?.ok === false || r.data?.ok === false || d.data?.ok === false || c.data?.ok === false || a.data?.ok === false) {
+      setLoadError(m.data?.error || r.data?.error || d.data?.error || c.data?.error || a.data?.error || 'Could not load reminders.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setMeds(m.data?.result?.medications || []);
     setReminders(r.data?.result?.reminders || []);
     setDue(d.data?.result?.due || []);
@@ -56,6 +64,11 @@ export function RxRemindersPanel({ onChange }: { onChange: () => void }) {
     setNotifPerm(Notification.permission);
     const tick = async () => {
       const d = await lensRun('pharmacy', 'reminder-due', { windowMinutes: 30 });
+      if (d.data?.ok === false) {
+        // Transient background-poll failure — keep the last-known due list
+        // rather than silently clearing it (would hide a real due dose).
+        return;
+      }
       const dueList: DueReminder[] = d.data?.result?.due || [];
       setDue(dueList);
       if (Notification.permission !== 'granted') return;
@@ -124,6 +137,9 @@ export function RxRemindersPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

@@ -26,7 +26,7 @@
  *   6. Quick log walk     → pets.activity-log (kind: 'walk')
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   X, Stethoscope, FileText, Pill, Phone, Globe, Activity,
   Loader2, Check, AlertTriangle, Send, Wand2, CalendarPlus,
@@ -34,6 +34,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 export interface DrawerPet {
   id: string;
@@ -75,6 +76,7 @@ export function PetActionDrawer({ pet, onClose, onChange }: PetActionDrawerProps
   const [publishedToken, setPublishedToken] = useState<string | null>(null);
 
   const [loadingRecords, setLoadingRecords] = useState(true);
+  const [recordsError, setRecordsError] = useState<string | null>(null);
   const [vaccines, setVaccines] = useState<VaccineLite[]>([]);
   const [medications, setMedications] = useState<MedicationLite[]>([]);
   const [visits, setVisits] = useState<VisitLite[]>([]);
@@ -83,23 +85,26 @@ export function PetActionDrawer({ pet, onClose, onChange }: PetActionDrawerProps
   const [bookForm, setBookForm] = useState({ date: '', reason: 'checkup' });
   const [lostForm, setLostForm] = useState({ contactName: '', contactPhone: '' });
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadRecords = useCallback(async () => {
     setLoadingRecords(true);
-    (async () => {
-      const [v, m, vis] = await Promise.all([
-        lensRun('pets', 'vaccine-list', { petId: pet.id }),
-        lensRun('pets', 'medication-list', { petId: pet.id }),
-        lensRun('pets', 'vet-visit-list', { petId: pet.id }),
-      ]);
-      if (cancelled) return;
-      setVaccines(v.data?.result?.vaccines || []);
-      setMedications(m.data?.result?.medications || []);
-      setVisits(vis.data?.result?.visits || []);
+    const [v, m, vis] = await Promise.all([
+      lensRun('pets', 'vaccine-list', { petId: pet.id }),
+      lensRun('pets', 'medication-list', { petId: pet.id }),
+      lensRun('pets', 'vet-visit-list', { petId: pet.id }),
+    ]);
+    if (v.data?.ok === false || m.data?.ok === false || vis.data?.ok === false) {
+      setRecordsError(v.data?.error || m.data?.error || vis.data?.error || `Could not load ${pet.name}'s records.`);
       setLoadingRecords(false);
-    })();
-    return () => { cancelled = true; };
-  }, [pet.id]);
+      return;
+    }
+    setRecordsError(null);
+    setVaccines(v.data?.result?.vaccines || []);
+    setMedications(m.data?.result?.medications || []);
+    setVisits(vis.data?.result?.visits || []);
+    setLoadingRecords(false);
+  }, [pet.id, pet.name]);
+
+  useEffect(() => { void loadRecords(); }, [loadRecords]);
 
   const activeMeds = useMemo(() => medications.filter((m) => m.active), [medications]);
   const recordOptions = useMemo(() => [
@@ -258,6 +263,10 @@ export function PetActionDrawer({ pet, onClose, onChange }: PetActionDrawerProps
         </div>
 
         <div className="p-5 space-y-3">
+          {recordsError && (
+            <ErrorState message={recordsError} onRetry={loadRecords} variant="inline" />
+          )}
+
           <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
             <label htmlFor="pet-drawer-recipient" className="font-semibold mb-1.5 block">Vet recipient (Concord user id)</label>
             <input

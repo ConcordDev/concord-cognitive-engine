@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, AlertTriangle, Plus, Building2, RefreshCw, MapPin, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface DueRow { medId: string; name: string; quantity: number; daysOfSupply: number; refillsRemaining: number; urgency: string }
 interface Refill { id: string; medName: string; pharmacy: string | null; status: string; requestedAt: string }
@@ -38,6 +39,7 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [meds, setMeds] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [phForm, setPhForm] = useState({ name: '', address: '', phone: '' });
   const [showPh, setShowPh] = useState(false);
@@ -60,6 +62,12 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
       lensRun('pharmacy', 'pharmacy-list', {}),
       lensRun('pharmacy', 'med-list', {}),
     ]);
+    if (d.data?.ok === false || r.data?.ok === false || p.data?.ok === false || m.data?.ok === false) {
+      setLoadError(d.data?.error || r.data?.error || p.data?.error || m.data?.error || 'Could not load refills.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setDue(d.data?.result?.due || []);
     setRefills(r.data?.result?.refills || []);
     setPharmacies(p.data?.result?.pharmacies || []);
@@ -122,6 +130,9 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

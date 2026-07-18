@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Plus, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface GrowthEntry { id: string; weightKg: number | null; heightCm: number | null; headCm: number | null; date: string }
 interface Measure { value: number; whoMedian: number; percentile: number }
@@ -21,12 +22,19 @@ export function PgGrowthPanel({ childId }: { childId: string }) {
   const [history, setHistory] = useState<GrowthEntry[]>([]);
   const [pct, setPct] = useState<Percentiles | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ weightKg: '', heightCm: '', headCm: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const h = await lensRun('parenting', 'growth-history', { childId });
+    if (h.data?.ok === false) {
+      setLoadError(h.data?.error || 'Could not load growth history.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setHistory(h.data?.result?.entries || []);
     const p = await lensRun('parenting', 'growth-percentile', { childId });
     setPct(p.data?.ok === false ? null : (p.data?.result as Percentiles));
@@ -53,6 +61,9 @@ export function PgGrowthPanel({ childId }: { childId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const weightSeries = history.filter((e) => e.weightKg != null).map((e) => ({ date: e.date.slice(5), weight: e.weightKg }));

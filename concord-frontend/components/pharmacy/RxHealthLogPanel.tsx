@@ -10,6 +10,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { Loader2, Plus, HeartPulse, NotebookPen } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Measurement { id: string; kind: string; value: number; value2: number | null; date: string; note: string | null }
 interface JournalEntry { id: string; note: string; mood: string | null; symptoms: string[]; date: string }
@@ -23,6 +24,7 @@ export function RxHealthLogPanel() {
   const [loggedKinds, setLoggedKinds] = useState<string[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mForm, setMForm] = useState({ value: '', value2: '', note: '' });
   const [jForm, setJForm] = useState({ note: '', mood: '', symptoms: '' });
@@ -33,6 +35,12 @@ export function RxHealthLogPanel() {
       lensRun('pharmacy', 'measurement-history', { kind }),
       lensRun('pharmacy', 'journal-list', {}),
     ]);
+    if (m.data?.ok === false || j.data?.ok === false) {
+      setLoadError(m.data?.error || j.data?.error || 'Could not load health log.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSeries(m.data?.result?.series || []);
     setTrend(m.data?.result?.trend || 'no_data');
     setLoggedKinds(m.data?.result?.kinds || []);
@@ -69,6 +77,9 @@ export function RxHealthLogPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const isBP = kind === 'blood_pressure';
