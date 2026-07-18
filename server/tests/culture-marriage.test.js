@@ -38,11 +38,17 @@ import { up as up182 } from "../migrations/182_culture_marriage.js";
 // collision fix — the Medici dynasty rename). 182 still seeds "medici" (it's
 // append-only); the real migrated DB always runs 367 after, so the test must too.
 import { up as up367 } from "../migrations/367_rename_medici_to_vessine.js";
+// 368 forward-repairs the immutable 182 seed's "kree" → "vrellan" (name/IP
+// collision fix — the Kree/Marvel trademark rename). Must run after 367 since
+// 182's seeded ("kree","medici") row only becomes ("kree","vessine") once 367
+// has renamed medici; 368 then renames kree -> vrellan and re-sorts the pair.
+import { up as up368 } from "../migrations/368_rename_kree_to_vrellan.js";
 
 function setupDb() {
   const db = new Database(":memory:");
   up182(db);
   up367(db); // repair the immutable 182 "medici" seed → "vessine"
+  up368(db); // repair the immutable 182 "kree" seed → "vrellan"
   return db;
 }
 

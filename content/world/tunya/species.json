@@ -49,7 +49,7 @@
       "id": "vessine",
       "common_name": "Vessine",
       "status_on_planet": "stranded — crashed ~100 Tunyan years ago; ship unrepairable",
-      "estimated_population": "small (low thousands). Confined to Vessine Isle off Kree's coast and small wards in Kree-allied kingdoms.",
+      "estimated_population": "small (low thousands). Confined to Vessine Isle off Vrellan's coast and small wards in Vrellan-allied kingdoms.",
       "lifespan": {
         "pure": "150-200 Tunyan years; Supreme Elder typically the longest-lived",
         "mate_absorption_extends": "absorbing a deceased mate's healing capacity adds 10-25 years to the survivor's life"
@@ -117,8 +117,8 @@
     "sanguire": {
       "id": "sanguire",
       "common_name": "Sanguire",
-      "status_on_planet": "Kree-arrived. The Kree state arrived on Tunya before the Earth arks. Sanguire is one of the species making up the Kree polity. Their homeland within Kree is Sandrun.",
-      "estimated_population": "moderate. Concentrated in Sandrun. Sanguire-descended populations in Kree's other regions (mixed with other Kree species, with Earth-arrival populations, with Ancient Tunyan).",
+      "status_on_planet": "Vrellan-arrived. The Vrellan state arrived on Tunya before the Earth arks. Sanguire is one of the species making up the Vrellan polity. Their homeland within Vrellan is Sandrun.",
+      "estimated_population": "moderate. Concentrated in Sandrun. Sanguire-descended populations in Vrellan's other regions (mixed with other Vrellan species, with Earth-arrival populations, with Ancient Tunyan).",
       "lifespan": {
         "pure": "100-130 Tunyan years",
         "mixed_50_50": "85-110"
@@ -151,14 +151,14 @@
         "reproductive_compatibility": {
           "with_other_sanguire": "fully compatible. Sanguire culture organizes around clan-internal mating with displays of strength as courtship.",
           "with_vessine": "asymmetrically lethal — see species.vessine.biology.reproductive_compatibility.with_sanguire above and powers.json#sanguire_vessine_hybrid",
-          "with_earth_human": "viable. Hybrids carry attenuated fire and slightly increased lifespan. Common among Kree-state populations of mixed Sanguire-arrival heritage.",
+          "with_earth_human": "viable. Hybrids carry attenuated fire and slightly increased lifespan. Common among Vrellan-state populations of mixed Sanguire-arrival heritage.",
           "with_ancient_tunyan": "viable. Hybrids carry attenuated fire AND partial conduit-status. The two interfere — fire output drops in proximity to other Tunyan-blooded individuals."
         }
       },
       "culture": {
         "governance": "Warlord-led clan structure. Three primary clans in Sandrun. Warlord chosen by ritual duel during Cull (winter month).",
-        "religion": "Pre-Tunyan deity-set carried over from Kree origin. Names not commonly shared with outsiders.",
-        "external_role": "The warlord of Sandrun represents the Sanguire to other Tunyan kingdoms. The Kree state separately represents the broader polity.",
+        "religion": "Pre-Tunyan deity-set carried over from Vrellan origin. Names not commonly shared with outsiders.",
+        "external_role": "The warlord of Sandrun represents the Sanguire to other Tunyan kingdoms. The Vrellan state separately represents the broader polity.",
         "naming": "see naming_conventions.json#sandrun_sanguire"
       }
     },
@@ -203,7 +203,7 @@
         "primary_color": "#c4dcec",
         "secondary_color": "#b8a8c8",
         "sigil_motif": "an eight-faceted teardrop (the Supreme Elder's tear at succession)",
-        "temples": "one true temple on Vessine Isle. Smaller shrines in the Vessine wards of Kree-allied kingdoms.",
+        "temples": "one true temple on Vessine Isle. Smaller shrines in the Vessine wards of Vrellan-allied kingdoms.",
         "festivals": ["holiday_communion (the only event where Vessine males uncover their heads in public; once per Tunyan year, on Cares-day-1)"]
       },
       "doctrine": [

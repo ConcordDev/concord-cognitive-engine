@@ -61,7 +61,7 @@
         "dye-paste sold to fullers"
       ],
       "monopoly": "no kingdom monopolizes; widely distributed",
-      "uses": ["asbir_civic_uniform", "kree_state_regalia", "fluxom_harbor_dress"]
+      "uses": ["asbir_civic_uniform", "vrellan_state_regalia", "fluxom_harbor_dress"]
     },
     {
       "id": "yellow",

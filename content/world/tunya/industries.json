@@ -110,7 +110,7 @@
       "inputs": ["herbs", "tonics", "Vessine healing services (paid in food trade)"],
       "outputs": ["routine_care", "births", "Vessine_severe_case_intervention"],
       "seasonal_peak": "year-round; spikes in Wound (heat illness) and Cull (cold illness + slaughter injuries)",
-      "key_kingdoms": ["all (Vessine visit all)", "kree_vessine_ward (resident Vessine concentration)"]
+      "key_kingdoms": ["all (Vessine visit all)", "vrellan_vessine_ward (resident Vessine concentration)"]
     },
     {
       "id": "logistics_transport",
@@ -162,8 +162,8 @@
     { "id": "bloc_internal", "members": ["aekon", "asbir", "dinye"], "volume": "high", "stability": 0.85 },
     { "id": "bahiij_dormas_silk", "members": ["bahiij", "dormas"], "volume": "high", "stability": 0.75 },
     { "id": "sahm_bahiij_festival", "members": ["sahm", "bahiij"], "volume": "moderate", "stability": 0.70 },
-    { "id": "kree_vessine_food_for_healing", "members": ["kree_nationalists", "vessine"], "volume": "moderate", "stability": 0.80, "narrative": "Vessine trade healing services for food. Without this, the Vessine Isle cannot sustain its population." },
-    { "id": "sandrun_kree_iron", "members": ["sandrun_sanguire", "kree_nationalists"], "volume": "high", "stability": 0.65 },
+    { "id": "vrellan_vessine_food_for_healing", "members": ["vrellan_nationalists", "vessine"], "volume": "moderate", "stability": 0.80, "narrative": "Vessine trade healing services for food. Without this, the Vessine Isle cannot sustain its population." },
+    { "id": "sandrun_vrellan_iron", "members": ["sandrun_sanguire", "vrellan_nationalists"], "volume": "high", "stability": 0.65 },
     { "id": "fluxom_collapsed", "members": ["fluxom"], "volume": "low", "stability": 0.20, "narrative": "Fluxom's sea-trade with the kingdoms collapsed after the sealies came. Currently limited to coastal small-craft trade." }
   ]
 }

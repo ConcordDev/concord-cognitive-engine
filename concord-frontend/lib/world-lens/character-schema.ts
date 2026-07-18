@@ -736,7 +736,7 @@ export const DEFAULT_STYLE_FOR_THEME: Record<ConcordiaThemeId, FactionStyleId> =
 export const FACTION_TO_STYLE: Record<string, FactionStyleId> = {
   // Tunya 14 factions
   'sandrun_sanguire': 'tunya-bloodline-forge',
-  'kree':             'tunya-savanna',
+  'vrellan':          'tunya-savanna',
   'vessine':           'tunya-vessine-ice',
   'corre':             'tunya-highland',
   'aekon':            'tunya-savanna',

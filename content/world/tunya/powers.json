@@ -5,13 +5,13 @@
   "axioms": [
     "Powers are bloodline-inherited, not learned. A person without the bloodline cannot acquire it; a person with it cannot suppress it permanently.",
     "Powers express on a continuum from full (pure bloodline, both parents) to trace (one ancestor four generations back). Trace expression is so weak it often goes undiagnosed for life.",
-    "Two power systems are documented on Tunya: fire (Sanguire species, Kree-arrived ~pre-arks) and healing (Vessine species, crash-landed ~100y ago). Note: prior drafts of this bible incorrectly attributed ice powers to the Vessine. Canon corrects to healing-only — the Resonance Choir is a healing-focus practice, not a combat ability.",
+    "Two power systems are documented on Tunya: fire (Sanguire species, Vrellan-arrived ~pre-arks) and healing (Vessine species, crash-landed ~100y ago). Note: prior drafts of this bible incorrectly attributed ice powers to the Vessine. Canon corrects to healing-only — the Resonance Choir is a healing-focus practice, not a combat ability.",
     "Tunyan blood has no recorded bloodline power but does carry conduit-status for the planetary refusal-field. This is biologically distinct from the Sanguire/Vessine pattern."
   ],
   "fire_bloodline": {
     "id": "fire_sanguire",
     "origin_faction": "sandrun_sanguire",
-    "founding_population": "kree_sanguire_settlers",
+    "founding_population": "vrellan_sanguire_settlers",
     "expression_dimensions": [
       { "id": "potency", "scale_0_to_1": "fraction of pure bloodline expression" },
       { "id": "control_radius_meters", "default_max": 8 },
@@ -170,7 +170,7 @@
   },
   "narrative_implications": {
     "if_electricity_returns": "If a player ever makes electricity work on Tunya outside Nil's grove, that means the planetary refusal-field has weakened or been neutralized. This would be a tier-1 world-changing event with cascading consequences across every kingdom.",
-    "if_a_hybrid_acts": "The two recorded hybrids, if they choose to act publicly, force Sanguire-Vessine politics into the open. Kree the state may try to broker; Kree may also try to crush.",
+    "if_a_hybrid_acts": "The two recorded hybrids, if they choose to act publicly, force Sanguire-Vessine politics into the open. Vrellan the state may try to broker; Vrellan may also try to crush.",
     "if_pure_tunyans_leave_nil": "If pure Tunyans leave Nil's borders en masse, the refusal-field's density elsewhere increases. Kingdoms with previously-functional fire bloodlines may find them weakening. Kingdoms with previously-impossible electricity may find it newly impossible.",
     "if_vessine_navigator_returns": "If the Vessine route opens — Aerasi's wrong-by-one-year prediction comes true — Tunya gets visitors. The visitors are not from Earth and are not the Vessine. Open lore."
   }

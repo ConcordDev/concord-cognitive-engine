@@ -1,7 +1,7 @@
 {
   "world_id": "tunya",
   "world_name": "Tunya",
-  "world_description": "A planet on the far side of a wormhole. Reached by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations: Africa first, then North America, then Eurasia, then the wreck-late South Americans. Native Americans walked off the North American ark and kept walking. The story opens four generations after first arrival, with the arks now silent ruins whose archives can still be woken with enough sunlight on cracked panels. The Sanguire (a Kree-arrived species) command fire by bloodline. The Vessine (an extra-planetary species who crash-landed in Year 11) command healing and worship Mercury. The Ancient Tunyans were already here.",
+  "world_description": "A planet on the far side of a wormhole. Reached by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations: Africa first, then North America, then Eurasia, then the wreck-late South Americans. Native Americans walked off the North American ark and kept walking. The story opens four generations after first arrival, with the arks now silent ruins whose archives can still be woken with enough sunlight on cracked panels. The Sanguire (a Vrellan-arrived species) command fire by bloodline. The Vessine (an extra-planetary species who crash-landed in Year 11) command healing and worship Mercury. The Ancient Tunyans were already here.",
   "history": [
     {
       "id": "lore_pre_arrival_tunyan",
@@ -24,22 +24,22 @@
       "hidden_truth": "Tunya was not empty when the Tunyans arrived either. The mason marks Torrek of Masond can read describe a people who were here before either group. None of them survive — but their walls do."
     },
     {
-      "id": "lore_kree_arrival",
-      "title": "Kree Was Already On The Way",
+      "id": "lore_vrellan_arrival",
+      "title": "Vrellan Was Already On The Way",
       "type": "founding",
       "era": "Pre-Year 0",
-      "description": "The Kree are not from Earth and are not Ancient Tunyan. They arrived on Tunya before the Earth arks but well after the Ancient Tunyans. Their origin is not shared, even with their own younger generations. The Sanguire are one of the Kree peoples — and the Sanguire is also a distinct sapient species; their homeland within Kree is Sandrun. (Per species.json: Sanguire is a Kree-arrived species, not an Earth-descended population.) The Vessine, who would later crash-land in Year 11, are not a Kree people and are not on Tunya yet at this time.",
+      "description": "The Vrellan are not from Earth and are not Ancient Tunyan. They arrived on Tunya before the Earth arks but well after the Ancient Tunyans. Their origin is not shared, even with their own younger generations. The Sanguire are one of the Vrellan peoples — and the Sanguire is also a distinct sapient species; their homeland within Vrellan is Sandrun. (Per species.json: Sanguire is a Vrellan-arrived species, not an Earth-descended population.) The Vessine, who would later crash-land in Year 11, are not a Vrellan people and are not on Tunya yet at this time.",
       "significance": "major",
       "factions_involved": [
-        "kree_nationalists",
+        "vrellan_nationalists",
         "sandrun_sanguire",
         "vessine"
       ],
       "world_id": "tunya",
       "known_by": [
-        "kree_nationalists"
+        "vrellan_nationalists"
       ],
-      "hidden_truth": "The Kree state is the constant; the peoples drift. This is by design. The Kree elders deliberately scattered their constituent peoples across Tunya so that no single uprising could end them."
+      "hidden_truth": "The Vrellan state is the constant; the peoples drift. This is by design. The Vrellan elders deliberately scattered their constituent peoples across Tunya so that no single uprising could end them."
     },
     {
       "id": "lore_seven_arks_launched",
@@ -74,7 +74,7 @@
       "known_by": [
         "masond",
         "nil",
-        "kree_nationalists",
+        "vrellan_nationalists",
         "sahm",
         "asbir"
       ],
@@ -85,7 +85,7 @@
       "title": "Second Arrival — North American Ark and the Walk-Off",
       "type": "founding",
       "era": "Year 7 (Tunya local)",
-      "description": "The North American ark arrived six years after Africa. On disembarkation, the Native American passengers — who had not been consulted on the curators' decisions about the archive — walked off as a body. They settled on the coast east of Kree and named themselves Corre. The remaining North Americans founded what became Asbir, in the southern dunes near the ark's resting place.",
+      "description": "The North American ark arrived six years after Africa. On disembarkation, the Native American passengers — who had not been consulted on the curators' decisions about the archive — walked off as a body. They settled on the coast east of Vrellan and named themselves Corre. The remaining North Americans founded what became Asbir, in the southern dunes near the ark's resting place.",
       "significance": "major",
       "factions_involved": [
         "asbir",
@@ -95,7 +95,7 @@
       "known_by": [
         "asbir",
         "corre",
-        "kree_nationalists",
+        "vrellan_nationalists",
         "masond"
       ],
       "hidden_truth": "Corre's elders walked because they knew what was deleted before launch. Asbir's curators did not realize Corre knew until two generations later, by which point asking would have made the deletion canonical."
@@ -164,7 +164,7 @@
       "title": "The Sahm Founding",
       "type": "founding",
       "era": "Year 8 (Tunya local)",
-      "description": "A cohort that disembarked with the African ark — descended from the African American diaspora — chose not to settle into the Masond merger. They walked to the river country and founded Sahm as a self-determining kingdom. They were not absorbed into Sandrun by the Sanguire, who arrived later from the Kree state and never tried to claim them.",
+      "description": "A cohort that disembarked with the African ark — descended from the African American diaspora — chose not to settle into the Masond merger. They walked to the river country and founded Sahm as a self-determining kingdom. They were not absorbed into Sandrun by the Sanguire, who arrived later from the Vrellan state and never tried to claim them.",
       "significance": "major",
       "factions_involved": [
         "sahm",
@@ -194,7 +194,7 @@
         "bahiij",
         "sahm"
       ],
-      "hidden_truth": "Dormas's actual upper class is not from any of the ark populations. Lady Oriane's bloodline came down from Kree two generations ago — they are Kree exiles whose presence is the price the Kree chancellor paid for an entirely different concession the records do not name."
+      "hidden_truth": "Dormas's actual upper class is not from any of the ark populations. Lady Oriane's bloodline came down from Vrellan two generations ago — they are Vrellan exiles whose presence is the price the Vrellan chancellor paid for an entirely different concession the records do not name."
     },
     {
       "id": "lore_fluxom_founding",
@@ -209,7 +209,7 @@
       "world_id": "tunya",
       "known_by": [
         "fluxom",
-        "kree_nationalists",
+        "vrellan_nationalists",
         "sahm",
         "aekon"
       ],
@@ -220,16 +220,16 @@
       "title": "The Vessine Crash",
       "type": "catastrophe",
       "era": "Year 11 (Tunya local) — approximately 100 Tunyan years ago, in the gap between the Asbir/Corre arrival (Year 7) and the Eurasia arrival (Year 14)",
-      "description": "The Vessine came to Tunya in their own vessel, not on an Earth ark. They crashed. The ship was beyond Tunya's pre-industrial repair capacity then; it remains beyond it now. They settled on a small island off Kree's coast — Vessine Isle. They venture from the isle to heal the sick and trade healing services for food. They do not believe in Tunyan gods. Their goddess is Mercury.",
+      "description": "The Vessine came to Tunya in their own vessel, not on an Earth ark. They crashed. The ship was beyond Tunya's pre-industrial repair capacity then; it remains beyond it now. They settled on a small island off Vrellan's coast — Vessine Isle. They venture from the isle to heal the sick and trade healing services for food. They do not believe in Tunyan gods. Their goddess is Mercury.",
       "significance": "major",
       "factions_involved": [
         "vessine",
-        "kree_nationalists"
+        "vrellan_nationalists"
       ],
       "world_id": "tunya",
       "known_by": [
         "vessine",
-        "kree_nationalists",
+        "vrellan_nationalists",
         "nil",
         "masond"
       ],
@@ -267,7 +267,7 @@
       "known_by": [
         "sandrun_sanguire",
         "vessine",
-        "kree_nationalists"
+        "vrellan_nationalists"
       ],
       "hidden_truth": "Per the corrected species canon (Vessine = healing only, no ice — see species.json + powers.json), the viable hybrid pairing is Vessine-male x Sanguire-female. The Vessine-female x Sanguire-male pairing is asymmetrically lethal to the mother and produces no child. The recorded hybrid is therefore a child of a Vessine male and a Sanguire female — fathered by a Vessine man, born to a Sanguire mother. The Vessine know whose child it is. The Sanguire warlord does not. The child carries attenuated healing without a Choir voice, plus residual fire potency at ~10-15% of pure Sanguire — likely to pass as a weak-Sanguire child living unnoticed among Sanguire-descended populations."
     },
@@ -470,7 +470,7 @@
       "narrative": "Renn the Curator and a crime-world fixer have been corresponding. Players can intercept, complete, or sabotage the deal."
     },
     {
-      "from": "tunya:kree_vessine_ward",
+      "from": "tunya:vrellan_vessine_ward",
       "to": "fantasy:voss_estate_mirror",
       "mechanism": "the Vessine Resonance Choir resonates with shaped silver. Lady Seraphine's mirror is one such surface.",
       "controlled_by": [

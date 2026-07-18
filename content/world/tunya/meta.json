@@ -7,7 +7,7 @@
   "is_hub": false,
   "universe_type": "tunya",
   "biomes": ["plains", "forest", "highland", "mountain", "water", "arid"],
-  "description": "A planet reached through a wormhole by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations. Africa came first; Eurasia fourth; South America stranded mid-transit and limped in last. Native Americans walked off the North American ark and settled separately. Pre-industrial — wood, stone, brick, iron, animal-drawn transport. No electricity has ever been made to work on Tunya. Powers replace some of what electricity would do: fire-bloodlines warm and forge, ice-bloodlines preserve and heal. The Sanguire of Sandrun are revered for fire; the Vessine (an alien-origin people living among Kree) wield ice and healing. The story opens four generations after the first arrival, when the arks themselves have been ruins for decades but their archives can still be accessed with enough solar charge — making them objects of pilgrimage, sabotage, and obsession.",
+  "description": "A planet reached through a wormhole by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations. Africa came first; Eurasia fourth; South America stranded mid-transit and limped in last. Native Americans walked off the North American ark and settled separately. Pre-industrial — wood, stone, brick, iron, animal-drawn transport. No electricity has ever been made to work on Tunya. Powers replace some of what electricity would do: fire-bloodlines warm and forge, ice-bloodlines preserve and heal. The Sanguire of Sandrun are revered for fire; the Vessine (an alien-origin people living among Vrellan) wield ice and healing. The story opens four generations after the first arrival, when the arks themselves have been ruins for decades but their archives can still be accessed with enough solar charge — making them objects of pilgrimage, sabotage, and obsession.",
   "skill_affinity": {
     "default": 0.7,
     "swordsmanship": 1.0,
@@ -88,7 +88,7 @@
         "name": "The Vessine Resonance Choir",
         "access_method": "vessine_ice_resonance",
         "description": "Twelve Vessine healers in concert can shape ice into a standing wave that broadcasts to other shaped ice. The technique is not Tunyan in origin. They will not say where it came from.",
-        "location": "kree_vessine_ward",
+        "location": "vrellan_vessine_ward",
         "controlled_by_faction": "vessine",
         "stability": 0.55
       }

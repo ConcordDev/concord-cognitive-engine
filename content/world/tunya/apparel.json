@@ -157,7 +157,7 @@
   "kingdom_silhouette_priors": {
     "comment": "Each kingdom favors specific garment subsets based on its founding population's cultural origin. Cross-kingdom blends are normal in border regions.",
     "sandrun_sanguire": ["tunic (men)", "straight_sundress (women)", "work_shoes — heavy leather variant", "shawl — wind protection only"],
-    "kree_nationalists": ["tunic (men)", "bosom_dress (unioned)", "sari with double shoulder-wrap (state regalia)"],
+    "vrellan_nationalists": ["tunic (men)", "bosom_dress (unioned)", "sari with double shoulder-wrap (state regalia)"],
     "vessine_isle": ["robed garment (covers Vessine male skull cone in public)", "long flowing sari (Vessine female long hair displayed via sari over shoulder)"],
     "corre": ["tunic (men)", "halter_wrap + sundress (women)", "shawl — both kinds", "soft-leather work shoes always"],
     "aekon": ["embroidered tunic (men, district-coded)", "lehenga (women, district-coded with twelve-petal embroidery)", "ceremonial sari for high feasts"],

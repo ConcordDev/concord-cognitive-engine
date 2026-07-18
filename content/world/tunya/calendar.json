@@ -139,7 +139,7 @@
       "weather": "very_dry",
       "cultural_notes": "Celebration of wind. Peak heat, peak strain. Sanguire clan duels traditionally held — heat sharpens the fights. Vessine dispense water-bearing antidote pouches as a kindness; the practice is two generations old.",
       "agricultural": ["heat_stress_management"],
-      "festivals": ["wound_wind_celebration", "vessine_healing_choir_kree"],
+      "festivals": ["wound_wind_celebration", "vessine_healing_choir_vrellan"],
       "political_gates": ["sanguire_clan_duels_traditionally_held"]
     },
     {
@@ -253,7 +253,7 @@
     "examples": {
       "vessine": "tie Vernal (16:16 balance) and Pisces (14:18 lesser balance) to major Choir resonances; Cares-day-1 is the holiday communion of Mercury.",
       "nil": "Arbor silent walk and Brine silent supper are the only public observances.",
-      "sanguire": "Cull is when warlord challenges are formally permitted; Wound's wind-celebration carries pre-Tunyan Kree-origin invocations.",
+      "sanguire": "Cull is when warlord challenges are formally permitted; Wound's wind-celebration carries pre-Tunyan Vrellan-origin invocations.",
       "aekon": "Harvest high feast is the year's centerpiece. The twelfth district's dish is the twelfth-secret.",
       "bahiij": "Lantern-night in Summery; elephant-procession in Vernal.",
       "asbir": "follows the planet-wide calendar; the curated archive includes Earth liturgical references but no kingdom observes them publicly.",

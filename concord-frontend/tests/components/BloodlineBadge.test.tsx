@@ -31,7 +31,7 @@ describe('BloodlineBadge — no-ancestry placeholder', () => {
 });
 
 describe('BloodlineBadge — known bloodlines render meta', () => {
-  const ids = ['sanguire', 'vessine', 'sahm', 'iron_warden', 'akeia', 'kree', 'asbir', 'dinye', 'aekon', 'fluxom'];
+  const ids = ['sanguire', 'vessine', 'sahm', 'iron_warden', 'akeia', 'vrellan', 'asbir', 'dinye', 'aekon', 'fluxom'];
   for (const id of ids) {
     it(`renders ${id}`, () => {
       const { container } = render(<BloodlineBadge bloodline={id} dilution={0.1} />);

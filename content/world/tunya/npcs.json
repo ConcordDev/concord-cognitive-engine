@@ -252,8 +252,8 @@
           13,
           16
         ],
-        "location": "kree_vessine_ward_visiting_clinic",
-        "activity": "venturing healing visit to Kree Vessine Ward",
+        "location": "vrellan_vessine_ward_visiting_clinic",
+        "activity": "venturing healing visit to Vrellan Vessine Ward",
         "need_addressed": "healing_appointments",
         "interactable_by_player": true
       },
@@ -504,8 +504,8 @@
     "starting_sparks": 5400
   },
   {
-    "id": "elder_walker_neyahwetin",
-    "name": "Neyahwetin",
+    "id": "elder_walker_kanewola",
+    "name": "Kanewola",
     "title": "Eldest Walker of Corre",
     "faction_id": "corre",
     "world_id": "tunya",
@@ -514,8 +514,8 @@
     "appearance": "Long gray braid, weather-cured face, hide cloak embroidered with shells from the bay. Walks with a fishing-spear she has never used as a weapon and always uses as a walking-staff.",
     "background": "Walked off the North American ark with her grandmother as a child. Was the last person to see the ark functional. Has not entered it since.",
     "narrative_context": {
-      "secret": "Her grandmother told her, on her deathbed, what was deleted before launch. Neyahwetin has never repeated the words to anyone. She has been waiting for the right ear, and four generations later she has not heard one.",
-      "weaponise_at": "When Renn's deletion index goes public, Neyahwetin will be asked. If she speaks, the deleted record's contents shift from rumor to confirmed by survivor — a different evidentiary class. If she remains silent, the truth dies with her, possibly within this season."
+      "secret": "Her grandmother told her, on her deathbed, what was deleted before launch. Kanewola has never repeated the words to anyone. She has been waiting for the right ear, and four generations later she has not heard one.",
+      "weaponise_at": "When Renn's deletion index goes public, Kanewola will be asked. If she speaks, the deleted record's contents shift from rumor to confirmed by survivor — a different evidentiary class. If she remains silent, the truth dies with her, possibly within this season."
     },
     "concord_link_resonance": null,
     "cross_world_hook": "Corre has not, as a matter of policy, opened any cross-world conversations. Their isolation is the protection. A player could be the first.",

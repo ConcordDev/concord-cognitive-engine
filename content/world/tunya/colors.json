@@ -37,7 +37,7 @@
     "kingdom_palette_priors": {
       "comment": "Per-kingdom bias toward subsets of the full Tunyan spectrum, reflecting historical settlement patterns. Sample parent colors with these priors; child colors emerge from the genetics engine.",
       "sandrun_sanguire": ["#A8311B", "#C77B4A", "#9B5C2C", "#7D2A1A"],
-      "kree_nationalists": ["#3B5D8C", "#56324A", "#9BB1C7"],
+      "vrellan_nationalists": ["#3B5D8C", "#56324A", "#9BB1C7"],
       "vessine_isle": ["#C4D8E0", "#E0D8C8", "#B8C8C0"],
       "corre": ["#5B8047", "#A0522D", "#8B5A2B"],
       "aekon": ["#D8A23B", "#A8514A", "#7A4A2A", "#5D4037"],
@@ -63,7 +63,7 @@
     "colors": {
       "black": {
         "meanings": ["elegance", "sophistication", "formality", "power", "strength"],
-        "primary_factions_that_use": ["dormas (couture)", "kree (formal regalia)", "sandrun_sanguire (warlord ceremonial cloak)"]
+        "primary_factions_that_use": ["dormas (couture)", "vrellan (formal regalia)", "sandrun_sanguire (warlord ceremonial cloak)"]
       },
       "red": {
         "meanings": ["warmth", "love", "anger", "danger", "boldness", "excitement", "speed", "strength", "energy", "determination", "desire"],
@@ -80,7 +80,7 @@
       },
       "blue": {
         "meanings": ["peace", "professionalism", "loyalty", "reliability", "honor", "melancholy", "boredom", "coldness", "winter", "depth"],
-        "primary_factions_that_use": ["asbir (curator robes, civic uniform)", "kree (state regalia)", "fluxom (harbor dress)"]
+        "primary_factions_that_use": ["asbir (curator robes, civic uniform)", "vrellan (state regalia)", "fluxom (harbor dress)"]
       },
       "green": {
         "meanings": ["durability", "reliability", "environmental", "luxurious", "optimism", "well-being", "nature", "calm", "relaxation"],

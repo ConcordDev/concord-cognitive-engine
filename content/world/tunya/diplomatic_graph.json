@@ -10,9 +10,9 @@
   },
   "edges": [
     {
-      "from": "sandrun_sanguire", "to": "kree_nationalists",
+      "from": "sandrun_sanguire", "to": "vrellan_nationalists",
       "trade": 0.65, "hostility": 0.10, "secrets_shared": 0.85, "mobility": 0.70, "cultural_exchange": 0.55,
-      "narrative": "Sanguire are a Kree people. The state and the clans share more than they admit publicly."
+      "narrative": "Sanguire are a Vrellan people. The state and the clans share more than they admit publicly."
     },
     {
       "from": "sandrun_sanguire", "to": "vessine",
@@ -41,24 +41,24 @@
     },
 
     {
-      "from": "kree_nationalists", "to": "vessine",
+      "from": "vrellan_nationalists", "to": "vessine",
       "trade": 0.50, "hostility": 0.20, "secrets_shared": 0.60, "mobility": 0.65, "cultural_exchange": 0.50,
-      "narrative": "Kree shelters the Vessine. The arrangement has held four generations. The chancellor lied last winter when asked if Vessine could leave."
+      "narrative": "Vrellan shelters the Vessine. The arrangement has held four generations. The chancellor lied last winter when asked if Vessine could leave."
     },
     {
-      "from": "kree_nationalists", "to": "corre",
+      "from": "vrellan_nationalists", "to": "corre",
       "trade": 0.45, "hostility": 0.35, "secrets_shared": 0.20, "mobility": 0.30, "cultural_exchange": 0.20,
-      "narrative": "Kree has eyed Corre's coast for fifty years. Corre's quiet alliance with Sanguire is what stays Kree's hand."
+      "narrative": "Vrellan has eyed Corre's coast for fifty years. Corre's quiet alliance with Sanguire is what stays Vrellan's hand."
     },
     {
-      "from": "kree_nationalists", "to": "fluxom",
+      "from": "vrellan_nationalists", "to": "fluxom",
       "trade": 0.25, "hostility": 0.50, "secrets_shared": 0.10, "mobility": 0.20, "cultural_exchange": 0.05,
-      "narrative": "Kree refused to back Fluxom's sea-trade reopen. Fluxom remembers. Kree does not care."
+      "narrative": "Vrellan refused to back Fluxom's sea-trade reopen. Fluxom remembers. Vrellan does not care."
     },
     {
-      "from": "kree_nationalists", "to": "nil",
+      "from": "vrellan_nationalists", "to": "nil",
       "trade": 0.10, "hostility": 0.45, "secrets_shared": 0.30, "mobility": 0.10, "cultural_exchange": 0.05,
-      "narrative": "Kree resents Nil's untouchability. Kree the state would absorb Nil if it could. Kree cannot. The chancellor has stopped pretending otherwise in private."
+      "narrative": "Vrellan resents Nil's untouchability. Vrellan the state would absorb Nil if it could. Vrellan cannot. The chancellor has stopped pretending otherwise in private."
     },
 
     {
@@ -99,9 +99,9 @@
       "narrative": "Aekon condemned Fluxom's internal practices. Trade collapsed. The condemnation has not been retracted."
     },
     {
-      "from": "aekon", "to": "kree_nationalists",
+      "from": "aekon", "to": "vrellan_nationalists",
       "trade": 0.30, "hostility": 0.30, "secrets_shared": 0.10, "mobility": 0.25, "cultural_exchange": 0.20,
-      "narrative": "Polite distance. Aekon does not want Kree probing. Kree does not push."
+      "narrative": "Polite distance. Aekon does not want Vrellan probing. Vrellan does not push."
     },
     {
       "from": "aekon", "to": "akeia_of_kahlay",
@@ -175,15 +175,15 @@
       "narrative": "Dormas considers Fluxom uncouth. Fluxom considers Dormas decadent. Both are correct."
     },
     {
-      "from": "dormas", "to": "kree_nationalists",
+      "from": "dormas", "to": "vrellan_nationalists",
       "trade": 0.40, "hostility": 0.30, "secrets_shared": 0.65, "mobility": 0.35, "cultural_exchange": 0.30,
-      "narrative": "Dormas's actual upper class came down from Kree. The Kree chancellor and Lady Oriane communicate via channels the records do not name."
+      "narrative": "Dormas's actual upper class came down from Vrellan. The Vrellan chancellor and Lady Oriane communicate via channels the records do not name."
     },
 
     {
-      "from": "akeia_of_kahlay", "to": "kree_nationalists",
+      "from": "akeia_of_kahlay", "to": "vrellan_nationalists",
       "trade": 0.35, "hostility": 0.20, "secrets_shared": 0.20, "mobility": 0.40, "cultural_exchange": 0.40,
-      "narrative": "Akeia tried to court a Kree alliance. The chancellor declined politely. The queen mother understood; she would have done the same."
+      "narrative": "Akeia tried to court a Vrellan alliance. The chancellor declined politely. The queen mother understood; she would have done the same."
     },
 
     {
@@ -219,12 +219,12 @@
     {
       "id": "sanguire_vessine_hybrid_disclosure",
       "severity": 0.85,
-      "description": "If the warlord's child is identified and either Sanguire or Vessine acts publicly, the equilibrium between fire and ice politics breaks. Kree the state will try to broker. Kree the state may not succeed."
+      "description": "If the warlord's child is identified and either Sanguire or Vessine acts publicly, the equilibrium between fire and ice politics breaks. Vrellan the state will try to broker. Vrellan the state may not succeed."
     },
     {
       "id": "asbir_archive_unsealing",
       "severity": 0.80,
-      "description": "If the deletion index is published, Asbir's curated tradition collapses. Corre's elders may speak. The Vessine's origin star may be vindicated. The Kree chancellor's lie about Vessine departure becomes a different kind of lie."
+      "description": "If the deletion index is published, Asbir's curated tradition collapses. Corre's elders may speak. The Vessine's origin star may be vindicated. The Vrellan chancellor's lie about Vessine departure becomes a different kind of lie."
     },
     {
       "id": "fluxom_refugee_dump_revelation",
