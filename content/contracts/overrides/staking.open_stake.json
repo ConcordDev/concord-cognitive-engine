@@ -19,11 +19,11 @@
   ],
   "fuzz_cases": [
     { "input": {}, "expect": { "ok": false, "error": "missing_months" } },
-    { "input": { "poolId": "core", "principalCc": 200, "months": 6 }, "expect": { "ok": true } },
+    { "input": { "poolId": "core", "principalCc": 200, "months": 6 }, "expect": { "ok": false, "error": "insufficient_balance" } },
     { "input": { "poolId": "growth", "principalCc": 10, "months": 6 }, "expect": { "ok": false } },
     { "input": { "poolId": "core", "principalCc": 1e308, "months": 6 }, "expect": { "ok": false, "error": "invalid_principalCc" } },
     { "input": { "poolId": "core", "principalCc": 100, "months": 1e308 }, "expect": { "ok": false, "error": "invalid_months" } },
     { "input": { "poolId": "nope", "principalCc": 100, "months": 6 }, "expect": { "ok": false, "error": "unknown_pool" } }
   ],
-  "_note": "open_stake is a user-scoped WRITE. The assassin runs with an internal owner actor, so it never returns no_actor — {} hits real validation (missing_months). principalCc/months are fail-CLOSED numeric guards via badNumericField: poisoned NaN/Infinity/1e308/negative return ok:false invalid_<field> BEFORE any state write (no Infinity principal can be locked). Below-pool-minimum principal is rejected. State persists in globalThis._concordSTATE.stakingPositions, not a DB — never no_db."
+  "_note": "open_stake is a user-scoped WRITE that escrows REAL CC from the caller's wallet (server/domains/staking.js — fixed from a fabricated-money path in 6a57c4c8). The assassin runs with an internal owner actor, so it never returns no_actor — {} hits real validation (missing_months). principalCc/months are fail-CLOSED numeric guards via badNumericField: poisoned NaN/Infinity/1e308/negative return ok:false invalid_<field> BEFORE any state write (no Infinity principal can be locked). Below-pool-minimum principal is rejected. State persists in the real staking_positions/staking_escrow SQL tables, not in-memory — never no_db. The assassin's internal actor has NO ledger history, so getBalance() is genuinely 0 — every fuzz case here deterministically resolves ok:false (same idiom as spectate.bet.json's placeBet cases), including the well-formed core/200/6 case, which correctly hits insufficient_balance AFTER passing every earlier validation gate. The real funded-wallet success path (escrow write + staking_positions row + list_positions round-trip) is pinned by server/tests/staking-lens-macros.test.js, not by this contract."
 }
