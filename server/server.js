@@ -1360,7 +1360,15 @@ registerHeartbeat("qualia-persist", {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
       const { persistQualiaState } = await import("./existential/hooks.js");
-      return persistQualiaState(ctxDb);
+      const res = persistQualiaState(ctxDb);
+      // Loud on the exact regression that hid for so long: the persist wire going
+      // dead (engine.snapshot() missing) used to return a `reason` nobody read.
+      if (res?.reason === "no_snapshot_export") {
+        structuredLog("warn", "qualia_persist_dead_wire", {
+          hint: "engine.snapshot() missing — self-model is not persisting",
+        });
+      }
+      return res;
     } catch (err) {
       structuredLog("warn", "qualia_persist_failed", { error: err?.message });
       return { ok: false, reason: "exception" };
@@ -30539,6 +30547,16 @@ try {
 try {
   const qualiaEngine = new QualiaEngine(STATE);
   globalThis.qualiaEngine = qualiaEngine;
+
+  // Rehydrate the self-model from the last persisted qualia_state so an entity's
+  // channels survive a restart — persistQualiaState writes them every ~15min, but
+  // without this they were written and never read back (a diary never reopened).
+  // Merge-safe (skips entities already live) + best-effort (a fresh engine is
+  // still valid if the table is empty/absent).
+  try {
+    const restored = qualiaHooks.hydrateQualiaState?.(STATE.db);
+    if (restored?.hydrated) structuredLog("info", "qualia_hydrated", { entities: restored.hydrated });
+  } catch (e) { structuredLog("warn", "qualia_hydrate_failed", { error: e?.message }); }
 
   // Initialize qualia for each existing emergent
   const emergentStore = STATE.emergents || STATE.__emergents;

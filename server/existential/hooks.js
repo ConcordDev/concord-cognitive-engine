@@ -552,10 +552,34 @@ export function hookBrainTraining(brainId, refreshResult) {
  * @param {object} db — better-sqlite3 instance
  * @returns {{ ok: boolean, persisted: number, logged: number }}
  */
+// D — Observability for the qualia-persist tick. The dead `engine.snapshot()`
+// wire was invisible for ages because the failure was swallowed to a `reason`
+// nobody read. This accumulator makes the state greppable + surfaceable so a
+// future regression (0 persisted, or `no_snapshot_export` returning) is loud,
+// not silent. Read via getQualiaPersistMetrics(); the boot heartbeat WARNs on it.
+const _qualiaPersistMetrics = {
+  ticks: 0,
+  persisted: 0,
+  logged: 0,
+  hydrated: 0,
+  lastReason: null,
+  lastAt: 0,
+};
+export function getQualiaPersistMetrics() {
+  return { ..._qualiaPersistMetrics };
+}
+function _recordPersist(reason, persisted, logged) {
+  _qualiaPersistMetrics.ticks += 1;
+  _qualiaPersistMetrics.persisted += persisted;
+  _qualiaPersistMetrics.logged += logged;
+  _qualiaPersistMetrics.lastReason = reason;
+  _qualiaPersistMetrics.lastAt = Date.now();
+}
+
 export function persistQualiaState(db) {
-  if (!db) return { ok: false, persisted: 0, logged: 0 };
+  if (!db) { _recordPersist("no_db", 0, 0); return { ok: false, persisted: 0, logged: 0, reason: "no_db" }; }
   const engine = getEngine();
-  if (!engine) return { ok: false, persisted: 0, logged: 0, reason: "no_engine" };
+  if (!engine) { _recordPersist("no_engine", 0, 0); return { ok: false, persisted: 0, logged: 0, reason: "no_engine" }; }
   let persisted = 0;
   let logged = 0;
   try {
@@ -564,6 +588,7 @@ export function persistQualiaState(db) {
       (typeof engine.dump === "function" && engine.dump()) ||
       null;
     if (!snapshot || typeof snapshot !== "object") {
+      _recordPersist("no_snapshot_export", 0, 0);
       return { ok: true, persisted: 0, logged: 0, reason: "no_snapshot_export" };
     }
     const logStmt = db.prepare(
@@ -594,9 +619,59 @@ export function persistQualiaState(db) {
           }
         } catch { /* per-channel failure is non-fatal */ }
       }
+      // B — trajectory: append an in-memory snapshot per persisted entity so the
+      // per-entity history window (HISTORY_MAX) actually accumulates a "past".
+      // snapshotQualia() was previously never called by anything.
+      try { engine.snapshotQualia?.(entityId); } catch { /* non-fatal */ }
     }
+    _recordPersist(persisted > 0 ? "ok" : "empty", persisted, logged);
     return { ok: true, persisted, logged };
   } catch (e) {
+    _recordPersist("exception", persisted, logged);
     return { ok: false, persisted, logged, error: e?.message };
+  }
+}
+
+/**
+ * A — Hydrate the in-memory QualiaEngine from persisted `qualia_state` on boot,
+ * so an entity's self-model survives a restart (persistQualiaState writes it;
+ * without this it was written and never read back — a diary the engine never
+ * reopened). MERGE-SAFE: only restores entities the engine doesn't already hold,
+ * so it can be called at boot (or anytime) without clobbering live state.
+ *
+ * @param {import('better-sqlite3').Database} db
+ * @returns {{ ok: boolean, hydrated: number, reason?: string }}
+ */
+export function hydrateQualiaState(db) {
+  if (!db) return { ok: false, hydrated: 0, reason: "no_db" };
+  const engine = getEngine();
+  if (!engine) return { ok: false, hydrated: 0, reason: "no_engine" };
+  let hydrated = 0;
+  try {
+    let rows;
+    try {
+      rows = db.prepare("SELECT entity_id, channel, value FROM qualia_state").all();
+    } catch {
+      return { ok: true, hydrated: 0, reason: "no_table" }; // pre-migration DB
+    }
+    // Group persisted channels by entity: { entityId: { "os.channel": value } }
+    const byEntity = new Map();
+    for (const r of rows) {
+      if (!byEntity.has(r.entity_id)) byEntity.set(r.entity_id, {});
+      byEntity.get(r.entity_id)[r.channel] = Number(r.value);
+    }
+    for (const [entityId, channels] of byEntity) {
+      if (engine.getQualiaState?.(entityId)) continue; // live state wins — never clobber
+      // Activate exactly the OS keys present in the persisted channels, then
+      // restore the saved values.
+      const osKeys = [...new Set(Object.keys(channels).map((k) => k.split(".")[0]))];
+      engine.createQualiaState(entityId, osKeys);
+      engine.batchUpdate(entityId, channels);
+      hydrated += 1;
+    }
+    _qualiaPersistMetrics.hydrated += hydrated;
+    return { ok: true, hydrated };
+  } catch (e) {
+    return { ok: false, hydrated, reason: "exception", error: e?.message };
   }
 }
