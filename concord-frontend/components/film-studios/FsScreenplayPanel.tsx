@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, FileText, ListTree } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Scene { id: string; number: string; slugline: string }
 interface ScriptEl { type: string; text: string }
@@ -34,6 +35,7 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
   const [report, setReport] = useState<ElementReport | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
 
   const loadScenes = useCallback(async () => {
@@ -43,6 +45,12 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
       lensRun('film-studios', 'screenplay', { projectId }),
       lensRun('film-studios', 'element-list-report', { projectId }),
     ]);
+    if ([sc, loc, sp, rep].some((r) => r.data?.ok === false)) {
+      setLoadError(sc.data?.error || loc.data?.error || sp.data?.error || rep.data?.error || 'Could not load screenplay data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Scene[] = sc.data?.result?.scenes || [];
     setScenes(list);
     setLocations(loc.data?.result?.locations || []);
@@ -55,6 +63,10 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
   const loadScript = useCallback(async () => {
     if (!activeScene) { setScript([]); return; }
     const r = await lensRun('film-studios', 'scene-script-get', { sceneId: activeScene });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load scene script.');
+      return;
+    }
     setScript(r.data?.result?.script || []);
     setLocationId(r.data?.result?.locationId || '');
     setDirty(false);
@@ -74,6 +86,10 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={() => { void loadScenes(); void loadScript(); }} /></div>;
   }
 
   return (

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, MessageSquare, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Version { id: string; label: string; stage: string; runtimeSec: number; noteCount: number; openNotes: number; approvalStatus?: string }
 interface Note { id: string; timecodeSec: number; body: string; author: string; resolved: boolean }
@@ -31,11 +32,18 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
   const [activeVersion, setActiveVersion] = useState<string>('');
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [vForm, setVForm] = useState({ label: '', stage: 'rough_cut', runtimeMin: '' });
   const [nForm, setNForm] = useState({ timecode: '', body: '', author: '' });
 
   const loadVersions = useCallback(async () => {
     const r = await lensRun('film-studios', 'version-list', { projectId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load cut versions.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Version[] = r.data?.result?.versions || [];
     setVersions(list);
     setActiveVersion((prev) => (list.some((v) => v.id === prev) ? prev : list[0]?.id || ''));
@@ -46,6 +54,10 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
   const loadNotes = useCallback(async () => {
     if (!activeVersion) { setNotes([]); return; }
     const r = await lensRun('film-studios', 'note-list', { versionId: activeVersion });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load review notes.');
+      return;
+    }
     setNotes(r.data?.result?.notes || []);
   }, [activeVersion]);
 
@@ -79,6 +91,10 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={() => { void loadVersions(); void loadNotes(); }} /></div>;
   }
 
   return (

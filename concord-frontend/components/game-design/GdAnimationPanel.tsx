@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Plus, Trash2, Play, Pause, Film, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Frame { id: string; frameIndex: number; durationMs: number }
 interface Animation {
@@ -25,6 +26,7 @@ export function GdAnimationPanel({ gameId, onChange }: { gameId: string; onChang
   const [assets, setAssets] = useState<AssetLite[]>([]);
   const [entities, setEntities] = useState<EntityLite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', fps: '12', assetId: '', entityId: '' });
   const [selected, setSelected] = useState<string | null>(null);
@@ -39,6 +41,12 @@ export function GdAnimationPanel({ gameId, onChange }: { gameId: string; onChang
       lensRun('game-design', 'asset-list', { gameId }),
       lensRun('game-design', 'game-get', { id: gameId }),
     ]);
+    if (a.data?.ok === false || as.data?.ok === false || g.data?.ok === false) {
+      setLoadError(a.data?.error || as.data?.error || g.data?.error || 'Could not load animations.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setAnims(a.data?.result?.animations || []);
     setAssets((as.data?.result?.assets || []).filter((x: AssetLite) => x.kind === 'sprite' || x.kind === 'tileset'));
     setEntities(g.data?.result?.entities || []);
@@ -143,6 +151,10 @@ export function GdAnimationPanel({ gameId, onChange }: { gameId: string; onChang
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

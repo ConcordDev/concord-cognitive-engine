@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, FileText, Save, ChevronUp, ChevronDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Section { id: string; title: string; content: string }
 
@@ -15,12 +16,19 @@ const SUGGESTED = ['Pitch', 'Core loop', 'Mechanics', 'Story & setting', 'Art di
 export function GdGddPanel({ gameId, onChange }: { gameId: string; onChange: () => void }) {
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('game-design', 'game-get', { id: gameId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load design doc.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const secs: Section[] = r.data?.result?.gdd || [];
     setSections(secs);
     setDrafts(Object.fromEntries(secs.map((s) => [s.id, s.content])));
@@ -60,6 +68,10 @@ export function GdGddPanel({ gameId, onChange }: { gameId: string; onChange: () 
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

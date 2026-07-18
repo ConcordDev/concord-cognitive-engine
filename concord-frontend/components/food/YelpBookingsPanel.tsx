@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CalendarClock, Users, X, CheckCircle2, History } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { SkeletonTableRows } from '@/components/ui';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Reservation { id: string; bizName: string; partySize: number; dateTime: string; status: string }
 interface WaitEntry { id: string; bizId: string; bizName: string; partySize: number; position: number; estimatedWaitMin: number }
@@ -20,6 +20,7 @@ export function YelpBookingsPanel() {
   const [waitlist, setWaitlist] = useState<WaitEntry[]>([]);
   const [checkins, setCheckins] = useState<CheckinRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAllCheckins, setShowAllCheckins] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -29,6 +30,12 @@ export function YelpBookingsPanel() {
       lensRun('food', 'waitlist-status', {}),
       lensRun('food', 'checkin-history', {}),
     ]);
+    if (r.data?.ok === false || w.data?.ok === false || c.data?.ok === false) {
+      setLoadError(r.data?.error || w.data?.error || c.data?.error || 'Could not load bookings.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setReservations(r.data?.result?.reservations || []);
     setWaitlist(w.data?.result?.entries || []);
     setCheckins(c.data?.result?.checkins || []);
@@ -45,6 +52,10 @@ export function YelpBookingsPanel() {
 
   if (loading) {
     return <SkeletonTableRows rows={4} columns={3} />;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

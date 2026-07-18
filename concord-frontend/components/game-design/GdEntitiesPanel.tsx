@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Heart, Swords, Wind, ChevronDown, ChevronRight, BarChart3, Tag, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Field { key: string; type: string; value: string | number | boolean }
 interface Entity {
@@ -36,6 +37,7 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
   const [enums, setEnums] = useState<EnumDef[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', kind: 'enemy', health: '', damage: '', speed: '', description: '' });
   const [enumForm, setEnumForm] = useState({ name: '', values: '' });
@@ -51,6 +53,12 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
       lensRun('game-design', 'game-get', { id: gameId }),
       lensRun('game-design', 'enum-list', { gameId }),
     ]);
+    if (g.data?.ok === false || en.data?.ok === false) {
+      setLoadError(g.data?.error || en.data?.error || 'Could not load entities.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntities(g.data?.result?.entities || []);
     setEnums(en.data?.result?.enums || []);
     setLoading(false);
@@ -135,6 +143,10 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

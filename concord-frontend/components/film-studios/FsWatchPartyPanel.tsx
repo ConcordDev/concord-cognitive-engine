@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Plus, Trash2, Monitor, Play, Pause, Send, MessageSquare } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Party {
   id: string; title: string; code: string; versionId: string | null;
@@ -36,6 +37,7 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
   const [chat, setChat] = useState<ChatMsg[]>([]);
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', versionId: '' });
   const [chatText, setChatText] = useState('');
   const [author, setAuthor] = useState('');
@@ -46,6 +48,12 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
       lensRun('film-studios', 'party-list', { projectId }),
       lensRun('film-studios', 'version-list', { projectId }),
     ]);
+    if (pr.data?.ok === false || vr.data?.ok === false) {
+      setLoadError(pr.data?.error || vr.data?.error || 'Could not load watch parties.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Party[] = pr.data?.result?.parties || [];
     setParties(list);
     setVersions(vr.data?.result?.versions || []);
@@ -59,6 +67,11 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
       lensRun('film-studios', 'party-state', { id: activeParty }),
       lensRun('film-studios', 'party-chat-list', { id: activeParty }),
     ]);
+    if (sr.data?.ok === false || cr.data?.ok === false) {
+      setLoadError(sr.data?.error || cr.data?.error || 'Could not load party state.');
+      return;
+    }
+    setLoadError(null);
     setState((sr.data?.result?.party as PartyState | null) || null);
     setChat(cr.data?.result?.messages || []);
   }, [activeParty]);
@@ -115,6 +128,10 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={() => { void loadParties(); void loadState(); }} /></div>;
   }
 
   return (

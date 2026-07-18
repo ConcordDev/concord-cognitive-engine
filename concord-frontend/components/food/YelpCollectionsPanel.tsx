@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Bookmark, Trash2, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { SkeletonTableRows } from '@/components/ui';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Collection { id: string; name: string; description: string | null; bizCount: number }
 interface Business { id: string; name: string; cuisine: string; rating: number }
@@ -18,6 +18,7 @@ export function YelpCollectionsPanel() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [allBiz, setAllBiz] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [open, setOpen] = useState<string | null>(null);
@@ -29,6 +30,12 @@ export function YelpCollectionsPanel() {
       lensRun('food', 'collection-list', {}),
       lensRun('food', 'biz-list', {}),
     ]);
+    if (c.data?.ok === false || b.data?.ok === false) {
+      setLoadError(c.data?.error || b.data?.error || 'Could not load restaurant lists.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCollections(c.data?.result?.collections || []);
     setAllBiz(b.data?.result?.businesses || []);
     setLoading(false);
@@ -55,12 +62,14 @@ export function YelpCollectionsPanel() {
   const addBiz = async (collectionId: string, bizId: string) => {
     await lensRun('food', 'collection-add-biz', { collectionId, bizId });
     const r = await lensRun('food', 'collection-detail', { id: collectionId });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not refresh this list.'); return; }
     setOpenBiz(r.data?.result?.businesses || []);
     await refresh();
   };
   const removeBiz = async (collectionId: string, bizId: string) => {
     await lensRun('food', 'collection-add-biz', { collectionId, bizId, remove: true });
     const r = await lensRun('food', 'collection-detail', { id: collectionId });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not refresh this list.'); return; }
     setOpenBiz(r.data?.result?.businesses || []);
     await refresh();
   };
@@ -72,6 +81,10 @@ export function YelpCollectionsPanel() {
 
   if (loading) {
     return <div className="rounded-xl border border-lattice-border bg-lattice-surface/70"><SkeletonTableRows rows={3} columns={2} /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

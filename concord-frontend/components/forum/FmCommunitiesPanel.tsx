@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Users, ShieldCheck, ScrollText, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Subforum {
   id: string; slug: string; name: string; description: string | null;
@@ -19,6 +20,7 @@ interface Subforum {
 export function FmCommunitiesPanel({ onChange }: { onChange: () => void }) {
   const [subforums, setSubforums] = useState<Subforum[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', description: '', icon: '💬', rules: '' });
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -28,6 +30,12 @@ export function FmCommunitiesPanel({ onChange }: { onChange: () => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('forum', 'subforum-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load communities.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSubforums(r.data?.result?.subforums || []);
     setLoading(false);
     onChange();
@@ -81,6 +89,10 @@ export function FmCommunitiesPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

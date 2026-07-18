@@ -7,18 +7,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, FolderTree } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Category { id: string; name: string; description: string | null; topicCount: number }
 
 export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', description: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('forum', 'category-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load categories.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCategories(r.data?.result?.categories || []);
     setLoading(false);
     onChange();
@@ -42,6 +50,10 @@ export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

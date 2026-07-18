@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, RefreshCw, Repeat } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Step { id: string; label: string; delta: number; resource: string | null }
 interface Loop { id: string; name: string; kind: string; description: string | null; steps: Step[] }
@@ -25,6 +26,7 @@ export function GdLoopsPanel({ gameId, onChange }: { gameId: string; onChange: (
   const [loops, setLoops] = useState<Loop[]>([]);
   const [analysis, setAnalysis] = useState<{ loops: Analysed[]; unbalanced: number; health: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', kind: 'core', description: '' });
   const [stepDraft, setStepDraft] = useState<Record<string, { label: string; delta: string; resource: string }>>({});
@@ -35,6 +37,12 @@ export function GdLoopsPanel({ gameId, onChange }: { gameId: string; onChange: (
       lensRun('game-design', 'loop-list', { gameId }),
       lensRun('game-design', 'loop-analysis', { gameId }),
     ]);
+    if (l.data?.ok === false) {
+      setLoadError(l.data?.error || 'Could not load core loops.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setLoops(l.data?.result?.loops || []);
     setAnalysis((a.data?.result?.loops ? a.data.result : null) as typeof analysis);
     setLoading(false);
@@ -76,6 +84,10 @@ export function GdLoopsPanel({ gameId, onChange }: { gameId: string; onChange: (
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const verdictFor = (id: string) => analysis?.loops.find((a) => a.id === id);
