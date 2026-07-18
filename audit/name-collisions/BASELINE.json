@@ -1,9 +1,9 @@
 {
-  "version": 1,
-  "generated": "2026-07-17",
+  "version": 2,
+  "generated": "2026-07-18",
   "gate": "scripts/check-name-collisions.mjs",
   "class": "real-name / IP-name collision (E3 in docs/CONTENT_INTEGRITY_SWEEP.md)",
-  "note": "Accepted-exceptions + known-pending baseline that makes the name-collision gate a RATCHET, not a wall. The gate is GREEN today (every entry below is covered) but blocks any NEW real-name-for-fiction collision (a new term, or a known term appearing in a NEW file/scope). knownPending items are owner-decision-gated renames tracked in CONTENT_INTEGRITY_SWEEP.md — not blocking, but a fresh occurrence outside the recorded scope re-opens the class.",
+  "note": "Accepted-exceptions + known-pending baseline that makes the name-collision gate a RATCHET, not a wall. The gate is GREEN today (every entry below is covered) but blocks any NEW real-name-for-fiction collision (a new term, or a known term appearing in a NEW file/scope). v2 (2026-07-18): the 12 owner-decided renames from the Content Integrity Sweep (Kree→Vrellan, Naheya→Kohanti, Wiyowak→Hotamek, Okimaw→Tamohek, Thunder Brahmin→Thunder Yak, Wintersday→Hearthtide, Mournhold→House Vaelmoor, Marcus Holloway→Marcus Vantree, Pyke→Wrenlow, Karthal→House Thornvale, glock_19→compact_9mm, sig_p229→duty_40cal) are CLOSED — swept to 0 corpus-wide and dropped from knownPending; the dictionary still guards each old term against reintroduction. Only the 3 'likely-keep' items remain, awaiting an owner keep/rename call.",
 
   "accepted": {
     "note": "Documentary rationale for what the curated dictionary deliberately does NOT flag. These classes are legitimate uses of real names and are kept OUT of the dictionary rather than baselined per-file.",
@@ -23,70 +23,6 @@
 
   "knownPending": [
     {
-      "term": "Kree",
-      "category": "TRADEMARKED_IP",
-      "scopes": [
-        "content/world/tunya/",
-        "content/world/concordia-hub/",
-        "content/codex/"
-      ],
-      "reason": "owner-decision-pending — Marvel's trademarked Kree; woven through tunya's most-developed lore (~79 refs). Rename is an owner creative call. See CONTENT_INTEGRITY_SWEEP.md (finding: OPEN — Kree)."
-    },
-    {
-      "term": "Naheya",
-      "category": "REAL_NATIONS",
-      "scopes": ["content/world/tunya/"],
-      "reason": "owner-decision-pending — Cree-language-adjacent place-name coinage (Naheya ≈ Nēhiyaw). See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Wiyowak",
-      "category": "REAL_NATIONS",
-      "scopes": ["content/world/tunya/"],
-      "reason": "owner-decision-pending — Cree-language-adjacent place-name coinage (Wiyowak Bay). See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Okimaw",
-      "category": "REAL_NATIONS",
-      "scopes": ["content/world/tunya/"],
-      "reason": "owner-decision-pending — Cree-language word 'chief' (loose end of the Cree→Corre decouple). See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Brahmin",
-      "category": "REAL_NATIONS",
-      "scopes": ["content/world/concord-link-frontier/"],
-      "reason": "owner-decision-pending — real Hindu caste reused for a beast of burden ('Thunder Brahmin', + Fallout echo). Same class as Cree; 'Brahman cattle-breed' is the defense. See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Wintersday",
-      "category": "TRADEMARKED_IP",
-      "scopes": ["content/festivals/", "content/achievements/"],
-      "reason": "owner-decision-pending — Guild Wars 2 coined holiday. Content is generic; a neutral coinage drops it. See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Mournhold",
-      "category": "TRADEMARKED_IP",
-      "scopes": ["content/world/fantasy/"],
-      "reason": "owner-decision-pending — Elder Scrolls city reused as a Great House. See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Marcus Holloway",
-      "category": "TRADEMARKED_IP",
-      "scopes": ["content/world/superhero/"],
-      "reason": "owner-decision-pending — Watch Dogs 2 protagonist; common name parts, maybe coincidence. See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Pyke",
-      "category": "TRADEMARKED_IP",
-      "scopes": ["content/world/fantasy/", "content/world/cyber/"],
-      "reason": "owner-decision-pending — GoT castle / common surname. Low confidence. See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Karthal",
-      "category": "TRADEMARKED_IP",
-      "scopes": ["content/world/fantasy/"],
-      "reason": "owner-decision-pending — obscure Might & Magic locale, likely coincidental. See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
       "term": "Gloom Stalker",
       "category": "TRADEMARKED_IP",
       "scopes": ["content/world/fantasy/", "content/world/sovereign-ruins/"],
@@ -103,18 +39,6 @@
       "category": "TRADEMARKED_IP",
       "scopes": ["content/world/cyber/", "content/world/_shared/"],
       "reason": "owner-decision-pending — coined cyber org/material; likely keep. See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "Glock",
-      "category": "TRADEMARKED_IP",
-      "scopes": ["content/world/crime/"],
-      "reason": "owner-decision-pending — real firearm brand in item ids (glock_19). De-brand to generic is owner preference. See CONTENT_INTEGRITY_SWEEP.md."
-    },
-    {
-      "term": "p229",
-      "category": "TRADEMARKED_IP",
-      "scopes": ["content/world/crime/"],
-      "reason": "owner-decision-pending — real firearm model in item ids (sig_p229). De-brand to generic is owner preference. See CONTENT_INTEGRITY_SWEEP.md."
     }
   ]
 }

@@ -66,18 +66,35 @@ real corpus-wide class, not a tunya quirk.
   BOTH display and identifier level, JSON valid, cross-world test 12/12. **This
   is the class-to-zero worked example.**
 
-### OPEN — owner-decision-gated (each fix is a creative call, like Cree→Corre)
-- **`tunya` faction "Kree" vs. Marvel's trademarked *Kree***. A real **IP**
-  collision (distinct from Cree: trademarked alien-race name, not a living
-  people). "Kree" is woven through the most-developed lore in the game (~52
-  refs), so a rename ripples hard — needs an owner-chosen replacement that keeps
-  the intended texture, then the same surgical word-boundary sweep + verify
-  (`Kree` count → 0, JSON valid, cross-world test green). **Do NOT sweep
-  silently.**
-- **`tunya/naming_conventions.json` place names "Wiyowak Bay" / "Naheya
-  Plain"**. Cree-language-adjacent coinages tied to the same (now Corre) people
-  — *Naheya* ≈ *Nēhiyaw* (the Cree autonym). Owner-decision: deliberate homage
-  or incidental? If swept, rename to non-derived coinages in the same pass.
+### CLOSED — 2026-07-18 owner-authorized sweep batch (12 renames)
+The owner authorized the audited replacement names; all swept boundary-precisely
+(count→0 corpus-wide, JSON valid, coupled tests green), and the 12 entries were
+dropped from `audit/name-collisions/BASELINE.json` (v2). The E3 gate is GREEN
+(`check-name-collisions.mjs --ci` → 0 new, 7 known-covered) and the dictionary
+still guards every old term against reintroduction.
+
+- **`tunya` "Kree" → "Vrellan"** — the Marvel-IP collision, ~139 refs across 17
+  tunya JSON + codex + concordia-hub cultures + the **bloodline engine**
+  (`bloodline-powers.js`, `concordia-npc-seeder.js`) + **frontend**
+  (`character-schema.ts`, `BloodlineBadge.tsx` + test) + **forward-repair
+  migration 368** (sorted-pair `culture_relations` re-check verified live). (`f22f8e33`)
+- **`tunya` place/given names** — "Wiyowak Bay" → "Hotamek Bay", "Naheya Plain" →
+  "Kohanti Plain", "Okimaw" → "Tamohek", "Neyahwetin" → "Kanewola" (the remaining
+  Cree-language-derived coinages, re-coined from the corre culture's own phoneme
+  set). (`f22f8e33`)
+- **Thunder Brahmin → Thunder Yak**, **Wintersday → Hearthtide** (+ file rename +
+  achievement + festival/seasonal/belonging tests), **Mournhold → House Vaelmoor**,
+  **Karthal → House Thornvale**, **Marcus Holloway → Marcus Vantree**, **Pyke →
+  Wrenlow**, **glock_19 → compact_9mm / sig_p229 → duty_40cal**, **"Skyrim-class"
+  → generic descriptor**. (`477eed7c`)
+
+### OPEN — the 3 "likely-keep" residuals (bounded owner queue)
+Only these remain baselined, each a plausible-coincidence generic term the audit
+rated "likely keep" — awaiting an owner keep-or-rename call, not blocking:
+- **Gloom Stalker** (fantasy + sovereign-ruins) — D&D subclass vs. generic
+  "gloom"+"stalker".
+- **Jorah Dunmore** (sovereign-ruins) — biblical/GoT echo, procgen surname combo.
+- **Polysteel** (cyber + _shared) — coined material/org, not a real trademark.
 
 ### E2 corpus-wide audit RESULTS (2026-07-17 — 6 read-only agents; 11 worlds + 12 non-world dirs; ~700+ proper nouns assessed)
 
@@ -92,26 +109,27 @@ replacement name), exactly like Cree→Corre. Ranked:
 | 1 | ✅ **ArasaCorp → Nevex Corp** (cyber, `353fef39`) — *Arasaka*/Cyberpunk | (c) IP | ~40 refs incl. ids + cross-refs; 0 residual | **HIGH** | DONE |
 | 2 | ✅ **Medici → Vessine** (`360cf381`) — real Florentine dynasty | (b) real dynasty | ~332 cross-world refs + bloodline engine + frontend + forward-repair migration 367; 0 functional residual | **MED** | DONE |
 | 3 | ✅ **Nymeria → Maeris of the Bog** (`353fef39`) — GRRM/GoT | (c) IP | cross-cutting fantasy + quests (file renamed) + dialogues + festivals; 0 residual | **MED** | DONE |
-| 4 | **Thunder Brahmin** (concord-link-frontier) — real Hindu caste for a beast of burden (+ Fallout echo) | (a) real living group | creature name+id (2 refs) | **LOW-MED / sensitivity** | owner-verify — same class as Cree ("Brahman cattle-breed" is the defense) |
-| 5 | Wintersday (festivals+achievements) — Guild Wars 2 coined holiday | (c) IP | 3 refs | LOW | owner-verify (content generic; neutral coinage drops it) |
-| 6 | Mournhold (fantasy) — Elder Scrolls city as a Great House | (c) IP | 2 refs | LOW | owner-verify |
-| 7 | Marcus Holloway (_shared/superhero) — Watch Dogs 2 protagonist | (c) IP | 2 refs | LOW | owner-verify (common name parts; maybe coincidence) |
-| 8 | Pyke (GoT/common surname); Karthal (obscure M&M, likely coincidental) — fantasy | (c) IP | 1–2 refs | LOW | owner-verify |
-| 9 | Gloom Stalker (fantasy + sovereign-ruins) — D&D subclass; generic "gloom"+"stalker" | (c) IP | 2 refs | LOW | likely keep |
-| 10 | Polysteel (cyber, coined org/surname); Jorah Dunmore (sovereign-ruins, biblical/GoT echo) | (c) IP | few | LOW | likely keep |
-| 11 | Mercury (tunya alien goddess) — Roman god, **public domain** | (c) | 25 refs | LOW | likely keep (public-domain myth) |
-| 12 | Okimaw (tunya) — Cree-language word "chief" in the now-Corre faction | (a) | 1 NPC | LOW | owner-verify (loose end of the Cree decouple) |
-| 13 | Firearm brand item ids (crime): `glock_19`, `sig_p229` | (c) brand | ~8 refs | LOW | owner-preference (de-brand to generic) |
+| 4 | ✅ **Thunder Brahmin → Thunder Yak** (`477eed7c`) | (a) real living group | 2 refs; 0 residual | LOW-MED / sensitivity | DONE |
+| 5 | ✅ **Wintersday → Hearthtide** (`477eed7c`) — + file rename + achievement + 3 tests | (c) IP | 0 residual | LOW | DONE |
+| 6 | ✅ **Mournhold → House Vaelmoor** (`477eed7c`) | (c) IP | 0 residual | LOW | DONE |
+| 7 | ✅ **Marcus Holloway → Marcus Vantree** (`477eed7c`) — incl. `_shared` power-tier registry | (c) IP | 0 residual | LOW | DONE |
+| 8 | ✅ **Pyke → Wrenlow, Karthal → House Thornvale** (`477eed7c`) | (c) IP | 0 residual | LOW | DONE |
+| 9 | Gloom Stalker (fantasy + sovereign-ruins) — D&D subclass; generic "gloom"+"stalker" | (c) IP | 2 refs | LOW | **likely keep (still baselined)** |
+| 10 | Polysteel (cyber, coined org); Jorah Dunmore (sovereign-ruins, biblical/GoT echo) | (c) IP | few | LOW | **likely keep (still baselined)** |
+| 11 | Mercury (tunya alien goddess) — Roman god, **public domain** | (c) | 25 refs | LOW | keep (public-domain myth; `acceptedTerms`) |
+| 12 | ✅ **Okimaw → Tamohek** (`f22f8e33`) — + Neyahwetin → Kanewola | (a) | 0 residual | LOW | DONE |
+| 13 | ✅ **glock_19 → compact_9mm, sig_p229 → duty_40cal** (`477eed7c`) | (c) brand | 0 residual | LOW | DONE |
 
-**Not a name collision but flagged:** the fantasy `meta.json` calls the world
-**"Skyrim-class"** — shipped content naming a competitor product (Bethesda).
-Worth an edit for the same "deliberate not derivative" reason.
+**Not a name collision but flagged:** ✅ **DONE** — the fantasy `meta.json`
+"Skyrim-class" competitor name-drop was replaced with a generic descriptor
+(`477eed7c`).
 
-### Still owner-decision-gated from the original tunya find
-- **`tunya` "Kree" vs. Marvel's trademarked *Kree*** (69 refs) — owner-chosen
-  replacement needed; woven through the most-developed lore, ripples hard.
-- **`tunya` "Wiyowak Bay" / "Naheya Plain"** — Cree-language-adjacent place-name
-  coinages (*Naheya* ≈ *Nēhiyaw*); deliberate homage or incidental?
+### Status: name/IP-collision class is at-zero-and-gated
+Every owner-decided rename is swept to 0 corpus-wide; `BASELINE.json` v2 carries
+only the 3 "likely-keep" residuals (Gloom Stalker / Jorah Dunmore / Polysteel) as
+a bounded owner queue; the E3 gate (`check-name-collisions.mjs --ci`) is GREEN and
+CI-wired, guarding every old term against reintroduction. Nothing here is open
+except the owner's keep-or-rename call on the 3 residuals.
 
 ## Execution plan for the name/IP-collision class
 
