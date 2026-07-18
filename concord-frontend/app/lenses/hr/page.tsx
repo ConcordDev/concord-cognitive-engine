@@ -10,6 +10,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HrHrisSection } from '@/components/hr/HrHrisSection';
 import { HrActionPanel } from '@/components/hr/HrActionPanel';
 import { BlsSeriesExplorer } from '@/components/hr/BlsSeriesExplorer';
+import { BlsWageForecast } from '@/components/hr/BlsWageForecast';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -88,6 +89,9 @@ export default function HRLensPage() {
         <section ref={wageRef} className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 space-y-2">
           <h2 className={cnHeading()}><LineChart className="w-4 h-4 text-blue-400" /> Labor Market Data (BLS)</h2>
           <BlsSeriesExplorer />
+          <div className="mt-4 border-t border-zinc-800 pt-4">
+            <BlsWageForecast />
+          </div>
         </section>
       </div>
 
