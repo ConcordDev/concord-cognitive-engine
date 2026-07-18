@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { Skeleton, EmptyState } from '@/components/ui';
 
 // ── Types (prediction-market macro payloads) ──
 
@@ -243,7 +244,7 @@ export default function PredictionMarkets() {
               className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs transition ${
                 active
                   ? 'border border-indigo-500/40 bg-indigo-500/15 text-indigo-200'
-                  : 'border border-transparent text-zinc-400 hover:text-zinc-200'
+                  : 'border border-transparent text-gray-400 hover:text-gray-200'
               }`}
             >
               <Icon className="h-3 w-3" /> {t.label}
@@ -322,7 +323,7 @@ function CreateMarketForm({
     <div className="mb-3 rounded-lg border border-indigo-500/30 bg-indigo-950/40 p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-indigo-200">Propose a new market</span>
-        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-300" aria-label="Close">
+        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-300" aria-label="Close">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -330,35 +331,35 @@ function CreateMarketForm({
         <input
           type="text" value={question} onChange={(e) => setQuestion(e.target.value)}
           placeholder="Question (e.g. Will the raid succeed tonight?)" maxLength={240}
-          className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+          className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
         />
         <textarea
           value={resolutionCriteria} onChange={(e) => setCriteria(e.target.value)}
           placeholder="Resolution criteria — exactly how this resolves YES vs NO" rows={2}
-          className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+          className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
         />
         <textarea
           value={description} onChange={(e) => setDescription(e.target.value)}
           placeholder="Description / context (optional)" rows={2}
-          className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+          className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
         />
         <div className="grid grid-cols-3 gap-2">
           <select
             value={category} onChange={(e) => setCategory(e.target.value)}
-            className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+            className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
           >
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <input
             type="number" min={0} value={closesIn} onChange={(e) => setClosesIn(e.target.value)}
             placeholder="Closes in (days)"
-            className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+            className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
             title="Days until the market closes (0 = no close)"
           />
           <input
             type="number" min={2} max={200} value={seedSparks} onChange={(e) => setSeed(e.target.value)}
             placeholder="Seed ⚡"
-            className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+            className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
             title="Creator-funded seed liquidity (SPARKS)"
           />
         </div>
@@ -397,17 +398,17 @@ function BrowseTab({
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[160px]">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-400" />
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
           <input
             type="text" value={search} onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') onApply(); }}
             placeholder="Search markets…"
-            className="w-full rounded border border-white/10 bg-black/40 py-1.5 pl-7 pr-2 text-xs text-zinc-100"
+            className="w-full rounded border border-white/10 bg-black/40 py-1.5 pl-7 pr-2 text-xs text-white"
           />
         </div>
         <select
           value={sort} onChange={(e) => setSort(e.target.value)}
-          className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+          className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
         >
           <option value="newest">Newest</option>
           <option value="trending">Trending</option>
@@ -426,7 +427,7 @@ function BrowseTab({
         <button
           type="button" onClick={() => { setCategory(''); onApply(); }}
           className={`rounded-full px-2 py-0.5 text-[10px] ${
-            category === '' ? 'bg-indigo-500/25 text-indigo-100' : 'bg-zinc-800/60 text-zinc-400'
+            category === '' ? 'bg-indigo-500/25 text-indigo-100' : 'bg-lattice-elevated/60 text-gray-400'
           }`}
         >
           all
@@ -435,41 +436,46 @@ function BrowseTab({
           <button
             key={c} type="button" onClick={() => { setCategory(c); onApply(); }}
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${
-              category === c ? 'bg-indigo-500/25 text-indigo-100' : 'bg-zinc-800/60 text-zinc-400'
+              category === c ? 'bg-indigo-500/25 text-indigo-100' : 'bg-lattice-elevated/60 text-gray-400'
             }`}
           >
             <Tag className="h-2.5 w-2.5" />{c}
-            <span className="text-zinc-400">{facets[c] ?? 0}</span>
+            <span className="text-gray-400">{facets[c] ?? 0}</span>
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-zinc-400">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading markets…
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} variant="block" height="4.75rem" />
+          ))}
         </div>
       ) : markets.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-400">
-          No markets match. Propose one to start the book.
-        </div>
+        <EmptyState
+          compact
+          title="No markets match."
+          description="Propose one to start the book, or clear your search and category filters."
+          ariaLabel="No prediction markets"
+        />
       ) : (
         <ul className="space-y-2">
           {markets.map((m) => (
             <li key={m.id}>
               <button
                 type="button" onClick={() => onOpen(m.id)}
-                className="w-full rounded-lg border border-zinc-700/50 bg-zinc-900/70 p-3 text-left hover:border-indigo-600/50"
+                className="w-full rounded-lg border border-lattice-border/50 bg-lattice-surface/70 p-3 text-left hover:border-indigo-600/50"
               >
                 <div className="mb-1 flex items-start justify-between gap-2">
-                  <span className="text-sm font-semibold text-zinc-100">{m.question}</span>
+                  <span className="text-sm font-semibold text-white">{m.question}</span>
                   <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${
                     m.status === 'open' ? 'bg-emerald-900/50 text-emerald-300'
                       : m.status === 'resolved' ? 'bg-indigo-900/50 text-indigo-300'
-                        : 'bg-zinc-800 text-zinc-400'
+                        : 'bg-lattice-elevated text-gray-400'
                   }`}>{m.status}</span>
                 </div>
                 <ProbabilityBar yesPercent={m.yesPercent} />
-                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[10px] text-zinc-400">
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono tabular-nums text-[10px] text-gray-400">
                   <span className="inline-flex items-center gap-1"><Tag className="h-2.5 w-2.5" />{m.category}</span>
                   <span>pool {m.totalPool} ⚡</span>
                   <span>{m.tradeCount} trades</span>
@@ -497,11 +503,11 @@ function BrowseTab({
 function ProbabilityBar({ yesPercent }: { yesPercent: number }) {
   return (
     <div>
-      <div className="flex h-2 overflow-hidden rounded-full bg-zinc-800">
+      <div className="flex h-2 overflow-hidden rounded-full bg-lattice-elevated">
         <div className="bg-emerald-600" style={{ width: `${yesPercent}%` }} />
         <div className="bg-rose-600" style={{ width: `${100 - yesPercent}%` }} />
       </div>
-      <div className="mt-0.5 flex justify-between text-[10px] font-mono">
+      <div className="mt-0.5 flex justify-between text-[10px] font-mono tabular-nums">
         <span className="text-emerald-400">YES {yesPercent}%</span>
         <span className="text-rose-400">NO {100 - yesPercent}%</span>
       </div>
@@ -604,33 +610,33 @@ function MarketDetail({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4">
-      <div className="my-8 w-full max-w-2xl rounded-xl border border-indigo-700/50 bg-[#0d1117] p-5">
+      <div className="my-8 w-full max-w-2xl rounded-xl border border-indigo-700/50 bg-lattice-deep p-5">
         <div className="mb-3 flex items-start justify-between gap-3">
-          <h3 className="text-base font-bold text-zinc-100">{market?.question || 'Loading…'}</h3>
-          <button type="button" onClick={onClose} className="shrink-0 text-zinc-400 hover:text-zinc-300" aria-label="Close">
+          <h3 className="text-base font-bold text-white">{market?.question || 'Loading…'}</h3>
+          <button type="button" onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-300" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {!market ? (
-          <div className="flex items-center justify-center py-10 text-xs text-zinc-400">
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading market…
           </div>
         ) : (
           <div className="space-y-4">
             <ProbabilityBar yesPercent={market.yesPercent} />
-            <p className="text-[11px] text-zinc-400">
-              <span className="font-semibold text-zinc-300">Resolution criteria: </span>
+            <p className="text-[11px] text-gray-400">
+              <span className="font-semibold text-gray-300">Resolution criteria: </span>
               {market.resolutionCriteria}
             </p>
-            {market.description && <p className="text-[11px] text-zinc-400">{market.description}</p>}
-            <p className="font-mono text-[10px] text-zinc-400">
+            {market.description && <p className="text-[11px] text-gray-400">{market.description}</p>}
+            <p className="font-mono tabular-nums text-[10px] text-gray-400">
               {market.category} · pool {market.totalPool} ⚡ · {market.tradeCount} trades · status {market.status}
             </p>
 
             {/* Price-history chart */}
             <div>
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                 Odds over time (YES %)
               </p>
               <ChartKit
@@ -646,12 +652,12 @@ function MarketDetail({
             {market.status === 'open' && (
               <>
                 {/* Live odds + bet */}
-                <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+                <div className="rounded-lg border border-lattice-border bg-lattice-void/40 p-3">
                   <div className="mb-2 flex items-center gap-2">
                     <button
                       type="button" onClick={() => setSide('yes')}
                       className={`flex-1 rounded py-1.5 text-xs font-medium ${
-                        side === 'yes' ? 'bg-emerald-700 text-white' : 'bg-zinc-800 text-zinc-400'
+                        side === 'yes' ? 'bg-emerald-700 text-white' : 'bg-lattice-elevated text-gray-400'
                       }`}
                     >
                       YES {odds ? `· ${odds.yesMultiple}×` : ''}
@@ -659,21 +665,21 @@ function MarketDetail({
                     <button
                       type="button" onClick={() => setSide('no')}
                       className={`flex-1 rounded py-1.5 text-xs font-medium ${
-                        side === 'no' ? 'bg-rose-700 text-white' : 'bg-zinc-800 text-zinc-400'
+                        side === 'no' ? 'bg-rose-700 text-white' : 'bg-lattice-elevated text-gray-400'
                       }`}
                     >
                       NO {odds ? `· ${odds.noMultiple}×` : ''}
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-zinc-400">Stake ⚡</label>
+                    <label className="text-[10px] text-gray-400">Stake ⚡</label>
                     <input
                       type="number" min={1} value={stake}
                       onChange={(e) => setStake(Math.max(1, Number(e.target.value) || 1))}
-                      className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100"
+                      className="w-20 rounded border border-lattice-border bg-lattice-void px-2 py-1 text-xs text-white font-mono tabular-nums text-right"
                     />
                     {odds && (
-                      <span className="text-[10px] text-zinc-400">
+                      <span className="text-[10px] text-gray-400">
                         payout if win:{' '}
                         <span className="text-amber-400">
                           {side === 'yes' ? odds.yesStakePayoutIfWin : odds.noStakePayoutIfWin} ⚡
@@ -692,7 +698,7 @@ function MarketDetail({
                       <input
                         type="number" min={0.01} max={0.99} step={0.01} value={limitPrice}
                         onChange={(e) => setLimitPrice(e.target.value)}
-                        className="w-16 rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1 text-xs text-zinc-100"
+                        className="w-16 rounded border border-lattice-border bg-lattice-void px-1.5 py-1 text-xs text-white font-mono tabular-nums text-right"
                         title="Limit price (probability 0-1)"
                       />
                       <button
@@ -708,7 +714,7 @@ function MarketDetail({
                 {/* Order book */}
                 {book && (
                   <div>
-                    <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                    <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                       <ListOrdered className="h-3 w-3" /> Order book · {book.restingCount} resting
                     </p>
                     <div className="grid grid-cols-2 gap-2">
@@ -717,15 +723,15 @@ function MarketDetail({
                     </div>
                     {book.myOrders.filter((o) => o.status === 'open').length > 0 && (
                       <div className="mt-2 space-y-1">
-                        <p className="text-[10px] uppercase text-zinc-400">My resting orders</p>
+                        <p className="text-[10px] uppercase text-gray-400">My resting orders</p>
                         {book.myOrders.filter((o) => o.status === 'open').map((o) => (
                           <div key={o.id} className="flex items-center justify-between rounded border border-white/5 bg-black/30 px-2 py-1 text-[11px]">
-                            <span className="font-mono text-zinc-300">
+                            <span className="font-mono text-gray-300">
                               {o.side.toUpperCase()} {o.stakeSparks} ⚡ @ {o.limitPrice}
                             </span>
                             <button
                               type="button" onClick={() => cancelOrder(o.id)}
-                              className="text-zinc-400 hover:text-rose-400"
+                              className="text-gray-400 hover:text-rose-400"
                             >
                               cancel
                             </button>
@@ -737,21 +743,21 @@ function MarketDetail({
                 )}
 
                 {/* Resolution (creator only — server enforces) */}
-                <details className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                  <summary className="flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-zinc-300">
+                <details className="rounded-lg border border-lattice-border bg-lattice-void/40 p-3">
+                  <summary className="flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-gray-300">
                     <Gavel className="h-3 w-3" /> Resolve market (creator only)
                   </summary>
                   <div className="mt-2 space-y-2">
                     <div className="flex gap-2">
                       <button
                         type="button" onClick={() => setResolveOutcome('yes')}
-                        className={`flex-1 rounded py-1 text-xs ${resolveOutcome === 'yes' ? 'bg-emerald-700 text-white' : 'bg-zinc-800 text-zinc-400'}`}
+                        className={`flex-1 rounded py-1 text-xs ${resolveOutcome === 'yes' ? 'bg-emerald-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
                       >
                         YES
                       </button>
                       <button
                         type="button" onClick={() => setResolveOutcome('no')}
-                        className={`flex-1 rounded py-1 text-xs ${resolveOutcome === 'no' ? 'bg-rose-700 text-white' : 'bg-zinc-800 text-zinc-400'}`}
+                        className={`flex-1 rounded py-1 text-xs ${resolveOutcome === 'no' ? 'bg-rose-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
                       >
                         NO
                       </button>
@@ -759,12 +765,12 @@ function MarketDetail({
                     <textarea
                       value={evidence} onChange={(e) => setEvidence(e.target.value)}
                       placeholder="Evidence — how was this verified? (>= 8 chars)" rows={2}
-                      className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+                      className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
                     />
                     <input
                       type="text" value={evidenceUrl} onChange={(e) => setEvidenceUrl(e.target.value)}
                       placeholder="Evidence URL (optional)"
-                      className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-zinc-100"
+                      className="w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
                     />
                     <button
                       type="button" onClick={resolve} disabled={busy}
@@ -783,7 +789,7 @@ function MarketDetail({
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-200">
                   <ShieldCheck className="h-3.5 w-3.5" /> Resolved {resolution.resolution.outcome?.toUpperCase()}
                 </p>
-                <p className="mt-1 text-[11px] text-zinc-300">{resolution.resolution.evidence}</p>
+                <p className="mt-1 text-[11px] text-gray-300">{resolution.resolution.evidence}</p>
                 {resolution.resolution.evidenceUrl && (
                   <a
                     href={resolution.resolution.evidenceUrl} target="_blank" rel="noreferrer"
@@ -792,7 +798,7 @@ function MarketDetail({
                     evidence source
                   </a>
                 )}
-                <p className="mt-1 font-mono text-[10px] text-zinc-400">
+                <p className="mt-1 font-mono tabular-nums text-[10px] text-gray-400">
                   {resolution.winners} winners · {resolution.losers} losers · settled {resolution.settledPositions}
                   {' · '}final YES {Math.round((resolution.finalYesProbability || 0) * 100)}%
                 </p>
@@ -818,11 +824,11 @@ function OrderColumn({
     <div className={`overflow-hidden rounded border ${border}`}>
       <p className={`px-2 py-1 text-[10px] uppercase ${txt} bg-white/5`}>{title}</p>
       {rows.length === 0 ? (
-        <p className="px-2 py-2 text-[10px] text-zinc-400">no resting orders</p>
+        <p className="px-2 py-2 text-[10px] text-gray-400">no resting orders</p>
       ) : rows.map((r, i) => (
-        <div key={i} className="flex justify-between border-t border-white/5 px-2 py-1 font-mono text-[11px]">
+        <div key={i} className="flex justify-between border-t border-white/5 px-2 py-1 font-mono tabular-nums text-[11px]">
           <span className={txt}>{r.price}</span>
-          <span className="text-zinc-400">{r.size} ⚡</span>
+          <span className="text-gray-400">{r.size} ⚡</span>
         </div>
       ))}
     </div>
@@ -853,28 +859,31 @@ function PositionsTab({
 
   if (positions.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-400">
-        No prediction-market positions yet. Open one from Browse.
-      </div>
+      <EmptyState
+        compact
+        title="No positions yet."
+        description="Open a position from the Browse tab and it will appear here, marked to market."
+        ariaLabel="No prediction-market positions"
+      />
     );
   }
 
   return (
     <ul className="space-y-2">
       {positions.map((p) => (
-        <li key={p.id} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+        <li key={p.id} className="rounded-lg border border-lattice-border bg-lattice-surface/60 p-3">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-xs text-zinc-100">{p.question || `Market ${p.marketId}`}</span>
+            <span className="text-xs text-white">{p.question || `Market ${p.marketId}`}</span>
             <span className={`shrink-0 text-xs font-semibold ${p.side === 'yes' ? 'text-emerald-400' : 'text-rose-400'}`}>
               {p.side.toUpperCase()} · {p.stakeSparks} ⚡
             </span>
           </div>
-          <p className="mt-1 font-mono text-[10px] text-zinc-400">
+          <p className="mt-1 font-mono tabular-nums text-[10px] text-gray-400">
             entry {Math.round(p.entryPrice * 100)}% · status {p.status}
             {p.status === 'open' && p.currentValue != null && (
               <>
                 {' · mkt value '}
-                <span className="text-zinc-300">{p.currentValue} ⚡</span>
+                <span className="text-gray-300">{p.currentValue} ⚡</span>
                 {' · uPnL '}
                 <span className={(p.unrealizedPnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                   {(p.unrealizedPnl ?? 0) >= 0 ? '+' : ''}{p.unrealizedPnl}
@@ -913,15 +922,19 @@ function PositionsTab({
 function LeaderboardTab({ rows }: { rows: PMLeaderRow[] }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-400">
-        No forecasters ranked yet. P&amp;L appears after positions settle.
-      </div>
+      <EmptyState
+        compact
+        icon={<Trophy className="h-5 w-5" aria-hidden="true" />}
+        title="No forecasters ranked yet."
+        description="P&L appears on the leaderboard after positions settle."
+        ariaLabel="No leaderboard entries"
+      />
     );
   }
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-800">
+    <div className="overflow-hidden rounded-lg border border-lattice-border">
       <table className="w-full text-xs">
-        <thead className="bg-black/40 text-[10px] uppercase text-zinc-400">
+        <thead className="bg-black/40 text-[10px] uppercase text-gray-400">
           <tr>
             <th className="px-2 py-1.5 text-left">#</th>
             <th className="px-2 py-1.5 text-left">Forecaster</th>
@@ -934,18 +947,18 @@ function LeaderboardTab({ rows }: { rows: PMLeaderRow[] }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.userId} className="border-t border-white/5">
-              <td className="px-2 py-1.5 font-mono text-zinc-400">{r.rank}</td>
-              <td className="px-2 py-1.5 font-mono text-zinc-200">{r.userId}</td>
-              <td className={`px-2 py-1.5 text-right font-mono ${r.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <td className="px-2 py-1.5 font-mono tabular-nums text-gray-400">{r.rank}</td>
+              <td className="px-2 py-1.5 font-mono tabular-nums text-gray-200">{r.userId}</td>
+              <td className={`px-2 py-1.5 text-right font-mono tabular-nums ${r.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {r.realizedPnl >= 0 ? '+' : ''}{r.realizedPnl} ⚡
               </td>
-              <td className="px-2 py-1.5 text-right font-mono text-zinc-400">
+              <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-400">
                 {r.winRate != null ? `${Math.round(r.winRate * 100)}%` : '—'}
               </td>
-              <td className="px-2 py-1.5 text-right font-mono text-zinc-400">
+              <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-400">
                 {r.roi != null ? `${r.roi >= 0 ? '+' : ''}${Math.round(r.roi * 100)}%` : '—'}
               </td>
-              <td className="px-2 py-1.5 text-right font-mono text-zinc-400">{r.wins}/{r.losses}</td>
+              <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-400">{r.wins}/{r.losses}</td>
             </tr>
           ))}
         </tbody>
