@@ -246,6 +246,16 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: "The current run's ordered real tool-call sequence, live status, and receipts",
     load: lazyNamed(() => import('@/components/conkay/panels/OrchestrationTracePanel'), 'OrchestrationTracePanel'),
   },
+  // A4 — the free-form agent-loop's mission-control plan. DISTINCT source from
+  // orchestration-trace above (which mirrors the macro:* SOCKET lifecycle of
+  // client-initiated runs): this reads `conkayRunStore`, fed ONLY by the real
+  // `tool_call` SSE events the overlay's free-form agent loop receives.
+  'conkay.mission-control': {
+    id: 'conkay.mission-control', label: 'Mission Control', scope: 'global',
+    keywords: ['conkay', 'mission control', 'plan', 'tool calls', 'agent', 'steps', 'trace'],
+    description: "The free-form agent run's ordered real tool calls, in execution order, with receipts",
+    load: lazyNamed(() => import('@/components/conkay/ConKayMissionControl'), 'ConKayMissionControl'),
+  },
   'conkay.connector-status': {
     id: 'conkay.connector-status', label: 'Connector Status', scope: 'global',
     keywords: ['conkay', 'connector', 'integrations', 'oauth', 'connected', 'needs auth'],
