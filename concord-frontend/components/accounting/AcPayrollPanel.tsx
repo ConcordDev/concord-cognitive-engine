@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Users, Play, Pencil, Check, X, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Employee { id: string; name: string; payType: string; rate: number; title: string | null; active: boolean }
 interface Stub { employeeName: string; hours: number | null; gross: number; withholding: number; net: number }
@@ -16,6 +17,7 @@ export function AcPayrollPanel() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [detail, setDetail] = useState<{ stubs: Stub[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [emp, setEmp] = useState({ name: '', payType: 'salary', rate: '', title: '' });
   const [run, setRun] = useState({ periodStart: '', periodEnd: '', payDate: '', hours: {} as Record<string, string> });
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
@@ -29,6 +31,12 @@ export function AcPayrollPanel() {
       lensRun({ domain: 'accounting', action: 'payrun-list', input: {} }),
       lensRun({ domain: 'accounting', action: 'payroll-summary', input: {} }),
     ]);
+    if (e.data?.ok === false || r.data?.ok === false || sm.data?.ok === false) {
+      setLoadError(e.data?.error || r.data?.error || sm.data?.error || 'Could not load payroll.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEmployees(e.data?.result?.employees || []);
     setRuns(r.data?.result?.runs || []);
     setSummary((sm.data?.result as PayrollSummary) || null);
@@ -66,6 +74,7 @@ export function AcPayrollPanel() {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <ErrorState message={loadError} onRetry={() => void refresh()} />;
 
   return (
     <div className="space-y-4 p-1">

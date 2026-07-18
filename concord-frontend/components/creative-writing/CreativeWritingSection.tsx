@@ -60,6 +60,12 @@ export function CreativeWritingSection() {
 
   const refreshProjects = useCallback(async () => {
     const r = await lensRun('creative-writing', 'project-list', {});
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load manuscripts.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     const list: Project[] = r.data?.result?.projects || [];
     setProjects(list);
     setActiveProject((prev) => (list.some((p) => p.id === prev) ? prev : list[0]?.id || ''));

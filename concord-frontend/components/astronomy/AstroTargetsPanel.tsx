@@ -37,6 +37,12 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
       lensRun('astronomy', 'target-list', {}),
       lensRun('astronomy', 'catalog-list', {}),
     ]);
+    if (t.data?.ok === false || c.data?.ok === false) {
+      setError(t.data?.error || c.data?.error || 'Could not load targets.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setTargets(t.data?.result?.targets || []);
     setCatalog(c.data?.result?.catalog || []);
     setLoading(false);
@@ -47,6 +53,12 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
   const openTarget = useCallback(async (t: Target) => {
     setSelected(t);
     const r = await lensRun('astronomy', 'target-detail', { id: t.id });
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load observations.');
+      setObservations([]);
+      return;
+    }
+    setError(null);
     setObservations(r.data?.result?.observations || []);
   }, []);
 

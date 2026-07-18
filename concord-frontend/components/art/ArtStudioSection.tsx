@@ -45,6 +45,12 @@ export function ArtStudioSection() {
 
   const refresh = useCallback(async () => {
     const r = await lensRun('art', 'artwork-list', {});
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load artworks.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setArtworks(r.data?.result?.artworks || []);
     setLoading(false);
   }, []);

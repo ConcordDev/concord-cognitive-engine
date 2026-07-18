@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { ProStudioPanel, type Guides } from './ProStudioPanel';
 import { PublishAsTextureDialog } from './PublishAsTextureDialog';
 import { PublishAsConceptDialog } from './PublishAsConceptDialog';
@@ -137,6 +138,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const [adjust, setAdjust] = useState({ hueShift: 0, satScale: 1, lightScale: 1 });
   const [guides, setGuides] = useState<Guides | null>(null);
   const [clipboard, setClipboard] = useState<El[]>([]);
+  const [toolsError, setToolsError] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const offRef = useRef<HTMLCanvasElement | null>(null);
@@ -164,6 +166,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       const aw = (a.data?.result?.artwork as Artwork) || null;
       setArtwork(aw);
       setActiveLayer(aw?.layers?.[aw.layers.length - 1]?.id || '');
+      if (b.data?.ok === false || p.data?.ok === false) {
+        setToolsError(b.data?.error || p.data?.error || 'Could not load brush presets or palettes.');
+      } else {
+        setToolsError(null);
+      }
       setBrushes(b.data?.result?.brushes || []);
       setBlendModes(b.data?.result?.blendModes || []);
       const pals = (p.data?.result?.palettes || []) as { colors: string[] }[];
@@ -177,6 +184,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   // Brush-preset CRUD (surfaces art.brush-preset-save / brush-preset-delete).
   const reloadBrushes = useCallback(async () => {
     const b = await lensRun('art', 'brush-presets', {});
+    if (b.data?.ok === false) {
+      setToolsError(b.data?.error || 'Could not reload brush presets.');
+      return;
+    }
+    setToolsError(null);
     setBrushes(b.data?.result?.brushes || []);
   }, []);
   const saveBrush = useCallback(async () => {
@@ -713,6 +725,10 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
           <p className="text-xs text-zinc-200 leading-relaxed flex-1">{critique}</p>
           <button type="button" onClick={() => setCritique(null)} aria-label="Dismiss critique" className="text-zinc-500 hover:text-zinc-300 shrink-0"><X className="w-3.5 h-3.5" /></button>
         </div>
+      )}
+
+      {toolsError && (
+        <ErrorState variant="inline" message={toolsError} onRetry={() => void reloadBrushes()} />
       )}
 
       {/* Tool palette */}

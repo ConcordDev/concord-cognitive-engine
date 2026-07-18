@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, PackageCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Vendor { id: string; name: string }
 interface POLine { description: string; qty: number; unitCost: number }
@@ -14,6 +15,7 @@ export function AcPurchaseOrdersPanel() {
   const [pos, setPos] = useState<PO[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [vendorId, setVendorId] = useState('');
   const [lines, setLines] = useState<{ description: string; qty: string; unitCost: string }[]>([
     { description: '', qty: '1', unitCost: '' },
@@ -25,6 +27,12 @@ export function AcPurchaseOrdersPanel() {
       lensRun({ domain: 'accounting', action: 'po-list', input: {} }),
       lensRun({ domain: 'accounting', action: 'vendors-list', input: {} }),
     ]);
+    if (p.data?.ok === false || v.data?.ok === false) {
+      setLoadError(p.data?.error || v.data?.error || 'Could not load purchase orders.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPos(p.data?.result?.purchaseOrders || []);
     setVendors(v.data?.result?.vendors || []);
     setLoading(false);
@@ -48,6 +56,7 @@ export function AcPurchaseOrdersPanel() {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <ErrorState message={loadError} onRetry={() => void refresh()} />;
 
   return (
     <div className="space-y-4 p-1">

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface TaxCode { id: string; name: string; rate: number }
 
@@ -12,6 +13,7 @@ export function AcSalesTaxPanel() {
   const [codes, setCodes] = useState<TaxCode[]>([]);
   const [liability, setLiability] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', rate: '' });
   const [payment, setPayment] = useState('');
   const [note, setNote] = useState<string | null>(null);
@@ -22,6 +24,12 @@ export function AcSalesTaxPanel() {
       lensRun({ domain: 'accounting', action: 'tax-code-list', input: {} }),
       lensRun({ domain: 'accounting', action: 'tax-liability', input: {} }),
     ]);
+    if (c.data?.ok === false || l.data?.ok === false) {
+      setLoadError(c.data?.error || l.data?.error || 'Could not load sales tax data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCodes(c.data?.result?.taxCodes || []);
     setLiability(l.data?.result?.salesTaxPayable || 0);
     setLoading(false);
@@ -45,6 +53,7 @@ export function AcSalesTaxPanel() {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <ErrorState message={loadError} onRetry={() => void refresh()} />;
 
   return (
     <div className="space-y-4 p-1">

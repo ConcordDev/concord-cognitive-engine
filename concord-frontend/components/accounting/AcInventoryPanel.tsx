@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, AlertTriangle, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Item {
   id: string; name: string; type: string; sku: string | null;
@@ -15,6 +16,7 @@ export function AcInventoryPanel() {
   const [items, setItems] = useState<Item[]>([]);
   const [lowStock, setLowStock] = useState<{ count: number; inventoryValue: number }>({ count: 0, inventoryValue: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', type: 'inventory', sku: '', price: '', cost: '', qtyOnHand: '', reorderPoint: '' });
   const [adj, setAdj] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -26,6 +28,12 @@ export function AcInventoryPanel() {
       lensRun({ domain: 'accounting', action: 'item-list', input: {} }),
       lensRun({ domain: 'accounting', action: 'inventory-low-stock', input: {} }),
     ]);
+    if (i.data?.ok === false || l.data?.ok === false) {
+      setLoadError(i.data?.error || l.data?.error || 'Could not load inventory.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setItems(i.data?.result?.items || []);
     setLowStock({ count: l.data?.result?.count || 0, inventoryValue: l.data?.result?.inventoryValue || 0 });
     setLoading(false);
@@ -66,6 +74,7 @@ export function AcInventoryPanel() {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <ErrorState message={loadError} onRetry={() => void refresh()} />;
 
   return (
     <div className="space-y-4 p-1">

@@ -132,6 +132,11 @@ export default function ManufacturingLensPage() {
         lensRun('manufacturing', 'andon-board', {}),
         lensRun('manufacturing', 'ncr-list', {}),
       ]);
+      if (oee.data?.ok === false || wo.data?.ok === false || andon.data?.ok === false || ncr.data?.ok === false) {
+        throw new Error(
+          oee.data?.error || wo.data?.error || andon.data?.error || ncr.data?.error || 'Could not load manufacturing KPIs.'
+        );
+      }
       const machines = (oee.data?.result?.machines || []) as Array<{ status?: string }>;
       return {
         machineCount: machines.length,

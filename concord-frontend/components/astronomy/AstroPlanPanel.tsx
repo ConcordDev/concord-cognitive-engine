@@ -30,6 +30,12 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
       lensRun('astronomy', 'wishlist-list', {}),
       lensRun('astronomy', 'event-list', {}),
     ]);
+    if (w.data?.ok === false || e.data?.ok === false) {
+      setError(w.data?.error || e.data?.error || 'Could not load observing plan.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setWishlist(w.data?.result?.items || []);
     setEvents(e.data?.result?.events || []);
     setLoading(false);
