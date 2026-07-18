@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Calendar, Sparkles, Loader2, ShoppingCart } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
 type Slot = typeof MEAL_SLOTS[number];
@@ -69,7 +70,7 @@ export function MealPlanner() {
   });
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Calendar className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Meal plan · this week</span>
@@ -84,7 +85,7 @@ export function MealPlanner() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <SkeletonTableRows rows={4} columns={8} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">

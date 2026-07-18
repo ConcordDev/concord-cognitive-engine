@@ -8,11 +8,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Loader2, Search, Plus, Star, Clock, Camera, MessageSquare,
+  Search, Plus, Star, Clock, Camera, MessageSquare,
   CheckCircle2, CalendarPlus, Users, Trash2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Business {
   id: string;
@@ -36,7 +37,7 @@ function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) 
   return (
     <span className="inline-flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((n) => (
-        <Star key={n} className={cn(cls, n <= Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-zinc-700')} />
+        <Star key={n} className={cn(cls, n <= Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-600')} />
       ))}
     </span>
   );
@@ -161,19 +162,19 @@ export function YelpDiscoverPanel() {
   };
 
   if (loading && businesses.length === 0) {
-    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="rounded-xl border border-lattice-border bg-lattice-surface/70"><SkeletonTableRows rows={5} columns={3} /></div>;
   }
 
   // ── Detail view ──
   if (selected) {
     return (
       <div className="space-y-3">
-        <button type="button" onClick={() => setSelected(null)} className="text-xs text-zinc-400 hover:text-zinc-200">← Back to results</button>
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
+        <button type="button" onClick={() => setSelected(null)} className="text-xs text-gray-400 hover:text-gray-200">← Back to results</button>
+        <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-4">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
-              <p className="text-xs text-zinc-400 capitalize">
+              <h3 className="text-base font-bold text-white">{selected.name}</h3>
+              <p className="text-xs text-gray-400 capitalize">
                 {selected.cuisine} · {priceLabel(selected.priceTier)}
                 {selected.neighborhood ? ` · ${selected.neighborhood}` : ''}
               </p>
@@ -186,37 +187,37 @@ export function YelpDiscoverPanel() {
           </div>
           <div className="flex items-center gap-2 mt-1">
             <Stars rating={selected.rating} size="lg" />
-            <span className="text-xs text-zinc-400">{selected.rating || '—'} · {selected.reviewCount} reviews</span>
+            <span className="text-xs text-gray-400 tabular-nums">{selected.rating || '—'} · {selected.reviewCount} reviews</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
-            <ActionBtn icon={CheckCircle2} label={`Check in (${selected.checkinCount})`} onClick={checkIn} />
-            <ActionBtn icon={Camera} label={`Photo (${selected.photoCount})`} onClick={addPhoto} />
+            <ActionBtn icon={CheckCircle2} label={`Check in (${selected.checkinCount})`} onClick={checkIn} className="tabular-nums" />
+            <ActionBtn icon={Camera} label={`Photo (${selected.photoCount})`} onClick={addPhoto} className="tabular-nums" />
             <ActionBtn icon={CalendarPlus} label="Reserve" onClick={reserve} />
             <ActionBtn icon={Users} label="Join waitlist" onClick={joinWaitlist} />
             <button type="button" onClick={deleteBusiness}
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-zinc-900 hover:bg-rose-950/60 text-zinc-500 hover:text-rose-300 rounded-lg ml-auto"
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-lattice-surface hover:bg-rose-950/60 text-gray-500 hover:text-rose-300 rounded-lg ml-auto"
               title="Only the business owner can delete a listing">
               <Trash2 className="w-3.5 h-3.5" /> Delete listing
             </button>
           </div>
         </div>
 
-        {error && <div className="text-xs text-zinc-300 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2">{error}</div>}
+        {error && <div className="text-xs text-gray-300 bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2">{error}</div>}
 
         {/* Write a review */}
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <h4 className="text-xs font-semibold text-zinc-300 mb-2">Write a review</h4>
+        <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
+          <h4 className="text-xs font-semibold text-gray-300 mb-2">Write a review</h4>
           <div className="flex items-center gap-1 mb-2">
             {[1, 2, 3, 4, 5].map((n) => (
               <button key={n} type="button" onClick={() => setReviewDraft({ ...reviewDraft, rating: n })}>
-                <Star className={cn('w-5 h-5', n <= reviewDraft.rating ? 'text-amber-400 fill-amber-400' : 'text-zinc-700')} />
+                <Star className={cn('w-5 h-5', n <= reviewDraft.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-600')} />
               </button>
             ))}
           </div>
           <textarea
             value={reviewDraft.text} onChange={(e) => setReviewDraft({ ...reviewDraft, text: e.target.value })}
             placeholder="Share your experience…" rows={2}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100"
+            className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white"
           />
           <button type="button" onClick={submitReview}
             className="mt-2 px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg">
@@ -225,25 +226,25 @@ export function YelpDiscoverPanel() {
         </div>
 
         {/* Reviews */}
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <h4 className="text-xs font-semibold text-zinc-300 mb-2">Reviews ({reviews.length})</h4>
+        <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
+          <h4 className="text-xs font-semibold text-gray-300 mb-2 tabular-nums">Reviews ({reviews.length})</h4>
           {reviews.length === 0 ? (
-            <p className="text-[11px] text-zinc-400 italic">No reviews yet — be the first.</p>
+            <p className="text-[11px] text-gray-400 italic">No reviews yet — be the first.</p>
           ) : (
             <ul className="space-y-2">
               {reviews.map((rv) => (
-                <li key={rv.id} className="border-b border-zinc-800 pb-2 last:border-0 group">
+                <li key={rv.id} className="border-b border-lattice-border pb-2 last:border-0 group">
                   <div className="flex items-center gap-2">
                     <Stars rating={rv.rating} />
-                    <span className="text-[10px] text-zinc-400 font-mono">{rv.userId.slice(0, 10)}</span>
+                    <span className="text-[10px] text-gray-400 font-mono">{rv.userId.slice(0, 10)}</span>
                     <button type="button" onClick={() => void deleteReview(rv.id)} aria-label="Delete my review"
                       className="ml-auto opacity-0 group-hover:opacity-100 text-[10px] text-rose-300 hover:text-rose-200">Delete</button>
                   </div>
-                  {rv.text && <p className="text-xs text-zinc-300 mt-0.5">{rv.text}</p>}
+                  {rv.text && <p className="text-xs text-gray-300 mt-0.5">{rv.text}</p>}
                   <div className="flex items-center gap-1.5 mt-1">
                     {(['useful', 'funny', 'cool'] as const).map((k) => (
                       <button key={k} type="button" onClick={() => void voteReview(rv.id, k)}
-                        className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-300 hover:bg-zinc-800 capitalize">
+                        className="text-[10px] px-1.5 py-0.5 rounded border border-lattice-border text-gray-300 hover:bg-lattice-elevated capitalize">
                         {k} {rv.voteCounts?.[k] ? rv.voteCounts[k] : ''}
                       </button>
                     ))}
@@ -255,29 +256,29 @@ export function YelpDiscoverPanel() {
         </div>
 
         {/* Tips */}
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <h4 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+        <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
+          <h4 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
             <MessageSquare className="w-3.5 h-3.5 text-red-400" /> Tips
           </h4>
           {tips.length > 0 && (
             <ul className="space-y-1 mb-2">
-              {tips.map((t) => <li key={t.id} className="text-[11px] text-zinc-400">• {t.text}</li>)}
+              {tips.map((t) => <li key={t.id} className="text-[11px] text-gray-400">• {t.text}</li>)}
             </ul>
           )}
           <div className="flex gap-1">
             <input value={tipDraft} onChange={(e) => setTipDraft(e.target.value)} placeholder="Add a quick tip…"
-              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
-            <button type="button" onClick={submitTip} className="px-2.5 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Add</button>
+              className="flex-1 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1 text-xs text-white" />
+            <button type="button" onClick={submitTip} className="px-2.5 py-1 text-xs bg-lattice-elevated hover:bg-lattice-border text-gray-200 rounded-lg">Add</button>
           </div>
         </div>
 
         {photos.length > 0 && (
-          <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-            <h4 className="text-xs font-semibold text-zinc-300 mb-2">Photos ({photos.length})</h4>
+          <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
+            <h4 className="text-xs font-semibold text-gray-300 mb-2 tabular-nums">Photos ({photos.length})</h4>
             <ul className="grid grid-cols-2 gap-2">
               {photos.map((p) => (
-                <li key={p.id} className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-[11px] text-zinc-400">
-                  <Camera className="w-4 h-4 text-zinc-600 mb-1" />{p.caption}
+                <li key={p.id} className="bg-lattice-void border border-lattice-border rounded-lg p-2 text-[11px] text-gray-400">
+                  <Camera className="w-4 h-4 text-gray-600 mb-1" />{p.caption}
                 </li>
               ))}
             </ul>
@@ -292,11 +293,11 @@ export function YelpDiscoverPanel() {
     <div className="space-y-3">
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Search restaurants or cuisine…"
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-7 pr-2 py-1.5 text-xs text-zinc-100"
+            className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-7 pr-2 py-1.5 text-xs text-white"
           />
         </div>
         <button type="button" onClick={() => setShowAdd((v) => !v)}
@@ -307,37 +308,37 @@ export function YelpDiscoverPanel() {
 
       <div className="flex flex-wrap gap-1.5">
         <button type="button" onClick={() => setCuisine('')}
-          className={cn('text-[11px] px-2 py-0.5 rounded-full border', cuisine === '' ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
+          className={cn('text-[11px] px-2 py-0.5 rounded-full border', cuisine === '' ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-lattice-border text-gray-400')}>
           All
         </button>
         {facets.slice(0, 8).map((f) => (
           <button key={f.cuisine} type="button" onClick={() => setCuisine(f.cuisine)}
-            className={cn('text-[11px] px-2 py-0.5 rounded-full border capitalize', cuisine === f.cuisine ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
+            className={cn('text-[11px] px-2 py-0.5 rounded-full border capitalize tabular-nums', cuisine === f.cuisine ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-lattice-border text-gray-400')}>
             {f.cuisine} ({f.count})
           </button>
         ))}
         <button type="button" onClick={() => setOpenNow((v) => !v)}
-          className={cn('text-[11px] px-2 py-0.5 rounded-full border', openNow ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 text-zinc-400')}>
+          className={cn('text-[11px] px-2 py-0.5 rounded-full border', openNow ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300' : 'border-lattice-border text-gray-400')}>
           Open now
         </button>
       </div>
 
       {showAdd && (
-        <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+        <div className="grid grid-cols-2 gap-2 bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
           <input placeholder="Restaurant name" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-            className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="col-span-2 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
           <input placeholder="Cuisine" value={addForm.cuisine} onChange={(e) => setAddForm({ ...addForm, cuisine: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
           <select value={addForm.priceTier} onChange={(e) => setAddForm({ ...addForm, priceTier: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white">
             {[1, 2, 3, 4].map((t) => <option key={t} value={t}>{'$'.repeat(t)}</option>)}
           </select>
           <input placeholder="Neighborhood" value={addForm.neighborhood} onChange={(e) => setAddForm({ ...addForm, neighborhood: e.target.value })}
-            className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="col-span-2 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
           <input placeholder="Opens (HH:MM)" value={addForm.open} onChange={(e) => setAddForm({ ...addForm, open: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
           <input placeholder="Closes (HH:MM)" value={addForm.close} onChange={(e) => setAddForm({ ...addForm, close: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
           <button type="button" onClick={addBusiness}
             className="col-span-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
             Add to directory
@@ -348,7 +349,7 @@ export function YelpDiscoverPanel() {
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {businesses.length === 0 ? (
-        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-gray-400 text-sm italic py-10 border border-lattice-border rounded-xl">
           No restaurants match. Add one to start the directory.
         </div>
       ) : (
@@ -356,11 +357,11 @@ export function YelpDiscoverPanel() {
           {businesses.map((b) => (
             <li key={b.id}>
               <button type="button" onClick={() => openDetail(b)}
-                className="w-full text-left bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 hover:border-zinc-700 transition-colors">
+                className="w-full text-left bg-lattice-surface/70 border border-lattice-border rounded-xl p-3 hover:border-lattice-border transition-colors">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-zinc-100">{b.name}</p>
-                    <p className="text-[11px] text-zinc-400 capitalize">
+                    <p className="text-sm font-semibold text-white">{b.name}</p>
+                    <p className="text-[11px] text-gray-400 capitalize">
                       {b.cuisine} · {priceLabel(b.priceTier)}{b.neighborhood ? ` · ${b.neighborhood}` : ''}
                     </p>
                   </div>
@@ -372,7 +373,7 @@ export function YelpDiscoverPanel() {
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">
                   <Stars rating={b.rating} />
-                  <span className="text-[11px] text-zinc-400">
+                  <span className="text-[11px] text-gray-400 tabular-nums">
                     {b.rating || 'New'} · {b.reviewCount} reviews
                     {b.checkinCount > 0 ? ` · ${b.checkinCount} check-ins` : ''}
                   </span>
@@ -386,10 +387,10 @@ export function YelpDiscoverPanel() {
   );
 }
 
-function ActionBtn({ icon: Icon, label, onClick }: { icon: typeof Star; label: string; onClick: () => void }) {
+function ActionBtn({ icon: Icon, label, onClick, className }: { icon: typeof Star; label: string; onClick: () => void; className?: string }) {
   return (
     <button type="button" onClick={onClick}
-      className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
+      className={cn('flex items-center gap-1 px-2.5 py-1 text-[11px] bg-lattice-elevated hover:bg-lattice-border text-gray-200 rounded-lg', className)}>
       <Icon className="w-3.5 h-3.5" /> {label}
     </button>
   );

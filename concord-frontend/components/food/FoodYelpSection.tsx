@@ -48,17 +48,17 @@ export function FoodYelpSection() {
   useEffect(() => { void loadStats(); }, [loadStats, tab]);
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
-      <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-red-600/15 to-transparent flex-wrap">
+    <div className="rounded-2xl border border-lattice-border bg-lattice-void/60 overflow-hidden">
+      <header className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border bg-gradient-to-r from-red-600/15 to-transparent flex-wrap">
         <Utensils className="w-5 h-5 text-red-400" />
-        <h2 className="text-sm font-bold text-zinc-100">Restaurant Finder</h2>
-        <span className="text-[11px] text-zinc-400">Yelp shape — discover, review, reserve</span>
+        <h2 className="text-sm font-bold text-white">Restaurant Finder</h2>
+        <span className="text-[11px] text-gray-400">Yelp shape — discover, review, reserve</span>
         {stats && (
-          <div className="flex items-center gap-3 ml-auto text-[10px] text-zinc-400">
-            <span><span className="text-zinc-200 font-semibold">{stats.businesses}</span> restaurants</span>
-            <span><span className="text-zinc-200 font-semibold">{stats.cuisines}</span> cuisines</span>
-            <span><span className="text-zinc-200 font-semibold">{stats.myReviews}</span> my reviews</span>
-            <span><span className="text-zinc-200 font-semibold">{stats.myCheckins}</span> my check-ins</span>
+          <div className="flex items-center gap-3 ml-auto text-[10px] text-gray-400 tabular-nums">
+            <span><span className="text-gray-200 font-semibold">{stats.businesses}</span> restaurants</span>
+            <span><span className="text-gray-200 font-semibold">{stats.cuisines}</span> cuisines</span>
+            <span><span className="text-gray-200 font-semibold">{stats.myReviews}</span> my reviews</span>
+            <span><span className="text-gray-200 font-semibold">{stats.myCheckins}</span> my check-ins</span>
             {stats.upcomingReservations > 0 && (
               <span className="text-red-300"><span className="font-semibold">{stats.upcomingReservations}</span> upcoming</span>
             )}
@@ -69,7 +69,7 @@ export function FoodYelpSection() {
         )}
       </header>
 
-      <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
+      <nav className="flex gap-1 px-2 pt-2 border-b border-lattice-border overflow-x-auto">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -81,8 +81,8 @@ export function FoodYelpSection() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-red-500',
                 active
-                  ? 'bg-zinc-900 text-red-300 border-x border-t border-zinc-800'
-                  : 'text-zinc-400 hover:text-zinc-200',
+                  ? 'bg-lattice-surface text-red-300 border-x border-t border-lattice-border'
+                  : 'text-gray-400 hover:text-gray-200',
               )}
             >
               <Icon className="w-3.5 h-3.5" />

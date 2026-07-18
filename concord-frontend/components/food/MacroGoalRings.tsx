@@ -8,9 +8,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Target, Loader2, Save, AlertTriangle } from 'lucide-react';
+import { Target, Save, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 
 interface Goal {
   calories: number;
@@ -53,7 +54,7 @@ function Ring({ pct, color, size = 96 }: { pct: number; color: string; size?: nu
   const clamped = Math.max(0, Math.min(100, pct));
   return (
     <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2a2a3a" strokeWidth={stroke} />
       <circle
         cx={size / 2} cy={size / 2} r={r} fill="none"
         stroke={color} strokeWidth={stroke} strokeLinecap="round"
@@ -102,8 +103,18 @@ export function MacroGoalRings({ refreshKey = 0 }: { refreshKey?: number }) {
 
   if (loading) {
     return (
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 flex items-center justify-center text-xs text-gray-400">
-        <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading goals…
+      <div className="bg-lattice-void border border-cyan-500/20 rounded-lg p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Skeleton variant="line" width={140} height={12} />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-2">
+              <Skeleton variant="avatar" width={96} height={96} />
+              <Skeleton variant="line" width={48} height={10} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -111,11 +122,11 @@ export function MacroGoalRings({ refreshKey = 0 }: { refreshKey?: number }) {
   const hasGoal = !!summary?.goal;
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Target className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Daily Macro Goals</span>
-        <span className="ml-auto text-[10px] text-gray-400">
+        <span className="ml-auto text-[10px] text-gray-400 tabular-nums">
           {summary?.entryCount ? `${summary.entryCount} logged today` : 'nothing logged yet'}
         </span>
         <button
@@ -169,15 +180,15 @@ export function MacroGoalRings({ refreshKey = 0 }: { refreshKey?: number }) {
                   <div className="relative">
                     <Ring pct={p.pct} color={over ? '#ef4444' : m.color} />
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-sm font-bold text-white">{Math.round(p.pct)}%</span>
+                      <span className="text-sm font-bold text-white tabular-nums">{Math.round(p.pct)}%</span>
                       <span className="text-[9px] text-gray-400">{m.label}</span>
                     </div>
                   </div>
                   <div className="mt-1.5 text-center">
-                    <div className="text-xs text-white">
+                    <div className="text-xs text-white tabular-nums">
                       {p.consumed}<span className="text-gray-600"> / {p.goal}{m.unit}</span>
                     </div>
-                    <div className={cn('text-[10px]', p.remaining < 0 ? 'text-red-400' : 'text-gray-400')}>
+                    <div className={cn('text-[10px] tabular-nums', p.remaining < 0 ? 'text-red-400' : 'text-gray-400')}>
                       {p.remaining < 0 ? `${Math.abs(p.remaining)}${m.unit} over` : `${p.remaining}${m.unit} left`}
                     </div>
                   </div>

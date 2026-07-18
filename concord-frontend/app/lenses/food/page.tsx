@@ -43,6 +43,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
+import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -613,15 +614,15 @@ export default function FoodLensPage() {
                 <div className="mt-4 grid grid-cols-3 gap-4">
                   <div className={ds.panel}>
                     <p className={ds.textMuted}>Base Servings</p>
-                    <p className="text-xl font-bold">{baseServings}</p>
+                    <p className="text-xl font-bold tabular-nums">{baseServings}</p>
                   </div>
                   <div className={ds.panel}>
                     <p className={ds.textMuted}>Scaled Servings</p>
-                    <p className="text-xl font-bold text-neon-cyan">{scaledServings}</p>
+                    <p className="text-xl font-bold text-neon-cyan tabular-nums">{scaledServings}</p>
                   </div>
                   <div className={ds.panel}>
                     <p className={ds.textMuted}>Yield Cost</p>
-                    <p className="text-xl font-bold text-green-400">${scaledCost.toFixed(2)}</p>
+                    <p className="text-xl font-bold text-green-400 tabular-nums">${scaledCost.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -638,8 +639,8 @@ export default function FoodLensPage() {
                       <div key={idx} className={cn(ds.panel, 'grid grid-cols-4 gap-3 items-center')}>
                         <span className="font-medium">{ing.item}</span>
                         <span className={ds.textMuted}>{ing.qty} {ing.unit}</span>
-                        <span className="text-neon-cyan font-mono">{scaleIngredient(ing.qty, scaleFactor)} {ing.unit}</span>
-                        <span className="text-green-400 font-mono">${(ing.cost * scaleFactor).toFixed(2)}</span>
+                        <span className="text-neon-cyan font-mono tabular-nums">{scaleIngredient(ing.qty, scaleFactor)} {ing.unit}</span>
+                        <span className="text-green-400 font-mono tabular-nums">${(ing.cost * scaleFactor).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
@@ -656,15 +657,15 @@ export default function FoodLensPage() {
                 <div className={ds.grid3}>
                   <div>
                     <p className={ds.textMuted}>Home (1x)</p>
-                    <p className="font-mono">{baseServings} servings</p>
+                    <p className="font-mono tabular-nums">{baseServings} servings</p>
                   </div>
                   <div>
                     <p className={ds.textMuted}>Catering (5x)</p>
-                    <p className="font-mono">{baseServings * 5} servings</p>
+                    <p className="font-mono tabular-nums">{baseServings * 5} servings</p>
                   </div>
                   <div>
                     <p className={ds.textMuted}>Commercial (10x)</p>
-                    <p className="font-mono">{baseServings * 10} servings</p>
+                    <p className="font-mono tabular-nums">{baseServings * 10} servings</p>
                   </div>
                 </div>
               </div>
@@ -711,7 +712,7 @@ export default function FoodLensPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <Icon className={`w-5 h-5 text-${cfg.color}`} />
                   <h3 className={ds.heading3}>{cfg.label}</h3>
-                  <span className={ds.badge(cfg.color)}>{quadrants[q].length}</span>
+                  <span className={cn(ds.badge(cfg.color), 'tabular-nums')}>{quadrants[q].length}</span>
                 </div>
                 <p className={cn(ds.textMuted, 'mb-3 text-xs')}>{cfg.rec}</p>
                 {quadrants[q].length === 0 ? (
@@ -727,10 +728,10 @@ export default function FoodLensPage() {
                             <p className={cn(ds.textMuted, 'text-xs')}>{data.section || data.category}</p>
                           </div>
                           <div className="text-right">
-                            <p className={cn(ds.textMono, 'text-xs', foodCostPct < 30 ? 'text-green-400' : 'text-red-400')}>
+                            <p className={cn(ds.textMono, 'text-xs tabular-nums', foodCostPct < 30 ? 'text-green-400' : 'text-red-400')}>
                               {foodCostPct.toFixed(0)}% cost
                             </p>
-                            <p className={cn(ds.textMuted, 'text-xs')}>Pop: {data.popularity || 0}%</p>
+                            <p className={cn(ds.textMuted, 'text-xs tabular-nums')}>Pop: {data.popularity || 0}%</p>
                           </div>
                         </div>
                       );
@@ -784,16 +785,16 @@ export default function FoodLensPage() {
         <div className={ds.grid4}>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Total Waste Cost</p>
-            <p className="text-2xl font-bold text-red-400">${wasteTotal.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-red-400 tabular-nums">${wasteTotal.toFixed(2)}</p>
           </div>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Logged Entries</p>
-            <p className="text-2xl font-bold">{wasteLog.length}</p>
+            <p className="text-2xl font-bold tabular-nums">{wasteLog.length}</p>
           </div>
           {WASTE_REASONS.slice(0, 2).map(wr => (
             <div key={wr.value} className={ds.panel}>
               <p className={ds.textMuted}>{wr.label}</p>
-              <p className="text-2xl font-bold text-orange-400">${(byReason[wr.value] || 0).toFixed(2)}</p>
+              <p className="text-2xl font-bold text-orange-400 tabular-nums">${(byReason[wr.value] || 0).toFixed(2)}</p>
             </div>
           ))}
         </div>
@@ -836,7 +837,7 @@ export default function FoodLensPage() {
         {/* Waste list */}
         <div className="space-y-2">
           {wasteLogLoading && wasteLog.length === 0 ? (
-            <div className={cn(ds.panel, 'text-center py-6')}><p className={ds.textMuted}>Loading…</p></div>
+            <div className={ds.panel}><SkeletonTableRows rows={3} columns={4} /></div>
           ) : wasteLog.length === 0 ? (
             <div className={cn(ds.panel, 'text-center py-6')}><p className={ds.textMuted}>No waste logged yet.</p></div>
           ) : wasteLog.map(entry => (
@@ -851,7 +852,7 @@ export default function FoodLensPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-red-400 font-mono font-bold">${entry.estimatedCostImpact.toFixed(2)}</span>
+                <span className="text-red-400 font-mono font-bold tabular-nums">${entry.estimatedCostImpact.toFixed(2)}</span>
                 <button onClick={() => removeWasteLogEntry(entry.id)} className={cn(ds.btnSmall, 'text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
               </div>
             </div>
@@ -903,10 +904,10 @@ export default function FoodLensPage() {
                     <tr key={item.id} className="border-b border-lattice-border/50 hover:bg-lattice-elevated/30">
                       <td className="py-2 px-3 font-medium">{item.title}</td>
                       <td className="py-2 px-3 text-gray-400">{data.supplier || '-'}</td>
-                      <td className="py-2 px-3 text-right font-mono">{data.parLevel || 0}</td>
-                      <td className="py-2 px-3 text-right font-mono">{data.currentStock || 0}</td>
+                      <td className="py-2 px-3 text-right font-mono tabular-nums">{data.parLevel || 0}</td>
+                      <td className="py-2 px-3 text-right font-mono tabular-nums">{data.currentStock || 0}</td>
                       <td className="py-2 px-3 text-right text-gray-400">{data.unit || 'ea'}</td>
-                      <td className={cn('py-2 px-3 text-right font-mono font-bold', needsReorder ? 'text-red-400' : 'text-green-400')}>
+                      <td className={cn('py-2 px-3 text-right font-mono font-bold tabular-nums', needsReorder ? 'text-red-400' : 'text-green-400')}>
                         {variance >= 0 ? '+' : ''}{variance}
                       </td>
                       <td className="py-2 px-3 text-center">
@@ -960,13 +961,13 @@ export default function FoodLensPage() {
                 <div key={sup} className={ds.panel}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className={ds.heading3}>{sup}</h3>
-                    <span className={cn(ds.textMono, 'text-green-400')}>${totalCost.toFixed(2)} total</span>
+                    <span className={cn(ds.textMono, 'tabular-nums', 'text-green-400')}>${totalCost.toFixed(2)} total</span>
                   </div>
                   <div className="space-y-1">
                     {supplierItems.map(({ item, data }) => (
                       <div key={item.id} className="flex items-center justify-between text-sm py-1">
                         <span className="text-gray-300">{item.title}</span>
-                        <span className="font-mono text-gray-400">${(data.cost || 0).toFixed(2)}/{data.unit || 'ea'}</span>
+                        <span className="font-mono text-gray-400 tabular-nums">${(data.cost || 0).toFixed(2)}/{data.unit || 'ea'}</span>
                       </div>
                     ))}
                   </div>
@@ -1018,7 +1019,7 @@ export default function FoodLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <span className={ds.textMuted}>Progress</span>
-            <span className={ds.textMono}>{completedCount}/{prepTasks.length} complete</span>
+            <span className={cn(ds.textMono, 'tabular-nums')}>{completedCount}/{prepTasks.length} complete</span>
           </div>
           <div className="h-3 bg-lattice-elevated rounded-full overflow-hidden">
             <div
@@ -1029,7 +1030,7 @@ export default function FoodLensPage() {
         </div>
 
         {prepListLoading && prepTasks.length === 0 ? (
-          <div className={cn(ds.panel, 'text-center py-6')}><p className={ds.textMuted}>Loading…</p></div>
+          <div className={ds.panel}><SkeletonTableRows rows={4} columns={3} /></div>
         ) : prepTasks.length === 0 ? (
           <div className={cn(ds.panel, 'text-center py-8')}>
             <p className={ds.textMuted}>No prep tasks yet today. Hit Auto-Generate to build the list.</p>
@@ -1038,7 +1039,7 @@ export default function FoodLensPage() {
           <div key={station} className={ds.panel}>
             <h3 className={cn(ds.heading3, 'mb-3 flex items-center gap-2')}>
               <MapPin className="w-4 h-4 text-cyan-400" /> {station}
-              <span className={ds.badge('cyan-400')}>{stationItems.length}</span>
+              <span className={cn(ds.badge('cyan-400'), 'tabular-nums')}>{stationItems.length}</span>
             </h3>
             <div className="space-y-2">
               {stationItems.map(({ task: p, idx }) => (
@@ -1116,19 +1117,19 @@ export default function FoodLensPage() {
         <div className={ds.grid4}>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Available</p>
-            <p className="text-2xl font-bold text-green-400">{available}</p>
+            <p className="text-2xl font-bold text-green-400 tabular-nums">{available}</p>
           </div>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Occupied</p>
-            <p className="text-2xl font-bold text-orange-400">{occupied}</p>
+            <p className="text-2xl font-bold text-orange-400 tabular-nums">{occupied}</p>
           </div>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Seat Capacity</p>
-            <p className="text-2xl font-bold">{occupiedSeats}/{totalSeats}</p>
+            <p className="text-2xl font-bold tabular-nums">{occupiedSeats}/{totalSeats}</p>
           </div>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Waitlist</p>
-            <p className="text-2xl font-bold text-purple-400">{activeWaitlist.length}</p>
+            <p className="text-2xl font-bold text-purple-400 tabular-nums">{activeWaitlist.length}</p>
           </div>
         </div>
 
@@ -1144,7 +1145,11 @@ export default function FoodLensPage() {
             <button onClick={addTableFromForm} disabled={!newTableLabel.trim()} className={ds.btnSecondary}><Plus className="w-4 h-4" /> Add Table</button>
           </div>
           {floorPlanLoading && tables.length === 0 ? (
-            <p className={ds.textMuted}>Loading…</p>
+            <div className="grid grid-cols-5 md:grid-cols-10 gap-3">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <Skeleton key={i} variant="block" height="100%" className="aspect-square" />
+              ))}
+            </div>
           ) : tables.length === 0 ? (
             <p className={ds.textMuted}>No tables yet. Add your first table above.</p>
           ) : (
@@ -1198,14 +1203,14 @@ export default function FoodLensPage() {
             {activeWaitlist.map((w, idx) => (
               <div key={w.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-gray-400">#{idx + 1}</span>
+                  <span className="text-lg font-bold text-gray-400 tabular-nums">#{idx + 1}</span>
                   <div>
                     <p className="font-medium">{w.partyName}</p>
                     <p className={ds.textMuted}>Party of {w.partySize} - Added {new Date(w.addedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={ds.badge('purple-400')}>~{w.estimatedWaitMin}min</span>
+                  <span className={cn(ds.badge('purple-400'), 'tabular-nums')}>~{w.estimatedWaitMin}min</span>
                   <button onClick={() => removeWaitlistEntry(w.id, true)} className={cn(ds.btnSmall, 'text-green-400')}>Seat</button>
                   <button onClick={() => removeWaitlistEntry(w.id, false)} className={cn(ds.btnSmall, 'text-red-400')} aria-label="Remove"><X className="w-3 h-3" /></button>
                 </div>
@@ -1260,22 +1265,22 @@ export default function FoodLensPage() {
         <div className={ds.grid4}>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Total Hours</p>
-            <p className="text-2xl font-bold">{totalHours.toFixed(1)}h</p>
+            <p className="text-2xl font-bold tabular-nums">{totalHours.toFixed(1)}h</p>
           </div>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Labor Cost</p>
-            <p className="text-2xl font-bold text-green-400">${totalLabor.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-green-400 tabular-nums">${totalLabor.toFixed(2)}</p>
           </div>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Labor % of Revenue</p>
-            <p className={cn('text-2xl font-bold', laborPctCalc <= 30 ? 'text-green-400' : laborPctCalc <= 35 ? 'text-yellow-400' : 'text-red-400')}>
+            <p className={cn('text-2xl font-bold tabular-nums', laborPctCalc <= 30 ? 'text-green-400' : laborPctCalc <= 35 ? 'text-yellow-400' : 'text-red-400')}>
               {laborPctCalc.toFixed(1)}%
             </p>
             <p className={ds.textMuted}>Target: under 30%</p>
           </div>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Employees Scheduled</p>
-            <p className="text-2xl font-bold">{employees.length}</p>
+            <p className="text-2xl font-bold tabular-nums">{employees.length}</p>
           </div>
         </div>
 
@@ -1286,7 +1291,7 @@ export default function FoodLensPage() {
             {STATIONS.map(st => (
               <div key={st} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50">
                 <span className="text-sm">{st}</span>
-                <span className={cn(ds.badge((stationCoverage[st] || 0) >= 2 ? 'green-400' : (stationCoverage[st] || 0) === 1 ? 'yellow-400' : 'red-400'))}>
+                <span className={cn(ds.badge((stationCoverage[st] || 0) >= 2 ? 'green-400' : (stationCoverage[st] || 0) === 1 ? 'yellow-400' : 'red-400'), 'tabular-nums')}>
                   {stationCoverage[st] || 0}
                 </span>
               </div>
@@ -1313,14 +1318,14 @@ export default function FoodLensPage() {
                         <span className="font-medium">{emp}</span>
                         {isOvertime && <span className={ds.badge('red-400')}>OT</span>}
                       </div>
-                      <span className={cn(ds.textMono, isOvertime ? 'text-red-400' : 'text-gray-400')}>{empHours.toFixed(1)}h</span>
+                      <span className={cn(ds.textMono, 'tabular-nums', isOvertime ? 'text-red-400' : 'text-gray-400')}>{empHours.toFixed(1)}h</span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {empShifts.map(({ item, data }) => {
                         const startTime = data.shiftStart ? data.shiftStart.slice(11, 16) : '??';
                         const endTime = data.shiftEnd ? data.shiftEnd.slice(11, 16) : '??';
                         return (
-                          <span key={item.id} className={cn(ds.badge('blue-400'), 'cursor-pointer')} onClick={() => openEdit(item)}>
+                          <span key={item.id} className={cn(ds.badge('blue-400'), 'cursor-pointer tabular-nums')} onClick={() => openEdit(item)}>
                             {startTime}-{endTime} @ {data.station}
                           </span>
                         );
@@ -1570,7 +1575,7 @@ export default function FoodLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <span className={ds.textMuted}>Progress</span>
-            <span className={ds.textMono}>{checkedCount}/{totalItems}</span>
+            <span className={cn(ds.textMono, 'tabular-nums')}>{checkedCount}/{totalItems}</span>
           </div>
           <div className="h-3 bg-lattice-elevated rounded-full overflow-hidden">
             <div className="h-full bg-green-400 rounded-full transition-all" style={{ width: `${totalItems > 0 ? (checkedCount / totalItems) * 100 : 0}%` }} />
@@ -1586,7 +1591,7 @@ export default function FoodLensPage() {
         ) : (
           Object.entries(byCategory).sort((a, b) => a[0].localeCompare(b[0])).map(([cat, catItems]) => (
             <div key={cat} className={ds.panel}>
-              <h3 className={cn(ds.heading3, 'mb-3')}>{cat} <span className={ds.badge('gray-400')}>{catItems.length}</span></h3>
+              <h3 className={cn(ds.heading3, 'mb-3')}>{cat} <span className={cn(ds.badge('gray-400'), 'tabular-nums')}>{catItems.length}</span></h3>
               <div className="space-y-2">
                 {catItems.map(item => {
                   const d = item.data as unknown as FoodArtifact;
@@ -1655,19 +1660,19 @@ export default function FoodLensPage() {
         <div className={ds.grid4}>
           <div className={cn(ds.panel, 'border-l-4 border-l-orange-400')}>
             <p className={ds.textMuted}>Avg Calories/Day</p>
-            <p className="text-2xl font-bold text-orange-400">{Math.round(weekAvg.calories)}</p>
+            <p className="text-2xl font-bold text-orange-400 tabular-nums">{Math.round(weekAvg.calories)}</p>
           </div>
           <div className={cn(ds.panel, 'border-l-4 border-l-blue-400')}>
             <p className={ds.textMuted}>Avg Protein/Day</p>
-            <p className="text-2xl font-bold text-blue-400">{Math.round(weekAvg.protein)}g</p>
+            <p className="text-2xl font-bold text-blue-400 tabular-nums">{Math.round(weekAvg.protein)}g</p>
           </div>
           <div className={cn(ds.panel, 'border-l-4 border-l-yellow-400')}>
             <p className={ds.textMuted}>Avg Carbs/Day</p>
-            <p className="text-2xl font-bold text-yellow-400">{Math.round(weekAvg.carbs)}g</p>
+            <p className="text-2xl font-bold text-yellow-400 tabular-nums">{Math.round(weekAvg.carbs)}g</p>
           </div>
           <div className={cn(ds.panel, 'border-l-4 border-l-red-400')}>
             <p className={ds.textMuted}>Avg Fat/Day</p>
-            <p className="text-2xl font-bold text-red-400">{Math.round(weekAvg.fat)}g</p>
+            <p className="text-2xl font-bold text-red-400 tabular-nums">{Math.round(weekAvg.fat)}g</p>
           </div>
         </div>
 
@@ -1693,10 +1698,10 @@ export default function FoodLensPage() {
                   return (
                     <tr key={day} className="border-b border-lattice-border/50 hover:bg-lattice-elevated/30">
                       <td className="py-2 px-3 font-medium text-white">{day}</td>
-                      <td className="py-2 px-3 text-right font-mono text-orange-400">{t.calories}</td>
-                      <td className="py-2 px-3 text-right font-mono text-blue-400">{t.protein}g</td>
-                      <td className="py-2 px-3 text-right font-mono text-yellow-400">{t.carbs}g</td>
-                      <td className="py-2 px-3 text-right font-mono text-red-400">{t.fat}g</td>
+                      <td className="py-2 px-3 text-right font-mono tabular-nums text-orange-400">{t.calories}</td>
+                      <td className="py-2 px-3 text-right font-mono tabular-nums text-blue-400">{t.protein}g</td>
+                      <td className="py-2 px-3 text-right font-mono tabular-nums text-yellow-400">{t.carbs}g</td>
+                      <td className="py-2 px-3 text-right font-mono tabular-nums text-red-400">{t.fat}g</td>
                       <td className="py-2 px-3 text-right text-gray-400">{mealCount}</td>
                     </tr>
                   );
@@ -1721,7 +1726,7 @@ export default function FoodLensPage() {
                       <p className="font-medium text-white">{recipe.title}</p>
                       <p className={ds.textMuted}>{d.servings || 1} servings - {d.category}</p>
                     </div>
-                    <div className="flex items-center gap-4 text-xs font-mono">
+                    <div className="flex items-center gap-4 text-xs font-mono tabular-nums">
                       <span className="text-orange-400">{d.calories || 0} cal</span>
                       <span className="text-blue-400">{d.protein || 0}g P</span>
                       <span className="text-yellow-400">{d.carbs || 0}g C</span>
@@ -1780,12 +1785,12 @@ export default function FoodLensPage() {
           </div>
           <div className={cn(ds.panel, 'border-l-4 border-l-yellow-400')}>
             <p className={ds.textMuted}>Expiring Soon</p>
-            <p className="text-2xl font-bold text-yellow-400">{expiringItems.length}</p>
+            <p className="text-2xl font-bold text-yellow-400 tabular-nums">{expiringItems.length}</p>
             <p className={ds.textMuted}>within 7 days</p>
           </div>
           <div className={cn(ds.panel, 'border-l-4 border-l-red-400')}>
             <p className={ds.textMuted}>Expired</p>
-            <p className="text-2xl font-bold text-red-400">{expiredItems.length}</p>
+            <p className="text-2xl font-bold text-red-400 tabular-nums">{expiredItems.length}</p>
           </div>
         </div>
 
@@ -1826,7 +1831,7 @@ export default function FoodLensPage() {
             <div key={loc} className={ds.panel}>
               <h3 className={cn(ds.heading3, 'mb-3 flex items-center gap-2')}>
                 <Warehouse className="w-4 h-4 text-neon-cyan" /> {loc}
-                <span className={ds.badge('gray-400')}>{locItems.length}</span>
+                <span className={cn(ds.badge('gray-400'), 'tabular-nums')}>{locItems.length}</span>
               </h3>
               <div className="space-y-2">
                 {locItems.map(item => {
@@ -1958,11 +1963,11 @@ export default function FoodLensPage() {
                 <div className="space-y-2">
                   <div className="grid grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p className="text-sm font-bold text-neon-cyan">{String(actionResult.targetYield)}</p>
+                      <p className="text-sm font-bold text-neon-cyan tabular-nums">{String(actionResult.targetYield)}</p>
                       <p className="text-[10px] text-gray-400">Target Yield</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p className="text-sm font-bold text-neon-cyan">{String(actionResult.scaleFactor)}x</p>
+                      <p className="text-sm font-bold text-neon-cyan tabular-nums">{String(actionResult.scaleFactor)}x</p>
                       <p className="text-[10px] text-gray-400">Scale Factor</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
@@ -1982,7 +1987,7 @@ export default function FoodLensPage() {
               {actionResult.avgFoodCostPct !== undefined && Array.isArray(actionResult.items) && (
                 <div className="space-y-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p className="text-sm font-bold text-neon-cyan">{String(actionResult.avgFoodCostPct)}%</p>
+                    <p className="text-sm font-bold text-neon-cyan tabular-nums">{String(actionResult.avgFoodCostPct)}%</p>
                     <p className="text-[10px] text-gray-400">Avg Food Cost %</p>
                   </div>
                   {(actionResult.items as {name:string;foodCostPct:number;menuPrice:number;status:string}[]).map((item, i) => (
@@ -1991,7 +1996,7 @@ export default function FoodLensPage() {
                         <p className="text-xs font-semibold text-white">{item.name}</p>
                         <p className="text-[10px] text-gray-400">${item.menuPrice} menu price</p>
                       </div>
-                      <span className={`text-xs font-bold ${item.status === 'on-target' ? 'text-green-400' : 'text-red-400'}`}>{item.foodCostPct}%</span>
+                      <span className={`text-xs font-bold tabular-nums ${item.status === 'on-target' ? 'text-green-400' : 'text-red-400'}`}>{item.foodCostPct}%</span>
                     </div>
                   ))}
                 </div>
@@ -2000,20 +2005,20 @@ export default function FoodLensPage() {
               {actionResult.expiredCount !== undefined && (
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p className="text-sm font-bold text-red-400">{String(actionResult.expiredCount)}</p>
+                    <p className="text-sm font-bold text-red-400 tabular-nums">{String(actionResult.expiredCount)}</p>
                     <p className="text-[10px] text-gray-400">Expired</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p className="text-sm font-bold text-amber-400">{String(actionResult.expiringSoonCount)}</p>
+                    <p className="text-sm font-bold text-amber-400 tabular-nums">{String(actionResult.expiringSoonCount)}</p>
                     <p className="text-[10px] text-gray-400">Expiring Soon</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p className="text-sm font-bold text-green-400">{String(actionResult.okCount)}</p>
+                    <p className="text-sm font-bold text-green-400 tabular-nums">{String(actionResult.okCount)}</p>
                     <p className="text-[10px] text-gray-400">OK</p>
                   </div>
                   {Number(actionResult.estimatedSpoilageLoss) > 0 && (
                     <div className="col-span-3 p-2 bg-lattice-surface rounded text-center">
-                      <p className="text-sm font-bold text-red-400">${String(actionResult.estimatedSpoilageLoss)}</p>
+                      <p className="text-sm font-bold text-red-400 tabular-nums">${String(actionResult.estimatedSpoilageLoss)}</p>
                       <p className="text-[10px] text-gray-400">Estimated Loss</p>
                     </div>
                   )}
@@ -2023,7 +2028,7 @@ export default function FoodLensPage() {
               {actionResult.avgPourCostPct !== undefined && Array.isArray(actionResult.items) && (
                 <div className="space-y-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p className="text-sm font-bold text-neon-cyan">{String(actionResult.avgPourCostPct)}%</p>
+                    <p className="text-sm font-bold text-neon-cyan tabular-nums">{String(actionResult.avgPourCostPct)}%</p>
                     <p className="text-[10px] text-gray-400">Avg Pour Cost %</p>
                   </div>
                   {(actionResult.items as {name:string;pourCostPct:number;profit:number;status:string}[]).map((item, i) => (
@@ -2032,7 +2037,7 @@ export default function FoodLensPage() {
                         <p className="text-xs font-semibold text-white">{item.name}</p>
                         <p className="text-[10px] text-gray-400">${item.profit} profit</p>
                       </div>
-                      <span className={`text-xs font-bold ${item.status === 'on-target' ? 'text-green-400' : 'text-red-400'}`}>{item.pourCostPct}%</span>
+                      <span className={`text-xs font-bold tabular-nums ${item.status === 'on-target' ? 'text-green-400' : 'text-red-400'}`}>{item.pourCostPct}%</span>
                     </div>
                   ))}
                 </div>
@@ -2042,7 +2047,11 @@ export default function FoodLensPage() {
         )}
 
         {isLoading ? (
-          <div className={cn(ds.panel, 'text-center py-12')}><p className={ds.textMuted}>Loading {activeTab}...</p></div>
+          <div className={ds.grid3}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={ds.panel}><Skeleton variant="line" lines={3} /></div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
           <div className={cn(ds.panel, 'text-center py-12')}>
             <ChefHat className="w-10 h-10 text-gray-600 mx-auto mb-3" />
@@ -2072,9 +2081,9 @@ export default function FoodLensPage() {
                       </div>
                       {plate && (
                         <div className="flex items-center gap-3 mt-2">
-                          <span className={cn(ds.textMono, 'text-red-400')}>Cost ${plate.foodCost.toFixed(2)}</span>
-                          <span className={cn(ds.textMono, 'text-green-400')}>Price ${plate.price.toFixed(2)}</span>
-                          <span className={cn(ds.badge(plate.margin >= 65 ? 'green-400' : plate.margin >= 50 ? 'yellow-400' : 'red-400'))}>
+                          <span className={cn(ds.textMono, 'tabular-nums', 'text-red-400')}>Cost ${plate.foodCost.toFixed(2)}</span>
+                          <span className={cn(ds.textMono, 'tabular-nums', 'text-green-400')}>Price ${plate.price.toFixed(2)}</span>
+                          <span className={cn(ds.badge(plate.margin >= 65 ? 'green-400' : plate.margin >= 50 ? 'yellow-400' : 'red-400'), 'tabular-nums')}>
                             {plate.margin.toFixed(0)}% margin
                           </span>
                         </div>
@@ -2092,7 +2101,7 @@ export default function FoodLensPage() {
                         </div>
                       )}
                       {(d.calories || d.protein || d.carbs || d.fat) && (
-                        <div className="flex items-center gap-3 mt-2 text-xs font-mono">
+                        <div className="flex items-center gap-3 mt-2 text-xs font-mono tabular-nums">
                           {d.calories ? <span className="text-orange-400">{d.calories} cal</span> : null}
                           {d.protein ? <span className="text-blue-400">{d.protein}g P</span> : null}
                           {d.carbs ? <span className="text-yellow-400">{d.carbs}g C</span> : null}
@@ -2128,7 +2137,7 @@ export default function FoodLensPage() {
                   {d.type === 'InventoryItem' && (
                     <div className="mt-3 space-y-1">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-400">Stock: <span className={cn('font-bold', d.currentStock !== undefined && d.parLevel !== undefined && d.currentStock < d.parLevel ? 'text-red-400' : 'text-green-400')}>{d.currentStock} {d.unit}</span></span>
+                        <span className="text-gray-400">Stock: <span className={cn('font-bold tabular-nums', d.currentStock !== undefined && d.parLevel !== undefined && d.currentStock < d.parLevel ? 'text-red-400' : 'text-green-400')}>{d.currentStock} {d.unit}</span></span>
                         <span className="text-gray-400">Par: {d.parLevel} {d.unit}</span>
                       </div>
                       {d.currentStock !== undefined && d.parLevel !== undefined && d.currentStock < d.parLevel && (
@@ -2513,7 +2522,7 @@ export default function FoodLensPage() {
             <DollarSign className="w-5 h-5 text-green-400" />
             <span className={ds.textMuted}>Revenue Projection</span>
           </div>
-          <p className="text-3xl font-bold text-green-400">${dashboardMetrics.revenueProjection.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-green-400 tabular-nums">${dashboardMetrics.revenueProjection.toLocaleString()}</p>
           <p className={ds.textMuted}>{dashboardMetrics.totalCovers} covers x $42 avg</p>
         </div>
         <div className={ds.panel}>
@@ -2521,7 +2530,7 @@ export default function FoodLensPage() {
             <Percent className="w-5 h-5 text-cyan-400" />
             <span className={ds.textMuted}>Avg Food Cost</span>
           </div>
-          <p className={cn('text-3xl font-bold', dashboardMetrics.avgFoodCostPct <= 30 ? 'text-green-400' : dashboardMetrics.avgFoodCostPct <= 35 ? 'text-yellow-400' : 'text-red-400')}>
+          <p className={cn('text-3xl font-bold tabular-nums', dashboardMetrics.avgFoodCostPct <= 30 ? 'text-green-400' : dashboardMetrics.avgFoodCostPct <= 35 ? 'text-yellow-400' : 'text-red-400')}>
             {dashboardMetrics.avgFoodCostPct.toFixed(1)}%
           </p>
           <p className={ds.textMuted}>Target: under 30%</p>
@@ -2531,7 +2540,7 @@ export default function FoodLensPage() {
             <Users className="w-5 h-5 text-blue-400" />
             <span className={ds.textMuted}>Labor %</span>
           </div>
-          <p className={cn('text-3xl font-bold', dashboardMetrics.laborPct <= 30 ? 'text-green-400' : dashboardMetrics.laborPct <= 35 ? 'text-yellow-400' : 'text-red-400')}>
+          <p className={cn('text-3xl font-bold tabular-nums', dashboardMetrics.laborPct <= 30 ? 'text-green-400' : dashboardMetrics.laborPct <= 35 ? 'text-yellow-400' : 'text-red-400')}>
             {dashboardMetrics.laborPct.toFixed(1)}%
           </p>
           <p className={ds.textMuted}>${dashboardMetrics.totalLaborCost.toFixed(0)} labor cost</p>
@@ -2541,7 +2550,7 @@ export default function FoodLensPage() {
             <Trash2 className="w-5 h-5 text-red-400" />
             <span className={ds.textMuted}>Waste %</span>
           </div>
-          <p className={cn('text-3xl font-bold', dashboardMetrics.wastePct <= 2 ? 'text-green-400' : dashboardMetrics.wastePct <= 5 ? 'text-yellow-400' : 'text-red-400')}>
+          <p className={cn('text-3xl font-bold tabular-nums', dashboardMetrics.wastePct <= 2 ? 'text-green-400' : dashboardMetrics.wastePct <= 5 ? 'text-yellow-400' : 'text-red-400')}>
             {dashboardMetrics.wastePct.toFixed(1)}%
           </p>
           <p className={ds.textMuted}>${wasteTotal.toFixed(2)} this week</p>
@@ -2555,7 +2564,7 @@ export default function FoodLensPage() {
             <ShoppingCart className="w-5 h-5 text-red-400" />
             <span className={ds.textMuted}>Low Stock Alerts</span>
           </div>
-          <p className="text-3xl font-bold text-red-400">{dashboardMetrics.lowStockItems}</p>
+          <p className="text-3xl font-bold text-red-400 tabular-nums">{dashboardMetrics.lowStockItems}</p>
           <p className={ds.textMuted}>Items below par level</p>
         </div>
         <div className={ds.panel}>
@@ -2563,7 +2572,7 @@ export default function FoodLensPage() {
             <CalendarClock className="w-5 h-5 text-blue-400" />
             <span className={ds.textMuted}>Active Bookings</span>
           </div>
-          <p className="text-3xl font-bold">{dashboardMetrics.activeBookings}</p>
+          <p className="text-3xl font-bold tabular-nums">{dashboardMetrics.activeBookings}</p>
           <p className={ds.textMuted}>{dashboardMetrics.totalCovers} total covers</p>
         </div>
         <div className={ds.panel}>
@@ -2571,7 +2580,7 @@ export default function FoodLensPage() {
             <Target className="w-5 h-5 text-cyan-400" />
             <span className={ds.textMuted}>Covers Forecast</span>
           </div>
-          <p className="text-3xl font-bold">{dashboardMetrics.forecastCovers}</p>
+          <p className="text-3xl font-bold tabular-nums">{dashboardMetrics.forecastCovers}</p>
           <p className={ds.textMuted}>vs {dashboardMetrics.totalCovers} actual</p>
         </div>
         <div className={ds.panel}>
@@ -2579,7 +2588,7 @@ export default function FoodLensPage() {
             <AlertTriangle className="w-5 h-5 text-orange-400" />
             <span className={ds.textMuted}>86'd Items</span>
           </div>
-          <p className="text-3xl font-bold text-orange-400">{dashboardMetrics.eightyFixed}</p>
+          <p className="text-3xl font-bold text-orange-400 tabular-nums">{dashboardMetrics.eightyFixed}</p>
           <p className={ds.textMuted}>Currently out of stock</p>
         </div>
       </div>
@@ -2594,10 +2603,10 @@ export default function FoodLensPage() {
             {dashboardMetrics.topSellers.length > 0 ? dashboardMetrics.topSellers.map((d, idx) => (
               <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50">
                 <div className="flex items-center gap-2">
-                  <span className="text-green-400 font-bold">#{idx + 1}</span>
+                  <span className="text-green-400 font-bold tabular-nums">#{idx + 1}</span>
                   <span>{d.name}</span>
                 </div>
-                <span className={ds.textMono}>{d.salesVolume || 0} sold</span>
+                <span className={cn(ds.textMono, 'tabular-nums')}>{d.salesVolume || 0} sold</span>
               </div>
             )) : <p className={ds.textMuted}>No sales data yet.</p>}
           </div>
@@ -2610,10 +2619,10 @@ export default function FoodLensPage() {
             {dashboardMetrics.bottomSellers.length > 0 ? dashboardMetrics.bottomSellers.map((d, idx) => (
               <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50">
                 <div className="flex items-center gap-2">
-                  <span className="text-red-400 font-bold">#{idx + 1}</span>
+                  <span className="text-red-400 font-bold tabular-nums">#{idx + 1}</span>
                   <span>{d.name}</span>
                 </div>
-                <span className={ds.textMono}>{d.salesVolume || 0} sold</span>
+                <span className={cn(ds.textMono, 'tabular-nums')}>{d.salesVolume || 0} sold</span>
               </div>
             )) : <p className={ds.textMuted}>No sales data yet.</p>}
           </div>
@@ -2633,7 +2642,7 @@ export default function FoodLensPage() {
                 <div className="flex-1 h-2 bg-lattice-surface rounded-full overflow-hidden">
                   <div className={`h-full bg-${cfg.color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
                 </div>
-                <span className={cn(ds.textMono, 'w-8 text-right')}>{count}</span>
+                <span className={cn(ds.textMono, 'tabular-nums', 'w-8 text-right')}>{count}</span>
               </div>
             );
           })}
@@ -2684,10 +2693,33 @@ export default function FoodLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+      <div className={ds.pageContainer}>
+        <div className={ds.sectionHeader}>
+          <div className="flex items-center gap-3">
+            <ChefHat className="w-8 h-8 text-orange-400/40" />
+            <div className="space-y-2">
+              <Skeleton variant="line" width={220} height={22} />
+              <Skeleton variant="line" width={320} height={14} />
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className={cn(ds.panel, 'flex items-center gap-3 p-3')}>
+              <Skeleton variant="avatar" width={20} height={20} />
+              <div className="flex-1 space-y-2">
+                <Skeleton variant="line" height={10} width="60%" />
+                <Skeleton variant="line" height={16} width="40%" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className={ds.grid3}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={ds.panel}>
+              <Skeleton variant="line" lines={3} />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -2758,7 +2790,7 @@ export default function FoodLensPage() {
               <stat.icon className="w-5 h-5 text-orange-400 shrink-0" />
               <div>
                 <p className="text-xs text-gray-400">{stat.label}</p>
-                <p className="text-lg font-bold text-white">{stat.value}</p>
+                <p className="text-lg font-bold text-white tabular-nums">{stat.value}</p>
               </div>
             </div>
           ));
@@ -2866,7 +2898,7 @@ export default function FoodLensPage() {
           </div>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
         <OpenFoodFactsSearch />
       </section>
 

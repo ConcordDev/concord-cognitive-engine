@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calculator, Loader2 } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 
 export interface ScaledIngredient {
   original: { qty: number; unit: string; item: string };
@@ -41,7 +42,7 @@ export function RecipeScaler({ baseServings, ingredients }: RecipeScalerProps) {
   }, [targetServings, baseServings, ingredients]);
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Calculator className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Scale recipe</span>
@@ -56,7 +57,7 @@ export function RecipeScaler({ baseServings, ingredients }: RecipeScalerProps) {
       </div>
       <ul className="divide-y divide-white/5 max-h-72 overflow-y-auto">
         {loading ? (
-          <li className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Scaling…</li>
+          <li><SkeletonTableRows rows={4} columns={1} /></li>
         ) : (
           scaled.map((s, i) => (
             <li key={i} className="px-3 py-2 text-sm">

@@ -12,6 +12,7 @@ import { MapPin, Loader2, Navigation, Star, Crosshair } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { MapView, type MapMarker } from '@/components/viz/MapView';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 
 interface BizMarker {
   id: string;
@@ -95,11 +96,11 @@ export function RestaurantMap() {
   const selectedBiz = markers.find((m) => m.id === selected) || null;
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <MapPin className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Restaurant Map</span>
-        <span className="ml-auto text-[10px] text-gray-400">
+        <span className="ml-auto text-[10px] text-gray-400 tabular-nums">
           {markers.length} on map{withoutGeo > 0 ? ` · ${withoutGeo} without location` : ''}
         </span>
       </header>
@@ -129,7 +130,7 @@ export function RestaurantMap() {
 
         {/* Map */}
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading map…</div>
+          <Skeleton variant="block" height={280} />
         ) : markers.length === 0 ? (
           <div className="py-12 text-center text-xs text-gray-400">
             <MapPin className="w-6 h-6 mx-auto mb-2 opacity-30" />
@@ -151,7 +152,7 @@ export function RestaurantMap() {
                     </div>
                     {selectedBiz.address && <div className="text-[10px] text-gray-400 mt-0.5">{selectedBiz.address}</div>}
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-right shrink-0 tabular-nums">
                     <div className="flex items-center gap-0.5 text-yellow-400 text-xs">
                       <Star className="w-3.5 h-3.5 fill-yellow-400" /> {selectedBiz.rating || '—'}
                     </div>
@@ -160,7 +161,7 @@ export function RestaurantMap() {
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   {selectedBiz.distanceKm != null && (
-                    <span className="text-[10px] text-cyan-300">{selectedBiz.distanceKm} km away</span>
+                    <span className="text-[10px] text-cyan-300 tabular-nums">{selectedBiz.distanceKm} km away</span>
                   )}
                   <a
                     href={selectedBiz.directionsUrl}
@@ -187,8 +188,8 @@ export function RestaurantMap() {
                       <div className="text-xs text-white truncate">{m.name}</div>
                       <div className="text-[10px] text-gray-400">{m.cuisine} · {'$'.repeat(m.priceTier)}</div>
                     </div>
-                    {m.distanceKm != null && <span className="text-[10px] text-cyan-300">{m.distanceKm} km</span>}
-                    <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">
+                    {m.distanceKm != null && <span className="text-[10px] text-cyan-300 tabular-nums">{m.distanceKm} km</span>}
+                    <span className="flex items-center gap-0.5 text-[10px] text-yellow-400 tabular-nums">
                       <Star className="w-3 h-3 fill-yellow-400" />{m.rating || '—'}
                     </span>
                   </button>

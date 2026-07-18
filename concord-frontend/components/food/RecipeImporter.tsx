@@ -80,7 +80,7 @@ export function RecipeImporter({ onImported, onSaved }: RecipeImporterProps) {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <LinkIcon className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Recipe import</span>
@@ -108,7 +108,7 @@ export function RecipeImporter({ onImported, onSaved }: RecipeImporterProps) {
               <h3 className="text-lg font-bold text-white">{recipe.title}</h3>
               {source && <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 uppercase tracking-wider">{source}</span>}
             </div>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-gray-400 tabular-nums">
               Serves {recipe.servings} · {recipe.totalTimeMin} min total · {recipe.ingredients.length} ingredients · {recipe.steps.length} steps
             </div>
             {recipe.nutrition && (
