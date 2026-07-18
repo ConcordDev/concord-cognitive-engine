@@ -388,7 +388,7 @@ export async function runFalseEmptyOnErrorDetector({ root, opts = {} } = {}) {
 
           findings.push({
             id: "false_empty_on_error",
-            severity: "medium",
+            severity: "high",
             kind: "static",
             category: CATEGORY,
             subject: { kind: "file", path: rel, identifier: name },

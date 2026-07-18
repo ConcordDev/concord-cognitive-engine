@@ -15,7 +15,8 @@
  * Pinned behavior:
  *   - FIRES on a `lensRun`-bound identifier whose `.data?.result?.field`
  *     falls back to `|| []` with zero `.ok` check / try-catch / setError /
- *     isError / ErrorState anywhere in the enclosing function (medium).
+ *     isError / ErrorState anywhere in the enclosing function (high — a
+ *     silent honest-by-construction violation; the PR ratchet blocks a new one).
  *   - Does NOT fire when the same block checks `.data?.ok === false` before
  *     the fallback (the house fix idiom).
  *   - Does NOT fire when the call is wrapped in try/catch, or chains a
@@ -133,7 +134,7 @@ export default function EmptyPage() {
 `;
 
 describe("FalseEmptyOnErrorDetector — positive: unguarded envelope fallback", () => {
-  it("flags `r.data?.result?.projects || []` with zero error handling as false_empty_on_error (medium)", async () => {
+  it("flags `r.data?.result?.projects || []` with zero error handling as false_empty_on_error (high)", async () => {
     const dir = withFixture({ "concord-frontend/components/projects/PjPortfolioPanel.tsx": POSITIVE_FIXTURE });
     try {
       const r = await runFalseEmptyOnErrorDetector({ root: dir });
@@ -141,7 +142,7 @@ describe("FalseEmptyOnErrorDetector — positive: unguarded envelope fallback", 
       const findings = realFindings(r);
       const hit = findings.find((f) => f.id === "false_empty_on_error");
       assert.ok(hit, `expected a false_empty_on_error finding, got: ${JSON.stringify(findings)}`);
-      assert.equal(hit.severity, "medium");
+      assert.equal(hit.severity, "high");
       assert.match(hit.location, /PjPortfolioPanel\.tsx/);
       assert.equal(hit.evidence.identifier, "r");
       assert.match(hit.evidence.chain, /r\.data\?\.result\?\.projects/);
