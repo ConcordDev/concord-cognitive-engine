@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ShieldCheck, Trash2, Loader2, ExternalLink, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 export interface TokenAllowance {
   id: string;
@@ -70,8 +71,8 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
   const unlimitedCount = allowances.filter(a => a.allowance === 'unlimited').length;
 
   return (
-    <div className="flex flex-col bg-[#0d1117] border border-lattice-border rounded overflow-hidden">
-      <header className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+    <div className="flex flex-col bg-lattice-void border border-lattice-border rounded overflow-hidden">
+      <header className="px-3 py-2 border-b border-lattice-border flex items-center gap-2">
         <ShieldCheck className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Token approvals</span>
         <span className="ml-auto text-[10px] text-gray-400">{allowances.length}</span>
@@ -102,9 +103,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" /> Scanning approvals…
-          </div>
+          <SkeletonTableRows rows={5} columns={3} className="py-1" />
         ) : visible.length === 0 ? (
           <div className="px-3 py-10 text-xs text-gray-400 text-center">
             {allowances.length === 0 ? 'No approvals on record.' : `No approvals match "${filter}".`}
@@ -118,7 +117,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
                   <span className="text-gray-400">→</span>
                   <span className="text-cyan-300 truncate flex-1">{a.spenderLabel || abbreviate(a.spenderAddress)}</span>
                   <span className={cn(
-                    'text-[10px] font-bold uppercase px-1.5 py-0.5 rounded',
+                    'text-[10px] font-bold uppercase px-1.5 py-0.5 rounded font-mono tabular-nums',
                     a.allowance === 'unlimited' ? 'bg-red-500/20 text-red-300' :
                     a.riskLevel === 'high' ? 'bg-red-500/20 text-red-300' :
                     a.riskLevel === 'moderate' ? 'bg-yellow-500/20 text-yellow-300' :

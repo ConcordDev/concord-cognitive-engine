@@ -72,11 +72,11 @@ export function PriceAlerts({ tokenOptions }: PriceAlertsProps) {
   }
 
   return (
-    <div className="flex flex-col bg-[#0d1117] border border-lattice-border rounded overflow-hidden">
-      <header className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+    <div className="flex flex-col bg-lattice-void border border-lattice-border rounded overflow-hidden">
+      <header className="px-3 py-2 border-b border-lattice-border flex items-center gap-2">
         <Bell className="w-4 h-4 text-yellow-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Price alerts</span>
-        <span className="ml-auto text-[10px] text-gray-400">{alerts.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400 font-mono tabular-nums">{alerts.length}</span>
         <button
           onClick={() => setCreating(v => !v)}
           title="New alert"
@@ -86,7 +86,7 @@ export function PriceAlerts({ tokenOptions }: PriceAlertsProps) {
         </button>
       </header>
       {creating && (
-        <div className="p-3 border-b border-white/10 space-y-2">
+        <div className="p-3 border-b border-lattice-border space-y-2">
           <select
             value={tokenId}
             onChange={e => setTokenId(e.target.value)}
@@ -125,7 +125,7 @@ export function PriceAlerts({ tokenOptions }: PriceAlertsProps) {
             </button>
             <button
               onClick={() => setCreating(false)}
-              className="px-3 py-1 text-xs rounded border border-white/10 text-gray-400 hover:text-white"
+              className="px-3 py-1 text-xs rounded border border-lattice-border text-gray-400 hover:text-white"
             >Cancel</button>
           </div>
         </div>

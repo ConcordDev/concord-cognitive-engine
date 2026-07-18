@@ -56,17 +56,17 @@ export default function CandleChart({
       const chart = mod.createChart(hostRef.current, {
         height,
         layout: {
-          background: { color: '#0a0e17' },
+          background: { color: '#0a0a0f' },
           textColor: '#94a3b8',
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: 11,
         },
         grid: {
-          vertLines: { color: '#1e293b40' },
-          horzLines: { color: '#1e293b40' },
+          vertLines: { color: '#2a2a3a40' },
+          horzLines: { color: '#2a2a3a40' },
         },
-        rightPriceScale: { borderColor: '#1e293b' },
-        timeScale: { borderColor: '#1e293b', timeVisible: true, secondsVisible: false },
+        rightPriceScale: { borderColor: '#2a2a3a' },
+        timeScale: { borderColor: '#2a2a3a', timeVisible: true, secondsVisible: false },
         crosshair: { mode: 1 },
         autoSize: true,
       });
@@ -96,7 +96,7 @@ export default function CandleChart({
         });
         chart.priceScale('volume').applyOptions({
           scaleMargins: { top: 0.8, bottom: 0 },
-          borderColor: '#1e293b',
+          borderColor: '#2a2a3a',
         });
       }
 
@@ -155,7 +155,7 @@ export default function CandleChart({
   }, [candles, ready, emaPeriod]);
 
   return (
-    <div className={cn('relative bg-[#0a0e17] border border-lattice-border rounded overflow-hidden', className)} style={{ height }}>
+    <div className={cn('relative bg-lattice-void border border-lattice-border rounded overflow-hidden', className)} style={{ height }}>
       {symbol && (
         <div className="absolute top-2 left-3 z-10 text-xs font-mono text-cyan-300 font-bold">
           {symbol}
