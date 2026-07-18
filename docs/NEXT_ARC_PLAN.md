@@ -421,6 +421,22 @@ or migration was touched by this unit — that is the intended shape of a
 governance gate, not a gap. Owner sign-off on the doc's recommendations is
 still the prerequisite for any future economy-touching backlog pull.
 
+**OWNER-SIGNED-OFF (2026-07-18).** The owner approved P-D's five
+recommendations. Each was already enforced in code (not aspirational prose):
+Dream-Commerce phenomenal-monetization consent gate (`requireConsent(...,
+"allow_phenomenal_monetization")` on any `userPrice > 0` promotion —
+`lib/dream-marketplace-bridge.js`), fork agent-disclosure (`lib/lattice-fork.js`
+mints a namespaced `agent_…` account + `agent_identities` self-model),
+Shadow-Parliament advisory-by-default (`isAutoexecEnabled()` OFF unless the
+operator opts in; default-deny money-free allow-list), retroactive-royalty
+default-reject (the ledger-conservation predicate stays intact), and
+joint-ownership deferred (single-creator cascade). The sign-off is now locked
+as governance-as-code by `server/tests/governance/pd-signoff-invariants.test.js`
+(8 assertions), so a future change can't silently undo a decision. Building the
+gated backlog items themselves (Qualia-Bazaar trade flow, etc.) remains
+separate, future, money-reviewed work — the sign-off unblocks it; it does not
+switch it on.
+
 ---
 
 ## D. Ranked backlog (audit-annotated — pull from here as waves complete)
