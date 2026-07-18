@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ShoppingCart, AlertTriangle, Loader2, Send } from 'lucide-react';
+import { ShoppingCart, AlertTriangle, Send } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface AbCart {
   id: string; openedAt: string; ageHours: number;
@@ -47,7 +48,7 @@ export function AbandonedCartsPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ShoppingCart className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Abandoned carts</span>
@@ -60,7 +61,7 @@ export function AbandonedCartsPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={3} />
         ) : carts.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><ShoppingCart className="w-6 h-6 mx-auto mb-2 opacity-30" />No abandoned carts.</div>
         ) : (

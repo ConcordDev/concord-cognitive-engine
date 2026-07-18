@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Users, Loader2, UserPlus, Power, Trash2, ShieldCheck } from 'lucide-react';
+import { Users, UserPlus, Power, Trash2, ShieldCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 const PERMISSION_CATALOG = ['products', 'orders', 'customers', 'discounts', 'analytics', 'staff', 'fulfillment', 'campaigns'];
 
@@ -97,7 +98,7 @@ export function StaffPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-indigo-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Staff & permissions</span>
@@ -119,7 +120,7 @@ export function StaffPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={4} />
         ) : staff.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No staff accounts yet.</div>
         ) : (

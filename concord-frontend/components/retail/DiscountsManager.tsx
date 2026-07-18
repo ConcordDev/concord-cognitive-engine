@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Tag, Plus, Trash2, Loader2, Percent, DollarSign, Truck } from 'lucide-react';
+import { Tag, Plus, Trash2, Percent, DollarSign, Truck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Discount {
   id: string; code: string; kind: 'percentage' | 'fixed_amount' | 'free_shipping';
@@ -54,7 +55,7 @@ export function DiscountsManager() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Tag className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Discount codes</span>
@@ -76,7 +77,7 @@ export function DiscountsManager() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={4} />
         ) : discounts.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Tag className="w-6 h-6 mx-auto mb-2 opacity-30" />No discount codes yet.</div>
         ) : (
@@ -87,7 +88,7 @@ export function DiscountsManager() {
                 <li key={d.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
                   <Icon className="w-4 h-4 text-emerald-300" />
                   <span className="font-mono font-bold text-white text-sm tabular-nums">{d.code}</span>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 tabular-nums">
                     {d.kind === 'free_shipping' ? 'Free shipping' : d.kind === 'percentage' ? `${d.value}% off` : `$${d.value} off`}
                     {d.minSubtotal > 0 && <span className="text-gray-400"> · min ${d.minSubtotal}</span>}
                   </span>

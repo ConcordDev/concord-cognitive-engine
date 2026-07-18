@@ -13,9 +13,10 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { LifeBuoy, Plus, Trash2, Loader2, RotateCcw, Send, CheckCircle2 } from 'lucide-react';
+import { LifeBuoy, Plus, Trash2, RotateCcw, Send, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 type Priority = 'critical' | 'high' | 'medium' | 'low';
 type Status = 'open' | 'in-progress' | 'waiting-on-customer' | 'resolved' | 'closed';
@@ -167,7 +168,7 @@ export function TicketQueuePanel() {
   };
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <LifeBuoy className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Support tickets</span>
@@ -233,7 +234,7 @@ export function TicketQueuePanel() {
       </nav>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <SkeletonTableRows rows={5} columns={3} />
       ) : (
         <div className="flex flex-col md:flex-row">
           <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-white/10 max-h-[28rem] overflow-y-auto">
@@ -264,7 +265,7 @@ export function TicketQueuePanel() {
                     </div>
                     <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                       <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded border', PRIORITY_BADGE[t.priority])}>{t.priority}</span>
-                      <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded border', SLA_BADGE[t.slaState])} data-testid={`sla-badge-${t.id}`}>{slaLabel(t)}</span>
+                      <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded border tabular-nums', SLA_BADGE[t.slaState])} data-testid={`sla-badge-${t.id}`}>{slaLabel(t)}</span>
                       {t.assignee && <span className="text-[10px] text-gray-500">{t.assignee}</span>}
                     </div>
                   </li>
@@ -282,7 +283,7 @@ export function TicketQueuePanel() {
                   <p className="text-sm text-white font-medium">{selected.subject}</p>
                   <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px] text-gray-400">
                     <span className={cn('uppercase px-1.5 py-0.5 rounded border', PRIORITY_BADGE[selected.priority])}>{selected.priority}</span>
-                    <span className={cn('uppercase px-1.5 py-0.5 rounded border', SLA_BADGE[selected.slaState])}>{slaLabel(selected)}</span>
+                    <span className={cn('uppercase px-1.5 py-0.5 rounded border tabular-nums', SLA_BADGE[selected.slaState])}>{slaLabel(selected)}</span>
                     {selected.requester && <span>{selected.requester}{selected.contactEmail ? ` · ${selected.contactEmail}` : ''}</span>}
                   </div>
                   {selected.description && <p className="mt-2 text-[11px] text-gray-300 whitespace-pre-wrap">{selected.description}</p>}
@@ -328,7 +329,7 @@ export function TicketQueuePanel() {
                   <div className="space-y-1.5">
                     {selected.replies.length === 0 && <p className="text-[10px] text-gray-600 italic">No replies yet.</p>}
                     {selected.replies.map((r, i) => (
-                      <div key={i} className="bg-[#131820] border border-white/10 rounded px-2 py-1.5">
+                      <div key={i} className="bg-lattice-elevated border border-white/10 rounded px-2 py-1.5">
                         <div className="flex items-center justify-between text-[10px] text-gray-500">
                           <span className="text-gray-300 font-medium">{r.author}</span>
                           <span>{new Date(r.at).toLocaleString()}</span>

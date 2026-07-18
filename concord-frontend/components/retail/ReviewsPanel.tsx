@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Star, Loader2, Plus, EyeOff, Eye, Trash2, BadgeCheck } from 'lucide-react';
+import { Star, Plus, EyeOff, Eye, Trash2, BadgeCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Review {
   id: string; sku: string; productName: string; rating: number;
@@ -92,7 +93,7 @@ export function ReviewsPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Star className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Product reviews</span>
@@ -152,7 +153,7 @@ export function ReviewsPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={3} />
         ) : reviews.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Star className="w-6 h-6 mx-auto mb-2 opacity-30" />No reviews yet.</div>
         ) : (

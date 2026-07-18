@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Truck, Loader2, Printer, MapPin } from 'lucide-react';
+import { Truck, Printer, MapPin } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface ShippingLabel {
   id: string; orderId: string; orderNumber: string; carrier: string;
@@ -80,7 +81,7 @@ export function ShippingLabelsPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Truck className="w-4 h-4 text-blue-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Shipping labels & tracking</span>
@@ -146,7 +147,7 @@ export function ShippingLabelsPanel() {
       {/* Labels list */}
       <div className="max-h-56 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={3} />
         ) : labels.length === 0 ? (
           <div className="px-3 py-8 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No labels purchased yet.</div>
         ) : (
@@ -155,7 +156,7 @@ export function ShippingLabelsPanel() {
               <li key={l.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-white font-mono">{l.orderNumber} · {l.carrier.toUpperCase()} {l.service}</p>
-                  <p className="text-[10px] text-gray-400">{l.trackingNumber} · ${(l.costCents / 100).toFixed(2)}</p>
+                  <p className="text-[10px] text-gray-400 tabular-nums">{l.trackingNumber} · ${(l.costCents / 100).toFixed(2)}</p>
                 </div>
                 <span className={cn('px-2 py-0.5 text-[10px] rounded font-mono', l.trackingStatus === 'delivered' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-blue-500/15 text-blue-300')}>{l.trackingStatus}</span>
                 {l.labelUrl && <a href={l.labelUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyan-300 hover:underline">PDF</a>}

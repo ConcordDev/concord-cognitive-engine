@@ -104,7 +104,7 @@ export default function RetailLensPage() {
         <DTUExportButton domain="retail" data={{}} compact />
 
         {/* Point of sale */}
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-deep/40 p-4">
           <LivePosTerminal />
         </section>
 
