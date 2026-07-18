@@ -17,21 +17,21 @@ export function LegalMarkdown({ title, updated, children }: {
 }) {
   return (
     <article className="max-w-none">
-      <h1 className="mb-1 text-2xl font-semibold text-zinc-100">{title}</h1>
-      {updated && <p className="mb-6 text-xs text-zinc-500">Last updated: {updated}</p>}
-      <div className="legal-prose space-y-4 text-sm leading-relaxed text-zinc-300
-        [&_h2]:mt-8 [&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-zinc-100
-        [&_h3]:mt-5 [&_h3]:mb-1.5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-zinc-200
+      <h1 className="mb-1 text-2xl font-semibold text-gray-100">{title}</h1>
+      {updated && <p className="mb-6 text-xs text-gray-500">Last updated: {updated}</p>}
+      <div className="legal-prose space-y-4 text-sm leading-relaxed text-gray-300
+        [&_h2]:mt-8 [&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-gray-100
+        [&_h3]:mt-5 [&_h3]:mb-1.5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-gray-200
         [&_p]:my-3
         [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1
         [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-1
         [&_a]:text-neon-cyan [&_a:hover]:underline
-        [&_strong]:text-zinc-100
+        [&_strong]:text-gray-100
         [&_code]:rounded [&_code]:bg-lattice-surface [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em]
         [&_table]:my-4 [&_table]:w-full [&_table]:text-left [&_table]:text-xs
-        [&_th]:border-b [&_th]:border-lattice-border [&_th]:py-2 [&_th]:pr-4 [&_th]:font-semibold [&_th]:text-zinc-200
+        [&_th]:border-b [&_th]:border-lattice-border [&_th]:py-2 [&_th]:pr-4 [&_th]:font-semibold [&_th]:text-gray-200
         [&_td]:border-b [&_td]:border-lattice-border/50 [&_td]:py-2 [&_td]:pr-4 [&_td]:align-top
-        [&_blockquote]:border-l-2 [&_blockquote]:border-neon-cyan/40 [&_blockquote]:pl-4 [&_blockquote]:text-zinc-400">
+        [&_blockquote]:border-l-2 [&_blockquote]:border-neon-cyan/40 [&_blockquote]:pl-4 [&_blockquote]:text-gray-400">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
       </div>
     </article>

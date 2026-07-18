@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Gavel, Plus, Loader2, Calendar, Clock } from 'lucide-react';
+import { Gavel, Plus, Calendar, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 export interface CaseEvent {
   date: string;
@@ -59,11 +60,11 @@ export function CaseTracker() {
   });
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-surface border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Gavel className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Docket — quick case log</span>
-        <span className="ml-auto text-[10px] text-gray-400">{cases.length} cases{upcomingDeadlines.length > 0 ? ` · ${upcomingDeadlines.length} deadline${upcomingDeadlines.length === 1 ? '' : 's'} soon` : ''}</span>
+        <span className="ml-auto text-[10px] text-gray-400 font-mono tabular-nums">{cases.length} cases{upcomingDeadlines.length > 0 ? ` · ${upcomingDeadlines.length} deadline${upcomingDeadlines.length === 1 ? '' : 's'} soon` : ''}</span>
         <button onClick={() => setAdding(v => !v)} className="p-1 text-gray-400 hover:text-white" title="Add case">
           <Plus className="w-4 h-4" />
         </button>
@@ -82,7 +83,7 @@ export function CaseTracker() {
       )}
       <div className="max-h-[500px] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={4} />
         ) : cases.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Gavel className="w-6 h-6 mx-auto mb-2 opacity-30" /> No active cases.</div>
         ) : (
@@ -93,7 +94,7 @@ export function CaseTracker() {
                 <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03]">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-white">{c.caption}</span>
-                    <span className="text-[10px] text-gray-400">{c.caseNumber}</span>
+                    <span className="text-[10px] text-gray-400 font-mono tabular-nums">{c.caseNumber}</span>
                     <span className={cn('ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold',
                       c.status === 'active' ? 'bg-blue-500/20 text-blue-300' :
                       c.status === 'on_hold' ? 'bg-yellow-500/20 text-yellow-300' :
@@ -104,14 +105,14 @@ export function CaseTracker() {
                   <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-3 flex-wrap">
                     <span className="capitalize">{c.matterType}</span>
                     <span>{c.court}</span>
-                    <span>Filed {new Date(c.filedAt).toLocaleDateString()}</span>
+                    <span className="font-mono tabular-nums">Filed {new Date(c.filedAt).toLocaleDateString()}</span>
                     {c.nextDeadline && (
-                      <span className={cn('inline-flex items-center gap-1', days !== null && days < 7 && 'text-red-300', days !== null && days < 14 && days >= 7 && 'text-yellow-300')}>
+                      <span className={cn('inline-flex items-center gap-1 font-mono tabular-nums', days !== null && days < 7 && 'text-red-300', days !== null && days < 14 && days >= 7 && 'text-yellow-300')}>
                         <Calendar className="w-3 h-3" />
                         {c.nextDeadlineKind || 'Deadline'}: {new Date(c.nextDeadline).toLocaleDateString()}{days !== null && ` (${days}d)`}
                       </span>
                     )}
-                    <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {c.events.length} events</span>
+                    <span className="inline-flex items-center gap-1 font-mono tabular-nums"><Clock className="w-3 h-3" /> {c.events.length} events</span>
                   </div>
                 </li>
               );

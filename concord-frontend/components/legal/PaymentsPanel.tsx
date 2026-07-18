@@ -96,7 +96,7 @@ export function PaymentsPanel() {
   return (
     <div className="space-y-3">
       {/* Record a payment */}
-      <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Record a client payment</span>
@@ -134,7 +134,7 @@ export function PaymentsPanel() {
 
       <div className="grid grid-cols-2 gap-3">
         {/* Client portal: what's owed */}
-        <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+        <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
           <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
             <Receipt className="w-4 h-4 text-amber-400" />
             <span className="text-sm font-semibold text-gray-200">Portal — what clients owe</span>
@@ -166,7 +166,7 @@ export function PaymentsPanel() {
         </div>
 
         {/* Payment ledger */}
-        <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+        <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
           <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-amber-400" />
             <span className="text-sm font-semibold text-gray-200">Payment ledger</span>

@@ -66,7 +66,7 @@ export interface ClioShellProps {
 export function ClioShell({ activeNav, onNavChange, badges = {}, children, askBar }: ClioShellProps) {
   const groups: NavItem['group'][] = ['home', 'practice', 'financial', 'docs'];
   return (
-    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
       <aside className="w-44 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
         <header className="px-3 py-3 border-b border-white/5 flex items-center gap-2">
           <Scale className="w-4 h-4 text-amber-400" />

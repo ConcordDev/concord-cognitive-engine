@@ -64,17 +64,17 @@ export function DocsShell({
   const [rail, setRail] = useState<RightRail>('outline');
   const [searchQuery, setSearchQuery] = useState('');
   return (
-    <div className={cn('flex h-full bg-white text-gray-900 dark:bg-[#191919] dark:text-gray-100', className)}>
+    <div className={cn('flex h-full bg-lattice-void text-gray-100', className)}>
       {/* Left sidebar — document tree */}
-      <aside className="w-64 shrink-0 border-r border-black/10 dark:border-white/10 flex flex-col bg-gray-50 dark:bg-[#202020]">
-        <div className="p-2 border-b border-black/5 dark:border-white/5">
+      <aside className="w-64 shrink-0 border-r border-lattice-border flex flex-col bg-lattice-surface">
+        <div className="p-2 border-b border-lattice-border">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search docs"
-              className="w-full pl-7 pr-2 py-1.5 text-xs bg-white dark:bg-black/30 border border-black/10 dark:border-white/10 rounded"
+              className="w-full pl-7 pr-2 py-1.5 text-xs bg-lattice-void border border-lattice-border rounded text-gray-100 placeholder:text-gray-500"
             />
           </div>
         </div>
@@ -94,7 +94,7 @@ export function DocsShell({
         <button
           type="button"
           onClick={onCreateDoc}
-          className="m-2 inline-flex items-center justify-center gap-1 py-1.5 text-xs bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded"
+          className="m-2 inline-flex items-center justify-center gap-1 py-1.5 text-xs text-gray-300 bg-white/5 hover:bg-white/10 rounded"
         >
           <Plus className="w-3 h-3" /> New doc
         </button>
@@ -107,17 +107,17 @@ export function DocsShell({
             value={title}
             onChange={(e) => onTitleChange?.(e.target.value)}
             placeholder="Untitled"
-            className="w-full text-4xl font-semibold bg-transparent outline-none placeholder:text-gray-400"
+            className="w-full text-4xl font-semibold bg-transparent outline-none text-white placeholder:text-gray-500"
           />
-          <div className="mt-6 prose dark:prose-invert max-w-none text-base leading-relaxed">
+          <div className="mt-6 prose prose-invert max-w-none text-base leading-relaxed">
             {children}
           </div>
         </div>
       </main>
 
       {/* Right rail — comments / outline / activity */}
-      <aside className="w-72 shrink-0 border-l border-black/10 dark:border-white/10 bg-gray-50 dark:bg-[#202020] flex flex-col">
-        <nav className="flex border-b border-black/5 dark:border-white/5">
+      <aside className="w-72 shrink-0 border-l border-lattice-border bg-lattice-surface flex flex-col">
+        <nav className="flex border-b border-lattice-border">
           {(
             [
               { id: 'outline' as const,  icon: ListTree,       label: 'Outline' },
@@ -132,8 +132,8 @@ export function DocsShell({
               className={cn(
                 'flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs',
                 rail === id
-                  ? 'text-gray-900 dark:text-white border-b-2 border-amber-500'
-                  : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'text-white border-b-2 border-amber-500'
+                  : 'text-gray-500 hover:text-gray-300'
               )}
             >
               <Icon className="w-3 h-3" />
@@ -148,7 +148,7 @@ export function DocsShell({
             ) : (
               <ul className="space-y-1">
                 {outline.map((h) => (
-                  <li key={h.id} className="text-xs text-gray-700 dark:text-gray-300 truncate" style={{ paddingLeft: (h.level - 1) * 12 }}>
+                  <li key={h.id} className="text-xs text-gray-300 truncate" style={{ paddingLeft: (h.level - 1) * 12 }}>
                     {h.text}
                   </li>
                 ))}
@@ -161,10 +161,10 @@ export function DocsShell({
             ) : (
               <ul className="space-y-3">
                 {comments.map((c) => (
-                  <li key={c.id} className="rounded-md border border-black/10 dark:border-white/10 p-2">
-                    <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">{c.author}</div>
-                    <div className="text-xs text-gray-700 dark:text-gray-300">{c.body}</div>
-                    <div className="text-[10px] text-gray-400 mt-1">
+                  <li key={c.id} className="rounded-md border border-lattice-border p-2">
+                    <div className="text-[11px] font-semibold text-gray-200">{c.author}</div>
+                    <div className="text-xs text-gray-300">{c.body}</div>
+                    <div className="text-[10px] text-gray-500 mt-1 font-mono tabular-nums">
                       {new Date(c.timestamp).toLocaleString()}
                     </div>
                   </li>
@@ -197,7 +197,7 @@ function DocNodeItem({ node, depth, activeId, onSelect }: DocNodeItemProps) {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="flex items-center gap-1 px-2 py-1 w-full text-left rounded hover:bg-black/5 dark:hover:bg-white/5"
+            className="flex items-center gap-1 px-2 py-1 w-full text-left rounded hover:bg-white/5"
             style={{ paddingLeft: 8 + depth * 12 }}
           >
             <ChevronRight className={cn('w-3 h-3 text-gray-400 transition-transform', open && 'rotate-90')} />
@@ -218,7 +218,7 @@ function DocNodeItem({ node, depth, activeId, onSelect }: DocNodeItemProps) {
         onClick={() => onSelect?.(node)}
         className={cn(
           'flex items-center gap-1 px-2 py-1 w-full text-left rounded',
-          activeId === node.id ? 'bg-black/10 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/5'
+          activeId === node.id ? 'bg-white/10' : 'hover:bg-white/5'
         )}
         style={{ paddingLeft: 8 + depth * 12 + 12 }}
       >
