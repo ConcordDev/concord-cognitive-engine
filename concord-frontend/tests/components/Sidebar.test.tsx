@@ -246,8 +246,8 @@ describe('Sidebar', () => {
   describe('version footer', () => {
     it('shows version info', () => {
       render(<Sidebar />);
-      expect(screen.getByText('Concord OS v5.0')).toBeInTheDocument();
-      expect(screen.getByText('70% Sovereign')).toBeInTheDocument();
+      expect(screen.getByText('Concord OS v1.0')).toBeInTheDocument();
+      expect(screen.getByText('Sovereign')).toBeInTheDocument();
     });
   });
 

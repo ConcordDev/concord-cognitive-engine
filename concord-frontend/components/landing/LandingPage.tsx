@@ -60,7 +60,7 @@ export function LandingPage(_props: LandingPageProps) {
       <section className="relative z-10 px-8 pt-20 pb-32 max-w-6xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-neon-purple/20 border border-neon-purple/30 rounded-full text-sm text-neon-purple mb-8">
           <Lock className="w-4 h-4" />
-          <span>70% Sovereignty Lock - Your Mind, Your Rules</span>
+          <span>Sovereignty Lock — Your Mind, Your Rules</span>
         </div>
 
         <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
@@ -103,12 +103,12 @@ export function LandingPage(_props: LandingPageProps) {
           </a>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20">
-          <Stat value="175" label="Domain Lenses" />
-          <Stat value="110+" label="Neural Organs" />
-          <Stat value="70%" label="Sovereignty Lock" />
-          <Stat value="100%" label="Local Control" />
+        {/* Generalized value hooks — no drift-prone counts */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20">
+          <Hook title="One substrate" sub="Every lens, every domain, one shared memory." />
+          <Hook title="Local-first AI" sub="Your models, your machine, your keys." />
+          <Hook title="Sovereign by design" sub="Data never leaves without your consent." />
+          <Hook title="Grows with you" sub="Ideas compound as you build." />
         </div>
       </section>
 
@@ -132,8 +132,8 @@ export function LandingPage(_props: LandingPageProps) {
             />
             <FeatureCard
               icon={<Network className="w-6 h-6" />}
-              title="175 Domain Lenses"
-              description="View your knowledge through different perspectives: healthcare, education, legal, trades, creative arts, science, AI, finance, and 160+ more specialized lenses."
+              title="Domain Lenses"
+              description="View your knowledge through hundreds of specialized perspectives: healthcare, education, legal, trades, creative arts, science, AI, finance, and far more — each a purpose-built app over one shared substrate."
               color="blue"
             />
             <FeatureCard
@@ -233,8 +233,8 @@ export function LandingPage(_props: LandingPageProps) {
             Cognitive Architecture
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto mb-16">
-            110+ neural organs working in harmony. Goal systems, world models,
-            reasoning chains, metacognition, and more - all running locally.
+            A living mesh of neural organs working in harmony. Goal systems, world models,
+            reasoning chains, metacognition, and more — all running locally.
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -293,13 +293,13 @@ export function LandingPage(_props: LandingPageProps) {
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function Hook({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="text-center">
-      <div className="text-4xl font-bold bg-gradient-to-r from-neon-cyan to-neon-blue bg-clip-text text-transparent">
-        {value}
+      <div className="text-lg font-semibold bg-gradient-to-r from-neon-cyan to-neon-blue bg-clip-text text-transparent">
+        {title}
       </div>
-      <div className="text-gray-400 text-sm mt-1">{label}</div>
+      <div className="text-gray-400 text-sm mt-1 leading-snug">{sub}</div>
     </div>
   );
 }

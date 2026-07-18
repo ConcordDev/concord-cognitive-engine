@@ -349,12 +349,12 @@ export function Sidebar() {
         <div className="p-4 border-t border-lattice-border">
           {showLabel ? (
             <div className="text-xs text-gray-400">
-              <p>Concord OS v5.0</p>
-              <p className="text-neon-green">70% Sovereign</p>
+              <p>Concord OS v1.0</p>
+              <p className="text-neon-green">Sovereign</p>
             </div>
           ) : (
             <div className="text-center">
-              <span className="text-xs text-neon-green">70%</span>
+              <span className="text-xs text-neon-green">v1</span>
             </div>
           )}
         </div>
