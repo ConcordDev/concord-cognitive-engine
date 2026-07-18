@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Square, BookOpen, ThumbsUp, Trash2, Save, Plus, Upload } from 'lucide-react';
+import { X, Square, BookOpen, ThumbsUp, Trash2, Save, Plus, Upload } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 import { PublishAsBlueprintDialog } from './PublishAsBlueprintDialog';
 
 export interface Template {
@@ -33,7 +34,7 @@ export function WhiteboardWorkbench({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[560px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-sky-500/20 shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-[560px] max-w-[100vw] z-40 bg-lattice-deep border-l border-sky-500/20 shadow-2xl overflow-hidden flex flex-col">
       <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-sky-950/40 to-transparent">
         <div className="flex items-center gap-2">
           <Square className="w-4 h-4 text-sky-400" />
@@ -126,13 +127,19 @@ function BoardsTab() {
           </button>
         </div>
       )}
-      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+      {loading ? (
+        <div className="space-y-2" aria-busy="true">
+          <Skeleton variant="block" height={54} />
+          <Skeleton variant="block" height={54} />
+          <Skeleton variant="block" height={54} />
+        </div>
+      ) :
         boards.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No boards. Create one or load a template.</p> :
         boards.map((b) => (
           <div key={b.id} className="rounded border border-white/10 bg-black/20 p-3 group flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-gray-100">{b.title}</p>
-              <p className="text-[10px] text-gray-400">{b.elementCount} elements · {new Date(b.updatedAt).toLocaleDateString()}</p>
+              <p className="text-[10px] text-gray-400 tabular-nums">{b.elementCount} elements · {new Date(b.updatedAt).toLocaleDateString()}</p>
             </div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => setPublishingBoardId(b.id)}
@@ -182,11 +189,13 @@ function TemplatesTab() {
   return (
     <div className="p-3 space-y-2">
       <p className="text-[11px] text-gray-400">Click a template to create a new board.</p>
-      {templates.map((t) => (
+      {templates.length === 0 ? (
+        <p className="text-center text-xs text-gray-400 py-8">No templates available.</p>
+      ) : templates.map((t) => (
         <button key={t.id} type="button" onClick={() => apply(t.id, t.name)}
           className="w-full text-left rounded border border-white/10 bg-black/20 p-3 hover:bg-white/5">
           <p className="text-sm font-medium text-gray-100">{t.name}</p>
-          <p className="text-[11px] text-gray-400">{t.elementCount} starter elements</p>
+          <p className="text-[11px] text-gray-400 tabular-nums">{t.elementCount} starter elements</p>
         </button>
       ))}
     </div>
@@ -239,11 +248,11 @@ function VotingTab() {
 
       {tally.length > 0 && (
         <div className="rounded border border-sky-500/20 bg-sky-500/5 p-3">
-          <p className="text-[10px] uppercase text-gray-400 mb-2">{total} total votes</p>
+          <p className="text-[10px] uppercase text-gray-400 mb-2 tabular-nums">{total} total votes</p>
           {tally.map((t) => (
             <div key={t.elementId} className="flex justify-between text-xs font-mono py-1 border-b border-white/5">
               <span className="text-gray-300 truncate">{t.elementId}</span>
-              <span className="text-sky-300">×{t.count}</span>
+              <span className="text-sky-300 tabular-nums">×{t.count}</span>
             </div>
           ))}
         </div>

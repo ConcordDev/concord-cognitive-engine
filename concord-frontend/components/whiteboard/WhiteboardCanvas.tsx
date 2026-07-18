@@ -331,7 +331,7 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
   }
 
   return (
-    <div className={cn('relative w-full h-full bg-[#0d0d0f] overflow-hidden', className)}>
+    <div className={cn('relative w-full h-full bg-lattice-void overflow-hidden', className)}>
       <canvas
         ref={canvasRef}
         className={cn(
@@ -398,7 +398,7 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
         </div>
       )}
       {/* Zoom indicator */}
-      <div className="absolute bottom-4 right-4 text-[10px] text-gray-400 font-mono">
+      <div className="absolute bottom-4 right-4 text-[10px] text-gray-400 font-mono tabular-nums">
         {Math.round(zoom * 100)}%
       </div>
     </div>

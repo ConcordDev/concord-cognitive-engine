@@ -40,7 +40,7 @@ export function WhiteboardWorkspaceSummary({ refreshToken = 0 }: { refreshToken?
 
   if (status === 'idle' || (busy && !result)) {
     return (
-      <div className="px-3 py-2 border-b border-white/5 bg-[#0a0c10]">
+      <div className="px-3 py-2 border-b border-white/5 bg-lattice-void">
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} variant="block" height={52} />
@@ -54,7 +54,7 @@ export function WhiteboardWorkspaceSummary({ refreshToken = 0 }: { refreshToken?
   if (status === 'error' || !result) return null;
 
   return (
-    <div className="px-3 py-2 border-b border-white/5 bg-[#0a0c10]">
+    <div className="px-3 py-2 border-b border-white/5 bg-lattice-void">
       <StatTileGrid columns={5}>
         <StatTile label="Boards" value={result.boardCount} icon={<LayoutGrid className="w-3.5 h-3.5" />} size="sm" />
         <StatTile label="Elements" value={result.elementCount} icon={<Shapes className="w-3.5 h-3.5" />} size="sm" />

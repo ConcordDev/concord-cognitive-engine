@@ -51,6 +51,7 @@ import {
   GripVertical,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { Skeleton } from '@/components/ui';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -243,6 +244,12 @@ export default function WhiteboardLensPage() {
     queryFn: () => apiHelpers.whiteboard.get(selectedWbId!).then(r => r.data),
     enabled: !!selectedWbId,
   });
+
+  // Sidebar board list: prefer the real whiteboard.list() result; fall back to
+  // the lens-artifact record only when the server list is genuinely empty.
+  const boardListItems: Record<string, unknown>[] = (whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
+    ? whiteboards.whiteboards
+    : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: 0 }));
 
   const { data: dtus, isError: isError4, error: error4, refetch: refetch4,} = useQuery({
     queryKey: ['dtus-whiteboard'],
@@ -931,10 +938,15 @@ export default function WhiteboardLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8 sm:p-10">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+      <div className="h-full flex bg-lattice-bg p-4 gap-4">
+        <div className="w-64 space-y-3">
+          <Skeleton variant="block" height={40} />
+          <Skeleton variant="block" height={36} />
+          <Skeleton variant="line" lines={5} />
+        </div>
+        <div className="flex-1 space-y-3">
+          <Skeleton variant="block" height={44} />
+          <Skeleton variant="block" height="70vh" />
         </div>
       </div>
     );
@@ -1001,15 +1013,21 @@ export default function WhiteboardLensPage() {
         </button>
 
         <div className="flex-1 overflow-y-auto space-y-2">
-          <p className="text-xs text-gray-400 mb-2">Whiteboards ({whiteboards?.count || 0})</p>
+          <p className="text-xs text-gray-400 mb-2">Whiteboards (<span className="tabular-nums">{whiteboards?.count || 0}</span>)</p>
           {isLoading ? (
-            <div className="text-gray-400 text-sm">Loading...</div>
+            <div className="space-y-2" aria-busy="true">
+              <Skeleton variant="block" height={48} />
+              <Skeleton variant="block" height={48} />
+              <Skeleton variant="block" height={48} />
+            </div>
+          ) : boardListItems.length === 0 ? (
+            <p className="text-xs text-gray-400 italic py-4 text-center">No whiteboards yet — create one to get started.</p>
           ) : (
-            (whiteboards?.whiteboards && whiteboards.whiteboards.length > 0 ? whiteboards.whiteboards : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: 0 }))).map((wb: Record<string, unknown>) => (
+            boardListItems.map((wb: Record<string, unknown>) => (
               <button key={wb.id as string} onClick={() => setSelectedWbId(wb.id as string)}
                 className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedWbId === wb.id ? 'border-neon-pink bg-lattice-elevated' : 'border-lattice-border hover:border-neon-pink/50'}`}>
                 <p className="font-medium truncate">{wb.title as string}</p>
-                <p className="text-xs text-gray-400 mt-1">{(wb.elementCount as number) || 0} elements</p>
+                <p className="text-xs text-gray-400 mt-1"><span className="tabular-nums">{(wb.elementCount as number) || 0}</span> elements</p>
               </button>
             ))
           )}
@@ -1062,7 +1080,7 @@ export default function WhiteboardLensPage() {
 
                 <button onClick={() => setShowGrid(!showGrid)} className={`p-2 rounded-lg ${showGrid ? 'bg-lattice-elevated text-neon-cyan' : 'hover:bg-lattice-elevated text-gray-400'}`} aria-label="Grid3 x3"><Grid3X3 className="w-5 h-5" /></button>
                 <button onClick={() => setZoom(z => clamp(z * 1.2, 0.25, 4))} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Zoom in"><ZoomIn className="w-5 h-5" /></button>
-                <span className="text-sm text-gray-400 w-12 text-center">{Math.round(zoom * 100)}%</span>
+                <span className="text-sm text-gray-400 w-12 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
                 <button onClick={() => setZoom(z => clamp(z / 1.2, 0.25, 4))} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Zoom out"><ZoomOut className="w-5 h-5" /></button>
                 <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Rotate ccw"><RotateCcw className="w-5 h-5" /></button>
 
@@ -1118,12 +1136,12 @@ export default function WhiteboardLensPage() {
                 <div className="w-px h-6 bg-lattice-border" />
                 <label className="text-xs text-gray-400">Pace</label>
                 <input type="number" value={pace} onChange={e => setPace(clamp(+e.target.value, 20, 300))}
-                  className="w-16 px-2 py-1 bg-lattice-bg border border-lattice-border rounded text-sm text-center" />
+                  className="w-16 px-2 py-1 bg-lattice-bg border border-lattice-border rounded text-sm text-center tabular-nums" />
                 <label className="text-xs text-gray-400">Theme</label>
                 <input type="text" value={theme} onChange={e => setTheme(e.target.value)}
                   className="w-24 px-2 py-1 bg-lattice-bg border border-lattice-border rounded text-sm text-center" />
                 <div className="w-px h-6 bg-lattice-border" />
-                <span className="text-xs text-gray-400">Total: <strong className="text-white">{totalBars} bars</strong></span>
+                <span className="text-xs text-gray-400">Total: <strong className="text-white tabular-nums">{totalBars}</strong> bars</span>
                 <div className="flex-1" />
                 <span className="text-xs text-gray-400">Drag to rearrange sections</span>
               </div>
@@ -1297,7 +1315,7 @@ export default function WhiteboardLensPage() {
                         <div className="space-y-2 mb-4">
                           {SECTION_PRESETS.map(s => (
                             <button key={s.type} onClick={() => setSectionChoice(s)}
-                              className={`w-full flex items-center gap-3 p-2 rounded-lg border transition-colors ${sectionChoice.type === s.type ? 'border-white bg-lattice-elevated' : 'border-lattice-border hover:border-gray-500'}`}>
+                              className={`w-full flex items-center gap-3 p-2 rounded-lg border transition-colors ${sectionChoice.type === s.type ? 'border-white bg-lattice-elevated' : 'border-lattice-border hover:border-white/20'}`}>
                               <div className="w-4 h-4 rounded" style={{ backgroundColor: s.color }} />
                               <span className="text-sm">{s.label}</span>
                               <span className="text-xs text-gray-400 ml-auto">{s.bars} bars</span>
@@ -1346,7 +1364,7 @@ export default function WhiteboardLensPage() {
                 {/* Speed/Theme badge */}
                 <div className="absolute top-20 right-6 flex items-center gap-3 bg-lattice-surface border border-lattice-border rounded-lg px-4 py-2 z-10">
                   <span className="text-xs text-gray-400">Speed</span>
-                  <span className="text-lg font-bold text-neon-cyan">{pace}</span>
+                  <span className="text-lg font-bold text-neon-cyan tabular-nums">{pace}</span>
                   <div className="w-px h-6 bg-lattice-border" />
                   <span className="text-xs text-gray-400">Theme</span>
                   <span className="text-lg font-bold text-neon-pink">{theme}</span>
@@ -1368,7 +1386,7 @@ export default function WhiteboardLensPage() {
                             <span className="text-xs font-bold" style={{ color: sec.color }}>{sec.label}</span>
                           </div>
                           <div className="flex-1 flex items-center justify-center">
-                            <span className="text-2xl font-bold text-white/80">{sec.bars}</span>
+                            <span className="text-2xl font-bold text-white/80 tabular-nums">{sec.bars}</span>
                             <span className="text-xs text-gray-400 ml-1 mt-1">bars</span>
                           </div>
                           <div className="flex items-center gap-1 mt-2">
@@ -1386,7 +1404,7 @@ export default function WhiteboardLensPage() {
 
                     {/* Add section button */}
                     <div className="flex-shrink-0 w-20">
-                      <div className="border-2 border-dashed border-lattice-border rounded-xl flex items-center justify-center min-h-[120px] hover:border-gray-500 transition-colors group relative">
+                      <div className="border-2 border-dashed border-lattice-border rounded-xl flex items-center justify-center min-h-[120px] hover:border-white/20 transition-colors group relative">
                         <Plus className="w-6 h-6 text-gray-600 group-hover:text-gray-400" />
                         <div className="absolute top-full mt-2 left-0 bg-lattice-surface border border-lattice-border rounded-lg overflow-hidden shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 w-40">
                           {SECTION_PRESETS.map(s => (
@@ -1406,8 +1424,8 @@ export default function WhiteboardLensPage() {
                     {arrangement.map(sec => (
                       <div key={`ruler_${sec.id}`} className="flex-shrink-0 flex" style={{ width: Math.max(sec.bars * 20, 80) + 12 }}>
                         {Array.from({ length: sec.bars }, (_, i) => (
-                          <div key={i} className="flex-1 h-4 border-l border-gray-700 flex items-end">
-                            <span className="text-[9px] text-gray-400 pl-0.5">{i + 1}</span>
+                          <div key={i} className="flex-1 h-4 border-l border-lattice-border flex items-end">
+                            <span className="text-[9px] text-gray-400 pl-0.5 tabular-nums">{i + 1}</span>
                           </div>
                         ))}
                       </div>
@@ -1602,12 +1620,12 @@ export default function WhiteboardLensPage() {
               const shapes = r.shapes as Record<string, unknown> | undefined;
               return (
                 <div className="space-y-2">
-                  <div className="text-xs text-gray-400">Total Elements: <span className="text-white font-medium">{String(r.totalElements ?? 0)}</span></div>
+                  <div className="text-xs text-gray-400">Total Elements: <span className="text-white font-medium tabular-nums">{String(r.totalElements ?? 0)}</span></div>
                   {shapes && (
                     <div className="flex flex-wrap gap-2 text-xs">
                       {Object.entries(shapes).map(([shape, count]) => (
                         <span key={shape} className="bg-neon-pink/10 text-neon-pink px-2 py-0.5 rounded-full capitalize">
-                          {shape}: {String(count)}
+                          {shape}: <span className="tabular-nums">{String(count)}</span>
                         </span>
                       ))}
                     </div>
@@ -1621,9 +1639,9 @@ export default function WhiteboardLensPage() {
               return (
                 <div className="space-y-2">
                   <div className="flex gap-4 text-xs">
-                    <span className="text-gray-400">Score Before: <span className="text-white">{String(r.scoreBefore ?? 0)}</span></span>
-                    <span className="text-gray-400">Score After: <span className="text-neon-green">{String(r.scoreAfter ?? 0)}</span></span>
-                    <span className="text-gray-400">Overlaps Fixed: <span className="text-white">{String(r.overlapsFixed ?? 0)}</span></span>
+                    <span className="text-gray-400">Score Before: <span className="text-white tabular-nums">{String(r.scoreBefore ?? 0)}</span></span>
+                    <span className="text-gray-400">Score After: <span className="text-neon-green tabular-nums">{String(r.scoreAfter ?? 0)}</span></span>
+                    <span className="text-gray-400">Overlaps Fixed: <span className="text-white tabular-nums">{String(r.overlapsFixed ?? 0)}</span></span>
                   </div>
                   {suggestions.length > 0 && (
                     <div className="text-xs space-y-0.5">{suggestions.slice(0, 3).map((s, i) => <div key={i} className="text-gray-300">• {s}</div>)}</div>
@@ -1636,12 +1654,12 @@ export default function WhiteboardLensPage() {
               const clusters = Array.isArray(r.clusters) ? r.clusters as Array<Record<string, unknown>> : [];
               return (
                 <div className="space-y-2">
-                  <div className="text-xs text-gray-400">Clusters Found: <span className="text-white font-medium">{String(r.clusterCount ?? clusters.length)}</span></div>
+                  <div className="text-xs text-gray-400">Clusters Found: <span className="text-white font-medium tabular-nums">{String(r.clusterCount ?? clusters.length)}</span></div>
                   <div className="space-y-1">
                     {clusters.slice(0, 4).map((c, i) => (
                       <div key={i} className="flex items-center justify-between text-xs bg-lattice-elevated px-2 py-1 rounded">
                         <span className="text-gray-300">Cluster {i + 1}</span>
-                        <span className="text-gray-400">{String(c.elementCount ?? c.size ?? 0)} elements</span>
+                        <span className="text-gray-400 tabular-nums">{String(c.elementCount ?? c.size ?? 0)} elements</span>
                       </div>
                     ))}
                   </div>
@@ -1654,9 +1672,9 @@ export default function WhiteboardLensPage() {
               return (
                 <div className="space-y-2">
                   <div className="flex gap-4 text-xs">
-                    <span className="text-gray-400">Elements: <span className="text-white">{String(r.elementCount ?? 0)}</span></span>
-                    <span className="text-gray-400">Canvas: <span className="text-white">{String(r.canvasWidth ?? 0)}×{String(r.canvasHeight ?? 0)}</span></span>
-                    <span className="text-gray-400">Est. Size: <span className="text-white">{String(r.estimatedSizeKb ?? 0)} KB</span></span>
+                    <span className="text-gray-400">Elements: <span className="text-white tabular-nums">{String(r.elementCount ?? 0)}</span></span>
+                    <span className="text-gray-400">Canvas: <span className="text-white tabular-nums">{String(r.canvasWidth ?? 0)}×{String(r.canvasHeight ?? 0)}</span></span>
+                    <span className="text-gray-400">Est. Size: <span className="text-white tabular-nums">{String(r.estimatedSizeKb ?? 0)} KB</span></span>
                   </div>
                   {formats.length > 0 && (
                     <div className="flex gap-1 text-xs">
@@ -1689,7 +1707,7 @@ export default function WhiteboardLensPage() {
       Whiteboard Workbench
     </button>
     <WhiteboardWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
-    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
       <WhiteboardRepos />
     </section>
 
