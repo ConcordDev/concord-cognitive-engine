@@ -2236,8 +2236,6 @@ export default function MusicLensPage() {
       lensPrompt="You're inside Concord's Music lens — a marketplace + playlist + curation surface. Prefer run_lens_action for music actions, expert_mode for cited research about artists/tracks, generate_image for cover art."
     />
     
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <SessionRail lensId="music" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="music" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="music" hideWhenEmpty className="mt-3" title="More actions" />

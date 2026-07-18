@@ -47,7 +47,6 @@ export default function ProjectsLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#projects-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to projects content</a>
           <SessionRail lensId="projects" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="projects" limit={10} hideWhenEmpty className="mt-4" />

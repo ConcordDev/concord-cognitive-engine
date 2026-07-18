@@ -872,7 +872,6 @@ export default function LockLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#lock-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to lock content</a>
           <RecentMineCard domain="lock" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="lock" hideWhenEmpty className="mt-3" />

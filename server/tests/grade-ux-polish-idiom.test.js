@@ -111,14 +111,19 @@ describe("ux-polish grader — --honest generic-scaffold demotion (bidirectional
 
   const byLens = (report, lens) => report.lenses.find((r) => r.lens === lens);
 
-  it("(a) default mode is UNCHANGED — every lens polished, nothing capped", () => {
+  it("(a) default mode applies NO honest scaffold cap (the flag is opt-in)", () => {
     assert.equal(dflt.mode, "default");
-    assert.equal(dflt.totals.raw, 0);
-    assert.equal(dflt.totals.functional, 0);
-    assert.equal(dflt.totals.polished, dflt.lenses.length, "default: all lenses stay polished");
+    assert.equal(dflt.totals.raw, 0, "no lens falls to raw");
     assert.equal(dflt.scaffoldsCapped, 0, "default mode caps nothing — the flag is opt-in");
-    // The demotion must be strictly additive: no lens is demoted in default mode.
+    // The honest scaffold cap must never fire in default mode.
     for (const r of dflt.lenses) assert.equal(r.honestCapped, false);
+    // Base tiering (the blind grader) may legitimately demote a few lenses that
+    // are missing a structural pillar — that is NOT the honest scaffold cap and
+    // happens identically in both modes. The large majority stay polished.
+    assert.ok(
+      dflt.totals.polished >= dflt.lenses.length - 20,
+      `default: the large majority stay polished (${dflt.totals.polished}/${dflt.lenses.length})`
+    );
   });
 
   it("(b) --honest demotes generic scaffolds (a real, non-trivial drop)", () => {
@@ -128,31 +133,38 @@ describe("ux-polish grader — --honest generic-scaffold demotion (bidirectional
       honest.totals.polished < dflt.totals.polished,
       `honest polished (${honest.totals.polished}) must be < default (${dflt.totals.polished})`
     );
-    // Every demotion is accounted for by the scaffold cap (nothing else moved).
+    // The ONLY tier change between default and honest is the scaffold cap
+    // (polished→functional). Base-tier demotions are identical in both modes,
+    // so honest polished = default polished − capped, and honest functional =
+    // default functional + capped.
     assert.equal(
-      honest.totals.polished + honest.scaffoldsCapped,
-      dflt.totals.polished,
+      honest.totals.polished,
+      dflt.totals.polished - honest.scaffoldsCapped,
       "the only tier change under --honest is polished→functional via the scaffold cap"
     );
-    assert.equal(honest.totals.functional, honest.scaffoldsCapped);
+    assert.equal(
+      honest.totals.functional,
+      dflt.totals.functional + honest.scaffoldsCapped,
+      "honest functional = default functional + scaffold caps"
+    );
   });
 
-  it("(b) a known scaffold (schema) is capped under --honest, polished by default", () => {
+  it("(b) a known scaffold (game-design) is capped under --honest, polished by default", () => {
     // Fixture lens choice: NOT a magic constant — pick any lens still on the
     // generic scaffold per the Frontend Rebuild Program's live backlog
-    // (docs/FRONTEND_REBUILD_PROGRAM.md). `alliance` filled this role until
-    // 2026-07-09's Wave 2 rebuild (commit 26ec0de2) graduated it to a real,
-    // bespoke lens — this test failed then for the correct reason (the grader
-    // was right, the fixture was stale), and was repointed at `schema`,
-    // confirmed still-scaffolded as of this edit. If this test fails again
-    // because ITS fixture lens also graduated, that's the same good failure —
-    // repoint to another lens still in the backlog, don't weaken the assertion.
-    const d = byLens(dflt, "schema");
-    const h = byLens(honest, "schema");
-    assert.ok(d && h, "schema lens present in both reports");
-    assert.equal(d.tier, "polished", "schema scores polished in the blind default grader");
-    assert.equal(h.isGenericScaffold, true, "schema is detected as the generated template shell");
-    assert.equal(h.honestCapped, true, "schema is demoted under --honest");
+    // (docs/FRONTEND_REBUILD_PROGRAM.md). This has been repointed twice as
+    // fixtures graduated: `alliance` (rebuilt 2026-07-09, commit 26ec0de2) →
+    // `schema` (rebuilt since) → `game-design`, confirmed still-scaffolded as
+    // of this edit (honest-capped scaffolds: creative-writing / eco /
+    // game-design). If this test fails again because ITS fixture lens also
+    // graduated, that's the same good failure — repoint to another lens still
+    // in the honest-capped set, don't weaken the assertion.
+    const d = byLens(dflt, "game-design");
+    const h = byLens(honest, "game-design");
+    assert.ok(d && h, "game-design lens present in both reports");
+    assert.equal(d.tier, "polished", "game-design scores polished in the blind default grader");
+    assert.equal(h.isGenericScaffold, true, "game-design is detected as the generated template shell");
+    assert.equal(h.honestCapped, true, "game-design is demoted under --honest");
     assert.equal(h.tier, "functional");
   });
 

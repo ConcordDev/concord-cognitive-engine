@@ -465,7 +465,6 @@ export default function CodeQualityLensPage() {
         )}
       </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">
         EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows
       </div>

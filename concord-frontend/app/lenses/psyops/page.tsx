@@ -314,8 +314,6 @@ export default function PsyopsPage() {
         )}
       </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows</div>
       <RecentMineCard domain="psyops" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="psyops" hideWhenEmpty className="mt-3" />
       <CrossLensRecentsPanel lensId="psyops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

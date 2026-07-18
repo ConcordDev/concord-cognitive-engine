@@ -383,8 +383,6 @@ export default function BountiesPage() {
         )}
       </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <RecentMineCard domain="bounties" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="bounties" hideWhenEmpty className="mt-3" />
       <CrossLensRecentsPanel lensId="bounties" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

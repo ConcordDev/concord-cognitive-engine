@@ -2261,7 +2261,6 @@ export default function AviationLensPage() {
       </div>
     </div>
     
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#aviation-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to aviation content</a>
 
       {/* 2026 parity workbench — METAR/TAF, airports, perf calcs, flight plans */}

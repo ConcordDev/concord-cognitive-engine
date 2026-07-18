@@ -287,9 +287,6 @@ export default function OpsLensPage() {
       </PipingProvider>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
-      <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
           <RecentMineCard domain="ops" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="ops" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="ops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

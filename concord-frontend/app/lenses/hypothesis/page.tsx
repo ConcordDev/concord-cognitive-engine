@@ -112,7 +112,6 @@ export default function HypothesisLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#hypothesis-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to hypothesis content</a>
           <RecentMineCard domain="hypothesis" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="hypothesis" hideWhenEmpty className="mt-3" />

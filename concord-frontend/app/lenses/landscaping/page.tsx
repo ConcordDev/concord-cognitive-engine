@@ -102,8 +102,6 @@ export default function LandscapingLensPage() {
         )}
       </LensPageShell>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#landscaping-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to landscaping content</a>
       <section className="mt-4"><LensFeedButton domain="landscaping" label="Live plant species feed" /></section>
       <RecentMineCard domain="landscaping" limit={10} hideWhenEmpty className="mt-4" />

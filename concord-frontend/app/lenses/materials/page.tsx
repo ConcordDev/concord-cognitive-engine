@@ -383,7 +383,6 @@ export default function MaterialsLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#materials-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to materials content</a>
           <RecentMineCard domain="materials" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="materials" hideWhenEmpty className="mt-3" />

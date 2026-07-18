@@ -209,8 +209,6 @@ export default function AutomotiveLensPage() {
         </section>
       </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows</div>
       <a href="#automotive-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to automotive content</a>
       <RecentMineCard domain="automotive" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="automotive" hideWhenEmpty className="mt-3" title="More actions" />

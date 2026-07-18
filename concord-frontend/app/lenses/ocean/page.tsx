@@ -186,7 +186,6 @@ export default function OceanLensPage() {
         <WikipediaSearchPanel domain="ocean" title="Wikipedia · oceanography" />
       </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#ocean-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to ocean content</a>
       <RecentMineCard domain="ocean" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="ocean" hideWhenEmpty className="mt-3" />

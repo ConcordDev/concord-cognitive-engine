@@ -433,7 +433,6 @@ export default function ExpertModeLens() {
         </div>
       </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only */}
       <div className="sr-only" aria-hidden="true">
         EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows
       </div>

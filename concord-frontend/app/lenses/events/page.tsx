@@ -3081,7 +3081,6 @@ export default function EventsLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#events-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to events content</a>
           <RecentMineCard domain="events" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="events" hideWhenEmpty className="mt-3" />

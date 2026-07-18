@@ -764,7 +764,6 @@ export default function CRILensPage() {
       </PipingProvider>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#cri-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to cri content</a>
           <RecentMineCard domain="cri" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="cri" hideWhenEmpty className="mt-3" title="More actions" />

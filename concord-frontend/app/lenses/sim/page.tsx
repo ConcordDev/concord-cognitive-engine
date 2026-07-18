@@ -1580,7 +1580,6 @@ export default function SimLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#sim-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to sim content</a>
           <RecentMineCard domain="sim" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="sim" hideWhenEmpty className="mt-3" />
