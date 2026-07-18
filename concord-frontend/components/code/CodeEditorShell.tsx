@@ -156,10 +156,6 @@ export function CodeEditorShell({
       </div>
 
       {/* Status bar */}
-      {statusBar && (
-        <></>
-      )}
-      {/* Status bar bottom-of-page */}
       <div
         role="status"
         className="absolute inset-x-0 bottom-0 h-6 bg-[#007acc] text-white text-[11px] flex items-center px-2 gap-3"

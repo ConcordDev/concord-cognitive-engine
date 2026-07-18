@@ -1019,18 +1019,7 @@ export default function MusicLensPage() {
                     { id: 'bridge', name: 'Bridge' },
                     { id: 'outro',  name: 'Outro' },
                   ]}
-                  clips={{
-                    'drums:intro':   { trackId: 'drums', sceneId: 'intro',  hasContent: true,  label: 'kick-only', durationBeats: 8 },
-                    'drums:verse':   { trackId: 'drums', sceneId: 'verse',  hasContent: true,  label: 'half-time', durationBeats: 16 },
-                    'drums:chorus':  { trackId: 'drums', sceneId: 'chorus', hasContent: true,  label: 'four-floor', durationBeats: 16 },
-                    'bass:verse':    { trackId: 'bass',  sceneId: 'verse',  hasContent: true,  label: 'sub roll', durationBeats: 16 },
-                    'bass:chorus':   { trackId: 'bass',  sceneId: 'chorus', hasContent: true,  label: 'sub punch', durationBeats: 16 },
-                    'keys:verse':    { trackId: 'keys',  sceneId: 'verse',  hasContent: true,  label: 'rhodes', durationBeats: 16 },
-                    'keys:bridge':   { trackId: 'keys',  sceneId: 'bridge', hasContent: true,  label: 'pad swell', durationBeats: 32 },
-                    'lead:chorus':   { trackId: 'lead',  sceneId: 'chorus', hasContent: true,  label: 'hook A', durationBeats: 16 },
-                    'fx:intro':      { trackId: 'fx',    sceneId: 'intro',  hasContent: true,  label: 'riser', durationBeats: 4 },
-                    'fx:outro':      { trackId: 'fx',    sceneId: 'outro',  hasContent: true,  label: 'tail', durationBeats: 8 },
-                  }}
+                  clips={{}}
                   tempo={120}
                 />
               </div>
