@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2, Flag, AlertTriangle, Target, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { SkeletonTableRows } from '@/components/ui';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Milestone { id: string; name: string; dueDate: string | null; status: string; taskCount: number; doneCount: number; progressPct: number }
 interface Risk { id: string; name: string; likelihood: number; impact: number; score: number; severity: string; mitigation: string | null }
@@ -23,6 +23,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
   const [risks, setRisks] = useState<Risk[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [mForm, setMForm] = useState({ name: '', dueDate: '' });
   const [rForm, setRForm] = useState({ name: '', likelihood: '3', impact: '3', mitigation: '' });
   const [gForm, setGForm] = useState({ name: '', metric: '', target: '' });
@@ -34,6 +35,12 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
       lensRun('projects', 'risk-list', { projectId }),
       lensRun('projects', 'goal-list', { projectId }),
     ]);
+    if (m.data?.ok === false || r.data?.ok === false || g.data?.ok === false) {
+      setLoadError(m.data?.error || r.data?.error || g.data?.error || 'Could not load milestones, risks or goals.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setMilestones(m.data?.result?.milestones || []);
     setRisks(r.data?.result?.risks || []);
     setGoals(g.data?.result?.goals || []);
@@ -76,6 +83,10 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
         <div className="rounded-xl border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={3} /></div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={refresh} />;
   }
 
   return (

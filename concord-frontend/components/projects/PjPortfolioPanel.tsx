@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Briefcase } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { Skeleton, SkeletonTableRows } from '@/components/ui';
+import { Skeleton, SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface PProject {
   id: string; name: string; key: string; status: string; health: string;
@@ -28,10 +28,17 @@ export function PjPortfolioPanel() {
   const [projects, setProjects] = useState<PProject[]>([]);
   const [byHealth, setByHealth] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('projects', 'portfolio', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load the portfolio.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setProjects(r.data?.result?.projects || []);
     setByHealth(r.data?.result?.byHealth || {});
     setLoading(false);
@@ -52,6 +59,10 @@ export function PjPortfolioPanel() {
         </div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={refresh} />;
   }
 
   const active = projects.filter((p) => !p.archived);

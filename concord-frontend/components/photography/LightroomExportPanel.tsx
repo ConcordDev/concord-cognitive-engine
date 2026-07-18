@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Download, Droplet } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface ExportPreset {
   id: string; name: string; format: string; quality: number;
@@ -18,11 +19,18 @@ export function LightroomExportPanel() {
   const [presets, setPresets] = useState<ExportPreset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', format: 'jpeg', quality: '90', longEdge: '', watermark: false });
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('photography', 'export-preset-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load export presets.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPresets(r.data?.result?.presets || []);
     setLoading(false);
   }, []);
@@ -45,6 +53,10 @@ export function LightroomExportPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

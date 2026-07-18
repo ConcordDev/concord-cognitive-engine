@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, FolderOpen, Camera, Trash2, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Album { id: string; name: string; photoCount: number }
 interface Shoot { id: string; name: string; date: string | null; location: string | null; photoCount: number }
@@ -20,6 +21,8 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [albumDetailError, setAlbumDetailError] = useState<string | null>(null);
   const [albumName, setAlbumName] = useState('');
   const [shootForm, setShootForm] = useState({ name: '', date: '', location: '' });
   const [openAlbum, setOpenAlbum] = useState<string | null>(null);
@@ -32,6 +35,12 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
       lensRun('photography', 'shoot-list', {}),
       lensRun('photography', 'photo-list', {}),
     ]);
+    if (a.data?.ok === false || s.data?.ok === false || p.data?.ok === false) {
+      setLoadError(a.data?.error || s.data?.error || p.data?.error || 'Could not load your photo library.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setAlbums(a.data?.result?.albums || []);
     setShoots(s.data?.result?.shoots || []);
     setPhotos(p.data?.result?.photos || []);
@@ -56,16 +65,25 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
     setShootForm({ name: '', date: '', location: '' }); setError(null);
     await refresh(); onChange();
   };
+  const loadAlbumDetail = useCallback(async (albumId: string) => {
+    const r = await lensRun('photography', 'album-detail', { id: albumId });
+    if (r.data?.ok === false) {
+      setAlbumDetailError(r.data?.error || 'Could not load this album’s photos.');
+      setAlbumPhotos([]);
+      return;
+    }
+    setAlbumDetailError(null);
+    setAlbumPhotos(r.data?.result?.photos || []);
+  }, []);
+
   const openAlbumDetail = async (id: string) => {
     if (openAlbum === id) { setOpenAlbum(null); return; }
     setOpenAlbum(id);
-    const r = await lensRun('photography', 'album-detail', { id });
-    setAlbumPhotos(r.data?.ok === false ? [] : (r.data?.result?.photos || []));
+    await loadAlbumDetail(id);
   };
   const toggleInAlbum = async (albumId: string, photoId: string, inAlbum: boolean) => {
     await lensRun('photography', 'album-add-photo', { albumId, photoId, remove: inAlbum });
-    const r = await lensRun('photography', 'album-detail', { id: albumId });
-    setAlbumPhotos(r.data?.result?.photos || []);
+    await loadAlbumDetail(albumId);
     await refresh();
   };
   const delAlbum = async (id: string) => {
@@ -80,6 +98,10 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (
@@ -118,7 +140,9 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
                 </div>
                 {openAlbum === al.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 space-y-1">
-                    {photos.length === 0 ? (
+                    {albumDetailError ? (
+                      <ErrorState message={albumDetailError} onRetry={() => loadAlbumDetail(al.id)} variant="inline" />
+                    ) : photos.length === 0 ? (
                       <p className="text-[11px] text-zinc-400 italic">No photos in the catalog yet.</p>
                     ) : photos.map((p) => {
                       const inAlbum = albumPhotos.some((x) => x.id === p.id);

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Download, ListMusic, Trash2, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Episode { id: string; title: string; showTitle: string; durationSec: number; played: boolean }
 interface Playlist { id: string; name: string; episodeCount: number }
@@ -20,6 +21,8 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [playlistDetailError, setPlaylistDetailError] = useState<string | null>(null);
   const [plName, setPlName] = useState('');
   const [openPl, setOpenPl] = useState<string | null>(null);
   const [plEpisodes, setPlEpisodes] = useState<Episode[]>([]);
@@ -30,6 +33,12 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
       lensRun('podcast', 'download-list', {}),
       lensRun('podcast', 'playlist-list', {}),
     ]);
+    if (d.data?.ok === false || p.data?.ok === false) {
+      setLoadError(d.data?.error || p.data?.error || 'Could not load downloads or playlists.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setDownloads(d.data?.result?.episodes || []);
     setTotalSec(d.data?.result?.totalSec || 0);
     setPlaylists(p.data?.result?.playlists || []);
@@ -47,21 +56,33 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
     setPlName(''); setError(null);
     await refresh();
   };
+  const loadPlaylistDetail = useCallback(async (id: string) => {
+    const r = await lensRun('podcast', 'playlist-detail', { id });
+    if (r.data?.ok === false) {
+      setPlaylistDetailError(r.data?.error || 'Could not load this playlist.');
+      setPlEpisodes([]);
+      return;
+    }
+    setPlaylistDetailError(null);
+    setPlEpisodes(r.data?.result?.episodes || []);
+  }, []);
   const openPlaylist = async (id: string) => {
     if (openPl === id) { setOpenPl(null); return; }
     setOpenPl(id);
-    const r = await lensRun('podcast', 'playlist-detail', { id });
-    setPlEpisodes(r.data?.ok === false ? [] : (r.data?.result?.episodes || []));
+    await loadPlaylistDetail(id);
   };
   const addDownloadToPlaylist = async (playlistId: string, episodeId: string) => {
     await lensRun('podcast', 'playlist-add-episode', { playlistId, episodeId });
-    const r = await lensRun('podcast', 'playlist-detail', { id: playlistId });
-    setPlEpisodes(r.data?.result?.episodes || []);
+    await loadPlaylistDetail(playlistId);
     await refresh();
   };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (
@@ -120,6 +141,9 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
                 </button>
                 {openPl === pl.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 space-y-2">
+                    {playlistDetailError && (
+                      <ErrorState message={playlistDetailError} onRetry={() => loadPlaylistDetail(pl.id)} variant="inline" />
+                    )}
                     {plEpisodes.length > 0 ? (
                       <ul className="space-y-1">
                         {plEpisodes.map((e) => (

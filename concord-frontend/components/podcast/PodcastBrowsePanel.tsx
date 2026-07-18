@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Check, ListPlus, Download, ChevronLeft } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Show {
   id: string; title: string; author: string | null; category: string;
@@ -36,6 +37,8 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', author: '', category: 'general', description: '' });
   const [selected, setSelected] = useState<Show | null>(null);
@@ -47,6 +50,12 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('podcast', 'show-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load shows.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setShows(r.data?.result?.shows || []);
     setLoading(false);
   }, []);
@@ -59,6 +68,11 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
       lensRun('podcast', 'episode-list', { showId: sh.id }),
       lensRun('podcast', 'show-detail', { id: sh.id }),
     ]);
+    if (e.data?.ok === false || d.data?.ok === false) {
+      setDetailError(e.data?.error || d.data?.error || 'Could not load this show’s episodes.');
+      return;
+    }
+    setDetailError(null);
     setEpisodes(e.data?.result?.episodes || []);
     setReviews(d.data?.result?.reviews || []);
     setSelected((d.data?.result?.show as Show) || sh);
@@ -105,6 +119,10 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
+  }
+
   // ── Show detail ──
   if (selected) {
     return (
@@ -128,6 +146,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
           </div>
         </div>
 
+        {detailError && <ErrorState message={detailError} onRetry={() => openShow(selected)} variant="inline" />}
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
         {/* Add episode */}

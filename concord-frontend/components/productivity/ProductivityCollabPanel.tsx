@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Users, Share2, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { ProductivityTaskDetail } from './ProductivityTaskDetail';
 
 interface Project { id: string; name: string }
@@ -22,6 +23,8 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
   const [tasks, setTasks] = useState<TaskOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [collabError, setCollabError] = useState<string | null>(null);
   const [activeProject, setActiveProject] = useState('');
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [shareForm, setShareForm] = useState({ collaboratorId: '', role: 'editor' });
@@ -33,6 +36,12 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
       lensRun('productivity', 'project-list', {}),
       lensRun('productivity', 'task-list', {}),
     ]);
+    if (p.data?.ok === false || t.data?.ok === false) {
+      setLoadError(p.data?.error || t.data?.error || 'Could not load projects or tasks.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setProjects((p.data?.result?.projects || []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
     setTasks((t.data?.result?.tasks || []).map(
       (x: { id: string; content: string; assigneeId: string | null }) => ({ id: x.id, content: x.content, assigneeId: x.assigneeId })));
@@ -44,6 +53,12 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
   const loadCollaborators = useCallback(async (projectId: string) => {
     if (!projectId) { setCollaborators([]); return; }
     const r = await lensRun('productivity', 'project-collaborators', { projectId });
+    if (r.data?.ok === false) {
+      setCollabError(r.data?.error || 'Could not load collaborators.');
+      setCollaborators([]);
+      return;
+    }
+    setCollabError(null);
     setCollaborators(r.data?.result?.collaborators || []);
   }, []);
 
@@ -69,6 +84,10 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (
@@ -105,7 +124,9 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
                     Share
                   </button>
                 </div>
-                {collaborators.length === 0 ? (
+                {collabError ? (
+                  <ErrorState message={collabError} onRetry={() => loadCollaborators(activeProject)} variant="inline" />
+                ) : collaborators.length === 0 ? (
                   <p className="text-xs text-zinc-400 italic">Not shared with anyone yet.</p>
                 ) : (
                   <ul className="space-y-1">

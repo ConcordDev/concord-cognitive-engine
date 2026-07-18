@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 // ── Shared types ───────────────────────────────────────────────────
 interface Photo {
@@ -63,12 +64,19 @@ export function LightroomDarkroomPanel({ onChange }: { onChange: () => void }) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [p, pr] = await Promise.all([
       lensRun('photography', 'photo-list', {}),
       lensRun('photography', 'preset-list', {}),
     ]);
+    if (p.data?.ok === false || pr.data?.ok === false) {
+      setLoadError(p.data?.error || pr.data?.error || 'Could not load photos or presets.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPhotos(p.data?.result?.photos || []);
     setPresets(pr.data?.result?.presets || []);
     setLoading(false);
@@ -82,6 +90,10 @@ export function LightroomDarkroomPanel({ onChange }: { onChange: () => void }) {
         <Loader2 className="w-5 h-5 animate-spin" />
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   if (photos.length === 0) {
@@ -285,6 +297,7 @@ function ToneCurveTab({ photos, onChange }: { photos: Photo[]; onChange: () => v
 
   const loadSavedCurves = useCallback(async () => {
     const r = await lensRun('photography', 'tone-curve-list', {});
+    if (r.data?.ok === false) { setErr(r.data?.error || 'Could not load saved curves.'); return; }
     setSavedCurves(r.data?.result?.curves || []);
   }, []);
   useEffect(() => { void loadSavedCurves(); }, [loadSavedCurves]);
@@ -553,6 +566,7 @@ function MaskingTab({ photos, onChange }: { photos: Photo[]; onChange: () => voi
   const loadMasks = useCallback(async (id: string) => {
     if (!id) { setMasks([]); return; }
     const r = await lensRun('photography', 'mask-list', { photoId: id });
+    if (r.data?.ok === false) { setErr(r.data?.error || 'Could not load masks.'); return; }
     setMasks(r.data?.result?.masks || []);
   }, []);
 
@@ -786,6 +800,10 @@ function SmartCollectionsTab({ photos, onChange }: { photos: Photo[]; onChange: 
       lensRun('photography', 'smart-collection-list', {}),
       lensRun('photography', 'face-tag-list', {}),
     ]);
+    if (c.data?.ok === false || pe.data?.ok === false) {
+      setErr(c.data?.error || pe.data?.error || 'Could not load smart collections or face tags.');
+      return;
+    }
     setCollections(c.data?.result?.collections || []);
     setPeople(pe.data?.result?.people || []);
   }, []);

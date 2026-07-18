@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Sun, CalendarDays } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 import { ProductivityTaskRow, type ProdTask } from './ProductivityTaskRow';
 
 interface UpcomingDay { date: string; tasks: ProdTask[] }
@@ -17,6 +18,7 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
   const [overdue, setOverdue] = useState(0);
   const [days, setDays] = useState<UpcomingDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -24,6 +26,12 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
       lensRun('productivity', 'today-view', {}),
       lensRun('productivity', 'upcoming-view', {}),
     ]);
+    if (t.data?.ok === false || u.data?.ok === false) {
+      setLoadError(t.data?.error || u.data?.error || 'Could not load today’s agenda.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTodayTasks(t.data?.result?.tasks || []);
     setOverdue(t.data?.result?.overdue || 0);
     setDays(u.data?.result?.days || []);
@@ -35,6 +43,10 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const weekday = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });

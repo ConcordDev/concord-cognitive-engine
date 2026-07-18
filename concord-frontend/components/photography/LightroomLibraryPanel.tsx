@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Flag, Check, X, Trash2, Tag, Search, Pencil, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Photo {
   id: string; filename: string; title: string; camera: string | null; lens: string | null;
@@ -25,6 +26,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<{ flag?: string; minRating?: number; keyword?: string }>({});
   const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState({ filename: '', title: '', camera: '', lens: '', iso: '' });
@@ -41,6 +43,12 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
       lensRun('photography', 'photo-list', filter),
       lensRun('photography', 'keyword-list', {}),
     ]);
+    if (r.data?.ok === false || kw.data?.ok === false) {
+      setLoadError(r.data?.error || kw.data?.error || 'Could not load your catalog.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPhotos(r.data?.result?.photos || []);
     setKeywordCloud(kw.data?.result?.keywords || []);
     setLoading(false);
@@ -104,6 +112,10 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

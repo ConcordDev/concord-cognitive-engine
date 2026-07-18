@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { SkeletonTableRows } from '@/components/ui';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Collaborator {
   id: string; collaborator: string; cursorX: number; cursorY: number;
@@ -61,6 +61,8 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
   const [policies, setPolicies] = useState<SlaPolicy[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [presenceError, setPresenceError] = useState<string | null>(null);
   const [slaResult, setSlaResult] = useState<SlaResult | null>(null);
   const [slaRunning, setSlaRunning] = useState(false);
 
@@ -83,6 +85,17 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
       lensRun('projects', 'sla-policy-list', { projectId }),
       lensRun('projects', 'member-list', { projectId }),
     ]);
+    if (p.data?.ok === false || n.data?.ok === false || i.data?.ok === false
+      || tq.data?.ok === false || sp.data?.ok === false || m.data?.ok === false) {
+      setLoadError(
+        p.data?.error || n.data?.error || i.data?.error
+        || tq.data?.error || sp.data?.error || m.data?.error
+        || 'Could not load the collaboration surface.',
+      );
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPresence(p.data?.result?.collaborators || []);
     setNotifications(n.data?.result?.notifications || []);
     setUnread(n.data?.result?.unread || 0);
@@ -96,7 +109,9 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
   useEffect(() => { void refresh(); }, [refresh]);
 
   // Heartbeat: ping our own presence + poll collaborators every 15s so the
-  // live indicator reflects who is in the project right now.
+  // live indicator reflects who is in the project right now. A failed poll
+  // surfaces a retryable inline notice rather than silently blanking the
+  // presence list (which would misread as "no collaborators").
   useEffect(() => {
     if (!projectId) return;
     let stopped = false;
@@ -104,7 +119,10 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
       await lensRun('projects', 'presence-ping', { projectId, viewing: 'collab' });
       if (stopped) return;
       const r = await lensRun('projects', 'presence-list', { projectId });
-      if (!stopped) setPresence(r.data?.result?.collaborators || []);
+      if (stopped) return;
+      if (r.data?.ok === false) { setPresenceError(r.data?.error || 'Live presence sync failed.'); return; }
+      setPresenceError(null);
+      setPresence(r.data?.result?.collaborators || []);
     };
     void beat();
     const iv = setInterval(() => { void beat(); }, 15000);
@@ -212,6 +230,10 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
     );
   }
 
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={refresh} />;
+  }
+
   return (
     <div className="space-y-5">
       {/* Live presence */}
@@ -220,6 +242,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
           <Radio className="w-3.5 h-3.5 text-emerald-400" /> Live collaborators
           <span className="text-[10px] text-gray-400 font-normal">— real-time presence, idle &gt;45s drops off</span>
         </h3>
+        {presenceError && <ErrorState message={presenceError} variant="inline" className="mb-2" />}
         {presence.length === 0 ? (
           <Empty text="No collaborators active right now." />
         ) : (

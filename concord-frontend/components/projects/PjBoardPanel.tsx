@@ -55,6 +55,7 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
   const [groupBy, setGroupBy] = useState<string>('none');
   const [form, setForm] = useState({ title: '', type: 'task', priority: 'none' });
   const [openTask, setOpenTask] = useState<string | null>(null);
+  const [swimlaneError, setSwimlaneError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -75,7 +76,14 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
     setAllTasks(((list.data?.result?.tasks || []) as Task[]).map((t) => ({ id: t.id, ref: t.ref, title: t.title })));
     if (groupBy !== 'none') {
       const sl = await lensRun('projects', 'board-swimlanes', { projectId, groupBy });
-      setSwimlanes(sl.data?.result?.swimlanes || []);
+      if (sl.data?.ok === false) {
+        setSwimlaneError(sl.data?.error || 'Could not load swimlanes.');
+      } else {
+        setSwimlaneError(null);
+        setSwimlanes(sl.data?.result?.swimlanes || []);
+      }
+    } else {
+      setSwimlaneError(null);
     }
     setLoading(false);
     onChange();
@@ -208,6 +216,8 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
             );
           })}
         </div>
+      ) : swimlaneError ? (
+        <ErrorState message={swimlaneError} onRetry={refresh} variant="inline" />
       ) : (
         <div className="space-y-3">
           {swimlanes.map((lane) => (

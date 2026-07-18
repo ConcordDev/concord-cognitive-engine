@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, SlidersHorizontal, RotateCcw, Save, Wand2, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Photo { id: string; title: string; develop: Record<string, number>; appliedPreset?: string | null }
 interface Preset { id: string; name: string; category: string; adjustments: Record<string, number> }
@@ -34,6 +35,7 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
   const [adjustments, setAdjustments] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -41,6 +43,12 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
       lensRun('photography', 'photo-list', {}),
       lensRun('photography', 'preset-list', {}),
     ]);
+    if (p.data?.ok === false || pr.data?.ok === false) {
+      setLoadError(p.data?.error || pr.data?.error || 'Could not load photos or presets.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Photo[] = p.data?.result?.photos || [];
     setPhotos(list);
     setPresets(pr.data?.result?.presets || []);
@@ -95,6 +103,10 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   if (photos.length === 0) {

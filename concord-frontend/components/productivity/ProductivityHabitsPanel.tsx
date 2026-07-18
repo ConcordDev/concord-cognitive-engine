@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Flame, Check, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Habit { id: string; name: string; cadence: string; streak: number; doneToday: boolean; totalCheckins: number }
 
@@ -16,11 +17,18 @@ export function ProductivityHabitsPanel({ onChange }: { onChange: () => void }) 
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('productivity', 'habit-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load habits.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setHabits(r.data?.result?.habits || []);
     setLoading(false);
     onChange();
@@ -40,6 +48,10 @@ export function ProductivityHabitsPanel({ onChange }: { onChange: () => void }) 
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

@@ -42,12 +42,22 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
   const [viewName, setViewName] = useState('');
   const [bulk, setBulk] = useState({ status: '', priority: '' });
   const [activeView, setActiveView] = useState<string | null>(null);
+  const [metaError, setMetaError] = useState<string | null>(null);
 
   const loadMeta = useCallback(async () => {
     const g = await lensRun('projects', 'project-get', { id: projectId });
+    if (g.data?.ok === false) {
+      setMetaError(g.data?.error || 'Could not load project metadata.');
+      return;
+    }
     const res = g.data?.result as (Meta & { project: unknown }) | null;
     setMeta(res ? { members: res.members, sprints: res.sprints, milestones: res.milestones, labels: res.labels, customFields: res.customFields } : null);
     const v = await lensRun('projects', 'view-list', { projectId });
+    if (v.data?.ok === false) {
+      setMetaError(v.data?.error || 'Could not load saved views.');
+      return;
+    }
+    setMetaError(null);
     setViews(v.data?.result?.views || []);
   }, [projectId]);
 
@@ -171,6 +181,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
             {SORTS.map((x) => <option key={x} value={x}>sort: {x}</option>)}
           </select>
         </div>
+        {metaError && <ErrorState message={metaError} onRetry={loadMeta} variant="inline" />}
         <div className="flex flex-wrap items-center gap-1.5">
           {views.map((v) => (
             <span key={v.id}
