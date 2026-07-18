@@ -141,6 +141,15 @@ describe("mining.compliance-log — reference + enum validation", () => {
     for (const category of cats) {
       const r = await lensRun("mining", "compliance-log", { params: { siteId, category, status: "compliant" } }, ctx);
       assert.equal(r.ok, true, `category ${category} should be accepted`);
+      // Real assertion, not a bare ok-check: the stored record must echo
+      // back exactly the category submitted, and be readable back via
+      // compliance-list — proving it was actually persisted, not just
+      // dispatch-accepted.
+      assert.equal(r.result.record.category, category, `stored record must echo the submitted category ${category} exactly`);
+      const list = await lensRun("mining", "compliance-list", { params: { siteId } }, ctx);
+      const found = list.result.records.find((x) => x.id === r.result.record.id);
+      assert.ok(found, `record for category ${category} must be readable back via compliance-list`);
+      assert.equal(found.category, category);
     }
   });
 });

@@ -1,16 +1,24 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-06T15:31:32.719Z",
+  "generatedAt": "2026-07-18T23:09:51.552Z",
   "totals": {
     "critical": 0,
-    "high": 8,
-    "medium": 109,
-    "low": 0,
-    "info": 39,
-    "total": 156
+    "high": 9,
+    "medium": 221,
+    "low": 7,
+    "info": 48,
+    "total": 285
   },
-  "detectorCount": 39,
+  "detectorCount": 40,
   "fingerprints": {
+    "9c379b1814c0a383": {
+      "detector": "stale-code",
+      "id": "table_orphan",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/migrations/372_ledger_staking_types.js:34",
+      "message": "Table economy_ledger_new is created but never read or written outside migrations"
+    },
     "7702b52eea3af593": {
       "detector": "stale-code",
       "id": "route_orphan_summary",
@@ -25,7 +33,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "843 macros · 0 dead · 408 single-caller · 1 popular · 360 dispatcher-reach (0 runtime-live, 0 retirement-candidates)"
+      "message": "856 macros · 0 dead · 397 single-caller · 2 popular · 352 dispatcher-reach (0 runtime-live, 0 retirement-candidates)"
     },
     "9c6176383f6bf175": {
       "detector": "macro-usage",
@@ -43,12 +51,12 @@
       "location": null,
       "message": "Scanned 260 lenses · 1 issues found"
     },
-    "6e59ef2f4ca2be55": {
+    "cdb330d7380d88cb": {
       "detector": "lens-health",
       "id": "lens_unknown_domain",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/world/page.tsx:5684",
+      "location": "concord-frontend/app/lenses/world/page.tsx:5858",
       "message": "Lens world calls domain \"mainland\" — no dedicated handler registered; runtime routes via utility-brain AI catch-all. Adding a register(\"mainland\", ...) handler would give deterministic behavior."
     },
     "2f600c033f853e95": {
@@ -73,7 +81,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "110 heartbeats registered (static)"
+      "message": "114 heartbeats registered (static)"
     },
     "f388b3d47e28227e": {
       "detector": "secret-leak",
@@ -81,7 +89,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 7965 files; flagged 0"
+      "message": "Scanned 8665 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -89,7 +97,55 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3882 server files"
+      "message": "Scanned 4086 server files"
+    },
+    "8153b95271ea0be5": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/domains/admin.js:621",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "35aac07ef3cbb58f": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/domains/admin.js:664",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "facb23ef0a6e42fc": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/domains/admin.js:719",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "26bdc1e30df62a8b": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/domains/education.js:544",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "17d0376f3c5a9812": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/domains/education.js:585",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "187efccf35085b9d": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/domains/education.js:639",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
     },
     "3b5cf89535467e0d": {
       "detector": "historical-trend",
@@ -105,7 +161,7 @@
       "severity": "info",
       "kind": "predictive",
       "location": null,
-      "message": "9 samples · 14 tables observed · heap 14MB"
+      "message": "10 samples · 14 tables observed · heap 12MB"
     },
     "7d25275889c77630": {
       "detector": "architectural-hub",
@@ -113,7 +169,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 3882 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 4086 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
     },
     "8124c3bcdf890d24": {
       "detector": "architectural-hub",
@@ -129,7 +185,23 @@
       "severity": "info",
       "kind": "architectural",
       "location": "server/logger.js",
-      "message": "Module server/logger.js fan-in=302 fan-out=0 (leaf utility — wide use is by design)"
+      "message": "Module server/logger.js fan-in=309 fan-out=0 (leaf utility — wide use is by design)"
+    },
+    "ad66e414bf4e8ea4": {
+      "detector": "fake-data",
+      "id": "fake_ident_in_production",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/desert/DesertOfflineMapView.tsx:66",
+      "message": "Production reference to identifier suggesting fake data: placeholderBlobPromise"
+    },
+    "1a101d20e612d427": {
+      "detector": "fake-data",
+      "id": "fake_ident_in_production",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/desert/DesertOfflineMapView.tsx:71",
+      "message": "Production reference to identifier suggesting fake data: placeholderBlobPromise"
     },
     "55fcddcaefdaec56": {
       "detector": "fake-data",
@@ -163,13 +235,373 @@
       "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:139",
       "message": "Production reference to identifier suggesting fake data: fakeLevel"
     },
+    "c8ae131b4c240726": {
+      "detector": "fake-data",
+      "id": "todo_in_production",
+      "severity": "low",
+      "kind": "static",
+      "location": "concord-frontend/components/ui/Skeleton.tsx:38",
+      "message": "TODO marker in production: migrate to `ds.skeleton` once the design-system agent lands one."
+    },
     "e8ca0dab4cb5f073": {
       "detector": "fake-data",
       "id": "fake_data_summary",
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "2015 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
+      "message": "2345 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
+    },
+    "efc9d1d4b9d4111b": {
+      "detector": "frontend-fake-data",
+      "id": "frontend_fake_data_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 2964 frontend file(s) under app/lenses + components; flagged 41"
+    },
+    "bd2ce9e83ff0e4f4": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/alliance/page.tsx:44",
+      "message": "'TABS' is a hardcoded array literal (3 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its encl"
+    },
+    "17dde65774639536": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/analytics/page.tsx:598",
+      "message": "'data' is a hardcoded array literal (1 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its encl"
+    },
+    "6331cddf8cc860ba": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/answers/page.tsx:133",
+      "message": "'ANSWERS_FALLBACK' is a hardcoded array literal (30 object(s), up to 8 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*"
+    },
+    "a68e52c0138328db": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/grounding/page.tsx:52",
+      "message": "'DESTINATIONS' is a hardcoded array literal (3 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
+    },
+    "e4c498898b54d90b": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/history/page.tsx:74",
+      "message": "'GROUPS' is a hardcoded array literal (4 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its en"
+    },
+    "0a38115ea1d40cbc": {
+      "detector": "frontend-fake-data",
+      "id": "placeholder_content_weak",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/metacognition/page.tsx:1258",
+      "message": "Placeholder-sounding content rendered as real: \"placeholder\" in 'input[placeholder*=\"Domain to assess\"]'"
+    },
+    "a160557f0b977b6f": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/parenting/page.tsx:21",
+      "message": "'DESTINATIONS' is a hardcoded array literal (4 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
+    },
+    "115f337b3faf2f7d": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/supplychain/page.tsx:42",
+      "message": "'DESTINATIONS' is a hardcoded array literal (5 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
+    },
+    "45d3d66328174729": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/alliance/AllianceAnalyticsPanel.tsx:450",
+      "message": "'TOOLS' is a hardcoded array literal (3 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its enc"
+    },
+    "679016e16a37c047": {
+      "detector": "frontend-fake-data",
+      "id": "placeholder_content_weak",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/animation/AnimationReferenceImages.tsx:183",
+      "message": "Placeholder-sounding content rendered as real: \"placeholder\" in description=\"Upload a photo or sketch to see it here — real stored bytes, not a placeholder.\""
+    },
+    "c99c501103608e6a": {
+      "detector": "frontend-fake-data",
+      "id": "placeholder_content_weak",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/app-maker/AppBuilderStudio.tsx:418",
+      "message": "Placeholder-sounding content rendered as real: \"placeholder\" in onChange={(e) => updateProp('placeholder', e.target.value)}"
+    },
+    "62555758cd416261": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/automotive/VehicleHistory.tsx:77",
+      "message": "'events' is a hardcoded array literal (2 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its en"
+    },
+    "c4237d7adc7f5c10": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/common/ExportMenu.tsx:79",
+      "message": "'options' is a hardcoded array literal (2 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its e"
+    },
+    "04f13c3b69df1751": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/common/LanguageSelector.tsx:23",
+      "message": "'LOCALE_INFO' is a hardcoded array literal (10 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
+    },
+    "7da1ecf89636feec": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/emergent/PresenceDashboard.tsx:47",
+      "message": "'ORIGINAL_PILLARS' is a hardcoded array literal (4 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*)"
+    },
+    "dba82be82d4fd81e": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/global/CountryPicker.tsx:14",
+      "message": "'COUNTRIES' is a hardcoded array literal (44 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in it"
+    },
+    "bab6aef826ea640c": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/hr/BlsSeriesExplorer.tsx:50",
+      "message": "'PRESETS' is a hardcoded array literal (6 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its e"
+    },
+    "e0685c14a3e13025": {
+      "detector": "frontend-fake-data",
+      "id": "placeholder_content_strong",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/law/CaseAnalytics.tsx:138",
+      "message": "Placeholder-sounding content rendered as real: \"sample data\" in description=\"Add cases in the Case Files tab — analytics runs the real caseAnalysis / deadlineTracker macros over your …"
+    },
+    "d8234e4e68a23d16": {
+      "detector": "frontend-fake-data",
+      "id": "placeholder_content_weak",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/legacy/CodebaseScanner.tsx:232",
+      "message": "Placeholder-sounding content rendered as real: \"TODO\" in <Metric label=\"TODO / FIXME Debt\" value={String(active.summary.totalTodos)} tone={active.summary.totalTodos > 0 ? 'warn…"
+    },
+    "2a24816b856227b9": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/observe/ObservePlatform.tsx:634",
+      "message": "'routes' is a hardcoded array literal (1 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its en"
+    },
+    "db3cea0f1f37d270": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/ocean/TidePredictions.tsx:24",
+      "message": "'COMMON_STATIONS' is a hardcoded array literal (5 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) "
+    },
+    "f0a1c847ab168e9e": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/onboarding/OnboardingWizard.tsx:37",
+      "message": "'STEPS' is a hardcoded array literal (7 object(s), up to 7 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its enc"
+    },
+    "e53866d1af23b1dd": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/questmarket/PlanningTools.tsx:71",
+      "message": "'participants' is a hardcoded array literal (1 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
+    },
+    "82f040a9d9f74799": {
+      "detector": "frontend-fake-data",
+      "id": "placeholder_content_strong",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/schema/SchemaWorkbench.tsx:133",
+      "message": "Placeholder-sounding content rendered as real: \"Sample Data\" in { id: 'sample', label: 'Sample Data', icon: Beaker },"
+    },
+    "4956db7d8c8eda12": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/scope/VisibilityScopePicker.tsx:62",
+      "message": "'SCOPE_OPTIONS' is a hardcoded array literal (5 object(s), up to 6 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in"
+    },
+    "e3e41186ae8fb235": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/social/CrossPostExternal.tsx:62",
+      "message": "'PLATFORMS' is a hardcoded array literal (4 object(s), up to 6 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
+    },
+    "d2fb2fb223fa1075": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/society/WorldBankExplorer.tsx:26",
+      "message": "'POPULAR_COUNTRIES' is a hardcoded array literal (12 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api."
+    },
+    "7c90f306ca13f554": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/srs/SRSReview.tsx:37",
+      "message": "'QUALITY_OPTIONS' is a hardcoded array literal (6 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) "
+    },
+    "8822504e1d8c7b48": {
+      "detector": "frontend-fake-data",
+      "id": "placeholder_content_weak",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/studio/BouncePanel.tsx:100",
+      "message": "Placeholder-sounding content rendered as real: \"placeholder\" in title=\"The reference audio attached to this publish is a generated placeholder tone (4s, 220Hz), not your project mix. …"
+    },
+    "ac3b1c46d85b6f3d": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/themes/ThemeSelector.tsx:32",
+      "message": "'BUILT_IN_THEMES' is a hardcoded array literal (6 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) "
+    },
+    "87e458b49785f87b": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/ux-suite/AvatarComputeToggle.tsx:18",
+      "message": "'OPTIONS' is a hardcoded array literal (3 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its e"
+    },
+    "9cd9a24372cb0380": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/concordia-hud/panels/DecreePanel.tsx:37",
+      "message": "'DECREE_SPECS' is a hardcoded array literal (8 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
+    },
+    "4df7ecd56f181cf8": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/AccessibilityPanel.tsx:37",
+      "message": "'COLORBLIND_OPTIONS' is a hardcoded array literal (5 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api."
+    },
+    "1ac8543191e7a72a": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/CameraControls.tsx:58",
+      "message": "'presets' is a hardcoded array literal (3 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its e"
+    },
+    "0d47fd9535ceb624": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/ConcordDSLEditor.tsx:24",
+      "message": "'TEMPLATES' is a hardcoded array literal (5 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
+    },
+    "55c7d0ab17b4190a": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/DTUDiffViewer.tsx:31",
+      "message": "'VERSIONS' is a hardcoded array literal (3 object(s), up to 15 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
+    },
+    "9be44c499f24ad66": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/GuidedCreator.tsx:20",
+      "message": "'CATEGORIES' is a hardcoded array literal (11 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in i"
+    },
+    "211b83870f469b6a": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/NotarizationPanel.tsx:45",
+      "message": "'CHAINS' is a hardcoded array literal (3 object(s), up to 7 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its en"
+    },
+    "962cf81acf8c47f7": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/OnboardingTutorial.tsx:22",
+      "message": "'TUTORIALS' is a hardcoded array literal (9 object(s), up to 7 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
+    },
+    "bb17aa189fbdf8b1": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/SettingsPanel.tsx:102",
+      "message": "'SUPPORTED_LANGUAGES' is a hardcoded array literal (11 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/ap"
+    },
+    "38b130acacd887fa": {
+      "detector": "frontend-fake-data",
+      "id": "hardcoded_array_rendered_as_live_data",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/StressTestPanel.tsx:20",
+      "message": "'SCENARIOS' is a hardcoded array literal (4 object(s), up to 6 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
+    },
+    "0e653b9b48263b70": {
+      "detector": "resource-leak",
+      "id": "listener_without_remove",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/BuildingRenderer3D.test.tsx:78",
+      "message": "addEventListener('concordia:buildings-ready', ...) has no matching removeEventListener in this file."
+    },
+    "9f97e0816daa6843": {
+      "detector": "resource-leak",
+      "id": "listener_without_remove",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/lib/realtime/socket.ts:170",
+      "message": "addEventListener('online', ...) has no matching removeEventListener in this file."
     },
     "905794c0c06cc41d": {
       "detector": "env-config-drift",
@@ -179,6 +611,14 @@
       "location": "concord-frontend/components/astronomy/SkyChartWorkbench.tsx:164",
       "message": "Magic timeout 10000ms — consider env-driven"
     },
+    "a5392546fee20d1f": {
+      "detector": "env-config-drift",
+      "id": "hardcoded_prod_url",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/environment/EnviroPanel.tsx:214",
+      "message": "Hardcoded production URL: https://www.ncdc.noaa.gov/cdo-web/token"
+    },
     "a770e4bb549010cf": {
       "detector": "env-config-drift",
       "id": "magic_timeout",
@@ -187,12 +627,12 @@
       "location": "concord-frontend/components/fashion/FashionAIStylistPanel.tsx:57",
       "message": "Magic timeout 10000ms — consider env-driven"
     },
-    "aac783ba85b8d166": {
+    "294e8bd527641d1e": {
       "detector": "env-config-drift",
       "id": "magic_timeout",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/components/fitness/StravaBeaconPanel.tsx:120",
+      "location": "concord-frontend/components/fitness/StravaBeaconPanel.tsx:162",
       "message": "Magic timeout 15000ms — consider env-driven"
     },
     "5df63892308fc832": {
@@ -211,6 +651,46 @@
       "location": "concord-frontend/components/fitness/StravaSegmentsPanel.tsx:102",
       "message": "Magic timeout 15000ms — consider env-driven"
     },
+    "3e3478f4fe50a367": {
+      "detector": "env-config-drift",
+      "id": "hardcoded_prod_url",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/integrations/AnalysisPanel.tsx:66",
+      "message": "Hardcoded production URL: https://api.internal/auth"
+    },
+    "ff70355f13fca227": {
+      "detector": "env-config-drift",
+      "id": "hardcoded_prod_url",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/integrations/AnalysisPanel.tsx:74",
+      "message": "Hardcoded production URL: https://api.internal/billing"
+    },
+    "943f1952d75176b6": {
+      "detector": "env-config-drift",
+      "id": "hardcoded_prod_url",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/law/PatentSearch.tsx:380",
+      "message": "Hardcoded production URL: https://search.patentsview.org/api/v1/patent/?q=${encodeURIComponent(JSON.string"
+    },
+    "c3d7e0cfd63aa7e7": {
+      "detector": "env-config-drift",
+      "id": "hardcoded_prod_url",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/law/PatentSearch.tsx:395",
+      "message": "Hardcoded production URL: https://patents.google.com/?q=${encodeURIComponent(p.patentId)}"
+    },
+    "9e072171776a482d": {
+      "detector": "env-config-drift",
+      "id": "magic_timeout",
+      "severity": "info",
+      "kind": "static",
+      "location": "concord-frontend/components/space/OwnedSatellites.tsx:147",
+      "message": "Magic timeout 10000ms — consider env-driven"
+    },
     "dcb6a24c6f7cc5cb": {
       "detector": "env-config-drift",
       "id": "magic_timeout",
@@ -227,6 +707,14 @@
       "location": "concord-frontend/components/space/VisiblePassPredictor.tsx:81",
       "message": "Magic timeout 10000ms — consider env-driven"
     },
+    "7fc781493c9ae95a": {
+      "detector": "env-config-drift",
+      "id": "hardcoded_prod_url",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/lib/desert/tile-cache.ts:42",
+      "message": "Hardcoded production URL: https://concord.local/__desert_tile_manifest__"
+    },
     "f405a506e03be138": {
       "detector": "env-config-drift",
       "id": "hardcoded_prod_url",
@@ -234,6 +722,14 @@
       "kind": "static",
       "location": "server/lib/pollinations-image.js:35",
       "message": "Hardcoded production URL: https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}"
+    },
+    "bb0943ad113c5912": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/fishing/page.tsx:120",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:open-fishing' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
     "08ee8aded324b96e": {
       "detector": "dead-event-listener",
@@ -243,6 +739,14 @@
       "location": "concord-frontend/components/accessibility/ScreenReaderAnnouncer.tsx:62",
       "message": "addEventListener / useEventListener subscribes to 'concordia:announce' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
+    "a6ddc1c40bdf9315": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/animation/AnimationReferenceImages.tsx:72",
+      "message": "addEventListener / useEventListener subscribes to 'anim:active-frame' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
     "f7c3b86e8afbcd08": {
       "detector": "dead-event-listener",
       "id": "dead_event_listener",
@@ -251,12 +755,12 @@
       "location": "concord-frontend/components/concordia/PhotoMode.tsx:52",
       "message": "addEventListener / useEventListener subscribes to 'concordia:photo-mode-toggle' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
-    "ffc68ee0877f93e3": {
+    "2327c2f63c86e803": {
       "detector": "dead-event-listener",
       "id": "dead_event_listener",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/conkay/ConKayOverlay.tsx:155",
+      "location": "concord-frontend/components/conkay/ConKayOverlay.tsx:166",
       "message": "addEventListener / useEventListener subscribes to 'conkay:dismiss' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
     "73d2cabd9d61e85b": {
@@ -315,12 +819,12 @@
       "location": "concord-frontend/components/world/LinkScanOverlay.tsx:63",
       "message": "addEventListener / useEventListener subscribes to 'concordia:link-scan-toggle' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
-    "079396b75c0d83d6": {
+    "ec4e6b62c74e575c": {
       "detector": "dead-event-listener",
       "id": "dead_event_listener",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world/NPCSchemeOverhearTip.tsx:89",
+      "location": "concord-frontend/components/world/NPCSchemeOverhearTip.tsx:98",
       "message": "addEventListener / useEventListener subscribes to 'concordia:npc-scheme-resolved' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
     "17f2e7ab93363c6d": {
@@ -331,13 +835,29 @@
       "location": "concord-frontend/components/world/NPCTraitInspector.tsx:53",
       "message": "addEventListener / useEventListener subscribes to 'concordia:open-trait-inspector' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
-    "dced82bd96055545": {
+    "226784d364848847": {
       "detector": "dead-event-listener",
       "id": "dead_event_listener",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world/RogueliteRunHUD.tsx:76",
+      "location": "concord-frontend/components/world/RogueliteRunHUD.tsx:207",
       "message": "addEventListener / useEventListener subscribes to 'concordia:open-roguelite-shop' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "18b76b2d13435056": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/SizeScalingHUD.tsx:74",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:open-size-scaling' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "7a01251fac9c60ec": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/SkillAffinityPanel.tsx:80",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:open-skill-affinity' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
     "46d9ec005b0b742e": {
       "detector": "dead-event-listener",
@@ -346,6 +866,14 @@
       "kind": "static",
       "location": "concord-frontend/components/world/SpectatorOverlay.tsx:43",
       "message": "addEventListener / useEventListener subscribes to 'concordia:enter-spectator-mode' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "49c0b13468b02123": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/StatusWindowHUD.tsx:105",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:open-status-window' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
     },
     "e3b1fe0c10d9054c": {
       "detector": "dead-event-listener",
@@ -651,13 +1179,365 @@
       "location": "concord-frontend/components/world-lens/LevelUpJuiceBridge.tsx",
       "message": "Frontend subscribes to socket event 'quality:approved' but no server code ever emits it (checked realtimeEmit/io.emit/socket.emit and common emit-helper aliases) — the subscription will never fire."
     },
+    "c1f2756bd5bfb97e": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/creator/page.tsx:704",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "34cb0c8f67d6ddb5": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/home-improvement/page.tsx:791",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "6f00b449afbb936b": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/linguistics/page.tsx:697",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "8047457f8a1cb90a": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/accounting/AcPayrollPanel.tsx:114",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "3dad35af7401556d": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/accounting/AcPayrollPanel.tsx:115",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "e5e9030225c0cece": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/agents/AgentRuntime.tsx:963",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "62e8b0b80721f4b9": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/app-maker/AppBuilderStudio.tsx:1390",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "d807620ee5fdaa4c": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/astronomy/AstroCoObservePanel.tsx:227",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "f4e6e378b6f1717c": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/bio/BioResearchPanel.tsx:208",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "a68bcc58d2777c8c": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/bio/BioResearchPanel.tsx:247",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "390fc95e312789f0": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/bio/BioResearchPanel.tsx:313",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "ba09396f644151c5": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/custom/DataUtilities.tsx:101",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "96c408346dd2965b": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/custom/DataUtilities.tsx:152",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "969ea768293d7331": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/custom/DataUtilities.tsx:205",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "34797d044cbc2b43": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/custom/DataUtilities.tsx:216",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "bed878e0c5579a46": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/custom/DataUtilities.tsx:273",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "d181943e69d135ce": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/custom/DataUtilities.tsx:289",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "2060d509a8803548": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/experience/UXResearchSuite.tsx:649",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "13893b64ff66affb": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/game-design/GameDesignSection.tsx:247",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "51ffe0f30bd4442f": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/goals/GoalsAnalyticsTools.tsx:93",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "7fe520b72d59472b": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/goals/GoalsAnalyticsTools.tsx:173",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "f950aa13ff2480b1": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/graph/MindMapBuilder.tsx:204",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "f88e73350f93d1b0": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/market/MarketAnalysisWorkbench.tsx:349",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "ff8256b9ae058210": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/meta/DevPortal.tsx:1529",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "6da57c9054f4bfd5": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/meta/DevPortal.tsx:1656",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "2a67259138081cdd": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/meta/DevPortal.tsx:1812",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "05b9c4143ae283a1": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/nonprofit/NonprofitActionPanel.tsx:287",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "83752b7815e7bd8d": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/nonprofit/NonprofitActionPanel.tsx:299",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "cb84de1ff56e5305": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/platform/PlatformAnalysisPanel.tsx:209",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "9350a4d0ca7e3373": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/platform/PlatformAnalysisPanel.tsx:267",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "986389b950bf71c7": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/platform/PlatformAnalysisPanel.tsx:333",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "ec312f81f2dd4d8b": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/privacy/DpoStudioPanel.tsx:177",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "f6e5385993cf2bd8": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/privacy/DpoStudioPanel.tsx:269",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "7d05aa5d07fe2fbb": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/privacy/DpoStudioPanel.tsx:348",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "1b0da57bd345915d": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/privacy/DpoStudioPanel.tsx:354",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "7fe5dfd563efbc58": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/privacy/DpoStudioPanel.tsx:466",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "746018357eff5e31": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/transfer/TransferAnalysisPanel.tsx:45",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "362bccffe58fdb58": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/transfer/TransferAnalysisPanel.tsx:51",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "7606e2b331b82b37": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/transfer/TransferAnalysisPanel.tsx:287",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "82df132e7a59492b": {
+      "detector": "ux-a11y-button-no-label",
+      "id": "a11y_button_no_label",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/travel/TripWorkspace.tsx:926",
+      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
+    },
+    "d5f85106686a6d72": {
+      "detector": "ux-route-empty-render",
+      "id": "route_empty_render",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/astronomy/page.tsx:122",
+      "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
+    },
+    "ff2b03c4bbc24647": {
+      "detector": "ux-route-empty-render",
+      "id": "route_empty_render",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/law/page.tsx:215",
+      "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
+    },
+    "48e980a2bbc99ddd": {
+      "detector": "ux-route-empty-render",
+      "id": "route_empty_render",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/app/lenses/marketing/page.tsx:92",
+      "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
+    },
+    "1a2fa2158071453b": {
+      "detector": "ux-modal-no-escape",
+      "id": "modal_no_escape",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/news/MyReaderDesk.tsx:83",
+      "message": "<ArticleDetailModal> has no onClose / onOpenChange / onDismiss / Esc-handler — opening it traps the user."
+    },
     "54bf106d12062895": {
       "detector": "command-injection",
       "id": "command_injection_summary",
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 33 child_process-importing file(s) of 8033; flagged 1"
+      "message": "Scanned 35 child_process-importing file(s) of 8736; flagged 1"
     },
     "6664f30f1a999701": {
       "detector": "command-injection",
@@ -675,13 +1555,21 @@
       "location": null,
       "message": "Authz-gate integrity check on the server.js global write-auth middleware"
     },
+    "4f08c966c683a25e": {
+      "detector": "authz-coverage",
+      "id": "authz_write_auth_bypass",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:6872",
+      "message": "\"/api/welding/portal/\" is in WRITE_AUTH_PUBLIC_PATHS — unauthenticated writes to this prefix bypass the global gate (intentional bypasses are baselined; a NEW one needs review)"
+    },
     "e121a6cd28c4c7a7": {
       "detector": "authz-coverage",
       "id": "authz_central_gate_ok",
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "server/server.js: global write-auth gate present (mount line 6650); 636 mutating route(s) behind it; 7 bypass path(s)"
+      "message": "server/server.js: global write-auth gate present (mount line 6894); 642 mutating route(s) behind it; 8 bypass path(s)"
     },
     "23522addb854db0a": {
       "detector": "frontend-unsafe-chain",
@@ -689,7 +1577,23 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3139 frontend file(s); 1461 had fetch/macro-sourced data; flagged 24"
+      "message": "Scanned 3410 frontend file(s); 1560 had fetch/macro-sourced data; flagged 28"
+    },
+    "02c6f6c840d3eeeb": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/art/ConceptArtBoard.tsx:66",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "eaddbb3361b3fdaa": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/artistry/ProjectStudio.tsx:153",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
     "db200602b6b399db": {
       "detector": "frontend-unsafe-chain",
@@ -707,36 +1611,44 @@
       "location": "concord-frontend/components/crafting/CraftingWorkbench.tsx:813",
       "message": "`r` chain reads .length with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.requirements.length`."
     },
-    "b726ed6374370be1": {
+    "f82e6c0e591e2c17": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/creative/CreativeBoard.tsx:111",
+      "location": "concord-frontend/components/creative/CreativeBoard.tsx:114",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "3b6ec0026d4a0870": {
+    "ee5ef7454382282f": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/creative/CreativeBoardsSection.tsx:43",
+      "location": "concord-frontend/components/creative/CreativeBoard.tsx:132",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "845024ce70f61ed7": {
+    "1b2c50adb1ab2d58": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/creative/CreativeBoardsSection.tsx:49",
+      "location": "concord-frontend/components/creative/CreativeBoardsSection.tsx:51",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "02325bf5614535bb": {
+    "a102380da2127113": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/creative-writing/CwBinderPanel.tsx:110",
+      "location": "concord-frontend/components/creative/CreativeBoardsSection.tsx:57",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "fdfced61c31fa147": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/creative-writing/CwBinderPanel.tsx:130",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
     "175c340dabede679": {
@@ -747,28 +1659,28 @@
       "location": "concord-frontend/components/debug/TraceViewer.tsx:135",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "43909583bb166c35": {
+    "00082590fc1c4d97": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/game-design/GdLevelPanel.tsx:63",
+      "location": "concord-frontend/components/game-design/GdLevelPanel.tsx:71",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "cd2c04854adb3058": {
+    "69abe0ba85890812": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/game-design/GdLevelPanel.tsx:412",
+      "location": "concord-frontend/components/game-design/GdLevelPanel.tsx:440",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "573c4ba08e3870a1": {
+    "a7eb2c5f18e3fa26": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/healthcare/PatientsPanel.tsx:40",
+      "location": "concord-frontend/components/healthcare/PatientsPanel.tsx:41",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
     "e9c6c99a96141078": {
@@ -795,44 +1707,52 @@
       "location": "concord-frontend/components/mentorship/MentorshipGoalsPanel.tsx:96",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "c6cc03a2bc8a0c34": {
+    "1ebee45e740746bd": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:96",
+      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:103",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "124e53563ab49ca2": {
+    "9edb4f8ea28860e6": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:106",
+      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:113",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "639269f4cfe75ac8": {
+    "3963e4ef94321e68": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:116",
+      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:123",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "dca1b99c0dd3aa86": {
+    "511c7a0b6fb097f7": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:125",
+      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:132",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "f767d0179f182fcb": {
+    "839477a0f4d401fa": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/message/ChannelList.tsx:55",
+      "location": "concord-frontend/components/message/ChannelList.tsx:57",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "b56721c1a6a9b733": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/music/MusicLibraryPanel.tsx:103",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
     "30e8ff59869a7526": {
@@ -843,12 +1763,12 @@
       "location": "concord-frontend/components/productivity/ProductivityQuickAddPanel.tsx:59",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
-    "e3eb38deaac55fb9": {
+    "a12e22bc0d0fe023": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/reflection/RfPromptsPanel.tsx:43",
+      "location": "concord-frontend/components/reflection/RfPromptsPanel.tsx:51",
       "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
     },
     "77fad471c5951891": {
@@ -859,12 +1779,12 @@
       "location": "concord-frontend/components/world/ZoneBadge.tsx:54",
       "message": "`data` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `data.zone"
     },
-    "754acec4ef2e3cd5": {
+    "e25310cb2185bf38": {
       "detector": "frontend-unsafe-chain",
       "id": "unsafe_chain_partial_guard",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-creator/DraftEditor.tsx:120",
+      "location": "concord-frontend/components/world-creator/DraftEditor.tsx:193",
       "message": "`data` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `data.resu"
     },
     "e7485460ab57c61c": {
@@ -881,7 +1801,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3240 frontend file(s) + 2201 server file(s); flagged 0."
+      "message": "Scanned 3514 frontend file(s) + 2237 server file(s); flagged 0."
     },
     "d462654fb51261ca": {
       "detector": "fabrication-mechanism",
@@ -889,7 +1809,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 5646 file(s); flagged 0"
+      "message": "Scanned 5960 file(s); flagged 0"
     },
     "d0df7c8fcaee4508": {
       "detector": "workflow-gate-integrity",
@@ -905,7 +1825,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 213 money-shaped file(s) of 3895 under server/; flagged 7"
+      "message": "Scanned 223 money-shaped file(s) of 4098 under server/; flagged 7"
     },
     "28713dd4b913d372": {
       "detector": "money-txn-hygiene",
@@ -923,12 +1843,12 @@
       "location": "server/economy/reserves.js:54",
       "message": "initReservesSchema() performs 3 money-table write(s) (3 direct + 0 delegated, tables: reserves_balance) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "3858d6b9cfdeca28": {
+    "8892229ebb3d2437": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/economy/stripe.js:179",
+      "location": "server/economy/stripe.js:188",
       "message": "handleWebhook() performs 2 money-table write(s) (1 direct + 1 delegated, tables: economy_withdrawals) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
     "167d4c65d978fff2": {
@@ -947,20 +1867,20 @@
       "location": "server/routes/wagers.js:12",
       "message": "createWagersRouter() performs 5 money-table write(s) (0 direct + 5 delegated) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "cd261ac0d8af413a": {
+    "b5287322d0894ab5": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:70440",
+      "location": "server/server.js:72012",
       "message": "creditWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "45984752869dee8b": {
+    "12da093bf3f5ef74": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:70500",
+      "location": "server/server.js:72072",
       "message": "debitWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
     "577671649c5313ca": {
@@ -969,7 +1889,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 87 realtimeEmit-mentioning file(s) of 8033; 221 call site(s); flagged 0"
+      "message": "Scanned 89 realtimeEmit-mentioning file(s) of 8736; 221 call site(s); flagged 0"
     },
     "da8b979a5bb58c77": {
       "detector": "stale-lying-test",
@@ -977,7 +1897,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 46 readFileSync-using test file(s) of 575 test file(s); flagged 13"
+      "message": "Scanned 62 readFileSync-using test file(s) of 796 test file(s); flagged 27"
     },
     "f00cbcac29b192e3": {
       "detector": "stale-lying-test",
@@ -1059,6 +1979,86 @@
       "location": "concord-frontend/tests/avatar-system-worker-wired.test.tsx:36",
       "message": "it(\"falls back to inline synthesizeGait when worker returns null\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled,"
     },
+    "3a36deb83e8bda5f": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/components/water-renderer-texture-dispose.test.tsx:60",
+      "message": "it(\"the effect dependency array uses the coarse timeBucket, not the raw continuous …\") claims a runtime behavior but only regex/substring-matches source text (waterSrc) — no render/fireEvent/dispatchE"
+    },
+    "94d32deeba9b571c": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/concordia-scene-resource-leak-fix.test.tsx:85",
+      "message": "it(\"cleanup calls composerRef.current.dispose() and nulls the ref\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, s"
+    },
+    "14d2a8ad1ae0fdba": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/concordia-scene-resource-leak-fix.test.tsx:89",
+      "message": "it(\"composer disposal sits in the same cleanup block as the renderer.dispose()/phys…\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/"
+    },
+    "494545f3a1639849": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/concordia-scene-resource-leak-fix.test.tsx:98",
+      "message": "it(\"declares a ragdollBridgeCleanupRef mirroring the existing domeCleanupRef pattern\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/"
+    },
+    "684bb7cf04b8f4d8": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/concordia-scene-resource-leak-fix.test.tsx:103",
+      "message": "it(\"the old dead __detachRagdoll stash (never read anywhere) is gone\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHaveBeenCalled"
+    },
+    "3edf4b7df361dd7a": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/concordia-scene-resource-leak-fix.test.tsx:107",
+      "message": "it(\"stores the ragdoll bridge detach() into the ref, guarded by the disposed flag r…\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/"
+    },
+    "5750a14287a8117b": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/concordia-scene-resource-leak-fix.test.tsx:114",
+      "message": "it(\"cleanup invokes and nulls ragdollBridgeCleanupRef alongside domeCleanupRef\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHave"
+    },
+    "d5fce5a37d7fbd8f": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/export-toolkit-decrypt-archive.test.tsx:24",
+      "message": "it(\"calls the real export.decrypt-archive macro with password/salt/ciphertextBase64…\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/"
+    },
+    "cff916c75383aad7": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/meta-lens-inventory-refresh.test.tsx:22",
+      "message": "it(\"calls the real POST /api/inventory/refresh endpoint\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it canno"
+    },
+    "4f2c934f8455838a": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/meta-lens-inventory-refresh.test.tsx:45",
+      "message": "it(\"wires the button to the handler with a real loading state (not a static label)\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/to"
+    },
     "a736ba8d27ae037b": {
       "detector": "stale-lying-test",
       "id": "stale_lying_test",
@@ -1075,6 +2075,38 @@
       "location": "concord-frontend/tests/npc-action-menu-wired.test.tsx:154",
       "message": "it(\"ConcordiaScene includes screenX + screenY in the dispatch payload\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHaveBeenCalle"
     },
+    "b14d6363791f1494": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/obsidian-vault-export.test.ts:171",
+      "message": "it(\"imports the real fflate zip primitives (never a mock/stub library)\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHaveBeenCall"
+    },
+    "290d19bb02b0625b": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/obsidian-vault-export.test.ts:175",
+      "message": "it(\"calls the real export.obsidian macro via lensRun, not a hardcoded/fabricated fi…\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/"
+    },
+    "d9f4997ac7d6bdd9": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/obsidian-vault-export.test.ts:179",
+      "message": "it(\"honestly reports an empty corpus instead of downloading a fabricated/empty arch…\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/"
+    },
+    "8412955b3d8787e9": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/obsidian-vault-export.test.ts:188",
+      "message": "it(\"never truncates the DTU set — no slice/limit applied to the macro-returned file…\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/"
+    },
     "daf2e1110ca7c2f5": {
       "detector": "stale-lying-test",
       "id": "stale_lying_test",
@@ -1089,7 +2121,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "10270 registered (domain, macro) pairs; scanned 1422 frontend file(s) with macro-run call sites, checked 5911 literal call site(s), flagged 0"
+      "message": "10616 registered (domain, macro) pairs; scanned 1602 frontend file(s) with macro-run call sites, checked 6789 literal call site(s), flagged 0"
     },
     "b1edad482c167c53": {
       "detector": "hardcoded-literal-data-prop",
@@ -1097,7 +2129,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 2826 JSX file(s) of 3201; flagged 0"
+      "message": "Scanned 3053 JSX file(s) of 3618; flagged 0"
     }
   }
 }

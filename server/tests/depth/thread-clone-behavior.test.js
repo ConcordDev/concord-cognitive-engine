@@ -34,8 +34,18 @@ const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
 describe("thread.thread-clone — registration", () => {
-  it("is registered", () => {
+  it("is registered and produces a real, independently-retrievable clone record", () => {
     assert.ok(ACTIONS.has("thread.thread-clone"));
+    // Beyond mere registration: dispatch it with real input and round-trip
+    // the result through draft-detail — proving the macro actually creates
+    // a persisted, separately-addressable record, not just returns ok:true.
+    const src = call("thread-draft", ctxA, { content: "registration round-trip source" }).result.draft;
+    const r = call("thread-clone", ctxA, { id: src.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.draft.clonedFromId, src.id);
+    const fetched = call("draft-detail", ctxA, { id: r.result.draft.id });
+    assert.equal(fetched.ok, true);
+    assert.equal(fetched.result.draft.id, r.result.draft.id);
   });
 });
 
