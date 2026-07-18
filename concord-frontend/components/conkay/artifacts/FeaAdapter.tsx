@@ -14,11 +14,21 @@
 // unchanged). The walk start pose is derived from the frame's REAL node bounding
 // box — you walk through the actual solved geometry at its real metre scale.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FEAResultViewer } from '@/components/engineering/FEAResultViewer';
-import type { ConkayFeaArtifact } from '@/lib/conkay/artifact-kinds';
+import { detectArtifact, type ConkayFeaArtifact } from '@/lib/conkay/artifact-kinds';
+import { lensRun } from '@/lib/api/client';
+import type { FeaModel } from '@/lib/conkay/fea-iterate';
 import { StepInControls } from './StepInControls';
 import { StepInToggle } from './StepInToggle';
+import { FeaIterateBar } from './FeaIterateBar';
+
+/** Max utilization out of the solver summary, or null. Red > 1, green < 1. */
+function maxUtil(fea: ConkayFeaArtifact['fea']): number | null {
+  const s = fea.summary as { maxUtilization?: unknown } | null;
+  const v = s ? Number(s.maxUtilization) : NaN;
+  return Number.isFinite(v) ? v : null;
+}
 
 /** Frame the walk cam from the real node bounding box: aim at the centroid,
  *  start a step back at mid-height. Pure geometry — no invented dimensions. */
@@ -41,13 +51,52 @@ function walkPoseFromNodes(
 }
 
 export function FeaAdapter({ artifact }: { artifact: ConkayFeaArtifact }) {
-  const { fea } = artifact;
   const [mode, setMode] = useState<'orbit' | 'walk'>('orbit');
+  // S3-c — the working analysis the Iterate loop swaps. Starts as the real
+  // solve; a re-solve replaces it. `resolvedFrom` remembers the pre-re-solve
+  // max utilization so the frame recolor is backed by an honest before→after
+  // number, not just a visual. A fresh artifact prop resets everything.
+  const [working, setWorking] = useState<ConkayFeaArtifact>(artifact);
+  const [edited, setEdited] = useState(false);
+  const [beforeUtil, setBeforeUtil] = useState<number | null>(null);
+  useEffect(() => {
+    setWorking(artifact);
+    setEdited(false);
+    setBeforeUtil(null);
+  }, [artifact]);
+
+  const fea = working.fea;
   const hasGeometry = fea.nodes.length > 0;
   const pose = useMemo(
     () => (hasGeometry ? walkPoseFromNodes(fea.nodes) : null),
     [hasGeometry, fea.nodes],
   );
+  const afterUtil = maxUtil(fea);
+
+  // Re-run the REAL solver with the transformed model, swap in its result.
+  const onResolve = async (newInput: { model: FeaModel }): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const env = await lensRun('engineering', 'runFEA', newInput);
+      if (!env?.data?.ok || !env.data.result) {
+        return { ok: false, error: env?.data?.error ?? 'the solve returned no result' };
+      }
+      const next = detectArtifact('engineering', 'runFEA', newInput, env.data.result);
+      if (!next || next.kind !== 'fea-frame') {
+        return { ok: false, error: 'the solver returned no renderable frame' };
+      }
+      setBeforeUtil(maxUtil(working.fea));
+      setWorking(next);
+      setEdited(true);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'request failed' };
+    }
+  };
+  const revert = () => {
+    setWorking(artifact);
+    setEdited(false);
+    setBeforeUtil(null);
+  };
 
   return (
     <div data-testid="ck-adapter-fea-frame" className="w-full">
@@ -72,6 +121,26 @@ export function FeaAdapter({ artifact }: { artifact: ConkayFeaArtifact }) {
           />
         )}
       </div>
+
+      {/* Before→after max utilization — the honest number behind the recolor. */}
+      {edited && beforeUtil != null && afterUtil != null && (
+        <div data-testid="ck-fea-util-delta" className="mt-2 px-1 font-mono text-[11px] text-cyan-100/80">
+          max utilization{' '}
+          <span className={beforeUtil > 1 ? 'text-rose-300' : 'text-emerald-300'}>{beforeUtil.toFixed(2)}</span>
+          {' → '}
+          <span className={afterUtil > 1 ? 'text-rose-300' : 'text-emerald-300'}>{afterUtil.toFixed(2)}</span>
+          {beforeUtil > 1 && afterUtil <= 1 && <span className="ml-1 text-emerald-300">now passing</span>}
+        </div>
+      )}
+
+      {hasGeometry && (
+        <FeaIterateBar
+          sourceInput={working.sourceInput}
+          dirty={edited}
+          onResolve={onResolve}
+          onRevert={revert}
+        />
+      )}
       {/* Honest caveat about the NATURE of the numbers — a deterministic model,
           not a certification of real-world behaviour (mirrors ForwardSimPanel). */}
       <div data-testid="ck-adapter-fea-caveat" className="mt-2 px-1 text-[10px] text-amber-300/60">
