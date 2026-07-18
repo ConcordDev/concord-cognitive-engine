@@ -208,5 +208,397 @@
     "answerHumanSummary": "Every 15 seconds.",
     "difficulty": 2,
     "tags": ["heartbeat", "architecture"]
+  },
+  {
+    "id": "gk-001",
+    "questionText": "What is the chemical symbol for gold?",
+    "answerHumanSummary": "Au (from the Latin \"aurum\").",
+    "difficulty": 1,
+    "tags": ["science", "chemistry"]
+  },
+  {
+    "id": "gk-002",
+    "questionText": "Which planet is known as the Red Planet?",
+    "answerHumanSummary": "Mars.",
+    "difficulty": 1,
+    "tags": ["science", "astronomy"]
+  },
+  {
+    "id": "gk-003",
+    "questionText": "Who wrote the play \"Romeo and Juliet\"?",
+    "answerHumanSummary": "William Shakespeare.",
+    "difficulty": 1,
+    "tags": ["arts", "literature"]
+  },
+  {
+    "id": "gk-004",
+    "questionText": "What is the largest ocean on Earth by surface area?",
+    "answerHumanSummary": "The Pacific Ocean.",
+    "difficulty": 1,
+    "tags": ["geography", "oceans"]
+  },
+  {
+    "id": "gk-005",
+    "questionText": "In what year did World War II end?",
+    "answerHumanSummary": "1945.",
+    "difficulty": 2,
+    "tags": ["history", "20th-century"]
+  },
+  {
+    "id": "gk-006",
+    "questionText": "What is the smallest prime number?",
+    "answerHumanSummary": "2 (the only even prime number; 1 is not considered prime).",
+    "difficulty": 2,
+    "tags": ["math", "numbers"]
+  },
+  {
+    "id": "gk-007",
+    "questionText": "Which artist painted the Mona Lisa?",
+    "answerHumanSummary": "Leonardo da Vinci.",
+    "difficulty": 1,
+    "tags": ["arts", "painting"]
+  },
+  {
+    "id": "gk-008",
+    "questionText": "What is the capital of Australia?",
+    "answerHumanSummary": "Canberra (not Sydney, which is the largest city but not the capital).",
+    "difficulty": 2,
+    "tags": ["geography", "capitals"]
+  },
+  {
+    "id": "gk-009",
+    "questionText": "In the standard seven-continent model, how many continents are there?",
+    "answerHumanSummary": "Seven — Africa, Antarctica, Asia, Australia/Oceania, Europe, North America, South America.",
+    "difficulty": 1,
+    "tags": ["geography"]
+  },
+  {
+    "id": "gk-010",
+    "questionText": "Which gas do plants primarily absorb from the atmosphere for photosynthesis?",
+    "answerHumanSummary": "Carbon dioxide.",
+    "difficulty": 1,
+    "tags": ["science", "biology"]
+  },
+  {
+    "id": "gk-011",
+    "questionText": "Which scientist developed the theory of general relativity?",
+    "answerHumanSummary": "Albert Einstein.",
+    "difficulty": 2,
+    "tags": ["science", "physics"]
+  },
+  {
+    "id": "gk-012",
+    "questionText": "Which river is traditionally cited as the longest in the world?",
+    "answerHumanSummary": "The Nile River (~6,650 km); the Amazon is a close, sometimes-disputed rival depending on measurement method.",
+    "difficulty": 2,
+    "tags": ["geography", "rivers"]
+  },
+  {
+    "id": "gk-013",
+    "questionText": "In Greek mythology, who is the king of the gods?",
+    "answerHumanSummary": "Zeus.",
+    "difficulty": 1,
+    "tags": ["mythology", "greek"]
+  },
+  {
+    "id": "gk-014",
+    "questionText": "What is the hardest naturally occurring substance on Earth?",
+    "answerHumanSummary": "Diamond.",
+    "difficulty": 1,
+    "tags": ["science"]
+  },
+  {
+    "id": "gk-015",
+    "questionText": "Which country gifted the Statue of Liberty to the United States?",
+    "answerHumanSummary": "France (dedicated in 1886).",
+    "difficulty": 2,
+    "tags": ["history"]
+  },
+  {
+    "id": "gk-016",
+    "questionText": "How many bones are in the adult human body?",
+    "answerHumanSummary": "206.",
+    "difficulty": 3,
+    "tags": ["science", "biology"]
+  },
+  {
+    "id": "gk-017",
+    "questionText": "What is the currency of Japan?",
+    "answerHumanSummary": "The yen.",
+    "difficulty": 1,
+    "tags": ["geography", "economics"]
+  },
+  {
+    "id": "gk-018",
+    "questionText": "Who painted \"The Starry Night\"?",
+    "answerHumanSummary": "Vincent van Gogh.",
+    "difficulty": 1,
+    "tags": ["arts", "painting"]
+  },
+  {
+    "id": "gk-019",
+    "questionText": "What is the approximate speed of light in a vacuum?",
+    "answerHumanSummary": "About 299,792 kilometers per second (~300,000 km/s).",
+    "difficulty": 3,
+    "tags": ["science", "physics"]
+  },
+  {
+    "id": "gk-020",
+    "questionText": "What is the tallest mountain in the world above sea level?",
+    "answerHumanSummary": "Mount Everest.",
+    "difficulty": 1,
+    "tags": ["geography", "mountains"]
+  },
+  {
+    "id": "gk-021",
+    "questionText": "Which composer wrote the Ninth Symphony, whose choral finale sets \"Ode to Joy\"?",
+    "answerHumanSummary": "Ludwig van Beethoven.",
+    "difficulty": 2,
+    "tags": ["arts", "music"]
+  },
+  {
+    "id": "gk-022",
+    "questionText": "What is the largest mammal in the world?",
+    "answerHumanSummary": "The blue whale.",
+    "difficulty": 1,
+    "tags": ["science", "biology"]
+  },
+  {
+    "id": "gk-023",
+    "questionText": "In what year did the Berlin Wall fall?",
+    "answerHumanSummary": "1989.",
+    "difficulty": 2,
+    "tags": ["history", "20th-century"]
+  },
+  {
+    "id": "gk-024",
+    "questionText": "What is the chemical formula for water?",
+    "answerHumanSummary": "H2O.",
+    "difficulty": 1,
+    "tags": ["science", "chemistry"]
+  },
+  {
+    "id": "gk-025",
+    "questionText": "Who was the first person to walk on the Moon?",
+    "answerHumanSummary": "Neil Armstrong (Apollo 11, 1969).",
+    "difficulty": 1,
+    "tags": ["history", "space"]
+  },
+  {
+    "id": "gk-026",
+    "questionText": "What is the smallest planet in our solar system?",
+    "answerHumanSummary": "Mercury.",
+    "difficulty": 1,
+    "tags": ["science", "astronomy"]
+  },
+  {
+    "id": "gk-027",
+    "questionText": "Which Shakespeare play features the characters Rosencrantz and Guildenstern?",
+    "answerHumanSummary": "Hamlet.",
+    "difficulty": 3,
+    "tags": ["arts", "literature"]
+  },
+  {
+    "id": "gk-028",
+    "questionText": "What is the capital of Canada?",
+    "answerHumanSummary": "Ottawa (not Toronto, which is the largest city).",
+    "difficulty": 2,
+    "tags": ["geography", "capitals"]
+  },
+  {
+    "id": "gk-029",
+    "questionText": "Which element has the atomic number 1?",
+    "answerHumanSummary": "Hydrogen.",
+    "difficulty": 2,
+    "tags": ["science", "chemistry"]
+  },
+  {
+    "id": "gk-030",
+    "questionText": "Who wrote the novel \"Pride and Prejudice\"?",
+    "answerHumanSummary": "Jane Austen.",
+    "difficulty": 1,
+    "tags": ["arts", "literature"]
+  },
+  {
+    "id": "gk-031",
+    "questionText": "What is the largest hot desert in the world?",
+    "answerHumanSummary": "The Sahara Desert (Antarctica is technically the largest desert overall, but that's a cold desert).",
+    "difficulty": 2,
+    "tags": ["geography"]
+  },
+  {
+    "id": "gk-032",
+    "questionText": "How many players from each team are on the field at once in standard soccer (association football)?",
+    "answerHumanSummary": "11.",
+    "difficulty": 1,
+    "tags": ["sports"]
+  },
+  {
+    "id": "gk-033",
+    "questionText": "What is the freezing point of water in Celsius?",
+    "answerHumanSummary": "0 degrees Celsius.",
+    "difficulty": 1,
+    "tags": ["science"]
+  },
+  {
+    "id": "gk-034",
+    "questionText": "Which ancient civilization built the pyramids of Giza?",
+    "answerHumanSummary": "The Ancient Egyptians.",
+    "difficulty": 1,
+    "tags": ["history"]
+  },
+  {
+    "id": "gk-035",
+    "questionText": "What is the largest organ in the human body?",
+    "answerHumanSummary": "The skin.",
+    "difficulty": 2,
+    "tags": ["science", "biology"]
+  },
+  {
+    "id": "gk-036",
+    "questionText": "Who composed the opera \"The Magic Flute\"?",
+    "answerHumanSummary": "Wolfgang Amadeus Mozart.",
+    "difficulty": 3,
+    "tags": ["arts", "music"]
+  },
+  {
+    "id": "gk-037",
+    "questionText": "What is the capital city of Egypt?",
+    "answerHumanSummary": "Cairo.",
+    "difficulty": 1,
+    "tags": ["geography", "capitals"]
+  },
+  {
+    "id": "gk-038",
+    "questionText": "Which scientist formulated the laws of motion and universal gravitation?",
+    "answerHumanSummary": "Isaac Newton.",
+    "difficulty": 2,
+    "tags": ["science", "physics"]
+  },
+  {
+    "id": "gk-039",
+    "questionText": "How many interlocking rings are on the Olympic flag?",
+    "answerHumanSummary": "5.",
+    "difficulty": 1,
+    "tags": ["sports"]
+  },
+  {
+    "id": "gk-040",
+    "questionText": "In what year did the RMS Titanic sink?",
+    "answerHumanSummary": "1912.",
+    "difficulty": 2,
+    "tags": ["history"]
+  },
+  {
+    "id": "gk-041",
+    "questionText": "What is the main language spoken in Brazil?",
+    "answerHumanSummary": "Portuguese.",
+    "difficulty": 1,
+    "tags": ["geography", "language"]
+  },
+  {
+    "id": "gk-042",
+    "questionText": "Which planet is best known for its prominent ring system?",
+    "answerHumanSummary": "Saturn.",
+    "difficulty": 1,
+    "tags": ["science", "astronomy"]
+  },
+  {
+    "id": "gk-043",
+    "questionText": "Which organelle is commonly called \"the powerhouse of the cell\"?",
+    "answerHumanSummary": "The mitochondrion.",
+    "difficulty": 2,
+    "tags": ["science", "biology"]
+  },
+  {
+    "id": "gk-044",
+    "questionText": "Who wrote the \"Harry Potter\" book series?",
+    "answerHumanSummary": "J.K. Rowling.",
+    "difficulty": 1,
+    "tags": ["arts", "literature"]
+  },
+  {
+    "id": "gk-045",
+    "questionText": "What is the tallest uninterrupted waterfall in the world?",
+    "answerHumanSummary": "Angel Falls, in Venezuela (~979 m).",
+    "difficulty": 3,
+    "tags": ["geography"]
+  },
+  {
+    "id": "gk-046",
+    "questionText": "Who is credited with inventing the World Wide Web?",
+    "answerHumanSummary": "Tim Berners-Lee (at CERN, 1989-1991).",
+    "difficulty": 2,
+    "tags": ["technology", "history"]
+  },
+  {
+    "id": "gk-047",
+    "questionText": "How many strings does a standard violin have?",
+    "answerHumanSummary": "4.",
+    "difficulty": 1,
+    "tags": ["arts", "music"]
+  },
+  {
+    "id": "gk-048",
+    "questionText": "What is the largest country in the world by land area?",
+    "answerHumanSummary": "Russia.",
+    "difficulty": 1,
+    "tags": ["geography"]
+  },
+  {
+    "id": "gk-049",
+    "questionText": "Who was the first President of the United States?",
+    "answerHumanSummary": "George Washington.",
+    "difficulty": 1,
+    "tags": ["history"]
+  },
+  {
+    "id": "gk-050",
+    "questionText": "What is the square root of 144?",
+    "answerHumanSummary": "12.",
+    "difficulty": 1,
+    "tags": ["math"]
+  },
+  {
+    "id": "gk-051",
+    "questionText": "Which gas makes up the majority of Earth's atmosphere by volume?",
+    "answerHumanSummary": "Nitrogen (about 78%).",
+    "difficulty": 2,
+    "tags": ["science"]
+  },
+  {
+    "id": "gk-052",
+    "questionText": "What is the scientific study of earthquakes called?",
+    "answerHumanSummary": "Seismology.",
+    "difficulty": 3,
+    "tags": ["science"]
+  },
+  {
+    "id": "gk-053",
+    "questionText": "What is the atomic number of uranium?",
+    "answerHumanSummary": "92.",
+    "difficulty": 4,
+    "tags": ["science", "chemistry"]
+  },
+  {
+    "id": "gk-054",
+    "questionText": "Which metallic element has the chemical symbol \"Sn\"?",
+    "answerHumanSummary": "Tin (from the Latin \"stannum\").",
+    "difficulty": 4,
+    "tags": ["science", "chemistry"]
+  },
+  {
+    "id": "gk-055",
+    "questionText": "What is the collective noun for a group of crows?",
+    "answerHumanSummary": "A murder (of crows).",
+    "difficulty": 3,
+    "tags": ["nature", "language"]
+  },
+  {
+    "id": "gk-056",
+    "questionText": "Which composer wrote \"The Well-Tempered Clavier\"?",
+    "answerHumanSummary": "Johann Sebastian Bach.",
+    "difficulty": 4,
+    "tags": ["arts", "music"]
   }
 ]

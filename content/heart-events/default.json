@@ -31,5 +31,51 @@
       { "speaker": "narrator", "line": "They take your hand the way a mason sets a keystone: slowly, certain, as though everything afterward will rest on whether it holds. It holds." }
     ],
     "affinityBonus": 0.04
+  },
+  {
+    "milestoneId": "small_kindnesses",
+    "threshold": 0.15,
+    "title": "The Second Look",
+    "scene": [
+      { "speaker": "partner", "line": "You again. That's twice this week you've turned up somewhere I didn't expect you." },
+      { "speaker": "partner", "line": "I'm not complaining. I only noticed. I notice more about you than I mean to, lately." },
+      { "speaker": "narrator", "line": "They say it lightly, already turning back to their work, but the corner of their mouth hasn't quite finished smiling." }
+    ],
+    "affinityBonus": 0.03
+  },
+  {
+    "milestoneId": "learning_the_shape",
+    "threshold": 0.45,
+    "title": "How You Take Your Mornings",
+    "scene": [
+      { "speaker": "partner", "line": "I've started setting out two cups instead of one. Force of habit, or maybe just hope wearing a habit's clothes." },
+      { "speaker": "partner", "line": "You take yours black, no sugar, and you always look faintly surprised that I remembered. I always will. That's not a small thing to me." },
+      { "speaker": "narrator", "line": "The kettle clicks off. Neither of you moves to answer it right away — the ordinary moment has become, somehow, worth staying inside." }
+    ],
+    "affinityBonus": 0.05
+  },
+  {
+    "milestoneId": "the_harder_conversation",
+    "threshold": 0.75,
+    "title": "What the Silence Cost",
+    "scene": [
+      { "speaker": "partner", "line": "You went quiet on me for three days after the raid. I told myself it was nothing. It wasn't nothing." },
+      { "speaker": "partner", "line": "I don't need you to be fearless. I need you to tell me when you're not, instead of disappearing into it alone. Can you do that? Even the ugly parts?" },
+      { "speaker": "narrator", "line": "It isn't a comfortable question, and you both know it. But they wait for your answer instead of filling the space for you — which is its own kind of trust." },
+      { "speaker": "partner", "line": "Good. Then we're actually building something, not just surviving next to each other." }
+    ],
+    "affinityBonus": 0.05
+  },
+  {
+    "milestoneId": "the_long_field",
+    "threshold": 0.95,
+    "title": "The Long Field",
+    "scene": [
+      { "speaker": "narrator", "line": "Years, now, since the vows — long enough that the wedding feels like a story you both tell about two younger, more nervous people." },
+      { "speaker": "partner", "line": "I used to think devotion was a single moment you arrive at. It isn't. It's this — the field, the quiet, the two of us not needing to fill it with anything." },
+      { "speaker": "partner", "line": "I would choose this exact ordinary evening again, out of every evening there could have been. I wanted you to know that, plainly, before either of us forgets to say it." },
+      { "speaker": "narrator", "line": "The light goes gold and then gray. Neither of you moves to go inside. There is nowhere else, tonight, either of you would rather be." }
+    ],
+    "affinityBonus": 0.03
   }
 ]
