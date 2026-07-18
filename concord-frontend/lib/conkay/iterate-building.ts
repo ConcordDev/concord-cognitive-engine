@@ -101,3 +101,20 @@ export function rederiveBuildingArtifact(
   const next = detectArtifact('game-design', 'building-publish', newInput, { ok: true, buildingId });
   return next && next.kind === 'building' ? next : null;
 }
+
+/** The world the building was published into (from its macro input), or null. */
+export function buildingWorldId(artifact: ConkayBuildingArtifact): string | null {
+  const w = artifact.sourceInput?.worldId;
+  return typeof w === 'string' && w.trim() ? w.trim() : null;
+}
+
+/**
+ * S2-b (building) — whether "Step inside" is honest for this artifact. True only
+ * when it's a PUBLISHED building (real dtuId + worldId) that has NOT been locally
+ * edited: walking mounts the real persisted world, so an un-published edit (whose
+ * new dimensions aren't in the world yet) would show the OLD building — dishonest.
+ * The gate reuses the ownership signal: publish/revert the edit, then walk it.
+ */
+export function canStepInside(artifact: ConkayBuildingArtifact, edited: boolean): boolean {
+  return !edited && !!artifact.dtuId && !!buildingWorldId(artifact);
+}

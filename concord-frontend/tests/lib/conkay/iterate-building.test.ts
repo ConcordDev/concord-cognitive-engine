@@ -3,7 +3,12 @@
 // real detectArtifact registry. Pins that iterate never fabricates a change and
 // that a re-derive is a REAL render of the new input (not a hand-patched copy).
 import { describe, it, expect } from 'vitest';
-import { proposeBuildingIteration, rederiveBuildingArtifact } from '@/lib/conkay/iterate-building';
+import {
+  proposeBuildingIteration,
+  rederiveBuildingArtifact,
+  buildingWorldId,
+  canStepInside,
+} from '@/lib/conkay/iterate-building';
 import { detectArtifact, type ConkayBuildingArtifact } from '@/lib/conkay/artifact-kinds';
 
 const SRC = {
@@ -16,6 +21,13 @@ const SRC = {
 
 function buildArtifact(input: Record<string, unknown>): ConkayBuildingArtifact {
   const a = detectArtifact('game-design', 'building-publish', input, { ok: true, buildingId: 'b1' });
+  if (!a || a.kind !== 'building') throw new Error('fixture failed to normalize');
+  return a;
+}
+
+/** A PUBLISHED building fixture — result carries a real dtuId (so it's ownable + walkable). */
+function buildArtifactPublished(input: Record<string, unknown>): ConkayBuildingArtifact {
+  const a = detectArtifact('game-design', 'building-publish', input, { ok: true, buildingId: 'b1', dtuId: 'dtu_1' });
   if (!a || a.kind !== 'building') throw new Error('fixture failed to normalize');
   return a;
 }
@@ -47,6 +59,22 @@ describe('proposeBuildingIteration — honest proposal or rejection', () => {
     const atMax = { ...SRC, dimensions: { width: 6, height: 500, depth: 6 } };
     const p = proposeBuildingIteration(atMax, 'make it taller by 10m');
     expect(p).toMatchObject({ ok: false, reason: 'no_change' });
+  });
+});
+
+describe('canStepInside — honest gate for "Step inside"', () => {
+  const PUBLISHED_INPUT = { ...SRC, worldId: 'world_hub' };
+  const published = buildArtifactPublished(PUBLISHED_INPUT);
+
+  it('reads the world the building was published into', () => {
+    expect(buildingWorldId(published)).toBe('world_hub');
+    expect(buildingWorldId(buildArtifact(SRC))).toBeNull(); // no worldId in input
+  });
+
+  it('allowed only for a published, un-edited building', () => {
+    expect(canStepInside(published, false)).toBe(true);
+    expect(canStepInside(published, true)).toBe(false); // edited → would show old dims
+    expect(canStepInside(buildArtifact(SRC), false)).toBe(false); // no dtuId/worldId
   });
 });
 
