@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Store, Loader2, ShoppingCart, Search, Plus, Trash2, Check, X, Star, Receipt, ExternalLink } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface StoreListing {
   listingId: string;
@@ -254,7 +255,7 @@ export function StorefrontPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2 flex-wrap">
           <Store className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Storefront</span>
@@ -273,7 +274,7 @@ export function StorefrontPanel() {
             <ShoppingCart className="w-3 h-3" />
             Cart
             {cartCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-orange-500 text-black font-bold">
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-orange-500 text-black font-bold tabular-nums">
                 {cartCount}
               </span>
             )}
@@ -338,9 +339,21 @@ export function StorefrontPanel() {
         {/* Catalog */}
         <div className="p-4">
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-xs text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading catalog…
-            </div>
+            <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" aria-label="Loading catalog">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <li key={i} className="rounded-lg border border-white/10 bg-black/40 overflow-hidden flex flex-col">
+                  <Skeleton variant="block" className="aspect-square rounded-none" />
+                  <div className="p-2.5 space-y-1.5">
+                    <Skeleton variant="line" width="85%" />
+                    <Skeleton variant="line" width="45%" height={10} />
+                    <div className="flex items-center justify-between pt-1.5">
+                      <Skeleton variant="line" width={44} height={14} />
+                      <Skeleton variant="block" width={48} height={20} className="rounded" />
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           ) : listings.length === 0 ? (
             <div className="py-12 text-center text-xs text-gray-400">
               <Store className="w-7 h-7 mx-auto mb-2 opacity-30" />
@@ -368,7 +381,7 @@ export function StorefrontPanel() {
                   <div className="p-2.5 space-y-1.5 flex flex-col flex-1">
                     <button type="button" onClick={() => openListing(l)} className="text-sm text-white font-medium truncate text-left hover:text-orange-300">{l.title}</button>
                     <button type="button" onClick={() => openShop(l.sellerId)} className="text-[10px] text-gray-400 truncate text-left hover:text-orange-300 w-fit">{l.shopName}</button>
-                    <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                    <div className="flex items-center gap-2 text-[10px] text-gray-400 tabular-nums">
                       {l.avgRating !== null ? (
                         <span className="text-amber-300">
                           ★ {l.avgRating} ({l.reviewCount})
@@ -379,7 +392,7 @@ export function StorefrontPanel() {
                       {l.salesCount > 0 && <span>· {l.salesCount} sold</span>}
                     </div>
                     <div className="mt-auto flex items-center justify-between pt-1.5">
-                      <span className="text-sm font-mono text-orange-300">
+                      <span className="text-sm font-mono tabular-nums text-orange-300">
                         ${l.priceUsd.toFixed(2)}
                       </span>
                       <button
@@ -403,9 +416,9 @@ export function StorefrontPanel() {
       {showCart && (
         <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setShowCart(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div
-            className="w-full max-w-md bg-[#0d1117] border-l border-orange-500/20 h-full overflow-y-auto"
+            className="w-full max-w-md bg-lattice-deep border-l border-orange-500/20 h-full overflow-y-auto"
             onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
+            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-lattice-deep">
               <ShoppingCart className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200">Your cart</span>
               <button onClick={() => setShowCart(false)} className="ml-auto text-gray-400 hover:text-white" aria-label="Close cart">
@@ -419,11 +432,11 @@ export function StorefrontPanel() {
                   <div className="flex items-center gap-2 text-emerald-300 font-semibold">
                     <Check className="w-4 h-4" /> Order {checkout.number} placed
                   </div>
-                  <div className="text-emerald-100">
+                  <div className="text-emerald-100 tabular-nums">
                     {checkout.orders.length} order{checkout.orders.length !== 1 ? 's' : ''} ·{' '}
                     <span className="font-mono">${checkout.grandTotalUsd.toFixed(2)}</span>
                   </div>
-                  <ul className="space-y-0.5 text-emerald-200/80">
+                  <ul className="space-y-0.5 text-emerald-200/80 tabular-nums">
                     {checkout.orders.map((o) => (
                       <li key={o.orderId} className="font-mono">
                         {o.number} — ${o.totalUsd.toFixed(2)}
@@ -461,7 +474,7 @@ export function StorefrontPanel() {
                             {ln.variationLabel && (
                               <div className="text-[10px] text-gray-400">{ln.variationLabel}</div>
                             )}
-                            <div className="text-[10px] text-gray-400 font-mono">
+                            <div className="text-[10px] text-gray-400 font-mono tabular-nums">
                               ${ln.unitPriceUsd.toFixed(2)} ea
                             </div>
                           </div>
@@ -482,7 +495,7 @@ export function StorefrontPanel() {
                         </li>
                       ))}
                     </ul>
-                    <div className="px-3 py-1.5 text-[10px] text-gray-400 flex justify-between">
+                    <div className="px-3 py-1.5 text-[10px] text-gray-400 flex justify-between tabular-nums">
                       <span>Subtotal ${sh.subtotalUsd.toFixed(2)}</span>
                       <span>Shipping ${sh.shippingUsd.toFixed(2)}</span>
                     </div>
@@ -513,12 +526,12 @@ export function StorefrontPanel() {
 
                 <div className="flex items-center justify-between text-sm border-t border-white/10 pt-2">
                   <span className="font-semibold text-gray-300">Total</span>
-                  <span className="font-mono text-orange-300 font-bold">
+                  <span className="font-mono tabular-nums text-orange-300 font-bold">
                     ${cartGrand.toFixed(2)}
                   </span>
                 </div>
                 {cartTotal !== cartGrand && (
-                  <div className="text-[10px] text-gray-400 text-right">cart total ${cartTotal.toFixed(2)}</div>
+                  <div className="text-[10px] text-gray-400 text-right tabular-nums">cart total ${cartTotal.toFixed(2)}</div>
                 )}
                 {error && <div className="text-xs text-rose-300">{error}</div>}
                 <button
@@ -541,8 +554,8 @@ export function StorefrontPanel() {
       {/* Listing detail modal */}
       {viewing && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setViewing(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setViewing(null); }}>
-          <div className="w-full max-w-lg bg-[#0d1117] border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
-            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
+          <div className="w-full max-w-lg bg-lattice-deep border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
+            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-lattice-deep">
               <Store className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 truncate flex-1">{viewing.title}</span>
               <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
@@ -555,7 +568,7 @@ export function StorefrontPanel() {
               <div className="flex items-center justify-between">
                 <button onClick={() => { setViewing(null); openShop(viewing.sellerId); }} className="text-xs text-gray-400 hover:text-orange-300 underline">{viewing.shopName}</button>
                 {viewing.avgRating !== null ? (
-                  <span className="text-xs text-amber-300 inline-flex items-center gap-1"><Star className="w-3 h-3 fill-amber-300" /> {viewing.avgRating} ({viewing.reviewCount})</span>
+                  <span className="text-xs text-amber-300 inline-flex items-center gap-1 tabular-nums"><Star className="w-3 h-3 fill-amber-300" /> {viewing.avgRating} ({viewing.reviewCount})</span>
                 ) : (
                   <span className="text-xs text-gray-600">No reviews yet</span>
                 )}
@@ -567,7 +580,7 @@ export function StorefrontPanel() {
                 </div>
               )}
               <div className="flex items-center justify-between border-t border-white/10 pt-3">
-                <span className="text-lg font-mono text-orange-300 font-bold">${viewing.priceUsd.toFixed(2)}</span>
+                <span className="text-lg font-mono tabular-nums text-orange-300 font-bold">${viewing.priceUsd.toFixed(2)}</span>
                 <button
                   onClick={() => { addToCart(viewing); }}
                   disabled={viewing.stockQty === 0}
@@ -584,8 +597,8 @@ export function StorefrontPanel() {
       {/* Shop page modal */}
       {(shop || shopLoading) && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => { setShop(null); setShopLoading(false); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setShop(null); setShopLoading(false); } }}>
-          <div className="w-full max-w-lg bg-[#0d1117] border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
-            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
+          <div className="w-full max-w-lg bg-lattice-deep border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
+            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-lattice-deep">
               <Store className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 truncate flex-1">{shop ? shop.shop.name : 'Loading shop…'}</span>
               <button onClick={() => { setShop(null); setShopLoading(false); }} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
@@ -596,7 +609,7 @@ export function StorefrontPanel() {
               <div className="p-4 space-y-3">
                 {shop.shop.tagline && <p className="text-xs text-orange-300 italic">{shop.shop.tagline}</p>}
                 {shop.shop.bio && <p className="text-xs text-gray-300">{shop.shop.bio}</p>}
-                <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                <div className="flex items-center gap-3 text-[10px] text-gray-400 tabular-nums">
                   <span>{shop.listingCount} listings</span>
                   {shop.avgShopRating !== null && (
                     <span className="text-amber-300 inline-flex items-center gap-1"><Star className="w-3 h-3 fill-amber-300" />{shop.avgShopRating} ({shop.shopReviewCount})</span>
@@ -606,7 +619,7 @@ export function StorefrontPanel() {
                   {shop.listings.map((l) => (
                     <li key={l.listingId} className="py-2 flex items-center justify-between text-xs">
                       <span className="text-white truncate flex-1">{l.title}</span>
-                      <span className="font-mono text-orange-300">${l.priceUsd.toFixed(2)}</span>
+                      <span className="font-mono tabular-nums text-orange-300">${l.priceUsd.toFixed(2)}</span>
                     </li>
                   ))}
                 </ul>
@@ -619,8 +632,8 @@ export function StorefrontPanel() {
       {/* Order history modal */}
       {showHistory && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowHistory(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowHistory(false); }}>
-          <div className="w-full max-w-lg bg-[#0d1117] border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
-            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
+          <div className="w-full max-w-lg bg-lattice-deep border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
+            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-lattice-deep">
               <Receipt className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">My order history</span>
               <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
@@ -636,10 +649,10 @@ export function StorefrontPanel() {
                     <li key={h.id} className="rounded border border-white/10 bg-black/30 p-2.5 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-gray-400">{h.number}</span>
-                        <span className="font-mono text-orange-300 font-bold">${h.grandTotalUsd.toFixed(2)}</span>
+                        <span className="font-mono tabular-nums text-orange-300 font-bold">${h.grandTotalUsd.toFixed(2)}</span>
                       </div>
-                      <div className="text-[10px] text-gray-400 mt-0.5">{new Date(h.placedAt).toLocaleString()} · {h.orders.length} order{h.orders.length !== 1 ? 's' : ''}</div>
-                      <ul className="mt-1 space-y-0.5 text-[10px] text-gray-400">
+                      <div className="text-[10px] text-gray-400 mt-0.5 tabular-nums">{new Date(h.placedAt).toLocaleString()} · {h.orders.length} order{h.orders.length !== 1 ? 's' : ''}</div>
+                      <ul className="mt-1 space-y-0.5 text-[10px] text-gray-400 tabular-nums">
                         {h.orders.map((o) => (
                           <li key={o.orderId} className="font-mono inline-flex items-center gap-1">{o.number} — ${o.totalUsd.toFixed(2)}<ExternalLink className="w-2.5 h-2.5 opacity-50" /></li>
                         ))}

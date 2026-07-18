@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, Loader2 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { cn } from '@/lib/utils';
+import { Skeleton, SkeletonTableRows } from '@/components/ui/Skeleton';
 
 interface ListingRow { listingId: string; title: string; status: string; views: number; orders: number; revenueUsd: number; conversionRatePct: number }
 interface VisibilityRow {
@@ -33,7 +34,7 @@ export function StatsPanel() {
   const chartData = data.filter(d => d.revenueUsd > 0).slice(0, 8).map(d => ({ name: d.title.length > 16 ? d.title.slice(0, 15) + '…' : d.title, revenue: d.revenueUsd, orders: d.orders }));
 
   return (
-    <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-orange-400" />
         <span className="text-sm font-semibold text-gray-200">Per-listing stats</span>
@@ -44,7 +45,10 @@ export function StatsPanel() {
         </select>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="p-4 space-y-3">
+          <Skeleton variant="block" height={176} />
+          <SkeletonTableRows rows={5} columns={5} />
+        </div>
       ) : data.length === 0 ? (
         <div className="px-3 py-10 text-center text-xs text-gray-400">No data yet. Add listings + traffic to see stats.</div>
       ) : (
@@ -58,14 +62,14 @@ export function StatsPanel() {
                     <CartesianGrid stroke="#ffffff10" strokeDasharray="2 4" horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `$${v}`} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#cbd5e1' }} width={100} />
-                    <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #ffffff20', fontSize: 11 }} formatter={(v, k) => k === 'revenue' ? [`$${Number(v).toFixed(0)}`, 'Revenue'] : [String(v), 'Orders']} />
+                    <Tooltip contentStyle={{ background: '#0d0d14', border: '1px solid #ffffff20', fontSize: 11 }} formatter={(v, k) => k === 'revenue' ? [`$${Number(v).toFixed(0)}`, 'Revenue'] : [String(v), 'Orders']} />
                     <Bar dataKey="revenue" fill="#f97316" radius={[0, 3, 3, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           )}
-          <table className="w-full text-xs">
+          <table className="w-full text-xs tabular-nums">
             <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
               <tr><th className="text-left py-1.5">Listing</th><th className="text-right">Views</th><th className="text-right">Orders</th><th className="text-right">CVR</th><th className="text-right">Revenue</th></tr>
             </thead>
@@ -99,14 +103,14 @@ export function SearchVisibilityPanel() {
   }, []);
 
   return (
-    <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-orange-400" />
         <span className="text-sm font-semibold text-gray-200">Search visibility</span>
         <span className="text-[10px] text-gray-400">{data.length} listings tracked</span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <SkeletonTableRows rows={5} columns={3} />
       ) : data.length === 0 ? (
         <div className="px-3 py-10 text-center text-xs text-gray-400">
           No impression data yet. Call <span className="font-mono text-orange-300">marketplace.search-impression</span> with a listingId + keyword when listings appear in search results.
@@ -118,11 +122,11 @@ export function SearchVisibilityPanel() {
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{l.title}</div>
-                  <div className="text-[10px] text-gray-400">{l.totalImpressions.toLocaleString()} impressions · {l.totalClicks.toLocaleString()} clicks · {l.overallCtrPct}% CTR</div>
+                  <div className="text-[10px] text-gray-400 tabular-nums">{l.totalImpressions.toLocaleString()} impressions · {l.totalClicks.toLocaleString()} clicks · {l.overallCtrPct}% CTR</div>
                 </div>
               </div>
               {l.keywords.length > 0 && (
-                <div className="mt-2 ml-3 grid grid-cols-1 lg:grid-cols-2 gap-1">
+                <div className="mt-2 ml-3 grid grid-cols-1 lg:grid-cols-2 gap-1 tabular-nums">
                   {l.keywords.slice(0, 6).map(k => (
                     <div key={k.keyword} className="flex items-center gap-2 text-[11px] text-gray-300">
                       <span className="font-mono text-orange-300 w-24 truncate" title={k.keyword}>{k.keyword}</span>

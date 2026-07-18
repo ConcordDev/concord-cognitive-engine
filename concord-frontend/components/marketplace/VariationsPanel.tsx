@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Layers, Loader2, Plus, Trash2, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui/Skeleton';
 
 interface Listing {
   id: string;
@@ -142,7 +143,7 @@ export function VariationsPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Layers className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Listing variations</span>
@@ -166,8 +167,8 @@ export function VariationsPanel() {
             Pick a listing to manage its size / color / material options.
           </div>
         ) : loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
+          <div className="p-4">
+            <SkeletonTableRows rows={4} columns={5} />
           </div>
         ) : (
           <div className="p-4 space-y-2">

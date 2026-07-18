@@ -53,7 +53,7 @@ export function InsightsPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Marketplace Insights</span>
@@ -99,7 +99,7 @@ export function InsightsPanel() {
         )}
       </div>
 
-      <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Bookmark className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Saved searches</span>

@@ -204,20 +204,20 @@ export function MarketplaceActionPanel() {
   ];
 
   return (
-    <div className="rounded-lg border border-green-500/20 bg-zinc-950/60 p-3 space-y-3">
+    <div className="rounded-lg border border-green-500/20 bg-lattice-void/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-green-500/10 pb-2">
         <ShoppingBag className="h-4 w-4 text-green-400" />
         <h3 className="text-sm font-semibold text-white">Listing workbench</h3>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <input type="text" value={listingTitle} onChange={(e) => setListingTitle(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Listing title" />
-        <input type="text" value={listingPrice} onChange={(e) => setListingPrice(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Price $" />
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+        <input type="text" value={listingTitle} onChange={(e) => setListingTitle(e.target.value)} className="md:col-span-2 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white" placeholder="Listing title" />
+        <input type="text" value={listingPrice} onChange={(e) => setListingPrice(e.target.value.replace(/[^\d.]/g, ''))} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Price $" />
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white">
           {['digital-art', 'music', 'ebook', 'course', 'software', 'template', 'preset', 'physical'].map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <input type="text" value={listingTags} onChange={(e) => setListingTags(e.target.value)} className="md:col-span-3 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Tags (comma-separated)" />
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <input type="text" value={listingTags} onChange={(e) => setListingTags(e.target.value)} className="md:col-span-3 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white" placeholder="Tags (comma-separated)" />
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -226,8 +226,8 @@ export function MarketplaceActionPanel() {
       </div>
 
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Description</label>
-        <textarea value={listingDesc} onChange={(e) => setListingDesc(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-green-400/40 resize-y leading-relaxed" placeholder="What is it, who is it for, why $X..." />
+        <label className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 block">Description</label>
+        <textarea value={listingDesc} onChange={(e) => setListingDesc(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-2 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-green-400/40 resize-y leading-relaxed" placeholder="What is it, who is it for, why $X..." />
       </div>
 
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
@@ -236,12 +236,12 @@ export function MarketplaceActionPanel() {
           const isBusy = busy === a.id;
           return (
             <button key={a.id} type="button" disabled={!!busy} onClick={a.handler}
-              className={cn('group flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+              className={cn('group flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-lattice-surface/40 border-lattice-border hover:bg-lattice-elevated/60 hover:border-white/15', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[11px] font-semibold text-white leading-tight">{a.label}</div>
+              <div className="text-[10px] text-gray-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -251,22 +251,22 @@ export function MarketplaceActionPanel() {
         {scoreResult && (
           <div className={cn('rounded-md border p-2.5', (scoreResult.score ?? 0) >= 70 ? 'border-emerald-500/40 bg-emerald-500/5' : (scoreResult.score ?? 0) >= 40 ? 'border-amber-500/40 bg-amber-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5"><Tag className="w-3 h-3" /> Score {scoreResult.band}</div>
-            <div className="text-2xl font-bold text-zinc-100 mt-1">{scoreResult.score}<span className="text-sm text-zinc-400">/100</span></div>
-            {scoreResult.tips?.length ? <ul className="text-[11px] text-zinc-300 list-disc list-inside mt-1">{scoreResult.tips.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul> : null}
+            <div className="text-2xl font-bold text-white mt-1">{scoreResult.score}<span className="text-sm text-gray-400">/100</span></div>
+            {scoreResult.tips?.length ? <ul className="text-[11px] text-gray-300 list-disc list-inside mt-1">{scoreResult.tips.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul> : null}
           </div>
         )}
         {priceResult && (
           <div className="rounded-md border border-yellow-500/40 bg-yellow-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> Price</div>
             <div className="text-2xl font-bold text-yellow-200 mt-1">${priceResult.suggestedPrice}</div>
-            <div className="text-[10px] text-zinc-400">vs competitor avg ${priceResult.competitorAvg} · demand {priceResult.demandIndex}</div>
-            {priceResult.rationale && <p className="text-[11px] text-zinc-300 mt-1">{priceResult.rationale}</p>}
+            <div className="text-[10px] text-gray-400">vs competitor avg ${priceResult.competitorAvg} · demand {priceResult.demandIndex}</div>
+            {priceResult.rationale && <p className="text-[11px] text-gray-300 mt-1">{priceResult.rationale}</p>}
           </div>
         )}
         {metricsResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5"><BarChart3 className="w-3 h-3" /> Seller metrics</div>
-            <div className="text-[11px] text-zinc-300 mt-1 space-y-0.5">
+            <div className="text-[11px] text-gray-300 mt-1 space-y-0.5">
               <div>{metricsResult.listings} listings · {metricsResult.sales} sales</div>
               <div>conversion <span className="font-mono">{metricsResult.conversionPct}%</span></div>
               <div className="text-emerald-300 font-semibold">revenue <span className="font-mono">${metricsResult.revenue?.toLocaleString()}</span></div>
@@ -278,7 +278,7 @@ export function MarketplaceActionPanel() {
       {agentReply && (
         <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-3 max-h-72 overflow-y-auto">
           <div className="flex items-center gap-1.5 text-purple-300 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Copy rewrite</div>
-          <pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre>
+          <pre className="whitespace-pre-wrap font-sans text-[11px] text-gray-200 leading-relaxed">{agentReply}</pre>
         </div>
       )}
 

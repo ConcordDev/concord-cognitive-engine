@@ -10,10 +10,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Loader2, PackageX, PackageMinus, RefreshCw } from 'lucide-react';
+import { AlertTriangle, PackageX, PackageMinus, RefreshCw } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface Alert {
   listingId: string;
@@ -65,7 +66,7 @@ export function InventoryAlertsPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Inventory alerts</span>
@@ -89,8 +90,11 @@ export function InventoryAlertsPanel() {
         </header>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-xs text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" /> Scanning inventory…
+          <div className="px-4 py-3 space-y-3">
+            <div className="grid grid-cols-3 gap-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} variant="block" height={54} />)}
+            </div>
+            <Skeleton variant="block" height={140} />
           </div>
         ) : !result || result.total === 0 ? (
           <div className="px-3 py-12 text-center text-xs text-gray-400">
@@ -103,15 +107,15 @@ export function InventoryAlertsPanel() {
             <div className="px-4 py-3 grid grid-cols-3 gap-3 border-b border-white/10">
               <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.06] p-2.5">
                 <div className="text-[10px] uppercase text-rose-300">Out of stock</div>
-                <div className="text-xl font-bold text-rose-200">{result.outOfStock}</div>
+                <div className="text-xl font-bold tabular-nums text-rose-200">{result.outOfStock}</div>
               </div>
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] p-2.5">
                 <div className="text-[10px] uppercase text-amber-300">Low stock</div>
-                <div className="text-xl font-bold text-amber-200">{result.lowStock}</div>
+                <div className="text-xl font-bold tabular-nums text-amber-200">{result.lowStock}</div>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5">
                 <div className="text-[10px] uppercase text-gray-400">Total flagged</div>
-                <div className="text-xl font-bold text-gray-200">{result.total}</div>
+                <div className="text-xl font-bold tabular-nums text-gray-200">{result.total}</div>
               </div>
             </div>
 
@@ -145,7 +149,7 @@ export function InventoryAlertsPanel() {
                   </div>
                   <span
                     className={cn(
-                      'text-xs font-mono px-2 py-0.5 rounded',
+                      'text-xs font-mono tabular-nums px-2 py-0.5 rounded',
                       a.level === 'out_of_stock'
                         ? 'bg-rose-500/20 text-rose-200'
                         : 'bg-amber-500/20 text-amber-200',

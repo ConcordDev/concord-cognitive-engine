@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Eye, Package, DollarSign, Tag, TrendingUp, Loader2, Megaphone } from 'lucide-react';
+import { Eye, Package, DollarSign, Tag, TrendingUp, Megaphone } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { ShopNav } from './ShopfrontShell';
 
 interface Summary {
@@ -45,7 +46,22 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
     finally { setLoading(false); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading dashboard…</div>;
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Skeleton variant="line" width={140} height={18} />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="block" height={64} />)}
+        </div>
+        <Skeleton variant="block" height={160} />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="block" height={54} />)}
+        </div>
+      </div>
+    );
+  }
   if (!summary || !dash) return <div className="p-10 text-center text-xs text-gray-400">No dashboard data yet.</div>;
 
   return (
@@ -82,7 +98,7 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
                 <CartesianGrid stroke="#ffffff10" strokeDasharray="2 4" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#94a3b8' }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `$${v}`} />
-                <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #ffffff20', fontSize: 11 }} formatter={(v) => `$${Number(v).toFixed(0)}`} />
+                <Tooltip contentStyle={{ background: '#0d0d14', border: '1px solid #ffffff20', fontSize: 11 }} formatter={(v) => `$${Number(v).toFixed(0)}`} />
                 <Area type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={1.5} fill="url(#shopRev)" />
               </AreaChart>
             </ResponsiveContainer>

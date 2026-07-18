@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 // marketplace-demo.ts has been deprecated — all data comes from API
 import { ErrorState } from '@/components/common/EmptyState';
@@ -459,7 +460,10 @@ function WaveformBars({ playing, small }: { playing?: boolean; small?: boolean }
             animate={playing ? { height: [`${h}%`, `${h + 15}%`, `${h}%`] } : {}}
             transition={
               playing
-                ? { duration: 0.4 + Math.random() * 0.3, repeat: Infinity, repeatType: 'mirror' }
+                // Deterministic per-bar jitter (index-derived, not Math.random())
+                // so the "now playing" bounce stays a pure function of the bar
+                // index — no randomness in a render path.
+                ? { duration: 0.4 + ((i * 7) % 10) / 33, repeat: Infinity, repeatType: 'mirror' }
                 : {}
             }
           />
@@ -555,9 +559,9 @@ function ItemCard({
         </div>
         <div className="flex items-center gap-1">
           {starRating(item.rating)}
-          <span className="text-xs text-gray-400 ml-1">{item.rating}</span>
+          <span className="text-xs text-gray-400 ml-1 tabular-nums">{item.rating}</span>
         </div>
-        <span className="text-neon-green font-bold">{formatPrice(item.prices.basic)}</span>
+        <span className="text-neon-green font-bold tabular-nums">{formatPrice(item.prices.basic)}</span>
         {onToggleStar && (
           <button
             onClick={(e) => { e.stopPropagation(); onToggleStar(item.id); }}
@@ -654,7 +658,7 @@ function ItemCard({
         </div>
         <div className="flex items-center gap-1">
           {starRating(item.rating)}
-          <span className="text-[10px] text-gray-400 ml-1">({item.ratingCount})</span>
+          <span className="text-[10px] text-gray-400 ml-1 tabular-nums">({item.ratingCount})</span>
         </div>
         {(item.version || item.key || item.genre) && (
           <div className="flex items-center gap-2 text-[10px] text-gray-400">
@@ -665,7 +669,7 @@ function ItemCard({
         )}
         <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
           <div className="flex items-center gap-1.5">
-            <span className="text-amber-400 font-bold text-sm">
+            <span className="text-amber-400 font-bold text-sm tabular-nums">
               From {formatPrice(item.prices.basic)}
             </span>
             {item.sales > 0 && onRoyaltyClick && (
@@ -674,7 +678,7 @@ function ItemCard({
                   e.stopPropagation();
                   onRoyaltyClick(item.id);
                 }}
-                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 text-[10px] text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 text-[10px] text-neon-cyan hover:bg-neon-cyan/20 transition-colors tabular-nums"
                 title="View royalty cascade"
               >
                 <GitBranch className="w-2.5 h-2.5" />
@@ -1420,11 +1424,35 @@ export default function MarketplaceLensPage() {
   // =========================================================================
 
   if (isLoading) {
+    // Shaped like the real browse tab: header, category pills, search bar,
+    // then a product grid of card-shaped placeholders — so the loading
+    // state reads as "the storefront is arriving," not a generic spinner.
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+      <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
+        <div className="flex items-center gap-3">
+          <Skeleton variant="avatar" width={24} height={24} />
+          <Skeleton variant="line" width={220} height={28} />
+        </div>
+        <div className="flex items-center gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} variant="block" width={i === 0 ? 56 : 104} height={30} className="rounded-full" />
+          ))}
+        </div>
+        <Skeleton variant="block" height={38} className="max-w-md" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="panel p-0 overflow-hidden">
+              <Skeleton variant="block" height={144} className="rounded-none" />
+              <div className="p-3 space-y-2">
+                <Skeleton variant="line" width="80%" />
+                <Skeleton variant="line" width="50%" height={11} />
+                <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
+                  <Skeleton variant="line" width={60} height={14} />
+                  <Skeleton variant="block" width={54} height={22} className="rounded-lg" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -1585,13 +1613,13 @@ export default function MarketplaceLensPage() {
                         {featuredItems[featuredIdx].description}
                       </p>
                       <div className="flex items-center gap-3">
-                        <span className="text-neon-green font-bold">
+                        <span className="text-neon-green font-bold tabular-nums">
                           From {formatPrice(featuredItems[featuredIdx].prices.basic)}
                         </span>
                         <div className="flex items-center gap-1">
                           {starRating(featuredItems[featuredIdx].rating)}
                         </div>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-gray-400 tabular-nums">
                           {featuredItems[featuredIdx].sales} sales
                         </span>
                       </div>
@@ -1854,7 +1882,7 @@ export default function MarketplaceLensPage() {
                 <div className="flex items-center gap-2 text-gray-400 text-xs">
                   <s.icon className={cn('w-4 h-4', s.color)} /> {s.label}
                 </div>
-                <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
+                <p className={cn('text-2xl font-bold tabular-nums', s.color)}>{s.value}</p>
               </div>
             ))}
           </div>
@@ -1890,12 +1918,12 @@ export default function MarketplaceLensPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{item.title}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-400 tabular-nums">
                     {item.type} -- {item.sales} sales -- ${item.prices.basic}+
                   </p>
                 </div>
                 <div className="flex items-center gap-1">{starRating(item.rating)}</div>
-                <span className="text-neon-green text-sm font-bold">
+                <span className="text-neon-green text-sm font-bold tabular-nums">
                   ${(item.sales * item.prices.basic * 0.7).toFixed(0)}
                 </span>
                 <button
@@ -2239,7 +2267,7 @@ export default function MarketplaceLensPage() {
                           </option>
                         ))}
                       </select>
-                      <span className="text-neon-green font-bold w-16 text-right">
+                      <span className="text-neon-green font-bold w-16 text-right tabular-nums">
                         {formatPrice(ci.price)}
                       </span>
                       <button
@@ -2255,23 +2283,23 @@ export default function MarketplaceLensPage() {
 
               {/* Price breakdown */}
               <div className="panel p-5 space-y-3">
-                <div className="flex items-center justify-between text-sm text-gray-400">
+                <div className="flex items-center justify-between text-sm text-gray-400 tabular-nums">
                   <span>
                     Subtotal ({cart.length} item{cart.length !== 1 ? 's' : ''})
                   </span>
                   <span>{formatPrice(cartTotal)}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm text-gray-400">
+                <div className="flex items-center justify-between text-sm text-gray-400 tabular-nums">
                   <span>Platform fee ({(marketplaceFeeRate * 100).toFixed(0)}%)</span>
                   <span>{formatPrice(Math.round(cartTotal * marketplaceFeeRate * 100) / 100)}</span>
                 </div>
                 <div className="border-t border-lattice-border pt-3 flex items-center justify-between">
                   <span className="font-bold">Total</span>
-                  <span className="text-neon-green text-xl font-bold">
+                  <span className="text-neon-green text-xl font-bold tabular-nums">
                     {formatPrice(cartTotal)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-400">
+                <div className="flex items-center justify-between text-xs text-gray-400 tabular-nums">
                   <span>Your balance</span>
                   <span className={cn(userBalance < cartTotal ? 'text-red-400' : 'text-gray-400')}>
                     {formatPrice(userBalance)}
@@ -2321,7 +2349,7 @@ export default function MarketplaceLensPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <h3 className="text-lg font-bold">Confirm Purchase</h3>
-                        <div className="space-y-2 text-sm text-gray-400">
+                        <div className="space-y-2 text-sm text-gray-400 tabular-nums">
                           {cart.map((ci) => (
                             <div key={ci.item.id} className="flex items-center justify-between">
                               <span className="truncate">
@@ -2500,7 +2528,7 @@ export default function MarketplaceLensPage() {
                       <span>{new Date(p.purchasedAt).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <span className="text-sm text-gray-400">{formatPrice(p.price)}</span>
+                  <span className="text-sm text-gray-400 tabular-nums">{formatPrice(p.price)}</span>
                   <button
                     onClick={async () => {
                       // The only real fulfillment path in this domain is the
@@ -2611,8 +2639,8 @@ export default function MarketplaceLensPage() {
                       {item.type} by {item.creator.name}
                     </p>
                   </div>
-                  <span className="text-xs text-gray-400">{item.sales} sales</span>
-                  <span className="text-sm text-neon-green font-bold">
+                  <span className="text-xs text-gray-400 tabular-nums">{item.sales} sales</span>
+                  <span className="text-sm text-neon-green font-bold tabular-nums">
                     ${(item.sales * item.prices.basic * 0.7).toFixed(0)}
                   </span>
                 </div>
@@ -2652,7 +2680,7 @@ export default function MarketplaceLensPage() {
             })().map((s) => (
               <div key={s.label} className="lens-card p-4 space-y-1">
                 <p className="text-xs text-gray-400">{s.label}</p>
-                <p className={cn('text-xl font-bold', s.color)}>{s.value}</p>
+                <p className={cn('text-xl font-bold tabular-nums', s.color)}>{s.value}</p>
                 <p className="text-[10px] text-gray-400">{s.sub}</p>
               </div>
             ))}
@@ -2997,7 +3025,7 @@ export default function MarketplaceLensPage() {
           aria-modal="true"
           aria-label="Quick search marketplace" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div
-            className="bg-[#0d1117] border border-emerald-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
+            className="bg-lattice-deep border border-emerald-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
               <ShoppingBag className="w-4 h-4 text-emerald-400" />
@@ -3044,7 +3072,7 @@ export default function MarketplaceLensPage() {
                     </div>
                   </div>
                   {(() => { const lp = lowestPrice(it); return lp != null ? (
-                    <span className="text-xs text-emerald-300 font-mono shrink-0">{lp} CC</span>
+                    <span className="text-xs text-emerald-300 font-mono tabular-nums shrink-0">{lp} CC</span>
                   ) : null; })()}
                 </li>
               ))}
@@ -3061,7 +3089,7 @@ export default function MarketplaceLensPage() {
       lensId="marketplace"
       lensPrompt="You're inside Concord's Marketplace lens — DTU listings, royalty cascade, beat/sample marketplace. Prefer expert_mode for cited research on trends, discovery.search for listings, run_lens_action for purchases."
     />
-    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
       <TrendingListings />
     </section>
 

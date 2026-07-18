@@ -168,7 +168,7 @@ function CreatorTile({ item, onSupport, onOpen }: CreatorTileProps) {
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-gray-400 uppercase tracking-wider">name your price</span>
           {item.suggestedPriceCc !== undefined && (
-            <span className="text-[10px] text-amber-400/80 font-mono">
+            <span className="text-[10px] text-amber-400/80 font-mono tabular-nums">
               suggested {item.suggestedPriceCc}
             </span>
           )}
@@ -180,7 +180,7 @@ function CreatorTile({ item, onSupport, onOpen }: CreatorTileProps) {
             step={1}
             value={price}
             onChange={(e) => setPrice(Math.max(item.minPriceCc, Number(e.target.value) || item.minPriceCc))}
-            className="flex-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-sm font-mono text-amber-200"
+            className="flex-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-sm font-mono tabular-nums text-amber-200"
             aria-label="Support price"
           />
           <button
@@ -196,7 +196,7 @@ function CreatorTile({ item, onSupport, onOpen }: CreatorTileProps) {
         {/* Royalty cascade reminder — the moment the cover-grid stops
             being just merch and starts being equity. */}
         {item.royaltyRate !== undefined && item.royaltyRate > 0 && (
-          <div className="flex items-center gap-1 text-[10px] text-emerald-300/80">
+          <div className="flex items-center gap-1 text-[10px] text-emerald-300/80 tabular-nums">
             <Sparkles className="w-3 h-3" />
             {(item.royaltyRate * 100).toFixed(2)}% royalty cascades back forever
           </div>
