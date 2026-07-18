@@ -10,6 +10,7 @@ import { Loader2, Rss, Hash, Check, TrendingUp, ChevronDown, ChevronRight } from
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { NewsArticleCard, type NewsArticle } from './NewsArticleCard';
+import { ErrorState } from '@/components/ui';
 
 interface Channel { source: string; articleCount: number; followed: boolean }
 interface Topic { topic: string; articleCount: number; followed: boolean }
@@ -20,6 +21,7 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [interests, setInterests] = useState<{ topics: Weight[]; sources: Weight[] }>({ topics: [], sources: [] });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [openChannel, setOpenChannel] = useState<string | null>(null);
   const [openTopic, setOpenTopic] = useState<string | null>(null);
   const [channelArticles, setChannelArticles] = useState<NewsArticle[]>([]);
@@ -33,6 +35,12 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
       lensRun('news', 'topic-list', {}),
       lensRun('news', 'interests', {}),
     ]);
+    if (c.data?.ok === false || t.data?.ok === false || i.data?.ok === false) {
+      setLoadError((c.data?.ok === false ? c.data?.error : t.data?.ok === false ? t.data?.error : i.data?.error) || 'Could not load following.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setChannels(c.data?.result?.channels || []);
     setTopics(t.data?.result?.topics || []);
     setInterests({ topics: i.data?.result?.topics || [], sources: i.data?.result?.sources || [] });
@@ -76,6 +84,10 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

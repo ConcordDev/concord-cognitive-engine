@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, BookOpen } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { NewsArticleCard, type NewsArticle } from './NewsArticleCard';
+import { ErrorState } from '@/components/ui';
 
 interface Stats { totalRead: number; thisWeek: number; saved: number; topTopics: { topic: string; count: number }[] }
 
@@ -16,6 +17,7 @@ export function NewsSavedPanel({ onChange }: { onChange: () => void }) {
   const [history, setHistory] = useState<NewsArticle[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -24,6 +26,12 @@ export function NewsSavedPanel({ onChange }: { onChange: () => void }) {
       lensRun('news', 'reading-history', {}),
       lensRun('news', 'reading-stats', {}),
     ]);
+    if (sv.data?.ok === false || h.data?.ok === false || st.data?.ok === false) {
+      setLoadError((sv.data?.ok === false ? sv.data?.error : h.data?.ok === false ? h.data?.error : st.data?.error) || 'Could not load your saved stories.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSaved(sv.data?.result?.articles || []);
     setHistory(h.data?.result?.history || []);
     setStats((st.data?.result as Stats | null) || null);
@@ -35,6 +43,10 @@ export function NewsSavedPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

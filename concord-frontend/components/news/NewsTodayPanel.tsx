@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Flame } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { NewsArticleCard, type NewsArticle } from './NewsArticleCard';
+import { ErrorState } from '@/components/ui';
 
 interface Section { topic: string; items: NewsArticle[]; count: number }
 
@@ -18,6 +19,7 @@ export function NewsTodayPanel({ onChange }: { onChange: () => void }) {
   const [trending, setTrending] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', source: '', topic: 'general', summary: '', url: '' });
 
@@ -27,6 +29,12 @@ export function NewsTodayPanel({ onChange }: { onChange: () => void }) {
       lensRun('news', 'today-digest', {}),
       lensRun('news', 'trending', {}),
     ]);
+    if (d.data?.ok === false || t.data?.ok === false) {
+      setLoadError((d.data?.ok === false ? d.data?.error : t.data?.error) || 'Could not load today’s digest.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTopStories(d.data?.result?.topStories || []);
     setSections(d.data?.result?.sections || []);
     setTrending(t.data?.result?.articles || []);
@@ -50,6 +58,10 @@ export function NewsTodayPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

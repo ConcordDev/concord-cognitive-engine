@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Play, Disc3, Mic2, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Track { id: string; title: string; artist: string; durationSec: number }
 interface NowPlaying { track: Track; positionSec: number }
@@ -25,6 +26,7 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
   const [recent, setRecent] = useState<Track[]>([]);
   const [lyrics, setLyrics] = useState<{ lines: LyricLine[]; synced: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -33,6 +35,12 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
       lensRun('music', 'queue-list', {}),
       lensRun('music', 'recently-played', {}),
     ]);
+    if (np.data?.ok === false || q.data?.ok === false || r.data?.ok === false) {
+      setLoadError((np.data?.ok === false ? np.data?.error : q.data?.ok === false ? q.data?.error : r.data?.error) || 'Could not load your player.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const npVal = (np.data?.result?.nowPlaying as NowPlaying | null) || null;
     setNowPlaying(npVal);
     setQueue(q.data?.result?.tracks || []);
@@ -70,6 +78,10 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

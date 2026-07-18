@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Heart, Target } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface GratitudeEntry { id: string; items: string[]; date: string }
 interface GoalStatus { dailyMinutes: number; todayMinutes: number; pct: number; met: boolean; isDefault: boolean }
@@ -16,6 +17,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
   const [goal, setGoal] = useState<GoalStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<string[]>(['', '', '']);
   const [goalInput, setGoalInput] = useState('');
 
@@ -25,6 +27,12 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
       lensRun('mental-health', 'gratitude-list', {}),
       lensRun('mental-health', 'goal-status', {}),
     ]);
+    if (g.data?.ok === false || go.data?.ok === false) {
+      setLoadError((g.data?.ok === false ? g.data?.error : go.data?.error) || 'Could not load your reflections.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntries(g.data?.result?.entries || []);
     setGoal((go.data?.result as GoalStatus | null) || null);
     setLoading(false);
@@ -55,6 +63,10 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

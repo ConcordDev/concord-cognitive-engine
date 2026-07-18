@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Tags, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Factor { id: string; name: string; group: string; icon: string | null }
 interface Correlation { factorId: string; name: string; group: string; samples: number; avgMood: number; delta: number; effect: string }
@@ -22,6 +23,7 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
   const [corr, setCorr] = useState<CorrelationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [newFactor, setNewFactor] = useState('');
   const [newGroup, setNewGroup] = useState('');
   const [mood, setMood] = useState(3);
@@ -34,6 +36,12 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
       lensRun('mental-health', 'factor-list', {}),
       lensRun('mental-health', 'factor-correlations', { minSamples: 2 }),
     ]);
+    if (f.data?.ok === false || c.data?.ok === false) {
+      setLoadError((f.data?.ok === false ? f.data?.error : c.data?.error) || 'Could not load your factors.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setFactors(f.data?.result?.factors || []);
     setCorr((c.data?.result as CorrelationResult | null) || null);
     setLoading(false);
@@ -66,6 +74,10 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

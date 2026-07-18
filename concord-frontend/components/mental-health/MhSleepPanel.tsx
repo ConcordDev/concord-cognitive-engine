@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Moon, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface SleepEntry { id: string; hoursSlept: number; quality: number; bedtime: string | null; wakeTime: string | null; date: string }
 
@@ -17,11 +18,18 @@ export function MhSleepPanel({ onChange }: { onChange: () => void }) {
   const [avgQuality, setAvgQuality] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ hoursSlept: '', quality: '3', bedtime: '', wakeTime: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('mental-health', 'sleep-history', { days: 14 });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load your sleep history.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSeries(r.data?.result?.series || []);
     setAvgHours(r.data?.result?.avgHours ?? null);
     setAvgQuality(r.data?.result?.avgQuality ?? null);
@@ -45,6 +53,10 @@ export function MhSleepPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const chartData = series.map((x) => ({ date: x.date.slice(5), hours: x.hoursSlept }));

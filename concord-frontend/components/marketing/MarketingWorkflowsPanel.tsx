@@ -11,6 +11,7 @@ import { Loader2, Plus, Workflow, Trash2, Play, X, UserPlus } from 'lucide-react
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 type StepType = 'trigger' | 'delay' | 'send_email' | 'branch' | 'tag' | 'goal';
 const STEP_TYPES: StepType[] = ['trigger', 'delay', 'send_email', 'branch', 'tag', 'goal'];
@@ -28,6 +29,7 @@ export function MarketingWorkflowsPanel() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Workflow | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,10 +43,17 @@ export function MarketingWorkflowsPanel() {
 
   const [runsFor, setRunsFor] = useState<string | null>(null);
   const [runs, setRuns] = useState<WfRun[]>([]);
+  const [runsError, setRunsError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('marketing', 'workflow-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load workflows.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setWorkflows(r.data?.result?.workflows || []);
     setLoading(false);
   }, []);
@@ -103,12 +112,18 @@ export function MarketingWorkflowsPanel() {
 
   const viewRuns = async (id: string) => {
     setRunsFor(id);
+    setRunsError(null);
     const r = await lensRun('marketing', 'workflow-runs', { id });
+    if (r.data?.ok === false) { setRunsError(r.data?.error || 'Could not load workflow runs.'); return; }
     setRuns(r.data?.result?.runs || []);
   };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (
@@ -258,7 +273,9 @@ export function MarketingWorkflowsPanel() {
               <h4 className="text-sm font-semibold text-white">Workflow runs ({runs.length})</h4>
               <button type="button" onClick={() => setRunsFor(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
             </div>
-            {runs.length === 0 ? (
+            {runsError ? (
+              <ErrorState message={runsError} onRetry={() => runsFor && viewRuns(runsFor)} variant="inline" />
+            ) : runs.length === 0 ? (
               <p className="text-[11px] text-zinc-400 italic">No runs yet. Enroll a contact to simulate the sequence.</p>
             ) : (
               <ul className="space-y-3">

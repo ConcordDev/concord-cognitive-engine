@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Sparkles, TrendingUp, Play, UserPlus, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Stats { totalPlays: number; listenedMinutes: number; listenedHours: number; byGenre: Record<string, number>; libraryTracks: number }
 interface Wrapped { year: string; totalPlays: number; minutesListened: number; topTracks: { title: string; plays: number }[]; topArtists: { artist: string; plays: number }[] }
@@ -23,6 +24,7 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
   const [dailyMix, setDailyMix] = useState<Track[]>([]);
   const [artists, setArtists] = useState<ArtistFollow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [followName, setFollowName] = useState('');
 
   const refresh = useCallback(async () => {
@@ -35,6 +37,19 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
       lensRun('music', 'daily-mix', {}),
       lensRun('music', 'artist-list', {}),
     ]);
+    if (s.data?.ok === false || w.data?.ok === false || tt.data?.ok === false || ta.data?.ok === false || dm.data?.ok === false || a.data?.ok === false) {
+      setLoadError(
+        (s.data?.ok === false ? s.data?.error
+          : w.data?.ok === false ? w.data?.error
+            : tt.data?.ok === false ? tt.data?.error
+              : ta.data?.ok === false ? ta.data?.error
+                : dm.data?.ok === false ? dm.data?.error
+                  : a.data?.error) || 'Could not load your stats.',
+      );
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setStats((s.data?.result as Stats | null) || null);
     setWrapped((w.data?.result as Wrapped | null) || null);
     setTopTracks(tt.data?.result?.tracks || []);
@@ -57,6 +72,10 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

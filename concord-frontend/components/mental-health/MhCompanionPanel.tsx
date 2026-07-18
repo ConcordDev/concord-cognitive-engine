@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Send, MessageCircleHeart, RotateCcw, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Turn { role: string; content: string; at: string; riskFlag?: boolean }
 
@@ -18,12 +19,19 @@ export function MhCompanionPanel() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('mental-health', 'companion-history', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load your check-in history.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTurns(r.data?.result?.turns || []);
     setLoading(false);
   }, []);
@@ -50,6 +58,10 @@ export function MhCompanionPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const riskActive = turns.some((t) => t.riskFlag);

@@ -9,6 +9,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { Loader2, SmilePlus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Mood { id: string; mood: number; energy: number | null; label: string | null; note: string | null; date: string }
 interface Insights { entries: number; average: number | null; trend: string; distribution: Record<string, number> }
@@ -23,6 +24,7 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [mood, setMood] = useState(3);
   const [note, setNote] = useState('');
 
@@ -32,6 +34,12 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
       lensRun('mental-health', 'mood-history', { days: 30 }),
       lensRun('mental-health', 'mood-insights', {}),
     ]);
+    if (h.data?.ok === false || i.data?.ok === false) {
+      setLoadError((h.data?.ok === false ? h.data?.error : i.data?.error) || 'Could not load your mood history.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSeries(h.data?.result?.series || []);
     setInsights((i.data?.result as Insights | null) || null);
     setLoading(false);
@@ -49,6 +57,10 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const chartData = series.map((m) => ({ date: m.date.slice(5), mood: m.mood }));
