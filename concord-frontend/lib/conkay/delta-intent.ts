@@ -177,6 +177,51 @@ export function applyDimensionDelta(
   return next;
 }
 
+/** Read `{width,height,depth}` out of a macro input's `dimensions`, or null if
+ *  any is missing/non-positive (nothing real to iterate on). */
+export function dimensionsFromInput(sourceInput: unknown): BuildingDimensions | null {
+  if (!sourceInput || typeof sourceInput !== 'object') return null;
+  const dims = (sourceInput as { dimensions?: unknown }).dimensions;
+  if (!dims || typeof dims !== 'object') return null;
+  const d = dims as Record<string, unknown>;
+  const width = Number(d.width);
+  const height = Number(d.height);
+  const depth = Number(d.depth);
+  if (![width, height, depth].every((n) => Number.isFinite(n) && n > 0)) return null;
+  return { width, height, depth };
+}
+
+/**
+ * Build the NEW macro input for an Iterate re-run: applies `delta` to the
+ * source input's dimensions, preserving every other field (archetype, feature,
+ * name, position …) untouched. Returns null when the source input has no valid
+ * dimensions — the honest STOP-POINT (nothing to re-run).
+ */
+export function buildRerunInput(
+  sourceInput: Record<string, unknown>,
+  delta: DimensionDelta,
+): (Record<string, unknown> & { dimensions: BuildingDimensions }) | null {
+  const cur = dimensionsFromInput(sourceInput);
+  if (!cur) return null;
+  const next = applyDimensionDelta(cur, delta);
+  return { ...sourceInput, dimensions: next };
+}
+
+/** Per-axis before→after for the confirm gate / animation. Only changed axes. */
+export function dimensionDiff(
+  before: BuildingDimensions,
+  after: BuildingDimensions,
+): { axis: Exclude<DimAxis, 'all'>; before: number; after: number; deltaM: number }[] {
+  const axes: Exclude<DimAxis, 'all'>[] = ['width', 'height', 'depth'];
+  const out: { axis: Exclude<DimAxis, 'all'>; before: number; after: number; deltaM: number }[] = [];
+  for (const ax of axes) {
+    if (before[ax] !== after[ax]) {
+      out.push({ axis: ax, before: before[ax], after: after[ax], deltaM: after[ax] - before[ax] });
+    }
+  }
+  return out;
+}
+
 /** Human-readable summary of a delta for the confirm gate ("apply this?"). */
 export function describeDelta(delta: DimensionDelta): string {
   const axis = delta.axis === 'all' ? 'size' : delta.axis;

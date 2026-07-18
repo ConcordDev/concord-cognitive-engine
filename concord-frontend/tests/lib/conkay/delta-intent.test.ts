@@ -8,6 +8,9 @@ import {
   parseBuildingDimIntent,
   applyDimensionDelta,
   describeDelta,
+  dimensionsFromInput,
+  buildRerunInput,
+  dimensionDiff,
   MIN_DIM_M,
   MAX_DIM_M,
   type BuildingDimensions,
@@ -100,6 +103,51 @@ describe('applyDimensionDelta — pure, clamped re-run input', () => {
   it('clamps to [MIN_DIM_M, MAX_DIM_M] so a re-run is never degenerate/absurd', () => {
     expect(applyDimensionDelta(D, { axis: 'height', op: 'add', value: 10000, rawUtterance: '' }).height).toBe(MAX_DIM_M);
     expect(applyDimensionDelta({ width: 1, height: 1, depth: 1 }, { axis: 'height', op: 'add', value: -5, rawUtterance: '' }).height).toBe(MIN_DIM_M);
+  });
+});
+
+describe('buildRerunInput — the real re-run input for the Iterate loop', () => {
+  const SRC = {
+    archetype: 'tower',
+    feature: 'spire',
+    name: 'Test Tower',
+    position: { x: 1, y: 0, z: 2 },
+    dimensions: { width: 6, height: 20, depth: 6 },
+  };
+
+  it('reads dimensions out of a macro input', () => {
+    expect(dimensionsFromInput(SRC)).toEqual({ width: 6, height: 20, depth: 6 });
+    expect(dimensionsFromInput({})).toBeNull();
+    expect(dimensionsFromInput({ dimensions: { width: 0, height: 5, depth: 5 } })).toBeNull();
+  });
+
+  it('applies the delta to dimensions and preserves every other field', () => {
+    const delta = parseBuildingDimIntent('make it taller by 5m')!;
+    const next = buildRerunInput(SRC, delta)!;
+    expect(next.dimensions).toEqual({ width: 6, height: 25, depth: 6 });
+    // archetype/feature/name/position carried through untouched — a real re-run.
+    expect(next.archetype).toBe('tower');
+    expect(next.feature).toBe('spire');
+    expect(next.name).toBe('Test Tower');
+    expect(next.position).toEqual({ x: 1, y: 0, z: 2 });
+    // does not mutate the source input
+    expect(SRC.dimensions.height).toBe(20);
+  });
+
+  it('returns null (STOP-POINT) when the source input has no valid dimensions', () => {
+    expect(buildRerunInput({ archetype: 'tower' }, { axis: 'height', op: 'add', value: 5, rawUtterance: '' })).toBeNull();
+  });
+});
+
+describe('dimensionDiff — before→after, changed axes only', () => {
+  it('lists only the axes that actually changed', () => {
+    const before: BuildingDimensions = { width: 6, height: 20, depth: 6 };
+    const after: BuildingDimensions = { width: 6, height: 25, depth: 6 };
+    expect(dimensionDiff(before, after)).toEqual([{ axis: 'height', before: 20, after: 25, deltaM: 5 }]);
+  });
+  it('empty when nothing changed', () => {
+    const d: BuildingDimensions = { width: 6, height: 20, depth: 6 };
+    expect(dimensionDiff(d, { ...d })).toEqual([]);
   });
 });
 

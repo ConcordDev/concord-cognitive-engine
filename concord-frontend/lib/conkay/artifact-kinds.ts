@@ -85,6 +85,14 @@ interface ConkayArtifactBase {
   sourceDomain: string;
   /** Provenance — the real macro name that produced this artifact. */
   sourceMacro: string;
+  /**
+   * Provenance — the real macro INPUT that produced this artifact, carried
+   * through untouched (like sourceDomain/sourceMacro). Present only for kinds
+   * whose normalizer preserves it (currently `building`, for the S3 Iterate
+   * re-run loop — a delta is applied to this and the macro is re-run). Absent
+   * (undefined) for kinds that don't yet support iterate; never fabricated.
+   */
+  sourceInput?: Record<string, unknown>;
 }
 
 /** One `ar.render` drawList object — structurally the shape ConKayArtifactExploded
@@ -495,7 +503,17 @@ function normalizeBuildingPublish(domain: string, macro: string, input: unknown,
   };
 
   const components: ConkayArtifactComponent[] = [{ id: building.id, label: building.name, kind: 'building' }];
-  return { kind: 'building', buildings: [building], validation: [], components, sourceDomain: domain, sourceMacro: macro };
+  return {
+    kind: 'building',
+    buildings: [building],
+    validation: [],
+    components,
+    sourceDomain: domain,
+    sourceMacro: macro,
+    // Carry the real macro input untouched so the S3 Iterate loop can apply a
+    // dimension delta and re-run building-publish. Pure provenance, not invented.
+    sourceInput: inp,
+  };
 }
 
 /** Shape-driven (NOT domain-gated) → a structural-building artifact. Matches any
