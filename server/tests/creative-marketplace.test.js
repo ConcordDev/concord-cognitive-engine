@@ -51,6 +51,9 @@ import {
   updateArtifactPrice,
 } from "../economy/creative-marketplace.js";
 
+import { getBalance } from "../economy/balances.js";
+import { PLATFORM_ACCOUNT_ID } from "../economy/fees.js";
+
 // ── In-Memory SQLite Helper ─────────────────────────────────────────────────
 
 let Database;
@@ -1056,5 +1059,93 @@ describe("Revenue Breakdown — Spec Validation", () => {
     assert.ok(generation >= 7);
     assert.ok(rate > floor);
     assert.ok(rate / 2 <= floor);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEDGER CONSERVATION — purchaseArtifact (money-printing / peg guard)
+// Pins the fix for the platform-intermediated topology bug: the creator's
+// earnings must be VISIBLE in getBalance() (were excluded by
+// CREDIT_ROW_PREDICATE because the credit row carried from=PLATFORM +
+// type=MARKETPLACE_PURCHASE), and buyer's loss must equal the sum of every
+// other party's gain to the penny (no CC minted or destroyed).
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Ledger conservation — purchaseArtifact", () => {
+  if (!Database) return;
+  let db;
+  const r2 = (n) => Math.round(n * 100) / 100;
+  beforeEach(() => { db = createTestDb(); seedUsers(db); });
+
+  it("a normal (non-derivative) sale conserves and pays the creator VISIBLY", () => {
+    const beat = publishTestBeat(db); // creator1, price 50, standard license
+    assert.ok(beat.ok, JSON.stringify(beat));
+
+    const bal = () => ({
+      buyer: getBalance(db, "buyer1").balance,
+      creator: getBalance(db, "creator1").balance,
+      platform: getBalance(db, PLATFORM_ACCOUNT_ID).balance,
+    });
+    const before = bal();
+    const res = purchaseArtifact(db, { buyerId: "buyer1", artifactId: beat.artifact.id });
+    assert.ok(res.ok, JSON.stringify(res));
+    const after = bal();
+
+    // price 50 → fees 2.73 (1.46% platform + 4% marketplace), creatorEarnings 47.27
+    assert.equal(r2(after.buyer - before.buyer), -50, "buyer pays exactly the price");
+    assert.equal(r2(after.creator - before.creator), 47.27, "creator earnings VISIBLE in their balance");
+    assert.equal(r2(after.platform - before.platform), 2.73, "platform nets exactly the 5.46% fee");
+    // Conservation: buyer's loss == everyone else's gain, to the penny.
+    assert.equal(
+      r2(before.buyer - after.buyer),
+      r2((after.creator - before.creator) + (after.platform - before.platform)),
+      "no CC minted or destroyed"
+    );
+  });
+
+  it("a remixed DTU-backed asset sale PAYS the royalty_lineage ancestor + conserves (cross-rail bridge)", () => {
+    // royalty_lineage is Increment 1's canonical remix-lineage table
+    // (registerCitation). createTestDb doesn't include it — create + seed here.
+    db.exec(`CREATE TABLE IF NOT EXISTS royalty_lineage (
+      id TEXT PRIMARY KEY, child_id TEXT, parent_id TEXT, generation INTEGER,
+      creator_id TEXT, parent_creator TEXT, created_at TEXT DEFAULT (datetime('now')));`);
+    // creator2 (a funded user) is the remix-parent; creator1 remixes it.
+    db.prepare(`INSERT INTO royalty_lineage (id, child_id, parent_id, generation, creator_id, parent_creator) VALUES (?,?,?,?,?,?)`)
+      .run("rl_1", "remix_dtu_1", "orig_dtu_1", 1, "creator1", "creator2");
+
+    // Publish creator1's remix as a DTU-backed artifact (file_path=dtu://<id>,
+    // price 100). Non-derivative -> the bridge sources ancestors from lineage.
+    const pub = publishArtifact(db, {
+      creatorId: "creator1", type: "beat", title: "Remixed Lagos Beat",
+      description: "A remix sold with usage rights so further remixers everywhere can build on it.",
+      filePath: "dtu://remix_dtu_1", fileSize: 1024, fileHash: "remixhash1",
+      price: 100, creative: { genre: "afrobeats", tags: ["remix"] }, license: { type: "standard" },
+    });
+    assert.ok(pub.ok, JSON.stringify(pub));
+
+    const bal = () => ({
+      buyer: getBalance(db, "buyer1").balance,
+      remixer: getBalance(db, "creator1").balance,
+      ancestor: getBalance(db, "creator2").balance,
+      platform: getBalance(db, PLATFORM_ACCOUNT_ID).balance,
+    });
+    const before = bal();
+    const res = purchaseArtifact(db, { buyerId: "buyer1", artifactId: pub.artifact.id });
+    assert.ok(res.ok, JSON.stringify(res));
+    const after = bal();
+
+    assert.equal(r2(after.buyer - before.buyer), -100, "buyer pays the price");
+    assert.equal(r2(after.platform - before.platform), 5.46, "platform nets exactly the 5.46% fee");
+    assert.ok(after.ancestor - before.ancestor > 0, "the remix-parent (ancestor) is PAID on the sale");
+    assert.equal(
+      r2((after.remixer - before.remixer) + (after.ancestor - before.ancestor)),
+      94.54,
+      "remixer + ancestor split the remaining-after-fees",
+    );
+    assert.equal(
+      r2(before.buyer - after.buyer),
+      r2((after.remixer - before.remixer) + (after.ancestor - before.ancestor) + (after.platform - before.platform)),
+      "no CC minted or destroyed on a remix sale",
+    );
   });
 });

@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MpSearch } from '@/components/materials/MpSearch';
+import { PeriodicTable } from '@/components/materials/PeriodicTable';
 import { CorrosionThermalPanel } from '@/components/materials/CorrosionThermalPanel';
 import { MaterialShortlist } from '@/components/materials/MaterialShortlist';
 import { MaterialsToolkit } from '@/components/materials/MaterialsToolkit';
@@ -353,6 +354,12 @@ export default function MaterialsLensPage() {
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-zinc-300/20 text-zinc-300' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+
+      {/* Periodic table element browser — click an element for its real
+          properties, then deep-link into the Materials Project search below. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PeriodicTable />
+      </section>
 
       {/* Bespoke Materials Project search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

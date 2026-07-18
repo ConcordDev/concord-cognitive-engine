@@ -14,7 +14,10 @@
 ```
 grep -c 'registerLensAction("healthcare"' server/domains/healthcare.js
 ```
-→ **83** macros in `server/domains/healthcare.js` (2,495 lines). No inline
+→ **83** macros in `server/domains/healthcare.js` (2,495 lines) as of this
+Wave 3 pass; **87** after the 2026-07-16 `photo-notes-list`/`photo-notes-add`/
+`photo-notes-delete` addition (see the `vision` entry below) — re-run the
+command above for the current count. No inline
 `register("healthcare", ...)` in `server.js`
 (`grep -c 'register("healthcare"' server/server.js` → 0).
 
@@ -122,15 +125,23 @@ a genuinely deep EHR/patient-portal suite:
   external guideline-API integration — out of scope for a frontend-only
   wiring pass. Flagged as a scoped future build, not faked with an invented
   protocol set.
-- **`vision` — GENUINELY MISSING, deferred.** Routes an uploaded image
-  (rash/wound/medication-label photo) through the real vision brain
-  (`callVision`/`callVisionUrl`, LLaVA-successor Qwen2.5-VL per
-  CLAUDE.md's five-brain table) — the backend call is real, but no
-  component anywhere has an image-upload/capture UI to feed it (confirmed:
-  `grep -rln "imageB64\|imageUrl" components/healthcare/` found nothing
-  real). A genuine, moderate-scope new feature (upload control + result
-  display), not a quick wire — flagged as a scoped future build rather than
-  rushed.
+- **`vision` — CLOSED (2026-07-16, `docs/WAVE4_INVENTORY.md` line 188).**
+  Was: routes an uploaded image through the real vision brain
+  (`callVision`/`callVisionUrl`, Qwen2.5-VL per CLAUDE.md's five-brain
+  table) but no component anywhere had an image-upload/capture UI to feed
+  it. Closed via a new durable-chart-entry sibling family
+  (`photo-notes-list`/`photo-notes-add`/`photo-notes-delete`, cloned from
+  this file's own `allergies-*` CRUD shape) rather than wiring the plain
+  `vision` macro directly: `photo-notes-add` calls the SAME real
+  `callVision`/`callVisionUrl` call (never re-derived) and only persists a
+  chart entry when it genuinely succeeds — an unavailable vision brain
+  surfaces as an honest `{ok:false,error}`, nothing fabricated. The plain
+  `vision` macro is untouched for any existing one-off caller. New "Photos"
+  tab on `PatientChartPanel.tsx` (upload via the same `FileReader.
+  readAsDataURL` idiom already used by `TravelDocsPanel.tsx`, real
+  analysis rendered, delete, honest error state). See
+  `server/tests/depth/healthcare-photo-notes-behavior.test.js` and
+  `concord-frontend/tests/components/PatientChartPanel-photos.test.tsx`.
 
 ## Verification
 

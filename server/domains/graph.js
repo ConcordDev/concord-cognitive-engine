@@ -726,6 +726,127 @@ export default function registerGraphActions(registerLensAction) {
     return { ok: true, result: { deleted: params.edgeId } };
   });
 
+  /**
+   * map-merge-nodes — merge two REAL, already-persisted nodes on a stored
+   * map into one. This is the honest replacement for the `graph.merge`
+   * sandbox macro (server.js), which only ever operated on a transient
+   * artifact.data scratch object that was never saved. This macro operates
+   * on `m.nodes`/`m.edges` via `findMap`, exactly like every other mutating
+   * macro in this file, and persists via `saveGraph()`.
+   *
+   * params: { mapId, sourceNodeId, targetNodeId, keepId? }
+   *   - sourceNodeId / targetNodeId: the two real nodes to merge (order
+   *     doesn't imply anything by itself).
+   *   - keepId (optional): which of the two survives. Defaults to
+   *     targetNodeId (the conventional "merge source into target" reading).
+   *     If provided, it must be one of sourceNodeId/targetNodeId — an
+   *     unrecognized keepId is rejected rather than silently ignored.
+   *
+   * Correctness contract:
+   *   - every edge touching the losing node is re-pointed to the surviving
+   *     node's id (edges are never silently dropped);
+   *   - a self-loop created by re-pointing (the direct edge that used to
+   *     connect the two merged nodes) is removed — merging a node with
+   *     itself is meaningless as an edge;
+   *   - duplicate edges created by re-pointing (target already had an edge
+   *     to the same third node the source also pointed at) are deduplicated
+   *     using the SAME directed (from,to) uniqueness rule `edge-add` already
+   *     enforces (`m.edges.some(e => e.from === from.id && e.to === to.id)`)
+   *     — an edge in the opposite direction is a distinct edge, not a dup;
+   *   - the losing node's own data is never silently discarded: its notes
+   *     are appended onto the survivor's notes (labelled with the losing
+   *     node's own label), its `dtuId` link is inherited if the survivor
+   *     doesn't already have one, its `central` flag transfers onto the
+   *     survivor if the survivor wasn't already central (so a map never
+   *     loses its one central node to a merge), and full provenance —
+   *     the losing node's id/label plus any of ITS prior mergedFrom
+   *     history — is recorded on the survivor's `mergedFrom` array.
+   */
+  registerLensAction("graph", "map-merge-nodes", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+
+    const sourceId = params.sourceNodeId;
+    const targetId = params.targetNodeId;
+    if (!sourceId || !targetId) return { ok: false, error: "sourceNodeId and targetNodeId required" };
+    if (sourceId === targetId) return { ok: false, error: "cannot merge a node with itself" };
+
+    const sourceNode = m.nodes.find((n) => n.id === sourceId);
+    const targetNode = m.nodes.find((n) => n.id === targetId);
+    if (!sourceNode || !targetNode) return { ok: false, error: "both nodes must exist in the map" };
+
+    let keepId = targetId;
+    if (params.keepId != null) {
+      if (params.keepId !== sourceId && params.keepId !== targetId) {
+        return { ok: false, error: "keepId must be either sourceNodeId or targetNodeId" };
+      }
+      keepId = params.keepId;
+    }
+    const loseId = keepId === sourceId ? targetId : sourceId;
+    const survivor = keepId === sourceId ? sourceNode : targetNode;
+    const loser = keepId === sourceId ? targetNode : sourceNode;
+
+    // Honestly fold the losing node's own data into the survivor rather
+    // than silently discarding it.
+    if (loser.notes) {
+      const tag = `[merged from "${loser.label}"]: ${loser.notes}`;
+      survivor.notes = gphClean(survivor.notes ? `${survivor.notes}\n\n${tag}` : tag, 4000);
+    }
+    if (!survivor.dtuId && loser.dtuId) survivor.dtuId = loser.dtuId;
+    if (loser.central && !survivor.central) survivor.central = true;
+    survivor.mergedFrom = [
+      ...(survivor.mergedFrom || []),
+      { id: loser.id, label: loser.label },
+      ...(loser.mergedFrom || []),
+    ];
+
+    // Re-point every edge referencing the losing node onto the survivor.
+    let edgesRepointed = 0;
+    for (const e of m.edges) {
+      if (e.from === loseId) { e.from = keepId; edgesRepointed++; }
+      if (e.to === loseId) { e.to = keepId; edgesRepointed++; }
+    }
+
+    // Drop self-loops created by re-pointing (the direct edge that used to
+    // connect the two now-merged nodes no longer means anything).
+    const beforeSelfLoop = m.edges.length;
+    m.edges = m.edges.filter((e) => e.from !== e.to);
+    const selfLoopsDropped = beforeSelfLoop - m.edges.length;
+
+    // Dedupe using edge-add's own directed (from,to) uniqueness rule —
+    // opposite-direction edges are distinct, same-direction repeats aren't.
+    const seen = new Set();
+    const deduped = [];
+    let duplicateEdgesRemoved = 0;
+    for (const e of m.edges) {
+      const key = `${e.from}::${e.to}`;
+      if (seen.has(key)) { duplicateEdgesRemoved++; continue; }
+      seen.add(key);
+      deduped.push(e);
+    }
+    m.edges = deduped;
+
+    // Remove the losing node from the map.
+    m.nodes = m.nodes.filter((n) => n.id !== loseId);
+
+    saveGraph();
+    return {
+      ok: true,
+      result: {
+        mapId: m.id,
+        keptNodeId: keepId,
+        removedNodeId: loseId,
+        node: survivor,
+        edgesRepointed,
+        selfLoopsDropped,
+        duplicateEdgesRemoved,
+        nodeCount: m.nodes.length,
+        edgeCount: m.edges.length,
+      },
+    };
+  });
+
   // map-metrics — degree distribution + most-connected node over a map.
   registerLensAction("graph", "map-metrics", (ctx, _a, params = {}) => {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };

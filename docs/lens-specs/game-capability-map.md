@@ -238,7 +238,19 @@ live r/Games Reddit feed respectively). The defects were concentrated in
     left as misleading fake zeros.
   - The hardcoded, cross-lens-contaminated "Recent Activity" feed was
     replaced with an honest note (no per-event XP log exists server-side
-    yet) pointing at the real `RecentMineCard` panel.
+    yet) pointing at the real `RecentMineCard` panel. **CLOSED (2026-07-16,
+    `e93cbafe`):** the honest-note placeholder is now a real per-event log.
+    `awardXp(s, userId, xp, gold, meta)` logs every non-zero award inside
+    the shared function itself (so no current or future XP-granting call
+    site can silently bypass the log) — `taskComplete`/`partyContribute`/
+    `challengeProgress` all pass real `{source,label,refId}`. New
+    `game.xpLogList` macro; new `XpActivityFeed.tsx` component replaces the
+    placeholder note in the History tab, with server-computed lifetime
+    totals (not client-summed), a source filter, and a genuine empty state.
+    15 new backend tests (`server/tests/depth/game-xp-log-behavior.test.js`),
+    13 new frontend tests. The DTU-authorship-derived profile XP elsewhere
+    on this tab still has no per-event concept of its own (a live computed
+    snapshot, not an event log) and still points at `RecentMineCard`.
   - The mini-game's practice XP no longer feeds into the real `playerXp`
     header/progress-bar counter, and its copy no longer claims it's "added
     to your profile" — relabeled "practice XP," honestly scoped to the

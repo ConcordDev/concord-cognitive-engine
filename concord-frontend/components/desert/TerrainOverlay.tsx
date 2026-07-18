@@ -12,7 +12,11 @@ import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { Plus, Trash2, Mountain, Layers } from 'lucide-react';
 
-const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
+// Desert-scoped map with an offline tile cache for no-signal fieldwork
+// (see lib/desert/tile-cache.ts) — NOT the shared components/common/MapView,
+// which has no hook for intercepting tile requests and is used unmodified
+// by ~25 other lenses.
+const MapView = dynamic(() => import('@/components/desert/DesertOfflineMapView'), { ssr: false });
 
 const SOILS = ['sand', 'rock', 'gravel', 'salt', 'clay'];
 

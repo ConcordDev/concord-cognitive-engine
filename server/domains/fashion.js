@@ -1,6 +1,7 @@
 // server/domains/fashion.js
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { listFriends, areFriends } from "../lib/friendships.js";
 
 export default function registerFashionActions(registerLensAction) {
   registerLensAction("fashion", "vision", async (ctx, artifact, _params) => {
@@ -206,6 +207,10 @@ export default function registerFashionActions(registerLensAction) {
       occasion: fsClean(params.occasion, 60).toLowerCase() || "casual",
       season: ["spring", "summer", "fall", "winter", "all"].includes(String(params.season).toLowerCase())
         ? String(params.season).toLowerCase() : "all",
+      // Per-item spatial arrangement on the collage canvas (Wave 4 #171 —
+      // see outfit-set-item-position below). Empty on creation; populated
+      // lazily as the user drags/resizes items, never fabricated up front.
+      layout: [],
       timesWorn: 0, lastWorn: null, createdAt: fsNow(),
     };
     fsListB(s.outfits, userId).push(outfit);
@@ -234,7 +239,11 @@ export default function registerFashionActions(registerLensAction) {
     const items = outfit.itemIds.map((id) => findItem(s, userId, id)).filter(Boolean).map(itemView);
     return {
       ok: true,
-      result: { outfit, items, totalCost: Math.round(items.reduce((a, i) => a + fsNum(i.cost), 0) * 100) / 100 },
+      result: {
+        outfit, items,
+        layout: outfitLayoutView(outfit),
+        totalCost: Math.round(items.reduce((a, i) => a + fsNum(i.cost), 0) * 100) / 100,
+      },
     };
   });
 
@@ -263,6 +272,70 @@ export default function registerFashionActions(registerLensAction) {
     fsListB(s.wearLog, userId).push({ id: fsId("wl"), itemId: null, outfitId: outfit.id, date, at: fsNow() });
     saveFashionState();
     return { ok: true, result: { outfit } };
+  });
+
+  // ── Outfit collage canvas — drag/resize layout (Wave 4 #171) ────────
+  // Whering "Dress Me" parity gap (docs/lens-specs/fashion-capability-map.md
+  // item 5: "Visual drag-and-resize outfit collage canvas"). The outfit's
+  // itemIds have always been real closet items; the missing piece was
+  // genuine SPATIAL arrangement — dragging/resizing each garment on a
+  // canvas, not just picking it into a flat tag list. Mirrors the
+  // moodboard's per-pin x/y pattern (see MOODBOARD_CANVAS_MAX below): an
+  // outfit's `layout` array holds one {itemId, x, y, scale} entry per item
+  // that has been EXPLICITLY positioned by the user. Items with no entry
+  // yet get a deterministic non-overlapping cascade default computed on
+  // read (outfitLayoutView) — never persisted until the user actually
+  // drags or resizes something, so an untouched outfit's layout is never
+  // fabricated storage, only a display-time computation.
+  const OUTFIT_CANVAS_MAX = 640;
+  const OUTFIT_SCALE_MIN = 0.5;
+  const OUTFIT_SCALE_MAX = 2.0;
+  const outfitClampPos = (n) => Math.max(0, Math.min(OUTFIT_CANVAS_MAX, Math.round(Number(n) || 0)));
+  const outfitClampScale = (n) => Math.max(OUTFIT_SCALE_MIN, Math.min(OUTFIT_SCALE_MAX, Number(n) || 1));
+  // Same cascade shape as the moodboard default (idx*step mod
+  // (MAX-cardSize), row-wrap every N items) — tuned to the smaller outfit
+  // canvas and a typical 4-8 item outfit instead of a many-pin moodboard.
+  function outfitDefaultPos(idx) {
+    return {
+      x: (idx * 70) % (OUTFIT_CANVAS_MAX - 140),
+      y: Math.floor(idx / 8) * 160,
+    };
+  }
+  // Merges saved layout entries with computed defaults for any item that
+  // hasn't been positioned yet, so callers always get a full,
+  // non-overlapping arrangement — even before the first drag ever happens.
+  function outfitLayoutView(outfit) {
+    const saved = Array.isArray(outfit.layout) ? outfit.layout : [];
+    return outfit.itemIds.map((itemId, idx) => {
+      const entry = saved.find((l) => l.itemId === itemId);
+      if (entry) return { itemId, x: entry.x, y: entry.y, scale: entry.scale ?? 1, custom: true };
+      const d = outfitDefaultPos(idx);
+      return { itemId, x: d.x, y: d.y, scale: 1, custom: false };
+    });
+  }
+
+  registerLensAction("fashion", "outfit-set-item-position", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const outfit = findOutfit(s, userId, params.id);
+    if (!outfit) return { ok: false, error: "outfit not found" };
+    const itemId = String(params.itemId || "");
+    const itemIdx = outfit.itemIds.indexOf(itemId);
+    if (itemIdx < 0) return { ok: false, error: "item is not part of this outfit" };
+    if (!Array.isArray(outfit.layout)) outfit.layout = [];
+    const existing = outfit.layout.find((l) => l.itemId === itemId);
+    // Partial updates are honored — a pure resize call (scale only) must
+    // not stomp the item's current x/y back to a default, and a pure drag
+    // call (x/y only) must not reset scale to 1.
+    const fallback = existing || { ...outfitDefaultPos(itemIdx), scale: 1 };
+    const x = params.x != null ? outfitClampPos(params.x) : outfitClampPos(fallback.x);
+    const y = params.y != null ? outfitClampPos(params.y) : outfitClampPos(fallback.y);
+    const scale = params.scale != null ? outfitClampScale(params.scale) : outfitClampScale(fallback.scale);
+    const entry = { itemId, x, y, scale };
+    const i = outfit.layout.findIndex((l) => l.itemId === itemId);
+    if (i >= 0) outfit.layout[i] = entry; else outfit.layout.push(entry);
+    saveFashionState();
+    return { ok: true, result: { outfitId: outfit.id, item: entry, layout: outfitLayoutView(outfit) } };
   });
 
   // ── Wear calendar ───────────────────────────────────────────────────
@@ -459,7 +532,7 @@ export default function registerFashionActions(registerLensAction) {
   function getFashionStateExt() {
     const s = getFashionState();
     if (!s) return null;
-    for (const k of ["styleProfiles", "challenges", "capsules", "wishlist"]) {
+    for (const k of ["styleProfiles", "challenges", "capsules", "wishlist", "moodboards"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     if (!Array.isArray(s.communityPosts)) s.communityPosts = [];
@@ -859,7 +932,14 @@ export default function registerFashionActions(registerLensAction) {
       id: p.id, ownerId: p.ownerId,
       ownerLabel: p.ownerId === userId ? "You" : `Stylist ${String(p.ownerId).slice(-4)}`,
       caption: p.caption, occasion: p.occasion, season: p.season,
-      itemNames: p.itemNames, photo: p.photo,
+      // itemIds is a same-index companion to itemNames (added alongside
+      // "clone item from a friend's closet" — fashion-capability-map.md
+      // #16) so the UI can offer a real per-item clone action, not just a
+      // display label. Older posts persisted before this field existed
+      // have no itemIds — default to [] so clone honestly reports "not
+      // part of this post" rather than crashing on undefined.
+      itemNames: p.itemNames, itemIds: p.itemIds || [],
+      photo: p.photo,
       likes: p.likedBy.length, saves: p.savedBy.length,
       likedByMe: p.likedBy.includes(userId),
       savedByMe: p.savedBy.includes(userId),
@@ -873,11 +953,17 @@ export default function registerFashionActions(registerLensAction) {
     const outfit = findOutfit(s, userId, params.outfitId);
     if (!outfit) return { ok: false, error: "outfit not found" };
     const itemName = new Map((s.items.get(userId) || []).map((i) => [i.id, i.name]));
+    // Keep itemNames/itemIds strictly parallel (same filter, same order)
+    // so a UI index-pairs them safely for the clone action.
+    const sharedItems = outfit.itemIds
+      .map((id) => ({ id, name: itemName.get(id) }))
+      .filter((x) => x.name);
     const post = {
       id: fsId("fp"), ownerId: userId, outfitId: outfit.id,
       caption: fsClean(params.caption, 280) || outfit.name,
       occasion: outfit.occasion, season: outfit.season,
-      itemNames: outfit.itemIds.map((id) => itemName.get(id)).filter(Boolean),
+      itemNames: sharedItems.map((x) => x.name),
+      itemIds: sharedItems.map((x) => x.id),
       photo: fsClean(params.photo, 500) || null,
       likedBy: [], savedBy: [], createdAt: fsNow(),
     };
@@ -894,12 +980,25 @@ export default function registerFashionActions(registerLensAction) {
     if (params.mine === true) posts = posts.filter((p) => p.ownerId === userId);
     if (params.savedOnly === true) posts = posts.filter((p) => p.savedBy.includes(userId));
     if (params.occasion) posts = posts.filter((p) => p.occasion === String(params.occasion).toLowerCase());
+    // Friends-scoped feed (fashion-capability-map.md #16 — "Social feed is
+    // global, not friends-scoped"). Piggybacks on Concord's real friend
+    // graph (server/lib/friendships.js) exactly the way timeline.js's
+    // friends-tier post-privacy gate already does — never a client-
+    // supplied friend list. No db handle available (should not happen
+    // outside a misconfigured caller) fails CLOSED to an honest empty
+    // feed; it never silently falls back to showing everyone's posts.
+    let friendsOnly = false;
+    if (params.friendsOnly === true) {
+      friendsOnly = true;
+      const friendIds = ctx?.db ? new Set(listFriends(ctx.db, userId).map((f) => f.friendUserId)) : new Set();
+      posts = posts.filter((p) => friendIds.has(p.ownerId));
+    }
     if (sort === "popular") posts.sort((a, b) => (b.likedBy.length + b.savedBy.length) - (a.likedBy.length + a.savedBy.length));
     else posts.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     const limit = Math.max(1, Math.min(60, Math.round(Number(params.limit) || 30)));
     return {
       ok: true,
-      result: { posts: posts.slice(0, limit).map((p) => communityPostView(p, userId)), count: posts.length },
+      result: { posts: posts.slice(0, limit).map((p) => communityPostView(p, userId)), count: posts.length, friendsOnly },
     };
   });
   registerLensAction("fashion", "social-like", (ctx, _a, params = {}) => {
@@ -930,6 +1029,60 @@ export default function registerFashionActions(registerLensAction) {
     s.communityPosts.splice(i, 1);
     saveFashionState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── [E] Social clone — "clone this item straight into my closet" ────
+  // Whering/Stylebook parity gap (fashion-capability-map.md #16, the
+  // other half of the friends-scoped-feed gap above). The community feed
+  // has no per-post privacy tier of its own — social-feed/social-like/
+  // social-save all resolve a post purely by id, with no owner/visibility
+  // check beyond "does it exist" — it's a real GLOBAL feed by design,
+  // exactly per the capability-map's "give a real global community feed"
+  // finding. So "is this item visible to the caller" mirrors that same
+  // model rather than inventing a new permission tier: any post + item
+  // still reachable through the existing feed can be cloned (the
+  // globally-shared case). `viaFriend` below additionally records,
+  // informationally only, whether the source is a confirmed friend via
+  // the real friend graph — never used to grant or deny the clone itself.
+  //
+  // Cloning reuses buildWardrobeItem — the ONE shared item constructor
+  // (see its header comment; already used by item-add and
+  // wishlist-convert-to-item) — as its THIRD caller, so the result is a
+  // genuine independent item in the caller's own closet: a fresh id,
+  // fresh createdAt, timesWorn reset to 0, laundryStatus reset to
+  // "clean". Nothing here mutates the friend's original item, and
+  // nothing on the clone references it except the informational
+  // `clonedFrom` provenance stamp.
+  registerLensAction("fashion", "social-clone-item", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const post = s.communityPosts.find((p) => p.id === params.postId);
+    if (!post) return { ok: false, error: "post not found" };
+    const itemId = String(params.itemId || "");
+    if (!itemId || !(post.itemIds || []).includes(itemId)) {
+      return { ok: false, error: "item was not part of this shared outfit" };
+    }
+    const sourceItem = findItem(s, post.ownerId, itemId);
+    if (!sourceItem) return { ok: false, error: "item no longer exists in that closet" };
+    const clone = buildWardrobeItem({
+      name: sourceItem.name,
+      category: sourceItem.category,
+      brand: sourceItem.brand,
+      color: sourceItem.color,
+      season: sourceItem.season,
+      cost: sourceItem.cost,
+      photo: sourceItem.photo,
+    });
+    if (!clone) return { ok: false, error: "clone failed" };
+    clone.clonedFrom = {
+      postId: post.id,
+      ownerId: post.ownerId,
+      itemId: sourceItem.id,
+      viaFriend: ctx?.db ? areFriends(ctx.db, post.ownerId, userId) : false,
+    };
+    fsListB(s.items, userId).push(clone);
+    saveFashionState();
+    return { ok: true, result: { item: itemView(clone) } };
   });
 
   // ── [S] Capsule-wardrobe planner + #30wears challenge tracking ──────
@@ -1106,6 +1259,120 @@ export default function registerFashionActions(registerLensAction) {
     arr.splice(idx, 1);
     saveFashionState();
     return { ok: true, result: { item: itemView(item), removedWishlistId: entry.id } };
+  });
+
+  // ── [E] Moodboards — pin inspiration to a canvas ────────────────────
+  // Whering/Stylebook parity gap (docs/lens-specs/fashion-capability-map.md
+  // "No moodboards (pin inspiration to a canvas)"). Distinct from the
+  // existing SaveAsDtuButton "save one item" capability: a moodboard is a
+  // named board holding MANY pinned items, each an external image
+  // reference + optional note + a simple x/y position on a bounded
+  // virtual canvas. Real per-user persistence, same
+  // STATE.fashionLens.moodboards Map-per-user shape as items/outfits/
+  // wishlist/capsules — not client-side useState. Items are embedded
+  // directly on their board (not referenced by id into a separate
+  // top-level Map) because a pin is a freeform external reference, not a
+  // link to another first-class entity the way a lookbook's outfitIds
+  // are — so deleting a board can never leave a dangling item reference.
+  const MOODBOARD_CANVAS_MAX = 1000;
+  const findMoodboard = (s, userId, id) => (s.moodboards.get(userId) || []).find((b) => b.id === id) || null;
+  // Honest validation: reject anything that isn't a real http(s) URL or an
+  // inline data:image URI — never silently accept an empty/garbage pin.
+  function isValidImageRef(v) {
+    const cleaned = fsClean(v, 500);
+    if (!cleaned) return null;
+    return /^(https?:\/\/|data:image\/)/i.test(cleaned) ? cleaned : null;
+  }
+  function moodboardView(b) {
+    return { ...b, itemCount: b.items.length };
+  }
+
+  registerLensAction("fashion", "moodboard-create", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = fsClean(params.name, 120);
+    if (!name) return { ok: false, error: "moodboard name required" };
+    const board = {
+      id: fsId("mb"), name, items: [],
+      createdAt: fsNow(), updatedAt: fsNow(),
+    };
+    fsListB(s.moodboards, fsAid(ctx)).push(board);
+    saveFashionState();
+    return { ok: true, result: { moodboard: moodboardView(board) } };
+  });
+
+  registerLensAction("fashion", "moodboard-list", (ctx, _a, _params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const boards = [...(s.moodboards.get(fsAid(ctx)) || [])]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map(moodboardView);
+    return { ok: true, result: { moodboards: boards, count: boards.length } };
+  });
+
+  registerLensAction("fashion", "moodboard-update", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findMoodboard(s, fsAid(ctx), params.id);
+    if (!board) return { ok: false, error: "moodboard not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "moodboard name cannot be empty" };
+      board.name = n;
+    }
+    board.updatedAt = fsNow();
+    saveFashionState();
+    return { ok: true, result: { moodboard: moodboardView(board) } };
+  });
+
+  registerLensAction("fashion", "moodboard-delete", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.moodboards.get(fsAid(ctx)) || [];
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "moodboard not found" };
+    // Items are embedded on the board, so removing the board removes its
+    // pins in the same splice — no separate cleanup pass, no dangling refs.
+    arr.splice(i, 1);
+    saveFashionState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("fashion", "moodboard-add-item", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const board = findMoodboard(s, userId, params.boardId);
+    if (!board) return { ok: false, error: "moodboard not found" };
+    const imageUrl = isValidImageRef(params.imageUrl);
+    if (!imageUrl) return { ok: false, error: "a valid imageUrl (http(s):// or data:image/...) is required" };
+    // Honest minimal canvas: an explicit x/y position when given (clamped
+    // to the bounded virtual canvas), otherwise a deterministic cascade so
+    // new pins don't stack exactly on top of each other.
+    const idx = board.items.length;
+    const defaultX = (idx * 60) % (MOODBOARD_CANVAS_MAX - 120);
+    const defaultY = Math.floor(idx / 15) * 140;
+    const clamp = (n) => Math.max(0, Math.min(MOODBOARD_CANVAS_MAX, Math.round(n)));
+    const x = Number.isFinite(Number(params.x)) ? clamp(Number(params.x)) : clamp(defaultX);
+    const y = Number.isFinite(Number(params.y)) ? clamp(Number(params.y)) : clamp(defaultY);
+    const pin = {
+      id: fsId("pin"), imageUrl,
+      note: fsClean(params.note, 300) || null,
+      x, y,
+      createdAt: fsNow(),
+    };
+    board.items.push(pin);
+    board.updatedAt = fsNow();
+    saveFashionState();
+    return { ok: true, result: { moodboardId: board.id, item: pin, itemCount: board.items.length } };
+  });
+
+  registerLensAction("fashion", "moodboard-remove-item", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const board = findMoodboard(s, userId, params.boardId);
+    if (!board) return { ok: false, error: "moodboard not found" };
+    const i = board.items.findIndex((p) => p.id === params.itemId);
+    if (i < 0) return { ok: false, error: "pinned item not found" };
+    board.items.splice(i, 1);
+    board.updatedAt = fsNow();
+    saveFashionState();
+    return { ok: true, result: { moodboardId: board.id, deleted: params.itemId, itemCount: board.items.length } };
   });
 
   // feed — ingest real fashion / costume pieces from The Metropolitan

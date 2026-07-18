@@ -557,6 +557,7 @@ export default function registerFoodActions(registerLensAction) {
       "pantry", "mealPlans", "nutritionLog", "recipes",
       "businesses", "reviews", "photos", "tips", "checkins",
       "collections", "reservations", "waitlist",
+      "wasteLog", "floorplanTables", "floorplanWaitlist", "prepLists",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -605,6 +606,219 @@ export default function registerFoodActions(registerLensAction) {
     list.splice(idx, 1);
     saveStateIfAvailable();
     return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ─── Waste Log — persisted (was pure useState scratch pad on the frontend;
+  // mirrors the pantry-add/pantry-list/pantry-delete pattern exactly). ──────
+  registerLensAction("food", "waste-log-add", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const itemName = String(params.itemName || "").trim();
+    if (!itemName) return { ok: false, error: "itemName required" };
+    if (!state.wasteLog.has(userId)) state.wasteLog.set(userId, []);
+    const entry = {
+      id: `waste_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      itemName,
+      qty: Number(params.qty) || 1,
+      unit: String(params.unit || "item"),
+      reason: ["spoilage", "overproduction", "prep_waste", "customer_return", "other"].includes(params.reason)
+        ? params.reason : "other",
+      estimatedCostImpact: params.estimatedCostImpact != null ? Math.max(0, Number(params.estimatedCostImpact) || 0) : 0,
+      date: params.date || new Date().toISOString().slice(0, 10),
+    };
+    state.wasteLog.get(userId).push(entry);
+    saveStateIfAvailable();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("food", "waste-log-list", (ctx, _artifact, _params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const items = state.wasteLog.get(userId) || [];
+    const totalEstimatedCost = Math.round(items.reduce((sum, i) => sum + (Number(i.estimatedCostImpact) || 0), 0) * 100) / 100;
+    return { ok: true, result: { items, count: items.length, totalEstimatedCost } };
+  });
+
+  registerLensAction("food", "waste-log-delete", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const list = state.wasteLog.get(userId) || [];
+    const idx = list.findIndex(i => i.id === id);
+    if (idx < 0) return { ok: false, error: "item not found" };
+    list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ─── Floor Plan & Tables — persisted host-stand seating substrate
+  // (replaces the hardcoded 20-table generateTables() fake). ───────────────
+  registerLensAction("food", "floorplan-table-add", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const label = String(params.label || "").trim();
+    if (!label) return { ok: false, error: "label required" };
+    const seatsRaw = Number(params.seats);
+    if (!Number.isFinite(seatsRaw) || seatsRaw < 1) return { ok: false, error: "seats required" };
+    if (!state.floorplanTables.has(userId)) state.floorplanTables.set(userId, []);
+    const table = {
+      id: `tbl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      label,
+      seats: Math.max(1, Math.round(seatsRaw)),
+      section: String(params.section || "").trim() || null,
+      status: "available",
+    };
+    state.floorplanTables.get(userId).push(table);
+    saveStateIfAvailable();
+    return { ok: true, result: { table } };
+  });
+
+  registerLensAction("food", "floorplan-table-list", (ctx, _artifact, _params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const tables = state.floorplanTables.get(userId) || [];
+    const byStatus = {};
+    for (const t of tables) byStatus[t.status] = (byStatus[t.status] || 0) + 1;
+    return { ok: true, result: { tables, count: tables.length, byStatus } };
+  });
+
+  registerLensAction("food", "floorplan-table-update", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const list = state.floorplanTables.get(userId) || [];
+    const table = list.find(t => t.id === id);
+    if (!table) return { ok: false, error: "table not found" };
+    if (params.status !== undefined) {
+      if (!["available", "occupied", "reserved", "dirty"].includes(params.status)) {
+        return { ok: false, error: "status must be one of available/occupied/reserved/dirty" };
+      }
+      table.status = params.status;
+    }
+    if (params.label !== undefined) {
+      const label = String(params.label || "").trim();
+      if (!label) return { ok: false, error: "label required" };
+      table.label = label;
+    }
+    if (params.seats !== undefined) {
+      const seatsRaw = Number(params.seats);
+      if (!Number.isFinite(seatsRaw) || seatsRaw < 1) return { ok: false, error: "seats required" };
+      table.seats = Math.max(1, Math.round(seatsRaw));
+    }
+    if (params.section !== undefined) {
+      table.section = String(params.section || "").trim() || null;
+    }
+    saveStateIfAvailable();
+    return { ok: true, result: { table } };
+  });
+
+  registerLensAction("food", "floorplan-table-delete", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const list = state.floorplanTables.get(userId) || [];
+    const idx = list.findIndex(t => t.id === id);
+    if (idx < 0) return { ok: false, error: "table not found" };
+    list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ─── Floor Plan Waitlist — host-stand walk-in queue. Deliberately SEPARATE
+  // from the diner-facing waitlist-join/waitlist-status/waitlist-leave family
+  // below (those require an authenticated diner + a real business record and
+  // block a user from double-joining; a host logging a walk-in party's name
+  // is a different actor and shape entirely — see CLAUDE.md-adjacent capability
+  // map notes on this gap). ─────────────────────────────────────────────────
+  registerLensAction("food", "floorplan-waitlist-add", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const partyName = String(params.partyName || "").trim();
+    if (!partyName) return { ok: false, error: "partyName required" };
+    const partySizeRaw = Number(params.partySize);
+    if (!Number.isFinite(partySizeRaw) || partySizeRaw < 1) return { ok: false, error: "partySize required" };
+    if (!state.floorplanWaitlist.has(userId)) state.floorplanWaitlist.set(userId, []);
+    const list = state.floorplanWaitlist.get(userId);
+    const position = list.filter(e => e.status === "waiting").length + 1;
+    const entry = {
+      id: `wlk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      partyName,
+      partySize: Math.max(1, Math.round(partySizeRaw)),
+      phone: params.phone ? String(params.phone).trim() : null,
+      position,
+      estimatedWaitMin: position * 10,
+      status: "waiting",
+      addedAt: new Date().toISOString(),
+    };
+    list.push(entry);
+    saveStateIfAvailable();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("food", "floorplan-waitlist-list", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const all = state.floorplanWaitlist.get(userId) || [];
+    const entries = params.includeResolved === true ? all : all.filter(e => e.status === "waiting");
+    return { ok: true, result: { entries, count: entries.length } };
+  });
+
+  registerLensAction("food", "floorplan-waitlist-remove", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const list = state.floorplanWaitlist.get(userId) || [];
+    const entry = list.find(e => e.id === params.id);
+    if (!entry) return { ok: false, error: "entry not found" };
+    entry.status = params.seated === true ? "seated" : "left";
+    saveStateIfAvailable();
+    return { ok: true, result: { entry } };
+  });
+
+  // ─── Prep List persistence — closes two gaps at once: (1) generatePrepList's
+  // real computed result used to be discarded into a generic actionResult
+  // display instead of populating the checklist, (2) even once wired, checking
+  // off a task never survived reload with no persistence layer. ────────────
+  registerLensAction("food", "prep-list-save", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    if (!Array.isArray(params.tasks)) return { ok: false, error: "tasks required" };
+    const date = params.date || new Date().toISOString().slice(0, 10);
+    const tasks = params.tasks.map(t => ({
+      ...(t && typeof t === "object" ? t : {}),
+      done: typeof t?.done === "boolean" ? t.done : false,
+    }));
+    if (!state.prepLists.has(userId)) state.prepLists.set(userId, []);
+    const list = state.prepLists.get(userId);
+    const idx = list.findIndex(r => r.date === date);
+    const record = { date, tasks, generatedAt: new Date().toISOString() };
+    if (idx >= 0) list[idx] = record; else list.push(record);
+    saveStateIfAvailable();
+    return { ok: true, result: { list: record } };
+  });
+
+  registerLensAction("food", "prep-list-get", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const date = params.date || new Date().toISOString().slice(0, 10);
+    const list = state.prepLists.get(userId) || [];
+    const record = list.find(r => r.date === date) || null;
+    return { ok: true, result: { list: record } };
+  });
+
+  registerLensAction("food", "prep-list-toggle-task", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const date = params.date || new Date().toISOString().slice(0, 10);
+    const list = state.prepLists.get(userId) || [];
+    const record = list.find(r => r.date === date);
+    if (!record) return { ok: false, error: "prep list not found for that date" };
+    const taskIndex = Math.round(Number(params.taskIndex));
+    if (!Number.isFinite(taskIndex) || taskIndex < 0 || taskIndex >= record.tasks.length) {
+      return { ok: false, error: "task index out of range" };
+    }
+    record.tasks[taskIndex].done = !record.tasks[taskIndex].done;
+    saveStateIfAvailable();
+    return { ok: true, result: { list: record, taskIndex, done: record.tasks[taskIndex].done } };
   });
 
   registerLensAction("food", "recipe-scale", (_ctx, _artifact, params = {}) => {

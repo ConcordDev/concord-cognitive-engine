@@ -112,7 +112,7 @@ already had 10 files / ~2,800 LOC of real, macro-wired UI:
 | Orbital-mechanics (Kepler) calculator | WAS BACKEND-CAPABLE-BUT-UNSURFACED → **now surfaced** | new `AstroCalculators.tsx` (`orbitalMechanics`) |
 | Observation-session planner (moon phase + target difficulty) | WAS BACKEND-CAPABLE-BUT-UNSURFACED → **now surfaced** | new `AstroCalculators.tsx` (`planObservation`) |
 | Live weather-webcam / seeing-cam integration | GENUINELY MISSING | Deferred — no free API identified with acceptable ToS; not scoped for this batch |
-| Multi-observer shared session (co-observing) | GENUINELY MISSING | Deferred — would need a new realtime substrate; out of scope for a UI-polish batch |
+| Multi-observer shared session (co-observing) | ~~GENUINELY MISSING~~ **CLOSED (2026-07-17, `9e784048`)** | The "new realtime substrate" premise was stale. Reuses collab's own session roster (`STATE.collabLens.sessionRosters` via `sessionJoin`/`sessionLeave`) + `realtimeEmit` over a new `astronomy:session:<id>` room, gated in server.js by real membership (non-members blocked; never a fabricated "N watching"). Shared current-target + observation-log broadcast to members; each observer's alt/az stays computed from THEIR OWN lat/long via the real Meeus transform — pinned by a test asserting NYC vs Sydney get different alt/az for the same target. 46 tests. |
 
 Overall: this lens was already close to Stellarium/SkySafari feature parity in
 its **components/** directory; the defect was entirely in `page.tsx` — a

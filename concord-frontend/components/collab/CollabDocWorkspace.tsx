@@ -13,14 +13,21 @@
  *   setPermission / getPermissions                    — view/comment/edit tiers
  *   addComment / listComments / resolveThread         — @-mention threaded pins
  *   notifications / markNotificationRead              — mention notifications
+ *   presenceState                                     — read-only "peek" roster (doc list)
  *
  * Sync is poll-based (1s) over `docSync` which returns CRDT ops newer than the
  * caller's lamport clock plus the live presence roster — concurrent edits
  * converge because the backend replays the op log in a deterministic
  * (lamport, authorId) total order. The live presence roster itself arrives
  * via that same `docSync` payload (and via `cursorUpdate`'s own response),
- * so a dedicated `presenceState` poll isn't needed here — it exists on the
- * backend for a read-only observer that never heartbeats a cursor.
+ * so once a document is open, a dedicated `presenceState` poll isn't needed.
+ *
+ * The doc-list view (before opening anything) is where `presenceState` earns
+ * its keep: the "peek" eye button next to each row polls it directly so a
+ * user can see who's currently viewing a document WITHOUT opening it — and
+ * critically, without ever calling `openDoc`/`cursorUpdate`, so peeking never
+ * adds the peeker's own cursor to that doc's presence map. That's the whole
+ * point of a read-only observer: looking doesn't make you visible.
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -135,6 +142,48 @@ export function CollabDocWorkspace() {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [presence, setPresence] = useState<PresenceRow[]>([]);
   const [following, setFollowing] = useState<string | null>(null);
+
+  // ── "Peek" — read-only viewer roster from the doc list, no join ──────────
+  // Calls `collab.presenceState` on a short poll. Deliberately NEVER calls
+  // `openDoc` or `cursorUpdate` — opening a peek must not add the viewer's
+  // own cursor to the doc's presence map (that would defeat the point: a
+  // read-only look at who's here, without becoming one of them). See
+  // `server/domains/collab.js#presenceState` (pure read of `s.presence`,
+  // only `cursorUpdate` heartbeats write to it) and the capability-map entry
+  // this closes ("Read-only 'who's viewing' roster without joining edit
+  // presence").
+  const [peekDocId, setPeekDocId] = useState<string | null>(null);
+  const [peekPresence, setPeekPresence] = useState<PresenceRow[]>([]);
+  const [peekOnline, setPeekOnline] = useState(0);
+  const [peekLoading, setPeekLoading] = useState(false);
+
+  const fetchPeek = useCallback(async (docId: string) => {
+    const r = await call<{ presence: PresenceRow[]; online: number }>('presenceState', { docId });
+    setPeekPresence(r?.presence ?? []);
+    setPeekOnline(r?.online ?? (r?.presence?.length ?? 0));
+  }, []);
+
+  const openPeek = useCallback(async (docId: string) => {
+    setPeekDocId(docId);
+    setPeekLoading(true);
+    await fetchPeek(docId);
+    setPeekLoading(false);
+  }, [fetchPeek]);
+
+  const closePeek = useCallback(() => {
+    setPeekDocId(null);
+    setPeekPresence([]);
+    setPeekOnline(0);
+  }, []);
+
+  // Poll while (and only while) the popover is open; the effect's cleanup
+  // clears the interval both when peekDocId changes/clears and on unmount,
+  // so there's no dangling timer once the popover is closed.
+  useEffect(() => {
+    if (!peekDocId) return;
+    const t = setInterval(() => { void fetchPeek(peekDocId); }, 4000);
+    return () => clearInterval(t);
+  }, [peekDocId, fetchPeek]);
 
   // Yjs CRDT: a server-mediated Y.Doc per document; the doc's
   // `Y.Text("content")` is the canonical realtime view of the
@@ -597,21 +646,69 @@ export function CollabDocWorkspace() {
         ) : (
           <div className="space-y-1.5">
             {docs.map((d) => (
-              <button key={d.id} onClick={() => openDoc(d.id)}
-                className="w-full flex items-center justify-between p-2.5 rounded border border-zinc-800 bg-zinc-900/40 hover:border-blue-500/40 hover:bg-zinc-800/60 text-left transition-all">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-zinc-100 truncate flex items-center gap-1.5">
-                    {d.isOwner && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
-                    {d.title}
+              <div key={d.id} className="relative flex items-stretch gap-1.5">
+                <button onClick={() => openDoc(d.id)}
+                  className="flex-1 min-w-0 flex items-center justify-between p-2.5 rounded border border-zinc-800 bg-zinc-900/40 hover:border-blue-500/40 hover:bg-zinc-800/60 text-left transition-all">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-zinc-100 truncate flex items-center gap-1.5">
+                      {d.isOwner && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
+                      {d.title}
+                    </div>
+                    <div className="text-[10px] text-zinc-400">
+                      {d.opCount} edits · {d.snapshotCount} versions · updated {timeAgo(d.updatedAt)}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-zinc-400">
-                    {d.opCount} edits · {d.snapshotCount} versions · updated {timeAgo(d.updatedAt)}
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-mono uppercase shrink-0 ml-2 bg-zinc-800 text-zinc-400">
+                    {d.tier}
+                  </span>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (peekDocId === d.id) closePeek(); else openPeek(d.id); }}
+                  title="Peek — see who's viewing without joining"
+                  aria-label={`Peek at who is viewing ${d.title}`}
+                  aria-expanded={peekDocId === d.id}
+                  className={`shrink-0 px-2 rounded border transition-all ${
+                    peekDocId === d.id
+                      ? 'border-blue-500/40 bg-blue-500/15 text-blue-300'
+                      : 'border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-blue-500/30 hover:text-blue-300'
+                  }`}>
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
+
+                {peekDocId === d.id && (
+                  <div role="dialog" aria-label={`Viewers of ${d.title}`}
+                    className="absolute right-0 top-full mt-1 z-20 w-64 rounded-lg border border-zinc-800 bg-zinc-950 shadow-xl p-2.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1">
+                        <Eye className="w-3 h-3 text-blue-400" /> Who's viewing
+                      </span>
+                      <button onClick={closePeek} className="text-zinc-400 hover:text-zinc-200" aria-label="Close peek">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {peekLoading ? (
+                      <div className="flex items-center gap-2 text-zinc-400 text-[11px] py-2 justify-center">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
+                      </div>
+                    ) : peekOnline === 0 ? (
+                      <p className="text-[11px] text-zinc-400 py-1.5 text-center">No one else viewing right now.</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {peekPresence.map((p) => (
+                          <div key={p.userId} className="flex items-center gap-1.5 text-[11px]">
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                            <span className="text-zinc-200 truncate">{p.name}</span>
+                            <span className="text-zinc-500 ml-auto font-mono">@{p.cursor}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[9px] text-zinc-500 leading-snug">
+                      Read-only — peeking never joins the doc or shows you to other viewers.
+                    </p>
                   </div>
-                </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono uppercase shrink-0 ml-2 bg-zinc-800 text-zinc-400">
-                  {d.tier}
-                </span>
-              </button>
+                )}
+              </div>
             ))}
           </div>
         )}

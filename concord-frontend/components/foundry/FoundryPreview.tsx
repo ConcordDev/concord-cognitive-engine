@@ -18,10 +18,24 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { previewWorld, endPreview } from '@/lib/foundry/api';
+import { worldToScene } from '@/lib/world-lens/coord-frame';
+import {
+  mapWorldBuildingToRendererDTU,
+  type WorldBuildingRow,
+  type RendererBuildingDTU,
+} from '@/lib/world-lens/world-building-dto';
 import { Loader2, X, AlertTriangle, Eye } from 'lucide-react';
 
 const ConcordiaScene = dynamic(
   () => import('@/components/world-lens/ConcordiaScene'),
+  { ssr: false, loading: () => null },
+);
+
+// Headless — returns a display:none div and dispatches `concordia:buildings-ready`
+// with the built 3D group, which the ConcordiaScene mounted alongside consumes.
+// Its WebGL/three usage must never SSR.
+const BuildingRenderer3D = dynamic(
+  () => import('@/components/world-lens/BuildingRenderer3D'),
   { ssr: false, loading: () => null },
 );
 
@@ -35,6 +49,9 @@ export function FoundryPreview({ foundryWorldId, worldName, onClose }: FoundryPr
   const [previewWorldId, setPreviewWorldId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [skippedStubs, setSkippedStubs] = useState<string[]>([]);
+  // Authored buildings for the compiled preview world. Empty is the honest
+  // default — a fetch failure/timeout renders terrain-only, never fabricated rows.
+  const [buildings, setBuildings] = useState<RendererBuildingDTU[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -61,6 +78,38 @@ export function FoundryPreview({ foundryWorldId, worldName, onClose }: FoundryPr
       endPreview(foundryWorldId).catch(() => {});
     };
   }, [foundryWorldId]);
+
+  // Once the transient preview world exists, load its buildings the same way the
+  // world lens does: server [0,2000] frame → origin-centred scene frame via
+  // worldToScene, then row → renderer DTU. Feeding these to the headless
+  // BuildingRenderer3D makes authored buildings appear in the preview (it renders
+  // terrain-only otherwise). Honest failure: any non-ok/throw/timeout → NO
+  // buildings (empty array), never a fabricated stand-in.
+  useEffect(() => {
+    if (!previewWorldId) {
+      setBuildings([]);
+      return;
+    }
+    let alive = true;
+    fetch(`/api/worlds/${encodeURIComponent(previewWorldId)}/buildings`, {
+      signal: AbortSignal.timeout(8000),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`buildings ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (!alive) return;
+        const rows: WorldBuildingRow[] = Array.isArray(d?.buildings) ? d.buildings : [];
+        setBuildings(rows.map(worldToScene).map(mapWorldBuildingToRendererDTU));
+      })
+      .catch(() => {
+        if (alive) setBuildings([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [previewWorldId]);
 
   return (
     <div
@@ -98,7 +147,12 @@ export function FoundryPreview({ foundryWorldId, worldName, onClose }: FoundryPr
             <Loader2 className="h-4 w-4 animate-spin" /> Compiling your world…
           </div>
         ) : (
-          <ConcordiaScene districtId={previewWorldId} cameraMode="free" quality="medium" />
+          <>
+            <ConcordiaScene districtId={previewWorldId} cameraMode="free" quality="medium" />
+            {/* Headless — dispatches concordia:buildings-ready for the scene above
+                to consume. Empty `buildings` renders no group (honest terrain-only). */}
+            <BuildingRenderer3D buildings={buildings} viewMode="normal" />
+          </>
         )}
       </div>
     </div>

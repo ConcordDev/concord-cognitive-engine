@@ -227,16 +227,15 @@ feature-breaking bug in "New Goal" creation.
   empty states.
 - **`components/goals/ProductivityFeed.tsx`** — a real Reddit API pull
   (r/getdisciplined etc.), honestly labeled, no fabrication.
-- **The agent system's heartbeat-driven "simplified: random small
-  progress"** (`processGoalHeartbeat`, server.js:64752-64764, comment:
-  "Simulate progress based on goal type... In practice, this would hook
-  into actual DTU creation/analysis events") — this is the *backend's own*
-  honestly-labeled simplification for how an autonomously-activated agent
-  goal nudges its progress between ticks (not user-facing fabricated data,
-  and not something a frontend rebuild can fix without touching the
-  `runMacro`/heartbeat wiring layer, which is out of scope per the
-  program's "never rewrite the wiring layer" rule). Flagged here for
-  visibility, not silently accepted as fine — a future backend pass could
-  wire real per-goal-type progress signals (e.g. DTU count deltas for
-  `knowledge_synthesis`, contradiction-load deltas for `clarification`)
-  instead of `Math.random()`-driven nudges.
+- ~~**The agent system's heartbeat-driven "simplified: random small
+  progress"**~~ **CLOSED (2026-07-16, `023a7d9f`).** `processGoalHeartbeat`'s
+  progress step now derives real deltas for the goal types with a genuine
+  backing signal: `KNOWLEDGE_SYNTHESIS` (net-new DTU count),
+  `PATTERN_DISCOVERY` (net-new high-authority DTU count), `CLARIFICATION`
+  (drop in `contradictionLoad`), `CONSOLIDATION` (net-new MEGA/HYPER DTU
+  count) — per-goal baselines on the existing free-form `goal.meta` bag.
+  Types with no real backing signal (`MAINTENANCE` and the rest) keep an
+  honestly-labeled small fixed nudge rather than a fabricated precise
+  number. `processGoalHeartbeat` and its lifecycle helpers were added to the
+  `__TEST__` export surface (additive) since this heartbeat has no HTTP
+  route or macro of its own to drive a behavioral test through.

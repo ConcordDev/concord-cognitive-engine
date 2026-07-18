@@ -41,8 +41,8 @@ function setupDb() {
 // Two mutual rivals (both expansionist) + one allied pair — the shape that
 // makes wars and alliances emerge.
 const FACTIONS = [
-  { id: "sandrun", stance: "expand", rival_factions: ["medici"], allied_factions: ["fluxom"] },
-  { id: "medici", stance: "expand", rival_factions: ["sandrun"] },
+  { id: "sandrun", stance: "expand", rival_factions: ["vessine"], allied_factions: ["fluxom"] },
+  { id: "vessine", stance: "expand", rival_factions: ["sandrun"] },
   { id: "fluxom", stance: "consolidate", allied_factions: ["sandrun"] },
 ];
 
@@ -57,7 +57,7 @@ describe("T1.1 — faction strategy seeding lights up the cycle", () => {
     assert.equal(r.seeded, 3, "every authored faction gets a strategy row");
     assert.ok(r.relations >= 2, `should seed rival + ally relations, got ${r.relations}`);
 
-    const rivalRel = getRelation(db, "sandrun", "medici");
+    const rivalRel = getRelation(db, "sandrun", "vessine");
     assert.equal(rivalRel.kind, "tension");
     assert.ok(rivalRel.score >= -0.3, "rival tension stays inside the war-collision window (>= -0.3)");
 
@@ -69,10 +69,10 @@ describe("T1.1 — faction strategy seeding lights up the cycle", () => {
     const db = setupDb();
     seedFactionStrategyState(db, FACTIONS);
     // simulate a gameplay-shaped relation
-    setRelation(db, "sandrun", "medici", { score: -0.9, kind: "war" });
+    setRelation(db, "sandrun", "vessine", { score: -0.9, kind: "war" });
     const second = seedFactionStrategyState(db, FACTIONS);
     assert.equal(second.seeded, 0, "no new strategy rows on re-seed");
-    assert.equal(getRelation(db, "sandrun", "medici").kind, "war", "gameplay relation preserved");
+    assert.equal(getRelation(db, "sandrun", "vessine").kind, "war", "gameplay relation preserved");
   });
 
   it("the cycle advances seeded factions and a war surfaces via the emit path (zero gameplay)", async () => {

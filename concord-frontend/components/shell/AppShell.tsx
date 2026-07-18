@@ -102,7 +102,10 @@ const NowPlayingBar = dynamic(
 // '/welding-portal/' is the public, no-account customer portal (view/approve
 // a welding estimate or invoice via an emailed token link) — it must not
 // show Concord's app sidebar/nav to a visitor who was never asked to sign up.
-const STANDALONE_PREFIXES = ['/legal/', '/welding-portal/'];
+// '/share/animation/' is the public, no-account animation share viewer (view
+// a shared animation via a token link) — same reasoning: a logged-out
+// visitor should never see Concord's authenticated app chrome.
+const STANDALONE_PREFIXES = ['/legal/', '/welding-portal/', '/share/animation/'];
 
 interface AppShellProps {
   children: React.ReactNode;

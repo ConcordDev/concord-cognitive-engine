@@ -288,6 +288,44 @@ function normalizeArt(art: Record<string, unknown>[]): MarketplaceItem[] {
   }));
 }
 
+// `/api/marketplace/browse` is the plugin marketplace's own browse macro
+// (server.js `register("marketplace","browse",...)` — reads
+// PLUGIN_MARKETPLACE.listings, not DTUs). It was previously run through
+// `normalizeItems`, which hardcodes `type: 'template'` and reads a
+// `licenses` shape that plugin listings don't have — every plugin listing
+// silently misrendered as an untitled, price-0 "template" and the
+// dedicated Plugins tab (`typeMap.plugins === 'plugin'`) never matched
+// anything. This maps the REAL listing shape (id/name/description/price/
+// category/author/downloads — see the `marketplace.submit` macro) onto
+// `MarketplaceItem`, single-tier price at `prices.basic` (the plugin
+// rights ladder is install/commercial/resale/source — see
+// `server/economy/rights-enforcement.js` TIER_HIERARCHY.plugin — but this
+// storefront card only surfaces the base "install" price; buying a higher
+// usage tier is a `marketplace.purchasePlugin({ pluginId, tier })` call with an
+// explicit tier, not yet exposed as separate cart line items).
+function normalizePlugins(items: Record<string, unknown>[]): MarketplaceItem[] {
+  return (items || []).map((p: Record<string, unknown>) => ({
+    id: String(p.id || ''),
+    title: String(p.name || 'Untitled Plugin'),
+    description: String(p.description || ''),
+    type: 'plugin' as const,
+    genre: p.category ? String(p.category) : undefined,
+    version: typeof p.version === 'string' ? p.version : undefined,
+    creator: { name: String(p.author || 'Unknown') },
+    prices: {
+      basic: typeof p.price === 'number' ? p.price : 0,
+      premium: 0,
+      unlimited: 0,
+      exclusive: 0,
+    },
+    rating: typeof p.rating === 'number' ? p.rating : 0,
+    ratingCount: Array.isArray(p.reviews) ? p.reviews.length : 0,
+    sales: typeof p.downloads === 'number' ? p.downloads : 0,
+    tags: p.category ? [String(p.category)] : [],
+    createdAt: typeof p.submittedAt === 'string' ? p.submittedAt : new Date().toISOString(),
+  }));
+}
+
 function normalizePrices(licenses: Record<string, unknown> | null | undefined): LicensePrice {
   if (!licenses) return { basic: 0, premium: 0, unlimited: 0, exclusive: 0 };
   const get = (key: string) => {
@@ -1034,7 +1072,7 @@ export default function MarketplaceLensPage() {
 
   // Merge real API data — browse endpoint + artistry fallbacks
   const allItems = useMemo(() => {
-    const browseItems = normalizeItems(browseData?.items ?? browseData?.results ?? []);
+    const browseItems = normalizePlugins(browseData?.items ?? browseData?.results ?? []);
     const artItems = [
       ...normalizeItems(templatesData?.beats ?? []),
       ...normalizeComponents(componentsData?.stems ?? []),
@@ -1240,15 +1278,42 @@ export default function MarketplaceLensPage() {
 
     for (const ci of cart) {
       try {
+        // Plugins are a SEPARATE store (PLUGIN_MARKETPLACE, not the DTU/
+        // artistry marketplace) with their own rights-gated checkout —
+        // `marketplace.purchasePlugin` for a priced listing (routes through the
+        // real `purchaseArtifact` ledger + royalty machinery every other
+        // content type uses), `marketplace.install` directly for a free
+        // (price 0) one — no purchase step, honestly matching the backend
+        // (a free listing has no creative_artifacts backing to buy against).
+        if (ci.item.type === 'plugin') {
+          const isFree = ci.item.prices.basic <= 0;
+          const r = isFree
+            ? await lensRun('marketplace', 'install', { pluginId: ci.item.id })
+            : await lensRun('marketplace', 'purchasePlugin', { pluginId: ci.item.id, tier: 'install' });
+          if (r.data.ok && r.data.result?.ok !== false) {
+            const result = r.data.result as { price?: number } | null;
+            completed.push({
+              id: `plugin-${ci.item.id}-${Date.now()}`,
+              item: ci.item,
+              license: ci.license,
+              price: isFree ? 0 : (result?.price ?? ci.price),
+              purchasedAt: new Date().toISOString(),
+            });
+          } else {
+            const failure = (r.data.result ?? r.data) as { message?: string; error?: string; reason?: string } | null;
+            errors.push(`${ci.item.title}: ${failure?.message || failure?.error || failure?.reason || 'Purchase failed'}`);
+          }
+          continue;
+        }
         // Maps the frontend's display `type` onto the *actual* backend
         // store keys the /api/artistry/marketplace/purchase route looks
         // listings up in (server.js: `{ beat, stems, 'sample-pack', artwork }`).
         // This used to be an identity map (template->'template' etc.), which
         // meant every beat/stem/sample purchase 404'd with "Listing not
         // found" — only 'artwork' happened to line up by coincidence.
-        // 'plugin'/'preset' items come from the separate plugin-marketplace
-        // browse pool and have no backing store here; they honestly fail
-        // with a per-item error below rather than silently succeeding.
+        // 'preset' items come from a pool with no backing store here; they
+        // honestly fail with a per-item error below rather than silently
+        // succeeding.
         const typeMap: Record<string, string> = {
           template: 'beat',
           component: 'stems',

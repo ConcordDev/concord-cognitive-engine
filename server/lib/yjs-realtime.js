@@ -16,6 +16,13 @@
 // Scopes today:
 //   - 'code:liveshare' — Code lens Live Share sessions, keyed by code
 //   - 'collab:doc'      — Collab lens documents, keyed by docId
+//   - 'law:contract'    — Law lens collaborative contract redlining, keyed
+//                          by contract id. Reuses this same layer end to
+//                          end (getDoc/attachYjsSync/useYjsDoc on the
+//                          client) — no parallel realtime transport was
+//                          built for it. See server/domains/law.js
+//                          (contract-redline-init/-link) and
+//                          concord-frontend/components/law/ContractRedline.tsx.
 //
 // Persistence is in-process (`Y.Doc` lives in a Map). When the server
 // restarts the doc state is lost — for now this matches the existing
@@ -23,6 +30,18 @@
 // LevelDB-backed y-leveldb provider to survive restarts.
 
 import * as Y from "yjs";
+
+// Known (scope, purpose) pairs — informational only. `getDoc`/`applyUpdate`
+// work with any (scope, docId) string pair (there is no enforced
+// whitelist); this constant exists so a new consumer copies an existing
+// scope-naming convention (`"<domain>:<kind>"`) instead of inventing a
+// one-off shape, and so call sites don't hand-type the string in more
+// than one place.
+export const KNOWN_SCOPES = Object.freeze({
+  CODE_LIVESHARE: "code:liveshare",
+  COLLAB_DOC: "collab:doc",
+  LAW_CONTRACT: "law:contract",
+});
 
 // scope → Map<docId, Y.Doc>
 const DOCS = new Map();

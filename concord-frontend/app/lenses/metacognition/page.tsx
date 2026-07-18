@@ -13,6 +13,7 @@ import { ReflectionPrompts } from '@/components/metacognition/ReflectionPrompts'
 import { BiasChecklist } from '@/components/metacognition/BiasChecklist';
 import { StrategyLibrary } from '@/components/metacognition/StrategyLibrary';
 import { AccuracyTracker } from '@/components/metacognition/AccuracyTracker';
+import { ReasoningToolkit } from '@/components/metacognition/ReasoningToolkit';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1530,6 +1531,12 @@ export default function MetacognitionLensPage() {
           </div>
         )}
       </div>
+
+      {/* Reasoning Toolkit — designed entry points for select_strategy +
+          adjust_confidence (previously functional macros with no button
+          anywhere in this page; see the capability-map "Genuinely missing,
+          deferred" section for the prior gap). */}
+      <ReasoningToolkit />
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

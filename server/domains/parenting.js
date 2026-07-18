@@ -1430,6 +1430,11 @@ export default function registerParentingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ── iCal (.ics) shared helpers — RFC 5545 escaping + DTSTAMP, reused by
+  // appointment-ical and event-ical below. ────────────────────────────
+  const pgIcsEscape = (v) => String(v == null ? "" : v).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
+  function pgIcsStamp() { return pgNow().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); }
+
   // ── Appointments + vaccine reminders (with iCal export) ──────────────
   registerLensAction("parenting", "appointment-add", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1510,8 +1515,8 @@ export default function registerParentingActions(registerLensAction) {
     const appts = (s.appointments.get(userId) || []).filter(
       (e) => !e.done && e.date >= todayStr && (!params.childId || e.childId === String(params.childId)));
     if (!appts.length) return { ok: false, error: "no upcoming appointments to export" };
-    const esc = (v) => String(v == null ? "" : v).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
-    const stamp = pgNow().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const esc = pgIcsEscape;
+    const stamp = pgIcsStamp();
     const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Concord//Parenting//EN", "CALSCALE:GREGORIAN"];
     for (const a of appts) {
       const childName = children.find((c) => c.id === a.childId)?.name || "Child";
@@ -1547,6 +1552,259 @@ export default function registerParentingActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Family calendar (general shared events, not just appointments) ───
+  // General family events — soccer practice, a school closure, a family
+  // trip, a parent-teacher conference — a genuinely different shape from
+  // appointment-* (which is pediatric-only: fixed checkup/vaccine/dental/
+  // specialist/other `kind`, and always requires a childId). Events are
+  // family-wide by default: childId is OPTIONAL here (unlike appointment-add's
+  // required childId) because a family calendar entry may not belong to any
+  // one child. Category is a broader, non-medical set.
+  const PG_EVENT_CATEGORIES = ["activity", "school", "medical", "travel", "other"];
+
+  // Accepts either an all-day "YYYY-MM-DD" date or a floating (no forced
+  // timezone) local datetime "YYYY-MM-DDTHH:MM" (seconds/fractional
+  // seconds/timezone offset all optional). Returns the cleaned string, or
+  // null if invalid.
+  function pgValidDateTime(v) {
+    const raw = pgClean(v, 40);
+    if (!raw) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/.test(raw)) {
+      return Number.isFinite(Date.parse(raw)) ? raw : null;
+    }
+    return null;
+  }
+  // Milliseconds for ordering comparisons; an all-day date is treated as
+  // midnight local time.
+  function pgDateTimeMs(v) {
+    if (!v) return null;
+    const iso = v.length === 10 ? `${v}T00:00:00` : v;
+    const ms = Date.parse(iso);
+    return Number.isFinite(ms) ? ms : null;
+  }
+  // startAt and endAt must both be all-day dates or both be timed
+  // datetimes — mixing the two shapes makes iCal export ambiguous.
+  function pgSameDateTimeShape(a, b) { return (a.length === 10) === (b.length === 10); }
+  // "Is this event still relevant/upcoming?" basis: explicit endAt if set,
+  // otherwise end-of-day for all-day events, otherwise the start instant.
+  function pgEventEndMs(e) {
+    if (e.endAt) {
+      const iso = e.endAt.length === 10 ? `${e.endAt}T23:59:59` : e.endAt;
+      const ms = Date.parse(iso);
+      if (Number.isFinite(ms)) return ms;
+    }
+    const iso = e.allDay ? `${e.startAt}T23:59:59` : e.startAt;
+    const ms = Date.parse(iso);
+    return Number.isFinite(ms) ? ms : Date.now();
+  }
+
+  registerLensAction("parenting", "event-add", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.events instanceof Map)) s.events = new Map();
+    const userId = pgAid(ctx);
+    const title = pgClean(params.title, 100);
+    if (!title) return { ok: false, error: "event title required" };
+    const startAt = pgValidDateTime(params.startAt);
+    if (!startAt) return { ok: false, error: "startAt must be YYYY-MM-DD or an ISO datetime" };
+    let endAt = null;
+    if (params.endAt !== undefined && params.endAt !== null && params.endAt !== "") {
+      endAt = pgValidDateTime(params.endAt);
+      if (!endAt) return { ok: false, error: "endAt must be YYYY-MM-DD or an ISO datetime" };
+      if (!pgSameDateTimeShape(startAt, endAt)) {
+        return { ok: false, error: "endAt must match startAt's format (both all-day dates or both timed datetimes)" };
+      }
+      const startMs = pgDateTimeMs(startAt);
+      const endMs = pgDateTimeMs(endAt);
+      if (startMs !== null && endMs !== null && endMs < startMs) {
+        return { ok: false, error: "endAt must not be before startAt" };
+      }
+    }
+    // childId is OPTIONAL here (unlike appointment-add's required childId):
+    // a family event may be family-wide, or tagged to a specific child.
+    let childId = null;
+    if (params.childId !== undefined && params.childId !== null && params.childId !== "") {
+      if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
+      childId = String(params.childId);
+    }
+    const category = PG_EVENT_CATEGORIES.includes(String(params.category)) ? String(params.category) : "other";
+    const entry = {
+      id: pgId("evt"), title, startAt, endAt,
+      allDay: /^\d{4}-\d{2}-\d{2}$/.test(startAt),
+      childId, category,
+      location: pgClean(params.location, 120) || null,
+      notes: pgClean(params.notes, 300) || null,
+      createdAt: pgNow(),
+    };
+    pgListB(s.events, userId).push(entry);
+    savePgState();
+    return { ok: true, result: { event: entry } };
+  });
+
+  registerLensAction("parenting", "event-list", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.events instanceof Map)) s.events = new Map();
+    const userId = pgAid(ctx);
+    let all = (s.events.get(userId) || []).filter(
+      (e) => !params.childId || e.childId === String(params.childId));
+    const fromDate = params.from ? pgClean(params.from, 10).slice(0, 10) : null;
+    const toDate = params.to ? pgClean(params.to, 10).slice(0, 10) : null;
+    if (fromDate && /^\d{4}-\d{2}-\d{2}$/.test(fromDate)) all = all.filter((e) => e.startAt.slice(0, 10) >= fromDate);
+    if (toDate && /^\d{4}-\d{2}-\d{2}$/.test(toDate)) all = all.filter((e) => e.startAt.slice(0, 10) <= toDate);
+    const nowMs = Date.now();
+    if (params.scope === "upcoming") all = all.filter((e) => pgEventEndMs(e) >= nowMs);
+    all.sort((a, b) => a.startAt.localeCompare(b.startAt));
+    const upcoming = all.filter((e) => pgEventEndMs(e) >= nowMs);
+    return {
+      ok: true,
+      result: { events: all, count: all.length, nextUp: upcoming[0] || null },
+    };
+  });
+
+  registerLensAction("parenting", "event-update", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.events instanceof Map)) s.events = new Map();
+    const userId = pgAid(ctx);
+    const arr = s.events.get(userId) || [];
+    const evt = arr.find((e) => e.id === String(params.id));
+    if (!evt) return { ok: false, error: "event not found" };
+    if (params.title !== undefined) {
+      const t = pgClean(params.title, 100);
+      if (!t) return { ok: false, error: "title cannot be empty" };
+      evt.title = t;
+    }
+    let nextStartAt = evt.startAt;
+    if (params.startAt !== undefined) {
+      const st = pgValidDateTime(params.startAt);
+      if (!st) return { ok: false, error: "startAt must be YYYY-MM-DD or an ISO datetime" };
+      nextStartAt = st;
+    }
+    let nextEndAt = evt.endAt;
+    if (params.endAt !== undefined) {
+      if (params.endAt === null || params.endAt === "") {
+        nextEndAt = null;
+      } else {
+        const en = pgValidDateTime(params.endAt);
+        if (!en) return { ok: false, error: "endAt must be YYYY-MM-DD or an ISO datetime" };
+        nextEndAt = en;
+      }
+    }
+    if (nextEndAt) {
+      if (!pgSameDateTimeShape(nextStartAt, nextEndAt)) {
+        return { ok: false, error: "endAt must match startAt's format (both all-day dates or both timed datetimes)" };
+      }
+      const startMs = pgDateTimeMs(nextStartAt);
+      const endMs = pgDateTimeMs(nextEndAt);
+      if (startMs !== null && endMs !== null && endMs < startMs) {
+        return { ok: false, error: "endAt must not be before startAt" };
+      }
+    }
+    evt.startAt = nextStartAt;
+    evt.allDay = /^\d{4}-\d{2}-\d{2}$/.test(nextStartAt);
+    evt.endAt = nextEndAt;
+    if (params.childId !== undefined) {
+      if (params.childId === null || params.childId === "") {
+        evt.childId = null;
+      } else {
+        if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
+        evt.childId = String(params.childId);
+      }
+    }
+    if (params.category !== undefined) {
+      evt.category = PG_EVENT_CATEGORIES.includes(String(params.category)) ? String(params.category) : evt.category;
+    }
+    if (params.location !== undefined) evt.location = pgClean(params.location, 120) || null;
+    if (params.notes !== undefined) evt.notes = pgClean(params.notes, 300) || null;
+    savePgState();
+    return { ok: true, result: { event: evt } };
+  });
+
+  registerLensAction("parenting", "event-delete", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.events instanceof Map)) s.events = new Map();
+    const arr = s.events.get(pgAid(ctx)) || [];
+    const i = arr.findIndex((e) => e.id === String(params.id));
+    if (i < 0) return { ok: false, error: "event not found" };
+    arr.splice(i, 1);
+    savePgState();
+    return { ok: true, result: { deleted: String(params.id) } };
+  });
+
+  // Floating (no forced timezone) local-datetime compact form for a timed
+  // event: "2026-07-20T14:30" → "20260720T143000".
+  function pgIcsFloatingDateTime(iso) {
+    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) return null;
+    const [, y, mo, da, h, mi, se] = m;
+    return `${y}${mo}${da}T${h}${mi}${se || "00"}`;
+  }
+  // Default 1-hour block for a timed event with no explicit endAt (same
+  // convention appointment-ical uses for its implicit end time).
+  function pgIcsPlusHour(startAt) {
+    const iso = startAt.length === 10 ? `${startAt}T00:00:00` : startAt;
+    const d = new Date(iso);
+    if (!Number.isFinite(d.getTime())) return null;
+    d.setHours(d.getHours() + 1);
+    const y = d.getFullYear(); const mo = String(d.getMonth() + 1).padStart(2, "0"); const da = String(d.getDate()).padStart(2, "0");
+    const h = String(d.getHours()).padStart(2, "0"); const mi = String(d.getMinutes()).padStart(2, "0"); const se = String(d.getSeconds()).padStart(2, "0");
+    return `${y}${mo}${da}T${h}${mi}${se}`;
+  }
+  // date + N days, compact "YYYYMMDD" — RFC 5545 treats an all-day DTEND
+  // date as exclusive, so a single-day all-day event's DTEND is start+1.
+  function pgAddDaysCompact(dateStr, days) {
+    const d = new Date(`${dateStr.slice(0, 10)}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    const y = d.getFullYear(); const mo = String(d.getMonth() + 1).padStart(2, "0"); const da = String(d.getDate()).padStart(2, "0");
+    return `${y}${mo}${da}`;
+  }
+  // Generates a real RFC-5545 iCalendar payload for upcoming family events —
+  // mirrors appointment-ical's structure (shares its pgIcsEscape/pgIcsStamp
+  // helpers), adapted for the broader event shape: optional childId, no
+  // fixed medical `kind`, and support for multi-hour or multi-day spans via
+  // endAt instead of appointment's implicit single-hour block.
+  registerLensAction("parenting", "event-ical", (ctx, _a, params = {}) => {
+  try {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.events instanceof Map)) s.events = new Map();
+    const userId = pgAid(ctx);
+    const children = s.children.get(userId) || [];
+    const nowMs = Date.now();
+    const events = (s.events.get(userId) || [])
+      .filter((e) => (!params.childId || e.childId === String(params.childId)) && pgEventEndMs(e) >= nowMs)
+      .sort((a, b) => a.startAt.localeCompare(b.startAt));
+    if (!events.length) return { ok: false, error: "no upcoming events to export" };
+    const stamp = pgIcsStamp();
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Concord//Parenting//EN", "CALSCALE:GREGORIAN"];
+    for (const e of events) {
+      const childName = e.childId ? (children.find((c) => c.id === e.childId)?.name || "Child") : null;
+      lines.push("BEGIN:VEVENT");
+      lines.push(`UID:${e.id}@concord-parenting`);
+      lines.push(`DTSTAMP:${stamp}`);
+      if (e.allDay) {
+        const startCompact = e.startAt.replace(/-/g, "");
+        const endCompact = pgAddDaysCompact(e.endAt || e.startAt, 1);
+        lines.push(`DTSTART;VALUE=DATE:${startCompact}`);
+        lines.push(`DTEND;VALUE=DATE:${endCompact}`);
+      } else {
+        lines.push(`DTSTART:${pgIcsFloatingDateTime(e.startAt)}`);
+        lines.push(`DTEND:${e.endAt ? pgIcsFloatingDateTime(e.endAt) : pgIcsPlusHour(e.startAt)}`);
+      }
+      lines.push(`SUMMARY:${pgIcsEscape(childName ? `${childName}: ${e.title}` : e.title)}`);
+      const desc = [`Category: ${e.category}`, e.notes].filter(Boolean).join(". ");
+      if (desc) lines.push(`DESCRIPTION:${pgIcsEscape(desc)}`);
+      if (e.location) lines.push(`LOCATION:${pgIcsEscape(e.location)}`);
+      lines.push("BEGIN:VALARM", "TRIGGER:-P1D", "ACTION:DISPLAY",
+        `DESCRIPTION:${pgIcsEscape(`Reminder: ${e.title}`)}`, "END:VALARM");
+      lines.push("END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    return {
+      ok: true,
+      result: { ical: lines.join("\r\n"), filename: "parenting-family-events.ics", eventCount: events.length },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 
   // feed — ingest real children's-product safety recalls from the U.S.
   // Consumer Product Safety Commission as visible DTUs. Free, no key.

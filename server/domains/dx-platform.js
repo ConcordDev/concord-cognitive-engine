@@ -55,6 +55,8 @@ function badNumericField(input, keys) {
 // `_unwrapLensEnvelope` strips the `result` layer so the frontend reads
 // `r.data.result.<field>`).
 
+import { writeGitHubCommitStatus } from "../lib/connector-client.js";
+
 export default function registerDxPlatformActions(register) {
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, _artifact, params) handler bodies below, unchanged.
@@ -88,6 +90,7 @@ export default function registerDxPlatformActions(register) {
     if (!(s.codebases instanceof Map)) s.codebases = new Map();   // userId -> Map<codebaseId, codebase>
     if (!(s.teams instanceof Map)) s.teams = new Map();           // teamId  -> team
     if (!(s.analytics instanceof Map)) s.analytics = new Map();   // userId -> { fires:[], outcomes:[] }
+    if (!(s.findingHistory instanceof Map)) s.findingHistory = new Map(); // userId -> commit snapshot[]
     return s;
   }
   function save() {
@@ -106,6 +109,93 @@ export default function registerDxPlatformActions(register) {
   function userAnalytics(s, userId) {
     if (!s.analytics.has(userId)) s.analytics.set(userId, { fires: [], outcomes: [] });
     return s.analytics.get(userId);
+  }
+
+  // ── Finding-history persistence (Wave 4 gap-closure — docs/WAVE4_INVENTORY.md
+  // "No historical issue-trend / 'new vs. existing' tracking (leak period)" /
+  // dx-platform-capability-map.md's matching GENUINELY MISSING item). Sonar's
+  // leak period, at its simplest: a set-diff on finding identity between the
+  // two most recent commit-scoped `reviewDiff` snapshots for a codebase.
+  //
+  // Provenance-only, not a findings warehouse: one row per (user, codebase,
+  // commit), upserted by commitSha so re-reviewing the same commit overwrites
+  // rather than accumulating duplicate history. Finding identity for the
+  // set-diff is `${detectorId}:${path}:${line}` — the same fields reviewDiff's
+  // own finding shape already carries; no new identity scheme invented.
+  //
+  // Persists ONLY when reviewDiff is called WITH a commitSha. The far more
+  // common call-without-commitSha path (ad-hoc diff review, no CI context) is
+  // byte-identical to before this addition: pure in-memory computation, zero
+  // persistence. Same db-or-memory store facade idiom as domains/education.js
+  // (migration 363) / domains/tournaments.js (migration 360) / domains/admin.js
+  // (migration 364).
+  function getDxDb(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db) return null;
+    try { db.prepare("SELECT 1 FROM dx_finding_history LIMIT 1").get(); }
+    catch { return null; }
+    return db;
+  }
+  function safeParseJsonDx(json, fallback) {
+    try { const v = JSON.parse(json); return v == null ? fallback : v; }
+    catch { return fallback; }
+  }
+  function rowToSnapshot(r) {
+    return {
+      id: r.id, userId: r.user_id, codebaseId: r.codebase_id, commitSha: r.commit_sha,
+      findingCount: r.finding_count,
+      findingKeys: safeParseJsonDx(r.finding_keys_json, []),
+      bySeverity: safeParseJsonDx(r.by_severity_json, {}),
+      createdAt: r.created_at,
+    };
+  }
+  const UPSERT_FINDING_HISTORY_SQL = `
+    INSERT INTO dx_finding_history
+      (id, user_id, codebase_id, commit_sha, finding_count, finding_keys_json, by_severity_json, created_at)
+    VALUES
+      (@id, @user_id, @codebase_id, @commit_sha, @finding_count, @finding_keys_json, @by_severity_json, @created_at)
+    ON CONFLICT(user_id, codebase_id, commit_sha) DO UPDATE SET
+      finding_count = excluded.finding_count,
+      finding_keys_json = excluded.finding_keys_json,
+      by_severity_json = excluded.by_severity_json,
+      created_at = excluded.created_at
+  `;
+  function dbFindingHistoryStore(db) {
+    return {
+      put(snap) {
+        db.prepare(UPSERT_FINDING_HISTORY_SQL).run({
+          id: snap.id, user_id: snap.userId, codebase_id: snap.codebaseId, commit_sha: snap.commitSha,
+          finding_count: snap.findingCount,
+          finding_keys_json: JSON.stringify(snap.findingKeys || []),
+          by_severity_json: JSON.stringify(snap.bySeverity || {}),
+          created_at: snap.createdAt,
+        });
+      },
+      listForUserCodebase(userId, codebaseId) {
+        return db.prepare(
+          "SELECT * FROM dx_finding_history WHERE user_id = ? AND codebase_id = ? ORDER BY created_at ASC, rowid ASC"
+        ).all(userId, codebaseId).map(rowToSnapshot);
+      },
+    };
+  }
+  function memFindingHistoryStore(s) {
+    if (!(s.findingHistory instanceof Map)) s.findingHistory = new Map(); // userId -> snapshot[]
+    return {
+      put(snap) {
+        if (!s.findingHistory.has(snap.userId)) s.findingHistory.set(snap.userId, []);
+        const arr = s.findingHistory.get(snap.userId);
+        const idx = arr.findIndex((x) => x.codebaseId === snap.codebaseId && x.commitSha === snap.commitSha);
+        if (idx >= 0) arr[idx] = snap; else arr.push(snap);
+      },
+      listForUserCodebase(userId, codebaseId) {
+        const arr = s.findingHistory.get(userId) || [];
+        return arr.filter((x) => x.codebaseId === codebaseId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      },
+    };
+  }
+  function findingHistoryStore(ctx, s) {
+    const db = getDxDb(ctx);
+    return db ? dbFindingHistoryStore(db) : memFindingHistoryStore(s);
   }
 
   // ── Detector grid (static rule definitions — NOT data) ──────────────
@@ -165,6 +255,50 @@ export default function registerDxPlatformActions(register) {
   // Default enabled set = detectors with default:true.
   function defaultEnabled() {
     return new Set(DETECTORS.filter((d) => d.default).map((d) => d.id));
+  }
+
+  // Parse a unified diff into per-file ADDED-line units and run the
+  // detector grid over them. Shared by reviewDiff (ad-hoc review) and
+  // postCommitStatus (CI gate) so both run the exact same real analysis —
+  // the CI status macro never runs a lighter/different pass than the
+  // interactive review does.
+  function parseAndScanDiff(diff, enabledSet) {
+    const units = [];
+    let curPath = null;
+    let curLines = [];
+    let newLineNo = 0;
+    const flush = () => {
+      if (curPath && curLines.length) units.push({ path: curPath, lines: curLines });
+      curLines = [];
+    };
+    let addedTotal = 0;
+    let removedTotal = 0;
+    let fileCount = 0;
+    for (const raw of diff.split("\n")) {
+      if (raw.startsWith("+++ ")) {
+        flush();
+        curPath = raw.replace(/^\+\+\+ /, "").replace(/^b\//, "").trim() || "(unknown)";
+        fileCount++;
+        continue;
+      }
+      if (raw.startsWith("--- ")) continue;
+      const hunk = raw.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      if (hunk) { newLineNo = parseInt(hunk[1], 10); continue; }
+      if (raw.startsWith("+") && !raw.startsWith("+++")) {
+        addedTotal++;
+        curLines.push({ n: newLineNo, text: raw.slice(1) });
+        newLineNo++;
+      } else if (raw.startsWith("-") && !raw.startsWith("---")) {
+        removedTotal++;
+      } else if (!raw.startsWith("\\")) {
+        newLineNo++;
+      }
+    }
+    flush();
+    const findings = scanLines(units, enabledSet);
+    const bySeverity = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    for (const f of findings) bySeverity[f.severity] = (bySeverity[f.severity] || 0) + 1;
+    return { units, findings, bySeverity, addedTotal, removedTotal, fileCount };
   }
 
   // ── 1. chat-with-codebase: index files ──────────────────────────────
@@ -303,43 +437,29 @@ export default function registerDxPlatformActions(register) {
       const cb = userCodebases(s, userId).get(String(params.codebaseId));
       if (cb && Array.isArray(cb.detectorConfig)) enabledSet = new Set(cb.detectorConfig);
     }
-    // Parse the unified diff into per-file added-line units.
-    const units = [];
-    let curPath = null;
-    let curLines = [];
-    let newLineNo = 0;
-    const flush = () => {
-      if (curPath && curLines.length) units.push({ path: curPath, lines: curLines });
-      curLines = [];
-    };
-    let addedTotal = 0;
-    let removedTotal = 0;
-    let fileCount = 0;
-    for (const raw of diff.split("\n")) {
-      if (raw.startsWith("+++ ")) {
-        flush();
-        curPath = raw.replace(/^\+\+\+ /, "").replace(/^b\//, "").trim() || "(unknown)";
-        fileCount++;
-        continue;
-      }
-      if (raw.startsWith("--- ")) continue;
-      const hunk = raw.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-      if (hunk) { newLineNo = parseInt(hunk[1], 10); continue; }
-      if (raw.startsWith("+") && !raw.startsWith("+++")) {
-        addedTotal++;
-        curLines.push({ n: newLineNo, text: raw.slice(1) });
-        newLineNo++;
-      } else if (raw.startsWith("-") && !raw.startsWith("---")) {
-        removedTotal++;
-      } else if (!raw.startsWith("\\")) {
-        newLineNo++;
-      }
-    }
-    flush();
-    const findings = scanLines(units, enabledSet);
-    const bySeverity = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    for (const f of findings) bySeverity[f.severity] = (bySeverity[f.severity] || 0) + 1;
+    const { findings, bySeverity, addedTotal, removedTotal, fileCount } = parseAndScanDiff(diff, enabledSet);
     const blocking = findings.filter((f) => f.severity >= 4).length;
+    // Optional commit-scoped provenance write — see the finding-history block
+    // above. Only fires when the caller supplies commitSha; omitting it keeps
+    // this call byte-identical to before this addition (no persistence, no
+    // behavior change). Best-effort: a persistence failure never fails the
+    // review itself, since the review result is already fully computed above.
+    const commitSha = params.commitSha ? String(params.commitSha).trim().slice(0, 100) : "";
+    if (commitSha) {
+      try {
+        findingHistoryStore(ctx, s).put({
+          id: uid("dxsnap"),
+          userId,
+          codebaseId: params.codebaseId ? String(params.codebaseId) : "",
+          commitSha,
+          findingCount: findings.length,
+          findingKeys: findings.map((f) => `${f.detectorId}:${f.path}:${f.line}`),
+          bySeverity,
+          createdAt: now(),
+        });
+        save();
+      } catch { /* best-effort provenance write; never fails the review */ }
+    }
     return {
       ok: true,
       result: {
@@ -351,6 +471,68 @@ export default function registerDxPlatformActions(register) {
         bySeverity,
         blockingCount: blocking,
         verdict: blocking > 0 ? "changes_requested" : findings.length > 0 ? "advisory" : "clean",
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── 2b. Issue trend ("new vs. existing" across commits — the leak-period
+  // concept) ───────────────────────────────────────────────────────────
+  // params: { codebaseId? } — reads the last two commit-scoped reviewDiff
+  // snapshots persisted for this (user, codebaseId) and set-diffs their
+  // finding identities. Honest by construction: with 0 snapshots there is no
+  // baseline at all; with exactly 1 there is a baseline but nothing to
+  // compare against yet; only 2+ snapshots produce a real new/existing/
+  // resolved split. Never fabricates a comparison it doesn't have data for.
+  registerLensAction("dx-platform", "issueTrend", (ctx, _a, params = {}) => {
+  try {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const codebaseId = params.codebaseId ? String(params.codebaseId) : "";
+    const s = getState();
+    const snapshots = findingHistoryStore(ctx, s).listForUserCodebase(userId, codebaseId);
+    const snapshotCount = snapshots.length;
+    const base = { codebaseId: codebaseId || null, snapshotCount };
+    if (snapshotCount === 0) {
+      return {
+        ok: true,
+        result: {
+          ...base, hasTrend: false, latest: null, previous: null,
+          newCount: null, existingCount: null, resolvedCount: null,
+          newFindingKeys: [], resolvedFindingKeys: [],
+        },
+      };
+    }
+    const latest = snapshots[snapshotCount - 1];
+    const latestSummary = { commitSha: latest.commitSha, findingCount: latest.findingCount, createdAt: latest.createdAt };
+    if (snapshotCount === 1) {
+      return {
+        ok: true,
+        result: {
+          ...base, hasTrend: false, latest: latestSummary, previous: null,
+          newCount: null, existingCount: null, resolvedCount: null,
+          newFindingKeys: [], resolvedFindingKeys: [],
+        },
+      };
+    }
+    const previous = snapshots[snapshotCount - 2];
+    const latestSet = new Set(latest.findingKeys);
+    const prevSet = new Set(previous.findingKeys);
+    const newKeys = [...latestSet].filter((k) => !prevSet.has(k));
+    const existingKeys = [...latestSet].filter((k) => prevSet.has(k));
+    const resolvedKeys = [...prevSet].filter((k) => !latestSet.has(k));
+    return {
+      ok: true,
+      result: {
+        ...base,
+        hasTrend: true,
+        latest: latestSummary,
+        previous: { commitSha: previous.commitSha, findingCount: previous.findingCount, createdAt: previous.createdAt },
+        newCount: newKeys.length,
+        existingCount: existingKeys.length,
+        resolvedCount: resolvedKeys.length,
+        newFindingKeys: newKeys.slice(0, 100),
+        resolvedFindingKeys: resolvedKeys.slice(0, 100),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -710,4 +892,214 @@ export default function registerDxPlatformActions(register) {
       },
     };
   });
+
+  // ── 8. SARIF export ─────────────────────────────────────────────────
+  // exportSarif — transform a reviewDiff-shaped findings array into a
+  // genuinely well-formed SARIF 2.1.0 document (the OASIS standard GitHub
+  // code scanning / SonarQube / most CI security dashboards consume
+  // natively), so findings can leave Concord as more than Concord-shaped
+  // JSON. This is a pure transform over caller-supplied `findings` — it
+  // does not re-run detectors and does not read/write STATE.
+  //
+  // Severity -> SARIF `level` mapping. SARIF only defines four levels
+  // (error/warning/note/none); this project already has a 3-way severity
+  // taxonomy baked into ciGateCheck's failOn thresholds (error->minSeverity
+  // 4, warning->minSeverity 3, any->minSeverity 1), so the mapping below is
+  // not invented — it's the same cut reused honestly:
+  //   severity >= 4        -> "error"   (blocks generateCiConfig's default gate)
+  //   severity === 3        -> "warning" (blocks the "warning" gate)
+  //   severity <= 2 (1 or 2) -> "note"    (below the strictest real gate)
+  // `none` is never emitted — nothing in this project's findings is
+  // "not a problem", so there is no honest use for that level here.
+  function sarifLevelForSeverity(sev) {
+    const n = Number(sev);
+    if (!Number.isFinite(n)) return "warning";
+    if (n >= 4) return "error";
+    if (n === 3) return "warning";
+    return "note";
+  }
+  // params: { findings: [{path, line, detectorId, detectorLabel?, severity, snippet?}], toolName?, repoUri?, commitSha? }
+  registerLensAction("dx-platform", "exportSarif", (ctx, _a, params = {}) => {
+  try {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const findings = Array.isArray(params.findings) ? params.findings : [];
+    const toolName = String(params.toolName || "Concord DX Detectors").slice(0, 200);
+    const repoUri = params.repoUri ? String(params.repoUri).slice(0, 500) : null;
+    const commitSha = params.commitSha ? String(params.commitSha).slice(0, 100) : null;
+
+    // rules: one entry per distinct ruleId (detectorId), deduplicated — a
+    // SARIF consumer resolves every results[].ruleId against this array, so
+    // repeating one entry per FINDING (instead of per distinct detector)
+    // would still "look" JSON-shaped but silently break rule lookups for
+    // any consumer that treats duplicate ids as ambiguous/invalid.
+    const ruleMap = new Map(); // detectorId -> SARIF reportingDescriptor
+    const results = [];
+    for (const f of findings) {
+      if (!f || typeof f !== "object") continue;
+      const detectorId = String(f.detectorId || "unknown_rule").slice(0, 200);
+      const path = String(f.path || "(unknown)").slice(0, 500);
+      const rawLine = Number(f.line);
+      const lineNo = Number.isFinite(rawLine) && rawLine > 0 ? Math.floor(rawLine) : 1;
+      const level = sarifLevelForSeverity(f.severity);
+      const message = String(f.snippet || f.detectorLabel || detectorId).slice(0, 2000);
+
+      if (!ruleMap.has(detectorId)) {
+        // Prefer the canonical detector's own (fixed) severity for the
+        // rule's default level so it stays stable regardless of which
+        // finding happened to be first in the array; fall back to this
+        // finding's severity for caller-supplied/unknown detector ids.
+        const known = DETECTOR_BY_ID.get(detectorId);
+        const label = known?.label || String(f.detectorLabel || detectorId);
+        ruleMap.set(detectorId, {
+          id: detectorId,
+          name: label,
+          shortDescription: { text: label },
+          defaultConfiguration: { level: sarifLevelForSeverity(known ? known.severity : f.severity) },
+        });
+      }
+
+      results.push({
+        ruleId: detectorId,
+        level,
+        message: { text: message },
+        locations: [
+          {
+            physicalLocation: {
+              artifactLocation: { uri: path },
+              region: { startLine: lineNo },
+            },
+          },
+        ],
+      });
+    }
+
+    const driver = {
+      name: toolName,
+      informationUri: "https://concord-os.org/dx-platform",
+      version: "1.0.0",
+      rules: [...ruleMap.values()],
+    };
+    const run = { tool: { driver }, results };
+    if (repoUri || commitSha) {
+      run.versionControlProvenance = [
+        { repositoryUri: repoUri || "unknown", revisionId: commitSha || "unknown" },
+      ];
+    }
+    const sarif = {
+      $schema: "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+      version: "2.1.0",
+      runs: [run],
+    };
+
+    return {
+      ok: true,
+      result: {
+        sarif,
+        findingCount: results.length,
+        ruleCount: ruleMap.size,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── 9. CI commit-status posting (real GitHub write) ─────────────────
+  // Runs the SAME real detector pass reviewDiff uses (parseAndScanDiff) over
+  // a caller-supplied unified diff, computes a pass/fail verdict via the
+  // same failOn threshold ciGateCheck uses, and posts a REAL commit status
+  // to GitHub — a genuine POST to /repos/{repo}/statuses/{sha} through the
+  // SSRF-guarded, per-user-OAuth connector chokepoint
+  // (server/lib/connector-client.js#writeGitHubCommitStatus — the exact
+  // same shape as the proven createGitHubIssue writer). Honest failure: no
+  // GitHub OAuth token / no repo access -> {ok:false, reason}, NEVER a
+  // fabricated "posted" success. The state posted to GitHub is never
+  // hardcoded — it is 'failure' only when the real scan found a blocking
+  // finding at or above the failOn threshold, 'success' otherwise.
+  //
+  // GitLab half is intentionally NOT built here: this codebase has no
+  // GitLab connector at all (only google_calendar/google_gmail/slack/
+  // google_sheets/github/notion are wired in server/lib/connector-client.js
+  // — see the "── GitHub ──" / "── Slack ──" / etc. section headers there).
+  // A GitLab head SHA has nowhere honest to post a status to, so there is
+  // deliberately no GitLab branch here pretending to be one; GitLab support
+  // would need its own OAuth app + connector_id + token-refresh path before
+  // any status-posting macro could be honest about it.
+  //
+  // params: { repo, commitSha, diff, codebaseId?, failOn?, targetUrl?,
+  //           __fetchImpl? } — __fetchImpl is a same-process test seam
+  // identical to connectorFetch's own opts.fetchImpl (see
+  // lib/connector-client.js) and the one already used at
+  // domains/travel.js's Gmail-sync macro: a real HTTP JSON caller can never
+  // supply a function value inside a request body, so production traffic
+  // always takes the real SSRF-guarded egress; only a same-process test
+  // importing this module directly can set it.
+  registerLensAction("dx-platform", "postCommitStatus", async (ctx, _a, params = {}) => {
+  try {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const repo = String(params.repo || "").trim();
+    if (!repo) return { ok: false, error: "no_repo" };
+    const commitSha = String(params.commitSha || "").trim();
+    if (!commitSha) return { ok: false, error: "no_commit_sha" };
+    const diff = String(params.diff || "");
+    if (!diff.trim()) return { ok: false, error: "no_diff" };
+    if (!ctx?.db) return { ok: false, error: "db_unavailable" };
+
+    const s = getState();
+    let enabledSet = defaultEnabled();
+    if (params.codebaseId) {
+      const cb = userCodebases(s, userId).get(String(params.codebaseId));
+      if (cb && Array.isArray(cb.detectorConfig)) enabledSet = new Set(cb.detectorConfig);
+    }
+    const { findings, fileCount, addedTotal } = parseAndScanDiff(diff, enabledSet);
+
+    const failOn = ["error", "warning", "any"].includes(String(params.failOn))
+      ? String(params.failOn) : "error";
+    const minSeverity = failOn === "any" ? 1 : failOn === "warning" ? 3 : 4;
+    const blocking = findings.filter((f) => f.severity >= minSeverity);
+    const passed = blocking.length === 0;
+    const state = passed ? "success" : "failure";
+    const description = (passed
+      ? `Concord DX: clean — ${findings.length} finding(s) below threshold`
+      : `Concord DX: ${blocking.length} blocking finding(s) at/above severity ${minSeverity}`
+    ).slice(0, 140);
+
+    // Test/seam injection — see the doc comment above this macro.
+    const netOpts = typeof params.__fetchImpl === "function" ? { fetchImpl: params.__fetchImpl } : {};
+
+    let posted;
+    try {
+      posted = await writeGitHubCommitStatus(ctx.db, userId, repo, commitSha, state, {
+        context: "concord/dx-detectors",
+        description,
+        targetUrl: params.targetUrl ? String(params.targetUrl) : undefined,
+        ...netOpts,
+      });
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+    if (!posted.ok) {
+      const reason = posted.reason || "commit_status_failed";
+      return { ok: false, reason, error: reason, detail: posted };
+    }
+
+    return {
+      ok: true,
+      result: {
+        repo,
+        commitSha,
+        state,
+        passed,
+        failOn,
+        minSeverity,
+        findingCount: findings.length,
+        blockingCount: blocking.length,
+        fileCount,
+        addedTotal,
+        githubStatusId: posted.id,
+        githubStatusUrl: posted.url,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

@@ -187,6 +187,7 @@ export default function registerHistoryActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.historyLens) STATE.historyLens = {};
     if (!(STATE.historyLens.timelines instanceof Map)) STATE.historyLens.timelines = new Map(); // userId -> Array
+    if (!(STATE.historyLens.figures instanceof Map)) STATE.historyLens.figures = new Map(); // userId -> Array
     return STATE.historyLens;
   }
   function saveHistory() {
@@ -200,6 +201,7 @@ export default function registerHistoryActions(registerLensAction) {
   const hsClean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
   const hsYear = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n) : null; };
   const hsList = (s, userId) => { if (!s.timelines.has(userId)) s.timelines.set(userId, []); return s.timelines.get(userId); };
+  const hsFigureList = (s, userId) => { if (!s.figures.has(userId)) s.figures.set(userId, []); return s.figures.get(userId); };
 
   registerLensAction("history", "timeline-create", (ctx, _a, params = {}) => {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -342,6 +344,131 @@ export default function registerHistoryActions(registerLensAction) {
     saveHistory();
     return { ok: true, result: { deleted: params.eraId } };
   });
+
+  // ─── Notable figures — biography tracking distinct from dated events ─
+  // A first-class, analyzed "historical figure" entity: name/role/dates/
+  // region/bio persist server-side per-user (same STATE.historyLens shape
+  // as timelines), and figure-link-event is the real differentiator — it
+  // validates the link against the caller's actual timelines/events (never
+  // accepts a fabricated id) and figure-list re-derives every linkedEvent
+  // LIVE against current timeline state so a since-deleted timeline/event
+  // surfaces honestly as `found:false` instead of silently vanishing or
+  // silently pretending the stale reference is still valid.
+
+  function findFigure(s, ctx, id) {
+    return hsFigureList(s, hsActor(ctx)).find((f) => f.id === id);
+  }
+
+  function deriveLinkedEvents(s, ctx, figure) {
+    const links = Array.isArray(figure.linkedEvents) ? figure.linkedEvents : [];
+    return links.map((link) => {
+      const t = findTimeline(s, ctx, link.timelineId);
+      if (!t) return { timelineId: link.timelineId, eventId: link.eventId, found: false };
+      const ev = t.events.find((e) => e.id === link.eventId);
+      if (!ev) return { timelineId: link.timelineId, eventId: link.eventId, found: false };
+      return {
+        timelineId: t.id, timelineTitle: t.title,
+        eventId: ev.id, eventTitle: ev.title, eventYear: ev.year,
+        found: true,
+      };
+    });
+  }
+
+  registerLensAction("history", "figure-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = hsClean(params.name, 200);
+    if (!name) return { ok: false, error: "figure name required" };
+    const figure = {
+      id: hsId("fig"), name,
+      role: hsClean(params.role, 120),
+      birthYear: hsYear(params.birthYear),
+      deathYear: hsYear(params.deathYear),
+      region: hsClean(params.region, 60),
+      bio: hsClean(params.bio, 2000),
+      linkedEvents: [],
+      createdAt: hsNow(),
+    };
+    hsFigureList(s, hsActor(ctx)).push(figure);
+    saveHistory();
+    return { ok: true, result: { figure } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("history", "figure-list", (ctx, _a, _params = {}) => {
+  try {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const figures = hsFigureList(s, hsActor(ctx)).map((f) => {
+      const linkedEvents = deriveLinkedEvents(s, ctx, f);
+      return { ...f, linkedEvents, linkedEventCount: linkedEvents.length };
+    });
+    return { ok: true, result: { figures, count: figures.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("history", "figure-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const f = findFigure(s, ctx, params.id);
+    if (!f) return { ok: false, error: "figure not found" };
+    // Genuine partial update — empty/omitted fields leave the existing value
+    // untouched (never a full-object-replace).
+    if (params.name != null) f.name = hsClean(params.name, 200) || f.name;
+    if (params.role != null) f.role = hsClean(params.role, 120) || f.role;
+    if (params.birthYear != null) { const y = hsYear(params.birthYear); if (y != null) f.birthYear = y; }
+    if (params.deathYear != null) { const y = hsYear(params.deathYear); if (y != null) f.deathYear = y; }
+    if (params.region != null) f.region = hsClean(params.region, 60) || f.region;
+    if (params.bio != null) f.bio = hsClean(params.bio, 2000) || f.bio;
+    saveHistory();
+    return { ok: true, result: { figure: { ...f, linkedEvents: deriveLinkedEvents(s, ctx, f) } } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("history", "figure-delete", (ctx, _a, params = {}) => {
+  try {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = hsFigureList(s, hsActor(ctx));
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "figure not found" };
+    arr.splice(i, 1);
+    saveHistory();
+    return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("history", "figure-link-event", (ctx, _a, params = {}) => {
+  try {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const f = findFigure(s, ctx, params.figureId);
+    if (!f) return { ok: false, error: "figure not found" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const ev = t.events.find((e) => e.id === params.eventId);
+    if (!ev) return { ok: false, error: "event not found" };
+    if (!Array.isArray(f.linkedEvents)) f.linkedEvents = [];
+    const alreadyLinked = f.linkedEvents.some((l) => l.timelineId === t.id && l.eventId === ev.id);
+    if (!alreadyLinked) f.linkedEvents.push({ timelineId: t.id, eventId: ev.id });
+    saveHistory();
+    return { ok: true, result: { figure: { ...f, linkedEvents: deriveLinkedEvents(s, ctx, f) } } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("history", "figure-unlink-event", (ctx, _a, params = {}) => {
+  try {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const f = findFigure(s, ctx, params.figureId);
+    if (!f) return { ok: false, error: "figure not found" };
+    if (!Array.isArray(f.linkedEvents)) f.linkedEvents = [];
+    const before = f.linkedEvents.length;
+    // Removing a link that was never there is a silent no-op success (matches
+    // this file's tolerant-removal style elsewhere for idempotent cleanup),
+    // not an error — only a missing FIGURE is rejected.
+    f.linkedEvents = f.linkedEvents.filter((l) => !(l.timelineId === params.timelineId && l.eventId === params.eventId));
+    const removed = f.linkedEvents.length < before;
+    saveHistory();
+    return { ok: true, result: { figure: { ...f, linkedEvents: deriveLinkedEvents(s, ctx, f) }, removed } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Map-linked events — plot events geographically ──────────────────
   registerLensAction("history", "event-set-location", (ctx, _a, params = {}) => {

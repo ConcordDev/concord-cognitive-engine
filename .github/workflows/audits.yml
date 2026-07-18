@@ -95,6 +95,15 @@ jobs:
             echo "::error::Lens wiring regressed below 234 WIRED."; exit 1
           )
 
+      - name: Content name/IP-collision gate
+        run: |
+          # E3 of the Content Integrity Sweep (docs/CONTENT_INTEGRITY_SWEEP.md):
+          # blocks any NEW real-nation / real-dynasty / trademarked-IP name reused
+          # for a fictional entity. Known-pending + deliberate-keep terms live in
+          # audit/name-collisions/BASELINE.json; a new term (or a known term in a
+          # new scope) fails the build.
+          node scripts/check-name-collisions.mjs --ci
+
       - name: Move-render coverage gate
         run: |
           # Self-deriving gate: every move/skill/element/verb must resolve to a

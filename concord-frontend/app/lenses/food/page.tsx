@@ -28,6 +28,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { useWasteLog, useFloorPlan, usePrepList, type WasteReason, type TableStatus, type FloorTable } from '@/lib/hooks/use-food-ops';
 import { ds } from '@/lib/design-system';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
@@ -64,8 +65,8 @@ type ModeTab = 'recipes' | 'mealplan' | 'shopping' | 'nutrition' | 'pantry' | 'm
 type ArtifactType = 'Recipe' | 'MealPlan' | 'ShoppingItem' | 'PantryItem' | 'Menu' | 'InventoryItem' | 'Booking' | 'Batch' | 'Shift';
 type Status = 'prep' | 'active' | '86d' | 'seasonal' | 'archived';
 type MenuQuadrant = 'star' | 'puzzle' | 'plowhorse' | 'dog';
-type WasteReason = 'expired' | 'spoiled' | 'overproduction' | 'dropped' | 'other';
-type TableStatus = 'available' | 'occupied' | 'reserved' | 'cleaning';
+// WasteReason and TableStatus now come from lib/hooks/use-food-ops (the
+// persisted backend shapes) — see the import above.
 
 interface FoodArtifact {
   name: string;
@@ -130,46 +131,8 @@ interface FoodArtifact {
   location?: string;
 }
 
-interface WasteEntry {
-  id: string;
-  item: string;
-  qty: number;
-  unit: string;
-  reason: WasteReason;
-  cost: number;
-  date: string;
-  notes: string;
-}
-
-interface TableInfo {
-  id: number;
-  seats: number;
-  status: TableStatus;
-  guestName: string;
-  partySize: number;
-  seatedAt: string;
-  estimatedTurn: number;
-}
-
-interface WaitlistEntry {
-  id: string;
-  name: string;
-  partySize: number;
-  addedAt: string;
-  estimatedWait: number;
-  phone: string;
-}
-
-interface PrepItem {
-  id: string;
-  item: string;
-  recipe: string;
-  qty: number;
-  unit: string;
-  station: string;
-  assignedTo: string;
-  completed: boolean;
-}
+// WasteLogEntry / FloorTable / WalkInEntry / PrepTask now come from
+// lib/hooks/use-food-ops — those hooks own the persisted shape.
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -207,10 +170,10 @@ const STATIONS = ['Grill', 'Saute', 'Cold/Garde Manger', 'Pastry', 'Prep', 'Expo
 const ROLES = ['Head Chef', 'Sous Chef', 'Line Cook', 'Prep Cook', 'Pastry Chef', 'Bartender', 'Server', 'Host', 'Dishwasher', 'Manager'];
 const SCALE_OPTIONS = [0.5, 1, 2, 3, 5, 10];
 const WASTE_REASONS: { value: WasteReason; label: string }[] = [
-  { value: 'expired', label: 'Expired' },
-  { value: 'spoiled', label: 'Spoiled' },
+  { value: 'spoilage', label: 'Spoilage' },
   { value: 'overproduction', label: 'Overproduction' },
-  { value: 'dropped', label: 'Dropped/Damaged' },
+  { value: 'prep_waste', label: 'Prep Waste' },
+  { value: 'customer_return', label: 'Customer Return' },
   { value: 'other', label: 'Other' },
 ];
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -219,21 +182,6 @@ const SHOPPING_CATEGORIES = ['Produce', 'Dairy', 'Meat & Seafood', 'Bakery', 'Fr
 const PANTRY_LOCATIONS = ['Refrigerator', 'Freezer', 'Pantry Shelf', 'Spice Rack', 'Counter', 'Root Cellar', 'Other'];
 
 const seedData: { title: string; data: Record<string, unknown> }[] = [];
-
-// ---------------------------------------------------------------------------
-// Helper: generate initial tables
-// ---------------------------------------------------------------------------
-function generateTables(): TableInfo[] {
-  return Array.from({ length: 20 }, (_, i) => ({
-    id: i + 1,
-    seats: i < 4 ? 2 : i < 10 ? 4 : i < 16 ? 6 : 8,
-    status: 'available' as TableStatus,
-    guestName: '',
-    partySize: 0,
-    seatedAt: '',
-    estimatedTurn: 0,
-  }));
-}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -297,25 +245,32 @@ export default function FoodLensPage() {
   const [showWeeklySchedule, setShowWeeklySchedule] = useState(false);
   const [showSupplierCompare, setShowSupplierCompare] = useState(false);
 
-  // Waste log state
-  const [wasteLog, setWasteLog] = useState<WasteEntry[]>([]);
+  // Waste log — persisted via food.waste-log-* macros (lib/hooks/use-food-ops).
+  const { entries: wasteLog, loading: wasteLogLoading, addEntry: addWasteLogEntry, removeEntry: removeWasteLogEntry } = useWasteLog();
   const [wasteItemName, setWasteItemName] = useState('');
   const [wasteQty, setWasteQty] = useState('');
   const [wasteUnit, setWasteUnit] = useState('lb');
-  const [wasteReason, setWasteReason] = useState<WasteReason>('expired');
+  const [wasteReason, setWasteReason] = useState<WasteReason>('spoilage');
   const [wasteCost, setWasteCost] = useState('');
-  const [wasteNotes, setWasteNotes] = useState('');
+  const [wasteSaving, setWasteSaving] = useState(false);
 
-  // Table management state
-  const [tables, setTables] = useState<TableInfo[]>(generateTables);
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+  // Floor Plan & walk-in waitlist — persisted via food.floorplan-table-*/
+  // food.floorplan-waitlist-* macros (lib/hooks/use-food-ops).
+  const {
+    tables, waitlist, loading: floorPlanLoading,
+    addTable, updateTableStatus, deleteTable, addWaitlistEntry, removeWaitlistEntry,
+  } = useFloorPlan();
+  const [newTableLabel, setNewTableLabel] = useState('');
+  const [newTableSeats, setNewTableSeats] = useState('4');
+  const [newTableSection, setNewTableSection] = useState('');
   const [waitlistName, setWaitlistName] = useState('');
   const [waitlistParty, setWaitlistParty] = useState('2');
   const [waitlistPhone, setWaitlistPhone] = useState('');
 
-  // Prep list state
-  const [prepItems, setPrepItems] = useState<PrepItem[]>([]);
+  // Prep list — persisted via food.prep-list-* macros (lib/hooks/use-food-ops).
+  const { tasks: prepTasks, loading: prepListLoading, saveTasks: savePrepTasks, toggleTask: togglePrepTask } = usePrepList();
   const [expectedCovers, setExpectedCovers] = useState('120');
+  const [prepGenerating, setPrepGenerating] = useState(false);
 
   // Editor form state
   const [formName, setFormName] = useState('');
@@ -482,6 +437,32 @@ export default function FoodLensPage() {
     }
   };
 
+  // Runs the real generatePrepList macro and — unlike handleAction above —
+  // lands its tasks[] in the persisted prep-list checklist (food.prep-list-save)
+  // instead of the generic actionResult display. Fixes the historical bug
+  // documented in docs/lens-specs/food-capability-map.md: the Auto-Generate
+  // button called generatePrepList, but its real computed result was
+  // discarded into actionResult and never reached the checklist, so the
+  // Prep List panel stayed permanently empty.
+  const handleGeneratePrepList = async (artifactId?: string) => {
+    const targetId = artifactId || editingItem?.id || filtered[0]?.id;
+    if (!targetId) return;
+    setPrepGenerating(true);
+    try {
+      const result = await runAction.mutateAsync({ id: targetId, action: 'generatePrepList' });
+      if (result.ok === false) {
+        setActionResult({ message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}` });
+        return;
+      }
+      const generated = result.result as { tasks?: Array<Record<string, unknown>> } | undefined;
+      await savePrepTasks(Array.isArray(generated?.tasks) ? generated.tasks : []);
+    } catch (err) {
+      console.error('Prep list generation failed:', err);
+    } finally {
+      setPrepGenerating(false);
+    }
+  };
+
   // ---------------------------------------------------------------------------
   // Domain calculations
   // ---------------------------------------------------------------------------
@@ -530,7 +511,7 @@ export default function FoodLensPage() {
 
   const calcLaborCost = (hours: number, rate: number): number => hours * rate;
 
-  const wasteTotal = useMemo(() => wasteLog.reduce((s, w) => s + w.cost, 0), [wasteLog]);
+  const wasteTotal = useMemo(() => wasteLog.reduce((s, w) => s + w.estimatedCostImpact, 0), [wasteLog]);
 
   // ---------------------------------------------------------------------------
   // Dashboard metrics
@@ -768,33 +749,33 @@ export default function FoodLensPage() {
   // Waste Log
   // ---------------------------------------------------------------------------
 
-  const addWasteEntry = () => {
-    if (!wasteItemName) return;
-    const entry: WasteEntry = {
-      id: Date.now().toString(),
-      item: wasteItemName,
-      qty: parseFloat(wasteQty) || 0,
-      unit: wasteUnit,
-      reason: wasteReason,
-      cost: parseFloat(wasteCost) || 0,
-      date: new Date().toISOString().split('T')[0],
-      notes: wasteNotes,
-    };
-    setWasteLog(prev => [entry, ...prev]);
-    setWasteItemName(''); setWasteQty(''); setWasteCost(''); setWasteNotes('');
+  const addWasteEntry = async () => {
+    if (!wasteItemName.trim() || wasteSaving) return;
+    setWasteSaving(true);
+    try {
+      await addWasteLogEntry({
+        itemName: wasteItemName.trim(),
+        qty: parseFloat(wasteQty) || 1,
+        unit: wasteUnit,
+        reason: wasteReason,
+        estimatedCostImpact: parseFloat(wasteCost) || 0,
+      });
+      setWasteItemName(''); setWasteQty(''); setWasteCost('');
+    } finally {
+      setWasteSaving(false);
+    }
   };
 
   const renderWasteLog = () => {
     if (!showWasteLog) return null;
     const byReason: Record<string, number> = {};
-    wasteLog.forEach(w => { byReason[w.reason] = (byReason[w.reason] || 0) + w.cost; });
+    wasteLog.forEach(w => { byReason[w.reason] = (byReason[w.reason] || 0) + w.estimatedCostImpact; });
 
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
             <Trash2 className="w-5 h-5 text-red-400" /> Waste Log
-            <span className="text-[10px] font-normal text-gray-500 normal-case">— session only, not saved to your account</span>
           </h2>
           <button onClick={() => setShowWasteLog(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
         </div>
@@ -806,7 +787,7 @@ export default function FoodLensPage() {
             <p className="text-2xl font-bold text-red-400">${wasteTotal.toFixed(2)}</p>
           </div>
           <div className={ds.panel}>
-            <p className={ds.textMuted}>Entries This Week</p>
+            <p className={ds.textMuted}>Logged Entries</p>
             <p className="text-2xl font-bold">{wasteLog.length}</p>
           </div>
           {WASTE_REASONS.slice(0, 2).map(wr => (
@@ -846,27 +827,32 @@ export default function FoodLensPage() {
             </div>
           </div>
           <div className="flex items-center gap-3 mt-3">
-            <input value={wasteNotes} onChange={e => setWasteNotes(e.target.value)} className={cn(ds.input, 'flex-1')} placeholder="Notes..." />
-            <button onClick={addWasteEntry} className={ds.btnDanger}><Plus className="w-4 h-4" /> Log</button>
+            <button onClick={addWasteEntry} disabled={wasteSaving || !wasteItemName.trim()} className={ds.btnDanger}>
+              <Plus className="w-4 h-4" /> {wasteSaving ? 'Logging…' : 'Log'}
+            </button>
           </div>
         </div>
 
         {/* Waste list */}
         <div className="space-y-2">
-          {wasteLog.map(entry => (
+          {wasteLogLoading && wasteLog.length === 0 ? (
+            <div className={cn(ds.panel, 'text-center py-6')}><p className={ds.textMuted}>Loading…</p></div>
+          ) : wasteLog.length === 0 ? (
+            <div className={cn(ds.panel, 'text-center py-6')}><p className={ds.textMuted}>No waste logged yet.</p></div>
+          ) : wasteLog.map(entry => (
             <div key={entry.id} className={cn(ds.panel, 'flex items-center justify-between')}>
               <div className="flex items-center gap-4">
                 <div>
-                  <p className="font-medium">{entry.item}</p>
+                  <p className="font-medium">{entry.itemName}</p>
                   <p className={ds.textMuted}>{entry.qty} {entry.unit} - {entry.date}</p>
                 </div>
-                <span className={ds.badge(entry.reason === 'expired' ? 'red-400' : entry.reason === 'spoiled' ? 'orange-400' : 'yellow-400')}>
+                <span className={ds.badge(entry.reason === 'spoilage' ? 'red-400' : entry.reason === 'prep_waste' ? 'orange-400' : 'yellow-400')}>
                   {entry.reason}
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-red-400 font-mono font-bold">${entry.cost.toFixed(2)}</span>
-                <button onClick={() => setWasteLog(prev => prev.filter(w => w.id !== entry.id))} className={cn(ds.btnSmall, 'text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
+                <span className="text-red-400 font-mono font-bold">${entry.estimatedCostImpact.toFixed(2)}</span>
+                <button onClick={() => removeWasteLogEntry(entry.id)} className={cn(ds.btnSmall, 'text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
               </div>
             </div>
           ))}
@@ -997,17 +983,17 @@ export default function FoodLensPage() {
   // Prep List Generator
   // ---------------------------------------------------------------------------
 
-  const togglePrepComplete = (id: string) => {
-    setPrepItems(prev => prev.map(p => p.id === id ? { ...p, completed: !p.completed } : p));
-  };
-
   const renderPrepList = () => {
     if (!showPrepList) return null;
-    const completedCount = prepItems.filter(p => p.completed).length;
-    const stationGroups: Record<string, PrepItem[]> = {};
-    prepItems.forEach(p => {
-      if (!stationGroups[p.station]) stationGroups[p.station] = [];
-      stationGroups[p.station].push(p);
+    const completedCount = prepTasks.filter(p => p.done).length;
+    // Group by station while keeping each task's real index in the
+    // persisted array — prep-list-toggle-task addresses tasks by that
+    // index, so it must survive the station grouping.
+    const stationGroups: Record<string, { task: typeof prepTasks[number]; idx: number }[]> = {};
+    prepTasks.forEach((p, idx) => {
+      const station = p.station || 'general';
+      if (!stationGroups[station]) stationGroups[station] = [];
+      stationGroups[station].push({ task: p, idx });
     });
 
     return (
@@ -1015,14 +1001,15 @@ export default function FoodLensPage() {
         <div className="flex items-center justify-between">
           <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
             <ClipboardList className="w-5 h-5 text-green-400" /> Prep List
-            <span className="text-[10px] font-normal text-gray-500 normal-case">— session only, not saved to your account</span>
           </h2>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
               <label className={ds.label}>Expected Covers:</label>
               <input type="number" value={expectedCovers} onChange={e => setExpectedCovers(e.target.value)} className={cn(ds.input, 'w-24')} />
             </div>
-            <button onClick={() => handleAction('generatePrepList')} className={ds.btnPrimary}><Zap className="w-4 h-4" /> Auto-Generate</button>
+            <button onClick={() => handleGeneratePrepList()} disabled={prepGenerating} className={ds.btnPrimary}>
+              <Zap className="w-4 h-4" /> {prepGenerating ? 'Generating…' : 'Auto-Generate'}
+            </button>
             <button onClick={() => setShowPrepList(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
           </div>
         </div>
@@ -1031,34 +1018,39 @@ export default function FoodLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <span className={ds.textMuted}>Progress</span>
-            <span className={ds.textMono}>{completedCount}/{prepItems.length} complete</span>
+            <span className={ds.textMono}>{completedCount}/{prepTasks.length} complete</span>
           </div>
           <div className="h-3 bg-lattice-elevated rounded-full overflow-hidden">
             <div
               className="h-full bg-green-400 rounded-full transition-all"
-              style={{ width: `${prepItems.length > 0 ? (completedCount / prepItems.length) * 100 : 0}%` }}
+              style={{ width: `${prepTasks.length > 0 ? (completedCount / prepTasks.length) * 100 : 0}%` }}
             />
           </div>
         </div>
 
-        {/* By station */}
-        {Object.entries(stationGroups).map(([station, stationItems]) => (
+        {prepListLoading && prepTasks.length === 0 ? (
+          <div className={cn(ds.panel, 'text-center py-6')}><p className={ds.textMuted}>Loading…</p></div>
+        ) : prepTasks.length === 0 ? (
+          <div className={cn(ds.panel, 'text-center py-8')}>
+            <p className={ds.textMuted}>No prep tasks yet today. Hit Auto-Generate to build the list.</p>
+          </div>
+        ) : Object.entries(stationGroups).map(([station, stationItems]) => (
           <div key={station} className={ds.panel}>
             <h3 className={cn(ds.heading3, 'mb-3 flex items-center gap-2')}>
               <MapPin className="w-4 h-4 text-cyan-400" /> {station}
               <span className={ds.badge('cyan-400')}>{stationItems.length}</span>
             </h3>
             <div className="space-y-2">
-              {stationItems.map(p => (
-                <div key={p.id} className={cn('flex items-center gap-3 p-3 rounded-lg', p.completed ? 'bg-green-400/10' : 'bg-lattice-elevated/50')}>
-                  <button onClick={() => togglePrepComplete(p.id)} className={cn('w-5 h-5 rounded border flex items-center justify-center', p.completed ? 'bg-green-400 border-green-400' : 'border-gray-600')}>
-                    {p.completed && <CheckCircle2 className="w-3 h-3 text-black" />}
+              {stationItems.map(({ task: p, idx }) => (
+                <div key={idx} className={cn('flex items-center gap-3 p-3 rounded-lg', p.done ? 'bg-green-400/10' : 'bg-lattice-elevated/50')}>
+                  <button onClick={() => togglePrepTask(idx)} className={cn('w-5 h-5 rounded border flex items-center justify-center', p.done ? 'bg-green-400 border-green-400' : 'border-gray-600')}>
+                    {p.done && <CheckCircle2 className="w-3 h-3 text-black" />}
                   </button>
                   <div className="flex-1">
-                    <p className={cn('font-medium', p.completed && 'line-through text-gray-400')}>{p.item}</p>
-                    <p className={ds.textMuted}>{p.recipe} - {p.qty} {p.unit}</p>
+                    <p className={cn('font-medium', p.done && 'line-through text-gray-400')}>{p.task || 'Task'}</p>
+                    <p className={ds.textMuted}>{p.menuItem} - {p.quantity} {p.unit}</p>
                   </div>
-                  <span className={ds.textMuted}>{p.assignedTo || 'Unassigned'}</span>
+                  {p.prepTimeMinutes != null && <span className={ds.textMuted}>{p.prepTimeMinutes}min</span>}
                 </div>
               ))}
             </div>
@@ -1072,26 +1064,34 @@ export default function FoodLensPage() {
   // Floor Plan / Table Management
   // ---------------------------------------------------------------------------
 
-  const seatTable = (tableId: number) => {
-    setTables(prev => prev.map(t => t.id === tableId ? {
-      ...t, status: 'occupied' as TableStatus, seatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      estimatedTurn: 75,
-    } : t));
+  // Click cycles a table through the real host-stand lifecycle:
+  // available -> occupied (seated) -> dirty (needs bussing) -> available.
+  // Reserved tables click back to available (covers a cancelled reservation).
+  const TABLE_STATUS_CYCLE: Record<TableStatus, TableStatus> = {
+    available: 'occupied', occupied: 'dirty', dirty: 'available', reserved: 'available',
   };
 
-  const clearTable = (tableId: number) => {
-    setTables(prev => prev.map(t => t.id === tableId ? {
-      ...t, status: 'available' as TableStatus, guestName: '', partySize: 0, seatedAt: '', estimatedTurn: 0,
-    } : t));
+  const cycleTableStatus = (table: FloorTable) => {
+    updateTableStatus(table.id, TABLE_STATUS_CYCLE[table.status]);
   };
 
-  const addToWaitlist = () => {
-    if (!waitlistName) return;
-    setWaitlist(prev => [...prev, {
-      id: Date.now().toString(), name: waitlistName, partySize: parseInt(waitlistParty) || 2,
-      addedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      estimatedWait: (prev.length + 1) * 12, phone: waitlistPhone,
-    }]);
+  const addTableFromForm = async () => {
+    if (!newTableLabel.trim()) return;
+    await addTable({
+      label: newTableLabel.trim(),
+      seats: parseInt(newTableSeats) || 1,
+      section: newTableSection.trim() || undefined,
+    });
+    setNewTableLabel(''); setNewTableSection('');
+  };
+
+  const addToWaitlist = async () => {
+    if (!waitlistName.trim()) return;
+    await addWaitlistEntry({
+      partyName: waitlistName.trim(),
+      partySize: parseInt(waitlistParty) || 1,
+      phone: waitlistPhone.trim() || undefined,
+    });
     setWaitlistName(''); setWaitlistParty('2'); setWaitlistPhone('');
   };
 
@@ -1101,13 +1101,13 @@ export default function FoodLensPage() {
     const occupied = tables.filter(t => t.status === 'occupied').length;
     const totalSeats = tables.reduce((s, t) => s + t.seats, 0);
     const occupiedSeats = tables.filter(t => t.status === 'occupied').reduce((s, t) => s + t.seats, 0);
+    const activeWaitlist = waitlist.filter(w => w.status === 'waiting');
 
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
             <Armchair className="w-5 h-5 text-blue-400" /> Floor Plan & Tables
-            <span className="text-[10px] font-normal text-gray-500 normal-case">— session only, not saved to your account</span>
           </h2>
           <button onClick={() => setShowFloorPlan(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
         </div>
@@ -1128,66 +1128,90 @@ export default function FoodLensPage() {
           </div>
           <div className={ds.panel}>
             <p className={ds.textMuted}>Waitlist</p>
-            <p className="text-2xl font-bold text-purple-400">{waitlist.length}</p>
+            <p className="text-2xl font-bold text-purple-400">{activeWaitlist.length}</p>
           </div>
         </div>
 
         {/* Table grid */}
         <div className={ds.panel}>
-          <h3 className={cn(ds.heading3, 'mb-3')}>Tables</h3>
-          <div className="grid grid-cols-5 md:grid-cols-10 gap-3">
-            {tables.map(table => (
-              <button
-                key={table.id}
-                onClick={() => table.status === 'available' ? seatTable(table.id) : clearTable(table.id)}
-                className={cn(
-                  'aspect-square rounded-lg flex flex-col items-center justify-center border transition-colors text-xs',
-                  table.status === 'available' && 'bg-green-400/10 border-green-400/30 hover:bg-green-400/20 text-green-400',
-                  table.status === 'occupied' && 'bg-red-400/10 border-red-400/30 hover:bg-red-400/20 text-red-400',
-                  table.status === 'reserved' && 'bg-blue-400/10 border-blue-400/30 text-blue-400',
-                  table.status === 'cleaning' && 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400',
-                )}
-              >
-                <Hash className="w-3 h-3 mb-0.5" />
-                <span className="font-bold">{table.id}</span>
-                <span className="text-[10px]">{table.seats}s</span>
-              </button>
-            ))}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className={ds.heading3}>Tables</h3>
           </div>
+          <div className="flex items-end gap-2 mb-3 flex-wrap">
+            <input value={newTableLabel} onChange={e => setNewTableLabel(e.target.value)} className={cn(ds.input, 'w-32')} placeholder="Table label" />
+            <input type="number" value={newTableSeats} onChange={e => setNewTableSeats(e.target.value)} className={cn(ds.input, 'w-20')} placeholder="Seats" />
+            <input value={newTableSection} onChange={e => setNewTableSection(e.target.value)} className={cn(ds.input, 'w-28')} placeholder="Section" />
+            <button onClick={addTableFromForm} disabled={!newTableLabel.trim()} className={ds.btnSecondary}><Plus className="w-4 h-4" /> Add Table</button>
+          </div>
+          {floorPlanLoading && tables.length === 0 ? (
+            <p className={ds.textMuted}>Loading…</p>
+          ) : tables.length === 0 ? (
+            <p className={ds.textMuted}>No tables yet. Add your first table above.</p>
+          ) : (
+            <div className="grid grid-cols-5 md:grid-cols-10 gap-3">
+              {tables.map(table => (
+                <div key={table.id} className="relative group">
+                  <button
+                    onClick={() => cycleTableStatus(table)}
+                    title={`${table.label} · ${table.seats} seats${table.section ? ` · ${table.section}` : ''}`}
+                    className={cn(
+                      'aspect-square w-full rounded-lg flex flex-col items-center justify-center border transition-colors text-xs',
+                      table.status === 'available' && 'bg-green-400/10 border-green-400/30 hover:bg-green-400/20 text-green-400',
+                      table.status === 'occupied' && 'bg-red-400/10 border-red-400/30 hover:bg-red-400/20 text-red-400',
+                      table.status === 'reserved' && 'bg-blue-400/10 border-blue-400/30 text-blue-400',
+                      table.status === 'dirty' && 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400',
+                    )}
+                  >
+                    <Hash className="w-3 h-3 mb-0.5" />
+                    <span className="font-bold truncate w-full text-center px-1">{table.label}</span>
+                    <span className="text-[10px]">{table.seats}s</span>
+                  </button>
+                  <button
+                    onClick={() => deleteTable(table.id)}
+                    aria-label={`Delete ${table.label}`}
+                    className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 bg-lattice-surface border border-lattice-border rounded-full p-0.5 text-gray-400 hover:text-red-400"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-4 mt-3 text-xs">
             <span className="flex items-center gap-1"><CircleDot className="w-3 h-3 text-green-400" /> Available</span>
             <span className="flex items-center gap-1"><CircleDot className="w-3 h-3 text-red-400" /> Occupied</span>
             <span className="flex items-center gap-1"><CircleDot className="w-3 h-3 text-blue-400" /> Reserved</span>
-            <span className="flex items-center gap-1"><CircleDot className="w-3 h-3 text-yellow-400" /> Cleaning</span>
+            <span className="flex items-center gap-1"><CircleDot className="w-3 h-3 text-yellow-400" /> Dirty</span>
           </div>
         </div>
 
-        {/* Waitlist */}
+        {/* Walk-in waitlist */}
         <div className={ds.panel}>
           <h3 className={cn(ds.heading3, 'mb-3')}>Waitlist</h3>
           <div className="flex items-center gap-3 mb-3">
             <input value={waitlistName} onChange={e => setWaitlistName(e.target.value)} className={cn(ds.input, 'flex-1')} placeholder="Guest name" />
             <input type="number" value={waitlistParty} onChange={e => setWaitlistParty(e.target.value)} className={cn(ds.input, 'w-20')} placeholder="Size" />
             <input value={waitlistPhone} onChange={e => setWaitlistPhone(e.target.value)} className={cn(ds.input, 'w-32')} placeholder="Phone" />
-            <button onClick={addToWaitlist} className={ds.btnPrimary}><Plus className="w-4 h-4" /> Add</button>
+            <button onClick={addToWaitlist} disabled={!waitlistName.trim()} className={ds.btnPrimary}><Plus className="w-4 h-4" /> Add</button>
           </div>
           <div className="space-y-2">
-            {waitlist.map((w, idx) => (
+            {activeWaitlist.map((w, idx) => (
               <div key={w.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50">
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-bold text-gray-400">#{idx + 1}</span>
                   <div>
-                    <p className="font-medium">{w.name}</p>
-                    <p className={ds.textMuted}>Party of {w.partySize} - Added {w.addedAt}</p>
+                    <p className="font-medium">{w.partyName}</p>
+                    <p className={ds.textMuted}>Party of {w.partySize} - Added {new Date(w.addedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={ds.badge('purple-400')}>~{w.estimatedWait}min</span>
-                  <button onClick={() => setWaitlist(prev => prev.filter(x => x.id !== w.id))} className={cn(ds.btnSmall, 'text-red-400')} aria-label="Close"><X className="w-3 h-3" /></button>
+                  <span className={ds.badge('purple-400')}>~{w.estimatedWaitMin}min</span>
+                  <button onClick={() => removeWaitlistEntry(w.id, true)} className={cn(ds.btnSmall, 'text-green-400')}>Seat</button>
+                  <button onClick={() => removeWaitlistEntry(w.id, false)} className={cn(ds.btnSmall, 'text-red-400')} aria-label="Remove"><X className="w-3 h-3" /></button>
                 </div>
               </div>
             ))}
-            {waitlist.length === 0 && <p className={ds.textMuted}>No one on the waitlist.</p>}
+            {activeWaitlist.length === 0 && <p className={ds.textMuted}>No one on the waitlist.</p>}
           </div>
         </div>
       </div>
@@ -2646,7 +2670,7 @@ export default function FoodLensPage() {
         <div className="flex flex-wrap gap-3">
           <button onClick={() => handleAction('costPlate')} className={ds.btnSecondary}><DollarSign className="w-4 h-4" /> Cost Plate</button>
           <button onClick={() => handleAction('menuAnalysis')} className={ds.btnSecondary}><PieChart className="w-4 h-4" /> Menu Analysis</button>
-          <button onClick={() => handleAction('generatePrepList')} className={ds.btnSecondary}><ClipboardList className="w-4 h-4" /> Generate Prep List</button>
+          <button onClick={() => { setActiveTab('batches'); setShowPrepList(true); handleGeneratePrepList(); }} className={ds.btnSecondary}><ClipboardList className="w-4 h-4" /> Generate Prep List</button>
           <button onClick={() => handleAction('wasteReport')} className={ds.btnSecondary}><Trash2 className="w-4 h-4" /> Waste Report</button>
           <button onClick={() => handleAction('scaleRecipe')} className={ds.btnSecondary}><Scale className="w-4 h-4" /> Scale Recipe</button>
         </div>

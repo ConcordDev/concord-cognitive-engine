@@ -14,6 +14,8 @@ import {
   CloudOff,
   ArrowLeftRight,
   Pencil,
+  Filter,
+  X,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
@@ -26,17 +28,20 @@ import {
   applyServerChange,
   clearLocal,
   localBytes,
+  getDeviceId,
   type LocalDoc,
 } from './local-store';
 
 interface PushResult {
-  applied: { id: string; rev: string; seq: number; deleted: boolean }[];
+  applied: { id: string; rev: string; seq: number; deleted: boolean; deviceId?: string | null }[];
   conflicts: {
     id: string;
     serverRev: string;
     serverBody: any;
+    serverDeviceId?: string | null;
     clientRev: string | null;
     clientBody: any;
+    clientDeviceId?: string | null;
     reason: string;
   }[];
   appliedCount: number;
@@ -51,6 +56,7 @@ interface PullChange {
   deleted: boolean;
   doc: Record<string, unknown> | null;
   updatedAt: string;
+  deviceId?: string | null;
 }
 
 interface PullResult {
@@ -67,7 +73,37 @@ interface StatusResult {
   approxBytes: number;
 }
 
+type FilterOp = 'eq' | 'contains' | 'gt' | 'lt';
+
+interface FieldMatchCondition {
+  field: string;
+  op: FilterOp;
+  value: string | number;
+}
+
+interface SavedFilter {
+  id: string;
+  name: string;
+  collection: string | null;
+  fieldMatch: FieldMatchCondition[];
+  createdAt: string;
+}
+
 const CKPT_ID = 'offline-lens-replication';
+const FILTER_OPS: FilterOp[] = ['eq', 'contains', 'gt', 'lt'];
+
+/** Distinct checkpoint per saved filter so a filtered incremental sync never
+ * shares (and corrupts) the unfiltered stream's `since` position. */
+function checkpointIdFor(filterId: string | null): string {
+  return filterId ? `${CKPT_ID}:filter:${filterId}` : CKPT_ID;
+}
+
+function summarizeFilter(f: SavedFilter): string {
+  const parts: string[] = [];
+  if (f.collection) parts.push(`collection = "${f.collection}"`);
+  for (const c of f.fieldMatch) parts.push(`${c.field} ${c.op} ${JSON.stringify(c.value)}`);
+  return parts.length ? parts.join(' AND ') : '(no predicate)';
+}
 
 /**
  * Bidirectional PouchDB-style replication surface.
@@ -96,26 +132,63 @@ export function ReplicationPanel({
   const [editing, setEditing] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  // Filtered/scoped replication — CouchDB `_filter`-style saved predicates.
+  const [filters, setFilters] = useState<SavedFilter[]>([]);
+  const [filtersLoading, setFiltersLoading] = useState(true);
+  const [filterErr, setFilterErr] = useState<string | null>(null);
+  const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null);
+  const [showFilterForm, setShowFilterForm] = useState(false);
+  const [newFilterName, setNewFilterName] = useState('');
+  const [newFilterCollection, setNewFilterCollection] = useState('');
+  const [newFilterConditions, setNewFilterConditions] = useState<FieldMatchCondition[]>([]);
+  const [filterBusy, setFilterBusy] = useState(false);
+
   const reloadLocal = useCallback(async () => {
     const [d, b] = await Promise.all([allDocs(), localBytes()]);
     setDocs(d);
     setLocalSize(b);
   }, []);
 
-  const loadStatus = useCallback(async () => {
+  const loadStatus = useCallback(async (filterId: string | null = selectedFilterId) => {
     const r = await lensRun<StatusResult>('offline', 'replicationStatus', {});
     if (r.data.ok && r.data.result) setServerStatus(r.data.result);
     const cp = await lensRun<{ seq: number }>('offline', 'syncCheckpoint', {
-      replicationId: CKPT_ID,
+      replicationId: checkpointIdFor(filterId),
     });
     if (cp.data.ok && cp.data.result) setSinceSeq(cp.data.result.seq);
+  }, [selectedFilterId]);
+
+  const loadFilters = useCallback(async () => {
+    setFiltersLoading(true);
+    setFilterErr(null);
+    try {
+      const r = await lensRun<{ filters: SavedFilter[] }>('offline', 'filterList', {});
+      if (!r.data.ok || !r.data.result) {
+        setFilterErr(r.data.error || 'failed to load filters');
+        setFilters([]);
+        return;
+      }
+      setFilters(r.data.result.filters);
+    } finally {
+      setFiltersLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     reloadLocal();
-    loadStatus();
+    loadStatus(null);
+    loadFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-read the checkpoint for whichever stream (unfiltered or filtered) is
+  // currently selected — filtered and unfiltered incremental sync each have
+  // their OWN checkpoint (see checkpointIdFor), so switching the selector
+  // must not carry over the wrong `since`.
+  useEffect(() => {
+    loadStatus(selectedFilterId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilterId]);
 
   const logFeed = useCallback((label: string, tone: TimelineEvent['tone'], detail?: string) => {
     setFeed((f) =>
@@ -142,14 +215,18 @@ export function ReplicationPanel({
         baseRev: d.baseRev,
         deleted: d.deleted,
       }));
-      const r = await lensRun<PushResult>('offline', 'replicationPush', { docs: payload });
+      // Stable per-browser device id — stamped on every doc/change/conflict
+      // this push produces so a later conflict can show which device wrote
+      // which revision (see local-store.ts#getDeviceId).
+      const deviceId = getDeviceId();
+      const r = await lensRun<PushResult>('offline', 'replicationPush', { docs: payload, deviceId });
       if (!r.data.ok || !r.data.result) {
         setErr(r.data.error || 'push failed');
         return null;
       }
       const res = r.data.result;
       for (const a of res.applied) {
-        await markClean(a.id, a.rev, a.deleted);
+        await markClean(a.id, a.rev, a.deleted, deviceId);
       }
       logFeed(
         `Pushed ${res.appliedCount} doc${res.appliedCount === 1 ? '' : 's'}`,
@@ -169,42 +246,53 @@ export function ReplicationPanel({
     }
   }, [logFeed, onConflicts, reloadLocal, loadStatus, onStateChange]);
 
-  /** Pull all server changes after the saved checkpoint into IndexedDB. */
+  /**
+   * Pull all server changes after the saved checkpoint into IndexedDB. When a
+   * saved filter is selected, only documents matching its real predicate are
+   * pulled (`offline.replicationPull`'s `filterId` param) — everything else
+   * behaves identically to an unfiltered pull, including how `since`/
+   * `lastSeq` are persisted (each stream keeps its own checkpoint, see
+   * checkpointIdFor).
+   */
   const pull = useCallback(async (): Promise<number> => {
     setBusy('pull');
     setErr(null);
     try {
+      const filterId = selectedFilterId;
       let since = sinceSeq;
       let total = 0;
       let guard = 0;
       // Drain the changes feed in pages until pending hits 0.
       for (;;) {
-        const r = await lensRun<PullResult>('offline', 'replicationPull', {
-          since,
-          limit: 200,
-        });
+        const params: Record<string, unknown> = { since, limit: 200 };
+        if (filterId) params.filterId = filterId;
+        const r = await lensRun<PullResult>('offline', 'replicationPull', params);
         if (!r.data.ok || !r.data.result) {
           setErr(r.data.error || 'pull failed');
           break;
         }
         const res = r.data.result;
         for (const c of res.changes) {
-          await applyServerChange(c.id, c.rev, c.doc, c.deleted);
+          await applyServerChange(c.id, c.rev, c.doc, c.deleted, c.deviceId ?? null);
         }
         total += res.changes.length;
         since = res.lastSeq;
         if (res.pending <= 0 || res.changes.length === 0 || ++guard > 50) break;
       }
-      // Persist the checkpoint so the next pull is incremental.
-      await lensRun('offline', 'syncCheckpoint', { replicationId: CKPT_ID, seq: since });
+      // Persist the checkpoint so the next pull is incremental — on the
+      // stream-specific replicationId so a filtered pull never clobbers the
+      // unfiltered checkpoint (or vice versa).
+      await lensRun('offline', 'syncCheckpoint', { replicationId: checkpointIdFor(filterId), seq: since });
       setSinceSeq(since);
       logFeed(
         total > 0 ? `Pulled ${total} change${total === 1 ? '' : 's'}` : 'Pull — up to date',
         total > 0 ? 'good' : 'info',
-        `checkpoint @ seq ${since}`,
+        filterId
+          ? `filtered · checkpoint @ seq ${since}`
+          : `checkpoint @ seq ${since}`,
       );
       await reloadLocal();
-      await loadStatus();
+      await loadStatus(filterId);
       onStateChange?.();
       return total;
     } catch (e) {
@@ -213,7 +301,7 @@ export function ReplicationPanel({
     } finally {
       setBusy(null);
     }
-  }, [sinceSeq, logFeed, reloadLocal, loadStatus, onStateChange]);
+  }, [sinceSeq, selectedFilterId, logFeed, reloadLocal, loadStatus, onStateChange]);
 
   /** Full bidirectional sync: push local writes, then pull server changes. */
   const syncBoth = useCallback(async () => {
@@ -232,6 +320,80 @@ export function ReplicationPanel({
     const handle = setInterval(tick, 12000);
     return () => clearInterval(handle);
   }, [continuous, syncBoth]);
+
+  const addFilterCondition = useCallback(() => {
+    setNewFilterConditions((cs) => [...cs, { field: '', op: 'eq', value: '' }]);
+  }, []);
+
+  const updateFilterCondition = useCallback((idx: number, patch: Partial<FieldMatchCondition>) => {
+    setNewFilterConditions((cs) => cs.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
+  }, []);
+
+  const removeFilterCondition = useCallback((idx: number) => {
+    setNewFilterConditions((cs) => cs.filter((_, i) => i !== idx));
+  }, []);
+
+  const resetFilterForm = useCallback(() => {
+    setNewFilterName('');
+    setNewFilterCollection('');
+    setNewFilterConditions([]);
+    setShowFilterForm(false);
+  }, []);
+
+  /** Create a saved filter — a real predicate (collection and/or fieldMatch
+   * conditions), evaluated server-side against real document fields. */
+  const createFilter = useCallback(async () => {
+    const name = newFilterName.trim();
+    if (!name) {
+      setFilterErr('filter name required');
+      return;
+    }
+    const collection = newFilterCollection.trim();
+    const fieldMatch = newFilterConditions
+      .filter((c) => c.field.trim() !== '' && String(c.value).trim() !== '')
+      .map((c) => ({ field: c.field.trim(), op: c.op, value: c.value }));
+    if (!collection && fieldMatch.length === 0) {
+      setFilterErr('a filter needs a collection and/or at least one condition');
+      return;
+    }
+    setFilterBusy(true);
+    setFilterErr(null);
+    try {
+      const r = await lensRun<{ filter: SavedFilter }>('offline', 'filterCreate', {
+        name,
+        collection: collection || undefined,
+        fieldMatch,
+      });
+      if (!r.data.ok || !r.data.result) {
+        setFilterErr(r.data.error || 'failed to create filter');
+        return;
+      }
+      logFeed(`Saved filter "${r.data.result.filter.name}"`, 'good', summarizeFilter(r.data.result.filter));
+      resetFilterForm();
+      await loadFilters();
+    } finally {
+      setFilterBusy(false);
+    }
+  }, [newFilterName, newFilterCollection, newFilterConditions, logFeed, resetFilterForm, loadFilters]);
+
+  /** Delete a saved filter — honestly rejects if it doesn't exist (server-side
+   * ownership check), never a silent no-op. */
+  const deleteFilter = useCallback(async (id: string) => {
+    setFilterBusy(true);
+    setFilterErr(null);
+    try {
+      const r = await lensRun<{ id: string; deleted: boolean }>('offline', 'filterDelete', { id });
+      if (!r.data.ok || !r.data.result) {
+        setFilterErr(r.data.error || 'failed to delete filter');
+        return;
+      }
+      logFeed('Deleted filter', 'warn');
+      if (selectedFilterId === id) setSelectedFilterId(null);
+      await loadFilters();
+    } finally {
+      setFilterBusy(false);
+    }
+  }, [logFeed, loadFilters, selectedFilterId]);
 
   const saveDraft = useCallback(async () => {
     const id = draftId.trim();
@@ -374,6 +536,167 @@ export function ReplicationPanel({
         </div>
       </div>
 
+      {/* Filtered / scoped replication — saved CouchDB `_filter`-style predicates */}
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+            <Filter className="h-3.5 w-3.5" />
+            Scoped replication filters
+          </div>
+          <button
+            onClick={() => setShowFilterForm((v) => !v)}
+            className="flex items-center gap-1 rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:text-white"
+          >
+            <Plus className="h-3 w-3" />
+            New filter
+          </button>
+        </div>
+
+        {filtersLoading && (
+          <p className="text-[11px] text-zinc-400">Loading saved filters…</p>
+        )}
+
+        {!filtersLoading && filters.length === 0 && !showFilterForm && (
+          <p className="rounded border border-dashed border-zinc-800 px-2.5 py-2 text-[11px] text-zinc-400">
+            No saved filters yet. A filter scopes Pull to only matching documents
+            (by collection prefix and/or real field conditions) — pull stays
+            unfiltered until you select one.
+          </p>
+        )}
+
+        {!filtersLoading && filters.length > 0 && (
+          <ul className="mb-2 space-y-1.5" data-testid="saved-filter-list">
+            {filters.map((f) => (
+              <li
+                key={f.id}
+                className="flex items-center justify-between gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5"
+              >
+                <label className="flex min-w-0 flex-1 items-center gap-2 text-[11px]">
+                  <input
+                    type="radio"
+                    name="offline-replication-filter"
+                    checked={selectedFilterId === f.id}
+                    onChange={() => setSelectedFilterId(f.id)}
+                    className="accent-cyan-500"
+                    aria-label={`Use filter ${f.name} for pull`}
+                  />
+                  <span className="truncate text-zinc-100">{f.name}</span>
+                  <span className="truncate font-mono text-[10px] text-zinc-500">{summarizeFilter(f)}</span>
+                </label>
+                <button
+                  onClick={() => deleteFilter(f.id)}
+                  disabled={filterBusy}
+                  aria-label={`Delete filter ${f.name}`}
+                  className="shrink-0 rounded border border-red-500/30 p-1 text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </li>
+            ))}
+            <li>
+              <label className="flex items-center gap-2 text-[11px] text-zinc-400">
+                <input
+                  type="radio"
+                  name="offline-replication-filter"
+                  checked={selectedFilterId === null}
+                  onChange={() => setSelectedFilterId(null)}
+                  className="accent-cyan-500"
+                />
+                No filter (pull everything)
+              </label>
+            </li>
+          </ul>
+        )}
+
+        {showFilterForm && (
+          <div className="space-y-2 rounded border border-zinc-800 bg-zinc-900/40 p-2.5">
+            <input
+              value={newFilterName}
+              onChange={(e) => setNewFilterName(e.target.value)}
+              placeholder="filter name (e.g. Notes only)"
+              className="w-full rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-400"
+            />
+            <input
+              value={newFilterCollection}
+              onChange={(e) => setNewFilterCollection(e.target.value)}
+              placeholder='collection prefix (optional, e.g. "note" for ids like note:1)'
+              className="w-full rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-400"
+            />
+            <div className="space-y-1.5">
+              {newFilterConditions.map((c, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <input
+                    value={c.field}
+                    onChange={(e) => updateFilterCondition(idx, { field: e.target.value })}
+                    placeholder="field"
+                    className="w-1/3 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-white placeholder:text-zinc-400"
+                  />
+                  <select
+                    value={c.op}
+                    onChange={(e) => updateFilterCondition(idx, { op: e.target.value as FilterOp })}
+                    className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-[11px] text-white"
+                    aria-label={`condition ${idx} operator`}
+                  >
+                    {FILTER_OPS.map((op) => (
+                      <option key={op} value={op}>{op}</option>
+                    ))}
+                  </select>
+                  <input
+                    value={String(c.value)}
+                    onChange={(e) => updateFilterCondition(idx, { value: e.target.value })}
+                    placeholder="value"
+                    className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-white placeholder:text-zinc-400"
+                  />
+                  <button
+                    onClick={() => removeFilterCondition(idx)}
+                    aria-label={`remove condition ${idx}`}
+                    className="rounded border border-zinc-700 p-1 text-zinc-400 hover:text-white"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={addFilterCondition}
+                className="flex items-center gap-1 text-[11px] text-cyan-300 hover:text-cyan-200"
+              >
+                <Plus className="h-3 w-3" />
+                Add field condition
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={createFilter}
+                disabled={filterBusy}
+                className="flex items-center gap-1.5 rounded bg-cyan-500/15 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-50"
+              >
+                {filterBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Save filter
+              </button>
+              <button
+                onClick={resetFilterForm}
+                className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {filterErr && (
+          <p className="mt-2 rounded border border-red-500/20 bg-red-500/5 px-2.5 py-1.5 text-[11px] text-red-300">
+            {filterErr}
+          </p>
+        )}
+
+        {selectedFilterId && (
+          <p className="mt-2 text-[11px] text-cyan-300">
+            Pull is scoped to &quot;{filters.find((f) => f.id === selectedFilterId)?.name ?? selectedFilterId}&quot; ·
+            checkpoint tracked separately from the unfiltered stream.
+          </p>
+        )}
+      </div>
+
       {/* Sync controls */}
       <div className="flex flex-wrap gap-2">
         <button
@@ -398,7 +721,7 @@ export function ReplicationPanel({
           className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-50"
         >
           {busy === 'pull' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-          Pull
+          Pull{selectedFilterId ? ' (filtered)' : ''}
         </button>
         <button
           onClick={wipeLocal}

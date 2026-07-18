@@ -10,12 +10,35 @@ interface Invariant {
   lastChecked: string;
 }
 
+// A single REAL enforceEthosInvariant() call, recorded server-side
+// (server.js's bounded in-memory ring buffer -- see
+// `getEthosEnforcementSnapshot` next to `enforceEthosInvariant`). This is
+// runtime-since-boot data, not persisted and not a CI/detector result --
+// never conflate the two feeds in the UI.
+export interface EnforcementEvent {
+  action: string;
+  invariant: string | null; // which invariant tripped, or null on a pass
+  result: 'pass' | 'blocked';
+  at: string; // ISO timestamp
+}
+
+export interface EnforcementStats {
+  totalChecks: number;
+  totalBlocked: number;
+  bufferedCount: number;
+  capacity: number;
+  bootAt: string;
+  scope: string; // 'runtime-since-boot'
+}
+
 // Real shape of GET /api/sovereignty/status (server.js's sovereignty/status
 // route) -- the sovereignty percentage field is `sovereigntyPct`, not
 // `lockPercentage`, and `invariants`/`isHealthy` are derived server-side
 // from the frozen ETHOS_INVARIANTS constant. Don't rename these to match a
 // wished-for shape; SovereigntyDashboard.tsx reads this same endpoint with
-// these exact field names.
+// these exact field names. `recentEnforcement`/`enforcementStats` are the
+// live runtime pass/fail feed for enforceEthosInvariant() (2026-07-17,
+// closing docs/WAVE4_INVENTORY.md's "lock" row).
 interface SovereigntyStatusResponse {
   ok: boolean;
   mode: string;
@@ -23,6 +46,8 @@ interface SovereigntyStatusResponse {
   invariants: Invariant[];
   isHealthy: boolean;
   lastAudit?: string;
+  recentEnforcement?: EnforcementEvent[];
+  enforcementStats?: EnforcementStats;
 }
 
 /**
@@ -74,6 +99,12 @@ export function use70Lock() {
     invariants: status?.invariants ?? [],
     lastAudit: status?.lastAudit,
     isHealthy: status?.isHealthy ?? true,
+    // Live runtime enforcement feed -- real enforceEthosInvariant() calls
+    // recorded since server boot. Undefined/empty is honest ("no
+    // enforcement events since boot" / older server not yet returning the
+    // field), never backfilled with fabricated rows.
+    recentEnforcement: status?.recentEnforcement ?? [],
+    enforcementStats: status?.enforcementStats,
 
     // Computed
     isLocked,

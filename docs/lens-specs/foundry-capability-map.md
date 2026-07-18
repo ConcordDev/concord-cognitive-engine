@@ -206,14 +206,19 @@ Reasoning, grounded in the code:
   against the compiled preview world) and the **Playtest** hot-reload tab
   (`BuilderStudio`), where the author enters the actual world as a player.
 
-**Honest residual (a world-lens gap, not a foundry-builder gap):** these 10
-runtime macros currently have **zero frontend callers anywhere** —
-`grep -rn "lensRun('size'\|'reincarnation'\|'skill_affinity'\|name: 'window'"`
-over `concord-frontend/` is empty, and there is no Status-Window HUD / Size
-control / reincarnation-on-death prompt in the world lens yet. That is a
-**scoped future build in `/lenses/world`** (player-facing HUDs for the four
-Phase-7 systems, reading the same macros), explicitly deferred and named here
-rather than papered over inside the wrong lens.
+**Honest residual — CLOSED (2026-07-16, `2b280f7b`):** these 10 runtime
+macros previously had zero frontend callers anywhere. Four config-gated HUDs
+(Status Window, Size Scaling, Skill Affinity, Reincarnation prompt) are now
+mounted in `/lenses/world`, exactly the scoped future build this doc named.
+`useFoundrySystemGate` reads the world's real `rule_modulators.foundry.systems`
+(written by the Foundry compiler at publish time) so each HUD renders nothing
+for a world whose worldspec never selected the system — including the
+`skill-affinity-player` always_on system, correctly gated via the same
+`foundry.systems` array rather than a per-system `rule_modulators` key that
+doesn't exist for an always_on system. The reincarnation HUD's `priorState` is
+passed honestly empty (no fabricated inherited numeric progress) since live
+XP/level/currency state isn't yet plumbed to that component — documented in
+the component itself, not silently gapped.
 
 ## What changed (files)
 

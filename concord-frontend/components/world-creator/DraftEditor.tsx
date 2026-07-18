@@ -122,16 +122,46 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
     });
   }, [draftId, refresh]);
 
+  // updateZone/updateSpawn/updateNpc mirror updateProp exactly — optimistic
+  // local patch immediately, then reconcile against the real zone-move /
+  // spawn-move / npc-move response (rejected/failed write re-pulls the
+  // draft instead of leaving optimistic state disagreeing with the server).
+  const updateZone = useCallback((id: string, patch: Partial<{ x: number; z: number; radius: number }>) => {
+    setDraft(d => d ? { ...d, zones: d.zones.map(z => z.id === id ? { ...z, ...patch } : z) } : d);
+    lensRun('world-creator', 'zone-move', { draftId, zoneId: id, ...patch }).then(r => {
+      if (!r.data?.ok) { setErr(r.data?.error || 'failed to update zone'); refresh(); }
+    });
+  }, [draftId, refresh]);
+
+  const updateSpawn = useCallback((id: string, patch: Partial<{ x: number; z: number }>) => {
+    setDraft(d => d ? { ...d, spawnPoints: d.spawnPoints.map(sp => sp.id === id ? { ...sp, ...patch } : sp) } : d);
+    lensRun('world-creator', 'spawn-move', { draftId, spawnId: id, ...patch }).then(r => {
+      if (!r.data?.ok) { setErr(r.data?.error || 'failed to update spawn point'); refresh(); }
+    });
+  }, [draftId, refresh]);
+
+  const updateNpc = useCallback((id: string, patch: Partial<{ x: number; z: number }>) => {
+    setDraft(d => d ? { ...d, npcs: d.npcs.map(n => n.id === id ? { ...n, ...patch } : n) } : d);
+    lensRun('world-creator', 'npc-move', { draftId, npcId: id, ...patch }).then(r => {
+      if (!r.data?.ok) { setErr(r.data?.error || 'failed to update NPC'); refresh(); }
+    });
+  }, [draftId, refresh]);
+
   // Dragging fires onMove on every mousemove tick; dedupe against the last
-  // committed cell so a single drag gesture doesn't fire a `prop-move`
-  // network call per pixel.
-  const lastMoveRef = useRef<{ id: string; x: number; z: number } | null>(null);
-  const onMove = useCallback((_kind: 'prop', id: string, x: number, z: number) => {
+  // committed cell (keyed by kind+id, since a prop and a zone/spawn/npc
+  // could in principle share drag state) so a single drag gesture doesn't
+  // fire a network call per pixel.
+  const lastMoveRef = useRef<{ key: string; x: number; z: number } | null>(null);
+  const onMove = useCallback((kind: 'prop' | 'spawn' | 'zone' | 'npc', id: string, x: number, z: number) => {
+    const key = `${kind}:${id}`;
     const last = lastMoveRef.current;
-    if (last && last.id === id && last.x === x && last.z === z) return;
-    lastMoveRef.current = { id, x, z };
-    updateProp(id, { x, z });
-  }, [updateProp]);
+    if (last && last.key === key && last.x === x && last.z === z) return;
+    lastMoveRef.current = { key, x, z };
+    if (kind === 'prop') updateProp(id, { x, z });
+    else if (kind === 'zone') updateZone(id, { x, z });
+    else if (kind === 'spawn') updateSpawn(id, { x, z });
+    else if (kind === 'npc') updateNpc(id, { x, z });
+  }, [updateProp, updateZone, updateSpawn, updateNpc]);
 
   const removeSelected = useCallback(async () => {
     if (!selected) return;
@@ -279,7 +309,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               onMove={onMove}
             />
             <p className="text-[11px] text-stone-500">
-              {tool === 'select' ? 'Click an entity to select; drag a prop to move it.' : `Click the canvas to place a ${tool}.`}
+              {tool === 'select' ? 'Click an entity to select; drag a prop, zone, spawn point, or NPC to move it.' : `Click the canvas to place a ${tool}.`}
             </p>
             {pendingNpc && (
               <NpcPlacementForm busy={busy} archetype={npcArch}

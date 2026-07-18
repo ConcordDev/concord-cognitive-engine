@@ -21,6 +21,18 @@
 //   dreams.timeline      { }              → dreams grouped by calendar day
 //   dreams.interpret     { dreamId }      → deterministic reflection linking
 //                                           dream fragments to recent activity
+//   dreams.busiest-night { limit? }       → nights ranked by real recorded
+//                                           activity intensity (WAVE4 — see
+//                                           the "busiest night" note below)
+//
+// WAVE4 note (dreams.busiest-night): this ranks nights by a REAL, deterministic
+// activity-intensity signal (the sum of `dreams.fragment_count` — the actual
+// count of combat/pain/gather/visit/dtu-creation events the dream engine
+// gathered for that night, per `server/lib/embodied/dream-engine.js`). It is
+// explicitly labeled "activity intensity," never "featured" or "most
+// significant" — the data can only support a real-activity ranking, not an
+// editorial judgment about which night mattered most. No Math.random, no
+// fabricated scores; ties break deterministically on the calendar-day string.
 //
 // Persistent per-user, non-schema data (tags, interpretation cache) lives in
 // globalThis._concordSTATE Maps — migrations are append-only and the `dreams`
@@ -504,6 +516,83 @@ export default function registerDreamsMacros(register) {
       return { ok: true, totalDreams: rows.length, days };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   }, { note: "Your dreams grouped into a per-day calendar timeline." });
+
+  // ── dreams.busiest-night — honest activity-intensity ranking ─────────────
+  //
+  // Ranks the caller's nights (calendar days, UTC) by a REAL activity signal:
+  // the sum of `dreams.fragment_count` for every dream composed that day.
+  // `fragment_count` is itself real — it's the number of actual combat/pain/
+  // gather/visit/dtu-creation events `gatherFragments` (dream-engine.js) found
+  // in that offline window, stamped onto the row at insert time. Summing it
+  // per calendar day is therefore a deterministic, non-fabricated measure of
+  // "how much really happened" — never an editorial "featured" or "most
+  // significant" judgment, which this data has no basis to support.
+  //
+  // Ties (equal intensity) break deterministically on the calendar-day string
+  // (more recent night first) — never on insertion order or randomness.
+  //
+  // Honest empty states:
+  //   - zero dreams recorded            → { empty: true, reason: 'no_dream_history' }
+  //   - fewer than MIN_NIGHTS_FOR_RANKING distinct nights → a ranking of 1
+  //     night isn't a ranking; { empty: true, reason: 'not_enough_history' }
+  //     rather than presenting a single data point as if it "won".
+  register("dreams", "busiest-night", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const MIN_NIGHTS_FOR_RANKING = 2;
+    const limit = Math.min(50, Math.max(1, Number(input?.limit) || 10));
+    try {
+      const rows = db.prepare(`
+        SELECT id, world_id, fragment_count, composed_at
+          FROM dreams WHERE user_id = ? ORDER BY composed_at DESC LIMIT 1000
+      `).all(userId);
+
+      if (rows.length === 0) {
+        return {
+          ok: true,
+          metric: "activity_intensity",
+          nights: [],
+          totalNights: 0,
+          empty: true,
+          reason: "no_dream_history",
+        };
+      }
+
+      const byDay = new Map();
+      for (const row of rows) {
+        const day = new Date(Number(row.composed_at) * 1000).toISOString().slice(0, 10);
+        if (!byDay.has(day)) {
+          byDay.set(day, { day, dreamCount: 0, activityIntensity: 0, dreamIds: [] });
+        }
+        const bucket = byDay.get(day);
+        bucket.dreamCount += 1;
+        bucket.activityIntensity += Number(row.fragment_count) || 0;
+        bucket.dreamIds.push(row.id);
+      }
+
+      const totalNights = byDay.size;
+      if (totalNights < MIN_NIGHTS_FOR_RANKING) {
+        return {
+          ok: true,
+          metric: "activity_intensity",
+          nights: [],
+          totalNights,
+          empty: true,
+          reason: "not_enough_history",
+        };
+      }
+
+      // Deterministic sort: highest real activity first; equal-intensity
+      // nights break the tie on the calendar-day string (recent night wins).
+      const nights = [...byDay.values()]
+        .sort((a, b) => (b.activityIntensity - a.activityIntensity) || b.day.localeCompare(a.day))
+        .slice(0, limit);
+
+      return { ok: true, metric: "activity_intensity", nights, totalNights, empty: false };
+    } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+  }, { note: "Ranks nights by real activity intensity — the sum of recorded fragment_count per calendar day. Labeled 'activity_intensity', never 'featured'/'significant'. Honest empty state below 2 distinct nights of history." });
 
   // ── dreams.interpret — deterministic AI reflection ───────────────────────
   register("dreams", "interpret", async (ctx, input = {}) => {

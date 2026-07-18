@@ -181,8 +181,14 @@ const gradients = [
 
 const pickGrad = (i: number) => gradients[i % gradients.length];
 
-const generateWaveform = (len = 32): number[] =>
-  Array.from({ length: len }, (_, i) => 12 + Math.floor((Math.sin(i * 0.5) * 0.5 + 0.5) * 28));
+// Honest "no waveform data" placeholder — a flat line, not a curve shaped
+// to look like real audio. Replaces a `Math.sin(...)`-generated fake
+// waveform that used to be substituted whenever a post's real `audio.waveform`
+// (sourced from the media DTU, which itself is honestly `null` when the
+// server hasn't been given real client-computed peaks — see
+// server/lib/media-dtu.js#generateWaveform) was empty. A flat placeholder
+// reads as "no data" instead of fabricating a shape nobody measured.
+const FLAT_WAVEFORM_PLACEHOLDER = (len = 32): number[] => Array.from({ length: len }, () => 8);
 
 // ── Data (all from backend — no mock data) ───────────────────────────────────
 
@@ -1419,7 +1425,7 @@ export default function FeedLensPage() {
                         <WaveformPlayer
                           {...post.audio}
                           waveform={
-                            post.audio.waveform?.length ? post.audio.waveform : generateWaveform()
+                            post.audio.waveform?.length ? post.audio.waveform : FLAT_WAVEFORM_PLACEHOLDER()
                           }
                         />
                       )}

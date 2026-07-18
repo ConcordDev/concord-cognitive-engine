@@ -53,7 +53,34 @@ export default function registerAgentsActions(registerLensAction) {
     const task = data.task || {};
     const agents = data.agents || [];
     if (agents.length === 0) return { ok: true, result: { message: "No agents available for routing." } };
-    const taskSkills = task.requiredSkills || [];
+
+    // Wave 4 fix (docs/WAVE4_INVENTORY.md line 87 / agents-capability-map.md):
+    // `task.requiredSkills` had no UI to author a task definition, so every
+    // real caller sent an empty array and the skill-match term below always
+    // fell back to the neutral 0.5 default — ranking never actually reflected
+    // a skill filter. A caller can now instead pass `taskDefinitionId`
+    // pointing at a saved definition (see createTaskDefinition/
+    // listTaskDefinitions below); when it resolves, its `requiredSkills`
+    // WIN over an inline `task.requiredSkills` array so a saved definition is
+    // the source of truth once one is picked. The inline-array shape is kept
+    // working unchanged for back-compat with existing callers that never
+    // adopt task definitions.
+    let taskSkills = Array.isArray(task.requiredSkills) ? task.requiredSkills : [];
+    let taskName = task.name || "Unnamed task";
+    let taskDefinition = null;
+    const taskDefinitionId = aClean(data.taskDefinitionId, 80);
+    if (taskDefinitionId) {
+      const s = getAgentState();
+      if (s) {
+        const defs = arr(s.taskDefinitions, aActor(ctx));
+        taskDefinition = defs.find(d => d.id === taskDefinitionId) || null;
+      }
+      if (taskDefinition) {
+        taskSkills = Array.isArray(taskDefinition.requiredSkills) ? taskDefinition.requiredSkills : [];
+        taskName = taskDefinition.name;
+      }
+    }
+
     const scored = agents.map(a => {
       const agentSkills = (a.skills || []).map(s => s.toLowerCase());
       const skillMatch = taskSkills.filter(s => agentSkills.includes(s.toLowerCase())).length;
@@ -63,7 +90,17 @@ export default function registerAgentsActions(registerLensAction) {
       const total = Math.round((skillScore * 0.5 + loadScore * 0.25 + reliabilityScore * 0.25) * 100);
       return { name: a.name, score: total, skillMatch, currentLoad: a.currentLoad || 0, reliability: reliabilityScore };
     }).sort((a, b) => b.score - a.score);
-    return { ok: true, result: { task: task.name || "Unnamed task", bestAgent: scored[0]?.name, rankings: scored.slice(0, 5), totalAgents: agents.length } };
+    return {
+      ok: true,
+      result: {
+        task: taskName,
+        taskDefinitionId: taskDefinition ? taskDefinition.id : null,
+        requiredSkills: taskSkills,
+        bestAgent: scored[0]?.name,
+        rankings: scored.slice(0, 5),
+        totalAgents: agents.length,
+      },
+    };
   });
 
   registerLensAction("agents", "swarmStatus", (ctx, artifact, params) => {
@@ -114,6 +151,7 @@ export default function registerAgentsActions(registerLensAction) {
     if (!(a.schedules instanceof Map)) a.schedules = new Map();// userId -> Array<schedule>
     if (!(a.budgets instanceof Map)) a.budgets = new Map();    // userId -> Map<agentId, budget>
     if (!(a.graphs instanceof Map)) a.graphs = new Map();      // userId -> Array<graph>
+    if (!(a.taskDefinitions instanceof Map)) a.taskDefinitions = new Map(); // userId -> Array<taskDefinition>
     return a;
   }
   function saveAgents() {
@@ -767,6 +805,67 @@ export default function registerAgentsActions(registerLensAction) {
         importedFrom: tpl.id,
       };
       return { ok: true, result: { agentDefinition, template: tpl } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Feature 8: task definitions (skill-based routing input) ──────────
+  // Structurally cloned from the createSchedule/listSchedules/toggleSchedule/
+  // deleteSchedule per-user CRUD family above. Lets a user author a reusable
+  // task definition (name + required skills + priority + description) that
+  // routeTask can resolve by id and use as its real skill filter (see the
+  // `taskDefinitionId` handling in routeTask above) instead of always
+  // receiving an empty `requiredSkills` array.
+  const MAX_TASK_DEFINITIONS = 200;
+  registerLensAction("agents", "createTaskDefinition", (ctx, _a, params = {}) => {
+    try {
+      const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aActor(ctx);
+      const name = aClean(params.name, 120);
+      if (!name) return { ok: false, error: "name required" };
+      // An empty requiredSkills array is a valid task definition (no skill
+      // requirement) — only non-array input is coerced to [].
+      const requiredSkills = Array.isArray(params.requiredSkills)
+        ? params.requiredSkills.map(sk => aClean(sk, 60)).filter(Boolean)
+        : [];
+      const taskDefinition = {
+        id: aId("taskdef"),
+        name,
+        requiredSkills,
+        priority: aClean(params.priority, 20) || "normal",
+        description: aClean(params.description, 500),
+        createdAt: new Date().toISOString(),
+      };
+      const taskDefinitions = arr(s.taskDefinitions, userId);
+      taskDefinitions.unshift(taskDefinition);
+      if (taskDefinitions.length > MAX_TASK_DEFINITIONS) taskDefinitions.length = MAX_TASK_DEFINITIONS;
+      saveAgents();
+      return { ok: true, result: { taskDefinition } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("agents", "listTaskDefinitions", (ctx, _a, _params = {}) => {
+    try {
+      const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const taskDefinitions = arr(s.taskDefinitions, aActor(ctx));
+      return { ok: true, result: { taskDefinitions, total: taskDefinitions.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("agents", "deleteTaskDefinition", (ctx, _a, params = {}) => {
+    try {
+      const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const taskDefinitions = arr(s.taskDefinitions, aActor(ctx));
+      const idx = taskDefinitions.findIndex(t => t.id === aClean(params.id, 80));
+      if (idx < 0) return { ok: false, error: "task definition not found" };
+      taskDefinitions.splice(idx, 1);
+      saveAgents();
+      return { ok: true, result: { deleted: true } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

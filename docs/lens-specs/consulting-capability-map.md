@@ -91,10 +91,11 @@ concept from the operational `EngagementTracker` below it (different
 storage: generic DTU vs. `STATE.consultingLens.engagements`), which could
 read as mildly confusing (two different "Engagement" concepts on one page)
 but is not a honesty or generic-scaffold violation per the mechanical
-grader, and reworking/removing this shared fleet-wide tier was judged out
-of scope for a single-lens audit pass — flagging here for a future Wave-4
-gap-closure pass to consider consolidating or clearly re-labeling, not as
-a defect requiring an immediate fix.
+grader. **CLOSED (2026-07-17, `29a29a8e`)** — took the re-label option:
+the generic DTU tab is now labeled "Engagement Records" with a
+distinguishing subtitle/tooltip, and `EngagementTracker.tsx` gained a
+matching cross-reference note. Label/copy-only — the underlying
+`artifactType: 'Engagement'` storage key is untouched.
 
 ## Genuinely missing (deferred) — triage
 

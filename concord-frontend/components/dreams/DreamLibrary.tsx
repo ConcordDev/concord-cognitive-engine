@@ -1,9 +1,17 @@
 'use client';
 
 /**
- * DreamLibrary — search + tag-cloud + calendar timeline over your dream
- * history. Wraps `dreams.search`, `dreams.tags`, `dreams.timeline`. Click
- * any result to open the DreamReader.
+ * DreamLibrary — search + tag-cloud + calendar timeline + honest
+ * activity-intensity ranking over your dream history. Wraps `dreams.search`,
+ * `dreams.tags`, `dreams.timeline`, `dreams.busiest-night`. Click any result
+ * to open the DreamReader.
+ *
+ * The "Busiest nights" tab ranks nights by REAL recorded activity intensity
+ * (the sum of `fragment_count` per calendar day — the actual number of
+ * combat/pain/gather/visit/dtu-creation events the dream engine gathered
+ * that night). It is deliberately labeled "activity intensity," never
+ * "featured" or "most significant" — those are editorial claims this data
+ * has no basis to support.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -27,8 +35,22 @@ interface TimelineDay {
   count: number;
   dreams: Array<{ id: string; title?: string; composedAt?: number; fragmentCount?: number; tags?: string[] }>;
 }
+interface BusiestNight {
+  day: string;
+  dreamCount: number;
+  activityIntensity: number;
+  dreamIds: string[];
+}
+interface BusiestNightResult {
+  ok: boolean;
+  metric?: string;
+  nights?: BusiestNight[];
+  totalNights?: number;
+  empty?: boolean;
+  reason?: string;
+}
 
-type Mode = 'search' | 'timeline';
+type Mode = 'search' | 'timeline' | 'busiest';
 
 export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) => void; reloadKey: number }) {
   const [mode, setMode] = useState<Mode>('search');
@@ -38,6 +60,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
   const [results, setResults] = useState<SearchDream[]>([]);
   const [tags, setTags] = useState<TagEntry[]>([]);
   const [days, setDays] = useState<TimelineDay[]>([]);
+  const [busiest, setBusiest] = useState<BusiestNightResult | null>(null);
   const [searching, setSearching] = useState(false);
   const [loadedOnce, setLoadedOnce] = useState(false);
 
@@ -63,9 +86,15 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
     if (r.data.ok) setDays(r.data.result?.days || []);
   }, []);
 
+  const loadBusiest = useCallback(async () => {
+    const r = await lensRun<BusiestNightResult>('dreams', 'busiest-night', { limit: 20 });
+    if (r.data.ok) setBusiest(r.data.result ?? null);
+  }, []);
+
   useEffect(() => { void runSearch(); }, [runSearch, reloadKey]);
   useEffect(() => { void loadTags(); }, [loadTags, reloadKey]);
   useEffect(() => { if (mode === 'timeline') void loadTimeline(); }, [mode, loadTimeline, reloadKey]);
+  useEffect(() => { if (mode === 'busiest') void loadBusiest(); }, [mode, loadBusiest, reloadKey]);
 
   const timelineEvents: TimelineEvent[] = days.flatMap((d) =>
     d.dreams.map((dr) => ({
@@ -97,6 +126,15 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
           }`}
         >
           Timeline
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('busiest')}
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+            mode === 'busiest' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          Busiest nights
         </button>
       </div>
 
@@ -241,6 +279,52 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
               </li>
             ))}
           </ul>
+        </>
+      )}
+
+      {mode === 'busiest' && (
+        <>
+          <p className="text-xs text-zinc-500">
+            Nights ranked by <strong>activity intensity</strong> — the real count of combat, pain,
+            gathering, travel, and knowledge events your dream engine recorded that night. This is
+            not an editorial &quot;featured&quot; or &quot;most significant&quot; pick — it&apos;s a
+            direct tally of what actually happened.
+          </p>
+
+          {!busiest || busiest.empty ? (
+            <p className="rounded-xl border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-600">
+              {busiest?.reason === 'not_enough_history'
+                ? `Only ${busiest.totalNights ?? 1} night of dream history so far — need at least 2 distinct nights before a ranking means anything.`
+                : 'No dreams recorded yet, so there is nothing to rank.'}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {(busiest.nights ?? []).map((n, i) => (
+                <li
+                  key={n.day}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 shrink-0 text-center font-mono text-xs text-zinc-500">#{i + 1}</span>
+                    <div>
+                      <div className="text-sm font-bold text-zinc-100">
+                        {new Date(`${n.day}T00:00:00Z`).toLocaleDateString(undefined, {
+                          weekday: 'short', month: 'short', day: 'numeric',
+                        })}
+                      </div>
+                      <div className="font-mono text-[10px] text-zinc-500">
+                        {n.dreamCount} dream{n.dreamCount === 1 ? '' : 's'} composed
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-sm font-bold text-purple-300">{n.activityIntensity}</div>
+                    <div className="text-[9px] uppercase tracking-wider text-zinc-500">activity intensity</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       )}
     </div>

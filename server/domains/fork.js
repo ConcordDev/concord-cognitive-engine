@@ -5,6 +5,22 @@
 // metadata). GitHub public-API endpoints are free without
 // authentication at 60 req/hr; set GITHUB_TOKEN env to raise to
 // 5000/hr.
+//
+// P-D — also hosts `fork.instantiate_preview`, the ONLY reachable macro for
+// the lattice-fork "forked self" primitive (lib/lattice-fork.js). Distinct
+// concept from the git-style divergence analysis above (naming collision on
+// the "fork" domain string is intentional — both are about forking, this one
+// forks a PERSON's DTU corpus into a confined, disclosed AI preview, never a
+// repo). HARD SCOPE: preview-only, non-money — see the handler below and
+// docs/GOVERNANCE_DESIGN.md §5.5 (no monetized fork rental ships in Wave 1).
+
+import {
+  createForkObject,
+  instantiateForkSandbox,
+  loadForkObject,
+  ensureForkAgentDisclosure,
+  MAX_FORK_DTUS,
+} from "../lib/lattice-fork.js";
 
 const GITHUB_API = "https://api.github.com";
 
@@ -1061,5 +1077,152 @@ export default function registerForkActions(registerLensAction) {
       saveFork();
       return { ok: true, result: { ingested, skipped, source: `github-events (${fullName})`, dtuIds } };
     } catch (e) { return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
+
+  // ─── P-D: lattice-fork "forked self" — PREVIEW ONLY ──────────────────
+  //
+  // instantiate_preview wraps `instantiateForkSandbox` (lib/lattice-fork.js).
+  // Name is explicit: this macro is preview-only by construction, on purpose,
+  // so no future engineer mistakes it for a rental/paid-access entry point.
+  //
+  //   • Confinement is inherited unmodified from instantiateForkSandbox: the
+  //     sandbox ctx it builds internally grants ZERO host macros (default-deny
+  //     manifest) and carries no raw db / no mint — this handler never widens
+  //     that. The only DB access this handler itself performs is (a) creating
+  //     the bounded fork_objects row via createForkObject, (b) the disclosure
+  //     writes via ensureForkAgentDisclosure (users.is_agent + agent_identities
+  //     — both required by construction, never optional), and (c) read-only
+  //     SELECTs for the human-readable preview below. No mint, no transfer, no
+  //     pricing field exists anywhere in this handler or its return shape.
+  //   • Oversize (> MAX_FORK_DTUS) is an HONEST FAILURE (fork_bound_exceeded),
+  //     never a silent truncation — matches createForkObject's own contract.
+  //   • A missing/foreign fork object is also an honest failure, never a
+  //     fabricated empty-but-ok preview.
+  //
+  // params:
+  //   forkObjectId?  — reinstantiate a preview for a fork object you already
+  //                    own (created by a prior call to this same macro).
+  //   dtuIds?        — bounded DTU id set to fork (required when forkObjectId
+  //                    is omitted); creates a NEW fork object owned by the
+  //                    caller.
+  //   sourceUserId?  — whose corpus to clone (defaults to the caller — a
+  //                    self-fork). Only meaningful on the create path.
+  registerLensAction("fork", "instantiate_preview", (ctx, _artifact, params = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    // The unauthenticated lens-run path supplies actor.userId === "anon" —
+    // a fork always needs a real owner to attribute the preview to.
+    if (!db || !userId || userId === "anon") return { ok: false, error: "auth_required" };
+
+    const forkObjectId = typeof params.forkObjectId === "string" ? params.forkObjectId.trim() : "";
+    const dtuIds = Array.isArray(params.dtuIds) ? params.dtuIds : [];
+
+    let fork;
+    if (forkObjectId) {
+      fork = loadForkObject(db, forkObjectId);
+      if (!fork) return { ok: false, error: "fork_not_found" };
+      // Preview is a personal surface — only the owner may instantiate it.
+      // (The confined sandbox itself would refuse any write regardless; this
+      // is about not handing a stranger a read-preview of someone else's
+      // forked corpus + temperament snapshot.)
+      if (fork.ownerUserId !== userId) return { ok: false, error: "forbidden", reason: "not the fork owner" };
+    } else {
+      if (dtuIds.length === 0) {
+        return { ok: false, error: "missing_input", reason: "forkObjectId or a non-empty dtuIds array is required" };
+      }
+      try {
+        const created = createForkObject(db, {
+          ownerUserId: userId,
+          sourceUserId: typeof params.sourceUserId === "string" && params.sourceUserId ? params.sourceUserId : userId,
+          dtuIds,
+        });
+        fork = loadForkObject(db, created.id);
+      } catch (e) {
+        if (e?.code === "fork_bound_exceeded") {
+          return { ok: false, error: "fork_bound_exceeded", reason: e.message, maxForkDtus: MAX_FORK_DTUS };
+        }
+        return { ok: false, error: "fork_create_failed", reason: String(e?.message || e) };
+      }
+    }
+    if (!fork) return { ok: false, error: "fork_not_found" };
+
+    // Explicit call (belt-and-suspenders — createForkObject already made this
+    // call for the create path; idempotent INSERT OR IGNORE means re-running
+    // it for a previously-created fork is a safe no-op). This is what makes
+    // the fork's agent identity is_agent=1-disclosed BY CONSTRUCTION, not by
+    // convention — the preview below reads back the real row, never assumes it.
+    const disclosure = ensureForkAgentDisclosure(db, {
+      forkId: fork.id,
+      sourceUserId: fork.sourceUserId,
+      snapshot: fork.temperament,
+    });
+
+    const sandbox = instantiateForkSandbox(fork.id, db);
+    if (!sandbox.ok) return { ok: false, error: sandbox.error || "fork_not_found" };
+
+    // Confinement self-check surfaced honestly in the response — never
+    // asserted without having actually run the check.
+    if (!sandbox.confined?.ok) {
+      return { ok: false, error: "confinement_check_failed", reason: sandbox.confined?.reason || "unknown" };
+    }
+
+    // Read back a bounded, human-readable preview through the sandbox's own
+    // SELECT-only accessor (sandbox.readDtu) — never expose ctx/readDtu
+    // themselves over HTTP (they're functions, not serializable, and doing
+    // so would leak the confinement boundary to the client).
+    const dtuPreviews = [];
+    for (const id of sandbox.dtuIds) {
+      const r = sandbox.readDtu(id);
+      if (!r.ok || !r.dtu) continue;
+      let body = {};
+      let tags = [];
+      try { body = JSON.parse(r.dtu.body_json || "{}"); } catch { /* honest empty on parse failure */ }
+      try { tags = JSON.parse(r.dtu.tags_json || "[]"); } catch { /* honest empty on parse failure */ }
+      dtuPreviews.push({
+        id: r.dtu.id,
+        title: r.dtu.title,
+        summary: typeof body.summary === "string" ? body.summary : "",
+        tags,
+        tier: r.dtu.tier,
+      });
+    }
+
+    // Verify disclosure by reading the REAL row back — never assert it from
+    // the write call's return value alone (a guarded/no-op write on a
+    // schema-mismatched DB must not be reported as disclosed).
+    let isAgentDisclosed = false;
+    let agentKind = null;
+    try {
+      const acct = db.prepare("SELECT is_agent, agent_kind FROM users WHERE id = ?").get(disclosure.agentUserId);
+      isAgentDisclosed = !!(acct && Number(acct.is_agent) === 1);
+      agentKind = acct?.agent_kind || null;
+    } catch { /* honest: leave isAgentDisclosed false on a read failure */ }
+
+    let sourceDisplayName = fork.sourceUserId;
+    try {
+      const src = db.prepare("SELECT username FROM users WHERE id = ?").get(fork.sourceUserId);
+      if (src?.username) sourceDisplayName = src.username;
+    } catch { /* keep the id fallback */ }
+
+    return {
+      ok: true,
+      result: {
+        preview: true, // PREVIEW-ONLY marker. Never a rental/session/paid-access token.
+        forkObjectId: fork.id,
+        ownerUserId: fork.ownerUserId,
+        sourceUserId: fork.sourceUserId,
+        sourceDisplayName,
+        dtuCount: fork.dtuCount,
+        maxForkDtus: MAX_FORK_DTUS,
+        status: fork.status,
+        agentUserId: disclosure.agentUserId,
+        agentIdentityId: disclosure.agentIdentityId,
+        isAgentDisclosed,
+        agentKind,
+        temperament: fork.temperament,
+        confined: sandbox.confined,
+        dtus: dtuPreviews,
+      },
+    };
   });
 }

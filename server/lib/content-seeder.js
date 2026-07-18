@@ -19,6 +19,7 @@ import { recordEvent, EVENT_TYPES } from "../emergent/history-engine.js";
 import { registerWorldMeta } from "./cross-world-effectiveness.js";
 import { seedAnchorsFromWorldMeta } from "./concord-link.js";
 import { seedWalkersFromAuthored } from "./concord-link-walkers.js";
+import { addQuestObjectives, addQuestRewards } from "./quests/quest-engine.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "../../content");
@@ -496,7 +497,7 @@ function upsertWorldRow(db, meta) {
   `).run(id, name, universeType, description, physics, rule);
 }
 
-function seedQuestFile(quests) {
+function seedQuestFile(quests, { db = null, worldId = "concordia-hub" } = {}) {
   let count = 0;
 
   for (const quest of quests) {
@@ -540,6 +541,25 @@ function seedQuestFile(quests) {
           npcId:    quest.giver_npc_id,
         });
         count++;
+
+        // Bridge into System B — the SQL-backed engine
+        // (server/lib/quests/quest-engine.js) that the live dialogue-offer
+        // path (routes/worlds.js `SELECT * FROM world_quests WHERE
+        // giver_npc_id = ? AND status = 'available'`), /api/quests/accept,
+        // QuestTracker, and /lenses/quests actually read. Without this,
+        // authored content only ever reached System A's in-memory registry
+        // above, which no live gameplay surface queries — see
+        // docs/QUESTS_ENGINE_INVESTIGATION.md. Uses the authored JSON `id`
+        // as world_quests.id (NOT a fresh UUID) so a real player's accept
+        // click, the dialogue offer, and getQuestsForNPC's authored-id
+        // keying all agree on one identity for the same quest.
+        if (db) {
+          try {
+            seedQuestIntoSystemB(db, quest, worldId);
+          } catch (err) {
+            logger.warn({ err: err.message, questId: quest.id }, "content_seeder_quest_systemb_bridge_failed");
+          }
+        }
       } else {
         logger.warn({ questId: quest.id, error: result.error }, "content_seeder_quest_failed");
       }
@@ -549,6 +569,127 @@ function seedQuestFile(quests) {
   }
 
   return count;
+}
+
+/**
+ * Bridge one authored quest into System B's tables: `world_quests` (the
+ * catalog row the dialogue-offer query reads) plus `quest_objectives` /
+ * `quest_rewards` (what `getActiveQuests`/`getQuestProgress`/
+ * `checkQuestCompletion`/`claimQuestRewards` actually join against — see
+ * Finding 3 in docs/QUESTS_ENGINE_INVESTIGATION.md, which found the one
+ * class of quest that already reached `world_quests` — quest-emergence.js's
+ * procedural NPC-need quests — had ZERO rows in either table).
+ *
+ * Idempotent across process restarts: `world_quests` upserts via
+ * `INSERT OR IGNORE` keyed on the authored id (stable across boots), and
+ * the objectives/rewards inserts are additionally guarded by a row-count
+ * check — `addQuestObjectives`/`addQuestRewards` mint a fresh
+ * `crypto.randomUUID()` per row, so their own `INSERT OR IGNORE` can't
+ * dedupe against a prior boot's rows; the explicit count check here is
+ * what actually prevents duplicate objective/reward rows piling up on
+ * every `seedContent()` re-run against a persistent DB file.
+ *
+ * `world_quests.status` is intentionally left at its default
+ * ('available') and never mutated here or in the accept path — unlike
+ * quest-emergence.js's single-consumer procedural quests, an authored
+ * quest is one shared catalog row that every player must be able to see
+ * and accept independently; per-player state lives entirely in
+ * `player_quests`. Authored `prerequisites` are not enforced by System B
+ * today (no schema analog) — a pre-existing gap, not introduced here.
+ */
+function seedQuestIntoSystemB(db, quest, worldId) {
+  db.prepare(`
+    INSERT OR IGNORE INTO world_quests
+      (id, world_id, giver_npc_id, title, description, objectives_json, reward_json, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'available')
+  `).run(
+    quest.id,
+    worldId,
+    quest.giver_npc_id || null,
+    quest.title,
+    quest.description || "",
+    JSON.stringify(quest.objectives ?? []),
+    JSON.stringify(quest.rewards ?? {}),
+  );
+
+  const existingObjCount = db.prepare(
+    "SELECT COUNT(*) c FROM quest_objectives WHERE quest_id = ?"
+  ).get(quest.id)?.c ?? 0;
+  if (existingObjCount === 0) {
+    const objectives = mapAuthoredObjectivesToSystemB(quest.objectives);
+    if (objectives.length) addQuestObjectives(db, quest.id, objectives);
+  }
+
+  const existingRewardCount = db.prepare(
+    "SELECT COUNT(*) c FROM quest_rewards WHERE quest_id = ?"
+  ).get(quest.id)?.c ?? 0;
+  if (existingRewardCount === 0) {
+    const rewards = mapAuthoredRewardsToSystemB(quest.rewards);
+    if (rewards.length) addQuestRewards(db, quest.id, rewards);
+  }
+}
+
+/**
+ * Map an authored objective { id, type, target, required_count, description }
+ * to System B's addQuestObjectives shape { type, target, requiredCount,
+ * description }. Objectives that don't carry a flat string `type` + `target`
+ * (the "any_of" branching shape used by e.g. first_cycle_play's fish/
+ * basketball/race choice) are OMITTED rather than fabricated into a
+ * semantically-wrong requirement: System B's completion check
+ * (checkQuestCompletion) requires ALL quest_objectives rows complete, so
+ * seeding one row per branch would silently turn "any ONE of N" into
+ * "ALL N required" — a functional regression dressed as a faithful port.
+ * LOSSY MAPPING — flagged in docs/QUESTS_ENGINE_INVESTIGATION.md follow-up.
+ */
+function mapAuthoredObjectivesToSystemB(objectives) {
+  const mapped = [];
+  for (const obj of objectives ?? []) {
+    if (typeof obj?.type === "string" && obj.type && typeof obj?.target === "string" && obj.target) {
+      mapped.push({
+        type:          obj.type,
+        target:        obj.target,
+        requiredCount: Number.isFinite(obj.required_count) ? obj.required_count : 1,
+        description:   obj.description ?? "",
+      });
+    }
+  }
+  return mapped;
+}
+
+/**
+ * Map an authored `rewards` block to System B's addQuestRewards shape
+ * { rewardType, rewardKey?, amount? }. Only xp / gold / skill_xp have an
+ * unambiguous 1:1 analog in claimQuestRewards
+ * (server/lib/quests/quest-engine.js) — everything else authored content
+ * uses (buffs, items, named_items, permanent_modifiers,
+ * creates_combat_style_dtu, creates_companion_seed_dtu,
+ * signature_artifact_dtu, faction_reputation, ecosystem_score_delta,
+ * concordia_alignment_delta, concord_alignment_delta,
+ * governance_vote_weight_bonus, lens_action_unlock, concord_coin, title)
+ * is OMITTED honestly rather than force-fit onto a reward_type whose grant
+ * logic means something different — e.g. claimQuestRewards' 'faction_modifier'
+ * calls grantUnlock (a permanent one-time stamp), not a reputation delta, so
+ * mapping authored `faction_reputation: {factionId: delta}` onto it would
+ * silently change what the reward DOES, not just how it's stored.
+ * LOSSY MAPPING — flagged in docs/QUESTS_ENGINE_INVESTIGATION.md follow-up.
+ */
+function mapAuthoredRewardsToSystemB(rewards) {
+  const mapped = [];
+  if (!rewards || typeof rewards !== "object") return mapped;
+  if (typeof rewards.xp === "number" && rewards.xp > 0) {
+    mapped.push({ rewardType: "xp", amount: Math.round(rewards.xp) });
+  }
+  if (typeof rewards.gold === "number" && rewards.gold > 0) {
+    mapped.push({ rewardType: "gold", amount: Math.round(rewards.gold) });
+  }
+  if (rewards.skill_xp && typeof rewards.skill_xp === "object") {
+    for (const [skill, amount] of Object.entries(rewards.skill_xp)) {
+      if (typeof amount === "number" && amount > 0) {
+        mapped.push({ rewardType: "skill_xp", rewardKey: skill, amount: Math.round(amount) });
+      }
+    }
+  }
+  return mapped;
 }
 
 // ── Main Entry ───────────────────────────────────────────────────────────────
@@ -811,19 +952,19 @@ export async function seedContent({ db = null } = {}) {
   // Onboarding quest chain
   const onboarding = readJSON("quests/onboarding.json");
   if (Array.isArray(onboarding)) {
-    results.quests += seedQuestFile(onboarding);
+    results.quests += seedQuestFile(onboarding, { db, worldId: "concordia-hub" });
   }
 
   // Main narrative arc
   const mainArc = readJSON("quests/main-arc.json");
   if (Array.isArray(mainArc)) {
-    results.quests += seedQuestFile(mainArc);
+    results.quests += seedQuestFile(mainArc, { db, worldId: "concordia-hub" });
   }
 
   // Faction quests
   const factionQuests = readJSON("quests/faction-quests.json");
   if (Array.isArray(factionQuests)) {
-    results.quests += seedQuestFile(factionQuests);
+    results.quests += seedQuestFile(factionQuests, { db, worldId: "concordia-hub" });
   }
 
   // Hand-authored side quests — each is its own file under content/quests/
@@ -842,7 +983,7 @@ export async function seedContent({ db = null } = {}) {
     "quests/first_cycle_phase_d.json",
   ]) {
     const side = readJSON(sideFile);
-    if (Array.isArray(side)) results.quests += seedQuestFile(side);
+    if (Array.isArray(side)) results.quests += seedQuestFile(side, { db, worldId: "concordia-hub" });
   }
 
   // Phase F2.1 — sub-world quest chains. Walk content/quests/sub-worlds/<world>/
@@ -858,7 +999,7 @@ export async function seedContent({ db = null } = {}) {
       for (const fname of readdirSync(worldPath)) {
         if (!fname.endsWith(".json")) continue;
         const chain = readJSON(`quests/sub-worlds/${worldName}/${fname}`);
-        if (Array.isArray(chain)) results.quests += seedQuestFile(chain);
+        if (Array.isArray(chain)) results.quests += seedQuestFile(chain, { db, worldId: worldName });
       }
     }
   } catch { /* no sub-worlds dir — fine */ }
@@ -880,7 +1021,7 @@ export async function seedContent({ db = null } = {}) {
       for (const fname of readdirSync(questsDir)) {
         if (!fname.endsWith(".json")) continue;
         const chain = readJSON(`world/${worldName}/quests/${fname}`);
-        if (Array.isArray(chain)) results.quests += seedQuestFile(chain);
+        if (Array.isArray(chain)) results.quests += seedQuestFile(chain, { db, worldId: worldName });
       }
     }
   } catch { /* no world quests — fine */ }

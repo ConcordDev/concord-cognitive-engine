@@ -1195,17 +1195,17 @@
     "starting_sparks": 600
   },
   {
-    "id": "arasacorp_vp_kael_renn",
+    "id": "nevex_vp_kael_renn",
     "world_id": "cyber",
-    "name": "Kael Renn (VP, ArasaCorp)",
-    "title": "VP of Augmentation R&D, ArasaCorp",
+    "name": "Kael Renn (VP, Nevex Corp)",
+    "title": "VP of Augmentation R&D, Nevex Corp",
     "archetype": "corporate_executive_secret_agenda",
-    "faction_id": "cyber_arasacorp",
+    "faction_id": "cyber_nevex",
     "is_conscious": true,
     "is_immortal": false,
     "quest_giver": true,
     "level": 16,
-    "backstory": "Renn has been at ArasaCorp for fourteen years. He runs augmentation R&D officially. Unofficially he is building a private AGI architecture using ArasaCorp resources. He plans to walk in eighteen months.",
+    "backstory": "Renn has been at Nevex Corp for fourteen years. He runs augmentation R&D officially. Unofficially he is building a private AGI architecture using Nevex Corp resources. He plans to walk in eighteen months.",
     "personality_traits": [
       "polished",
       "long-game",
@@ -1251,7 +1251,7 @@
           7,
           12
         ],
-        "location": "arasacorp_tower_central_executive_floor",
+        "location": "nevex_tower_central_executive_floor",
         "activity": "executive meetings; R&D oversight",
         "need_addressed": "corporate_position",
         "interactable_by_player": true
@@ -1262,7 +1262,7 @@
           12,
           14
         ],
-        "location": "arasacorp_executive_dining",
+        "location": "nevex_executive_dining",
         "activity": "lunch with the CEO",
         "need_addressed": "corporate_position",
         "interactable_by_player": true
@@ -1273,7 +1273,7 @@
           14,
           18
         ],
-        "location": "arasacorp_research_subterranean",
+        "location": "nevex_research_subterranean",
         "activity": "official R&D supervision; secretly siphons compute to private project",
         "need_addressed": "private_agi_progress",
         "interactable_by_player": true
@@ -1317,7 +1317,7 @@
           5,
           8
         ],
-        "location": "arasacorp_tower_central_executive_floor",
+        "location": "nevex_tower_central_executive_floor",
         "activity": "morning errands and chores",
         "need_addressed": "personal",
         "interactable_by_player": true
@@ -1328,7 +1328,7 @@
           9,
           12
         ],
-        "location": "arasacorp_tower_central_executive_floor",
+        "location": "nevex_tower_central_executive_floor",
         "activity": "open day's work",
         "need_addressed": "personal",
         "interactable_by_player": true
@@ -1339,7 +1339,7 @@
           13,
           16
         ],
-        "location": "arasacorp_tower_central_executive_floor",
+        "location": "nevex_tower_central_executive_floor",
         "activity": "afternoon focus on craft",
         "need_addressed": "personal",
         "interactable_by_player": true
@@ -1350,7 +1350,7 @@
           17,
           20
         ],
-        "location": "arasacorp_tower_central_executive_floor",
+        "location": "nevex_tower_central_executive_floor",
         "activity": "evening supper and friends",
         "need_addressed": "personal",
         "interactable_by_player": true
@@ -1369,12 +1369,12 @@
     ],
     "home": {
       "district": "midtown_high_rise_arcology",
-      "dwelling_type": "executive_penthouse_owned_by_arasacorp"
+      "dwelling_type": "executive_penthouse_owned_by_nevex"
     },
     "job": {
       "profession_id": "vp_augmentation_rd",
       "wage_per_diurnal_sparks": 2400,
-      "wage_source": "arasacorp_executive_total_comp"
+      "wage_source": "nevex_executive_total_comp"
     },
     "apparel": [
       "smart_fabric_executive_suit",
@@ -1394,7 +1394,7 @@
       "off_books_lab_supplies"
     ],
     "resources_produced": [
-      "arasacorp_R&D_outputs",
+      "nevex_R&D_outputs",
       "private_AGI_progress"
     ],
     "inventory": [
@@ -1415,7 +1415,7 @@
         "qty": 1
       },
       {
-        "item": "arasacorp_credit",
+        "item": "nevex_credit",
         "qty": 800
       }
     ],
@@ -1652,7 +1652,7 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 12,
-    "backstory": "Marit was a corporate surgeon for ArasaCorp before walking nine years ago. They run the largest street-doc clinic in the city. They charge less than a tenth of corporate prices and refuse all insurance paperwork.",
+    "backstory": "Marit was a corporate surgeon for Nevex Corp before walking nine years ago. They run the largest street-doc clinic in the city. They charge less than a tenth of corporate prices and refuse all insurance paperwork.",
     "personality_traits": [
       "clinical-warm",
       "principled",
@@ -2101,7 +2101,7 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 14,
-    "backstory": "Ren has run the Cordon for nine years. They came up as a street fixer and built reputation slowly. They are widely considered the most discreet fixer in the city. They have refused contracts from ArasaCorp three times.",
+    "backstory": "Ren has run the Cordon for nine years. They came up as a street fixer and built reputation slowly. They are widely considered the most discreet fixer in the city. They have refused contracts from Nevex Corp three times.",
     "personality_traits": [
       "polished",
       "warmly transactional",

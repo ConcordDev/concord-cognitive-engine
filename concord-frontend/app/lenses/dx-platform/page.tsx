@@ -21,6 +21,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
 import { DxWorkbench } from "@/components/dx-platform/DxWorkbench";
 import { SeverityWeightsPanel } from "@/components/dx-platform/SeverityWeightsPanel";
+import { ShadowsPanel } from "@/components/dx-platform/ShadowsPanel";
 
 interface OnboardingProgress {
   installed?: { vscode?: boolean; jetbrains?: boolean };
@@ -188,6 +189,11 @@ export default function DxPlatformPage() {
             dx.list_weights registry the "Per-codebase severity" quick-link
             card above points at (id="severity"). */}
         <SeverityWeightsPanel />
+
+        {/* Shadow DTUs — the real `dx.list_shadows` cross-file-context store
+            the plugin writes via `dx.upsert_shadow`. Previously computed
+            with no frontend surface at all. */}
+        <ShadowsPanel />
 
         {/* DX workbench — chat-with-codebase, PR review, search, team
             dashboard, detector config, usage analytics, CI integration */}

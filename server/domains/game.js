@@ -69,6 +69,7 @@ export default function registerGameActions(registerLensAction) {
         rewards: new Map(),     // userId -> Map<rewardId, custom reward>
         reminders: new Map(),   // userId -> Map<reminderId, reminder>
         challenges: new Map(),  // challengeId -> challenge
+        xpLog: new Map(),       // userId -> Array<xp/gold ledger entry> (append-only, chronological)
       };
     }
     return STATE.game;
@@ -91,11 +92,29 @@ export default function registerGameActions(registerLensAction) {
     while (xp >= acc + need) { acc += need; lvl++; need = lvl * 200; }
     return { level: lvl, intoLevel: xp - acc, nextLevelXp: need };
   }
-  function awardXp(s, userId, xp, gold) {
+  // meta: optional { source, label, refId } — every awardXp call, from any
+  // present or future call site, gets logged here. Logging lives INSIDE
+  // awardXp (not at each call site) so no caller can silently bypass the
+  // activity log by forgetting to instrument itself separately.
+  function awardXp(s, userId, xp, gold, meta) {
     const p = getProgress(s, userId);
     p.xp = Math.max(0, p.xp + xp);
     p.gold = Math.max(0, p.gold + (gold || 0));
     p.level = levelForXp(p.xp).level;
+    if (xp !== 0) {
+      const log = userBucket(s.xpLog, userId, () => []);
+      log.push({
+        id: uid("xplog"),
+        source: meta?.source || "unknown",
+        label: meta?.label || null,
+        refId: meta?.refId || null,
+        xpDelta: xp,
+        goldDelta: gold || 0,
+        xpAfter: p.xp,
+        levelAfter: p.level,
+        at: new Date().toISOString(),
+      });
+    }
     return p;
   }
   function bumpStreak(s, userId) {
@@ -181,7 +200,7 @@ export default function registerGameActions(registerLensAction) {
         xpDelta = Math.round(baseXp * streakBonus);
         goldDelta = Math.round(baseXp * 0.4 * streakBonus);
       }
-      const prog = awardXp(s, userId, xpDelta, goldDelta);
+      const prog = awardXp(s, userId, xpDelta, goldDelta, { source: "task", label: task.title, refId: task.id });
       if (direction === "up") bumpStreak(s, userId);
       const lvl = levelForXp(prog.xp);
       return {
@@ -347,7 +366,9 @@ export default function registerGameActions(registerLensAction) {
       if (q.progress >= q.goal && !q.completed) {
         q.completed = true;
         questReward = 150;
-        for (const m of party.members) awardXp(s, m, questReward, 60);
+        for (const m of party.members) {
+          awardXp(s, m, questReward, 60, { source: "party_quest", label: q.title || party.name || "Party quest", refId: party.id });
+        }
       }
       return { ok: true, result: { sharedQuest: q, questReward } };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -574,7 +595,10 @@ export default function registerGameActions(registerLensAction) {
       let prizeAwarded = null;
       if (!challenge.winnerId && challenge.participants[userId] >= challenge.goal) {
         challenge.winnerId = userId;
-        if (challenge.prize > 0) { awardXp(s, userId, challenge.prize, Math.round(challenge.prize * 0.5)); prizeAwarded = challenge.prize; }
+        if (challenge.prize > 0) {
+          awardXp(s, userId, challenge.prize, Math.round(challenge.prize * 0.5), { source: "challenge_prize", label: challenge.title, refId: challenge.id });
+          prizeAwarded = challenge.prize;
+        }
       }
       return { ok: true, result: { challenge, prizeAwarded } };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -607,6 +631,38 @@ export default function registerGameActions(registerLensAction) {
         .sort((a, b) => b.score - a.score)
         .map((row, i) => ({ ...row, rank: i + 1 }));
       return { ok: true, result: { challengeId: id, title: challenge.title, goal: challenge.goal, leaderboard: board, winnerId: challenge.winnerId } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // --- XP activity log (audit trail behind every awardXp call) --------------
+  registerLensAction("game", "xpLogList", (ctx, artifact, params) => {
+    try {
+      const p = { ...(artifact?.data || {}), ...(params || {}) };
+      // Finite-check, not `|| 50` — an explicit limit of 0 must clamp to 1,
+      // not silently fall back to the default (0 is falsy but meaningful).
+      const parsedLimit = Number.parseInt(p.limit, 10);
+      const limit = Math.min(200, Math.max(1, Number.isFinite(parsedLimit) ? parsedLimit : 50));
+      const sourceFilter = p.source ? String(p.source) : null;
+      const s = gameState();
+      const userId = actorId(ctx);
+      const log = userBucket(s.xpLog, userId, () => []);
+      const filtered = sourceFilter ? log.filter((e) => e.source === sourceFilter) : log;
+      // Entries are appended in chronological order by awardXp — reverse for
+      // most-recent-first without re-sorting on the `at` string (avoids
+      // same-millisecond tie ambiguity, e.g. a party quest awarding several
+      // members in the same synchronous loop).
+      const mostRecentFirst = [...filtered].reverse();
+      const totalXpAllTime = filtered.reduce((sum, e) => sum + e.xpDelta, 0);
+      const totalGoldAllTime = filtered.reduce((sum, e) => sum + e.goldDelta, 0);
+      return {
+        ok: true,
+        result: {
+          entries: mostRecentFirst.slice(0, limit),
+          count: mostRecentFirst.length,
+          totalXpAllTime,
+          totalGoldAllTime,
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 

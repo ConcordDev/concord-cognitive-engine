@@ -22,6 +22,12 @@
  *                            previously ZERO frontend callers — first surface)
  *   • recent opinions feed → law.feed                 (pull → DTU)
  *   • community Q&A        → law.stackexchange.com    (real external feed)
+ *   • saved search alerts   → law.search-alert-*       (real persistence +
+ *                            honest on-demand "what's new since last check"
+ *                            diff, re-running the SAME courtlistener-search /
+ *                            recap-docket-search handlers above — no
+ *                            background scheduler, no push/email; checked
+ *                            only when the user clicks "Check now")
  *   • contracts             → law.contract-* / law.clause-* / law.approval-* /
  *                            law.obligation-* / law.playbook-* / law.repository-search
  *                            (real STATE-backed contract-lifecycle substrate)
@@ -87,6 +93,7 @@ import { ContractPlaybooks } from '@/components/law/ContractPlaybooks';
 import { ObligationTracker } from '@/components/law/ObligationTracker';
 import { ContractRepositorySearch } from '@/components/law/ContractRepositorySearch';
 import { LawFeed } from '@/components/law/LawFeed';
+import { SearchAlertsPanel } from '@/components/law/SearchAlertsPanel';
 
 // New bespoke components built for this rebuild.
 import { PatentSearch } from '@/components/law/PatentSearch';
@@ -168,6 +175,7 @@ export default function LawLensPage() {
                 <LawFeed />
               </Panel>
             </div>
+            <SearchAlertsPanel />
           </div>
         );
       case 'contracts':

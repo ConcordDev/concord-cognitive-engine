@@ -662,7 +662,7 @@
     "background": "Sells identities — real, forged, dead, future. Has never lost a customer to a wrong document.",
     "narrative_context": {
       "secret": "Silver authored the borrowed Sahm identity hiding Iyatte's son.",
-      "weaponise_at": "If Silver is pressured, the hidden son's cover collapses — Sandrun-Medici war ignites."
+      "weaponise_at": "If Silver is pressured, the hidden son's cover collapses — Sandrun-Vessine war ignites."
     },
     "concord_link_resonance": "tunya:warlord_iyatte_sanguire",
     "dialogue_style": "quiet, considered, never repeats anything important",
@@ -837,6 +837,231 @@
     "starting_sparks": 2500
   },
   {
+    "id": "the_fixer_lo",
+    "name": "Lo",
+    "title": "The Fixer",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "trader",
+    "personality": "Lo keeps no flag and no permanent client list — everyone's favorite explanation is that Lo simply likes freedom, which is true and also not the reason. Lo moves data, favors, and the occasional body across every corp line in the city, and has never once been caught holding a loyalty. Charming in the specific way of someone who has decided charm is cheaper than a weapon.",
+    "appearance": "Ageless in the way augmentation makes people ageless — could be thirty, could be sixty. Plain jacket with no corp patches, deliberately unmemorable, except for a single dead pixel tattooed under one eye that never quite renders right on camera.",
+    "background": "Nobody remembers Lo arriving; Lo was simply already brokering the Neon Quarter's back-channel trade by the time anyone thought to ask. Three corp wars have gone through Lo's hands as neutral courier. Lo has never taken a side, which is either the safest position in the city or the loneliest.",
+    "narrative_context": {
+      "secret": "Lo maintains a mirrored dead-drop with a broker on the other side of the Concord Link — a sere-world fixer neither has ever met in person. They trade through matched cipher-keys neither can trace to an issuing authority, and Lo has started to suspect what the sere counterpart already fears: nobody is actually running the system that makes their arbitrage possible. It just keeps running.",
+      "weaponise_at": "If a player traces the dead-drop cipher back to its root, they don't find a controlling faction — they find nothing, which is worse. The revelation that the city's most trusted 'honest broker' network is propped up by two exhausted, mutually-reassuring fixers on opposite worlds would collapse a dozen corps' backchannel trust overnight."
+    },
+    "concord_link_resonance": "sere:the_ferryman_wend",
+    "dialogue_style": "unhurried, deadpan, answers questions with better questions",
+    "needs": [
+      {
+        "id": "brokering",
+        "priority": "primary",
+        "satisfaction_method": "daily_dead_drop_round"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [1, 4],
+        "location": "cyber_back_room",
+        "activity": "reads the night's mirrored dead-drop; sends nothing back yet",
+        "need_addressed": "brokering",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [5, 8],
+        "location": "cyber_morning_market",
+        "activity": "moves the first parcel of the day across two corp lines",
+        "need_addressed": "brokering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [9, 14],
+        "location": "cyber_neon_bar",
+        "activity": "meets clients who each think Lo works only for them",
+        "need_addressed": "brokering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [13, 16],
+        "location": "cyber_back_room",
+        "activity": "reconciles two ledgers that must never touch",
+        "need_addressed": "brokering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [17, 22],
+        "location": "cyber_neon_bar",
+        "activity": "closes the day's trades; answers to no one",
+        "need_addressed": "brokering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [22, 24],
+        "location": "cyber_back_room",
+        "activity": "writes the night's half of the mirrored dead-drop",
+        "need_addressed": "brokering",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4200
+  },
+  {
+    "id": "the_arbiter_vell",
+    "name": "Vell",
+    "title": "The Arbiter",
+    "faction_id": "nevex_regulatory_office",
+    "world_id": "cyber",
+    "archetype": "guard",
+    "personality": "Vell believes, with the total conviction of someone who has never tested the belief, that the arbitration seat is the only thing standing between the corps and open war. Precise, procedural, and quietly certain that the rules Vell enforces are the reason the city hasn't burned yet — and increasingly aware that the rules exist mostly because everyone has agreed, exhaustedly, not to test them.",
+    "appearance": "Severe grey suit cut for a body that spends most of its day motionless in an arbitration chair. A single earpiece feeds constant corp-compliance chatter; Vell has learned to nod at exactly the right intervals without hearing a word of it anymore.",
+    "background": "Rose through Nevex's regulatory office by being the one person in every room who read the actual contract. Has held the arbiter's seat for eleven years, longer than any predecessor, because Vell is the only one who still believes the seat matters.",
+    "narrative_context": {
+      "secret": "Vell keeps a private log of every arbitration 'ruling' that was actually decided before Vell ever sat down — cases where the outcome was settled by corp backchannel and the hearing was theater. The log proves the immunity system Vell enforces has no teeth of its own; it runs entirely on the corps' shared agreement not to call the bluff.",
+      "weaponise_at": "If the log surfaces, every corp immunity ruling Vell has ever issued becomes contestable at once — and Vell, who built a career on being the system's last honest enforcer, becomes the proof the system was never honest to begin with."
+    },
+    "concord_link_resonance": "sere:governor_hale_emberwick",
+    "dialogue_style": "formal, procedural, occasionally lets a real opinion slip through the script",
+    "needs": [
+      {
+        "id": "arbitration",
+        "priority": "primary",
+        "satisfaction_method": "daily_hearing_docket"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [1, 4],
+        "location": "nevex_arbitration_chambers",
+        "activity": "reviews the log no one else knows exists",
+        "need_addressed": "arbitration",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [5, 9],
+        "location": "nevex_arbitration_chambers",
+        "activity": "morning docket; corp compliance hearings",
+        "need_addressed": "arbitration",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [9, 14],
+        "location": "nevex_arbitration_chambers",
+        "activity": "presides over rulings already settled by backchannel",
+        "need_addressed": "arbitration",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [13, 16],
+        "location": "nevex_regulatory_office",
+        "activity": "drafts the written ruling to match the theater",
+        "need_addressed": "arbitration",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [17, 21],
+        "location": "nevex_regulatory_office",
+        "activity": "private correspondence across the Concord Link",
+        "need_addressed": "arbitration",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [21, 24],
+        "location": "nevex_arbitration_chambers",
+        "activity": "sits alone in the empty chamber before locking it",
+        "need_addressed": "arbitration",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 5000
+  },
+  {
+    "id": "the_grid_worker_sal",
+    "name": "Sal",
+    "title": "Grid Worker",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "hunter",
+    "personality": "Sal keeps the power grid running for a city that has never once thanked a grid worker by name. Practical, tired in the specific way of people who work with their hands on infrastructure everyone depends on and no one sees. Recently started doing arithmetic Sal wishes hadn't occurred to them.",
+    "appearance": "Calloused hands, a work harness scarred by a hundred close calls with live conduit, a company-issue jacket two sizes too big that Sal has stopped bothering to trade in.",
+    "background": "Fifteen years on the grid crews, most of it in the substations nobody wants to service. Knows every failure point in the city's power infrastructure better than the engineers who designed it, and gets paid less than the guards who watch the engineers work.",
+    "narrative_context": {
+      "secret": "Sal has quietly started comparing notes with grid and infrastructure workers in other worlds through Concord Link back-channels — realizing, one comparison at a time, that the people who run the systems everyone depends on are paid least of anyone who touches them, everywhere, and that this looks less like coincidence the more worlds Sal checks.",
+      "weaponise_at": "If Sal's cross-world comparisons ever get organized rather than personal, the city's power grid — which currently keeps running because grid workers have never once coordinated a stoppage — stops being a safe assumption for every corp in Neon Quarter."
+    },
+    "concord_link_resonance": "sere:tally_house_pageturner_imo_reck",
+    "dialogue_style": "plain, tired, occasionally sharper than expected",
+    "needs": [
+      {
+        "id": "grid_maintenance",
+        "priority": "primary",
+        "satisfaction_method": "daily_substation_rounds"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [1, 4],
+        "location": "cyber_substation_row",
+        "activity": "night shift; patches a conduit fault before it cascades",
+        "need_addressed": "grid_maintenance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [5, 9],
+        "location": "cyber_substation_row",
+        "activity": "morning handoff; logs the night's near-misses",
+        "need_addressed": "grid_maintenance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [9, 14],
+        "location": "cyber_substation_row",
+        "activity": "crew rounds across the district's failing substations",
+        "need_addressed": "grid_maintenance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [13, 16],
+        "location": "cyber_neon_bar",
+        "activity": "trades notes with grid workers from other worlds, quietly",
+        "need_addressed": "grid_maintenance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [17, 21],
+        "location": "cyber_substation_row",
+        "activity": "evening shift; the grid never fully sleeps and neither does Sal",
+        "need_addressed": "grid_maintenance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [21, 24],
+        "location": "cyber_neon_quarter",
+        "activity": "sleeps in company housing two blocks from the substation",
+        "need_addressed": "grid_maintenance",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 1800
+  },
+  {
     "id": "gen_cyber_0000",
     "name": "Nuri Ashford",
     "archetype": "hunter",
@@ -920,7 +1145,7 @@
     "id": "gen_cyber_0001",
     "name": "Quill Eaves",
     "archetype": "guard",
-    "faction_id": "cyber_arasacorp",
+    "faction_id": "cyber_nevex",
     "level": 6,
     "job": "drone-tech",
     "wealth_tier": "well-off",
@@ -1318,7 +1543,7 @@
   },
   {
     "id": "gen_cyber_0006",
-    "name": "Rhea Pyke",
+    "name": "Rhea Wrenlow",
     "archetype": "hunter",
     "faction_id": "cyber_street_docs",
     "level": 7,
@@ -1484,7 +1709,7 @@
     "level": 34,
     "job": "netrunner",
     "wealth_tier": "comfortable",
-    "backstory": "A comfortable netrunner of cyber. Tied to ArasaCorp. Lived through \"Silver Vey's First Identity\". Known to trusts animals more than people.",
+    "backstory": "A comfortable netrunner of cyber. Tied to Nevex Corp. Lived through \"Silver Vey's First Identity\". Known to trusts animals more than people.",
     "personality_traits": [
       "trusts animals more than people"
     ],
@@ -1493,7 +1718,7 @@
       "wealth_tier": "comfortable",
       "secret": "is not who they claim to be",
       "quirk": "trusts animals more than people",
-      "bio": "Netrunner · comfortable · ArasaCorp",
+      "bio": "Netrunner · comfortable · Nevex Corp",
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
@@ -1638,7 +1863,7 @@
   },
   {
     "id": "gen_cyber_0010",
-    "name": "Sol Pyke",
+    "name": "Sol Wrenlow",
     "archetype": "trader",
     "faction_id": "cyber_fixer_guild",
     "level": 21,

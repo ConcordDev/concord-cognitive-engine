@@ -14,7 +14,7 @@ import { SafeCard } from '@/components/common/SafeCard';
 import { motion } from 'framer-motion';
 import {
   Map, Layers, Radio, AlertTriangle, RefreshCw,
-  Compass, Globe, Radar, Loader2, MapPinned, Satellite, Info,
+  Compass, Globe, Radar, Loader2, MapPinned, Satellite, Info, ShieldCheck, Search,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { MapMarker } from '@/components/common/MapView';
@@ -23,6 +23,9 @@ import AtlasResearchView from '@/components/chat/AtlasResearchView';
 import AtlasSignalView from '@/components/chat/AtlasSignalView';
 import AtlasOverlay from '@/components/chat/AtlasOverlay';
 import { SignalClassifyForm } from '@/components/atlas/SignalClassifyForm';
+import AtlasPrivacyMonitor, { type PrivacyMonitorData } from '@/components/chat/AtlasPrivacyMonitor';
+import { PrivacyVerifyForm } from '@/components/atlas/PrivacyVerifyForm';
+import { SpatialQueryForm } from '@/components/atlas/SpatialQueryForm';
 
 // Leaflet requires dynamic import (no SSR)
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -30,7 +33,7 @@ const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: fals
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Mode = 'map' | 'tomography';
-type TomoTab = 'terrain' | 'signals' | 'anomalies' | 'coverage';
+type TomoTab = 'terrain' | 'signals' | 'anomalies' | 'coverage' | 'privacy' | 'query';
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -153,6 +156,18 @@ function SignalTomography() {
     refetchInterval: 30000,
   });
 
+  const { data: privacyZonesData, isLoading: privacyZonesLoading, isError: privacyZonesError, refetch: refetchPrivacyZones } = useQuery<PrivacyMonitorData>({
+    queryKey: ['atlas-privacy-zones'],
+    queryFn: () => apiHelpers.atlasTomography.privacyZones('zones').then(r => r.data),
+    refetchInterval: 30000,
+  });
+
+  const { data: privacyStatsData, isLoading: privacyStatsLoading } = useQuery<PrivacyMonitorData>({
+    queryKey: ['atlas-privacy-stats'],
+    queryFn: () => apiHelpers.atlasTomography.privacyZones('stats').then(r => r.data),
+    refetchInterval: 30000,
+  });
+
   // Build map markers from live tomography nodes — real (currently empty
   // in this deployment; see the disclosure banner above the map).
   const markers: MapMarker[] = [];
@@ -178,6 +193,8 @@ function SignalTomography() {
     { id: 'signals', label: 'Signals', icon: <Radio className="w-4 h-4" /> },
     { id: 'anomalies', label: 'Anomalies', icon: <AlertTriangle className="w-4 h-4" /> },
     { id: 'coverage', label: 'Coverage', icon: <Layers className="w-4 h-4" /> },
+    { id: 'privacy', label: 'Privacy', icon: <ShieldCheck className="w-4 h-4" /> },
+    { id: 'query', label: 'Query', icon: <Search className="w-4 h-4" /> },
   ];
 
   return (
@@ -358,6 +375,40 @@ function SignalTomography() {
             loading={coverageLoading}
           />
         )}
+
+        {tab === 'privacy' && (
+          <>
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.04] p-3 text-xs text-red-200">
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-red-300" />
+              <p>
+                Privacy zones are established when a signal profile is classified as residential,
+                medical, religious, government, or military (real code —{' '}
+                <code className="text-red-100">server/lib/atlas-signal-cortex.js#detectPrivacyZone</code>).
+                ABSOLUTE and RESTRICTED zones carry an interior-never-generated guarantee — verify
+                it below. This deployment has no automatic zone-detection pipeline wired to live
+                signal ingestion yet, so the list is real and honestly empty until zones exist.
+              </p>
+            </div>
+
+            {privacyZonesError && (
+              <div role="alert" className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-between">
+                <p className="text-red-400 text-sm">Could not load privacy zones.</p>
+                <button
+                  onClick={() => refetchPrivacyZones()}
+                  className="text-xs text-red-300 hover:text-white border border-red-500/30 rounded px-2 py-1"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            <AtlasPrivacyMonitor data={privacyZonesData ?? null} loading={privacyZonesLoading} />
+            <PrivacyVerifyForm zones={privacyZonesData?.zones?.zones ?? []} />
+            <AtlasPrivacyMonitor data={privacyStatsData ?? null} loading={privacyStatsLoading} />
+          </>
+        )}
+
+        {tab === 'query' && <SpatialQueryForm />}
       </div>
     </div>
   );

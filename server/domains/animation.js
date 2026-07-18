@@ -109,7 +109,7 @@ export default function registerAnimationActions(registerLensAction) {
   }
   const AN_MAX_LAYERS = 10;
   function blankLayer(name) {
-    return { id: anId("lyr"), name: name || "Layer 1", visible: true, opacity: 1, strokes: [] };
+    return { id: anId("lyr"), name: name || "Layer 1", visible: true, opacity: 1, type: "paintable", strokes: [] };
   }
   function blankFrame() {
     return { id: anId("frm"), exposure: 1, layers: [blankLayer("Layer 1")], strokes: [] };
@@ -118,10 +118,32 @@ export default function registerAnimationActions(registerLensAction) {
   function frameLayer(frame, layerId) {
     if (!Array.isArray(frame.layers) || !frame.layers.length) {
       // migrate a legacy frame: wrap its flat strokes in a default layer
-      frame.layers = [{ id: anId("lyr"), name: "Layer 1", visible: true, opacity: 1, strokes: frame.strokes || [] }];
+      frame.layers = [{ id: anId("lyr"), name: "Layer 1", visible: true, opacity: 1, type: "paintable", strokes: frame.strokes || [] }];
     }
     if (layerId) return frame.layers.find((l) => l.id === layerId) || null;
     return frame.layers[frame.layers.length - 1];
+  }
+  // A rotoscope-style reference layer attaches an already-uploaded image to a
+  // frame as a semi-transparent tracing underlay — it is NEVER converted into
+  // strokes/vector artwork (that would be an algorithmic auto-trace claim this
+  // codebase doesn't make). The animator draws real strokes on a separate
+  // paintable layer on top of it; see the stroke-commit guards below, which
+  // refuse to let a stroke land on a reference layer so the distinction can't
+  // silently blur.
+  function anValidImageRef(v) {
+    const cleaned = anClean(v, 600);
+    if (!cleaned) return null;
+    if (/^(https?:\/\/|data:image\/)/i.test(cleaned)) return cleaned;
+    // The real shape AnimationReferenceImages.tsx already produces for an
+    // uploaded reference image (server/routes/media.js's stream route).
+    if (/^\/api\/media\/[A-Za-z0-9_-]+\/stream$/.test(cleaned)) return cleaned;
+    return null;
+  }
+  function referenceLayer(name, imageRef, opacity) {
+    return {
+      id: anId("lyr"), name: name || "Reference", visible: true, opacity,
+      type: "reference", isReference: true, imageRef, strokes: [],
+    };
   }
   // Flatten a frame's visible layers into one stroke list (playback/onion/legacy).
   function frameStrokes(frame) {
@@ -204,7 +226,19 @@ export default function registerAnimationActions(registerLensAction) {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.id);
     if (!anim) return { ok: false, error: "animation not found" };
-    return { ok: true, result: { animation: anim } };
+    // Cheap booleans only — never the raw opLog/redoStack snapshots (see the
+    // "Cross-operation undo/redo" note below on why those stay off `anim`).
+    // Lets the Studio UI restore correct Undo/Redo button state on load
+    // (e.g. after a page refresh mid-session) instead of guessing.
+    const u = s.animUndo?.get(anim.id);
+    return {
+      ok: true,
+      result: {
+        animation: anim,
+        canUndo: !!(u && u.opLog.length),
+        canRedo: !!(u && u.redoStack.length),
+      },
+    };
   });
 
   registerLensAction("animation", "anim-rename", (ctx, _a, params = {}) => {
@@ -250,8 +284,101 @@ export default function registerAnimationActions(registerLensAction) {
     const i = arr.findIndex((a) => a.id === params.id);
     if (i < 0) return { ok: false, error: "animation not found" };
     arr.splice(i, 1);
+    s.animUndo?.delete(params.id); // don't leak undo/redo history for a deleted project
     saveAnimState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Cross-operation undo/redo (op-log) ──────────────────────────────
+  // A bounded stack of whole-`frames`-tree snapshots taken immediately
+  // before each destructive frame/layer-level mutation (frame add/
+  // duplicate/delete/reorder, layer add/update/delete, frame-clear).
+  // This is DELIBERATELY coarse-grained — one snapshot per structural
+  // op, not per stroke — so it composes with (but never replaces) the
+  // narrower single-level per-layer stroke undo (`anim-stroke-undo`
+  // above, which just pops the last stroke off one layer's array). A
+  // structural undo/redo therefore also rewinds/replays any strokes
+  // drawn on a frame since the last structural op — the same trade-off
+  // FlipaClip's own app-wide undo makes (it explicitly can't selectively
+  // undo a deleted/merged layer either; see the capability-map note).
+  //
+  // Depth is capped at AN_MAX_UNDO_DEPTH so a long session can't grow
+  // this unboundedly — the oldest entry silently drops off once the cap
+  // is hit, the same bounded-resource discipline AN_MAX_FRAMES already
+  // uses elsewhere in this file. 40 was picked as a generous "several
+  // minutes of active editing" depth without holding an unbounded
+  // number of full-frame-tree clones in memory; FlipaClip/Pencil2D don't
+  // publish a documented undo depth, so this is a considered default,
+  // not a reproduced one.
+  //
+  // The log/stack live in a SEPARATE side-map (`s.animUndo`, keyed by
+  // animId) rather than as fields on the `anim` object itself. Several
+  // read macros (anim-get, anim-list's non-whitelisted cousins, etc.)
+  // return the live `anim` object straight through to the client — if
+  // opLog/redoStack lived on `anim`, every one of those responses would
+  // silently balloon by up to AN_MAX_UNDO_DEPTH full-frame-tree clones.
+  // Keeping undo state off the serialized object is load-bearing, not
+  // stylistic.
+  const AN_MAX_UNDO_DEPTH = 40;
+  function anCloneFrames(frames) {
+    return JSON.parse(JSON.stringify(frames));
+  }
+  function anUndoEntry(s, animId) {
+    const map = (s.animUndo ||= new Map());
+    let entry = map.get(animId);
+    if (!entry) { entry = { opLog: [], redoStack: [] }; map.set(animId, entry); }
+    return entry;
+  }
+  // Call BEFORE mutating anim.frames in any destructive frame/layer macro.
+  // Standard undo-stack semantics: performing a genuinely new edit clears
+  // the redo stack — you can't redo past a fork in history.
+  function anPushUndoSnapshot(s, anim, opType) {
+    const u = anUndoEntry(s, anim.id);
+    u.opLog.push({ type: opType, snapshot: anCloneFrames(anim.frames), at: anNow() });
+    if (u.opLog.length > AN_MAX_UNDO_DEPTH) u.opLog.shift();
+    u.redoStack = [];
+  }
+
+  registerLensAction("animation", "anim-undo", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const u = anUndoEntry(s, anim.id);
+    if (!u.opLog.length) return { ok: false, error: "nothing to undo" };
+    const entry = u.opLog.pop();
+    u.redoStack.push({ type: entry.type, snapshot: anCloneFrames(anim.frames), at: anNow() });
+    if (u.redoStack.length > AN_MAX_UNDO_DEPTH) u.redoStack.shift();
+    anim.frames = entry.snapshot;
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return {
+      ok: true,
+      result: {
+        undone: entry.type, frameCount: anim.frames.length,
+        canUndo: u.opLog.length > 0, canRedo: u.redoStack.length > 0,
+      },
+    };
+  });
+
+  registerLensAction("animation", "anim-redo", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const u = anUndoEntry(s, anim.id);
+    if (!u.redoStack.length) return { ok: false, error: "nothing to redo" };
+    const entry = u.redoStack.pop();
+    u.opLog.push({ type: entry.type, snapshot: anCloneFrames(anim.frames), at: anNow() });
+    if (u.opLog.length > AN_MAX_UNDO_DEPTH) u.opLog.shift();
+    anim.frames = entry.snapshot;
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return {
+      ok: true,
+      result: {
+        redone: entry.type, frameCount: anim.frames.length,
+        canUndo: u.opLog.length > 0, canRedo: u.redoStack.length > 0,
+      },
+    };
   });
 
   // ── Frames ──────────────────────────────────────────────────────────
@@ -260,6 +387,7 @@ export default function registerAnimationActions(registerLensAction) {
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
     if (anim.frames.length >= AN_MAX_FRAMES) return { ok: false, error: `frame limit (${AN_MAX_FRAMES}) reached` };
+    anPushUndoSnapshot(s, anim, "frame-add");
     const frame = blankFrame();
     const afterIdx = anim.frames.findIndex((f) => f.id === params.afterFrameId);
     if (afterIdx >= 0) anim.frames.splice(afterIdx + 1, 0, frame);
@@ -276,12 +404,18 @@ export default function registerAnimationActions(registerLensAction) {
     if (anim.frames.length >= AN_MAX_FRAMES) return { ok: false, error: `frame limit (${AN_MAX_FRAMES}) reached` };
     const idx = anim.frames.findIndex((f) => f.id === params.frameId);
     if (idx < 0) return { ok: false, error: "frame not found" };
+    anPushUndoSnapshot(s, anim, "frame-duplicate");
     const src = anim.frames[idx];
     frameLayer(src);   // migrate legacy frame to layered shape if needed
     const copy = {
       id: anId("frm"), exposure: src.exposure, strokes: [],
+      // Spread every field (name/visible/opacity/type/imageRef/isReference,
+      // and anything future) so a reference layer's imageRef survives a
+      // duplicate instead of silently degrading into a blank paintable
+      // layer — only id and strokes get fresh values.
       layers: src.layers.map((l) => ({
-        id: anId("lyr"), name: l.name, visible: l.visible, opacity: l.opacity,
+        ...l,
+        id: anId("lyr"),
         strokes: l.strokes.map((st) => ({ ...st, id: anId("stk"), points: st.points.map((p) => [...p]) })),
       })),
     };
@@ -298,6 +432,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (anim.frames.length <= 1) return { ok: false, error: "an animation needs at least one frame" };
     const idx = anim.frames.findIndex((f) => f.id === params.frameId);
     if (idx < 0) return { ok: false, error: "frame not found" };
+    anPushUndoSnapshot(s, anim, "frame-delete");
     anim.frames.splice(idx, 1);
     anim.updatedAt = anNow();
     saveAnimState();
@@ -314,6 +449,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (j < 0 || j >= anim.frames.length) {
       return { ok: true, result: { order: anim.frames.map((f) => f.id) } };
     }
+    anPushUndoSnapshot(s, anim, "frame-reorder");
     [anim.frames[i], anim.frames[j]] = [anim.frames[j], anim.frames[i]];
     anim.updatedAt = anNow();
     saveAnimState();
@@ -341,6 +477,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     frameLayer(frame);
     if (frame.layers.length >= AN_MAX_LAYERS) return { ok: false, error: `layer limit (${AN_MAX_LAYERS}) reached` };
+    anPushUndoSnapshot(s, anim, "frame-layer-add");
     const layer = blankLayer(anClean(params.name, 60) || `Layer ${frame.layers.length + 1}`);
     frame.layers.push(layer);
     anim.updatedAt = anNow();
@@ -356,6 +493,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    anPushUndoSnapshot(s, anim, "frame-layer-update");
     if (params.name != null) layer.name = anClean(params.name, 60) || layer.name;
     if (params.visible != null) layer.visible = !!params.visible;
     if (params.opacity != null) layer.opacity = anClamp(params.opacity, 0, 1, layer.opacity);
@@ -374,10 +512,36 @@ export default function registerAnimationActions(registerLensAction) {
     if (frame.layers.length <= 1) return { ok: false, error: "a frame needs at least one layer" };
     const i = frame.layers.findIndex((l) => l.id === params.layerId);
     if (i < 0) return { ok: false, error: "layer not found" };
+    anPushUndoSnapshot(s, anim, "frame-layer-delete");
     frame.layers.splice(i, 1);
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { deleted: params.layerId } };
+  });
+
+  // Attach an uploaded reference image to a frame as a non-destructive
+  // tracing underlay (FlipaClip/Pencil2D rotoscope-reference pattern). This
+  // does NOT vectorize the image into strokes — it just records the image
+  // + display opacity on a dedicated layer the canvas renders as an
+  // underlay. Same guard shape as frame-layer-add.
+  registerLensAction("animation", "frame-layer-import-image", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    frameLayer(frame);
+    if (frame.layers.length >= AN_MAX_LAYERS) return { ok: false, error: `layer limit (${AN_MAX_LAYERS}) reached` };
+    const imageRef = anValidImageRef(params.imageRef);
+    if (!imageRef) {
+      return { ok: false, error: "a valid imageRef (http(s) URL, data:image/... URI, or /api/media/:id/stream path) is required" };
+    }
+    const opacity = anClamp(params.opacity, 0, 1, 0.5);
+    const layer = referenceLayer(anClean(params.name, 60) || "Reference", imageRef, opacity);
+    frame.layers.push(layer);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { layer: { ...layer, strokes: undefined, strokeCount: 0 } } };
   });
 
   // ── Strokes (commit to the active layer of a frame) ─────────────────
@@ -389,6 +553,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.type === "reference") return { ok: false, error: "cannot draw on a reference layer — select or add a paintable layer" };
     if (layer.strokes.length >= AN_MAX_STROKES) return { ok: false, error: "layer stroke limit reached" };
     const stroke = anSanitizeStroke(params.stroke, anim);
     if (!stroke) return { ok: false, error: "invalid stroke" };
@@ -406,6 +571,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.type === "reference") return { ok: false, error: "cannot draw on a reference layer — select or add a paintable layer" };
     const incoming = Array.isArray(params.strokes) ? params.strokes : [];
     let added = 0;
     for (const raw of incoming) {
@@ -440,6 +606,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    anPushUndoSnapshot(s, anim, "frame-clear");
     if (params.allLayers) { for (const l of frame.layers) l.strokes = []; }
     else layer.strokes = [];
     anim.updatedAt = anNow();
@@ -630,6 +797,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.type === "reference") return { ok: false, error: "cannot draw on a reference layer — select or add a paintable layer" };
     if (layer.strokes.length >= AN_MAX_STROKES) return { ok: false, error: "layer stroke limit reached" };
     const raw = params.stroke || {};
     const tool = AN_TOOLS.includes(String(raw.tool)) ? String(raw.tool) : "ink";

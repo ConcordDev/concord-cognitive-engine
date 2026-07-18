@@ -6,9 +6,10 @@ import { motion } from 'framer-motion';
 import {
   Hash, Plus, Send, MessageSquare, Users, Mail, FileText, CheckCircle2,
   XCircle, Loader2, Crown, Shield, UserPlus, Bell, ChevronRight, CornerDownRight,
-  ThumbsUp, Paperclip, Vote, Search,
+  ThumbsUp, Paperclip, Vote, Search, MessageCircle, ArrowLeft, Globe2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 
 // ── Shared shapes ─────────────────────────────────────────────────
 interface Member { userId: string; displayName: string; role: 'owner' | 'admin' | 'member' | 'guest'; joinedAt: string }
@@ -31,6 +32,19 @@ interface Proposal {
 }
 interface NotifAlliance { allianceId: string; name: string; unread: number; pendingVotes: number }
 interface Notifications { totalUnread: number; pendingInvites: number; perAlliance: NotifAlliance[]; invites: Invite[] }
+
+// ── Cross-org direct messages ────────────────────────────────────
+interface DmMessage {
+  id: string; threadKey: string; fromId: string; toId: string; fromName: string; content: string;
+  parentId: string | null; attachments: Attachment[]; reactions: Record<string, string[]>; createdAt: string;
+}
+interface DmThread {
+  partnerId: string; partnerName: string; threadKey: string;
+  lastMessage: string; lastFrom: string; lastAt: string; messageCount: number;
+}
+// A candidate DM recipient, sourced from the members of alliances this lens
+// already knows about (never a free-text "type any user id" box).
+interface DmCandidate { userId: string; displayName: string; allianceName: string }
 
 const REACTION_PALETTE = ['👍', '🎉', '🔥', '👀', '✅', '❤️'];
 const TYPE_TINT: Record<string, string> = {
@@ -85,9 +99,44 @@ export function AllianceWorkspace() {
   const [propQuorum, setPropQuorum] = useState(0.5);
   const [showCreateProp, setShowCreateProp] = useState(false);
 
+  // ── Rail view mode: alliance workspaces vs. cross-org direct messages ──
+  const [railMode, setRailMode] = useState<'alliances' | 'dms'>('alliances');
+
+  // ── Direct messages (cross-org, not scoped to a single alliance) ──
+  const [dmThreads, setDmThreads] = useState<DmThread[]>([]);
+  const [selDmPartner, setSelDmPartner] = useState<string | null>(null);
+  const [dmMessages, setDmMessages] = useState<DmMessage[]>([]);
+  const [dmDraft, setDmDraft] = useState('');
+  const [dmReplyTo, setDmReplyTo] = useState<string | null>(null);
+  const [dmAttachName, setDmAttachName] = useState('');
+  const [dmAttachUrl, setDmAttachUrl] = useState('');
+  const [showNewDm, setShowNewDm] = useState(false);
+  const [newDmTarget, setNewDmTarget] = useState('');
+
+  const { user } = useAuth();
+
   const selAllianceData = useMemo(() => alliances.find((a) => a.id === selAlliance) || null, [alliances, selAlliance]);
   const myRole = selAllianceData?.myRole || null;
   const isAdmin = myRole === 'owner' || myRole === 'admin';
+
+  // Real member picker for "start a new DM" — sourced from the members of
+  // every alliance this lens already knows about (never a free-text
+  // "type any user id" box). A candidate can come from ANY of the caller's
+  // alliances, including ones the eventual recipient isn't in themselves —
+  // that's fine, the backend's own recipient check is what actually
+  // enforces "must be a real, known member of *some* alliance."
+  const dmCandidates = useMemo<DmCandidate[]>(() => {
+    const seen = new Set<string>();
+    const out: DmCandidate[] = [];
+    for (const a of alliances) {
+      for (const m of a.members) {
+        if (m.userId === user?.id || seen.has(m.userId)) continue;
+        seen.add(m.userId);
+        out.push({ userId: m.userId, displayName: m.displayName, allianceName: a.name });
+      }
+    }
+    return out.sort((x, y) => x.displayName.localeCompare(y.displayName));
+  }, [alliances, user?.id]);
 
   // ── Loaders ──
   const loadAlliances = useCallback(async () => {
@@ -128,11 +177,21 @@ export function AllianceWorkspace() {
     if (r.ok && r.result) setProposals(r.result.proposals || []);
   }, []);
 
+  const loadDmInbox = useCallback(async () => {
+    const r = await run<{ threads: DmThread[] }>('dm-inbox', {});
+    if (r.ok && r.result) setDmThreads(r.result.threads || []);
+  }, []);
+
+  const loadDmThread = useCallback(async (partnerId: string) => {
+    const r = await run<{ messages: DmMessage[] }>('dm-list', { partnerId });
+    if (r.ok && r.result) setDmMessages(r.result.messages || []);
+  }, []);
+
   // ── Initial load ──
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadAlliances(), loadNotifs()]);
+      await Promise.all([loadAlliances(), loadNotifs(), loadDmInbox()]);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,15 +223,26 @@ export function AllianceWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, selChannel]);
 
-  // ── Live poll: notifications + active channel messages ──
+  // ── DM thread selection cascade ──
+  useEffect(() => {
+    if (!selDmPartner) { setDmMessages([]); return; }
+    loadDmThread(selDmPartner);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selDmPartner]);
+
+  // ── Live poll: notifications + active channel messages + active DM thread ──
   useEffect(() => {
     const id = setInterval(() => {
       loadNotifs();
       if (selChannel) loadMessages(selChannel);
+      if (railMode === 'dms') {
+        loadDmInbox();
+        if (selDmPartner) loadDmThread(selDmPartner);
+      }
     }, 12000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selChannel]);
+  }, [selChannel, railMode, selDmPartner]);
 
   // ── Mutations ──
   const guard = async (key: string, fn: () => Promise<void>) => {
@@ -274,6 +344,28 @@ export function AllianceWorkspace() {
     await Promise.all([loadProposals(selAlliance), loadAlliances()]);
   });
 
+  const sendDm = () => guard('dm-send', async () => {
+    if (!selDmPartner || !dmDraft.trim()) return;
+    const attachments = dmAttachName.trim()
+      ? [{ name: dmAttachName.trim(), url: dmAttachUrl.trim(), mime: 'application/octet-stream', sizeBytes: 0 }]
+      : [];
+    const r = await run('dm-send', { toId: selDmPartner, content: dmDraft.trim(), parentId: dmReplyTo, attachments });
+    if (!r.ok) { setErr(r.error); return; }
+    setDmDraft(''); setDmAttachName(''); setDmAttachUrl(''); setDmReplyTo(null);
+    await Promise.all([loadDmThread(selDmPartner), loadDmInbox()]);
+  });
+
+  // Opens (or resumes) a conversation with a real member picked from the
+  // roster — this is the ONLY way a new DM thread gets started; there is
+  // no free-text recipient field.
+  const startDm = (partnerId: string) => guard('start-dm', async () => {
+    setRailMode('dms');
+    setSelDmPartner(partnerId);
+    setShowNewDm(false);
+    setNewDmTarget('');
+    await Promise.all([loadDmThread(partnerId), loadDmInbox()]);
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-gray-400">
@@ -323,55 +415,142 @@ export function AllianceWorkspace() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* ── Alliance rail ── */}
+        {/* ── Rail: alliance workspaces vs. cross-org direct messages ── */}
         <div className="panel p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-purple" /> Alliances</h3>
-            <button onClick={() => setShowCreateAlliance((v) => !v)} className="text-neon-cyan hover:text-white" aria-label="new alliance">
-              <Plus className="w-4 h-4" />
+          <div className="flex items-center gap-1 mb-1">
+            <button
+              onClick={() => setRailMode('alliances')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${railMode === 'alliances' ? 'bg-neon-cyan/15 text-neon-cyan' : 'text-gray-400 hover:text-white'}`}
+            >
+              <Users className="w-3.5 h-3.5" /> Workspaces
+            </button>
+            <button
+              onClick={() => setRailMode('dms')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${railMode === 'dms' ? 'bg-neon-cyan/15 text-neon-cyan' : 'text-gray-400 hover:text-white'}`}
+            >
+              <MessageCircle className="w-3.5 h-3.5" /> Direct
             </button>
           </div>
-          {showCreateAlliance && (
-            <div className="space-y-2 p-2 bg-lattice-deep rounded">
-              <input value={newAllianceName} onChange={(e) => setNewAllianceName(e.target.value)} placeholder="Alliance name" className="input-lattice w-full text-sm" />
-              <input value={newAllianceDesc} onChange={(e) => setNewAllianceDesc(e.target.value)} placeholder="Description" className="input-lattice w-full text-sm" />
-              <select value={newAllianceType} onChange={(e) => setNewAllianceType(e.target.value)} className="input-lattice w-full text-sm">
-                <option value="research">Research</option>
-                <option value="security">Security</option>
-                <option value="development">Development</option>
-                <option value="governance">Governance</option>
-              </select>
-              <button onClick={createAlliance} disabled={busy === 'create-alliance' || !newAllianceName.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
-                {busy === 'create-alliance' ? 'Creating…' : 'Create'}
-              </button>
-            </div>
+
+          {railMode === 'alliances' ? (
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-purple" /> Alliances</h3>
+                <button onClick={() => setShowCreateAlliance((v) => !v)} className="text-neon-cyan hover:text-white" aria-label="new alliance">
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+              {showCreateAlliance && (
+                <div className="space-y-2 p-2 bg-lattice-deep rounded">
+                  <input value={newAllianceName} onChange={(e) => setNewAllianceName(e.target.value)} placeholder="Alliance name" className="input-lattice w-full text-sm" />
+                  <input value={newAllianceDesc} onChange={(e) => setNewAllianceDesc(e.target.value)} placeholder="Description" className="input-lattice w-full text-sm" />
+                  <select value={newAllianceType} onChange={(e) => setNewAllianceType(e.target.value)} className="input-lattice w-full text-sm">
+                    <option value="research">Research</option>
+                    <option value="security">Security</option>
+                    <option value="development">Development</option>
+                    <option value="governance">Governance</option>
+                  </select>
+                  <button onClick={createAlliance} disabled={busy === 'create-alliance' || !newAllianceName.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
+                    {busy === 'create-alliance' ? 'Creating…' : 'Create'}
+                  </button>
+                </div>
+              )}
+              {alliances.length === 0 && <p className="text-xs text-gray-400 py-2">No alliances yet. Form one to start collaborating.</p>}
+              {alliances.map((a) => {
+                const n = notifs?.perAlliance.find((x) => x.allianceId === a.id);
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => { setSelAlliance(a.id); setTab('chat'); }}
+                    className={`w-full text-left p-2 rounded transition-colors ${selAlliance === a.id ? 'bg-neon-cyan/10 border border-neon-cyan/40' : 'bg-lattice-deep hover:bg-lattice-surface border border-transparent'}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-white truncate">{a.name}</span>
+                      {n && n.unread > 0 && <span className="ml-auto text-[10px] px-1.5 rounded-full bg-amber-500 text-black font-bold">{n.unread}</span>}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
+                      <span className={TYPE_TINT[a.type] || 'text-gray-400'}>{a.type}</span>
+                      <span>· {a.members.length} member{a.members.length !== 1 ? 's' : ''}</span>
+                      {a.activeProposals > 0 && <span className="text-neon-purple">· {a.activeProposals} prop</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold flex items-center gap-2"><Globe2 className="w-4 h-4 text-neon-purple" /> Direct Messages</h3>
+                <button onClick={() => setShowNewDm((v) => !v)} className="text-neon-cyan hover:text-white" aria-label="new direct message">
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+              {showNewDm && (
+                <div className="space-y-2 p-2 bg-lattice-deep rounded">
+                  <p className="text-[11px] text-gray-400">Message any known alliance member directly — even one outside your own org.</p>
+                  <select
+                    value={newDmTarget}
+                    onChange={(e) => setNewDmTarget(e.target.value)}
+                    className="input-lattice w-full text-sm"
+                    aria-label="Select a member to message"
+                  >
+                    <option value="">Select a member…</option>
+                    {dmCandidates.map((c) => (
+                      <option key={c.userId} value={c.userId}>{c.displayName} · {c.allianceName}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => newDmTarget && startDm(newDmTarget)}
+                    disabled={busy === 'start-dm' || !newDmTarget}
+                    className="btn-neon green w-full text-sm disabled:opacity-50"
+                  >
+                    {busy === 'start-dm' ? 'Opening…' : 'Start Conversation'}
+                  </button>
+                  {dmCandidates.length === 0 && (
+                    <p className="text-[11px] text-amber-400">No known members yet — join or invite someone into an alliance first.</p>
+                  )}
+                </div>
+              )}
+              {dmThreads.length === 0 && <p className="text-xs text-gray-400 py-2">No conversations yet.</p>}
+              {dmThreads.map((t) => (
+                <button
+                  key={t.threadKey}
+                  onClick={() => setSelDmPartner(t.partnerId)}
+                  className={`w-full text-left p-2 rounded transition-colors ${selDmPartner === t.partnerId ? 'bg-neon-cyan/10 border border-neon-cyan/40' : 'bg-lattice-deep hover:bg-lattice-surface border border-transparent'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white truncate">{t.partnerName}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                    {t.lastFrom === user?.id ? 'You: ' : ''}{t.lastMessage}
+                  </p>
+                </button>
+              ))}
+            </>
           )}
-          {alliances.length === 0 && <p className="text-xs text-gray-400 py-2">No alliances yet. Form one to start collaborating.</p>}
-          {alliances.map((a) => {
-            const n = notifs?.perAlliance.find((x) => x.allianceId === a.id);
-            return (
-              <button
-                key={a.id}
-                onClick={() => { setSelAlliance(a.id); setTab('chat'); }}
-                className={`w-full text-left p-2 rounded transition-colors ${selAlliance === a.id ? 'bg-neon-cyan/10 border border-neon-cyan/40' : 'bg-lattice-deep hover:bg-lattice-surface border border-transparent'}`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-white truncate">{a.name}</span>
-                  {n && n.unread > 0 && <span className="ml-auto text-[10px] px-1.5 rounded-full bg-amber-500 text-black font-bold">{n.unread}</span>}
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
-                  <span className={TYPE_TINT[a.type] || 'text-gray-400'}>{a.type}</span>
-                  <span>· {a.members.length} member{a.members.length !== 1 ? 's' : ''}</span>
-                  {a.activeProposals > 0 && <span className="text-neon-purple">· {a.activeProposals} prop</span>}
-                </div>
-              </button>
-            );
-          })}
         </div>
 
         {/* ── Main panel ── */}
         <div className="lg:col-span-3 space-y-3">
-          {!selAllianceData ? (
+          {railMode === 'dms' ? (
+            <DmPanel
+              threads={dmThreads}
+              selPartner={selDmPartner}
+              onSelectPartner={setSelDmPartner}
+              messages={dmMessages}
+              draft={dmDraft}
+              setDraft={setDmDraft}
+              replyTo={dmReplyTo}
+              setReplyTo={setDmReplyTo}
+              attachName={dmAttachName}
+              setAttachName={setDmAttachName}
+              attachUrl={dmAttachUrl}
+              setAttachUrl={setDmAttachUrl}
+              onSend={sendDm}
+              busy={busy}
+              currentUserId={user?.id || null}
+            />
+          ) : !selAllianceData ? (
             <div className="panel p-8 text-center text-gray-400">
               <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p>Select an alliance to open its workspace</p>
@@ -793,6 +972,123 @@ function ProposalCard({ p, busy, isAdmin, onVote, onClose }: {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Cross-org direct-message panel: inbox placeholder, or an open thread ──
+// with threaded replies + attachments, matching the channel messaging
+// idiom (MessageBubble above) minus reactions — there is no dm-react
+// backend primitive, so no reaction control is rendered here.
+function DmPanel({
+  threads, selPartner, onSelectPartner, messages, draft, setDraft,
+  replyTo, setReplyTo, attachName, setAttachName, attachUrl, setAttachUrl,
+  onSend, busy, currentUserId,
+}: {
+  threads: DmThread[]; selPartner: string | null; onSelectPartner: (id: string | null) => void;
+  messages: DmMessage[]; draft: string; setDraft: (v: string) => void;
+  replyTo: string | null; setReplyTo: (v: string | null) => void;
+  attachName: string; setAttachName: (v: string) => void;
+  attachUrl: string; setAttachUrl: (v: string) => void;
+  onSend: () => void; busy: string | null; currentUserId: string | null;
+}) {
+  const activeThread = threads.find((t) => t.partnerId === selPartner) || null;
+
+  if (!selPartner) {
+    return (
+      <div className="panel p-8 text-center text-gray-400">
+        <MessageCircle className="w-10 h-10 mx-auto mb-3 opacity-40" />
+        <p>Select a conversation, or start a new one with any known alliance member — even outside your own org.</p>
+      </div>
+    );
+  }
+
+  const roots = messages.filter((m) => !m.parentId);
+  const repliesFor = (id: string) => messages.filter((m) => m.parentId === id).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+
+  return (
+    <div className="panel p-3 flex flex-col">
+      <div className="flex items-center gap-2 mb-2">
+        <button onClick={() => onSelectPartner(null)} className="text-gray-400 hover:text-white" aria-label="back to conversations">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <Globe2 className="w-4 h-4 text-neon-cyan" />
+        <span className="font-medium text-white">{activeThread?.partnerName || selPartner}</span>
+        <span className="ml-auto text-[11px] text-gray-500">cross-org direct message</span>
+      </div>
+
+      <div className="flex-1 space-y-2 max-h-96 overflow-auto pr-1">
+        {roots.length === 0 && <p className="text-sm text-gray-400 py-8 text-center">No messages yet — say hello</p>}
+        {roots.map((m) => (
+          <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="bg-lattice-deep p-2 rounded">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-sm font-medium text-neon-cyan">{m.fromId === currentUserId ? 'You' : m.fromName}</span>
+              <span className="text-[11px] text-gray-400">{new Date(m.createdAt).toLocaleTimeString()}</span>
+            </div>
+            <p className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</p>
+            {m.attachments?.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {m.attachments.map((a, i) => (
+                  <a key={i} href={a.url || '#'} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[11px] text-amber-300 hover:underline">
+                    <Paperclip className="w-3 h-3" /> {a.name}
+                  </a>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setReplyTo(m.id)} className="text-[11px] text-gray-400 hover:text-neon-cyan flex items-center gap-0.5 mt-1">
+              <CornerDownRight className="w-3 h-3" /> reply
+            </button>
+            {repliesFor(m.id).length > 0 && (
+              <div className="mt-2 pl-3 border-l border-neon-cyan/20 space-y-1.5">
+                {repliesFor(m.id).map((r) => (
+                  <div key={r.id} className="text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <ChevronRight className="w-3 h-3 text-gray-600" />
+                      <span className="text-xs font-medium text-neon-cyan">{r.fromId === currentUserId ? 'You' : r.fromName}</span>
+                      <span className="text-[10px] text-gray-400">{new Date(r.createdAt).toLocaleTimeString()}</span>
+                    </div>
+                    <p className="text-sm text-gray-300 pl-4">{r.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Composer */}
+      <div className="mt-2 space-y-1.5">
+        {replyTo && (
+          <div className="flex items-center gap-1.5 text-[11px] text-neon-cyan">
+            <CornerDownRight className="w-3 h-3" /> Replying in thread
+            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white">cancel</button>
+          </div>
+        )}
+        {(attachName || attachUrl) && (
+          <div className="flex items-center gap-1.5 text-[11px] text-amber-300">
+            <Paperclip className="w-3 h-3" /> attachment armed
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+            placeholder={replyTo ? 'Reply…' : 'Message…'}
+            className="input-lattice flex-1 text-sm"
+          />
+          <button onClick={onSend} disabled={busy === 'dm-send' || !draft.trim()} className="btn-neon disabled:opacity-50" aria-label="send direct message">
+            {busy === 'dm-send' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+        <details className="text-[11px] text-gray-400">
+          <summary className="cursor-pointer hover:text-gray-300">+ attach file link</summary>
+          <div className="flex gap-1.5 mt-1">
+            <input value={attachName} onChange={(e) => setAttachName(e.target.value)} placeholder="file name" className="input-lattice flex-1 text-xs" />
+            <input value={attachUrl} onChange={(e) => setAttachUrl(e.target.value)} placeholder="url" className="input-lattice flex-1 text-xs" />
+          </div>
+        </details>
+      </div>
     </div>
   );
 }

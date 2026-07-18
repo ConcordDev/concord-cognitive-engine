@@ -1,13 +1,29 @@
 'use client';
 
 /**
- * AlertSubscriptions — create / list / remove forecast alert subscriptions and
- * run a live check against a freshly composed forecast. A subscription trips
- * when a predicted event / drift / weather kind clears its confidence floor.
+ * AlertSubscriptions — create / list / remove forecast alert subscriptions.
+ * A subscription trips when a predicted event / drift / weather kind clears
+ * its confidence floor.
+ *
+ * Two delivery paths, both honest about what they actually are:
+ *  - LIVE: the forecast-alert-sweep heartbeat (server/lib/world-forecast.js)
+ *    pushes a `forecast:alert-triggered` socket event to this user's room
+ *    the moment a fresh forecast trips one of their subscriptions, ~5min
+ *    cadence. That only reaches a tab that is currently open and connected —
+ *    it is NOT an OS-level push/desktop notification (this codebase has no
+ *    service-worker Web Push pipeline), so it is labeled "while this tab is
+ *    open" rather than implied to work when the app is closed.
+ *  - MANUAL: "Check against fresh forecast" calls checkAlerts directly — the
+ *    original path, kept exactly as-is as the fallback for alerts that
+ *    tripped while this tab was closed or disconnected (checkAlerts still
+ *    evaluates + stamps `last_fired_at` server-side either way).
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { Radio, BellRing } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useSocket } from '@/hooks/useSocket';
+import { useUIStore } from '@/store/ui';
 
 type AlertKind = 'severe_event' | 'drift' | 'weather' | 'any';
 
@@ -38,6 +54,26 @@ interface TriggeredAlert {
   hits: AlertHit[];
 }
 
+interface LiveFiredEntry {
+  worldId: string;
+  triggered: TriggeredAlert[];
+  receivedAt: number;
+}
+
+interface AlertTriggeredPayload {
+  userId?: string;
+  worldId?: string;
+  triggered?: TriggeredAlert[];
+  forecastComposedAt?: number | null;
+}
+
+function summarizeHit(h: AlertHit): string {
+  if (h.type === 'event') return `${h.summary ?? 'Event'} (${((h.confidence ?? 0) * 100).toFixed(0)}%)`;
+  if (h.type === 'drift') return `Drift: ${h.driftKind ?? 'unknown'} · ${h.severity ?? ''}`;
+  if (h.type === 'weather') return `Weather: ${h.weatherKind ?? 'unknown'} (${((h.confidence ?? 0) * 100).toFixed(0)}%)`;
+  return h.type;
+}
+
 const KINDS: Array<{ value: AlertKind; label: string }> = [
   { value: 'severe_event', label: 'Severe event' },
   { value: 'drift', label: 'Drift (high/critical)' },
@@ -53,6 +89,9 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
   const [weatherKinds, setWeatherKinds] = useState('');
   const [busy, setBusy] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [liveFired, setLiveFired] = useState<LiveFiredEntry[]>([]);
+  const { on, off, isConnected } = useSocket({ autoConnect: true });
+  const addToast = useUIStore((s) => s.addToast);
 
   const loadSubs = useCallback(async () => {
     const r = await lensRun<{ ok: boolean; subscriptions: Subscription[] }>(
@@ -66,6 +105,34 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
   }, [worldId]);
 
   useEffect(() => { void loadSubs(); }, [loadSubs]);
+
+  // Live delivery: the forecast-alert-sweep heartbeat pushes this event to
+  // `user:<id>` the moment a fresh forecast trips a subscription. Only fires
+  // while this tab is connected — see the module doc comment above. Scoped
+  // to the world currently being viewed; a trigger for a different world
+  // this user is also subscribed to is real but not shown in this view.
+  useEffect(() => {
+    const handleTriggered = (payload: unknown) => {
+      const p = payload as AlertTriggeredPayload;
+      const trig = p?.triggered;
+      if (!Array.isArray(trig) || !trig.length || p.worldId !== worldId) return;
+      setLiveFired((prev) => [
+        { worldId: p.worldId as string, triggered: trig, receivedAt: Date.now() },
+        ...prev,
+      ].slice(0, 5));
+      setTriggered(trig);
+      setChecked(true);
+      const first = trig[0]?.hits?.[0];
+      addToast({
+        type: 'info',
+        message: first ? `Forecast alert: ${summarizeHit(first)}` : 'A forecast alert subscription tripped.',
+        duration: 10000,
+      });
+      void loadSubs();
+    };
+    on('forecast:alert-triggered', handleTriggered);
+    return () => off('forecast:alert-triggered', handleTriggered);
+  }, [on, off, worldId, loadSubs, addToast]);
 
   const create = async () => {
     setBusy(true);
@@ -154,6 +221,31 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
         </button>
       </div>
 
+      {/* Honest live-vs-manual delivery labeling */}
+      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+        <Radio className={isConnected ? 'w-3 h-3 text-emerald-400' : 'w-3 h-3 text-zinc-600'} />
+        <span>
+          {isConnected
+            ? 'Live alerts — while this tab is open, a tripped subscription notifies you within a few minutes of the sweep.'
+            : 'Live delivery is offline right now — subscriptions still evaluate and fire on the server, but only "Check against fresh forecast" below will surface them until this tab reconnects.'}
+        </span>
+      </div>
+
+      {liveFired.length > 0 && (
+        <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/30 p-3 space-y-1">
+          <p className="text-[10px] uppercase tracking-wide text-emerald-400 font-semibold flex items-center gap-1">
+            <Radio className="w-3 h-3" /> Live — delivered just now
+          </p>
+          {liveFired.map((f) => (
+            <p key={f.receivedAt} className="text-xs text-emerald-200">
+              <BellRing className="inline w-3 h-3 mr-1" />
+              {f.triggered.length} subscription{f.triggered.length === 1 ? '' : 's'} tripped
+              {f.triggered[0]?.hits?.[0] ? ` — ${summarizeHit(f.triggered[0].hits[0])}` : ''}
+            </p>
+          ))}
+        </div>
+      )}
+
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
@@ -172,12 +264,12 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
         </div>
         {subs.length > 0 && (
           <p className="mb-2 text-[10px] text-zinc-500">
-            Subscriptions are evaluated on demand — click &quot;Check against fresh forecast&quot; (or press <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 font-mono">7</kbd> then check) to see what trips. There is no background push yet.
+            Subscriptions deliver live to this tab (~5min sweep cadence) while connected. Use &quot;Check against fresh forecast&quot; (or press <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 font-mono">7</kbd> then check) any time for an immediate read, or to catch alerts that fired while this tab was closed.
           </p>
         )}
         {subs.length === 0 ? (
           <p className="py-6 text-center text-xs italic text-zinc-400">
-            No subscriptions yet — add one above, then use &quot;Check against fresh forecast&quot; to see whether it trips. Checks are on demand, not pushed automatically.
+            No subscriptions yet — add one above. It will then be checked automatically (~5min while this tab is open) and stay available for an on-demand check any time via &quot;Check against fresh forecast&quot;.
           </p>
         ) : (
           <ul className="space-y-1.5">
@@ -219,9 +311,7 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
                     <ul className="mt-1.5 space-y-1 border-l-2 border-amber-500/50 pl-2">
                       {trip.hits.map((h, i) => (
                         <li key={i} className="text-[11px] text-amber-200">
-                          {h.type === 'event' && `${h.summary} (${((h.confidence ?? 0) * 100).toFixed(0)}%)`}
-                          {h.type === 'drift' && `Drift: ${h.driftKind} · ${h.severity}`}
-                          {h.type === 'weather' && `Weather: ${h.weatherKind} (${((h.confidence ?? 0) * 100).toFixed(0)}%)`}
+                          {summarizeHit(h)}
                         </li>
                       ))}
                     </ul>

@@ -102,13 +102,16 @@ describe("media-dtu", () => {
       assert.equal(result.mediaDTU.stream.viewerCount, 0);
     });
 
-    it("generates waveform for audio type", () => {
+    it("honestly reports no server-side waveform for audio type (server cannot decode compressed audio)", () => {
+      // Was: asserted a fabricated 64-point array (Math.sin + Math.random,
+      // no relationship to real audio). The server has no audio decoder, so
+      // the honest value is `null` — real peaks are computed client-side
+      // from the actual decoded samples (see daily/voice lens upload paths).
       const result = createTestMedia({
         mediaType: "audio",
         mimeType: "audio/mpeg",
       });
-      assert.ok(Array.isArray(result.mediaDTU.waveform));
-      assert.equal(result.mediaDTU.waveform.length, 64);
+      assert.equal(result.mediaDTU.waveform, null);
     });
 
     it("returns error for missing authorId", () => {

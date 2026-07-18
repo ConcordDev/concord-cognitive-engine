@@ -2,6 +2,8 @@
 // Domain actions for the productivity lens — Todoist + Things shape.
 // 4 macros over task / project / focus / daily summary.
 
+import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
+
 export default function registerProductivityActions(registerLensAction) {
   /**
    * taskCreate — append a task to the artifact tasks list.
@@ -728,6 +730,43 @@ export default function registerProductivityActions(registerLensAction) {
     if (!(s.reminders instanceof Map)) s.reminders = new Map();
     return s.reminders;
   }
+
+  // Per-user realtime emit — same shape as domains/collab.js#emitToUser and
+  // domains/message.js#emitToUserRoom: push to the `user:${userId}` room every
+  // authenticated socket auto-joins on connect (server.js:8535). Best-effort —
+  // if the user has no connected socket (offline / tab closed), this is a
+  // silent no-op. That is the correct, honest behavior of a realtime-only
+  // delivery channel (see the productivity-reminder-sweep heartbeat below for
+  // why this project does NOT claim OS-level push-notification delivery).
+  function emitToUser(userId, name, payload) {
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`user:${userId}`).emit(name, { userId, ...payload, ts: Date.now() });
+    } catch (_e) { /* best effort — client falls back to the manual due-check */ }
+  }
+
+  // Shared due-computation + fired-marking so the manual `reminders-due`
+  // macro and the background sweep heartbeat use IDENTICAL semantics — one
+  // implementation, two callers, never duplicated.
+  function computeDueReminders(list, nowIso) {
+    if (!Array.isArray(list)) return [];
+    return list.filter((r) => {
+      try {
+        return !!r && r.fired !== true && r.kind === "time"
+          && typeof r.remindAt === "string" && r.remindAt.slice(0, 16) <= nowIso;
+      } catch (_e) { return false; }
+    });
+  }
+  function markRemindersFired(map, userId, ids) {
+    const idSet = new Set(ids);
+    const arr = map.get(userId) || [];
+    let changed = 0;
+    for (const r of arr) {
+      if (r && idSet.has(r.id) && r.fired !== true) { r.fired = true; changed += 1; }
+    }
+    return changed;
+  }
+
   registerLensAction("productivity", "reminder-add", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const map = getRemMap();
@@ -764,14 +803,10 @@ export default function registerProductivityActions(registerLensAction) {
     const map = getRemMap();
     const userId = pdAid(ctx);
     const nowIso = (params.now ? String(params.now) : new Date().toISOString()).slice(0, 16);
-    const due = (map.get(userId) || [])
-      .filter((r) => !r.fired && r.kind === "time" && String(r.remindAt).slice(0, 16) <= nowIso)
+    const due = computeDueReminders(map.get(userId) || [], nowIso)
       .map((r) => ({ ...r, task: r.taskId ? (findTask(s, userId, r.taskId)?.content || null) : null }));
     if (params.markFired === true) {
-      for (const d of due) {
-        const r = (map.get(userId) || []).find((x) => x.id === d.id);
-        if (r) r.fired = true;
-      }
+      markRemindersFired(map, userId, due.map((d) => d.id));
       saveProdState();
     }
     return { ok: true, result: { due, count: due.length } };
@@ -785,6 +820,73 @@ export default function registerProductivityActions(registerLensAction) {
     arr.splice(i, 1);
     saveProdState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Reminder live-delivery sweep (Wave 4) ────────────────────────────
+  // Honest scope: this project has no service-worker Web Push pipeline (no
+  // VAPID keys, no push-subscription store), so genuinely delivering an
+  // OS-level desktop/push notification to a browser tab that isn't open
+  // cannot be done without fabricating a capability this codebase doesn't
+  // have — see CLAUDE.md's "honest by construction" invariant. What CAN be
+  // delivered honestly, right now, is REAL-TIME delivery to a client that IS
+  // currently connected via the existing socket bus: the moment a reminder
+  // becomes due, every socket the user currently has open receives it
+  // instantly, instead of requiring a manual "Check what's due now" click.
+  // A user with no connected socket still gets their reminder correctly
+  // marked fired (identical semantics to reminders-due's existing markFired
+  // path, via the shared computeDueReminders/markRemindersFired helpers
+  // above) — there's just honestly no live push for them. That is correct
+  // behavior for a realtime-only channel, not a bug to work around.
+  //
+  // Cadence: frequency 2 on the 15s governor tick (server.js) = ~30s.
+  // Reminders are minute-granularity (remindAt truncates to "YYYY-MM-
+  // DDTHH:MM"), so 30s keeps delivery well inside that granularity while
+  // staying a cheap in-memory Map scan — no DB, no per-tick allocation
+  // beyond the (normally empty) due subset. Kill-switch:
+  // CONCORD_PRODUCTIVITY_REMINDER_SWEEP=0.
+  registerHeartbeat("productivity-reminder-sweep", {
+    frequency: 2,
+    scope: "global",
+    handler: () => {
+      try {
+        if (process.env.CONCORD_PRODUCTIVITY_REMINDER_SWEEP === "0") return { ok: true, skipped: "disabled" };
+        const map = getRemMap();
+        if (!(map instanceof Map)) return { ok: true, skipped: "no_reminders" };
+        const s = getProdState();
+        if (!s) return { ok: true, skipped: "no_state" };
+        const nowIso = new Date().toISOString().slice(0, 16);
+        let fired = 0;
+        let delivered = 0;
+        for (const [userId, list] of map) {
+          try {
+            const due = computeDueReminders(list, nowIso);
+            if (!due.length) continue;
+            const changed = markRemindersFired(map, userId, due.map((d) => d.id));
+            if (changed === 0) continue;
+            fired += changed;
+            for (const r of due) {
+              try {
+                emitToUser(userId, "productivity:reminder-fired", {
+                  reminder: {
+                    id: r.id,
+                    taskId: r.taskId || null,
+                    task: r.taskId ? (findTask(s, userId, r.taskId)?.content || null) : null,
+                    remindAt: r.remindAt,
+                    note: r.note || "",
+                    kind: r.kind,
+                  },
+                });
+                delivered += 1;
+              } catch (_e) { /* one reminder's emit failing must not block the rest */ }
+            }
+          } catch (_e) { /* one user's malformed reminder list must not abort the sweep */ }
+        }
+        if (fired > 0) saveProdState();
+        return { ok: true, fired, delivered };
+      } catch (err) {
+        return { ok: false, reason: "sweep_failed", error: String(err?.message || err) };
+      }
+    },
   });
 
   // ── Saved smart filters ─────────────────────────────────────────────

@@ -71,6 +71,129 @@ describe("law.uspto-patent-search (USPTO PatentsView)", () => {
     await call("uspto-patent-search", ctxA, { query: "Apple", field: "assignee" });
     assert.match(capturedUrl, /assignee_organization/);
   });
+
+  // Combined multi-field boolean query builder (closes
+  // docs/lens-specs/law-capability-map.md's "Combined multi-field boolean
+  // query builder" gap — was previously one `field` at a time, no combinator).
+  describe("multi-field boolean query builder (params.filters)", () => {
+    it("single-field query shape is BYTE-IDENTICAL to pre-change behavior (no filters passed)", async () => {
+      let capturedUrl = "";
+      globalThis.fetch = async (url) => {
+        capturedUrl = url;
+        return { ok: true, json: async () => ({ count: 0, patents: [] }) };
+      };
+      await call("uspto-patent-search", ctxA, { query: "quantum computing", field: "title", limit: 25 });
+      const decodedQ = decodeURIComponent(capturedUrl.match(/[?&]q=([^&]+)/)[1]);
+      assert.equal(decodedQ, JSON.stringify({ _text_phrase: { patent_title: "quantum computing" } }));
+    });
+
+    it("two filters combined with AND (default combinator) build a PatentsView _and clause", async () => {
+      let capturedUrl = "";
+      globalThis.fetch = async (url) => {
+        capturedUrl = url;
+        return { ok: true, json: async () => ({ count: 0, patents: [] }) };
+      };
+      const r = await call("uspto-patent-search", ctxA, {
+        filters: [
+          { field: "title", value: "quantum computing" },
+          { field: "assignee", value: "IBM" },
+        ],
+      });
+      assert.equal(r.ok, true);
+      const decodedQ = decodeURIComponent(capturedUrl.match(/[?&]q=([^&]+)/)[1]);
+      assert.equal(
+        decodedQ,
+        JSON.stringify({
+          _and: [
+            { _text_phrase: { patent_title: "quantum computing" } },
+            { _text_phrase: { assignee_organization: "IBM" } },
+          ],
+        })
+      );
+      assert.equal(r.result.field, "combined");
+      assert.equal(r.result.combinator, "and");
+      assert.deepEqual(r.result.filters, [
+        { field: "title", value: "quantum computing" },
+        { field: "assignee", value: "IBM" },
+      ]);
+      assert.equal(r.result.query, "quantum computing AND IBM");
+    });
+
+    it("filters combined with OR build a PatentsView _or clause", async () => {
+      let capturedUrl = "";
+      globalThis.fetch = async (url) => {
+        capturedUrl = url;
+        return { ok: true, json: async () => ({ count: 0, patents: [] }) };
+      };
+      const r = await call("uspto-patent-search", ctxA, {
+        combinator: "or",
+        filters: [
+          { field: "inventor", value: "Doe" },
+          { field: "assignee", value: "Acme Corp" },
+        ],
+      });
+      assert.equal(r.ok, true);
+      const decodedQ = decodeURIComponent(capturedUrl.match(/[?&]q=([^&]+)/)[1]);
+      assert.equal(
+        decodedQ,
+        JSON.stringify({
+          _or: [
+            { _text_phrase: { inventor_name_last: "Doe" } },
+            { _text_phrase: { assignee_organization: "Acme Corp" } },
+          ],
+        })
+      );
+      assert.equal(r.result.combinator, "or");
+      assert.equal(r.result.query, "Doe OR Acme Corp");
+    });
+
+    it("drops invalid filter rows (bad field / empty value) and keeps the valid ones", async () => {
+      let capturedUrl = "";
+      globalThis.fetch = async (url) => {
+        capturedUrl = url;
+        return { ok: true, json: async () => ({ count: 0, patents: [] }) };
+      };
+      const r = await call("uspto-patent-search", ctxA, {
+        filters: [
+          { field: "bogus-field", value: "should be dropped" },
+          { field: "title", value: "   " }, // whitespace-only, dropped
+          { field: "abstract", value: "neural interface" },
+        ],
+      });
+      assert.equal(r.ok, true);
+      assert.deepEqual(r.result.filters, [{ field: "abstract", value: "neural interface" }]);
+      const decodedQ = decodeURIComponent(capturedUrl.match(/[?&]q=([^&]+)/)[1]);
+      assert.equal(decodedQ, JSON.stringify({ _and: [{ _text_phrase: { patent_abstract: "neural interface" } }] }));
+    });
+
+    it("honest empty-filters fallback: an all-invalid/empty filters array behaves exactly as if filters were omitted", async () => {
+      // No usable filters + no top-level query at all → same "query required" honest failure as before.
+      const rejected = await call("uspto-patent-search", ctxA, { filters: [] });
+      assert.equal(rejected.ok, false);
+      assert.match(rejected.error, /query required/);
+
+      const rejected2 = await call("uspto-patent-search", ctxA, {
+        filters: [{ field: "not-a-real-field", value: "x" }, { field: "title", value: "" }],
+      });
+      assert.equal(rejected2.ok, false);
+      assert.match(rejected2.error, /query required/);
+
+      // No usable filters, but a top-level query/field IS present → falls back
+      // to the ordinary single-field path, byte-identical shape.
+      let capturedUrl = "";
+      globalThis.fetch = async (url) => {
+        capturedUrl = url;
+        return { ok: true, json: async () => ({ count: 0, patents: [] }) };
+      };
+      const r = await call("uspto-patent-search", ctxA, { filters: [], query: "fallback term", field: "inventor" });
+      assert.equal(r.ok, true);
+      assert.equal(r.result.field, "inventor");
+      assert.equal(r.result.filters, undefined);
+      assert.equal(r.result.combinator, undefined);
+      const decodedQ = decodeURIComponent(capturedUrl.match(/[?&]q=([^&]+)/)[1]);
+      assert.equal(decodedQ, JSON.stringify({ _text_phrase: { inventor_name_last: "fallback term" } }));
+    });
+  });
 });
 
 describe("law.courtlistener-search (CourtListener)", () => {

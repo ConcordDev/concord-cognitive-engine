@@ -7,6 +7,10 @@
 // trefle.io/users/sign_up.
 
 import { callVision, callVisionUrl } from "../lib/vision-inference.js";
+import {
+  listPermitReferences, listPermitReferenceJurisdictions, listPermitReferenceCategories,
+  LANDSCAPING_PERMIT_DISCLAIMER,
+} from "../lib/landscaping-code-reference.js";
 
 const TREFLE_BASE = "https://trefle.io/api/v1";
 
@@ -58,6 +62,41 @@ export default function registerLandscapingActions(registerLensAction) {
     const prices = { mulch: 35, gravel: 45, topsoil: 30, compost: 40, sand: 35, pavers: 0 };
     const costPerYard = prices[material] || 35;
     return { ok: true, result: { material, squareFootage: sqft, depthInches, cubicYards, bags: Math.ceil(cubicYards * 13.5), estimatedCost: Math.round(cubicYards * costPerYard), deliveryNote: cubicYards > 3 ? "Bulk delivery recommended" : "Bagged purchase sufficient" } };
+  });
+
+  // ─── Permit / zoning quick-reference library (Track D, copyright-aware) ─
+  // Closes the "Codes" deferred-permit gap (docs/lens-specs/landscaping-
+  // capability-map.md): unlike plumbing (one national model-code family),
+  // there's no single national source for landscaping/zoning permit rules —
+  // municipal ordinances are public record but vary by jurisdiction. This is
+  // a SMALL representative sample of named example jurisdictions
+  // (content/landscaping-code-reference.json), each entry a paraphrased
+  // summary citing the real, named ordinance/permit program — never
+  // verbatim ordinance text, and never a fabricated section number the
+  // author isn't confident of (those are flagged `citationConfidence:
+  // "general-pattern"` with `citation: null` instead). Every entry carries
+  // its own "confirm with your jurisdiction" disclaimer; the macro also
+  // returns a library-wide disclaimer. params.jurisdiction and/or
+  // params.category optionally filter the result set.
+  registerLensAction("landscaping", "permit-reference", (_ctx, _a, params = {}) => {
+    try {
+      const jurisdiction = String(params.jurisdiction || "").trim();
+      const category = String(params.category || "").trim();
+      const all = listPermitReferences();
+      let entries = all;
+      if (jurisdiction) entries = entries.filter((e) => e.jurisdiction === jurisdiction);
+      if (category) entries = entries.filter((e) => e.category === category);
+      return {
+        ok: true,
+        result: {
+          entries,
+          jurisdictions: listPermitReferenceJurisdictions(),
+          categories: listPermitReferenceCategories(),
+          total: all.length,
+          disclaimer: LANDSCAPING_PERMIT_DISCLAIMER,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   /**
@@ -1115,6 +1154,226 @@ export default function registerLandscapingActions(registerLensAction) {
       };
     });
     return { ok: true, result: { clients: enriched, count: enriched.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ─── Feature 12 — Job inspections ────────────────────────────────────
+  // Closes the "Inspections" gap (docs/lens-specs/landscaping-capability-
+  // map.md — "no macro, no table — nothing in the domain models a
+  // walkthrough/inspection record"). Modeled directly on masonry's
+  // inspection-add/inspection-list/inspection-update
+  // (server/domains/masonry.js), the precedent this gap's disposition row
+  // named: numbered records, a REQUIRED real job link (unlike job-schedule's
+  // OPTIONAL bedId, an inspection with no job reference is a genuinely
+  // free-floating record, so jobId is required here — mirroring masonry's
+  // own departure from change-order-create's soft `jobId || "general"`
+  // default), and a create/list/update-result shape. jobId references a
+  // real job-schedule record's own `id` (not free text) so the frontend can
+  // offer a real job picker sourced from job-list instead of a typed field.
+  // jobTitle/jobFound are re-derived live on every list call against the
+  // current job store, never fabricated or frozen at creation time — an
+  // inspection against a since-renamed or since-deleted job displays that
+  // honestly (jobFound:false) instead of silently losing its link.
+  function lsInspections(s, userId) {
+    if (!(s.inspections instanceof Map)) s.inspections = new Map();
+    if (!s.inspections.has(userId)) s.inspections.set(userId, []);
+    return s.inspections.get(userId);
+  }
+  // Real landscaping-trade inspection categories — a final acceptance
+  // walkthrough, the irrigation-specific check (distinct from the
+  // `irrigationCalc` sizing calculator above — this is a field QA pass on
+  // an installed system), an establishment/health check on new plantings
+  // (nursery-stock survival is the standard landscape-industry warranty
+  // trigger), a hardscape + drainage inspection (grading/slope, paver base
+  // compaction — the landscape analogue of masonry's footing/foundation
+  // check), a seasonal maintenance audit, a warranty/punch-list review
+  // close-out, an erosion/sediment-control check (silt fencing, slope
+  // stabilization — a common municipal/AHJ requirement on graded sites),
+  // and a pre-installation site review before work begins.
+  const INSPECTION_TYPES = [
+    "final_walkthrough",
+    "irrigation_system_check",
+    "plant_health_establishment",
+    "hardscape_drainage",
+    "seasonal_maintenance_audit",
+    "warranty_punch_list_review",
+    "erosion_sediment_control",
+    "pre_installation_site_review",
+  ];
+  const INSPECTION_RESULTS = ["pending", "pass", "fail"];
+
+  registerLensAction("landscaping", "inspection-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const jobId = lsClean(params.jobId, 60);
+    if (!jobId) return { ok: false, error: "jobId required — inspections must be scheduled against a job" };
+    const inspectionType = lsClean(params.inspectionType, 40).toLowerCase();
+    if (!INSPECTION_TYPES.includes(inspectionType)) {
+      return { ok: false, error: `invalid inspectionType; must be one of ${INSPECTION_TYPES.join(", ")}` };
+    }
+    const inspector = lsClean(params.inspector, 120);
+    if (!inspector) return { ok: false, error: "inspector required" };
+    const scheduledDate = lsClean(params.scheduledDate, 10);
+    if (!scheduledDate) return { ok: false, error: "scheduledDate required" };
+    const job = lsJobs(s, userId).find((j) => j.id === jobId);
+    const list = lsInspections(s, userId);
+    const num = `INSP-${String(list.length + 1).padStart(3, "0")}`;
+    const rec = {
+      id: lsId("insp"), number: num, jobId,
+      jobTitle: job ? job.title : null, jobFound: !!job,
+      inspectionType, inspector, scheduledDate,
+      result: "pending", deficiencyNotes: null, reInspectionDate: null,
+      notes: lsClean(params.notes, 500) || "",
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), completedAt: null,
+    };
+    list.unshift(rec);
+    saveLand();
+    return { ok: true, result: { inspection: rec } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("landscaping", "inspection-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    let list = lsInspections(s, userId);
+    if (params.jobId) list = list.filter((i) => i.jobId === params.jobId);
+    // Re-derive jobFound/jobTitle live against the current job store so a
+    // job renamed or deleted after the inspection was scheduled is
+    // reflected honestly, not frozen at creation time.
+    const jobsById = new Map(lsJobs(s, userId).map((j) => [j.id, j]));
+    const enriched = list.map((i) => {
+      const job = jobsById.get(i.jobId);
+      return { ...i, jobTitle: job ? job.title : null, jobFound: !!job };
+    });
+    const passCount = enriched.filter((i) => i.result === "pass").length;
+    const failCount = enriched.filter((i) => i.result === "fail").length;
+    const pendingCount = enriched.filter((i) => i.result === "pending").length;
+    return { ok: true, result: { inspections: enriched, count: enriched.length, passCount, failCount, pendingCount } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("landscaping", "inspection-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = lsInspections(s, lsActor(ctx));
+    const insp = list.find((i) => i.id === params.id);
+    if (!insp) return { ok: false, error: "inspection not found" };
+    const result = INSPECTION_RESULTS.includes(params.result) ? params.result : null;
+    if (!result) return { ok: false, error: `result required; must be one of ${INSPECTION_RESULTS.join(", ")}` };
+    if (result === "fail") {
+      const deficiencyNotes = lsClean(params.deficiencyNotes, 1000);
+      if (!deficiencyNotes) return { ok: false, error: "deficiencyNotes required when result is fail" };
+      insp.deficiencyNotes = deficiencyNotes;
+      insp.reInspectionDate = lsClean(params.reInspectionDate, 10) || null;
+    } else if (result === "pass") {
+      insp.deficiencyNotes = null;
+      insp.reInspectionDate = null;
+    } else {
+      // back to pending — keep any prior deficiency notes visible, but
+      // allow the caller to update them (e.g. re-inspection notes).
+      if (params.deficiencyNotes != null) insp.deficiencyNotes = lsClean(params.deficiencyNotes, 1000) || null;
+      if (params.reInspectionDate != null) insp.reInspectionDate = lsClean(params.reInspectionDate, 10) || null;
+    }
+    insp.result = result;
+    insp.updatedAt = new Date().toISOString();
+    insp.completedAt = result === "pending" ? null : new Date().toISOString();
+    saveLand();
+    return { ok: true, result: { inspection: insp } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ─── Feature 13 — Crew certifications ────────────────────────────────
+  // Closes the "Certs" gap (docs/lens-specs/landscaping-capability-map.md
+  // — "TRADE_CERTS was a static UI dropdown with zero backing storage").
+  // Shape decision, checked against both named precedents before writing
+  // anything:
+  //   - Expiry semantics (READ-TIME-DERIVED, no background sweep) follow
+  //     plumbing's techCertAdd/techCertList/techCertRemove
+  //     (server/domains/plumbing.js) — nothing in this domain currently
+  //     gates a downstream action on cert status (no dispatch/hiring/job-
+  //     assignment check reads it, unlike hr.js's i9-* family, which
+  //     persists status because an expired I-9 blocks employment actions).
+  //     If a future landscaping feature needs to block crew assignment on
+  //     an expired cert, that's the trigger to move to hr.js's
+  //     sweep-and-persist shape — not before.
+  //   - Record SHAPE (a flat per-user list keyed by free-text
+  //     `crewMemberName`, roster derived by grouping) follows masonry's
+  //     cert-add/cert-list/cert-remove instead, because — like masonry —
+  //     this domain has no separate crew/tech entity: job-schedule's
+  //     `crew` field is a freeform assignee string, not a foreign key into
+  //     a roster table, so a per-tech-entity record (plumbing's shape,
+  //     where certifications live inside a `tech` object) has nowhere real
+  //     to attach. Plumbing's per-tech attachment only works because
+  //     plumbing already has a persisted `techs` roster; landscaping does
+  //     not, and inventing one solely to hang certs off it would be new,
+  //     unasked-for scope this gap didn't call for.
+  function lsCerts(s, userId) {
+    if (!(s.certifications instanceof Map)) s.certifications = new Map();
+    if (!s.certifications.has(userId)) s.certifications.set(userId, []);
+    return s.certifications.get(userId);
+  }
+  function lsCertExpiryStatus(expiryDate) {
+    if (!expiryDate) return "no_expiry";
+    const today = new Date().toISOString().slice(0, 10);
+    if (expiryDate < today) return "expired";
+    const daysUntil = Math.round((new Date(`${expiryDate}T00:00:00Z`) - new Date(`${today}T00:00:00Z`)) / 86400000);
+    return daysUntil <= 30 ? "expiring_soon" : "valid";
+  }
+  function lsWithCertStatus(c) {
+    const expiryStatus = lsCertExpiryStatus(c.expiryDate);
+    return { ...c, expiryStatus, isExpired: expiryStatus === "expired" };
+  }
+
+  registerLensAction("landscaping", "cert-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const crewMemberName = lsClean(params.crewMemberName, 120);
+    if (!crewMemberName) return { ok: false, error: "crewMemberName required" };
+    const certType = lsClean(params.certType, 160);
+    if (!certType) return { ok: false, error: "certType required" };
+    const issuingBody = lsClean(params.issuingBody, 120);
+    if (!issuingBody) return { ok: false, error: "issuingBody required" };
+    const rec = {
+      id: lsId("cert"), crewMemberName, certType, issuingBody,
+      licenseNumber: lsClean(params.licenseNumber, 60) || "",
+      issueDate: lsClean(params.issueDate, 10) || null,
+      expiryDate: lsClean(params.expiryDate, 10) || null,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    const list = lsCerts(s, userId);
+    list.unshift(rec);
+    saveLand();
+    return { ok: true, result: { certification: lsWithCertStatus(rec) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("landscaping", "cert-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let list = lsCerts(s, lsActor(ctx)).map(lsWithCertStatus);
+    if (params.crewMemberName) {
+      const n = lsClean(params.crewMemberName, 120).toLowerCase();
+      list = list.filter((c) => c.crewMemberName.toLowerCase() === n);
+    }
+    const roster = [...new Set(list.map((c) => c.crewMemberName))].sort();
+    const expiredCount = list.filter((c) => c.expiryStatus === "expired").length;
+    const expiringSoonCount = list.filter((c) => c.expiryStatus === "expiring_soon").length;
+    return { ok: true, result: { certifications: list, count: list.length, roster, expiredCount, expiringSoonCount } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("landscaping", "cert-remove", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = lsCerts(s, lsActor(ctx));
+    const idx = list.findIndex((c) => c.id === params.id);
+    if (idx < 0) return { ok: false, error: "certification not found" };
+    list.splice(idx, 1);
+    saveLand();
+    return { ok: true, result: { deleted: params.id } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 }

@@ -118,7 +118,7 @@ intent under the corrected architecture).
 | Square-style end-of-day register close | FIXED THIS PASS | was silently hollow (see above); now computes over the real book |
 | Business reports surfaced with real output | FIXED THIS PASS | 3 blank + 2 unwired report macros |
 | Commission calculation | ALREADY-REAL (now reachable) | tiered-rate engine in `services.js`, real once fed real sales |
-| Card processing (actual Stripe charge) | GENUINELY MISSING — DATA-SOURCING/ENGINEERING | needs a Stripe Elements/Terminal client-confirmation flow wired to `paymentCapture`'s existing honest-gate note; not a data-sourcing problem (Stripe is already integrated elsewhere in the codebase for retail/healthcare), so this is an ENGINEERING gap, deferred out of this pass's scope (payments infra, not this lens's UI) |
+| Card processing (actual Stripe charge) | ~~GENUINELY MISSING — ENGINEERING~~ **CLOSED (2026-07-17, `087e40d8`)** | Clones retail's proven PaymentIntent pattern. `bookingCreatePaymentIntent` creates a real Stripe PaymentIntent (env-gated on `STRIPE_SECRET_KEY`, honest `stripe_not_configured` fallback to the existing pay-on-site path) returning a `client_secret` for the shared Stripe Elements form; `bookingConfirmPayment` + the `payment_intent.succeeded` webhook branch flip a booking to paid ONLY when a server-side GET confirms `pi.status === "succeeded"`, with an anti-tamper metadata match + idempotent double-confirm. `paymentCapture` quick-path stays honest (never fabricates a charge). 16 tests incl. every money-path negative. |
 
 ## Verification
 

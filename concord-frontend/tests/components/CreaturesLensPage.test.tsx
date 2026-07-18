@@ -9,6 +9,14 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
 
+// The page registers real lens-scoped keyboard shortcuts via useLensCommand,
+// which requires a KeyboardProvider ancestor (same requirement any consumer
+// of the shell's command palette has outside the full AppShell tree). This
+// four-state test isolates page rendering only — the shortcut behavior
+// itself is covered by tests/components/CreaturesLensPageShortcuts.test.tsx,
+// which captures the real registered commands instead of no-op'ing them.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
+
 // The page reads world populations via lensRun('creatures','roster'); each test
 // installs its own resolver. The optional emotional-weather fetch is mocked to
 // resolve empty so it never interferes with the roster states.

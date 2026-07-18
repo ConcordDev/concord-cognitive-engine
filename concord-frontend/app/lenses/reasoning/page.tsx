@@ -28,7 +28,7 @@ import {
   Target, Scale, Layers, Zap, RefreshCw,
   Download, X, Trash2, Flag,
   CircleDot, ArrowUpRight, MessageSquare, Hash,
-  Loader2, Play
+  Loader2, Play, HelpCircle
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { ds } from '@/lib/design-system';
@@ -139,6 +139,20 @@ interface Chain {
   createdAt?: string;
 }
 
+// One critique surfaced by the backend `counterArgumentGen` macro
+// (server/domains/reasoning.js). `attack` names which real signal produced
+// the angle — a fixed set of rule-based attack types, not free-form LLM
+// prose. `source`/`mapId`/`nodeId`/`schemeName` are only present on the
+// map-sourced angle types (weak-link, scheme-critical-question).
+interface CounterAngle {
+  attack: string;
+  detail: string;
+  source?: string;
+  mapId?: string;
+  nodeId?: string;
+  schemeName?: string;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
@@ -230,6 +244,21 @@ const FALLACY_NAME_TO_TYPE: Record<string, FallacyType> = {
   'Appeal to Emotion': 'red_herring',
   'Bandwagon': 'red_herring',
 };
+
+// Visual treatment per `counterArgumentGen` attack type — mirrors the
+// backend's fixed rule set 1:1 (server/domains/reasoning.js): each type is
+// a distinct, real signal (a contradiction, a fallacy pattern match, a
+// map's real weakest/contested claim, or a scheme's real critical
+// question), never generic "AI finding" chrome.
+const ANGLE_TYPE_CONFIG: Record<string, { label: string; icon: typeof Brain; badge: string; accent: string }> = {
+  'internal-contradiction': { label: 'Contradiction', icon: AlertOctagon, badge: 'bg-red-400/20 text-red-400', accent: 'border-red-400/30' },
+  'unsupported-leap': { label: 'Unsupported Leap', icon: ArrowUpRight, badge: 'bg-yellow-400/20 text-yellow-400', accent: 'border-yellow-400/30' },
+  fallacy: { label: 'Fallacy', icon: AlertTriangle, badge: 'bg-orange-400/20 text-orange-400', accent: 'border-orange-400/30' },
+  'weak-link': { label: 'Weak Link', icon: Link2, badge: 'bg-rose-400/20 text-rose-400', accent: 'border-rose-400/30' },
+  'scheme-critical-question': { label: 'Critical Question', icon: HelpCircle, badge: 'bg-neon-cyan/20 text-neon-cyan', accent: 'border-neon-cyan/30' },
+  'demand-evidence': { label: 'Demand Evidence', icon: Search, badge: 'bg-neon-blue/20 text-neon-blue', accent: 'border-neon-blue/30' },
+};
+const DEFAULT_ANGLE_CONFIG = { label: 'Attack', icon: Target, badge: 'bg-gray-400/20 text-gray-400', accent: 'border-gray-400/30' };
 
 const ARGUMENT_TEMPLATES: TemplateDefinition[] = [
   {
@@ -1030,6 +1059,22 @@ export default function ReasoningLensPage() {
   // documented elsewhere in this codebase as fixed (it wasn't fixed here).
   // Fixed 2026-07 (Wave 3 reasoning-lens audit): real deterministic handlers
   // now exist, and premises/conclusion are drawn from the selected chain.
+  //
+  // Deliberately NOT passing `mapId` here (Wave 4 gap-closure, counterArgumentGen
+  // broadening). `counterArgumentGen` now accepts an optional `mapId` to surface
+  // two more real angles (a persisted map's weakest/contested claim + its
+  // scheme's critical questions — see server/domains/reasoning.js). This page's
+  // own `selectedMapId`/`argumentMaps` state (the "Argument Maps" tab below) is
+  // CLIENT-ONLY: `createArgumentMap` never calls the backend's persistent
+  // `reasoning.map-create` macro, only a generic DTU artifact for export, so its
+  // ids never resolve on the backend. The one place a REAL backend `mapId`
+  // exists is inside `<ArgumentMapStudio />` (a sibling component that already
+  // drives the real map-* macros end-to-end), which does not expose its
+  // selected-map id to this page. Wiring this local `selectedMapId` through
+  // would silently no-op every time and present a fake "map-aware analysis"
+  // affordance — a zero-demo-content violation — so it's left out on purpose.
+  // A real wire-up belongs in a follow-up that lifts ArgumentMapStudio's own
+  // selected-map id up (context/prop), not a mapId picker invented here.
   const handleAnalysisAction = useCallback(async (action: string) => {
     const artifactId = chainArtifacts[0]?.id;
     if (!artifactId) {
@@ -2192,6 +2237,43 @@ export default function ReasoningLensPage() {
               <div className="mt-3 bg-lattice-deep rounded-lg p-4 text-sm">
                 {'message' in analysisResult ? (
                   <p className={ds.textMuted}>{String(analysisResult.message)}</p>
+                ) : Array.isArray(analysisResult.angles) ? (
+                  // counterArgumentGen result — a real findings card list, one
+                  // card per attack angle, badged by which real signal produced
+                  // it (contradiction / fallacy / weak-link / scheme-critical-
+                  // question / demand-evidence). Replaces a raw JSON dump.
+                  <div className="space-y-3">
+                    {(typeof analysisResult.validity === 'string' || typeof analysisResult.recommendation === 'string') && (
+                      <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-lattice-border/50">
+                        {typeof analysisResult.validity === 'string' && (
+                          <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', 'bg-neon-purple/20 text-neon-purple')}>
+                            {analysisResult.validity}
+                          </span>
+                        )}
+                        {typeof analysisResult.recommendation === 'string' && (
+                          <span className="text-xs text-gray-400">{analysisResult.recommendation}</span>
+                        )}
+                      </div>
+                    )}
+                    {(analysisResult.angles as CounterAngle[]).map((angle, i) => {
+                      const cfg = ANGLE_TYPE_CONFIG[angle.attack] || DEFAULT_ANGLE_CONFIG;
+                      const AngleIcon = cfg.icon;
+                      return (
+                        <div key={`${angle.attack}-${i}`} className={cn('rounded-lg border p-3 bg-lattice-surface/50', cfg.accent)}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cfg.badge)}>
+                              <AngleIcon className="w-3 h-3" />
+                              {cfg.label}
+                            </span>
+                            {angle.schemeName && (
+                              <span className="text-xs text-gray-500">{angle.schemeName}</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-300">{angle.detail}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <pre className="whitespace-pre-wrap text-xs text-gray-300 font-mono max-h-48 overflow-y-auto">
                     {JSON.stringify(analysisResult, null, 2)}

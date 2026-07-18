@@ -279,17 +279,17 @@
     "starting_sparks": 4000
   },
   {
-    "id": "witch_nymeria",
-    "name": "Nymeria of the Bog",
+    "id": "witch_maeris",
+    "name": "Maeris of the Bog",
     "title": "Hedge Witch",
     "faction_id": null,
     "world_id": "fantasy",
     "archetype": "mystic",
-    "personality": "Nymeria laughs more than people expect. She does not laugh about the bog.",
+    "personality": "Maeris laughs more than people expect. She does not laugh about the bog.",
     "appearance": "Forties, long dark hair with one streak of bone-white, ragged green dress, copper bracelets.",
     "background": "Lives in the bog. Refuses Thornwood invitations. Treats anyone who finds her.",
     "narrative_context": {
-      "secret": "Nymeria sees through the bog into the lattice-crucible world. The two share underbrush.",
+      "secret": "Maeris sees through the bog into the lattice-crucible world. The two share underbrush.",
       "weaponise_at": "Bring her a lattice fragment; she will teach you to cross."
     },
     "concord_link_resonance": "lattice-crucible:scout_emer_voss",
@@ -659,7 +659,7 @@
     "archetype": "default",
     "personality": "Ten years old. Doesn't speak much. Knows every herb by the leaf.",
     "appearance": "Small, freckled, hooded cape patched with brown wool.",
-    "background": "Found in the bog by Nymeria. Has lived between the witch's hut and the apothecary ever since.",
+    "background": "Found in the bog by Maeris. Has lived between the witch's hut and the apothecary ever since.",
     "narrative_context": {
       "secret": "Robin can see the bog's lattice leakage as a colour.",
       "weaponise_at": "If the player gains trust, Robin guides them through to lattice-crucible."
@@ -1398,7 +1398,7 @@
   },
   {
     "id": "gen_fantasy_0007",
-    "name": "Marn Pyke",
+    "name": "Marn Wrenlow",
     "archetype": "trader",
     "faction_id": "fantasy_goblin_warband_league",
     "level": 4,

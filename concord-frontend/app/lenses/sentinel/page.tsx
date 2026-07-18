@@ -16,7 +16,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shield, GitBranch, Radio, BarChart3, Settings2, Search,
+  Shield, GitBranch, Radio, BarChart3, Settings2, Search, FlaskConical,
   type LucideIcon,
 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -36,8 +36,9 @@ import { SentinelMetrics } from '@/components/sentinel/SentinelMetrics';
 import { SentinelScanConfig } from '@/components/sentinel/SentinelScanConfig';
 import { SentinelIntel } from '@/components/sentinel/SentinelIntel';
 import { SentinelSemantic } from '@/components/sentinel/SentinelSemantic';
+import { SentinelResearchAccess } from '@/components/sentinel/SentinelResearchAccess';
 
-type TabKey = 'shield' | 'triage' | 'monitors' | 'metrics' | 'rules' | 'semantic';
+type TabKey = 'shield' | 'triage' | 'monitors' | 'metrics' | 'rules' | 'semantic' | 'research';
 
 export default function SentinelLensPage() {
   useLensNav('sentinel');
@@ -55,6 +56,7 @@ export default function SentinelLensPage() {
       { id: 'tab-metrics', keys: 'g', description: 'Metrics', category: 'navigation', action: () => setActiveTab('metrics') },
       { id: 'tab-rules', keys: 'r', description: 'Rules', category: 'navigation', action: () => setActiveTab('rules') },
       { id: 'tab-semantic', keys: 'm', description: 'Semantic', category: 'navigation', action: () => setActiveTab('semantic') },
+      { id: 'tab-research', keys: 'a', description: 'Research access', category: 'navigation', action: () => setActiveTab('research') },
     ],
     { lensId: 'sentinel' },
   );
@@ -66,6 +68,7 @@ export default function SentinelLensPage() {
     { key: 'metrics', label: 'Metrics', icon: BarChart3 },
     { key: 'rules', label: 'Rules', icon: Settings2 },
     { key: 'semantic', label: 'Semantic', icon: Search },
+    { key: 'research', label: 'Research', icon: FlaskConical },
   ];
 
   return (
@@ -123,6 +126,7 @@ export default function SentinelLensPage() {
                   <SentinelSemantic />
                 </div>
               )}
+              {activeTab === 'research' && <SentinelResearchAccess onChanged={bump} />}
             </motion.section>
           </AnimatePresence>
         </main>

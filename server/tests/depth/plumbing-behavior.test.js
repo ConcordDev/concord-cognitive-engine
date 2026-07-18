@@ -606,3 +606,221 @@ describe("plumbing — technician certifications (formal license records, distin
     assert.equal(t.certifications.length, 1);
   });
 });
+
+describe("plumbing — municipal/AHJ inspections (dispatch-job-linked)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("plumbing-inspections"); });
+
+  it("inspectionAdd rejects a missing assignmentId (not a free-floating record)", async () => {
+    const r = await lensRun("plumbing", "inspectionAdd", { params: {
+      inspectionType: "rough_in", inspector: "Jane Ruiz", jurisdiction: "City of Springfield", scheduledDate: "2026-08-01",
+    } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /assignmentId_required/);
+  });
+
+  it("inspectionAdd rejects a missing or invalid inspectionType", async () => {
+    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "New bath rough-in" } }, ctx);
+    const assignmentId = a.result.assignment.id;
+    const missing = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId, inspector: "Jane Ruiz", jurisdiction: "City of Springfield", scheduledDate: "2026-08-03",
+    } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /inspectionType_required/);
+    const invalid = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId, inspectionType: "not_a_real_type", inspector: "Jane Ruiz", jurisdiction: "City of Springfield", scheduledDate: "2026-08-03",
+    } }, ctx);
+    assert.equal(invalid.result.ok, false);
+    assert.match(invalid.result.error, /invalid_inspectionType/);
+  });
+
+  it("inspectionAdd rejects missing inspector, jurisdiction, or scheduledDate", async () => {
+    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Water heater install" } }, ctx);
+    const assignmentId = a.result.assignment.id;
+    const noInspector = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId, inspectionType: "water_heater_install", jurisdiction: "City of Springfield", scheduledDate: "2026-08-05",
+    } }, ctx);
+    assert.match(noInspector.result.error, /inspector_required/);
+    const noJurisdiction = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId, inspectionType: "water_heater_install", inspector: "Jane Ruiz", scheduledDate: "2026-08-05",
+    } }, ctx);
+    assert.match(noJurisdiction.result.error, /jurisdiction_required/);
+    const noDate = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId, inspectionType: "water_heater_install", inspector: "Jane Ruiz", jurisdiction: "City of Springfield",
+    } }, ctx);
+    assert.match(noDate.result.error, /scheduledDate_required/);
+  });
+
+  it("inspectionAdd on a real dispatch assignment links jobTitle/address live; result starts pending; numbers sequentially", async () => {
+    const a = await lensRun("plumbing", "dispatchAssign", { params: {
+      jobTitle: "Gas line to new range", address: "412 Birch St", client: "Ortega Household",
+    } }, ctx);
+    const assignmentId = a.result.assignment.id;
+    const r = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId, inspectionType: "gas_line_pressure_test", inspector: "Marcus Boyle",
+      jurisdiction: "City of Springfield Building Dept", permitNumber: "PLM-2026-4471", scheduledDate: "2026-08-11",
+    } }, ctx);
+    assert.equal(r.ok, true);
+    assert.match(r.result.inspection.number, /^INSP-\d{3}$/);
+    assert.equal(r.result.inspection.assignmentId, assignmentId);
+    assert.equal(r.result.inspection.jobTitle, "Gas line to new range");
+    assert.equal(r.result.inspection.jobFound, true);
+    assert.equal(r.result.inspection.address, "412 Birch St");
+    assert.equal(r.result.inspection.jurisdiction, "City of Springfield Building Dept");
+    assert.equal(r.result.inspection.permitNumber, "PLM-2026-4471");
+    assert.equal(r.result.inspection.result, "pending");
+    assert.equal(r.result.inspection.deficiencyNotes, null);
+    assert.equal(r.result.inspection.completedAt, null);
+  });
+
+  it("inspectionAdd against an unknown assignmentId still records honestly with jobFound:false (no fabricated title)", async () => {
+    const r = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId: "disp_does_not_exist", inspectionType: "final_plumbing",
+      inspector: "Jane Ruiz", jurisdiction: "City of Springfield", scheduledDate: "2026-08-12",
+    } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.inspection.jobFound, false);
+    assert.equal(r.result.inspection.jobTitle, null);
+    assert.equal(r.result.inspection.address, null);
+  });
+
+  it("inspectionList re-derives jobFound/jobTitle live against the CURRENT dispatch board — a since-deleted assignment reflects honestly, not frozen at creation time", async () => {
+    const c2 = await depthCtx("plumbing-inspections-live-rederive");
+    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Sump pump replacement" } }, c2);
+    const assignmentId = a.result.assignment.id;
+    const insp = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId, inspectionType: "final_plumbing", inspector: "Jane Ruiz",
+      jurisdiction: "City of Springfield", scheduledDate: "2026-08-13",
+    } }, c2);
+    assert.equal(insp.result.inspection.jobFound, true);
+    assert.equal(insp.result.inspection.jobTitle, "Sump pump replacement");
+
+    // Simulate the dispatch record being deleted after the inspection was scheduled
+    // (there's no dispatchRemove macro — mutate the live substrate directly, the
+    // same technique server/tests/landscaping-domain-parity.test.js uses to prove
+    // live re-derivation rather than a frozen creation-time snapshot).
+    const dispatchRows = globalThis._concordSTATE.plumbingLens.dispatch.get(c2.actor.userId);
+    const idx = dispatchRows.findIndex((d) => d.id === assignmentId);
+    assert.ok(idx >= 0, "assignment present before deletion");
+    dispatchRows.splice(idx, 1);
+
+    const relisted = await lensRun("plumbing", "inspectionList", { params: {} }, c2);
+    const found = relisted.result.inspections.find((i) => i.id === insp.result.inspection.id);
+    assert.equal(found.jobFound, false);
+    assert.equal(found.jobTitle, null);
+    assert.equal(found.address, null);
+  });
+
+  it("inspectionUpdate to fail requires deficiencyNotes and accepts a re-inspection date", async () => {
+    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "DWV rough-in — addition" } }, ctx);
+    const insp = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId: a.result.assignment.id, inspectionType: "top_out_dwv", inspector: "Bob Alvarez",
+      jurisdiction: "County of Clearwater", scheduledDate: "2026-09-02",
+    } }, ctx);
+    const id = insp.result.inspection.id;
+    const rejected = await lensRun("plumbing", "inspectionUpdate", { params: { id, result: "fail" } }, ctx);
+    assert.equal(rejected.result.ok, false);
+    assert.match(rejected.result.error, /deficiencyNotes_required_on_fail/);
+    const failed = await lensRun("plumbing", "inspectionUpdate", { params: {
+      id, result: "fail", deficiencyNotes: "Vent stack undersized for fixture count", reInspectionDate: "2026-09-09",
+    } }, ctx);
+    assert.equal(failed.ok, true);
+    assert.equal(failed.result.inspection.result, "fail");
+    assert.equal(failed.result.inspection.deficiencyNotes, "Vent stack undersized for fixture count");
+    assert.equal(failed.result.inspection.reInspectionDate, "2026-09-09");
+    assert.ok(failed.result.inspection.completedAt);
+  });
+
+  it("inspectionUpdate to pass clears any prior deficiency notes and re-inspection date", async () => {
+    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Backflow preventer swap" } }, ctx);
+    const insp = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId: a.result.assignment.id, inspectionType: "water_service_backflow", inspector: "Bob Alvarez",
+      jurisdiction: "County of Clearwater", scheduledDate: "2026-09-11",
+    } }, ctx);
+    const id = insp.result.inspection.id;
+    await lensRun("plumbing", "inspectionUpdate", { params: { id, result: "fail", deficiencyNotes: "Assembly not to code height", reInspectionDate: "2026-09-15" } }, ctx);
+    const passed = await lensRun("plumbing", "inspectionUpdate", { params: { id, result: "pass" } }, ctx);
+    assert.equal(passed.ok, true);
+    assert.equal(passed.result.inspection.result, "pass");
+    assert.equal(passed.result.inspection.deficiencyNotes, null);
+    assert.equal(passed.result.inspection.reInspectionDate, null);
+  });
+
+  it("inspectionUpdate rejects an unknown id, a missing result, or an invalid result", async () => {
+    const missingId = await lensRun("plumbing", "inspectionUpdate", { params: { id: "insp_missing", result: "pass" } }, ctx);
+    assert.equal(missingId.result.ok, false);
+    assert.match(missingId.result.error, /inspection_not_found/);
+    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Steps" } }, ctx);
+    const insp = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId: a.result.assignment.id, inspectionType: "final_plumbing", inspector: "Bob",
+      jurisdiction: "County of Clearwater", scheduledDate: "2026-09-21",
+    } }, ctx);
+    const noResult = await lensRun("plumbing", "inspectionUpdate", { params: { id: insp.result.inspection.id } }, ctx);
+    assert.match(noResult.result.error, /result_required/);
+    const badResult = await lensRun("plumbing", "inspectionUpdate", { params: { id: insp.result.inspection.id, result: "maybe" } }, ctx);
+    assert.match(badResult.result.error, /invalid_result/);
+  });
+
+  it("inspectionList filters by assignmentId and rolls up pass/fail/pending counts", async () => {
+    const c2 = await depthCtx("plumbing-inspections-list");
+    const jobX = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Job X" } }, c2);
+    const jobY = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Job Y" } }, c2);
+    const i1 = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId: jobX.result.assignment.id, inspectionType: "final_plumbing", inspector: "A",
+      jurisdiction: "City Hall", scheduledDate: "2026-10-03",
+    } }, c2);
+    await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId: jobY.result.assignment.id, inspectionType: "final_plumbing", inspector: "A",
+      jurisdiction: "City Hall", scheduledDate: "2026-10-04",
+    } }, c2);
+    await lensRun("plumbing", "inspectionUpdate", { params: { id: i1.result.inspection.id, result: "pass" } }, c2);
+
+    const forJobX = await lensRun("plumbing", "inspectionList", { params: { assignmentId: jobX.result.assignment.id } }, c2);
+    assert.equal(forJobX.ok, true);
+    assert.equal(forJobX.result.inspections.length, 1);
+    assert.equal(forJobX.result.passCount, 1);
+
+    const all = await lensRun("plumbing", "inspectionList", { params: {} }, c2);
+    assert.equal(all.result.inspections.length, 2);
+    assert.equal(all.result.passCount, 1);
+    assert.equal(all.result.pendingCount, 1);
+    assert.equal(all.result.failCount, 0);
+  });
+
+  it("inspectionAdd/List/Update are user-scoped: a fresh user sees none of another's inspections", async () => {
+    const c2 = await depthCtx("plumbing-inspections-iso-a");
+    const otherCtx = await depthCtx("plumbing-inspections-iso-b");
+    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Private job" } }, c2);
+    const insp = await lensRun("plumbing", "inspectionAdd", { params: {
+      assignmentId: a.result.assignment.id, inspectionType: "final_plumbing", inspector: "A",
+      jurisdiction: "City Hall", scheduledDate: "2026-10-05",
+    } }, c2);
+    const otherList = await lensRun("plumbing", "inspectionList", { params: {} }, otherCtx);
+    assert.equal(otherList.result.inspections.length, 0);
+    // A same-id update attempt from the other user must fail honestly (their
+    // own per-user inspections list has no such id — never leaks across users).
+    const otherUpdate = await lensRun("plumbing", "inspectionUpdate", { params: { id: insp.result.inspection.id, result: "pass" } }, otherCtx);
+    assert.equal(otherUpdate.result.ok, false);
+    assert.match(otherUpdate.result.error, /inspection_not_found/);
+  });
+
+  it("inspectionAdd/List/Update degrade-graceful when STATE is unavailable (no throw)", async () => {
+    const savedState = globalThis._concordSTATE;
+    globalThis._concordSTATE = undefined;
+    try {
+      const add = await lensRun("plumbing", "inspectionAdd", { params: {
+        assignmentId: "disp_x", inspectionType: "final_plumbing", inspector: "A", jurisdiction: "City Hall", scheduledDate: "2026-01-01",
+      } }, ctx);
+      assert.equal(add.result.ok, false);
+      assert.match(add.result.error, /state_unavailable/);
+      const listR = await lensRun("plumbing", "inspectionList", { params: {} }, ctx);
+      assert.equal(listR.result.ok, false);
+      assert.match(listR.result.error, /state_unavailable/);
+      const upd = await lensRun("plumbing", "inspectionUpdate", { params: { id: "insp_x", result: "pass" } }, ctx);
+      assert.equal(upd.result.ok, false);
+      assert.match(upd.result.error, /state_unavailable/);
+    } finally {
+      globalThis._concordSTATE = savedState;
+    }
+  });
+});

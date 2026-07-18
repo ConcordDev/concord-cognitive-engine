@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, RefreshCw, ShieldAlert, Flame, Award, Trophy, Star, CheckCircle2, CalendarDays } from 'lucide-react';
+import { Loader2, Plus, Trash2, RefreshCw, ShieldAlert, Flame, Award, Trophy, Star, CheckCircle2, CalendarDays, Gauge, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,17 @@ interface CalendarCell { date: string; scheduled: number; taken: number; pct: nu
 interface CalendarResult { days: number; cells: CalendarCell[]; perfectDays: number; overallPct: number | null }
 interface Badge { id: string; label: string; icon: string }
 interface StreakResult { currentStreak: number; bestStreak: number; totalDosesTaken: number; badges: Badge[]; nextMilestone: number | null }
+interface RiskFactor { factor: string; value: number | null; windowDays?: number; weight: number; contribution: number }
+interface RiskMedRow {
+  medId: string; name: string; insufficientData: boolean;
+  score?: number; band?: 'low' | 'moderate' | 'high'; factors?: RiskFactor[];
+  reason?: string; loggedDoses?: number;
+}
+interface RiskResult {
+  windowDays: number; overall: number | null; overallBand: 'low' | 'moderate' | 'high' | null;
+  insufficientData: boolean; reason?: string; perMed: RiskMedRow[];
+  method: string; formula?: string; disclaimer: string;
+}
 
 const BADGE_ICONS: Record<string, typeof Flame> = {
   flame: Flame, award: Award, trophy: Trophy, star: Star, check: CheckCircle2,
@@ -27,12 +38,25 @@ const BADGE_ICONS: Record<string, typeof Flame> = {
 const CELL_COLOR: Record<string, string> = {
   perfect: 'bg-emerald-500', partial: 'bg-amber-500', missed: 'bg-rose-600', none: 'bg-zinc-800',
 };
+const RISK_BAND_STYLE: Record<string, string> = {
+  low: 'text-emerald-400 bg-emerald-950/40 border-emerald-900/50',
+  moderate: 'text-amber-400 bg-amber-950/40 border-amber-900/50',
+  high: 'text-rose-400 bg-rose-950/40 border-rose-900/50',
+};
+const RISK_FACTOR_LABEL: Record<string, string> = {
+  trailing_adherence_pct: 'Trailing adherence',
+  recent_missed_or_skipped_streak: 'Recent missed/skipped streak',
+  days_of_supply: 'Days of supply remaining',
+  refills_remaining: 'Refills remaining',
+};
 
 export function RxAdherencePanel() {
   const [meds, setMeds] = useState<Medication[]>([]);
   const [configs, setConfigs] = useState<AutoReorderConfig[]>([]);
   const [calendar, setCalendar] = useState<CalendarResult | null>(null);
   const [streak, setStreak] = useState<StreakResult | null>(null);
+  const [risk, setRisk] = useState<RiskResult | null>(null);
+  const [expandedRiskMed, setExpandedRiskMed] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reorderForm, setReorderForm] = useState({ medId: '', thresholdDays: '7', pharmacy: '' });
@@ -42,16 +66,18 @@ export function RxAdherencePanel() {
   const [gradeLoading, setGradeLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    const [m, c, cal, st] = await Promise.all([
+    const [m, c, cal, st, rk] = await Promise.all([
       lensRun('pharmacy', 'med-list', {}),
       lensRun('pharmacy', 'autoreorder-list', {}),
       lensRun('pharmacy', 'adherence-calendar', { days: 56 }),
       lensRun('pharmacy', 'adherence-streak', {}),
+      lensRun('pharmacy', 'adherence-risk', {}),
     ]);
     setMeds(m.data?.result?.medications || []);
     setConfigs(c.data?.result?.configs || []);
     setCalendar((cal.data?.result as CalendarResult) || null);
     setStreak((st.data?.result as StreakResult) || null);
+    setRisk((rk.data?.result as RiskResult) || null);
     setLoading(false);
   }, []);
 
@@ -127,6 +153,77 @@ export function RxAdherencePanel() {
             {streak.nextMilestone - streak.currentStreak} day{streak.nextMilestone - streak.currentStreak === 1 ? '' : 's'} to your next badge.
           </p>
         )}
+      </section>
+
+      {/* Adherence risk — heuristic estimate, not an AI prediction */}
+      <section>
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+          <Gauge className="w-3.5 h-3.5 text-amber-400" /> Adherence risk
+          <span className="text-[10px] font-normal text-zinc-500">· heuristic estimate from your logged history</span>
+        </h3>
+        {!risk || risk.insufficientData ? (
+          <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 flex items-start gap-2">
+            <Info className="w-3.5 h-3.5 text-zinc-500 mt-0.5 shrink-0" />
+            <p className="text-[11px] text-zinc-400">
+              {risk?.reason
+                ? `Insufficient history to estimate: ${risk.reason}.`
+                : 'Log a dose schedule and a few doses to estimate adherence risk.'}
+              {' '}This is never a guessed number — Concord only scores medications with real logged history.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className={cn('text-lg font-bold px-2 py-0.5 rounded-lg border', RISK_BAND_STYLE[risk.overallBand || 'low'])}>
+                {risk.overall}
+              </span>
+              <span className={cn('text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full border capitalize', RISK_BAND_STYLE[risk.overallBand || 'low'])}>
+                {risk.overallBand} risk
+              </span>
+              <span className="text-[10px] text-zinc-500 ml-auto">{risk.windowDays}-day window</span>
+            </div>
+            <ul className="space-y-1">
+              {risk.perMed.map((row) => (
+                <li key={row.medId} className="bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+                  {row.insufficientData ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-300">{row.name}</span>
+                      <span className="text-[10px] text-zinc-500 italic">insufficient history{row.reason ? ` — ${row.reason}` : ''}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <button type="button"
+                        onClick={() => setExpandedRiskMed(expandedRiskMed === row.medId ? null : row.medId)}
+                        className="w-full flex items-center justify-between text-left">
+                        <span className="flex items-center gap-1 text-xs text-zinc-200">
+                          {expandedRiskMed === row.medId ? <ChevronDown className="w-3 h-3 text-zinc-500" /> : <ChevronRight className="w-3 h-3 text-zinc-500" />}
+                          {row.name}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border capitalize', RISK_BAND_STYLE[row.band || 'low'])}>
+                            {row.band}
+                          </span>
+                          <span className="text-xs font-semibold text-zinc-200">{row.score}</span>
+                        </span>
+                      </button>
+                      {expandedRiskMed === row.medId && row.factors && (
+                        <ul className="mt-1.5 pl-4 space-y-0.5 border-l border-zinc-800">
+                          {row.factors.map((f) => (
+                            <li key={f.factor} className="flex items-center justify-between text-[10px] text-zinc-400">
+                              <span>{RISK_FACTOR_LABEL[f.factor] || f.factor}: <span className="text-zinc-300">{f.value ?? '—'}</span></span>
+                              <span className="text-zinc-500">+{f.contribution} pts (weight {Math.round(f.weight * 100)}%)</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {risk?.disclaimer && <p className="text-[10px] text-zinc-500 italic mt-1.5">{risk.disclaimer}</p>}
       </section>
 
       {/* Calendar heatmap */}

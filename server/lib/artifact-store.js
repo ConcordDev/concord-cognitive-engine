@@ -369,6 +369,12 @@ function generateThumbnail(dtuDir, filePath, mimeType) {
     try {
       const buffer = fs.readFileSync(filePath);
       const peaks = extractWaveformPeaks(buffer, 200);
+      // Honest by construction: only genuine 16-bit PCM WAV yields real peaks.
+      // Compressed audio (mp3/aac/ogg/flac) and non-PCM16 WAV return null —
+      // Node has no built-in codec to decode them into PCM, so rather than
+      // write a fabricated curve we write NO waveform and let the UI show an
+      // honest empty state (client-side Web-Audio decode is the real path).
+      if (!peaks) return null;
       const waveformPath = path.join(dtuDir, "waveform.json");
       fs.writeFileSync(waveformPath, JSON.stringify(peaks));
       return waveformPath;
@@ -425,16 +431,80 @@ function generatePreview(dtuDir, filePath, mimeType) {
   return null;
 }
 
-function extractWaveformPeaks(buffer, numPoints) {
+/**
+ * Locate the real PCM data of a 16-bit PCM WAV buffer by parsing its RIFF
+ * chunk table — NOT by assuming a fixed 44-byte header. Returns
+ * `{ dataStart, dataEnd, blockAlign }` for a genuine 16-bit PCM WAV, or
+ * `null` for anything else (compressed mp3/aac/ogg/flac, or a WAV that is
+ * float/24-bit/µ-law — none of which Node can decode into PCM samples
+ * without a codec dependency we deliberately don't add here).
+ */
+export function parseWavPcm16(buffer) {
+  if (!buffer || buffer.length < 44) return null;
+  if (buffer.toString("ascii", 0, 4) !== "RIFF") return null;
+  if (buffer.toString("ascii", 8, 12) !== "WAVE") return null;
+  let offset = 12;
+  let fmt = null;
+  let dataStart = -1;
+  let dataEnd = -1;
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString("ascii", offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    const body = offset + 8;
+    if (chunkId === "fmt " && body + 16 <= buffer.length) {
+      fmt = {
+        audioFormat: buffer.readUInt16LE(body),
+        numChannels: buffer.readUInt16LE(body + 2),
+        bitsPerSample: buffer.readUInt16LE(body + 14),
+      };
+    } else if (chunkId === "data") {
+      dataStart = body;
+      dataEnd = Math.min(buffer.length, body + chunkSize);
+    }
+    // Chunks are word-aligned — a byte of padding follows an odd size.
+    offset = body + chunkSize + (chunkSize % 2);
+  }
+  // Only linear 16-bit PCM (audioFormat 1) is honestly readable as Int16LE.
+  if (!fmt || fmt.audioFormat !== 1 || fmt.bitsPerSample !== 16) return null;
+  if (dataStart < 0 || dataEnd <= dataStart) return null;
+  return { dataStart, dataEnd, blockAlign: Math.max(2, fmt.numChannels * 2) };
+}
+
+/**
+ * Real waveform peaks from genuine 16-bit PCM WAV samples — a max-amplitude
+ * reduction over the actual `data` chunk's first channel. Returns `null` for
+ * any non-PCM16 buffer (compressed audio, or float/24-bit WAV) rather than
+ * fabricating a curve from bytes that aren't samples.
+ *
+ * Honest by construction (CLAUDE.md §"honest by construction"): the previous
+ * implementation blindly read Int16LE at `i*step + 44`, which for an mp3/aac/
+ * ogg/flac buffer reads compressed/encoded bytes as if they were PCM — a
+ * decorative curve with no relationship to the audio, stamped on as measured
+ * data. That is exactly the violation the rule forbids. Mirrors
+ * `media-dtu.js#generateWaveform`'s null-honest contract; the real path for
+ * compressed formats is client-side Web-Audio decode
+ * (`concord-frontend/lib/daw/engine.ts#generateWaveformPeaks`).
+ */
+export function extractWaveformPeaks(buffer, numPoints) {
+  const wav = parseWavPcm16(buffer);
+  if (!wav) return null;
+  const { dataStart, dataEnd, blockAlign } = wav;
+  const totalFrames = Math.floor((dataEnd - dataStart) / blockAlign);
+  if (totalFrames <= 0) return null;
   const peaks = [];
-  const step = Math.max(1, Math.floor(buffer.length / numPoints));
+  const framesPerPoint = Math.max(1, Math.floor(totalFrames / numPoints));
   for (let i = 0; i < numPoints; i++) {
-    const offset = Math.min(i * step + 44, buffer.length - 2);
-    if (offset < 0 || offset >= buffer.length - 1) { peaks.push(0); continue; }
-    try {
-      const val = Math.abs(buffer.readInt16LE(offset));
-      peaks.push(val / 32768);
-    } catch { peaks.push(0); }
+    let peak = 0;
+    const startFrame = i * framesPerPoint;
+    for (let f = 0; f < framesPerPoint; f++) {
+      const frame = startFrame + f;
+      if (frame >= totalFrames) break;
+      const off = dataStart + frame * blockAlign; // first channel only
+      if (off + 2 > dataEnd) break;
+      const val = Math.abs(buffer.readInt16LE(off));
+      if (val > peak) peak = val;
+    }
+    peaks.push(peak / 32768);
   }
   return peaks;
 }

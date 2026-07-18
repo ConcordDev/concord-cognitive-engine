@@ -6,12 +6,30 @@
  * pushes each chunk to voice.live-append, and finalizes into a recording.
  * Wires voice.live-start, voice.live-append, voice.live-detail,
  * voice.live-list, voice.live-finalize.
+ *
+ * Alongside SpeechRecognition (which manages its own internal audio path
+ * with no raw-signal access), this opens a SEPARATE, parallel mic tap via
+ * getUserMedia + AnalyserNode purely to compute a real per-final-segment
+ * acoustic feature vector — the same 5-dim extraction VoiceprintEnroll.tsx
+ * uses (lib/voice/audio-features.ts), continuously accumulated while
+ * listening and folded into a vector each time a final SpeechRecognition
+ * result lands, then reset for the next segment. That vector rides along
+ * on voice.live-append so a finalized recording's segments carry a real
+ * `.vector`, which is what makes voice.recording-auto-label-speakers
+ * reachable on live/meeting transcripts.
+ *
+ * Honest fallback: if the browser has no mic/Web-Audio API, or the tap's
+ * getUserMedia call is denied/fails (including when SpeechRecognition has
+ * already claimed exclusive mic access on some browsers), the tap simply
+ * never starts — live transcription still works via SpeechRecognition
+ * alone, segments are appended with no `.vector`, and nothing is fabricated.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Radio, Square, Loader2, FileCheck2, Languages } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { accumulateFrame, emptyAccumulator, finalizeVector, type FrameAccumulator } from '@/lib/voice/audio-features';
 
 interface LiveWord { id: string; text: string; isFinal: boolean; speaker: string; atSec: number }
 interface LiveSession { id: string; title: string; language: string; status: string; words: LiveWord[] }
@@ -52,10 +70,81 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
   const startTsRef = useRef<number>(0);
   const sessionIdRef = useRef<string | null>(null);
 
+  // Parallel raw-audio tap for per-segment acoustic vectors (see file header).
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const audioRafRef = useRef<number | null>(null);
+  const nyquistRef = useRef<number>(0);
+  const accRef = useRef<FrameAccumulator>(emptyAccumulator());
+  const [vectorTapAvailable, setVectorTapAvailable] = useState(true);
+
   useEffect(() => {
     const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
     if (!w.SpeechRecognition && !w.webkitSpeechRecognition) setSupported(false);
   }, []);
+
+  /** Best-effort start of the parallel raw-audio tap. Never throws; a failure
+   *  just means no per-segment vector will be attached (honest no-op). */
+  const startVectorTap = useCallback(async () => {
+    try {
+      const AudioCtx = window.AudioContext
+        || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!navigator.mediaDevices?.getUserMedia || !AudioCtx) { setVectorTapAvailable(false); return; }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      const ctx = new AudioCtx();
+      audioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048;
+      src.connect(analyser);
+      analyserRef.current = analyser;
+      // Kept as closure-local consts (not refs) — a typed array read back out
+      // of a `useRef<Float32Array | null>` widens to `Float32Array<ArrayBufferLike>`
+      // under the current TS/dom lib, which `getFloat*Data` rejects. A local
+      // const retains the concrete `Float32Array<ArrayBuffer>` type inferred
+      // by `new Float32Array(n)`. Same pattern as KaraokeMicrophone.tsx's `buf`.
+      const freq = new Float32Array(analyser.frequencyBinCount);
+      const time = new Float32Array(analyser.fftSize);
+      nyquistRef.current = ctx.sampleRate / 2;
+      accRef.current = emptyAccumulator();
+      setVectorTapAvailable(true);
+      const loop = () => {
+        const an = analyserRef.current;
+        if (an) {
+          an.getFloatFrequencyData(freq);
+          an.getFloatTimeDomainData(time);
+          accumulateFrame(accRef.current, freq, time, nyquistRef.current);
+        }
+        audioRafRef.current = requestAnimationFrame(loop);
+      };
+      audioRafRef.current = requestAnimationFrame(loop);
+    } catch {
+      // Denied / unavailable / mic already claimed exclusively elsewhere —
+      // honest no-op, live transcription proceeds without per-segment vectors.
+      setVectorTapAvailable(false);
+    }
+  }, []);
+
+  const stopVectorTap = useCallback(() => {
+    if (audioRafRef.current != null) { cancelAnimationFrame(audioRafRef.current); audioRafRef.current = null; }
+    micStreamRef.current?.getTracks().forEach(t => t.stop());
+    micStreamRef.current = null;
+    analyserRef.current = null;
+    if (audioCtxRef.current) { void audioCtxRef.current.close(); audioCtxRef.current = null; }
+  }, []);
+
+  /** Snapshot + reset the accumulator into a finalized vector, or undefined
+   *  if the tap never produced any frames for this segment (honest no-op). */
+  const takeSegmentVector = useCallback((): number[] | undefined => {
+    if (accRef.current.n === 0) return undefined;
+    const vector = finalizeVector(accRef.current);
+    accRef.current = emptyAccumulator();
+    return vector;
+  }, []);
+
+  useEffect(() => () => stopVectorTap(), [stopVectorTap]);
 
   const refreshSessions = useCallback(async () => {
     const r = await lensRun('voice', 'live-list', {});
@@ -71,8 +160,9 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
   const stop = useCallback(() => {
     recRef.current?.stop();
     recRef.current = null;
+    stopVectorTap();
     setListening(false);
-  }, []);
+  }, [stopVectorTap]);
 
   const start = useCallback(async () => {
     setError(null);
@@ -87,6 +177,7 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
     sessionIdRef.current = sess.id;
     setSession(sess);
     startTsRef.current = Date.now();
+    void startVectorTap();
 
     const rec = new Ctor();
     rec.lang = lang;
@@ -100,7 +191,10 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
         if (!text) continue;
         const sid = sessionIdRef.current;
         if (!sid) continue;
-        void lensRun('voice', 'live-append', { sessionId: sid, text, isFinal: res.isFinal, atSec })
+        // A final result closes out whatever the tap has accumulated since
+        // the last final; interim results never consume/reset the tap.
+        const vector = res.isFinal ? takeSegmentVector() : undefined;
+        void lensRun('voice', 'live-append', { sessionId: sid, text, isFinal: res.isFinal, atSec, ...(vector ? { vector } : {}) })
           .then(() => reloadSession(sid));
       }
     };
@@ -110,7 +204,7 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
     rec.onend = () => { if (recRef.current) { try { rec.start(); } catch { /* restart race */ } } };
     recRef.current = rec;
     try { rec.start(); setListening(true); } catch { setError('Microphone unavailable'); }
-  }, [lang, title, reloadSession]);
+  }, [lang, title, reloadSession, startVectorTap, takeSegmentVector]);
 
   useEffect(() => () => { recRef.current?.stop(); recRef.current = null; }, []);
 
@@ -185,6 +279,11 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
           <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5 inline-flex items-center gap-1">
             {listening && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
             {session.title} · {session.language}
+            {listening && !vectorTapAvailable && (
+              <span className="ml-1.5 text-amber-500/80 normal-case tracking-normal">
+                · no mic tap (speaker vectors unavailable this session)
+              </span>
+            )}
           </p>
           <p className="text-sm text-zinc-200 leading-relaxed">
             {session.words.length === 0 && <span className="text-zinc-600 italic">no data yet — start speaking</span>}

@@ -26,7 +26,7 @@ interface Dynamics {
   sizeFloor: number; opacityFloor: number; smoothing: number; velocityTaper: number;
 }
 interface FilterRec { id: string; kind: string; amount: number }
-interface Guides {
+export interface Guides {
   kind: string; cx?: number; cy?: number; sectors?: number;
   vp1?: { x: number; y: number }; vp2?: { x: number; y: number };
 }
@@ -61,12 +61,20 @@ export function ProStudioPanel({
   selectedIds,
   onApplied,
   canvas,
+  guides,
+  onGuidesChange,
 }: {
   artworkId: string;
   layerId: string;
   selectedIds: string[];
   onApplied: () => void;
   canvas?: HTMLCanvasElement | null;
+  // Guide state is owned by ArtCanvas (it's the piece that needs to know
+  // whether a symmetry guide is active when a stroke commits, not just this
+  // panel) — this panel reads it as a controlled prop and reports changes
+  // back via onGuidesChange instead of keeping a private copy.
+  guides: Guides | null;
+  onGuidesChange: (guides: Guides) => void;
 }) {
   const [tab, setTab] = useState<ProTab>('filters');
   const [busy, setBusy] = useState<string | null>(null);
@@ -90,8 +98,8 @@ export function ProStudioPanel({
   const [feather, setFeather] = useState(0);
   const [selection, setSelection] = useState<Selection | null>(null);
 
-  // guides
-  const [guides, setGuides] = useState<Guides | null>(null);
+  // guides — lifted to ArtCanvas (see `guides`/`onGuidesChange` props above);
+  // sectors is purely local UI state for the radial-guide control.
   const [sectors, setSectors] = useState(8);
 
   // timelapse
@@ -119,17 +127,15 @@ export function ProStudioPanel({
   useEffect(() => {
     let active = true;
     (async () => {
-      const [k, d, g, tl, aw] = await Promise.all([
+      const [k, d, tl, aw] = await Promise.all([
         lensRun('art', 'pattern-kinds', {}),
         lensRun('art', 'dynamics-get', { artworkId }),
-        lensRun('art', 'guides-get', { artworkId }),
         lensRun('art', 'timelapse-get', { artworkId, includeFrames: true }),
         lensRun('art', 'artwork-get', { id: artworkId }),
       ]);
       if (!active) return;
       if (k.data?.ok) setKinds(k.data.result as Kinds);
       if (d.data?.ok) setDynamics((d.data.result as { dynamics: Dynamics }).dynamics);
-      if (g.data?.ok) setGuides((g.data.result as { guides: Guides }).guides);
       if (tl.data?.ok) {
         const r = tl.data.result as { recording: boolean; frames: TimelapseFrame[] };
         setTlRecording(r.recording);
@@ -220,7 +226,7 @@ export function ProStudioPanel({
     const params: Record<string, unknown> = { kind };
     if (kind === 'radial') params.sectors = sectors;
     const res = await run('guides-set', params, kind === 'off' ? 'Guides off' : `${kind} guide on`);
-    if (res?.guides) setGuides(res.guides as Guides);
+    if (res?.guides) onGuidesChange(res.guides as Guides);
   };
 
   // ── timelapse ──

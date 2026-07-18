@@ -1,10 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { lensRun } from '@/lib/api/client';
 import { CityMap } from './CityMap';
 import type { MapParcel } from './CityMap';
-import { LandPlot, Plus, Trash2, Loader2, RefreshCw, Ruler } from 'lucide-react';
+import type { MapMarker } from '@/components/common/MapView';
+import { LandPlot, Plus, Trash2, Loader2, RefreshCw, Ruler, MapPinned } from 'lucide-react';
+
+// Real OpenStreetMap basemap (already platform-wired — see lib/maplibre/osm.ts,
+// consumed by ~30 other lens map surfaces via components/common/MapView).
+// Client-only: MapLibre GL needs a real DOM/WebGL context.
+const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
 interface Parcel {
   id: string;
@@ -127,6 +134,18 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
     lng: p.lng,
   }));
 
+  // Real-world basemap markers — only for parcels with an actual (non-zero)
+  // coordinate on file. Never fabricated: a parcel added without lat/lng
+  // simply doesn't appear on the live basemap below.
+  const basemapMarkers: MapMarker[] = parcels
+    .filter((p) => p.lat != null && p.lng != null && (p.lat !== 0 || p.lng !== 0))
+    .map((p) => ({
+      lat: p.lat as number,
+      lng: p.lng as number,
+      label: p.apn,
+      popup: `${p.address || 'no address'} · ${p.zoneType} · ${p.lotSizeSqFt.toLocaleString()} sqft${p.owner ? ` · ${p.owner}` : ''}`,
+    }));
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
@@ -222,6 +241,24 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
           <Ruler className="h-4 w-4 text-emerald-400" /> Parcel Map
         </h3>
         <CityMap parcels={mapParcels} height={380} />
+        <p className="mt-2 text-[10px] text-zinc-500">
+          Schematic layout — zone-coloured parcels + relative spacing, not a georeferenced map.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+          <MapPinned className="h-4 w-4 text-emerald-400" /> Live Basemap (OpenStreetMap)
+        </h3>
+        <MapView markers={basemapMarkers} className="h-[380px]" />
+        <p className="mt-2 text-[10px] text-zinc-500">
+          {basemapMarkers.length > 0
+            ? `Real street/imagery context for ${basemapMarkers.length} parcel${basemapMarkers.length === 1 ? '' : 's'} with coordinates on file — pan/zoom, click a pin for detail.`
+            : 'No parcels with coordinates on file yet — add one above with a latitude/longitude to plot it here. The basemap itself is live and pannable now.'}
+          {' '}Point markers only: true parcel-boundary polygons have no honest free national GIS source
+          (cadastral boundary data is county-by-county and inconsistently licensed), so no parcel
+          shapes are drawn or fabricated here — coordinates mark the parcel location, not its lot lines.
+        </p>
       </div>
 
       {loading ? (

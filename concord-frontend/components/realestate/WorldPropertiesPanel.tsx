@@ -15,6 +15,20 @@
  * Zillow/Redfin-shape consumer workbench elsewhere on this page — that one
  * is a personal listing/search CRM; this one moves real in-world buildings
  * between real players.
+ *
+ * Rent collection — two paths, both honest about what they actually are:
+ *  - AUTOMATIC: the "real-estate-rent-collection" heartbeat
+ *    (server/domains/real-estate.js) calls the real `tickRentals` engine
+ *    on an ~hourly cadence (frequency 240 on the 15s governor tick), so a
+ *    lease's rent is collected on its own without anyone visiting this
+ *    panel. There is no realtime push for this (no socket event fires when
+ *    it runs) — the per-row "auto-collects" indicator below is computed
+ *    from the same `next_due_at` field the backend heartbeat itself reads,
+ *    not a live subscription.
+ *  - MANUAL: "Collect due rent" calls `tick_rentals` directly — the
+ *    original path, kept as an honest fallback for forcing an immediate
+ *    collection pass instead of waiting up to ~1h for the next automatic
+ *    sweep.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -61,6 +75,23 @@ type Section = 'marketplace' | 'owned' | 'rentals';
 
 const usd = (cents: number) => `$${(Math.round(cents) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const dateOf = (unixSeconds: number) => new Date(unixSeconds * 1000).toLocaleDateString();
+
+// The "real-estate-rent-collection" heartbeat (server/domains/real-estate.js)
+// runs at frequency 240 on the 15s governor tick — an ~hourly cadence. This
+// label is derived from the same `next_due_at` field the backend heartbeat
+// itself reads (server/lib/real-estate-engine.js#listMyRentals /
+// #tickRentals), not a separate live subscription — there is no realtime
+// socket push for this sweep, so "next auto-collection" is a computed
+// estimate, honestly bounded by the sweep's own cadence rather than implying
+// second-precision.
+const RENT_SWEEP_INTERVAL_S = 3600;
+function autoCollectLabel(nextDueAtSeconds: number): string {
+  const nowS = Math.floor(Date.now() / 1000);
+  const delta = nextDueAtSeconds - nowS;
+  if (delta <= 0) return 'auto-collects on the next hourly sweep';
+  if (delta <= RENT_SWEEP_INTERVAL_S) return 'auto-collects within the hour';
+  return `auto-collects ~${dateOf(nextDueAtSeconds)}`;
+}
 
 export function WorldPropertiesPanel() {
   const [section, setSection] = useState<Section>('marketplace');
@@ -382,10 +413,12 @@ export function WorldPropertiesPanel() {
 
           {section === 'rentals' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-wider text-gray-400">Rent collects automatically per lease's period; use this to force a collection pass now.</span>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] uppercase tracking-wider text-gray-400">
+                  Rent collects automatically on an hourly sweep (server-side, no tab needed) — use this button to force an immediate check instead of waiting.
+                </span>
                 <button onClick={collectRentNow} disabled={busy === 'tick'} className="px-2.5 py-1 text-[10px] rounded bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-40 inline-flex items-center gap-1 flex-shrink-0">
-                  {busy === 'tick' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Coins className="w-3 h-3" />} Collect due rent
+                  {busy === 'tick' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Coins className="w-3 h-3" />} Collect due rent now (manual)
                 </button>
               </div>
 
@@ -400,7 +433,9 @@ export function WorldPropertiesPanel() {
                         <div className="flex-1 min-w-0 text-xs">
                           <span className="text-white font-semibold">{usd(r.rent_cents)}</span>
                           <span className="text-gray-400"> / {r.period_days}d from {r.tenant_kind} {r.tenant_id}</span>
-                          <div className="text-[10px] text-gray-400">next due {dateOf(r.next_due_at)}</div>
+                          <div className="text-[10px] text-gray-400">
+                            next due {dateOf(r.next_due_at)} · <span className="text-emerald-400/80">{autoCollectLabel(r.next_due_at)}</span>
+                          </div>
                         </div>
                         <button onClick={() => dissolve(r.id)} disabled={busy === r.id} className="px-2.5 py-1 text-[10px] rounded bg-white/5 text-gray-300 hover:bg-rose-500/20 hover:text-rose-300 disabled:opacity-40">
                           {busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'End lease'}
@@ -422,7 +457,9 @@ export function WorldPropertiesPanel() {
                         <div className="flex-1 min-w-0 text-xs">
                           <span className="text-white font-semibold">{usd(r.rent_cents)}</span>
                           <span className="text-gray-400"> / {r.period_days}d to {r.landlord_user_id}</span>
-                          <div className="text-[10px] text-gray-400">next due {dateOf(r.next_due_at)}</div>
+                          <div className="text-[10px] text-gray-400">
+                            next due {dateOf(r.next_due_at)} · <span className="text-emerald-400/80">{autoCollectLabel(r.next_due_at)}</span>
+                          </div>
                         </div>
                         <button onClick={() => dissolve(r.id)} disabled={busy === r.id} className="px-2.5 py-1 text-[10px] rounded bg-white/5 text-gray-300 hover:bg-rose-500/20 hover:text-rose-300 disabled:opacity-40">
                           {busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'End lease'}

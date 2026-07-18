@@ -109,7 +109,15 @@ end-to-end.
   same key the same way); `garage` is the outlier that also offers a
   manual edit field. Not treated as a defect specific to this lens —
   consistent with the majority of sibling Phase-D lenses.
-- **No creature portrait/thumbnail imagery.** Concord's creature system is
+- **No creature portrait/thumbnail imagery.** **CLOSED (2026-07-17,
+  `c59e7a4f`)** — solved WITHOUT an art pipeline or image model (either would
+  fabricate detail for a fictional species). `server/lib/creature-portrait.js`
+  projects the REAL body-plan geometry (`generateCreature()`'s parts tree,
+  tinted by `coatFor`) into a deterministic SVG schematic at a fixed
+  real-world scale (size reflects real mass/height); surfaced via a new
+  `creatures.portrait` macro. Every visual feature derives from a real param;
+  no per-topology template, no `Math.random`. Original reasoning retained:
+  Concord's creature system is
   procedural-body-plan-based (topology + mass + parts), not 2D-art-based;
   there is no art asset pipeline this lens could honestly draw from. The
   taxonomy/topology/diet/aquatic columns plus the coat-color hash
@@ -119,11 +127,15 @@ end-to-end.
   DATA-SOURCING/ENGINEERING gap with no free external fix available (no
   real-world creature-art API applies to fictional procedural species) —
   correctly left undone rather than faked with stock art or emoji.
-- **No global keyboard-shortcut registration (`useLensCommand`).** None of
-  the sibling Phase-D single-file lenses (`fishing`, `garage`,
-  `courtship`) register one either; adding it here alone would be
-  inconsistent with the group rather than filling a gap unique to this
-  lens. Left as a cross-lens follow-up, not a creatures-specific defect.
+- ~~**No global keyboard-shortcut registration (`useLensCommand`).**~~
+  **CLOSED (2026-07-16).** `app/lenses/creatures/page.tsx` now registers 4
+  shortcuts via `useLensCommand`: `r` → `refresh()`, `/` → focus the codex
+  search input, `l` → focus the lineage input, `b` → `breed()` (enabled
+  only when both parents are picked and a breed isn't already in flight).
+  All four bind to the real, pre-existing handlers/state — no new breeding
+  or search logic was added. Discoverability follows the UI-quality-rubric
+  requirement: `<kbd>` chips sit next to the Refresh/Breed buttons and the
+  two inputs carry placeholder hints. 12 new frontend tests, all passing.
 
 ## Verification
 

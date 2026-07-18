@@ -220,6 +220,22 @@ export default function registerVoiceActions(registerLensAction) {
   const vcList = (s, userId) => { if (!s.recordings.has(userId)) s.recordings.set(userId, []); return s.recordings.get(userId); };
   const ACTION_CUES = ["will ", "need to", "should ", "let's ", "i'll ", "we'll ", "action:", "todo", "follow up", "follow-up", "next step", "by tomorrow", "by friday", "make sure"];
 
+  // Optional per-segment acoustic feature vector (produced client-side by the
+  // same Web Audio extraction VoiceprintEnroll.tsx uses). Fully optional and
+  // backward-compatible: absent/null is accepted silently, but a PRESENT
+  // value that isn't a real finite-number array is honestly rejected rather
+  // than silently dropped or coerced. Mirrors normVector's shape (>= 2 dims)
+  // but rejects instead of filtering, since a caller that sent a vector
+  // clearly intended it to be stored.
+  const parseOptionalVector = (v, minDims = 2) => {
+    if (v == null) return { ok: true, vector: null };
+    if (!Array.isArray(v)) return { ok: false, error: "vector must be an array of numbers" };
+    if (v.length < minDims) return { ok: false, error: `vector must have at least ${minDims} dimensions` };
+    const nums = v.map((x) => Number(x));
+    if (nums.some((n) => !Number.isFinite(n))) return { ok: false, error: "vector must contain only finite numbers" };
+    return { ok: true, vector: nums };
+  };
+
   function durFromSegments(segments) {
     if (segments.length === 0) return 0;
     const last = segments[segments.length - 1];
@@ -237,12 +253,15 @@ export default function registerVoiceActions(registerLensAction) {
       for (const seg of params.segments) {
         const text = vcClean(seg.text, 4000);
         if (!text) continue;
+        const vRes = parseOptionalVector(seg.vector);
+        if (!vRes.ok) return { ok: false, error: `segment vector invalid: ${vRes.error}` };
         segments.push({
           id: vcId("sg"),
           speaker: vcClean(seg.speaker, 60) || "Speaker 1",
           text,
           startSec: Number.isFinite(Number(seg.startSec)) ? Math.max(0, Math.round(Number(seg.startSec))) : t,
           highlighted: false,
+          ...(vRes.vector ? { vector: vRes.vector } : {}),
         });
         t += 8;
       }
@@ -430,6 +449,8 @@ export default function registerVoiceActions(registerLensAction) {
     if (session.status !== "live") return { ok: false, error: "session already finalized" };
     const text = vcClean(params.text, 8000);
     if (!text) return { ok: false, error: "text required" };
+    const vRes = parseOptionalVector(params.vector);
+    if (!vRes.ok) return { ok: false, error: `vector invalid: ${vRes.error}` };
     const word = {
       id: vcId("lw"),
       text,
@@ -437,6 +458,7 @@ export default function registerVoiceActions(registerLensAction) {
       speaker: vcClean(params.speaker, 60) || "Speaker 1",
       atSec: Number.isFinite(Number(params.atSec)) ? Math.max(0, Math.round(Number(params.atSec))) : 0,
       addedAt: vcNow(),
+      ...(vRes.vector ? { vector: vRes.vector } : {}),
     };
     // Interim chunks replace the trailing interim word; finals append.
     const last = session.words[session.words.length - 1];
@@ -470,15 +492,34 @@ export default function registerVoiceActions(registerLensAction) {
     if (session.status === "finalized") return { ok: false, error: "session already finalized" };
     const finals = session.words.filter((w) => w.isFinal);
     if (finals.length === 0) return { ok: false, error: "no final words to finalize" };
-    // Group consecutive finals by speaker into transcript segments.
+    // Group consecutive finals by speaker into transcript segments. Each
+    // word may carry an optional acoustic .vector (from a live audio tap);
+    // when it does, fold it into the segment's vector via a running mean —
+    // the exact same accumulation shape voiceprint-enroll uses for
+    // re-enrollment refinement (existing.vector = weighted-average, sample
+    // count tracked alongside). This is what makes recording-auto-label-
+    // speakers reachable on a finalized live/meeting recording.
     const segments = [];
     let cur = null;
+    let curVectorCount = 0;
     for (const w of finals) {
       if (!cur || cur.speaker !== w.speaker) {
         if (cur) segments.push(cur);
         cur = { id: vcId("sg"), speaker: w.speaker, text: w.text, startSec: w.atSec, highlighted: false };
+        curVectorCount = 0;
+        if (Array.isArray(w.vector)) { cur.vector = w.vector.slice(); curVectorCount = 1; }
       } else {
         cur.text = `${cur.text} ${w.text}`.trim();
+        if (Array.isArray(w.vector)) {
+          if (curVectorCount > 0 && Array.isArray(cur.vector)) {
+            const n = curVectorCount + 1;
+            cur.vector = cur.vector.map((x, i) => (x * curVectorCount + (w.vector[i] ?? x)) / n);
+            curVectorCount = n;
+          } else {
+            cur.vector = w.vector.slice();
+            curVectorCount = 1;
+          }
+        }
       }
     }
     if (cur) segments.push(cur);
@@ -647,23 +688,41 @@ Only use information present in the transcript. Do not invent owners or decision
     const threshold = Number.isFinite(Number(params.threshold)) ? Number(params.threshold) : 0.35;
     let relabeled = 0;
     const unmatched = [];
+    // Per-segment detail (which segment matched which enrolled print, and at
+    // what distance/confidence) so the UI can render a real result instead
+    // of just a count — the segments themselves already carry the applied
+    // label via seg.speaker/seg.speakerSource below.
+    const matches = [];
     for (const seg of rec.segments) {
       const v = normVector(seg.vector);
-      if (!v) { unmatched.push(seg.id); continue; }
+      if (!v) {
+        unmatched.push(seg.id);
+        matches.push({ segmentId: seg.id, matched: false, reason: "no_vector", speaker: seg.speaker });
+        continue;
+      }
       const ranked = prints
-        .map((p) => ({ name: p.name, distance: vectorDistance(p.vector, v) }))
+        .map((p) => ({ name: p.name, distance: Math.round(vectorDistance(p.vector, v) * 1000) / 1000 }))
         .sort((a, b) => a.distance - b.distance);
-      if (ranked[0] && ranked[0].distance <= threshold) {
-        if (seg.speaker !== ranked[0].name) relabeled += 1;
-        seg.speaker = ranked[0].name;
+      const best = ranked[0];
+      if (best && best.distance <= threshold) {
+        if (seg.speaker !== best.name) relabeled += 1;
+        seg.speaker = best.name;
         seg.speakerSource = "voiceprint";
+        matches.push({
+          segmentId: seg.id,
+          matched: true,
+          speaker: best.name,
+          distance: best.distance,
+          confidence: Math.round((1 - best.distance / threshold) * 100) / 100,
+        });
       } else {
         unmatched.push(seg.id);
+        matches.push({ segmentId: seg.id, matched: false, reason: "no_print_within_threshold", bestDistance: best ? best.distance : null, speaker: seg.speaker });
       }
     }
     if (relabeled > 0) rec.summary = null;
     saveVoice();
-    return { ok: true, result: { relabeled, unmatched: unmatched.length, totalSegments: rec.segments.length } };
+    return { ok: true, result: { relabeled, unmatched: unmatched.length, totalSegments: rec.segments.length, matches } };
   });
 
   // ─── Calendar / meeting-bot integration ──────────────────────────────

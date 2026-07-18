@@ -112,8 +112,42 @@ const PRESET_CONFIGS: Record<ProcessingPreset, Record<string, { enabled: boolean
   },
 };
 
-const generateWaveform = (count: number): number[] =>
-  Array.from({ length: count }, (_, i) => Math.sin(i * 0.5) * 0.35 + 0.5);
+// Real waveform extraction — decodes the ACTUAL recorded PCM samples via Web
+// Audio and reduces them to `buckets` peak-amplitude values (same approach as
+// the daily lens's `computeWaveformFromBlob`). Replaces a `Math.sin(...)`
+// curve that used to be stamped onto every take as if it were the take's
+// real waveform (CLAUDE.md "honest by construction" — a decorative
+// sensor-style readout presented as measured data). On decode failure
+// (unsupported codec in this browser), returns a flat honest placeholder
+// rather than another fake curve.
+async function computeWaveformFromBlob(blob: Blob, buckets = 16): Promise<number[]> {
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioCtx();
+    try {
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const channel = audioBuffer.getChannelData(0);
+      const perBucket = Math.max(1, Math.floor(channel.length / buckets));
+      const waveform: number[] = [];
+      for (let i = 0; i < buckets; i++) {
+        const start = i * perBucket;
+        const end = Math.min(start + perBucket, channel.length);
+        let peak = 0;
+        for (let j = start; j < end; j++) {
+          const abs = Math.abs(channel[j]);
+          if (abs > peak) peak = abs;
+        }
+        waveform.push(Math.max(0.04, Math.min(1, peak)));
+      }
+      return waveform;
+    } finally {
+      void ctx.close();
+    }
+  } catch {
+    return Array(buckets).fill(0.15);
+  }
+}
 
 const DEFAULT_EFFECTS: EffectNode[] = [
   { id: 'noise-gate', name: 'Noise Gate', enabled: false, paramLabel: 'Threshold', paramValue: -40, paramMin: -80, paramMax: 0, paramUnit: 'dB' },
@@ -190,6 +224,15 @@ export default function VoiceLensPage() {
   const recordedChunksRef = useRef<Blob[]>([]);
   const takeBlobsRef = useRef<Map<string, Blob>>(new Map());
   const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Live level metering — real Web Audio AnalyserNode tapped off the actual
+  // mic stream, feeding the "waveform" bars + L/R meters below while
+  // recording. Replaces a `Math.sin`/`Math.cos` animation that used to run
+  // unconditionally (a decorative readout with zero connection to the real
+  // mic signal, presented as if it were live audio — the same honesty
+  // violation the persisted take waveform had, just transient).
+  const voiceAudioCtxRef = useRef<AudioContext | null>(null);
+  const voiceAnalyserRef = useRef<AnalyserNode | null>(null);
+  const voiceFreqDataRef = useRef<Uint8Array | null>(null);
 
   // Sync backend take items into local state
   useEffect(() => {
@@ -213,7 +256,11 @@ export default function VoiceLensPage() {
     return () => clearInterval(iv);
   }, [status]);
 
-  // Waveform + level animation while recording
+  // Waveform + level animation while recording — driven by the real
+  // AnalyserNode tapped off the mic stream in handleRecord (see
+  // voiceAnalyserRef). If the analyser isn't available for any reason
+  // (setup failed, browser quirk), bars stay at the honest resting floor
+  // rather than animating a fake signal.
   useEffect(() => {
     if (status !== 'recording') {
       setWaveformBars(Array.from({ length: 48 }, () => 0.1));
@@ -224,14 +271,28 @@ export default function VoiceLensPage() {
     let running = true;
     const animate = () => {
       if (!running) return;
-      const now = Date.now();
-      setWaveformBars(
-        Array.from({ length: 48 }, (_, i) =>
-          Math.max(0.08, Math.min(1, 0.3 + Math.sin(now / 180 + i * 0.35) * 0.25 + Math.sin(now / 120 + i * 0.7) * 0.2 + Math.cos(now / 90 + i * 0.5) * 0.15))
-        )
-      );
-      setLevelL(0.4 + Math.sin(now / 150) * 0.25 + Math.cos(now / 200) * 0.2);
-      setLevelR(0.35 + Math.cos(now / 170) * 0.25 + Math.sin(now / 230) * 0.2);
+      const analyser = voiceAnalyserRef.current;
+      const data = voiceFreqDataRef.current;
+      if (analyser && data) {
+        // Cast: TS strict-mode narrows Uint8Array's backing buffer type;
+        // getByteFrequencyData accepts the runtime Uint8Array regardless
+        // (same workaround as lib/voice/vad.ts).
+        (analyser as { getByteFrequencyData: (a: Uint8Array) => void }).getByteFrequencyData(data);
+        // 48 real bars sampled across the live frequency spectrum of the
+        // actual mic signal — not a fabricated multi-sine curve.
+        setWaveformBars(
+          Array.from({ length: 48 }, (_, i) => {
+            const idx = Math.min(data.length - 1, Math.floor((i / 48) * data.length));
+            return Math.max(0.06, data[idx] / 255);
+          })
+        );
+        const avg = data.reduce((a, b) => a + b, 0) / data.length / 255;
+        // Mono mic input: both meters reflect the same real signal (no
+        // fabricated stereo separation — a single real level is honest,
+        // a divergent L/R would not be).
+        setLevelL(avg);
+        setLevelR(avg);
+      }
       animFrameRef.current = requestAnimationFrame(animate);
     };
     animate();
@@ -271,6 +332,24 @@ export default function VoiceLensPage() {
       };
       recorder.start(100);
       mediaRecorderRef.current = recorder;
+
+      // Tap a real AnalyserNode off the live mic stream so the waveform
+      // bars + level meters reflect actual signal, not a decorative
+      // animation. Non-fatal if unsupported — the bars just stay at rest.
+      try {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const audioCtx = new AudioCtx();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 128;
+        source.connect(analyser);
+        voiceAudioCtxRef.current = audioCtx;
+        voiceAnalyserRef.current = analyser;
+        voiceFreqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
+      } catch (meterErr) {
+        console.warn('[Voice] Live level metering unavailable:', meterErr);
+      }
+
       setStatus('recording');
       setRecordingTime(0);
     } catch (err) {
@@ -313,21 +392,26 @@ export default function VoiceLensPage() {
         };
         reader.readAsDataURL(blob);
 
-        const newTake: Take = {
-          id: takeId,
-          number: takeNum,
-          name: `Take ${takeNum}`,
-          duration,
-          timestamp: new Date(),
-          starred: false,
-          isBest: false,
-          waveformHeights: generateWaveform(16),
-          transcript: null,
-        };
-        setTakes((prev) => [...prev, newTake]);
-        setActiveTakeId(takeId);
-        createTake({ title: `Take ${takeNum}`, data: newTake as unknown as Record<string, unknown> });
-        setStatus('ready');
+        // Real waveform, decoded from the actual recorded samples — not a
+        // fabricated sine curve. Computed async so the take isn't created
+        // (and persisted) until its waveform reflects the real audio.
+        void computeWaveformFromBlob(blob).then((waveformHeights) => {
+          const newTake: Take = {
+            id: takeId,
+            number: takeNum,
+            name: `Take ${takeNum}`,
+            duration,
+            timestamp: new Date(),
+            starred: false,
+            isBest: false,
+            waveformHeights,
+            transcript: null,
+          };
+          setTakes((prev) => [...prev, newTake]);
+          setActiveTakeId(takeId);
+          createTake({ title: `Take ${takeNum}`, data: newTake as unknown as Record<string, unknown> });
+          setStatus('ready');
+        });
       };
       recorder.stop();
 
@@ -335,6 +419,12 @@ export default function VoiceLensPage() {
       mediaStreamRef.current?.getTracks().forEach(t => t.stop());
       mediaStreamRef.current = null;
       mediaRecorderRef.current = null;
+
+      // Tear down the live-metering analyser/context alongside the stream.
+      voiceAudioCtxRef.current?.close().catch(() => { /* already closed */ });
+      voiceAudioCtxRef.current = null;
+      voiceAnalyserRef.current = null;
+      voiceFreqDataRef.current = null;
     } else {
       // Stop playback
       if (playbackAudioRef.current) {

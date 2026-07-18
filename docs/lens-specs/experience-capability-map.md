@@ -165,12 +165,16 @@ separate macro clusters, not variations on one.
   diff against (an explicit UI note explains this — "Compare needs at least
   one saved snapshot" — rather than silently returning an empty diff),
   "Validate claims" → `validate_claims` (evidence-backed vs. not, per
-  skill), and a per-skill "Endorse" button → `endorse`. Documented
-  limitation (written directly in the component's header comment): true
-  peer endorsement needs a public-portfolio directory that doesn't exist
-  yet in this lens, so in practice only self-endorsement is currently
-  reachable — an honest, named gap rather than a hidden one, matching the
-  disposition style used for `eco.sustainabilityScore`.
+  skill), and a per-skill "Endorse" button → `endorse`. ~~Documented
+  limitation: true peer endorsement needs a public-portfolio directory
+  that doesn't exist yet, so only self-endorsement is currently reachable.~~
+  **CLOSED (2026-07-16, `83aa19fe`)** — the generic cross-lens artifact
+  layer already permitted peer action on a published portfolio; the actual
+  gaps were a missing self-endorsement guard and no directory to discover
+  other users. Both closed: `endorse` now rejects `endorserId === ownerId`,
+  and a new Directory tab surfaces real published portfolios from other
+  users, confirmed private ones stay genuinely invisible (tested across
+  get/list/run, not assumed).
 - **`concord-frontend/app/lenses/experience/page.tsx` (rewritten, 1,626 →
   ~165 lines)** — removed the entire dead scaffold: the hardcoded `PROFILE`
   constant, the Portfolio/Skills/History/Insights tabs and every helper

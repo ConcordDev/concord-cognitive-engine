@@ -241,7 +241,7 @@
       "winter_overcoat_with_concealed_pockets"
     ],
     "gear": [
-      "concealed_pistol_glock_19",
+      "concealed_pistol_compact_9mm",
       "personal_contract_journal_encrypted",
       "encrypted_burner_handheld",
       "lockpick_set"
@@ -254,7 +254,7 @@
     ],
     "inventory": [
       {
-        "item": "concealed_pistol_glock_19",
+        "item": "concealed_pistol_compact_9mm",
         "qty": 1
       },
       {
@@ -1456,7 +1456,7 @@
       "wool_overcoat_for_winter_meets"
     ],
     "gear": [
-      "service_pistol_glock_19",
+      "service_pistol_compact_9mm",
       "captain_badge_master",
       "spare_envelope_courier_signal",
       "personal_journal_locked_at_home"
@@ -1473,7 +1473,7 @@
     ],
     "inventory": [
       {
-        "item": "service_pistol_glock_19",
+        "item": "service_pistol_compact_9mm",
         "qty": 1
       },
       {
@@ -1912,7 +1912,7 @@
       "concealed_carry_holster_belt"
     ],
     "gear": [
-      "service_pistol_sig_p229",
+      "service_pistol_duty_40cal",
       "federal_badge",
       "case_file_unbreakable_cipher_journal",
       "encrypted_handheld",
@@ -1930,7 +1930,7 @@
     ],
     "inventory": [
       {
-        "item": "service_pistol_sig_p229",
+        "item": "service_pistol_duty_40cal",
         "qty": 1
       },
       {
@@ -2380,7 +2380,7 @@
       "wool_cap_in_winter"
     ],
     "gear": [
-      "pistol_concealed_carry_glock_19",
+      "pistol_concealed_carry_compact_9mm",
       "knife_folding",
       "block_radio",
       "personal_youth_protection_journal"
@@ -2395,7 +2395,7 @@
     ],
     "inventory": [
       {
-        "item": "pistol_concealed_carry_glock_19",
+        "item": "pistol_concealed_carry_compact_9mm",
         "qty": 1
       },
       {

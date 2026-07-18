@@ -2526,7 +2526,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       // ── Concordia Phase 3: mass-based combat physics ───────────────────────
       // After env amplification, fold in attacker/target mass ratio clamped
-      // to [0.7, 1.4]. A 6'5" Sanguire striking a 5' Medici lands harder
+      // to [0.7, 1.4]. A 6'5" Sanguire striking a 5' Vessine lands harder
       // than the inverse, but the clamp keeps the gate composable with
       // the anti-cheat cap upstream. Actors with no actor_physique row
       // default to 75 kg → identity ratio → ×1.0 neutral pass-through.

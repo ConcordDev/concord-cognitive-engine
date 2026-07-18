@@ -101,7 +101,7 @@
       "title": "The Thornwood Siege",
       "type": "war",
       "era": "Year 03 of the Thorns",
-      "description": "Sandrun-Medici war pressure pushes refugee columns through the Verge. Thornwood holds the high road for nineteen days against a host that should have broken it. Lady Seraphine's father falls on the wall; she takes the keep at twenty-one.",
+      "description": "Sandrun-Vessine war pressure pushes refugee columns through the Verge. Thornwood holds the high road for nineteen days against a host that should have broken it. Lady Seraphine's father falls on the wall; she takes the keep at twenty-one.",
       "significance": "major",
       "factions_involved": [
         "thornwood_keep",
@@ -134,7 +134,7 @@
       "title": "The Year the Bog Grew",
       "type": "catastrophe",
       "era": "Year 02 of the Thorns",
-      "description": "The bog expanded forty paces in a single season. Nymeria emerged unchanged; the village of Greenmire never again appeared on any map.",
+      "description": "The bog expanded forty paces in a single season. Maeris emerged unchanged; the village of Greenmire never again appeared on any map.",
       "significance": "major",
       "factions_involved": [
         "wildwood_circle"
@@ -165,7 +165,7 @@
       "title": "The First Crossing",
       "type": "founding",
       "era": "Pre-Year 0",
-      "description": "Three centuries before the Thorns, hedge witches crossed the bog into the lattice. Returned with songs nobody now sings. Nymeria says she remembers one of them.",
+      "description": "Three centuries before the Thorns, hedge witches crossed the bog into the lattice. Returned with songs nobody now sings. Maeris says she remembers one of them.",
       "significance": "major",
       "factions_involved": [
         "wildwood_circle"
@@ -180,8 +180,8 @@
       "title": "The Five Houses and the Hollow Throne",
       "type": "founding",
       "era": "Year -90",
-      "description": "The realm is held by five Great Houses beneath a dragon-blooded Crown. House Voss (intrigue and inheritance) is only the most patient. House Mournhold keeps the eastern grain and the oldest grievance. House Karthal holds the iron passes and sells to whoever bleeds. House Sereth, dwindling, still owns every river-right worth having. House Ablon, newest and richest, bought its title within living memory and has never been forgiven for it. Above them sits King Aldous Ferrowyn IV, the Obsidian Crown — dragon-blooded, sickly, and twenty years on a throne he has not ruled from in ten. The Crown is weak by the Houses' careful design: a strong monarch would end the game they all profit from playing. Seraphine Voss is merely the one who plays it best.",
-      "significance": "Names the four Houses left blank (Mournhold, Karthal, Sereth, Ablon) beside House Voss, gives the Obsidian Crown a face (King Aldous Ferrowyn IV), and authors WHY the Crown stays weak — by the Houses' design, not by accident.",
+      "description": "The realm is held by five Great Houses beneath a dragon-blooded Crown. House Voss (intrigue and inheritance) is only the most patient. House Vaelmoor keeps the eastern grain and the oldest grievance. House Thornvale holds the iron passes and sells to whoever bleeds. House Sereth, dwindling, still owns every river-right worth having. House Ablon, newest and richest, bought its title within living memory and has never been forgiven for it. Above them sits King Aldous Ferrowyn IV, the Obsidian Crown — dragon-blooded, sickly, and twenty years on a throne he has not ruled from in ten. The Crown is weak by the Houses' careful design: a strong monarch would end the game they all profit from playing. Seraphine Voss is merely the one who plays it best.",
+      "significance": "Names the four Houses left blank (Vaelmoor, Thornvale, Sereth, Ablon) beside House Voss, gives the Obsidian Crown a face (King Aldous Ferrowyn IV), and authors WHY the Crown stays weak — by the Houses' design, not by accident.",
       "factions_involved": [
         "house_voss",
         "fantasy_obsidian_crown"

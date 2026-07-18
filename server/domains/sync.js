@@ -19,6 +19,7 @@
 // "real-world sync tooling" reference panel — no key required.
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { exportUserCorpus } from "../lib/dtu-portability.js";
 
 const SYNCTHING_RELEASES =
   "https://api.github.com/repos/syncthing/syncthing/releases?per_page=8";
@@ -284,6 +285,79 @@ export default function registerSyncActions(registerLensAction) {
         message: `Revoked "${dev.label}" — sync access removed`,
       });
       return { ok: true, result: { deviceId, revoked: true } };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  });
+
+  /**
+   * export_pack — [S] Produce a real portable-pack export for one device —
+   * the same SHA-256-hashed `concord-dtu-pack/v1` envelope
+   * `dtu_sync.force_sync` / `dtu_portability.export` already produce
+   * (Phase 6b, `lib/dtu-portability.js#exportUserCorpus`), wired into this
+   * lens for the first time. Prior to this, `sync_now` only reported a
+   * count + advisory byte estimate — it never produced a downloadable,
+   * hash-verifiable pack.
+   *
+   * Device-scope filtering: `sync_now`'s selective-sync filter (`dev.scopes`)
+   * runs against the in-memory `STATE.dtus` Map, where every entry carries a
+   * `meta.visibility` / `meta.status` / `artifact` shape. `exportUserCorpus`
+   * instead reads the PERSISTED `dtus` SQL table, whose `data` column is a
+   * free-form JSON blob written by dozens of unrelated call sites (gather
+   * drops, empirical reports, the dream composer, `dtu.create`, …) with no
+   * guaranteed visibility/status/artifact field. There is no reliable common
+   * field to run the same scope predicate `sync_now` uses against the real
+   * persisted rows — doing so would either silently pass everything through
+   * (most rows simply lack the field being branched on) or drop rows on an
+   * accidental field-name collision. Rather than ship a filter that LOOKS
+   * device-scoped but isn't reliably correct, this exports the user's REAL
+   * FULL corpus (never fabricated, never silently truncated) and labels the
+   * response `scoped:false` so the caller is never told a device-scoped pack
+   * is smaller/different than it actually is. `deviceScopes` is still
+   * returned for display context.
+   */
+  registerLensAction("sync", "export_pack", async (ctx, artifact, params) => {
+    try {
+      const userId = actId(ctx);
+      const p = { ...(artifact?.data || {}), ...(params || {}) };
+      const deviceId = String(p.deviceId || "");
+      if (!deviceId) return { ok: false, error: "missing_deviceId" };
+      const dev = userDevices(userId).get(deviceId);
+      if (!dev || dev.revoked) return { ok: false, error: "device_not_found" };
+
+      const db = ctx?.db;
+      if (!db) return { ok: false, error: "no_db" };
+
+      const r = exportUserCorpus(db, userId, {
+        includeEconomy: p.includeEconomy !== false,
+        includeAttachments: p.includeAttachments === true,
+        limit: p.limit,
+      });
+      if (!r.ok) return { ok: false, error: r.error || r.reason || "export_failed" };
+
+      dev.lastSyncAt = Date.now();
+      dev.lastSeenAt = Date.now();
+      dev.online = true;
+
+      const log = pushLog(userId, {
+        kind: "pack_exported",
+        deviceId,
+        label: dev.label,
+        message: `Exported portable pack for "${dev.label}" — ${r.envelope.counts.dtus} DTU(s), ${r.envelope.counts.citations} citation(s) (full corpus — not filtered to this device's selective-sync scopes)`,
+      });
+
+      return {
+        ok: true,
+        result: {
+          deviceId,
+          scoped: false,
+          deviceScopes: dev.scopes,
+          note: "This is your full portable pack — the real, SHA-256-hashed envelope also produced by dtu_sync.force_sync / dtu_portability.export. It is NOT filtered to this device's selective-sync scopes: the persisted DTU store has no reliable visibility/scope field to filter on honestly.",
+          envelope: r.envelope,
+          counts: r.envelope.counts,
+          logEntry: log,
+        },
+      };
     } catch (err) {
       return { ok: false, error: String(err?.message || err) };
     }

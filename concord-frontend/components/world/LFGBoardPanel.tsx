@@ -10,15 +10,23 @@ import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Users, X, Plus, Loader2 } from 'lucide-react';
 import { successJuice, failureJuice } from '@/lib/concordia/juice';
 
+// Row shape matches server/lib/lfg.js#listOpenLfg's SELECT aliases exactly
+// (camelCase: userId/worldId/partyType/createdAt/partyMaxSize/currentSize) —
+// the previous snake_case interface (user_id/party_size/created_at) never
+// matched any real response, and both fetch URLs 404'd (bare /api/lfg has
+// no GET or POST route; the real routes are /api/lfg/open and /api/lfg/post),
+// so this modal was dead end-to-end. Flagged in
+// docs/lens-specs/lfg-capability-map.md; fixed here.
 interface LfgRequest {
   id: string;
-  user_id: string;
-  user_name?: string;
-  world_id: string;
+  userId: string;
+  worldId: string;
   role: 'tank' | 'healer' | 'dps' | 'support' | 'any';
-  party_size: number;
+  partyType: 'normal' | 'raid';
+  partyMaxSize: number;
+  currentSize: number;
   note?: string;
-  created_at: number;
+  createdAt: number;
 }
 
 const ROLES: Array<LfgRequest['role']> = ['any', 'tank', 'healer', 'dps', 'support'];
@@ -49,7 +57,7 @@ export function LFGBoardPanel() {
     try {
       const params = new URLSearchParams({ worldId });
       if (filterRole !== 'any') params.set('role', filterRole);
-      const j = await fetch(`/api/lfg?${params.toString()}`, { credentials: 'include' }).then(r => r.json());
+      const j = await fetch(`/api/lfg/open?${params.toString()}`, { credentials: 'include' }).then(r => r.json());
       if (j?.ok) setRequests(j.requests || []);
     } catch { /* swallow */ }
   }, [worldId, filterRole]);
@@ -60,13 +68,19 @@ export function LFGBoardPanel() {
     if (!worldId) return;
     setPending(true);
     try {
-      const r = await fetch('/api/lfg', {
+      // postLfg (server/lib/lfg.js) reads partyMaxSize + partyType — the old
+      // `partySize` field was silently ignored. Sizes above 8 are only legal
+      // for raids (normal parties clamp to 8 server-side), so the party-type
+      // follows the selected size honestly instead of letting the server
+      // quietly clamp 20 down to 8.
+      const r = await fetch('/api/lfg/post', {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           worldId,
           role: postRole,
-          partySize: postSize,
+          partyMaxSize: postSize,
+          partyType: postSize > 8 ? 'raid' : 'normal',
           note: postNote.slice(0, 240),
         }),
       });
@@ -105,7 +119,7 @@ export function LFGBoardPanel() {
           <h2 className="flex items-center gap-2 text-sm font-semibold text-emerald-200">
             <Users size={14} /> Looking for a group · {worldId || '?'}
           </h2>
-          <button aria-label="Open" onClick={() => setOpen(false)} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">
+          <button aria-label="Close" onClick={() => setOpen(false)} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">
             <X size={14} />
           </button>
         </header>
@@ -129,8 +143,10 @@ export function LFGBoardPanel() {
           {requests.map((req) => (
             <div key={req.id} className="flex items-center justify-between rounded border border-emerald-500/20 bg-emerald-950/20 p-2 text-xs">
               <div>
-                <div className="text-emerald-100">{req.user_name || req.user_id.slice(0, 14)}</div>
-                <div className="text-[10px] text-emerald-300/70">{req.role} · size {req.party_size}</div>
+                <div className="text-emerald-100">{req.userId.slice(0, 14)}</div>
+                <div className="text-[10px] text-emerald-300/70">
+                  {req.role} · {req.currentSize}/{req.partyMaxSize}{req.partyType === 'raid' ? ' · raid' : ''}
+                </div>
                 {req.note && <div className="mt-1 text-[10px] text-zinc-300">{req.note}</div>}
               </div>
               <button

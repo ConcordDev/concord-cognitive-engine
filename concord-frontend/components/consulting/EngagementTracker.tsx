@@ -77,10 +77,14 @@ export function EngagementTracker() {
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-1">
         <Briefcase className="w-4 h-4 text-indigo-400" />
         <h3 className="text-sm font-bold text-zinc-100">Engagement Tracker</h3>
       </div>
+      <p className="text-[10px] text-zinc-500 mb-3">
+        Live engagement status, rates, and time logs — for freeform briefs and scope notes,
+        see the Engagement Records tab above.
+      </p>
 
       {dash && (
         <div className="grid grid-cols-4 gap-2 mb-3">

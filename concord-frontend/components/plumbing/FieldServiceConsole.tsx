@@ -19,12 +19,12 @@ import { TechCertifications } from '@/components/plumbing/TechCertifications';
 import type { Certification } from '@/components/plumbing/TechCertifications';
 import {
   Calendar, Users, BookOpen, Receipt, ClipboardCheck, RefreshCw,
-  Bell, Boxes, Plus, Trash2, Loader2, Check, AlertTriangle, Send,
+  Bell, Boxes, Plus, Trash2, Loader2, Check, AlertTriangle, Send, Landmark,
 } from 'lucide-react';
 
 type Section =
   | 'dispatch' | 'pricebook' | 'invoicing' | 'workflow'
-  | 'plans' | 'notify' | 'inventory';
+  | 'plans' | 'notify' | 'inventory' | 'inspections';
 
 interface Tech {
   id: string; name: string; skills: string[]; phone: string; baseColor: string; active: boolean; openJobs?: number;
@@ -57,6 +57,12 @@ interface ServicePlan {
 }
 interface Notice { id: string; client: string; kind: string; channel: string; message: string; status: string; sentAt: string; }
 interface PartStock { id: string; name: string; sku: string; onHand: number; reorderAt: number; unitCost: number; }
+interface Inspection {
+  id: string; number: string; assignmentId: string; jobTitle: string | null; jobFound: boolean; address: string | null;
+  inspectionType: string; inspector: string; jurisdiction: string; permitNumber: string;
+  scheduledDate: string; result: 'pending' | 'pass' | 'fail'; deficiencyNotes: string | null; reInspectionDate: string | null;
+  notes: string; completedAt: string | null;
+}
 interface OpsSummary {
   jobsToday: number; openJobs: number; unassigned: number;
   outstandingAR: number; collected: number; activePlans: number;
@@ -80,7 +86,26 @@ const SECTIONS: { id: Section; label: string; icon: typeof Calendar }[] = [
   { id: 'plans', label: 'Service Plans', icon: RefreshCw },
   { id: 'notify', label: 'Notifications', icon: Bell },
   { id: 'inventory', label: 'Parts Inventory', icon: Boxes },
+  { id: 'inspections', label: 'Inspections', icon: Landmark },
 ];
+
+// Real municipal/AHJ inspection checkpoints a plumbing contractor actually
+// schedules with a jurisdiction's building department — the permit-triggering
+// points, distinct from workflowStart/workflowUpdate's own tech self-checklist
+// above (see server/domains/plumbing.js's inspectionAdd comment for the full
+// rationale): rough-in (supply/DWV visible before walls close), top-out/DWV
+// (drain-waste-vent pressure test before cover), water-service/backflow
+// (potable supply + cross-connection control), gas-line pressure test, water
+// heater installation, and final plumbing (close-out before occupancy).
+const INSPECTION_TYPES: { value: string; label: string }[] = [
+  { value: 'rough_in', label: 'Rough-In' },
+  { value: 'top_out_dwv', label: 'Top-Out / DWV' },
+  { value: 'water_service_backflow', label: 'Water Service / Backflow' },
+  { value: 'gas_line_pressure_test', label: 'Gas Line Pressure Test' },
+  { value: 'water_heater_install', label: 'Water Heater Installation' },
+  { value: 'final_plumbing', label: 'Final Plumbing' },
+];
+const inspectionTypeLabel = (v: string) => INSPECTION_TYPES.find((t) => t.value === v)?.label || v;
 
 const inputCls = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400';
 const btnCls = 'inline-flex items-center gap-1 rounded bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40';
@@ -117,6 +142,8 @@ export function FieldServiceConsole() {
   const [inventoryValue, setInventoryValue] = useState(0);
   const [activeWf, setActiveWf] = useState<Workflow | null>(null);
   const [wfProgress, setWfProgress] = useState(0);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [inspCounts, setInspCounts] = useState({ passCount: 0, failCount: 0, pendingCount: 0 });
 
   // ── form state ─────────────────────────────────────────────────
   const [techName, setTechName] = useState('');
@@ -170,6 +197,18 @@ export function FieldServiceConsole() {
   const [partReorder, setPartReorder] = useState('5');
   const [partCost, setPartCost] = useState('');
 
+  const [inspAssignment, setInspAssignment] = useState('');
+  const [inspType, setInspType] = useState(INSPECTION_TYPES[0].value);
+  const [inspInspector, setInspInspector] = useState('');
+  const [inspJurisdiction, setInspJurisdiction] = useState('');
+  const [inspPermit, setInspPermit] = useState('');
+  const [inspDate, setInspDate] = useState('');
+  const [inspNotes, setInspNotes] = useState('');
+  const [editingResultId, setEditingResultId] = useState<string | null>(null);
+  const [resultChoice, setResultChoice] = useState<'pass' | 'fail'>('pass');
+  const [deficiencyNotes, setDeficiencyNotes] = useState('');
+  const [reInspectionDate, setReInspectionDate] = useState('');
+
   const guarded = useCallback(async (fn: () => Promise<void>) => {
     setBusy(true); setErr(null);
     try { await fn(); }
@@ -221,12 +260,17 @@ export function FieldServiceConsole() {
     if (r) { setParts(r.parts); setLowStock(r.lowStock); setInventoryValue(r.inventoryValue); }
   }, []);
 
+  const refreshInspections = useCallback(async () => {
+    const r = await run<{ inspections: Inspection[]; passCount: number; failCount: number; pendingCount: number }>('inspectionList');
+    if (r) { setInspections(r.inspections); setInspCounts({ passCount: r.passCount, failCount: r.failCount, pendingCount: r.pendingCount }); }
+  }, []);
+
   const refreshAll = useCallback(async () => {
     await Promise.all([
       refreshOps(), refreshDispatch(), refreshPriceBook(),
-      refreshInvoices(), refreshPlans(), refreshNotices(), refreshParts(), refreshClients(),
+      refreshInvoices(), refreshPlans(), refreshNotices(), refreshParts(), refreshClients(), refreshInspections(),
     ]);
-  }, [refreshOps, refreshDispatch, refreshPriceBook, refreshInvoices, refreshPlans, refreshNotices, refreshParts, refreshClients]);
+  }, [refreshOps, refreshDispatch, refreshPriceBook, refreshInvoices, refreshPlans, refreshNotices, refreshParts, refreshClients, refreshInspections]);
 
   // Shared inline-create handler for all three ClientAutocomplete mounts —
   // a client created from any form is immediately searchable from the others.
@@ -436,6 +480,39 @@ export function FieldServiceConsole() {
     }).filter(Boolean);
     await run('jobComplete', { assignmentId, partsUsed });
     await Promise.all([refreshDispatch(), refreshParts(), refreshOps()]);
+  });
+
+  const addInspection = () => guarded(async () => {
+    if (!inspAssignment) { setErr('Select a job to schedule the inspection against'); return; }
+    if (!inspInspector.trim()) { setErr('Inspector required'); return; }
+    if (!inspJurisdiction.trim()) { setErr('Jurisdiction (AHJ) required'); return; }
+    if (!inspDate) { setErr('Scheduled date required'); return; }
+    const r = await run('inspectionAdd', {
+      assignmentId: inspAssignment, inspectionType: inspType, inspector: inspInspector,
+      jurisdiction: inspJurisdiction, permitNumber: inspPermit, scheduledDate: inspDate, notes: inspNotes,
+    });
+    if (!r) { setErr('inspectionAdd failed'); return; }
+    setInspInspector(''); setInspJurisdiction(''); setInspPermit(''); setInspDate(''); setInspNotes('');
+    await refreshInspections();
+  });
+
+  const openResult = (i: Inspection) => {
+    setEditingResultId(i.id);
+    setResultChoice(i.result === 'fail' ? 'fail' : 'pass');
+    setDeficiencyNotes(i.deficiencyNotes || '');
+    setReInspectionDate(i.reInspectionDate || '');
+  };
+
+  const saveResult = (id: string) => guarded(async () => {
+    if (resultChoice === 'fail' && !deficiencyNotes.trim()) { setErr('Deficiency notes required for a failed inspection'); return; }
+    const r = await run('inspectionUpdate', {
+      id, result: resultChoice,
+      deficiencyNotes: resultChoice === 'fail' ? deficiencyNotes : undefined,
+      reInspectionDate: resultChoice === 'fail' ? reInspectionDate : undefined,
+    });
+    if (!r) { setErr('inspectionUpdate failed'); return; }
+    setEditingResultId(null);
+    await refreshInspections();
   });
 
   // ── derived ────────────────────────────────────────────────────
@@ -859,6 +936,83 @@ export function FieldServiceConsole() {
               </tbody>
             </table>
             {parts.length === 0 && <p className="text-xs text-zinc-400">No parts stocked. Parts deduct automatically when a job is completed on the dispatch board.</p>}
+          </div>
+        </div>
+      )}
+
+      {/* ── INSPECTIONS (municipal / AHJ) ────────────────────── */}
+      {section === 'inspections' && (
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className={cardCls}>
+            <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white"><Landmark className="h-3.5 w-3.5 text-blue-400" /> Schedule Municipal Inspection</h4>
+            <div className="space-y-2">
+              <select className={`${inputCls} w-full`} value={inspAssignment} onChange={(e) => setInspAssignment(e.target.value)} aria-label="Job">
+                <option value="">Select a job…</option>
+                {allAssignments.map((a) => <option key={a.id} value={a.id}>{a.jobTitle} · {a.client || 'no client'}</option>)}
+              </select>
+              {allAssignments.length === 0 && <p className="text-[11px] text-zinc-500">Schedule a job on the Dispatch board first.</p>}
+              <select className={`${inputCls} w-full`} value={inspType} onChange={(e) => setInspType(e.target.value)} aria-label="Inspection type">
+                {INSPECTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <input className={inputCls} placeholder="Inspector" value={inspInspector} onChange={(e) => setInspInspector(e.target.value)} />
+                <input className={inputCls} placeholder="Jurisdiction (AHJ)" value={inspJurisdiction} onChange={(e) => setInspJurisdiction(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input className={inputCls} placeholder="Permit # (optional)" value={inspPermit} onChange={(e) => setInspPermit(e.target.value)} />
+                <input type="date" className={inputCls} value={inspDate} onChange={(e) => setInspDate(e.target.value)} aria-label="Scheduled date" />
+              </div>
+              <textarea className={`${inputCls} w-full`} rows={2} placeholder="Notes (optional)" value={inspNotes} onChange={(e) => setInspNotes(e.target.value)} />
+            </div>
+            <button className={`${btnCls} mt-2`} onClick={addInspection} disabled={busy}><Plus className="h-3.5 w-3.5" /> Schedule Inspection</button>
+          </div>
+
+          <div className={cardCls}>
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-xs font-semibold text-white">Inspections ({inspections.length})</h4>
+              <span className="text-[10px] text-zinc-400">{inspCounts.passCount} pass · {inspCounts.failCount} fail · {inspCounts.pendingCount} pending</span>
+            </div>
+            <div className="max-h-[28rem] space-y-2 overflow-y-auto">
+              {inspections.map((i) => (
+                <div key={i.id} className="rounded border border-zinc-800 px-2 py-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-white">{i.number} · {inspectionTypeLabel(i.inspectionType)}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${i.result === 'pass' ? 'bg-emerald-500/20 text-emerald-300' : i.result === 'fail' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'}`}>{i.result}</span>
+                  </div>
+                  <div className="mt-0.5 truncate text-zinc-400">
+                    {i.jobFound ? i.jobTitle : <span className="text-amber-400">job no longer on dispatch board</span>} · {i.jurisdiction} · {i.inspector} · {i.scheduledDate}
+                  </div>
+                  {i.permitNumber && <div className="text-zinc-600">Permit #{i.permitNumber}</div>}
+                  {i.result === 'fail' && (
+                    <div className="mt-1 flex items-start gap-1 rounded bg-rose-500/10 px-1.5 py-1 text-[11px] text-rose-300">
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                      <span>{i.deficiencyNotes}{i.reInspectionDate ? ` · re-inspect ${i.reInspectionDate}` : ''}</span>
+                    </div>
+                  )}
+                  {editingResultId === i.id ? (
+                    <div className="mt-1.5 space-y-1.5 border-t border-zinc-800 pt-1.5">
+                      <select className={`${inputCls} w-full`} value={resultChoice} onChange={(e) => setResultChoice(e.target.value as 'pass' | 'fail')} aria-label="Result">
+                        <option value="pass">Pass</option>
+                        <option value="fail">Fail</option>
+                      </select>
+                      {resultChoice === 'fail' && (
+                        <>
+                          <textarea className={`${inputCls} w-full`} rows={2} placeholder="Deficiency notes" value={deficiencyNotes} onChange={(e) => setDeficiencyNotes(e.target.value)} />
+                          <input type="date" className={inputCls} value={reInspectionDate} onChange={(e) => setReInspectionDate(e.target.value)} aria-label="Re-inspection date" />
+                        </>
+                      )}
+                      <div className="flex gap-1.5">
+                        <button className={btnCls} onClick={() => saveResult(i.id)} disabled={busy}><Check className="h-3.5 w-3.5" /> Save Result</button>
+                        <button className="rounded border border-zinc-800 px-2 py-1.5 text-xs text-zinc-400 hover:text-white" onClick={() => setEditingResultId(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="mt-1.5 rounded border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:text-white" onClick={() => openResult(i)}>Record Result</button>
+                  )}
+                </div>
+              ))}
+              {inspections.length === 0 && <p className="text-xs text-zinc-400">No inspections scheduled yet.</p>}
+            </div>
           </div>
         </div>
       )}

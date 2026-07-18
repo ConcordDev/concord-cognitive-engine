@@ -22,7 +22,10 @@ export default function registerAnonActions(registerLensAction) {
     // identities: userId -> identity object (keypair + alias)
     // conversations: convId -> conversation object
     // userConvs: userId -> Set(convId)
-    for (const k of ["identities", "conversations", "userConvs"]) {
+    // budgets: userId -> { totalSpent, callHistory: [{epsilon,purpose,timestamp}], createdAt, resetAt }
+    //   — the REAL cross-session differential-privacy epsilon ledger (see
+    //   differentialPrivacy / privacyBudgetStatus / privacyBudgetReset below).
+    for (const k of ["identities", "conversations", "userConvs", "budgets"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -48,6 +51,63 @@ export default function registerAnonActions(registerLensAction) {
   }
   const anId = (p) => `${p}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
   const anClean = (v, max = 4000) => String(v == null ? "" : v).trim().slice(0, max);
+
+  // ─────────────────────────────────────────────────────────────────
+  //  Differential-privacy epsilon budget — REAL cross-session tracking
+  // ─────────────────────────────────────────────────────────────────
+  // Accumulation window: forever, until the caller explicitly calls
+  // privacyBudgetReset. We deliberately did NOT add an automatic rolling
+  // decay/expiry (e.g. "resets every 30 days") because this lens has no
+  // product-defined epoch to anchor a decay window to — inventing one
+  // (any N days) would be exactly the kind of fabricated-precision this
+  // codebase's honesty invariants forbid: a query from 29 days ago would
+  // silently stop counting against exposure risk with no real basis for
+  // that cutoff. A real DP-budget system's privacy loss is monotonically
+  // non-decreasing until the *curator* (here: the user themselves, via
+  // privacyBudgetReset) declares a new budget epoch — that's the
+  // classic "advanced composition, curator resets the counter" model.
+  // Forever-until-reset is the honest default; a future product decision
+  // to add a real rolling window can layer on top of `callHistory`
+  // (each entry carries its own `timestamp`) without a schema change.
+  const AN_DEFAULT_TOTAL_BUDGET = 10.0;
+  const AN_BUDGET_HISTORY_CAP = 50;
+
+  function anResolveTotalBudget(params) {
+    if (params?.totalBudget == null) return AN_DEFAULT_TOTAL_BUDGET;
+    const n = Number(params.totalBudget);
+    return Number.isFinite(n) && n > 0 ? n : AN_DEFAULT_TOTAL_BUDGET;
+  }
+
+  // Persist one real epsilon expenditure into the caller's own budget
+  // bucket. Only ever called from a success path that actually computed
+  // a real per-call epsilon — never from an error/short-circuit branch,
+  // so the ledger never claims a call happened that didn't.
+  //
+  // `totalCalls` is a real, NEVER-truncated counter (every real call
+  // increments it exactly once) — kept distinct from `callHistory.length`
+  // because callHistory itself is capped at AN_BUDGET_HISTORY_CAP for
+  // display/storage size. Reporting `callHistory.length` as "call count"
+  // once history overflows the cap would silently understate how many
+  // real calls actually happened — exactly the kind of quiet honesty
+  // regression this whole feature exists to prevent.
+  function recordBudgetSpend(s, userId, epsilonSpent, purpose) {
+    let bucket = s.budgets.get(userId);
+    if (!bucket) {
+      bucket = { totalSpent: 0, totalCalls: 0, callHistory: [], createdAt: anNow(), resetAt: null };
+      s.budgets.set(userId, bucket);
+    }
+    bucket.totalSpent += epsilonSpent;
+    bucket.totalCalls += 1;
+    bucket.callHistory.push({
+      epsilon: Math.round(epsilonSpent * 10000) / 10000,
+      purpose: anClean(purpose || "differentialPrivacy", 120),
+      timestamp: anNow(),
+    });
+    if (bucket.callHistory.length > AN_BUDGET_HISTORY_CAP) {
+      bucket.callHistory.splice(0, bucket.callHistory.length - AN_BUDGET_HISTORY_CAP);
+    }
+    return bucket;
+  }
 
   // Derive a deterministic 6-line numeric safety number from two public keys.
   function safetyNumber(pubA, pubB) {
@@ -486,10 +546,22 @@ export default function registerAnonActions(registerLensAction) {
       return { ok: true, result: { message: "No values or queries to process." } };
     }
 
-    // Budget tracking
-    const previousBudget = artifact.data?.epsilonBudgetUsed || 0;
-    const cumulativeBudget = previousBudget + totalEpsilonUsed;
-    artifact.data.epsilonBudgetUsed = cumulativeBudget;
+    // Budget tracking — REAL cross-session accumulation. Prior code here
+    // only read/wrote artifact.data.epsilonBudgetUsed, which is an
+    // ephemeral field on a throwaway virtual artifact (`/api/lens/run`'s
+    // `{id: null, data: rest}`) — it never persisted across calls, so
+    // "cumulative" only ever reflected the current invocation. This now
+    // reads/writes the caller's real per-user ledger in
+    // `getAnonState().budgets` (see recordBudgetSpend above), the same
+    // persistent-state idiom every other stateful macro in this file
+    // uses (identities/conversations/userConvs).
+    const s = getAnonState();
+    const userId = anUid(ctx);
+    const purpose = params?.purpose ? anClean(params.purpose, 120) : "differentialPrivacy";
+    const bucket = recordBudgetSpend(s, userId, totalEpsilonUsed, purpose);
+    saveAnonState();
+    const totalBudget = anResolveTotalBudget(params);
+    const cumulativeBudget = bucket.totalSpent;
 
     // Privacy guarantee assessment
     const privacyLevel = epsilon <= 0.1 ? "strong" : epsilon <= 1.0 ? "moderate" : epsilon <= 5.0 ? "weak" : "minimal";
@@ -504,10 +576,18 @@ export default function registerAnonActions(registerLensAction) {
           epsilonPerQuery: Math.round((epsilon / results.length) * 10000) / 10000,
         },
         budgetTracking: {
-          thisInvocation: totalEpsilonUsed,
+          thisInvocation: Math.round(totalEpsilonUsed * 10000) / 10000,
           cumulative: Math.round(cumulativeBudget * 10000) / 10000,
-          previouslyUsed: previousBudget,
-          warning: cumulativeBudget > 10 ? "High cumulative epsilon — privacy guarantees significantly degraded" : null,
+          previouslyUsed: Math.round((cumulativeBudget - totalEpsilonUsed) * 10000) / 10000,
+          totalBudget,
+          remaining: Math.max(0, Math.round((totalBudget - cumulativeBudget) * 10000) / 10000),
+          callCount: bucket.totalCalls,
+          exhausted: cumulativeBudget >= totalBudget,
+          warning: cumulativeBudget >= totalBudget
+            ? "Cumulative epsilon has reached or exceeded the configured privacy budget — privacy guarantees are no longer meaningfully honored for this identity. Call anon.privacyBudgetReset to start a new budget epoch."
+            : cumulativeBudget > totalBudget * 0.8
+              ? "Approaching the configured privacy budget — further queries will significantly degrade privacy guarantees."
+              : null,
         },
         utilityAnalysis: {
           avgRelativeError: Math.round(
@@ -520,6 +600,84 @@ export default function registerAnonActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  /**
+   * privacyBudgetStatus
+   * Read the caller's REAL cumulative differential-privacy epsilon spend —
+   * across every real prior `differentialPrivacy` call for this identity,
+   * not just the current one. Read-only; never mutates the ledger.
+   * params.totalBudget = the ceiling to report remaining-budget against
+   *   (default 10.0 — matches the pre-existing "high cumulative epsilon"
+   *   threshold this domain already used).
+   */
+  registerLensAction("anon", "privacyBudgetStatus", (ctx, _artifact, params) => {
+    try {
+      const s = getAnonState();
+      const userId = anUid(ctx);
+      const totalBudget = anResolveTotalBudget(params);
+      const bucket = s.budgets.get(userId);
+      if (!bucket) {
+        return {
+          ok: true,
+          result: {
+            totalSpent: 0,
+            totalBudget,
+            remaining: totalBudget,
+            percentUsed: 0,
+            callCount: 0,
+            callHistory: [],
+            createdAt: null,
+            resetAt: null,
+            exhausted: false,
+          },
+        };
+      }
+      const totalSpent = Math.round(bucket.totalSpent * 10000) / 10000;
+      const remaining = Math.max(0, Math.round((totalBudget - totalSpent) * 10000) / 10000);
+      return {
+        ok: true,
+        result: {
+          totalSpent,
+          totalBudget,
+          remaining,
+          percentUsed: totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 10000) / 100 : 0,
+          callCount: bucket.totalCalls,
+          callHistory: bucket.callHistory.slice(-AN_BUDGET_HISTORY_CAP),
+          createdAt: bucket.createdAt,
+          resetAt: bucket.resetAt,
+          exhausted: totalSpent >= totalBudget,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * privacyBudgetReset
+   * Start a new privacy-budget epoch for the CALLER'S OWN identity only
+   * (scoped by anUid — never touches another user's bucket). This is a
+   * real state mutation: it zeroes totalSpent and clears callHistory,
+   * returning the prior spend for audit purposes before it's wiped.
+   */
+  registerLensAction("anon", "privacyBudgetReset", (ctx) => {
+    try {
+      const s = getAnonState();
+      const userId = anUid(ctx);
+      const now = anNow();
+      const prior = s.budgets.get(userId);
+      const priorSpent = prior ? Math.round(prior.totalSpent * 10000) / 10000 : 0;
+      const priorCallCount = prior ? prior.totalCalls : 0;
+      s.budgets.set(userId, { totalSpent: 0, totalCalls: 0, callHistory: [], createdAt: now, resetAt: now });
+      saveAnonState();
+      return {
+        ok: true,
+        result: { reset: true, priorSpent, priorCallCount, resetAt: now },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
 
   // ═══════════════════════════════════════════════════════════════════
   //  E2E ENCRYPTED PSEUDONYMOUS MESSAGING

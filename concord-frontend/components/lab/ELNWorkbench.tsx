@@ -23,6 +23,7 @@ import { ChartKit } from '@/components/viz';
 import {
   Notebook, Boxes, ListChecks, Grid3x3, FileSpreadsheet, Dna, LineChart as LineChartIcon,
   Plus, Trash2, PenLine, Stamp, RefreshCw, Play, AlertTriangle, CheckCircle2, Loader2, History,
+  Printer, Barcode,
 } from 'lucide-react';
 
 const DOMAIN = 'lab';
@@ -99,6 +100,125 @@ function Field({ label, ...rest }: { label: string } & React.InputHTMLAttributes
       {label}
       <input {...rest} className="input-lattice text-sm" />
     </label>
+  );
+}
+
+/* ── Label / Barcode Printing ───────────────────────────────────────────── */
+//
+// `lab.label-generate` returns a deterministic scanner-payload string plus
+// structured metadata — no physical-printer or PDF integration exists (out
+// of scope). The QR code below is a REAL, spec-compliant 2D barcode
+// rendered client-side via the `qrcode` package already used elsewhere in
+// this codebase (see components/crypto/QRCodeReceive.tsx) — it will decode
+// with any real scanner back to the exact `label.payload` string. Print
+// uses the browser's native print dialog scoped to just the label via a
+// standard "visibility: hidden except #id" print stylesheet — there is no
+// physical-printer integration, so no "sent to printer" success state is
+// ever shown, only the real print dialog.
+
+interface LabelRecord {
+  id: string; recordType: 'reagent' | 'sample'; recordId: string; payload: string;
+  name: string; generatedAt: string;
+  lot?: string | null; catalogNumber?: string | null; vendor?: string | null;
+  location?: string | null; expiry?: string | null; hazard?: string | null;
+  constructType?: string | null; resistance?: string | null; lengthBp?: number | null; gcContent?: number | null;
+}
+
+function LabelPrintModal({ recordType, recordId, onClose }: {
+  recordType: 'reagent' | 'sample'; recordId: string; onClose: () => void;
+}) {
+  const [label, setLabel] = useState<LabelRecord | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await run('label-generate', { recordType, id: recordId });
+        if (cancelled) return;
+        setLabel(res.label);
+        const QR = await import('qrcode');
+        const url = await QR.toDataURL(res.label.payload, {
+          width: 176, margin: 1, errorCorrectionLevel: 'M',
+        });
+        if (!cancelled) setQrDataUrl(url);
+        setErr(null);
+      } catch (e) {
+        if (!cancelled) setErr(e instanceof Error ? e.message : 'label generation failed');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [recordType, recordId]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #lab-label-print-area, #lab-label-print-area * { visibility: visible; }
+          #lab-label-print-area { position: fixed; inset: 0; margin: auto; height: max-content; }
+        }
+      `}</style>
+      <div onClick={(e) => e.stopPropagation()} className="panel bg-lattice-deep p-5 w-full max-w-sm space-y-3">
+        <div className="flex items-center justify-between print:hidden">
+          <h4 className="font-semibold text-neon-cyan flex items-center gap-1.5">
+            <Barcode className="w-4 h-4" /> Print Label
+          </h4>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-sm" aria-label="Close">✕</button>
+        </div>
+        <div className="print:hidden"><ErrLine msg={err} /></div>
+        {loading && (
+          <p className="text-xs text-gray-400 flex items-center gap-1 print:hidden">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating label…
+          </p>
+        )}
+        {label && (
+          <div id="lab-label-print-area" className="bg-white text-black rounded p-3 flex gap-3 items-center">
+            {qrDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qrDataUrl} alt={`Barcode for ${label.name}`} className="w-24 h-24 shrink-0" />
+            ) : (
+              <div className="w-24 h-24 shrink-0 flex items-center justify-center text-[10px] text-gray-500 border border-gray-300">
+                no barcode
+              </div>
+            )}
+            <div className="min-w-0 text-xs leading-snug">
+              <p className="font-bold text-sm truncate">{label.name}</p>
+              {label.recordType === 'reagent' ? (
+                <>
+                  {label.lot && <p>Lot {label.lot}</p>}
+                  {label.catalogNumber && <p>Cat# {label.catalogNumber}</p>}
+                  {label.vendor && <p>{label.vendor}</p>}
+                  {label.location && <p>{label.location}</p>}
+                  {label.expiry && <p>Exp {label.expiry}</p>}
+                  {label.hazard && label.hazard !== 'none' && <p className="text-red-700">{label.hazard}</p>}
+                </>
+              ) : (
+                <>
+                  {label.constructType && <p>{label.constructType}</p>}
+                  {label.resistance && <p>{label.resistance}</p>}
+                  {label.lengthBp != null && <p>{label.lengthBp} bp{label.gcContent != null ? ` · GC ${label.gcContent}%` : ''}</p>}
+                </>
+              )}
+              <p className="font-mono text-[9px] text-gray-500 break-all mt-1">{label.payload}</p>
+            </div>
+          </div>
+        )}
+        {label && (
+          <button
+            onClick={() => window.print()}
+            className="btn-neon cyan w-full flex items-center justify-center gap-1.5 print:hidden"
+          >
+            <Printer className="w-4 h-4" /> Print
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -233,6 +353,7 @@ function InventoryTab() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState({ name: '', lot: '', vendor: '', freezerBox: '', quantity: '', unit: 'units', lowThreshold: '', expiry: '' });
+  const [labelId, setLabelId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -316,6 +437,9 @@ function InventoryTab() {
               {it.lowStock && <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400">low</span>}
               <button onClick={() => consume(it.id, -1)} disabled={busy} className="btn-neon text-xs px-2">−1</button>
               <button onClick={() => consume(it.id, 10)} disabled={busy} className="btn-neon text-xs px-2">+10</button>
+              <button onClick={() => setLabelId(it.id)} disabled={busy} className="btn-neon purple text-xs px-2 flex items-center gap-1" aria-label="Print label">
+                <Barcode className="w-3.5 h-3.5" /> Label
+              </button>
               <button onClick={() => remove(it.id)} disabled={busy} className="text-gray-400 hover:text-red-400" aria-label="Remove">
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -323,6 +447,7 @@ function InventoryTab() {
           </div>
         ))}
       </div>
+      {labelId && <LabelPrintModal recordType="reagent" recordId={labelId} onClose={() => setLabelId(null)} />}
     </div>
   );
 }
@@ -753,6 +878,7 @@ function ConstructsTab() {
   const [resistance, setResistance] = useState('');
   const [motif, setMotif] = useState('');
   const [analysis, setAnalysis] = useState<ConstructAnalysis | null>(null);
+  const [labelId, setLabelId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try { const res = await run('construct-list', {}); setConstructs(res.constructs || []); setErr(null); }
@@ -838,12 +964,18 @@ function ConstructsTab() {
               <p className="text-xs text-gray-400">{c.length} bp · GC {c.gcContent}%
                 {c.resistance && ` · ${c.resistance}`}</p>
             </div>
-            <button onClick={() => analyze(c.id)} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1">
-              <Dna className="w-3 h-3" /> Analyze
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => analyze(c.id)} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1">
+                <Dna className="w-3 h-3" /> Analyze
+              </button>
+              <button onClick={() => setLabelId(c.id)} disabled={busy} className="btn-neon cyan text-xs flex items-center gap-1" aria-label="Print label">
+                <Barcode className="w-3 h-3" /> Label
+              </button>
+            </div>
           </div>
         ))}
       </div>
+      {labelId && <LabelPrintModal recordType="sample" recordId={labelId} onClose={() => setLabelId(null)} />}
     </div>
   );
 }

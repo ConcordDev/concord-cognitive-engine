@@ -12,24 +12,21 @@
  * capability map documents: a working share generator with no way to ever
  * open the link.
  *
- * Honest scope limit: `share-get` is dispatched through the same
- * cookie-authenticated `lensRun` every other lens macro uses. It works for
- * any signed-in Concord user (the macro itself does not check ownership —
- * only a valid token), which is real progress. A genuinely logged-out
- * visitor cannot reach it, because the `animation` domain is not in the
- * server's public-read allowlist — widening that allowlist is a
- * permission-system change, not a UI rebuild, so it is intentionally NOT
- * done here (see the capability map's "share link is not truly public yet"
- * entry). This page renders an honest sign-in prompt for that case instead
- * of failing silently or pretending anonymous access works.
+ * Genuinely public (2026-07, Wave 4 gap closure): this page now calls the
+ * dedicated public REST route `GET /api/animation/share/:token`
+ * (server.js) with a plain, unauthenticated `fetch` — no cookie, no
+ * Authorization header, no dependency on `useAuth()`. The route invokes
+ * the `animation.share-get` LENS_ACTIONS handler directly (bypassing the
+ * authenticated `/api/lens/run` surface entirely, the same pattern already
+ * used for the welding client portal), so a genuinely logged-out visitor
+ * with the link can view the animation. The token itself is the only
+ * access control — it's an unguessable id scoped server-side to exactly
+ * one animation.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { Loader2, Film, Eye, Download, LogIn, AlertTriangle } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
-import { useAuth } from '@/hooks/useAuth';
+import { Loader2, Eye, Download, AlertTriangle } from 'lucide-react';
 
 interface Stroke { tool: string; color: string; size: number; opacity: number; points: number[][] }
 interface FLayer { visible: boolean; strokes: Stroke[] }
@@ -72,34 +69,39 @@ function drawFrame(c: CanvasRenderingContext2D, frame: Frame | undefined, backgr
 
 export default function AnimationSharePage() {
   const params = useParams<{ token: string }>();
-  const token = params?.token as string;
-  const { user, isLoading: authLoading } = useAuth();
+  const token = (params?.token as string) || '';
   const [share, setShare] = useState<{ token: string; title: string; views: number; allowDownload: boolean } | null>(null);
   const [anim, setAnim] = useState<SharedAnimation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [needsAuth, setNeedsAuth] = useState(false);
   const [frameIdx, setFrameIdx] = useState(0);
 
-  useEffect(() => {
-    if (authLoading || !token) return;
-    if (!user) { setNeedsAuth(true); setLoading(false); return; }
-    let active = true;
-    (async () => {
-      const r = await lensRun('animation', 'share-get', { token });
-      if (!active) return;
-      if (!r.data.ok) {
-        setError(r.data.error || 'This share link is invalid or has been revoked.');
-        setLoading(false);
+  const load = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/animation/share/${encodeURIComponent(token)}`);
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.error || 'This share link is invalid or has been revoked.');
+        setShare(null);
+        setAnim(null);
         return;
       }
-      const result = r.data.result as { share: typeof share; animation: SharedAnimation };
+      const result = data.result as { share: typeof share; animation: SharedAnimation };
       setShare(result.share);
       setAnim(result.animation);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
       setLoading(false);
-    })();
-    return () => { active = false; };
-  }, [token, user, authLoading]);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   useEffect(() => {
     if (!anim?.frames?.length) return;
@@ -109,28 +111,10 @@ export default function AnimationSharePage() {
     drawFrame(c, anim.frames[frameIdx], anim.background);
   }, [anim, frameIdx]);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">
         <Loader2 className="w-6 h-6 animate-spin" />
-      </div>
-    );
-  }
-
-  if (needsAuth) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
-        <div className="max-w-sm text-center space-y-4">
-          <Film className="w-10 h-10 text-orange-400 mx-auto" />
-          <h1 className="text-lg font-semibold text-zinc-100">Sign in to view this animation</h1>
-          <p className="text-sm text-zinc-400">
-            This shared link works for any Concord account — full anonymous public viewing isn&apos;t wired up yet.
-          </p>
-          <Link href={`/login?from=${encodeURIComponent(`/share/animation/${token}`)}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-500/30 text-orange-300 rounded-lg text-sm hover:bg-orange-500/30">
-            <LogIn className="w-4 h-4" /> Sign in
-          </Link>
-        </div>
       </div>
     );
   }

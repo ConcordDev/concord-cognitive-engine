@@ -177,7 +177,7 @@ fine):
 
 | Capability | Triage class | Notes |
 |---|---|---|
-| Reminder **delivery** (push/desktop notification when a reminder fires) | ENGINEERING | `reminders-due` already computes fired reminders and the panel surfaces them on a manual "Check what's due now" click; a real background delivery channel (service-worker push / the existing socket bus) would close the gap to Todoist's notifications. Deferred — no fabrication in the interim (the current surface is an honest on-demand check, not a fake "notified" state). |
+| Reminder **delivery** (push/desktop notification when a reminder fires) | **CLOSED (2026-07-16, `9e0780dc`)** | New `productivity-reminder-sweep` heartbeat (~30s cadence) pushes a `productivity:reminder-fired` socket event to a user's room the instant a reminder becomes due, modeled on the existing `emitToUser`/`emitToUserRoom` pattern in `domains/collab.js`/`domains/message.js`. Honest scope: this is real-time delivery to a currently-connected tab, not OS-level push (no service-worker Web Push pipeline exists in this codebase) — the frontend labels this explicitly and keeps the manual due-check as an honest fallback. 17 new backend tests, 7 new frontend tests. |
 | Recurring-task **natural-language editing** in the detail view (Todoist's "every 2nd Monday") | ENGINEERING | The macro supports `daily/weekly/monthly/weekday/yearly/every N days`; the add form exposes these but the detail view can't yet re-parse an NL recurrence string. Small frontend build; deferred to Wave 4. |
 
 Neither gap was faked. Both are honest, named deferrals per the sixth hard

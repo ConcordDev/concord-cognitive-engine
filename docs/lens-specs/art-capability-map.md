@@ -17,15 +17,17 @@ lens, not building from scratch.
 ## `node scripts/lens-unsurfaced.mjs --lens art` (after fix)
 
 ```
-art: 2/71 macros never referenced in the frontend
-  stroke-* (1): stroke-batch
-  symmetry-* (1): symmetry-mirror-stroke
+art: 0/71 macros never referenced in the frontend
 ```
 
 Before this pass, 8 macros were unreferenced or reachable only through a
 non-functional stub: `vision`, `artwork-rename`, `layer-clear`,
 `stroke-commit-pressure`, `selection-lasso`, `timelapse-frame`,
-`stroke-batch`, `symmetry-mirror-stroke`.
+`stroke-batch`, `symmetry-mirror-stroke`. The last two (`stroke-batch`,
+`symmetry-mirror-stroke`) were closed in a later pass — see "Findings —
+real gaps, fixed" below; they were originally left deferred (documented
+in the now-superseded "Findings — deferred, documented rationale"
+section this doc used to carry).
 
 ## Findings — genuinely broken (fabricated-looking) features, fixed
 
@@ -83,24 +85,49 @@ Critique" button that snapshots the live canvas and requests a real
 critique (composition/color/technique), with an honest "vision brain
 unavailable" failure state — never a fabricated critique.
 
-## Findings — deferred, documented rationale
+### `stroke-batch` — bulk copy/paste — REAL GAP (fixed, 2026-07-16, Wave 4 gap-closure)
 
-- **`stroke-batch`** — a bulk-insert variant of `stroke-commit` for
-  importing/pasting many strokes at once. The live drawing path commits
-  one continuous stroke per pointer-down/up cycle, which is the correct
-  granularity for real-time drawing; there's no current UI action (paste,
-  bulk import) that would produce a batch of strokes to commit at once.
-  Genuinely missing, but not a defect in what exists today.
-- **`symmetry-mirror-stroke`** — a Procreate-style live symmetry/mandala
-  drawing mode. Real, valuable, and unwired, but implementing it properly
-  (mirroring a stroke across the active guide axis in real time as the
-  user draws) is a live-rendering feature on par in scope with the lasso
-  fix, not a small wiring gap — deferred rather than half-built under this
-  pass's time budget.
+Originally deferred: a bulk-insert variant of `stroke-commit` for
+importing/pasting many strokes at once, with no UI action (paste, bulk
+import) that would ever produce a batch to commit. **Fix:** `ArtCanvas.tsx`
+now has a real copy/paste flow built on the existing marquee/lasso
+selection mechanism. Selecting strokes and clicking **Copy** snapshots
+their real stroke data client-side (nothing to persist yet — there's
+nothing server-side to do until a paste happens); clicking **Paste**
+serializes the clipboard strokes and posts them through `stroke-batch`,
+offset by 24px in x/y so the pasted copies are visibly distinct from the
+strokes they were copied from rather than silently stacking on top. The
+Paste button is disabled with an empty clipboard (no wasted round-trip).
+`stroke-batch` was already fully covered server-side
+(`server/tests/art-domain-parity.test.js`, `server/tests/depth/art-behavior.test.js`)
+— this closed only the missing UI producer, with no backend changes.
+
+### `symmetry-mirror-stroke` — REAL GAP (fixed, 2026-07-16, Wave 4 gap-closure)
+
+Originally deferred: a Procreate-style symmetry/mandala drawing mode, real
+and unwired, with true live-during-stroke mirroring judged out of scope
+for the pass's time budget. **Fix, honestly scoped:** guide state
+(previously private to `ProStudioPanel`) is lifted to `ArtCanvas`, which is
+the component that needs to know whether a symmetry guide is active at the
+moment a stroke commits. `ArtCanvas`'s `commit()` now calls
+`symmetry-mirror-stroke` with the real committed `strokeId` whenever a
+mirror-shaped guide (`vertical`/`horizontal`/`quadrant`/`radial` — never
+the perspective guides, which the macro itself rejects) is active, then
+reloads so the server-persisted mirrors render. This is deliberately
+**post-commit mirroring of an already-persisted stroke**, not true
+live-during-stroke rendering — the macro's own design is post-commit (it
+takes a `strokeId`, not live point data), so a full live-preview-while-
+drawing mirror mode remains a separately-scoped, larger feature; what's
+fixed here is that drawing with an active symmetry guide now genuinely
+produces real, persisted mirrored strokes instead of doing nothing.
+`symmetry-mirror-stroke` was already fully covered server-side — this
+closed only the missing caller, with no backend changes.
 
 ## Verify gate
 
 - `npx eslint components/art/ArtCanvas.tsx components/art/ProStudioPanel.tsx` — 0 errors/warnings.
 - `npx tsc --noEmit -p .` — 0 errors attributable to these files.
+- `node scripts/lens-unsurfaced.mjs --lens art` — `0/71 macros never referenced in the frontend`.
+- `npx vitest run tests/components/ArtCanvasSymmetryClipboard.test.tsx` — 5/5 passing.
 - `node scripts/verify-lens-backends.mjs` — `art` reports WIRED.
 - `node scripts/grade-ux-polish.mjs --honest` — `art`: `tier: "polished"`, `isGenericScaffold: false`, `bespokeRatio: 0.731`.

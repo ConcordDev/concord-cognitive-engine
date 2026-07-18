@@ -291,7 +291,7 @@ export interface RichAppearanceConfig {
   /* Provenance — which world/faction did this character get authored for? */
   worldId:         string;
   factionId:       string | null;
-  cultureTags:     string[];      // e.g. ['tunyan', 'fire-bloodline', 'medici']
+  cultureTags:     string[];      // e.g. ['tunyan', 'fire-bloodline', 'vessine']
 
   /* Hero / GLB hook — when true the renderer tries the hero-mesh-registry first. */
   heroMesh?:       boolean;
@@ -303,7 +303,7 @@ export type FactionStyleId =
   | 'tunya-savanna'
   | 'tunya-highland'
   | 'tunya-bloodline-forge'
-  | 'tunya-medici-ice'
+  | 'tunya-vessine-ice'
   | 'tunya-coastal'
   | 'tunya-cactem'
   | 'cyber-corp'
@@ -399,9 +399,9 @@ export const FACTION_STYLES: Record<FactionStyleId, FactionStyle> = {
     augmentChance: 0,
     boots: ['boot'],
   },
-  'tunya-medici-ice': {
-    id: 'tunya-medici-ice',
-    label: 'Medici alien-heritage ice-bloodline',
+  'tunya-vessine-ice': {
+    id: 'tunya-vessine-ice',
+    label: 'Vessine alien-heritage ice-bloodline',
     heritageBias: ['pale', 'fair'],
     bodyBias: ['slim', 'tall', 'average'],
     hairBias: ['silver', 'light_blonde', 'blonde'],
@@ -736,9 +736,9 @@ export const DEFAULT_STYLE_FOR_THEME: Record<ConcordiaThemeId, FactionStyleId> =
 export const FACTION_TO_STYLE: Record<string, FactionStyleId> = {
   // Tunya 14 factions
   'sandrun_sanguire': 'tunya-bloodline-forge',
-  'kree':             'tunya-savanna',
-  'medici':           'tunya-medici-ice',
-  'cree':             'tunya-highland',
+  'vrellan':          'tunya-savanna',
+  'vessine':           'tunya-vessine-ice',
+  'corre':             'tunya-highland',
   'aekon':            'tunya-savanna',
   'asbir':            'tunya-coastal',
   'sahm':             'tunya-highland',
@@ -750,7 +750,7 @@ export const FACTION_TO_STYLE: Record<string, FactionStyleId> = {
   'nil':              'tunya-savanna',
   'akeia_of_kahlay':  'tunya-savanna',
   // Cyber
-  'cyber_arasacorp':         'cyber-corp',
+  'cyber_nevex':         'cyber-corp',
   'zero_collective':         'cyber-street',
   'blackout_resistance':     'cyber-blackout',
   'cyber_fixer_guild':       'cyber-street',

@@ -118,7 +118,7 @@
       "secret": "The Archivist no longer believes the work protects anyone. They have started, very quietly, mis-filing — leaving one true thread un-buried in each archive, findable by someone patient enough. They are the leak that looks like an error.",
       "weaponise_at": "A player who proves they can hold the whole chain in view (completes the Curtain's investigative declassification trail) is handed the Archivist's curated thread of deliberate mis-files — the spine of the unredacted record."
     },
-    "concord_link_resonance": "lattice-crucible:the_drift_witness",
+    "concord_link_resonance": "lattice-crucible:witness_orla",
     "cross_world_hook": "The Archivist and the lattice-world's drift-witness both catalogue truths no one will read; they compare filing systems through the Link like two lonely librarians at the end of the world.",
     "dialogue_style": "polite_redaction",
     "needs": { "self_actualization": 0.7, "safety": 0.6 },
@@ -153,8 +153,8 @@
       "secret": "Sarn knows the eastern threat he campaigns on is calibrated, not real — Verge supplies both the Reach and its rival to keep the Border Mirror lit. He has the supply manifests proving the same crates went to both armies.",
       "weaponise_at": "Those manifests are the proof that the Border Mirror is manufactured. If Dovrane or Keshar ever sees them, the Twin Pact could begin to heal — which is why three parties are quietly hunting Sarn's safe."
     },
-    "concord_link_resonance": "crime:boss_var_okonkwo",
-    "cross_world_hook": "Sarn and the crime-world boss recognize each other instantly across the Link as the same animal in different coats — one calls it policy, one calls it racket, and they are right about each other.",
+    "concord_link_resonance": "crime:mob_boss_silas_thorpe",
+    "cross_world_hook": "Sarn and the crime-world's mob boss recognize each other instantly across the Link as the same animal in different coats — one calls it policy, one calls it racket, and they are right about each other.",
     "dialogue_style": "patriotic_then_invoiced",
     "needs": { "esteem": 0.8, "safety": 0.5 },
     "daily_schedule": [
@@ -188,7 +188,7 @@
       "secret": "Esha has a working prototype of the one thing that ends the game: an open ledger and a seed-library that let realms trade and eat without the Mark or Hollowford. It works. It is small. It is the most dangerous object on Sere — and its long shadow is the ark program: when the open ledger cannot take root on the ground, the unbound build it above the atmosphere instead.",
       "weaponise_at": "The moment the open ledger reaches critical mass across enough realms, the Tessera's only countermove is the old one — split the anchors, remove the convener. Protecting Esha (and healing the Dovrane–Keshar Pact) is the spine of Sere's main arc."
     },
-    "concord_link_resonance": "concordia-hub:old_seam",
+    "concord_link_resonance": "concordia-hub:preacher_old_seam",
     "cross_world_hook": "Old Seam of the hub once tried what Esha is trying, in a smaller world, and lost. Their Link correspondence is mentor-to-heir: every warning Old Seam gives, Esha has already designed around — which is the first time the warning has ever met a student who listened.",
     "dialogue_style": "earnest_grieving_unbroken",
     "needs": { "self_actualization": 0.95, "belonging": 0.7, "safety": 0.3 },

@@ -240,7 +240,20 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'The last real macro artifact (ar.render / runFEA / foundry.preview / forge.sandbox) as interactive 3D',
     load: lazyNamed(() => import('@/components/conkay/panels/ArtifactViewerPanel'), 'ArtifactViewerPanel'),
   },
-  // The ConKay cockpit panels (F1/F4/F5/F7/F9) are now registered.
+  'conkay.orchestration-trace': {
+    id: 'conkay.orchestration-trace', label: 'Orchestration Trace', scope: 'global',
+    keywords: ['conkay', 'orchestration', 'trace', 'plan', 'steps', 'tool calls', 'mission control'],
+    description: "The current run's ordered real tool-call sequence, live status, and receipts",
+    load: lazyNamed(() => import('@/components/conkay/panels/OrchestrationTracePanel'), 'OrchestrationTracePanel'),
+  },
+  'conkay.connector-status': {
+    id: 'conkay.connector-status', label: 'Connector Status', scope: 'global',
+    keywords: ['conkay', 'connector', 'integrations', 'oauth', 'connected', 'needs auth'],
+    description: 'Your own connector status — Connected vs Needs auth, per app',
+    load: lazyNamed(() => import('@/components/conkay/panels/ConnectorStatusPanel'), 'ConnectorStatusPanel'),
+  },
+
+  // The ConKay cockpit panels (F1/F4/F5/F7/F9/A4/A3) are now registered.
   // ConKayCockpit's panel slots treat an unregistered id as "render nothing"
   // (honest, not a crash), so cockpit callers may reference future ids ahead
   // of time and the lane will simply skip them until each unit lands.

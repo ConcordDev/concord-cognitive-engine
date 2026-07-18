@@ -3,13 +3,27 @@
 /**
  * ProductivityRemindersPanel — time and location-based task reminders.
  * Reminders attach to a real task and persist via productivity.reminder-*
- * macros. The "Due now" check calls reminders-due to surface fired alerts.
+ * macros.
+ *
+ * Two delivery paths, both honest about what they actually are:
+ *  - LIVE: the productivity-reminder-sweep heartbeat (server/domains/
+ *    productivity.js) pushes a `productivity:reminder-fired` socket event
+ *    to this user's room the moment a reminder becomes due, ~30s cadence.
+ *    That only reaches a tab that is currently open and connected — it is
+ *    NOT an OS-level push/desktop notification (this codebase has no
+ *    service-worker Web Push pipeline), so it is labeled "while this tab
+ *    is open" rather than implied to work when the app is closed.
+ *  - MANUAL: "Check what's due now" calls reminders-due directly — the
+ *    original path, kept exactly as-is as the fallback for reminders that
+ *    fired while this tab was closed or disconnected.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Bell, BellRing, MapPin, Clock, Trash2, Plus } from 'lucide-react';
+import { Loader2, Bell, BellRing, MapPin, Clock, Trash2, Plus, Radio } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useSocket } from '@/hooks/useSocket';
+import { useUIStore } from '@/store/ui';
 
 interface Reminder {
   id: string;
@@ -22,14 +36,22 @@ interface Reminder {
   task: string | null;
 }
 interface TaskOption { id: string; content: string }
+interface LiveFiredReminder { id: string; task: string | null; note: string; remindAt: string; receivedAt: number }
+interface ReminderFiredPayload {
+  userId?: string;
+  reminder?: { id: string; taskId: string | null; task: string | null; remindAt: string; note: string; kind: string };
+}
 
 export function ProductivityRemindersPanel({ onChange }: { onChange: () => void }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [tasks, setTasks] = useState<TaskOption[]>([]);
   const [due, setDue] = useState<Reminder[]>([]);
+  const [liveFired, setLiveFired] = useState<LiveFiredReminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ taskId: '', kind: 'time' as 'time' | 'location', remindAt: '', location: '', note: '' });
+  const { on, off, isConnected } = useSocket({ autoConnect: true });
+  const addToast = useUIStore((s) => s.addToast);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -43,6 +65,30 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // Live delivery: the productivity-reminder-sweep heartbeat pushes this
+  // event to `user:<id>` the instant a reminder becomes due. Only fires
+  // while this tab is connected — see the module doc comment above.
+  useEffect(() => {
+    const handleFired = (payload: unknown) => {
+      const p = payload as ReminderFiredPayload;
+      const rem = p?.reminder;
+      if (!rem?.id) return;
+      setLiveFired((prev) => [
+        { id: rem.id, task: rem.task, note: rem.note, remindAt: rem.remindAt, receivedAt: Date.now() },
+        ...prev,
+      ].slice(0, 5));
+      addToast({
+        type: 'info',
+        message: `Reminder: ${rem.task || rem.note || 'Untitled reminder'}`,
+        duration: 10000,
+      });
+      void refresh();
+      onChange();
+    };
+    on('productivity:reminder-fired', handleFired);
+    return () => off('productivity:reminder-fired', handleFired);
+  }, [on, off, refresh, onChange, addToast]);
 
   const add = async () => {
     if (!form.remindAt.trim()) { setError('Reminder time is required.'); return; }
@@ -109,10 +155,36 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
         </button>
       </div>
 
+      {/* Honest live-vs-manual delivery labeling */}
+      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+        <Radio className={cn('w-3 h-3', isConnected ? 'text-emerald-400' : 'text-zinc-600')} />
+        <span>
+          {isConnected
+            ? 'Live reminders — while this tab is open, reminders notify you instantly.'
+            : 'Live delivery is offline right now — reminders will still fire, but only the manual check below will surface them until this tab reconnects.'}
+        </span>
+      </div>
+
+      {liveFired.length > 0 && (
+        <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/30 p-3 space-y-1">
+          <p className="text-[10px] uppercase tracking-wide text-emerald-400 font-semibold flex items-center gap-1">
+            <Radio className="w-3 h-3" /> Live — delivered just now
+          </p>
+          {liveFired.map((f) => (
+            <p key={`${f.id}-${f.receivedAt}`} className="text-xs text-emerald-200">
+              <BellRing className="inline w-3 h-3 mr-1" />{f.task || f.note || 'Reminder'} — {f.remindAt}
+            </p>
+          ))}
+        </div>
+      )}
+
       <button type="button" onClick={checkDue}
         className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
         <BellRing className="w-3.5 h-3.5" /> Check what is due now
       </button>
+      <p className="text-[10px] text-zinc-500 -mt-2">
+        Fallback for reminders that fired while this tab was closed or disconnected.
+      </p>
 
       {due.length > 0 && (
         <div className="rounded-xl border border-amber-900/50 bg-amber-950/30 p-3 space-y-1">

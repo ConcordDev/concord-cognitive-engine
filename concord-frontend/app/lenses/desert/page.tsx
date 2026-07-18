@@ -15,6 +15,8 @@ import { SolarCalculator } from '@/components/desert/SolarCalculator';
 import { TerrainOverlay } from '@/components/desert/TerrainOverlay';
 import { SurvivalKit } from '@/components/desert/SurvivalKit';
 import { DesertFieldCalcPanel } from '@/components/desert/DesertFieldCalcPanel';
+import { WildlifeSightingLog } from '@/components/desert/WildlifeSightingLog';
+import { IncidentReportPanel } from '@/components/desert/IncidentReportPanel';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { cn } from '@/lib/utils';
 import {
@@ -26,15 +28,19 @@ import {
   Compass,
   Calculator,
   CloudSun,
+  PawPrint,
+  AlertOctagon,
 } from 'lucide-react';
 
-type ModeTab = 'Weather' | 'Route' | 'HeatUv' | 'Resources' | 'Solar' | 'Terrain' | 'Kit' | 'Calcs';
+type ModeTab = 'Weather' | 'Route' | 'HeatUv' | 'Resources' | 'Wildlife' | 'Incidents' | 'Solar' | 'Terrain' | 'Kit' | 'Calcs';
 
 const MODE_TABS: { key: ModeTab; label: string; icon: typeof Sun }[] = [
   { key: 'Weather', label: 'Live Conditions', icon: CloudSun },
   { key: 'Route', label: 'Route Planner', icon: Compass },
   { key: 'HeatUv', label: 'Heat & UV', icon: Thermometer },
   { key: 'Resources', label: 'Resource Map', icon: Droplets },
+  { key: 'Wildlife', label: 'Wildlife', icon: PawPrint },
+  { key: 'Incidents', label: 'Incident Reports', icon: AlertOctagon },
   { key: 'Solar', label: 'Solar', icon: Sun },
   { key: 'Terrain', label: 'Terrain', icon: Mountain },
   { key: 'Kit', label: 'Survival Kit', icon: AlertTriangle },
@@ -99,6 +105,14 @@ export default function DesertLensPage() {
 
         {/* Resource Map — water/shade/hazard/cache nodes via desert.node* */}
         {activeMode === 'Resources' && <ResourceNodeMap />}
+
+        {/* Wildlife — species sighting log + proximity query via desert.sighting* */}
+        {activeMode === 'Wildlife' && <WildlifeSightingLog />}
+
+        {/* Incident Reports — dated infrastructure/hazard incidents with a real
+            status lifecycle via desert.incident*, distinct from the standing
+            hazard node markers in the Resource Map tab. */}
+        {activeMode === 'Incidents' && <IncidentReportPanel />}
 
         {/* Solar — PV array sizing via desert.solarInstall */}
         {activeMode === 'Solar' && <SolarCalculator />}

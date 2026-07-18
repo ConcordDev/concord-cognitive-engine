@@ -13,6 +13,8 @@
 // previously hardcoded 5 interactions; now hits the real FDA label
 // database (50,000+ drug labels with full DRUG_INTERACTIONS sections).
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 const OPENFDA_BASE = "https://api.fda.gov/drug";
 
 async function openfdaLabelLookup(name) {
@@ -319,6 +321,90 @@ export default function registerPharmacyActions(registerLensAction) {
     return { scheduled, taken, pct: scheduled > 0 ? Math.round((taken / scheduled) * 100) : null };
   }
 
+  // ── Adherence RISK score ────────────────────────────────────────────
+  // A transparent, DETERMINISTIC heuristic — fixed coefficients, no
+  // learned/trained model (Concord has no per-user clinical training
+  // corpus, so a real "AI prediction" claim here would be fabrication).
+  // Built ONLY from signals already stored above: trailing adherence %
+  // (adherenceFor), the length of the most recent run of missed/skipped
+  // doses (s.doses), days-of-supply (quantity ÷ scheduled-per-day, the
+  // same math refills-due already uses), and refillsRemaining. The same
+  // logged history always produces the same score — no Math.random, no
+  // LLM call, no per-user model weights.
+  //
+  //   score = round(
+  //       0.45 * adherenceGap        // 100 − trailing adherence% (adherenceFor), clamped [0,100]
+  //     + 0.25 * streakComponent     // min(missedOrSkippedStreak, 5) / 5 * 100
+  //     + 0.20 * supplyComponent     // daysOfSupply<=0 → 100, else clamp(100 − daysOfSupply/14*100, 0, 100)
+  //     + 0.10 * refillComponent     // refillsRemaining===0 → 100, ===1 → 40, else 0
+  //   ), clamped to [0, 100]
+  //
+  // Weights sum to 1.0. Trailing adherence dominates (0.45) because it's
+  // the single strongest, most-directly-observed signal; the other three
+  // are secondary amplifiers — a patient who is BOTH inconsistent AND out
+  // of supply/refills is a materially different (higher) risk than one
+  // who is merely inconsistent with plenty of medication on hand.
+  // Bands: score>=60 "high", score>=30 "moderate", else "low".
+  const RISK_MIN_LOGGED_DOSES = 3; // fewer real dose-log entries than this and the signal is too thin to trust
+  const RISK_STREAK_CAP = 5;
+  const RISK_SUPPLY_HORIZON_DAYS = 14;
+  const RISK_WEIGHTS = { adherence: 0.45, streak: 0.25, supply: 0.20, refill: 0.10 };
+  const RISK_DISCLAIMER = "Heuristic estimate computed from your own logged dose, refill, and supply history using a transparent fixed-weight formula — NOT an AI or machine-learned prediction (Concord has no per-user clinical training data to train one on). This is a risk indicator, not a certainty, and not medical advice; verify any concerns with a pharmacist or prescriber.";
+
+  function recentMissedOrSkippedStreak(logs) {
+    const sorted = [...logs].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    let streak = 0;
+    for (const log of sorted) {
+      if (log.status === "missed" || log.status === "skipped") streak += 1;
+      else break;
+    }
+    return streak;
+  }
+
+  function computeAdherenceRisk(s, med, days) {
+    const schedule = s.schedules.get(med.id);
+    const perDay = scheduledPerDay(schedule);
+    const logs = s.doses.get(med.id) || [];
+    if (!schedule || perDay <= 0 || logs.length < RISK_MIN_LOGGED_DOSES) {
+      return {
+        medId: med.id, name: med.name, insufficientData: true,
+        loggedDoses: logs.length,
+        reason: (!schedule || perDay <= 0)
+          ? "no dose schedule set yet"
+          : `only ${logs.length} dose${logs.length === 1 ? "" : "s"} logged (need ${RISK_MIN_LOGGED_DOSES}+ to estimate)`,
+      };
+    }
+    const adherence = adherenceFor(s, med.id, days);
+    const adherenceGap = adherence.pct == null ? 0 : Math.max(0, Math.min(100, 100 - adherence.pct));
+    const missedStreak = recentMissedOrSkippedStreak(logs);
+    const streakComponent = Math.min(missedStreak, RISK_STREAK_CAP) / RISK_STREAK_CAP * 100;
+    const daysOfSupply = Math.floor(med.quantity / perDay);
+    const supplyComponent = daysOfSupply <= 0
+      ? 100
+      : Math.max(0, Math.min(100, 100 - (daysOfSupply / RISK_SUPPLY_HORIZON_DAYS) * 100));
+    const refillsRemaining = med.refillsRemaining;
+    const refillComponent = refillsRemaining === 0 ? 100 : refillsRemaining === 1 ? 40 : 0;
+
+    const rawScore =
+      RISK_WEIGHTS.adherence * adherenceGap +
+      RISK_WEIGHTS.streak * streakComponent +
+      RISK_WEIGHTS.supply * supplyComponent +
+      RISK_WEIGHTS.refill * refillComponent;
+    const score = Math.max(0, Math.min(100, Math.round(rawScore)));
+    const band = score >= 60 ? "high" : score >= 30 ? "moderate" : "low";
+
+    return {
+      medId: med.id, name: med.name, insufficientData: false,
+      score, band,
+      factors: [
+        { factor: "trailing_adherence_pct", value: adherence.pct, windowDays: days, weight: RISK_WEIGHTS.adherence, contribution: Math.round(RISK_WEIGHTS.adherence * adherenceGap) },
+        { factor: "recent_missed_or_skipped_streak", value: missedStreak, weight: RISK_WEIGHTS.streak, contribution: Math.round(RISK_WEIGHTS.streak * streakComponent) },
+        { factor: "days_of_supply", value: daysOfSupply, weight: RISK_WEIGHTS.supply, contribution: Math.round(RISK_WEIGHTS.supply * supplyComponent) },
+        { factor: "refills_remaining", value: refillsRemaining, weight: RISK_WEIGHTS.refill, contribution: Math.round(RISK_WEIGHTS.refill * refillComponent) },
+      ],
+    };
+  }
+
   registerLensAction("pharmacy", "med-detail", (ctx, _a, params = {}) => {
   try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -506,6 +592,174 @@ export default function registerPharmacyActions(registerLensAction) {
     return { ok: true, result: { due, count: due.length } };
   });
 
+  // ── Doctor / provider appointments ──────────────────────────────────
+  // A per-user appointment tracker (Medisafe/GoodRx don't have one; this
+  // is a genuine gap-close, not a parity clone). Status is a small state
+  // machine:
+  //   scheduled -> completed | cancelled | missed   (each terminal)
+  // Terminal statuses can never transition again — an appointment that
+  // already happened or was cancelled doesn't un-happen; book a new one
+  // instead. Rescheduling (changing dateTime) is only allowed while
+  // status === "scheduled" for the same reason. Non-status/non-dateTime
+  // fields (reason, location, phone, notes, relatedMedId) stay editable
+  // in every status so post-visit notes can be added after the fact.
+  // relatedMedId is OPTIONAL — most appointments (annual physical, a
+  // general checkup) aren't about any one tracked medication; when given,
+  // it's validated via the same findMed lookup refill-request uses, so a
+  // bogus id is honestly rejected rather than silently stored.
+  const APPT_STATUSES = ["scheduled", "completed", "cancelled", "missed"];
+  const APPT_TERMINAL = ["completed", "cancelled", "missed"];
+
+  registerLensAction("pharmacy", "appointment-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const providerName = rclean(params.providerName, 120);
+    if (!providerName) return { ok: false, error: "providerName required" };
+    const dateTime = rclean(params.dateTime, 40);
+    if (!dateTime) return { ok: false, error: "dateTime required" };
+    let relatedMedId = null, relatedMedName = null;
+    if (params.relatedMedId != null && params.relatedMedId !== "") {
+      const med = findMed(s, userId, params.relatedMedId);
+      if (!med) return { ok: false, error: "related medication not found" };
+      relatedMedId = med.id; relatedMedName = med.name;
+    }
+    const appt = {
+      id: rid("appt"), providerName,
+      providerType: rclean(params.providerType, 60).toLowerCase() || null,
+      dateTime,
+      reason: rclean(params.reason, 200) || null,
+      location: rclean(params.location, 200) || null,
+      phone: rclean(params.phone, 40) || null,
+      relatedMedId, relatedMedName,
+      notes: null,
+      status: "scheduled",
+      createdAt: rnow(), updatedAt: rnow(),
+    };
+    rlistB(s.appointments, userId).push(appt);
+    saveRxState();
+    return { ok: true, result: { appointment: appt } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // appointment-list — every appointment for the caller, newest-scheduled
+  // first, each stamped with a derived `when: "upcoming"|"past"`.
+  // "upcoming" = still status "scheduled" AND dateTime hasn't passed yet;
+  // anything completed/cancelled/missed, or scheduled-but-elapsed, is
+  // "past". Mirrors refills-due's derived-not-stored status pattern.
+  registerLensAction("pharmacy", "appointment-list", (ctx, _a, _params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const now = Date.now();
+    const withWhen = (s.appointments.get(userId) || []).map((a) => {
+      const t = Date.parse(a.dateTime);
+      const when = a.status === "scheduled" && Number.isFinite(t) && t >= now ? "upcoming" : "past";
+      return { ...a, when };
+    });
+    withWhen.sort((a, b) => String(a.dateTime).localeCompare(String(b.dateTime)));
+    const upcoming = withWhen.filter((a) => a.when === "upcoming");
+    const past = withWhen.filter((a) => a.when === "past");
+    return {
+      ok: true,
+      result: {
+        appointments: withWhen, count: withWhen.length,
+        upcoming, upcomingCount: upcoming.length,
+        past, pastCount: past.length,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // appointments-due — upcoming-only view within a lookahead window
+  // (default 14 days), the appointment analogue of refills-due, for
+  // dashboard surfacing.
+  registerLensAction("pharmacy", "appointments-due", (ctx, _a, params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const daysAhead = Math.max(1, Math.min(365, Math.round(rnum(params.daysAhead, 14))));
+    const now = Date.now();
+    const cutoff = now + daysAhead * RX_DAY;
+    const due = [];
+    for (const a of s.appointments.get(userId) || []) {
+      if (a.status !== "scheduled") continue;
+      const t = Date.parse(a.dateTime);
+      if (!Number.isFinite(t) || t < now || t > cutoff) continue;
+      const daysUntil = Math.ceil((t - now) / RX_DAY);
+      due.push({ ...a, daysUntil, urgency: daysUntil <= 1 ? "imminent" : daysUntil <= 3 ? "soon" : "upcoming" });
+    }
+    due.sort((a, b) => a.daysUntil - b.daysUntil);
+    return { ok: true, result: { due, count: due.length, daysAhead } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("pharmacy", "appointment-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const appt = (s.appointments.get(userId) || []).find((a) => a.id === params.id);
+    if (!appt) return { ok: false, error: "appointment not found" };
+
+    if (params.status != null) {
+      const status = String(params.status).toLowerCase();
+      if (!APPT_STATUSES.includes(status)) {
+        return { ok: false, error: `status must be one of ${APPT_STATUSES.join("/")}` };
+      }
+      if (APPT_TERMINAL.includes(appt.status)) {
+        return { ok: false, error: `appointment is already ${appt.status} and cannot change status` };
+      }
+      appt.status = status;
+    }
+    if (params.dateTime != null) {
+      if (APPT_TERMINAL.includes(appt.status)) {
+        return { ok: false, error: `cannot reschedule an appointment that is already ${appt.status}` };
+      }
+      const dt = rclean(params.dateTime, 40);
+      if (!dt) return { ok: false, error: "dateTime cannot be blank" };
+      appt.dateTime = dt;
+    }
+    if (params.providerName != null) {
+      const pname = rclean(params.providerName, 120);
+      if (!pname) return { ok: false, error: "providerName cannot be blank" };
+      appt.providerName = pname;
+    }
+    if (params.providerType != null) appt.providerType = rclean(params.providerType, 60).toLowerCase() || null;
+    for (const f of ["reason", "location", "phone"]) {
+      if (params[f] != null) appt[f] = rclean(params[f], 200) || null;
+    }
+    if (params.notes != null) appt.notes = rclean(params.notes, 1000) || null;
+    if (params.relatedMedId !== undefined) {
+      if (params.relatedMedId === null || params.relatedMedId === "") {
+        appt.relatedMedId = null; appt.relatedMedName = null;
+      } else {
+        const med = findMed(s, userId, params.relatedMedId);
+        if (!med) return { ok: false, error: "related medication not found" };
+        appt.relatedMedId = med.id; appt.relatedMedName = med.name;
+      }
+    }
+    appt.updatedAt = rnow();
+    saveRxState();
+    return { ok: true, result: { appointment: appt } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("pharmacy", "appointment-delete", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const list = s.appointments.get(userId) || [];
+    const idx = list.findIndex((a) => a.id === params.id);
+    if (idx === -1) return { ok: false, error: "appointment not found" };
+    list.splice(idx, 1);
+    saveRxState();
+    return { ok: true, result: { deleted: true, id: params.id } };
+  });
+
   // ── Pharmacies + price comparison ───────────────────────────────────
   registerLensAction("pharmacy", "pharmacy-add", (ctx, _a, params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -525,6 +779,83 @@ export default function registerPharmacyActions(registerLensAction) {
   registerLensAction("pharmacy", "pharmacy-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { pharmacies: s.pharmacies.get(raid(ctx)) || [] } };
+  });
+
+  // ── Physical pharmacy locator (real, keyless, federal) ──────────────
+  // `pharmacy-add`/`pharmacy-list` above are user-entered contacts — not
+  // a live directory. `locate` closes that gap with the CMS NPPES NPI
+  // Registry (npiregistry.cms.hhs.gov), the free/keyless federal
+  // directory of NPI-registered healthcare organizations, filtered to
+  // taxonomy_description=Pharmacy. City + state lookup is the honest
+  // first version this ships with (no geolocation/distance yet — NPPES
+  // doesn't return lat/lng). Renders ONLY fields NPPES actually returns
+  // (name / npi / address / city / state / postalCode / phone) — no
+  // invented ratings, hours, or distance. Unreachable registry → honest
+  // {ok:false, reason:'nppes_unreachable'}; a real query with zero
+  // matches → honest {ok:true, results:[]}, never a fabricated pharmacy.
+  const NPPES_BASE = "https://npiregistry.cms.hhs.gov/api/";
+
+  function nppesAddressFor(rec) {
+    const addrs = Array.isArray(rec?.addresses) ? rec.addresses : [];
+    return addrs.find((a) => String(a?.address_purpose || "").toUpperCase() === "LOCATION") || addrs[0] || null;
+  }
+
+  registerLensAction("pharmacy", "locate", async (_ctx, _a, params = {}) => {
+    const city = rclean(params.city, 100);
+    const stateRaw = rclean(params.state, 10).toUpperCase();
+    if (!city || !stateRaw) return { ok: false, error: "city and state are required" };
+    if (!/^[A-Z]{2}$/.test(stateRaw)) return { ok: false, error: "state must be a 2-letter USPS code (e.g. CA)" };
+    const state = stateRaw;
+    const name = rclean(params.name, 120);
+    const limit = Math.max(1, Math.min(50, Math.round(rnum(params.limit, 20))));
+
+    const qs = new URLSearchParams({
+      version: "2.1",
+      taxonomy_description: "Pharmacy",
+      city, state,
+      limit: String(limit),
+    });
+    if (name) qs.set("organization_name", name);
+    const url = `${NPPES_BASE}?${qs.toString()}`;
+
+    let data;
+    try {
+      data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000, timeoutMs: 8000 });
+    } catch (e) {
+      return { ok: false, reason: "nppes_unreachable", error: `NPPES registry unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+
+    if (Array.isArray(data?.Errors) && data.Errors.length) {
+      return { ok: false, reason: "nppes_invalid_query", error: data.Errors.map((e) => e?.description || e?.field || "invalid query").join("; ") };
+    }
+
+    const rows = Array.isArray(data?.results) ? data.results : [];
+    const results = rows
+      .map((rec) => {
+        const addr = nppesAddressFor(rec);
+        const streetLine = addr ? [addr.address_1, addr.address_2].filter(Boolean).join(" ") : "";
+        return {
+          name: rec?.basic?.organization_name || rec?.basic?.name || null,
+          npi: rec?.number || null,
+          address: streetLine || null,
+          city: addr?.city || null,
+          state: addr?.state || null,
+          postalCode: addr?.postal_code || null,
+          phone: addr?.telephone_number || null,
+        };
+      })
+      .filter((r) => r.name || r.npi);
+
+    return {
+      ok: true,
+      result: {
+        query: { city, state, name: name || null, limit },
+        results,
+        count: results.length,
+        source: "nppes-npi-registry",
+        disclaimer: "Sourced from the CMS NPPES NPI Registry — a federal directory of NPI-registered organizations, not a live inventory/hours/ratings feed. Verify hours and stock by calling ahead.",
+      },
+    };
   });
 
   registerLensAction("pharmacy", "price-record", (ctx, _a, params = {}) => {
@@ -727,7 +1058,7 @@ export default function registerPharmacyActions(registerLensAction) {
 
   function rxExtra(s) {
     for (const k of [
-      "reminders", "caregivers", "caregiverAlerts", "autoReorder",
+      "reminders", "caregivers", "caregiverAlerts", "autoReorder", "appointments",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -1356,6 +1687,44 @@ export default function registerPharmacyActions(registerLensAction) {
         totalDosesTaken: totalTaken,
         badges,
         nextMilestone: currentStreak < 3 ? 3 : currentStreak < 7 ? 7 : currentStreak < 30 ? 30 : currentStreak < 100 ? 100 : null,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // adherence-risk — a deterministic, explainable RISK score per active
+  // medication (+ an overall average across medications with enough
+  // history to score), built entirely from the real logged data above.
+  // See computeAdherenceRisk (near adherenceFor) for the formula + weights.
+  registerLensAction("pharmacy", "adherence-risk", (ctx, _a, params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const days = Math.max(7, Math.min(180, Math.round(rnum(params.days, 30))));
+    const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
+    if (!meds.length) {
+      return {
+        ok: true,
+        result: {
+          windowDays: days, overall: null, overallBand: null, insufficientData: true,
+          reason: "no medications tracked yet — add a medication and log some doses to estimate risk",
+          perMed: [], method: "deterministic-heuristic", disclaimer: RISK_DISCLAIMER,
+        },
+      };
+    }
+    const perMed = meds.map((m) => computeAdherenceRisk(s, m, days));
+    const scored = perMed.filter((x) => !x.insufficientData);
+    const overall = scored.length ? Math.round(scored.reduce((a, x) => a + x.score, 0) / scored.length) : null;
+    const overallBand = overall == null ? null : overall >= 60 ? "high" : overall >= 30 ? "moderate" : "low";
+    return {
+      ok: true,
+      result: {
+        windowDays: days, overall, overallBand,
+        insufficientData: overall == null,
+        perMed,
+        method: "deterministic-heuristic",
+        formula: "score = round(0.45*adherenceGap + 0.25*streakComponent + 0.20*supplyComponent + 0.10*refillComponent), each component clamped to [0,100], weights sum to 1.0",
+        disclaimer: RISK_DISCLAIMER,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

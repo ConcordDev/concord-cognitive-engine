@@ -2,11 +2,11 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import {
-  FolderPlus, Eye, Heart, MessageSquare, Trash2, X, Plus, Loader2, ImageIcon, ListOrdered,
+  FolderPlus, Eye, Heart, MessageSquare, Trash2, X, Plus, Loader2, ImageIcon, ListOrdered, Upload,
 } from 'lucide-react';
 
 interface ProjImage { url: string; caption: string; order: number }
@@ -18,6 +18,47 @@ interface Project {
   appreciations?: number; commentCount?: number; createdAt: string;
 }
 interface Comment { id: string; userId: string; body: string; createdAt: string }
+
+// Resolves an `artistry-img:<id>` reference — minted by the real
+// artistry.project-image-upload macro (server/domains/artistry.js, closes
+// docs/WAVE4_INVENTORY.md line 101's "no native image upload/blob-storage
+// pipeline" gap) — back to a real `data:` URL via project-image-download.
+// A plain external URL (the pre-existing, still-supported path) is used
+// as-is with no round trip. Resolved data URLs are cached at module scope
+// so the same reference is only downloaded once per session.
+const RESOLVED_IMG_CACHE = new Map<string, string>();
+const IMG_REF_PREFIX = 'artistry-img:';
+
+function ResolvedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const isRef = src.startsWith(IMG_REF_PREFIX);
+  const [resolved, setResolved] = useState<string | null>(isRef ? RESOLVED_IMG_CACHE.get(src) || null : src);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!isRef) { setResolved(src); setFailed(false); return; }
+    const cached = RESOLVED_IMG_CACHE.get(src);
+    if (cached) { setResolved(cached); return; }
+    let cancelled = false;
+    setResolved(null);
+    setFailed(false);
+    (async () => {
+      const r = await lensRun('artistry', 'project-image-download', { id: src });
+      if (cancelled) return;
+      if (r.data?.ok && r.data.result) {
+        const dataUrl = `data:${r.data.result.mimeType};base64,${r.data.result.data}`;
+        RESOLVED_IMG_CACHE.set(src, dataUrl);
+        setResolved(dataUrl);
+      } else {
+        setFailed(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [src, isRef]);
+
+  if (failed) return <ImageIcon className="w-8 h-8 text-gray-600" data-testid="artistry-img-failed" />;
+  if (!resolved) return <Loader2 className="w-5 h-5 animate-spin text-gray-500" data-testid="artistry-img-loading" />;
+  return <img src={resolved} alt={alt} className={className} />;
+}
 
 export function ProjectStudio() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -37,6 +78,9 @@ export function ProjectStudio() {
   const [fImages, setFImages] = useState('');
   const [fSteps, setFSteps] = useState('');
   const [saving, setSaving] = useState(false);
+  const fFileRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +122,45 @@ export function ProjectStudio() {
       load();
     }
   }, [fTitle, fDesc, fDiscipline, fTools, fTags, fCover, fImages, fSteps, load]);
+
+  // Reads the selected file as a base64 data: URL (same FileReader.readAsDataURL
+  // idiom used by PatientChartPanel.tsx's onPhotoFileSelected / TravelDocsPanel.tsx's
+  // onFileSelected), uploads it through the real artistry.project-image-upload
+  // macro (native blob storage — server/domains/artistry.js), then appends the
+  // resulting `artistry-img:<id>` reference as a new `url|caption` line in the
+  // SAME free-text textarea the paste-an-external-URL flow already parses at
+  // submit time. Uploading real bytes and pasting an external URL both keep
+  // working, side by side, in the one field.
+  const onImageFileSelected = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fFileRef.current) fFileRef.current.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setUploadError('Please choose an image file.'); return; }
+    if (file.size > 8 * 1024 * 1024) { setUploadError('Image exceeds the 8 MB limit.'); return; }
+    setUploadError(null);
+    setUploadingImage(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Could not read the image file'));
+        reader.readAsDataURL(file);
+      });
+      const r = await lensRun('artistry', 'project-image-upload', {
+        fileName: file.name, mimeType: file.type, data: dataUrl,
+      });
+      if (r.data?.ok && r.data.result?.image?.ref) {
+        const ref = r.data.result.image.ref as string;
+        setFImages((prev) => `${prev}${prev.trim() ? '\n' : ''}${ref}|${file.name}`);
+      } else {
+        setUploadError(r.data?.error || 'Upload failed — image was not saved.');
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Could not read or upload the image.');
+    } finally {
+      setUploadingImage(false);
+    }
+  }, []);
 
   const remove = useCallback(async (id: string) => {
     await lensRun('artistry', 'projectDelete', { projectId: id });
@@ -137,7 +220,7 @@ export function ProjectStudio() {
               <button onClick={() => openProject(p.id)} className="block w-full text-left">
                 <div className="aspect-video bg-white/5 flex items-center justify-center overflow-hidden">
                   {(p.coverUrl || p.images[0]?.url)
-                    ? <img src={p.coverUrl || p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    ? <ResolvedImage src={p.coverUrl || p.images[0].url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     : <ImageIcon className="w-8 h-8 text-gray-600" />}
                 </div>
                 <div className="p-3">
@@ -178,7 +261,17 @@ export function ProjectStudio() {
               <input value={fTools} onChange={(e) => setFTools(e.target.value)} placeholder="Tools (comma separated): Photoshop, Blender" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
               <input value={fTags} onChange={(e) => setFTags(e.target.value)} placeholder="Tags (comma separated)" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
               <input value={fCover} onChange={(e) => setFCover(e.target.value)} placeholder="Cover image URL" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
-              <textarea value={fImages} onChange={(e) => setFImages(e.target.value)} placeholder="Images — one per line: url|caption" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
+              <div className="space-y-1.5">
+                <textarea value={fImages} onChange={(e) => setFImages(e.target.value)} placeholder="Images — one per line: url|caption (or upload below)" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
+                <div className="flex items-center gap-2">
+                  <input ref={fFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void onImageFileSelected(e); }} />
+                  <button type="button" onClick={() => fFileRef.current?.click()} disabled={uploadingImage} className="px-2.5 py-1 text-[11px] bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50 flex items-center gap-1">
+                    {uploadingImage ? <><Loader2 className="w-3 h-3 animate-spin" />Uploading…</> : <><Upload className="w-3 h-3" />Upload image</>}
+                  </button>
+                  <span className="text-[10px] text-gray-500">Adds an artistry-img: reference line above — external URLs still work too.</span>
+                </div>
+                {uploadError && <p className="text-[11px] text-red-400">{uploadError}</p>}
+              </div>
               <textarea value={fSteps} onChange={(e) => setFSteps(e.target.value)} placeholder="Process steps — one per line: title|detail" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
               <button onClick={submit} disabled={saving || !fTitle.trim()} className="w-full py-2 bg-neon-pink/20 rounded-lg text-sm hover:bg-neon-pink/30 disabled:opacity-50">
                 {saving ? 'Publishing...' : 'Publish Project'}
@@ -198,7 +291,7 @@ export function ProjectStudio() {
               <div>
                 <div className="aspect-video bg-white/5 flex items-center justify-center overflow-hidden">
                   {(detail.project.coverUrl || detail.project.images[0]?.url)
-                    ? <img src={detail.project.coverUrl || detail.project.images[0].url} alt={detail.project.title} className="w-full h-full object-cover" />
+                    ? <ResolvedImage src={detail.project.coverUrl || detail.project.images[0].url} alt={detail.project.title} className="w-full h-full object-cover" />
                     : <ImageIcon className="w-10 h-10 text-gray-600" />}
                 </div>
                 <div className="p-5 space-y-4">
@@ -226,7 +319,7 @@ export function ProjectStudio() {
                     <div className="space-y-2">
                       {detail.project.images.sort((a, b) => a.order - b.order).map((im, i) => (
                         <figure key={i}>
-                          <img src={im.url} alt={im.caption || `image ${i + 1}`} className="w-full rounded-lg border border-white/10" />
+                          <ResolvedImage src={im.url} alt={im.caption || `image ${i + 1}`} className="w-full rounded-lg border border-white/10" />
                           {im.caption && <figcaption className="text-[11px] text-gray-400 mt-1">{im.caption}</figcaption>}
                         </figure>
                       ))}

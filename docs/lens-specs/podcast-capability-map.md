@@ -93,22 +93,21 @@ parallel CRUD system found.
 
 ## Found, documented, deliberately not changed
 
-- **`trimSilence` preference has no real effect anywhere.** The backend
-  macro (`playback-prefs-set`/`playback-prefs-get`/`episode-stream`)
-  faithfully stores and returns a `trimSilence` boolean, and it is honest
-  about being *only* a stored flag — no engine on either side (client
-  Web Audio graph or server transcode) ever actually detects or skips
-  silent regions of the audio. Since there was already no UI control
-  setting it to `true`, the "trim silence on" badge in
-  `PodcastStreamPlayer` could never render — inert, not deceptive. Adding
-  a toggle for it without adding the underlying DSP would have created a
-  new instance of exactly the "flip a switch, nothing happens" dishonesty
-  this pass fixed elsewhere, so it was left alone. **Triage: ENGINEERING**
-  — real silence-detection would need a client-side Web Audio analysis
-  pass (RMS-threshold gate over decoded PCM) with no external data
-  dependency; a defined-scope follow-up, not a defining gap for this
-  lens (subscribe/listen/discover/RSS/transcripts/sync are all real and
-  already at Spotify/Apple-Podcasts parity).
+- ~~**`trimSilence` preference has no real effect anywhere.**~~ **CLOSED
+  (2026-07-16).** `lib/podcast/silence-detect.ts` is the real engine this
+  gap was missing: windowed RMS analysis over decoded PCM
+  (`computeRmsWindows`), merged into silence ranges ≥1.5s
+  (`findSilenceRanges`), and an `analyzeEpisodeForSilence` entry point that
+  decodes an episode's audio via Web Audio and returns the range list.
+  `PodcastStreamPlayer.tsx` runs this when the toggle is on (with an
+  `AbortController` so toggling off or unmounting cleanly cancels an
+  in-flight analysis — no orphaned work), skips `currentTime` forward past
+  a detected silent range on `onTimeUpdate` via `resolveSilenceAutoSkip`,
+  and persists the toggle through the same real `playback-prefs-set` macro
+  that already existed — no backend changes were needed. The RMS formula
+  was hand-verified against a synthetic 100Hz/amplitude-0.5 sine wave
+  (expected RMS = amp/√2 ≈ 0.35355) and independently reproduced bit-for-bit
+  before landing. 19 new lib tests + 3 new component tests, all passing.
 - **Orphaned dead component `components/podcast/ItunesPodcastPanel.tsx`.**
   Fully duplicate of `ItunesSearch.tsx`'s Apple Podcasts search (calls the
   equivalent, also-real `podcast.live_itunes_search` macro registered in

@@ -339,8 +339,17 @@ export default function registerEcoActions(registerLensAction) {
 
   /**
    * sustainabilityScore
-   * Multi-criteria sustainability assessment across environmental, social,
-   * and governance (ESG) pillars with weighted sub-indicators.
+   * Multi-criteria ESG (Environmental / Social / Governance) assessment,
+   * scored the way a corporate sustainability report is scored — board
+   * diversity, regulatory compliance, labor practices, emissions reduction,
+   * etc. This is an ORGANIZATION-level framework, not a personal metric: no
+   * individual has "board diversity" or "regulatory compliance" data to
+   * enter. It is deliberately distinct from the personal-footprint tools in
+   * this lens (carbonFootprint, biodiversityIndex) and is surfaced to the
+   * frontend as an explicit "Organization ESG" tool, never blended into a
+   * personal score. The result carries `scope: "organization"` +
+   * `scopeLabel` so any consumer can render/branch on that honestly instead
+   * of re-deriving it. The computation itself is unchanged by this framing.
    * artifact.data.indicators = {
    *   environmental?: { emissions?, energyEfficiency?, wasteReduction?, waterUsage?, biodiversity? },
    *   social?: { laborPractices?, communityImpact?, healthSafety?, diversity?, humanRights? },
@@ -483,6 +492,12 @@ export default function registerEcoActions(registerLensAction) {
     return {
       ok: true,
       result: {
+        // Honest-scope marker: this is a corporate/organization ESG
+        // assessment, not a personal-ecology score. Consumers (frontend,
+        // exports, DTU stamping) must render/label it as such rather than
+        // presenting it alongside a user's personal footprint.
+        scope: "organization",
+        scopeLabel: "Organization ESG (not personal)",
         overallScore,
         maturityLevel,
         overallRating: overallScore >= 80 ? "excellent" : overallScore >= 60 ? "good" : overallScore >= 40 ? "fair" : overallScore >= 20 ? "poor" : overallScore !== null ? "critical" : "insufficient data",

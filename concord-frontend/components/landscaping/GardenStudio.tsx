@@ -2,7 +2,7 @@
 
 /**
  * GardenStudio — the landscape-design surface for the landscaping lens.
- * Wires the eight buildable backlog features against server/domains/landscaping.js:
+ * Wires the buildable backlog features against server/domains/landscaping.js:
  *   1. Visual yard designer (drag-drop 2D plot canvas)
  *   2. AR / photo-overlay plant preview
  *   3. Plant identification from photo (vision brain)
@@ -11,6 +11,13 @@
  *   6. Cost estimate -> contractor proposal
  *   7. Maintenance calendar (per-bed seasonal tasks)
  *   8. Plant health diary (photo timeline per planting)
+ *   9. Proposal -> invoice status machine (Invoices tab)
+ *  10. Job inspections — inspection-add / inspection-list / inspection-update
+ *      (real inspections scheduled against a real job-schedule record, with
+ *      pass/fail/pending result + deficiency notes + a re-inspection date)
+ *  11. Crew certifications — cert-add / cert-list / cert-remove (real
+ *      landscaping-trade license/training categories, read-time-derived
+ *      expiry badge)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -36,6 +43,10 @@ import {
   CheckCircle2,
   CircleDollarSign,
   ArrowRight,
+  ClipboardCheck,
+  ShieldCheck,
+  ShieldAlert,
+  AlertTriangle,
 } from 'lucide-react';
 
 type StudioTab =
@@ -47,7 +58,9 @@ type StudioTab =
   | 'proposal'
   | 'invoices'
   | 'calendar'
-  | 'diary';
+  | 'diary'
+  | 'inspections'
+  | 'certs';
 
 const STUDIO_TABS: { id: StudioTab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'designer', label: 'Yard Designer', icon: LayoutGrid },
@@ -59,6 +72,8 @@ const STUDIO_TABS: { id: StudioTab; label: string; icon: typeof LayoutGrid }[] =
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'diary', label: 'Health Diary', icon: NotebookPen },
+  { id: 'inspections', label: 'Inspections', icon: ClipboardCheck },
+  { id: 'certs', label: 'Certifications', icon: ShieldCheck },
 ];
 
 // ─── shared shapes ──────────────────────────────────────────────────
@@ -149,6 +164,8 @@ export function GardenStudio() {
       {tab === 'invoices' && <InvoiceTracker />}
       {tab === 'calendar' && <MaintenanceCalendar />}
       {tab === 'diary' && <HealthDiary />}
+      {tab === 'inspections' && <InspectionsTab />}
+      {tab === 'certs' && <CertsTab />}
     </div>
   );
 }
@@ -1865,6 +1882,545 @@ function HealthDiary() {
             No diary entries yet. Log one above to start a photo timeline per planting.
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Feature 10 — Job inspections ───────────────────────────────────
+// Closes the "Inspections" gap (docs/lens-specs/landscaping-capability-
+// map.md): a real walkthrough/QA inspection scheduled against a real
+// job-schedule record (see JobDispatchBoard.tsx / server/domains/
+// landscaping.js's job-schedule/job-list), never a free-floating record —
+// jobId is required by the backend. jobTitle/jobFound come back re-derived
+// live from inspection-list on every load, so a renamed or deleted job is
+// shown honestly instead of a stale cached title.
+interface SchedJobRef {
+  id: string;
+  title: string;
+  status: string;
+}
+interface Inspection {
+  id: string;
+  number: string;
+  jobId: string;
+  jobTitle: string | null;
+  jobFound: boolean;
+  inspectionType: string;
+  inspector: string;
+  scheduledDate: string;
+  result: 'pending' | 'pass' | 'fail';
+  deficiencyNotes: string | null;
+  reInspectionDate: string | null;
+  notes: string;
+  completedAt: string | null;
+}
+
+const INSPECTION_TYPES: { value: string; label: string }[] = [
+  { value: 'final_walkthrough', label: 'Final Walkthrough' },
+  { value: 'irrigation_system_check', label: 'Irrigation System Check' },
+  { value: 'plant_health_establishment', label: 'Plant Health / Establishment Check' },
+  { value: 'hardscape_drainage', label: 'Hardscape / Drainage Inspection' },
+  { value: 'seasonal_maintenance_audit', label: 'Seasonal Maintenance Audit' },
+  { value: 'warranty_punch_list_review', label: 'Warranty / Punch-List Review' },
+  { value: 'erosion_sediment_control', label: 'Erosion / Sediment Control' },
+  { value: 'pre_installation_site_review', label: 'Pre-Installation Site Review' },
+];
+const inspectionTypeLabel = (v: string) => INSPECTION_TYPES.find((t) => t.value === v)?.label || v;
+
+function resultBadge(result: Inspection['result']) {
+  if (result === 'pass')
+    return <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] uppercase text-emerald-300">Pass</span>;
+  if (result === 'fail')
+    return <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase text-rose-300">Fail</span>;
+  return <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] uppercase text-amber-300">Pending</span>;
+}
+
+function InspectionsTab() {
+  const [jobs, setJobs] = useState<SchedJobRef[]>([]);
+  const [list, setList] = useState<Inspection[]>([]);
+  const [counts, setCounts] = useState({ passCount: 0, failCount: 0, pendingCount: 0 });
+  const [jobId, setJobId] = useState('');
+  const [inspectionType, setInspectionType] = useState(INSPECTION_TYPES[0].value);
+  const [inspector, setInspector] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const [resultForId, setResultForId] = useState<string | null>(null);
+  const [resultChoice, setResultChoice] = useState<'pass' | 'fail'>('pass');
+  const [deficiencyNotes, setDeficiencyNotes] = useState('');
+  const [reInspectionDate, setReInspectionDate] = useState('');
+
+  const load = useCallback(async () => {
+    const [insp, sched] = await Promise.all([
+      lensRun<{ inspections: Inspection[]; passCount: number; failCount: number; pendingCount: number }>(
+        'landscaping',
+        'inspection-list',
+        {},
+      ),
+      lensRun<{ jobs: SchedJobRef[] }>('landscaping', 'job-list', {}),
+    ]);
+    if (insp.data.ok && insp.data.result) {
+      setList(insp.data.result.inspections || []);
+      setCounts({
+        passCount: insp.data.result.passCount,
+        failCount: insp.data.result.failCount,
+        pendingCount: insp.data.result.pendingCount,
+      });
+    }
+    if (sched.data.ok && sched.data.result) setJobs(sched.data.result.jobs || []);
+  }, []);
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const add = async () => {
+    setErr(null);
+    setBusy(true);
+    const r = await lensRun('landscaping', 'inspection-add', { jobId, inspectionType, inspector, scheduledDate, notes });
+    setBusy(false);
+    if (r.data.ok) {
+      setInspector('');
+      setScheduledDate('');
+      setNotes('');
+      await load();
+    } else setErr(r.data.error || 'Could not schedule the inspection — check the job, inspector, and date.');
+  };
+
+  const openResult = (i: Inspection) => {
+    setResultForId(i.id);
+    setResultChoice(i.result === 'fail' ? 'fail' : 'pass');
+    setDeficiencyNotes(i.deficiencyNotes || '');
+    setReInspectionDate(i.reInspectionDate || '');
+  };
+  const saveResult = async (i: Inspection) => {
+    setBusy(true);
+    const r = await lensRun('landscaping', 'inspection-update', {
+      id: i.id,
+      result: resultChoice,
+      deficiencyNotes: resultChoice === 'fail' ? deficiencyNotes : undefined,
+      reInspectionDate: resultChoice === 'fail' ? reInspectionDate : undefined,
+    });
+    setBusy(false);
+    if (r.data.ok) {
+      setResultForId(null);
+      await load();
+    } else setErr(r.data.error || 'Could not record the result.');
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+      <div className={cardCls}>
+        <p className="mb-2 text-[10px] uppercase tracking-wider text-emerald-400">Schedule an inspection</p>
+        <div className="space-y-2.5">
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">Job</label>
+            <select className={inputCls} value={jobId} onChange={(e) => setJobId(e.target.value)} aria-label="Job">
+              <option value="">Select a scheduled job…</option>
+              {jobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.title}
+                </option>
+              ))}
+            </select>
+            {jobs.length === 0 && (
+              <p className="mt-1 text-[10px] text-zinc-500">No jobs on the Jobs tab yet — schedule one there first.</p>
+            )}
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">Inspection type</label>
+            <select
+              className={inputCls}
+              value={inspectionType}
+              onChange={(e) => setInspectionType(e.target.value)}
+              aria-label="Inspection type"
+            >
+              {INSPECTION_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400">Inspector</label>
+              <input className={inputCls} value={inspector} onChange={(e) => setInspector(e.target.value)} placeholder="Jane Alvarez" />
+            </div>
+            <div className="flex-1">
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400">Scheduled date</label>
+              <input
+                type="date"
+                className={inputCls}
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                aria-label="Scheduled date"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">Notes</label>
+            <textarea className={inputCls} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+          <button className={btnCls} onClick={add} disabled={busy || !jobId || !inspector.trim() || !scheduledDate}>
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardCheck className="h-3.5 w-3.5" />}
+            Schedule inspection
+          </button>
+          {err && <p className="text-[11px] text-rose-400">{err}</p>}
+        </div>
+      </div>
+
+      <div className={cardCls}>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-wider text-emerald-400">Inspections ({list.length})</p>
+          <span className="text-[10px] text-zinc-400">
+            {counts.passCount} pass · {counts.failCount} fail · {counts.pendingCount} pending
+          </span>
+        </div>
+        {list.length === 0 && (
+          <p className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">
+            No inspections scheduled yet.
+          </p>
+        )}
+        <div className="space-y-2">
+          {list.map((i) => (
+            <div key={i.id} className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-white">
+                  {i.number} · {inspectionTypeLabel(i.inspectionType)}
+                </p>
+                {resultBadge(i.result)}
+              </div>
+              <p className="mt-0.5 text-[10px] text-zinc-400">
+                {i.jobFound ? i.jobTitle : <span className="text-amber-400">job no longer on schedule</span>} · {i.inspector} ·{' '}
+                {i.scheduledDate}
+              </p>
+              {i.result === 'fail' && (
+                <div className="mt-1.5 rounded bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">
+                  <AlertTriangle className="mr-1 inline h-3 w-3" />
+                  {i.deficiencyNotes}
+                  {i.reInspectionDate && <span className="text-rose-400"> · re-inspect {i.reInspectionDate}</span>}
+                </div>
+              )}
+
+              {resultForId === i.id ? (
+                <div className="mt-2 space-y-2 border-t border-zinc-800 pt-2">
+                  <select
+                    className={inputCls}
+                    value={resultChoice}
+                    onChange={(e) => setResultChoice(e.target.value as 'pass' | 'fail')}
+                    aria-label="Result"
+                  >
+                    <option value="pass">Pass</option>
+                    <option value="fail">Fail</option>
+                  </select>
+                  {resultChoice === 'fail' && (
+                    <>
+                      <textarea
+                        className={inputCls}
+                        rows={2}
+                        placeholder="What failed and why"
+                        value={deficiencyNotes}
+                        onChange={(e) => setDeficiencyNotes(e.target.value)}
+                      />
+                      <input
+                        type="date"
+                        className={inputCls}
+                        value={reInspectionDate}
+                        onChange={(e) => setReInspectionDate(e.target.value)}
+                        aria-label="Re-inspection date"
+                      />
+                    </>
+                  )}
+                  <div className="flex gap-1.5">
+                    <button
+                      className={btnCls}
+                      onClick={() => saveResult(i)}
+                      disabled={busy || (resultChoice === 'fail' && !deficiencyNotes.trim())}
+                    >
+                      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                      Save result
+                    </button>
+                    <button
+                      onClick={() => setResultForId(null)}
+                      className="rounded-md border border-zinc-800 px-3 py-1.5 text-xs text-zinc-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => openResult(i)} className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-emerald-300 hover:text-emerald-200">
+                  <CheckCircle2 className="h-3 w-3" /> Record result
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Feature 11 — Crew certifications ───────────────────────────────
+// Closes the "Certs" gap (docs/lens-specs/landscaping-capability-map.md):
+// TRADE_CERTS was a static UI dropdown with zero backing storage. Real
+// landscaping-trade categories, an "Other" free-text fallback, and a
+// read-time-derived expiry badge (see server/domains/landscaping.js's
+// cert-add/cert-list/cert-remove doc comment for the plumbing-vs-masonry
+// shape decision — this domain has no persisted crew/tech entity, so
+// certifications are a flat list keyed by free-text crew member name,
+// grouped into a roster for display).
+interface CrewCert {
+  id: string;
+  crewMemberName: string;
+  certType: string;
+  issuingBody: string;
+  licenseNumber: string;
+  issueDate: string | null;
+  expiryDate: string | null;
+  expiryStatus: 'no_expiry' | 'valid' | 'expiring_soon' | 'expired';
+  isExpired: boolean;
+}
+
+// Real landscaping-trade certification categories — not generic
+// placeholders. "Other" falls through to a free-text field.
+const CERT_CATEGORIES = [
+  'NALP Certified Landscape Professional',
+  'Certified Ornamental Landscape Professional (COLP)',
+  'State Pesticide / Herbicide Applicator License',
+  'ISA Certified Arborist',
+  'Irrigation Association Certified Irrigation Technician (CIT)',
+  'Irrigation Association Certified Irrigation Designer (CID)',
+  'Backflow Prevention Assembly Tester Certification',
+  'OSHA 10-Hour Construction Safety',
+  'Skid Steer / Heavy Equipment Operator Certification',
+  'First Aid / CPR',
+  'Other',
+] as const;
+
+function certBadge(c: CrewCert) {
+  if (c.expiryStatus === 'expired')
+    return <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-medium text-rose-300">EXPIRED</span>;
+  if (c.expiryStatus === 'expiring_soon')
+    return <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-300">EXPIRING SOON</span>;
+  return null;
+}
+
+function CertsTab() {
+  const [list, setList] = useState<CrewCert[]>([]);
+  const [roster, setRoster] = useState<string[]>([]);
+  const [stats, setStats] = useState({ expiredCount: 0, expiringSoonCount: 0 });
+  const [crewMemberName, setCrewMemberName] = useState('');
+  const [category, setCategory] = useState<string>(CERT_CATEGORIES[0]);
+  const [customType, setCustomType] = useState('');
+  const [issuingBody, setIssuingBody] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [issueDate, setIssueDate] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await lensRun<{ certifications: CrewCert[]; roster: string[]; expiredCount: number; expiringSoonCount: number }>(
+      'landscaping',
+      'cert-list',
+      {},
+    );
+    if (r.data.ok && r.data.result) {
+      setList(r.data.result.certifications || []);
+      setRoster(r.data.result.roster || []);
+      setStats({ expiredCount: r.data.result.expiredCount, expiringSoonCount: r.data.result.expiringSoonCount });
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const add = async () => {
+    const certType = category === 'Other' ? customType.trim() : category;
+    if (!crewMemberName.trim()) {
+      setErr('Crew member name required');
+      return;
+    }
+    if (!certType) {
+      setErr('Certification type required');
+      return;
+    }
+    if (!issuingBody.trim()) {
+      setErr('Issuing body required');
+      return;
+    }
+    setErr(null);
+    setBusy(true);
+    const r = await lensRun('landscaping', 'cert-add', {
+      crewMemberName: crewMemberName.trim(),
+      certType,
+      issuingBody: issuingBody.trim(),
+      licenseNumber: licenseNumber.trim(),
+      issueDate: issueDate || undefined,
+      expiryDate: expiryDate || undefined,
+    });
+    setBusy(false);
+    if (r.data.ok) {
+      setCrewMemberName('');
+      setCategory(CERT_CATEGORIES[0]);
+      setCustomType('');
+      setIssuingBody('');
+      setLicenseNumber('');
+      setIssueDate('');
+      setExpiryDate('');
+      await load();
+    } else setErr(r.data.error || 'Could not save the certification.');
+  };
+
+  const remove = async (id: string) => {
+    await lensRun('landscaping', 'cert-remove', { id });
+    await load();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <Stat label="Crew on file" value={String(roster.length)} />
+        <Stat label="Expiring soon" value={String(stats.expiringSoonCount)} />
+        <Stat label="Expired" value={String(stats.expiredCount)} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+        <div className={cardCls}>
+          <p className="mb-2 text-[10px] uppercase tracking-wider text-emerald-400">Add crew certification</p>
+          <div className="space-y-2.5">
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400">Crew member</label>
+              <input
+                className={inputCls}
+                value={crewMemberName}
+                onChange={(e) => setCrewMemberName(e.target.value)}
+                placeholder="Mike Alvarez"
+                list="landscaping-cert-roster"
+              />
+              <datalist id="landscaping-cert-roster">
+                {roster.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400">Certification type</label>
+              <select className={inputCls} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Certification type">
+                {CERT_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              {category === 'Other' && (
+                <input
+                  className={`${inputCls} mt-1.5`}
+                  placeholder="Certification name"
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                />
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-zinc-400">Issuing body</label>
+                <input className={inputCls} value={issuingBody} onChange={(e) => setIssuingBody(e.target.value)} placeholder="ISA" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-zinc-400">License #</label>
+                <input className={inputCls} value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-zinc-400">Issue date</label>
+                <input type="date" className={inputCls} value={issueDate} onChange={(e) => setIssueDate(e.target.value)} aria-label="Issue date" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-zinc-400">Expiry date</label>
+                <input
+                  type="date"
+                  className={inputCls}
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  aria-label="Expiry date"
+                />
+              </div>
+            </div>
+            <button className={btnCls} onClick={add} disabled={busy}>
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              Add certification
+            </button>
+            {err && <p className="text-[11px] text-rose-400">{err}</p>}
+          </div>
+        </div>
+
+        <div className={cardCls}>
+          <p className="mb-2 text-[10px] uppercase tracking-wider text-emerald-400">Crew roster ({list.length} certifications)</p>
+          {list.length === 0 && (
+            <p className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">
+              No certifications on file yet.
+            </p>
+          )}
+          <div className="space-y-2">
+            {roster.map((name) => {
+              const certs = list.filter((c) => c.crewMemberName === name);
+              const hasExpired = certs.some((c) => c.isExpired);
+              return (
+                <div key={name} className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
+                  <div className="flex items-center gap-1.5">
+                    {hasExpired ? (
+                      <ShieldAlert className="h-3.5 w-3.5 text-rose-400" />
+                    ) : (
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                    )}
+                    <span className="text-xs font-medium text-white">{name}</span>
+                    <span className="text-[10px] text-zinc-500">({certs.length})</span>
+                  </div>
+                  <ul className="mt-1.5 space-y-1">
+                    {certs.map((c) => (
+                      <li
+                        key={c.id}
+                        className={`flex items-center justify-between gap-2 rounded border px-2 py-1 text-[11px] ${
+                          c.isExpired
+                            ? 'border-rose-500/30 bg-rose-500/5'
+                            : c.expiryStatus === 'expiring_soon'
+                              ? 'border-amber-500/30 bg-amber-500/5'
+                              : 'border-zinc-800'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-zinc-200">{c.certType}</span>
+                            {certBadge(c)}
+                          </div>
+                          <div className="truncate text-zinc-500">
+                            {c.issuingBody}
+                            {c.licenseNumber ? ` · #${c.licenseNumber}` : ''}
+                            {c.expiryDate ? ` · exp ${c.expiryDate}` : ' · no expiry on file'}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => remove(c.id)}
+                          className="shrink-0 text-zinc-600 hover:text-rose-400"
+                          aria-label={`Remove ${c.certType} certification for ${name}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

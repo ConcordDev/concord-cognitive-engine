@@ -38,11 +38,11 @@ interface BloodlineMeta {
 
 const BLOODLINES: Record<string, BloodlineMeta> = {
   sanguire:    { id: 'sanguire',    glyph: '✦', tone: 'text-red-400',     ring: 'ring-red-700/50',     short: 'SANG' },
-  medici:      { id: 'medici',      glyph: '☥', tone: 'text-emerald-300', ring: 'ring-emerald-700/50', short: 'MEDI' },
+  vessine:      { id: 'vessine',      glyph: '☥', tone: 'text-emerald-300', ring: 'ring-emerald-700/50', short: 'MEDI' },
   sahm:        { id: 'sahm',        glyph: '✺', tone: 'text-amber-300',   ring: 'ring-amber-700/50',   short: 'SAHM' },
   iron_warden: { id: 'iron_warden', glyph: '✶', tone: 'text-zinc-300',    ring: 'ring-zinc-600/60',    short: 'IRON' },
   akeia:       { id: 'akeia',       glyph: '✸', tone: 'text-cyan-300',    ring: 'ring-cyan-700/50',    short: 'AKEA' },
-  kree:        { id: 'kree',        glyph: '✷', tone: 'text-orange-300',  ring: 'ring-orange-700/50',  short: 'KREE' },
+  vrellan:     { id: 'vrellan',     glyph: '✷', tone: 'text-orange-300',  ring: 'ring-orange-700/50',  short: 'VRLN' },
   asbir:       { id: 'asbir',       glyph: '⚝', tone: 'text-yellow-300',  ring: 'ring-yellow-700/50',  short: 'ASBR' },
   dinye:       { id: 'dinye',       glyph: '✹', tone: 'text-violet-300',  ring: 'ring-violet-700/50',  short: 'DINY' },
   aekon:       { id: 'aekon',       glyph: '❄', tone: 'text-sky-300',     ring: 'ring-sky-700/50',     short: 'AEKN' },

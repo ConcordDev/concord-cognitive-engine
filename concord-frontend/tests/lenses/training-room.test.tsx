@@ -99,6 +99,8 @@ describe('TrainingRoomPage — four UX states', () => {
     expect(ready).toHaveTextContent('100'); // active
     expect(ready).toHaveTextContent('300'); // recovery
     expect(ready).toHaveTextContent('220'); // melee parry window > 0
+    // No authored combo_followups on this fixture — the strip stays honestly absent.
+    expect(screen.queryByText(/combo followups/i)).not.toBeInTheDocument();
 
     // Switch to bow → parry window renders as "none" (parry_window_ms === 0).
     fireEvent.click(screen.getByRole('button', { name: /bow/i }));
@@ -113,6 +115,33 @@ describe('TrainingRoomPage — four UX states', () => {
     expect(lensRun).toHaveBeenCalledWith('training-room', 'list_skills', {});
     expect(lensRun).toHaveBeenCalledWith('training-room', 'list_kinds', {});
     expect(lensRun).toHaveBeenCalledWith('training-room', 'frame_data', { skillId: 'sword' });
+  });
+
+  it('renders the combo followups strip when authored, and stays honestly absent when empty', async () => {
+    const FOUNDERS_FRAME = {
+      skillId: 'dtu_swordsmanship_v1', name: "Founder's Edge", kind: 'default', level: 1,
+      startup_ms: 220, active_ms: 100, recovery_ms: 280,
+      parry_window_ms: 200, dodge_window_ms: 260,
+      combo_followups: [{ skillId: 'dtu_refusal_ward_v1', name: "The Sovereign's Refusal" }],
+    };
+    lensRun.mockImplementation((_d: string, action: string, input: { skillId?: string }) => {
+      if (action === 'list_skills') {
+        return Promise.resolve(envelope({ skills: [{ id: 'dtu_swordsmanship_v1', title: "Founder's Edge" }] }));
+      }
+      if (action === 'list_kinds') return Promise.resolve(envelope({ kinds: [] }));
+      if (action === 'frame_data') {
+        return Promise.resolve(envelope({
+          ok: true,
+          frameData: input.skillId === 'dtu_swordsmanship_v1' ? FOUNDERS_FRAME : SWORD_FRAME,
+        }));
+      }
+      return Promise.resolve(envelope(null));
+    });
+    render(<TrainingRoomPage />);
+
+    // Founder's Edge has a real authored follow-up — the strip renders it.
+    await waitFor(() => expect(screen.getByText("The Sovereign's Refusal")).toBeInTheDocument());
+    expect(screen.getByText(/combo followups/i)).toBeInTheDocument();
   });
 
   it('renders the frame ERROR state when a skill resolves no frame data', async () => {

@@ -10,7 +10,7 @@
 import { seededRng, pick } from "./lib.mjs";
 
 const GIVEN = ["Ada","Bram","Cael","Dara","Eli","Fen","Gale","Hana","Iko","Jorah","Kesh","Lira","Mara","Nuri","Oren","Pell","Quill","Rhea","Sol","Tov","Una","Vex","Wrenn","Xan","Yara","Zeph","Brael","Sira","Tamsin","Odo","Vesna","Cyl","Marn","Dell","Swain"];
-const SURNAME = ["Ashford","Brecker","Calder","Dunmore","Eaves","Frost","Garran","Holt","Irons","Jessup","Kade","Locke","Marsh","Nyx","Oller","Pyke","Quist","Reyes","Sable","Thorne","Underwood","Vance","Wills","Yarrow","Zane","Okonkwo","Sato","Reza","Bauer","Volkov"];
+const SURNAME = ["Ashford","Brecker","Calder","Dunmore","Eaves","Frost","Garran","Holt","Irons","Jessup","Kade","Locke","Marsh","Nyx","Oller","Wrenlow","Quist","Reyes","Sable","Thorne","Underwood","Vance","Wills","Yarrow","Zane","Okonkwo","Sato","Reza","Bauer","Volkov"];
 const QUIRKS = ["never makes eye contact","laughs at the wrong moments","collects broken things","speaks in proverbs","always cold","quotes lore nobody remembers","counts under their breath","trusts animals more than people","keeps a tally of small debts","hums an old refusal hymn"];
 const WEALTH = ["destitute","scraping by","comfortable","well-off","hoarding a fortune"];
 const SECRETS = [

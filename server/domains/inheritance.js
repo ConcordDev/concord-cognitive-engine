@@ -17,6 +17,14 @@
 // Persistent per-user data lives in globalThis._concordSTATE Maps keyed
 // by userId. Handlers never throw — every path is wrapped in try/catch
 // and returns { ok, result? , error? }.
+//
+// Track D (CURATION): `intestacy-lookup` below reads a small, authored,
+// cited reference table of real state intestate-succession statutes
+// (content/intestacy-reference.json via server/lib/intestacy-reference.js)
+// — mirroring the healthcare.protocolMatch / content/healthcare-protocols.json
+// pattern. See that lib file's header for the full honesty rationale.
+
+import { getIntestacyForState, listIntestacyStateSummaries } from "../lib/intestacy-reference.js";
 
 function estateState() {
   const g = globalThis;
@@ -594,6 +602,83 @@ export default function registerInheritanceActions(registerLensAction) {
         }
       }
       return { ok: true, result: { notice } };
+    } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+  });
+
+  // ── Real-world reference: state intestacy shares (Track D, CURATION) ──
+  // Authored, cited summary of real state statutes for a small representative
+  // subset of states — see server/lib/intestacy-reference.js header. Never
+  // fabricates a table for an uncovered state; honestly reports it's out of
+  // the reference set instead.
+  const INTESTACY_DISCLAIMER =
+    "This is a simplified, paraphrased summary of a real published statute for " +
+    "educational reference only — it is NOT legal advice. It does not capture " +
+    "every scenario (adopted children, half-relatives, disclaimers, advancements, " +
+    "putative spouses, and more) and statutes are amended over time. Verify the " +
+    "current statute and consult a licensed estate-planning attorney before " +
+    "relying on this for an actual estate.";
+
+  registerLensAction("inheritance", "intestacy-lookup", (_ctx, _artifact, params = {}) => {
+    try {
+      const state = String(params.state || params.stateCode || "").trim();
+      const summaries = listIntestacyStateSummaries();
+      if (!state) {
+        return {
+          ok: true,
+          result: {
+            covered: false,
+            message: "No state supplied.",
+            statesCovered: summaries,
+            representativeSubset: true,
+            disclaimer: INTESTACY_DISCLAIMER,
+          },
+        };
+      }
+      const entry = getIntestacyForState(state);
+      if (!entry) {
+        return {
+          ok: true,
+          result: {
+            covered: false,
+            state,
+            message: `"${state}" is not in this reference set. This is a representative subset of US states, not full 50-state coverage.`,
+            statesCovered: summaries,
+            representativeSubset: true,
+            disclaimer: INTESTACY_DISCLAIMER,
+          },
+        };
+      }
+      return {
+        ok: true,
+        result: {
+          covered: true,
+          state: entry.state,
+          stateCode: entry.stateCode,
+          propertyRegime: entry.propertyRegime,
+          citation: entry.citation,
+          source: entry.source,
+          summary: entry.summary,
+          scenarios: entry.scenarios,
+          representativeSubset: true,
+          disclaimer: entry.disclaimer || INTESTACY_DISCLAIMER,
+        },
+      };
+    } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+  });
+
+  registerLensAction("inheritance", "intestacy-states-list", (_ctx, _artifact, _params = {}) => {
+    try {
+      const statesCovered = listIntestacyStateSummaries();
+      return {
+        ok: true,
+        result: {
+          statesCovered,
+          total: statesCovered.length,
+          representativeSubset: true,
+          message: "Representative subset of US states, not full 50-state coverage.",
+          disclaimer: INTESTACY_DISCLAIMER,
+        },
+      };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
 }

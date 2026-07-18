@@ -178,24 +178,42 @@ different honesty tiers:
 - The primary entities (Recipe/Menu/InventoryItem/Booking/Batch/Shift
   cards) **are real** — persisted via the generic per-lens artifact CRUD
   (`useLensData`), not fabricated.
-- Three sub-tools nested inside those tabs are **not**: "Floor Plan &
+- ~~Three sub-tools nested inside those tabs are **not**: "Floor Plan &
   Tables" (`generateTables()` — 20 hardcoded tables + a walk-in waitlist)
   and "Waste Log" are pure `useState` that resets every page load, never
   touching any macro or persisted artifact. "Prep List" is worse — its
   checklist array is never populated by anything (the "Auto-Generate"
   button calls the real `generatePrepList` macro, but the result lands
   in a generic `actionResult` display, not in the checklist state), so
-  the feature is permanently empty.
+  the feature is permanently empty.~~ **CLOSED (2026-07-16, `148cde45`).**
+  `server/domains/food.js` gained `waste-log-add`/`waste-log-list`/
+  `waste-log-delete` (mirrors `pantry-add`/`pantry-list`/`pantry-delete`),
+  `floorplan-table-add`/`floorplan-table-list`/`floorplan-table-update`/
+  `floorplan-table-delete`, a deliberately-separate `floorplan-waitlist-*`
+  family (a host-stand walk-in queue — NOT a reuse of the existing
+  diner-facing `waitlist-join`/`waitlist-status`/`waitlist-leave` macros,
+  which require an authenticated diner + a real business record and are a
+  genuinely different actor/shape), and `prep-list-save`/`prep-list-get`/
+  `prep-list-toggle-task`. New `lib/hooks/use-food-ops.ts`
+  (`useWasteLog`/`useFloorPlan`/`usePrepList`) implements fetch-on-mount +
+  optimistic-update-with-rollback and rewires all three sub-tools in
+  `app/lenses/food/page.tsx` in place. The actual Prep List bug fix:
+  `handleGeneratePrepList` now runs the real `generatePrepList` macro and
+  pipes `result.tasks` through `savePrepTasks` (which persists via
+  `prep-list-save` AND populates the checklist state) instead of the old
+  path that discarded the result into the generic `actionResult` display;
+  each checklist checkbox now calls `prep-list-toggle-task` instead of a
+  local-only toggle, and the panel restores a previously-generated list on
+  mount via `prep-list-get`. Tests: 31 new behavioral cases in `server/
+  tests/depth/food-floorplan-waste-prep-behavior.test.js` plus 18 new
+  cases in `concord-frontend/tests/lib/hooks/use-food-ops.test.ts`. All
+  109 pre-existing food tests still pass alongside the new ones (140/140
+  combined, 0 regressions).
 
-None of these three correspond to a `food.js` macro — there's no
-table-seating, waste-ledger, or prep-checklist persistence macro to wire
-them to, so this isn't a "macro real, UI dead-path" case like the ones
-fixed above; it would need new backend capability, which is out of scope
-for a macro-surfacing pass. This pass added the honest
-`"— session only, not saved to your account"` disclosure (see above) as
-a low-risk stopgap rather than leaving the UI to silently imply
-persistence. A full fix (either building real backend state for
-table/waste/prep tracking, or removing the sub-tools) is future work.
+All three now correspond to real `food.js` macros (see the CLOSED note
+above) — the honest `"— session only, not saved to your account"`
+disclosure this earlier pass added as a stopgap has been removed from
+the UI along with the fix, since it's no longer true.
 
 ## Verification
 

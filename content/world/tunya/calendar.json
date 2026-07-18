@@ -7,7 +7,7 @@
   "months_per_year": 18,
   "days_per_year": 432,
   "moons": 1,
-  "moon_lore": "Tunya has a single visible moon. Moon hours per month always sum with sun hours to exactly 32. The split swings symmetrically around Vernal (16:16 equinox) and Pisces (14:18 lesser-balance) — the two equinox-analogues of the Tunyan year. Mercury-worshipping Medici tie major Choir resonances to these two balance points.",
+  "moon_lore": "Tunya has a single visible moon. Moon hours per month always sum with sun hours to exactly 32. The split swings symmetrically around Vernal (16:16 equinox) and Pisces (14:18 lesser-balance) — the two equinox-analogues of the Tunyan year. Mercury-worshipping Vessine tie major Choir resonances to these two balance points.",
   "temperature_units": "fahrenheit",
   "temperature_reference_latitude": "equatorial belt — the Masond / Aekon / Bahiij band. Far-north lands (Dormas, Fluxom) run cooler by ~10-15°F; far-south lands run warmer by ~5-10°F. Highland districts (Sandrun's volcanic coast, Aekon's sky temple, Sahm's northern smiths above ~2500m elevation) can drop below freezing at night even in Halcyon. This is the only place 'frost biome' shows up on Tunya — there's no polar frost, only highland frost.",
   "biome_note": "earlier drafts of this bible listed 'frost' as a generic biome distributable across kingdoms. Canon corrects: frost on Tunya is elevation-driven only. The biome list in meta.json has been updated to highland_frost, which appears in mountainous districts of multiple kingdoms but not as a kingdom-wide climate.",
@@ -97,9 +97,9 @@
       "sun_hours": 16, "moon_hours": 16,
       "temp_low_f": 75, "temp_high_f": 84,
       "weather": "humid_rainy_season_ends",
-      "cultural_notes": "Mild weather. The first equinox-analogue (16:16 sun:moon split). Medici Choir holds a major resonance.",
+      "cultural_notes": "Mild weather. The first equinox-analogue (16:16 sun:moon split). Vessine Choir holds a major resonance.",
       "agricultural": ["full_growth_phase", "first_orchard_blossom"],
-      "festivals": ["vernal_balance_resonance_medici"],
+      "festivals": ["vernal_balance_resonance_vessine"],
       "political_gates": []
     },
     {
@@ -137,9 +137,9 @@
       "sun_hours": 20, "moon_hours": 12,
       "temp_low_f": 95, "temp_high_f": 110,
       "weather": "very_dry",
-      "cultural_notes": "Celebration of wind. Peak heat, peak strain. Sanguire clan duels traditionally held — heat sharpens the fights. Medici dispense water-bearing antidote pouches as a kindness; the practice is two generations old.",
+      "cultural_notes": "Celebration of wind. Peak heat, peak strain. Sanguire clan duels traditionally held — heat sharpens the fights. Vessine dispense water-bearing antidote pouches as a kindness; the practice is two generations old.",
       "agricultural": ["heat_stress_management"],
-      "festivals": ["wound_wind_celebration", "medici_healing_choir_kree"],
+      "festivals": ["wound_wind_celebration", "vessine_healing_choir_vrellan"],
       "political_gates": ["sanguire_clan_duels_traditionally_held"]
     },
     {
@@ -177,9 +177,9 @@
       "sun_hours": 16, "moon_hours": 16,
       "temp_low_f": 75, "temp_high_f": 84,
       "weather": "humid_thunderstorms_begin",
-      "cultural_notes": "Harvest celebration. Aekon hosts its high feast — twelve districts, twelve dishes, the twelfth still secret. Cree hosts its Harvest market.",
+      "cultural_notes": "Harvest celebration. Aekon hosts its high feast — twelve districts, twelve dishes, the twelfth still secret. Corre hosts its Harvest market.",
       "agricultural": ["main_grain_harvest", "root_harvest"],
-      "festivals": ["harvest_high_feast_aekon", "harvest_market_cree"],
+      "festivals": ["harvest_high_feast_aekon", "harvest_market_corre"],
       "political_gates": ["tax_assessment_all_kingdoms"]
     },
     {
@@ -199,7 +199,7 @@
       "weather": "rainy_season",
       "cultural_notes": "Salting of fish for preserve. The lesser-balance moon point (14:18 sun:moon split). Fluxom attempts sea-trade reopens during the lull in sea-creature activity.",
       "agricultural": ["coastal_fishing_intensifies", "salting_fish"],
-      "festivals": ["pisces_lesser_balance_resonance_medici"],
+      "festivals": ["pisces_lesser_balance_resonance_vessine"],
       "political_gates": ["sea_trade_renewal_attempts"]
     },
     {
@@ -227,22 +227,22 @@
       "sun_hours": 11, "moon_hours": 21,
       "temp_low_f": 50, "temp_high_f": 70,
       "weather": "no_humidity",
-      "cultural_notes": "Love the land celebration. Year closes. The only festival every kingdom observes by the same name on the same day. Medici males uncover their heads in public ONLY on Cares-day-1 — the holiday communion of Mercury. Year-end audits, forgiveness rituals.",
+      "cultural_notes": "Love the land celebration. Year closes. The only festival every kingdom observes by the same name on the same day. Vessine males uncover their heads in public ONLY on Cares-day-1 — the holiday communion of Mercury. Year-end audits, forgiveness rituals.",
       "agricultural": ["minimal", "preparing_for_T'Annum"],
-      "festivals": ["cares_love_the_land", "medici_holiday_communion"],
+      "festivals": ["cares_love_the_land", "vessine_holiday_communion"],
       "political_gates": ["year_end_audits"]
     }
   ],
   "epoch": {
     "current_annum": 409,
     "label": "Annum 409 — present (4G)",
-    "description": "Tunyan calendar reckoning. Pre-arrival annums were counted by Ancient Tunyan tradition; the count was preserved through arrival and intermixing. Annum 313 = Africa first landfall. Annum 320 = Asbir/Cree disembarkation. Annum 324 = Medici crash. Annum 327 = Eurasia. Annum 337 = Aekon stranded arrival. Annum 409 = present. The Bloc demanded more registrars in annum 409 — the political event is happening *this annum*.",
+    "description": "Tunyan calendar reckoning. Pre-arrival annums were counted by Ancient Tunyan tradition; the count was preserved through arrival and intermixing. Annum 313 = Africa first landfall. Annum 320 = Asbir/Corre disembarkation. Annum 324 = Vessine crash. Annum 327 = Eurasia. Annum 337 = Aekon stranded arrival. Annum 409 = present. The Bloc demanded more registrars in annum 409 — the political event is happening *this annum*.",
     "year_zero_event": "ancient_tunyan_calendar_origin (specifics held by Nil; annum 0 is approximately 313 annums before first arrival)",
     "key_anchors_by_annum": {
       "0": "ancient_tunyan_calendar_origin (per Nil's reckoning)",
       "313": "africa_first_arrival",
-      "320": "asbir_cree_disembarkation",
-      "324": "medici_crash",
+      "320": "asbir_corre_disembarkation",
+      "324": "vessine_crash",
       "327": "eurasia_arrival",
       "337": "aekon_stranded_arrival",
       "409": "present_diurnal — bloc_registrar_demand"
@@ -251,9 +251,9 @@
   "religious_overlays_per_kingdom": {
     "policy": "every kingdom observes the planet-wide calendar (sun, moon, temperature, and weather are environmental facts, not religious claims). Religious overlays are layered on top.",
     "examples": {
-      "medici": "tie Vernal (16:16 balance) and Pisces (14:18 lesser balance) to major Choir resonances; Cares-day-1 is the holiday communion of Mercury.",
+      "vessine": "tie Vernal (16:16 balance) and Pisces (14:18 lesser balance) to major Choir resonances; Cares-day-1 is the holiday communion of Mercury.",
       "nil": "Arbor silent walk and Brine silent supper are the only public observances.",
-      "sanguire": "Cull is when warlord challenges are formally permitted; Wound's wind-celebration carries pre-Tunyan Kree-origin invocations.",
+      "sanguire": "Cull is when warlord challenges are formally permitted; Wound's wind-celebration carries pre-Tunyan Vrellan-origin invocations.",
       "aekon": "Harvest high feast is the year's centerpiece. The twelfth district's dish is the twelfth-secret.",
       "bahiij": "Lantern-night in Summery; elephant-procession in Vernal.",
       "asbir": "follows the planet-wide calendar; the curated archive includes Earth liturgical references but no kingdom observes them publicly.",
@@ -266,7 +266,7 @@
     "arbor_silent_walk_nil": "Once a year Nil opens a single path through the outer grove. Walkers may walk it. None have ever asked to enter the inner grove. None have ever been refused, either, because none have asked.",
     "harvest_high_feast_aekon": "Twelve districts, twelve dishes. The twelfth district's dish has been the same recipe for four generations. No one outside the district will say what it is.",
     "cull_sanguire_challenges": "Sanguire clan warriors may formally challenge the warlord during Cull. Iyatte has accepted three challenges in her tenure. She has won three.",
-    "cares_medici_holiday_communion": "The only day of the year Medici males uncover their heads in public. The Supreme Elder's cone is fully visible — a procession. Foreign witnesses may attend on the temple plaza but may not record."
+    "cares_vessine_holiday_communion": "The only day of the year Vessine males uncover their heads in public. The Supreme Elder's cone is fully visible — a procession. Foreign witnesses may attend on the temple plaza but may not record."
   },
   "open_lore_resolved_by_this_lock": {
     "days_per_month": "24 (locked here, was previously implied)",

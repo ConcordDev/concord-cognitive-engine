@@ -11,11 +11,34 @@
 // carry a versioned id (e.g. `dtu_swordsmanship_v1`); to change one, bump the
 // version rather than mutate runtime skill rows. creator_id is plain TEXT
 // (mig 087, no FK), so a synthetic "content-seeder" creator is safe.
+//
+// combo_followups grounding (Track D, training-room combo strip): the
+// Training Room reads `skill.combo_followups` off `lib/combat-frame-data.js`
+// (which reads it straight off this blob) and only renders the strip when
+// it's non-empty — an authored skill with no follow-up correctly renders
+// nothing. `content/skills.json`'s chains are NOT arbitrary: they mirror the
+// skill's own authored `prerequisites` chain (Founder's Edge → The
+// Sovereign's Refusal → Sundered Lattice Arc is the real unlock order — you
+// cannot legally reach the follow-up without the predecessor), which is
+// itself frame-data-feasible: every authored skill here resolves the
+// `KIND_FRAME_BASE.default` envelope (no `kind`/`weapon` field is set on
+// these narrative blueprints, so `getSkillFrameData` falls through to
+// `default`), whose `recovery_ms` (280) exceeds `startup_ms` (220) — the
+// recovery window of any of these skills is long enough to cancel into the
+// startup of any other, so the prerequisite ordering was a real, available
+// choice, not one picked around a timing wall. The terminal skill (Sundered
+// Lattice Arc, a ranged finisher) is left with no combo_followups by design.
+// If a future pass adds real per-weapon `kind` tagging here, re-derive these
+// chains against the differentiated envelope rather than assuming this
+// default-envelope reasoning still holds.
 
 const SKILL_CREATOR = "content-seeder";
 
 /** Validate one authored skill blueprint. Required: id, name. Numeric fields,
- *  if present, must be finite. */
+ *  if present, must be finite. `combo_followups`, if present, must be an
+ *  array of skill ids (string) or `{id, name}` objects — shape-checked here;
+ *  cross-referential validity (does the id resolve to a real skill in the
+ *  same catalog) is checked by the content test, not this per-entry guard. */
 export function validateSkillBlueprint(s) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return { ok: false, reason: "not_object" };
   if (typeof s.id !== "string" || !s.id) return { ok: false, reason: "missing_id" };
@@ -23,11 +46,25 @@ export function validateSkillBlueprint(s) {
   for (const k of ["max_damage", "range_m", "bar_cost", "difficulty", "skill_level"]) {
     if (s[k] !== undefined && !Number.isFinite(Number(s[k]))) return { ok: false, reason: `invalid_${k}` };
   }
+  if (s.combo_followups !== undefined) {
+    if (!Array.isArray(s.combo_followups)) return { ok: false, reason: "invalid_combo_followups" };
+    for (const f of s.combo_followups) {
+      const validString = typeof f === "string" && f.length > 0;
+      const validObject = f && typeof f === "object" && typeof f.id === "string" && f.id.length > 0;
+      if (!validString && !validObject) return { ok: false, reason: "invalid_combo_followup_entry" };
+    }
+  }
   return { ok: true };
 }
 
 /** Build the `data` JSON the combat route reads. Only known, combat-relevant
- *  fields are surfaced; the lore string is carried for the client. */
+ *  fields are surfaced; the lore string is carried for the client.
+ *
+ *  `combo_followups` is read straight through (already `{id,name}`-or-string
+ *  shaped, validated by `validateSkillBlueprint`) so `combat-frame-data.js#
+ *  getSkillFrameData` — which reads `skill.combo_followups` off this exact
+ *  blob — can surface it to the Training Room strip. Absent/empty stays
+ *  absent/empty; nothing is synthesized here. */
 export function skillDataBlob(s) {
   return {
     skill_kind: s.skill_kind || "combat",
@@ -42,6 +79,7 @@ export function skillDataBlob(s) {
     authored: true,
     description: s.description || "",
     lore: s.lore || s.flavor || null,
+    combo_followups: Array.isArray(s.combo_followups) ? s.combo_followups.slice(0, 4) : [],
   };
 }
 

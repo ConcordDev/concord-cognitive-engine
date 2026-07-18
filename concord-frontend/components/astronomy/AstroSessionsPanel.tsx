@@ -5,13 +5,17 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Moon, ChevronRight } from 'lucide-react';
+import { Loader2, Plus, Moon, ChevronRight, Radio } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { AstroCoObservePanel } from './AstroCoObservePanel';
 
 interface Session {
   id: string; date: string; location: string | null; bortle: number;
   seeing: string; transparency: string; notes: string | null; observationCount: number;
+  // Multi-observer co-observing (server/domains/astronomy.js `session-share`)
+  // — absent/false until the owner explicitly shares this session.
+  roomId?: string | null; shared?: boolean;
 }
 interface Observation { id: string; targetName: string; date: string; rating: number }
 
@@ -51,6 +55,16 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
     setOpen(id);
     const r = await lensRun('astronomy', 'session-detail', { id });
     setOpenObs(r.data?.ok === false ? [] : (r.data?.result?.observations || []));
+  };
+
+  const [sharing, setSharing] = useState<string | null>(null);
+  const shareSession = async (id: string) => {
+    setSharing(id);
+    const r = await lensRun('astronomy', 'session-share', { id });
+    if (r.data?.ok === false) setError(r.data?.error || 'Failed to share session');
+    else setError(null);
+    setSharing(null);
+    await refresh(); // session-list echoes back the new roomId/shared flag
   };
 
   if (loading) {
@@ -123,6 +137,18 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
                         </li>
                       ))}
                     </ul>
+                  )}
+
+                  {ses.shared && ses.roomId ? (
+                    <AstroCoObservePanel roomId={ses.roomId} />
+                  ) : (
+                    <button
+                      type="button" onClick={() => shareSession(ses.id)} disabled={sharing === ses.id}
+                      className="mt-2 flex items-center gap-1.5 rounded-lg bg-indigo-950/50 border border-indigo-900/50 px-2.5 py-1.5 text-[11px] font-medium text-indigo-300 hover:bg-indigo-900/40 disabled:opacity-50"
+                    >
+                      {sharing === ses.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Radio className="w-3.5 h-3.5" />}
+                      Share for co-observing (live, multi-observer)
+                    </button>
                   )}
                 </div>
               )}

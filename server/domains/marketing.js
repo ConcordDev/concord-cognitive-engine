@@ -1,4 +1,11 @@
 // server/domains/marketing.js
+//
+// Gmail campaign send (Wave-4 gap-closure) reuses the real, SSRF-guarded,
+// per-user-OAuth Gmail sender already shipped for Track C — same import as
+// server/domains/gmail.js#send. Consumed unmodified; no edits to either file.
+import { writeGmailMessage } from "../lib/connector-client.js";
+import { getValidAccessToken } from "../lib/connector-tokens.js";
+
 export default function registerMarketingActions(registerLensAction) {
   // Fail-CLOSED numeric coercion for the pure calculators: any non-finite input
   // (NaN / Infinity / "Infinity" / "1e999" / "abc") collapses to the default so
@@ -171,6 +178,120 @@ export default function registerMarketingActions(registerLensAction) {
     if (!c) return { ok: false, error: "campaign not found" };
     const rows = s.metrics.get(c.id) || [];
     return { ok: true, result: { campaign: c, kpis: computeKpis(rows), metricDays: rows.length } };
+  });
+
+  // ── Gmail campaign send (real per-user OAuth send, low volume) ──────
+  // Campaign "send" used to be compute-only (ROI/KPI math on numbers you
+  // typed in) — there was no way to actually deliver a campaign to anyone.
+  // This closes that honestly for LOW-VOLUME sends: every message goes out
+  // through the CALLING USER's own connected Gmail account, one real
+  // `writeGmailMessage` call per recipient, capped low. A recipient is
+  // reported "sent" ONLY when Gmail's own messages/send endpoint returns a
+  // real 2xx (writeGmailMessage's `res.ok`, which connectorFetch derives
+  // from the actual HTTP status) — never fabricated. A user with no working
+  // Gmail OAuth connection gets the honest `gmail_not_connected` failure
+  // before anything is attempted, never a fake "sent" count.
+  //
+  // GATED (documented, not built): bulk deliverability — a dedicated
+  // sending domain/IP with SPF/DKIM alignment, and a real ESP (SendGrid /
+  // Postmark / SES) for volume beyond a personal inbox's own sending
+  // limits — is a genuine external dependency. This macro is the honest
+  // close for low-volume, per-user sends; it deliberately does not
+  // pretend to be a bulk mail platform. See the `note` on every response.
+  const CAMPAIGN_GMAIL_SEND_MAX_RECIPIENTS = 20;
+  const GMAIL_BULK_NOTE = "Sent via your connected Gmail account, one real message per recipient — a low-volume, per-user send, not bulk delivery. High-volume campaigns need a dedicated sending domain + ESP (SendGrid/Postmark/SES) for SPF/DKIM alignment and deliverability at scale; that integration is not built.";
+
+  registerLensAction("marketing", "campaign-send-gmail", async (ctx, _a, params = {}) => {
+  try {
+    const userId = mkAid(ctx);
+    if (!userId || userId === "anon") return { ok: false, reason: "no_user", error: "no_user" };
+    if (!ctx?.db) return { ok: false, error: "db unavailable" };
+    const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const campaign = findCampaign(s, userId, params.campaignId);
+    if (!campaign) return { ok: false, error: "campaign not found" };
+
+    const recipientsIn = Array.isArray(params.recipients)
+      ? [...new Set(params.recipients.map((r) => mkClean(r, 200)).filter(Boolean))]
+      : [];
+    if (recipientsIn.length === 0) return { ok: false, error: "at least one recipient required" };
+    const subject = mkClean(params.subject, 200) || campaign.name;
+    const isHtml = !!params.html;
+    const body = String((isHtml ? params.html : params.body) ?? "").slice(0, 20000).trim();
+    if (!body) return { ok: false, error: "email body required" };
+
+    const capped = recipientsIn.length > CAMPAIGN_GMAIL_SEND_MAX_RECIPIENTS;
+    const recipients = recipientsIn.slice(0, CAMPAIGN_GMAIL_SEND_MAX_RECIPIENTS);
+
+    // Test-only transport seam — same idiom as domains/travel.js's
+    // `inbox-sync` (see lib/connector-client.js's own opts.fetchImpl seam):
+    // a real HTTP caller can never put a function value inside a JSON body,
+    // so this can only be set by a same-process test importing this module
+    // directly. Production traffic always takes the real SSRF-guarded
+    // connectorFetch egress inside writeGmailMessage.
+    const netOpts = typeof params.__fetchImpl === "function" ? { fetchImpl: params.__fetchImpl } : {};
+
+    // Honest connectivity precheck: resolve a live access token BEFORE
+    // attempting any send. A user with no working Gmail connection gets one
+    // clean gmail_not_connected failure instead of N identical wasted
+    // per-recipient attempts — and, more importantly, is never told any
+    // recipient was "sent" when nothing went out.
+    const tokenCheck = await getValidAccessToken(ctx.db, userId, "google_gmail", netOpts);
+    if (!tokenCheck.ok) {
+      return { ok: false, reason: "gmail_not_connected", error: "gmail_not_connected", detail: tokenCheck.reason };
+    }
+
+    const results = [];
+    let sent = 0, failed = 0;
+    for (const to of recipients) {
+      let r;
+      try {
+        const mail = { to, subject };
+        if (isHtml) mail.html = body; else mail.body = body;
+        r = await writeGmailMessage(ctx.db, userId, mail, netOpts);
+      } catch (err) {
+        r = { ok: false, reason: "request_failed", detail: String(err?.message || err) };
+      }
+      if (r.ok) {
+        sent++;
+        results.push({ to, status: "sent", providerMessageId: r.data?.id || null });
+      } else {
+        failed++;
+        results.push({ to, status: "failed", reason: r.reason || "send_failed" });
+      }
+    }
+
+    const record = {
+      id: mkId("gsnd"), campaignId: campaign.id, at: mkNow(),
+      requested: recipientsIn.length, attempted: recipients.length,
+      sent, failed, capped, cap: CAMPAIGN_GMAIL_SEND_MAX_RECIPIENTS,
+      results,
+    };
+    campaign.gmailSends = campaign.gmailSends || [];
+    campaign.gmailSends.push(record);
+    campaign.lastGmailSendAt = record.at;
+    saveMktState();
+
+    return {
+      ok: true,
+      result: {
+        ...record,
+        note: capped
+          ? `${GMAIL_BULK_NOTE} Capped at ${CAMPAIGN_GMAIL_SEND_MAX_RECIPIENTS} of ${recipientsIn.length} requested recipients.`
+          : GMAIL_BULK_NOTE,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // Real per-recipient send history for a campaign — the frontend reads this
+  // to show honest sent/failed status after a page refresh, not just
+  // immediately after the send call returns.
+  registerLensAction("marketing", "campaign-gmail-send-history", (ctx, _a, params = {}) => {
+    const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const campaign = findCampaign(s, mkAid(ctx), params.campaignId);
+    if (!campaign) return { ok: false, error: "campaign not found" };
+    const sends = (campaign.gmailSends || []).slice().reverse();
+    return { ok: true, result: { sends, count: sends.length, cap: CAMPAIGN_GMAIL_SEND_MAX_RECIPIENTS } };
   });
 
   // ── Metrics ─────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import { GeologyWorkbench } from '@/components/mining/GeologyWorkbench';
 import { MinePlanWorkbench } from '@/components/mining/MinePlanWorkbench';
 import { FleetManager } from '@/components/mining/FleetManager';
 import { GisPitMap } from '@/components/mining/GisPitMap';
+import { EnvironmentalCompliance } from '@/components/mining/EnvironmentalCompliance';
 import { PipingProvider } from '@/components/panel-polish';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { cn } from '@/lib/utils';
@@ -23,9 +24,10 @@ import {
   Truck,
   Map,
   Calculator,
+  ShieldCheck,
 } from 'lucide-react';
 
-type ModeTab = 'Sites' | 'Geology' | 'Plan' | 'Fleet' | 'Map' | 'MSHA' | 'Calcs';
+type ModeTab = 'Sites' | 'Geology' | 'Plan' | 'Fleet' | 'Map' | 'MSHA' | 'Environmental' | 'Calcs';
 
 const MODE_TABS: { key: ModeTab; label: string; icon: typeof Pickaxe }[] = [
   { key: 'Sites', label: 'Sites & Safety', icon: Mountain },
@@ -34,6 +36,7 @@ const MODE_TABS: { key: ModeTab; label: string; icon: typeof Pickaxe }[] = [
   { key: 'Fleet', label: 'Fleet & Schedule', icon: Truck },
   { key: 'Map', label: 'GIS Map', icon: Map },
   { key: 'MSHA', label: 'MSHA Compliance', icon: HardHat },
+  { key: 'Environmental', label: 'Environmental', icon: ShieldCheck },
   { key: 'Calcs', label: 'Quick Calcs', icon: Calculator },
 ];
 
@@ -98,6 +101,9 @@ export default function MiningLensPage() {
               <MshaLookup />
             </div>
           )}
+
+          {/* Environmental — permit/inspection compliance + reclamation status */}
+          {activeMode === 'Environmental' && <EnvironmentalCompliance />}
 
           {/* Quick Calcs — ore grade, blast design, safety metrics, resource estimate */}
           {activeMode === 'Calcs' && (

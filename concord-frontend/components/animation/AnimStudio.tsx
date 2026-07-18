@@ -8,18 +8,28 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Loader2, ArrowLeft, Undo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
-  Wrench, ChevronLeft, ChevronRight,
+  Loader2, ArrowLeft, Undo2, Redo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
+  Wrench, ChevronLeft, ChevronRight, ImageIcon,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { AnimToolsPanel } from './AnimToolsPanel';
+import { setActiveFrameTarget } from './animReferenceTarget';
 
 interface Stroke {
   tool: string; color: string; size: number; opacity: number; points: number[][];
   widths?: number[]; pressureSize?: number;
 }
-interface FLayer { id: string; name: string; visible: boolean; opacity: number; strokes: Stroke[] }
+interface FLayer {
+  id: string; name: string; visible: boolean; opacity: number; strokes: Stroke[];
+  /** 'reference' layers are a rotoscope-style tracing underlay (an imported
+   * image), never paintable — see frame-layer-import-image in
+   * server/domains/animation.js. Legacy layers may have no `type` at all;
+   * treat anything other than 'reference' as paintable. */
+  type?: 'paintable' | 'reference';
+  isReference?: boolean;
+  imageRef?: string;
+}
 interface Frame { id: string; exposure: number; layers: FLayer[]; strokes?: Stroke[] }
 interface AudioTrack { id: string; name: string; url: string | null; startSec: number }
 interface CanvasGuides {
@@ -143,12 +153,38 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   // Real playback duration, sourced from the `playback-frames` macro (the
   // exposure-expanded sequence length) rather than recomputed client-side.
   const [duration, setDuration] = useState<{ totalFrames: number; durationSec: number } | null>(null);
+  // Cross-operation undo/redo. `lastAction` tracks whether the most recent
+  // edit was a single stroke draw (undone via the narrower single-level
+  // `anim-stroke-undo`) or a structural frame/layer edit (undone via the
+  // real cross-operation op-log: `anim-undo` / `anim-redo`, see
+  // server/domains/animation.js). The Undo button routes to whichever
+  // primitive matches the last edit; Redo only ever applies to the
+  // structural stack — stroke-undo is a single-level pop with no redo,
+  // and stays that way by design (it's a narrower, still-real primitive
+  // layered alongside the new stack, not replaced by it).
+  const [lastAction, setLastAction] = useState<'stroke' | 'structural' | null>(null);
+  const [canRedo, setCanRedo] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const pointsRef = useRef<number[][]>([]);
   const lastRef = useRef<number[] | null>(null);
   const playRef = useRef<{ timer: number | null; pos: number }>({ timer: null, pos: 0 });
+  // Reference-image underlays are drawn from real <img> elements, cached by
+  // imageRef so switching frames doesn't re-fetch. A tick bump forces a
+  // re-render once a not-yet-loaded image finishes loading.
+  const refImageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const [, bumpRefImageTick] = useState(0);
+  const getRefImage = useCallback((src: string): HTMLImageElement => {
+    const cache = refImageCacheRef.current;
+    const existing = cache.get(src);
+    if (existing) return existing;
+    const img = new window.Image();
+    img.onload = () => bumpRefImageTick((n) => n + 1);
+    img.src = src;
+    cache.set(src, img);
+    return img;
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -156,6 +192,11 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
       const r = await lensRun('animation', 'anim-get', { id: animId });
       if (!active) return;
       setAnim((r.data?.result?.animation as Anim) || null);
+      // Restore real Undo/Redo button state from the server (e.g. after a
+      // page refresh mid-session) instead of guessing at load time.
+      const loaded = r.data?.result as { canUndo?: boolean; canRedo?: boolean } | undefined;
+      setLastAction(loaded?.canUndo ? 'structural' : null);
+      setCanRedo(!!loaded?.canRedo);
       setLoading(false);
     })();
     return () => { active = false; };
@@ -172,6 +213,21 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     ctx.fillStyle = anim.background;
     ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.restore();
+    // Reference-image underlay(s) for this frame — drawn before onion skin
+    // and strokes so real artwork always reads on top of the tracing guide.
+    // Never converted into strokes; just an <img> painted at layer opacity.
+    for (const l of anim.frames[idx]?.layers || []) {
+      if (l.visible && l.type === 'reference' && l.imageRef) {
+        const img = getRefImage(l.imageRef);
+        if (img.complete && img.naturalWidth > 0) {
+          ctx.save();
+          ctx.globalAlpha = l.opacity;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.drawImage(img, 0, 0, cv.width, cv.height);
+          ctx.restore();
+        }
+      }
+    }
     if (withOnion && idx > 0) {
       for (const st of visibleStrokes(anim.frames[idx - 1])) drawStroke(ctx, st, 0.28);
     }
@@ -181,7 +237,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     for (const st of visibleStrokes(anim.frames[idx])) drawStroke(ctx, st, 1);
     // Onscreen grid / guides overlay (non-destructive, drawn last).
     drawGuides(ctx, cv.width, cv.height, anim.guides);
-  }, [anim]);
+  }, [anim, getRefImage]);
 
   // Real playback duration — only re-fetches when frame count or exposure
   // actually changes (not on every stroke), so drawing stays chatter-free.
@@ -220,11 +276,33 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     if (!playing) renderFrame(frameIdx, onion);
   }, [renderFrame, frameIdx, onion, playing]);
 
-  // Keep the active layer valid as the frame changes.
+  // Keep the active layer valid as the frame changes. A reference layer is
+  // never a valid drawing target (the backend rejects strokes on it), so the
+  // default pick always prefers the topmost PAINTABLE layer.
   useEffect(() => {
     const frame = anim?.frames[frameIdx];
     const layers = frame?.layers || [];
-    setActiveLayer((prev) => (layers.some((l) => l.id === prev) ? prev : layers[layers.length - 1]?.id || ''));
+    const paintable = layers.filter((l) => l.type !== 'reference');
+    const fallback = (paintable.length ? paintable : layers)[
+      (paintable.length ? paintable : layers).length - 1
+    ]?.id || '';
+    setActiveLayer((prev) => {
+      const prevLayer = layers.find((l) => l.id === prev);
+      return prevLayer && prevLayer.type !== 'reference' ? prev : fallback;
+    });
+  }, [anim, frameIdx]);
+
+  // Publish "the frame currently open in the studio" so the Reference tab's
+  // "Import onto frame" action has a real target even after Studio unmounts
+  // (tab switch). See animReferenceTarget.ts for the honest-scope note.
+  useEffect(() => {
+    if (!anim) return;
+    const frame = anim.frames[frameIdx];
+    if (!frame) return;
+    setActiveFrameTarget({
+      animId: anim.id, frameId: frame.id, animTitle: anim.title,
+      frameIndex: frameIdx, frameCount: anim.frames.length,
+    });
   }, [anim, frameIdx]);
 
   // Playback
@@ -273,6 +351,12 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   // 3rd component of each sampled point when pressure dynamics are active.
   const onPointerDown = (e: React.PointerEvent) => {
     if (playing || !anim) return;
+    // Defense-in-depth: the active-layer effect already steers away from
+    // reference layers, but never start a stroke on one even so — the
+    // backend rejects it anyway (see stroke-commit's "reference layer"
+    // guard), so bailing here avoids a doomed optimistic draw.
+    const activeLayerObj = anim.frames[frameIdx]?.layers.find((l) => l.id === activeLayer);
+    if (activeLayerObj?.type === 'reference') return;
     e.currentTarget.setPointerCapture(e.pointerId);
     drawingRef.current = true;
     const p = toPoint(e);
@@ -314,10 +398,32 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     } else {
       await lensRun('animation', 'anim-stroke-commit', { animId: anim.id, frameId: fid, layerId: lid, stroke });
     }
+    setLastAction('stroke');
   };
 
+  // Routes to whichever undo primitive matches the most recent edit. A
+  // structural edit (frame/layer add, delete, reorder, clear, …) undoes via
+  // the real cross-operation op-log; anything else falls back to the
+  // pre-existing single-level per-layer stroke undo.
   const undo = async () => {
     if (!anim) return;
+    if (lastAction === 'structural') {
+      const r = await lensRun('animation', 'anim-undo', { animId: anim.id });
+      const result = r.data?.result as { ok?: boolean; error?: string; canUndo?: boolean; canRedo?: boolean; frameCount?: number } | undefined;
+      if (r.data?.ok && result?.ok !== false) {
+        await reloadAnim();
+        setCanRedo(!!result?.canRedo);
+        setLastAction(result?.canUndo ? 'structural' : null);
+        // A structural undo can change the frame count (undoing a delete
+        // restores a frame; undoing an add removes one) — keep the current
+        // frame pointer in bounds so the render never indexes a frame that
+        // no longer exists.
+        if (typeof result?.frameCount === 'number') {
+          setFrameIdx((idx) => Math.min(idx, Math.max(0, result.frameCount! - 1)));
+        }
+      }
+      return;
+    }
     const fid = anim.frames[frameIdx].id;
     const lid = activeLayer;
     setAnim((prev) => prev && ({
@@ -326,16 +432,42 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         ? { ...f, layers: f.layers.map((l) => (l.id === lid ? { ...l, strokes: l.strokes.slice(0, -1) } : l)) } : f)),
     }));
     await lensRun('animation', 'anim-stroke-undo', { animId: anim.id, frameId: fid, layerId: lid });
+    setLastAction(null); // stroke-undo is single-level — nothing further to undo via this path
+  };
+
+  // Redo only ever applies to the structural op-log (there is no stroke redo).
+  const redo = async () => {
+    if (!anim || !canRedo) return;
+    const r = await lensRun('animation', 'anim-redo', { animId: anim.id });
+    const result = r.data?.result as { ok?: boolean; canUndo?: boolean; canRedo?: boolean; frameCount?: number } | undefined;
+    if (r.data?.ok && result?.ok !== false) {
+      await reloadAnim();
+      setCanRedo(!!result?.canRedo);
+      setLastAction('structural');
+      // Same frame-count clamp as undo() — a redone frame-add/delete can
+      // change how many frames exist.
+      if (typeof result?.frameCount === 'number') {
+        setFrameIdx((idx) => Math.min(idx, Math.max(0, result.frameCount! - 1)));
+      }
+    }
   };
 
   const reloadAnim = async () => {
     const r = await lensRun('animation', 'anim-get', { id: animId });
     setAnim((r.data?.result?.animation as Anim) || null);
   };
+  // Every handler below performs a structural, op-log-backed edit
+  // (server/domains/animation.js pushes a real undo snapshot before each of
+  // these macros mutates). Marking `lastAction: 'structural'` + clearing
+  // `canRedo` client-side after each one mirrors exactly what the backend
+  // just did (a genuinely new edit clears the redo stack) so the toolbar's
+  // Undo/Redo state never lags or fabricates availability that isn't real.
   const addLayer = async () => {
     if (!anim) return;
     await lensRun('animation', 'frame-layer-add', { animId: anim.id, frameId: anim.frames[frameIdx].id });
     await reloadAnim();
+    setLastAction('structural');
+    setCanRedo(false);
   };
   const updateLayer = async (layerId: string, patch: { visible?: boolean; opacity?: number }) => {
     if (!anim) return;
@@ -346,11 +478,15 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         ? { ...f, layers: f.layers.map((l) => (l.id === layerId ? { ...l, ...patch } : l)) } : f)),
     }));
     await lensRun('animation', 'frame-layer-update', { animId: anim.id, frameId: fid, layerId, ...patch });
+    setLastAction('structural');
+    setCanRedo(false);
   };
   const deleteLayer = async (layerId: string) => {
     if (!anim || (anim.frames[frameIdx].layers || []).length <= 1) return;
     await lensRun('animation', 'frame-layer-delete', { animId: anim.id, frameId: anim.frames[frameIdx].id, layerId });
     await reloadAnim();
+    setLastAction('structural');
+    setCanRedo(false);
   };
 
   const addFrame = async (duplicate: boolean) => {
@@ -367,6 +503,8 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         return { ...prev, frames };
       });
       setFrameIdx(frameIdx + 1);
+      setLastAction('structural');
+      setCanRedo(false);
     }
   };
 
@@ -376,6 +514,8 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     await lensRun('animation', 'frame-delete', { animId: anim.id, frameId: fid });
     setAnim((prev) => prev && ({ ...prev, frames: prev.frames.filter((f) => f.id !== fid) }));
     setFrameIdx(Math.max(0, frameIdx - 1));
+    setLastAction('structural');
+    setCanRedo(false);
   };
 
   const moveFrame = async (direction: 'left' | 'right') => {
@@ -391,6 +531,8 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
       return { ...prev, frames };
     });
     setFrameIdx(order.indexOf(fid));
+    setLastAction('structural');
+    setCanRedo(false);
   };
 
   const setExposure = async (val: number) => {
@@ -450,6 +592,10 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         <button type="button" onClick={undo} disabled={playing}
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-40">
           <Undo2 className="w-3.5 h-3.5" /> Undo
+        </button>
+        <button type="button" onClick={redo} disabled={playing || !canRedo}
+          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-40">
+          <Redo2 className="w-3.5 h-3.5" /> Redo
         </button>
         <button type="button" onClick={() => setShowTools((v) => !v)}
           className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
@@ -586,24 +732,39 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           <button aria-label="Add" type="button" onClick={addLayer} className="text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
         </div>
         <ul className="space-y-1">
-          {[...(frame.layers || [])].reverse().map((l) => (
-            <li key={l.id}
-              className={cn('flex items-center gap-1.5 rounded px-2 py-1 border',
-                activeLayer === l.id ? 'border-cyan-600 bg-cyan-950/30' : 'border-zinc-800 bg-zinc-900')}>
-              <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })}
-                className="text-zinc-400 hover:text-zinc-200">
-                {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </button>
-              <button type="button" onClick={() => setActiveLayer(l.id)}
-                className="flex-1 text-left text-[11px] text-zinc-200 truncate">{l.name}</button>
-              <input type="range" min={0} max={1} step={0.1} value={l.opacity}
-                onChange={(e) => updateLayer(l.id, { opacity: Number(e.target.value) })}
-                className="w-14 accent-cyan-500" />
-              <button aria-label="Delete" type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </li>
-          ))}
+          {[...(frame.layers || [])].reverse().map((l) => {
+            const isRef = l.type === 'reference';
+            return (
+              <li key={l.id}
+                className={cn('flex items-center gap-1.5 rounded px-2 py-1 border',
+                  isRef ? 'border-dashed border-amber-700/60 bg-amber-950/10'
+                    : activeLayer === l.id ? 'border-cyan-600 bg-cyan-950/30' : 'border-zinc-800 bg-zinc-900')}>
+                <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })}
+                  className="text-zinc-400 hover:text-zinc-200">
+                  {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
+                {isRef && (
+                  <span title="Tracing reference — not paintable" aria-label="Reference layer"
+                    className="flex items-center gap-0.5 shrink-0 text-[9px] font-semibold uppercase tracking-wide text-amber-400 bg-amber-950/50 border border-amber-800/60 rounded px-1 py-0.5">
+                    <ImageIcon className="w-2.5 h-2.5" /> Ref
+                  </span>
+                )}
+                {isRef ? (
+                  <span className="flex-1 text-left text-[11px] text-amber-200/80 truncate">{l.name}</span>
+                ) : (
+                  <button type="button" onClick={() => setActiveLayer(l.id)}
+                    className="flex-1 text-left text-[11px] text-zinc-200 truncate">{l.name}</button>
+                )}
+                <input type="range" min={0} max={1} step={0.1} value={l.opacity}
+                  aria-label={isRef ? 'Reference opacity' : 'Layer opacity'}
+                  onChange={(e) => updateLayer(l.id, { opacity: Number(e.target.value) })}
+                  className="w-14 accent-cyan-500" />
+                <button aria-label="Delete" type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
 

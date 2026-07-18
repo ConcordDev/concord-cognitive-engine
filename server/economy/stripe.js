@@ -96,8 +96,12 @@ export async function createCheckoutSession(db, { userId, tokens, requestId, ip 
   // Convert tokens to USD cents (1 token = $1 * TOKENS_PER_USD)
   const priceInCents = Math.round((tokens / TOKENS_PER_USD) * 100);
 
-  // Deterministic idempotency key: hash(userId + amount + nonce)
-  // Prevents duplicate sessions on rapid double-clicks
+  // Per-request idempotency key for THIS create call. A fresh nonce each call
+  // is intentional: two deliberate purchases of the same token amount must each
+  // open their own checkout session, so this guards a single request's network
+  // retries (Stripe recommends a key on every mutating request), NOT cross-click
+  // dedup. Authoritative double-credit prevention lives at the webhook, where
+  // executePurchase is idempotent on refId = `stripe_checkout:${event.id}`.
   const nonce = randomUUID();
   const idempotencyKey = createHash("sha256")
     .update(`${userId}:${tokens}:${nonce}`)
@@ -124,8 +128,13 @@ export async function createCheckoutSession(db, { userId, tokens, requestId, ip 
         userId,
         tokens: String(tokens),
         purpose: "TOKEN_PURCHASE",
-        idempotencyKey,
       },
+    }, {
+      // Stripe's REAL idempotency mechanism is the request-options second
+      // argument (it becomes the `Idempotency-Key` header), NOT metadata —
+      // where the key previously sat inert. Mirrors the payout side's
+      // `{ idempotencyKey: withdrawal_payout:<id> }`.
+      idempotencyKey,
     });
 
     economyAudit(db, {
@@ -423,6 +432,55 @@ export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
           });
         } catch (err) {
           console.error("[Stripe Webhook] healthcare copay handler failed:", err.message);
+        }
+        break;
+      }
+
+      // services.bookingCreatePaymentIntent → real Stripe card flow for
+      // booking payments. Disambiguated by metadata.concord_purpose ===
+      // "services_booking" (set at PaymentIntent creation). Mirrors the
+      // retail cart branch below: never trust the client, only flip the
+      // local payment + linked booking to paid because THIS event says the
+      // PaymentIntent reached status:"succeeded". Idempotent — a payment
+      // already at status:"captured" (e.g. flipped synchronously by
+      // services.bookingConfirmPayment before this webhook arrives) is left
+      // untouched.
+      if (concordUserId && concordPurpose === "services_booking") {
+        try {
+          const STATE = globalThis._concordSTATE;
+          const concordPaymentId = pi?.metadata?.concord_payment_id;
+          const concordBookingId = pi?.metadata?.concord_booking_id;
+          const list = STATE?.servicesLens?.payments?.get(concordUserId) || [];
+          const payment = list.find((x) => x.id === concordPaymentId || x.stripePaymentIntentId === pi.id);
+          if (payment && payment.status !== "captured") {
+            payment.status = "captured";
+            payment.paymentStatus = "paid";
+            payment.capturedAt = nowISO();
+            payment.stripePaymentStatus = pi.status;
+            payment.stripeChargeId = pi.latest_charge || null;
+            if (payment.bookingId) {
+              const bk = STATE?.servicesLens?.bookings?.get(concordUserId)?.find((b) => b.id === payment.bookingId);
+              if (bk) { bk.status = "completed"; bk.paymentId = payment.id; delete bk.pendingPaymentId; }
+            }
+            if (typeof globalThis._concordSaveStateDebounced === "function") {
+              try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+            }
+          }
+          economyAudit(db, {
+            action: "services_booking_payment_succeeded",
+            userId: concordUserId,
+            amount: pi.amount ? pi.amount / 100 : 0,
+            details: {
+              stripePaymentIntentId: pi.id,
+              concordBookingId,
+              concordPaymentId,
+              matchFound: !!payment,
+            },
+            requestId,
+            ip,
+          });
+        } catch (err) {
+          console.error("[Stripe Webhook] services booking payment handler failed:", err.message);
         }
         break;
       }

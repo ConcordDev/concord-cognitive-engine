@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Target, ChevronLeft, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { MarketingGmailSendPanel } from './MarketingGmailSendPanel';
 
 interface Kpis { impressions: number; clicks: number; conversions: number; spend: number; revenue: number; ctr: number; cpc: number; cpa: number; roas: number; conversionRate: number }
 interface Campaign { id: string; name: string; channel: string; budget: number; status: string; kpis?: Kpis }
@@ -148,6 +149,8 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
           <button type="button" onClick={logMetric}
             className="mt-2 px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-500 text-white rounded-lg">Log metrics</button>
         </div>
+
+        <MarketingGmailSendPanel campaignId={selected.id} campaignName={selected.name} />
       </div>
     );
   }

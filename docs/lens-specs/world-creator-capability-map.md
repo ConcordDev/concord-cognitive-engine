@@ -274,14 +274,37 @@ future pass has a work order instead of a vague "polish later":
   single `window.prompt`. Closing this needs either extending the prompt
   chain (cheap, but not premium UX for a multi-line field) or a proper
   placement form — a small, scoped frontend addition, no backend change.
-- **ENGINEERING — zones/spawns/NPCs can only be placed then deleted, never
-  repositioned.** `prop-move` exists; there is no `zone-move` /
-  `spawn-move` / `npc-move` macro, so (unlike props) moving a misplaced
-  zone/spawn/NPC requires delete+recreate. This is a real new-macro ask
-  (three small handlers mirroring `prop-move`'s clamp-and-patch shape) —
-  correctly deferred rather than invented mid-audit per this project's
-  "prefer wiring existing capability over inventing new backend code"
-  guidance.
+- ~~**ENGINEERING — zones/spawns/NPCs can only be placed then deleted, never
+  repositioned.**~~ **CLOSED (2026-07-16, `0e7c1adf`).** `server/domains/
+  world-creator.js` gained `zone-move`/`spawn-move`/`npc-move`, each
+  mirroring `prop-move`'s exact clamp-and-patch shape (existence checks,
+  patch-only-if-supplied fields — `zone-move` additionally patches
+  `radius`, clamp `[5,250]`; all three clamp `x`/`z` to `[-250,250]` and
+  call `draft.updatedAt = now(); save();` on success). Closing this also
+  required a real frontend fix, not just the macros: the drag gesture in
+  `SceneCanvas.tsx` was hardwired to props in FOUR separate places — the
+  `drag` state carried no entity kind, the drag-move handler always passed
+  `'prop'` to `onMove` regardless of what was actually grabbed, the
+  `onMove` prop TYPE itself was narrowed to `'prop'` only, and the zone/
+  npc/spawn SVG `<g>` elements had `onClick` (select) but no `onMouseDown`
+  (drag-start) at all — so dragging them was a silent no-op, not even a
+  failed macro call. Fixed all four: widened `drag`/`onMove` to
+  `'prop'|'spawn'|'zone'|'npc'`, added the missing `onMouseDown` handlers
+  on the zone/npc/spawn elements (mirroring the prop element's existing
+  one), and matching `cursor: 'grab'` styling. `DraftEditor.tsx` gained
+  `updateZone`/`updateSpawn`/`updateNpc` callbacks mirroring `updateProp`'s
+  optimistic-update-then-reconcile-on-failure pattern exactly, and the
+  `onMove` dispatcher now routes to the correct `update*` by kind (the
+  drag dedupe ref is now keyed by `kind:id`, not bare `id`). This closes
+  world-creator's entire ENGINEERING-class deferred list — see the
+  "Coverage" note below. Tests: 18 new behavioral cases in `server/tests/
+  depth/world-creator-move-behavior.test.js` (successful move + partial
+  patch + clamp-boundary + missing-draft/entity rejection + per-user
+  isolation, for each of the 3 macros) plus 8 new/extended cases in
+  `concord-frontend/tests/world-creator-draft-editor.test.tsx` (drag
+  routes to the correct macro per kind, dedupe, optimistic
+  rollback-on-failure for zone and npc). All pre-existing world-creator
+  suites still pass alongside the new ones (0 regressions).
 - **ENGINEERING — zone name and spawn-point name are never user-set at
   creation** (`zone-add`/`spawn-add` both accept a `name`, but
   `onCanvasClick` always sends `''`/omits it, so the backend's own

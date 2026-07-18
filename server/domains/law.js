@@ -8,9 +8,93 @@
 // require a free COURTLISTENER_API_TOKEN env (courtlistener.com/help/api/rest/).
 
 import { createHash } from "node:crypto";
+import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
+import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
+// Granted-patent claim text never changes once granted — safe to cache
+// long. Cuts real network traffic to search.patentsview.org (rate limit
+// 45 req/min per API key) for repeat views of the same patent.
+const PATENT_CLAIMS_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+// USPTO PatentsView field → column mapping, shared by the single-field
+// quick-search path and the multi-field boolean query builder below (closes
+// docs/lens-specs/law-capability-map.md's "Combined multi-field boolean
+// query builder" gap — the macro previously accepted exactly one `field` at
+// a time with no combinator, even though PatentsView's own query DSL
+// natively supports `_and`/`_or` of nested clauses).
+const USPTO_FIELD_COLUMN = {
+  title: "patent_title",
+  abstract: "patent_abstract",
+  inventor: "inventor_name_last",
+  assignee: "assignee_organization",
+};
+function _usptoFieldClause(field, value) {
+  const column = USPTO_FIELD_COLUMN[field] || USPTO_FIELD_COLUMN.title;
+  return { _text_phrase: { [column]: value } };
+}
+
+// Normalizes a user-typed patent number ("US 10,000,000 B2", "10000000",
+// "10,000,000") down to the bare digit string PatentsView's `patent_id`
+// column expects. Grant numbers for utility patents (the overwhelming
+// common case for a claims lookup) are numeric; a non-numeric remainder
+// (e.g. a design patent "D987654") simply won't match `g_claim` and the
+// macro returns an honest empty result rather than throwing.
+//
+// A naive "strip every non-digit" pass would corrupt the number on a
+// fully-formatted input like "US10000000B2" — the kind-code suffix's own
+// digit(s) ("2") would get appended onto the real grant number, turning
+// 10000000 into 100000002. So a leading "US" country prefix and a
+// trailing kind-code (one letter + 1-2 digits, e.g. "B2"/"A1"/"S1") are
+// stripped as whole tokens FIRST — the kind code is only stripped when
+// at least 5 digits already precede it, so it can never eat a genuine
+// short number's real trailing digit.
+function _normalizePatentId(raw) {
+  let s = String(raw || "").trim().replace(/^US\s*/i, "");
+  s = s.replace(/\s*[A-Z]\d{1,2}\s*$/i, (m, offset, str) => {
+    const digitsBefore = (str.slice(0, offset).match(/\d/g) || []).length;
+    return digitsBefore >= 5 ? "" : m;
+  });
+  return s.replace(/[^0-9]/g, "");
+}
+
+// ─── Contract redlining — pure helpers, module-scope + exported ───
+// Hoisted out of the registerLawActions closure (unchanged implementation,
+// just relocated) so they're independently importable: the
+// contract-version-save/-list/-diff macros below use them exactly as
+// before, and WAVE4's collaborative redlining reuses `clauseTextBlock` to
+// seed the shared Yjs Y.Text with the live contract body and `lineDiff` to
+// power a real accept/reject tracked-changes UI on top of `contract-diff`
+// (server/tests + concord-frontend/tests import this directly so expected
+// diffs are computed from the real engine, never pasted output).
+export function clauseTextBlock(c) {
+  return c.clauses.map((cl) => `[${cl.title}]\n${cl.text}`).join("\n\n");
+}
+// Line-level diff — classic LCS over arrays of trimmed lines.
+export function lineDiff(oldText, newText) {
+  const a = String(oldText || "").split("\n");
+  const b = String(newText || "").split("\n");
+  const m = a.length, n = b.length;
+  const lcs = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      lcs[i][j] = a[i] === b[j]
+        ? lcs[i + 1][j + 1] + 1
+        : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const ops = [];
+  let i = 0, j = 0;
+  while (i < m && j < n) {
+    if (a[i] === b[j]) { ops.push({ op: "same", text: a[i] }); i++; j++; }
+    else if (lcs[i + 1][j] >= lcs[i][j + 1]) { ops.push({ op: "remove", text: a[i] }); i++; }
+    else { ops.push({ op: "add", text: b[j] }); j++; }
+  }
+  while (i < m) { ops.push({ op: "remove", text: a[i] }); i++; }
+  while (j < n) { ops.push({ op: "add", text: b[j] }); j++; }
+  return ops;
+}
 
 export default function registerLawActions(registerLensAction) {
   /**
@@ -456,19 +540,51 @@ export default function registerLawActions(registerLensAction) {
    * inventor, assignee.
    *
    * params: { query: string, field?: "title"|"abstract"|"inventor"|"assignee", limit?: 1-100 }
+   *
+   * Advanced mode — combined multi-field boolean query builder (closes
+   * docs/lens-specs/law-capability-map.md's "Combined multi-field boolean
+   * query builder" gap): pass `params.filters: [{ field, value }]` +
+   * optional `params.combinator: "and"|"or"` (default "and") instead of
+   * the single `query`/`field` pair. Each filter reuses the exact same
+   * `_text_phrase` clause the single-field path builds via
+   * `_usptoFieldClause`, wrapped in PatentsView's native `_and`/`_or`
+   * combinator — e.g. two filters combined with "and" produce:
+   *   { _and: [ { _text_phrase: { patent_title: "..." } },
+   *             { _text_phrase: { assignee_organization: "..." } } ] }
+   * Filter rows missing a recognized `field` or an empty/whitespace-only
+   * `value` are dropped; if that leaves zero valid filters, this
+   * byte-identically falls back to the pre-existing single-`query`/`field`
+   * behavior below (honest degrade, never a silent empty query) — so
+   * `filters: []` or `filters: [{field:'bogus', value:''}]` behaves
+   * exactly as if `filters` had never been passed.
    */
   registerLensAction("law", "uspto-patent-search", async (_ctx, _artifact, params = {}) => {
-    const query = String(params.query || "").trim();
-    if (!query) return { ok: false, error: "query required" };
-    const field = ["title", "abstract", "inventor", "assignee"].includes(params.field) ? params.field : "title";
     const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
-    const queryShape = field === "title"
-      ? { _text_phrase: { patent_title: query } }
-      : field === "abstract"
-      ? { _text_phrase: { patent_abstract: query } }
-      : field === "inventor"
-      ? { _text_phrase: { inventor_name_last: query } }
-      : { _text_phrase: { assignee_organization: query } };
+
+    const rawFilters = Array.isArray(params.filters) ? params.filters : [];
+    const validFilters = rawFilters
+      .map((f) => ({
+        field: Object.prototype.hasOwnProperty.call(USPTO_FIELD_COLUMN, f?.field) ? f.field : null,
+        value: String(f?.value || "").trim(),
+      }))
+      .filter((f) => f.field && f.value);
+
+    let query, field, queryShape, combinator = null, filters = null;
+
+    if (validFilters.length > 0) {
+      combinator = params.combinator === "or" ? "or" : "and";
+      const clauses = validFilters.map((f) => _usptoFieldClause(f.field, f.value));
+      queryShape = combinator === "or" ? { _or: clauses } : { _and: clauses };
+      field = "combined";
+      query = validFilters.map((f) => f.value).join(combinator === "or" ? " OR " : " AND ");
+      filters = validFilters;
+    } else {
+      query = String(params.query || "").trim();
+      if (!query) return { ok: false, error: "query required" };
+      field = ["title", "abstract", "inventor", "assignee"].includes(params.field) ? params.field : "title";
+      queryShape = _usptoFieldClause(field, query);
+    }
+
     try {
       const url = `${USPTO_PATENTSVIEW}/patent/?q=${encodeURIComponent(JSON.stringify(queryShape))}&f=${encodeURIComponent(JSON.stringify(["patent_id","patent_title","patent_abstract","patent_date","inventors","assignees"]))}&o=${encodeURIComponent(JSON.stringify({ per_page: limit }))}`;
       const r = await fetch(url);
@@ -486,6 +602,7 @@ export default function registerLawActions(registerLensAction) {
         ok: true,
         result: {
           query, field,
+          ...(filters ? { filters, combinator } : {}),
           patents, count: patents.length,
           totalHits: data.count || data.total_patent_count,
           source: "uspto-patentsview",
@@ -494,6 +611,136 @@ export default function registerLawActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `uspto unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  /**
+   * patent-claims — real patent CLAIMS TEXT via USPTO PatentsView's
+   * PatentSearch API `g_claim` entity (verbatim per-claim text for a
+   * granted US patent), enriched with title + grant date from the
+   * sibling `g_patent` entity. Closes the
+   * docs/lens-specs/law-capability-map.md patent-claims-text gap:
+   * `uspto-patent-search` above returns only the abstract, never the
+   * claims — the part that actually defines the scope of protection.
+   *
+   * API-KEY REALITY CHECK (verified 2026-07-17, this macro only): unlike
+   * `uspto-patent-search`'s "Free, no API key" header comment above, that
+   * claim is now STALE for the live API — PatentsView retired its truly
+   * keyless Legacy API on 2025-05-01, and the PatentSearch API (the SAME
+   * `search.patentsview.org/api/v1` base both macros hit) has required an
+   * `X-Api-Key` header on every request since (confirmed via PatentsView's
+   * own forum + the rOpenSci client's docs; a direct fetch of
+   * patentsview.org / search.patentsview.org itself is DNS/policy-blocked
+   * in this sandbox, the same constraint already documented on
+   * `recapDocketSearchHandler`/`citation-graph` below — so this was cross-
+   * checked across two independent sources rather than taken on faith).
+   * Dispatching a keyless request today would be a guaranteed 401/403 on
+   * every call, burning the 45-req/min budget for nothing — so this macro
+   * fails FAST and HONEST when `PATENTSVIEW_API_KEY` is unset, the exact
+   * convention `materials.mp-structure` already uses for
+   * `MATERIALS_PROJECT_API_KEY`. Free key: PatentsView's support portal
+   * (patentsview-support.atlassian.net/servicedesk/customer/portals).
+   *
+   * FIELD NAMES: the `g_claim`/`g_patent` field names below
+   * (claim_sequence, claim_number, claim_text, claim_dependent,
+   * exemplary, patent_title, patent_date) were cross-checked against
+   * PatentsView's public release notes and third-party citations of the
+   * schema — the docs site fetch itself is blocked here, same as above —
+   * and are read DEFENSIVELY with fallback keys; an unrecognized/renamed
+   * field degrades to `null`, never a fabricated value, matching this
+   * file's established convention.
+   *
+   * HONESTY — legal status is NEVER computed or implied. PatentsView's
+   * data is grant-time bibliographic + claim text only: no reexamination,
+   * reissue, terminal-disclaimer, maintenance-fee-lapse, or litigation
+   * signal. This macro has no basis to say whether a patent is currently
+   * active, expired, or invalidated, and it never guesses — `legalStatus`
+   * is always the literal string `"not_available"` with a `disclosure`
+   * string explaining why. A UI consuming this MUST NOT infer status from
+   * whether claims were found, how many, or their content. There is no
+   * free bulk source for legal status; verifying it requires USPTO Patent
+   * Center (public, free, but not a bulk API) or a paid PAIR/legal-status
+   * provider.
+   *
+   * params: { patentId?: string, query?: string (alias for patentId — a
+   *           raw patent-number string like "10,000,000" or
+   *           "US10000000B2", normalized to digits-only via
+   *           `_normalizePatentId`), limit?: 1-200 claims (default 50) }
+   * requires patentId OR query.
+   */
+  registerLensAction("law", "patent-claims", async (_ctx, _artifact, params = {}) => {
+    const patentId = _normalizePatentId(params.patentId || params.query);
+    if (!patentId) return { ok: false, error: "patentId or query (a patent number) required" };
+    const limit = Math.max(1, Math.min(200, Math.round(Number(params.limit) || 50)));
+
+    const apiKey = process.env.PATENTSVIEW_API_KEY;
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: "PATENTSVIEW_API_KEY env required — PatentsView's PatentSearch API has required an API key on every request since its keyless Legacy API was retired 2025-05-01 (free key: patentsview-support.atlassian.net/servicedesk/customer/portals)",
+      };
+    }
+    const headers = { "X-Api-Key": apiKey, Accept: "application/json" };
+
+    const patentUrl = `${USPTO_PATENTSVIEW}/g_patent/?q=${encodeURIComponent(JSON.stringify({ patent_id: patentId }))}&f=${encodeURIComponent(JSON.stringify(["patent_id", "patent_title", "patent_date"]))}`;
+    const claimUrl = `${USPTO_PATENTSVIEW}/g_claim/?q=${encodeURIComponent(JSON.stringify({ patent_id: patentId }))}&f=${encodeURIComponent(JSON.stringify(["patent_id", "claim_id", "claim_sequence", "claim_number", "claim_text", "claim_dependent", "exemplary"]))}&o=${encodeURIComponent(JSON.stringify({ per_page: limit }))}`;
+
+    const [patentSettled, claimSettled] = await Promise.allSettled([
+      cachedFetchJson(patentUrl, { ttlMs: PATENT_CLAIMS_TTL_MS, opts: { headers } }),
+      cachedFetchJson(claimUrl, { ttlMs: PATENT_CLAIMS_TTL_MS, opts: { headers } }),
+    ]);
+
+    // Claims are the entire point of this macro — a failure here is a
+    // genuine honest failure, never papered over with empty/fabricated data.
+    if (claimSettled.status === "rejected") {
+      const msg = claimSettled.reason instanceof Error ? claimSettled.reason.message : String(claimSettled.reason);
+      if (/HTTP 40[13]/.test(msg)) {
+        return { ok: false, error: `patentsview auth rejected — check PATENTSVIEW_API_KEY validity (${msg})` };
+      }
+      return { ok: false, error: `patentsview unreachable: ${msg}` };
+    }
+
+    const claimData = claimSettled.value;
+    const rawClaims = Array.isArray(claimData?.g_claim) ? claimData.g_claim
+      : Array.isArray(claimData?.claims) ? claimData.claims : [];
+    const claims = rawClaims
+      .map((c) => ({
+        claimId: c.claim_id ?? c.claimId ?? null,
+        sequence: c.claim_sequence != null ? Number(c.claim_sequence) : (c.claimSequence != null ? Number(c.claimSequence) : null),
+        number: c.claim_number ?? c.claimNumber ?? null,
+        text: c.claim_text ?? c.claimText ?? null,
+        dependent: c.claim_dependent ?? c.dependent ?? null,
+        exemplary: typeof c.exemplary === "boolean" ? c.exemplary : (c.exemplary != null ? !!Number(c.exemplary) : null),
+      }))
+      .filter((c) => c.text)
+      .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+
+    // Title/date is enrichment, not the core value of this macro — a
+    // failure here degrades honestly to null fields rather than failing
+    // the whole call (the real claim text is still useful without it).
+    let title = null, date = null, titleLookupFailed = false;
+    if (patentSettled.status === "fulfilled") {
+      const rows = Array.isArray(patentSettled.value?.g_patent) ? patentSettled.value.g_patent
+        : Array.isArray(patentSettled.value?.patents) ? patentSettled.value.patents : [];
+      const row = rows[0] || null;
+      if (row) { title = row.patent_title ?? null; date = row.patent_date ?? null; }
+    } else {
+      titleLookupFailed = true;
+    }
+
+    return {
+      ok: true,
+      result: {
+        patentId,
+        title,
+        date,
+        claims,
+        count: claims.length,
+        ...(titleLookupFailed ? { titleLookupFailed: true } : {}),
+        source: "uspto-patentsview",
+        legalStatus: "not_available",
+        disclosure: "Legal status (active / expired / lapsed / invalidated / litigated) is NOT available from this free data source and is never inferred from claim presence, count, or content — verify current status directly with USPTO Patent Center before relying on this for any filing, licensing, or freedom-to-operate decision.",
+      },
+    };
   });
 
   /**
@@ -535,7 +782,11 @@ export default function registerLawActions(registerLensAction) {
    * `semantic` key is added at all) — existing keyword-search callers are
    * unaffected.
    */
-  registerLensAction("law", "courtlistener-search", async (_ctx, _artifact, params = {}) => {
+  // Named (not anonymous) so `search-alert-check` below can invoke this SAME
+  // handler directly, in-process, with no macro-dispatch round trip — the
+  // alert-check path re-runs the real case-law search, not a re-implementation
+  // of it. See the `search-alert-*` family for the caller.
+  const courtlistenerSearchHandler = async (_ctx, _artifact, params = {}) => {
     const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
     const limit = Math.max(1, Math.min(50, Number(params.limit) || 10));
@@ -589,7 +840,8 @@ export default function registerLawActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-  });
+  };
+  registerLensAction("law", "courtlistener-search", courtlistenerSearchHandler);
 
   /**
    * recap-docket-search — Real federal court DOCKET search via
@@ -632,7 +884,10 @@ export default function registerLawActions(registerLensAction) {
    *           dateAfter?: "YYYY-MM-DD", dateBefore?: "YYYY-MM-DD", limit?: 1-50 }
    * requires query OR docketNumber.
    */
-  registerLensAction("law", "recap-docket-search", async (_ctx, _artifact, params = {}) => {
+  // Named for the same reason as courtlistenerSearchHandler above —
+  // `search-alert-check` calls this SAME handler directly for docket-type
+  // alerts, in-process, no macro-dispatch round trip.
+  const recapDocketSearchHandler = async (_ctx, _artifact, params = {}) => {
     const query = String(params.query || "").trim();
     const docketNumber = String(params.docketNumber || "").trim();
     if (!query && !docketNumber) return { ok: false, error: "query or docketNumber required" };
@@ -695,7 +950,8 @@ export default function registerLawActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-  });
+  };
+  registerLensAction("law", "recap-docket-search", recapDocketSearchHandler);
 
   /**
    * recap-docket-documents — page a single docket's full RECAP document
@@ -756,6 +1012,117 @@ export default function registerLawActions(registerLensAction) {
     }
   });
 
+  /**
+   * citation-graph — real "who cites this opinion" (and, optionally, "what
+   * this opinion cites") via CourtListener's `opinions-cited` viewset. This
+   * closes docs/lens-specs/law-capability-map.md's "Citation graph" gap:
+   * `LegalCaseSearch.tsx`'s own header comment already disclosed that the
+   * Good-Law/Caution/Negative-Treatment signal-flag proxy needs
+   * CourtListener's `cited_by` data "via a separate call" that the original
+   * `courtlistener-search` response doesn't carry — this macro IS that
+   * separate call.
+   *
+   * Network to courtlistener.com is policy-blocked in this sandbox (the
+   * same constraint documented on `recapDocketSearchHandler` above), so the
+   * field shape below was verified against the Free Law Project's own
+   * open-source Django repo (github.com/freelawproject/courtlistener)
+   * rather than a live request:
+   *   - `cl/search/filters.py`'s `OpinionsCitedFilter` exposes exactly
+   *     three filters on the `opinions-cited` viewset: `id` (integer
+   *     lookups), `citing_opinion` (RelatedFilter → Opinion), and
+   *     `cited_opinion` (RelatedFilter → Opinion) — confirmed by fetching
+   *     the file's raw source directly.
+   *   - The underlying `OpinionsCited` model (`cl/search/models.py`,
+   *     table `search_opinionscited`) is a citation EDGE: `citing_opinion`
+   *     is the opinion doing the citing, `cited_opinion` is the opinion
+   *     being cited, and `depth` counts how many times the citing opinion
+   *     references the cited one. So "who cites opinion X" is the rows
+   *     where `cited_opinion == X` (the API's own worked example: "to see
+   *     what cites Obergefell [id 2812209], use ... `?cited_opinion=2812209`"),
+   *     and "what X cites" is the rows where `citing_opinion == X`.
+   *   - The v4 REST response for each row is `{ resource_uri, id,
+   *     citing_opinion, cited_opinion, depth }`, where `citing_opinion`/
+   *     `cited_opinion` are themselves resource URLs (e.g.
+   *     "https://www.courtlistener.com/api/rest/v4/opinions/2812209/"),
+   *     NOT nested case-name objects — CourtListener's own docs note case
+   *     names live on the separate `/clusters/` resource, not `/opinions/`.
+   *   - These two facts (model source + REST docs text) were independently
+   *     confirmed via web search against courtlistener.com's own "Legal
+   *     Citation APIs" help page, whose direct fetch is also blocked here,
+   *     so the two sources triangulate rather than substitute for each
+   *     other.
+   *
+   * Because the API only returns opinion IDs + resource URLs (never case
+   * names) at this endpoint, this macro does NOT invent a case name for
+   * the citing/cited opinions — the UI renders the honest id + a real
+   * CourtListener link, never a fabricated title. A future follow-up could
+   * add a second bounded batch of `/opinions/{id}/` calls to resolve
+   * `absolute_url`/case metadata; out of scope here (would be its own
+   * "opinion full fetch" macro per the header comment this closes).
+   *
+   * params: { opinionId: number, direction?: "citedBy" (default, who
+   *           cites this opinion) | "cites" (what this opinion cites),
+   *           limit?: 1-50 }
+   */
+  registerLensAction("law", "citation-graph", async (_ctx, _artifact, params = {}) => {
+    const opinionId = Number(params.opinionId);
+    if (!opinionId || !Number.isFinite(opinionId)) return { ok: false, error: "opinionId required" };
+    const direction = params.direction === "cites" ? "cites" : "citedBy";
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 20));
+    const token = process.env.COURTLISTENER_API_TOKEN;
+    const qs = new URLSearchParams({ page_size: String(limit) });
+    // citedBy ("who cites this opinion"): rows where THIS opinion is the
+    // one being cited, i.e. filter on cited_opinion.
+    // cites ("what this opinion cites"): rows where THIS opinion is doing
+    // the citing, i.e. filter on citing_opinion.
+    if (direction === "citedBy") qs.set("cited_opinion", String(opinionId));
+    else qs.set("citing_opinion", String(opinionId));
+    try {
+      const headers = token ? { Authorization: `Token ${token}` } : {};
+      const r = await fetch(`${COURTLISTENER_BASE}/opinions-cited/?${qs.toString()}`, { headers });
+      if (!r.ok) {
+        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
+        throw new Error(`courtlistener ${r.status}`);
+      }
+      const data = await r.json();
+      const extractOpinionId = (v) => {
+        if (v == null) return null;
+        if (typeof v === "number") return v;
+        if (typeof v === "object") return extractOpinionId(v.id ?? v.resource_uri ?? v.url ?? null);
+        const m = String(v).match(/\/opinions\/(\d+)\/?/);
+        return m ? Number(m[1]) : null;
+      };
+      const citations = (data.results || []).map((c) => {
+        const citingOpinionId = extractOpinionId(c.citing_opinion);
+        const citedOpinionId = extractOpinionId(c.cited_opinion);
+        return {
+          id: c.id ?? null,
+          citingOpinionId,
+          citingOpinionUrl: typeof c.citing_opinion === "string" ? c.citing_opinion : null,
+          citedOpinionId,
+          citedOpinionUrl: typeof c.cited_opinion === "string" ? c.cited_opinion : null,
+          // The "other" opinion relative to the queried id + direction —
+          // convenience field so the UI doesn't need to know the edge
+          // semantics to render a flat citing-opinions list.
+          otherOpinionId: direction === "citedBy" ? citingOpinionId : citedOpinionId,
+          depth: typeof c.depth === "number" ? c.depth : null,
+        };
+      });
+      return {
+        ok: true,
+        result: {
+          opinionId, direction,
+          citations, count: citations.length,
+          totalHits: data.count ?? citations.length,
+          authenticatedWithToken: !!token,
+          source: "courtlistener",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
   // ─── Contract lifecycle management (Ironclad / LegalZoom 2026 parity) ───
   // Per-user STATE-backed contract repository: draft, compose from a
   // clause library, review for risk, sign, and track to expiry.
@@ -765,6 +1132,7 @@ export default function registerLawActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.lawLens) STATE.lawLens = {};
     if (!(STATE.lawLens.contracts instanceof Map)) STATE.lawLens.contracts = new Map();
+    if (!(STATE.lawLens.searchAlerts instanceof Map)) STATE.lawLens.searchAlerts = new Map();
     return STATE.lawLens;
   }
   function saveLaw() {
@@ -777,6 +1145,7 @@ export default function registerLawActions(registerLensAction) {
   const lwActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const lwClean = (v, max = 280) => String(v == null ? "" : v).trim().slice(0, max);
   const lwList = (s, userId) => { if (!s.contracts.has(userId)) s.contracts.set(userId, []); return s.contracts.get(userId); };
+  const lwAlerts = (s, userId) => { if (!s.searchAlerts.has(userId)) s.searchAlerts.set(userId, []); return s.searchAlerts.get(userId); };
 
   const CONTRACT_TYPES = ["nda", "services", "employment", "license", "lease", "sale", "partnership", "other"];
   const CONTRACT_STATUSES = ["draft", "in_review", "sent", "signed", "active", "expired", "terminated"];
@@ -987,39 +1356,148 @@ export default function registerLawActions(registerLensAction) {
     };
   });
 
+  // ─── Deeper trend analytics (closes law-capability-map.md's Ironclad gap:
+  // cycle-time-to-signature / renewal-rate-over-time / spend-by-counterparty
+  // trend lines) ───
+  // A SEPARATE macro from contract-dashboard (rather than additive fields on
+  // it) — the dashboard is a cheap point-in-time tally called on every
+  // refresh; trend computation walks every contract's signatures +
+  // obligations and is naturally heavier, so it's a distinct opt-in call the
+  // UI fires once per panel-open instead of on every dashboard poll.
+  // Every number below is derived from real contract/obligation fields
+  // (createdAt, signatures[].signedAt, value, counterparty, obligations
+  // kind='renewal' done/dueDate) — nothing here is fabricated or estimated.
+  // Each bucket carries its own `hasData` (real data exists) and, where a
+  // "trend" implies change over time, `hasTrend` (>=2 distinct periods) so
+  // the caller can render an honest "not enough data yet" state instead of
+  // a misleading single-point line — the same discipline as
+  // `dx-platform.issueTrend`'s 0/1-snapshot honesty.
+  function _lwMonthKey(iso) {
+    const t = new Date(iso);
+    if (Number.isNaN(t.getTime())) return null;
+    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  const _lwRound2 = (n) => Math.round(n * 100) / 100;
+
+  registerLensAction("law", "contract-trends", (ctx, _a, _params = {}) => {
+  try {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cs = lwList(s, lwActor(ctx));
+
+    // ---- Cycle-time-to-signature: createdAt → first signatures[].signedAt,
+    // only for contracts that actually have >=1 signature. ----
+    const cycleSamples = [];
+    for (const c of cs) {
+      if (!Array.isArray(c.signatures) || c.signatures.length === 0) continue;
+      const created = new Date(c.createdAt).getTime();
+      if (Number.isNaN(created)) continue;
+      let firstSigned = null;
+      for (const sig of c.signatures) {
+        const t = new Date(sig.signedAt).getTime();
+        if (!Number.isNaN(t) && (firstSigned === null || t < firstSigned)) firstSigned = t;
+      }
+      if (firstSigned === null) continue;
+      const days = (firstSigned - created) / 86400000;
+      if (days >= 0) cycleSamples.push({ contractId: c.id, contractTitle: c.title, days: _lwRound2(days) });
+    }
+    let cycleTime = { hasData: false, count: 0, avgDays: null, medianDays: null, minDays: null, maxDays: null, samples: [] };
+    if (cycleSamples.length > 0) {
+      const sorted = [...cycleSamples].sort((a, b) => a.days - b.days);
+      const nums = sorted.map((x) => x.days);
+      const sum = nums.reduce((a, b) => a + b, 0);
+      const mid = Math.floor(nums.length / 2);
+      const median = nums.length % 2 === 0 ? (nums[mid - 1] + nums[mid]) / 2 : nums[mid];
+      cycleTime = {
+        hasData: true,
+        count: nums.length,
+        avgDays: _lwRound2(sum / nums.length),
+        medianDays: _lwRound2(median),
+        minDays: nums[0],
+        maxDays: nums[nums.length - 1],
+        samples: sorted,
+      };
+    }
+
+    // ---- Spend-by-counterparty-by-month: group value by counterparty x
+    // month-of-createdAt. ----
+    const spendByMonth = new Map(); // month -> (counterparty -> value)
+    const counterpartyTotals = new Map();
+    for (const c of cs) {
+      const m = _lwMonthKey(c.createdAt);
+      if (!m) continue;
+      const cp = c.counterparty || "Unspecified";
+      if (!spendByMonth.has(m)) spendByMonth.set(m, new Map());
+      const byCp = spendByMonth.get(m);
+      byCp.set(cp, (byCp.get(cp) || 0) + c.value);
+      counterpartyTotals.set(cp, (counterpartyTotals.get(cp) || 0) + c.value);
+    }
+    const spendMonths = [...spendByMonth.keys()].sort();
+    // Cap series count so the chart stays readable; rank by total spend.
+    const MAX_COUNTERPARTY_SERIES = 8;
+    const spendCounterparties = [...counterpartyTotals.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, MAX_COUNTERPARTY_SERIES)
+      .map(([name]) => name);
+    let spendTrend = { hasData: false, hasTrend: false, months: [], counterparties: [], series: [] };
+    if (spendMonths.length > 0 && spendCounterparties.length > 0) {
+      const series = spendMonths.map((m) => {
+        const row = { month: m };
+        const byCp = spendByMonth.get(m) || new Map();
+        for (const cp of spendCounterparties) row[cp] = byCp.get(cp) || 0;
+        return row;
+      });
+      spendTrend = {
+        hasData: true,
+        hasTrend: spendMonths.length >= 2,
+        months: spendMonths,
+        counterparties: spendCounterparties,
+        series,
+      };
+    }
+
+    // ---- Renewal-rate-by-month: kind='renewal' obligations, completed vs
+    // total bucketed by due month. ----
+    const renewalByMonth = new Map(); // month -> { total, completed }
+    for (const c of cs) {
+      for (const ob of c.obligations || []) {
+        if (ob.kind !== "renewal") continue;
+        const m = _lwMonthKey(ob.dueDate);
+        if (!m) continue;
+        if (!renewalByMonth.has(m)) renewalByMonth.set(m, { total: 0, completed: 0 });
+        const bucket = renewalByMonth.get(m);
+        bucket.total += 1;
+        if (ob.done) bucket.completed += 1;
+      }
+    }
+    const renewalMonths = [...renewalByMonth.keys()].sort();
+    let renewalTrend = { hasData: false, hasTrend: false, series: [] };
+    if (renewalMonths.length > 0) {
+      renewalTrend = {
+        hasData: true,
+        hasTrend: renewalMonths.length >= 2,
+        series: renewalMonths.map((m) => {
+          const b = renewalByMonth.get(m);
+          return {
+            month: m,
+            total: b.total,
+            completed: b.completed,
+            renewalRate: _lwRound2((b.completed / b.total) * 100),
+          };
+        }),
+      };
+    }
+
+    return { ok: true, result: { cycleTime, spendTrend, renewalTrend } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ─── Backlog item 1: Visual contract editor with redline / version diff ───
   // Each contract carries a versions[] array — a snapshot of the full
   // clause text at the moment of save. contract-version-save snapshots,
   // contract-version-list lists, contract-diff produces a line-level
   // redline between any two versions (or a version vs. current).
-
-  function clauseTextBlock(c) {
-    return c.clauses.map((cl) => `[${cl.title}]\n${cl.text}`).join("\n\n");
-  }
-  // Line-level diff — classic LCS over arrays of trimmed lines.
-  function lineDiff(oldText, newText) {
-    const a = String(oldText || "").split("\n");
-    const b = String(newText || "").split("\n");
-    const m = a.length, n = b.length;
-    const lcs = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-    for (let i = m - 1; i >= 0; i--) {
-      for (let j = n - 1; j >= 0; j--) {
-        lcs[i][j] = a[i] === b[j]
-          ? lcs[i + 1][j + 1] + 1
-          : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
-      }
-    }
-    const ops = [];
-    let i = 0, j = 0;
-    while (i < m && j < n) {
-      if (a[i] === b[j]) { ops.push({ op: "same", text: a[i] }); i++; j++; }
-      else if (lcs[i + 1][j] >= lcs[i][j + 1]) { ops.push({ op: "remove", text: a[i] }); i++; }
-      else { ops.push({ op: "add", text: b[j] }); j++; }
-    }
-    while (i < m) { ops.push({ op: "remove", text: a[i] }); i++; }
-    while (j < n) { ops.push({ op: "add", text: b[j] }); j++; }
-    return ops;
-  }
+  // `clauseTextBlock`/`lineDiff` are the module-scope exports above —
+  // same implementation, just hoisted so they're independently importable.
 
   registerLensAction("law", "contract-version-save", (ctx, _a, params = {}) => {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1079,6 +1557,73 @@ export default function registerLawActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ─── WAVE4: real-time multi-party collaborative redlining ───
+  // Reuses the generic scope-parameterized Yjs CRDT layer
+  // (server/lib/yjs-realtime.js — the same one `code:liveshare` and
+  // `collab:doc` already use, whose own docstring invites reuse "by any
+  // future realtime editor") under a new scope, `KNOWN_SCOPES.LAW_CONTRACT`
+  // ('law:contract'), keyed by contract id. No parallel realtime transport
+  // is built here — `contract-redline-init` only hands the client the seed
+  // text + scope name; the client binds `getDoc('law:contract', contractId)`
+  // via the existing `useYjsDoc` hook exactly like the Collab lens does.
+  //
+  // Presence/cursors and threaded redline-suggestion discussion reuse the
+  // `collab` domain's already-real primitives (cursorUpdate/presenceState,
+  // addComment/listComments/resolveThread) rather than duplicating them —
+  // those require a `collab.docCreate`-minted "shadow" doc id, which the
+  // frontend creates once and links back here via `contract-redline-link`
+  // so re-opening the contract reuses the same comment thread + presence
+  // roster instead of losing it. `collabDocId` is metadata on the law
+  // contract; it is never treated as authoritative contract content.
+  registerLensAction("law", "contract-redline-init", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const body = clauseTextBlock(c);
+    // Seed the shared Y.Text with the current contract body the FIRST time
+    // anyone opens the redline tab for this contract, so the initial peer
+    // doesn't have to type a character before the CRDT doc has real
+    // content (see useYjsDoc/CollabDocWorkspace's lazy-seed-on-first-edit
+    // pattern — seeding it here instead avoids that race entirely, since
+    // this handler runs synchronously to completion with no `await`
+    // between the length check and the insert). Idempotent: once the
+    // Y.Text has ANY content (from this seed or real edits), later
+    // contract-redline-init calls never touch it again — the CRDT draft
+    // is the live source of truth for an in-progress redlining session,
+    // decoupled from further out-of-band clause edits.
+    try {
+      const yText = getDoc(KNOWN_SCOPES.LAW_CONTRACT, c.id).getText("content");
+      if (yText.length === 0 && body.length > 0) yText.insert(0, body);
+    } catch (_e) { /* CRDT seed is best-effort; the client still gets `body` below */ }
+    return {
+      ok: true,
+      result: {
+        contractId: c.id,
+        scope: KNOWN_SCOPES.LAW_CONTRACT,
+        body,
+        collabDocId: c.collabDocId || null,
+      },
+    };
+  });
+
+  // Persist the collab "shadow" doc id (minted client-side via
+  // `collab.docCreate`) onto the contract so presence + comment threads
+  // survive re-opening the redline tab. Idempotent — re-linking to the
+  // same id is a no-op write; re-linking to a DIFFERENT id (e.g. the
+  // client lost track and created a fresh shadow doc) overwrites, which
+  // is the honest behavior — we never fabricate a link that wasn't real.
+  registerLensAction("law", "contract-redline-link", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const collabDocId = lwClean(params.collabDocId, 80);
+    if (!collabDocId) return { ok: false, error: "collabDocId required" };
+    c.collabDocId = collabDocId;
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { collabDocId } };
+  });
 
   // ─── Backlog item 2: AI clause extraction from an uploaded contract ───
   // Parses raw pasted/uploaded contract text into structured clauses,
@@ -1637,6 +2182,205 @@ export default function registerLawActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // ─── Backlog item: Saved search alerts (search / docket alerts) ───
+  // Closes docs/WAVE4_INVENTORY.md row 219 / law-capability-map.md's
+  // "GENUINELY MISSING — no persistence/notification substrate for saved
+  // searches" gap. Triaged ENGINEERING (per CLAUDE.md's gap-closure
+  // triage classes): the real external data source already exists
+  // (CourtListener, wired above as courtlistener-search / recap-docket-
+  // search) — what was missing is Concord-side persistence + a "what's
+  // new since I last looked" diff. No new external dependency needed.
+  //
+  // READ BEFORE EXTENDING — what this family honestly does and does not do:
+  //
+  //   1. NO background delivery. This domain's contracts/alerts substrate
+  //      is a per-user IN-MEMORY STATE.lawLens map (same shape as the
+  //      `contracts` map above) — not a DB table on the heartbeat-registry
+  //      dispatch this project's CLAUDE.md documents for per-world/global
+  //      cron work. A heartbeat COULD technically iterate every user's
+  //      alerts on a timer, but there is no notification channel (no
+  //      push/email/toast wired for this lens) to actually tell a user
+  //      "new results landed" once such a sweep ran — it would just
+  //      silently consume the "new" flag before anyone saw it, which is
+  //      WORSE than no automation: the user's next manual "Check now"
+  //      would then dishonestly report nothing new. So this is
+  //      deliberately left MANUAL-CHECK-ONLY: `search-alert-check` runs
+  //      only when explicitly called (the frontend's "Check now" button
+  //      today; a future scheduled job could call the exact same macro
+  //      once a real delivery channel exists, without changing this
+  //      contract one bit).
+  //   2. `search-alert-check` calls the REAL underlying handler in-process
+  //      — literally the same function `law.courtlistener-search` /
+  //      `law.recap-docket-search` run (courtlistenerSearchHandler /
+  //      recapDocketSearchHandler, captured above). A network/API failure
+  //      surfaces as `{ ok:false, error }` and is NEVER papered over as a
+  //      fabricated "0 new results" — on failure, `lastSeenResultIds` /
+  //      `lastCheckedAt` are left untouched so a transient CourtListener
+  //      outage can't silently eat real novelty from the next successful
+  //      check's diff.
+  //   3. Only two alert types exist: `case_law` (re-runs
+  //      courtlistener-search) and `docket` (re-runs recap-docket-search).
+  //      A third "citation" type was considered (the WAVE4_INVENTORY row's
+  //      own phrasing says "search/docket/citation alerts") but there is
+  //      no DISTINCT real "citation search" macro in this file to re-run —
+  //      CourtListener citation lookups ARE case-law opinion search (the
+  //      same `/search/?type=o` endpoint, just with a citation string as
+  //      the query text). Rather than fabricate a third type that secretly
+  //      aliases the first, this family exposes only the two genuinely
+  //      distinct underlying searches. Watching a citation is achievable
+  //      today as a `case_law` alert whose `query` IS the citation string.
+  const SEARCH_ALERT_TYPES = ["case_law", "docket"];
+
+  // Pull the stable per-item id a search handler's result carries, keyed by
+  // alert type — courtlistener-search results key on `id` (opinion id),
+  // recap-docket-search results key on `docketId`.
+  function alertResultId(alertType, item) {
+    if (alertType === "docket") return item?.docketId != null ? String(item.docketId) : null;
+    return item?.id != null ? String(item.id) : null;
+  }
+
+  registerLensAction("law", "search-alert-add", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const query = lwClean(params.query, 300);
+    if (!query) return { ok: false, error: "query required" };
+    // Unknown alertType silently falls back to "case_law" — same convention
+    // this file already uses for contract `type` (unknown → "other").
+    const alertType = SEARCH_ALERT_TYPES.includes(params.alertType) ? params.alertType : "case_law";
+    const alert = {
+      id: lwId("alt"),
+      query,
+      alertType,
+      label: lwClean(params.label, 160) || query,
+      // Optional passthrough filters — only fields the two real handlers
+      // (courtlistenerSearchHandler / recapDocketSearchHandler) read.
+      court: lwClean(params.court, 40) || null,
+      dateAfter: lwClean(params.dateAfter, 30) || null,
+      dateBefore: lwClean(params.dateBefore, 30) || null,
+      docketNumber: alertType === "docket" ? (lwClean(params.docketNumber, 60) || null) : null,
+      // Informational only (see the honesty note above the alert family) —
+      // nothing reads this field to schedule anything. Stored purely so the
+      // UI can echo the user's stated cadence preference back to them.
+      checkInterval: lwClean(params.checkInterval || params.frequency, 40) || "manual",
+      lastSeenResultIds: [],
+      lastCheckedAt: null,
+      lastCheckTotalResults: null,
+      checkCount: 0,
+      createdAt: lwNow(),
+      updatedAt: lwNow(),
+    };
+    lwAlerts(s, lwActor(ctx)).push(alert);
+    saveLaw();
+    return { ok: true, result: { alert } };
+  });
+
+  registerLensAction("law", "search-alert-list", (ctx, _a, _params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const alerts = [...lwAlerts(s, lwActor(ctx))].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const now = Date.now();
+    const shaped = alerts.map((a) => ({
+      id: a.id, query: a.query, alertType: a.alertType, label: a.label,
+      court: a.court, dateAfter: a.dateAfter, dateBefore: a.dateBefore, docketNumber: a.docketNumber,
+      checkInterval: a.checkInterval,
+      lastCheckedAt: a.lastCheckedAt,
+      neverChecked: !a.lastCheckedAt,
+      hoursSinceLastCheck: a.lastCheckedAt ? Math.round((now - new Date(a.lastCheckedAt).getTime()) / 3600000) : null,
+      lastCheckTotalResults: a.lastCheckTotalResults,
+      seenResultCount: (a.lastSeenResultIds || []).length,
+      checkCount: a.checkCount || 0,
+      createdAt: a.createdAt,
+    }));
+    return { ok: true, result: { alerts: shaped, count: shaped.length } };
+  });
+
+  registerLensAction("law", "search-alert-remove", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lwAlerts(s, lwActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "alert not found" };
+    arr.splice(i, 1);
+    saveLaw();
+    return { ok: true, result: { removed: params.id } };
+  });
+
+  // search-alert-check — THE core piece. Re-runs the alert's saved query
+  // against the REAL underlying CourtListener handler (in-process, same
+  // function the standalone macro runs — see the family header comment for
+  // why this is a direct call, not a fabricated re-implementation), diffs
+  // the fresh result-id set against `lastSeenResultIds` from the previous
+  // successful check, and reports what's genuinely new. Manual/on-demand
+  // only — see point 1 in the family header comment.
+  registerLensAction("law", "search-alert-check", async (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const alert = lwAlerts(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!alert) return { ok: false, error: "alert not found" };
+
+    const searchParams = { query: alert.query, limit: 20 };
+    if (alert.court) searchParams.court = alert.court;
+    if (alert.dateAfter) searchParams.dateAfter = alert.dateAfter;
+    if (alert.dateBefore) searchParams.dateBefore = alert.dateBefore;
+    if (alert.alertType === "docket" && alert.docketNumber) searchParams.docketNumber = alert.docketNumber;
+
+    const virtualArtifact = { id: null, data: {}, meta: {} };
+    let searchResult;
+    try {
+      searchResult = alert.alertType === "docket"
+        ? await recapDocketSearchHandler(ctx, virtualArtifact, searchParams)
+        : await courtlistenerSearchHandler(ctx, virtualArtifact, searchParams);
+    } catch (e) {
+      // The two real handlers already catch their own fetch errors and
+      // return {ok:false,...} rather than throwing — this catch is defense
+      // in depth only. Either path is an honest failure, never a
+      // fabricated "0 new results".
+      return { ok: false, error: `search failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    if (!searchResult || searchResult.ok !== true) {
+      // The real search genuinely failed (network down, CourtListener rate
+      // limit, etc). Do NOT touch lastSeenResultIds/lastCheckedAt — a
+      // failed check must never read as "checked, nothing new" to the
+      // caller, and the next successful check must still diff against the
+      // last KNOWN-GOOD baseline, not an emptied one.
+      return { ok: false, error: searchResult?.error || "underlying search failed" };
+    }
+
+    const wasFirstCheck = (alert.checkCount || 0) === 0;
+    const items = Array.isArray(searchResult.result?.results) ? searchResult.result.results : [];
+    const previouslySeen = new Set(alert.lastSeenResultIds || []);
+    const newResults = [];
+    const currentIds = [];
+    for (const item of items) {
+      const rid = alertResultId(alert.alertType, item);
+      if (rid == null) continue;
+      currentIds.push(rid);
+      if (!previouslySeen.has(rid)) newResults.push(item);
+    }
+
+    const checkedAt = lwNow();
+    alert.lastSeenResultIds = currentIds;
+    alert.lastCheckedAt = checkedAt;
+    alert.lastCheckTotalResults = searchResult.result?.totalHits ?? items.length;
+    alert.checkCount = (alert.checkCount || 0) + 1;
+    alert.updatedAt = checkedAt;
+    saveLaw();
+
+    return {
+      ok: true,
+      result: {
+        alertId: alert.id,
+        alertType: alert.alertType,
+        query: alert.query,
+        newResults,
+        newCount: newResults.length,
+        totalResults: items.length,
+        totalHits: searchResult.result?.totalHits ?? null,
+        checkedAt,
+        // First-ever check has no prior baseline, so every fetched result
+        // is reported as "new" by construction — surfaced explicitly so
+        // the UI doesn't read a big first-check count as suspicious.
+        firstCheck: wasFirstCheck,
+      },
+    };
   });
 }
 

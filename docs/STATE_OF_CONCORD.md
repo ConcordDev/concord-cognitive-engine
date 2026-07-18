@@ -25,11 +25,11 @@ reclassifies 8 data-modules (168k lines, e.g. the deprecated 145k-line
 | Lens wiring | **257 WIRED · 0 broken · 2 by-design** | `node scripts/verify-lens-backends.mjs` |
 | Macro domains | **492** | verifier `macroDomains` |
 | Route prefixes | **2,973** | verifier `routePrefixes` |
-| Backend domain files | **405** | `ls server/domains/*.js \| wc -l` |
-| Numbered migrations | **355** | `ls server/migrations/[0-9]*.js \| wc -l` |
+| Backend domain files | **409** | `ls server/domains/*.js \| wc -l` |
+| Numbered migrations | **369** | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **131** | `ls server/routes/*.js \| wc -l` |
-| Lib modules | **623** top (`ls server/lib/*.js \| wc -l`) · **922** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
-| `server/server.js` | **77,424 lines** | `wc -l server/server.js` |
+| Lib modules | **639** top (`ls server/lib/*.js \| wc -l`) · **949** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
+| `server/server.js` | **79,230 lines** | `wc -l server/server.js` |
 | DB tables (cartographer) | **690** | `npm run cartograph:static` |
 | Socket events | **277** | cartographer |
 | Heartbeats (registered) | **105 static** | cartographer / detector summary |
@@ -185,8 +185,10 @@ The ConKay-as-builder + safety + distribution stack, all tested + dark-by-defaul
 
 Core engine ~7 · builder spine ~6 · safety ~6 · distribution wedge ~5 · connectors
 **~6** (Gmail + Google Calendar real two-way as of 2026-06-09; other connectors
-still to wire). **Code-complete and prod-config-correct, sitting at the deploy line.** The
-remaining gate is operational (secrets, a public URL, provider accounts), not
-engineering — see `.env.example` go-live section. The flag posture is
+still to wire). **Deployed and live at [concord-os.org](https://concord-os.org) — deployment is
+proven and repeatable, and real users' requests drive the work.** The remaining
+hardening is about *scale*, not shipping: heavy concurrent load and high-volume
+external traffic are still ahead, and provider-gated features (e.g. some connectors)
+turn on as their secrets are provisioned — see `.env.example` go-live section. The flag posture is
 production-correct: secrets hard-required where loss = compromise, dangerous modes
 prod-blocked, features on, infra/secret-gated features off until provisioned.

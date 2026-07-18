@@ -7,14 +7,39 @@
 //   • Launch Library 2 (TheSpaceDevs): https://ll.thespacedevs.com/2.2.0
 //     — universal launch calendar across all providers. Free, no key,
 //     rate-limited (~15 req/hour anonymous).
+//   • CelesTrak GP data: https://celestrak.org/NORAD/elements/gp.php —
+//     live catalog of tracked satellites (TLE-derived orbital elements).
+//     Free, no key. Cached aggressively (≥6h TTL) via cachedFetchJson.
+
+import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const SPACEX_BASE = "https://api.spacexdata.com/v4";
 const LAUNCH_LIBRARY_BASE = "https://ll.thespacedevs.com/2.2.0";
 const ISS_API_BASE = "https://api.wheretheiss.at/v1/satellites/25544";
 const NASA_API_BASE = "https://api.nasa.gov";
+// CelesTrak GP (General Perturbations) data — the industry-standard,
+// keyless catalog of tracked orbital objects, published by the org that
+// has run this feed for the amateur/professional satellite-tracking
+// community since the 1980s. FORMAT=json returns one object per row with
+// the raw OMM/GP field names (OBJECT_NAME, NORAD_CAT_ID, EPOCH,
+// MEAN_MOTION, ...) — see https://celestrak.org/NORAD/documentation/gp-data-formats.php.
+const CELESTRAK_BASE = "https://celestrak.org/NORAD/elements/gp.php";
+const CELESTRAK_CATALOG_TTL_MS = 6 * 60 * 60 * 1000; // ≥6h per spec — this catalog changes slowly
 
 export default function registerSpaceActions(registerLensAction) {
-  registerLensAction("space", "orbitCalc", (ctx, artifact, _params) => { const data = artifact.data || {}; const altitude = parseFloat(data.altitudeKm) || 400; const radius = 6371 + altitude; const period = 2 * Math.PI * Math.sqrt(Math.pow(radius * 1000, 3) / (6.674e-11 * 5.972e24)) / 60; const velocity = Math.sqrt(6.674e-11 * 5.972e24 / (radius * 1000)) / 1000; return { ok: true, result: { altitudeKm: altitude, orbitalRadiusKm: radius, periodMinutes: Math.round(period * 10) / 10, velocityKmS: Math.round(velocity * 100) / 100, orbitsPerDay: Math.round(1440 / period * 10) / 10, type: altitude < 2000 ? "LEO" : altitude < 35786 ? "MEO" : "GEO", escapeVelocity: `${Math.round(Math.sqrt(2) * velocity * 100) / 100} km/s` } }; });
+  // Shared orbital-mechanics helper (extracted from the original inline
+  // `orbitCalc` formula below, byte-for-byte the same math — Kepler's third
+  // law, T = 2π√(r³ / GM), converted from seconds to minutes). Both
+  // `orbitCalc` and the `satellite-*` macros further down call THIS one
+  // function so their period figures can never independently drift apart.
+  // (Function declarations hoist within this closure, so it's safe to call
+  // from `orbitCalc` even though it's defined a few lines above this.)
+  function orbitalPeriodMinutes(altitudeKm) {
+    const radiusKm = 6371 + altitudeKm;
+    return (2 * Math.PI * Math.sqrt(Math.pow(radiusKm * 1000, 3) / (6.674e-11 * 5.972e24))) / 60;
+  }
+
+  registerLensAction("space", "orbitCalc", (ctx, artifact, _params) => { const data = artifact.data || {}; const altitude = parseFloat(data.altitudeKm) || 400; const radius = 6371 + altitude; const period = orbitalPeriodMinutes(altitude); const velocity = Math.sqrt(6.674e-11 * 5.972e24 / (radius * 1000)) / 1000; return { ok: true, result: { altitudeKm: altitude, orbitalRadiusKm: radius, periodMinutes: Math.round(period * 10) / 10, velocityKmS: Math.round(velocity * 100) / 100, orbitsPerDay: Math.round(1440 / period * 10) / 10, type: altitude < 2000 ? "LEO" : altitude < 35786 ? "MEO" : "GEO", escapeVelocity: `${Math.round(Math.sqrt(2) * velocity * 100) / 100} km/s` } }; });
   registerLensAction("space", "deltaVBudget", (ctx, artifact, _params) => { const maneuvers = artifact.data?.maneuvers || []; if (maneuvers.length === 0) return { ok: true, result: { message: "Add maneuvers with delta-V requirements." } }; const total = maneuvers.reduce((s,m) => s + (parseFloat(m.deltaV) || 0), 0); const analyzed = maneuvers.map(m => ({ maneuver: m.name || m.description, deltaV: parseFloat(m.deltaV) || 0, percentage: total > 0 ? Math.round((parseFloat(m.deltaV) || 0) / total * 100) : 0 })); return { ok: true, result: { maneuvers: analyzed, totalDeltaV: Math.round(total * 10) / 10, unit: "km/s", feasibility: total < 10 ? "achievable-with-chemical" : total < 50 ? "requires-efficient-propulsion" : "requires-advanced-propulsion" } }; });
   registerLensAction("space", "launchWindow", (ctx, artifact, _params) => { const data = artifact.data || {}; const targetOrbit = (data.targetOrbit || "LEO").toUpperCase(); const latitude = parseFloat(data.launchLatitude) || 28.5; const inclination = parseFloat(data.inclination) || latitude; const windowsPerDay = targetOrbit === "GEO" ? 2 : targetOrbit === "LEO" ? Math.round(1440 / (2 * Math.PI * Math.sqrt(Math.pow(6771,3) / (6.674e-11 * 5.972e24)) / 60)) : 1; return { ok: true, result: { targetOrbit, launchLatitude: latitude, orbitalInclination: inclination, windowsPerDay, windowDuration: targetOrbit === "GEO" ? "~1 hour" : "5-10 minutes", nextWindowApprox: "Requires ephemeris data for precise calculation", inclinationPenalty: Math.abs(latitude - inclination) > 5 ? "Dogleg maneuver needed — additional fuel cost" : "Direct ascent possible" } }; });
   registerLensAction("space", "reentryAnalysis", (ctx, artifact, _params) => { const data = artifact.data || {}; const mass = parseFloat(data.massKg) || 1000; const velocity = parseFloat(data.velocityKmS) || 7.8; const angle = parseFloat(data.reentryAngleDeg) || 6; const kineticEnergy = 0.5 * mass * Math.pow(velocity * 1000, 2); const peakG = angle > 3 ? Math.round(angle * 1.5 * 10) / 10 : Math.round(angle * 3 * 10) / 10; const peakTemp = Math.round(1000 + velocity * 200); return { ok: true, result: { massKg: mass, entryVelocity: `${velocity} km/s`, entryAngle: `${angle}°`, kineticEnergyGJ: Math.round(kineticEnergy / 1e9 * 10) / 10, peakDeceleration: `${peakG}g`, peakTemperature: `~${peakTemp}°C`, heatShieldRequired: peakTemp > 1500 ? "ablative" : "ceramic-tile", survivability: angle >= 1 && angle <= 10 ? "nominal-corridor" : angle < 1 ? "skip-off — too shallow" : "structural-failure — too steep" } }; });
@@ -104,6 +129,7 @@ export default function registerSpaceActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.spaceLens) STATE.spaceLens = {};
     if (!(STATE.spaceLens.watch instanceof Map)) STATE.spaceLens.watch = new Map(); // userId -> Array
+    if (!(STATE.spaceLens.satellites instanceof Map)) STATE.spaceLens.satellites = new Map(); // userId -> Array of tracked (user-owned) satellites
     return STATE.spaceLens;
   }
   function saveSpace() {
@@ -115,6 +141,7 @@ export default function registerSpaceActions(registerLensAction) {
   const spActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const spClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const spWatch = (s, userId) => { if (!s.watch.has(userId)) s.watch.set(userId, []); return s.watch.get(userId); };
+  const spSatellites = (s, userId) => { if (!s.satellites.has(userId)) s.satellites.set(userId, []); return s.satellites.get(userId); };
 
   registerLensAction("space", "launch-track", (ctx, _a, params = {}) => {
     const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -212,6 +239,218 @@ export default function registerSpaceActions(registerLensAction) {
       return { ok: true, result: { ingested, skipped, source: "launch-library", dtuIds } };
     } catch (e) {
       return { ok: false, error: `launch library unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ─── User-owned satellite tracking + ESTIMATED pass scheduling ───────
+  //
+  // `iss-passes` above earns real precision because the ISS is a real
+  // object with a live-tracked public API (wheretheiss.at) it samples —
+  // actual current position readings, not a model. A "player's own
+  // satellite" is a user-entered fictional/hypothetical object (just a
+  // name + orbital parameters) — there is NO live position feed for it,
+  // so there is nothing to sample. `satellite-passes` below therefore
+  // never pretends to call a tracking API for it; it derives a genuinely
+  // reasoned ANALYTICAL ESTIMATE from orbital mechanics alone (the same
+  // `orbitalPeriodMinutes` helper `orbitCalc` uses) and labels every
+  // result `precision: "estimated"` with an explanatory `note`, mirroring
+  // `launchWindow`'s own honest hedge ("Requires ephemeris data for
+  // precise calculation") rather than overclaiming the SGP4-grade
+  // precision `iss-passes` actually earns from real telemetry.
+
+  registerLensAction("space", "satellite-track", (ctx, _a, params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = spClean(params.name, 200);
+    if (!name) return { ok: false, error: "satellite name required" };
+    const altitudeKm = Number(params.altitudeKm);
+    if (!Number.isFinite(altitudeKm) || altitudeKm <= 0) {
+      return { ok: false, error: "altitudeKm required (positive number) — an orbit needs a defined altitude" };
+    }
+    const inclRaw = Number(params.inclinationDeg);
+    // 51.6° default mirrors ISS-like LEO inclination — a sane, commonly-used
+    // default, not a fabricated-precision claim about the user's satellite.
+    const inclinationDeg = Number.isFinite(inclRaw) ? Math.max(0, Math.min(180, inclRaw)) : 51.6;
+    const sats = spSatellites(s, spActor(ctx));
+    const nameKey = name.toLowerCase();
+    if (sats.some((sat) => sat.name.toLowerCase() === nameKey)) {
+      return { ok: false, error: "already tracking a satellite with this name" };
+    }
+    const satellite = {
+      id: spId("sat"),
+      name,
+      altitudeKm,
+      inclinationDeg,
+      notes: spClean(params.notes, 400) || "",
+      trackedAt: new Date().toISOString(),
+    };
+    sats.push(satellite);
+    saveSpace();
+    return { ok: true, result: { satellite, count: sats.length } };
+  });
+
+  registerLensAction("space", "satellite-list", (ctx, _a, _params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // periodMinutes/orbitsPerDay/type are derived LIVE on every read (never
+    // stored) via the shared orbitalPeriodMinutes helper — same pattern as
+    // launch-watchlist deriving daysUntil/status live from `net`.
+    const satellites = spSatellites(s, spActor(ctx)).map((sat) => {
+      const periodMinutes = orbitalPeriodMinutes(sat.altitudeKm);
+      return {
+        ...sat,
+        periodMinutes: Math.round(periodMinutes * 10) / 10,
+        orbitsPerDay: Math.round((1440 / periodMinutes) * 10) / 10,
+        type: sat.altitudeKm < 2000 ? "LEO" : sat.altitudeKm < 35786 ? "MEO" : "GEO",
+      };
+    });
+    return { ok: true, result: { satellites, count: satellites.length } };
+  });
+
+  registerLensAction("space", "satellite-untrack", (ctx, _a, params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sats = spSatellites(s, spActor(ctx));
+    const i = sats.findIndex((sat) => sat.id === params.id);
+    if (i < 0) return { ok: false, error: "satellite not found" };
+    sats.splice(i, 1);
+    saveSpace();
+    return { ok: true, result: { removed: params.id, count: sats.length } };
+  });
+
+  /**
+   * satellite-passes — ESTIMATED pass schedule for a user-tracked
+   * satellite over a ground station. See the section header above for
+   * why this is deliberately NOT modeled as a live-tracking call.
+   *
+   * Reasoning, spelled out:
+   *   1. A satellite's ground track only ever reaches latitudes within its
+   *      inclination band: maxLat = inclination<=90 ? inclination
+   *      : 180-inclination. This correctly folds retrograde / sun-sync
+   *      orbits (e.g. inclination 98° → max reachable latitude ~82°,
+   *      matching real sun-synchronous orbit geometry). A ground station
+   *      OUTSIDE that band can never see this satellite pass overhead —
+   *      no matter the time window — so we return zero passes with an
+   *      explanatory note instead of fabricating visibility.
+   *   2. For a station INSIDE the band, we assume passes recur roughly
+   *      once per orbital period (the ground track repeats every
+   *      revolution) — a coarse but honestly-labeled approximation; real
+   *      SGP4 propagation would account for nodal regression, Earth's
+   *      rotation between revolutions, and elevation geometry, none of
+   *      which is available for a satellite with no ephemeris source.
+   *   3. Each estimated pass duration is 8% of the orbital period (a
+   *      typical LEO overhead pass above ~10° elevation lasts roughly
+   *      5-15% of the period depending on how directly it crosses
+   *      overhead; 8% is a conservative flat estimate), clamped to
+   *      [3, 20] minutes so short/long periods don't produce absurd
+   *      durations.
+   */
+  registerLensAction("space", "satellite-passes", (ctx, _a, params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sats = spSatellites(s, spActor(ctx));
+    const sat = sats.find((x) => x.id === params.id);
+    if (!sat) return { ok: false, error: "satellite not found" };
+    const latitude = Number(params.latitude);
+    const longitude = Number(params.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return { ok: false, error: "latitude and longitude required" };
+    }
+    const windowHours = Math.max(1, Math.min(72, Number(params.windowHours) || 24));
+    const periodMinutes = orbitalPeriodMinutes(sat.altitudeKm);
+    const maxLat = sat.inclinationDeg <= 90 ? sat.inclinationDeg : 180 - sat.inclinationDeg;
+    const inBand = Math.abs(latitude) <= maxLat;
+    const note = inBand
+      ? `Estimated from orbital period only (${Math.round(periodMinutes * 10) / 10} min) — passes are assumed to recur once per revolution. No live ephemeris exists for a user-tracked satellite (unlike iss-passes, which samples real wheretheiss.at telemetry); treat these windows as approximate.`
+      : `Ground station latitude ${latitude}° is outside this satellite's ${sat.inclinationDeg}°-inclination ground-track band (max reachable latitude ~${Math.round(maxLat * 10) / 10}°) — this orbit can never pass overhead here, so zero passes is the honest answer.`;
+    const passes = [];
+    if (inBand) {
+      const durationMinutes = Math.max(3, Math.min(20, Math.round(periodMinutes * 0.08 * 10) / 10));
+      const count = Math.max(0, Math.floor((windowHours * 60) / periodMinutes));
+      const nowMs = Date.now();
+      for (let i = 0; i < count; i++) {
+        const startMs = nowMs + i * periodMinutes * 60000;
+        passes.push({
+          index: i,
+          startUtc: new Date(startMs).toISOString(),
+          endUtc: new Date(startMs + durationMinutes * 60000).toISOString(),
+          durationMinutes,
+        });
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        satellite: { id: sat.id, name: sat.name, altitudeKm: sat.altitudeKm, inclinationDeg: sat.inclinationDeg },
+        observer: { latitude, longitude },
+        windowHours,
+        periodMinutes: Math.round(periodMinutes * 10) / 10,
+        passes,
+        count: passes.length,
+        precision: "estimated",
+        note,
+      },
+    };
+  });
+
+  // ─── Live satellite catalog (CelesTrak GP data) ──────────────────────
+  //
+  // `iss-track`/`iss-passes` below cover exactly one real object (the
+  // ISS). `satellite-catalog` covers the real, currently-tracked catalog
+  // of THOUSANDS of objects — active payloads, GPS constellation,
+  // Starlink shells, the ISS + other stations, etc. — from CelesTrak,
+  // the standard free/keyless source the amateur and professional
+  // satellite-tracking community has used for decades. No API key, no
+  // per-user auth; a plain public data feed like OSV.dev in repos.js.
+  //
+  // Honest by construction: `group` is sanitized to a safe URL-token
+  // shape and passed straight to CelesTrak — an unrecognized group name
+  // legitimately returns CelesTrak's own empty result (never fabricated
+  // rows); an unreachable/non-JSON response surfaces as
+  // `{ ok:false, reason:'celestrak_unreachable' }`, never a stale or
+  // invented catalog. Every mapped field is a field CelesTrak's GP JSON
+  // actually returns (see gp-data-formats.php) — no invented columns.
+  registerLensAction("space", "satellite-catalog", async (_ctx, _artifact, params = {}) => {
+    const groupRaw = spClean(params.group, 40).toLowerCase();
+    // CelesTrak group names are short lowercase tokens (active, stations,
+    // starlink, gps-ops, weather, science, ...). Reject anything outside
+    // that shape rather than interpolate arbitrary input into the URL;
+    // fall back to the documented default group.
+    const group = /^[a-z0-9-]{1,40}$/.test(groupRaw) ? groupRaw : "active";
+    const limit = Math.max(1, Math.min(500, Math.round(Number(params.limit) || 100)));
+    const url = `${CELESTRAK_BASE}?GROUP=${encodeURIComponent(group)}&FORMAT=json`;
+    try {
+      const data = await cachedFetchJson(url, { ttlMs: CELESTRAK_CATALOG_TTL_MS });
+      const rows = Array.isArray(data) ? data : [];
+      const satellites = rows.slice(0, limit).map((s) => ({
+        name: s.OBJECT_NAME ?? null,
+        objectId: s.OBJECT_ID ?? null,
+        noradId: s.NORAD_CAT_ID ?? null,
+        epoch: s.EPOCH ?? null,
+        meanMotion: s.MEAN_MOTION ?? null,
+        eccentricity: s.ECCENTRICITY ?? null,
+        inclinationDeg: s.INCLINATION ?? null,
+        raanDeg: s.RA_OF_ASC_NODE ?? null,
+        argOfPericenterDeg: s.ARG_OF_PERICENTER ?? null,
+        meanAnomalyDeg: s.MEAN_ANOMALY ?? null,
+        revAtEpoch: s.REV_AT_EPOCH ?? null,
+        bstar: s.BSTAR ?? null,
+        meanMotionDot: s.MEAN_MOTION_DOT ?? null,
+        classification: s.CLASSIFICATION_TYPE ?? null,
+      }));
+      return {
+        ok: true,
+        result: {
+          satellites,
+          count: satellites.length,
+          totalAvailable: rows.length,
+          group,
+          source: "celestrak",
+          attribution: "Source: CelesTrak (celestrak.org)",
+        },
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        reason: "celestrak_unreachable",
+        error: `celestrak unreachable: ${e instanceof Error ? e.message : String(e)}`,
+      };
     }
   });
 

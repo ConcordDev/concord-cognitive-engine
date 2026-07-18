@@ -25,7 +25,7 @@
       },
       "honorifics": ["Warlord", "Forgemother", "Ash-priest", "Ember-bearer"]
     },
-    "kree_nationalists": {
+    "vrellan_nationalists": {
       "phoneme_set": {
         "consonants": ["k", "r", "n", "v", "l", "br", "fr", "sh"],
         "vowels": ["a", "e", "i", "o"],
@@ -38,16 +38,16 @@
       },
       "clan_names": {
         "pattern": "[abstract noun]-[house word]",
-        "examples": ["House Vellanis", "House Brandar", "Kree-Iyeran"]
+        "examples": ["House Vellanis", "House Brandar", "Vrellan-Iyeran"]
       },
       "place_names": {
         "syllable_count": [2, 3],
-        "examples": ["Kree", "Vellan", "Brandar", "Iyeran"],
+        "examples": ["Vrellan", "Vellan", "Brandar", "Iyeran"],
         "common_suffixes": ["-ar", "-an", "-vell"]
       },
       "honorifics": ["Chancellor", "Ambassador", "Minister", "Protector"]
     },
-    "medici": {
+    "vessine": {
       "phoneme_set": {
         "consonants": ["s", "l", "r", "th", "v", "n", "m"],
         "vowels": ["a", "e", "i", "ae", "ei"],
@@ -57,7 +57,7 @@
       "given_names": {
         "syllable_count": [3, 4],
         "examples": ["Aerasi", "Vellanae", "Selithra", "Orienthei", "Iyallae"],
-        "gender_marking": "rare in Medici names; same pool serves all"
+        "gender_marking": "rare in Vessine names; same pool serves all"
       },
       "clan_names": {
         "pattern": "[ancestor's-name]-[choir position]",
@@ -65,12 +65,12 @@
       },
       "place_names": {
         "syllable_count": [2, 3],
-        "examples": ["Medici Ward", "Selith", "Aelaen"],
+        "examples": ["Vessine Ward", "Selith", "Aelaen"],
         "common_suffixes": ["-aen", "-ith", "-ae"]
       },
       "honorifics": ["High Healer", "Choir Master", "Navigator", "Quiet One"]
     },
-    "cree": {
+    "corre": {
       "phoneme_set": {
         "consonants": ["k", "n", "w", "y", "p", "t", "h", "m"],
         "vowels": ["a", "e", "i", "o"],
@@ -78,7 +78,7 @@
       },
       "given_names": {
         "syllable_count": [3, 4],
-        "examples": ["Neyahwetin", "Okimaw", "Wiyowak", "Naheyak"],
+        "examples": ["Kanewola", "Tamohek", "Hotamek", "Kohanti"],
         "gender_marking": "context-dependent; same pool serves all"
       },
       "clan_names": {
@@ -87,7 +87,7 @@
       },
       "place_names": {
         "syllable_count": [2, 3, 4],
-        "examples": ["Cree", "Wiyowak Bay", "Naheya Plain"],
+        "examples": ["Corre", "Hotamek Bay", "Kohanti Plain"],
         "common_suffixes": ["-yak", "-ya", "-mak"]
       },
       "honorifics": ["Eldest Walker", "Singer", "Keeper", "Listener"]

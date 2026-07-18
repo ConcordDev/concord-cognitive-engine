@@ -6,6 +6,138 @@
 // below operate on real per-user state stored in globalThis._concordSTATE so a
 // user can actually exercise the controls (DSAR, per-lens sharing, access log,
 // data export, cookie banner config, retention policy, federation flow map).
+//
+// Default retention windows (days) per data category. 0 = keep forever.
+// Exported so server/emergent/privacy-retention-sweep.js (the heartbeat that
+// actually ENFORCES this config — see that file for the honest scope of what
+// it can and can't act on) has a single source of truth instead of a second,
+// driftable copy.
+export const RETENTION_CATEGORIES = [
+  { category: "chat_history", defaultDays: 365 },
+  { category: "world_activity", defaultDays: 180 },
+  { category: "access_logs", defaultDays: 90 },
+  { category: "dsar_records", defaultDays: 730 },
+  { category: "search_queries", defaultDays: 30 },
+  { category: "drafts", defaultDays: 0 },
+];
+
+// The three enforcement actions a user can attach to a retention category.
+export const RETENTION_ACTIONS = ["delete", "anonymize", "archive"];
+
+// ───────────────────────────────────────────────────────────────────────────
+// Module-scope substrate helpers. These used to live inside
+// registerPrivacyActions(), but the Wave-4 gap-closure ("privacy access log
+// is nearly empty because almost nothing calls recordAccess") needs a
+// recorder callable directly from server.js's runMacro() hot path, before
+// registerPrivacyActions() has necessarily run in that module instance's
+// call order. Hoisting them to module scope also means there is now exactly
+// ONE implementation the `recordAccess` macro and the runMacro chokepoint
+// both call — no drift between "the macro version" and "the hot-path
+// version" of what an access event looks like.
+// ───────────────────────────────────────────────────────────────────────────
+
+/** Lazily provision the per-domain state container. */
+function privacyState() {
+  const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+  if (!STATE.privacyLens) {
+    STATE.privacyLens = {
+      dsars: new Map(),        // userId -> Map<dsarId, request>
+      lensSharing: new Map(),  // userId -> Map<lensId, { read, share }>
+      accessLog: new Map(),    // userId -> Array<accessEvent>
+      cookieConfig: new Map(), // userId -> bannerConfig
+      retention: new Map(),    // userId -> Map<category, { windowDays, action }>
+      flows: new Map(),        // userId -> Map<flowId, dataFlow>
+    };
+  }
+  return STATE.privacyLens;
+}
+
+/** Persist the global STATE if the host wired a debounced saver. */
+function save() {
+  if (typeof globalThis._concordSaveStateDebounced === "function") {
+    try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+  }
+}
+
+/** Resolve the calling user's id from ctx, defaulting to a shared bucket. */
+function uidOf(ctx) {
+  return (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "anon";
+}
+
+/** Per-user Map accessor that auto-creates the bucket. */
+function userMap(parent, uid) {
+  if (!parent.has(uid)) parent.set(uid, new Map());
+  return parent.get(uid);
+}
+
+const now = () => Date.now();
+const rid = (p) => `${p}_${now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+const clean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
+
+// Bound on the per-user access-log array. O(1) unshift + length-clamp on
+// every append; this is the "capped ring buffer" — never an unbounded
+// array, never a synchronous DB write on this hot path.
+const ACCESS_LOG_MAX_EVENTS_PER_USER = 500;
+
+/**
+ * Append one access-log event for `userId`. Single shared implementation —
+ * called by BOTH the `recordAccess` lens macro (explicit, human/caller-
+ * supplied fields, source defaults "manual") and the runMacro() hot-path
+ * recorder in server.js (source "lens-action", ~:11166, right next to
+ * `_macroTelemetry.recordInvocation`).
+ *
+ * Cost/safety, matching the telemetry recorder it sits beside: O(1) —
+ * one Map lookup + array unshift + length clamp, no DB write, wrapped so it
+ * can NEVER throw into the caller (a broken recorder must never break a
+ * live macro dispatch). Bounded: capped at ACCESS_LOG_MAX_EVENTS_PER_USER
+ * per user (ring-buffer semantics — oldest entries fall off the end); the
+ * privacy-retention-sweep heartbeat separately time-bounds these by the
+ * user's declared `access_logs` retention policy.
+ *
+ * HONESTY: the `source` field on the produced event says how the event was
+ * captured. The hot-path caller MUST pass source: "lens-action" — this
+ * records ONLY "a lens macro was invoked by this user", not a general
+ * "every backend data touch" claim. Do not relabel a lens-action-sourced
+ * event as a broader access claim downstream (see the privacy lens's
+ * "Privacy Activity Log" copy — it must describe this scope honestly).
+ *
+ * @param {string|null|undefined} userId
+ * @param {object} [opts]
+ * @param {string} [opts.actor] who/what performed the access (default "system")
+ * @param {string} [opts.actorKind] e.g. "lens" | "agent" | "user"
+ * @param {string} [opts.lensId] the domain/lens the access happened through
+ * @param {string} [opts.domain] alias for lensId (matches runMacro's arg name)
+ * @param {string} [opts.macro] the macro/action name invoked, if known
+ * @param {string} [opts.dataCategory] coarse category label
+ * @param {string} [opts.operation] "read" | "write" | "share" | "delete" (default "read")
+ * @param {string} [opts.source] "manual" | "lens-action" (default "lens-action")
+ * @returns {object|null} the recorded event, or null if recording failed
+ */
+export function appendAccessEvent(userId, opts = {}) {
+  try {
+    const uid = userId || "anon";
+    const s = privacyState();
+    if (!s.accessLog.has(uid)) s.accessLog.set(uid, []);
+    const log = s.accessLog.get(uid);
+    const event = {
+      id: rid("acc"),
+      at: now(),
+      actor: clean(opts.actor || "system", 64),
+      actorKind: clean(opts.actorKind || "lens", 24),
+      lensId: clean(opts.lensId ?? opts.domain ?? "", 48),
+      macro: clean(opts.macro ?? opts.name ?? "", 64),
+      dataCategory: clean(opts.dataCategory || "general", 48),
+      operation: clean(opts.operation || "read", 24),
+      source: clean(opts.source || "lens-action", 24),
+    };
+    log.unshift(event);
+    if (log.length > ACCESS_LOG_MAX_EVENTS_PER_USER) log.length = ACCESS_LOG_MAX_EVENTS_PER_USER;
+    return event;
+  } catch (_e) {
+    return null;
+  }
+}
+
 export default function registerPrivacyActions(registerLensAction) {
   registerLensAction("privacy", "dataInventory", (ctx, artifact, _params) => { const items = artifact.data?.dataItems || []; if (items.length === 0) return { ok: true, result: { message: "Add data items to inventory." } }; const byCategory = {}; const sensitive = items.filter(i => i.sensitive || i.pii); for (const i of items) { const c = i.category || "other"; byCategory[c] = (byCategory[c] || 0) + 1; } return { ok: true, result: { totalItems: items.length, sensitiveItems: sensitive.length, categories: byCategory, riskLevel: sensitive.length > items.length * 0.5 ? "high" : sensitive.length > 0 ? "moderate" : "low", gdprRelevant: sensitive.length > 0, recommendations: sensitive.length > 0 ? ["Implement encryption at rest", "Review access controls", "Document data processing purposes", "Ensure deletion capability"] : ["Continue monitoring data collection"] } }; });
   registerLensAction("privacy", "consentAudit", (ctx, artifact, _params) => { const consents = artifact.data?.consents || []; const active = consents.filter(c => c.status === "active" || c.granted); const expired = consents.filter(c => c.expiry && new Date(c.expiry) < new Date()); const withdrawn = consents.filter(c => c.status === "withdrawn"); return { ok: true, result: { totalConsents: consents.length, active: active.length, expired: expired.length, withdrawn: withdrawn.length, complianceRate: consents.length > 0 ? Math.round((active.length / consents.length) * 100) : 100, issues: expired.map(c => ({ user: c.user || c.subject, expiredOn: c.expiry })), action: expired.length > 0 ? "Re-consent required for expired records" : "All consents current" } }; });
@@ -14,62 +146,16 @@ export default function registerPrivacyActions(registerLensAction) {
 
   // ───────────────────────────────────────────────────────────────────────────
   // Per-user privacy substrate — DSAR, per-lens toggles, access log, export,
-  // cookie banner, retention policy, federation flow map.
+  // cookie banner, retention policy, federation flow map. The shared helpers
+  // (privacyState/save/uidOf/userMap/now/rid/clean/appendAccessEvent) now
+  // live at module scope above — see the comment there for why.
   // ───────────────────────────────────────────────────────────────────────────
-
-  /** Lazily provision the per-domain state container. */
-  function privacyState() {
-    const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
-    if (!STATE.privacyLens) {
-      STATE.privacyLens = {
-        dsars: new Map(),        // userId -> Map<dsarId, request>
-        lensSharing: new Map(),  // userId -> Map<lensId, { read, share }>
-        accessLog: new Map(),    // userId -> Array<accessEvent>
-        cookieConfig: new Map(), // userId -> bannerConfig
-        retention: new Map(),    // userId -> Map<category, { windowDays, action }>
-        flows: new Map(),        // userId -> Map<flowId, dataFlow>
-      };
-    }
-    return STATE.privacyLens;
-  }
-
-  /** Persist the global STATE if the host wired a debounced saver. */
-  function save() {
-    if (typeof globalThis._concordSaveStateDebounced === "function") {
-      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
-    }
-  }
-
-  /** Resolve the calling user's id from ctx, defaulting to a shared bucket. */
-  function uidOf(ctx) {
-    return (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "anon";
-  }
-
-  /** Per-user Map accessor that auto-creates the bucket. */
-  function userMap(parent, uid) {
-    if (!parent.has(uid)) parent.set(uid, new Map());
-    return parent.get(uid);
-  }
-
-  const now = () => Date.now();
-  const rid = (p) => `${p}_${now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  const clean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
 
   // The lenses a user can grant/revoke per-lens data access for. Kept as a
   // stable list so the UI can render a complete toggle grid.
   const SHAREABLE_LENSES = [
     "chat", "world", "music", "code", "marketplace", "atlas", "healthcare",
     "crypto", "message", "accounting", "research", "legal",
-  ];
-
-  // Default retention windows (days) per data category. 0 = keep forever.
-  const RETENTION_CATEGORIES = [
-    { category: "chat_history", defaultDays: 365 },
-    { category: "world_activity", defaultDays: 180 },
-    { category: "access_logs", defaultDays: 90 },
-    { category: "dsar_records", defaultDays: 730 },
-    { category: "search_queries", defaultDays: 30 },
-    { category: "drafts", defaultDays: 0 },
   ];
 
   // ── DSAR — data subject access request handler ────────────────────────────
@@ -188,24 +274,25 @@ export default function registerPrivacyActions(registerLensAction) {
 
   // ── Privacy activity log ──────────────────────────────────────────────────
   // recordAccess is also callable by other subsystems to append an event;
-  // accessLog returns the recent timeline for the UI.
+  // accessLog returns the recent timeline for the UI. Both this macro AND
+  // the runMacro() hot-path recorder (server.js, next to
+  // _macroTelemetry.recordInvocation) go through the single shared
+  // appendAccessEvent() implementation above — no drift between the two.
   registerLensAction("privacy", "recordAccess", (ctx, _artifact, params) => {
     try {
       const uid = uidOf(ctx);
-      const s = privacyState();
-      if (!s.accessLog.has(uid)) s.accessLog.set(uid, []);
-      const log = s.accessLog.get(uid);
-      const event = {
-        id: rid("acc"),
-        at: now(),
-        actor: clean(params?.actor || "system", 64),
-        actorKind: clean(params?.actorKind || "lens", 24),
-        lensId: clean(params?.lensId || "", 48),
-        dataCategory: clean(params?.dataCategory || "general", 48),
-        operation: clean(params?.operation || "read", 24),
-      };
-      log.unshift(event);
-      if (log.length > 500) log.length = 500;
+      const event = appendAccessEvent(uid, {
+        actor: params?.actor,
+        actorKind: params?.actorKind,
+        lensId: params?.lensId,
+        dataCategory: params?.dataCategory,
+        operation: params?.operation,
+        // Explicit macro call — distinct from the automatic hot-path
+        // "lens-action" default so the two provenances stay distinguishable.
+        source: "manual",
+      });
+      if (!event) return { ok: false, error: "failed to record access event" };
+      const log = privacyState().accessLog.get(uid) || [];
       save();
       return { ok: true, result: { event, logSize: log.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -350,8 +437,7 @@ export default function registerPrivacyActions(registerLensAction) {
       if (!RETENTION_CATEGORIES.some(c => c.category === category)) {
         return { ok: false, error: "unknown retention category" };
       }
-      const actions = ["delete", "anonymize", "archive"];
-      const action = actions.includes(params?.action) ? params.action : "delete";
+      const action = RETENTION_ACTIONS.includes(params?.action) ? params.action : "delete";
       let windowDays = parseInt(params?.windowDays);
       if (!Number.isFinite(windowDays) || windowDays < 0) windowDays = 0;
       windowDays = Math.min(windowDays, 3650); // cap at 10 years
@@ -361,6 +447,39 @@ export default function registerPrivacyActions(registerLensAction) {
       bucket.set(category, policy);
       save();
       return { ok: true, result: { category, ...policy } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Observability for the retention-sweep heartbeat
+  // (server/emergent/privacy-retention-sweep.js). Lets the retention-policy
+  // UI honestly show "last swept: <time>, N records actioned" instead of the
+  // config being a write-only register nobody can verify is enforced.
+  // ENFORCED_CATEGORIES / DECLARED_ONLY_CATEGORIES are duplicated (not
+  // imported) from the sweep module deliberately — this macro must stay
+  // readable/callable even if the sweep module fails to load, and the split
+  // is a stable, documented fact about the data model (which categories have
+  // a real per-user store this domain owns), not sweep implementation detail.
+  const ENFORCEABLE_CATEGORIES = ["access_logs", "dsar_records"];
+  const DECLARED_ONLY_CATEGORIES = RETENTION_CATEGORIES
+    .map(c => c.category)
+    .filter(c => !ENFORCEABLE_CATEGORIES.includes(c));
+  registerLensAction("privacy", "retentionSweepStatus", (_ctx, _artifact, _params) => {
+    try {
+      const s = privacyState();
+      const sweep = s.retentionSweep || null;
+      return {
+        ok: true,
+        result: {
+          hasRun: !!sweep,
+          lastRunAt: sweep?.lastRunAt || null,
+          totalRuns: sweep?.totalRuns || 0,
+          lastActioned: sweep?.lastActioned || 0,
+          totalActionedAllTime: sweep?.totalActionedAllTime || 0,
+          byCategory: sweep?.byCategory || {},
+          enforcedCategories: ENFORCEABLE_CATEGORIES,
+          declaredOnlyCategories: DECLARED_ONLY_CATEGORIES,
+        },
+      };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

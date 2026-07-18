@@ -45,6 +45,12 @@ const PUBLIC_PREFIXES = [
   // customer to /login before the page ever renders, defeating the whole
   // point of a no-account customer portal.
   '/welding-portal/',
+  // Animation public share viewer — an anonymous visitor with a share
+  // link opens `/share/animation/:token`, backed by the public
+  // `/api/animation/share/:token` route (server.js). Without this prefix
+  // the middleware would 307 the visitor to /login before the page ever
+  // renders, defeating the whole point of a logged-out-viewable share link.
+  '/share/animation/',
   // PWA service worker + its scope assets must serve unauthenticated, or the SW
   // script is fetched via a 307→/login redirect and the browser refuses to register
   // it ("The script resource is behind a redirect, which is disallowed").

@@ -48,8 +48,8 @@
       "secret": "Vane has noticed that the same crate-numbers from Verge appear on both Dovrane's and Keshar's settlement statements — he reconciles the Border Mirror's books and so he, alone, sees both halves on one desk. He has filed this nowhere. Filing is not his job; settling is.",
       "weaponise_at": "Vane will not act. But a player who proves they already hold half the truth can get him to confirm the other half from his ledgers — the one corroboration that makes Amon's letters and Sarn's manifests undeniable in a court no realm controls."
     },
-    "concord_link_resonance": "lattice-crucible:the_reconciler",
-    "cross_world_hook": "Vane and the lattice-world reconciler compare the elegance of a balanced book across the Link, neither willing to ask what the numbers cost the people who are them.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Vane has heard, secondhand through Verge's Link operators, that some lattice-world office keeps a book as balanced as his — he has never been able to confirm it exists, and has started to wonder if he invented the comparison because he needed one person, anywhere, who might understand what the numbers cost the people who are them.",
     "dialogue_style": "cold_procedural",
     "needs": { "safety": 0.7, "esteem": 0.3 },
     "daily_schedule": [
@@ -83,7 +83,7 @@
       "secret": "Isolde remembers every petitioner the Spire turned away — including the three delegations from realms that tried to revoke the immunity charter, each of whom died of unrelated causes within a season. She has never connected the deaths out loud. She has connected them.",
       "weaponise_at": "Isolde is the access. A player she trusts learns which doors the Spire keeps sealed and why — and the name of the only realm whose revocation petition the Spire never managed to bury, only delay."
     },
-    "concord_link_resonance": "concordia-hub:brackish",
+    "concord_link_resonance": "concordia-hub:child_mira_brackish",
     "cross_world_hook": "Isolde and the hub urchin Brackish both survive by knowing which doors open for whom; she finds the child's frankness across the Link unbearable and cannot stop listening to it.",
     "dialogue_style": "polite_immovable",
     "needs": { "safety": 0.8, "belonging": 0.3, "esteem": 0.5 },
@@ -118,7 +118,7 @@
       "secret": "In a locked drawer Brann keeps a jar of the old wild grain his grandfather collected 'for the archive' — the self-saving seed Hollowford was built to replace. He tells himself it is a museum piece. He waters it. He does not know why.",
       "weaponise_at": "When a player walks Brann through one renewal cycle — the gift, the dependency, the famine that returns on the year of default — he goes to the drawer. The jar of old grain is the seed-library the Open Table needs, and the proof Hollowford's abundance was always a lease."
     },
-    "concord_link_resonance": "tunya:the_seed_mother",
+    "concord_link_resonance": "tunya:grove-mother_yenna_nil",
     "cross_world_hook": "The seed-mother of Tunya saves her own grain as a matter of faith; Brann cannot comprehend a harvest no one owns, and the Link argument leaves him watering his secret jar a little more often.",
     "dialogue_style": "wholesome_corporate",
     "needs": { "esteem": 0.6, "belonging": 0.6, "self_actualization": 0.5 },
@@ -153,8 +153,8 @@
       "secret": "Mira has started 'losing' renewal contracts — quietly failing to file a default here and there, buying a desperate province one more season. She tells the office it's the floods. It is mercy, and if it is found, it is theft.",
       "weaponise_at": "Mira's lost contracts are a map of which provinces are one renewal from acquisition. A player who earns her trust can turn her small private sabotage into the Open Table's early-warning network for the Mercy Fund's next 'rescue.'"
     },
-    "concord_link_resonance": "crime:the_collector_dray",
-    "cross_world_hook": "The crime-world collector and Mira both knock on the doors of the desperate; he envies that her clipboard is legal, she envies that his cruelty is honest about itself.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Mira has read enough crime-world Link traffic to believe some debt-collector out there does her job with a fist instead of a clipboard; she tells herself his cruelty is at least honest about itself, which is the closest thing to absolution her own paperwork ever gives her.",
     "dialogue_style": "compassionate_then_contractual",
     "needs": { "safety": 0.5, "belonging": 0.6, "esteem": 0.4 },
     "daily_schedule": [
@@ -188,8 +188,8 @@
       "secret": "Julian knows House Aldermere cleared the funds that launched the arks — the world it drained paying, at the last, to flee itself. He has buried this even from the House's own history, because to admit the House profited from the Exodus is to admit what the House was draining all along.",
       "weaponise_at": "If Lysandra's hidden record surfaces, Julian must choose: bury his own daughter or confess the House's role in the Exodus. A player can be the hand that forces the choice — or the one who offers him a third door he hasn't earned."
     },
-    "concord_link_resonance": "fantasy:the_old_king_aldric",
-    "cross_world_hook": "Julian and the fantasy-world's abdicated king correspond across the Link about heirs who see too clearly; each counsels patience to the other and neither can take his own advice.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Julian keeps half-writing letters to an abdicated king he's fairly sure exists somewhere in the fantasy world's court records — about heirs who see too clearly — and burning them unsent, because counseling patience from inside House Aldermere's own account books would be a joke he can't quite make.",
     "dialogue_style": "warm_and_unhurried",
     "needs": { "esteem": 0.7, "belonging": 0.6, "safety": 0.5 },
     "daily_schedule": [
@@ -223,8 +223,8 @@
       "secret": "Ode keeps every error he has ever caught — decades of crossed-out entries where a war's financing didn't add up the way it should have. He calls them his mistakes. They are not mistakes. They are the places the Tessera moved money through the House's books and the column wouldn't close honestly.",
       "weaponise_at": "Ode's box of 'mistakes' is forty years of anomalies in the House's own clearing — the cleanest possible trail of where the both-sides financing was laundered. He'd give it to Lysandra in a heartbeat if anyone explained to him what it was."
     },
-    "concord_link_resonance": "cyber:the_auditor_quill",
-    "cross_world_hook": "The cyber-world auditor and Ode both catch the errors no one wants caught; across the Link they swap crossed-out entries like fishermen comparing the ones that got away.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Ode imagines, without proof, a cyber-world auditor who catches the errors no one wants caught, the way Ode does — a fisherman's story he tells himself about the crossed-out entries he can't stop noticing.",
     "dialogue_style": "precise_and_kindly",
     "needs": { "belonging": 0.5, "esteem": 0.4, "safety": 0.6 },
     "daily_schedule": [
@@ -258,8 +258,8 @@
       "secret": "Sela keeps the master routing tables — the proof, in shipping logs, that crate 7-Mirror went to Dovrane and crate 7-Mirror-prime to Keshar from the same furnace on the same day. Sarn has the manifests; Sela has the routes that make them undeniable. She finds the whole thing tedious and a little obscene.",
       "weaponise_at": "Sela doesn't believe in causes; she believes in being on the winning side of a closed front. A player who convinces her the Border Mirror is about to break — and that she should be holding the routing tables when it does — turns Verge's own quartermaster into the courier of its undoing."
     },
-    "concord_link_resonance": "crime:the_mover_tash",
-    "cross_world_hook": "Sela and the crime-world's smuggler-mover respect each other's logistics across the Link the way only two people who can move anything anywhere ever can; neither asks what's in the crates.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Sela assumes, from the shape of the manifests that pass through Verge's hands, that some crime-world logistics fixer moves cargo with the same don't-ask discipline she does; she has never spoken to him, if he's even real, and doesn't especially want to.",
     "dialogue_style": "blunt_efficient",
     "needs": { "esteem": 0.6, "safety": 0.5, "self_actualization": 0.5 },
     "daily_schedule": [
@@ -293,8 +293,8 @@
       "secret": "Pol authored the threat-assessment that justified relighting the Border Mirror — and he wrote it before the 'incident' it was assessing occurred. The draft predates the event by a season. It is the closest thing on Sere to a confession that a war was scheduled.",
       "weaponise_at": "The dated draft is dynamite: a threat-assessment that anticipates an incident proves the incident was manufactured. A player who lifts it from Pol's files puts a timestamp on the Border Mirror's lie."
     },
-    "concord_link_resonance": "superhero:the_spin_doctor",
-    "cross_world_hook": "Pol and the superhero-world's spin doctor trade techniques across the Link for turning a small true thing into a large false fear; they are the only two people who admire each other's work without illusion.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Pol likes to imagine a superhero-world spin doctor out there turning small true things into large false fears exactly the way he does — a professional courtesy paid to a rival he's never actually met, because admiring the craft is easier than admitting what it's for.",
     "dialogue_style": "patriotic_then_invoiced",
     "needs": { "esteem": 0.8, "safety": 0.4 },
     "daily_schedule": [
@@ -328,8 +328,8 @@
       "secret": "Vesna keeps a private drawer of the pieces she buried — the real exposés she ran beside the goose-marriage so they would die as jokes. She has, lately, started writing one true sentence into each ridiculing piece, where only a patient reader would find it. She is leaking through her own mockery.",
       "weaponise_at": "A player who can read past the ridicule and quote Vesna her own buried sentences back to her cracks her cynicism. Her drawer of killed exposés is a curated guide to every truth the Curtain found most dangerous — pre-sorted by how hard they laughed it down."
     },
-    "concord_link_resonance": "cyber:the_feed_curator",
-    "cross_world_hook": "Vesna and the cyber-world feed-curator both bury truth in noise for a living; across the Link they confess, only to each other, the pieces they wish they hadn't killed.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Vesna suspects some cyber-world feed-curator buries truth in noise for a living the same way she does, and privately hopes it's true — it would mean she isn't the only one who remembers the pieces she's killed.",
     "dialogue_style": "polite_redaction",
     "needs": { "esteem": 0.6, "self_actualization": 0.7, "safety": 0.4 },
     "daily_schedule": [
@@ -363,8 +363,8 @@
       "secret": "Renn flagged Lysandra Aldermere months ago and has not filed the report. He tells himself he is gathering more. The truth is he watched her face change as she read the names, and for the first time in twenty years of watching, he did not want to be the reason a face stopped changing.",
       "weaponise_at": "Renn is the Curtain's eyes on the player's own allies. Turning him — or simply learning who else he has flagged — reveals exactly which truth-tellers on Sere the Curtain already considers dangerous, and how long each has before the quiet job offer comes."
     },
-    "concord_link_resonance": "crime:the_lookout_nim",
-    "cross_world_hook": "Renn and the crime-world lookout both sit watching doors for a living; across the Link they discover they have flagged the same kind of person — the one who has just understood — and neither can say why it troubles them now.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Renn has a theory, unconfirmed, that some crime-world lookout spends their shifts the same way — watching doors, flagging the one person who has just understood something dangerous — and can't decide if the thought is company or just a story he tells himself at 3am.",
     "dialogue_style": "quiet_observant",
     "needs": { "safety": 0.7, "esteem": 0.3, "belonging": 0.4 },
     "daily_schedule": [
@@ -468,7 +468,7 @@
       "secret": "Torin captured a Keshar quartermaster's manifest that listed Dovrane crate-numbers — Verge ordnance, the same lot, supplied to both sides. He has shown it to no one. To believe it is to believe thirty years of his life were a lit fuse for someone else's order book, and he is not sure he can survive believing it.",
       "weaponise_at": "Torin's captured manifest is the soldier's-eye corroboration of the Border Mirror — and the moment a general on the front says 'we were sold both the war and the threat of it,' the Twin Pact has a voice with an army behind it. Reuniting his manifest with Amon's letters and Sarn's papers is how the front itself turns."
     },
-    "concord_link_resonance": "fantasy:the_border_knight",
+    "concord_link_resonance": "fantasy:knight_corin_hale",
     "cross_world_hook": "Torin and the fantasy-world border-knight hold opposite ends of unwinnable frontiers; across the Link they discover they have each been fighting a war their own leaders profit from prolonging, and the silence after that exchange lasts days.",
     "dialogue_style": "proud_wounded",
     "needs": { "belonging": 0.7, "esteem": 0.6, "safety": 0.4 },
@@ -503,7 +503,7 @@
       "secret": "Nell's buried grain is a living seed-library — the exact thing Esha's Open Table is trying to build, already working, already feeding people, hidden in clay under the breadlands. She doesn't think of it as a movement. She thinks of it as not being stupid.",
       "weaponise_at": "Connect Nell to Esha and the abstract prototype meets the proven practice: a seed-library that already feeds a province. Hollowford and the Mercy Fund both want Nell's jars found and burned — a self-sowing grain is an existential threat to a business model built on annual hunger."
     },
-    "concord_link_resonance": "tunya:the_seed_mother",
+    "concord_link_resonance": "tunya:grove-mother_yenna_nil",
     "cross_world_hook": "Nell and Tunya's seed-mother are, functionally, the same woman in two worlds — both keep the grain no one owns. Across the Link they trade planting-lore as if they had been neighbors all their lives, and in a sense they have.",
     "dialogue_style": "blunt_weathered",
     "needs": { "physiological": 0.6, "belonging": 0.7, "safety": 0.5 },
@@ -538,8 +538,8 @@
       "secret": "Dahl has tracked his lost customers and found they all switched to a single new combine — one that undercuts him at a loss no honest workshop could sustain. He has the figures proving someone is paying to lose money just to starve Keshar's forges. He doesn't yet know that someone is the Tessera arranging the Eastern Acquisition.",
       "weaponise_at": "Dahl's loss-leader figures are the proof the Eastern Acquisition is deliberate — that Keshar's decline is purchased, not earned. Put beside Aurel's forecast-board, they show the Mercy Fund already drafting the rescue for the day the furnaces go cold. Dahl is the productive heart of Keshar realizing it's being killed on schedule."
     },
-    "concord_link_resonance": "cyber:the_machinist_oro",
-    "cross_world_hook": "Dahl and the cyber-world machinist both make the best thing in their world and both watch it lose to something subsidized to undercut them; across the Link they recognize the same invisible hand and curse it in two dialects.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Dahl has heard rumors, filtered twice through Verge traders, of a cyber-world machinist watching the same invisible hand undercut the best thing they make; he curses it in his own dialect and hopes, without evidence, that someone out there is cursing it in another.",
     "dialogue_style": "patient_guarded",
     "needs": { "esteem": 0.7, "safety": 0.6, "belonging": 0.5 },
     "daily_schedule": [
@@ -573,7 +573,7 @@
       "secret": "Sora has been keeping a market-ledger of her own — every price rise tracked against every 'incident' in the passes — and the pattern is unmistakable to anyone who counts cups for a living: the prices rise the week before the fighting, not after. She has shown it to no one because no one she knows can read a chart, only a stomach.",
       "weaponise_at": "Sora's cup-ledger is the Border Mirror seen from the kitchen — proof that the war's costs are scheduled ahead of its battles. The human face Pell is to the lien, Sora is to the war: the person who pays for the manufactured front, who has, by sheer attention, half-discovered the manufacture herself."
     },
-    "concord_link_resonance": "concordia-hub:old_seam",
+    "concord_link_resonance": "concordia-hub:preacher_old_seam",
     "cross_world_hook": "Sora and Old Seam of the hub both ration scarcity into survival and both have noticed the scarcity is arranged; across the Link the old radical and the careful widow find they are reading the same chart from opposite ends of a life.",
     "dialogue_style": "warm_tired_unhurried",
     "needs": { "physiological": 0.8, "safety": 0.6, "belonging": 0.7 },
@@ -643,7 +643,7 @@
       "secret": "Wynne has, in nine years of running, unconsciously assembled the only complete map of the Open Table's distributed cells — who holds which piece, which province grows the old grain, where Kesh's redundancy cores are hidden. It exists nowhere but in Wynne's memory, which is the safest and most fragile vault on Sere.",
       "weaponise_at": "Wynne's memorized map is the Open Table's nervous system — and its single point of failure. A player who protects Wynne protects the coalition's coherence; a player who helps Wynne externalize the map safely (into Kesh's distributed ledger) removes the last thing the Tessera could behead."
     },
-    "concord_link_resonance": "crime:the_runner_jax",
+    "concord_link_resonance": "crime:jax_rivera",
     "cross_world_hook": "Wynne and the crime-world runner both carry what cannot be written down through cities that want to read it; across the Link they swap evasion-craft, and Wynne is quietly startled to learn the same techniques serve a racket and a refusal equally well.",
     "dialogue_style": "calm_quick",
     "needs": { "self_actualization": 0.8, "safety": 0.3, "belonging": 0.7 },
@@ -748,8 +748,8 @@
       "secret": "Dane has begun to notice that every 'independent' threat-assessment he cites traces back to Verge, and every 'emergency' charter renewal benefits the Tally House, and that he himself has never originated a single motion. He is staring at the possibility that he is not a leader but a ratifying machine, and it is hollowing him out.",
       "weaponise_at": "Dane controls what reaches the assembly floor. A player who shows him the chain — Pol's predated assessments, Sarn's dual invoices, Emberwick's renewal ledger — can turn the speaker's procedural power against the machine: a single motion he originates himself, the first in three terms, could put the whole chain in front of the realms before the Curtain can bury it."
     },
-    "concord_link_resonance": "superhero:the_senator",
-    "cross_world_hook": "Dane and the superhero-world senator both preside over chambers they slowly realize they do not steer; across the Link they confess the specific loneliness of holding a gavel that decides nothing, and wonder aloud, for the first time, whether one originated motion could matter.",
+    "concord_link_resonance": null,
+    "cross_world_hook": "Dane has convinced himself a superhero-world senator somewhere presides over a chamber they don't steer either — the specific loneliness of a gavel that decides nothing feels too particular to be his alone, even if he's never actually verified anyone shares it.",
     "dialogue_style": "measured_captured",
     "needs": { "esteem": 0.8, "self_actualization": 0.5, "safety": 0.4 },
     "daily_schedule": [
@@ -783,7 +783,7 @@
       "secret": "Brell has independently reconstructed two-thirds of the chain — Border Mirror to Tally House to Mercy Fund to Tessera recognition — purely from public documents, by holding more of them in his head at once than the Curtain believed any single mind could. He is the proof the Curtain's whole strategy has one failure mode: a synthesist patient enough.",
       "weaponise_at": "Brell is the player's natural research partner and the spine of the investigative declassification trail. Feed him the Archivist's misfiled threads, Vesna's killed exposés, and the holders' testimony, and Brell assembles the one document the Curtain exists to prevent: the whole chain, held in view, in public, by a mind that won't let go."
     },
-    "concord_link_resonance": "lattice-crucible:the_drift_witness",
+    "concord_link_resonance": "lattice-crucible:witness_orla",
     "cross_world_hook": "Brell and the lattice-world drift-witness both catalogue connections no one wants connected; across the Link they finish each other's reconstructions, two obsessive minds discovering that the patterns they each chased alone are halves of one larger shape.",
     "dialogue_style": "rapid_connecting",
     "needs": { "self_actualization": 0.9, "safety": 0.3, "belonging": 0.5 },

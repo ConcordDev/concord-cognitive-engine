@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { GmailSyncPanel } from './GmailSyncPanel';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -850,6 +851,11 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
                 </div>
               </div>
             )}
+
+            <GmailSyncPanel
+              tripId={trip.id}
+              onImported={() => { void Promise.all([loadItinerary(), loadAgenda(), loadBookings()]); }}
+            />
           </div>
         </div>
       )}

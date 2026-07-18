@@ -562,6 +562,7 @@ export default function registerArActions(registerLensAction) {
         scenes: new Map(),    // userId -> Map<sceneId, scene>
         targets: new Map(),   // userId -> Map<targetId, imageTarget>
         publishes: new Map(), // userId -> Map<publishId, publishRecord>
+        captures: new Map(),  // userId -> Map<captureId, capture>
       };
     }
     return STATE.arLens;
@@ -621,6 +622,7 @@ export default function registerArActions(registerLensAction) {
   const sceneStore = (ctx) => dbStore(ctx, "ar_scenes", arState().scenes);
   const targetStore = (ctx) => dbStore(ctx, "ar_image_targets", arState().targets);
   const publishStore = (ctx) => dbStore(ctx, "ar_publishes", arState().publishes);
+  const captureStore = (ctx) => dbStore(ctx, "ar_captures", arState().captures);
 
   function rid(prefix) {
     return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -1214,6 +1216,155 @@ export default function registerArActions(registerLensAction) {
       };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e && e.message || e) };
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // AR capture gallery (Wave-4 gap closure — ar-capability-map.md item 13:
+  // "No AR capture/screenshot/recording gallery"). Same per-user Map-backed
+  // store pattern as sceneStore/targetStore/publishStore above; falls back to
+  // the in-memory globalThis bucket via dbStore when no `ar_captures` table
+  // exists (no migration ships with this — the fallback is the same graceful
+  // degrade already proven for scenes/targets/publishes). The client (see
+  // SceneStudio's capture pipeline / ARCaptureGallery.tsx) uploads a REAL
+  // `canvas.toDataURL()` screenshot or a REAL `canvas.captureStream()` +
+  // MediaRecorder video/webm recording as a base64 `data:` URL — these
+  // macros only validate + persist that real pixel/video data, they never
+  // fabricate or substitute placeholder capture bytes.
+  // ---------------------------------------------------------------------------
+
+  // Size caps mirror the photo-gallery precedent (server/lib/photo-gallery.js
+  // MAX_BLOB_BYTES = 5MB per still image, the same closed-loop base64-blob
+  // storage shape); a short canvas.captureStream() video clip is naturally
+  // bigger than a single PNG frame, so video gets a larger honest ceiling.
+  const MAX_CAPTURE_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+  const MAX_CAPTURE_VIDEO_BYTES = 25 * 1024 * 1024; // 25 MB
+
+  const CAPTURE_DATA_URL_RE = /^data:([-\w.]+\/[-\w.+]+);base64,([A-Za-z0-9+/=]*)$/;
+
+  /** Decode+validate a `data:<mime>;base64,<payload>` capture URL. Never throws. */
+  function decodeCaptureDataUrl(dataUrl) {
+    const m = CAPTURE_DATA_URL_RE.exec(String(dataUrl || ""));
+    if (!m) return { ok: false, error: "invalid_data_url" };
+    const b64 = m[2];
+    let buf;
+    try {
+      buf = Buffer.from(b64, "base64");
+    } catch {
+      return { ok: false, error: "invalid_base64" };
+    }
+    if (!buf || buf.byteLength === 0) return { ok: false, error: "empty_capture" };
+    return { ok: true, bytes: buf.byteLength };
+  }
+
+  /** Metadata-only projection of a capture — never includes the blob (list-safe). */
+  function captureMeta(c) {
+    return {
+      id: c.id,
+      mimeType: c.mimeType,
+      sceneId: c.sceneId,
+      durationMs: c.durationMs,
+      label: c.label,
+      byteSize: c.byteSize,
+      createdAt: c.createdAt,
+    };
+  }
+
+  /**
+   * captureUpload
+   * Persist a client-captured AR screenshot/recording. Validates the payload
+   * is a well-formed, non-empty base64 data: URL within the size cap for its
+   * kind (image vs video) before storing — an oversized or malformed payload
+   * is honestly rejected, never truncated or silently accepted as-is.
+   * params: { dataUrl, mimeType, sceneId?, durationMs?, label? }
+   * returns: { capture: <metadata-only, no dataUrl>, uploaded: true }
+   */
+  registerLensAction("ar", "captureUpload", (ctx, artifact, params) => {
+    try {
+      const p = params || {};
+      if (!p.dataUrl || typeof p.dataUrl !== "string") {
+        return { ok: false, error: "dataUrl is required" };
+      }
+      if (!p.mimeType || typeof p.mimeType !== "string") {
+        return { ok: false, error: "mimeType is required" };
+      }
+      const isImage = /^image\//.test(p.mimeType);
+      const isVideo = /^video\//.test(p.mimeType);
+      if (!isImage && !isVideo) {
+        return { ok: false, error: "mimeType must be image/* or video/*" };
+      }
+
+      const decoded = decodeCaptureDataUrl(p.dataUrl);
+      if (!decoded.ok) return { ok: false, error: decoded.error };
+
+      const cap = isVideo ? MAX_CAPTURE_VIDEO_BYTES : MAX_CAPTURE_IMAGE_BYTES;
+      if (decoded.bytes > cap) {
+        // Honest rejection — never silently truncate or corrupt an oversized capture.
+        return { ok: false, error: "capture_too_large", maxBytes: cap, actualBytes: decoded.bytes };
+      }
+
+      let sceneId = null;
+      if (p.sceneId) {
+        const scene = sceneStore(ctx).get(p.sceneId);
+        if (!scene) return { ok: false, error: "scene not found" };
+        sceneId = scene.id;
+      }
+
+      const capture = {
+        id: rid("cap"),
+        mimeType: p.mimeType,
+        dataUrl: p.dataUrl,
+        byteSize: decoded.bytes,
+        sceneId,
+        durationMs: isVideo ? clampNum(p.durationMs, 0, 3600000, null) : null,
+        label: typeof p.label === "string" ? p.label.slice(0, 200) : null,
+        createdAt: new Date().toISOString(),
+      };
+      captureStore(ctx).set(capture.id, capture);
+      return { ok: true, result: { capture: captureMeta(capture), uploaded: true } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /** captureList — list the caller's captures (metadata only, never the blob). */
+  registerLensAction("ar", "captureList", (ctx) => {
+    try {
+      const captures = captureStore(ctx);
+      const list = [...captures.values()]
+        .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1))
+        .map(captureMeta);
+      return { ok: true, result: { captures: list, count: list.length } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /** captureGet — fetch one capture's full data (including the blob) by id. */
+  registerLensAction("ar", "captureGet", (ctx, artifact, params) => {
+    try {
+      const captures = captureStore(ctx);
+      const id = params && params.captureId;
+      if (!id) return { ok: false, error: "captureId is required" };
+      const capture = captures.get(id);
+      if (!capture) return { ok: false, error: "capture not found" };
+      return { ok: true, result: { capture } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /** captureDelete — remove a capture the caller owns. Honest not-found rejection. */
+  registerLensAction("ar", "captureDelete", (ctx, artifact, params) => {
+    try {
+      const captures = captureStore(ctx);
+      const id = params && params.captureId;
+      if (!id) return { ok: false, error: "captureId is required" };
+      if (!captures.get(id)) return { ok: false, error: "capture not found" };
+      captures.delete(id);
+      return { ok: true, result: { deleted: true, captureId: id } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
     }
   });
 }

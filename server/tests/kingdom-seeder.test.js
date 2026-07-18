@@ -58,7 +58,7 @@ describe("kingdom-seeder — Tunya country-factions", () => {
 
     // Specific country-factions must be present.
     const factionIds = new Set(tunyaRealms.map(r => r.faction_id));
-    for (const id of ["dinye", "aekon", "asbir", "fluxom", "nil", "akeia_of_kahlay", "sandrun_sanguire", "medici", "sahm", "bahiij"]) {
+    for (const id of ["dinye", "aekon", "asbir", "fluxom", "nil", "akeia_of_kahlay", "sandrun_sanguire", "vessine", "sahm", "bahiij"]) {
       assert.ok(factionIds.has(id), `missing realm for Tunyan faction "${id}"`);
     }
   });

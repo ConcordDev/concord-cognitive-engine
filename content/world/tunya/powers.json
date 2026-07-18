@@ -5,13 +5,13 @@
   "axioms": [
     "Powers are bloodline-inherited, not learned. A person without the bloodline cannot acquire it; a person with it cannot suppress it permanently.",
     "Powers express on a continuum from full (pure bloodline, both parents) to trace (one ancestor four generations back). Trace expression is so weak it often goes undiagnosed for life.",
-    "Two power systems are documented on Tunya: fire (Sanguire species, Kree-arrived ~pre-arks) and healing (Medici species, crash-landed ~100y ago). Note: prior drafts of this bible incorrectly attributed ice powers to the Medici. Canon corrects to healing-only — the Resonance Choir is a healing-focus practice, not a combat ability.",
-    "Tunyan blood has no recorded bloodline power but does carry conduit-status for the planetary refusal-field. This is biologically distinct from the Sanguire/Medici pattern."
+    "Two power systems are documented on Tunya: fire (Sanguire species, Vrellan-arrived ~pre-arks) and healing (Vessine species, crash-landed ~100y ago). Note: prior drafts of this bible incorrectly attributed ice powers to the Vessine. Canon corrects to healing-only — the Resonance Choir is a healing-focus practice, not a combat ability.",
+    "Tunyan blood has no recorded bloodline power but does carry conduit-status for the planetary refusal-field. This is biologically distinct from the Sanguire/Vessine pattern."
   ],
   "fire_bloodline": {
     "id": "fire_sanguire",
     "origin_faction": "sandrun_sanguire",
-    "founding_population": "kree_sanguire_settlers",
+    "founding_population": "vrellan_sanguire_settlers",
     "expression_dimensions": [
       { "id": "potency", "scale_0_to_1": "fraction of pure bloodline expression" },
       { "id": "control_radius_meters", "default_max": 8 },
@@ -43,24 +43,24 @@
     ]
   },
   "healing_bloodline": {
-    "id": "healing_medici",
-    "origin_faction": "medici",
-    "founding_population": "medici_extra_planetary_crashed",
+    "id": "healing_vessine",
+    "origin_faction": "vessine",
+    "founding_population": "vessine_extra_planetary_crashed",
     "expression_dimensions": [
-      { "id": "potency", "scale_0_to_1": "fraction of pure expression. Supreme Elder is functionally 1.0 — heals faster than all other Medici combined." },
+      { "id": "potency", "scale_0_to_1": "fraction of pure expression. Supreme Elder is functionally 1.0 — heals faster than all other Vessine combined." },
       { "id": "touch_radius_meters", "default_max": 1.5 },
       { "id": "wound_severity_treatable_0_to_1", "default_max": 0.95 },
       { "id": "preservation_duration_hours", "default_max": 720 }
     ],
     "axioms": [
-      "Medici power is healing only. Earlier drafts of this bible attributed ice to the Medici — that was an invention; canon corrects.",
+      "Vessine power is healing only. Earlier drafts of this bible attributed ice to the Vessine — that was an invention; canon corrects.",
       "The Resonance Choir is a healing-focus practice in cold-stillness, not a combat ability. Cold air is a focus medium, not a weapon.",
-      "Power expression is visibly marked: Medici male skull elongates as healing skill grows; Medici female hair grows longer with power. Healers literally wear their power on their bodies.",
-      "Mate-death power absorption: when a Medici's lifelong mate dies, the survivor absorbs the dead partner's healing capacity, becoming an elder. Outliving partners is the canonical path to power; politically incentivizing premature partner-death is taboo."
+      "Power expression is visibly marked: Vessine male skull elongates as healing skill grows; Vessine female hair grows longer with power. Healers literally wear their power on their bodies.",
+      "Mate-death power absorption: when a Vessine's lifelong mate dies, the survivor absorbs the dead partner's healing capacity, becoming an elder. Outliving partners is the canonical path to power; politically incentivizing premature partner-death is taboo."
     ],
     "dilution_curve": {
       "formula": "potency_at_generation_n = base_potency * (1/2)^n_dilution_steps_from_pure",
-      "explanation": "Same dilution math as Sanguire fire, but Medici intermarriage outside the species is constrained by mating customs (mate-for-life) and asymmetric reproductive lethality with Sanguire (see hybrid_mechanics). Most Medici remain at pure or near-pure expression.",
+      "explanation": "Same dilution math as Sanguire fire, but Vessine intermarriage outside the species is constrained by mating customs (mate-for-life) and asymmetric reproductive lethality with Sanguire (see hybrid_mechanics). Most Vessine remain at pure or near-pure expression.",
       "floor": 0.005,
       "floor_effect": "Below the floor the expression is gone."
     },
@@ -75,11 +75,11 @@
       "weak_0.1_to_0.3": ["wound_close_minor", "preservation_one_day", "fever_calm"],
       "moderate_0.3_to_0.6": ["healing_touch_major_wounds", "preservation_one_week", "Resonance_Choir_voice"],
       "strong_0.6_to_0.85": ["limb_regrowth_partial", "preservation_one_month", "antidote_secrete_female_only", "Choir_concert_amplification"],
-      "pure_0.85_to_1.0_or_supreme_elder": ["full_organ_regrowth", "preservation_indefinite_with_active_focus", "resurrection_within_seconds_of_death", "Choir_resonance_to_shaped_silver_or_ice", "navigation_memory_to_Medici_home_world"]
+      "pure_0.85_to_1.0_or_supreme_elder": ["full_organ_regrowth", "preservation_indefinite_with_active_focus", "resurrection_within_seconds_of_death", "Choir_resonance_to_shaped_silver_or_ice", "navigation_memory_to_Vessine_home_world"]
     },
     "contraindications": [
-      "the planetary refusal-field affects healing only mildly (~10% reduction at full grove density). Medici resonance is closer to the field's preferred frequency than Sanguire fire is.",
-      "Medici cannot heal Medici — their own bodies refuse the touch. They rely on each other. The Supreme Elder cannot heal herself; her absorbed power is for the people."
+      "the planetary refusal-field affects healing only mildly (~10% reduction at full grove density). Vessine resonance is closer to the field's preferred frequency than Sanguire fire is.",
+      "Vessine cannot heal Vessine — their own bodies refuse the touch. They rely on each other. The Supreme Elder cannot heal herself; her absorbed power is for the people."
     ]
   },
   "tunyan_conduit": {
@@ -104,22 +104,22 @@
     "implication": "Nil is the only place on Tunya where the field is dense enough to bring fire bloodline expression to zero. This is what protects Nil from Sanguire military force. Sanguire know. Sanguire do not march on Nil."
   },
   "hybrid_mechanics": {
-    "sanguire_medici_hybrid": {
-      "id": "sanguire_medici_hybrid",
+    "sanguire_vessine_hybrid": {
+      "id": "sanguire_vessine_hybrid",
       "rarity": "asymmetrically_lethal_so_extremely_rare",
       "biological_constraint": {
-        "medici_female_x_sanguire_male": "lethal_to_mother — Medici female healing metabolism refuses Sanguire fetal biology (an internal refusal-field analogue). The pregnancy kills the mother before term. Children are not born this direction.",
-        "medici_male_x_sanguire_female": "viable — Sanguire females carry Medici-male children to term. But Medici male births are themselves rare in the species, so this pairing is taboo within Medici culture (preserves the breeding population). Children of this pairing exist; the Medici hide them.",
-        "asymmetry_explanation": "Medici females carry the species' deep metabolic refusal. Medici males carry only a softer version. The Medici themselves believe Mercury imposed the asymmetry to protect the species' female breeders. Whether that's biological or metaphysical is open lore."
+        "vessine_female_x_sanguire_male": "lethal_to_mother — Vessine female healing metabolism refuses Sanguire fetal biology (an internal refusal-field analogue). The pregnancy kills the mother before term. Children are not born this direction.",
+        "vessine_male_x_sanguire_female": "viable — Sanguire females carry Vessine-male children to term. But Vessine male births are themselves rare in the species, so this pairing is taboo within Vessine culture (preserves the breeding population). Children of this pairing exist; the Vessine hide them.",
+        "asymmetry_explanation": "Vessine females carry the species' deep metabolic refusal. Vessine males carry only a softer version. The Vessine themselves believe Mercury imposed the asymmetry to protect the species' female breeders. Whether that's biological or metaphysical is open lore."
       },
-      "expression_pattern": "the rare viable hybrids (Medici-male x Sanguire-female) carry attenuated healing without a Resonance Choir voice, plus residual fire potency drastically reduced (~10-15% of pure Sanguire). Mostly pass as weak-Sanguire and live unnoticed among Sanguire-descended populations.",
+      "expression_pattern": "the rare viable hybrids (Vessine-male x Sanguire-female) carry attenuated healing without a Resonance Choir voice, plus residual fire potency drastically reduced (~10-15% of pure Sanguire). Mostly pass as weak-Sanguire and live unnoticed among Sanguire-descended populations.",
       "ability_set": [
         "weak_healing_touch",
         "warm_hands_no_ignition",
         "longer_lifespan_than_Sanguire_norm"
       ],
-      "social_status": "Medici male who fathers a hybrid is shunned by his own people but rarely discovered. Sanguire mothers protect the children as their own — fire-bloodline laxity is forgiven; fathered-by-an-outsider is not, but the Medici lineage is rarely identified.",
-      "lore_hook": "The first viable hybrid known to the Sanguire warlord Iyatte is closer to home than she knows. The Medici know whose child it is. The Medici have not said."
+      "social_status": "Vessine male who fathers a hybrid is shunned by his own people but rarely discovered. Sanguire mothers protect the children as their own — fire-bloodline laxity is forgiven; fathered-by-an-outsider is not, but the Vessine lineage is rarely identified.",
+      "lore_hook": "The first viable hybrid known to the Sanguire warlord Iyatte is closer to home than she knows. The Vessine know whose child it is. The Vessine have not said."
     },
     "tunyan_sanguire": {
       "id": "tunyan_sanguire_mixed",
@@ -128,12 +128,12 @@
       "ability_set": ["weak_to_moderate_fire", "personal_passive_refusal_field_radius_1m"],
       "social_status": "common in Masond. Rarely identified. Often diagnosed as 'weak Sanguire.'"
     },
-    "tunyan_medici": {
-      "id": "tunyan_medici_mixed",
+    "tunyan_vessine": {
+      "id": "tunyan_vessine_mixed",
       "rarity": "vanishingly_rare",
       "expression_pattern": "healing capacity at expected dilution; conduit-status at expected partial expression. Healing does NOT interfere with the field — it amplifies. Output increases by ~15% in proximity to Tunyan-blooded individuals.",
       "ability_set": ["moderate_healing", "personal_passive_refusal_field_radius_1m", "amplified_resonance"],
-      "social_status": "Medici-Tunyan unions are extremely rare. Nil and Medici are quiet allies. Whether anyone has crossed the line is open lore."
+      "social_status": "Vessine-Tunyan unions are extremely rare. Nil and Vessine are quiet allies. Whether anyone has crossed the line is open lore."
     }
   },
   "macro_hooks": {
@@ -141,7 +141,7 @@
       "name": "powers.use",
       "input_schema": {
         "userId": "string",
-        "powerId": "fire_sanguire | healing_medici | tunyan_conduit",
+        "powerId": "fire_sanguire | healing_vessine | tunyan_conduit",
         "targetEntityId": "string",
         "intensity": "0_to_1",
         "world_id": "tunya"
@@ -162,16 +162,16 @@
         "fire_potency": "0_to_1",
         "healing_potency": "0_to_1",
         "tunyan_conduit_strength": "0_to_1",
-        "hybrid_kind": "none | sanguire_medici | tunyan_sanguire | tunyan_medici",
+        "hybrid_kind": "none | sanguire_vessine | tunyan_sanguire | tunyan_vessine",
         "ancestry_visible_to_player": "bool"
       },
-      "implementation_notes": "Diagnostic check at character creation or via in-game ritual. The Medici Choir can perform the diagnosis with high precision. Sanguire clan elders perform it with lower precision but more publicly."
+      "implementation_notes": "Diagnostic check at character creation or via in-game ritual. The Vessine Choir can perform the diagnosis with high precision. Sanguire clan elders perform it with lower precision but more publicly."
     }
   },
   "narrative_implications": {
     "if_electricity_returns": "If a player ever makes electricity work on Tunya outside Nil's grove, that means the planetary refusal-field has weakened or been neutralized. This would be a tier-1 world-changing event with cascading consequences across every kingdom.",
-    "if_a_hybrid_acts": "The two recorded hybrids, if they choose to act publicly, force Sanguire-Medici politics into the open. Kree the state may try to broker; Kree may also try to crush.",
+    "if_a_hybrid_acts": "The two recorded hybrids, if they choose to act publicly, force Sanguire-Vessine politics into the open. Vrellan the state may try to broker; Vrellan may also try to crush.",
     "if_pure_tunyans_leave_nil": "If pure Tunyans leave Nil's borders en masse, the refusal-field's density elsewhere increases. Kingdoms with previously-functional fire bloodlines may find them weakening. Kingdoms with previously-impossible electricity may find it newly impossible.",
-    "if_medici_navigator_returns": "If the Medici route opens — Aerasi's wrong-by-one-year prediction comes true — Tunya gets visitors. The visitors are not from Earth and are not the Medici. Open lore."
+    "if_vessine_navigator_returns": "If the Vessine route opens — Aerasi's wrong-by-one-year prediction comes true — Tunya gets visitors. The visitors are not from Earth and are not the Vessine. Open lore."
   }
 }

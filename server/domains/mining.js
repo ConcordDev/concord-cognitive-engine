@@ -161,6 +161,165 @@ export default function registerMiningActions(registerLensAction) {
       seriousIncidents: incidents.filter((i) => i.severity === "serious" || i.severity === "fatal").length } };
   });
 
+  // ─── Environmental compliance + reclamation tracking (per-site) ──────
+  // Closes the "environmental compliance / reclamation tracking" gap
+  // (docs/lens-specs/mining-capability-map.md): permit/inspection records
+  // per site (a list, mirroring incident-log's per-site array shape) plus
+  // a single ongoing reclamation status per site (not a history — a site
+  // has one current disturbed/reclaimed-acreage + bond state, not a log
+  // of reclamation events). `site.status === "reclamation"` already
+  // exists on `site-update` — this section is what actually backs it,
+  // instead of leaving that value orphaned from any real tracking.
+  const MINING_COMPLIANCE_CATEGORIES = ["air_quality_permit", "water_discharge_permit", "tailings_management",
+    "land_disturbance_permit", "blasting_permit", "reclamation_bond", "other"];
+  const MINING_COMPLIANCE_STATUSES = ["compliant", "violation", "pending_review"];
+  const RECLAMATION_PHASES = ["not_started", "planning", "in_progress", "completed"];
+  const RECLAMATION_BOND_STATUSES = ["not_posted", "posted", "released", "forfeited"];
+  // Live day-diff, never stored — same "recompute on every read" discipline
+  // as this arc's other expiry-tracking macros (e.g. insurance.js's dueState).
+  const mnDaysUntil = (dateStr) => {
+    const t = new Date(String(dateStr) + "T00:00:00Z").getTime();
+    if (Number.isNaN(t)) return null;
+    return Math.floor((t - Date.now()) / 86400000);
+  };
+
+  registerLensAction("mining", "compliance-log", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.siteId);
+    if (!site) return { ok: false, error: "site not found" };
+    const category = mnClean(params.category, 40).toLowerCase();
+    if (!MINING_COMPLIANCE_CATEGORIES.includes(category)) {
+      return { ok: false, error: `unrecognized category: ${category || "(none)"}` };
+    }
+    const status = mnClean(params.status, 40).toLowerCase();
+    if (!MINING_COMPLIANCE_STATUSES.includes(status)) {
+      return { ok: false, error: `unrecognized status: ${status || "(none)"}` };
+    }
+    const record = {
+      id: mnId("cmp"), siteId: site.id, category, status,
+      permitNumber: mnClean(params.permitNumber, 80) || null,
+      issuingAgency: mnClean(params.issuingAgency, 120) || null,
+      inspectionDate: mnClean(params.inspectionDate, 30) || new Date().toISOString().slice(0, 10),
+      expiryDate: mnClean(params.expiryDate, 30) || null,
+      notes: mnClean(params.notes, 600) || null,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    if (!Array.isArray(site.complianceRecords)) site.complianceRecords = [];
+    site.complianceRecords.push(record); saveMining();
+    return { ok: true, result: { record } };
+  });
+
+  registerLensAction("mining", "compliance-list", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sites = mnSites(s, mnActor(ctx));
+    let scoped = sites;
+    if (params.siteId) {
+      const site = sites.find((x) => x.id === params.siteId);
+      if (!site) return { ok: false, error: "site not found" };
+      scoped = [site];
+    }
+    const records = scoped.flatMap((site) => (Array.isArray(site.complianceRecords) ? site.complianceRecords : []).map((r) => {
+      const daysUntilExpiry = r.expiryDate ? mnDaysUntil(r.expiryDate) : null;
+      return {
+        ...r, siteId: site.id, siteName: site.name,
+        isOverdue: daysUntilExpiry != null && daysUntilExpiry < 0,
+        daysUntilExpiry,
+      };
+    }));
+    const byCategory = {};
+    let violationCount = 0, overdueCount = 0;
+    for (const r of records) {
+      byCategory[r.category] = (byCategory[r.category] || 0) + 1;
+      if (r.status === "violation") violationCount++;
+      if (r.isOverdue) overdueCount++;
+    }
+    return { ok: true, result: { records, count: records.length, violationCount, overdueCount, byCategory } };
+  });
+
+  registerLensAction("mining", "compliance-update", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.siteId);
+    if (!site) return { ok: false, error: "site not found" };
+    if (!Array.isArray(site.complianceRecords)) site.complianceRecords = [];
+    const record = site.complianceRecords.find((r) => r.id === params.id);
+    if (!record) return { ok: false, error: "compliance record not found" };
+    if (params.category != null) {
+      const category = mnClean(params.category, 40).toLowerCase();
+      if (!MINING_COMPLIANCE_CATEGORIES.includes(category)) {
+        return { ok: false, error: `unrecognized category: ${category || "(none)"}` };
+      }
+      record.category = category;
+    }
+    if (params.status != null) {
+      const status = mnClean(params.status, 40).toLowerCase();
+      if (!MINING_COMPLIANCE_STATUSES.includes(status)) {
+        return { ok: false, error: `unrecognized status: ${status || "(none)"}` };
+      }
+      record.status = status;
+    }
+    if (params.permitNumber != null) record.permitNumber = mnClean(params.permitNumber, 80) || null;
+    if (params.issuingAgency != null) record.issuingAgency = mnClean(params.issuingAgency, 120) || null;
+    if (params.inspectionDate != null) record.inspectionDate = mnClean(params.inspectionDate, 30) || record.inspectionDate;
+    if (params.expiryDate != null) record.expiryDate = mnClean(params.expiryDate, 30) || null;
+    if (params.notes != null) record.notes = mnClean(params.notes, 600) || null;
+    record.updatedAt = new Date().toISOString();
+    saveMining();
+    return { ok: true, result: { record } };
+  });
+
+  registerLensAction("mining", "reclamation-update", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.siteId);
+    if (!site) return { ok: false, error: "site not found" };
+    if (params.phase != null && !RECLAMATION_PHASES.includes(params.phase)) {
+      return { ok: false, error: `unrecognized phase: ${params.phase || "(none)"}` };
+    }
+    if (params.bondStatus != null && !RECLAMATION_BOND_STATUSES.includes(params.bondStatus)) {
+      return { ok: false, error: `unrecognized bondStatus: ${params.bondStatus || "(none)"}` };
+    }
+    if (!site.reclamation) {
+      site.reclamation = {
+        phase: "not_started", acresDisturbed: 0, acresReclaimed: 0,
+        bondAmount: 0, bondStatus: "not_posted", createdAt: new Date().toISOString(),
+      };
+    }
+    const r = site.reclamation;
+    if (params.phase != null) r.phase = params.phase;
+    if (params.acresDisturbed != null) r.acresDisturbed = Math.max(0, mnNum(params.acresDisturbed));
+    if (params.acresReclaimed != null) r.acresReclaimed = Math.max(0, mnNum(params.acresReclaimed));
+    if (params.bondAmount != null) r.bondAmount = Math.max(0, mnNum(params.bondAmount));
+    if (params.bondStatus != null) r.bondStatus = params.bondStatus;
+    // Reclaimed acres can never exceed disturbed acres — clamp, don't
+    // reject (this file's established convention; see site-update /
+    // equipment-update's Math.max clamps rather than hard rejections for
+    // out-of-range-but-not-malformed numeric input).
+    r.acresReclaimed = Math.min(r.acresReclaimed, r.acresDisturbed);
+    r.updatedAt = new Date().toISOString();
+    saveMining();
+    return { ok: true, result: { reclamation: r } };
+  });
+
+  registerLensAction("mining", "reclamation-list", (ctx, _a, _p = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sites = mnSites(s, mnActor(ctx));
+    const entries = sites
+      .filter((site) => site.reclamation || site.status === "reclamation")
+      .map((site) => {
+        // A site flagged `status:'reclamation'` (via site-update) but with
+        // no reclamation-update call yet still surfaces here, with the same
+        // defaults reclamation-update would create on first write — the
+        // status flag is never orphaned from this list.
+        const r = site.reclamation || {
+          phase: "not_started", acresDisturbed: 0, acresReclaimed: 0,
+          bondAmount: 0, bondStatus: "not_posted",
+        };
+        const reclamationPercent = r.acresDisturbed > 0
+          ? Math.round((r.acresReclaimed / r.acresDisturbed) * 100) : 0;
+        return { siteId: site.id, siteName: site.name, reclamation: r, reclamationPercent };
+      });
+    return { ok: true, result: { sites: entries, count: entries.length } };
+  });
+
   // ─── Drill-hole database (per-user, STATE-backed) ───────────────────
   // Each hole: id, name, collar {x,y,z}, azimuth, dip, totalDepth,
   // intervals[] = { from, to, lithology, assayGrade, recovery }.
@@ -234,67 +393,284 @@ export default function registerMiningActions(registerLensAction) {
   // ─── Block model / orebody visualization ─────────────────────────────
   // Builds a 3D grade block model by inverse-distance-weighting the
   // logged drill-hole interval assays onto a regular block grid.
+  //
+  // The composite-extraction (`_miningComposites`) and grid-interpolation
+  // (`_miningBlockGrid`) steps are factored into standalone helpers below
+  // so `pit-optimize` can build the exact same IDW block model and layer
+  // an economic optimizer on top of it, instead of re-deriving grades by
+  // a different method. This handler is otherwise byte-identical to the
+  // pre-refactor inline version — only the composite/grid math moved.
+  function _miningComposites(holes) {
+    const D2R = Math.PI / 180;
+    const composites = [];
+    for (const h of holes) {
+      const azR = h.azimuth * D2R, dipR = h.dip * D2R;
+      for (const iv of h.intervals) {
+        if (iv.assayGrade <= 0) continue;
+        const mid = (iv.from + iv.to) / 2;
+        const horiz = mid * Math.cos(dipR);
+        composites.push({
+          x: h.collarX + horiz * Math.sin(azR),
+          y: h.collarY + horiz * Math.cos(azR),
+          z: h.collarZ + mid * Math.sin(dipR),
+          grade: iv.assayGrade, lithology: iv.lithology,
+        });
+      }
+    }
+    return composites;
+  }
+  function _miningBlockGrid(composites, blockSize, cutoff, capNx, capNy, capNz) {
+    const xs = composites.map((c) => c.x), ys = composites.map((c) => c.y), zs = composites.map((c) => c.z);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+    const nx = Math.max(1, Math.min(capNx, Math.ceil((maxX - minX) / blockSize) || 1));
+    const ny = Math.max(1, Math.min(capNy, Math.ceil((maxY - minY) / blockSize) || 1));
+    const nz = Math.max(1, Math.min(capNz, Math.ceil((maxZ - minZ) / blockSize) || 1));
+    const blocks = [];
+    let oreBlocks = 0, gradeSum = 0;
+    for (let ix = 0; ix < nx; ix++) {for (let iy = 0; iy < ny; iy++) {for (let iz = 0; iz < nz; iz++) {
+      const cx = minX + (ix + 0.5) * blockSize;
+      const cy = minY + (iy + 0.5) * blockSize;
+      const cz = minZ + (iz + 0.5) * blockSize;
+      let wSum = 0, gSum = 0, nearest = Infinity;
+      for (const c of composites) {
+        const dx = c.x - cx, dy = c.y - cy, dz = c.z - cz;
+        const d2 = dx * dx + dy * dy + dz * dz + 1;
+        if (d2 < nearest) nearest = d2;
+        const w = 1 / (d2 * d2);
+        wSum += w; gSum += w * c.grade;
+      }
+      const grade = wSum > 0 ? Math.round((gSum / wSum) * 1000) / 1000 : 0;
+      const confident = nearest < (blockSize * blockSize * 4);
+      const isOre = grade >= cutoff;
+      if (isOre) { oreBlocks++; gradeSum += grade; }
+      blocks.push({ ix, iy, iz, cx: Math.round(cx), cy: Math.round(cy), cz: Math.round(cz), grade, isOre, confident });
+    }}}
+    return { blocks, nx, ny, nz, minX, maxX, minY, maxY, minZ, maxZ, oreBlocks, gradeSum };
+  }
+
   registerLensAction("mining", "block-model", (ctx, _a, params = {}) => {
     try {
       const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
       let holes = mnHoles(s, mnActor(ctx)).filter((h) => h.intervals.length > 0);
       if (params.siteId) holes = holes.filter((h) => h.siteId === params.siteId);
       if (holes.length === 0) return { ok: true, result: { blocks: [], note: "log drill-hole intervals first", composites: 0 } };
-      // composite each interval to a 3D point along the hole trace.
-      const D2R = Math.PI / 180;
-      const composites = [];
-      for (const h of holes) {
-        const azR = h.azimuth * D2R, dipR = h.dip * D2R;
-        for (const iv of h.intervals) {
-          if (iv.assayGrade <= 0) continue;
-          const mid = (iv.from + iv.to) / 2;
-          const horiz = mid * Math.cos(dipR);
-          composites.push({
-            x: h.collarX + horiz * Math.sin(azR),
-            y: h.collarY + horiz * Math.cos(azR),
-            z: h.collarZ + mid * Math.sin(dipR),
-            grade: iv.assayGrade, lithology: iv.lithology,
-          });
-        }
-      }
+      const composites = _miningComposites(holes);
       if (composites.length === 0) return { ok: true, result: { blocks: [], note: "no positive-grade intervals", composites: 0 } };
       const blockSize = Math.max(2, mnNum(params.blockSize) || 15);
-      const xs = composites.map((c) => c.x), ys = composites.map((c) => c.y), zs = composites.map((c) => c.z);
-      const minX = Math.min(...xs), maxX = Math.max(...xs);
-      const minY = Math.min(...ys), maxY = Math.max(...ys);
-      const minZ = Math.min(...zs), maxZ = Math.max(...zs);
-      const nx = Math.max(1, Math.min(20, Math.ceil((maxX - minX) / blockSize) || 1));
-      const ny = Math.max(1, Math.min(20, Math.ceil((maxY - minY) / blockSize) || 1));
-      const nz = Math.max(1, Math.min(12, Math.ceil((maxZ - minZ) / blockSize) || 1));
       const cutoff = mnNum(params.cutoffGrade) || 0.5;
-      const blocks = [];
-      let oreBlocks = 0, gradeSum = 0;
-      for (let ix = 0; ix < nx; ix++) {for (let iy = 0; iy < ny; iy++) {for (let iz = 0; iz < nz; iz++) {
-        const cx = minX + (ix + 0.5) * blockSize;
-        const cy = minY + (iy + 0.5) * blockSize;
-        const cz = minZ + (iz + 0.5) * blockSize;
-        let wSum = 0, gSum = 0, nearest = Infinity;
-        for (const c of composites) {
-          const dx = c.x - cx, dy = c.y - cy, dz = c.z - cz;
-          const d2 = dx * dx + dy * dy + dz * dz + 1;
-          if (d2 < nearest) nearest = d2;
-          const w = 1 / (d2 * d2);
-          wSum += w; gSum += w * c.grade;
-        }
-        const grade = wSum > 0 ? Math.round((gSum / wSum) * 1000) / 1000 : 0;
-        const confident = nearest < (blockSize * blockSize * 4);
-        const isOre = grade >= cutoff;
-        if (isOre) { oreBlocks++; gradeSum += grade; }
-        blocks.push({ ix, iy, iz, cx: Math.round(cx), cy: Math.round(cy), cz: Math.round(cz), grade, isOre, confident });
-      }}}
+      const grid = _miningBlockGrid(composites, blockSize, cutoff, 20, 20, 12);
       return {
         ok: true,
         result: {
-          blocks, composites: composites.length, blockSize, cutoffGrade: cutoff,
-          dimensions: { nx, ny, nz },
-          extent: { minX: Math.round(minX), maxX: Math.round(maxX), minZ: Math.round(minZ), maxZ: Math.round(maxZ) },
-          oreBlocks, totalBlocks: blocks.length,
-          avgOreGrade: oreBlocks > 0 ? Math.round((gradeSum / oreBlocks) * 1000) / 1000 : 0,
+          blocks: grid.blocks, composites: composites.length, blockSize, cutoffGrade: cutoff,
+          dimensions: { nx: grid.nx, ny: grid.ny, nz: grid.nz },
+          extent: { minX: Math.round(grid.minX), maxX: Math.round(grid.maxX), minZ: Math.round(grid.minZ), maxZ: Math.round(grid.maxZ) },
+          oreBlocks: grid.oreBlocks, totalBlocks: grid.blocks.length,
+          avgOreGrade: grid.oreBlocks > 0 ? Math.round((grid.gradeSum / grid.oreBlocks) * 1000) / 1000 : 0,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ─── Generic max-flow / min-cut (Edmonds–Karp, BFS augmenting paths) ──
+  // Used by pit-optimize below to solve the ultimate-pit problem as a
+  // maximum-weight-CLOSURE problem. Deterministic: edge insertion order
+  // and BFS neighbor order are both fixed by construction, so identical
+  // inputs always walk augmenting paths in the same order.
+  function _maxFlowMinCut(numNodes, edges, source, sink) {
+    const graph = Array.from({ length: numNodes }, () => []);
+    const edgeTo = [], edgeCap = [], edgeFlow = [];
+    const addEdge = (u, v, cap) => {
+      graph[u].push(edgeTo.length); edgeTo.push(v); edgeCap.push(cap); edgeFlow.push(0);
+      graph[v].push(edgeTo.length); edgeTo.push(u); edgeCap.push(0); edgeFlow.push(0);
+    };
+    for (const e of edges) addEdge(e.u, e.v, e.cap);
+
+    let flow = 0;
+    const MAX_ITERATIONS = 200000; // defensive bound; never hit on the capped grid sizes this macro allows
+    let iterations = 0;
+    for (;;) {
+      if (++iterations > MAX_ITERATIONS) break;
+      const parentEdge = new Array(numNodes).fill(-1);
+      const visited = new Array(numNodes).fill(false);
+      visited[source] = true;
+      const queue = [source];
+      let qi = 0;
+      while (qi < queue.length) {
+        const u = queue[qi++];
+        for (const ei of graph[u]) {
+          const v = edgeTo[ei];
+          if (!visited[v] && edgeCap[ei] - edgeFlow[ei] > 0) { visited[v] = true; parentEdge[v] = ei; queue.push(v); }
+        }
+      }
+      if (!visited[sink]) break;
+      let aug = Infinity;
+      for (let v = sink; v !== source;) { const ei = parentEdge[v]; aug = Math.min(aug, edgeCap[ei] - edgeFlow[ei]); v = edgeTo[ei ^ 1]; }
+      for (let v = sink; v !== source;) { const ei = parentEdge[v]; edgeFlow[ei] += aug; edgeFlow[ei ^ 1] -= aug; v = edgeTo[ei ^ 1]; }
+      flow += aug;
+    }
+    // Min cut / maximum closure: the nodes still reachable from `source`
+    // in the final residual graph (Picard 1976 — see citation above
+    // pit-optimize) are exactly the optimal closure.
+    const reachable = new Array(numNodes).fill(false);
+    reachable[source] = true;
+    const stack = [source];
+    while (stack.length) {
+      const u = stack.pop();
+      for (const ei of graph[u]) {
+        const v = edgeTo[ei];
+        if (!reachable[v] && edgeCap[ei] - edgeFlow[ei] > 0) { reachable[v] = true; stack.push(v); }
+      }
+    }
+    return { flow, reachable };
+  }
+
+  // ─── Ultimate-pit optimizer ────────────────────────────────────────
+  // The ultimate-pit-limit problem — "which blocks of the IDW block model
+  // are worth mining, given that removing any block requires first
+  // removing every block above it within the wall-slope cone" — is a
+  // maximum-weight CLOSURE problem on the block precedence graph.
+  // Lerchs, H. & Grossmann, I.F. (1965), "Optimum Design of Open-Pit
+  // Mines", CIM Bulletin/Trans. CIM 68, gave the original graph-theoretic
+  // algorithm. Picard, J.C. (1976), "Maximum Closure of a Graph and
+  // Applications to Combinatorial Problems", Management Science 22(11),
+  // proved the maximum-weight-closure problem reduces to a standard
+  // max-flow/min-cut on a transformed source/sink network — that
+  // construction is what's implemented here: an arc source→block for
+  // every positive-value block (capacity = its value), an arc
+  // block→sink for every negative-value block (capacity = its cost),
+  // and an arc block→(each required predecessor) at +Infinity capacity
+  // so no finite cut can ever separate a selected block from a
+  // predecessor it needs. The optimal pit is exactly the set of blocks
+  // still reachable from the source in the residual graph after running
+  // max-flow (`_maxFlowMinCut` above). The one-level-up precedence
+  // template (an inverted cone reproduced by transitivity through the
+  // chain of one-level arcs) and the block economic-value function
+  // follow Hustrulid, W. & Kuchta, M., "Open Pit Mine Planning and
+  // Design" (3rd ed., CRC Press, 2013), ch. 7.
+  registerLensAction("mining", "pit-optimize", (ctx, _a, params = {}) => {
+    try {
+      const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let holes = mnHoles(s, mnActor(ctx)).filter((h) => h.intervals.length > 0);
+      if (params.siteId) holes = holes.filter((h) => h.siteId === params.siteId);
+      if (holes.length === 0) {
+        return { ok: true, result: { pitBlocks: [], blockCount: 0, selectedCount: 0, note: "log drill-hole intervals first" } };
+      }
+      const composites = _miningComposites(holes);
+      if (composites.length === 0) {
+        return { ok: true, result: { pitBlocks: [], blockCount: 0, selectedCount: 0, note: "no positive-grade intervals" } };
+      }
+
+      // Economic + geometric parameters — every value that fell back to a
+      // built-in default (rather than a caller-supplied number) is named
+      // in `defaultsUsed` so a caller can never mistake a placeholder
+      // price/cost for a real one (this file's honesty-by-construction
+      // convention; see reserve-report's disclosed drill-spacing default).
+      const defaultsUsed = [];
+      const pick = (val, def, label, unit) => {
+        if (val == null || !Number.isFinite(Number(val))) { defaultsUsed.push(`${label}=${def}${unit || ""} (default — not supplied or invalid)`); return def; }
+        return Number(val);
+      };
+      const metalPricePerTonne = pick(params.metalPricePerTonne, 5000, "metalPricePerTonne", "/t");
+      const recoveryPercent = Math.max(0, Math.min(100, pick(params.recoveryPercent, 85, "recoveryPercent", "%")));
+      const miningCostPerTonne = Math.max(0, pick(params.miningCostPerTonne, 3, "miningCostPerTonne", "/t"));
+      const processingCostPerTonne = Math.max(0, pick(params.processingCostPerTonne, 12, "processingCostPerTonne", "/t"));
+      const densityTonM3 = pick(params.densityTonM3, 2.7, "densityTonM3", "t/m3");
+      const slopeAngle = Math.max(20, Math.min(75, pick(params.slopeAngle, 45, "slopeAngle", "deg")));
+      const blockSize = Math.max(2, pick(params.blockSize, 20, "blockSize", "m"));
+
+      // Optimizer-specific grid cap — tighter than block-model's 20×20×12
+      // (4,800 blocks) because pit-optimize additionally runs a max-flow
+      // solve over the grid; 12×12×8 = 1,152 blocks keeps that tractable.
+      const CAP_NX = 12, CAP_NY = 12, CAP_NZ = 8;
+      const grid = _miningBlockGrid(composites, blockSize, 0, CAP_NX, CAP_NY, CAP_NZ);
+      const gridCapped = grid.nx === CAP_NX || grid.ny === CAP_NY || grid.nz === CAP_NZ;
+
+      const blockVolumeM3 = blockSize * blockSize * blockSize;
+      const blockTonnage = blockVolumeM3 * densityTonM3;
+
+      // Economic block value. A block is only worth PROCESSING (milling)
+      // if doing so is itself profitable (revenue exceeds the processing
+      // cost) — otherwise it's carried as waste, which still incurs the
+      // mining (removal) cost but no processing cost. This is the
+      // standard open-pit block-value function (Hustrulid & Kuchta ch.
+      // 7) and is a deliberate refinement of the flat
+      // "grade×price×recovery − (miningCost+processingCost)" formula: it
+      // avoids double-penalizing waste blocks with a milling cost they'd
+      // never actually incur, and the `processed` flag it produces is
+      // what drives the ore/waste split reported below.
+      const nodes = grid.blocks.map((b, idx) => {
+        const revenue = blockTonnage * (b.grade / 100) * (recoveryPercent / 100) * metalPricePerTonne;
+        const processingCost = blockTonnage * processingCostPerTonne;
+        const miningCost = blockTonnage * miningCostPerTonne;
+        const processedValue = revenue - processingCost;
+        const processed = processedValue > 0;
+        const value = (processed ? processedValue : 0) - miningCost;
+        return { ...b, idx, tonnage: Math.round(blockTonnage), value: Math.round(value * 100) / 100, processed };
+      });
+      const byKey = new Map(nodes.map((n) => [`${n.ix}_${n.iy}_${n.iz}`, n]));
+
+      // Slope precedence template: to mine block (ix,iy,iz), every block
+      // directly above it (iz+1) within horizontal radius R must already
+      // be removed. R is derived from the wall slope (steeper slope →
+      // smaller R → narrower cone). Only ONE level of arcs is built —
+      // transitivity through the resulting chain of one-level arcs
+      // reproduces the full inverted cone across every level above, so
+      // this is both correct and far cheaper than materializing
+      // every-level-to-every-level arcs directly.
+      const radiusPerLevel = 1 / Math.tan(slopeAngle * Math.PI / 180);
+      const R = Math.max(0, Math.round(radiusPerLevel));
+
+      const edges = [];
+      const N = nodes.length;
+      const SOURCE = N, SINK = N + 1;
+      let totalPositive = 0;
+      for (const n of nodes) { if (n.value > 0) totalPositive += n.value; }
+      const INF = totalPositive + 1; // exceeds any possible flow — never the bottleneck (see construction note above)
+
+      for (const n of nodes) {
+        if (n.value > 0) edges.push({ u: SOURCE, v: n.idx, cap: n.value });
+        else if (n.value < 0) edges.push({ u: n.idx, v: SINK, cap: -n.value });
+        if (n.iz === grid.nz - 1) continue; // top of the modeled grid: already exposed, no predecessor
+        for (let dx = -R; dx <= R; dx++) {
+          for (let dy = -R; dy <= R; dy++) {
+            if (dx * dx + dy * dy > R * R) continue;
+            const above = byKey.get(`${n.ix + dx}_${n.iy + dy}_${n.iz + 1}`);
+            if (above) edges.push({ u: n.idx, v: above.idx, cap: INF });
+          }
+        }
+      }
+
+      const { flow, reachable } = _maxFlowMinCut(N + 2, edges, SOURCE, SINK);
+      const selected = nodes.filter((n) => reachable[n.idx]);
+      const totalValue = Math.round((totalPositive - flow) * 100) / 100;
+
+      let oreTonnes = 0, wasteTonnes = 0, containedMetal = 0;
+      for (const n of selected) {
+        if (n.processed) { oreTonnes += n.tonnage; containedMetal += n.tonnage * (n.grade / 100); }
+        else wasteTonnes += n.tonnage;
+      }
+      const recoverableMetal = containedMetal * (recoveryPercent / 100);
+
+      return {
+        ok: true,
+        result: {
+          pitBlocks: selected.map((n) => ({ ix: n.ix, iy: n.iy, iz: n.iz, cx: n.cx, cy: n.cy, cz: n.cz, grade: n.grade, value: n.value, tonnage: n.tonnage, processed: n.processed })),
+          blockCount: N, selectedCount: selected.length,
+          totalValue,
+          totalTonnesMined: Math.round(oreTonnes + wasteTonnes),
+          oreTonnes: Math.round(oreTonnes), wasteTonnes: Math.round(wasteTonnes),
+          containedMetal: Math.round(containedMetal * 100) / 100,
+          recoverableMetal: Math.round(recoverableMetal * 100) / 100,
+          stripRatio: oreTonnes > 0 ? Math.round((wasteTonnes / oreTonnes) * 100) / 100 : null,
+          slopeAngle, blockSize, gridCapped,
+          dimensions: { nx: grid.nx, ny: grid.ny, nz: grid.nz },
+          algorithm: "maximum-weight-closure (Lerchs-Grossmann via Picard max-flow/min-cut)",
+          economicParamsUsed: { metalPricePerTonne, recoveryPercent, miningCostPerTonne, processingCostPerTonne, densityTonM3 },
+          defaultsUsed,
+          disclosure: "Grades are inverse-distance-weighted ESTIMATES over an interpolated block model, not measured or drilled-out reserves. This pit shell is an economic optimization for mine-planning purposes only — it is NOT a JORC 2012 or NI 43-101 reserve/resource statement.",
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }

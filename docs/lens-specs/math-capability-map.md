@@ -107,24 +107,36 @@ reading source alone.
 
 ## Investigated and honestly deferred
 
-- **Complex-degree (>4) polynomial root-finding and closed-form integration
-  for arbitrary non-linear-argument functions** are backend-documented gaps
-  (`rootsDetail: { note: "Root-finding for degree > 4 not implemented" }`,
-  `casIntegrate` returns `null` → numeric Simpson's-rule fallback). These are
-  genuine CAS-completeness limits, not frontend wiring defects — DATA-SOURCING
-  n/a, ENGINEERING: a general polynomial root-finder (Durand–Kerner) and a
-  fuller symbolic-integration table (integration by parts, trig
-  substitution, partial fractions) are real, scoped future engineering work,
-  not something to fake client-side. The lens already surfaces the numeric
-  fallback honestly (`closedForm: false`, method labeled) rather than
-  pretending a closed form exists.
+- **Complex-degree (>4) polynomial root-finding** — **CLOSED (2026-07-16,
+  `fde31825`)**. New `math.polynomialRootsGeneral` macro implements
+  Durand-Kerner (Weierstrass) simultaneous iteration in complex arithmetic,
+  finding all n roots of a degree-n polynomial (up to degree 60) at once,
+  real or complex, without a derivative or bracketing interval — the
+  arbitrary-degree companion to `polynomialAnalysis`'s degree<=4-only
+  closed-form/Newton-Raphson roots (which is unchanged). Every claimed root
+  value was hand-verified against known cases (including a genuine
+  complex-root case, x⁴-1 → {1,-1,i,-i}) before finalizing. Each root
+  reports its own `converged` flag (step-size AND residual both below
+  tolerance); a triple root genuinely fails to converge within the
+  iteration budget and is honestly reported `converged:false` rather than
+  presented as exact. New "Poly⁺" action in `MathActionPanel.tsx` renders
+  complex roots and surfaces non-convergence honestly. 15 new backend
+  tests, 7 new frontend tests.
+- **Closed-form integration for arbitrary non-linear-argument functions**
+  remains a genuine CAS-completeness gap (`casIntegrate` returns `null` →
+  numeric Simpson's-rule fallback, `closedForm: false`, method labeled
+  honestly). ENGINEERING, deferred — a fuller symbolic-integration table
+  (integration by parts, trig substitution, partial fractions) is real,
+  scoped future work, not something to fake client-side.
 - **LaTeX rendering in the Formulas tab is a hand-rolled Unicode substitution
-  (`renderFormula`), not a real LaTeX engine (KaTeX/MathJax).** This is a
-  pre-existing, cosmetic-only gap (superscripts/fractions render as Unicode
-  approximations); left alone this pass because it doesn't affect
-  correctness of any computed result and is a genuine "nice-to-have polish"
-  item, not a fabricated-data or dead-macro defect — out of scope for a
-  defect-finding pass per the task's own scope guidance.
+  (`renderFormula`), not a real LaTeX engine (KaTeX/MathJax).** **CLOSED
+  (2026-07-17, `8f093d84`)** — unblocked by discovering `katex@0.16.45` was
+  already physically vendored as a transitive dependency of `mermaid` (via
+  excalidraw), formalized as an explicit dependency rather than a new one.
+  New `MathFormula.tsx` renders via KaTeX's own documented safe
+  `renderToString` API (`trust:false`, `throwOnError:false`); both
+  Formulas-tab call sites now use it, and the old Unicode-substitution
+  `renderFormula` helper is deleted.
 
 ## Verification
 

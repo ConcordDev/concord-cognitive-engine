@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Baby, ListChecks, Wand2, Users2 } from 'lucide-react';
+import { Baby, ListChecks, Wand2, Users2, CalendarRange } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -10,17 +10,19 @@ import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { ParentingSection } from '@/components/parenting/ParentingSection';
 import { ChildBriefPanel } from '@/components/parenting/ChildBriefPanel';
 import { ParentingFeed } from '@/components/parenting/ParentingFeed';
+import { PgFamilyCalendarPanel } from '@/components/parenting/PgFamilyCalendarPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
-type Destination = 'care' | 'brief' | 'community';
+type Destination = 'care' | 'calendar' | 'brief' | 'community';
 
 const DESTINATIONS: { id: Destination; label: string; icon: typeof Baby; hotkey: string; description: string }[] = [
   { id: 'care', label: 'Baby Care', icon: ListChecks, hotkey: '1', description: 'Children, one-touch logging, growth, milestones, appointments, caregiver sharing' },
-  { id: 'brief', label: 'Quick Actions & Brief', icon: Wand2, hotkey: '2', description: 'Milestone/routine calculator, snapshot DTU, caregiver DM, agent developmental brief' },
-  { id: 'community', label: 'Community & Safety', icon: Users2, hotkey: '3', description: 'Real-world parenting chatter + child-product safety recalls' },
+  { id: 'calendar', label: 'Family Calendar', icon: CalendarRange, hotkey: '2', description: 'General shared family events — activities, school, travel — family-wide or tagged to a child' },
+  { id: 'brief', label: 'Quick Actions & Brief', icon: Wand2, hotkey: '3', description: 'Milestone/routine calculator, snapshot DTU, caregiver DM, agent developmental brief' },
+  { id: 'community', label: 'Community & Safety', icon: Users2, hotkey: '4', description: 'Real-world parenting chatter + child-product safety recalls' },
 ];
 
 export default function ParentingLensPage() {
@@ -93,6 +95,10 @@ export default function ParentingLensPage() {
         <main id="parenting-content">
           <div id="parenting-panel-care" role="tabpanel" hidden={destination !== 'care'}>
             {destination === 'care' && <ParentingSection />}
+          </div>
+
+          <div id="parenting-panel-calendar" role="tabpanel" hidden={destination !== 'calendar'}>
+            {destination === 'calendar' && <PgFamilyCalendarPanel />}
           </div>
 
           <div id="parenting-panel-brief" role="tabpanel" hidden={destination !== 'brief'}>

@@ -45,7 +45,7 @@
     "branch_consequences": {
       "prove_field_mechanism": "You run a controlled electricity test in the inner grove. It works. It does not work outside. You publish. Tunya's understanding of itself shifts. Every kingdom wants you. Concord_alignment +0.30. Nil reputation -50.",
       "keep_private": "You leave with Yenna's sentence and tell no one. Nil+30. The world continues unchanged. Concord_alignment +0.10.",
-      "broker_alliance": "You introduce Yenna's sentence to a power of your choosing (Medici, Masond, Aekon, Akeia, etc.). Cross-faction substrate hooks open. Effects depend on the chosen ally.",
+      "broker_alliance": "You introduce Yenna's sentence to a power of your choosing (Vessine, Masond, Aekon, Akeia, etc.). Cross-faction substrate hooks open. Effects depend on the chosen ally.",
       "leave_silent": "You leave changed and say nothing. Nil+50. Yenna marks you in the grove's living memory. You are now welcome in Nil for the rest of your life. Concord_alignment +0.20."
     },
     "cross_world_unlocks": [

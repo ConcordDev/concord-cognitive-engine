@@ -10,7 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StudioRepos } from '@/components/studio/StudioRepos';
 import { StudioActionPanel } from '@/components/studio/StudioActionPanel';
-import { PipingProvider } from '@/components/panel-polish';
+import { PipingProvider, usePipeValue } from '@/components/panel-polish';
 import ClipsTimelinePanel from '@/components/studio/ClipsTimelinePanel';
 import MidiPianoRoll from '@/components/studio/MidiPianoRoll';
 import AutomationLanesPanel from '@/components/studio/AutomationLanesPanel';
@@ -1832,6 +1832,12 @@ export default function StudioLensPage() {
     <LensShell lensId="studio" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="studio" />
       <DepthBadge lensId="studio" size="sm" className="ml-2" />
+      {/* Wave-4 studio-capability-map gap-closure: DawWorkbenchSection's project
+          list and StudioActionPanel's project-create both live under one
+          PipingProvider tree now, so creating a project auto-refreshes the
+          workbench list (see usePipeValue('studio.project') below). The
+          manual refresh button stays as the honest fallback. */}
+      <PipingProvider>
       <div className="px-4 mt-2">
         <ShellPreview lensId="studio" defaultOpen={true} />
         <DawWorkbenchSection />
@@ -2940,7 +2946,6 @@ export default function StudioLensPage() {
       </section>
 
       {/* Session workbench: project / track / effect / render + actions */}
-      <PipingProvider>
         <section className="mt-6 mx-auto max-w-7xl">
           <StudioActionPanel />
         </section>
@@ -2985,7 +2990,7 @@ interface WorkbenchProjectRow { id: string; name: string; trackCount?: number }
 interface WorkbenchTrackRow { id: string; name: string; kind: string }
 interface WorkbenchClipRow { id: string; name: string }
 
-function DawWorkbenchSection() {
+export function DawWorkbenchSection() {
   const [active, setActive] = useState<WorkbenchTab>('clips');
   const [projectId, setProjId] = useState<string>('');
   const [trackId, setTrackId] = useState<string>('');
@@ -3013,6 +3018,18 @@ function DawWorkbenchSection() {
   }, []);
 
   useEffect(() => { void refreshProjects(); }, [refreshProjects]);
+
+  // Wave-4 gap-closure: StudioActionPanel publishes `studio.project` on the
+  // same PipingProvider tree right after a successful project-create. Auto
+  // re-fetch the list so the workbench picker doesn't need the manual ⟳
+  // button to see a project created in the panel below it. The button stays
+  // as the honest fallback for cases where the pipe hasn't fired (e.g. the
+  // project was created before this session's PipingProvider mounted).
+  const createdProjectPipe = usePipeValue<{ id: string; name: string }>('studio.project');
+  useEffect(() => {
+    if (!createdProjectPipe) return;
+    void refreshProjects();
+  }, [createdProjectPipe, refreshProjects]);
 
   useEffect(() => {
     setTrackId('');

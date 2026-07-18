@@ -55,15 +55,24 @@ Before this pass:
   before (the macro's `params.epsilon` always defaulted to 1.0 with no way
   for a user to change it).
 
-## Note on cross-run epsilon-budget tracking
+## Note on cross-run epsilon-budget tracking — ~~open~~ CLOSED (2026-07-16, `346320b2`)
 
-`differentialPrivacy`'s `budgetTracking.cumulative` field only reflects the
-current call, since each invocation now runs against an ephemeral virtual
-artifact (`/api/lens/run`'s `{id: null, data: rest}`) rather than a
-persisted one — there is no cross-session accumulation to show. This is an
-honest limitation, not a regression: before this fix, the action was never
-reachable at all (empty artifact store), so there was no prior "working"
-cumulative-budget behavior to preserve.
+`differentialPrivacy`'s `budgetTracking.cumulative` field previously only
+reflected the current call, since each invocation ran against an ephemeral
+virtual artifact (`/api/lens/run`'s `{id: null, data: rest}`) with no
+persistence — there was no cross-session accumulation to show. Closed with
+a real `budgets` per-user state bucket (same `Map`-per-user idiom as
+`identities`/`conversations`/`userConvs`); `differentialPrivacy` now spends
+its real per-call epsilon (the pre-existing epsilon math is unchanged)
+against the caller's persistent ledger, and only from the success path —
+a failed/short-circuited call is never falsely accumulated. New
+`privacyBudgetStatus` (read-only status) and `privacyBudgetReset`
+(caller-scoped mutation) macros. The accumulation window is
+forever-until-explicit-reset by design: this lens has no product-defined
+epoch to anchor an arbitrary rolling-decay length to, and inventing one
+would itself be fabricated precision. `PrivacyBudgetPanel.tsx` surfaces
+real cumulative spend, remaining budget, and call history, with a
+two-step confirm before the destructive reset action.
 
 ## Verification
 

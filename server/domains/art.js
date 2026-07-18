@@ -984,6 +984,108 @@ export default function registerArtActions(registerLensAction) {
     return { ok: true, result: { materialKind, seed, channels } };
   });
 
+  // ── Content-engine bridge #2: publish an artwork as a real concept-art DTU ──
+  //
+  // publish-as-texture (above) bridges the art lens into evo_assets — great
+  // for material swatches, but evo_assets rows aren't part of the royalty
+  // lineage graph (`royalty_lineage` / `registerCitation`). Concept art is
+  // different: its whole point is to be CITED as the origin of a later
+  // asset (a building blueprint today, a creature as a natural follow-up)
+  // — see game-design.building-publish's optional `conceptArtDtuId` param,
+  // which folds this DTU in as a citable parent the same way a remix
+  // parent is. So this macro mints a real `dtus` row instead of an
+  // evo_assets row, with the artwork's actual layer/stroke JSON (+
+  // thumbnail if one was saved) as the body — the same real data
+  // artwork-get returns, not a re-derived summary.
+  //
+  // The artwork itself keeps living in the in-memory
+  // `STATE.artLens.artworks` Map (still the live editing surface, still
+  // wiped on restart — Increment 3 doesn't change that). This macro is
+  // the "publish a snapshot" bridge from that ephemeral Map into a real,
+  // permanent, citable dtus row — mirroring the exact
+  // validate→mint→return shape game-design.building-publish uses.
+  //
+  // Auth: requires ctx.actor.userId, same gate as publish-as-texture —
+  // anonymous submissions are rejected so the DTU always has a real owner.
+  //
+  // Return shape is intentionally FLAT (no nested `result` key), matching
+  // building-publish rather than this file's other artwork-* macros: the
+  // dtuId this returns is meant to be handed straight to
+  // building-publish's `conceptArtDtuId` param, and flat is what that
+  // macro's own return already looks like.
+  registerLensAction("art", "artwork-publish-as-concept", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!userId || userId === "anon") {
+      return { ok: false, error: "authentication required to publish concept art" };
+    }
+
+    const s = getArtState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const rawId = params.id != null ? params.id : params.artworkId;
+    const artworkId = rawId ? String(rawId).slice(0, 64) : null;
+    if (!artworkId) return { ok: false, error: "id required" };
+    const artwork = (s.artworks.get(userId) || []).find((a) => a.id === artworkId);
+    if (!artwork) return { ok: false, error: "artwork not found" };
+
+    const visibility = ["private", "internal", "public", "marketplace"].includes(String(params.visibility))
+      ? String(params.visibility)
+      : "public";
+    const title = atClean(params.title, 160) || artwork.title || "Untitled concept art";
+    const strokeCount = artwork.layers.reduce((n, l) => n + l.strokes.length, 0);
+
+    const body = {
+      title,
+      meta: {
+        type: "concept_art",
+        kind: "concept_art",
+        artworkId: artwork.id,
+        width: artwork.width,
+        height: artwork.height,
+        background: artwork.background,
+        layerCount: artwork.layers.length,
+        strokeCount,
+      },
+      human: {
+        summary: `${title} — concept art (${artwork.layers.length} layer${artwork.layers.length === 1 ? "" : "s"}, ${strokeCount} stroke${strokeCount === 1 ? "" : "s"}), published from the art lens for reuse as asset lineage.`,
+      },
+      // The real, replayable layer/stroke data — same shape artwork-get
+      // returns. Downstream consumers of the lineage edge only need
+      // `meta` + the dtu id; the full artwork snapshot is kept here so
+      // the concept art is actually recoverable from the DTU alone, not
+      // just referenceable by id.
+      artwork: {
+        width: artwork.width,
+        height: artwork.height,
+        background: artwork.background,
+        layers: artwork.layers,
+        thumbnail: artwork.thumbnail || null,
+      },
+    };
+
+    const dtuId = atId("dtu");
+    const now = atNow();
+    try {
+      db.prepare(`
+        INSERT INTO dtus (id, owner_user_id, title, body_json, tags_json, visibility, tier, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'regular', ?, ?)
+      `).run(dtuId, userId, title, JSON.stringify(body), JSON.stringify(["art", "concept-art", "concept_art"]), visibility, now, now);
+    } catch (err) {
+      return { ok: false, error: `failed to mint concept-art dtu: ${err?.message || err}` };
+    }
+
+    return {
+      ok: true,
+      dtuId,
+      artworkId: artwork.id,
+      title,
+      visibility,
+      layerCount: artwork.layers.length,
+      strokeCount,
+    };
+  });
+
   // ── Layers ──────────────────────────────────────────────────────────
   function findArt(s, userId, artworkId) {
     return (s.artworks.get(userId) || []).find((a) => a.id === artworkId) || null;

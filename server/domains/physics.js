@@ -11,7 +11,16 @@ export default function registerPhysicsActions(registerLensAction) {
    * params.dt (timestep seconds, default 0.01), params.steps (default 1000),
    * params.gravity (m/s², default 9.81), params.airDensity (kg/m³, default 1.225)
    */
-  registerLensAction("physics", "kinematicsSim", (ctx, artifact, params) => {
+  // Registered under BOTH "kinematicsSim" (shadowed by server.js's flatter
+  // single-body re-registration — see the "Engineering Compute" block in
+  // server.js, which loads AFTER domains/index.js and wins the last-write-wins
+  // LENS_ACTIONS Map for that exact name) AND the new additive
+  // "kinematicsSimAdvanced" name, which nothing else registers, so it stays
+  // live and reaches this richer multi-body/drag engine. Do not rename or
+  // remove "kinematicsSim" here — PhysicsAdvancedLab.tsx and
+  // server/tests/depth/physics-behavior.test.js depend on the server.js
+  // handler winning under that name, unchanged.
+  const kinematicsSimHandler = (ctx, artifact, params) => {
     const bodies = artifact.data?.bodies || [];
     if (bodies.length === 0) return { ok: false, error: "No bodies defined." };
 
@@ -103,15 +112,27 @@ export default function registerPhysicsActions(registerLensAction) {
         totalSimTime: r(steps * dt),
       },
     };
-  });
+  };
+  registerLensAction("physics", "kinematicsSim", kinematicsSimHandler);
+  registerLensAction("physics", "kinematicsSimAdvanced", kinematicsSimHandler);
 
   /**
    * orbitalMechanics
    * Compute orbital parameters from state vectors, or propagate Keplerian orbits.
    * artifact.data.orbit = { semiMajorAxis, eccentricity, inclination?, centralBodyMass? }
    * OR artifact.data.stateVector = { position: {x,y,z}, velocity: {x,y,z}, centralBodyMass }
+   *
+   * Registered under BOTH "orbitalMechanics" (shadowed by server.js's flatter
+   * two-body-gravity re-registration — the "Engineering Compute" block loads
+   * AFTER domains/index.js and wins the last-write-wins LENS_ACTIONS Map for
+   * that exact name) AND the new additive "orbitalMechanicsAdvanced" name,
+   * which nothing else registers, so it stays live and reaches this richer
+   * Keplerian-element / Hohmann-transfer engine. Do not rename or remove
+   * "orbitalMechanics" here — PhysicsAdvancedLab.tsx and
+   * server/tests/depth/physics-behavior.test.js depend on the server.js
+   * handler winning under that name, unchanged.
    */
-  registerLensAction("physics", "orbitalMechanics", (ctx, artifact, params) => {
+  const orbitalMechanicsHandler = (ctx, artifact, params) => {
     const G = 6.674e-11; // gravitational constant
     const r = v => Math.round(v * 1e6) / 1e6;
 
@@ -239,15 +260,25 @@ export default function registerPhysicsActions(registerLensAction) {
         orbitPoints: orbitPoints.length > 50 ? orbitPoints.filter((_, i) => i % Math.ceil(orbitPoints.length / 50) === 0) : orbitPoints,
       },
     };
-  });
+  };
+  registerLensAction("physics", "orbitalMechanics", orbitalMechanicsHandler);
+  registerLensAction("physics", "orbitalMechanicsAdvanced", orbitalMechanicsHandler);
 
   /**
    * waveInterference
    * Compute interference patterns from multiple wave sources.
    * artifact.data.sources = [{ x, y, frequency, amplitude, phase? }]
    * params.gridSize (default 50), params.resolution (default 0.1 m)
+   *
+   * Registered under BOTH "waveInterference" (shadowed by server.js's flatter
+   * wavelength+Doppler re-registration) AND the new additive
+   * "waveInterferenceAdvanced" name, which nothing else registers, so it
+   * stays live and reaches this richer grid-based interference-field engine.
+   * Do not rename or remove "waveInterference" here — PhysicsAdvancedLab.tsx
+   * and server/tests/depth/physics-behavior.test.js depend on the server.js
+   * handler winning under that name, unchanged.
    */
-  registerLensAction("physics", "waveInterference", (ctx, artifact, params) => {
+  const waveInterferenceHandler = (ctx, artifact, params) => {
     const sources = artifact.data?.sources || [];
     if (sources.length === 0) return { ok: false, error: "No wave sources defined." };
 
@@ -338,7 +369,9 @@ export default function registerPhysicsActions(registerLensAction) {
         waveSpeed: speed, snapshotTime: t,
       },
     };
-  });
+  };
+  registerLensAction("physics", "waveInterference", waveInterferenceHandler);
+  registerLensAction("physics", "waveInterferenceAdvanced", waveInterferenceHandler);
 
   /**
    * thermodynamics

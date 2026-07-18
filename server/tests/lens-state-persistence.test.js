@@ -24,12 +24,17 @@ function freshState() {
 describe("lens state persistence — Bucket 2 Gap A", () => {
   beforeEach(() => { freshState(); });
 
-  it("exposes 27 lens state keys", () => {
-    assert.equal(LENS_STATE_KEYS.length, 27);
+  it("exposes 28 lens state keys", () => {
+    // 27 -> 28: "privacyLens" added (Wave 4 gap-closure) so the retention
+    // policy / DSAR / cookie-config / access-log substrate the privacy lens
+    // and the privacy-retention-sweep heartbeat both depend on survives a
+    // restart instead of being silently wiped every boot.
+    assert.equal(LENS_STATE_KEYS.length, 28);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
     assert.ok(LENS_STATE_KEYS.includes("eventTimelineLens"));
+    assert.ok(LENS_STATE_KEYS.includes("privacyLens"));
   });
 
   it("roundtrips STATE.eventTimelineLens.views (event-timeline saved filter presets)", () => {

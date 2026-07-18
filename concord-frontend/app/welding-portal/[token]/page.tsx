@@ -189,7 +189,7 @@ export default function WeldingPortalPage() {
         body: JSON.stringify({ decision, signature }),
       });
       const data = await res.json();
-      if (data.ok) {
+      if (data.ok && data.result?.estimate) {
         setView((prev) =>
           prev && prev.kind === 'estimate'
             ? { kind: 'estimate', estimate: data.result.estimate, canApprove: false }

@@ -1,11 +1,21 @@
 /**
  * Tier-3 end-to-end onboarding journey test:
  *   first_cycle_cook → first_cycle_eat → first_cycle_fight → first_cycle_commune
+ *   → first_cycle_befriend → first_cycle_sneak → first_cycle_kingdom_visit → first_cycle_play
  *
  * Drives each authored quest in content/quests/onboarding.json by inserting
- * progress rows into a :memory: SQLite database, then asserts the
+ * rows into System B's real schema (world_quests / player_quests —
+ * migrations 042 + 068) in a :memory: SQLite database, then asserts the
  * /api/tutorial/first-cycle helper advances `currentPhase` correctly at
  * every transition and finally lands on `currentPhase: "complete"`.
+ *
+ * History note (2026-07): this test used to seed a `quest_progress`
+ * (singular) table that had zero production writers anywhere in the
+ * codebase — deriveFirstCycleProgress no longer reads that table at all.
+ * See docs/QUESTS_ENGINE_INVESTIGATION.md Finding 4 and
+ * server/tests/quests-real-writer.test.js (which additionally proves a REAL
+ * gameplay hook — recordObjectiveProgress, as called from the /world/cook
+ * route — advances phase, not just a synthetic row insert).
  *
  * Run: node --test tests/e2e/first-cycle-journey.test.js
  */
@@ -24,43 +34,85 @@ let db;
 const USER  = "u_test_player";
 const WORLD = "concordia-hub";
 
-function nowISO() {
-  return new Date().toISOString().replace("T", " ").replace("Z", "");
-}
-
 function setupDb() {
-  // Minimal subset of the quest_progress schema the helper reads.
-  // The full schema lives in server/migrations/* — here we recreate just
-  // the columns the journey-derivation needs.
+  // Minimal replica of System B's real schema (migrations 042 + 068) — the
+  // columns deriveFirstCycleProgress's getActiveQuests / getCompletedQuests
+  // / getQuestProgress calls actually touch.
   db = new Database(":memory:");
   db.exec(`
-    CREATE TABLE quest_progress (
+    CREATE TABLE world_quests (
+      id             TEXT PRIMARY KEY,
+      world_id       TEXT NOT NULL,
+      giver_npc_id   TEXT,
+      title          TEXT NOT NULL,
+      description    TEXT,
+      objectives_json TEXT DEFAULT '[]',
+      reward_json    TEXT DEFAULT '{}',
+      status         TEXT NOT NULL DEFAULT 'available',
+      created_at     INTEGER NOT NULL DEFAULT (unixepoch()),
+      accepted_by    TEXT,
+      completed_at   INTEGER
+    );
+    CREATE TABLE player_quests (
+      id           TEXT PRIMARY KEY,
+      user_id      TEXT NOT NULL,
+      quest_id     TEXT NOT NULL,
+      world_id     TEXT NOT NULL,
+      status       TEXT NOT NULL DEFAULT 'active',
+      completed_at INTEGER,
+      rewarded_at  INTEGER,
+      accepted_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+      UNIQUE(user_id, world_id, quest_id)
+    );
+    CREATE TABLE quest_objectives (
+      id             TEXT PRIMARY KEY,
+      quest_id       TEXT NOT NULL,
+      type           TEXT NOT NULL,
+      target         TEXT NOT NULL,
+      required_count INTEGER DEFAULT 1,
+      description    TEXT,
+      order_index    INTEGER DEFAULT 0
+    );
+    CREATE TABLE player_quest_progress (
       id            TEXT PRIMARY KEY,
       user_id       TEXT NOT NULL,
       world_id      TEXT NOT NULL,
       quest_id      TEXT NOT NULL,
-      status        TEXT NOT NULL,
-      started_at    TEXT NOT NULL,
-      completed_at  TEXT,
-      UNIQUE(user_id, world_id, quest_id)
+      objective_id  TEXT NOT NULL,
+      current_count INTEGER DEFAULT 0,
+      completed_at  INTEGER,
+      UNIQUE(user_id, world_id, quest_id, objective_id)
+    );
+    CREATE TABLE quest_rewards (
+      id          TEXT PRIMARY KEY,
+      quest_id    TEXT NOT NULL,
+      reward_type TEXT NOT NULL,
+      reward_key  TEXT,
+      amount      INTEGER DEFAULT 100
     );
   `);
+  // Every FIRST_CYCLE quest needs a catalog row for the INNER JOIN in
+  // getActiveQuests/getCompletedQuests to find it at all.
+  const insertQuest = db.prepare(
+    `INSERT INTO world_quests (id, world_id, title, status) VALUES (?, ?, ?, 'available')`
+  );
+  for (const qid of FIRST_CYCLE_QUEST_IDS) insertQuest.run(qid, WORLD, qid);
 }
 
 function startQuest(questId) {
   db.prepare(`
-    INSERT INTO quest_progress (id, user_id, world_id, quest_id, status, started_at)
-    VALUES (?, ?, ?, ?, 'in_progress', ?)
-    ON CONFLICT(user_id, world_id, quest_id) DO UPDATE SET status='in_progress', completed_at=NULL
-  `).run(`qp_${questId}`, USER, WORLD, questId, nowISO());
+    INSERT INTO player_quests (id, user_id, quest_id, world_id, status)
+    VALUES (?, ?, ?, ?, 'active')
+    ON CONFLICT(user_id, world_id, quest_id) DO UPDATE SET status='active', completed_at=NULL
+  `).run(`pq_${questId}`, USER, questId, WORLD);
 }
 
 function completeQuest(questId) {
   db.prepare(`
-    INSERT INTO quest_progress (id, user_id, world_id, quest_id, status, started_at, completed_at)
-    VALUES (?, ?, ?, ?, 'complete', ?, ?)
-    ON CONFLICT(user_id, world_id, quest_id) DO UPDATE SET status='complete', completed_at=excluded.completed_at
-  `).run(`qp_${questId}`, USER, WORLD, questId, nowISO(), nowISO());
+    INSERT INTO player_quests (id, user_id, quest_id, world_id, status, completed_at)
+    VALUES (?, ?, ?, ?, 'completed', unixepoch())
+    ON CONFLICT(user_id, world_id, quest_id) DO UPDATE SET status='completed', completed_at=unixepoch()
+  `).run(`pq_${questId}`, USER, questId, WORLD);
 }
 
 function progress() {
@@ -82,11 +134,11 @@ describe("First Cycle E2E journey — cook → eat → fight → commune", () =>
     assert.equal(r.phases[0].status, "not_started");
   });
 
-  it("reflects in_progress without advancing the phase pointer", () => {
+  it("reflects an accepted-but-active quest without advancing the phase pointer", () => {
     startQuest("first_cycle_cook");
     const r = progress();
-    assert.equal(r.currentPhase, "cook", "in_progress quests must NOT count as complete");
-    assert.equal(r.phases[0].status, "in_progress");
+    assert.equal(r.currentPhase, "cook", "an active (not completed) quest must NOT count as complete");
+    assert.equal(r.phases[0].status, "active");
     assert.equal(r.phases[0].complete, false);
   });
 
@@ -152,11 +204,11 @@ describe("First Cycle E2E journey — cook → eat → fight → commune", () =>
     assert.equal(r.complete, true);
   });
 
-  it("accepts both 'complete' and 'completed' status strings", () => {
+  it("accepts a 'rewarded' status (post reward-claim) as complete too", () => {
     db.prepare(`
-      INSERT INTO quest_progress (id, user_id, world_id, quest_id, status, started_at, completed_at)
-      VALUES (?, ?, ?, 'first_cycle_cook', 'completed', ?, ?)
-    `).run("qp_alt", USER, WORLD, nowISO(), nowISO());
+      INSERT INTO player_quests (id, user_id, quest_id, world_id, status, completed_at, rewarded_at)
+      VALUES ('pq_alt', ?, 'first_cycle_cook', ?, 'rewarded', unixepoch(), unixepoch())
+    `).run(USER, WORLD);
     const r = progress();
     assert.equal(r.phases[0].complete, true);
     assert.equal(r.currentPhase, "eat");
@@ -186,30 +238,18 @@ describe("First Cycle E2E journey — cook → eat → fight → commune", () =>
   });
 });
 
-describe("First Cycle E2E — quest engine signature mismatch", () => {
-  beforeEach(setupDb);
-  after(() => { try { db?.close(); } catch (_) { /* intentional */ } });
-
-  it("ignores a 1-arg getQuestProgress and falls through to the DB", () => {
-    // The actual emergent/quest-engine.js exports a single-arg signature;
-    // the helper detects this and uses the DB fallback. Pre-fix, the route
-    // attempted to call it with 4 args and silently produced wrong data.
-    completeQuest("first_cycle_cook");
-    const fakeEngine = { getQuestProgress: (id) => ({ status: "wrong", id }) };
-    const r = deriveFirstCycleProgress({ db, userId: USER, worldId: WORLD, questEngine: fakeEngine });
-    assert.equal(r.phases[0].status, "complete", "must trust DB row, not 1-arg engine result");
-    assert.equal(r.currentPhase, "eat");
-  });
-
-  it("uses a 4-arg getQuestProgress when its signature matches", () => {
-    const fakeEngine = {
-      getQuestProgress: (_db, _u, _w, qid) => qid === "first_cycle_cook"
-        ? { status: "complete", completedAt: nowISO() }
-        : null,
-    };
-    const r = deriveFirstCycleProgress({ db, userId: USER, worldId: WORLD, questEngine: fakeEngine });
-    assert.equal(r.phases[0].complete, true);
-    assert.equal(r.currentPhase, "eat");
+describe("First Cycle E2E — degrades gracefully without System B tables", () => {
+  it("reports not_started (not a throw) when the DB has none of the quest tables", () => {
+    const bareDb = new Database(":memory:");
+    try {
+      const r = deriveFirstCycleProgress({ db: bareDb, userId: USER, worldId: WORLD });
+      assert.equal(r.ok, true);
+      assert.equal(r.currentPhase, "cook");
+      assert.equal(r.complete, false);
+      assert.equal(r.phases[0].status, "not_started");
+    } finally {
+      bareDb.close();
+    }
   });
 });
 

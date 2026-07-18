@@ -4,11 +4,12 @@
 //
 // One test per backlog macro: iss-track, iss-groundtrack, iss-passes,
 // orbit-3d, launch-countdown, rocket-detail, sky-map, launches-filtered,
-// apod — plus the pre-existing pure-math macros.
+// apod, satellite-catalog — plus the pre-existing pure-math macros.
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerSpaceActions from "../domains/space.js";
+import { clearExternalFetchCache } from "../lib/external-fetch.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -27,6 +28,7 @@ before(() => {
 
 beforeEach(() => {
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
+  clearExternalFetchCache(); // satellite-catalog uses cachedFetchJson — never leak a mock across tests
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
@@ -273,5 +275,116 @@ describe("space.apod (NASA Astronomy Picture of the Day)", () => {
     assert.equal(r.ok, true);
     assert.match(url, /count=5/);
     assert.equal(r.result.count, 1);
+  });
+});
+
+describe("space.satellite-catalog (CelesTrak GP data — keyless live catalog)", () => {
+  // A real slice of CelesTrak's GP JSON shape (celestrak.org/NORAD/documentation/gp-data-formats.php):
+  // ISS + one GPS satellite, using the exact field names CelesTrak returns.
+  const FIXTURE_ROWS = [
+    {
+      OBJECT_NAME: "ISS (ZARYA)", OBJECT_ID: "1998-067A", EPOCH: "2026-05-21T12:34:56.789012",
+      MEAN_MOTION: 15.49560294, ECCENTRICITY: 0.0004464, INCLINATION: 51.6416,
+      RA_OF_ASC_NODE: 234.1234, ARG_OF_PERICENTER: 100.4321, MEAN_ANOMALY: 260.1234,
+      EPHEMERIS_TYPE: 0, CLASSIFICATION_TYPE: "U", NORAD_CAT_ID: 25544, ELEMENT_SET_NO: 999,
+      REV_AT_EPOCH: 12345, BSTAR: 0.00021389, MEAN_MOTION_DOT: 0.00012345, MEAN_MOTION_DDOT: 0,
+    },
+    {
+      OBJECT_NAME: "NAVSTAR 81 (USA 320)", OBJECT_ID: "2020-078A", EPOCH: "2026-05-21T02:11:03.100000",
+      MEAN_MOTION: 2.00561, ECCENTRICITY: 0.0044, INCLINATION: 55.03,
+      RA_OF_ASC_NODE: 12.44, ARG_OF_PERICENTER: 210.9, MEAN_ANOMALY: 149.2,
+      EPHEMERIS_TYPE: 0, CLASSIFICATION_TYPE: "U", NORAD_CAT_ID: 46826, ELEMENT_SET_NO: 41,
+      REV_AT_EPOCH: 3210, BSTAR: 0, MEAN_MOTION_DOT: 0.00000012, MEAN_MOTION_DDOT: 0,
+    },
+  ];
+
+  it("maps real CelesTrak GP rows into the clean satellite shape, defaulting group to 'active'", async () => {
+    let url = "";
+    globalThis.fetch = async (u) => { url = u; return { ok: true, json: async () => FIXTURE_ROWS }; };
+    const r = await call("satellite-catalog", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.match(url, /celestrak\.org\/NORAD\/elements\/gp\.php/);
+    assert.match(url, /GROUP=active/);
+    assert.match(url, /FORMAT=json/);
+    assert.equal(r.result.group, "active");
+    assert.equal(r.result.source, "celestrak");
+    assert.match(r.result.attribution, /CelesTrak/);
+    assert.equal(r.result.count, 2);
+    assert.equal(r.result.totalAvailable, 2);
+    const iss = r.result.satellites[0];
+    assert.equal(iss.name, "ISS (ZARYA)");
+    assert.equal(iss.noradId, 25544);
+    assert.equal(iss.objectId, "1998-067A");
+    assert.equal(iss.epoch, "2026-05-21T12:34:56.789012");
+    assert.equal(iss.meanMotion, 15.49560294);
+    assert.equal(iss.eccentricity, 0.0004464);
+    assert.equal(iss.inclinationDeg, 51.6416);
+    assert.equal(iss.raanDeg, 234.1234);
+    assert.equal(iss.argOfPericenterDeg, 100.4321);
+    assert.equal(iss.meanAnomalyDeg, 260.1234);
+    assert.equal(iss.revAtEpoch, 12345);
+    assert.equal(iss.bstar, 0.00021389);
+    assert.equal(iss.meanMotionDot, 0.00012345);
+    assert.equal(iss.classification, "U");
+    // Only fields CelesTrak actually returns are surfaced — no invented columns.
+    assert.deepEqual(Object.keys(iss).sort(), [
+      "argOfPericenterDeg", "bstar", "classification", "eccentricity", "epoch",
+      "inclinationDeg", "meanAnomalyDeg", "meanMotion", "meanMotionDot", "name",
+      "noradId", "objectId", "raanDeg", "revAtEpoch",
+    ].sort());
+  });
+
+  it("passes a narrower group (e.g. 'stations') through to the request and echoes it back", async () => {
+    let url = "";
+    globalThis.fetch = async (u) => { url = u; return { ok: true, json: async () => FIXTURE_ROWS.slice(0, 1) }; };
+    const r = await call("satellite-catalog", ctxA, { group: "stations" });
+    assert.equal(r.ok, true);
+    assert.match(url, /GROUP=stations/);
+    assert.equal(r.result.group, "stations");
+    assert.equal(r.result.count, 1);
+  });
+
+  it("respects limit without changing totalAvailable, and clamps to [1, 500]", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => FIXTURE_ROWS });
+    const r = await call("satellite-catalog", ctxA, { limit: 1 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 1);
+    assert.equal(r.result.totalAvailable, 2); // full upstream count, even though only 1 is returned
+    const rOver = await call("satellite-catalog", ctxA, { limit: 99999 });
+    assert.equal(rOver.ok, true); // clamps internally; doesn't throw or hang
+  });
+
+  it("sanitizes a malformed group (spaces / punctuation) back to the safe default instead of interpolating it raw", async () => {
+    let url = "";
+    globalThis.fetch = async (u) => { url = u; return { ok: true, json: async () => FIXTURE_ROWS }; };
+    const r = await call("satellite-catalog", ctxA, { group: "not a group; DROP TABLE" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.group, "active");
+    assert.match(url, /GROUP=active/);
+  });
+
+  it("returns an HONEST empty catalog for a real (currently empty) group — never fabricates satellites", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => [] });
+    const r = await call("satellite-catalog", ctxA, { group: "some-empty-group" });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.satellites, []);
+    assert.equal(r.result.count, 0);
+    assert.equal(r.result.totalAvailable, 0);
+  });
+
+  it("returns an HONEST failure shape when CelesTrak is unreachable — never a stale/fabricated catalog", async () => {
+    globalThis.fetch = async () => { throw new Error("getaddrinfo ENOTFOUND celestrak.org"); };
+    const r = await call("satellite-catalog", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "celestrak_unreachable");
+    assert.match(r.error, /celestrak unreachable/);
+    assert.equal(r.result, undefined); // no partial/fabricated result on failure
+  });
+
+  it("returns an HONEST failure shape on a non-2xx CelesTrak response", async () => {
+    globalThis.fetch = async () => ({ ok: false, status: 503, json: async () => ({}) });
+    const r = await call("satellite-catalog", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "celestrak_unreachable");
   });
 });

@@ -67,4 +67,69 @@ describe("Phase H — npc backstory composer", () => {
     const det = composeDeterministicBackstory(npc, { id: "f" }, { worldId: "crime" });
     assert.equal(out, det);
   });
+
+  // 2026-07 depth pass — widened trait/secret pools + varied closer + genre
+  // filtering. Pins: (1) real variety across many seeded NPCs in the same
+  // world/archetype (not a single recycled sentence), (2) genre-tagged pool
+  // selection keeps hub theology out of non-hub worlds and vice versa,
+  // (3) the closer line is drawn from a pool, not a single fixed sentence,
+  // (4) determinism survives the widened pools.
+  describe("widened pool variety + genre-flavor filtering (2026-07)", () => {
+    it("produces varied output across many seeded NPCs of the same archetype/world (not all-identical)", () => {
+      const outputs = new Set();
+      for (let i = 0; i < 40; i++) {
+        const npc = { id: `varietycheck_cyber_${i}`, archetype: "trader" };
+        outputs.add(composeDeterministicBackstory(npc, { id: "f" }, { worldId: "cyber" }));
+      }
+      // With 5 openers x 3 world hints x 10 quirks x 8 secrets x 6 closers,
+      // 40 distinct seeds should produce well more than a handful of unique
+      // paragraphs — a single recycled template would collapse this to 1.
+      assert.ok(outputs.size > 20, `expected strong variety, got ${outputs.size}/40 unique outputs`);
+    });
+
+    it("varies the closing line across seeded NPCs (not a single fixed sentence every time)", () => {
+      const closers = new Set();
+      for (let i = 0; i < 30; i++) {
+        const npc = { id: `closercheck_${i}`, archetype: "guard" };
+        const out = composeDeterministicBackstory(npc, { id: "f" }, { worldId: "fantasy" });
+        // Closer is always the final sentence of the composed prose.
+        const sentences = out.split(". ");
+        closers.add(sentences[sentences.length - 1]);
+      }
+      assert.ok(closers.size > 1, "expected more than one distinct closer across 30 seeded NPCs");
+    });
+
+    it("cyber-world NPCs never draw hub-theology flavor (Refusal/hymn language)", () => {
+      for (let i = 0; i < 30; i++) {
+        const npc = { id: `genrecheck_cyber_${i}`, archetype: "scholar" };
+        const out = composeDeterministicBackstory(npc, { id: "f" }, { worldId: "cyber" });
+        assert.ok(!/refusal|hymn|sovereign's first/i.test(out), `hub theology leaked into a cyber NPC: ${out}`);
+      }
+    });
+
+    it("hub-world NPCs can draw the hub theology pool (sanity check the pool is reachable at all)", () => {
+      let sawTheologyFlavor = false;
+      for (let i = 0; i < 40; i++) {
+        const npc = { id: `genrecheck_hub_${i}`, archetype: "mystic" };
+        const out = composeDeterministicBackstory(npc, { id: "f" }, { worldId: "concordia-hub" });
+        if (/refusal|hymn|glyph/i.test(out)) sawTheologyFlavor = true;
+      }
+      assert.ok(sawTheologyFlavor, "expected at least one hub NPC to draw hub-flavored theology language");
+    });
+
+    it("unknown/missing world falls back to the standard genre pool without throwing", () => {
+      const npc = { id: "genrecheck_unknown_world", archetype: "hunter" };
+      const out1 = composeDeterministicBackstory(npc, { id: "f" }, { worldId: "some-future-world" });
+      const out2 = composeDeterministicBackstory(npc, { id: "f" }, null);
+      assert.ok(out1.length > 30);
+      assert.ok(out2.length > 30);
+    });
+
+    it("remains deterministic (same id → same output) even with the widened pools", () => {
+      const npc = { id: "determinism_check_wide", archetype: "healer", ancestry: { primary_bloodline: "moss-kin", dilution: 0.6 } };
+      const a = composeDeterministicBackstory(npc, { id: "f", displayName: "Moss Circle" }, { worldId: "fantasy" });
+      const b = composeDeterministicBackstory(npc, { id: "f", displayName: "Moss Circle" }, { worldId: "fantasy" });
+      assert.equal(a, b);
+    });
+  });
 });

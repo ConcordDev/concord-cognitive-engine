@@ -15,7 +15,7 @@ import {
   Command as MTabTools, Clock as MTabSched, Folder as MTabProj,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { Virtuoso } from 'react-virtuoso';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -80,6 +80,18 @@ import { ConKayMessage } from '@/components/conkay/ConKayViz';
 import { useConKayVoice } from '@/components/conkay/useConKayVoice';
 import { CONKAY_PERSONA_PROMPT, type ConKayState } from '@/components/conkay/conkay-persona';
 import { matchConKaySkill, type ConKaySkill } from '@/components/conkay/conkay-skills';
+// Unit A5-backport — the SAME cockpit machinery the global ConKayOverlay uses
+// (docs/NEXT_ARC_PLAN.md Track A), reused (not forked) so `/mode conkay`
+// inside the chat lens reaches feature parity with the summonable overlay:
+// the pre-execution confirm gate, the artifact→3D pipeline, and the F1
+// cockpit's panel lanes (macro library / provenance / forward-sim / artifact
+// viewer / orchestration trace / telemetry / connector status).
+import { ConKayActionConfirm } from '@/components/conkay/ConKayActionConfirm';
+import { ConKayCockpit } from '@/components/conkay/ConKayCockpit';
+import { isMutatingMacro } from '@/lib/conkay/mutating-macros';
+import { detectArtifact } from '@/lib/conkay/artifact-kinds';
+import { useConkayHudStore, feaResultFromRun } from '@/components/conkay/conkayHudStore';
+import { subscribe, connectSocket, onConnectionLost, onReconnected } from '@/lib/realtime/socket';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { formatBytes } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -474,6 +486,43 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 // ──────────────────────────────────────────────
+// ConKay macro-execution backport (Unit A5) — see ConKayOverlay.tsx#executeMacro
+// for the canonical implementation this mirrors. `newConKayRunId` is the same
+// correlation-id shape the overlay stamps onto `lensRun` calls (echoed back on
+// the `macro:started`/`macro:completed` socket events so the cockpit's
+// telemetry/orchestration-trace panels can bind a step to the REAL backend
+// call — never a guessed spinner).
+// ──────────────────────────────────────────────
+
+function newConKayRunId(): string {
+  return `ck-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Parse the explicit "run <domain>.<macro> [{json}]" command chat's ConKay
+ *  mode supports — the same client-initiated syntax ConKayOverlay accepts
+ *  (minus the bare-macro/current-lens shorthand, which has no meaning inside
+ *  the chat lens itself: there is no "lens being operated," so the domain is
+ *  always required explicitly). Returns null when the text doesn't match. */
+function parseConKayRunCommand(
+  text: string
+): { domain: string; macro: string; input: Record<string, unknown> } | null {
+  const m = text.trim().match(/^run\s+([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)\s*(\{[\s\S]*\})?$/i);
+  if (!m) return null;
+  let input: Record<string, unknown> = {};
+  if (m[3]) {
+    try {
+      const parsed = JSON.parse(m[3]);
+      if (parsed && typeof parsed === 'object') input = parsed as Record<string, unknown>;
+    } catch {
+      // leave input empty — an honest "couldn't parse" is surfaced by the
+      // resulting macro call failing validation server-side, not silently
+      // guessed at here.
+    }
+  }
+  return { domain: m[1], macro: m[2], input };
+}
+
+// ──────────────────────────────────────────────
 // Component
 // ──────────────────────────────────────────────
 
@@ -514,6 +563,25 @@ export default function ChatLensPage() {
   const [conkayActing, setConkayActing] = useState(false);
   const [conkaySkillRunning, setConkaySkillRunning] = useState(false);
   const conkayBottomRef = useRef<HTMLDivElement>(null);
+  // Unit A5-backport — the correlation id of the macro run currently in
+  // flight (mirrors ConKayOverlay's `liveRunRef`), and the pre-execution
+  // confirm gate for a CLIENT-INITIATED mutating macro call typed as
+  // "run domain.macro {json}". `pendingConfirmResolveRef` is the in-flight
+  // promise's resolver — never a fabricated auto-approve; only
+  // `resolveConkayPendingConfirm` (wired to the real Confirm/Cancel buttons
+  // on <ConKayActionConfirm>) settles it.
+  const conkayLiveRunRef = useRef<string | null>(null);
+  const [conkayPendingConfirm, setConkayPendingConfirm] = useState<{
+    domain: string;
+    macro: string;
+    input: Record<string, unknown>;
+  } | null>(null);
+  const conkayPendingConfirmResolveRef = useRef<((confirmed: boolean) => void) | null>(null);
+  // True while a "run domain.macro" call (including its confirm wait) is
+  // in flight — feeds the same `conkayState` processing signal skills use,
+  // so the HUD/backdrop honestly reflect a run-command the same way they
+  // reflect a skill run (no separate, lesser "processing" state for this path).
+  const [conkayMacroRunning, setConkayMacroRunning] = useState(false);
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
@@ -1725,6 +1793,142 @@ export default function ChatLensPage() {
     });
   }, []);
 
+  // ── ConKay honest event spine (Unit A5-backport) ──────────────────────────
+  // The SAME rule as ConKayOverlay's identical effect: every animated beat is
+  // a pure function of a REAL backend event. While chat is in ConKay mode we
+  // subscribe to the macro lifecycle the server emits to our user:<id> room
+  // and feed it into the SAME `conkayHudStore` the overlay's cockpit panels
+  // already read from (telemetry / orchestration-trace / macro-library all
+  // become live the moment this fires) — so a macro run from the chat
+  // surface lights the exact same cockpit as a macro run from the overlay.
+  // No setInterval, no eased fake percentage — motion (or its absence) is
+  // always caused by a real started/completed/stage event.
+  useEffect(() => {
+    if (!isConKay) return;
+    connectSocket();
+    const offStart = subscribe<{ runId?: string; domain?: string; action?: string }>(
+      'macro:started',
+      (d) => {
+        if (!d?.runId || d.runId !== conkayLiveRunRef.current) return;
+        useConkayHudStore.getState().macroStarted({ runId: d.runId, domain: d.domain, action: d.action });
+      }
+    );
+    const offStage = subscribe<{ runId?: string; stage?: string; detail?: string }>(
+      'macro:stage',
+      (d) => {
+        if (!d?.runId || d.runId !== conkayLiveRunRef.current || !d.stage) return;
+        useConkayHudStore.getState().macroStage({ runId: d.runId, stage: d.stage, detail: d.detail });
+      }
+    );
+    const offDone = subscribe<{ runId?: string; domain?: string; action?: string; ok?: boolean; ms?: number }>(
+      'macro:completed',
+      (d) => {
+        if (!d?.runId || d.runId !== conkayLiveRunRef.current) return;
+        useConkayHudStore.getState().macroCompleted({ runId: d.runId, domain: d.domain, action: d.action, ok: d.ok, ms: d.ms });
+      }
+    );
+    const offLost = onConnectionLost(() => useConkayHudStore.getState().markConnectionLost());
+    const offReconnected = onReconnected(() => useConkayHudStore.getState().markReconnected());
+    // Leaving ConKay mode (or unmounting) resets the shared HUD store so the
+    // cockpit's panels don't keep showing this session's rings/telemetry
+    // after the surface that produced them is gone.
+    return () => {
+      offStart(); offStage(); offDone(); offLost(); offReconnected();
+      useConkayHudStore.getState().reset();
+    };
+  }, [isConKay]);
+
+  // Unit A5-backport — the pre-execution confirmation gate for the CLIENT-
+  // INITIATED macro path (the explicit "run domain.macro {json}" command
+  // below), reusing `isMutatingMacro` + <ConKayActionConfirm> exactly as
+  // ConKayOverlay.tsx does. Resolves immediately (true) for a macro
+  // `isMutatingMacro` doesn't flag as a write; for a mutating macro it holds
+  // execution until the user explicitly confirms or cancels via the rendered
+  // card — never an auto-approve.
+  const conkayConfirmIfMutating = useCallback(
+    (domain: string, macro: string, inputObj: Record<string, unknown>): Promise<boolean> => {
+      if (!isMutatingMacro(domain, macro)) return Promise.resolve(true);
+      return new Promise<boolean>((resolve) => {
+        conkayPendingConfirmResolveRef.current = resolve;
+        setConkayPendingConfirm({ domain, macro, input: inputObj });
+      });
+    },
+    []
+  );
+  const resolveConkayPendingConfirm = useCallback((confirmed: boolean) => {
+    const resolve = conkayPendingConfirmResolveRef.current;
+    conkayPendingConfirmResolveRef.current = null;
+    setConkayPendingConfirm(null);
+    resolve?.(confirmed);
+  }, []);
+
+  // Unit A5-backport — executes a REAL macro via /api/lens/run, gated by the
+  // confirm above. Mirrors ConKayOverlay.tsx#executeMacro: opts into the
+  // honest lifecycle (runId → macro:started/completed), captures a real
+  // artifact via the SAME `detectArtifact` registry the overlay uses (so the
+  // cockpit's Artifact Viewer panel lights up identically whether the macro
+  // was run from the overlay or from chat), and appends a truthful result
+  // message — never a fabricated success on failure.
+  const executeConKayMacro = useCallback(
+    async (domain: string, macro: string, inputObj: Record<string, unknown>) => {
+      setConkayMacroRunning(true);
+      const allowed = await conkayConfirmIfMutating(domain, macro, inputObj);
+      if (!allowed) {
+        setLocalMessages((prev) => [...prev, {
+          id: `asst-${Date.now()}-cancelled`, role: 'assistant',
+          content: `Cancelled — I didn't run ${domain}.${macro}.`,
+          timestamp: new Date().toISOString(), model: 'kay',
+        }]);
+        setConkayMacroRunning(false);
+        return false;
+      }
+      try {
+        const rid = newConKayRunId();
+        conkayLiveRunRef.current = rid;
+        const { data } = await lensRun(domain, macro, inputObj, rid);
+        const ok = !!data?.ok;
+        // Forward-Sim substrate parity: a real engineering.runFEA solve
+        // populates the SAME store field the overlay's Forward-Sim panel reads.
+        if (ok && domain === 'engineering' && macro === 'runFEA') {
+          const fea = feaResultFromRun(inputObj, data?.result);
+          if (fea) useConkayHudStore.getState().setLastFea(fea);
+        }
+        // Artifact→3D substrate parity: run the real return through the pure
+        // detectArtifact registry; a genuine match feeds the cockpit's
+        // Artifact Viewer panel. detectArtifact returns null unless the
+        // result really matches a kind's real shape — no fabrication.
+        if (ok) {
+          const artifact = detectArtifact(domain, macro, inputObj, data?.result);
+          if (artifact) useConkayHudStore.getState().setLastArtifact(artifact);
+        }
+        const resultStr = data?.result != null
+          ? JSON.stringify(data.result, null, 2)
+          : (ok ? '(done)' : (data?.error || 'no result'));
+        const spoken = ok
+          ? `Done — ran ${macro} on the ${domain} lens.`
+          : `${macro} on ${domain} returned: ${data?.error || 'an error'}.`;
+        const body = resultStr.length > 1200 ? resultStr.slice(0, 1200) + '\n…' : resultStr;
+        setLocalMessages((prev) => [...prev, {
+          id: `asst-${Date.now()}`, role: 'assistant',
+          content: `${spoken}\n\n\`\`\`json\n${body}\n\`\`\``,
+          timestamp: new Date().toISOString(), model: 'kay',
+          toolCalls: [{ tool: `${domain}.${macro}`, params: inputObj, result: data?.result ?? null, ok }],
+        }]);
+        return ok;
+      } catch {
+        setLocalMessages((prev) => [...prev, {
+          id: `asst-${Date.now()}`, role: 'assistant',
+          content: `I couldn't run ${domain}.${macro} just now.`,
+          timestamp: new Date().toISOString(),
+        }]);
+        return false;
+      } finally {
+        setConkayMacroRunning(false);
+      }
+    },
+    [conkayConfirmIfMutating]
+  );
+
   // ── ConKay vision: an image attachment in ConKay mode is a "look at this" —
   // POST the raw image to /api/vision/analyze (the vision brain). Honest offline
   // fallback when no vision model is connected. Reuses JARVIS-style perception.
@@ -1844,10 +2048,25 @@ export default function ChatLensPage() {
     if (isConKay) {
       const m = matchConKaySkill(input.trim());
       if (m) { runConKaySkill(input.trim(), m); return; }
+      // Unit A5-backport — the explicit "run domain.macro {json}" command,
+      // the SAME client-initiated syntax ConKayOverlay accepts. Echoes the
+      // command as a user turn (so the confirm card that may follow isn't
+      // rendered into an empty thread), then routes through the confirm-
+      // gated executor above.
+      const runCmd = parseConKayRunCommand(input.trim());
+      if (runCmd) {
+        setLocalMessages((prev) => [...prev, {
+          id: `user-${Date.now()}`, role: 'user', content: input.trim(),
+          timestamp: new Date().toISOString(),
+        }]);
+        setInput('');
+        executeConKayMacro(runCmd.domain, runCmd.macro, runCmd.input);
+        return;
+      }
     }
 
     sendMutation.mutate(input);
-  }, [input, sendMutation, executeSlashCommand, isConKay, attachments, conkayVisionMutation, runConKaySkill]);
+  }, [input, sendMutation, executeSlashCommand, isConKay, attachments, conkayVisionMutation, runConKaySkill, executeConKayMacro]);
 
   // ── ConKay: voice-native STT in / TTS out when the mode is active ───────────
   const conkayVoice = useConKayVoice({
@@ -1859,6 +2078,15 @@ export default function ChatLensPage() {
       if (text.startsWith('/')) { executeSlashCommand(text); return; }
       const m = matchConKaySkill(text);
       if (m) { runConKaySkill(text, m); return; }
+      const runCmd = parseConKayRunCommand(text);
+      if (runCmd) {
+        setLocalMessages((prev) => [...prev, {
+          id: `user-${Date.now()}`, role: 'user', content: text,
+          timestamp: new Date().toISOString(),
+        }]);
+        executeConKayMacro(runCmd.domain, runCmd.macro, runCmd.input);
+        return;
+      }
       sendMutation.mutate(text);
     },
   });
@@ -1896,7 +2124,7 @@ export default function ChatLensPage() {
 
   // ConKay state machine — driven by real signals (not a screensaver).
   const conkayState: ConKayState =
-    (sendMutation.isPending || conkayVisionMutation.isPending || conkaySkillRunning) ? 'processing'
+    (sendMutation.isPending || conkayVisionMutation.isPending || conkaySkillRunning || conkayMacroRunning) ? 'processing'
       : conkayActing ? 'acting'
         : conkayVoice.speaking ? 'presenting'
           : conkayVoice.listening ? 'listening'
@@ -3542,14 +3770,38 @@ export default function ChatLensPage() {
                   // Virtuoso a stable scroll height (which silently unmounts the
                   // newest rows). A simple scroll container keeps every reply —
                   // including skill viz/citations — reliably mounted.
-                  <div className="flex-1 overflow-y-auto relative z-10">
-                    {threadItems.map((item, i) => (
-                      <div key={item.__kind === 'message' ? item.id : `${item.__kind}-${i}`}>
-                        {renderThreadItem(i, item)}
-                      </div>
-                    ))}
-                    <div ref={conkayBottomRef} aria-hidden="true" />
-                  </div>
+                  //
+                  // Unit A5-backport — wrapped in the SAME <ConKayCockpit> the
+                  // global overlay uses (imported, not forked): the left/right
+                  // panel lanes resolve every registered `conkay.*` panel from
+                  // `lib/panel-registry.ts` automatically (macro library,
+                  // DTU provenance, forward-sim, artifact viewer, orchestration
+                  // trace, telemetry, connector status), so chat's ConKay mode
+                  // and the summonable overlay share one cockpit, not two.
+                  <ConKayCockpit className="relative z-10">
+                    <>
+                      {threadItems.map((item, i) => (
+                        <div key={item.__kind === 'message' ? item.id : `${item.__kind}-${i}`}>
+                          {renderThreadItem(i, item)}
+                        </div>
+                      ))}
+                      {/* Unit A5-backport — pre-execution confirm for a mutating
+                          client-initiated macro call, set ONLY by
+                          conkayConfirmIfMutating with the REAL proposed
+                          {domain, macro, input}; resolveConkayPendingConfirm is
+                          the ONLY way execution proceeds or is skipped. */}
+                      {conkayPendingConfirm && (
+                        <ConKayActionConfirm
+                          domain={conkayPendingConfirm.domain}
+                          macro={conkayPendingConfirm.macro}
+                          input={conkayPendingConfirm.input}
+                          onConfirm={() => resolveConkayPendingConfirm(true)}
+                          onCancel={() => resolveConkayPendingConfirm(false)}
+                        />
+                      )}
+                      <div ref={conkayBottomRef} aria-hidden="true" />
+                    </>
+                  </ConKayCockpit>
                 ) : (
                   <Virtuoso
                     data={threadItems}
@@ -3851,10 +4103,31 @@ export default function ChatLensPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-gray-400 text-center mt-2">
-                Messages are saved as DTUs in your local lattice. AI runs through Ollama when
-                available.
-              </p>
+              {/* Composer footer — discoverable keyboard shortcuts (UI_QUALITY_RUBRIC
+                  §2: "a kbd chip, a palette entry, not a hidden keybinding
+                  nobody discovers"). Reference app: Claude.ai's composer,
+                  which shows its send/newline shortcuts inline instead of
+                  making the user guess — a single trimmed row, not a second
+                  block of chrome, keeping the "not cumbersome" bar. Every
+                  chip names a shortcut genuinely registered via
+                  useLensCommand above (send / focus-input / thread-search),
+                  not decorative text. */}
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-2 text-[10px] text-gray-500">
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">Enter</kbd> send
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">Shift+Enter</kbd> new line
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">/</kbd> commands
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">⌘K</kbd> search chats
+                </span>
+                <span className="text-gray-600">·</span>
+                <span>Saved as DTUs in your lattice</span>
+              </div>
             </div>
           </div>
         </main>

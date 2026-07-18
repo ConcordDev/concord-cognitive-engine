@@ -48,10 +48,10 @@ export function SceneCanvas({
   biomePalette?: string[];
   onCanvasClick: (x: number, z: number) => void;
   onSelect: (kind: 'prop' | 'spawn' | 'zone' | 'npc', id: string) => void;
-  onMove: (kind: 'prop', id: string, x: number, z: number) => void;
+  onMove: (kind: 'prop' | 'spawn' | 'zone' | 'npc', id: string, x: number, z: number) => void;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [drag, setDrag] = useState<{ id: string } | null>(null);
+  const [drag, setDrag] = useState<{ kind: 'prop' | 'spawn' | 'zone' | 'npc'; id: string } | null>(null);
 
   // world coord → svg px
   const px = (v: number) => ((v + BOX) / (BOX * 2)) * VIEW;
@@ -76,7 +76,7 @@ export function SceneCanvas({
   const handleDragMove = useCallback((e: React.MouseEvent) => {
     if (!drag) return;
     const { x, z } = toWorld(e.clientX, e.clientY);
-    onMove('prop', drag.id, x, z);
+    onMove(drag.kind, drag.id, x, z);
   }, [drag, toWorld, onMove]);
 
   const fill = biomePalette && biomePalette.length >= 2 ? biomePalette[1] : '#1c1917';
@@ -108,7 +108,12 @@ export function SceneCanvas({
 
         {/* zones (drawn first, beneath entities) */}
         {zones.map(z => (
-          <g key={z.id} onClick={(e) => { e.stopPropagation(); onSelect('zone', z.id); }} style={{ cursor: 'pointer' }}>
+          <g
+            key={z.id}
+            onClick={(e) => { e.stopPropagation(); onSelect('zone', z.id); }}
+            onMouseDown={(e) => { if (tool === 'select') { e.stopPropagation(); setDrag({ kind: 'zone', id: z.id }); onSelect('zone', z.id); } }}
+            style={{ cursor: tool === 'select' ? 'grab' : 'pointer' }}
+          >
             <circle
               cx={px(z.x)} cy={px(z.z)}
               r={(z.radius / (BOX * 2)) * VIEW}
@@ -130,7 +135,7 @@ export function SceneCanvas({
             key={p.id}
             transform={`translate(${px(p.x)} ${px(p.z)})`}
             onClick={(e) => { e.stopPropagation(); onSelect('prop', p.id); }}
-            onMouseDown={(e) => { if (tool === 'select') { e.stopPropagation(); setDrag({ id: p.id }); onSelect('prop', p.id); } }}
+            onMouseDown={(e) => { if (tool === 'select') { e.stopPropagation(); setDrag({ kind: 'prop', id: p.id }); onSelect('prop', p.id); } }}
             style={{ cursor: tool === 'select' ? 'grab' : 'pointer' }}
           >
             {selectedId === p.id && <circle r={13} fill="none" stroke="#f59e0b" strokeWidth={1.5} />}
@@ -146,7 +151,8 @@ export function SceneCanvas({
             key={n.id}
             transform={`translate(${px(n.x)} ${px(n.z)})`}
             onClick={(e) => { e.stopPropagation(); onSelect('npc', n.id); }}
-            style={{ cursor: 'pointer' }}
+            onMouseDown={(e) => { if (tool === 'select') { e.stopPropagation(); setDrag({ kind: 'npc', id: n.id }); onSelect('npc', n.id); } }}
+            style={{ cursor: tool === 'select' ? 'grab' : 'pointer' }}
           >
             {selectedId === n.id && <circle r={13} fill="none" stroke="#f59e0b" strokeWidth={1.5} />}
             <circle r={9} fill="#0c0a09" stroke="#a78bfa" strokeWidth={1.4} />
@@ -163,7 +169,8 @@ export function SceneCanvas({
             key={s.id}
             transform={`translate(${px(s.x)} ${px(s.z)})`}
             onClick={(e) => { e.stopPropagation(); onSelect('spawn', s.id); }}
-            style={{ cursor: 'pointer' }}
+            onMouseDown={(e) => { if (tool === 'select') { e.stopPropagation(); setDrag({ kind: 'spawn', id: s.id }); onSelect('spawn', s.id); } }}
+            style={{ cursor: tool === 'select' ? 'grab' : 'pointer' }}
           >
             {selectedId === s.id && <circle r={12} fill="none" stroke="#f59e0b" strokeWidth={1.5} />}
             <polygon

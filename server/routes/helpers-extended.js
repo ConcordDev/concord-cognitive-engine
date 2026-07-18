@@ -295,8 +295,11 @@ export default function registerHelpersExtendedRoutes(app, {
   // F2 (backend) — substrate liveness: one operator read composing gravity
   // (records living here / creator) + funnel (F1) + distribution K (F5) +
   // economy solvency (F4). The "is real data accumulating + are people retained"
-  // snapshot. Auth-gated, observe-only.
-  app.get("/api/admin/liveness", requireAuth(), asyncHandler(async (_req, res) => {
+  // snapshot. Role-gated (same owner/admin/sovereign/founder list as every
+  // other /api/admin/* route on the ops-telemetry page — was requireAuth()-only,
+  // which let any logged-in user read this operator metric; see
+  // docs/lens-specs/ops-telemetry-capability-map.md).
+  app.get("/api/admin/liveness", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (_req, res) => {
     const database = db || STATE?.db;
     try {
       const { livenessReport } = await import("../lib/liveness-report.js");

@@ -4,7 +4,10 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import registerFashionActions from "../domains/fashion.js";
+import { up as upFriendships } from "../migrations/214_friendships.js";
+import { sendFriendRequest, acceptFriendRequest } from "../lib/friendships.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -22,6 +25,16 @@ beforeEach(() => {
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+
+// Real, migrated friendships table backing the friends-scoped-feed +
+// clone-item tests below — the same fashion.js `ctx.db` +
+// listFriends()/areFriends() reads that timeline.js's friends-tier
+// privacy gate already exercises (server/tests/timeline-domain-parity.test.js).
+// Shared across this file (module-scope, like `_concordSTATE` above);
+// individual describe blocks use dedicated userIds so friendship rows
+// established in one test can never leak into another's assertions.
+const friendshipsDb = new Database(":memory:");
+upFriendships(friendshipsDb);
 
 function newItem(ctx = ctxA, over = {}) {
   return call("item-add", ctx, { name: "White tee", category: "top", cost: 30, ...over }).result.item;
@@ -301,6 +314,179 @@ describe("fashion.social feed", () => {
     const feed = call("social-feed", ctxA, { sort: "popular" });
     assert.equal(feed.result.posts[0].id, post.id);
     assert.equal(call("social-delete", ctxA, { id: post.id }).ok, true);
+  });
+});
+
+// fashion-capability-map.md #16 — "Social feed is global, not
+// friends-scoped; no clone item action". Dedicated userIds (never reused
+// elsewhere in this file) so friendship rows established here can't leak
+// into — or be assumed by — an unrelated test sharing the same
+// friendshipsDb.
+describe("fashion.social-feed friendsOnly", () => {
+  const owner = { actor: { userId: "fs_owner" }, userId: "fs_owner", db: friendshipsDb };
+  const friend = { actor: { userId: "fs_friend" }, userId: "fs_friend", db: friendshipsDb };
+  const stranger = { actor: { userId: "fs_stranger" }, userId: "fs_stranger", db: friendshipsDb };
+
+  function makeFriends(aId, bId) {
+    const req = sendFriendRequest(friendshipsDb, aId, bId);
+    assert.equal(req.ok, true);
+    if (req.status !== "accepted") {
+      const acc = acceptFriendRequest(friendshipsDb, req.id, bId);
+      assert.equal(acc.ok, true);
+    }
+  }
+
+  it("global feed (no friendsOnly) shows the post to a stranger", () => {
+    const outfit = call("outfit-create", owner, { name: "Owner look" }).result.outfit;
+    call("social-share-outfit", owner, { outfitId: outfit.id, caption: "hi" });
+    const global = call("social-feed", stranger, {});
+    assert.equal(global.ok, true);
+    assert.equal(global.result.posts.length, 1);
+    assert.equal(global.result.friendsOnly, false);
+  });
+
+  it("friendsOnly hides a non-friend's post that the global feed shows", () => {
+    const outfit = call("outfit-create", owner, { name: "Owner look 2" }).result.outfit;
+    call("social-share-outfit", owner, { outfitId: outfit.id, caption: "hi again" });
+    const scoped = call("social-feed", stranger, { friendsOnly: true });
+    assert.equal(scoped.ok, true);
+    assert.equal(scoped.result.posts.length, 0);
+    assert.equal(scoped.result.friendsOnly, true);
+  });
+
+  it("friendsOnly surfaces a confirmed friend's post", () => {
+    makeFriends("fs_owner", "fs_friend");
+    const outfit = call("outfit-create", owner, { name: "Owner look 3" }).result.outfit;
+    call("social-share-outfit", owner, { outfitId: outfit.id, caption: "hey friend" });
+    const scoped = call("social-feed", friend, { friendsOnly: true });
+    assert.equal(scoped.result.posts.length, 1);
+    assert.equal(scoped.result.posts[0].caption, "hey friend");
+  });
+
+  it("a friendless caller gets an honest empty state, never a silent fallback to the global feed", () => {
+    const outfit = call("outfit-create", owner, { name: "Owner look 4" }).result.outfit;
+    call("social-share-outfit", owner, { outfitId: outfit.id, caption: "lonely test" });
+    const lonely = { actor: { userId: "fs_lonely" }, userId: "fs_lonely", db: friendshipsDb };
+    const scoped = call("social-feed", lonely, { friendsOnly: true });
+    assert.equal(scoped.ok, true);
+    assert.equal(scoped.result.posts.length, 0);
+    // Sanity: the same caller's global (non-friends-scoped) feed IS
+    // non-empty — proves the empty result above is real scoping, not a
+    // broken/empty feed altogether.
+    const global = call("social-feed", lonely, {});
+    assert.ok(global.result.posts.length >= 1);
+  });
+
+  it("fails CLOSED to an empty feed when no db handle is available (never falls back to global)", () => {
+    const outfit = call("outfit-create", owner, { name: "Owner look 5" }).result.outfit;
+    call("social-share-outfit", owner, { outfitId: outfit.id, caption: "no db test" });
+    const noDb = { actor: { userId: "fs_nodb" }, userId: "fs_nodb" }; // ctx.db intentionally absent
+    const scoped = call("social-feed", noDb, { friendsOnly: true });
+    assert.equal(scoped.ok, true);
+    assert.equal(scoped.result.posts.length, 0);
+  });
+});
+
+describe("fashion.social-clone-item", () => {
+  const owner = { actor: { userId: "fc_owner" }, userId: "fc_owner", db: friendshipsDb };
+  const cloner = { actor: { userId: "fc_cloner" }, userId: "fc_cloner", db: friendshipsDb };
+  const friendCloner = { actor: { userId: "fc_friend_cloner" }, userId: "fc_friend_cloner", db: friendshipsDb };
+
+  it("clones a shared item into the caller's own closet as a genuine independent item", () => {
+    const shirt = newItem(owner, { name: "Silk shirt", category: "top", brand: "Acme", color: "red", cost: 120 });
+    const outfit = call("outfit-create", owner, { name: "Sharp fit", itemIds: [shirt.id] }).result.outfit;
+    const post = call("social-share-outfit", owner, { outfitId: outfit.id }).result.post;
+    assert.deepEqual(post.itemIds, [shirt.id]);
+
+    const cloneResult = call("social-clone-item", cloner, { postId: post.id, itemId: shirt.id });
+    assert.equal(cloneResult.ok, true);
+    const cloned = cloneResult.result.item;
+    assert.equal(cloned.name, "Silk shirt");
+    assert.equal(cloned.brand, "Acme");
+    assert.equal(cloned.color, "red");
+    assert.equal(cloned.cost, 120);
+    assert.notEqual(cloned.id, shirt.id);
+    assert.equal(cloned.timesWorn, 0);
+    assert.equal(cloned.clonedFrom.itemId, shirt.id);
+    // Not a confirmed friend — informational stamp says so, but the clone
+    // still succeeded (the feed is global by design; see comment on the
+    // macro).
+    assert.equal(cloned.clonedFrom.viaFriend, false);
+
+    // It's in the cloner's own closet, not the owner's.
+    const clonerItems = call("item-list", cloner, {}).result.items;
+    assert.ok(clonerItems.some((i) => i.id === cloned.id));
+    const ownerItems = call("item-list", owner, {}).result.items;
+    assert.equal(ownerItems.filter((i) => i.id === cloned.id).length, 0);
+    assert.equal(ownerItems.length, 1); // still just the original
+  });
+
+  it("stamps viaFriend:true when the cloner is a confirmed friend of the source owner", () => {
+    const req = sendFriendRequest(friendshipsDb, "fc_owner", "fc_friend_cloner");
+    if (req.status !== "accepted") acceptFriendRequest(friendshipsDb, req.id, "fc_friend_cloner");
+    const shirt = newItem(owner, { name: "Friend-cloned coat" });
+    const outfit = call("outfit-create", owner, { name: "Friend fit", itemIds: [shirt.id] }).result.outfit;
+    const post = call("social-share-outfit", owner, { outfitId: outfit.id }).result.post;
+    const cloned = call("social-clone-item", friendCloner, { postId: post.id, itemId: shirt.id }).result.item;
+    assert.equal(cloned.clonedFrom.viaFriend, true);
+  });
+
+  it("mutating the clone never touches the friend's original (item-update + item-wear)", () => {
+    const shirt = newItem(owner, { name: "Denim jacket", cost: 90 });
+    const outfit = call("outfit-create", owner, { name: "Casual", itemIds: [shirt.id] }).result.outfit;
+    const post = call("social-share-outfit", owner, { outfitId: outfit.id }).result.post;
+    const cloned = call("social-clone-item", cloner, { postId: post.id, itemId: shirt.id }).result.item;
+
+    call("item-update", cloner, { id: cloned.id, cost: 5, name: "Renamed" });
+    call("item-wear", cloner, { id: cloned.id });
+
+    const originalStill = call("item-list", owner, {}).result.items[0];
+    assert.equal(originalStill.cost, 90);
+    assert.equal(originalStill.name, "Denim jacket");
+    assert.equal(originalStill.timesWorn, 0);
+
+    const clonedNow = call("item-list", cloner, {}).result.items.find((i) => i.id === cloned.id);
+    assert.equal(clonedNow.cost, 5);
+    assert.equal(clonedNow.name, "Renamed");
+    assert.equal(clonedNow.timesWorn, 1);
+  });
+
+  it("deleting the clone never deletes (or otherwise affects) the friend's original", () => {
+    const shirt = newItem(owner, { name: "Survives deletion" });
+    const outfit = call("outfit-create", owner, { name: "Persist", itemIds: [shirt.id] }).result.outfit;
+    const post = call("social-share-outfit", owner, { outfitId: outfit.id }).result.post;
+    const cloned = call("social-clone-item", cloner, { postId: post.id, itemId: shirt.id }).result.item;
+
+    assert.equal(call("item-delete", cloner, { id: cloned.id }).ok, true);
+    const ownerItems = call("item-list", owner, {}).result.items;
+    assert.equal(ownerItems.length, 1);
+    assert.equal(ownerItems[0].id, shirt.id);
+  });
+
+  it("rejects cloning an itemId that was not part of the shared post", () => {
+    const shirt = newItem(owner, { name: "Only shared item" });
+    const notShared = newItem(owner, { name: "Not in outfit" });
+    const outfit = call("outfit-create", owner, { name: "Solo", itemIds: [shirt.id] }).result.outfit;
+    const post = call("social-share-outfit", owner, { outfitId: outfit.id }).result.post;
+
+    const r = call("social-clone-item", cloner, { postId: post.id, itemId: notShared.id });
+    assert.equal(r.ok, false);
+    assert.equal(call("item-list", cloner, {}).result.count, 0);
+  });
+
+  it("rejects an unknown postId", () => {
+    const r = call("social-clone-item", cloner, { postId: "nope", itemId: "also-nope" });
+    assert.equal(r.ok, false);
+  });
+
+  it("fails honestly if the source item was deleted after sharing", () => {
+    const shirt = newItem(owner, { name: "Deleted after share" });
+    const outfit = call("outfit-create", owner, { name: "Fleeting", itemIds: [shirt.id] }).result.outfit;
+    const post = call("social-share-outfit", owner, { outfitId: outfit.id }).result.post;
+    call("item-delete", owner, { id: shirt.id });
+
+    const r = call("social-clone-item", cloner, { postId: post.id, itemId: shirt.id });
+    assert.equal(r.ok, false);
   });
 });
 

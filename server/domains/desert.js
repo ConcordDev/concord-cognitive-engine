@@ -22,10 +22,12 @@ export default function registerDesertActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.desertLens) {
       STATE.desertLens = {
-        routes: new Map(),    // userId -> Map<routeId, route>
-        nodes: new Map(),     // userId -> Map<nodeId, node>
-        tracked: new Map(),   // userId -> Map<trackId, trackedLocation>
-        kits: new Map(),      // userId -> Map<kitId, survivalKit>
+        routes: new Map(),            // userId -> Map<routeId, route>
+        nodes: new Map(),             // userId -> Map<nodeId, node>
+        tracked: new Map(),           // userId -> Map<trackId, trackedLocation>
+        kits: new Map(),              // userId -> Map<kitId, survivalKit>
+        wildlifeSightings: new Map(), // userId -> Map<sightingId, sighting>
+        incidentReports: new Map(),   // userId -> Map<incidentId, incidentReport>
       };
     }
     return STATE.desertLens;
@@ -795,6 +797,342 @@ export default function registerDesertActions(registerLensAction) {
       return { ok: true, result: { deleted: params.id } };
     } catch (e) {
       return { ok: false, error: e?.message || "kitDelete failed" };
+    }
+  });
+
+  // ════════════════ FEATURE 7 — Wildlife sighting / species catalog ════════════════
+  // A real per-user sighting log (species, count, location, observation date,
+  // behavior, confidence, optional photo reference) with a nearby-sightings
+  // proximity query. This is the genuinely-missing capability the prior
+  // "Wildlife" tab faked — a stat card that mislabeled a count of resource
+  // nodes as "Species Cataloged." No node kind models this: a nodeSave
+  // "hazard"-style record is a standing map marker, not a dated wildlife
+  // observation with a species identity and confidence rating.
+
+  const SIGHTING_CONFIDENCE = new Set(["certain", "probable", "possible"]);
+
+  registerLensAction("desert", "sightingSave", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const species = String(params.species || "").trim().slice(0, 120);
+      if (!species) return { ok: false, error: "species required" };
+      const lat = Number(params.lat);
+      const lng = Number(params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return { ok: false, error: "lat/lng required" };
+      }
+      let count = parseInt(params.count, 10);
+      if (!Number.isFinite(count) || count < 1) count = 1;
+      const confidence = SIGHTING_CONFIDENCE.has(params.confidence) ? params.confidence : "probable";
+      const map = userMap(s.wildlifeSightings, actor(ctx));
+      const id = params.id && map.has(params.id) ? params.id : nextId("sighting");
+      const existing = map.get(id);
+      const sighting = {
+        id,
+        species,
+        commonOrScientific: String(params.commonOrScientific || "").slice(0, 120),
+        count,
+        lat,
+        lng,
+        // observedAt is the real-world observation date the field researcher
+        // logged (may be entered from notes after the fact) — distinct from
+        // createdAt (record-creation time). Defaults to now on creation;
+        // preserved across an edit that doesn't resupply it, same as
+        // createdAt's preservation pattern above.
+        observedAt: params.observedAt ? String(params.observedAt).slice(0, 40) : (existing?.observedAt || nowIso()),
+        behavior: String(params.behavior || "").slice(0, 300),
+        confidence,
+        notes: String(params.notes || "").slice(0, 500),
+        // Purely an optional caller-supplied reference — never fabricated or
+        // fetched from anywhere.
+        photoUrl: params.photoUrl ? String(params.photoUrl).slice(0, 2000) : (existing?.photoUrl || null),
+        createdAt: existing?.createdAt || nowIso(),
+        updatedAt: nowIso(),
+      };
+      map.set(id, sighting);
+      saveDesertState();
+      return { ok: true, result: sighting };
+    } catch (e) {
+      return { ok: false, error: e?.message || "sightingSave failed" };
+    }
+  });
+
+  registerLensAction("desert", "sightingList", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const map = userMap(s.wildlifeSightings, actor(ctx));
+      let sightings = Array.from(map.values());
+      if (params.species) {
+        const q = String(params.species).toLowerCase();
+        sightings = sightings.filter((n) => n.species.toLowerCase() === q);
+      }
+      sightings.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+      const bySpecies = {};
+      for (const n of map.values()) bySpecies[n.species] = (bySpecies[n.species] || 0) + 1;
+      return { ok: true, result: { sightings, count: sightings.length, bySpecies } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "sightingList failed" };
+    }
+  });
+
+  registerLensAction("desert", "sightingDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const map = userMap(s.wildlifeSightings, actor(ctx));
+      if (!params.id || !map.has(params.id)) return { ok: false, error: "not found" };
+      map.delete(params.id);
+      saveDesertState();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "sightingDelete failed" };
+    }
+  });
+
+  // Distance-sorted, radius-filtered sightings near a point (mirrors
+  // nodesNearby's shape; no kind-specific "nearest of each" categorization
+  // since species names aren't a fixed small enum like node kind).
+  registerLensAction("desert", "sightingsNearby", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const lat = Number(params.lat);
+      const lng = Number(params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return { ok: false, error: "lat/lng required" };
+      }
+      const radiusKm = parseFloat(params.radiusKm) || 50;
+      const here = { lat, lng };
+      const map = userMap(s.wildlifeSightings, actor(ctx));
+      const near = Array.from(map.values())
+        .map((n) => ({ ...n, distanceKm: Math.round(haversineKm(here, n) * 100) / 100 }))
+        .filter((n) => n.distanceKm <= radiusKm)
+        .sort((a, b) => a.distanceKm - b.distanceKm);
+      return { ok: true, result: { from: here, radiusKm, sightings: near, count: near.length } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "sightingsNearby failed" };
+    }
+  });
+
+  // ════════════════ FEATURE 8 — Infrastructure/hazard incident reporting ════════════════
+  // A dated, categorized incident report with a REAL status lifecycle
+  // (open → investigating → resolved, with an explicit reopen gate) — the
+  // genuinely-missing capability distinct from nodeSave's "hazard" kind.
+  // A hazard node is a permanent-until-deleted map marker ("there's a
+  // wash-out crossing here"); an incident report is a specific dated event
+  // with a lifecycle ("on <date>, someone reported a collapsed culvert
+  // here; status: open → investigating → resolved"). Category and severity
+  // are HARD-REJECTED on an invalid value (never silently defaulted, unlike
+  // nodeSave's kind/reliability/severity tolerant-fallback style) — a
+  // mis-categorized safety incident is a real honesty concern, not a
+  // cosmetic mis-tag.
+
+  const INCIDENT_CATEGORIES = new Set([
+    "washed_out_crossing",
+    "damaged_trail_marker",
+    "collapsed_structure",
+    "contaminated_water_source",
+    "downed_power_line",
+    "blocked_access_road",
+    "unstable_terrain",
+    "wildlife_hazard",
+    "equipment_failure",
+    "other",
+  ]);
+  const INCIDENT_SEVERITIES = new Set(["low", "moderate", "high", "critical"]);
+  const INCIDENT_STATUSES = new Set(["open", "investigating", "resolved"]);
+  const INCIDENT_OPEN_STATUSES = new Set(["open", "investigating"]);
+  const INCIDENT_TERMINAL_STATUS = "resolved";
+
+  // Files a new incident report. Always mints a fresh id — an incident
+  // report models a dated filing event, not an editable standing record
+  // (unlike nodeSave's create-or-update-by-id shape).
+  registerLensAction("desert", "incidentReport", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const category = String(params.category || "").toLowerCase();
+      if (!INCIDENT_CATEGORIES.has(category)) {
+        return { ok: false, error: `category must be one of ${[...INCIDENT_CATEGORIES].join(", ")}` };
+      }
+      const severity = String(params.severity || "").toLowerCase();
+      if (!INCIDENT_SEVERITIES.has(severity)) {
+        return { ok: false, error: `severity must be one of ${[...INCIDENT_SEVERITIES].join(", ")}` };
+      }
+      const description = String(params.description || "").trim().slice(0, 1000);
+      if (!description) return { ok: false, error: "description required" };
+      const lat = Number(params.lat);
+      const lng = Number(params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return { ok: false, error: "lat/lng required" };
+      }
+      const map = userMap(s.incidentReports, actor(ctx));
+      const id = nextId("incident");
+      const at = nowIso();
+      const reportedAt = params.reportedAt ? String(params.reportedAt).slice(0, 40) : at;
+      const incident = {
+        id,
+        category,
+        severity,
+        description,
+        lat,
+        lng,
+        status: "open",
+        reportedAt,
+        statusHistory: [{ from: null, to: "open", at }],
+        resolvedAt: null,
+        resolutionNotes: "",
+        createdAt: at,
+        updatedAt: at,
+      };
+      map.set(id, incident);
+      saveDesertState();
+      return { ok: true, result: incident };
+    } catch (e) {
+      return { ok: false, error: e?.message || "incidentReport failed" };
+    }
+  });
+
+  registerLensAction("desert", "incidentList", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const map = userMap(s.incidentReports, actor(ctx));
+      let incidents = Array.from(map.values());
+      if (params.status) {
+        const st = String(params.status).toLowerCase();
+        incidents = incidents.filter((i) => i.status === st);
+      }
+      if (params.category) {
+        const c = String(params.category).toLowerCase();
+        incidents = incidents.filter((i) => i.category === c);
+      }
+      incidents.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+      const byStatus = {};
+      const bySeverity = {};
+      for (const i of map.values()) {
+        byStatus[i.status] = (byStatus[i.status] || 0) + 1;
+        bySeverity[i.severity] = (bySeverity[i.severity] || 0) + 1;
+      }
+      return { ok: true, result: { incidents, count: incidents.length, byStatus, bySeverity } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "incidentList failed" };
+    }
+  });
+
+  // The real status lifecycle: open → investigating → resolved. resolved is
+  // TERMINAL — moving off it requires an explicit reopen:true (mirrors
+  // retail.js's tickets-status-move / deals-stage-move reopen gate).
+  // resolutionNotes is REQUIRED to transition into resolved (mirrors this
+  // session's masonry/plumbing/landscaping "resolution/deficiency notes
+  // required on terminal state" inspection pattern) — an incident can't be
+  // silently marked resolved with no record of what was done about it.
+  registerLensAction("desert", "incidentUpdateStatus", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const map = userMap(s.incidentReports, actor(ctx));
+      const incident = params.id ? map.get(params.id) : null;
+      if (!incident) return { ok: false, error: "not found" };
+      const status = String(params.status || "").toLowerCase();
+      if (!INCIDENT_STATUSES.has(status)) {
+        return { ok: false, error: `status must be one of ${[...INCIDENT_STATUSES].join(", ")}` };
+      }
+      if (status === incident.status) {
+        return { ok: false, error: `incident is already in status: ${status}` };
+      }
+
+      const reopening = incident.status === INCIDENT_TERMINAL_STATUS;
+      if (reopening) {
+        if (params.reopen !== true) {
+          return { ok: false, error: "incident is resolved — pass reopen: true to move it back into the queue" };
+        }
+        if (!INCIDENT_OPEN_STATUSES.has(status)) {
+          return { ok: false, error: "a resolved incident reopens into an open status only (open/investigating)" };
+        }
+      }
+
+      let resolutionNotes = incident.resolutionNotes;
+      if (status === INCIDENT_TERMINAL_STATUS) {
+        const notes = String(params.resolutionNotes || "").trim();
+        if (!notes) {
+          return { ok: false, error: "resolutionNotes required to resolve an incident" };
+        }
+        resolutionNotes = notes.slice(0, 1000);
+      }
+
+      const at = nowIso();
+      const entry = { from: incident.status, to: status, at };
+      if (params.note) entry.note = String(params.note).slice(0, 500);
+      if (reopening) entry.reopened = true;
+      if (!Array.isArray(incident.statusHistory)) incident.statusHistory = [];
+      incident.statusHistory.push(entry);
+
+      incident.status = status;
+      incident.resolutionNotes = resolutionNotes;
+      if (status === INCIDENT_TERMINAL_STATUS) {
+        incident.resolvedAt = at;
+      } else if (reopening) {
+        // Reopening means "not resolved anymore" — clear the closure stamp.
+        // resolutionNotes is left in place as an honest record of what was
+        // previously tried, not erased.
+        incident.resolvedAt = null;
+      }
+      incident.updatedAt = at;
+      saveDesertState();
+      return { ok: true, result: { incident, moved: entry } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "incidentUpdateStatus failed" };
+    }
+  });
+
+  registerLensAction("desert", "incidentDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const map = userMap(s.incidentReports, actor(ctx));
+      if (!params.id || !map.has(params.id)) return { ok: false, error: "not found" };
+      map.delete(params.id);
+      saveDesertState();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "incidentDelete failed" };
+    }
+  });
+
+  // Distance-sorted, radius-filtered incidents near a point. openCount /
+  // criticalCount are the genuine differentiator from a static hazard pin —
+  // a field party checking "what's actively dangerous near my route" cares
+  // about OPEN incidents; a resolved critical incident is informationally
+  // different from one still open, so criticalCount excludes resolved rows.
+  registerLensAction("desert", "incidentsNearby", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDesertState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const lat = Number(params.lat);
+      const lng = Number(params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return { ok: false, error: "lat/lng required" };
+      }
+      const radiusKm = parseFloat(params.radiusKm) || 50;
+      const here = { lat, lng };
+      const map = userMap(s.incidentReports, actor(ctx));
+      const near = Array.from(map.values())
+        .map((i) => ({ ...i, distanceKm: Math.round(haversineKm(here, i) * 100) / 100 }))
+        .filter((i) => i.distanceKm <= radiusKm)
+        .sort((a, b) => a.distanceKm - b.distanceKm);
+      const openCount = near.filter((i) => i.status !== INCIDENT_TERMINAL_STATUS).length;
+      const criticalCount = near.filter(
+        (i) => i.severity === "critical" && i.status !== INCIDENT_TERMINAL_STATUS
+      ).length;
+      return {
+        ok: true,
+        result: { from: here, radiusKm, incidents: near, count: near.length, openCount, criticalCount },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || "incidentsNearby failed" };
     }
   });
 }

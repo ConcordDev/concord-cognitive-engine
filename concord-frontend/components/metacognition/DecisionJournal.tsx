@@ -12,12 +12,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   BookMarked, Plus, CheckCircle2, XCircle, Clock, Trash2, Target,
-  TrendingUp, Loader2, ChevronDown, ChevronUp,
+  TrendingUp, Loader2, ChevronDown, ChevronUp, Sparkles, ChevronRight,
+  AlertTriangle, ShieldCheck, X, Star,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 
-interface DecisionOption { label?: string; score?: number; notes?: string }
+// journalLog now accepts (and journalList/journalBiasDetection read back) a
+// richer per-option shape — { name, score, evidence } — so biasDetection's
+// real anchoring/confirmation/sunk-cost math has something to run against.
+// Entries logged before this change persisted `options` as a flat array of
+// plain strings; those legacy rows still live in state and journalList still
+// returns them exactly as stored, so `options` here is a union and every
+// render path below normalizes before use instead of assuming the rich shape.
+interface EvidenceItem { supports: boolean; strength: number }
+interface RichOption { name: string; score: number | null; evidence: EvidenceItem[] }
+type JournalOption = string | RichOption;
+
+function normalizeOption(o: JournalOption): RichOption {
+  if (typeof o === 'string') return { name: o, score: null, evidence: [] };
+  return { name: o.name, score: o.score ?? null, evidence: Array.isArray(o.evidence) ? o.evidence : [] };
+}
+
 interface JournalDecision {
   id: string;
   title: string;
@@ -25,7 +41,10 @@ interface JournalDecision {
   predictedOutcome: string;
   confidence: number;
   domain: string;
-  options: string[];
+  options: JournalOption[];
+  chosen?: string | null;
+  initialAnchor?: number | null;
+  investedCost?: number | null;
   biasChecks: string[];
   status: string;
   actualOutcome: string | null;
@@ -33,6 +52,30 @@ interface JournalDecision {
   lesson?: string | null;
   createdAt: string;
   resolvedAt: string | null;
+}
+
+// Editable row shape for the "Advanced" option-entry form. Kept as strings
+// in state so a half-typed number ("-" or "") doesn't get coerced early;
+// submitDecision does the real numeric parsing + validation at send time.
+interface EvidenceRow { supports: boolean; strength: string }
+interface OptionRow { name: string; score: string; evidence: EvidenceRow[] }
+
+const emptyOptionRow = (): OptionRow => ({ name: '', score: '', evidence: [] });
+
+interface BiasFinding {
+  type: string;
+  description: string;
+  severity: 'high' | 'moderate' | 'low';
+  [key: string]: unknown;
+}
+interface BiasReport {
+  message?: string;
+  decisionsAnalyzed?: number;
+  biasesDetected?: number;
+  biases?: BiasFinding[];
+  biasIndex?: number;
+  riskLevel?: 'high' | 'moderate' | 'low';
+  recommendations?: string[];
 }
 
 interface ReliabilityBin {
@@ -83,12 +126,75 @@ export function DecisionJournal() {
   const [confidence, setConfidence] = useState(0.7);
   const [domain, setDomain] = useState('general');
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Advanced (optional) bias-detection data: per-option score + evidence +
+  // which option was chosen + anchor/invested-cost. Collapsed by default so
+  // the simple flat-option flow (or no options at all) stays the fast path;
+  // opting in is what unlocks real Bias Detection below (§ Bias Detection).
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [optionRows, setOptionRows] = useState<OptionRow[]>([emptyOptionRow(), emptyOptionRow()]);
+  const [chosenIdx, setChosenIdx] = useState<number | null>(null);
+  const [initialAnchor, setInitialAnchor] = useState('');
+  const [investedCost, setInvestedCost] = useState('');
+
+  const addOptionRow = () => setOptionRows((rows) => [...rows, emptyOptionRow()]);
+  const removeOptionRow = (i: number) => {
+    setOptionRows((rows) => rows.filter((_, idx) => idx !== i));
+    setChosenIdx((c) => (c === i ? null : c && c > i ? c - 1 : c));
+  };
+  const updateOptionRow = (i: number, patch: Partial<OptionRow>) =>
+    setOptionRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const addEvidenceRow = (optIdx: number) =>
+    setOptionRows((rows) => rows.map((r, idx) =>
+      idx === optIdx ? { ...r, evidence: [...r.evidence, { supports: true, strength: '' }] } : r
+    ));
+  const removeEvidenceRow = (optIdx: number, evIdx: number) =>
+    setOptionRows((rows) => rows.map((r, idx) =>
+      idx === optIdx ? { ...r, evidence: r.evidence.filter((_, ei) => ei !== evIdx) } : r
+    ));
+  const updateEvidenceRow = (optIdx: number, evIdx: number, patch: Partial<EvidenceRow>) =>
+    setOptionRows((rows) => rows.map((r, idx) =>
+      idx === optIdx ? { ...r, evidence: r.evidence.map((e, ei) => (ei === evIdx ? { ...e, ...patch } : e)) } : r
+    ));
+  const resetAdvanced = () => {
+    setShowAdvanced(false);
+    setOptionRows([emptyOptionRow(), emptyOptionRow()]);
+    setChosenIdx(null);
+    setInitialAnchor('');
+    setInvestedCost('');
+  };
 
   // Resolve form.
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [actualOutcome, setActualOutcome] = useState('');
   const [lesson, setLesson] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Bias Detection panel — real findings from journalBiasDetection, never a
+  // fabricated report. Loads only on request (not on every journal load) so
+  // a user who never fills in the Advanced section never pays for a call
+  // that can only ever say "no decision data".
+  const [biasReport, setBiasReport] = useState<BiasReport | null>(null);
+  const [biasLoading, setBiasLoading] = useState(false);
+  const [biasError, setBiasError] = useState<string | null>(null);
+
+  const runBiasDetection = async () => {
+    setBiasLoading(true);
+    setBiasError(null);
+    try {
+      const res = await lensRun<BiasReport>('metacognition', 'journalBiasDetection', {});
+      if (res.data.ok && res.data.result) {
+        setBiasReport(res.data.result);
+      } else {
+        setBiasError(res.data.error || 'Could not run bias detection.');
+      }
+    } catch (e) {
+      setBiasError(e instanceof Error ? e.message : 'Could not run bias detection.');
+    } finally {
+      setBiasLoading(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -113,16 +219,43 @@ export function DecisionJournal() {
   const submitDecision = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    const res = await lensRun('metacognition', 'journalLog', {
-      title, context, predictedOutcome: predicted, confidence, domain,
-    });
+    setFormError(null);
+
+    const payload: Record<string, any> = { title, context, predictedOutcome: predicted, confidence, domain };
+
+    if (showAdvanced) {
+      const namedRows = optionRows.filter((r) => r.name.trim());
+      if (namedRows.length > 0) {
+        payload.options = namedRows.map((r) => ({
+          name: r.name.trim(),
+          ...(r.score.trim() !== '' ? { score: Number(r.score) } : {}),
+          ...(r.evidence.length > 0
+            ? { evidence: r.evidence
+                .filter((e) => e.strength.trim() !== '')
+                .map((e) => ({ supports: e.supports, strength: Number(e.strength) })) }
+            : {}),
+        }));
+        // chosenIdx indexes into the full optionRows array (matches the
+        // radio buttons rendered per-row below), not the filtered namedRows
+        // — resolve against the original row so filtering out blank rows
+        // never shifts which option "chosen" points at.
+        if (chosenIdx != null && optionRows[chosenIdx]?.name.trim()) {
+          payload.chosen = optionRows[chosenIdx].name.trim();
+        }
+      }
+      if (initialAnchor.trim() !== '') payload.initialAnchor = Number(initialAnchor);
+      if (investedCost.trim() !== '') payload.investedCost = Number(investedCost);
+    }
+
+    const res = await lensRun('metacognition', 'journalLog', payload);
     setSaving(false);
     if (res.data.ok) {
       setTitle(''); setContext(''); setPredicted(''); setConfidence(0.7); setDomain('general');
+      resetAdvanced();
       setShowForm(false);
       load();
     } else {
-      setError(res.data.error || 'Failed to log decision');
+      setFormError(res.data.error || 'Failed to log decision');
     }
   };
 
@@ -298,6 +431,143 @@ export function DecisionJournal() {
                 </select>
               </div>
             </div>
+
+            {/* Advanced: per-option score + evidence + anchor/invested-cost —
+                the data Bias Detection (below) needs. Collapsed by default so
+                the fast flat path is unaffected for users who don't need it. */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="text-xs text-neon-cyan hover:underline flex items-center gap-1"
+            >
+              {showAdvanced ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              Advanced: options, evidence &amp; bias data (optional)
+            </button>
+
+            {showAdvanced && (
+              <div className="space-y-3 p-3 bg-black/20 rounded-lg border border-white/5">
+                <p className="text-xs text-gray-400">
+                  Add the options you considered, an optional numeric score for each,
+                  and evidence for/against. Mark which one you chose. This is what
+                  powers real Bias Detection below.
+                </p>
+                <div className="space-y-3">
+                  {optionRows.map((row, i) => (
+                    <div key={i} className="p-2 rounded bg-lattice-deep space-y-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setChosenIdx(i)}
+                          title="Mark as chosen"
+                          aria-label={`Mark option ${i + 1} as chosen`}
+                          className={`shrink-0 p-1 rounded ${chosenIdx === i ? 'text-neon-yellow' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                          <Star className="w-3.5 h-3.5" fill={chosenIdx === i ? 'currentColor' : 'none'} />
+                        </button>
+                        <input
+                          className="input-lattice flex-1"
+                          placeholder={`Option ${i + 1} name`}
+                          value={row.name}
+                          onChange={(e) => updateOptionRow(i, { name: e.target.value })}
+                        />
+                        <input
+                          className="input-lattice w-24"
+                          placeholder="Score"
+                          inputMode="decimal"
+                          value={row.score}
+                          onChange={(e) => updateOptionRow(i, { score: e.target.value })}
+                        />
+                        {optionRows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeOptionRow(i)}
+                            className="p-1 text-gray-500 hover:text-red-400"
+                            aria-label={`Remove option ${i + 1}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {row.evidence.length > 0 && (
+                        <div className="space-y-1 pl-6">
+                          {row.evidence.map((ev, ei) => (
+                            <div key={ei} className="flex items-center gap-2">
+                              <select
+                                className="input-lattice text-xs py-1"
+                                value={ev.supports ? 'for' : 'against'}
+                                onChange={(e) => updateEvidenceRow(i, ei, { supports: e.target.value === 'for' })}
+                                aria-label="Evidence supports or contradicts"
+                              >
+                                <option value="for">Supports</option>
+                                <option value="against">Contradicts</option>
+                              </select>
+                              <input
+                                className="input-lattice flex-1 text-xs py-1"
+                                placeholder="Strength (0-10)"
+                                inputMode="decimal"
+                                value={ev.strength}
+                                onChange={(e) => updateEvidenceRow(i, ei, { strength: e.target.value })}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeEvidenceRow(i, ei)}
+                                className="p-1 text-gray-500 hover:text-red-400"
+                                aria-label="Remove evidence"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => addEvidenceRow(i)}
+                        className="ml-6 text-[11px] text-gray-400 hover:text-neon-cyan"
+                      >
+                        + Add evidence
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addOptionRow}
+                  className="text-xs text-neon-cyan hover:underline"
+                >
+                  + Add another option
+                </button>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Initial anchor (optional)</label>
+                    <input
+                      className="input-lattice w-full"
+                      placeholder="e.g. the first number you saw"
+                      inputMode="decimal"
+                      value={initialAnchor}
+                      onChange={(e) => setInitialAnchor(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Invested cost (optional)</label>
+                    <input
+                      className="input-lattice w-full"
+                      placeholder="e.g. time/money already spent"
+                      inputMode="decimal"
+                      value={investedCost}
+                      onChange={(e) => setInvestedCost(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formError && (
+              <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-2">{formError}</div>
+            )}
+
             <button
               onClick={submitDecision}
               disabled={!title.trim() || saving}
@@ -356,6 +626,7 @@ export function DecisionJournal() {
                       <button
                         onClick={() => setExpanded(isExp ? null : d.id)}
                         className="p-1 text-gray-400 hover:text-gray-300"
+                        aria-label={isExp ? `Collapse ${d.title}` : `Expand ${d.title}`}
                       >
                         {isExp ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -373,6 +644,32 @@ export function DecisionJournal() {
                     <div className="mt-3 pt-3 border-t border-gray-700/30 space-y-2 text-xs text-gray-400">
                       {d.context && <p><span className="text-gray-400">Context:</span> {d.context}</p>}
                       {d.predictedOutcome && <p><span className="text-gray-400">Predicted:</span> {d.predictedOutcome}</p>}
+                      {Array.isArray(d.options) && d.options.length > 0 && (
+                        <div>
+                          <span className="text-gray-400">Options considered:</span>
+                          <ul className="mt-1 space-y-0.5">
+                            {d.options.map((raw, i) => {
+                              const opt = normalizeOption(raw);
+                              const isChosen = !!d.chosen && opt.name === d.chosen;
+                              return (
+                                <li key={i} className={isChosen ? 'text-neon-yellow flex items-center gap-1' : 'flex items-center gap-1'}>
+                                  {isChosen && <Star className="w-3 h-3 shrink-0" fill="currentColor" />}
+                                  {opt.name}
+                                  {opt.score != null && <span className="text-gray-500"> (score {opt.score})</span>}
+                                  {opt.evidence.length > 0 && (
+                                    <span className="text-gray-500">
+                                      {' '}— {opt.evidence.filter((e) => e.supports).length} for /{' '}
+                                      {opt.evidence.filter((e) => !e.supports).length} against
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+                      {d.initialAnchor != null && <p><span className="text-gray-400">Initial anchor:</span> {d.initialAnchor}</p>}
+                      {d.investedCost != null && <p><span className="text-gray-400">Invested cost:</span> {d.investedCost}</p>}
                       {d.actualOutcome && <p><span className="text-gray-400">Actual:</span> {d.actualOutcome}</p>}
                       {d.lesson && <p className="text-neon-yellow"><span className="text-gray-400">Lesson:</span> {d.lesson}</p>}
                       {d.resolvedAt && <p className="text-gray-400">Resolved: {fmtDate(d.resolvedAt)}</p>}
@@ -432,8 +729,111 @@ export function DecisionJournal() {
           </div>
         )}
       </div>
+
+      {/* Bias Detection — real anchoring/confirmation/sunk-cost findings
+          computed from this journal's own rich entries (journalBiasDetection),
+          never a canned report. A prior pass removed the biasDetection button
+          from the Predictions Analysis panel because that surface's data model
+          (predictions_list) has no options/chosen/anchor concept at all, so the
+          button could only ever say "no bias data" — see
+          docs/lens-specs/metacognition-capability-map.md. Now that the journal
+          itself captures real per-option score/evidence/anchor/invested-cost
+          (the Advanced section above), this is the honest home for it. */}
+      <div className="panel p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-400" /> Bias Detection
+          </h3>
+          <button
+            onClick={runBiasDetection}
+            disabled={biasLoading}
+            className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
+          >
+            {biasLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {biasLoading ? 'Analyzing...' : 'Run Bias Detection'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">
+          Analyzes anchoring, confirmation bias, and sunk-cost patterns across the
+          decisions above that were logged with the Advanced (options/evidence/
+          anchor/invested-cost) fields filled in. Needs at least 2 such decisions
+          per pattern to say anything.
+        </p>
+
+        {biasError && (
+          <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-2">{biasError}</div>
+        )}
+
+        {biasReport && (
+          <div className="space-y-3">
+            {biasReport.message && (
+              <p className="text-sm text-gray-400">{biasReport.message}</p>
+            )}
+            {!biasReport.message && (
+              <>
+                <div className="flex flex-wrap items-center gap-4 text-xs">
+                  <span className="text-gray-400">
+                    Decisions analyzed: <span className="text-gray-200 font-mono">{biasReport.decisionsAnalyzed}</span>
+                  </span>
+                  <span className="text-gray-400">
+                    Biases found: <span className="text-gray-200 font-mono">{biasReport.biasesDetected}</span>
+                  </span>
+                  {biasReport.riskLevel && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full capitalize font-medium ${
+                        biasReport.riskLevel === 'high'
+                          ? 'bg-red-500/15 text-red-400'
+                          : biasReport.riskLevel === 'moderate'
+                            ? 'bg-yellow-500/15 text-yellow-400'
+                            : 'bg-green-500/15 text-green-400'
+                      }`}
+                    >
+                      {biasReport.riskLevel} risk
+                    </span>
+                  )}
+                </div>
+
+                {(biasReport.biasesDetected ?? 0) === 0 ? (
+                  <p className="text-sm text-green-400 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" /> No systematic bias patterns detected in {biasReport.decisionsAnalyzed} analyzed decision{biasReport.decisionsAnalyzed === 1 ? '' : 's'}.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {(biasReport.biases || []).map((b, i) => (
+                      <div key={i} className="lens-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium capitalize">{b.type.replace(/_/g, ' ')}</span>
+                          <span
+                            className={`text-[10px] uppercase px-1.5 py-0.5 rounded-full ${
+                              b.severity === 'high'
+                                ? 'bg-red-500/15 text-red-400'
+                                : b.severity === 'moderate'
+                                  ? 'bg-yellow-500/15 text-yellow-400'
+                                  : 'bg-gray-500/15 text-gray-400'
+                            }`}
+                          >
+                            {b.severity}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">{b.description}</p>
+                      </div>
+                    ))}
+                    {Array.isArray(biasReport.recommendations) && biasReport.recommendations.length > 0 && (
+                      <div className="text-xs text-gray-400 space-y-1 pt-1">
+                        {biasReport.recommendations.map((rec, i) => (
+                          <p key={i}>• {rec}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-export type { DecisionOption };
+export type { JournalOption, RichOption, EvidenceItem };

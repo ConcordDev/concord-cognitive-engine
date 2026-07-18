@@ -16,6 +16,11 @@
 //     drift: { likely_kind, severity },
 //   }
 
+// This file lives one directory level from server/domains/ (server/lib/ vs
+// server/domains/), but both sit one level below server/ — the relative
+// path to the heartbeat registry is identical either way.
+import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
+
 export async function composeForecast(db, STATE, worldId) {
   if (!db || !worldId) return { ok: false, reason: "missing_inputs" };
   const out = {
@@ -532,3 +537,105 @@ export async function checkAlerts(db, STATE, userId, worldId) {
     forecastComposedAt: base.composedAt,
   };
 }
+
+// ── Alert live-delivery sweep (Wave 4) ──────────────────────────────────────
+//
+// Closes docs/WAVE4_INVENTORY.md's forecast row: `checkAlerts` above was
+// pull-only — nothing evaluated a user's subscriptions unless they clicked
+// "Check against fresh forecast" in AlertSubscriptions.tsx. This heartbeat
+// is the extension point the capability-map doc named explicitly: it calls
+// `checkAlerts` per subscribed (user, world) pair on a clock and, on a real
+// trigger, pushes a `forecast:alert-triggered` event to that user's socket
+// room — the exact same real-time-to-a-connected-tab shape already shipped
+// for `productivity:reminder-fired` (server/domains/productivity.js's
+// productivity-reminder-sweep). Honest scope, identical to that precedent:
+// this codebase has no service-worker Web Push pipeline, so there is no
+// OS-level/desktop push here — only a live push to whichever tab(s) the
+// user currently has open via socket.io. A user with no connected socket
+// still gets their subscription correctly evaluated and `last_fired_at`
+// stamped by `checkAlerts`/`markSubsFired` (unchanged) — there is just no
+// live delivery for them, matching AlertSubscriptions.tsx's manual "Check
+// against fresh forecast" fallback, which remains the correct path for a
+// user who was offline when their alert tripped.
+//
+// Per-user realtime emit — same shape as domains/productivity.js's
+// (non-exported, so re-implemented rather than imported) emitToUser and
+// domains/collab.js#emitToUser / domains/message.js#emitToUserRoom: push to
+// the `user:${userId}` room every authenticated socket auto-joins on
+// connect (server.js:8535), reached through the global `_concordREALTIME`
+// singleton so this lib-level module needs no import from server.js.
+// Best-effort — a disconnected user is a silent no-op, the correct behavior
+// of a realtime-only delivery channel.
+function emitToUser(userId, name, payload) {
+  const REALTIME = globalThis._concordREALTIME;
+  try {
+    REALTIME?.io?.to(`user:${userId}`).emit(name, { userId, ...payload, ts: Date.now() });
+  } catch (_e) { /* best effort — client falls back to the manual "check now" path */ }
+}
+
+// Every subscribed (user, world) pair currently on file. `forecast_alert_subs`
+// isn't scoped per-world sharding (unlike e.g. faction_strategy_state) — it's
+// a small user-owned preferences table, so a single global sweep over all
+// rows is the right shape (mirrors productivity-reminder-sweep's scope).
+function listDistinctAlertSubscribers(db) {
+  ensureAlertTable(db);
+  return db.prepare(`
+    SELECT DISTINCT user_id, world_id FROM forecast_alert_subs
+  `).all();
+}
+
+// Cadence: frequency 20 on the 15s governor tick = ~5 minutes. Reasoning:
+// unlike productivity reminders (minute-granularity, cheap in-memory Map
+// scan), each subscriber checked here re-composes a full forecast
+// (embodied-signal reads + faction-strategy + forward-prediction queries),
+// so the sweep cost scales with distinct-subscriber count — this needs to
+// stay well above the 15s tick floor. Severe-weather-class signals (drift
+// severity, faction moves, forward predictions) also don't meaningfully
+// change tick-to-tick; they're inputs with hour-scale horizons. 5 minutes
+// is frequent enough that a genuinely severe/high-confidence event reaches
+// a connected user promptly, without re-composing every subscriber's
+// forecast on a cadence the underlying signals can't outrun. Kill-switch:
+// CONCORD_FORECAST_ALERT_SWEEP=0.
+registerHeartbeat("forecast-alert-sweep", {
+  frequency: 20,
+  scope: "global",
+  handler: async ({ state, db } = {}) => {
+    try {
+      if (process.env.CONCORD_FORECAST_ALERT_SWEEP === "0") return { ok: true, skipped: "disabled" };
+      if (!db) return { ok: true, skipped: "no_db" };
+      let subscribers;
+      try {
+        subscribers = listDistinctAlertSubscribers(db);
+      } catch (err) {
+        return { ok: false, reason: "query_failed", error: String(err?.message || err) };
+      }
+      let checked = 0;
+      let firedSubs = 0;
+      let delivered = 0;
+      for (const row of subscribers) {
+        try {
+          const userId = row && row.user_id;
+          const worldId = row && row.world_id;
+          if (!userId || !worldId) continue; // malformed row — skip, never abort the sweep
+          const result = await checkAlerts(db, state, userId, worldId);
+          checked += 1;
+          if (!result || !result.ok) continue;
+          const triggered = Array.isArray(result.triggered) ? result.triggered : [];
+          if (!triggered.length) continue;
+          firedSubs += triggered.length;
+          try {
+            emitToUser(userId, "forecast:alert-triggered", {
+              worldId,
+              triggered,
+              forecastComposedAt: result.forecastComposedAt ?? null,
+            });
+            delivered += 1;
+          } catch (_e) { /* one user's emit failing must not block the rest */ }
+        } catch (_e) { /* one malformed subscriber row must not abort the sweep */ }
+      }
+      return { ok: true, checked, firedSubs, delivered };
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: String(err?.message || err) };
+    }
+  },
+});

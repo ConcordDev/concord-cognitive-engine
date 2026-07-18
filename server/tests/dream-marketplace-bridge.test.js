@@ -2,18 +2,28 @@
  * Tier-2 contract tests for the dream -> marketplace promotion bridge
  * (server/lib/dream-marketplace-bridge.js).
  *
- * Pins two things:
- *   1. The dream path (promoteDreamDTU / scoreDreamCandidate / runPromotionPass)
- *      is byte-identical in shape/behavior to before the S4 generalization —
- *      it's now a thin wrapper over promoteCandidateAsDTU with dream-specific
- *      opts baked in, but the seller id, id prefix, promotionSource, price,
- *      and repair floor are unchanged.
- *   2. The new generic seam (promoteCandidateAsDTU) supports a NON-dream kind
+ * Pins three things:
+ *   1. The FREE dream path (promoteDreamDTU / scoreDreamCandidate /
+ *      runPromotionPass) is byte-identical in shape/behavior to before the
+ *      P-D fix — it's a thin wrapper over promoteCandidateAsDTU with
+ *      dream-specific opts baked in and never supplies userPrice, so it
+ *      always takes the free branch (STATE.marketplaceListings, unchanged).
+ *   2. The generic seam (promoteCandidateAsDTU) supports a NON-dream kind
  *      (a fake "recipe" candidate) with custom scoreFn / sellerLabel / idPrefix
- *      / dtuType / licenseTerms / userPrice, producing a listing that carries
- *      those fields — without touching STATE.marketplaceListings in any way
- *      other than the plain in-memory Map write the dream path already does,
- *      and without calling into server/economy/* at all.
+ *      / dtuType / licenseTerms / userPrice.
+ *   3. (P-D fix, 2026-07) A MONETIZED promotion (real opts.userPrice > 0) no
+ *      longer writes into STATE.marketplaceListings — a store with zero
+ *      purchase readers a priced listing could never actually be sold from
+ *      (docs/lens-specs/creator-capability-map.md finding #3 describes the
+ *      identical defect pattern). It writes onto the underlying DTU's own
+ *      `dtu.marketplace` field instead — the one store
+ *      `marketplace.purchaseWithRoyalties` (server.js) actually reads. The
+ *      FREE path is untouched by this fix (still STATE.marketplaceListings,
+ *      still no consent required) — see the "(a) ... regression" case below.
+ *      Money-path proof (buyer debited, seller/ancestors credited, no CC
+ *      minted, source-fragment citations register + get paid on sale) lives
+ *      in tests/economy/dream-commerce-purchase-conservation.test.js, which
+ *      boots the real server and purchases a promoted dream end-to-end.
  *
  * Run: node --test tests/dream-marketplace-bridge.test.js
  */
@@ -142,7 +152,7 @@ describe("dream-marketplace-bridge: generic seam supports a non-dream kind", () 
     STATE = freshState([[dtuId, makeRecipeDtu(dtuId)]]);
   });
 
-  it("promoteCandidateAsDTU promotes a 'recipe' candidate with custom labels, price, and license metadata", async () => {
+  it("promoteCandidateAsDTU promotes a PRICED 'recipe' candidate onto dtu.marketplace (the real, purchasable store) — P-D fix", async () => {
     const candidate = { dtuId, householdRating: 0.9 };
     const db = new Database(":memory:");
     await runMigrations(db);
@@ -162,17 +172,26 @@ describe("dream-marketplace-bridge: generic seam supports a non-dream kind", () 
     });
 
     assert.equal(result.promoted, true);
-    assert.match(result.listingId, /^recipe-listing-/);
+    // Priced promotions no longer mint a synthetic dead-store id — the
+    // "listing" IS the dtuId, because that's what marketplace.purchaseWithRoyalties
+    // (server.js) actually keys off.
+    assert.equal(result.listingId, dtuId);
+    assert.equal(result.dtuId, dtuId);
     assert.equal(result.score, 90);
 
-    const listing = STATE.marketplaceListings.get(result.listingId);
-    assert.ok(listing);
-    assert.equal(listing.sellerId, "system_recipe_promoter");
-    assert.equal(listing.promotionSource, "recipe_promoter");
-    assert.equal(listing.dtuType, "recipe");
-    assert.equal(listing.price, 25);
-    assert.deepEqual(listing.licenseTerms, { kind: "royalty_only", exclusive: false });
-    assert.equal(listing.sourceDtuId, dtuId);
+    // Nothing was written to the dead STATE.marketplaceListings store.
+    assert.equal(STATE.marketplaceListings, undefined);
+
+    // The real store: dtu.marketplace, in the exact shape marketplace.list
+    // produces so purchaseWithRoyalties can actually sell it.
+    const dtu = STATE.dtus.get(dtuId);
+    assert.ok(dtu.marketplace, "priced listing lives on dtu.marketplace");
+    assert.equal(dtu.marketplace.listed, true);
+    assert.equal(dtu.marketplace.seller, "user-recipe");
+    assert.equal(dtu.marketplace.contentType, "recipe");
+    assert.equal(dtu.marketplace.price, 25);
+    assert.deepEqual(dtu.marketplace.licenseTerms, { kind: "royalty_only", exclusive: false });
+    assert.equal(dtu.scope, "marketplace");
   });
 
   it("promoteCandidateAsDTU defaults price to 0 and omits optional metadata when not supplied (dream-compatible default)", async () => {
@@ -254,7 +273,7 @@ describe("dream-marketplace-bridge: allow_phenomenal_monetization consent gate",
     assert.equal(result.reason, "consent_required");
   });
 
-  it("(c) a priced listing WITH consent granted succeeds, carrying the real price + license terms unchanged", async () => {
+  it("(c) a priced listing WITH consent granted succeeds, carrying the real price + license terms onto dtu.marketplace (the real store)", async () => {
     grantConsent(db, userId, "allow_phenomenal_monetization");
 
     const result = await promoteCandidateAsDTU(STATE, { dtuId }, opts({
@@ -263,10 +282,14 @@ describe("dream-marketplace-bridge: allow_phenomenal_monetization consent gate",
     }));
 
     assert.equal(result.promoted, true);
-    const listing = STATE.marketplaceListings.get(result.listingId);
-    assert.equal(listing.price, 42);
-    assert.deepEqual(listing.licenseTerms, { kind: "personal_use_only", exclusive: false });
-    assert.equal(listing.sourceDtuId, dtuId);
+    assert.equal(result.listingId, dtuId);
+    assert.equal(STATE.marketplaceListings, undefined, "priced listings never touch the dead store");
+
+    const dtu = STATE.dtus.get(dtuId);
+    assert.equal(dtu.marketplace.listed, true);
+    assert.equal(dtu.marketplace.price, 42);
+    assert.equal(dtu.marketplace.seller, userId);
+    assert.deepEqual(dtu.marketplace.licenseTerms, { kind: "personal_use_only", exclusive: false });
   });
 
   it("(d) revoking consent blocks FUTURE priced listings but does not retroactively unlist an already-created listing", async () => {
@@ -274,8 +297,9 @@ describe("dream-marketplace-bridge: allow_phenomenal_monetization consent gate",
 
     const first = await promoteCandidateAsDTU(STATE, { dtuId }, opts({ userPrice: 15 }));
     assert.equal(first.promoted, true);
-    const existingListing = STATE.marketplaceListings.get(first.listingId);
-    assert.equal(existingListing.price, 15);
+    const dtuAfterFirst = STATE.dtus.get(dtuId);
+    assert.equal(dtuAfterFirst.marketplace.price, 15);
+    assert.equal(dtuAfterFirst.marketplace.listed, true);
 
     const revoke = revokeConsent(db, userId, "allow_phenomenal_monetization");
     assert.equal(revoke.ok, true);
@@ -283,19 +307,20 @@ describe("dream-marketplace-bridge: allow_phenomenal_monetization consent gate",
 
     // The already-created listing is untouched — promoteCandidateAsDTU only
     // gates the creation path, never re-checks consent on read.
-    const stillThere = STATE.marketplaceListings.get(first.listingId);
-    assert.deepEqual(stillThere, existingListing);
-    assert.equal(stillThere.price, 15);
-    assert.equal(stillThere.status, "active");
+    const stillListed = STATE.dtus.get(dtuId);
+    assert.equal(stillListed.marketplace.price, 15);
+    assert.equal(stillListed.marketplace.listed, true);
 
     // But a NEW priced listing attempt is now blocked.
     STATE.dtus.set("dream-dtu-consent-2", makeDreamDtu("dream-dtu-consent-2"));
     const secondRetry = await promoteCandidateAsDTU(STATE, { dtuId: "dream-dtu-consent-2" }, opts({ userPrice: 15 }));
     assert.equal(secondRetry.promoted, false);
     assert.equal(secondRetry.reason, "consent_required");
+    assert.equal(STATE.dtus.get("dream-dtu-consent-2").marketplace, undefined, "blocked attempt never touches the DTU");
 
     // A free listing for the same user remains completely unaffected by revocation.
     const freeAfterRevoke = await promoteCandidateAsDTU(STATE, { dtuId }, opts());
     assert.equal(freeAfterRevoke.promoted, true);
+    assert.ok(STATE.marketplaceListings.get(freeAfterRevoke.listingId), "free path still uses the display-only store");
   });
 });

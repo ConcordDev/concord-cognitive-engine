@@ -32,6 +32,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import STSVKExplorer from '@/components/visualizations/STSVKExplorer';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
+import { MathFormula } from '@/components/math/MathFormula';
 
 /* ─── Interfaces ─── */
 interface ExpressionRecord {
@@ -51,50 +52,6 @@ interface FormulaRecord {
 interface PlotPoint {
   x: number;
   y: number;
-}
-
-/* ─── Unicode LaTeX-style display helper ─── */
-function renderFormula(latex: string): string {
-  return latex
-    .replace(/\\pi/g, '\u03C0')
-    .replace(/\\theta/g, '\u03B8')
-    .replace(/\\alpha/g, '\u03B1')
-    .replace(/\\beta/g, '\u03B2')
-    .replace(/\\gamma/g, '\u03B3')
-    .replace(/\\delta/g, '\u03B4')
-    .replace(/\\epsilon/g, '\u03B5')
-    .replace(/\\sigma/g, '\u03C3')
-    .replace(/\\Sigma/g, '\u03A3')
-    .replace(/\\lambda/g, '\u03BB')
-    .replace(/\\mu/g, '\u03BC')
-    .replace(/\\omega/g, '\u03C9')
-    .replace(/\\Omega/g, '\u03A9')
-    .replace(/\\phi/g, '\u03C6')
-    .replace(/\\psi/g, '\u03C8')
-    .replace(/\\tau/g, '\u03C4')
-    .replace(/\\infty/g, '\u221E')
-    .replace(/\\int/g, '\u222B')
-    .replace(/\\sum/g, '\u2211')
-    .replace(/\\prod/g, '\u220F')
-    .replace(/\\sqrt\{([^}]+)\}/g, '\u221A($1)')
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
-    .replace(/\^2/g, '\u00B2')
-    .replace(/\^3/g, '\u00B3')
-    .replace(/\^n/g, '\u207F')
-    .replace(/\\neq/g, '\u2260')
-    .replace(/\\leq/g, '\u2264')
-    .replace(/\\geq/g, '\u2265')
-    .replace(/\\approx/g, '\u2248')
-    .replace(/\\pm/g, '\u00B1')
-    .replace(/\\times/g, '\u00D7')
-    .replace(/\\div/g, '\u00F7')
-    .replace(/\\cdot/g, '\u00B7')
-    .replace(/\\rightarrow/g, '\u2192')
-    .replace(/\\leftarrow/g, '\u2190')
-    .replace(/\\partial/g, '\u2202')
-    .replace(/\\nabla/g, '\u2207')
-    .replace(/\{/g, '')
-    .replace(/\}/g, '');
 }
 
 /* ─── Simple function plotter logic ─── */
@@ -824,7 +781,9 @@ export default function MathLensPage() {
                     {newFormulaLatex && (
                       <div className="p-3 bg-lattice-surface rounded-lg">
                         <p className="text-xs text-gray-400 mb-1">Preview:</p>
-                        <p className="font-mono text-lg">{renderFormula(newFormulaLatex)}</p>
+                        <div className="text-lg overflow-x-auto">
+                          <MathFormula latex={newFormulaLatex} displayMode={false} />
+                        </div>
                       </div>
                     )}
                     <div className="flex gap-2">
@@ -881,9 +840,9 @@ export default function MathLensPage() {
                               <Trash2 className="w-3 h-3 text-neon-pink" />
                             </button>
                           </div>
-                          {/* Equation editor style display */}
-                          <div className="p-3 bg-lattice-deep rounded-lg mb-2 border border-white/5 text-center">
-                            <p className="font-mono text-lg tracking-wide">{renderFormula(item.data.latex)}</p>
+                          {/* Equation editor style display — real KaTeX rendering */}
+                          <div className="p-3 bg-lattice-deep rounded-lg mb-2 border border-white/5 text-center overflow-x-auto">
+                            <MathFormula latex={item.data.latex} displayMode className="text-lg" />
                           </div>
                           {item.data.description && (
                             <p className="text-xs text-gray-300">{item.data.description}</p>

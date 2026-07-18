@@ -72,7 +72,7 @@
         500,
         1500
       ],
-      "description": "Faction chiefs, century-old archivists, regional powers, Medici Supreme Elder tier, Concordia Envoy Chief tier."
+      "description": "Faction chiefs, century-old archivists, regional powers, Vessine Supreme Elder tier, Concordia Envoy Chief tier."
     },
     {
       "id": "boss",
@@ -369,7 +369,7 @@
           ]
         }
       },
-      "high_healer_aerasi_medici": {
+      "high_healer_aerasi_vessine": {
         "power_tier": "standard",
         "level": 80,
         "fighting_style": {
@@ -404,7 +404,7 @@
           ]
         }
       },
-      "elder_walker_neyahwetin": {
+      "elder_walker_kanewola": {
         "power_tier": "standard",
         "level": 80,
         "fighting_style": {
@@ -1337,7 +1337,7 @@
           ]
         }
       },
-      "arasacorp_vp_kael_renn": {
+      "nevex_vp_kael_renn": {
         "power_tier": "novice",
         "level": 16,
         "fighting_style": {
@@ -1475,7 +1475,7 @@
           ]
         }
       },
-      "marcus_holloway": {
+      "marcus_vantree": {
         "power_tier": "novice",
         "level": 12,
         "fighting_style": {
@@ -1543,7 +1543,7 @@
           ]
         }
       },
-      "cartel_lead_marcus_holloway": {
+      "cartel_lead_marcus_vantree": {
         "power_tier": "boss",
         "level": 4200,
         "fighting_style": {

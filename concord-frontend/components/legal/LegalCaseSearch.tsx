@@ -29,14 +29,25 @@
  * mentioned in research requires CourtListener's `cited_by` data which
  * isn't in the search response — left for a follow-up that adds a
  * separate macro for the cited-by count + opinion-full fetch.
+ *
+ * Citation graph (2026-07-16): that follow-up landed as the
+ * `law.citation-graph` macro (real CourtListener `opinions-cited`
+ * viewset). Each result card now has an expandable "Citing opinions"
+ * section — click to fetch the real forward-citation list for that
+ * opinion. CourtListener's `opinions-cited` rows only carry opinion IDs +
+ * a real API resource URL (never a case name — that lives on a separate
+ * `/clusters/` resource), so the list renders honest opinion-id rows
+ * linking out to CourtListener, not a fabricated title. Zero citations
+ * and a failed lookup both render an explicit, honest state — never a
+ * fake "0 citing opinions" when the call actually failed.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Loader2, Search, ExternalLink, Calendar, Bookmark, BookmarkCheck,
-  Scale, ChevronDown, Filter, X, Sparkles, Hash,
+  Scale, ChevronDown, Filter, X, Sparkles, Hash, Network,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
@@ -62,6 +73,26 @@ interface SearchResult {
   query: string;
   semantic: boolean;
   results: SearchHit[];
+  count: number;
+  totalHits: number;
+  authenticatedWithToken: boolean;
+  source: string;
+}
+
+interface CitationEdge {
+  id: number | null;
+  citingOpinionId: number | null;
+  citingOpinionUrl: string | null;
+  citedOpinionId: number | null;
+  citedOpinionUrl: string | null;
+  otherOpinionId: number | null;
+  depth: number | null;
+}
+
+interface CitationGraphResult {
+  opinionId: number;
+  direction: 'citedBy' | 'cites';
+  citations: CitationEdge[];
   count: number;
   totalHits: number;
   authenticatedWithToken: boolean;
@@ -368,6 +399,8 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
     return [];
   }, [hit.citation]);
 
+  const [citingOpen, setCitingOpen] = useState(false);
+
   return (
     <motion.div
       layout
@@ -428,6 +461,21 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
               <HighlightedSnippet text={hit.snippet} query={query} />
             </p>
           )}
+
+          {/* Citing opinions — real CourtListener opinions-cited lookup */}
+          <button
+            type="button"
+            onClick={() => setCitingOpen((v) => !v)}
+            className="mt-1.5 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 transition-colors hover:text-cyan-300"
+            aria-expanded={citingOpen}
+          >
+            <Network className="h-2.5 w-2.5" />
+            Citing opinions
+            <ChevronDown className={`h-2.5 w-2.5 transition-transform ${citingOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence initial={false}>
+            {citingOpen && <CitingOpinionsPanel opinionId={hit.id} />}
+          </AnimatePresence>
         </div>
 
         {/* Action cluster */}
@@ -479,6 +527,90 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
             </a>
           )}
         </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// CitingOpinionsPanel — real "who cites this opinion" via the
+// `law.citation-graph` macro (CourtListener's `opinions-cited` viewset).
+// Mounts only while its parent card's disclosure is open; fetches once on
+// mount. Renders one of four honest states: loading / error / empty /
+// populated — never a fabricated count or placeholder row while the real
+// call is in flight or has failed.
+function CitingOpinionsPanel({ opinionId }: { opinionId: number }) {
+  const citingQuery = useMutation({
+    mutationFn: async () =>
+      callMacro<CitationGraphResult>('citation-graph', { opinionId, direction: 'citedBy', limit: 20 }),
+  });
+  const { mutate } = citingQuery;
+  // Fetch exactly once when the panel mounts (i.e. when the disclosure is
+  // first opened). Re-opening after a close remounts and re-fetches — no
+  // stale citation list is cached across a real navigation.
+  useEffect(() => { mutate(); }, [mutate]);
+
+  return (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="overflow-hidden"
+    >
+      <div
+        className="mt-1.5 rounded-md border border-zinc-800 bg-zinc-950/60 p-2"
+        aria-label="Citing opinions"
+      >
+        {citingQuery.isPending && (
+          <div className="flex items-center gap-1.5 py-1 text-[11px] text-zinc-400">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading citing opinions…
+          </div>
+        )}
+
+        {!citingQuery.isPending && citingQuery.data && !citingQuery.data.ok && (
+          <div className="py-1 text-[11px] text-red-300">
+            {citingQuery.data.error || 'Citation lookup failed'}
+          </div>
+        )}
+
+        {!citingQuery.isPending && citingQuery.data?.ok && citingQuery.data.result && (
+          citingQuery.data.result.citations.length === 0 ? (
+            <div className="py-1 text-[11px] text-zinc-500">
+              No opinions on CourtListener currently cite this one.
+            </div>
+          ) : (
+            <ul className="space-y-1">
+              {citingQuery.data.result.citations.map((c, i) => (
+                <li key={c.id ?? `${c.otherOpinionId}-${i}`} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-zinc-300">
+                    Opinion #{c.otherOpinionId ?? '?'}
+                    {c.depth != null && (
+                      <span className="ml-1.5 text-zinc-500">· cited {c.depth}×</span>
+                    )}
+                  </span>
+                  {c.citingOpinionUrl && (
+                    <a
+                      href={c.citingOpinionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-cyan-300"
+                      title="Open citing opinion on CourtListener"
+                      aria-label="Open citing opinion"
+                    >
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  )}
+                </li>
+              ))}
+              {citingQuery.data.result.totalHits > citingQuery.data.result.citations.length && (
+                <li className="pt-0.5 text-[10px] text-zinc-600">
+                  {citingQuery.data.result.totalHits.toLocaleString()} total citing opinions on CourtListener — showing first {citingQuery.data.result.citations.length}.
+                </li>
+              )}
+            </ul>
+          )
+        )}
       </div>
     </motion.div>
   );

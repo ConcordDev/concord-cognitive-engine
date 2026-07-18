@@ -53,6 +53,10 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
 import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
+// Wave-4 gap-closure (privacy row) — shared recorder also used by the
+// `privacy.recordAccess` macro (server/domains/privacy.js); see the call
+// site at the top of runMacro() for why this is wired at the chokepoint.
+import { appendAccessEvent as _appendPrivacyAccessEvent } from "./domains/privacy.js";
 import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
 import { runNpcKnowledgeBridge } from "./lib/npc-knowledge-bridge.js";
 import {
@@ -367,6 +371,20 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Wave-4 gap-closure — privacy lens retention-policy enforcement. Reads each
+// user's declared { windowDays, action } per retention category (privacy
+// lens "Retention" editor) and actually acts on data past its window for the
+// two categories that have a real per-user store this domain owns
+// (access_logs, dsar_records — see the module header for why the other four
+// declared categories are honestly left un-enforced). Frequency 240 (~1h);
+// cheap in-memory Map walk. Kill-switch: CONCORD_PRIVACY_RETENTION_SWEEP=0.
+import { runPrivacyRetentionSweep } from "./emergent/privacy-retention-sweep.js";
+registerHeartbeat("privacy-retention-sweep", {
+  frequency: 240,
+  handler: runPrivacyRetentionSweep,
+  scope: "global",
+});
+
 // Phase W — disease tick cycle (~75s cadence per world). Advances
 // severity of every active infection in the world.
 registerHeartbeat("disease-tick-cycle", {
@@ -602,6 +620,28 @@ registerHeartbeat("culture-drift-pass", {
 registerHeartbeat("forgetting-health-check", {
   frequency: 480,
   handler: runForgettingHealthCheck,
+  scope: "global",
+});
+
+// WAVE4 — ingest drain cycle. server/domains/ingest.js already computes a
+// real `nextRunAt` per scheduled sync (`ingest.scheduleSync`), but nothing
+// ever walked due schedules on its own — `ingest.runSync` only fired when a
+// human supplied records[] by hand. This heartbeat is that drain: every ~2
+// minutes (frequency 8, well under the shortest cadence of 15 minutes) it
+// finds schedules whose nextRunAt has passed and, for the OAuth-connector
+// subset (gmail / slack / google-sheets / github), pulls real data through
+// the existing per-user connector readers in lib/connector-client.js and
+// advances the connection's cursor + sync-run log exactly like a manual
+// run. Schedules on an unwired source (postgres/s3 credential-auth
+// connectors, or an api-key connector) are honestly skipped with a
+// specific reason every cycle — never marked drained. See
+// emergent/ingest-drain-cycle.js's header for the full honesty contract.
+// Ingest state is a global in-memory structure (not per-world), so scope
+// is 'global' like the other cross-cutting cycles above.
+import { runIngestDrainCycle } from "./emergent/ingest-drain-cycle.js";
+registerHeartbeat("ingest-drain-cycle", {
+  frequency: 8,
+  handler: runIngestDrainCycle,
   scope: "global",
 });
 
@@ -1363,6 +1403,10 @@ import { brainChat as byoBrainChat, getOverride as byoGetOverride } from "./lib/
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
 import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
+// Inference metering — the D2 cost ledger writer. ctx.llm.chat() builders call
+// this after every real completion attempt so the ops-telemetry dashboard
+// (aggregateInferenceCosts) reflects real usage instead of sitting empty.
+import { recordInferenceSpan } from "./lib/inference-metering.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
 import { traceMiddleware, startSpan, storeTrace, getRecentTraces, getTraceMetrics } from "./lib/request-trace.js";
@@ -1386,7 +1430,12 @@ import { BoundedMap } from "./lib/bounded-map.js";
 import { generateEntityName, migrateEntityNames as runEntityNameMigration, isFunctionLabel as isEntityFunctionLabel } from "./lib/entity-naming.js";
 import { validateSafeFetchUrl as _ssrfValidate, isUrlSafeAsync as _ssrfIsSafeAsync, fetchWithPinnedIp as _ssrfFetchPinned } from "./lib/ssrf-guard.js";
 import { registerCitation as economyRegisterCitation } from "./economy/royalty-cascade.js";
-import { checkAccess as economyCheckAccess } from "./economy/rights-enforcement.js";
+import { checkAccess as economyCheckAccess, TIER_HIERARCHY as ECONOMY_TIER_HIERARCHY } from "./economy/rights-enforcement.js";
+// Wave 6 — plugin marketplace checkout reuses the SAME purchase primitive
+// every other creative-artifact content type (music/art/code/...) already
+// goes through. No parallel payment path; see the `marketplace.purchasePlugin`
+// macro below.
+import { purchaseArtifact as economyPurchaseArtifact } from "./economy/creative-marketplace.js";
 // DX Platform Phase A1 — per-call billing + per-user quota for macros.
 // Wired into runMacro below (rate-limit check + macro:afterExecute hook).
 import { billMacroCall } from "./lib/macro-billing.js";
@@ -2899,6 +2948,70 @@ function ethosInvariantsList() {
   }));
 }
 
+// ---- Ethos invariant enforcement history (Wave 4, 2026-07-17) ----
+//
+// docs/WAVE4_INVENTORY.md flagged the sovereignty dashboard's "invariants"
+// as frozen-constant, not a live runtime-checked pass/fail history --
+// enforceEthosInvariant() genuinely runs on every action (~139 call sites)
+// and genuinely passes/throws, but none of that was ever recorded or
+// surfaced. This is a bounded, in-memory, since-boot ring buffer of REAL
+// enforceEthosInvariant() calls -- never persisted, never seeded, never
+// fabricated. Recording is O(1) (fixed-size circular buffer, no shift/splice)
+// and MUST NEVER throw or alter enforceEthosInvariant's existing pass/throw
+// contract -- see _recordEthosEnforcement's own try/catch.
+const ETHOS_ENFORCEMENT_HISTORY_CAP = 500;
+const ETHOS_ENFORCEMENT_BOOT_AT = new Date().toISOString();
+const _ethosHistoryBuf = new Array(ETHOS_ENFORCEMENT_HISTORY_CAP);
+let _ethosHistoryHead = 0;   // next write index (circular)
+let _ethosHistoryCount = 0;  // entries written so far, capped at the buffer size
+let _ethosTotalChecks = 0;
+let _ethosTotalBlocked = 0;
+
+// Records one real enforcement event. Called from inside enforceEthosInvariant
+// ONLY -- both on the pass path and (before the throw) on every blocked path,
+// so a blocked call is captured even though its own catch (if any) never sees
+// enforceEthosInvariant return. The try/catch here is the never-throw
+// guarantee: if recording itself ever breaks, enforcement behavior (the
+// return/throw the caller sees) is completely unaffected.
+function _recordEthosEnforcement(action, invariant, result) {
+  try {
+    _ethosTotalChecks++;
+    if (result === "blocked") _ethosTotalBlocked++;
+    _ethosHistoryBuf[_ethosHistoryHead] = {
+      action: String(action || "").slice(0, 200),
+      invariant: invariant || null,
+      result,
+      at: new Date().toISOString(),
+    };
+    _ethosHistoryHead = (_ethosHistoryHead + 1) % ETHOS_ENFORCEMENT_HISTORY_CAP;
+    if (_ethosHistoryCount < ETHOS_ENFORCEMENT_HISTORY_CAP) _ethosHistoryCount++;
+  } catch (_e) {
+    // Recording must never affect enforcement. Swallow and move on.
+  }
+}
+
+// Returns the buffered events oldest-first, plus honest counters. This is a
+// RUNTIME/since-boot snapshot only -- distinct from CI/detector results,
+// which are a different timescale and must never be conflated with this.
+function getEthosEnforcementSnapshot() {
+  const events = [];
+  const start = _ethosHistoryCount < ETHOS_ENFORCEMENT_HISTORY_CAP ? 0 : _ethosHistoryHead;
+  for (let i = 0; i < _ethosHistoryCount; i++) {
+    events.push(_ethosHistoryBuf[(start + i) % ETHOS_ENFORCEMENT_HISTORY_CAP]);
+  }
+  return {
+    recentEnforcement: events,
+    enforcementStats: {
+      totalChecks: _ethosTotalChecks,
+      totalBlocked: _ethosTotalBlocked,
+      bufferedCount: _ethosHistoryCount,
+      capacity: ETHOS_ENFORCEMENT_HISTORY_CAP,
+      bootAt: ETHOS_ENFORCEMENT_BOOT_AT,
+      scope: "runtime-since-boot", // in-memory only, not persisted across restarts
+    },
+  };
+}
+
 // Guard: call before any external/persistent/monitoring-like action
 //
 // Token-boundary matching (2026-07-10 Wave 3 fix), not raw substring
@@ -2919,12 +3032,23 @@ function enforceEthosInvariant(actionName="") {
   const a = String(actionName||"").toLowerCase();
   const tokens = a.split(/[^a-z0-9]+/).filter(Boolean);
   const hasToken = (...words) => tokens.some((t) => words.includes(t));
-  if (ETHOS_INVARIANTS.NO_TELEMETRY && hasToken("telemetry")) throw new Error("Ethos invariant: telemetry forbidden");
-  if (ETHOS_INVARIANTS.NO_ADS && hasToken("ad", "ads")) throw new Error("Ethos invariant: ads forbidden");
+  if (ETHOS_INVARIANTS.NO_TELEMETRY && hasToken("telemetry")) {
+    _recordEthosEnforcement(actionName, "NO_TELEMETRY", "blocked");
+    throw new Error("Ethos invariant: telemetry forbidden");
+  }
+  if (ETHOS_INVARIANTS.NO_ADS && hasToken("ad", "ads")) {
+    _recordEthosEnforcement(actionName, "NO_ADS", "blocked");
+    throw new Error("Ethos invariant: ads forbidden");
+  }
   if (ETHOS_INVARIANTS.NO_SECRET_MONITORING && hasToken("monitor", "monitoring", "tracking", "track")) {
+    _recordEthosEnforcement(actionName, "NO_SECRET_MONITORING", "blocked");
     throw new Error("Ethos invariant: secret monitoring forbidden");
   }
-  if (ETHOS_INVARIANTS.NO_USER_PROFILING && hasToken("profile", "profiling", "fingerprint", "fingerprinting")) throw new Error("Ethos invariant: user profiling forbidden");
+  if (ETHOS_INVARIANTS.NO_USER_PROFILING && hasToken("profile", "profiling", "fingerprint", "fingerprinting")) {
+    _recordEthosEnforcement(actionName, "NO_USER_PROFILING", "blocked");
+    throw new Error("Ethos invariant: user profiling forbidden");
+  }
+  _recordEthosEnforcement(actionName, null, "pass");
   return true;
 }
 
@@ -6430,7 +6554,11 @@ function authMiddleware(req, res, next) {
     // RBAC & compliance
     "/api/rbac", "/api/compliance",
     // Studio & artistry
-    "/api/studio", "/api/artistry",
+    // "/api/creative-commerce" is the WAVE4 forward-facing alias for the
+    // /api/artistry namespace below (same handlers, second mount point —
+    // see the alias-mount block right after the artistry routes). Listed
+    // here so the Gate-1 GET bypass parity holds for both names.
+    "/api/studio", "/api/artistry", "/api/creative-commerce",
     // Misc
     "/api/heal", "/api/cache", "/api/redis", "/api/efficiency",
     "/api/model-optimizer", "/api/lens-items", "/api/mobile",
@@ -6576,6 +6704,20 @@ function authMiddleware(req, res, next) {
   if (req.method === "GET" && /^\/api\/welding\/portal\/[^/]+$/.test(req.path)) return next();
   if (req.method === "POST" && /^\/api\/welding\/portal\/[^/]+\/(approve|pay)$/.test(req.path)) return next();
 
+  // Animation public share viewer (Wave 4 gap closure,
+  // `docs/lens-specs/animation-capability-map.md` checklist item 17) — an
+  // anonymous visitor with a share link opens `/share/animation/:token`.
+  // The token IS the authentication (an unguessable id minted server-side
+  // by `animation.share-create`, scoped to exactly one animation — see
+  // `server/domains/animation.js`'s `getShares`/`share-create`/`share-get`).
+  // This route never goes through `/api/lens/run` — it calls the
+  // `animation.share-get` LENS_ACTIONS handler directly with the token as
+  // the only caller-supplied identifier (see `_runAnimationShareAction`
+  // near `/api/welding/portal` below), so there is no domain/macro
+  // passthrough an anonymous caller could widen to reach any other
+  // animation action.
+  if (req.method === "GET" && /^\/api\/animation\/share\/[^/]+$/.test(req.path)) return next();
+
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
   const apiKey = req.headers["x-api-key"] || "";
@@ -6719,7 +6861,7 @@ function requireRole(...roles) {
 // comment on the Gate-1 bypass above). No Concord account exists to
 // authenticate, and the token itself is the access control, scoped
 // server-side to exactly one estimate/invoice.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/"];
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/animation/share/"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -8585,6 +8727,30 @@ async function tryInitWebSockets(server) {
         if (userOrgId && userOrgId !== orgId) {
           console.warn('[ws] Cross-org room join blocked:', { userId: socket.data.userId, room, userOrgId });
           socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this org' });
+          return;
+        }
+      }
+
+      // SECURITY: `astronomy:session:<roomId>` rooms broadcast a shared
+      // co-observing session's live "current target" + observation log
+      // (Wave 4 astronomy multi-observer gap-closure). Membership is the
+      // SAME live roster collab's own session rooms already use —
+      // STATE.collabLens.sessionRosters, populated by
+      // collab.sessionJoin/sessionLeave (server/domains/collab.js), which
+      // astronomy's session-share/session-join/session-leave macros call
+      // directly (server/domains/astronomy.js) rather than keeping a
+      // second roster. A socket may only listen on this room once its
+      // user has genuinely joined that roster — never a fabricated
+      // "N watching" count from an unauthenticated listener.
+      const astroSessionMatch = room.match(/^astronomy:session:(.+)$/);
+      if (astroSessionMatch) {
+        const roomId = astroSessionMatch[1];
+        const uid = socket.data.userId;
+        const roster = STATE.collabLens?.sessionRosters?.get(roomId);
+        const isMember = !!(uid && roster && roster.has(uid));
+        if (!isMember) {
+          console.warn('[ws] Non-member astronomy session room join blocked:', { userId: uid, room });
+          socket.emit('error', { code: 'UNAUTHORIZED', message: 'Join the astronomy session before listening' });
           return;
         }
       }
@@ -11114,6 +11280,25 @@ async function runMacro(domain, name, input, ctx) {
   try { _macroTelemetry.recordInvocation(domain, name, ctx); }
   catch { /* telemetry must never throw */ }
 
+  // Wave-4 gap-closure (privacy row) — the privacy lens's "Privacy Activity
+  // Log" is meant to show real lens usage back to the user, but almost
+  // nothing ever called `privacy.recordAccess`, so it read as nearly empty.
+  // Record one bounded, in-memory "lens-action access" event per identifiable
+  // (non-internal) caller, right beside the telemetry call above: same cost
+  // shape (O(1) Map/array op, no DB write), same never-throw discipline.
+  // Deliberately skipped for internal/system callers (heartbeats, ticks,
+  // makeInternalCtx) — recording every engine's own macro calls under
+  // "system"/"anon" would be noise, not a user's own access history.
+  // HONEST SCOPE: this captures "a lens macro this user invoked ran" — it is
+  // NOT a record of every backend data touch. See appendAccessEvent's doc
+  // comment in domains/privacy.js.
+  try {
+    const _accessUid = ctx?.userId || ctx?.actor?.userId;
+    if (_accessUid && ctx?.actor?.internal !== true) {
+      _appendPrivacyAccessEvent(_accessUid, { domain, macro: name, source: "lens-action" });
+    }
+  } catch { /* privacy access recording must never throw */ }
+
   // v3: permissioned cognition (macro-level ACL).
   //
   // A note on the default actor: previously this defaulted to
@@ -11649,7 +11834,10 @@ async function runMacro(domain, name, input, ctx) {
     "/api/lens-items", "/api/lens-actions", "/api/ml", "/api/db", "/api/preview-action", "/api/pwa",
     "/api/obsidian", "/api/integrations", "/api/distribution", "/api/backpressure",
     "/api/embeddings", "/api/perf", "/api/precompute", "/api/distillation",
-    "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/rbac",
+    // "/api/creative-commerce" mirrors "/api/artistry" (WAVE4 dual-mount
+    // alias — same handlers, second address; see the alias-mount block
+    // right after the /api/artistry route registrations).
+    "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/creative-commerce", "/api/rbac",
     "/api/compliance", "/api/voice", "/api/visual", "/api/autocrawl",
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
     "/api/utility", "/api/swarm", "/api/forge", "/api/ask",
@@ -14199,6 +14387,21 @@ const _USER_ACTIVITY = {
   },
 };
 
+// ---- Inference metering helper (Track: real LLM cost metering) ----
+// Wraps recordInferenceSpan for the ctx.llm.chat() builders below. Records
+// ONLY fields a real completion attempt actually produced — no fabricated
+// token estimates (no chars/4 guessing). tokensIn/tokensOut are omitted
+// (metering module defaults them to 0) when the provider genuinely didn't
+// report usage, which is a true statement ("unknown"), not an invented one.
+// Never throws — a metering failure must never break a chat reply.
+function _meterLlmChat(dbHandle, span) {
+  try {
+    recordInferenceSpan(dbHandle, span);
+  } catch (_e) {
+    /* metering must never break inference */
+  }
+}
+
 function makeCtx(req=null) {
   // Inject ATS affect policy into context so macros can consume depthBudget, riskBudget, etc.
   let affectPolicy = null;
@@ -14374,6 +14577,7 @@ function makeCtx(req=null) {
           let _byoOverride = null;
           try { _byoOverride = byoGetOverride(db, _byoUserId, slot); } catch { _byoOverride = null; }
           if (_byoOverride?.provider && _byoOverride.provider !== "concord_default" && _byoOverride.provider !== "ollama") {
+            const _byoStartMs = Date.now();
             try {
               const byo = await byoBrainChat({
                 db, userId: _byoUserId, slot,
@@ -14390,6 +14594,14 @@ function makeCtx(req=null) {
               // ctx.llm.chat()'s resilience contract still holds.
               if (byo.ok) {
                 structuredLog("info", "llm_byo_routed", { slot, provider: byo.provider, model: byo.model });
+                // Real per-call metering — tokensIn/tokensOut are the exact
+                // usage the provider returned (byoBrainChat/providerChat
+                // read res.json().usage from the provider's own response).
+                _meterLlmChat(db, {
+                  spanType: "chat", brainUsed: slot, modelUsed: byo.model,
+                  callerId: _byoUserId, latencyMs: Date.now() - _byoStartMs,
+                  tokensIn: byo.tokensIn, tokensOut: byo.tokensOut,
+                });
                 return {
                   ok: true,
                   content: byo.text || "",
@@ -14401,9 +14613,23 @@ function makeCtx(req=null) {
                 };
               }
               structuredLog("warn", "llm_byo_failed", { slot, provider: byo.provider, error: byo.error || "byo_provider_error" });
-              // fall through to the default conscious brain below
+              // A real attempt was made (or rejected pre-flight, e.g. rate
+              // limit) and failed — record an honest error span (0 real
+              // tokens consumed) so the dashboard's failure rate reflects
+              // reality, then fall through to the default conscious brain.
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: slot, modelUsed: byo.model,
+                callerId: _byoUserId, latencyMs: Date.now() - _byoStartMs,
+                tokensIn: byo.tokensIn, tokensOut: byo.tokensOut,
+                error: byo.error || "byo_provider_error",
+              });
             } catch (_byoErr) {
               structuredLog("warn", "llm_byo_exception", { slot, error: String(_byoErr?.message || _byoErr) });
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: slot, modelUsed: _byoOverride?.model_id || null,
+                callerId: _byoUserId, latencyMs: Date.now() - _byoStartMs,
+                error: String(_byoErr?.message || _byoErr),
+              });
               // fall through to the default conscious brain below
             }
           }
@@ -14453,15 +14679,34 @@ function makeCtx(req=null) {
             const content = json.message.content ?? "";
             _epOk = true;
             structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
+            // Real per-call metering — prompt_eval_count/eval_count are
+            // Ollama's own reported token counts for this exact completion.
+            _meterLlmChat(db, {
+              spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+              callerId: resolvedActor?.userId, latencyMs: elapsed,
+              tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
+            });
             return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
           }
           BRAIN.conscious.stats.errors++;
           structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
+          // A real HTTP round-trip happened and came back non-OK — honest
+          // error span, no fabricated token count.
+          _meterLlmChat(db, {
+            spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+            callerId: resolvedActor?.userId, latencyMs: elapsed,
+            error: json?.error || `ollama_error_${res.status}`,
+          });
           return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: "conscious", source: "ollama" };
         } catch (err) {
           BRAIN.conscious.stats.errors++;
           const elapsed = Date.now() - startMs;
           structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
+          _meterLlmChat(db, {
+            spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+            callerId: resolvedActor?.userId, latencyMs: elapsed,
+            error: String(err?.message || err),
+          });
           return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
         } finally {
           noteEndpointFinish(brainUrl, { ok: _epOk });
@@ -24846,30 +25091,71 @@ register("intel", "environment", (ctx, input) => {
 }, { description: "Get environmental assessment intelligence from Foundation signal analysis." });
 
 // -- Research Tier (governance-controlled access) --
+// researcherId is ALWAYS derived from the caller's own authenticated
+// identity (ctx.actor), never trusted from client input — a client-
+// supplied researcherId would let one caller apply for, check the status
+// of, or pull Tier-2 data under another user's identity (a real authz gap
+// the previous version of this block had: it forwarded input.researcherId
+// verbatim into submitResearchApplication/getResearchIntelligence/etc.).
+// This also closes the review dead-end: submitResearchApplication sets
+// status:"pending" and reviewResearchApplication (imported above, grants a
+// real 1-year access grant on approval) was NEVER registered as a macro —
+// every application was permanently stuck pending. See research.review below.
+function _intelResearcherId(ctx) {
+  return String(ctx?.actor?.userId || ctx?.actor?.id || "anon");
+}
+
 register("intel", "research.apply", (ctx, input) => {
   return submitResearchApplication(
-    input.researcherId, input.institution, input.purpose, input.categories || []
+    _intelResearcherId(ctx), input.institution, input.purpose, input.categories || []
   );
-}, { description: "Submit research access application for Tier 2 intelligence." });
+}, { description: "Submit research access application for Tier 2 intelligence (scoped to the caller's own identity)." });
 
 register("intel", "research.status", (ctx, input) => {
-  return getResearchApplicationStatus(input.applicationId);
-}, { description: "Check research access application status." });
+  const callerId = _intelResearcherId(ctx);
+  const isReviewer = ["owner", "admin", "founder"].includes(ctx?.actor?.role);
+  const result = getResearchApplicationStatus(input.applicationId);
+  if (!result.ok) return result;
+  if (result.application.researcherId !== callerId && !isReviewer) {
+    return { ok: false, error: "forbidden", reason: "not_your_application" };
+  }
+  return result;
+}, { description: "Check research access application status (caller's own application, or a governance reviewer)." });
 
 register("intel", "research.data", (ctx, input) => {
   const limit = Number(input.limit) || 50;
-  return getResearchIntelligence(input.researcherId, input.category, limit);
-}, { description: "Access authorized research intelligence data (governance-approved only)." });
+  return getResearchIntelligence(_intelResearcherId(ctx), input.category, limit);
+}, { description: "Access authorized research intelligence data (governance-approved only; scoped to the caller)." });
 
 register("intel", "research.synthesis", (ctx, input) => {
   const limit = Number(input.limit) || 50;
-  return getResearchSynthesis(input.researcherId, limit);
-}, { description: "Access cross-medium synthesis research findings." });
+  return getResearchSynthesis(_intelResearcherId(ctx), limit);
+}, { description: "Access cross-medium synthesis research findings (scoped to the caller)." });
 
 register("intel", "research.archive", (ctx, input) => {
   const limit = Number(input.limit) || 50;
-  return getResearchArchive(input.researcherId, limit);
-}, { description: "Access historical signal archaeology research data." });
+  return getResearchArchive(_intelResearcherId(ctx), limit);
+}, { description: "Access historical signal archaeology research data (scoped to the caller)." });
+
+// research.review — the missing approval macro. Gated the same way
+// goals.approve gates founder approval: an inline role check, because
+// runMacro's allowMacro/_canRunMacro ACL layer is deliberately skipped for
+// normal HTTP calls (see makeCtx's comment on _isHumanRequest above) — an
+// allowMacro-only gate here would be decorative on the path real users
+// take. entity.terminal_approve's multi-voter council quorum is the
+// heavier precedent this codebase uses for higher-risk terminal exec; a
+// single governance-role reviewer is proportionate for research-access
+// approval, matching goals.approve's shape rather than the quorum one.
+register("intel", "research.review", (ctx, input) => {
+  if (!["owner", "admin", "founder"].includes(ctx?.actor?.role)) {
+    return { ok: false, error: "forbidden", reason: "governance_role_required" };
+  }
+  const applicationId = String(input.applicationId || "");
+  if (!applicationId) return { ok: false, error: "applicationId required" };
+  const approved = input.approved === true || input.decision === "approve";
+  const reviewedBy = _intelResearcherId(ctx);
+  return reviewResearchApplication(applicationId, approved, reviewedBy);
+}, { description: "Governance review (approve/deny) of a Tier 2 research access application. Owner/admin/founder role required." });
 
 // -- Classifier & Metrics --
 register("intel", "classifier.status", (ctx, input) => {
@@ -34081,7 +34367,7 @@ try {
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
 import registerHelpersExtendedRoutes from "./routes/helpers-extended.js";
-try { registerHelpersExtendedRoutes(app, { db, requireAuth, STATE, structuredLog }); } catch (e) { structuredLog("warn", "helpers_extended_routes_skip", { error: e.message }); }
+try { registerHelpersExtendedRoutes(app, { db, requireAuth, requireRole, STATE, structuredLog }); } catch (e) { structuredLog("warn", "helpers_extended_routes_skip", { error: e.message }); }
 
 import createMediaRouter from "./routes/media.js";
 try { app.use("/api/media", createMediaRouter({ STATE })); } catch (e) { structuredLog("warn", "media_routes_skip", { error: e.message }); }
@@ -36993,15 +37279,66 @@ const PLUGIN_MARKETPLACE = {
   categories: ["productivity", "visualization", "integration", "ai", "governance", "export", "theme", "automation"]
 };
 
+// ── Plugin checkout wiring (Wave 6) ─────────────────────────────────────
+// The owner's model: "download rights" (here: install rights) are what you
+// get for a straight purchase; users can additionally purchase usage rights
+// (commercial/resale/source) — that's the SAME cumulative license-tier
+// ladder every other content type (music/art/code/...) already uses via
+// `server/economy/rights-enforcement.js` + `purchaseArtifact()`. A priced
+// plugin listing is backed by a real `creative_artifacts` row (type
+// 'plugin') so checkout flows through that existing purchase primitive —
+// no parallel payment path, no new fee/royalty math. Free (price 0)
+// listings stay listing-only and install directly, unchanged from before.
+const PLUGIN_TIER_LADDER = ECONOMY_TIER_HIERARCHY.plugin; // ["install","commercial","resale","source"]
+
+function _ensurePluginArtifactRow(listing) {
+  if (!db) return false; // no DB in this boot mode — treat as free-only, no gate to enforce
+  const now = nowISO().replace("T", " ").replace("Z", "");
+  db.prepare(`
+    INSERT INTO creative_artifacts (
+      id, creator_id, type, title, description, tags_json,
+      file_path, file_size, file_hash,
+      location_regional, location_national, federation_tier,
+      license_type, license_json,
+      marketplace_status, price, created_at, updated_at
+    ) VALUES (?, ?, 'plugin', ?, ?, ?, ?, ?, ?, NULL, NULL, 'regional', 'standard', '{}', 'active', ?, ?, ?)
+  `).run(
+    listing.id,
+    listing.creatorId || "anonymous",
+    listing.name,
+    listing.description || "",
+    JSON.stringify([listing.category]),
+    listing.githubUrl,
+    // Plugins aren't a stored binary artifact in this table's sense — the
+    // "file" is the GitHub source referenced above. file_size/file_hash
+    // are NOT NULL bookkeeping columns on the shared schema, not a claim
+    // about a stored asset; 0 size is honest ("not applicable"), the hash
+    // is a real deterministic digest of the listing identity (dedup-safe,
+    // not a fabricated content hash).
+    0,
+    crypto.createHash("sha256").update(`plugin:${listing.id}:${listing.githubUrl}`).digest("hex"),
+    listing.price,
+    now, now,
+  );
+  return true;
+}
+
 register("marketplace", "submit", (ctx, input) => {
-  const { name, description, version, author, githubUrl, category, macros } = input;
+  const { name, description, version, author, githubUrl, category, macros, price } = input;
   if (!name || !githubUrl) return { ok: false, error: "Name and GitHub URL required" };
+  const normalizedPrice = Number.isFinite(Number(price)) && Number(price) > 0
+    ? Math.round(Number(price) * 100) / 100
+    : 0;
   const listing = {
     id: uid("plugin"),
     name: normalizeText(name),
     description: description || "",
     version: version || "1.0.0",
     author: author || "anonymous",
+    // Real submitting user (for the rights-enforcement "creator always has
+    // access" gate) — distinct from `author`, which is a free-text display
+    // credit and not necessarily the authenticated caller.
+    creatorId: ctx?.actor?.userId || ctx?.actor?.id || null,
     githubUrl,
     category: PLUGIN_MARKETPLACE.categories.includes(category) ? category : "productivity",
     macros: macros || [],
@@ -37010,13 +37347,61 @@ register("marketplace", "submit", (ctx, input) => {
     reviews: [],
     ethosCompliant: null,
     submittedAt: nowISO(),
-    status: "pending_review"
+    status: "pending_review",
+    price: normalizedPrice,
   };
+  if (normalizedPrice > 0) {
+    try {
+      listing.artifactBacked = _ensurePluginArtifactRow(listing);
+      if (!listing.artifactBacked) {
+        // No DB in this boot mode — can't honestly promise a paid,
+        // license-gated listing (nothing would enforce the gate or move
+        // money). Reject rather than silently downgrading to "free".
+        return { ok: false, error: "pricing_unavailable", message: "Paid plugin listings require a database connection." };
+      }
+    } catch (e) {
+      logger.error("server", "plugin_artifact_backing_failed", { pluginId: listing.id, error: e?.message });
+      return { ok: false, error: "listing_failed" };
+    }
+  }
   PLUGIN_MARKETPLACE.listings.set(listing.id, listing);
   STATE.queues.macroProposals = STATE.queues.macroProposals || [];
   STATE.queues.macroProposals.push({ type: "plugin_review", pluginId: listing.id, name: listing.name, githubUrl: listing.githubUrl, submittedAt: nowISO() });
   saveStateDebounced();
   return { ok: true, listing, message: "Plugin submitted for Chicken3 ethos review" };
+});
+
+// Checkout — purchases usage rights on a priced plugin listing via the
+// EXISTING creative-marketplace purchase primitive (fees, royalty cascade,
+// ledger entries, license grant all unchanged/untouched). Free listings
+// have no artifact backing and are rejected here — call `marketplace.install`
+// directly, no purchase needed.
+// Named `purchasePlugin` (not `purchase`) — `marketplace.purchase` is
+// already registered below for the unrelated DTU-marketplace clone-on-buy
+// flow (dtuId-keyed); reusing that name would silently shadow one of the
+// two macros (register() logs `macro_duplicate_registration` and the
+// later registration wins).
+register("marketplace", "purchasePlugin", (ctx, input) => {
+  const { pluginId, tier } = input || {};
+  const listing = PLUGIN_MARKETPLACE.listings.get(pluginId);
+  if (!listing) return { ok: false, error: "Plugin not found" };
+  if (!listing.price || listing.price <= 0 || !listing.artifactBacked) {
+    return { ok: false, error: "listing_is_free", message: "This plugin is free — call marketplace.install directly, no purchase needed." };
+  }
+  const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
+  if (!buyerId) return { ok: false, error: "authentication_required" };
+  const resolvedTier = tier && PLUGIN_TIER_LADDER.includes(tier) ? tier : "install";
+  const result = economyPurchaseArtifact(db, {
+    buyerId,
+    artifactId: listing.id,
+    tier: resolvedTier,
+    requestId: ctx?.requestId,
+    ip: ctx?.ip,
+  });
+  if (result.ok) {
+    saveStateDebounced();
+  }
+  return result;
 });
 
 register("marketplace", "browse", (ctx, input) => {
@@ -37044,6 +37429,34 @@ register("marketplace", "install", (ctx, input) => {
   }
   const listing = PLUGIN_MARKETPLACE.listings.get(pluginId);
   if (!listing) return { ok: false, error: "Plugin not found" };
+
+  // Rights gate — priced plugins require the "install" tier license
+  // (granted by `marketplace.purchasePlugin`, or held already). Free (price 0)
+  // listings were never backed by a creative_artifacts row, so they keep
+  // installing directly, exactly as before this wiring existed.
+  if (listing.price > 0 && listing.artifactBacked) {
+    const userId = ctx?.actor?.userId || ctx?.actor?.id;
+    if (!userId) return { ok: false, error: "authentication_required" };
+    const access = economyCheckAccess(db, {
+      userId,
+      dtuId: listing.id,
+      contentType: "plugin",
+      action: "install",
+      creatorId: listing.creatorId,
+    });
+    if (!access.allowed) {
+      return {
+        ok: false,
+        reason: "license_required",
+        error: "license_required",
+        requiredTier: access.requiredTier || "install",
+        currentTier: access.currentTier || null,
+        price: listing.price,
+        message: "Purchase install rights to this plugin (marketplace.purchasePlugin) before installing.",
+      };
+    }
+  }
+
   listing.downloads++;
   const installed = { id: listing.id, name: listing.name, version: listing.version, source: listing.githubUrl, installedAt: nowISO(), enabled: true, autoUpdate: true };
   PLUGIN_MARKETPLACE.installed.set(installed.id, installed);
@@ -38036,6 +38449,33 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   // Every payment computed above MUST hit the wallet immediately.
   // No deferred settlement — creators get paid the instant a sale happens.
   for (const payment of payments) {
+    if (payment.type === "platform_fee" && payment.amount > 0) {
+      // Platform fee — bridge straight into economy_ledger under the
+      // canonical PLATFORM_ACCOUNT_ID, mirroring the "Bridge marketplace fee
+      // to economy ledger" pattern the /api/economic/marketplace purchase
+      // path already uses (server.js, `credit-wallet: 'marketplace_sale'`
+      // handler above). Money-hygiene fix (found proving P-D's dream-purchase
+      // conservation test): this branch used to be skipped entirely
+      // (`payment.recipient !== "platform"` excluded it), so the 5% platform
+      // fee was debited from the buyer's payment but never credited to
+      // anyone — real revenue silently vanishing from the ledger on every
+      // paid dtu.marketplace purchase, not just dreams.
+      if (db) {
+        try {
+          db.prepare(`
+            INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, metadata_json, request_id, ip, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            generateTxId(), 'FEE', null, PLATFORM_ACCOUNT_ID, payment.amount, 0, payment.amount, 'complete',
+            JSON.stringify({ source: 'purchase_with_royalties', dtuId, sourceType: 'MARKETPLACE_PURCHASE', bridged: true }),
+            null, null, new Date().toISOString().replace('T', ' ').replace('Z', ''),
+          );
+        } catch (e) {
+          structuredLog("error", "platform_fee_bridge_failed", { amount: payment.amount, error: e?.message });
+        }
+      }
+      continue;
+    }
     if (payment.recipient && payment.recipient !== "platform" && payment.amount > 0) {
       try {
         creditWallet(
@@ -38049,15 +38489,23 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
       }
     }
   }
-  // Debit buyer
+  // Debit buyer. Routed through debitWallet() — the same helper creditWallet()
+  // (above) already uses — instead of a manual `buyerWallet.balance -= price`
+  // mutation, so the debit is ALSO bridged into economy_ledger as a real row
+  // (debitWallet already has this bridge; it just wasn't being called here).
+  // Money-hygiene fix (found proving P-D's dream-purchase conservation test):
+  // the manual-mutation version only ever touched the in-memory
+  // STATE.economic.wallets Map. Every paid purchaseWithRoyalties call credits
+  // sellers/royalty recipients into economy_ledger via creditWallet's own
+  // bridge — with no offsetting buyer debit, economy_ledger's getBalance()
+  // showed the recipients' gain but never the buyer's loss, i.e. CC minted
+  // from nothing on every paid dtu.marketplace purchase. debitWallet() closes
+  // that gap with a single-sided TRANSFER row (from=buyerId, to=null) that
+  // CREDIT_ROW_PREDICATE already treats correctly.
   try {
     const buyerId = ctx?.actor?.userId;
     if (buyerId && price > 0) {
-      const buyerWallet = getWallet(buyerId);
-      buyerWallet.balance -= price;
-      buyerWallet.tokensSpent = (buyerWallet.tokensSpent || 0) + price;
-      buyerWallet.updatedAt = Date.now();
-      logTransaction({ type: 'debit', odId: buyerId, amount: price, reason: `Purchase: ${dtu.title || dtuId}`, balance: buyerWallet.balance });
+      debitWallet(buyerId, price, `Purchase: ${dtu.title || dtuId}`, `purchase:${dtuId}:${clone.id}:${buyerId}:debit`);
     }
   } catch (_e) {
     structuredLog("error", "buyer_debit_failed", { error: _e?.message });
@@ -41294,7 +41742,19 @@ registerLensAction("collab", "extract_actions", (ctx, artifact, _params) => {
 
 // === Experience ===
 registerLensAction("experience", "endorse", (ctx, artifact, params) => {
-  const endorsement = { id: uid("end"), skillId: params.skillId, endorserId: ctx.actor?.userId || "anon", comment: params.comment || "", endorsedAt: nowISO() };
+  const endorserId = ctx.actor?.userId || "anon";
+  // Peer-endorsement semantic (closes the "only self-endorsement is
+  // currently reachable" gap in docs/lens-specs/experience-capability-map.md).
+  // `_lensArtifactVisible` already lets any caller act on another user's
+  // *published* portfolio via `lens.run` — visibility alone doesn't stop
+  // someone from endorsing their own skills, so a genuine peer-endorsement
+  // rule needs an explicit check here: the endorser must not be the
+  // portfolio's owner. Anonymous/system-owned artifacts (no ownerId) are
+  // unaffected — there's no "self" to guard against there.
+  if (artifact.ownerId && artifact.ownerId !== "anon" && endorserId === artifact.ownerId) {
+    return { ok: false, error: "cannot_self_endorse" };
+  }
+  const endorsement = { id: uid("end"), skillId: params.skillId, endorserId, comment: params.comment || "", endorsedAt: nowISO() };
   artifact.data = { ...artifact.data, endorsements: [...(artifact.data?.endorsements || []), endorsement] };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
@@ -44912,6 +45372,7 @@ app.get("/api/sovereignty/status", requireAuth(), async (req, res) => {
   const entityCount = Array.from(STATE.entities?.values() || [])
     .filter(e => e.ownerId === userId).length;
   const invariants = ethosInvariantsList();
+  const { recentEnforcement, enforcementStats } = getEthosEnforcementSnapshot();
 
   res.json({
     ok: true,
@@ -44926,6 +45387,12 @@ app.get("/api/sovereignty/status", requireAuth(), async (req, res) => {
       ? Math.round(personalCount / (personalCount + syncedCount) * 100) : 100,
     invariants,
     isHealthy: invariants.every(inv => inv.status === "enforced"),
+    // Live runtime pass/fail feed for enforceEthosInvariant() -- real events
+    // recorded since process boot, bounded + in-memory (see
+    // getEthosEnforcementSnapshot's own doc comment). Most-recent-last;
+    // frontend reverses for display.
+    recentEnforcement,
+    enforcementStats,
   });
 });
 
@@ -47032,8 +47499,9 @@ function initChatSocketHandlers(io) {
               if (!brainUrl) return { ok: false, error: 'no_llm' };
               noteEndpointStart(brainUrl);
               let _epOk = false;
+              const _socketChatStartMs = Date.now();
+              const _model = opts.model || BRAIN.conscious?.model || 'llama3';
               try {
-                const _model = opts.model || BRAIN.conscious?.model || 'llama3';
                 const _messages = [
                   ...(opts.system ? [{ role: 'system', content: opts.system }] : []),
                   ...(opts.messages || [])
@@ -47049,10 +47517,29 @@ function initChatSocketHandlers(io) {
                 const _json = await _res.json().catch(() => ({}));
                 if (_res.ok && _json.message?.content) {
                   _epOk = true;
+                  // Real per-call metering — Ollama's own prompt_eval_count/
+                  // eval_count for this exact completion. No fallback estimate.
+                  _meterLlmChat(db, {
+                    spanType: "chat", brainUsed: "conscious", modelUsed: _model,
+                    callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
+                    tokensIn: _json.prompt_eval_count, tokensOut: _json.eval_count,
+                  });
                   return { ok: true, content: _json.message.content };
                 }
+                _meterLlmChat(db, {
+                  spanType: "chat", brainUsed: "conscious", modelUsed: _model,
+                  callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
+                  error: _json?.error || `status ${_res.status}`,
+                });
                 return { ok: false, error: _json?.error || `status ${_res.status}` };
-              } catch (e) { return { ok: false, error: e.message }; }
+              } catch (e) {
+                _meterLlmChat(db, {
+                  spanType: "chat", brainUsed: "conscious", modelUsed: _model,
+                  callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
+                  error: e.message,
+                });
+                return { ok: false, error: e.message };
+              }
               finally { noteEndpointFinish(brainUrl, { ok: _epOk }); }
             },
           },
@@ -49626,6 +50113,53 @@ app.post("/api/welding/portal/:token/pay", async (req, res) => {
   }
 });
 
+// ── Animation public share viewer (Wave 4 gap closure) ──────────────────
+// `docs/lens-specs/animation-capability-map.md` "GENUINELY MISSING —
+// scoped, deferred" (checklist item 17, "Fully public (logged-out) share
+// viewing"): `animation.share-get` (server/domains/animation.js) already
+// implements a token-based public share (a random unguessable token minted
+// by `share-create`), but the only way to reach a `registerLensAction`
+// handler was the authenticated `/api/lens/run` surface — `_lensActionForbiddenForAnon`
+// (above) hard-rejects any anonymous caller in production before `runMacro`
+// even runs, regardless of `publicReadDomains`. Widening `publicReadDomains`
+// to include `animation` was considered and rejected: that would open EVERY
+// animation macro (including the mutating frame/stroke/rig/export ones) to
+// anonymous callers, not just this one read. This route is the same
+// narrowly-scoped fix as the welding client portal directly above: a
+// dedicated public GET that can only ever invoke `animation.share-get`.
+//
+// Security shape (mirrors `_runWeldingPortalAction` exactly): the
+// LENS_ACTIONS handler is invoked DIRECTLY, never via `runMacro`/`lens.run`
+// — no generic domain/macro passthrough an anonymous caller could widen to
+// reach anything else. The action name is hardcoded in the helper, never
+// accepted as a request param, so this route can never be abused to call a
+// different animation action. The only caller-supplied identifier is the
+// token itself; `share-get` (server/domains/animation.js) resolves the
+// owner/animation from its own server-side `shares` Map keyed by the
+// token — a valid token for animation A can only ever resolve animation
+// A's frames, never anyone else's. `share-get`'s own logic (unchanged
+// here) already redacts `frames` when the owner disabled downloads, and
+// never returns anything beyond the single share record + its animation.
+function _runAnimationShareAction(token) {
+  const handler = LENS_ACTIONS.get("animation.share-get");
+  if (!handler) return { ok: false, error: "portal_unavailable" };
+  const data = { token: String(token == null ? "" : token).slice(0, 120) };
+  const virtualCtx = { db: STATE?.db || globalThis._concordDB, actor: null, state: STATE };
+  const virtualArtifact = { id: null, domain: "animation", type: "domain_action", data, meta: {} };
+  return handler(virtualCtx, virtualArtifact, data);
+}
+
+// GET — anyone with the share link opens it. Public, no auth.
+app.get("/api/animation/share/:token", async (req, res) => {
+  try {
+    const result = await _runAnimationShareAction(req.params.token);
+    if (!result?.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // ---- Wave 4: Activity Log ----
 app.get("/api/activity", (req, res) => {
   const result = getActivityLog({
@@ -49717,12 +50251,13 @@ app.get("/api/tutorial/first-cycle", async (req, res) => {
     const userId = req.user?.id || `anon-${req.ip}`;
     const worldId = String(req.query.worldId || "concordia-hub");
 
-    let questEngine = null;
-    try { questEngine = await import("./emergent/quest-engine.js"); }
-    catch { /* loader varies between builds; helper handles the missing-engine path */ }
-
+    // System A's emergent/quest-engine.js is no longer consulted here — it
+    // never held any real player's progress on this route (its
+    // getQuestProgress is a 1-arg signature the helper always detected and
+    // skipped past). Progress now reads System B directly; see
+    // lib/tutorial-first-cycle.js's header note.
     const { deriveFirstCycleProgress } = await import("./lib/tutorial-first-cycle.js");
-    res.json(deriveFirstCycleProgress({ db, userId, worldId, questEngine }));
+    res.json(deriveFirstCycleProgress({ db, userId, worldId }));
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -54237,19 +54772,43 @@ app.get("/api/quests/mine", asyncHandler(async (req, res) => {
 
 // Quest acceptance — players click Accept on the dialogue panel and we
 // register the quest as their active goal + bind progress to their userId.
+//
+// Retargeted to System B (server/lib/quests/quest-engine.js) — the dialogue
+// offer this button responds to (`questOffered`, built at
+// routes/worlds.js's `/dialogue` + `/dialogue/respond` handlers) is always
+// read from `world_quests`, so `questOffered.id` is a `world_quests.id`,
+// never a System-A `quest_<hex>` id. The prior implementation called
+// System A's `qe.startQuest(questId, userId)`, which can never find that id
+// — a 100%-failure-rate call masked by the frontend's silent fallback to
+// the legacy `/api/worlds/:worldId/quests/:questId/accept` route. See
+// Finding 2, docs/QUESTS_ENGINE_INVESTIGATION.md.
+//
+// Unlike that legacy route, this does NOT mutate `world_quests.status` /
+// `accepted_by` — an authored quest's `world_quests` row is one shared
+// catalog entry every player must be able to accept independently; only
+// `player_quests` (per-user state) is written here.
 app.post("/api/quests/accept", requireAuth(), asyncHandler(async (req, res) => {
   const userId = req.user?.id;
   const { questId } = req.body || {};
   if (!questId) return res.status(400).json({ ok: false, error: "questId_required" });
   try {
-    const qe = await import("./emergent/quest-engine.js");
-    const start = qe.startQuest?.(questId, userId);
-    if (start?.ok) {
-      try { REALTIME?.io?.to(`user:${userId}`).emit("quest:accepted", { questId, ts: nowISO() }); }
-      catch { /* realtime best-effort */ }
-      return res.json({ ok: true, quest: start.quest });
+    const quest = db.prepare("SELECT * FROM world_quests WHERE id = ?").get(questId);
+    if (!quest) return res.status(404).json({ ok: false, error: "quest_not_found" });
+    const worldId = String(quest.world_id || req.body?.worldId || "concordia-hub");
+
+    const existing = db.prepare(`
+      SELECT * FROM player_quests WHERE user_id = ? AND world_id = ? AND quest_id = ?
+    `).get(userId, worldId, questId);
+    if (!existing) {
+      db.prepare(`
+        INSERT INTO player_quests (id, user_id, quest_id, world_id, status)
+        VALUES (?, ?, ?, ?, 'active')
+      `).run(crypto.randomUUID(), userId, questId, worldId);
     }
-    res.status(400).json(start || { ok: false, error: "start_failed" });
+
+    try { REALTIME?.io?.to(`user:${userId}`).emit("quest:accepted", { questId, ts: nowISO() }); }
+    catch { /* realtime best-effort */ }
+    return res.json({ ok: true, quest: { ...quest, status: existing?.status || "active" } });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -65566,33 +66125,92 @@ function processGoalHeartbeat(ctx = {}) {
     }
   }
 
-  // 4) Progress active goals based on lattice activity (simplified: random small progress)
-  // In practice, this would hook into actual DTU creation/analysis events
+  // 4) Progress active goals from REAL lattice-activity signals where a real
+  // signal exists (2026-07-16, closing docs/WAVE4_INVENTORY.md "goals" row /
+  // docs/lens-specs/goals-capability-map.md's flagged simplification). Each
+  // goal type below is either (a) driven by a genuine STATE-tracked delta
+  // since this goal's last heartbeat tick, or (b) — where no real backing
+  // signal exists in the codebase today — an honestly-labeled small fixed
+  // nudge, never a fabricated-precise number. Per-goal baselines (last DTU
+  // count / last high-score DTU count / last contradiction load / last
+  // MEGA+HYPER count) live on `goal.meta`, which is already a free-form
+  // bag (see `createGoalProposal`'s `meta.awaitingFounderApproval` /
+  // `meta.abandonReason` for precedent) — no schema change.
   for (const goalId of STATE.goals.active) {
     const goal = STATE.goals.registry.get(goalId);
     if (!goal || goal.state !== GOAL_STATES.ACTIVE) continue;
 
-    // Simulate progress based on goal type
-    let progressChance = 0.1;
-    let progressAmount = 0.1;
+    let delta = 0;
 
-    if (goal.type === GOAL_TYPES.MAINTENANCE) {
-      progressChance = 0.3;
-      progressAmount = 0.2;
-    } else if (goal.type === GOAL_TYPES.CONSOLIDATION) {
-      // Check if MEGA/HYPER were created
-      const megaCount = Array.from(STATE.dtus?.values() || []).filter(d => d.tier === "mega" || d.tier === "hyper").length;
-      if (megaCount > 0) {
-        progressChance = 0.4;
-        progressAmount = 0.15;
+    if (goal.type === GOAL_TYPES.KNOWLEDGE_SYNTHESIS) {
+      // Real signal: growth of the DTU corpus while this goal is active —
+      // synthesis needs new raw material to combine. 3% of the goal's
+      // target per net-new DTU created since the last tick this goal was
+      // observed. First observation only establishes the baseline (no
+      // "prior tick" exists yet, so no progress is claimed).
+      const dtuCount = STATE.dtus instanceof Map ? STATE.dtus.size : Array.from(STATE.dtus?.values() || []).length;
+      const lastDtuCount = goal.meta._lastDtuCount;
+      goal.meta._lastDtuCount = dtuCount;
+      if (typeof lastDtuCount === "number") {
+        const newDtus = Math.max(0, dtuCount - lastDtuCount);
+        delta = newDtus * 0.03 * goal.progress.target;
       }
     } else if (goal.type === GOAL_TYPES.PATTERN_DISCOVERY) {
-      // Progress when high-quality DTUs are created
-      progressChance = 0.15;
+      // Real signal: growth in the count of high-authority DTUs (score >
+      // 0.7) — the same threshold generateAutoGoalProposals() already uses
+      // to spot pattern-discovery candidates. 5% of target per net-new
+      // high-score DTU since the last tick.
+      const highScoreCount = Array.from(STATE.dtus?.values() || [])
+        .filter(d => (d.authority?.score || 0) > 0.7).length;
+      const lastHighScoreCount = goal.meta._lastHighScoreDtuCount;
+      goal.meta._lastHighScoreDtuCount = highScoreCount;
+      if (typeof lastHighScoreCount === "number") {
+        const newHighScore = Math.max(0, highScoreCount - lastHighScoreCount);
+        delta = newHighScore * 0.05 * goal.progress.target;
+      }
+    } else if (goal.type === GOAL_TYPES.CLARIFICATION) {
+      // Real signal: STATE.growth.functionalDecline.contradictionLoad — a
+      // live-tracked 0..1 EMA (server.js ~71017) — falling. Resolving
+      // contradictions IS progress on a clarification goal; a drop of X in
+      // load maps to X * target progress. Load holding steady or rising
+      // yields zero (never negative — clamped in updateGoalProgress too,
+      // but Math.max here keeps intent explicit).
+      const load = Number(STATE.growth?.functionalDecline?.contradictionLoad ?? 0);
+      const lastLoad = goal.meta._lastContradictionLoad;
+      goal.meta._lastContradictionLoad = load;
+      if (typeof lastLoad === "number") {
+        const improvement = Math.max(0, lastLoad - load);
+        delta = improvement * goal.progress.target;
+      }
+    } else if (goal.type === GOAL_TYPES.CONSOLIDATION) {
+      // Real signal: growth in MEGA/HYPER-tier DTU count. This goal exists
+      // specifically to drive consolidation, so a newly-formed consolidated
+      // node IS direct progress — 15% of target per net-new MEGA/HYPER DTU
+      // since the last tick (replaces the old "megaCount > 0 -> dice roll"
+      // gate, which counted the same signal but then ignored its magnitude).
+      const megaCount = Array.from(STATE.dtus?.values() || []).filter(d => d.tier === "mega" || d.tier === "hyper").length;
+      const lastMegaCount = goal.meta._lastMegaCount;
+      goal.meta._lastMegaCount = megaCount;
+      if (typeof lastMegaCount === "number") {
+        const newMega = Math.max(0, megaCount - lastMegaCount);
+        delta = newMega * 0.15 * goal.progress.target;
+      }
+    } else if (goal.type === GOAL_TYPES.MAINTENANCE) {
+      // No real per-tick backing signal identified for generic maintenance
+      // goals — they span many unrelated housekeeping tasks with no single
+      // lattice metric to attach to. Honest fallback: a small fixed nudge
+      // on a low, clearly-labeled chance — NOT a fabricated precise
+      // measurement of "how much maintenance happened."
+      if (Math.random() < 0.3) delta = 0.2 * goal.progress.target;
+    } else {
+      // GAP_FILLING / EXPLORATION / USER_REQUESTED and any future type:
+      // no real backing signal in the codebase today either. Same honest,
+      // clearly-labeled fixed-nudge fallback as MAINTENANCE, at the
+      // original lower base rate.
+      if (Math.random() < 0.1) delta = 0.1 * goal.progress.target;
     }
 
-    if (Math.random() < progressChance) {
-      const delta = progressAmount * goal.progress.target;
+    if (delta > 0) {
       updateGoalProgress(goalId, delta, null);
       results.progressed++;
     }
@@ -74450,6 +75068,60 @@ structuredLog("info", "artistry_init", { detail: "Phase 10: AI Production Assist
 structuredLog("info", "artistry_init", { detail: "All phases (1-10) initialized successfully" });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// WAVE4 — /api/creative-commerce ALIAS (safe dual-mount, additive-only)
+//
+// The DAW/Studio/Marketplace/Distribution/Collab/AI-production backend above
+// is misfiled under the historical "/api/artistry" name — it's a general
+// shared creative-commerce backend (music, art, splits, licenses, blob
+// storage), not an art-specific one. Renaming any of the 68 routes above in
+// place would touch the live commerce path (marketplace purchases, royalty
+// splits, wallet debits) for zero behavioral gain, so instead of a rename
+// this block mounts a SECOND, purely-additive path prefix —
+// "/api/creative-commerce" — over the EXACT SAME handler functions already
+// registered above under "/api/artistry". Nothing about the existing
+// "/api/artistry/*" registrations above is modified: this walks the
+// already-built Express router stack (it runs after every
+// "/api/artistry/*" app.<method>(...) call above has executed) and
+// re-registers each matched (method, path, handler-chain) tuple under the
+// new prefix — so both names dispatch to the literal same function
+// reference(s), byte-identical behavior by construction, not by
+// copy-paste. "/api/artistry" remains a permanent back-compat alias;
+// "/api/creative-commerce" is the forward-facing name. No fee/royalty/
+// ledger logic is touched or duplicated — mounting a route doesn't clone
+// its body, just adds a second address for the same code.
+function mountArtistryNamespaceAlias(targetApp, fromPrefix, toPrefix) {
+  const stack = targetApp?._router?.stack;
+  if (!Array.isArray(stack)) {
+    structuredLog("warn", "artistry_alias_init", { detail: "router stack unavailable — /api/creative-commerce alias mount skipped" });
+    return 0;
+  }
+  // Snapshot the matching layers BEFORE mounting anything — registering the
+  // alias routes appends new layers to this same stack, and iterating a
+  // live array while pushing to it would otherwise re-visit (and re-alias)
+  // the very routes this loop just added.
+  const artistryLayers = stack.filter(layer =>
+    layer && layer.route && typeof layer.route.path === "string" && layer.route.path.startsWith(fromPrefix)
+  );
+  let mounted = 0;
+  for (const layer of artistryLayers) {
+    const aliasPath = toPrefix + layer.route.path.slice(fromPrefix.length);
+    const methods = Object.keys(layer.route.methods || {}).filter(m => layer.route.methods[m]);
+    const handlers = layer.route.stack.map(l => l.handle);
+    if (!handlers.length) continue;
+    for (const method of methods) {
+      if (typeof targetApp[method] !== "function") continue;
+      targetApp[method](aliasPath, ...handlers);
+      mounted++;
+    }
+  }
+  return mounted;
+}
+const _artistryAliasMountedCount = mountArtistryNamespaceAlias(app, "/api/artistry", "/api/creative-commerce");
+structuredLog("info", "artistry_init", {
+  detail: `Namespace alias: /api/creative-commerce mounted over ${_artistryAliasMountedCount} existing /api/artistry route registration(s) — additive only, /api/artistry unchanged`,
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // END ARTISTRY GLOBAL
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -78532,4 +79204,27 @@ export const __TEST__ = Object.freeze({
   // doc comments above. Call from a test file's after() hook.
   terminateAllWorkersForTest: __terminateAllWorkersForTest,
   clearActiveTimersForTest: __clearActiveTimersForTest,
+  // Goal-heartbeat real-signal test surface (2026-07-16 — closing
+  // docs/WAVE4_INVENTORY.md "goals" row). processGoalHeartbeat has no HTTP
+  // route or macro of its own (it's called inline from governorTick every
+  // tick, never on demand), so behavioral tests need direct access to it
+  // plus the goal-lifecycle helpers to construct an ACTIVE goal to observe.
+  GOAL_TYPES,
+  GOAL_STATES,
+  ensureGoalSystem,
+  createGoalProposal,
+  evaluateGoal,
+  activateGoal,
+  updateGoalProgress,
+  processGoalHeartbeat,
+  // Ethos-invariant live enforcement history test surface (2026-07-17 —
+  // closing docs/WAVE4_INVENTORY.md's "lock" row). enforceEthosInvariant
+  // has no HTTP route of its own (it's called inline at ~139 call sites);
+  // behavioral tests need direct access to it plus the ring-buffer reader
+  // to observe real pass/blocked events without going through an
+  // unrelated route's auth/business logic.
+  ETHOS_INVARIANTS,
+  enforceEthosInvariant,
+  getEthosEnforcementSnapshot,
+  ETHOS_ENFORCEMENT_HISTORY_CAP,
 });

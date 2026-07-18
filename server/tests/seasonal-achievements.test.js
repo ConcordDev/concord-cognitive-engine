@@ -67,7 +67,7 @@ describe("Phase BB2 — festival-only gating", () => {
 
   it("festival-only achievement is gated when festival not active", () => {
     // No festival_active row.
-    const r = unlockAchievement(db, "u1", "wintersday_celebrant");
+    const r = unlockAchievement(db, "u1", "hearthtide_celebrant");
     assert.equal(r.unlocked, false);
     assert.equal(r.reason, "festival_gated");
   });
@@ -75,18 +75,18 @@ describe("Phase BB2 — festival-only gating", () => {
   it("festival-only achievement unlocks when festival_active row is present", () => {
     db.prepare(`
       INSERT INTO festival_active (festival_id, world_id, year_idx, ends_at)
-      VALUES ('wintersday', 'tunya', 1, unixepoch() + 3600)
+      VALUES ('hearthtide', 'tunya', 1, unixepoch() + 3600)
     `).run();
-    const r = unlockAchievement(db, "u1", "wintersday_celebrant");
+    const r = unlockAchievement(db, "u1", "hearthtide_celebrant");
     assert.equal(r.unlocked, true);
   });
 
   it("expired festival_active blocks unlock", () => {
     db.prepare(`
       INSERT INTO festival_active (festival_id, world_id, year_idx, ends_at)
-      VALUES ('wintersday', 'tunya', 1, 1)
+      VALUES ('hearthtide', 'tunya', 1, 1)
     `).run();
-    const r = unlockAchievement(db, "u1", "wintersday_celebrant");
+    const r = unlockAchievement(db, "u1", "hearthtide_celebrant");
     assert.equal(r.unlocked, false);
     assert.equal(r.reason, "festival_gated");
   });

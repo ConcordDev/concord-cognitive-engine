@@ -24,6 +24,7 @@ import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 
 /* ------------------------------------------------------------------ */
 /*  Shared types                                                       */
@@ -325,6 +326,12 @@ function POSPayments() {
   const [form, setForm] = useState({ client: '', subtotal: 0, taxRate: 8.25, tipPercent: 18, discount: 0, method: 'card', cardLast4: '' });
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // Real Stripe card-confirmation flow (services.bookingCreatePaymentIntent
+  // + bookingConfirmPayment, mirroring domains/retail.js's cart PaymentIntent
+  // pattern). Set only after the server has actually created a PaymentIntent
+  // — clientSecret always comes from Stripe, never fabricated client-side.
+  const [cardIntent, setCardIntent] = useState<{ clientSecret: string; paymentIntentId: string; total: number } | null>(null);
+  const [cardBusy, setCardBusy] = useState(false);
 
   const load = useCallback(async () => {
     const { result } = await svc<{ payments: Payment[]; gross: number; tips: number; byMethod: Record<string, number> }>('paymentList', {});
@@ -335,6 +342,28 @@ function POSPayments() {
   const capture = async () => {
     setErr(null); setMsg(null);
     if (form.subtotal <= 0) { setErr('subtotal must be positive'); return; }
+
+    if (form.method === 'card') {
+      // Try the real Stripe PaymentIntent flow first. If Stripe isn't
+      // configured server-side, bookingCreatePaymentIntent honestly refuses
+      // with "stripe_not_configured" and we fall through to the existing
+      // pay-on-site quick-capture below — same behavior as before this
+      // flow existed. Any OTHER honest failure (e.g. below Stripe's $0.50
+      // minimum) is surfaced too, but we still fall through so the sale
+      // is at least recorded pay-on-site rather than lost.
+      setCardBusy(true);
+      const { result, error } = await svc<{ clientSecret: string; paymentIntentId: string; paymentId: string; total: number }>(
+        'bookingCreatePaymentIntent',
+        { client: form.client, subtotal: form.subtotal, taxRate: form.taxRate, tipPercent: form.tipPercent, discount: form.discount },
+      );
+      setCardBusy(false);
+      if (result) {
+        setCardIntent({ clientSecret: result.clientSecret, paymentIntentId: result.paymentIntentId, total: result.total });
+        return;
+      }
+      if (error && error !== 'stripe_not_configured') setErr(error);
+    }
+
     const { result, error } = await svc<{ payment: Payment; authStatus?: string; note?: string }>('paymentCapture', form);
     if (!result) { setErr(error || 'payment failed'); load(); return; }
     if (result.authStatus === 'unprovisioned') {
@@ -343,6 +372,20 @@ function POSPayments() {
     } else {
       setMsg(`Captured ${result.payment.receiptNumber} — $${result.payment.total}`);
     }
+    setForm({ ...form, client: '', subtotal: 0, cardLast4: '' });
+    load();
+  };
+
+  // Stripe.js itself confirmed the card (a real signal from Stripe, not
+  // fabricated here) — but the booking is only marked paid once the SERVER
+  // independently re-fetches the PaymentIntent from Stripe and sees
+  // status:"succeeded". bookingConfirmPayment never trusts this call alone.
+  const onCardSuccess = async ({ paymentIntentId }: { paymentIntentId: string }) => {
+    setErr(null);
+    const { result, error } = await svc<{ payment: Payment }>('bookingConfirmPayment', { paymentIntentId });
+    if (!result) { setErr(error || 'card capture verification failed (payment may need manual reconcile)'); return; }
+    setMsg(`Captured ${result.payment.receiptNumber} — $${result.payment.total} via Stripe`);
+    setCardIntent(null);
     setForm({ ...form, client: '', subtotal: 0, cardLast4: '' });
     load();
   };
@@ -372,13 +415,30 @@ function POSPayments() {
             {['card', 'cash', 'gift_card', 'other'].map(m => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
           </select>
           {form.method === 'card' && (
-            <input className={ds.input} placeholder="Card last4" maxLength={4} value={form.cardLast4} onChange={e => setForm({ ...form, cardLast4: e.target.value })} />
+            <input className={ds.input} placeholder="Card last4 (pay-on-site fallback only)" maxLength={4} value={form.cardLast4} onChange={e => setForm({ ...form, cardLast4: e.target.value })} />
           )}
         </div>
-        <p className="text-[11px] text-gray-400">Card charges require Stripe — until configured, card sales are recorded as pay-on-site (no charge is made).</p>
-        <button onClick={capture} className={ds.btnPrimary}><CreditCard className="w-4 h-4" /> Charge</button>
+        <p className="text-[11px] text-gray-400">
+          Card charges use a real Stripe PaymentIntent when Stripe is configured server-side — you&apos;ll confirm the card below. Until configured, card sales are recorded as pay-on-site (no charge is made).
+        </p>
+        {!cardIntent && (
+          <button onClick={capture} disabled={cardBusy} className={ds.btnPrimary}>
+            <CreditCard className="w-4 h-4" /> {cardBusy ? 'Preparing…' : 'Charge'}
+          </button>
+        )}
         {err && <p className="text-xs text-red-400"><AlertTriangle className="w-3 h-3 inline mr-1" />{err}</p>}
         {msg && <p className="text-xs text-green-400"><Check className="w-3 h-3 inline mr-1" />{msg}</p>}
+        {cardIntent && (
+          <div className="mt-2 border-t border-lattice-border/40 pt-3">
+            <StripePaymentForm
+              clientSecret={cardIntent.clientSecret}
+              amountUsd={cardIntent.total}
+              description="Booking payment"
+              onSuccess={onCardSuccess}
+              onCancel={() => setCardIntent(null)}
+            />
+          </div>
+        )}
       </div>
 
       {Object.keys(byMethod).length > 0 && (
@@ -399,7 +459,7 @@ function POSPayments() {
           <div key={p.id} className="flex items-center gap-3 p-2.5 rounded bg-lattice-elevated/40 text-sm">
             <span className={cn('font-mono text-xs', ds.textMuted)}>{p.receiptNumber}</span>
             <span className="flex-1 truncate">{p.client}</span>
-            <span className={ds.badge(p.status === 'captured' ? 'green-400' : p.status === 'unprovisioned' ? 'yellow-400' : p.status === 'declined' ? 'red-400' : 'gray-400')}>{p.status === 'unprovisioned' ? 'pay on site' : p.status}</span>
+            <span className={ds.badge(p.status === 'captured' ? 'green-400' : p.status === 'unprovisioned' ? 'yellow-400' : p.status === 'awaiting_confirmation' ? 'cyan-400' : p.status === 'declined' ? 'red-400' : 'gray-400')}>{p.status === 'unprovisioned' ? 'pay on site' : p.status === 'awaiting_confirmation' ? 'awaiting confirmation' : p.status}</span>
             <span className="text-green-400 font-bold">${p.total}</span>
             {p.status === 'captured' && (
               <button onClick={() => refund(p.id)} className="text-red-400 text-xs hover:underline">Refund</button>

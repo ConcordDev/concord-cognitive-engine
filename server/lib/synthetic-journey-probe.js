@@ -7,9 +7,17 @@
 //
 //  1) runJourneyProbe()    — reuses the authored first-cycle journey logic
 //     (tutorial-first-cycle.js#deriveFirstCycleProgress) against an in-memory
-//     quest_progress table: completes the 8 first-cycle quests and asserts the
-//     derivation reaches `complete`. Catches a "journey break" (a quest-chain
-//     regression that strands new players) without a live server.
+//     replica of System B's real schema (world_quests/player_quests/
+//     quest_objectives/player_quest_progress): completes the 8 first-cycle
+//     quests and asserts the derivation reaches `complete`. Catches a
+//     "journey break" (a quest-chain regression that strands new players)
+//     without a live server.
+//
+//     Prior to 2026-07, this seeded the dead `quest_progress` (singular)
+//     table — the derivation no longer reads that table at all (it had zero
+//     production writers; see docs/QUESTS_ENGINE_INVESTIGATION.md), so this
+//     probe was itself masking the real break instead of catching it: it
+//     kept reporting green against a schema no live code path used.
 //
 //  2) runSsePulseCheck()   — asserts the SSE transport streams INCREMENTALLY:
 //     the four proxy-chain headers are set, headers are flushed, and heartbeat
@@ -24,21 +32,60 @@ import Database from "better-sqlite3";
 import { startSSE } from "./sse.js";
 import { deriveFirstCycleProgress, FIRST_CYCLE_QUEST_IDS } from "./tutorial-first-cycle.js";
 
-const QUEST_PROGRESS_DDL = `
-  CREATE TABLE quest_progress (
+// Minimal replica of the real System B schema (migrations 042 + 068) —
+// only the columns deriveFirstCycleProgress's getActiveQuests /
+// getCompletedQuests / getQuestProgress calls actually touch.
+const SYSTEM_B_DDL = `
+  CREATE TABLE world_quests (
+    id             TEXT PRIMARY KEY,
+    world_id       TEXT NOT NULL,
+    giver_npc_id   TEXT,
+    title          TEXT NOT NULL,
+    description    TEXT,
+    objectives_json TEXT DEFAULT '[]',
+    reward_json    TEXT DEFAULT '{}',
+    status         TEXT NOT NULL DEFAULT 'available',
+    created_at     INTEGER NOT NULL DEFAULT (unixepoch()),
+    accepted_by    TEXT,
+    completed_at   INTEGER
+  );
+  CREATE TABLE player_quests (
     id           TEXT PRIMARY KEY,
     user_id      TEXT NOT NULL,
-    world_id     TEXT NOT NULL,
     quest_id     TEXT NOT NULL,
-    status       TEXT NOT NULL,
-    started_at   TEXT NOT NULL,
-    completed_at TEXT,
+    world_id     TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'active',
+    completed_at INTEGER,
+    rewarded_at  INTEGER,
+    accepted_at  INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(user_id, world_id, quest_id)
+  );
+  CREATE TABLE quest_objectives (
+    id             TEXT PRIMARY KEY,
+    quest_id       TEXT NOT NULL,
+    type           TEXT NOT NULL,
+    target         TEXT NOT NULL,
+    required_count INTEGER DEFAULT 1,
+    description    TEXT,
+    order_index    INTEGER DEFAULT 0
+  );
+  CREATE TABLE player_quest_progress (
+    id            TEXT PRIMARY KEY,
+    user_id       TEXT NOT NULL,
+    world_id      TEXT NOT NULL,
+    quest_id      TEXT NOT NULL,
+    objective_id  TEXT NOT NULL,
+    current_count INTEGER DEFAULT 0,
+    completed_at  INTEGER,
+    UNIQUE(user_id, world_id, quest_id, objective_id)
+  );
+  CREATE TABLE quest_rewards (
+    id          TEXT PRIMARY KEY,
+    quest_id    TEXT NOT NULL,
+    reward_type TEXT NOT NULL,
+    reward_key  TEXT,
+    amount      INTEGER DEFAULT 100
   );`;
-
-function nowSql() {
-  return new Date().toISOString().replace("T", " ").replace("Z", "");
-}
 
 /**
  * In-memory replay of the authored first-cycle journey. Completes every
@@ -50,15 +97,20 @@ export function runJourneyProbe() {
   let db;
   try {
     db = new Database(":memory:");
-    db.exec(QUEST_PROGRESS_DDL);
+    db.exec(SYSTEM_B_DDL);
     const userId = "probe_user";
     const worldId = "concordia-hub";
-    const insert = db.prepare(`
-      INSERT INTO quest_progress (id, user_id, world_id, quest_id, status, started_at, completed_at)
-      VALUES (?, ?, ?, ?, 'complete', ?, ?)
-      ON CONFLICT(user_id, world_id, quest_id) DO UPDATE SET status='complete', completed_at=excluded.completed_at
+    const insertQuest = db.prepare(`
+      INSERT INTO world_quests (id, world_id, title, status) VALUES (?, ?, ?, 'available')
     `);
-    for (const qid of FIRST_CYCLE_QUEST_IDS) insert.run(`qp_${qid}`, userId, worldId, qid, nowSql(), nowSql());
+    const insertPlayerQuest = db.prepare(`
+      INSERT INTO player_quests (id, user_id, quest_id, world_id, status, completed_at)
+      VALUES (?, ?, ?, ?, 'completed', unixepoch())
+    `);
+    for (const qid of FIRST_CYCLE_QUEST_IDS) {
+      insertQuest.run(qid, worldId, qid);
+      insertPlayerQuest.run(`pq_${qid}`, userId, qid, worldId);
+    }
 
     const r = deriveFirstCycleProgress({ db, userId, worldId }) || {};
     const complete = r.complete === true && r.currentPhase === "complete";

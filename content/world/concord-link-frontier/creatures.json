@@ -38,8 +38,8 @@
     ]
   },
   {
-    "id": "thunder_brahmin",
-    "name": "Thunder Brahmin",
+    "id": "thunder_yak",
+    "name": "Thunder Yak",
     "world_id": "concord-link-frontier",
     "description": "A heavy horned draft beast of the frontier herds, placid until provoked, then a charging wall of muscle that scatters anything in the corral.",
     "topology_hint": "quadruped",

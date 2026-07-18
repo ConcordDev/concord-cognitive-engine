@@ -171,10 +171,17 @@ future Wave-4 gap-closure pass, each pre-triaged:
   state is per-user in-memory `STATE.ingestLens`). **Triage: ENGINEERING** —
   a `registerHeartbeat("ingest-sync-cycle", …)` that walks due schedules,
   once live connector execution (above) exists to give it something to run.
-- **Schema auto-inference / column-type detection on preview.**
-  `validateSchema` checks against a supplied field list; Airbyte infers a
-  source schema. **Triage: ENGINEERING** — a `detectSchema` macro over a
-  records sample (the `validateSchema` no-schema branch already returns
-  detected fields; promoting that to a first-class inference step is local).
+- ~~**Schema auto-inference / column-type detection on preview.**~~ **CLOSED
+  (2026-07-16, `e4f73b1d`)** — new `detectSchema` macro promotes
+  `validateSchema`'s field-name-only no-schema branch into real per-field
+  column-TYPE inference (type, nullable %, uniqueness %, real sample
+  values), sampling every record rather than just the first. Type
+  detection order matters and is deliberate: integer is checked before the
+  general number bucket, and date patterns are checked before falling back
+  to string. A field is only reported as a single type when the sample
+  genuinely agrees — otherwise it's honestly `"mixed"` with a breakdown,
+  never forced to a majority type. A new "Detect Schema" button and a real
+  per-field table (type badge, nullable/uniqueness %, "likely PK" chip,
+  sample-value chips) were added to the ingest page.
 
 None of these are papered over with fabricated data in the current UI.

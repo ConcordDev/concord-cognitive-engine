@@ -6,14 +6,14 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Heart, Bookmark, Share2, Trash2 } from 'lucide-react';
+import { Loader2, Heart, Bookmark, Share2, Trash2, Users, Copy, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Outfit { id: string; name: string }
 interface CommunityPost {
   id: string; ownerLabel: string; caption: string; occasion: string; season: string;
-  itemNames: string[]; likes: number; saves: number; likedByMe: boolean;
+  itemNames: string[]; itemIds: string[]; likes: number; saves: number; likedByMe: boolean;
   savedByMe: boolean; mine: boolean; createdAt: string;
 }
 type FeedFilter = 'recent' | 'popular' | 'mine' | 'saved';
@@ -22,11 +22,18 @@ export function FashionSocialPanel() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [filter, setFilter] = useState<FeedFilter>('recent');
+  // Friends-scoped feed toggle (fashion-capability-map.md #16 — the feed
+  // was global-only; this piggybacks on Concord's real friends graph via
+  // fashion.social-feed's new `friendsOnly` param, never a client-side
+  // filter over the global list).
+  const [friendsOnly, setFriendsOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shareOutfitId, setShareOutfitId] = useState('');
   const [caption, setCaption] = useState('');
   const [sharing, setSharing] = useState(false);
+  const [cloningId, setCloningId] = useState<string | null>(null);
+  const [clonedIds, setClonedIds] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -34,6 +41,7 @@ export function FashionSocialPanel() {
       filter === 'mine' ? { mine: true }
         : filter === 'saved' ? { savedOnly: true }
           : { sort: filter };
+    if (friendsOnly) feedParams.friendsOnly = true;
     const [f, o] = await Promise.all([
       lensRun('fashion', 'social-feed', feedParams),
       lensRun('fashion', 'outfit-list', {}),
@@ -41,7 +49,7 @@ export function FashionSocialPanel() {
     setPosts((f.data?.result?.posts as CommunityPost[]) || []);
     setOutfits((o.data?.result?.outfits as Outfit[]) || []);
     setLoading(false);
-  }, [filter]);
+  }, [filter, friendsOnly]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -77,6 +85,20 @@ export function FashionSocialPanel() {
     await refresh();
   };
 
+  // Clone a single shared item straight into the caller's own closet
+  // (fashion.social-clone-item). Creates a genuine independent item —
+  // never a reference back to the friend's — so nothing here can mutate
+  // the source. Keyed by itemId so multiple clone buttons on one post
+  // each show their own pending/done state.
+  const cloneItem = async (postId: string, itemId: string) => {
+    setCloningId(itemId);
+    const r = await lensRun('fashion', 'social-clone-item', { postId, itemId });
+    setCloningId(null);
+    if (r.data?.ok === false) { setError(r.data?.error || 'Clone failed'); return; }
+    setError(null);
+    setClonedIds((prev) => new Set(prev).add(itemId));
+  };
+
   return (
     <div className="space-y-3">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -108,7 +130,7 @@ export function FashionSocialPanel() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {(['recent', 'popular', 'mine', 'saved'] as FeedFilter[]).map((f) => (
           <button key={f} type="button" onClick={() => setFilter(f)}
             className={cn('text-[11px] px-2.5 py-1 rounded-full border capitalize',
@@ -116,15 +138,22 @@ export function FashionSocialPanel() {
             {f}
           </button>
         ))}
+        <button type="button" onClick={() => setFriendsOnly((v) => !v)}
+          aria-pressed={friendsOnly}
+          className={cn('flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border ml-auto',
+            friendsOnly ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 text-zinc-400')}>
+          <Users className="w-3 h-3" /> Friends only
+        </button>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : posts.length === 0 ? (
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
-          {filter === 'saved' ? 'No saved looks yet.'
-            : filter === 'mine' ? 'You have not shared any outfits.'
-              : 'No community looks yet — be the first to share.'}
+          {friendsOnly ? 'No looks from friends yet — add friends, or turn off "Friends only" to browse the full feed.'
+            : filter === 'saved' ? 'No saved looks yet.'
+              : filter === 'mine' ? 'You have not shared any outfits.'
+                : 'No community looks yet — be the first to share.'}
         </div>
       ) : (
         <ul className="space-y-2">
@@ -137,9 +166,26 @@ export function FashionSocialPanel() {
               <p className="text-sm text-zinc-200 mt-0.5">{p.caption}</p>
               {p.itemNames.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {p.itemNames.map((n, idx) => (
-                    <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">{n}</span>
-                  ))}
+                  {p.itemNames.map((n, idx) => {
+                    const itemId = p.itemIds?.[idx];
+                    const cloned = itemId ? clonedIds.has(itemId) : false;
+                    return (
+                      <span key={idx} className="inline-flex items-center gap-1 text-[10px] pl-1.5 pr-1 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                        {n}
+                        {!p.mine && itemId && (
+                          <button type="button" onClick={() => cloneItem(p.id, itemId)}
+                            disabled={cloningId === itemId || cloned}
+                            title={cloned ? 'Cloned to your closet' : 'Clone to my closet'}
+                            aria-label={`Clone ${n} to my closet`}
+                            className="text-zinc-500 hover:text-fuchsia-400 disabled:opacity-60 disabled:hover:text-zinc-500">
+                            {cloningId === itemId ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : cloned ? <Check className="w-3 h-3 text-emerald-400" />
+                                : <Copy className="w-3 h-3" />}
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
               <div className="flex items-center gap-3 mt-2">

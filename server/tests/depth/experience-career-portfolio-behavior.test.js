@@ -10,7 +10,8 @@
 // Wave-3 frontend rebuild (see docs/lens-specs/experience-capability-map.md).
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun } from "./_harness.js";
+import { randomUUID } from "node:crypto";
+import { lensRun, load, depthCtx } from "./_harness.js";
 
 const SAMPLE = {
   name: "Jordan Rivera",
@@ -38,11 +39,23 @@ describe("experience — career portfolio actions (real handlers, not fabricated
     assert.equal(r.result.analysis.categories.creative, 1);
   });
 
-  it("endorse: appends a real endorsement row with an actor + timestamp", async () => {
-    const r = await lensRun("experience", "endorse", { data: SAMPLE, params: { skillId: "mixing", comment: "Great ears" } });
+  it("endorse: appends a real endorsement row with an actor + timestamp (peer, not self)", async () => {
+    // Peer-endorsement guard (2026-07, closes the "only self-endorsement is
+    // reachable" gap): the artifact's owner and the endorsing actor must be
+    // DIFFERENT users, so this test deliberately creates the artifact under
+    // one ctx and runs the action under another — a single-ctx `lensRun`
+    // call would now be a self-endorsement and correctly get rejected (see
+    // the dedicated peer-endorsement test file for that assertion).
+    const { runMacro, STATE } = await load();
+    const ownerCtx = await depthCtx("depth:experience-portfolio-owner");
+    const peerCtx = await depthCtx("depth:experience-portfolio-peer");
+    const id = `depth-experience-${randomUUID()}`;
+    STATE.lensArtifacts.set(id, { id, domain: "experience", type: "experience", data: SAMPLE, ownerId: ownerCtx.actor.userId, createdBy: ownerCtx.actor.userId });
+    const r = await runMacro("lens", "run", { id, action: "endorse", params: { skillId: "mixing", comment: "Great ears" } }, peerCtx);
     assert.equal(r.ok, true);
     assert.equal(r.result.endorsement.skillId, "mixing");
     assert.equal(r.result.endorsement.comment, "Great ears");
+    assert.equal(r.result.endorsement.endorserId, peerCtx.actor.userId);
     assert.ok(r.result.endorsement.id);
     assert.ok(r.result.endorsement.endorsedAt);
   });

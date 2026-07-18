@@ -1,0 +1,44 @@
+{
+  "version": 2,
+  "generated": "2026-07-18",
+  "gate": "scripts/check-name-collisions.mjs",
+  "class": "real-name / IP-name collision (E3 in docs/CONTENT_INTEGRITY_SWEEP.md)",
+  "note": "Accepted-exceptions + known-pending baseline that makes the name-collision gate a RATCHET, not a wall. The gate is GREEN today (every entry below is covered) but blocks any NEW real-name-for-fiction collision (a new term, or a known term appearing in a NEW file/scope). v2 (2026-07-18): the 12 owner-decided renames from the Content Integrity Sweep (Kree→Vrellan, Naheya→Kohanti, Wiyowak→Hotamek, Okimaw→Tamohek, Thunder Brahmin→Thunder Yak, Wintersday→Hearthtide, Mournhold→House Vaelmoor, Marcus Holloway→Marcus Vantree, Pyke→Wrenlow, Karthal→House Thornvale, glock_19→compact_9mm, sig_p229→duty_40cal) are CLOSED — swept to 0 corpus-wide and dropped from knownPending; the dictionary still guards each old term against reintroduction. Only the 3 'likely-keep' items remain, awaiting an owner keep/rename call.",
+
+  "accepted": {
+    "note": "Documentary rationale for what the curated dictionary deliberately does NOT flag. These classes are legitimate uses of real names and are kept OUT of the dictionary rather than baselined per-file.",
+    "publicDomainMyth": "Public-domain mythology used as itself (Mercury, Vesna, Emer, Norse/Greek/Roman gods) — e.g. tunya's alien goddess 'Mercury' (25 refs).",
+    "realGeographyAsItself": "Real geography referenced as itself (Manhattan, Africa, Eurasia).",
+    "realScientistsInGrounding": "Real scientists cited as themselves in content/grounding/** (Newton, Turing, ...).",
+    "realMedicalTerms": "Real medical/disease terminology in content/diseases/** and content/healthcare-protocols.json.",
+    "genreVocab": "Generic genre vocabulary that is not a trademark (orc, elf, netrunner, mutant, ...).",
+    "cc0AssetSources": "Real CC0 / open asset-source attributions in content/evo-seed/**."
+  },
+
+  "acceptedTerms": [
+    "Mercury",
+    "Vesna",
+    "Emer"
+  ],
+
+  "knownPending": [
+    {
+      "term": "Gloom Stalker",
+      "category": "TRADEMARKED_IP",
+      "scopes": ["content/world/fantasy/", "content/world/sovereign-ruins/"],
+      "reason": "owner-decision-pending — D&D ranger subclass; generic 'gloom'+'stalker'. Likely keep. See CONTENT_INTEGRITY_SWEEP.md."
+    },
+    {
+      "term": "Jorah Dunmore",
+      "category": "TRADEMARKED_IP",
+      "scopes": ["content/world/sovereign-ruins/"],
+      "reason": "owner-decision-pending — biblical/GoT echo. Likely keep. See CONTENT_INTEGRITY_SWEEP.md."
+    },
+    {
+      "term": "Polysteel",
+      "category": "TRADEMARKED_IP",
+      "scopes": ["content/world/cyber/", "content/world/_shared/"],
+      "reason": "owner-decision-pending — coined cyber org/material; likely keep. See CONTENT_INTEGRITY_SWEEP.md."
+    }
+  ]
+}

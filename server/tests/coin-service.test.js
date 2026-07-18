@@ -1091,3 +1091,85 @@ describe("return value contracts", () => {
     assert.equal(typeof events[0], "object");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 11. mintCoins idempotency — Stripe-webhook atomicity hardening
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// The Stripe webhook path is: executePurchase (idempotent) → mintCoins →
+// markEventProcessed. A crash (or Stripe at-least-once re-delivery) between the
+// mint and markEventProcessed would re-enter mintCoins with the SAME refId and,
+// before this hardening, mint a SECOND time — inflating the treasury above the
+// ledger's credited supply. These tests pin that a repeated refId is a no-op.
+describe("mintCoins idempotency (Stripe-webhook atomicity)", () => {
+  it("a repeated refId does NOT double-mint the treasury", () => {
+    const refId = "stripe_mint:evt_123";
+
+    const first = mintCoins(db, { amount: 100, userId: "user_1", refId });
+    assert.equal(first.ok, true);
+    assert.equal(first.idempotent, false);
+    assert.equal(first.treasury.coinsAfter, 100);
+
+    // Simulate the webhook re-delivery / crash-retry: identical refId.
+    const second = mintCoins(db, { amount: 100, userId: "user_1", refId });
+    assert.equal(second.ok, true, "retry still reports success to the caller");
+    assert.equal(second.idempotent, true, "retry is recognized as already-minted");
+
+    // Treasury is UNCHANGED — still 100, not 200.
+    const state = getTreasuryState(db);
+    assert.equal(state.total_usd, 100);
+    assert.equal(state.total_coins, 100);
+
+    // And exactly ONE MINT event exists for that refId.
+    const events = getTreasuryEvents(db, { type: "MINT" });
+    assert.equal(events.length, 1);
+    assert.equal(events[0].ref_id, refId);
+  });
+
+  it("the idempotent retry returns the ORIGINAL treasury snapshot", () => {
+    const refId = "stripe_mint:evt_snap";
+    seedTreasury(db, 40, 40);
+
+    const first = mintCoins(db, { amount: 60, userId: "user_1", refId });
+    assert.equal(first.treasury.usdBefore, 40);
+    assert.equal(first.treasury.usdAfter, 100);
+
+    const retry = mintCoins(db, { amount: 60, userId: "user_1", refId });
+    assert.equal(retry.idempotent, true);
+    // Snapshot reflects the state as of the FIRST mint, not a re-computed one.
+    assert.equal(retry.treasury.usdBefore, 40);
+    assert.equal(retry.treasury.usdAfter, 100);
+    assert.equal(retry.treasury.coinsAfter, 100);
+  });
+
+  it("distinct refIds each mint (idempotency is per-refId, not global)", () => {
+    mintCoins(db, { amount: 100, userId: "user_1", refId: "stripe_mint:evt_A" });
+    mintCoins(db, { amount: 100, userId: "user_2", refId: "stripe_mint:evt_B" });
+
+    const state = getTreasuryState(db);
+    assert.equal(state.total_coins, 200);
+    assert.equal(getTreasuryEvents(db, { type: "MINT" }).length, 2);
+  });
+
+  it("refId-less mints are never suppressed (legacy callers unaffected)", () => {
+    mintCoins(db, { amount: 25, userId: "user_1" });
+    mintCoins(db, { amount: 25, userId: "user_1" });
+
+    const state = getTreasuryState(db);
+    assert.equal(state.total_coins, 50, "two no-refId mints both apply");
+    assert.equal(getTreasuryEvents(db, { type: "MINT" }).length, 2);
+  });
+
+  it("a BURN row does not block a later MINT sharing that refId", () => {
+    // Idempotency is scoped to event_type = 'MINT'; a same-refId BURN
+    // (a different lifecycle event) must not mask a legitimate mint.
+    seedTreasury(db, 100, 100);
+    burnCoins(db, { amount: 10, userId: "user_1", refId: "shared_ref" });
+    const mintRes = mintCoins(db, { amount: 30, userId: "user_1", refId: "shared_ref" });
+
+    assert.equal(mintRes.ok, true);
+    assert.equal(mintRes.idempotent, false, "the MINT is not blocked by the BURN row");
+    const state = getTreasuryState(db);
+    assert.equal(state.total_coins, 120); // 100 - 10 + 30
+  });
+});

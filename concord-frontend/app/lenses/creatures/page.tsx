@@ -8,11 +8,13 @@
 // breed returns a genuine hybrid blueprint, lineage reads creature_lineage.
 // No mock/placeholder creatures — empty worlds render an honest empty state.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { lensRun } from '@/lib/api/client';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
 import { Dna, Sparkles, GitBranch, Loader2, AlertCircle, RefreshCw, BookOpen, Waves, Search } from 'lucide-react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { CreaturePortraitThumb } from '@/components/creatures/CreaturePortraitThumb';
 
 interface Population {
   id: string;
@@ -64,6 +66,12 @@ export default function CreaturesLensPage() {
   const [taxQuery, setTaxQuery] = useState('');
   const [taxLoading, setTaxLoading] = useState(false);
   const [taxResult, setTaxResult] = useState<{ id: string; taxonomy: TaxonomyLookup } | { id: string; error: string } | null>(null);
+
+  // Real DOM targets for the keyboard-shortcut focus actions below —
+  // both inputs already exist and are wired to real state (codexQuery,
+  // lineageId); the shortcuts just move focus to them, nothing fabricated.
+  const codexSearchRef = useRef<HTMLInputElement>(null);
+  const lineageInputRef = useRef<HTMLInputElement>(null);
 
   const refreshCodex = useCallback(async () => {
     setCodexLoading(true);
@@ -117,6 +125,10 @@ export default function CreaturesLensPage() {
   };
 
   const codexColumns: DataTableColumn<SpeciesRecord>[] = [
+    {
+      id: 'portrait', header: '', align: 'left', sortable: false,
+      accessor: (s) => <CreaturePortraitThumb speciesId={s.species_id} size={28} />,
+    },
     { id: 'species_id', header: 'Species', accessor: (s) => s.species_id, sortable: true, monospace: true },
     { id: 'clade', header: 'Clade', accessor: (s) => s.clade, sortable: true },
     { id: 'topology', header: 'Rig topology', accessor: (s) => s.topology, sortable: true },
@@ -204,6 +216,48 @@ export default function CreaturesLensPage() {
     }
   };
 
+  // Lens-scoped keyboard commands — each binds to a real, already-existing
+  // action on this page (no fabricated shortcuts). Discoverable via the
+  // global "?" / "mod+?" keyboard-shortcuts modal (every useLensCommand
+  // registration surfaces there automatically — lib/keyboard.tsx) AND via
+  // the visible kbd hints rendered next to the bound controls below,
+  // matching the established per-lens convention (see e.g.
+  // app/lenses/invariant/page.tsx, app/lenses/all/page.tsx).
+  useLensCommand(
+    [
+      {
+        id: 'refresh-populations',
+        keys: 'r',
+        description: 'Refresh populations',
+        category: 'actions',
+        action: () => { void refresh(); },
+      },
+      {
+        id: 'focus-codex-search',
+        keys: '/',
+        description: 'Search species codex',
+        category: 'navigation',
+        action: () => codexSearchRef.current?.focus(),
+      },
+      {
+        id: 'focus-lineage',
+        keys: 'l',
+        description: 'Focus lineage browser',
+        category: 'navigation',
+        action: () => lineageInputRef.current?.focus(),
+      },
+      {
+        id: 'breed-pair',
+        keys: 'b',
+        description: 'Breed the selected crossbreeding pair',
+        category: 'actions',
+        action: () => { void breed(); },
+        enabled: !!pickA && !!pickB && !breeding,
+      },
+    ],
+    { lensId: 'creatures' },
+  );
+
   return (
     <LensShell lensId="creatures">
     <div className="mx-auto max-w-5xl space-y-6 p-6">
@@ -214,14 +268,18 @@ export default function CreaturesLensPage() {
           </h1>
           <p className="text-sm text-zinc-400">{worldId} populations · crossbreeding pen · lineage browser</p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          aria-label="Refresh populations"
-          className="rounded border border-zinc-700 bg-zinc-900 p-2 text-zinc-300 hover:border-violet-500/50 disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={refresh}
+            disabled={loading}
+            aria-label="Refresh populations"
+            title="Refresh populations (R)"
+            className="rounded border border-zinc-700 bg-zinc-900 p-2 text-zinc-300 hover:border-violet-500/50 disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden />
+          </button>
+          <kbd className="hidden rounded border border-zinc-700 bg-zinc-900 px-1 text-[10px] text-zinc-500 sm:inline">R</kbd>
+        </div>
       </header>
 
       {/* Wave 7 / E6 — the world's emotional weather: what the fauna have been feeling. */}
@@ -287,12 +345,15 @@ export default function CreaturesLensPage() {
                     else { setPickA(p); setPickB(null); setBreedResult(null); }
                   }}
                   className={[
-                    'rounded border p-2 text-left text-xs',
+                    'flex items-center gap-2 rounded border p-2 text-left text-xs',
                     sel ? 'border-violet-300 bg-violet-500/30 text-violet-50' : 'border-violet-500/20 bg-violet-950/20 text-violet-200 hover:border-violet-400/50',
                   ].join(' ')}
                 >
-                  <div className="font-mono font-semibold">{p.species_id}</div>
-                  <div className="text-[10px] opacity-80">{p.biome} · {p.lifestyle} · ×{p.current_count}{p.topology ? ` · ${p.topology}` : ''}</div>
+                  <CreaturePortraitThumb speciesId={p.species_id} size={36} />
+                  <div className="min-w-0">
+                    <div className="font-mono font-semibold">{p.species_id}</div>
+                    <div className="text-[10px] opacity-80">{p.biome} · {p.lifestyle} · ×{p.current_count}{p.topology ? ` · ${p.topology}` : ''}</div>
+                  </div>
                 </button>
               );
             })}
@@ -311,9 +372,10 @@ export default function CreaturesLensPage() {
             <label className="sr-only" htmlFor="codex-search">Search species codex</label>
             <input
               id="codex-search"
+              ref={codexSearchRef}
               value={codexQuery}
               onChange={(e) => setCodexQuery(e.target.value)}
-              placeholder="filter by species, clade, topology, diet…"
+              placeholder="filter by species, clade, topology, diet…  ·  / focuses"
               className="w-64 rounded border border-zinc-700 bg-zinc-950 py-1 pl-6 pr-2 text-[11px] text-zinc-100"
             />
           </div>
@@ -388,18 +450,29 @@ export default function CreaturesLensPage() {
           <button
             onClick={breed}
             disabled={breeding}
+            title="Breed (B)"
             className="rounded bg-violet-500/30 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-500/50 disabled:opacity-50"
           >
             {breeding ? <Loader2 className="inline animate-spin" size={11} aria-hidden /> : <Sparkles className="inline" size={11} aria-hidden />} Breed
+            <kbd className="ml-1.5 rounded border border-violet-400/30 bg-violet-950/40 px-1 text-[9px] text-violet-300">B</kbd>
           </button>
           {breedResult && (
-            <div className="mt-2 text-xs" role="status" aria-live="polite">
+            <div className="mt-2 flex items-center gap-2 text-xs" role="status" aria-live="polite">
               {breedResult.ok && breedResult.hybrid ? (
-                <span className="text-emerald-300">
-                  ✓ hybrid {breedResult.hybrid.species_id} ({breedResult.hybrid.id?.slice(0, 14)})
-                  {typeof breedResult.stability === 'number' && <> · stability {Math.round(breedResult.stability * 100)}%</>}
-                  {breedResult.hybrid.topology && <> · {breedResult.hybrid.topology}</>}
-                </span>
+                <>
+                  {breedResult.hybrid.species_id && (
+                    <CreaturePortraitThumb
+                      speciesId={breedResult.hybrid.species_id}
+                      variant={breedResult.hybrid.variant}
+                      size={36}
+                    />
+                  )}
+                  <span className="text-emerald-300">
+                    ✓ hybrid {breedResult.hybrid.species_id} ({breedResult.hybrid.id?.slice(0, 14)})
+                    {typeof breedResult.stability === 'number' && <> · stability {Math.round(breedResult.stability * 100)}%</>}
+                    {breedResult.hybrid.topology && <> · {breedResult.hybrid.topology}</>}
+                  </span>
+                </>
               ) : (
                 <span className="text-red-300">× {breedResult.reason || 'incompatible'}</span>
               )}
@@ -416,10 +489,11 @@ export default function CreaturesLensPage() {
           <label className="sr-only" htmlFor="creature-lineage-id">Creature id</label>
           <input
             id="creature-lineage-id"
+            ref={lineageInputRef}
             value={lineageId}
             onChange={(e) => { setLineageId(e.target.value); setLineageSearched(false); setLineageError(null); }}
             onKeyDown={(e) => { if (e.key === 'Enter') fetchLineage(); }}
-            placeholder="creature id"
+            placeholder="creature id  ·  L focuses"
             className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
           />
           <button onClick={fetchLineage} className="rounded bg-zinc-800 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-700">

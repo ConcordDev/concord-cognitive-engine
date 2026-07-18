@@ -136,8 +136,8 @@ describe("Phase 2 / bloodline-powers — getBloodlineMultiplier matrix", () => {
     assert.equal(faded.kind, "refused_faded");
   });
 
-  it("Medici heal matches medici bloodline", () => {
-    const r = getBloodlineMultiplier("medici", 0.0, "heal");
+  it("Vessine heal matches vessine bloodline", () => {
+    const r = getBloodlineMultiplier("vessine", 0.0, "heal");
     assert.equal(r.kind, "pure_match");
   });
 
@@ -157,10 +157,10 @@ describe("Phase 2 / bloodline-powers — ancestry tables", () => {
     const db = setupDb();
     const r1 = setUserAncestry(db, "user_1", "sanguire", 0.2);
     assert.equal(r1.action, "set");
-    const r2 = setUserAncestry(db, "user_1", "medici", 0.5);
+    const r2 = setUserAncestry(db, "user_1", "vessine", 0.5);
     assert.equal(r2.action, "set");
     const a = getUserAncestry(db, "user_1");
-    assert.equal(a.primary_bloodline, "medici");
+    assert.equal(a.primary_bloodline, "vessine");
     assert.equal(a.dilution, 0.5);
   });
 

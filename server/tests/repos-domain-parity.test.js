@@ -358,6 +358,56 @@ describe("repos — pure-compute analysis macros", () => {
     assert.ok(r.result.riskDistribution.critical >= 1);
   });
 
+  it("codeComplexity: sourceFiles path AST-walks real source into real per-function boundaries (docs/WAVE4_INVENTORY.md close-out)", () => {
+    const r = call("codeComplexity", ctxA, {
+      data: {
+        sourceFiles: [
+          {
+            path: "src/thing.js",
+            content: `
+function alpha(x) {
+  if (x) { return 1; }
+  return 0;
+}
+function beta(y) {
+  for (let i = 0; i < y; i++) { /* noop */ }
+  return y;
+}
+`,
+          },
+        ],
+      },
+    }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalModules, 1);
+    // Two real functions, not one whole-file blob.
+    assert.equal(r.result.totalFunctions, 2);
+    const byName = Object.fromEntries(r.result.modules[0].functions.map((f) => [f.name, f]));
+    assert.equal(byName.alpha.cyclomaticComplexity, 2); // 1 + 1 if
+    assert.equal(byName.beta.cyclomaticComplexity, 2);  // 1 + 1 for
+  });
+
+  it("codeComplexity: sourceFiles ignores comment/string text that merely LOOKS like a branch (proves real AST, not regex)", () => {
+    const r = call("codeComplexity", ctxA, {
+      data: {
+        sourceFiles: [
+          { path: "src/noop.js", content: "// if (fake) not real\nfunction noop() { const s = 'if (x) {}'; return s; }\n" },
+        ],
+      },
+    }, {});
+    assert.equal(r.ok, true);
+    const fn = r.result.modules[0].functions.find((f) => f.name === "noop");
+    assert.equal(fn.cyclomaticComplexity, 1); // no real branches — a regex count would have found 2
+  });
+
+  it("codeComplexity: legacy pre-computed modules shape still works unchanged (back-compat)", () => {
+    const r = call("codeComplexity", ctxA, {
+      data: { modules: [{ name: "m", functions: [{ name: "f", branches: 2, nesting: 0, lines: 10, loops: 1, conditions: 1 }] }] },
+    }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.modules[0].functions[0].cyclomaticComplexity, 5);
+  });
+
   it("commitAnalysis computes bus factor", () => {
     const r = call("commitAnalysis", ctxA, {
       data: { commits: [{ hash: "a", author: "x", date: "2026-01-01", files: ["f"] }] },

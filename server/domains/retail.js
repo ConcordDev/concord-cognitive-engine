@@ -2,6 +2,15 @@
 // Domain actions for retail/CRM: reorder, pipeline, LTV, SLA checks.
 
 export default function registerRetailActions(registerLensAction) {
+  // Shared SLA-target-by-priority table (minutes). This is the SINGLE source
+  // of truth for "how fast must priority X be handled" across the whole
+  // retail domain — the live `slaStatus` incidents branch (below) and the
+  // persisted `tickets-*` queue (2026-07 Wave-4 support-desk unit, near the
+  // bottom of this file) both read this SAME object so a persisted ticket's
+  // computed deadline and the ad-hoc incidents-report compliance math can
+  // never silently disagree. Do not invent a second set of numbers.
+  const TICKET_PRIORITY_SLA_MINUTES = { critical: 60, high: 240, medium: 1440, low: 2880 };
+
   /**
    * reorderCheck
    * Flag products that have fallen below their reorder point.
@@ -206,9 +215,37 @@ export default function registerRetailActions(registerLensAction) {
   try {
     const finNum = (v, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
     const round2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
-    const deals = Array.isArray(artifact.data.deals)
-      ? artifact.data.deals
-      : (Array.isArray(artifact.data.opportunities) ? artifact.data.opportunities : []);
+    // Book source resolution (2026-07 CRM unit): the ORIGINAL contract treated
+    // ANY non-Array `deals`/`opportunities` (including garbage like `{boom:true}`)
+    // as an empty pasted book — that exact "malformed input → empty pipeline,
+    // never crash" behavior is preserved byte-identically here by falling back
+    // to the persisted book ONLY when the caller supplied NEITHER key at all
+    // (checked via `in`, not truthiness/shape) — a real book was "pasted" the
+    // moment either key is present, even if its value is invalid, and an
+    // invalid pasted value still degrades to an empty active-deals list exactly
+    // as before. Only true omission of both keys reads the caller's PERSISTED
+    // deals (the deals-* macro family below), mapped into the same
+    // {name,value,probability,stage,expectedCloseDate} shape this calculator
+    // has always consumed. `dealSource` is stamped on the result so the UI can
+    // honestly attribute the numbers.
+    let deals;
+    let dealSource;
+    const dealsKeyPresent = "deals" in artifact.data;
+    const opportunitiesKeyPresent = "opportunities" in artifact.data;
+    if (dealsKeyPresent || opportunitiesKeyPresent) {
+      deals = Array.isArray(artifact.data.deals)
+        ? artifact.data.deals
+        : (Array.isArray(artifact.data.opportunities) ? artifact.data.opportunities : []);
+      dealSource = "pasted";
+    } else {
+      const s = getRetailState();
+      const persisted = s ? ensureRetailBucket(s, "deals", retailActor(ctx)) : [];
+      deals = persisted.map((d) => ({
+        name: d.name, value: d.value, probability: d.probability,
+        stage: d.stage, expectedCloseDate: d.expectedCloseDate || null,
+      }));
+      dealSource = "persisted";
+    }
     const includeClosed = params.includeClosed || false;
 
     const isClosed = (st) => st === "closed-won" || st === "closed-lost" || st === "won" || st === "lost";
@@ -271,6 +308,7 @@ export default function registerRetailActions(registerLensAction) {
 
     const result = {
       generatedAt: new Date().toISOString(),
+      dealSource,
       // ── component-exact fields (the rendered Pipeline card) ──
       totalDeals: dealCount,
       totalUnweighted: totalUnweightedR,
@@ -439,7 +477,7 @@ export default function registerRetailActions(registerLensAction) {
     //   poisoned numeric → finite default; an incident with no response time is
     //   counted as an open breach; complianceRate/avgResponseMinutes stay finite.
     if (Array.isArray(artifact.data.incidents)) {
-      const defaultTargetByPriority = params.slaTargetMinutes || { critical: 60, high: 240, medium: 1440, low: 2880 };
+      const defaultTargetByPriority = params.slaTargetMinutes || TICKET_PRIORITY_SLA_MINUTES;
       const defaultTarget = finNum(params.defaultSlaMinutes) ?? 1440; // 24h
       const incidents = artifact.data.incidents.filter((i) => i && typeof i === "object");
       let withinSLA = 0;
@@ -488,7 +526,33 @@ export default function registerRetailActions(registerLensAction) {
       return { ok: true, result };
     }
 
-    const tickets = artifact.data.tickets || [];
+    // ── Legacy hours-based ticket branch, now with a persisted-queue fallback ──
+    // Mirrors the `pipelineValue` → `deals-*` fallback pattern exactly (2026-07
+    // support-desk unit): the ORIGINAL contract treated any non-array/falsy
+    // `tickets` (including a garbage non-array value) as an empty pasted book —
+    // that "malformed input → empty report, never crash" behavior is preserved
+    // BYTE-IDENTICALLY by only falling back to the persisted `tickets-*` queue
+    // when the caller supplied NEITHER `incidents` NOR `tickets` at all (checked
+    // via `in`, not truthiness/shape). A pasted `tickets` key — even an invalid
+    // value — still degrades to an empty ticket list exactly as before; only
+    // true omission of both keys reads the caller's own persisted queue.
+    let tickets;
+    let ticketSource;
+    if ("tickets" in artifact.data) {
+      tickets = Array.isArray(artifact.data.tickets) ? artifact.data.tickets : [];
+      ticketSource = "pasted";
+    } else {
+      const s = getRetailState();
+      const persisted = s ? ensureRetailBucket(s, "tickets", retailActor(ctx)) : [];
+      tickets = persisted.map((t) => ({
+        ticketId: t.id,
+        subject: t.subject,
+        priority: t.priority,
+        createdAt: t.createdAt,
+        resolvedAt: t.resolvedAt || null,
+      }));
+      ticketSource = "persisted";
+    }
     const defaultSlaHours = params.defaultSlaHours || 24;
     const now = new Date();
 
@@ -551,6 +615,7 @@ export default function registerRetailActions(registerLensAction) {
 
     const report = {
       checkedAt: new Date().toISOString(),
+      ticketSource,
       totalTickets: tickets.length,
       breachedCount: breached.length,
       atRiskCount: atRisk.length,
@@ -592,15 +657,102 @@ export default function registerRetailActions(registerLensAction) {
   function nowIsoRet() { return new Date().toISOString(); }
 
   // ── Product catalog ──
+  //
+  // Wave 4 larger-unit build (2026-07-16), fourth and final of retail's
+  // originally-deferred items: richer product schema. `product-upsert` is
+  // structurally different from the deals-*/tickets-*/displays-* macro
+  // families built just before it in this same file (`cb45c52b`/`e9c4f7fd`/
+  // `3f0dfc3d`) — those do field-by-field PARTIAL updates (only touch what
+  // the caller explicitly sends); `product-upsert` does a FULL OBJECT
+  // REPLACE every call, preserving only `createdAt` from `existing`. The
+  // three new catalog-depth fields below (`supplier`/`leadTimeDays`/
+  // `dailySalesRate`) are preserved from `existing` the SAME way `createdAt`
+  // already is, whenever the caller omits them — so the pre-existing
+  // minimal call shape `{sku,name,price,stock}` (still used by the POS/cart
+  // flow's stock-decrement writes and by every pre-existing test) never
+  // silently wipes catalog depth set by a prior richer call. Passing an
+  // explicit value (including `null`/`""` for leadTimeDays) DOES update/
+  // clear the field — that's the deliberate "unset" path, matching how
+  // `category`/`barcode` already behave on this same macro (full-replace,
+  // not preserved, pre-existing and unchanged here — out of this unit's
+  // scope, only the three NEW fields get the preserve treatment).
+  //
+  // `priceHistory` is never caller-supplied (a caller injecting a fake
+  // price history would defeat the whole point of an audit trail) — it's
+  // server-computed: seeded with one entry on create (`oldPrice: null`,
+  // mirrors the `statusHistory`/`stageHistory` seed-on-create convention
+  // the sibling units established), then appended to ONLY when the new
+  // `price` differs from `existing.price` on a later call. A same-price
+  // re-upsert (e.g. the POS stock-decrement path re-upserting a product at
+  // its unchanged price — it doesn't, but hypothetically could) never
+  // appends a spurious entry.
+  //
+  // `turnoverRate` = (dailySalesRate × 365) / stock — the standard
+  // "annual units sold ÷ average units on hand" inventory-turnover-rate
+  // formula (higher = faster-moving stock). Honestly `null`, never
+  // `Infinity`, when `stock === 0` (can't compute a rate against zero
+  // inventory on hand).
+  //
+  // `abcClass` ("A"/"B"/"C") CANNOT be computed by a single product record
+  // in isolation — ABC analysis ranks a product's revenue contribution
+  // against the REST of the catalog. It's computed in `product-list`
+  // (below) across the caller's full catalog, not here.
+
+  function computeProductAbcClasses(products) {
+    // Revenue proxy per product = price × dailySalesRate (a real "how much
+    // this SKU is worth per day" number from the schema — never fabricated).
+    // Standard Pareto/ABC bucketing: rank descending by revenue, classify
+    // each product by the CUMULATIVE revenue share of every product ranked
+    // ABOVE it (not including itself) — this is what correctly puts a
+    // single dominant SKU (0% preceding it) into "A" instead of overshooting
+    // into "C" when its own revenue alone crosses the 80% line. A = share
+    // preceding it < 80%, B = 80–95%, C = >= 95%. Honestly `null` for every
+    // product (not "C") when the catalog's total modeled revenue is 0 — no
+    // sales-rate data exists yet to classify against.
+    const revenues = products.map((p) => ({
+      sku: p.sku,
+      revenueRate: (Number(p.price) || 0) * (Number(p.dailySalesRate) || 0),
+    }));
+    const total = revenues.reduce((sum, r) => sum + r.revenueRate, 0);
+    const classBySku = new Map();
+    if (!(total > 0)) {
+      for (const r of revenues) classBySku.set(r.sku, null);
+      return classBySku;
+    }
+    const ranked = revenues.slice().sort((a, b) => b.revenueRate - a.revenueRate);
+    let cumulativeBefore = 0;
+    for (const r of ranked) {
+      const shareBefore = cumulativeBefore / total;
+      let cls;
+      if (shareBefore < 0.80) cls = "A";
+      else if (shareBefore < 0.95) cls = "B";
+      else cls = "C";
+      classBySku.set(r.sku, cls);
+      cumulativeBefore += r.revenueRate;
+    }
+    return classBySku;
+  }
 
   registerLensAction("retail", "product-list", (ctx, _artifact, _params = {}) => {
     const s = getRetailState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const map = s.products.get(userId);
-    if (!map) return { ok: true, result: { products: [] } };
-    const products = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-    return { ok: true, result: { products } };
+    if (!map) {
+      return { ok: true, result: { products: [], abcSummary: { A: 0, B: 0, C: 0, unclassified: 0 } } };
+    }
+    const productsRaw = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const classBySku = computeProductAbcClasses(productsRaw);
+    let aCount = 0, bCount = 0, cCount = 0, unclassified = 0;
+    const products = productsRaw.map((p) => {
+      const abcClass = classBySku.has(p.sku) ? classBySku.get(p.sku) : null;
+      if (abcClass === "A") aCount++;
+      else if (abcClass === "B") bCount++;
+      else if (abcClass === "C") cCount++;
+      else unclassified++;
+      return { ...p, abcClass };
+    });
+    return { ok: true, result: { products, abcSummary: { A: aCount, B: bCount, C: cCount, unclassified } } };
   });
 
   registerLensAction("retail", "product-upsert", (ctx, _artifact, params = {}) => {
@@ -618,17 +770,85 @@ export default function registerRetailActions(registerLensAction) {
     if (!Number.isFinite(stock) || stock < 0) return { ok: false, error: "stock must be >= 0" };
     if (!s.products.has(userId)) s.products.set(userId, new Map());
     const existing = s.products.get(userId).get(sku);
+
+    // ── Non-destructive preserve (the landmine): only touch these three
+    // when the caller actually passes them; otherwise carry the existing
+    // value forward exactly like `createdAt` already does. ──
+    let supplier = existing?.supplier || "";
+    if (params.supplier !== undefined) supplier = String(params.supplier || "").slice(0, 120);
+
+    let leadTimeDays = existing?.leadTimeDays ?? null;
+    if (params.leadTimeDays !== undefined) {
+      if (params.leadTimeDays === null || params.leadTimeDays === "") {
+        leadTimeDays = null;
+      } else {
+        const n = Number(params.leadTimeDays);
+        if (!Number.isFinite(n) || n < 0) return { ok: false, error: "leadTimeDays must be >= 0" };
+        leadTimeDays = n;
+      }
+    }
+
+    let dailySalesRate = existing?.dailySalesRate ?? 0;
+    if (params.dailySalesRate !== undefined) {
+      const n = Number(params.dailySalesRate);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, error: "dailySalesRate must be >= 0" };
+      dailySalesRate = n;
+    }
+
+    // ── Server-computed only, never caller-supplied ──
+    const now = nowIsoRet();
+    let priceHistory;
+    if (!existing) {
+      priceHistory = [{ oldPrice: null, newPrice: price, changedAt: now }];
+    } else {
+      priceHistory = Array.isArray(existing.priceHistory) ? existing.priceHistory.slice() : [];
+      if (price !== existing.price) {
+        priceHistory.push({ oldPrice: existing.price, newPrice: price, changedAt: now });
+      }
+    }
+    // Standard inventory-turnover-rate formula: annual units sold ÷ average
+    // units on hand ≈ (dailySalesRate × 365) / stock. Honest `null` (never
+    // Infinity) when stock is 0.
+    const turnoverRate = stock > 0 ? Math.round(((dailySalesRate * 365) / stock) * 100) / 100 : null;
+
     const product = {
       sku, name, price,
       stock,
       category: String(params.category || "").slice(0, 40),
       barcode: String(params.barcode || "").slice(0, 32),
-      updatedAt: nowIsoRet(),
-      createdAt: existing?.createdAt || nowIsoRet(),
+      supplier,
+      leadTimeDays,
+      dailySalesRate,
+      turnoverRate,
+      priceHistory,
+      updatedAt: now,
+      createdAt: existing?.createdAt || now,
     };
     s.products.get(userId).set(sku, product);
     saveRetailState();
     return { ok: true, result: { product } };
+  });
+
+  // Read-only view of the auto-appended price-change audit trail for one
+  // SKU. Kept as a dedicated macro (rather than requiring the whole
+  // catalog via product-list) because a price-history mini-timeline widget
+  // in the UI shouldn't need to fetch every other product to render one
+  // product's history. `product-list`/`product-upsert` also carry
+  // `priceHistory` inline on the full product record for convenience when
+  // the caller already has the object in hand.
+  registerLensAction("retail", "product-price-history", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "").trim();
+    if (!sku) return { ok: false, error: "sku required" };
+    const map = s.products.get(userId);
+    const product = map ? map.get(sku) : null;
+    if (!product) return { ok: false, error: "product not found" };
+    return {
+      ok: true,
+      result: { sku, priceHistory: Array.isArray(product.priceHistory) ? product.priceHistory : [] },
+    };
   });
 
   registerLensAction("retail", "product-delete", (ctx, _artifact, params = {}) => {
@@ -640,8 +860,116 @@ export default function registerRetailActions(registerLensAction) {
     const map = s.products.get(userId);
     if (!map || !map.has(sku)) return { ok: false, error: "not found" };
     map.delete(sku);
+    // Cascade: a variant pointing at a deleted parent SKU is dangling data
+    // no UI can ever legitimately show (its price derives from a parent
+    // that no longer exists) — remove it rather than leave an orphan.
+    const variants = ensureRetailBucket(s, "productVariants", userId);
+    for (let i = variants.length - 1; i >= 0; i--) {
+      if (variants[i].parentSku === sku) variants.splice(i, 1);
+    }
     saveRetailState();
     return { ok: true, result: { deleted: sku } };
+  });
+
+  // ── Product variants (size/color/style sub-SKUs) ──
+  //
+  // Modeled as genuinely separate catalog-adjacent records (own SKU, own
+  // stock, own createdAt/updatedAt) rather than an array embedded on the
+  // parent product — the same reasoning the deals/tickets/displays units
+  // used for their own entities: a variant is independently addressable
+  // (its own SKU can be scanned at the register, its own stock decremented
+  // independently of the parent), so it gets its own bucket + its own CRUD
+  // rather than living inside product-upsert's full-replace object (which
+  // would reintroduce the exact landmine this unit is closing). Unlike
+  // product-upsert, these three macros use TRUE partial-update semantics
+  // from day one (only touch fields the caller sends) — there's no legacy
+  // minimal-call-shape contract to preserve here since the macros are new,
+  // so there was no reason to inherit product-upsert's full-replace shape.
+
+  registerLensAction("retail", "product-variant-upsert", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "").trim();
+    if (!sku) return { ok: false, error: "sku required" };
+    if (sku.length > 32) return { ok: false, error: "sku too long" };
+
+    const variants = ensureRetailBucket(s, "productVariants", userId);
+    const existing = variants.find((v) => v.sku === sku);
+
+    let parentSku = existing?.parentSku;
+    if (params.parentSku !== undefined) parentSku = String(params.parentSku || "").trim();
+    if (!parentSku) return { ok: false, error: "parentSku required" };
+    const catalog = s.products.get(userId);
+    if (!catalog || !catalog.has(parentSku)) {
+      return { ok: false, error: `parent product not found for sku: ${parentSku}` };
+    }
+    if (!existing && catalog.has(sku)) {
+      return { ok: false, error: "sku collides with an existing product SKU" };
+    }
+    const parent = catalog.get(parentSku);
+
+    let stock = existing?.stock ?? 0;
+    if (params.stock !== undefined) {
+      const n = Number(params.stock);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, error: "stock must be >= 0" };
+      stock = n;
+    }
+    let priceDelta = existing?.priceDelta ?? 0;
+    if (params.priceDelta !== undefined) {
+      const n = Number(params.priceDelta);
+      if (!Number.isFinite(n)) return { ok: false, error: "priceDelta must be a finite number" };
+      priceDelta = n;
+    }
+    const price = Math.round((parent.price + priceDelta) * 100) / 100;
+    if (price < 0) return { ok: false, error: "parent price + priceDelta would be negative" };
+
+    let size = existing?.size ?? "";
+    if (params.size !== undefined) size = String(params.size || "").slice(0, 40);
+    let color = existing?.color ?? "";
+    if (params.color !== undefined) color = String(params.color || "").slice(0, 40);
+    let style = existing?.style ?? "";
+    if (params.style !== undefined) style = String(params.style || "").slice(0, 40);
+    if (!existing && !size && !color && !style) {
+      return { ok: false, error: "at least one of size/color/style is required" };
+    }
+
+    const now = nowIsoRet();
+    const variant = {
+      sku, parentSku,
+      size, color, style,
+      stock, priceDelta, price,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+    if (existing) Object.assign(existing, variant);
+    else variants.push(variant);
+    saveRetailState();
+    return { ok: true, result: { variant } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "product-variant-list", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const all = ensureRetailBucket(s, "productVariants", userId);
+    const parentSku = params.parentSku !== undefined ? String(params.parentSku).trim() : null;
+    const variants = (parentSku ? all.filter((v) => v.parentSku === parentSku) : all.slice())
+      .sort((a, b) => a.sku.localeCompare(b.sku));
+    return { ok: true, result: { variants } };
+  });
+
+  registerLensAction("retail", "product-variant-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "");
+    if (!sku) return { ok: false, error: "sku required" };
+    const list = ensureRetailBucket(s, "productVariants", userId);
+    const idx = list.findIndex((v) => v.sku === sku);
+    if (idx < 0) return { ok: false, error: "variant not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { sku, deleted: true } };
   });
 
   // ── Cart + checkout ──
@@ -2317,5 +2645,870 @@ export default function registerRetailActions(registerLensAction) {
     if (!member) return { ok: false, error: "staff member not found" };
     const allowed = member.status === "active" && member.permissions.includes(permission);
     return { ok: true, result: { allowed, role: member.role, status: member.status } };
+  });
+
+  // ── CRM / sales pipeline — persisted deals (2026-07 Wave-4 unit) ──────────
+  //
+  // The persisted lead/deal record family the removed fake "Pipeline" tab was
+  // standing in for (docs/lens-specs/retail-capability-map.md "Genuinely
+  // missing, deferred" #1). Design decisions, documented here because tests pin
+  // them:
+  //   • Stage enum is a real SMB retail/wholesale CRM funnel:
+  //     lead → contacted → qualified → proposal → negotiation → won | lost.
+  //     Unknown stages are REJECTED, never coerced.
+  //   • probability is a PERCENT (0–100) — the same unit `pipelineValue`'s
+  //     pasted-book contract has always used, so persisted deals can feed that
+  //     calculator without a unit conversion. When omitted at create it
+  //     defaults per stage (HubSpot-style: lead 10 … negotiation 80).
+  //   • Every stage change goes through `deals-stage-move` and APPENDS to
+  //     `stageHistory` ({from, to, at, note?, reopened?}) — the pipeline is
+  //     auditable, not a mutable label. `deals-upsert` therefore REJECTS a
+  //     stage change on update instead of silently applying it.
+  //   • won/lost are TERMINAL: moving out requires an explicit `reopen: true`
+  //     and the target must be an OPEN stage (won→lost directly is rejected —
+  //     reopen first, then close the other way; keeps every closure auditable).
+  //     Closing forces probability (won→100, lost→0) and stamps `closedAt`;
+  //     reopening clears `closedAt` and leaves probability for the owner to
+  //     re-estimate.
+  //   • `deals-list` returns computed rollups (total open pipeline value,
+  //     probability-weighted value, per-stage count/value/weighted, won/lost
+  //     totals) — the UI renders ONLY these, never client-invented numbers.
+  //     Weighted math matches `pipelineValue` exactly: per-deal
+  //     round2(value × probability/100), summed, then round2.
+  //   • Relationship to `pipelineValue`: that calculator keeps its pasted-book
+  //     behavior byte-identical, and now falls back to READING this persisted
+  //     book when no book is pasted (see `dealSource` above) — one math, two
+  //     entry points, no silent duplication.
+
+  const DEAL_STAGES = ["lead", "contacted", "qualified", "proposal", "negotiation", "won", "lost"];
+  const DEAL_OPEN_STAGES = DEAL_STAGES.slice(0, 5);
+  const DEAL_TERMINAL_STAGES = new Set(["won", "lost"]);
+  const DEAL_DEFAULT_PROBABILITY = { lead: 10, contacted: 20, qualified: 40, proposal: 60, negotiation: 80, won: 100, lost: 0 };
+  const dealRound2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+  const dealWeighted = (d) => dealRound2(d.value * (d.probability / 100));
+
+  function validateDealNumbers(params, out) {
+    if (params.value !== undefined) {
+      const value = Number(params.value);
+      if (!Number.isFinite(value) || value < 0) return "value must be a finite number >= 0";
+      out.value = dealRound2(value);
+    }
+    if (params.probability !== undefined) {
+      const probability = Number(params.probability);
+      if (!Number.isFinite(probability) || probability < 0 || probability > 100) return "probability must be 0–100 (percent)";
+      out.probability = dealRound2(probability);
+    }
+    return null;
+  }
+
+  registerLensAction("retail", "deals-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const all = ensureRetailBucket(s, "deals", userId);
+    const stageFilter = params.stage !== undefined ? String(params.stage) : null;
+    if (stageFilter && !DEAL_STAGES.includes(stageFilter)) {
+      return { ok: false, error: `unknown stage: ${stageFilter} (expected one of ${DEAL_STAGES.join(", ")})` };
+    }
+
+    // Rollups are computed from the FULL book (never the stage filter) so the
+    // header numbers stay stable while the user narrows the card list.
+    const byStage = {};
+    for (const st of DEAL_STAGES) byStage[st] = { count: 0, value: 0, weighted: 0 };
+    let totalPipelineValue = 0;   // open deals only
+    let weightedPipelineValue = 0;
+    let wonValue = 0; let lostValue = 0;
+    for (const d of all) {
+      const bucket = byStage[d.stage];
+      bucket.count++;
+      bucket.value = dealRound2(bucket.value + d.value);
+      bucket.weighted = dealRound2(bucket.weighted + dealWeighted(d));
+      if (DEAL_TERMINAL_STAGES.has(d.stage)) {
+        if (d.stage === "won") wonValue += d.value; else lostValue += d.value;
+      } else {
+        totalPipelineValue += d.value;
+        weightedPipelineValue += dealWeighted(d);
+      }
+    }
+
+    const deals = (stageFilter ? all.filter((d) => d.stage === stageFilter) : all.slice())
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+
+    return {
+      ok: true,
+      result: {
+        deals,
+        stages: DEAL_STAGES,
+        openStages: DEAL_OPEN_STAGES,
+        rollup: {
+          totalDeals: all.length,
+          openCount: all.length - byStage.won.count - byStage.lost.count,
+          totalPipelineValue: dealRound2(totalPipelineValue),
+          weightedPipelineValue: dealRound2(weightedPipelineValue),
+          wonCount: byStage.won.count,
+          wonValue: dealRound2(wonValue),
+          lostCount: byStage.lost.count,
+          lostValue: dealRound2(lostValue),
+          byStage,
+        },
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "deals-upsert", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const deals = ensureRetailBucket(s, "deals", userId);
+    const id = params.id ? String(params.id) : null;
+
+    const numeric = {};
+    const numErr = validateDealNumbers(params, numeric);
+    if (numErr) return { ok: false, error: numErr };
+
+    if (id) {
+      // ── update ──
+      const deal = deals.find((d) => d.id === id);
+      if (!deal) return { ok: false, error: "deal not found" };
+      if (params.stage !== undefined && String(params.stage) !== deal.stage) {
+        return { ok: false, error: "stage changes go through deals-stage-move (auditable stageHistory)" };
+      }
+      if (params.name !== undefined) {
+        const name = String(params.name).trim();
+        if (!name) return { ok: false, error: "name required" };
+        deal.name = name.slice(0, 120);
+      }
+      if (params.company !== undefined) deal.company = String(params.company).trim().slice(0, 80);
+      if (params.contactName !== undefined) deal.contactName = String(params.contactName).trim().slice(0, 80);
+      if (params.assignee !== undefined) deal.assignee = String(params.assignee).trim().slice(0, 80);
+      if (params.notes !== undefined) deal.notes = String(params.notes).slice(0, 2000);
+      if (params.expectedCloseDate !== undefined) deal.expectedCloseDate = params.expectedCloseDate ? String(params.expectedCloseDate) : null;
+      if (numeric.value !== undefined) deal.value = numeric.value;
+      if (numeric.probability !== undefined) deal.probability = numeric.probability;
+      deal.updatedAt = nowIsoRet();
+      saveRetailState();
+      return { ok: true, result: { deal } };
+    }
+
+    // ── create ──
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const stage = params.stage !== undefined ? String(params.stage) : "lead";
+    if (!DEAL_STAGES.includes(stage)) {
+      return { ok: false, error: `unknown stage: ${stage} (expected one of ${DEAL_STAGES.join(", ")})` };
+    }
+    const now = nowIsoRet();
+    const deal = {
+      id: nextRetailId("deal"),
+      name: name.slice(0, 120),
+      company: String(params.company || "").trim().slice(0, 80),
+      contactName: String(params.contactName || "").trim().slice(0, 80),
+      assignee: String(params.assignee || "").trim().slice(0, 80),
+      notes: String(params.notes || "").slice(0, 2000),
+      value: numeric.value !== undefined ? numeric.value : 0,
+      probability: numeric.probability !== undefined ? numeric.probability : DEAL_DEFAULT_PROBABILITY[stage],
+      stage,
+      expectedCloseDate: params.expectedCloseDate ? String(params.expectedCloseDate) : null,
+      stageHistory: [{ from: null, to: stage, at: now }],
+      closedAt: DEAL_TERMINAL_STAGES.has(stage) ? now : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    deals.push(deal);
+    saveRetailState();
+    return { ok: true, result: { deal } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "deals-stage-move", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const deal = ensureRetailBucket(s, "deals", userId).find((d) => d.id === id);
+    if (!deal) return { ok: false, error: "deal not found" };
+    const stage = String(params.stage || "");
+    if (!DEAL_STAGES.includes(stage)) {
+      return { ok: false, error: `unknown stage: ${stage} (expected one of ${DEAL_STAGES.join(", ")})` };
+    }
+    if (stage === deal.stage) return { ok: false, error: `deal is already in stage: ${stage}` };
+
+    const reopening = DEAL_TERMINAL_STAGES.has(deal.stage);
+    if (reopening) {
+      if (params.reopen !== true) {
+        return { ok: false, error: `deal is closed (${deal.stage}) — pass reopen: true to move it back into the pipeline` };
+      }
+      if (DEAL_TERMINAL_STAGES.has(stage)) {
+        return { ok: false, error: "a closed deal reopens into an open stage only (won→lost directly is not allowed)" };
+      }
+    }
+
+    const entry = { from: deal.stage, to: stage, at: nowIsoRet() };
+    if (params.note) entry.note = String(params.note).slice(0, 500);
+    if (reopening) entry.reopened = true;
+    if (!Array.isArray(deal.stageHistory)) deal.stageHistory = [];
+    deal.stageHistory.push(entry);
+
+    deal.stage = stage;
+    if (stage === "won") { deal.probability = 100; deal.closedAt = entry.at; }
+    else if (stage === "lost") { deal.probability = 0; deal.closedAt = entry.at; }
+    else deal.closedAt = null;
+    deal.updatedAt = entry.at;
+    saveRetailState();
+    return { ok: true, result: { deal, moved: entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "deals-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "deals", userId);
+    const idx = list.findIndex((d) => d.id === id);
+    if (idx < 0) return { ok: false, error: "deal not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Support-ticket queue — persisted tickets (2026-07 Wave-4 unit) ────────
+  //
+  // The persisted ticket record family the removed fake retail "Support"
+  // surface was standing in for (docs/lens-specs/retail-capability-map.md
+  // "Genuinely missing, deferred" #2: "a persisted ticket queue (subject,
+  // priority, SLA deadline, assignee, replies). `slaStatus` computes
+  // compliance from pasted incidents but no macro creates or lists a
+  // ticket."). Design decisions, documented here because tests pin them —
+  // deliberately mirrors the deals-* family's proven shape, diverging only
+  // where a support desk's real lifecycle actually differs from a sales
+  // funnel:
+  //   • `priority` reuses the EXACT 4-name enum + the EXACT per-priority SLA
+  //     minutes (`TICKET_PRIORITY_SLA_MINUTES`, declared once at the top of
+  //     this file) that `slaStatus`'s live incidents branch already uses —
+  //     one number per priority, never a second invented set, so a
+  //     persisted ticket's computed deadline and the ad-hoc incidents report
+  //     can never silently disagree.
+  //   • `status` is a real 5-state support-desk lifecycle: open →
+  //     in-progress → waiting-on-customer → resolved → closed. Unlike the
+  //     deals funnel (where BOTH won/lost are symmetric locked terminals),
+  //     only **closed** is locked here — leaving closed requires an explicit
+  //     `reopen: true` (mirrors deals' reopen gate) and clears
+  //     closedAt/resolvedAt/resolvedWithinSla (a reopened ticket is, by
+  //     definition, unresolved again). **resolved** is a real milestone but
+  //     NOT locked — a ticket can move from resolved to any other status
+  //     (including straight to closed, or back to an open status because the
+  //     fix didn't hold) without the reopen flag, modelling the common
+  //     "customer replies to a solved ticket" flow.
+  //   • Moving INTO `resolved` (from any status) stamps `resolvedAt` = now
+  //     and computes `resolvedWithinSla` = elapsed time <= the priority's SLA
+  //     deadline — the one place a ticket's SLA outcome is actually decided.
+  //     Moving INTO `closed` directly from an open status (e.g. closed as
+  //     duplicate/spam, never formally resolved) leaves `resolvedAt`/
+  //     `resolvedWithinSla` at `null` — honestly "not applicable", never a
+  //     fabricated true/false.
+  //   • Every status change goes through `tickets-status-move` and APPENDS to
+  //     `statusHistory` ({from, to, at, note?, reopened?}) — auditable, not a
+  //     mutable label. `tickets-upsert` REJECTS a status change on update,
+  //     exactly like `deals-upsert` rejects a stage change.
+  //   • `replies` is a real thread — `tickets-reply-add` appends
+  //     {author, body, at}; nothing about reply content changes ticket
+  //     status (no auto-transition magic — every state change stays an
+  //     explicit, auditable action).
+  //   • `tickets-list` returns computed rollups (open/breached counts,
+  //     per-priority breakdown, resolved-in-SLA compliance rate) — the UI
+  //     renders ONLY these, never a client-invented number. The "approaching
+  //     deadline" threshold (remaining time < 25% of the priority's SLA
+  //     window) reuses the exact ratio the legacy `slaStatus` ticket branch
+  //     already uses (`remainingHours < slaHours * 0.25`).
+  //   • Relationship to `slaStatus`: that calculator's legacy `tickets`
+  //     branch (see above) now falls back to READING this persisted queue,
+  //     but ONLY on true omission of the `tickets` key — gated the exact
+  //     same way as the `pipelineValue` → `deals-*` fallback, so the
+  //     pre-existing "malformed pasted payload → empty report, never crash"
+  //     contract stays byte-identical (pinned by the pre-existing
+  //     `retail-lens-macros.test.js` "a non-array incidents payload falls
+  //     through to the legacy ticket branch" case).
+
+  const TICKET_STATUSES = ["open", "in-progress", "waiting-on-customer", "resolved", "closed"];
+  const TICKET_OPEN_STATUSES = ["open", "in-progress", "waiting-on-customer"];
+  const TICKET_LOCKED_STATUS = "closed";
+  const TICKET_PRIORITIES = ["critical", "high", "medium", "low"];
+  const TICKET_DEFAULT_PRIORITY = "medium";
+  const TICKET_APPROACHING_RATIO = 0.25; // matches slaStatus's legacy `remainingHours < slaHours * 0.25`
+  const ticketRound2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+
+  function ticketSlaDeadline(createdAtIso, priority) {
+    const targetMinutes = TICKET_PRIORITY_SLA_MINUTES[priority];
+    return new Date(new Date(createdAtIso).getTime() + targetMinutes * 60000).toISOString();
+  }
+
+  function ticketSlaState(ticket, nowMs) {
+    if (ticket.status === TICKET_LOCKED_STATUS) return "closed";
+    if (ticket.status === "resolved") {
+      if (ticket.resolvedWithinSla === true) return "resolved-on-time";
+      if (ticket.resolvedWithinSla === false) return "resolved-late";
+      return "resolved";
+    }
+    const deadlineMs = new Date(ticket.slaDeadline).getTime();
+    const targetMinutes = TICKET_PRIORITY_SLA_MINUTES[ticket.priority];
+    const windowMs = targetMinutes * 60000;
+    const remainingMs = deadlineMs - nowMs;
+    if (remainingMs < 0) return "breached";
+    if (remainingMs < windowMs * TICKET_APPROACHING_RATIO) return "approaching";
+    return "healthy";
+  }
+
+  registerLensAction("retail", "tickets-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const all = ensureRetailBucket(s, "tickets", userId);
+
+    const statusFilter = params.status !== undefined ? String(params.status) : null;
+    if (statusFilter && !TICKET_STATUSES.includes(statusFilter)) {
+      return { ok: false, error: `unknown status: ${statusFilter} (expected one of ${TICKET_STATUSES.join(", ")})` };
+    }
+    const priorityFilter = params.priority !== undefined ? String(params.priority) : null;
+    if (priorityFilter && !TICKET_PRIORITIES.includes(priorityFilter)) {
+      return { ok: false, error: `unknown priority: ${priorityFilter} (expected one of ${TICKET_PRIORITIES.join(", ")})` };
+    }
+
+    const now = Date.now();
+    const byPriority = {};
+    for (const p of TICKET_PRIORITIES) byPriority[p] = { count: 0, open: 0, breached: 0 };
+
+    // Rollups are computed from the FULL book (never the filters) so the
+    // header numbers stay stable while the user narrows the list — same
+    // discipline as deals-list.
+    let openCount = 0;
+    let breachedOpenCount = 0;
+    let resolvedCount = 0;
+    let metCount = 0;
+    const withState = all.map((t) => {
+      const slaState = ticketSlaState(t, now);
+      const bucket = byPriority[t.priority];
+      bucket.count++;
+      const isOpen = TICKET_OPEN_STATUSES.includes(t.status);
+      if (isOpen) {
+        openCount++;
+        bucket.open++;
+        if (slaState === "breached") { breachedOpenCount++; bucket.breached++; }
+      }
+      if (t.resolvedWithinSla !== null && t.resolvedWithinSla !== undefined) {
+        resolvedCount++;
+        if (t.resolvedWithinSla === true) metCount++;
+      }
+      return { ...t, slaState };
+    });
+
+    const complianceRate = resolvedCount > 0 ? ticketRound2((metCount / resolvedCount) * 100) : 100;
+
+    const tickets = (withState
+      .filter((t) => (!statusFilter || t.status === statusFilter) && (!priorityFilter || t.priority === priorityFilter)))
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+
+    return {
+      ok: true,
+      result: {
+        tickets,
+        statuses: TICKET_STATUSES,
+        openStatuses: TICKET_OPEN_STATUSES,
+        priorities: TICKET_PRIORITIES,
+        rollup: {
+          totalTickets: all.length,
+          openCount,
+          breachedOpenCount,
+          resolvedCount,
+          metCount,
+          complianceRate,
+          byPriority,
+        },
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "tickets-upsert", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const tickets = ensureRetailBucket(s, "tickets", userId);
+    const id = params.id ? String(params.id) : null;
+
+    if (id) {
+      // ── update ──
+      const ticket = tickets.find((t) => t.id === id);
+      if (!ticket) return { ok: false, error: "ticket not found" };
+      if (params.status !== undefined && String(params.status) !== ticket.status) {
+        return { ok: false, error: "status changes go through tickets-status-move (auditable statusHistory)" };
+      }
+      if (params.subject !== undefined) {
+        const subject = String(params.subject).trim();
+        if (!subject) return { ok: false, error: "subject required" };
+        ticket.subject = subject.slice(0, 200);
+      }
+      if (params.description !== undefined) ticket.description = String(params.description).slice(0, 4000);
+      if (params.assignee !== undefined) ticket.assignee = String(params.assignee).trim().slice(0, 80);
+      if (params.requester !== undefined) ticket.requester = String(params.requester).trim().slice(0, 80);
+      if (params.contactEmail !== undefined) ticket.contactEmail = String(params.contactEmail).trim().slice(0, 120);
+      if (params.priority !== undefined) {
+        const priority = String(params.priority);
+        if (!TICKET_PRIORITIES.includes(priority)) {
+          return { ok: false, error: `unknown priority: ${priority} (expected one of ${TICKET_PRIORITIES.join(", ")})` };
+        }
+        ticket.priority = priority;
+        // Re-triage: the SLA clock still starts at ticket creation, only the
+        // per-priority target changes.
+        ticket.slaDeadline = ticketSlaDeadline(ticket.createdAt, priority);
+      }
+      ticket.updatedAt = nowIsoRet();
+      saveRetailState();
+      return { ok: true, result: { ticket } };
+    }
+
+    // ── create ──
+    const subject = String(params.subject || "").trim();
+    if (!subject) return { ok: false, error: "subject required" };
+    const priority = params.priority !== undefined ? String(params.priority) : TICKET_DEFAULT_PRIORITY;
+    if (!TICKET_PRIORITIES.includes(priority)) {
+      return { ok: false, error: `unknown priority: ${priority} (expected one of ${TICKET_PRIORITIES.join(", ")})` };
+    }
+    const now = nowIsoRet();
+    const ticket = {
+      id: nextRetailId("tkt"),
+      subject: subject.slice(0, 200),
+      description: String(params.description || "").slice(0, 4000),
+      priority,
+      assignee: String(params.assignee || "").trim().slice(0, 80),
+      requester: String(params.requester || "").trim().slice(0, 80),
+      contactEmail: String(params.contactEmail || "").trim().slice(0, 120),
+      status: "open",
+      slaTargetMinutes: TICKET_PRIORITY_SLA_MINUTES[priority],
+      slaDeadline: ticketSlaDeadline(now, priority),
+      statusHistory: [{ from: null, to: "open", at: now }],
+      replies: [],
+      resolvedAt: null,
+      resolvedWithinSla: null,
+      closedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    tickets.push(ticket);
+    saveRetailState();
+    return { ok: true, result: { ticket } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "tickets-status-move", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const ticket = ensureRetailBucket(s, "tickets", userId).find((t) => t.id === id);
+    if (!ticket) return { ok: false, error: "ticket not found" };
+    const status = String(params.status || "");
+    if (!TICKET_STATUSES.includes(status)) {
+      return { ok: false, error: `unknown status: ${status} (expected one of ${TICKET_STATUSES.join(", ")})` };
+    }
+    if (status === ticket.status) return { ok: false, error: `ticket is already in status: ${status}` };
+
+    const reopening = ticket.status === TICKET_LOCKED_STATUS;
+    if (reopening) {
+      if (params.reopen !== true) {
+        return { ok: false, error: "ticket is closed — pass reopen: true to move it back into the queue" };
+      }
+      if (!TICKET_OPEN_STATUSES.includes(status)) {
+        return { ok: false, error: "a closed ticket reopens into an open status only (open/in-progress/waiting-on-customer)" };
+      }
+    }
+
+    const at = nowIsoRet();
+    const entry = { from: ticket.status, to: status, at };
+    if (params.note) entry.note = String(params.note).slice(0, 500);
+    if (reopening) entry.reopened = true;
+    if (!Array.isArray(ticket.statusHistory)) ticket.statusHistory = [];
+    ticket.statusHistory.push(entry);
+
+    ticket.status = status;
+    if (status === "resolved") {
+      ticket.resolvedAt = at;
+      ticket.resolvedWithinSla = new Date(at).getTime() <= new Date(ticket.slaDeadline).getTime();
+    } else if (status === TICKET_LOCKED_STATUS) {
+      ticket.closedAt = at;
+      // resolvedAt/resolvedWithinSla are left as-is: a ticket closed straight
+      // from an open status (duplicate/spam/won't-fix) was never resolved —
+      // they stay null, honestly. A ticket closed after resolved keeps its
+      // real resolution stamp.
+    } else if (reopening) {
+      // Reopening means "not resolved anymore" — clear every closure stamp.
+      ticket.closedAt = null;
+      ticket.resolvedAt = null;
+      ticket.resolvedWithinSla = null;
+    }
+    ticket.updatedAt = at;
+    saveRetailState();
+    return { ok: true, result: { ticket, moved: entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "tickets-reply-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const ticket = ensureRetailBucket(s, "tickets", userId).find((t) => t.id === id);
+    if (!ticket) return { ok: false, error: "ticket not found" };
+    const author = String(params.author || "").trim();
+    if (!author) return { ok: false, error: "author required" };
+    const body = String(params.body || "").trim();
+    if (!body) return { ok: false, error: "body required" };
+    const reply = { author: author.slice(0, 80), body: body.slice(0, 4000), at: nowIsoRet() };
+    if (!Array.isArray(ticket.replies)) ticket.replies = [];
+    ticket.replies.push(reply);
+    ticket.updatedAt = reply.at;
+    saveRetailState();
+    return { ok: true, result: { ticket, reply } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "tickets-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "tickets", userId);
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx < 0) return { ok: false, error: "ticket not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── In-store marketing displays — persisted display/endcap records (2026-07 Wave-4 unit) ──
+  //
+  // The persisted display/endcap record family the removed fake retail
+  // "Displays" surface was standing in for
+  // (docs/lens-specs/retail-capability-map.md "Genuinely missing, deferred"
+  // #3: "a persisted display/endcap record (location, budget, impressions,
+  // conversions). No macro anywhere."). This is a DISTINCT, PHYSICAL concept
+  // from the existing `campaigns-*` family above (digital email/SMS/discount
+  // sends) — a real endcap/window/floor display placed at a physical store
+  // location, not a channel send. Deliberately mirrors the deals-*/tickets-*
+  // families' proven shape, diverging only where a physical merchandising
+  // display's real lifecycle actually differs:
+  //   • `displayType` is a real retail-merchandising enum (endcap / window /
+  //     checkout-counter / floor-display / shelf-talker / promotional-table)
+  //     — validated, unknown values rejected.
+  //   • `status` is a real 3-state physical lifecycle: planned → active →
+  //     removed. `removed` is a locked terminal (mirrors tickets' `closed`)
+  //     — leaving it requires an explicit `reopen: true` back into an open
+  //     status (planned/active). Every status change goes through
+  //     `displays-status-move` and APPENDS to `statusHistory` — auditable,
+  //     never a mutable label. `displays-upsert` REJECTS a status change on
+  //     update, exactly like deals-upsert/tickets-upsert.
+  //   • `productSkus` links a display to the REAL product catalog
+  //     (`product-list`/`product-upsert`'s SKUs) rather than a free-text
+  //     product name — every SKU listed must already exist in the caller's
+  //     catalog, or the whole upsert is rejected. This keeps "what is this
+  //     display promoting" honestly tied to real inventory instead of a
+  //     hand-typed string nobody validates.
+  //   • `impressions` is a MANUALLY LOGGED count, not a fabricated sensor
+  //     feed — there is no automated foot-traffic-counting system anywhere
+  //     in Concord. `displays-log-impressions` takes a staff-entered count +
+  //     optional note and APPENDS to `impressionLog` (a display gets
+  //     checked multiple times over its run), accumulating into a running
+  //     `impressions` total. The macro name deliberately says "log", not
+  //     "track" or "count", so the UI/naming never implies a sensor exists.
+  //   • `conversions` follows the EXACT honesty discipline
+  //     `campaigns-record-conversion` (above) already established: a
+  //     conversion is NEVER a free-floating incremented counter —
+  //     `displays-record-conversion` requires a real `orderId` that exists
+  //     in the caller's `orders-list` book, rejects an unknown/fake orderId,
+  //     and prevents double-attribution of the same order via
+  //     `attributedOrderIds` (identical shape to the campaigns family).
+  //   • `displays-list` rollups (total impressions/conversions/conversion
+  //     rate/attributed revenue, and — since budget is real —
+  //     revenue-per-budget-dollar) are computed server-side ONLY, from the
+  //     FULL book (never the status filter), so the UI renders nothing a
+  //     client could invent. `revenuePerBudgetDollar` is honestly `null`
+  //     (never Infinity/NaN) whenever budget is 0, both per-display and in
+  //     the aggregate rollup.
+
+  const DISPLAY_TYPES = ["endcap", "window", "checkout-counter", "floor-display", "shelf-talker", "promotional-table"];
+  const DISPLAY_STATUSES = ["planned", "active", "removed"];
+  const DISPLAY_OPEN_STATUSES = ["planned", "active"];
+  const DISPLAY_LOCKED_STATUS = "removed";
+  const displayRound2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+
+  registerLensAction("retail", "displays-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const all = ensureRetailBucket(s, "displays", userId);
+    const statusFilter = params.status !== undefined ? String(params.status) : null;
+    if (statusFilter && !DISPLAY_STATUSES.includes(statusFilter)) {
+      return { ok: false, error: `unknown status: ${statusFilter} (expected one of ${DISPLAY_STATUSES.join(", ")})` };
+    }
+
+    // Rollups are computed from the FULL book (never the status filter) so
+    // the header numbers stay stable while the user narrows the card list —
+    // same discipline as deals-list/tickets-list.
+    let totalImpressions = 0;
+    let totalConversions = 0;
+    let totalBudget = 0;
+    let totalAttributedRevenue = 0;
+    let plannedCount = 0, activeCount = 0, removedCount = 0;
+    const withComputed = all.map((d) => {
+      totalImpressions += d.impressions;
+      totalConversions += d.conversions;
+      totalBudget += d.budget;
+      totalAttributedRevenue = displayRound2(totalAttributedRevenue + d.attributedRevenue);
+      if (d.status === "planned") plannedCount++;
+      else if (d.status === "active") activeCount++;
+      else removedCount++;
+      const conversionRate = d.impressions > 0 ? displayRound2((d.conversions / d.impressions) * 100) : 0;
+      const revenuePerBudgetDollar = d.budget > 0 ? displayRound2(d.attributedRevenue / d.budget) : null;
+      return { ...d, conversionRate, revenuePerBudgetDollar };
+    });
+
+    const displays = (statusFilter ? withComputed.filter((d) => d.status === statusFilter) : withComputed)
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+
+    return {
+      ok: true,
+      result: {
+        displays,
+        statuses: DISPLAY_STATUSES,
+        openStatuses: DISPLAY_OPEN_STATUSES,
+        displayTypes: DISPLAY_TYPES,
+        rollup: {
+          totalDisplays: all.length,
+          plannedCount, activeCount, removedCount,
+          totalImpressions, totalConversions,
+          conversionRate: totalImpressions > 0 ? displayRound2((totalConversions / totalImpressions) * 100) : 0,
+          totalBudget: displayRound2(totalBudget),
+          totalAttributedRevenue,
+          revenuePerBudgetDollar: totalBudget > 0 ? displayRound2(totalAttributedRevenue / totalBudget) : null,
+        },
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "displays-upsert", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const displays = ensureRetailBucket(s, "displays", userId);
+    const id = params.id ? String(params.id) : null;
+
+    // Shared validation for both create + update.
+    let budget;
+    if (params.budget !== undefined) {
+      budget = Number(params.budget);
+      if (!Number.isFinite(budget) || budget < 0) return { ok: false, error: "budget must be a finite number >= 0" };
+      budget = displayRound2(budget);
+    }
+    let displayType;
+    if (params.displayType !== undefined) {
+      displayType = String(params.displayType);
+      if (!DISPLAY_TYPES.includes(displayType)) {
+        return { ok: false, error: `unknown displayType: ${displayType} (expected one of ${DISPLAY_TYPES.join(", ")})` };
+      }
+    }
+    let startDate;
+    if (params.startDate !== undefined) {
+      if (params.startDate === null || params.startDate === "") { startDate = null; }
+      else {
+        const d = new Date(params.startDate);
+        if (Number.isNaN(d.getTime())) return { ok: false, error: "invalid startDate" };
+        startDate = String(params.startDate);
+      }
+    }
+    let endDate;
+    if (params.endDate !== undefined) {
+      if (params.endDate === null || params.endDate === "") { endDate = null; }
+      else {
+        const d = new Date(params.endDate);
+        if (Number.isNaN(d.getTime())) return { ok: false, error: "invalid endDate" };
+        endDate = String(params.endDate);
+      }
+    }
+    let productSkus;
+    if (params.productSkus !== undefined) {
+      if (!Array.isArray(params.productSkus)) return { ok: false, error: "productSkus must be an array of SKUs" };
+      const catalog = s.products.get(userId);
+      const skus = [...new Set(params.productSkus.map((x) => String(x).trim()).filter(Boolean))];
+      const missing = skus.filter((sku) => !catalog || !catalog.has(sku));
+      if (missing.length > 0) {
+        return { ok: false, error: `unknown productSku(s): ${missing.join(", ")} (must exist in your product catalog)` };
+      }
+      productSkus = skus;
+    }
+
+    if (id) {
+      // ── update ──
+      const display = displays.find((d) => d.id === id);
+      if (!display) return { ok: false, error: "display not found" };
+      if (params.status !== undefined && String(params.status) !== display.status) {
+        return { ok: false, error: "status changes go through displays-status-move (auditable statusHistory)" };
+      }
+      if (params.location !== undefined) {
+        const location = String(params.location).trim();
+        if (!location) return { ok: false, error: "location required" };
+        display.location = location.slice(0, 160);
+      }
+      if (displayType !== undefined) display.displayType = displayType;
+      if (budget !== undefined) display.budget = budget;
+      if (startDate !== undefined) display.startDate = startDate;
+      if (endDate !== undefined) display.endDate = endDate;
+      const finalStart = startDate !== undefined ? startDate : display.startDate;
+      const finalEnd = endDate !== undefined ? endDate : display.endDate;
+      if (finalStart && finalEnd && new Date(finalEnd).getTime() < new Date(finalStart).getTime()) {
+        return { ok: false, error: "endDate must be on or after startDate" };
+      }
+      if (productSkus !== undefined) display.productSkus = productSkus;
+      if (params.notes !== undefined) display.notes = String(params.notes).slice(0, 2000);
+      display.updatedAt = nowIsoRet();
+      saveRetailState();
+      return { ok: true, result: { display } };
+    }
+
+    // ── create ──
+    const location = String(params.location || "").trim();
+    if (!location) return { ok: false, error: "location required" };
+    if (displayType === undefined) {
+      return { ok: false, error: `displayType required (expected one of ${DISPLAY_TYPES.join(", ")})` };
+    }
+    if (startDate && endDate && new Date(endDate).getTime() < new Date(startDate).getTime()) {
+      return { ok: false, error: "endDate must be on or after startDate" };
+    }
+    const now = nowIsoRet();
+    const display = {
+      id: nextRetailId("disp"),
+      location: location.slice(0, 160),
+      displayType,
+      budget: budget !== undefined ? budget : 0,
+      startDate: startDate !== undefined ? startDate : null,
+      endDate: endDate !== undefined ? endDate : null,
+      productSkus: productSkus !== undefined ? productSkus : [],
+      notes: String(params.notes || "").slice(0, 2000),
+      status: "planned",
+      statusHistory: [{ from: null, to: "planned", at: now }],
+      impressions: 0,
+      impressionLog: [],
+      conversions: 0,
+      attributedOrderIds: [],
+      attributedRevenue: 0,
+      removedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    displays.push(display);
+    saveRetailState();
+    return { ok: true, result: { display } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "displays-status-move", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const display = ensureRetailBucket(s, "displays", userId).find((d) => d.id === id);
+    if (!display) return { ok: false, error: "display not found" };
+    const status = String(params.status || "");
+    if (!DISPLAY_STATUSES.includes(status)) {
+      return { ok: false, error: `unknown status: ${status} (expected one of ${DISPLAY_STATUSES.join(", ")})` };
+    }
+    if (status === display.status) return { ok: false, error: `display is already in status: ${status}` };
+
+    const reopening = display.status === DISPLAY_LOCKED_STATUS;
+    if (reopening) {
+      if (params.reopen !== true) {
+        return { ok: false, error: "display is removed — pass reopen: true to move it back into planning/active" };
+      }
+      if (!DISPLAY_OPEN_STATUSES.includes(status)) {
+        return { ok: false, error: "a removed display reopens into an open status only (planned/active)" };
+      }
+    }
+
+    const at = nowIsoRet();
+    const entry = { from: display.status, to: status, at };
+    if (params.note) entry.note = String(params.note).slice(0, 500);
+    if (reopening) entry.reopened = true;
+    if (!Array.isArray(display.statusHistory)) display.statusHistory = [];
+    display.statusHistory.push(entry);
+
+    display.status = status;
+    if (status === DISPLAY_LOCKED_STATUS) display.removedAt = at;
+    else if (reopening) display.removedAt = null;
+    display.updatedAt = at;
+    saveRetailState();
+    return { ok: true, result: { display, moved: entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "displays-log-impressions", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const display = ensureRetailBucket(s, "displays", userId).find((d) => d.id === id);
+    if (!display) return { ok: false, error: "display not found" };
+    const count = Number(params.count);
+    if (!Number.isInteger(count) || count <= 0) return { ok: false, error: "count must be a positive integer" };
+    const entry = { count, note: params.note ? String(params.note).slice(0, 500) : "", at: nowIsoRet() };
+    if (!Array.isArray(display.impressionLog)) display.impressionLog = [];
+    display.impressionLog.push(entry);
+    display.impressions = (display.impressions || 0) + count;
+    display.updatedAt = entry.at;
+    saveRetailState();
+    return { ok: true, result: { display, logged: entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // Attribute an order's revenue to a display (conversion tracking) — mirrors
+  // campaigns-record-conversion exactly: a conversion requires a REAL order.
+  registerLensAction("retail", "displays-record-conversion", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const orderId = String(params.orderId || "");
+    if (!id) return { ok: false, error: "id required" };
+    if (!orderId) return { ok: false, error: "orderId required" };
+    const display = ensureRetailBucket(s, "displays", userId).find((d) => d.id === id);
+    if (!display) return { ok: false, error: "display not found" };
+    const order = (s.orders.get(userId) || []).find((o) => o.id === orderId);
+    if (!order) return { ok: false, error: "order not found" };
+    if (!Array.isArray(display.attributedOrderIds)) display.attributedOrderIds = [];
+    if (display.attributedOrderIds.includes(orderId)) {
+      return { ok: false, error: "order already attributed to this display" };
+    }
+    display.attributedOrderIds.push(orderId);
+    display.conversions = (display.conversions || 0) + 1;
+    display.attributedRevenue = displayRound2((display.attributedRevenue || 0) + order.total);
+    display.updatedAt = nowIsoRet();
+    saveRetailState();
+    return { ok: true, result: { display } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "displays-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "displays", userId);
+    const idx = list.findIndex((d) => d.id === id);
+    if (idx < 0) return { ok: false, error: "display not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
   });
 };

@@ -147,18 +147,21 @@ real input — no fabrication risk, just missing surfaces.
   `/api/lens/run` path — no persisted wrapper artifact required, no
   fabricated backend behavior.
 
-### `revisionDiff` — GENUINELY MISSING (deferred, ENGINEERING)
+### `revisionDiff` — ~~GENUINELY MISSING~~ **CLOSED (2026-07-16, `b8e03af1`)**
 
 `revisionDiff` (line/word/char diff between `artifact.data.original` and
-`.revised`) is real and correct, but this lens's "papers" data model has no
+`.revised`) was real and correct, but this lens's "papers" data model had no
 version-snapshot storage — only a `version` integer counter, no retained
-prior content to diff against. Wiring this honestly would need a real
-version-history store (save a snapshot on each `paper-update`/editor save,
-list snapshots, diff any two). That's a genuine, scoped ENGINEERING build
-(no external data dependency), not a data-sourcing or curation gap — but
-building the snapshot substrate is out of scope for this pass. Left
-unsurfaced rather than faked; documented here as the honest residual per the
-sixth hard invariant's triage requirement.
+prior content to diff against. Closed with a real version-history store:
+`paper-version-save`/`paper-version-list`/`paper-version-diff`
+(`server/domains/paper.js`), modeled on `paper-annotate`'s per-paper
+nested-array pattern. `revisionDiff`'s diff computation was extracted into
+a shared `computeTextDiff()` helper reused by both the original
+caller-supplied-text path and `paper-version-diff`'s real-stored-snapshot
+path — `revisionDiff`'s own behavior is unchanged (pinned by a byte-for-byte
+regression test). `PaperVersionHistory.tsx` mounts below the notes editor
+in `PaperLibrary.tsx`, saving a snapshot of the live notes content and
+offering a real compare UI between any two saved versions.
 
 ### `paper-detail` — left alone (not a gap)
 

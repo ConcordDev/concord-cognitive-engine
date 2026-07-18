@@ -155,23 +155,17 @@ page is not that.
   API, real data, correctly attributed) and gives users a genuine real-Earth
   reference point next to the in-world forecast, which is arguably the most
   literal reading of "the only difference should be the data source."
-- **Automatic/pushed alert delivery** (NOAA-class reference dashboards push
-  severe-weather alerts; this lens's `checkAlerts` is pull-only). Audited:
-  `grep -rn "checkAlerts" server/emergent/*.js` and
-  `grep -rn "registerHeartbeat.*forecast"` → **no heartbeat or socket event**
-  exists for automated alert evaluation/delivery. **GENUINELY MISSING**,
-  disposition: **honest relabel** (done this pass — the empty-state and
-  helper copy in `AlertSubscriptions.tsx` now says "Checks are on demand,
-  not pushed automatically" instead of "get notified," which implied a push
-  mechanism that isn't there) rather than a scoped future build, because
-  building real push delivery (a new heartbeat + socket event +
-  server-authoritative dedup against `last_fired_at`) is genuine new backend
-  surface, not a frontend-wiring gap — out of scope for a lens-UI rebuild
-  pass per the loop's "do NOT rewrite the wiring/macro layer" boundary. If
-  ever built, the natural extension point is a `forecast-alert-sweep`
-  heartbeat calling `checkAlerts` per subscribed user and emitting a
-  `forecast:alert-triggered` realtime event — the storage schema
-  (`forecast_alert_subs.last_fired_at`) already supports it.
+- ~~**Automatic/pushed alert delivery**~~ **CLOSED (2026-07-16, `42489956`)**
+  — new `forecast-alert-sweep` heartbeat (~5min cadence) queries the real
+  `DISTINCT user_id, world_id` pairs off `forecast_alert_subs`, calls the
+  pre-existing `checkAlerts` per pair, and on a genuine trigger emits a new
+  `forecast:alert-triggered` event to that user's socket room — exactly
+  the extension point named above, now built. Honest scope preserved:
+  live delivery to a connected tab via socket.io, not OS-level push (no
+  service-worker Web Push pipeline exists). `AlertSubscriptions.tsx` now
+  subscribes to the live event with an honest connected/disconnected
+  label, keeping the manual "Check against fresh forecast" as the
+  fallback for a tab that was closed when the alert fired.
 - **Spatial/map view of the 7 districts** (a NOAA/Windy-class dashboard
   typically has a map, not just cards). The backend already returns each
   district's real world-space anchor (`regionAnchor` — a deterministic ring

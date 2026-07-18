@@ -81,9 +81,14 @@ a JSON-paste param box; every one of those macros already has a real,
 designed panel in `BooksSection`/`AccountingWorkbench`, so the strip was
 pure duplicate clutter of exactly the generic-scaffold shape the
 zero-generic-tendencies invariant names). `MobileTabBar` was removed since
-it drove the now-deleted `ModeTab` state; re-adding a real mobile
+it drove the now-deleted `ModeTab` state; ~~re-adding a real mobile
 affordance for `BooksShell`'s sidebar nav is a legitimate small follow-up
-(ENGINEERING, not attempted here to keep this pass to the verified defect).
+(ENGINEERING, not attempted here to keep this pass to the verified defect).~~
+**Follow-up done (2026-07-12, `3e49176f`, Wave 4)** — `BooksShell` now
+hides the sidebar below `md` and offers a mobile header row (active
+destination + hamburger) opening the same grouped nav as a slide-over
+drawer; select navigates + closes, close/backdrop dismiss without
+navigating. Pinned by `tests/components/BooksShellMobileNav.test.tsx` (4/4).
 
 ### Defect 2 — `AccountingActionPanel` field-shape mismatches (fixed)
 

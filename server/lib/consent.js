@@ -101,6 +101,22 @@ export const CONSENT_ACTIONS = {
     scope: "phenomenal",
   },
 
+  // Phenomenal data — gate (a) from docs/GOVERNANCE_DESIGN.md §2.3: consent
+  // before a player's real dream/pain/somatic records are used to shape how
+  // NPCs and autonomous agents BEHAVE TOWARD that player (distinct from
+  // gate (c) `allow_phenomenal_monetization`, which gates SELLING a
+  // phenomenal-derived artifact). Default-deny: absent consent, any future
+  // caller that wants to read a player's dream/pain substrate to steer
+  // agent behavior directed at them must call requireConsent(...,
+  // "allow_phenomenal_influence") first and honestly refuse on denial —
+  // never silently fall back to using the data anyway.
+  allow_phenomenal_influence: {
+    prompt: "Allow your dreams / somatic records to shape how NPCs and agents behave toward you.",
+    required: true,
+    revocable: true, // revoking stops future influence; past behavior already taken stands
+    scope: "phenomenal",
+  },
+
   // Concord system usage
   allow_global_dtu_creation: {
     prompt: "Allow Concord to include your cited work in global knowledge DTUs. Your attribution and royalties are preserved.",

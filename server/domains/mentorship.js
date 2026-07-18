@@ -123,7 +123,7 @@ export default function registerMentorshipActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.mentorshipLens) STATE.mentorshipLens = {};
     const s = STATE.mentorshipLens;
-    for (const k of ["mentors", "requests", "sessions", "goals", "reviews", "messages"]) {
+    for (const k of ["mentors", "requests", "sessions", "goals", "reviews", "messages", "groupSessions"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -413,6 +413,149 @@ export default function registerMentorshipActions(registerLensAction) {
       session.updatedAt = mNow();
       saveState();
       return { ok: true, result: { session, openActionItems: session.actionItems.filter((i) => !i.done).length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ── 3b. Group sessions (many mentees, one mentor) ─────────────────────
+  // `session-book` above is strictly 1:1: it mirrors a second copy of the
+  // session onto the partner's OWN per-user `s.sessions` bucket, so both
+  // sides see it via their own userId key. That trick does not scale to a
+  // group session with N dynamically joining/leaving attendees — you'd need
+  // to mirror/un-mirror N copies on every membership change, and there is
+  // no single source of truth for "who is actually in this session right
+  // now." Group sessions are therefore a SEPARATE entity, stored in its own
+  // `s.groupSessions` Map — but keyed DIRECTLY BY sessionId (a genuine
+  // Map<sessionId, session>), NOT per-user like `sessions`/`goals`
+  // (Map<userId, Array>). A group session must be discoverable both by its
+  // host AND by any current attendee, which the per-user-keyed pattern
+  // can't do without the same N-copies problem the 1:1 mirror has. List/
+  // discovery macros below do an O(n) scan over `s.groupSessions.values()`,
+  // filtering by `hostId === userId || attendees.includes(userId)` — the
+  // same full-map-scan shape `message-inbox` already uses (line ~639) to
+  // discover the caller's threads; fine for this codebase's in-memory
+  // STATE model.
+  registerLensAction("mentorship", "group-session-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      const title = mClean(params.title, 120);
+      const startAt = mClean(params.startAt, 40);
+      if (!title) return { ok: false, error: "title required" };
+      if (!startAt) return { ok: false, error: "startAt required" };
+      const capacity = Math.round(mNum(params.capacity, 0));
+      // "Group" implies room for more than the 1:1 session type already
+      // covers — a mentor hosting a session for a capacity of 1 isn't a
+      // group session, so we reject honestly rather than silently clamping.
+      if (!Number.isFinite(capacity) || capacity < 2) return { ok: false, error: "capacity must be a whole number of at least 2" };
+      const session = {
+        id: mId("gses"),
+        hostId: userId,
+        hostName: mClean(params.hostName, 80) || "Mentor",
+        title,
+        topic: mClean(params.topic, 120),
+        description: mClean(params.description, 800),
+        startAt,
+        durationMin: Math.max(15, Math.round(mNum(params.durationMin, 45))),
+        capacity,
+        videoLink: mClean(params.videoLink, 300),
+        agenda: mClean(params.agenda, 600),
+        // Design choice: the host is NOT auto-added to `attendees`. The
+        // host is the mentor RUNNING the session, not one of the "many
+        // mentees" filling capacity — mirrored below by group-session-join
+        // rejecting a host who tries to join their own session.
+        attendees: [],
+        status: "scheduled",
+        notes: "",
+        createdAt: mNow(),
+        updatedAt: mNow(),
+      };
+      s.groupSessions.set(session.id, session);
+      saveState();
+      return { ok: true, result: { session } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // List group sessions the caller is involved with (as host or attendee),
+  // with an optional narrowing filter and a real hosting/attending rollup.
+  registerLensAction("mentorship", "group-session-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      const now = Date.now();
+      let sessions = [...s.groupSessions.values()].filter((x) => x.hostId === userId || x.attendees.includes(userId));
+      if (params.filter === "hosting") sessions = sessions.filter((x) => x.hostId === userId);
+      else if (params.filter === "attending") sessions = sessions.filter((x) => x.attendees.includes(userId));
+      else if (params.filter === "upcoming") {
+        sessions = sessions.filter((x) => x.status === "scheduled" && new Date(x.startAt).getTime() >= now);
+      }
+      sessions.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+      return {
+        ok: true,
+        result: {
+          sessions,
+          count: sessions.length,
+          hostingCount: sessions.filter((x) => x.hostId === userId).length,
+          attendingCount: sessions.filter((x) => x.attendees.includes(userId)).length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Join an open group session. Enforces real capacity + idempotency + the
+  // host-can't-double-as-attendee design choice from group-session-create.
+  registerLensAction("mentorship", "group-session-join", (ctx, _a, params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      const sesId = mClean(params.sessionId, 64);
+      const session = s.groupSessions.get(sesId);
+      if (!session) return { ok: false, error: "session not found" };
+      if (userId === session.hostId) return { ok: false, error: "cannot join your own session as an attendee" };
+      if (session.attendees.includes(userId)) return { ok: false, error: "already joined" };
+      if (session.attendees.length >= session.capacity) return { ok: false, error: "session is full" };
+      session.attendees.push(userId);
+      session.updatedAt = mNow();
+      saveState();
+      return { ok: true, result: { session, spotsRemaining: Math.max(0, session.capacity - session.attendees.length) } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Leave a group session previously joined. Honest rejection (not a silent
+  // no-op) when the caller was never in the attendee list.
+  registerLensAction("mentorship", "group-session-leave", (ctx, _a, params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      const sesId = mClean(params.sessionId, 64);
+      const session = s.groupSessions.get(sesId);
+      if (!session) return { ok: false, error: "session not found" };
+      const idx = session.attendees.indexOf(userId);
+      if (idx === -1) return { ok: false, error: "not attending this session" };
+      session.attendees.splice(idx, 1);
+      session.updatedAt = mNow();
+      saveState();
+      return { ok: true, result: { session } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Host-only partial update (status / schedule / links / notes). Reuses
+  // the same SESSION_STATUS validation as the 1:1 session-update above.
+  registerLensAction("mentorship", "group-session-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      const sesId = mClean(params.sessionId, 64);
+      const session = s.groupSessions.get(sesId);
+      if (!session) return { ok: false, error: "session not found" };
+      if (session.hostId !== userId) return { ok: false, error: "only the host can update this session" };
+      if (params.status && SESSION_STATUS.includes(params.status)) session.status = params.status;
+      if (params.startAt) session.startAt = mClean(params.startAt, 40);
+      if (params.videoLink != null) session.videoLink = mClean(params.videoLink, 300);
+      if (params.agenda != null) session.agenda = mClean(params.agenda, 600);
+      if (params.notes != null) session.notes = mClean(params.notes, 4000);
+      session.updatedAt = mNow();
+      saveState();
+      return { ok: true, result: { session } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 

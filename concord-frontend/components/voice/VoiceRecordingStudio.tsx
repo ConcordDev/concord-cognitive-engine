@@ -5,22 +5,31 @@
  * Otter.ai-parity features: LLM-written meeting summary, timestamped
  * playback synced to the transcript (click a line → seek audio), sharing
  * a recording with collaborators + per-segment comments, and multi-language
- * translation. Wires voice.recording-list / -detail, recording-summary,
+ * translation, and auto-labeling segments against enrolled voice-prints
+ * (voice.recording-auto-label-speakers — reachable now that recording-create
+ * / live-finalize can attach a real per-segment `.vector`, computed client-
+ * side by the shared Web Audio extraction in lib/voice/audio-features.ts).
+ * Wires voice.recording-list / -detail, recording-summary,
  * recording-summary-llm, recording-share / -unshare / share-detail,
  * segment-comment-add / -list / -delete, transcript-translate /
- * transcript-translations-list.
+ * transcript-translations-list, recording-auto-label-speakers.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Sparkles, BrainCircuit, Share2, MessageSquare, Languages, Loader2,
-  Play, Pause, Send, Trash2, UserPlus, Star,
+  Play, Pause, Send, Trash2, UserPlus, Star, Fingerprint,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface RecMeta { id: string; title: string; durationSec: number; segmentCount: number; speakerCount: number }
 interface Segment { id: string; speaker: string; text: string; startSec: number; highlighted: boolean }
+interface AutoLabelMatch {
+  segmentId: string; matched: boolean; speaker: string | null;
+  distance?: number; confidence?: number; reason?: string; bestDistance?: number | null;
+}
+interface AutoLabelResult { relabeled: number; unmatched: number; totalSegments: number; matches: AutoLabelMatch[] }
 interface DetSummary {
   composer?: string; tldr?: string; keyPoints: string[];
   decisions?: string[]; openQuestions?: string[]; topics?: string[];
@@ -66,6 +75,9 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
   const [translations, setTranslations] = useState<TranslationMeta[]>([]);
   const [translatedSegs, setTranslatedSegs] = useState<TranslatedSeg[] | null>(null);
 
+  // Auto-label speakers (voice.recording-auto-label-speakers).
+  const [autoLabelResult, setAutoLabelResult] = useState<AutoLabelResult | null>(null);
+
   const refresh = useCallback(async () => {
     const r = await lensRun('voice', 'recording-list', {});
     setRecordings((r.data?.result?.recordings as RecMeta[]) || []);
@@ -86,6 +98,7 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
   const open = useCallback(async (id: string) => {
     setError(null);
     setTranslatedSegs(null);
+    setAutoLabelResult(null);
     const r = await lensRun('voice', 'recording-detail', { id });
     if (r.data?.ok) {
       setActive(r.data.result?.recording as Recording);
@@ -104,6 +117,27 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
     setBusy(null);
     if (r.data?.ok) await reload();
     else setError(r.data?.error || 'Summary failed');
+  }, [active, reload]);
+
+  // ── Auto-label speakers ────────────────────────────────────────────
+  // Matches each segment's captured acoustic .vector (from recording-create
+  // or a live/meeting session finalized with a mic-tap vector) against
+  // enrolled voice-prints. Segments with no captured vector (e.g. typed-in
+  // recordings, or a live session where the mic tap was unavailable) are
+  // reported honestly as unmatched, never guessed.
+  const autoLabelSpeakers = useCallback(async () => {
+    if (!active) return;
+    setBusy('autolabel');
+    setError(null);
+    const r = await lensRun('voice', 'recording-auto-label-speakers', { id: active.id });
+    setBusy(null);
+    if (r.data?.ok) {
+      await reload();
+      setAutoLabelResult(r.data.result as AutoLabelResult);
+    } else {
+      setAutoLabelResult(null);
+      setError(r.data?.error || 'Auto-label failed');
+    }
   }, [active, reload]);
 
   // ── Timestamped playback ───────────────────────────────────────────
@@ -278,11 +312,47 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
                 {playing ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
               </button>
               <span className="text-[11px] font-mono text-zinc-400">{ts(playPos)} / {ts(active.durationSec)}</span>
-              <label className="text-[10px] text-zinc-400 ml-auto cursor-pointer hover:text-zinc-300">
+              <button onClick={autoLabelSpeakers} disabled={busy !== null}
+                className="px-2.5 py-1 text-xs rounded bg-sky-600/20 text-sky-200 hover:bg-sky-600/35 inline-flex items-center gap-1 disabled:opacity-40 ml-auto">
+                {busy === 'autolabel' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Fingerprint className="w-3 h-3" />}Auto-label speakers
+              </button>
+              <label className="text-[10px] text-zinc-400 cursor-pointer hover:text-zinc-300">
                 attach audio
                 <input type="file" accept="audio/*" onChange={onAudioFile} className="hidden" />
               </label>
             </div>
+            {autoLabelResult && (
+              <div className={cn('rounded p-2 mb-2 text-[11px] border space-y-1.5',
+                autoLabelResult.relabeled > 0 ? 'bg-sky-950/30 border-sky-900/50' : 'bg-zinc-900/40 border-zinc-800')}>
+                <p className={autoLabelResult.relabeled > 0 ? 'text-sky-200' : 'text-zinc-400'}>
+                  Matched {autoLabelResult.relabeled} of {autoLabelResult.totalSegments} segment{autoLabelResult.totalSegments === 1 ? '' : 's'} to an enrolled
+                  voice-print{autoLabelResult.unmatched > 0 && (
+                    <> · {autoLabelResult.unmatched} unmatched (no captured acoustic vector, or no print within threshold)</>
+                  )}.
+                </p>
+                {autoLabelResult.matches.length > 0 && (
+                  <ul className="space-y-0.5 max-h-28 overflow-y-auto">
+                    {autoLabelResult.matches.map(m => {
+                      const seg = active.segments.find(s => s.id === m.segmentId);
+                      return (
+                        <li key={m.segmentId} className="flex items-center gap-1.5 text-zinc-300">
+                          <span className="truncate flex-1 text-zinc-400">{(seg?.text || '').slice(0, 40) || m.segmentId}</span>
+                          {m.matched ? (
+                            <span className="text-sky-300 shrink-0">
+                              → {m.speaker} · dist {m.distance} · conf {m.confidence != null ? Math.round(m.confidence * 100) : 0}%
+                            </span>
+                          ) : (
+                            <span className="text-zinc-500 shrink-0">
+                              no match {m.reason === 'no_vector' ? '(no captured vector)' : m.bestDistance != null ? `(closest dist ${m.bestDistance})` : ''}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
             <p className="text-[10px] text-zinc-400 mb-1.5">Click a line to jump the audio to that timestamp.</p>
             <div className="space-y-1 max-h-64 overflow-y-auto">
               {active.segments.map(g => {

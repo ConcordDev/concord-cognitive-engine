@@ -3,14 +3,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { ARCaptureGallery } from './ARCaptureGallery';
 import {
-  Box, Plus, Trash2, Save, Play, Zap, Image as ImageIcon,
-  Share2, Film, RefreshCw, Crosshair, Eye, Move3d,
+  Box, Plus, Trash2, Save, Play, Pause, RotateCcw, Zap, Image as ImageIcon,
+  Share2, Film, RefreshCw, Crosshair, Eye, Move3d, Camera,
 } from 'lucide-react';
+import {
+  initPhysicsBody, stepBody, DEFAULT_FIXED_DT, DEFAULT_GRAVITY,
+  type PhysicsBody,
+} from '@/lib/ar/physics-step';
 
 // ---------------------------------------------------------------------------
 // Types — the authoring scene model mirrors server/domains/ar.js sceneSave.
@@ -101,7 +106,13 @@ function blankObject(): SceneObject {
 // ---------------------------------------------------------------------------
 // 3D viewport — renders the authoring scene with @react-three/fiber.
 // ---------------------------------------------------------------------------
-function PrimitiveMesh({ obj, selected, onSelect }: { obj: SceneObject; selected: boolean; onSelect: () => void }) {
+function PrimitiveMesh({ obj, selected, onSelect, meshRef }: {
+  obj: SceneObject; selected: boolean; onSelect: () => void;
+  // Registers the live THREE.Mesh so PhysicsStepper below can drive its
+  // position imperatively (per-frame) without funneling every physics
+  // tick through React state / re-render.
+  meshRef?: (m: any) => void;
+}) {
   const geom = useMemo(() => {
     switch (obj.primitive) {
       case 'sphere': return <sphereGeometry args={[0.5, 24, 24]} />;
@@ -114,6 +125,7 @@ function PrimitiveMesh({ obj, selected, onSelect }: { obj: SceneObject; selected
   if (!obj.visible) return null;
   return (
     <mesh
+      ref={meshRef}
       position={[obj.position.x, obj.position.y, obj.position.z]}
       rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
       scale={[obj.scale.x, obj.scale.y, obj.scale.z]}
@@ -134,14 +146,129 @@ function PrimitiveMesh({ obj, selected, onSelect }: { obj: SceneObject; selected
   );
 }
 
-function Viewport({ scene, selectedId, onSelect }: {
+/**
+ * Physics-simulation stepper — mounted inside <Canvas> so it can use
+ * react-three-fiber's per-frame `useFrame` clock. Advances only objects
+ * whose AUTHORED params mark them simulate-able (physics.enabled === true
+ * && physics.body === 'dynamic'), using the pure, deterministic integrator
+ * in `lib/ar/physics-step.ts`. Renders nothing itself — it imperatively
+ * writes each simulated body's position onto the matching THREE.Mesh via
+ * `meshRefs`, which avoids funneling a 60Hz physics tick through React
+ * state (that would re-render the whole SceneStudio tree every frame).
+ *
+ * This is explicitly a SIMULATION preview, not a physical measurement or
+ * a recorded capture — see the "Simulate physics" label in the toolbar.
+ */
+function PhysicsStepper({
+  objects, running, meshRefs, resetSignalRef,
+}: {
+  objects: SceneObject[];
+  running: boolean;
+  meshRefs: React.MutableRefObject<Record<string, any>>;
+  // Exposes an imperative reset() the parent's "Reset" button can call,
+  // and is also invoked whenever the authored physics-relevant fields
+  // change (new scene loaded, mass/restitution/position/scale edited).
+  resetSignalRef: React.MutableRefObject<() => void>;
+}) {
+  // Always-current object list, read from inside useFrame without making
+  // useFrame's callback identity depend on `objects` (which is a fresh
+  // array reference on every scene edit).
+  const objectsRef = useRef(objects);
+  objectsRef.current = objects;
+
+  const bodiesRef = useRef<Record<string, PhysicsBody>>({});
+  const accumulatorRef = useRef(0);
+
+  const resetBodies = useCallback(() => {
+    const next: Record<string, PhysicsBody> = {};
+    for (const obj of objectsRef.current) {
+      if (obj.physics.enabled && obj.physics.body === 'dynamic') {
+        next[obj.id] = initPhysicsBody(obj);
+      }
+      // Snap every mesh (dynamic or not) back to its authored position —
+      // resetting must be a full, honest return to the authored scene,
+      // not just a halt of the ones currently simulating.
+      const mesh = meshRefs.current[obj.id];
+      if (mesh) mesh.position.set(obj.position.x, obj.position.y, obj.position.z);
+    }
+    bodiesRef.current = next;
+    accumulatorRef.current = 0;
+  }, [meshRefs]);
+
+  useEffect(() => {
+    resetSignalRef.current = resetBodies;
+  }, [resetBodies, resetSignalRef]);
+
+  // Re-seed the simulation whenever the authored physics-relevant fields
+  // change (id set, enabled/body/mass/restitution, authored position, or
+  // scale — which determines ground-contact half-height). Cosmetic edits
+  // (color, opacity, name) do NOT appear in this signature, so they don't
+  // interrupt an in-progress simulation.
+  const physicsSignature = useMemo(() => objects
+    .map((o) => [
+      o.id, o.physics.enabled ? 1 : 0, o.physics.body, o.physics.mass, o.physics.restitution,
+      o.position.x, o.position.y, o.position.z, o.scale.y,
+    ].join(':'))
+    .join('|'), [objects]);
+
+  useEffect(() => {
+    resetBodies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [physicsSignature]);
+
+  // Starting a run always begins from the authored state — determinism
+  // means "press play twice" must trace the identical trajectory both
+  // times, not resume wherever a prior run happened to leave off.
+  useEffect(() => {
+    if (running) resetBodies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
+  useFrame((_state, delta) => {
+    if (!running) return;
+    // Cap the per-frame delta so a backgrounded/throttled tab doesn't
+    // fast-forward the simulation through dozens of queued steps at once.
+    const clampedDelta = Math.min(delta, 0.25);
+    accumulatorRef.current += clampedDelta;
+    let stepsThisFrame = 0;
+    while (accumulatorRef.current >= DEFAULT_FIXED_DT && stepsThisFrame < 8) {
+      for (const id of Object.keys(bodiesRef.current)) {
+        bodiesRef.current[id] = stepBody(bodiesRef.current[id], DEFAULT_FIXED_DT, DEFAULT_GRAVITY);
+      }
+      accumulatorRef.current -= DEFAULT_FIXED_DT;
+      stepsThisFrame += 1;
+    }
+    for (const id of Object.keys(bodiesRef.current)) {
+      const mesh = meshRefs.current[id];
+      const body = bodiesRef.current[id];
+      if (mesh && body) mesh.position.set(body.position.x, body.position.y, body.position.z);
+    }
+  });
+
+  return null;
+}
+
+function Viewport({ scene, selectedId, onSelect, canvasRef, simRunning, meshRefs, resetSignalRef }: {
   scene: SceneModel; selectedId: string | null; onSelect: (id: string | null) => void;
+  canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
+  simRunning: boolean;
+  meshRefs: React.MutableRefObject<Record<string, any>>;
+  resetSignalRef: React.MutableRefObject<() => void>;
 }) {
   return (
     <Canvas
       camera={{ position: [3.2, 2.6, 4], fov: 55 }}
       onPointerMissed={() => onSelect(null)}
       className="rounded-lg"
+      // preserveDrawingBuffer keeps the last-rendered frame in the WebGL
+      // backbuffer so canvas.toDataURL()/captureStream() grab the real
+      // rendered pixels instead of a blank buffer (three.js clears the
+      // buffer after each frame by default).
+      gl={{ preserveDrawingBuffer: true }}
+      // Real react-three-fiber render target — this IS the same
+      // HTMLCanvasElement three.js draws the scene into, not a decorative
+      // wrapper. ARCaptureGallery captures directly from this DOM node.
+      onCreated={(state) => { canvasRef.current = state.gl.domElement; }}
     >
       <color attach="background" args={['#0d0d14']} />
       <ambientLight intensity={0.55} color="#404060" />
@@ -154,7 +281,13 @@ function Viewport({ scene, selectedId, onSelect }: {
         <meshBasicMaterial color="#00fff7" transparent opacity={0.04} />
       </mesh>
       {scene.objects.map((o) => (
-        <PrimitiveMesh key={o.id} obj={o} selected={o.id === selectedId} onSelect={() => onSelect(o.id)} />
+        <PrimitiveMesh
+          key={o.id}
+          obj={o}
+          selected={o.id === selectedId}
+          onSelect={() => onSelect(o.id)}
+          meshRef={(m) => { meshRefs.current[o.id] = m; }}
+        />
       ))}
       {scene.audio.map((a) => (
         <mesh key={a.id} position={[a.position.x, a.position.y, a.position.z]}>
@@ -162,6 +295,7 @@ function Viewport({ scene, selectedId, onSelect }: {
           <meshBasicMaterial color="#22c55e" wireframe transparent opacity={0.12} />
         </mesh>
       ))}
+      <PhysicsStepper objects={scene.objects} running={simRunning} meshRefs={meshRefs} resetSignalRef={resetSignalRef} />
     </Canvas>
   );
 }
@@ -173,7 +307,10 @@ export function SceneStudio() {
   const [scenes, setScenes] = useState<SceneSummary[]>([]);
   const [scene, setScene] = useState<SceneModel | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'inspector' | 'behaviors' | 'animation' | 'targets' | 'publish'>('inspector');
+  const [panel, setPanel] = useState<'inspector' | 'behaviors' | 'animation' | 'targets' | 'publish' | 'capture'>('inspector');
+  // The real react-three-fiber WebGL canvas the Viewport renders into —
+  // populated by Canvas's onCreated below. ARCaptureGallery captures from it.
+  const viewportCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -195,6 +332,18 @@ export function SceneStudio() {
   // Live WebXR session state.
   const [xrSupported, setXrSupported] = useState(false);
   const [xrActive, setXrActive] = useState(false);
+
+  // Physics simulation preview state. `meshRefs` holds the live THREE.Mesh
+  // per object id (populated by the Viewport as it mounts each object);
+  // `resetSignalRef` is an imperative handle PhysicsStepper fills in so the
+  // "Reset" button can snap every simulated object back to its authored
+  // position without threading that call through prop drilling.
+  const [simRunning, setSimRunning] = useState(false);
+  const meshRefs = useRef<Record<string, any>>({});
+  const resetSignalRef = useRef<() => void>(() => {});
+  const dynamicPhysicsCount = scene
+    ? scene.objects.filter((o) => o.physics.enabled && o.physics.body === 'dynamic').length
+    : 0;
 
   const flash = (m: string) => { setMsg(m); window.setTimeout(() => setMsg(null), 3000); };
 
@@ -336,11 +485,15 @@ export function SceneStudio() {
     });
     setSelectedId(null);
     setPublishRec(null); setWebxr(null); setValidation(null); setTimeline(null);
+    setSimRunning(false);
+    meshRefs.current = {};
   };
 
   const openScene = async (id: string) => {
     const r = await lensRun('ar', 'sceneGet', { sceneId: id });
     if (r.data?.ok) {
+      setSimRunning(false);
+      meshRefs.current = {};
       setScene((r.data.result as any).scene);
       setSelectedId(null);
       setPublishRec(null); setWebxr(null); setValidation(null); setTimeline(null);
@@ -525,12 +678,52 @@ export function SceneStudio() {
         {/* 3D viewport + object list */}
         <div className="space-y-2">
           <div className="h-80 rounded-lg overflow-hidden border border-lattice-border bg-lattice-deep">
-            <Viewport scene={scene} selectedId={selectedId} onSelect={setSelectedId} />
+            <Viewport
+              scene={scene}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              canvasRef={viewportCanvasRef}
+              simRunning={simRunning}
+              meshRefs={meshRefs}
+              resetSignalRef={resetSignalRef}
+            />
           </div>
           <div className="flex items-center gap-2">
             <button onClick={addObject} className={ds.btnSecondary}><Plus className="w-4 h-4" /> Object</button>
             <button onClick={addAudio} className={ds.btnSecondary}><Play className="w-4 h-4" /> Audio Source</button>
             <span className="text-xs text-gray-400 ml-auto">Click an object to select &middot; click empty space to deselect</span>
+          </div>
+          {/* Physics simulation preview — a deterministic gravity + restitution
+              step over the authored physics{enabled,body,mass,restitution}
+              params (lib/ar/physics-step.ts). This is a SIMULATION preview,
+              not a physical measurement: only objects marked
+              physics.enabled + body='dynamic' move; everything else stays
+              exactly where it was authored. */}
+          <div className="flex items-center gap-2 rounded-md border border-lattice-border px-2.5 py-1.5">
+            <button
+              onClick={() => setSimRunning((r) => !r)}
+              className={cn(ds.btnGhost, 'gap-1.5')}
+              disabled={dynamicPhysicsCount === 0}
+              title={dynamicPhysicsCount === 0
+                ? 'Enable physics on a dynamic object in the Inspector to simulate it'
+                : simRunning ? 'Pause simulation' : 'Simulate physics'}
+            >
+              {simRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {simRunning ? 'Pause simulation' : 'Simulate physics'}
+            </button>
+            <button
+              onClick={() => { setSimRunning(false); resetSignalRef.current(); }}
+              className={ds.btnGhost}
+              aria-label="Reset simulation to authored positions"
+              title="Reset simulation to authored positions"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-gray-400">
+              {dynamicPhysicsCount === 0
+                ? 'No dynamic-physics objects in this scene'
+                : `${dynamicPhysicsCount} dynamic object${dynamicPhysicsCount === 1 ? '' : 's'} under gravity — deterministic preview, not a physical measurement`}
+            </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {scene.objects.map((o) => (
@@ -564,6 +757,7 @@ export function SceneStudio() {
               ['behaviors', Zap, 'Behaviors'],
               ['animation', Film, 'Animate'],
               ['targets', ImageIcon, 'Targets'],
+              ['capture', Camera, 'Capture'],
               ['publish', Share2, 'Publish'],
             ] as const).map(([id, Icon, label]) => (
               <button
@@ -845,6 +1039,15 @@ export function SceneStudio() {
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Capture — real screenshot/recording pipeline + gallery */}
+          {panel === 'capture' && (
+            <ARCaptureGallery
+              canvasRef={viewportCanvasRef}
+              sceneId={scene.id || null}
+              onNotify={flash}
+            />
           )}
 
           {/* Publish + WebXR */}

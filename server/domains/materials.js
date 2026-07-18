@@ -6,6 +6,7 @@
 // (set MATERIALS_PROJECT_API_KEY env).
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { ELEMENTS, getElement, categoryGroup } from "../lib/periodic-table-data.js";
 
 const MP_BASE = "https://api.materialsproject.org";
 
@@ -332,6 +333,255 @@ export default function registerMaterialsActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ─── Fractography / failure-analysis workflow ───────────────────────
+  // Classifies a fracture surface into ductile / brittle / fatigue / SCC
+  // (stress-corrosion cracking) / creep from real observed surface
+  // evidence, per the evidence rules in ASM Handbook Volume 11: Failure
+  // Analysis and Prevention. Two macros share one classifier —
+  // `fractographyAnalysis` reports the classification + supporting
+  // evidence, `fractographyRootCause` reports root-cause guidance +
+  // corrective actions + recommended further testing for the same
+  // inputs. Never forces a confident verdict from absent, or genuinely
+  // contradictory, evidence.
+
+  const FRACTOGRAPHY_SCC_PAIRS = [
+    { material: /stainless|304|316|austenitic/, agent: /chlorid|salt|marine|seawater/, note: "Austenitic stainless steels are classically susceptible to chloride-induced transgranular SCC." },
+    { material: /brass|copper.?zinc/, agent: /ammonia|amine/, note: "Brass undergoes 'season cracking' — ammonia-induced intergranular SCC." },
+    { material: /carbon steel|mild steel|boiler/, agent: /caustic|hydroxide|alkal/, note: "Carbon steel is susceptible to caustic embrittlement in alkaline environments under sustained tensile stress." },
+    { material: /aluminum|7075|2024/, agent: /chlorid|salt|marine/, note: "High-strength aluminum alloys (7xxx/2xxx series) are susceptible to chloride SCC, often intergranular." },
+    { material: /titanium/, agent: /chlorid|methanol|salt/, note: "Titanium alloys can suffer chloride or methanol SCC under sustained tensile stress." },
+  ];
+  function fractographySccSusceptibility(materialLower, envText) {
+    for (const pair of FRACTOGRAPHY_SCC_PAIRS) {
+      if (pair.material.test(materialLower) && pair.agent.test(envText)) return pair.note;
+    }
+    return null;
+  }
+
+  const FRACTOGRAPHY_GUIDANCE = {
+    ductile: "Overload past the material's yield strength. Check whether the applied/service load exceeded the design allowable, look for an undersized cross-section, or an unanticipated load case.",
+    brittle: "Overload below yield in a low-toughness state (brittle material, low temperature, and/or high strain rate). Check material toughness at the actual service temperature, inspect for a pre-existing flaw/notch at the chevron origin, and consider a tougher alloy or preheat.",
+    fatigue: "Cyclic loading well below static strength nucleated a crack that grew stably until final fracture. Trace the beach marks back to the initiation site and check for a stress concentrator there (notch, weld toe, machining mark, corrosion pit), review surface finish, and re-examine the inspection interval against the fatigue crack growth rate.",
+    scc: "Environmentally-assisted cracking requires a susceptible material, a corrosive/embrittling agent, and sustained tensile stress together — remove any one and it stops. Reduce residual/applied tensile stress, change to a resistant alloy grade, or eliminate the environmental agent.",
+    creep: "Sustained stress at elevated temperature (above roughly 0.4 of the absolute melting point) let grain-boundary damage accumulate over time. Reduce operating temperature or stress, or move to a creep-resistant alloy.",
+  };
+  const FRACTOGRAPHY_CORRECTIVE_ACTIONS = {
+    ductile: ["Verify the applied load did not exceed the design allowable", "Increase cross-section or select a higher-strength material if the load was within spec", "Review for an unanticipated load case (overload, impact, misuse)"],
+    brittle: ["Verify material toughness (Charpy V-notch) at the actual minimum service temperature", "Inspect the origin for a pre-existing flaw, notch, or weld defect", "Consider a tougher alloy or grain-refined heat treatment", "Preheat or reformulate the alloy if service temperature is near the ductile-to-brittle transition"],
+    fatigue: ["Trace beach marks back to the initiation site and inspect for a stress concentrator (notch, weld toe, machining mark, corrosion pit)", "Improve surface finish or apply shot peening at the initiation region", "Reduce cyclic stress amplitude or add a fillet/radius to lower local stress concentration", "Re-evaluate the inspection interval against the observed crack growth rate"],
+    scc: ["Reduce residual/applied tensile stress (stress-relief anneal, shot peening)", "Eliminate or reduce exposure to the corrosive/embrittling agent", "Change to an SCC-resistant alloy grade for this environment", "Apply a protective coating or cathodic protection where the agent can't be removed"],
+    creep: ["Reduce operating temperature or sustained stress toward the design allowable", "Move to a creep-resistant alloy for this temperature/stress combination", "Shorten inspection intervals as remaining creep life is consumed"],
+  };
+  const FRACTOGRAPHY_FURTHER_TESTING = {
+    ductile: ["Tensile test to confirm yield/ultimate strength matches spec", "Hardness survey to rule out under-strength material", "Dimensional check for an undersized section"],
+    brittle: ["Charpy/Izod impact testing at service temperature", "SEM fractography at the origin to confirm cleavage facets", "Chemical/metallurgical analysis for embrittling phases (e.g. temper embrittlement)"],
+    fatigue: ["SEM examination of striation spacing to back-calculate crack growth rate", "S-N fatigue testing of the actual material/geometry", "Finite-element stress analysis at the initiation site"],
+    scc: ["SEM to confirm intergranular vs. transgranular crack path", "Environmental/chemical analysis to identify the specific corrosive species", "Slow strain rate testing (SSRT) to confirm SCC susceptibility"],
+    creep: ["Metallographic examination of grain-boundary cavitation density (creep damage staging)", "Creep-rupture testing at service temperature/stress", "Remaining-life assessment via replication or sister-component sampling"],
+  };
+
+  // Shared classifier used by both macros below — keeps the evidence
+  // rules in exactly one place. Returns either { rejection: {message} }
+  // when there isn't enough real observational input to classify
+  // anything, or a classification bundle (possibly `indeterminate` when
+  // observations were given but none match a known evidence pattern).
+  function classifyFracture(data) {
+    const material = (data.name || data.material || "").toLowerCase().trim();
+    const textureRaw = (data.texture || "").toLowerCase().trim();
+    const deformationRaw = (data.deformation || "").toLowerCase().trim();
+    const features = Array.isArray(data.surfaceFeatures) ? data.surfaceFeatures.map((f) => String(f).toLowerCase().trim()) : [];
+    const loadType = (data.loadType || "").toLowerCase().trim();
+    const environment = (data.environment || "").toLowerCase().trim();
+    const environmentDetail = (data.environmentDetail || "").toLowerCase().trim();
+    const serviceTempC = data.serviceTemperatureC != null && data.serviceTemperatureC !== "" ? parseFloat(data.serviceTemperatureC) : null;
+    const meltingPointC = data.meltingPointC != null && data.meltingPointC !== "" ? parseFloat(data.meltingPointC) : null;
+    const hasFeature = (f) => features.includes(f);
+
+    // Honest gate: a real fractography analysis needs a material
+    // identity AND at least one direct surface observation. Without
+    // both, any classification would be fabricated from nothing.
+    const hasObservation = Boolean(textureRaw) || Boolean(deformationRaw) || features.length > 0;
+    if (!material || !hasObservation) {
+      return {
+        rejection: {
+          message: "Fractography requires a material identity and at least one direct surface observation (texture, plastic deformation, or a listed feature such as beach marks / chevron marks / intergranular cracking). A classification cannot be produced from missing input.",
+        },
+      };
+    }
+
+    const modes = {
+      ductile: { score: 0, evidence: [] },
+      brittle: { score: 0, evidence: [] },
+      fatigue: { score: 0, evidence: [] },
+      scc: { score: 0, evidence: [] },
+      creep: { score: 0, evidence: [] },
+    };
+
+    // Ductile overload: dull/fibrous texture, plastic deformation,
+    // cup-and-cone shape, necking.
+    if (textureRaw === "dull_fibrous") { modes.ductile.score += 3; modes.ductile.evidence.push("dull, fibrous fracture surface texture"); }
+    if (deformationRaw === "significant_plastic") { modes.ductile.score += 3; modes.ductile.evidence.push("significant plastic deformation observed"); }
+    if (hasFeature("cup_and_cone")) { modes.ductile.score += 3; modes.ductile.evidence.push("classic cup-and-cone fracture shape"); }
+    if (hasFeature("necking")) { modes.ductile.score += 2; modes.ductile.evidence.push("visible necking prior to separation"); }
+    if (loadType === "static" || loadType === "impact") { modes.ductile.score += 1; modes.ductile.evidence.push(`${loadType} overload consistent with ductile failure`); }
+
+    // Brittle overload: bright/crystalline texture, no deformation,
+    // chevron marks pointing back to the origin, impact/low-temp.
+    if (textureRaw === "bright_crystalline") { modes.brittle.score += 3; modes.brittle.evidence.push("bright, crystalline/granular fracture surface"); }
+    if (deformationRaw === "none") { modes.brittle.score += 3; modes.brittle.evidence.push("no measurable plastic deformation"); }
+    if (hasFeature("chevron_marks")) { modes.brittle.score += 4; modes.brittle.evidence.push("chevron marks pointing back toward the fracture origin"); }
+    if (loadType === "impact") { modes.brittle.score += 1; modes.brittle.evidence.push("impact loading — high strain rate favors brittle response"); }
+    if (serviceTempC != null && serviceTempC < 0) { modes.brittle.score += 1; modes.brittle.evidence.push(`sub-zero service temperature (${serviceTempC}°C) — ductile-to-brittle transition risk`); }
+
+    // Fatigue: beach marks + striations radiating from an initiation
+    // site, cyclic load, smooth-to-rough transition.
+    if (hasFeature("beach_marks")) { modes.fatigue.score += 4; modes.fatigue.evidence.push("beach marks (macroscopic arrest lines) radiating from an initiation site"); }
+    if (hasFeature("striations")) { modes.fatigue.score += 4; modes.fatigue.evidence.push("microscopic striations — one per load cycle"); }
+    if (loadType === "cyclic") { modes.fatigue.score += 3; modes.fatigue.evidence.push("cyclic/repeated loading history"); }
+    if (textureRaw === "mixed_transitional") { modes.fatigue.score += 1; modes.fatigue.evidence.push("smooth fatigue-zone-to-rough final-fracture-zone transition"); }
+    if (deformationRaw === "minimal_plastic" || deformationRaw === "none") { modes.fatigue.score += 1; modes.fatigue.evidence.push("little bulk plastic deformation, typical of fatigue at macro scale"); }
+
+    // Environmentally-assisted / SCC: intergranular or branching cracks,
+    // corrosive environment, sustained tensile stress, susceptible
+    // material+agent pairing.
+    if (hasFeature("intergranular_cracking")) { modes.scc.score += 3; modes.scc.evidence.push("intergranular crack path"); }
+    if (hasFeature("branching_cracks")) { modes.scc.score += 3; modes.scc.evidence.push("branching crack morphology"); }
+    if (environment === "corrosive") { modes.scc.score += 3; modes.scc.evidence.push("corrosive service environment"); }
+    if (loadType === "static" || loadType === "sustained_thermal") { modes.scc.score += 1; modes.scc.evidence.push("sustained (non-cyclic) tensile stress consistent with SCC"); }
+    const sccNote = fractographySccSusceptibility(material, `${environment} ${environmentDetail}`);
+    if (sccNote) { modes.scc.score += 3; modes.scc.evidence.push(sccNote); }
+
+    // Creep: grain-boundary voids/cavitation at sustained elevated
+    // temperature, homologous temperature above the ~0.4 Tm threshold.
+    if (hasFeature("grain_boundary_voids")) { modes.creep.score += 4; modes.creep.evidence.push("grain-boundary voids / cavitation"); }
+    if (hasFeature("intergranular_cracking") && environment === "elevated_temperature") { modes.creep.score += 2; modes.creep.evidence.push("intergranular cracking under sustained elevated temperature"); }
+    if (environment === "elevated_temperature") { modes.creep.score += 2; modes.creep.evidence.push("elevated-temperature service environment"); }
+    if (loadType === "sustained_thermal" || loadType === "static") { modes.creep.score += 1; modes.creep.evidence.push("sustained (non-cyclic) load under thermal exposure"); }
+    let homologousTemp = null;
+    if (serviceTempC != null && meltingPointC != null && meltingPointC > 0) {
+      homologousTemp = (serviceTempC + 273.15) / (meltingPointC + 273.15);
+      if (homologousTemp >= 0.4) {
+        modes.creep.score += 3;
+        modes.creep.evidence.push(`homologous temperature T/Tₘ ≈ ${homologousTemp.toFixed(2)} — above the ~0.4 threshold where creep becomes significant`);
+      }
+    }
+
+    const ranked = Object.entries(modes)
+      .map(([mode, m]) => ({ mode, score: m.score, evidence: m.evidence }))
+      .filter((m) => m.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    const inputEcho = { texture: textureRaw || null, deformation: deformationRaw || null, surfaceFeatures: features, loadType: loadType || null, environment: environment || null };
+    const materialLabel = data.name || material;
+    const loadTypeLabel = loadType || "not specified";
+    const environmentLabel = environment || "not specified";
+
+    if (ranked.length === 0) {
+      return {
+        material: materialLabel, loadType: loadTypeLabel, environment: environmentLabel,
+        indeterminate: true,
+        indeterminateMessage: "The supplied observations don't match any established fractography evidence pattern (ductile / brittle / fatigue / SCC / creep). Recommend re-examining the fracture surface under SEM before drawing a conclusion.",
+        inputEcho,
+      };
+    }
+
+    const top = ranked[0];
+    const second = ranked[1];
+    // Ambiguity gate: when a second mode's evidence is close to the
+    // leader's (>=75% of its score) and non-trivial, this is genuinely
+    // mixed evidence — a real analyst would call for microscopy, not
+    // force a single verdict from macro-scale observation alone.
+    const isAmbiguous = Boolean(second) && second.score >= top.score * 0.75 && second.score >= 3;
+
+    return {
+      material: materialLabel, loadType: loadTypeLabel, environment: environmentLabel,
+      ranked, top, second, isAmbiguous, homologousTemp, inputEcho,
+    };
+  }
+
+  registerLensAction("materials", "fractographyAnalysis", (_ctx, artifact, _params) => {
+  try {
+    const c = classifyFracture(artifact.data || {});
+    if (c.rejection) return { ok: true, result: { message: c.rejection.message } };
+    if (c.indeterminate) {
+      return {
+        ok: true,
+        result: {
+          material: c.material, loadType: c.loadType, environment: c.environment,
+          classification: "indeterminate", confidence: "none",
+          message: c.indeterminateMessage, inputEcho: c.inputEcho,
+        },
+      };
+    }
+    const result = {
+      material: c.material,
+      loadType: c.loadType,
+      environment: c.environment,
+      classification: c.isAmbiguous ? "mixed evidence" : c.top.mode,
+      primaryMode: c.top.mode,
+      evidenceForPrimary: c.top.evidence,
+      candidates: c.ranked.map((r) => ({ mode: r.mode, evidenceScore: r.score, supportingEvidence: r.evidence })),
+      ambiguityNote: c.isAmbiguous
+        ? `Evidence is split between ${c.top.mode} (${c.top.score}) and ${c.second.mode} (${c.second.score}) — macro-scale observation alone does not resolve this. Recommend SEM fractography (striations vs. dimples vs. cleavage facets vs. intergranular voids) before committing to a mode.`
+        : null,
+    };
+    if (c.homologousTemp != null) result.homologousTemperature = Math.round(c.homologousTemp * 100) / 100;
+    return { ok: true, result };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("materials", "fractographyRootCause", (_ctx, artifact, _params) => {
+  try {
+    const c = classifyFracture(artifact.data || {});
+    if (c.rejection) return { ok: true, result: { message: c.rejection.message } };
+    if (c.indeterminate) {
+      return {
+        ok: true,
+        result: {
+          material: c.material,
+          classification: "indeterminate",
+          rootCauseGuidance: "No established fractography pattern matched — root cause cannot be determined from these observations. Recommend SEM examination before investigating root cause.",
+          recommendedCorrectiveActions: [],
+          recommendedFurtherTesting: ["SEM fractography of the fracture surface", "Re-examine and re-record surface texture, deformation, and any macroscopic features"],
+          reference: "ASM Handbook Volume 11: Failure Analysis and Prevention",
+        },
+      };
+    }
+    if (c.isAmbiguous) {
+      const furtherTesting = Array.from(new Set([
+        "SEM fractography to distinguish striations (fatigue) from dimples (ductile), cleavage facets (brittle), or intergranular voids (creep/SCC)",
+        "Confirm environmental exposure and load history from service/maintenance records",
+        ...(FRACTOGRAPHY_FURTHER_TESTING[c.top.mode] || []),
+        ...(FRACTOGRAPHY_FURTHER_TESTING[c.second.mode] || []),
+      ]));
+      return {
+        ok: true,
+        result: {
+          material: c.material,
+          classification: "mixed evidence",
+          candidateModes: [c.top.mode, c.second.mode],
+          rootCauseGuidance: `Evidence is split between ${c.top.mode} and ${c.second.mode} (scores ${c.top.score} vs ${c.second.score}) — committing to a single root cause now would be a guess, not an analysis.`,
+          recommendedCorrectiveActions: ["Hold corrective action until the failure mode is confirmed — mode-specific fixes for the wrong mode waste resources and leave the real cause unaddressed."],
+          recommendedFurtherTesting: furtherTesting,
+          reference: "ASM Handbook Volume 11: Failure Analysis and Prevention",
+        },
+      };
+    }
+    const mode = c.top.mode;
+    return {
+      ok: true,
+      result: {
+        material: c.material,
+        classification: mode,
+        rootCauseGuidance: FRACTOGRAPHY_GUIDANCE[mode],
+        recommendedCorrectiveActions: FRACTOGRAPHY_CORRECTIVE_ACTIONS[mode],
+        recommendedFurtherTesting: FRACTOGRAPHY_FURTHER_TESTING[mode],
+        reference: "ASM Handbook Volume 11: Failure Analysis and Prevention",
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   /**
    * mp-search — Materials Project search by chemical formula or
    * elements. Returns material_id, formula, crystal system, density,
@@ -431,6 +681,56 @@ export default function registerMaterialsActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `materials project unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // ─── Periodic table element browser ─────────────────────────────────
+  // A real, cited 118-element dataset (server/lib/periodic-table-data.js —
+  // see that file's header for sources: IUPAC 2021 standard atomic
+  // weights, NIST, CRC Handbook). Pure reads, no external call, no LLM.
+  // `element-detail` also returns a ready-to-run mp-search pointer so the
+  // frontend can deep-link "find materials containing this element" into
+  // the real Materials Project search above instead of duplicating it.
+
+  registerLensAction("materials", "element-list", (_ctx, _artifact, params = {}) => {
+    try {
+      const categoryFilter = params.category ? String(params.category).trim().toLowerCase() : null;
+      const blockFilter = params.block ? String(params.block).trim().toLowerCase() : null;
+      const periodFilter = params.period != null && params.period !== "" ? Number(params.period) : null;
+      let list = ELEMENTS;
+      if (categoryFilter) list = list.filter((e) => categoryGroup(e.category) === categoryFilter);
+      if (blockFilter) list = list.filter((e) => e.block === blockFilter);
+      if (Number.isFinite(periodFilter)) list = list.filter((e) => e.period === periodFilter);
+      return {
+        ok: true,
+        result: {
+          elements: list.map((e) => ({ ...e, categoryGroup: categoryGroup(e.category) })),
+          count: list.length,
+          totalElements: ELEMENTS.length,
+          source: "curated-iupac-nist-crc-periodic-table",
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("materials", "element-detail", (_ctx, _artifact, params = {}) => {
+    try {
+      const query = params.symbol ?? params.z ?? params.atomicNumber ?? params.query;
+      if (query == null || query === "") return { ok: false, error: "symbol or atomic number (z) required" };
+      const el = getElement(query);
+      if (!el) return { ok: false, error: `unknown element: ${query}` };
+      return {
+        ok: true,
+        result: {
+          element: { ...el, categoryGroup: categoryGroup(el.category) },
+          findMaterials: {
+            note: "Run materials.mp-search with these params to find real Materials Project entries containing this element.",
+            macro: "materials.mp-search",
+            params: { elements: [el.symbol] },
+          },
+          source: "curated-iupac-nist-crc-periodic-table",
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   // ─── Saved materials shortlist (Granta MI-shape comparison set) ──────

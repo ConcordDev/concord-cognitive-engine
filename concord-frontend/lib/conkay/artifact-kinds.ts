@@ -21,7 +21,12 @@
 //       foundry-worldspec← foundry.preview   → { previewWorldId, universeType,(server/domains/foundry.js#preview)
 //                                                activatedSystems, skippedStubs }
 //       forge-app        ← forge.sandbox     → { html, projectId, fileCount } (server/domains/forge.js#sandbox)
-//       building         ← (shape-driven)    → { buildings[], validationData[] }  — see normalizeBuilding's note
+//       building         ← game-design.building-publish → { ok, dtuId, buildingId, spawned, citation }
+//                                                (server/domains/gamedesign.js#building-publish; the artifact's
+//                                                 buildings[] is CONSTRUCTED from the publish call's real INPUT
+//                                                 — archetype/feature/dimensions/name/position — + the result's
+//                                                 buildingId, see normalizeBuildingPublish)
+//                        ← (shape-driven)    → { buildings[], validationData[] }  — see normalizeBuilding's note
 //
 // This module is intentionally React-free so it can be unit-tested as a pure
 // function (see tests/lib/conkay/artifact-kinds.test.ts). The mapping from
@@ -147,6 +152,9 @@ function asArray(v: unknown): unknown[] {
 function str(v: unknown): string | null {
   return typeof v === 'string' && v.length > 0 ? v : null;
 }
+function num(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+}
 
 // ── normalizers — one per kind, each PURE and null-unless-real ───────────────
 
@@ -241,6 +249,89 @@ function isBuildingDtu(v: unknown): v is BuildingDTU {
   );
 }
 
+/** game-design.building-publish → a structural-building artifact CONSTRUCTED
+ *  from the publish call's real fields, not from a macro result that already
+ *  carries a `buildings[]` array (that's the shape-driven `normalizeBuilding`
+ *  below). building-publish's own return is just `{ ok, dtuId, buildingId,
+ *  spawned, citation }` (server/domains/gamedesign.js) — the RENDER fields
+ *  (archetype/feature/dimensions/name/position) live entirely on the call's
+ *  INPUT (see AssetStudioPanel.tsx's payload), which the backend validated
+ *  and just persisted verbatim. So this is a render of the real authored
+ *  spec: every field traces to input (archetype/feature/dimensions/name/
+ *  position/rotationY) or result (buildingId as the building's id) — nothing
+ *  guessed.
+ *
+ *  Honest failure: `result.ok === false`, a missing `buildingId`, a missing/
+ *  unknown `archetype`, or non-positive dimensions all return null — no
+ *  half-real placeholder building.
+ *
+ *  `floors` / `material` / `style` / `structure` are NOT part of
+ *  building-publish's input at all. They're documented, minimal, inert
+ *  structural defaults required only to satisfy the `BuildingDTU` type +
+ *  `isBuildingDtu`'s structural check — building-publish only accepts
+ *  archetypes from the same 5-set BuildingRenderer3D's `renderFromDTU`
+ *  recognises as "explicit archetype" (tavern/archive/forge/market/tower;
+ *  compare `GD_BUILDING_ARCHETYPES` in gamedesign.js to `knownArchetypes` in
+ *  BuildingRenderer3D.tsx), so the renderer ALWAYS takes its rich procedural
+ *  `createBuilding()` path for a building-publish artifact — a path that
+ *  reads only id/name/dimensions/position + the `archetype`/`feature`
+ *  fields below (via the same inline type-cast reads `renderFromDTU` already
+ *  uses for seed/world buildings), never structure/material/style/floors.
+ *  Those four are dead weight on this path; `floors: 1` in particular is not
+ *  arbitrary — it is the minimum value that keeps the (unreachable-here)
+ *  legacy fallback's `height / dtu.floors` division defined, should
+ *  `createBuilding` ever throw. */
+function normalizeBuildingPublish(domain: string, macro: string, input: unknown, result: unknown): ConkayBuildingArtifact | null {
+  if (domain !== 'game-design' || macro !== 'building-publish') return null;
+  const res = asObj(result);
+  if (res.ok === false) return null; // honest failure ⟹ no artifact, never a placeholder
+  const buildingId = str(res.buildingId);
+  if (!buildingId) return null; // nothing real to anchor the artifact on
+
+  const inp = asObj(input);
+  const archetype = str(inp.archetype);
+  if (!archetype) return null; // no genuine archetype ⟹ nothing honest to render
+
+  const dims = asObj(inp.dimensions);
+  const width = num(dims.width);
+  const height = num(dims.height);
+  const depth = num(dims.depth);
+  if (width <= 0 || height <= 0 || depth <= 0) return null; // no genuine geometry ⟹ nothing honest to render
+
+  const pos = asObj(inp.position);
+  const name = str(inp.name) ?? 'Untitled building';
+  const feature = str(inp.feature);
+
+  const building: BuildingDTU & { archetype: string; feature?: string } = {
+    id: buildingId,
+    name,
+    position: { x: num(pos.x), y: num(pos.y), z: num(pos.z) },
+    dimensions: { width, height, depth },
+    // Inert structural placeholders — see the doc comment above. Never read
+    // on the archetype-driven render path this artifact always takes.
+    floors: 1,
+    material: 'usb',
+    style: 'mixed',
+    structure: {
+      columns: { count: 0, spacing: 0, radius: 0 },
+      beams: { count: 0, height: 0 },
+      roofType: 'flat',
+      hasBasement: false,
+      windowRows: 0,
+      windowsPerRow: 0,
+    },
+    building_type: archetype,
+    // Extra fields BuildingRenderer3D reads via inline type-cast (its
+    // `explicitArch`/`feature` reads in renderFromDTU) — the REAL authored
+    // archetype + iconic feature, carried through untouched.
+    archetype,
+    ...(feature ? { feature } : {}),
+  };
+
+  const components: ConkayArtifactComponent[] = [{ id: building.id, label: building.name, kind: 'building' }];
+  return { kind: 'building', buildings: [building], validation: [], components, sourceDomain: domain, sourceMacro: macro };
+}
+
 /** Shape-driven (NOT domain-gated) → a structural-building artifact. Matches any
  *  macro result carrying a real `buildings[]` array of BuildingDTU-shaped rows
  *  (+ optional `validationData[]`), so it renders live the moment a macro emits
@@ -279,13 +370,24 @@ export interface ArtifactKindEntry {
 }
 
 /** The kind registry. Order matters: the domain-gated kinds are tried before
- *  the shape-driven `building` detector so a domain-specific match always wins. */
+ *  the shape-driven `building` detector so a domain-specific match always wins.
+ *  The `building` entry itself composes two normalizers behind one kind (kept
+ *  as ONE registry row, not two, so `ARTIFACT_KINDS` stays a 5-kind, unique-
+ *  key registry): the domain-gated `game-design.building-publish` detector
+ *  tried first, falling back to the shape-driven `buildings[]` detector when
+ *  it doesn't match — the same domain-gated-before-shape-driven ordering the
+ *  rest of this array follows, just localized to one entry. */
 export const ARTIFACT_KINDS: ArtifactKindEntry[] = [
   { kind: 'ar-render', label: 'AR scene', normalize: normalizeAr },
   { kind: 'fea-frame', label: 'FEA frame', normalize: normalizeFea },
   { kind: 'foundry-worldspec', label: 'Foundry world', normalize: normalizeFoundry },
   { kind: 'forge-app', label: 'Forge app', normalize: normalizeForge },
-  { kind: 'building', label: 'Structural building', normalize: normalizeBuilding },
+  {
+    kind: 'building',
+    label: 'Structural building',
+    normalize: (domain, macro, input, result) =>
+      normalizeBuildingPublish(domain, macro, input, result) ?? normalizeBuilding(domain, macro, input, result),
+  },
 ];
 
 /**

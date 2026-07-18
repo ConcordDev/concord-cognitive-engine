@@ -5,7 +5,7 @@
   "taxonomy": {
     "sapient_species": [
       "ancient_tunyan",
-      "medici",
+      "vessine",
       "sanguire"
     ],
     "naturalized_population": "earth_human (seven ark cohorts; 4 generations of intermixing have made most of them >50% Tunyan-blooded by Year 4G)"
@@ -36,7 +36,7 @@
         "reproductive_compatibility": {
           "with_earth_human": "fully compatible; common and largely successful — most kingdoms outside Nil are 30-70% Tunyan-blooded by 4G",
           "with_sanguire": "compatible. Rare in practice (Sanguire culture isolates). Hybrids are recognizable by faint marbling under fur.",
-          "with_medici": "no documented case. Mating customs of both species discourage. Theoretically biologically possible. Open lore."
+          "with_vessine": "no documented case. Mating customs of both species discourage. Theoretically biologically possible. Open lore."
         }
       },
       "culture": {
@@ -45,11 +45,11 @@
         "naming": "see naming_conventions.json#nil"
       }
     },
-    "medici": {
-      "id": "medici",
-      "common_name": "Medici",
+    "vessine": {
+      "id": "vessine",
+      "common_name": "Vessine",
       "status_on_planet": "stranded — crashed ~100 Tunyan years ago; ship unrepairable",
-      "estimated_population": "small (low thousands). Confined to Medici Isle off Kree's coast and small wards in Kree-allied kingdoms.",
+      "estimated_population": "small (low thousands). Confined to Vessine Isle off Vrellan's coast and small wards in Vrellan-allied kingdoms.",
       "lifespan": {
         "pure": "150-200 Tunyan years; Supreme Elder typically the longest-lived",
         "mate_absorption_extends": "absorbing a deceased mate's healing capacity adds 10-25 years to the survivor's life"
@@ -83,29 +83,29 @@
           "teeth": "flat",
           "ears": "round-tipped",
           "chin": "curved",
-          "skin_hair": "hairless on body; hair on head GROWS WITH POWER LEVEL — a junior healer's hair is short; an elder's hair is to the floor. Cutting Medici female hair is taboo and physically painful.",
+          "skin_hair": "hairless on body; hair on head GROWS WITH POWER LEVEL — a junior healer's hair is short; an elder's hair is to the floor. Cutting Vessine female hair is taboo and physically painful.",
           "headwear_taboo": "no taboo for females; long hair displayed freely is the cultural signature"
         },
-        "skin_color_palette": "Medici skin tone is a soft pearlescent gray-white in the pure species. Cross-species skin-color genetics (see colors.json) produce a distinctive 'pearl-blended' shade in any mixed-Medici offspring — pearl + the partner's color, blended."
+        "skin_color_palette": "Vessine skin tone is a soft pearlescent gray-white in the pure species. Cross-species skin-color genetics (see colors.json) produce a distinctive 'pearl-blended' shade in any mixed-Vessine offspring — pearl + the partner's color, blended."
       },
       "biology": {
         "power": "healing only. See powers.json#healing_bloodline. The Resonance Choir is a healing focus practice, not a combat ability. Earlier drafts of this bible incorrectly attributed ice powers; canon corrects.",
-        "mate_for_life": "Medici pair-bond once per lifetime. Bond formation is irreversible and biologically attested by the male knotting and the female's chemical signature shift.",
-        "mate_death_absorption": "When a bonded Medici dies, the survivor absorbs the dead mate's healing capacity, becoming a tier-jump elder. This is the canonical path to elder-tier power. Premature partner-death (assassination, sabotage) to gain power is the deepest taboo in Medici culture.",
+        "mate_for_life": "Vessine pair-bond once per lifetime. Bond formation is irreversible and biologically attested by the male knotting and the female's chemical signature shift.",
+        "mate_death_absorption": "When a bonded Vessine dies, the survivor absorbs the dead mate's healing capacity, becoming a tier-jump elder. This is the canonical path to elder-tier power. Premature partner-death (assassination, sabotage) to gain power is the deepest taboo in Vessine culture.",
         "supreme_elder_succession": "When the Supreme Elder dies, all remaining elders gather around the body. Mercury's chosen-soul transfers to the next leader. The new Supreme Elder gains full healing potency, the home-world memory chain, and the species' ceremonial knowledge.",
         "reproductive_compatibility": {
-          "with_other_medici": "fully compatible. Mate-for-life norm.",
-          "with_sanguire": "asymmetrically lethal — see powers.json#sanguire_medici_hybrid. Medici-female + Sanguire-male = lethal pregnancy. Medici-male + Sanguire-female = viable but rare and culturally taboo (preserves the Medici male breeding pool).",
-          "with_earth_human": "viable in theory; documented cases exist. Children carry attenuated healing (1/2 to 1/4 of pure expression). The Medici discourage but do not forbid.",
+          "with_other_vessine": "fully compatible. Mate-for-life norm.",
+          "with_sanguire": "asymmetrically lethal — see powers.json#sanguire_vessine_hybrid. Vessine-female + Sanguire-male = lethal pregnancy. Vessine-male + Sanguire-female = viable but rare and culturally taboo (preserves the Vessine male breeding pool).",
+          "with_earth_human": "viable in theory; documented cases exist. Children carry attenuated healing (1/2 to 1/4 of pure expression). The Vessine discourage but do not forbid.",
           "with_ancient_tunyan": "no documented case. Theoretically possible. Open lore."
         }
       },
       "culture": {
         "governance": "Supreme Elder, chosen by Mercury at the previous Elder's death. Elders' council under the Supreme Elder. Egalitarian below the elder tier.",
         "religion": "Mercury (see deities.json). Do not believe in Tunyan gods.",
-        "external_role": "The Supreme Elder represents the Medici when other lands of TunYah convene.",
-        "venturing_practice": "Medici venture off Medici Isle to heal the sick and trade healing services for food. They do not stay long in foreign kingdoms; the isle is the only true home.",
-        "naming": "see naming_conventions.json#medici"
+        "external_role": "The Supreme Elder represents the Vessine when other lands of TunYah convene.",
+        "venturing_practice": "Vessine venture off Vessine Isle to heal the sick and trade healing services for food. They do not stay long in foreign kingdoms; the isle is the only true home.",
+        "naming": "see naming_conventions.json#vessine"
       },
       "homeworld_lore": {
         "name": "open lore — held in Supreme Elder succession memory",
@@ -117,8 +117,8 @@
     "sanguire": {
       "id": "sanguire",
       "common_name": "Sanguire",
-      "status_on_planet": "Kree-arrived. The Kree state arrived on Tunya before the Earth arks. Sanguire is one of the species making up the Kree polity. Their homeland within Kree is Sandrun.",
-      "estimated_population": "moderate. Concentrated in Sandrun. Sanguire-descended populations in Kree's other regions (mixed with other Kree species, with Earth-arrival populations, with Ancient Tunyan).",
+      "status_on_planet": "Vrellan-arrived. The Vrellan state arrived on Tunya before the Earth arks. Sanguire is one of the species making up the Vrellan polity. Their homeland within Vrellan is Sandrun.",
+      "estimated_population": "moderate. Concentrated in Sandrun. Sanguire-descended populations in Vrellan's other regions (mixed with other Vrellan species, with Earth-arrival populations, with Ancient Tunyan).",
       "lifespan": {
         "pure": "100-130 Tunyan years",
         "mixed_50_50": "85-110"
@@ -150,27 +150,27 @@
         "power": "fire bloodline. See powers.json#fire_bloodline. Visible heat-shimmer when invoked; full potency: ember-orange glow on palms and ash-flecked breath.",
         "reproductive_compatibility": {
           "with_other_sanguire": "fully compatible. Sanguire culture organizes around clan-internal mating with displays of strength as courtship.",
-          "with_medici": "asymmetrically lethal — see species.medici.biology.reproductive_compatibility.with_sanguire above and powers.json#sanguire_medici_hybrid",
-          "with_earth_human": "viable. Hybrids carry attenuated fire and slightly increased lifespan. Common among Kree-state populations of mixed Sanguire-arrival heritage.",
+          "with_vessine": "asymmetrically lethal — see species.vessine.biology.reproductive_compatibility.with_sanguire above and powers.json#sanguire_vessine_hybrid",
+          "with_earth_human": "viable. Hybrids carry attenuated fire and slightly increased lifespan. Common among Vrellan-state populations of mixed Sanguire-arrival heritage.",
           "with_ancient_tunyan": "viable. Hybrids carry attenuated fire AND partial conduit-status. The two interfere — fire output drops in proximity to other Tunyan-blooded individuals."
         }
       },
       "culture": {
         "governance": "Warlord-led clan structure. Three primary clans in Sandrun. Warlord chosen by ritual duel during Cull (winter month).",
-        "religion": "Pre-Tunyan deity-set carried over from Kree origin. Names not commonly shared with outsiders.",
-        "external_role": "The warlord of Sandrun represents the Sanguire to other Tunyan kingdoms. The Kree state separately represents the broader polity.",
+        "religion": "Pre-Tunyan deity-set carried over from Vrellan origin. Names not commonly shared with outsiders.",
+        "external_role": "The warlord of Sandrun represents the Sanguire to other Tunyan kingdoms. The Vrellan state separately represents the broader polity.",
         "naming": "see naming_conventions.json#sandrun_sanguire"
       }
     },
     "earth_human": {
       "id": "earth_human",
       "common_name": "the Arrivals (collectively); per-kingdom names by lineage",
-      "status_on_planet": "naturalized via four generations of intermixing with Ancient Tunyans and (less commonly) Sanguire and Medici",
+      "status_on_planet": "naturalized via four generations of intermixing with Ancient Tunyans and (less commonly) Sanguire and Vessine",
       "estimated_population": "majority of the planet's settled population by Year 4G",
       "lifespan": {
         "pure_ark_descended": "70-85 (Earth normal)",
         "mixed_with_tunyan_50_50": "120-160",
-        "mixed_with_medici_25": "85-110"
+        "mixed_with_vessine_25": "85-110"
       },
       "morphology": {
         "average_height_meters": 1.72,
@@ -179,11 +179,11 @@
         "skin_color_palette": "now spans the full Tunyan spectrum due to four generations of intermixing. Pure-Earth-human skin tones (the original ark cohorts' palette) are increasingly rare. See colors.json."
       },
       "biology": {
-        "power": "no native bloodline power. Trace fire or healing potency present in some lineages via Sanguire or Medici ancestry.",
+        "power": "no native bloodline power. Trace fire or healing potency present in some lineages via Sanguire or Vessine ancestry.",
         "reproductive_compatibility": {
           "with_ancient_tunyan": "fully compatible — the dominant cross-species pairing on Tunya by population",
           "with_sanguire": "viable — children carry attenuated fire",
-          "with_medici": "viable — children carry attenuated healing"
+          "with_vessine": "viable — children carry attenuated healing"
         }
       },
       "culture": {
@@ -196,24 +196,24 @@
   "deities": {
     "mercury": {
       "id": "mercury",
-      "worshipped_by": ["medici"],
+      "worshipped_by": ["vessine"],
       "type": "real_metaphysical_entity",
       "manifestation": "active. Manifests primarily through Supreme Elder succession — Mercury's chosen-soul transfer at the previous Elder's death is the only confirmed manifestation.",
       "iconography": {
         "primary_color": "#c4dcec",
         "secondary_color": "#b8a8c8",
         "sigil_motif": "an eight-faceted teardrop (the Supreme Elder's tear at succession)",
-        "temples": "one true temple on Medici Isle. Smaller shrines in the Medici wards of Kree-allied kingdoms.",
-        "festivals": ["holiday_communion (the only event where Medici males uncover their heads in public; once per Tunyan year, on Cares-day-1)"]
+        "temples": "one true temple on Vessine Isle. Smaller shrines in the Vessine wards of Vrellan-allied kingdoms.",
+        "festivals": ["holiday_communion (the only event where Vessine males uncover their heads in public; once per Tunyan year, on Cares-day-1)"]
       },
       "doctrine": [
-        "Mercury chose the Medici. The Medici chose to remain Mercury's people after the crash.",
+        "Mercury chose the Vessine. The Vessine chose to remain Mercury's people after the crash.",
         "Healing is the duty Mercury imposed in exchange for the species' survival.",
         "Mate-for-life is Mercury's gift; mate-death absorption is Mercury's mercy.",
         "The Supreme Elder is Mercury's voice. Mercury speaks through the Elder; the Elder does not speak for Mercury."
       ],
       "open_lore": [
-        "Whether Mercury is the Medici home world's deity or a different entity that found them post-crash is open lore.",
+        "Whether Mercury is the Vessine home world's deity or a different entity that found them post-crash is open lore.",
         "Whether Mercury can manifest beyond Supreme Elder succession is open lore — pilgrims report vivid dreams in the temple, but no confirmed event."
       ]
     },
@@ -230,21 +230,21 @@
     "skeleton_variants": [
       "ancient_tunyan_pure",
       "ancient_tunyan_mixed",
-      "medici_male_elongated_skull_3_lod_levels",
-      "medici_female_dome_skull",
+      "vessine_male_elongated_skull_3_lod_levels",
+      "vessine_female_dome_skull",
       "sanguire_male_broad_furred",
       "sanguire_female_TBD",
       "earth_human_standard"
     ],
     "morph_targets_per_skeleton": [
-      "medici_male: cone_height_0_to_3 (drives skull elongation as healing skill grows)",
-      "medici_female: hair_length_0_to_floor (drives hair length as power grows)",
+      "vessine_male: cone_height_0_to_3 (drives skull elongation as healing skill grows)",
+      "vessine_female: hair_length_0_to_floor (drives hair length as power grows)",
       "sanguire_male: muscle_volume_0_to_3, fur_density_torso_0_to_3, fur_density_face_0_to_2",
       "ancient_tunyan: subdermal_marbling_visibility_0_to_3"
     ],
     "shader_passes": [
       "sanguire_fur_shader (high-density torso/legs, low-density arms/face/feet, color = saturated/darker version of skin)",
-      "medici_pearlescent_skin (subtle iridescence, no specular hotspot)",
+      "vessine_pearlescent_skin (subtle iridescence, no specular hotspot)",
       "tunyan_marbling_shader (subdermal pattern, only visible in direct sunlight; intensity scales with refusal-field local density)",
       "fire_bloodline_invoke (palm + breath heat-shimmer; ember-glow at full potency)",
       "healing_bloodline_invoke (cool air shimmer around hands; faint white halo at full potency)"

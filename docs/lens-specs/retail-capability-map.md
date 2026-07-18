@@ -231,24 +231,138 @@ code in a shared tree; a UI decision only.
 Real Shopify/Square-parity concepts the removed fake tabs were standing in
 for, with **zero backend macro** anywhere in the 85-macro surface — per
 the honesty invariant these are relabeled as deferred, not faked:
-- **CRM / sales pipeline** — a persisted lead/deal record (name, company,
-  value, probability, stage, assignee). `pipelineValue` computes stats
-  from a pasted book (`RetailActionPanel`) but no macro creates or lists
-  an individual deal.
-- **Support tickets** — a persisted ticket queue (subject, priority, SLA
-  deadline, assignee, replies). `slaStatus` computes compliance from
-  pasted incidents but no macro creates or lists a ticket.
-- **In-store marketing displays** — a persisted display/endcap record
-  (location, budget, impressions, conversions). No macro anywhere.
-- **Richer product schema** — variants (size/color/style sub-SKUs), price-
-  change history, supplier + lead-time fields, daily-sales-rate/turnover-
-  rate for ABC-analysis-style inventory forecasting. The real
-  `product-upsert` schema is `sku`/`name`/`price`/`stock`/`category`/
-  `barcode` only.
+- ~~**CRM / sales pipeline**~~ **BUILT (2026-07-16, `cb45c52b`) — Wave 4
+  larger-unit build.** New `deals-list`/`deals-upsert`/`deals-stage-move`/
+  `deals-delete` macro family: a real SMB CRM funnel
+  (lead→contacted→qualified→proposal→negotiation→won/lost), every stage
+  change auditable via an appended `stageHistory` entry (never a mutable
+  label), won/lost terminal with an explicit `reopen: true` path back into
+  an open stage only (a closed deal can't skip won→lost directly), and
+  `deals-list` rollups (total/weighted pipeline value, per-stage
+  count/value/weighted, won/lost totals) computed server-side only —
+  never a client-invented number. `pipelineValue`'s pre-existing
+  pasted-book calculator now falls back to reading this persisted book,
+  but ONLY on true omission of both the `deals`/`opportunities` keys —
+  a caller who pastes any value under either key (even malformed
+  garbage) still gets the exact pre-existing "invalid → empty pipeline,
+  never crash" behavior, verified against the pre-existing test that
+  covers exactly that case (`retail-lens-macros.test.js`'s "a non-array
+  deals payload yields an empty pipeline, never crashes"). New
+  `PipelinePanel.tsx`: a real kanban board by stage with per-column
+  totals, a designed create form, a stage-move select per card (no
+  drag-and-drop primitive existed anywhere in the codebase to reuse —
+  building one from scratch was out of this unit's scope), and a
+  won/lost archive with a reopen action. Mounted as a new "Pipeline" tab
+  in the retail workbench, next to Customers. Tests: 28 new backend
+  (`retail-deals-pipeline.test.js`, incl. exact rollup-math assertions
+  and per-user isolation) + all 5 retail backend test files re-run
+  together (148/148, 0 regressions) + 7 new frontend
+  (`PipelinePanel.test.tsx`).
+- ~~**Support tickets**~~ **BUILT (2026-07-16, `e9c4f7fd`) — Wave 4
+  larger-unit build.** New `tickets-list`/`tickets-upsert`/
+  `tickets-status-move`/`tickets-reply-add`/`tickets-delete` macro
+  family: a real support-desk lifecycle
+  (open→in-progress→waiting-on-customer→resolved→closed), `closed` a
+  locked terminal requiring `reopen: true` back into an open status
+  only, and resolving a ticket stamps `resolvedWithinSla` (boolean)
+  computed against the ticket's real `slaDeadline` — never a
+  client-invented flag. The per-priority SLA target table
+  (`TICKET_PRIORITY_SLA_MINUTES = {critical:60, high:240, medium:1440,
+  low:2880}`) was hoisted to a single shared constant at the top of the
+  file and is now the ONE source of truth `slaStatus`'s pre-existing
+  incidents branch reads too, so a persisted ticket's deadline and the
+  ad-hoc incidents-report compliance math can never silently disagree.
+  `slaStatus`'s legacy `tickets` branch now falls back to reading this
+  persisted queue, gated the exact same way the sibling CRM unit's
+  `pipelineValue` fix required: true omission of the `tickets` key
+  (checked via `in`), never falsy/non-array shape — so a caller pasting
+  any value under `tickets`, even garbage, still gets the pre-existing
+  "invalid → empty report, never crash" behavior byte-identically
+  (verified against `retail-lens-macros.test.js`'s "a non-array
+  incidents payload falls through to the legacy ticket branch" test,
+  which still passes unmodified). New `TicketQueuePanel.tsx`: a real
+  list/detail split view — priority + SLA-countdown badges (color-coded
+  breached/approaching/healthy), status filter tabs, a create form, a
+  reply thread + composer, resolve and reopen actions. Mounted as a new
+  "Tickets" tab next to Pipeline. Tests: 24 new backend (standalone) +
+  all 6 retail backend test files re-run together (206/206, 0
+  regressions) + 9 new frontend (`TicketQueuePanel.test.tsx`).
+- ~~**In-store marketing displays**~~ **BUILT (2026-07-16, `3f0dfc3d`) —
+  Wave 4 larger-unit build.** New `displays-list`/`displays-upsert`/
+  `displays-status-move`/`displays-log-impressions`/
+  `displays-record-conversion`/`displays-delete` macro family: a real
+  physical-merchandising record (`displayType` enum — endcap/window/
+  checkout-counter/floor-display/shelf-talker/promotional-table —
+  validated, unknown rejected), genuinely distinct from the pre-existing
+  digital `campaigns-*` family (email/SMS sends) rather than a
+  duplicate. `productSkus` validated against the real product catalog
+  (`s.products`), not free text. A `planned→active→removed` lifecycle
+  with an auditable `statusHistory` (mirrors deals'/tickets' pattern),
+  `removed` a locked terminal requiring `reopen: true` back into an
+  open status. Two honesty design points carried through from the
+  sibling units: impressions are a MANUALLY LOGGED, accumulating count
+  (`displays-log-impressions`, deliberately named "log" not "track" —
+  no automated foot-traffic sensor exists anywhere in Concord), and
+  conversions mirror `campaigns-record-conversion`'s existing discipline
+  exactly — `displays-record-conversion` requires a real `orderId` that
+  exists in the caller's own order book (`s.orders`), rejects an
+  unknown/fake id, and guards double-attribution via
+  `attributedOrderIds`. `revenuePerBudgetDollar` is honestly `null`
+  (never `Infinity`/`NaN`) whenever budget is 0, both per-display and in
+  the aggregate rollup. New `DisplaysPanel.tsx`: a real merchandising
+  board with status filters, a create form, a log-impressions quick
+  action, and a record-conversion flow gated on picking a real order via
+  `orders-list`. Mounted as a new "Displays" tab next to Tickets. Tests:
+  42 new backend + all 7 retail backend test files re-run together
+  (248/248, 0 regressions) + 12 new frontend + 33/33 combined retail
+  frontend regression (`PipelinePanel`/`TicketQueuePanel`/
+  `DisplaysPanel`/`retail-lens-states`).
+- ~~**Richer product schema**~~ **BUILT (2026-07-16, `f5541272`) — Wave 4
+  larger-unit build, the FOURTH AND FINAL of this section's originally
+  "Genuinely missing" items; the whole section below is now historical.**
+  `product-upsert` extended with `supplier`/`leadTimeDays`/
+  `dailySalesRate`. A structural landmine specific to this macro (unlike
+  the sibling `deals-*`/`tickets-*`/`displays-*` upserts, which do
+  field-by-field partial updates, `product-upsert` does a FULL OBJECT
+  REPLACE every call — the only field it previously preserved from the
+  existing record was `createdAt`) was resolved by extending that exact
+  preserve-on-omit pattern to the three new fields, proven byte-identical
+  against the pre-existing minimal `{sku,name,price,stock}` call shape
+  (the shape existing callers already use). `priceHistory` is
+  SERVER-COMPUTED only — never readable from caller params — auto-
+  appending `{oldPrice,newPrice,changedAt}` only when `price` genuinely
+  changes. `turnoverRate` = `(dailySalesRate × 365) / stock` (standard
+  annual-turnover formula), honestly `null` (never `Infinity`) at
+  stock=0. `abcClass` is a real Pareto/ABC bucketing by revenue proxy
+  (`price × dailySalesRate`), ranked across the caller's whole catalog on
+  `product-list` (a lone product can't self-classify), classified by the
+  CUMULATIVE revenue share of every product ranked ABOVE it — this
+  specific design choice avoids a real boundary-overshoot bug where a
+  single dominant SKU's own revenue crossing 80% would otherwise
+  misclassify it as "C" instead of "A"; honestly `null` catalog-wide when
+  there's no sales-rate data to rank against. New `product-price-history`
+  (a lighter single-SKU read than fetching the whole catalog). Variants
+  (size/color/style sub-SKUs) are genuinely SEPARATE records
+  (`product-variant-upsert`/`-list`/`-delete`) — own SKU, own stock, a
+  `priceDelta` from the real parent price, parent-SKU validated against
+  the live catalog, cascade-deleted when the parent product is deleted —
+  with true partial-update semantics from day one (no legacy-shape
+  landmine, since these are new macros). New `ProductCatalogPanel.tsx`
+  REPLACES `RetailWorkbench`'s old thin `CatalogTab` (name/price/stock/
+  category/barcode only) rather than standing beside it as a second
+  competing catalog surface — ABC-class badges, turnover rate, a
+  read-only price-history timeline, and a variants sub-list with its own
+  add/edit/remove, all real designed fields, no JSON-paste. Tests: 36 new
+  backend + all 8 retail backend test files re-run together (284/284, 0
+  regressions) + 11 new frontend + 44/44 combined retail frontend
+  regression (`PipelinePanel`/`TicketQueuePanel`/`DisplaysPanel`/
+  `ProductCatalogPanel`/`retail-lens-states`).
 
-Each would need new `domains/retail.js` macros before a real, designed UI
-could be built for them — out of scope for a frontend-only pass ("do not
-invent new backend behavior").
+Each of the four items above needed new `domains/retail.js` macros
+before a real, designed UI could be built for them — all four are now
+built (2026-07-16, Wave 4 larger-unit builds `cb45c52b`/`e9c4f7fd`/
+`3f0dfc3d`/`f5541272`). This "Genuinely missing, deferred" section is
+now empty.
 
 ## Confirmed real and left alone, with reason
 

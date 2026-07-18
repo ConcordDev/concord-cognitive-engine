@@ -3,14 +3,14 @@
   "category": "seasonal",
   "achievements": [
     {
-      "id": "wintersday_celebrant",
-      "title": "Wintersday Celebrant",
-      "description": "Complete a Wintersday quest while the festival is active.",
+      "id": "hearthtide_celebrant",
+      "title": "Hearthtide Celebrant",
+      "description": "Complete a Hearthtide quest while the festival is active.",
       "rarity": "silver",
       "icon": "Snowflake",
       "rewardSparks": 100,
-      "festivalOnly": "wintersday",
-      "triggers": [{ "kind": "event", "event": "quest:completed", "condition": { "festivalId": "wintersday" } }]
+      "festivalOnly": "hearthtide",
+      "triggers": [{ "kind": "event", "event": "quest:completed", "condition": { "festivalId": "hearthtide" } }]
     },
     {
       "id": "harvest_brewmaster",

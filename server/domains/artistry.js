@@ -1,6 +1,23 @@
 // server/domains/artistry.js
 // Domain actions for artistry: color palette analysis, composition scoring, style classification, media inventory.
 
+// Wave 4 gap-closure — notification feed (docs/lens-specs/artistry-capability-map.md
+// item 14: "Notification feed (new follower, new comment, new appreciation)").
+// Reuses the existing platform-wide notification substrate instead of inventing
+// a parallel one — the exact cross-directory import precedent is
+// server/emergent/byo-budget-alert-cycle.js (a non-social domain importing from
+// social-layer.js); other domains import freely from ../emergent/*.js too (see
+// server/domains/civic-bonds.js -> emergent/microbond-governance.js,
+// server/domains/repair.js -> emergent/repair-cortex.js /
+// emergent/world-health-monitor.js). Calling createNotification() also fires a
+// live `social:notification` socket event (server/emergent/social-layer.js's
+// _fireNotificationSocket, wired at boot via setSocialEmitter) which
+// concord-frontend/hooks/useSocialNotificationToast.ts (mounted once, globally,
+// in AppShell) already renders as a toast with zero new frontend plumbing.
+import {
+  createNotification, getNotifications, markNotificationRead, markAllNotificationsRead,
+} from "../emergent/social-layer.js";
+
 export default function registerArtistryActions(registerLensAction) {
   // Fail-CLOSED numeric coercion for the pure-compute analysis macros.
   // `parseFloat("Infinity")` → Infinity and `Number("1e999")` → Infinity, and
@@ -428,7 +445,8 @@ export default function registerArtistryActions(registerLensAction) {
     const s = STATE.artistryLens;
     for (const k of [
       "projects", "follows", "comments", "appreciations",
-      "collections", "profiles", "jobs", "galleries",
+      "collections", "profiles", "jobs", "galleries", "analyticsSnapshots",
+      "projectImages", "dmThreads",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -445,6 +463,65 @@ export default function registerArtistryActions(registerLensAction) {
   const artClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const artArr = (v) => (Array.isArray(v) ? v : []);
   const artList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+
+  // Shared project-owner lookup — projectId alone doesn't reveal which
+  // per-user bucket of s.projects it lives in (same scan projectView
+  // already performs at read time). commentAdd/appreciate both need the
+  // owner to resolve who a notification should target, so this is
+  // extracted once rather than duplicated in each handler.
+  function findProjectOwner(s, projectId) {
+    for (const [, list] of s.projects) {
+      const proj = list.find((x) => x.id === projectId);
+      if (proj) return proj;
+    }
+    return null;
+  }
+
+  // Fire-and-forget wrapper around the platform notification substrate.
+  // Never throws, never blocks the caller's own mutation — a notification
+  // failure must not turn a successful follow/comment/appreciate into an
+  // error response.
+  function notifyArtistry(userId, { type, fromUserId, postId, content }) {
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (!STATE || !userId) return;
+      createNotification(STATE, { userId, type, fromUserId, postId, content });
+    } catch (_e) { /* best effort — never break the artistry action over this */ }
+  }
+
+  // ── Native image upload/blob-storage pipeline for project images ────
+  // Closes docs/WAVE4_INVENTORY.md line 101 / artistry-capability-map.md
+  // item 12: "No native image upload/blob-storage pipeline for project
+  // images (URL-only)". Structurally cloned from travel.js's "Travel
+  // document binary attachments" trio (travel-doc-attachment-upload/
+  // -download/-delete, server/domains/travel.js:945-1016): base64 payload
+  // validation (optional `data:` prefix stripped), a per-file size cap,
+  // and the heavy `data` blob never returned from anything but the
+  // dedicated download macro. Deliberately NOT the misfiled
+  // `apiHelpers.artistry.blobs` facility in server.js (~lines 73021-73145)
+  // — that is a different, cross-lens DAW (audio) blob system; this store
+  // is artistry-native and lives entirely in this file.
+  //
+  // Stored per-user (s.projectImages, a userId -> array Map) exactly like
+  // every other artistryLens sub-state bucket, so ownership isolation
+  // falls out of the same per-user Map pattern the rest of this domain
+  // relies on. An uploaded image is referenced from `images[].url` (both
+  // at projectCreate and projectUpdate) via a stable `artistry-img:<id>`
+  // scheme, resolved back to real bytes through project-image-download.
+  // External URLs keep working unchanged — the two are additive, not a
+  // schema break.
+  const ART_MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB cap per image
+  const ART_IMG_REF_PREFIX = "artistry-img:";
+  // A url is either a plain external URL/string (always valid) or an
+  // `artistry-img:<id>` reference, which is only valid when it points at
+  // an image the CALLING user actually uploaded — this is what makes the
+  // reference scheme "wired" rather than a free-text string that happens
+  // to look structured.
+  const artImgRefValid = (s, uid, url) => {
+    if (!url.startsWith(ART_IMG_REF_PREFIX)) return true;
+    const id = url.slice(ART_IMG_REF_PREFIX.length);
+    return (s.projectImages.get(uid) || []).some((img) => img.id === id);
+  };
 
   // ── Project pages — multi-image case studies ────────────────────────
   registerLensAction("artistry", "projectCreate", (ctx, artifact, params) => {
@@ -465,7 +542,7 @@ export default function registerArtistryActions(registerLensAction) {
           url: artClean(typeof im === "string" ? im : im.url, 600),
           caption: artClean(typeof im === "object" ? im.caption : "", 280),
           order: typeof im === "object" && Number.isFinite(Number(im.order)) ? Number(im.order) : i,
-        })).filter((im) => im.url),
+        })).filter((im) => im.url && artImgRefValid(s, uid, im.url)),
         processSteps: artArr(p.processSteps).map((st) => ({
           title: artClean(typeof st === "string" ? st : st.title, 120),
           detail: artClean(typeof st === "object" ? st.detail : "", 1000),
@@ -503,7 +580,7 @@ export default function registerArtistryActions(registerLensAction) {
           url: artClean(typeof im === "string" ? im : im.url, 600),
           caption: artClean(typeof im === "object" ? im.caption : "", 280),
           order: typeof im === "object" && Number.isFinite(Number(im.order)) ? Number(im.order) : i,
-        })).filter((im) => im.url);
+        })).filter((im) => im.url && artImgRefValid(s, uid, im.url));
       }
       if (p.processSteps !== undefined) {
         proj.processSteps = artArr(p.processSteps).map((st) => ({
@@ -576,6 +653,93 @@ export default function registerArtistryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // ── Project image blob storage (native upload pipeline) ─────────────
+  // See the ART_MAX_IMAGE_BYTES / artImgRefValid header comment above for
+  // context. Upload is intentionally NOT scoped to an existing project —
+  // exactly like a real portfolio tool, you select/attach photos before
+  // (or independent of) saving the project draft; projectCreate/Update
+  // then reference the resulting id via `artistry-img:<id>` in images[].url.
+  registerLensAction("artistry", "project-image-upload", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const uid = artAid(ctx);
+      const fileName = artClean(p.fileName, 160);
+      if (!fileName) return { ok: false, error: "fileName required" };
+      const data = String(p.data || "");
+      if (!data) return { ok: false, error: "file data required" };
+      // base64 payload, optionally with a data: prefix.
+      const b64 = data.includes(",") ? data.slice(data.indexOf(",") + 1) : data;
+      if (!/^[A-Za-z0-9+/=\s]+$/.test(b64)) return { ok: false, error: "data must be base64" };
+      const bytes = Math.floor((b64.replace(/\s/g, "").length * 3) / 4);
+      if (bytes > ART_MAX_IMAGE_BYTES) return { ok: false, error: "image exceeds 8 MB limit" };
+      const image = {
+        id: artId("img"),
+        userId: uid,
+        fileName,
+        mimeType: artClean(p.mimeType, 100) || "application/octet-stream",
+        bytes,
+        data: b64.replace(/\s/g, ""),
+        createdAt: artNow(),
+      };
+      artList(s.projectImages, uid).push(image);
+      saveArtState();
+      // Return without the heavy data blob, plus the stable reference
+      // string projectCreate/Update's images[].url slot accepts.
+      const { data: _d, ...meta } = image;
+      return { ok: true, result: { image: { ...meta, ref: `${ART_IMG_REF_PREFIX}${image.id}` } } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Metadata-only list of the caller's uploaded images (for a "reuse a
+  // previously uploaded photo" picker) — never returns the blob.
+  registerLensAction("artistry", "project-image-list", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const images = (s.projectImages.get(uid) || [])
+        .map(({ data: _d, ...meta }) => ({ ...meta, ref: `${ART_IMG_REF_PREFIX}${meta.id}` }));
+      return { ok: true, result: { images, count: images.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Fetch a single uploaded image's real bytes for <img src> display.
+  // Ownership-checked implicitly — the lookup is scoped to the caller's
+  // own per-user bucket, so another user's image id simply isn't present
+  // in the array being searched. Accepts either a raw id or a full
+  // `artistry-img:<id>` reference string for caller convenience.
+  registerLensAction("artistry", "project-image-download", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const raw = artClean((params || {}).id, 200);
+      const id = raw.startsWith(ART_IMG_REF_PREFIX) ? raw.slice(ART_IMG_REF_PREFIX.length) : raw;
+      const img = (s.projectImages.get(artAid(ctx)) || []).find((x) => x.id === id);
+      if (!img) return { ok: false, error: "image not found" };
+      return {
+        ok: true,
+        result: { id: img.id, fileName: img.fileName, mimeType: img.mimeType, bytes: img.bytes, data: img.data },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "project-image-delete", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const raw = artClean((params || {}).id, 200);
+      const id = raw.startsWith(ART_IMG_REF_PREFIX) ? raw.slice(ART_IMG_REF_PREFIX.length) : raw;
+      const arr = s.projectImages.get(artAid(ctx)) || [];
+      const idx = arr.findIndex((x) => x.id === id);
+      if (idx === -1) return { ok: false, error: "image not found" };
+      arr.splice(idx, 1);
+      saveArtState();
+      return { ok: true, result: { deleted: id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ── Follow / followers graph + personalized feed ────────────────────
   registerLensAction("artistry", "follow", (ctx, artifact, params) => {
     try {
@@ -586,8 +750,18 @@ export default function registerArtistryActions(registerLensAction) {
       if (!target) return { ok: false, error: "targetUserId_required" };
       if (target === uid) return { ok: false, error: "cannot_follow_self" };
       const following = artList(s.follows, uid);
-      if (!following.includes(target)) following.push(target);
+      const isNewFollow = !following.includes(target);
+      if (isNewFollow) following.push(target);
       saveArtState();
+      // Only the transition into "following" is a notification-worthy
+      // event — a repeat follow call (already following) is a no-op and
+      // must not re-notify the target on every idempotent retry.
+      if (isNewFollow) {
+        notifyArtistry(target, {
+          type: "follow", fromUserId: uid,
+          content: `${uid} started following your artistry portfolio`,
+        });
+      }
       return { ok: true, result: { following: target, followingCount: following.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -676,6 +850,134 @@ export default function registerArtistryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // ── Direct messages between creators ─────────────────────────────────
+  // Closes docs/WAVE4_INVENTORY.md line 100 / artistry-capability-map.md
+  // item 11: "No direct-messaging system between creators." Structurally
+  // cloned from server/domains/alliance.js's cross-org DM primitive
+  // (dmThreadKey / dm-send / dm-list / dm-inbox, alliance.js:1130-1239):
+  // same sorted-pair `[a,b].sort().join("::")` threadKey so both sides
+  // converge on one storage key regardless of who initiated, same
+  // Map<threadKey, Array<message>> state shape, same three-macro surface,
+  // same honest-fallback displayName resolution for dm-inbox.
+  //
+  // What's deliberately NOT copied is the message shape and the recipient-
+  // validation rule — both correctly diverge from the alliance template:
+  //
+  // Message shape: alliance's channel messages already carry attachments +
+  // emoji reactions + parentId threading, so its DMs inherited that richer
+  // shape. This lens's own existing per-project comments (commentAdd,
+  // above) are a plain { id, projectId, userId, body, createdAt } with no
+  // attachments/reactions/threading — so DMs mirror THAT simpler shape
+  // (field named `body` to match, not `content`) rather than importing
+  // richness alliance's own domain happens to have and this one doesn't.
+  //
+  // Recipient validation: alliance has closed membership — every real user
+  // on that lens belongs to some alliance, so `findAllianceMember` (scan
+  // every alliance's roster) is a complete "is this a real, known person"
+  // check. Artistry has NO membership concept at all — anyone with a
+  // session can follow/comment/view — so there is no roster to scan. The
+  // honest equivalent here is "has this userId left any real, visible
+  // trace on this lens": either they've set up a profile (`profileUpdate`
+  // → `s.profiles`) or they've published/created at least one project
+  // (`projectCreate` → `s.projects`). A wholly fabricated/never-seen userId
+  // has neither and is rejected — same discipline as alliance's "reject a
+  // fabricated/unknown userId" case, just adapted from a closed-membership
+  // check to an open-participation check. This mirrors the existing
+  // `follow`/`unfollow` macros' own honest gap (a free-text `targetUserId`
+  // with only a self-follow guard, no existence check) by finally adding
+  // the existence check follow/unfollow never had — DMs don't get to
+  // reach a name nobody has ever actually used on this lens.
+  function artDmThreadKey(a, b) { return [a, b].sort().join("::"); }
+
+  function artDmRecipientExists(s, userId) {
+    if (s.profiles.has(userId)) return true;
+    const projects = s.projects.get(userId);
+    return Array.isArray(projects) && projects.length > 0;
+  }
+
+  // Real display name if resolvable; otherwise the raw userId — never a
+  // fabricated name (honest-by-construction, same as alliance's
+  // dmDisplayName: a partner who never set a profile displayName still
+  // shows up in the inbox by their real id).
+  function artDmDisplayName(s, userId) {
+    const profile = s.profiles.get(userId);
+    return (profile && profile.displayName) || userId;
+  }
+
+  registerLensAction("artistry", "dm-send", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const fromId = artAid(ctx);
+      const toId = artClean((params || {}).toId, 80);
+      if (!toId) return { ok: false, error: "toId_required" };
+      if (!artDmRecipientExists(s, toId)) return { ok: false, error: "recipient_not_found" };
+      const body = artClean((params || {}).body, 1200);
+      if (!body) return { ok: false, error: "body_required" };
+      const key = artDmThreadKey(fromId, toId);
+      const thread = artList(s.dmThreads, key);
+      const message = {
+        id: artId("dm"),
+        threadKey: key,
+        fromId,
+        toId,
+        fromName: artDmDisplayName(s, fromId),
+        body,
+        createdAt: artNow(),
+      };
+      thread.push(message);
+      saveArtState();
+      return { ok: true, result: { message, threadKey: key } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Fetch the DM thread between the caller and a specific partner. The
+  // thread key is derived from the CALLER's own id + the requested partner,
+  // so a third party who is not one of the two real participants can never
+  // land on the real thread's key — they only ever see their own (empty,
+  // freshly-created) thread with that partner. Privacy is enforced by the
+  // key derivation itself, not by a separate ACL check.
+  registerLensAction("artistry", "dm-list", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = artAid(ctx);
+      const partnerId = artClean((params || {}).partnerId, 80);
+      if (!partnerId) return { ok: false, error: "partnerId_required" };
+      const key = artDmThreadKey(userId, partnerId);
+      // Push order is already chronological ascending (mirrors commentList).
+      const messages = artList(s.dmThreads, key).slice();
+      return { ok: true, result: { messages, count: messages.length, threadKey: key } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // List every DM thread the caller participates in — inbox view.
+  registerLensAction("artistry", "dm-inbox", (ctx, artifact, _params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = artAid(ctx);
+      const threads = [];
+      for (const [key, msgs] of s.dmThreads.entries()) {
+        const parts = key.split("::");
+        if (!parts.includes(userId) || msgs.length === 0) continue;
+        const partnerId = parts.find((p) => p !== userId) || parts[0];
+        const last = msgs[msgs.length - 1];
+        threads.push({
+          partnerId,
+          partnerName: artDmDisplayName(s, partnerId),
+          threadKey: key,
+          lastMessage: last.body,
+          lastFrom: last.fromId,
+          lastAt: last.createdAt,
+          messageCount: msgs.length,
+        });
+      }
+      threads.sort((a, b) => (b.lastAt > a.lastAt ? 1 : -1));
+      return { ok: true, result: { threads, count: threads.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ── Comments + appreciations ────────────────────────────────────────
   registerLensAction("artistry", "commentAdd", (ctx, artifact, params) => {
     try {
@@ -686,15 +988,25 @@ export default function registerArtistryActions(registerLensAction) {
       const body = artClean(p.body, 1200);
       if (!projectId) return { ok: false, error: "projectId_required" };
       if (!body) return { ok: false, error: "body_required" };
+      const uid = artAid(ctx);
       const comment = {
         id: artId("cmt"),
         projectId,
-        userId: artAid(ctx),
+        userId: uid,
         body,
         createdAt: artNow(),
       };
       artList(s.comments, projectId).push(comment);
       saveArtState();
+      // Never self-notify — commenting on your own project shouldn't
+      // page you about yourself.
+      const owner = findProjectOwner(s, projectId);
+      if (owner && owner.userId !== uid) {
+        notifyArtistry(owner.userId, {
+          type: "comment", fromUserId: uid, postId: projectId,
+          content: `${uid} commented on your project "${owner.title}"`,
+        });
+      }
       return { ok: true, result: { comment, commentCount: s.comments.get(projectId).length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -741,7 +1053,68 @@ export default function registerArtistryActions(registerLensAction) {
         appreciated = false;
       }
       saveArtState();
+      // Only the toggle-ON transition (liking) is notification-worthy —
+      // un-appreciating must never notify, and self-appreciation must
+      // never notify either.
+      if (appreciated) {
+        const owner = findProjectOwner(s, projectId);
+        if (owner && owner.userId !== uid) {
+          notifyArtistry(owner.userId, {
+            type: "like", fromUserId: uid, postId: projectId,
+            content: `${uid} appreciated your project "${owner.title}"`,
+          });
+        }
+      }
       return { ok: true, result: { appreciated, count: list.length, projectId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Notification feed ────────────────────────────────────────────────
+  // Durable, in-lens read of the notifications follow/commentAdd/appreciate
+  // (above) generate via the platform notification substrate. Filtered to
+  // the three types this unit produces (follow/comment/like) — this is
+  // deliberately an "your artistry activity" feed, not a mount of the
+  // whole platform inbox (mentions/DMs/other-lens alerts surface through
+  // their own lenses). Real-time delivery is already handled for free by
+  // useSocialNotificationToast's socket subscription; these two macros
+  // cover the durable "catch up on what you missed" half.
+  const ART_NOTIF_TYPES = new Set(["follow", "comment", "like"]);
+  registerLensAction("artistry", "notifications-list", (ctx, artifact, params) => {
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (!STATE) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      const unreadOnly = !!p.unreadOnly;
+      const limitReq = Number(p.limit);
+      const limit = Number.isFinite(limitReq) ? Math.min(Math.max(limitReq, 1), 100) : 30;
+      // Pull generously from the shared store, then filter to artistry's
+      // own notification types before applying the caller's limit — the
+      // underlying store already caps at 500 per user (social-layer.js).
+      const raw = getNotifications(STATE, uid, { limit: 500, offset: 0, unreadOnly });
+      const notifications = (raw.notifications || [])
+        .filter((n) => ART_NOTIF_TYPES.has(n.type))
+        .slice(0, limit);
+      const unread = notifications.filter((n) => !n.read).length;
+      return { ok: true, result: { notifications, count: notifications.length, unread } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "notifications-mark-read", (ctx, artifact, params) => {
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (!STATE) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      if (p.all) {
+        const r = markAllNotificationsRead(STATE, uid);
+        return { ok: true, result: { markedRead: r.markedRead } };
+      }
+      const id = artClean(p.id, 80);
+      if (!id) return { ok: false, error: "id_required" };
+      const r = markNotificationRead(STATE, { userId: uid, notificationId: id });
+      if (!r.ok) return { ok: false, error: r.error || "not_found" };
+      return { ok: true, result: { id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -859,6 +1232,71 @@ export default function registerArtistryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // computeArtistryStats — the single source of truth for a creator's live
+  // aggregate counters. `profileGet` and `analyticsSnapshot` BOTH call this
+  // (never a parallel computation) so a trend chart built from stored
+  // snapshots always matches what profileGet would show on that day.
+  // `projectsOverride` lets profileGet pass its already-visibility-filtered
+  // project list (private projects excluded when viewer !== owner); when
+  // omitted (the owner-only call sites: analyticsSnapshot, the auto-snapshot
+  // below) it reads the owner's full project list, unfiltered — matching
+  // profileGet's own isOwner=true branch, which never filters either.
+  function computeArtistryStats(s, uid, projectsOverride) {
+    const list = projectsOverride || (s.projects.get(uid) || []);
+    const totalViews = list.reduce((sum, p) => sum + (p.views || 0), 0);
+    const totalAppreciations = list.reduce(
+      (sum, p) => sum + (s.appreciations.get(p.id) || []).length, 0);
+    const followers = [];
+    for (const [u, following] of s.follows) { if (following.includes(uid)) followers.push(u); }
+    return {
+      projectCount: list.length,
+      totalViews,
+      totalAppreciations,
+      followerCount: followers.length,
+      followingCount: (s.follows.get(uid) || []).length,
+    };
+  }
+
+  // captureAnalyticsSnapshot — records (or refreshes) the CALLER'S OWN
+  // timestamped analytics row for today. One row per (userId, calendar day,
+  // UTC): a second call on the same UTC date UPDATES the existing row in
+  // place instead of pushing a duplicate, because a creator's live counters
+  // change continuously through the day — the stored snapshot should reflect
+  // the LATEST real state as of the most recent call on that date, not an
+  // ever-growing pile of same-day points. Every field is copied straight
+  // from `computeArtistryStats` — never estimated, interpolated, or
+  // fabricated for a day with no calls (a day with no call simply has no
+  // row; analyticsHistory does not backfill gaps).
+  function captureAnalyticsSnapshot(s, uid) {
+    const stats = computeArtistryStats(s, uid);
+    const date = artNow().slice(0, 10); // YYYY-MM-DD, UTC calendar day
+    const list = artList(s.analyticsSnapshots, uid);
+    const existing = list.find((x) => x.date === date);
+    if (existing) {
+      existing.totalViews = stats.totalViews;
+      existing.totalAppreciations = stats.totalAppreciations;
+      existing.followerCount = stats.followerCount;
+      existing.followingCount = stats.followingCount;
+      existing.projectCount = stats.projectCount;
+      existing.updatedAt = artNow();
+      return { snapshot: existing, deduped: true };
+    }
+    const snapshot = {
+      id: artId("asnap"),
+      userId: uid,
+      date,
+      totalViews: stats.totalViews,
+      totalAppreciations: stats.totalAppreciations,
+      followerCount: stats.followerCount,
+      followingCount: stats.followingCount,
+      projectCount: stats.projectCount,
+      createdAt: artNow(),
+      updatedAt: artNow(),
+    };
+    list.push(snapshot);
+    return { snapshot, deduped: false };
+  }
+
   registerLensAction("artistry", "profileGet", (ctx, artifact, params) => {
     try {
       const s = getArtState();
@@ -872,11 +1310,19 @@ export default function registerArtistryActions(registerLensAction) {
       };
       let projects = (s.projects.get(uid) || []);
       if (uid !== viewer) projects = projects.filter((x) => x.published);
-      const totalViews = projects.reduce((sum, p) => sum + (p.views || 0), 0);
-      const totalAppreciations = projects.reduce(
-        (sum, p) => sum + (s.appreciations.get(p.id) || []).length, 0);
-      const followers = [];
-      for (const [u, list] of s.follows) { if (list.includes(uid)) followers.push(u); }
+      const isOwner = uid === viewer;
+      const stats = computeArtistryStats(s, uid, projects);
+      // Auto-snapshot: the owner loading their own profile is the natural
+      // moment to refresh today's trend point, so history accumulates
+      // without a separate explicit action (matching how real creator-
+      // analytics products trend automatically). Gated to isOwner only —
+      // another user viewing this profile must never write to the owner's
+      // analytics. Same-day de-dup (above) means repeated profileGet calls
+      // within one UTC day update the same row rather than spamming new
+      // ones. Best-effort: a snapshot failure must never break profileGet.
+      if (isOwner) {
+        try { captureAnalyticsSnapshot(s, uid); saveArtState(); } catch (_e) { /* best-effort, never break profileGet */ }
+      }
       return {
         ok: true,
         result: {
@@ -886,16 +1332,65 @@ export default function registerArtistryActions(registerLensAction) {
             discipline: p.discipline, views: p.views,
             appreciations: (s.appreciations.get(p.id) || []).length,
           })),
-          stats: {
-            projectCount: projects.length,
-            totalViews,
-            totalAppreciations,
-            followerCount: followers.length,
-            followingCount: (s.follows.get(uid) || []).length,
-          },
-          isOwner: uid === viewer,
+          stats,
+          isOwner,
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * analyticsSnapshot — explicitly record today's real analytics point for
+   * the CALLER (not another user; always `artAid(ctx)`). Same source data
+   * and same same-day de-dup as the auto-snapshot in profileGet — this
+   * exists so a caller (e.g. an admin dashboard, a scheduled job, a test)
+   * can force a refresh without going through profileGet.
+   */
+  registerLensAction("artistry", "analyticsSnapshot", (ctx, _artifact, _params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const { snapshot, deduped } = captureAnalyticsSnapshot(s, uid);
+      saveArtState();
+      return { ok: true, result: { snapshot, deduped } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * analyticsHistory — the caller's real stored analytics snapshots,
+   * chronological, for charting a trend. params: { days? } — how many days
+   * back to include (default 30, min 1, capped 365). Always scoped to the
+   * caller (`artAid(ctx)`) — creator analytics are private, never another
+   * user's trend data, mirroring real portfolio products (Behance/ArtStation
+   * don't expose one creator's view-trend to another). Each snapshot after
+   * the first carries real deltas against the immediately-preceding real
+   * snapshot (`viewsDelta`/`appreciationsDelta`/`followerDelta`); the FIRST
+   * snapshot in the returned window has no prior point to diff against, so
+   * its deltas are honestly `null` — never a fabricated/interpolated value.
+   */
+  registerLensAction("artistry", "analyticsHistory", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      const rawDays = Number(p.days);
+      const days = Math.max(1, Math.min(365, Number.isFinite(rawDays) ? Math.round(rawDays) : 30));
+      const cutoff = Date.now() - days * 86400000;
+      const list = (s.analyticsSnapshots.get(uid) || [])
+        .filter((x) => Date.parse(`${x.date}T00:00:00.000Z`) >= cutoff)
+        .slice()
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+      let prev = null;
+      const snapshots = list.map((snap) => {
+        const viewsDelta = prev ? snap.totalViews - prev.totalViews : null;
+        const appreciationsDelta = prev ? snap.totalAppreciations - prev.totalAppreciations : null;
+        const followerDelta = prev ? snap.followerCount - prev.followerCount : null;
+        prev = snap;
+        return { ...snap, viewsDelta, appreciationsDelta, followerDelta };
+      });
+      return { ok: true, result: { snapshots, count: snapshots.length, days } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

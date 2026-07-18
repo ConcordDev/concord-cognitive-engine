@@ -10,11 +10,13 @@
 import { useCallback, useEffect, useImperativeHandle, forwardRef, useState } from 'react';
 import {
   FileText, Plus, Trash2, ShieldCheck, PenLine, Loader2, AlertTriangle, X,
-  History, Users, PenTool, ScanText,
+  History, Users, PenTool, ScanText, TrendingUp, Users2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ChartKit } from '@/components/viz/ChartKit';
 import { ContractVersions } from './ContractVersions';
+import { ContractRedline } from './ContractRedline';
 import { ApprovalWorkflow } from './ApprovalWorkflow';
 import { ContractEsign } from './ContractEsign';
 import { ClauseExtractor } from './ClauseExtractor';
@@ -32,10 +34,29 @@ interface Review { riskScore: number; grade: string; findings: { severity: strin
 interface Dash { total: number; totalValue: number; expiringSoon: number; unsigned: number; byStatus: Record<string, number> }
 interface LibraryClause { title: string; text: string }
 
+// ─── Deeper trend analytics (law.contract-trends — closes
+// law-capability-map.md's "cycle-time-to-signature / renewal-rate-over-time /
+// spend-by-counterparty trend lines" gap). Every field mirrors the macro's
+// real result shape (server/domains/law.js) — each bucket carries its own
+// hasData/hasTrend so an honest "not enough history yet" state renders
+// instead of a fabricated trend line. ───
+interface CycleTimeSample { contractId: string; contractTitle: string; days: number }
+interface CycleTimeTrend {
+  hasData: boolean; count: number; avgDays: number | null; medianDays: number | null;
+  minDays: number | null; maxDays: number | null; samples: CycleTimeSample[];
+}
+interface SpendTrend {
+  hasData: boolean; hasTrend: boolean; months: string[]; counterparties: string[];
+  series: Array<Record<string, string | number>>;
+}
+interface RenewalTrendPoint { month: string; total: number; completed: number; renewalRate: number; [key: string]: string | number }
+interface RenewalTrend { hasData: boolean; hasTrend: boolean; series: RenewalTrendPoint[] }
+interface Trends { cycleTime: CycleTimeTrend; spendTrend: SpendTrend; renewalTrend: RenewalTrend }
+
 const TYPES = ['nda', 'services', 'employment', 'license', 'lease', 'sale', 'partnership', 'other'];
 const STATUSES = ['draft', 'in_review', 'sent', 'signed', 'active', 'expired', 'terminated'];
 
-type DetailTab = 'clauses' | 'versions' | 'approvals' | 'esign' | 'extract';
+type DetailTab = 'clauses' | 'redline' | 'versions' | 'approvals' | 'esign' | 'extract';
 
 export interface LawContractsHandle {
   refresh: () => Promise<void>;
@@ -46,6 +67,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
   function LawContracts({ onContractsChange }, ref) {
   const [contracts, setContracts] = useState<ContractSummary[]>([]);
   const [dash, setDash] = useState<Dash | null>(null);
+  const [trends, setTrends] = useState<Trends | null>(null);
   const [active, setActive] = useState<Contract | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [library, setLibrary] = useState<Record<string, LibraryClause[]>>({});
@@ -55,13 +77,15 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
   const [tab, setTab] = useState<DetailTab>('clauses');
 
   const refresh = useCallback(async () => {
-    const [cl, d] = await Promise.all([
+    const [cl, d, t] = await Promise.all([
       lensRun('law', 'contract-list', {}),
       lensRun('law', 'contract-dashboard', {}),
+      lensRun('law', 'contract-trends', {}),
     ]);
     const list = (cl.data?.result?.contracts as ContractSummary[]) || [];
     setContracts(list);
     setDash((d.data?.result as Dash) || null);
+    setTrends((t.data?.result as Trends) || null);
     setLoading(false);
     onContractsChange?.(list.map((c) => ({ id: c.id, title: c.title })));
   }, [onContractsChange]);
@@ -152,6 +176,70 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
         </div>
       )}
 
+      {trends && (
+        <div className="bg-black/30 border border-white/10 rounded-lg p-3 mb-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-3.5 h-3.5 text-neon-cyan" />
+            <h3 className="text-xs font-semibold text-white">Trend analytics</h3>
+            <span className="text-[9px] text-gray-400">Ironclad shape</span>
+          </div>
+
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Cycle time to signature</p>
+            {trends.cycleTime.hasData ? (
+              <div data-testid="law-trend-cycle-time" className="flex items-center gap-4">
+                <div><p className="text-lg font-bold text-white">{trends.cycleTime.avgDays}d</p><p className="text-[9px] text-gray-400">avg</p></div>
+                <div><p className="text-lg font-bold text-white">{trends.cycleTime.medianDays}d</p><p className="text-[9px] text-gray-400">median</p></div>
+                <div><p className="text-lg font-bold text-white">{trends.cycleTime.count}</p><p className="text-[9px] text-gray-400">signed contracts</p></div>
+              </div>
+            ) : (
+              <p data-testid="law-trend-cycle-time-empty" className="text-[11px] text-gray-400 italic">
+                No signed contracts yet — cycle time appears once a contract is signed.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Spend by counterparty</p>
+            {trends.spendTrend.hasData ? (
+              <>
+                <div data-testid="law-trend-spend">
+                  <ChartKit kind="bar" data={trends.spendTrend.series} xKey="month"
+                    series={trends.spendTrend.counterparties.map((cp) => ({ key: cp, label: cp }))}
+                    height={180} stacked />
+                </div>
+                {!trends.spendTrend.hasTrend && (
+                  <p className="text-[10px] text-gray-500 italic mt-1">
+                    Only one month of history so far — trend will appear once contracts span multiple months.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p data-testid="law-trend-spend-empty" className="text-[11px] text-gray-400 italic">No contract spend yet.</p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Renewal rate over time</p>
+            {trends.renewalTrend.hasData ? (
+              <>
+                <div data-testid="law-trend-renewal">
+                  <ChartKit kind="line" data={trends.renewalTrend.series} xKey="month"
+                    series={[{ key: 'renewalRate', label: 'Renewal rate %' }]} height={180} />
+                </div>
+                {!trends.renewalTrend.hasTrend && (
+                  <p className="text-[10px] text-gray-500 italic mt-1">
+                    Only one month of renewal obligations so far — trend will appear once more months are tracked.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p data-testid="law-trend-renewal-empty" className="text-[11px] text-gray-400 italic">No renewal obligations tracked yet.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {showNew && (
         <div className="bg-black/40 border border-neon-cyan/20 rounded-lg p-3 mb-3 space-y-2">
           <input value={nt.title} onChange={e => setNt({ ...nt, title: e.target.value })} placeholder="Contract title"
@@ -229,6 +317,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
               {([
                 ['clauses', 'Clauses', FileText],
                 ['extract', 'Extract', ScanText],
+                ['redline', 'Redline', Users2],
                 ['versions', 'Versions', History],
                 ['approvals', 'Approvals', Users],
                 ['esign', 'E-Sign', PenTool],
@@ -279,6 +368,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
             {tab === 'extract' && (
               <ClauseExtractor contractId={active.id} onApplied={() => { void reloadActive(); void refresh(); }} />
             )}
+            {tab === 'redline' && <ContractRedline contractId={active.id} contractTitle={active.title} />}
             {tab === 'versions' && <ContractVersions contractId={active.id} />}
             {tab === 'approvals' && (
               <ApprovalWorkflow contractId={active.id} onChange={() => { void reloadActive(); void refresh(); }} />

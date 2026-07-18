@@ -11,13 +11,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Loader2, ScatterChart, ListChecks, FileText, Upload,
-  BookMarked, Leaf, Trophy, Download, GitCompare, Target, Beaker, Plus, Trash2,
+  BookMarked, Leaf, Trophy, Download, GitCompare, Target, Beaker, Plus, Trash2, Microscope,
 } from 'lucide-react';
 import { ChartKit } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { FractographyPanel } from '@/components/materials/FractographyPanel';
 
-type ToolTab = 'ashby' | 'rank' | 'compare' | 'select' | 'composite' | 'datasheet' | 'import' | 'standards' | 'carbon';
+type ToolTab = 'ashby' | 'rank' | 'compare' | 'select' | 'composite' | 'datasheet' | 'import' | 'standards' | 'carbon' | 'fractography';
 
 const TABS: { id: ToolTab; label: string; icon: typeof ScatterChart }[] = [
   { id: 'ashby', label: 'Ashby Chart', icon: ScatterChart },
@@ -29,6 +30,7 @@ const TABS: { id: ToolTab; label: string; icon: typeof ScatterChart }[] = [
   { id: 'import', label: 'Test Import', icon: Upload },
   { id: 'standards', label: 'Standards', icon: BookMarked },
   { id: 'carbon', label: 'Sustainability', icon: Leaf },
+  { id: 'fractography', label: 'Fractography', icon: Microscope },
 ];
 
 const AXIS_OPTIONS = [
@@ -960,6 +962,7 @@ export function MaterialsToolkit() {
       {tab === 'import' && <ImportTab />}
       {tab === 'standards' && <StandardsTab />}
       {tab === 'carbon' && <CarbonTab />}
+      {tab === 'fractography' && <FractographyPanel />}
     </div>
   );
 }

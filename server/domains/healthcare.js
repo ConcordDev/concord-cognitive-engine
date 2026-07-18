@@ -405,6 +405,7 @@ export default function registerHealthcareActions(registerLensAction) {
     if (!s.intakeForms)   s.intakeForms   = new Map();
     if (!s.orders)        s.orders        = new Map();
     if (!s.careTeam)      s.careTeam      = new Map();
+    if (!s.photoNotes)    s.photoNotes    = new Map();
     if (!s.seq)           s.seq           = new Map();
     return s;
   }
@@ -798,10 +799,18 @@ export default function registerHealthcareActions(registerLensAction) {
   function dayH() { return new Date().toISOString().slice(0, 10); }
   function bucketH(m, k) { if (!m.has(k)) m.set(k, []); return m.get(k); }
   function ensureSeqH(s, userId) {
-    if (!s.seq.has(userId)) s.seq.set(userId, { pat: 1, prob: 1, alg: 1, vit: 1, lab: 1, imm: 1, enc: 1, sp: 1, msg: 1, refill: 1, form: 1, ord: 1 });
+    if (!s.seq.has(userId)) s.seq.set(userId, { pat: 1, prob: 1, alg: 1, vit: 1, lab: 1, imm: 1, enc: 1, sp: 1, msg: 1, refill: 1, form: 1, ord: 1, photo: 1 });
     const seq = s.seq.get(userId);
-    for (const k of ['pat','prob','alg','vit','lab','imm','enc','sp','msg','refill','form','ord']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    for (const k of ['pat','prob','alg','vit','lab','imm','enc','sp','msg','refill','form','ord','photo']) if (!Number.isFinite(seq[k])) seq[k] = 1;
     return seq;
+  }
+
+  // Splits a `data:<mime>;base64,<payload>` URL into its parts. Returns
+  // null when the string isn't a well-formed base64 data URL — callers
+  // treat that as a validation failure, never a silent empty analysis.
+  function splitDataUrlH(dataUrl) {
+    const m = /^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/.exec(String(dataUrl || ""));
+    return m ? { mime: m[1], b64: m[2] } : null;
   }
 
   // ── Patients (patient chart owner) ─────────────────────────────
@@ -878,6 +887,7 @@ export default function registerHealthcareActions(registerLensAction) {
         labs: filter(bucketH(s.labs, userId)).slice().sort((a, b) => b.collectedAt.localeCompare(a.collectedAt)).slice(0, 50),
         immunizations: filter(bucketH(s.immunizations, userId)),
         encounters: filter(bucketH(s.encounters, userId)).slice().sort((a, b) => b.encounteredAt.localeCompare(a.encounteredAt)),
+        photoNotes: filter(bucketH(s.photoNotes, userId)).slice().sort((a, b) => b.capturedAt.localeCompare(a.capturedAt)),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -995,6 +1005,93 @@ export default function registerHealthcareActions(registerLensAction) {
     const list = bucketH(s.allergies, aidH(ctx));
     const i = list.findIndex(a => a.id === String(params.id || ""));
     if (i < 0) return { ok: false, error: "allergy not found" };
+    list.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Photo Notes ───────────────────────────────────────────────
+  // Closes docs/WAVE4_INVENTORY.md line 188 / healthcare-capability-map.md
+  // "vision (photo→LLaVA analysis) has no image-upload UI anywhere". The
+  // plain `vision` macro above stays untouched (one-off analysis, no
+  // persistence, no patient scoping — existing callers keep working
+  // byte-for-byte). `photo-notes-add` is the durable-chart-entry sibling:
+  // it runs the SAME real vision call (`callVision`/`callVisionUrl` +
+  // `visionPromptForDomain("healthcare")`, imported once at the top of
+  // this file — never re-derived or mocked here) and only persists a
+  // record when that call genuinely succeeds. A failed/unavailable vision
+  // brain surfaces as `{ ok:false, error }` with nothing written to the
+  // chart — never a fabricated "analyzed" success (CLAUDE.md's
+  // honest-by-construction invariant).
+  const MAX_PHOTO_DATA_URL_LEN = 8_000_000; // ~6MB image, base64-inflated
+
+  registerLensAction("healthcare", "photo-notes-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const list = bucketH(s.photoNotes, aidH(ctx)).filter(p => p.patientId === patientId);
+    return { ok: true, result: { photoNotes: list.slice().sort((a, b) => b.capturedAt.localeCompare(a.capturedAt)) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("healthcare", "photo-notes-add", async (ctx, _a, params = {}) => {
+  try {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "").trim();
+    if (!patientId) return { ok: false, error: "patientId required" };
+
+    const imageDataUrl = String(params.imageDataUrl || "").trim();
+    let imageB64 = String(params.imageB64 || "").trim();
+    const imageUrl = String(params.imageUrl || "").trim();
+    let imageRef = "";
+
+    if (imageDataUrl) {
+      if (imageDataUrl.length > MAX_PHOTO_DATA_URL_LEN) return { ok: false, error: "image exceeds size limit" };
+      const parsed = splitDataUrlH(imageDataUrl);
+      if (!parsed || !parsed.mime.startsWith("image/")) return { ok: false, error: "imageDataUrl must be a valid image data: URL" };
+      imageB64 = imageB64 || parsed.b64;
+      imageRef = imageDataUrl;
+    }
+    if (!imageRef && imageB64) imageRef = `data:image/jpeg;base64,${imageB64}`;
+    if (!imageRef && imageUrl) imageRef = imageUrl;
+    if (!imageB64 && !imageUrl) return { ok: false, error: "imageDataUrl, imageB64, or imageUrl required" };
+
+    // Same real vision call the standalone `vision` macro makes above —
+    // same prompt selection, same precedence (URL wins when both are
+    // present), no re-derivation.
+    const prompt = visionPromptForDomain("healthcare");
+    const visionResult = imageUrl ? await callVisionUrl(imageUrl, prompt) : await callVision(imageB64, prompt);
+    if (!visionResult.ok) {
+      return { ok: false, error: "vision analysis failed", detail: visionResult.error, source: visionResult.source };
+    }
+
+    const seq = ensureSeqH(s, userId);
+    const photoNote = {
+      id: uidH("photo"),
+      number: `PH-${String(seq.photo).padStart(5, "0")}`,
+      patientId,
+      imageRef,
+      bodyRegion: String(params.bodyRegion || "").trim(),
+      note: String(params.note || "").trim(),
+      analysisResult: visionResult.content,
+      analysisSource: visionResult.source,
+      analysisModel: visionResult.model || null,
+      capturedAt: isoH(),
+    };
+    seq.photo++;
+    bucketH(s.photoNotes, userId).push(photoNote);
+    saveStateIfAvailable();
+    return { ok: true, result: { photoNote } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("healthcare", "photo-notes-delete", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = bucketH(s.photoNotes, aidH(ctx));
+    const i = list.findIndex(p => p.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "photo note not found" };
     list.splice(i, 1);
     saveStateIfAvailable();
     return { ok: true, result: { deleted: true } };

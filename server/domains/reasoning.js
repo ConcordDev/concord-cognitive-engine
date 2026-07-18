@@ -197,12 +197,28 @@ export default function registerReasoningActions(registerLensAction) {
   // same validity/fallacy/strength signals the other macros compute. Honest
   // by construction — it names which real signal drove each suggestion
   // rather than presenting free-form LLM prose as an "analysis engine".
+  //
+  // Optional `mapId` broadens this from "fallacy/contradiction scan over
+  // free text" to two more attack angles, BOTH sourced from real data that
+  // already exists elsewhere in this file — nothing here is invented:
+  //   - "weak-link": the resolved map's own weakestClaim/contested result
+  //     from `argumentMapCore` (the exact engine `strengthAssessment` runs),
+  //     fed a real flattening of the map's node tree via
+  //     `persistedMapToClaims`. Only surfaces when that claim is genuinely
+  //     contested (counter > 0) — an uncontested map has no weak link.
+  //   - "scheme-critical-question": the real Walton-style `criticalQuestions`
+  //     from the `SCHEMES` library (the same array `scheme-instantiate`
+  //     returns), surfaced only when the map was actually built from a
+  //     named scheme (`map.scheme !== "free"`).
+  // This is still a rule-based critique engine, not an argumentation-theory
+  // reasoner — the broadening is more real signals, not more inference.
   registerLensAction("reasoning", "counterArgumentGen", (ctx, artifact, params) => {
     const premises = artifact.data?.premises || params?.premises || [];
     const conclusion = artifact.data?.conclusion || params?.conclusion || "";
     const text = artifact.data?.text || artifact.data?.argument || params?.text || params?.argument
       || [...premises, conclusion].filter(Boolean).join(". ");
-    if (premises.length === 0 && !text) {
+    const mapId = artifact.data?.mapId || params?.mapId || null;
+    if (premises.length === 0 && !text && !mapId) {
       return { ok: true, result: { message: "Provide premises/conclusion, or free-text argument, to generate counter-points." } };
     }
     const validate = logicValidateCore(premises, conclusion);
@@ -219,10 +235,58 @@ export default function registerReasoningActions(registerLensAction) {
     for (const f of fallacies.fallacies || []) {
       angles.push({ attack: "fallacy", detail: `${f.fallacy}: ${f.description}` });
     }
+
+    // Map-sourced angles — only when the caller passes a real, resolvable
+    // persisted-map id (own map or a map the caller collaborates on).
+    let mapMeta = null;
+    if (mapId) {
+      const s = getState();
+      const userId = actorId(ctx);
+      const found = s ? findMap(s, userId, String(mapId)) : null;
+      if (found) {
+        mapMeta = { mapId: found.map.id, title: found.map.title, scheme: found.map.scheme };
+
+        // Weak-link: reuse argumentMapCore's real weakestClaim/contested
+        // computation over a real flattening of this map's tree.
+        const mapAnalysis = argumentMapCore(persistedMapToClaims(found.map));
+        const weakId = mapAnalysis.weakestClaim;
+        const weakEntry = weakId ? mapAnalysis.strengthMap[weakId] : null;
+        if (weakEntry && weakEntry.counter > 0) {
+          const weakNode = findNode(found.map.nodes, weakId);
+          angles.push({
+            attack: "weak-link",
+            detail: `In "${found.map.title}", the claim "${(weakNode?.text || weakId).slice(0, 140)}" is the weakest link (strength ${weakEntry.strength}/100 — ${weakEntry.counter} counter${weakEntry.counter === 1 ? "" : "s"} vs ${weakEntry.support} support) — attack there first.`,
+            source: "map-strength-assessment",
+            mapId: found.map.id,
+            nodeId: weakId,
+          });
+        }
+
+        // Scheme-critical-questions: the real criticalQuestions from the
+        // SCHEMES library entry this map was instantiated from, if any.
+        const scheme = found.map.scheme && found.map.scheme !== "free"
+          ? SCHEMES.find(x => x.id === found.map.scheme)
+          : null;
+        if (scheme) {
+          for (const q of scheme.criticalQuestions || []) {
+            angles.push({ attack: "scheme-critical-question", detail: q, source: `scheme:${scheme.id}`, schemeName: scheme.name });
+          }
+        }
+      }
+    }
+
     if (angles.length === 0) {
       angles.push({ attack: "demand-evidence", detail: "No structural weakness found — the strongest counter is to demand independent evidence for the premises themselves." });
     }
-    return { ok: true, result: { angles, validity: validate.validity, recommendation: validate.recommendation } };
+    return {
+      ok: true,
+      result: {
+        angles,
+        validity: validate.validity,
+        recommendation: validate.recommendation,
+        ...(mapMeta ? { map: mapMeta } : {}),
+      },
+    };
   });
 
   /* ================================================================ */
@@ -286,6 +350,31 @@ export default function registerReasoningActions(registerLensAction) {
   }
   function walk(nodes, fn) {
     for (const n of nodes) { fn(n); walk(n.children, fn); }
+  }
+
+  // Flatten a persisted argument map's node TREE (parent → pro/con children)
+  // into the flat claims LIST `argumentMapCore` expects (id/text/type/
+  // supports/counters, where supports/counters hold the ids of OTHER
+  // claims a node argues for/against). A child's stance relative to its
+  // parent becomes exactly one supports-or-counters edge pointing at the
+  // parent's id. This lets counterArgumentGen's weak-link angle (below)
+  // reuse argumentMapCore's real weakestClaim/contested computation against
+  // a real persisted map, instead of re-deriving the strength-assessment
+  // logic a second time.
+  function persistedMapToClaims(map) {
+    const claims = [];
+    const visit = (node, parentId) => {
+      const supports = [];
+      const counters = [];
+      if (parentId) {
+        if (node.stance === "pro") supports.push(parentId);
+        else if (node.stance === "con") counters.push(parentId);
+      }
+      claims.push({ id: node.id, text: node.text, type: node.type, supports, counters });
+      for (const child of node.children || []) visit(child, node.id);
+    };
+    for (const root of map.nodes || []) visit(root, null);
+    return claims;
   }
 
   // Reasoning-scheme library — common argument schemes (analogy, causal, …).

@@ -458,6 +458,7 @@ export default function registerAllianceActions(registerLensAction) {
         invites: new Map(),   // allianceId -> Array<Invite>
         proposals: new Map(), // allianceId -> Array<Proposal>
         reads: new Map(),     // `${userId}:${channelId}` -> lastReadAt iso
+        directMessages: new Map(), // sorted-pair threadKey -> Array<DM Message>
         seq: 1,
       };
     }
@@ -1087,6 +1088,151 @@ export default function registerAllianceActions(registerLensAction) {
       s.reads.set(`${userId}:${channelId}`, nowIso());
       saveAlliance();
       return { ok: true, result: { channelId, readAt: s.reads.get(`${userId}:${channelId}`) } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── Direct messages between external alliance members ──────────
+  //
+  // Slack Connect supports 1:1 DMs across orgs by default; this closes the
+  // one remaining gap in the alliance capability map. Structural template:
+  // mentorship.js's sorted-pair `threadKey` DM pattern (see that file,
+  // lines ~597-654) — a thread between two users is keyed by
+  // `[a,b].sort().join("::")` so both sides converge on the same storage
+  // key regardless of who initiated, with `Map<threadKey, Array<message>>`
+  // as the state shape. What's DELIBERATELY NOT copied from that template
+  // is the message content shape: mentorship's DMs are a plain
+  // `{fromId,toId,body,at}`, but this domain's channel messages already
+  // carry a richer shape (threading via parentId, attachments, emoji
+  // reactions — see message-send above), and a cross-org DM plausibly
+  // wants the same richness (share a file, react to a reply), so DM
+  // messages mirror THAT shape instead.
+  //
+  // Recipient validation is the one place this can't just copy the
+  // template verbatim. message-send gates posting with
+  // `can(parentAlliance, userId, "post")`, which requires the poster to be
+  // a member of the SAME alliance that owns the channel — that's exactly
+  // wrong for a DM, whose entire purpose is reaching someone who does NOT
+  // share an alliance with the caller (see the explicit cross-org test in
+  // the behavior suite). The rule this domain settles on instead: `toId`
+  // must resolve to a real member of AT LEAST ONE alliance known to the
+  // system (any alliance — not necessarily one the caller belongs to).
+  // That's enough discipline to reject a wholly fabricated/unknown userId
+  // (the concrete risk item #7 calls out — "not built here" precisely
+  // because a free-text recipient box would defeat that discipline) while
+  // still allowing contact between two users with zero alliance overlap,
+  // which is the actual feature. The SENDER is not required to already be
+  // a member of any alliance — they're already a real, authenticated
+  // platform user by virtue of holding a ctx; only the caller-supplied
+  // `toId` string is unauthenticated input that needs validating.
+
+  function dmThreadKey(a, b) { return [a, b].sort().join("::"); }
+
+  // Scans every known alliance's membership list for a matching userId.
+  // Reused for both recipient validation (dm-send) and honest displayName
+  // resolution (dm-inbox) — same "is this a real, known person" discipline
+  // invite-respond/member-set-role already apply within a single alliance,
+  // just widened from "this alliance" to "any alliance the system knows."
+  function findAllianceMember(s, userId) {
+    for (const alliance of s.alliances.values()) {
+      const m = (alliance.members || []).find((x) => x.userId === userId);
+      if (m) return { alliance, member: m };
+    }
+    return null;
+  }
+
+  // Real display name if resolvable; otherwise the raw userId — never a
+  // fabricated name (honest-by-construction: a partner who left every
+  // alliance they were in still shows up in the inbox by their real id).
+  function dmDisplayName(s, userId) {
+    const hit = findAllianceMember(s, userId);
+    return (hit && hit.member.displayName) || userId;
+  }
+
+  registerLensAction("alliance", "dm-send", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const fromId = aid(ctx);
+      const toId = String(params.toId || "").trim();
+      if (!toId) return { ok: false, error: "toId required" };
+      if (!findAllianceMember(s, toId)) return { ok: false, error: "recipient not found" };
+      const content = String(params.content || "").trim();
+      if (!content) return { ok: false, error: "message content required" };
+      const key = dmThreadKey(fromId, toId);
+      const thread = listFor(s.directMessages, key);
+      const parentId = params.parentId ? String(params.parentId) : null;
+      if (parentId && !thread.some((m) => m.id === parentId)) {
+        return { ok: false, error: "parent message not found" };
+      }
+      const attachments = Array.isArray(params.attachments)
+        ? params.attachments
+            .filter((x) => x && x.name)
+            .map((x) => ({ name: String(x.name), url: String(x.url || ""), mime: String(x.mime || "application/octet-stream"), sizeBytes: Number(x.sizeBytes) || 0 }))
+        : [];
+      const message = {
+        id: uid("dm"),
+        threadKey: key,
+        fromId,
+        toId,
+        fromName: dmDisplayName(s, fromId),
+        content,
+        parentId,
+        attachments,
+        reactions: {}, // emoji -> [userId]
+        createdAt: nowIso(),
+      };
+      thread.push(message);
+      saveAlliance();
+      emitRealtime("alliance:dm", { threadKey: key, fromId, toId, message });
+      return { ok: true, result: { message, threadKey: key } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Fetch the DM thread between the caller and a specific partner.
+  registerLensAction("alliance", "dm-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const partnerId = String(params.partnerId || "").trim();
+      if (!partnerId) return { ok: false, error: "partnerId required" };
+      const key = dmThreadKey(userId, partnerId);
+      // Push order is already chronological ascending (mirrors message-list).
+      const messages = listFor(s.directMessages, key).slice();
+      return { ok: true, result: { messages, count: messages.length, threadKey: key } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // List every DM thread the caller participates in — inbox view.
+  registerLensAction("alliance", "dm-inbox", (ctx, _a, _params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const threads = [];
+      for (const [key, msgs] of s.directMessages.entries()) {
+        const parts = key.split("::");
+        if (!parts.includes(userId) || msgs.length === 0) continue;
+        const partnerId = parts.find((p) => p !== userId) || parts[0];
+        const last = msgs[msgs.length - 1];
+        threads.push({
+          partnerId,
+          partnerName: dmDisplayName(s, partnerId),
+          threadKey: key,
+          lastMessage: last.content,
+          lastFrom: last.fromId,
+          lastAt: last.createdAt,
+          messageCount: msgs.length,
+        });
+      }
+      threads.sort((a, b) => (b.lastAt > a.lastAt ? 1 : -1));
+      return { ok: true, result: { threads, count: threads.length } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }

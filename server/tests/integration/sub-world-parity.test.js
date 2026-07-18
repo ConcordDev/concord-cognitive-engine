@@ -88,7 +88,7 @@ describe("Phase F2 — sub-world content parity", () => {
     await seedContent({ db });
     const { _authoredQuests } = await import("../../lib/content-seeder.js");
     const tunyaIds = [...(_authoredQuests?.keys?.() ?? [])].filter((id) => String(id).startsWith("tunya_"));
-    // The 4 tunya chains (arks-of-memory, bloc-secret, medici-origin,
+    // The 4 tunya chains (arks-of-memory, bloc-secret, vessine-origin,
     // nil-protection) live under content/world/tunya/quests/ and were stranded
     // until H1 wired the per-world quest walker.
     assert.ok(tunyaIds.length >= 4,

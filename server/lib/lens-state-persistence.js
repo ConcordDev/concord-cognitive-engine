@@ -20,7 +20,7 @@ export const LENS_STATE_KEYS = Object.freeze([
   "eventTimelineLens",
   "financeLens", "fitnessLens", "foodLens", "govLens",
   "healthLens", "insLens", "legalLens", "logLens",
-  "marketsLens", "messageLens", "realestateLens", "researchLens",
+  "marketsLens", "messageLens", "privacyLens", "realestateLens", "researchLens",
   "retailLens", "scienceLens", "studioLens", "tradesLens",
   "whiteboardLens", "worldLens",
 ]);

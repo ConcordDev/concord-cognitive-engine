@@ -19,6 +19,17 @@
  * below), so each section below has exactly one "Compute" action and
  * displays the sub-results the macro actually returns, rather than
  * pretending they're three independent server calls.
+ *
+ * Also backs two macros added in this pass — `engineering.connectionCheck`
+ * (AISC bolted-connection allowable shear) inside the Structural section and
+ * `engineering.transformerSizing` (ANSI kVA-ladder sizing) inside the
+ * Electrical section — that call `boltedConnection()`/`transformerSizing()`
+ * in the same compute module. Those two functions were real but genuinely
+ * unreachable at the macro layer before this pass (no registered macro
+ * called them); they're wired as their own macro + button per section
+ * (not folded into `structuralCheck`/`electricalCheck`, which are a
+ * separate server-side registration this pass leaves untouched) rather than
+ * a shared "Compute" trigger, since they're independent server calls.
  */
 
 import { useState } from 'react';
@@ -184,6 +195,30 @@ function StructuralSection() {
     setLoading(false);
   };
 
+  // ── Bolted connection (AISC allowable shear) — engineering.connectionCheck ──
+  // Real AISC math (R = Fv·Ab·n·planes) previously unreachable at the macro
+  // layer (server/lib/compute/engineering-compute.js#boltedConnection existed
+  // but no macro called it); wired as its own macro since structuralCheck's
+  // field set is a separate server.js registration this pass may not touch.
+  const [boltDiameter, setBoltDiameter] = useState<Num>(0.75);
+  const [boltGrade, setBoltGrade] = useState('a325');
+  const [numBolts, setNumBolts] = useState<Num>(4);
+  const [loadType, setLoadType] = useState('single');
+  const [connectionResult, setConnectionResult] = useState<CalcResult | null>(null);
+  const [connectionLoading, setConnectionLoading] = useState(false);
+  const [connectionError, setConnectionError] = useState('');
+
+  const runConnection = async () => {
+    setConnectionLoading(true); setConnectionError('');
+    const r = await lensRun<CalcResult>(
+      'engineering', 'connectionCheck',
+      { boltDiameter: n(boltDiameter, 0.75), boltGrade, numBolts: n(numBolts, 1), loadType },
+    );
+    if (r.data.ok && r.data.result) setConnectionResult(r.data.result);
+    else setConnectionError(r.data.error || 'Connection check failed');
+    setConnectionLoading(false);
+  };
+
   return (
     <div className="panel p-4 space-y-3">
       <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -230,6 +265,32 @@ function StructuralSection() {
           <ResultCard title="Weld — allowable shear capacity" result={result.weld} />
         </div>
       )}
+
+      <div className="pt-2 border-t border-white/5 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold md:col-span-4">
+            Bolted connection (AISC allowable shear)
+          </p>
+          <NumField label="Bolt diameter (in)" value={boltDiameter} onChange={setBoltDiameter} step="0.0625" />
+          <SelectField label="Bolt grade" value={boltGrade} onChange={setBoltGrade} options={['a307', 'a325', 'a490']} />
+          <NumField label="Number of bolts" value={numBolts} onChange={setNumBolts} step="1" />
+          <SelectField label="Load type" value={loadType} onChange={setLoadType} options={['single', 'double']} />
+        </div>
+        <button
+          onClick={runConnection}
+          disabled={connectionLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-300 border border-blue-500/40 rounded-lg text-sm font-semibold hover:bg-blue-500/30 disabled:opacity-50"
+        >
+          {connectionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
+          Check Connection
+        </button>
+        {connectionError && <p className="text-xs text-red-400">{connectionError}</p>}
+        {connectionResult && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <ResultCard title="Connection — allowable shear capacity" result={connectionResult} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -359,6 +420,34 @@ function ElectricalSection() {
     setLoading(false);
   };
 
+  // ── Transformer sizing (ANSI kVA ladder) — engineering.transformerSizing ──
+  // Real ANSI math (required = loadKva·growthFactor → next standard kVA size
+  // → primaryAmps) previously unreachable at the macro layer (server/lib/
+  // compute/engineering-compute.js#transformerSizing existed but no macro
+  // called it); wired as its own macro alongside electricalCheck.
+  const [loadKva, setLoadKva] = useState<Num>(100);
+  const [xfmrVoltage, setXfmrVoltage] = useState<Num>(480);
+  const [xfmrPhase, setXfmrPhase] = useState('3');
+  const [powerFactor, setPowerFactor] = useState<Num>(0.9);
+  const [growthFactor, setGrowthFactor] = useState<Num>(1.25);
+  const [transformerResult, setTransformerResult] = useState<CalcResult | null>(null);
+  const [transformerLoading, setTransformerLoading] = useState(false);
+  const [transformerError, setTransformerError] = useState('');
+
+  const runTransformer = async () => {
+    setTransformerLoading(true); setTransformerError('');
+    const r = await lensRun<CalcResult>(
+      'engineering', 'transformerSizing',
+      {
+        loadKva: n(loadKva, 1), voltage: n(xfmrVoltage, 480), phase: parseInt(xfmrPhase, 10),
+        powerFactor: n(powerFactor, 0.9), growthFactor: n(growthFactor, 1.25),
+      },
+    );
+    if (r.data.ok && r.data.result) setTransformerResult(r.data.result);
+    else setTransformerError(r.data.error || 'Transformer sizing failed');
+    setTransformerLoading(false);
+  };
+
   return (
     <div className="panel p-4 space-y-3">
       <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -405,6 +494,33 @@ function ElectricalSection() {
           <ResultCard title="Conduit fill" result={result.conduitFill} />
         </div>
       )}
+
+      <div className="pt-2 border-t border-white/5 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <p className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold md:col-span-3">
+            Transformer sizing (ANSI kVA ladder)
+          </p>
+          <NumField label="Load (kVA)" value={loadKva} onChange={setLoadKva} />
+          <NumField label="Secondary voltage (V)" value={xfmrVoltage} onChange={setXfmrVoltage} />
+          <SelectField label="Phase" value={xfmrPhase} onChange={setXfmrPhase} options={['1', '3']} />
+          <NumField label="Power factor (0–1)" value={powerFactor} onChange={setPowerFactor} step="0.01" />
+          <NumField label="Growth factor" value={growthFactor} onChange={setGrowthFactor} step="0.05" />
+        </div>
+        <button
+          onClick={runTransformer}
+          disabled={transformerLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-lg text-sm font-semibold hover:bg-yellow-500/30 disabled:opacity-50"
+        >
+          {transformerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+          Size Transformer
+        </button>
+        {transformerError && <p className="text-xs text-red-400">{transformerError}</p>}
+        {transformerResult && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <ResultCard title="Transformer — selected kVA" result={transformerResult} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

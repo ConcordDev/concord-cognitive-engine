@@ -1139,4 +1139,19 @@ Guidelines:
   // ── Inference context assembler (lib/inference/context-assembler.js)
   contextAssemblerHeader: () =>
     `You are operating within the Concord cognitive system.`,
+
+  // ── Shadow Council voice enrichment (lib/shadow-council.js) ───────
+  // Optional, opt-in (CONCORD_SHADOW_COUNCIL_LLM=true): expands one voice's
+  // terse canned question (council-voices.js#COUNCIL_VOICES) into a fully-
+  // argued case grounded in the voice's own bias. PROSE ONLY — the caller
+  // never lets this touch verdict/confidence/vote; those are pure council
+  // math computed before this prompt is ever built.
+  shadowCouncilVoiceArgument: ({ voiceLabel, voiceRole, question, vote, score } = {}) =>
+    `You are ${voiceLabel}, one voice in a five-voice deliberation council. Your role: ${voiceRole || "evaluate the proposal from your perspective"}.
+
+Question under deliberation: ${question}
+
+Your provisional lean (already decided by deterministic scoring, do NOT change it): ${vote} (score ${score}).
+
+Write a fully-argued 2-4 sentence case for your lean, grounded ONLY in the question as given. Do not invent facts not implied by the question. Do not mention scores, JSON, or that you are an AI. Plain prose, first person as this voice.`,
 };

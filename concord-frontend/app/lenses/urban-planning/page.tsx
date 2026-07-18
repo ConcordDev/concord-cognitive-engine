@@ -18,6 +18,14 @@
  * ADDED: `ZoningSiteAnalysis` surfaces four real backend macros
  * (zoningAnalysis, walkabilityScore, densityCalc, trafficImpact) that had
  * zero frontend references before this rebuild.
+ *
+ * RE-ADDED (this pass, honestly this time): a real "Projects" tab backed
+ * by `urban-planning.project-*` (server/domains/urbanplanning.js) — a
+ * genuine proposed→approved→under_construction→built permit-status
+ * workflow with an optional real parcel link, a status-history audit
+ * trail, and a designed forward-transition control (never a raw enum
+ * dropdown or a client-only store). Closes the "Honest project/permit-
+ * status tracking" gap named in the capability map.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -46,6 +54,7 @@ import {
   MessagesSquare,
   FileText,
   RefreshCw,
+  ClipboardList,
 } from 'lucide-react';
 
 import { LensPageShell } from '@/components/lens/LensPageShell';
@@ -56,12 +65,14 @@ import { TransitCoveragePanel } from '@/components/urban-planning/TransitCoverag
 import { PublicCommentPanel } from '@/components/urban-planning/PublicCommentPanel';
 import { PlanExportPanel } from '@/components/urban-planning/PlanExportPanel';
 import { ZoningSiteAnalysis } from '@/components/urban-planning/ZoningSiteAnalysis';
+import { ProjectTracker } from '@/components/urban-planning/ProjectTracker';
 
 type ModeTab =
   | 'Dashboard'
   | 'Zoning'
   | 'Parcels'
   | 'Scenarios'
+  | 'Projects'
   | 'Transit'
   | 'Comments'
   | 'Reports'
@@ -72,6 +83,7 @@ const MODE_TABS: { key: ModeTab; label: string; icon: typeof Building2 }[] = [
   { key: 'Zoning', label: 'Zoning & Site', icon: Ruler },
   { key: 'Parcels', label: 'Parcels & Massing', icon: LandPlot },
   { key: 'Scenarios', label: 'Scenarios', icon: Layers },
+  { key: 'Projects', label: 'Projects', icon: ClipboardList },
   { key: 'Transit', label: 'Transit Coverage', icon: TrainFront },
   { key: 'Comments', label: 'Public Comment', icon: MessagesSquare },
   { key: 'Reports', label: 'Impacts & Export', icon: FileText },
@@ -84,11 +96,14 @@ interface DashboardCounts {
   comments: number;
   commentTally: Record<string, number>;
   scenarioUnits: number;
+  projects: number;
+  projectsBuilt: number;
 }
 
 interface ParcelRow { id: string }
 interface ScenarioRow { id: string; impacts?: { dwellingUnits?: number } }
 interface CommentListResult { comments: unknown[]; total: number; tally: Record<string, number> }
+interface ProjectListResult { count: number; byStatus: Record<string, number> }
 
 export default function UrbanPlanningLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
@@ -114,14 +129,16 @@ export default function UrbanPlanningLensPage() {
     setCountsLoading(true);
     setCountsError(null);
     try {
-      const [parcelsR, scenariosR, commentsR] = await Promise.all([
+      const [parcelsR, scenariosR, commentsR, projectsR] = await Promise.all([
         lensRun<{ parcels: ParcelRow[] }>('urban-planning', 'parcel-list', {}),
         lensRun<{ scenarios: ScenarioRow[] }>('urban-planning', 'scenario-list', {}),
         lensRun<CommentListResult>('urban-planning', 'comment-list', {}),
+        lensRun<ProjectListResult>('urban-planning', 'project-list', {}),
       ]);
-      if (!parcelsR.data.ok || !scenariosR.data.ok || !commentsR.data.ok) {
+      if (!parcelsR.data.ok || !scenariosR.data.ok || !commentsR.data.ok || !projectsR.data.ok) {
         setCountsError(
-          parcelsR.data.error || scenariosR.data.error || commentsR.data.error || 'failed to load workbench summary',
+          parcelsR.data.error || scenariosR.data.error || commentsR.data.error || projectsR.data.error
+            || 'failed to load workbench summary',
         );
         return;
       }
@@ -132,6 +149,8 @@ export default function UrbanPlanningLensPage() {
         scenarioUnits: scenarios.reduce((a, s) => a + (s.impacts?.dwellingUnits || 0), 0),
         comments: commentsR.data.result?.total || 0,
         commentTally: commentsR.data.result?.tally || { support: 0, oppose: 0, neutral: 0 },
+        projects: projectsR.data.result?.count || 0,
+        projectsBuilt: projectsR.data.result?.byStatus?.built || 0,
       });
     } catch (e) {
       setCountsError(e instanceof Error ? e.message : 'failed to load workbench summary');
@@ -188,12 +207,13 @@ export default function UrbanPlanningLensPage() {
                 </button>
               </div>
             ) : counts ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[
                   { label: 'Parcels tracked', value: counts.parcels, color: 'emerald', icon: LandPlot },
                   { label: 'Scenarios modeled', value: counts.scenarios, color: 'blue', icon: Layers },
                   { label: 'Units across scenarios', value: counts.scenarioUnits, color: 'amber', icon: Building2 },
                   { label: 'Public comments', value: counts.comments, color: 'cyan', icon: MessagesSquare },
+                  { label: `Projects tracked (${counts.projectsBuilt} built)`, value: counts.projects, color: 'fuchsia', icon: ClipboardList },
                 ].map((s, i) => (
                   <motion.div
                     key={s.label}
@@ -237,15 +257,17 @@ export default function UrbanPlanningLensPage() {
                 The category-leader workflow lives in the tabs above: run zoning &amp; site
                 calculators (FAR, walkability, density, traffic impact), add real parcels and
                 model their 3D massing envelope, compare alternative development scenarios with
-                population / jobs / emissions impacts, analyze transit walk-shed coverage, run a
-                stakeholder public-comment review, and export a shareable plan report. Live US
-                Census ACS demographics and HUD income limits power the County Data tab.
+                population / jobs / emissions impacts, track real projects through their honest
+                proposed → approved → built permit lifecycle, analyze transit walk-shed coverage,
+                run a stakeholder public-comment review, and export a shareable plan report. Live
+                US Census ACS demographics and HUD income limits power the County Data tab.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {([
                   { label: 'Zoning & Site Analysis', tab: 'Zoning', icon: Ruler },
                   { label: 'Parcels & Massing', tab: 'Parcels', icon: LandPlot },
                   { label: 'Scenario Planning', tab: 'Scenarios', icon: Layers },
+                  { label: 'Projects', tab: 'Projects', icon: ClipboardList },
                   { label: 'Transit Coverage', tab: 'Transit', icon: TrainFront },
                   { label: 'Public Comment', tab: 'Comments', icon: MessagesSquare },
                   { label: 'Impacts & Export', tab: 'Reports', icon: FileText },
@@ -269,6 +291,7 @@ export default function UrbanPlanningLensPage() {
         {activeMode === 'Zoning' && <ZoningSiteAnalysis />}
         {activeMode === 'Parcels' && <ParcelManager />}
         {activeMode === 'Scenarios' && <ScenarioStudio />}
+        {activeMode === 'Projects' && <ProjectTracker />}
         {activeMode === 'Transit' && <TransitCoveragePanel />}
         {activeMode === 'Comments' && <PublicCommentPanel />}
         {activeMode === 'Reports' && <PlanExportPanel />}

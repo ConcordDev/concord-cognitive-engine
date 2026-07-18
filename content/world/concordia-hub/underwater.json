@@ -29,14 +29,14 @@
     {
       "id": "uw_fk_wreck",
       "kind": "wreck_site",
-      "name": "The Medici Crash",
+      "name": "The Vessine Crash",
       "pos_x": 78,
       "pos_z": -41,
       "depth_min_m": 25,
       "depth_max_m": 60,
       "radius_m": 22,
       "aggression": 1,
-      "lore": "Original Medici landing ship, half-buried. Eels nest in the wreckage."
+      "lore": "Original Vessine landing ship, half-buried. Eels nest in the wreckage."
     },
     {
       "id": "uw_fk_trench",

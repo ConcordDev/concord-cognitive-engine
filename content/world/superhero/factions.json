@@ -80,7 +80,7 @@
     "allied_factions": [],
     "npc_ids": [
       "luminary_vesper",
-      "marcus_holloway"
+      "marcus_vantree"
     ],
     "dialogue_style": "polished",
     "reputation_currency": "luminary_credits",
@@ -134,7 +134,7 @@
     "controlled_districts": ["crimson_spire_lounge", "cartel_safehouses_seven"],
     "rival_factions": ["superhero_civic_super_taskforce", "enforcers_movement"],
     "allied_factions": [],
-    "npc_ids": ["cartel_lead_marcus_holloway"],
+    "npc_ids": ["cartel_lead_marcus_vantree"],
     "dialogue_style": "criminal_polished",
     "reputation_currency": "spire_chit",
     "faction_state": { "factionName": "Crimson Spire Cartel", "reputation": 41, "tensions": "Two cartel members are openly disputing a district. The cartel has called for a sit-down. Marcus is waiting to see who flinches." },

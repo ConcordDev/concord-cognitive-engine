@@ -26,7 +26,7 @@ const CANON_WORLDS = [
 
 const REMOVED_FAKE_WORLDS = [
   "dinye", "aekon", "asbir", "fluxom", "nil", "akeia",
-  "sangree", "medici", "sahm", "bahiij",
+  "sangree", "vessine", "sahm", "bahiij",
   "ancient-tunyan-ruins", "cactem-strip",
 ];
 

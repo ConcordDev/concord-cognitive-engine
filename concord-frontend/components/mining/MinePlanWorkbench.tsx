@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
-import { Layers, FileBarChart, Loader2, Mountain } from 'lucide-react';
+import { Layers, FileBarChart, Loader2, Mountain, Gem } from 'lucide-react';
 
 interface Bench {
   bench: number; rl: number; depthFromTop: number; width: number;
@@ -21,6 +21,25 @@ interface PitDesign {
   pitDepth: number; surfaceRL: number; pitBottomRL: number;
   totalVolumeM3: number; totalTonnage: number; oreTonnage: number;
   wasteTonnage: number; stripRatio: number; designClass: string;
+}
+interface PitBlock {
+  ix: number; iy: number; iz: number; cx: number; cy: number; cz: number;
+  grade: number; value: number; tonnage: number; processed: boolean;
+}
+interface PitOptimizeResult {
+  pitBlocks: PitBlock[]; blockCount: number; selectedCount: number;
+  totalValue: number; totalTonnesMined: number; oreTonnes: number; wasteTonnes: number;
+  containedMetal: number; recoverableMetal: number; stripRatio: number | null;
+  slopeAngle: number; blockSize: number; gridCapped: boolean;
+  dimensions: { nx: number; ny: number; nz: number };
+  algorithm: string;
+  economicParamsUsed: {
+    metalPricePerTonne: number; recoveryPercent: number; miningCostPerTonne: number;
+    processingCostPerTonne: number; densityTonM3: number;
+  };
+  defaultsUsed: string[];
+  disclosure: string;
+  note?: string;
 }
 interface ResourceCategory {
   category: string; confidence: number; tonnage: number; avgGrade: number;
@@ -61,6 +80,16 @@ export function MinePlanWorkbench() {
   const [code, setCode] = useState<'jorc' | 'ni43-101'>('jorc');
   const [report, setReport] = useState<ReserveReport | null>(null);
 
+  // pit-optimize form (ultimate-pit optimizer over the drill-hole block model)
+  const [optBlockSize, setOptBlockSize] = useState('20');
+  const [optSlopeAngle, setOptSlopeAngle] = useState('45');
+  const [optPrice, setOptPrice] = useState('5000');
+  const [optRecovery, setOptRecovery] = useState('85');
+  const [optMiningCost, setOptMiningCost] = useState('3');
+  const [optProcessingCost, setOptProcessingCost] = useState('12');
+  const [optDensity, setOptDensity] = useState('2.7');
+  const [pitOpt, setPitOpt] = useState<PitOptimizeResult | null>(null);
+
   async function runPit() {
     setBusy('pit'); setErr(null);
     const r = await lensRun<PitDesign>('mining', 'pit-design', {
@@ -81,6 +110,19 @@ export function MinePlanWorkbench() {
     setBusy(null);
     if (r.data.ok && r.data.result) setReport(r.data.result);
     else setErr(r.data.error || 'reserve report failed');
+  }
+
+  async function runPitOptimize() {
+    setBusy('optimize'); setErr(null);
+    const r = await lensRun<PitOptimizeResult>('mining', 'pit-optimize', {
+      blockSize: num(optBlockSize), slopeAngle: num(optSlopeAngle),
+      metalPricePerTonne: num(optPrice), recoveryPercent: num(optRecovery),
+      miningCostPerTonne: num(optMiningCost), processingCostPerTonne: num(optProcessingCost),
+      densityTonM3: num(optDensity),
+    });
+    setBusy(null);
+    if (r.data.ok && r.data.result) setPitOpt(r.data.result);
+    else setErr(r.data.error || 'pit optimization failed');
   }
 
   return (
@@ -200,6 +242,79 @@ export function MinePlanWorkbench() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Ultimate-pit optimizer (economic block-value pit shell) ── */}
+      <div className="space-y-2 border-t border-stone-500/10 pt-3">
+        <div className="flex items-center gap-1.5">
+          <Gem className="h-3.5 w-3.5 text-emerald-400" />
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">
+            Ultimate-pit optimizer — economic block value over the drill-hole block model
+          </div>
+        </div>
+        <div className="text-[9px] text-zinc-500">
+          Maximum-weight-closure solve (Lerchs-Grossmann via max-flow/min-cut) over the same
+          inverse-distance-weighted block model as Geology. Requires logged drill-holes with
+          positive-grade intervals (Geology tab).
+        </div>
+        <div className="grid grid-cols-4 gap-1.5">
+          <Field label="Block size m" value={optBlockSize} onChange={setOptBlockSize} />
+          <Field label="Slope °" value={optSlopeAngle} onChange={setOptSlopeAngle} />
+          <Field label="Price $/t" value={optPrice} onChange={setOptPrice} />
+          <Field label="Recovery %" value={optRecovery} onChange={setOptRecovery} />
+          <Field label="Mining $/t" value={optMiningCost} onChange={setOptMiningCost} />
+          <Field label="Processing $/t" value={optProcessingCost} onChange={setOptProcessingCost} />
+          <Field label="Density t/m³" value={optDensity} onChange={setOptDensity} />
+        </div>
+        <button type="button" onClick={runPitOptimize} disabled={!!busy}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white rounded text-[12px]">
+          {busy === 'optimize' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Gem className="w-3.5 h-3.5" />} Optimize pit shell
+        </button>
+
+        {pitOpt && pitOpt.note && (
+          <div className="text-[11px] text-zinc-400 bg-zinc-900/40 border border-zinc-800 rounded px-2 py-1">{pitOpt.note}</div>
+        )}
+
+        {pitOpt && !pitOpt.note && (
+          <div className="rounded-lg border border-emerald-500/20 bg-zinc-900/40 p-3 space-y-2">
+            <div className="grid grid-cols-5 gap-2">
+              <Stat label="Blocks in pit" value={`${pitOpt.selectedCount}/${pitOpt.blockCount}`} accent="#34d399" />
+              <Stat label="Pit value" value={`$${pitOpt.totalValue.toLocaleString()}`} accent="#34d399" />
+              <Stat label="Ore t" value={pitOpt.oreTonnes.toLocaleString()} accent="#22c55e" />
+              <Stat label="Waste t" value={pitOpt.wasteTonnes.toLocaleString()} accent="#a16207" />
+              <Stat label="Strip ratio" value={pitOpt.stripRatio == null ? '—' : `${pitOpt.stripRatio}:1`} />
+            </div>
+            <div className="text-[9px] text-zinc-400">
+              Contained metal {pitOpt.containedMetal.toLocaleString()} t · recoverable {pitOpt.recoverableMetal.toLocaleString()} t ·
+              grid {pitOpt.dimensions.nx}×{pitOpt.dimensions.ny}×{pitOpt.dimensions.nz}{pitOpt.gridCapped ? ' (capped for solve tractability)' : ''}
+            </div>
+            {pitOpt.defaultsUsed.length > 0 && (
+              <div className="text-[9px] text-amber-300/80 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1">
+                Using defaults — supply real values for a decision-grade result: {pitOpt.defaultsUsed.join('; ')}
+              </div>
+            )}
+            <div className="text-[9px] text-zinc-500 italic">{pitOpt.disclosure}</div>
+            <div className="max-h-40 overflow-y-auto">
+              <table className="w-full text-[10px]">
+                <thead className="text-zinc-400"><tr>
+                  <th className="text-left py-0.5">Block (ix,iy,iz)</th><th className="text-right">Grade %</th>
+                  <th className="text-right">Tonnage</th><th className="text-right">Value $</th><th className="text-right">Kind</th>
+                </tr></thead>
+                <tbody className="font-mono text-zinc-300">
+                  {pitOpt.pitBlocks.map((b) => (
+                    <tr key={`${b.ix}_${b.iy}_${b.iz}`} className="border-t border-zinc-800/60">
+                      <td className="py-0.5">{b.ix},{b.iy},{b.iz}</td>
+                      <td className="text-right">{b.grade}</td>
+                      <td className="text-right">{b.tonnage.toLocaleString()}</td>
+                      <td className="text-right">{b.value.toLocaleString()}</td>
+                      <td className="text-right">{b.processed ? <span className="text-emerald-400">ore</span> : <span className="text-amber-500">waste</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
