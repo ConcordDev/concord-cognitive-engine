@@ -1,19 +1,40 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+/**
+ * DependencyGraphViewer — DTU citation/dependency graph for the world-lens
+ * fabrication toolset.
+ *
+ * Honesty note (2026-07-18): this component used to render entirely from
+ * hardcoded fake data (invented creators, citation counts, royalties, and
+ * "Riverside Library"/"Main St Bridge" structures that don't exist). It now
+ * fetches a real corpus via `GET /api/dtus/paginated` and projects it into a
+ * graph via the real `dtus.citationGraph` macro (`server/domains/dtus.js`) —
+ * the same macro `components/dtus/CitationGraph.tsx` uses inside the dtus
+ * lens's KnowledgeWorkbench. Node fields are limited to what a real DTU
+ * carries: id/title/tier (`ownerId` for creator, `coherence` for a quality
+ * estimate per the same convention `app/lenses/dtus/page.tsx` already uses,
+ * `summary` for description, and citation in/out-degree computed by the
+ * macro from real `parents` links). There is no per-DTU royalty figure
+ * cheaply available here, so the old "royalty flow" visualization was
+ * dropped rather than kept on fabricated numbers — an honest missing
+ * section, not a faked one.
+ */
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { apiHelpers, lensRun } from '@/lib/api/client';
+import type { DTU, DTUTier } from '@/lib/api/generated-types';
+import { Skeleton, EmptyState, ErrorState } from '@/components/ui';
+import { Network } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-
-type NodeType = 'Component' | 'Material' | 'Structure' | 'Infrastructure' | 'Policy';
 
 interface GraphNode {
   id: string;
   name: string;
-  type: NodeType;
+  tier: string;
   creator: string;
-  citations: number;
-  validationStatus: 'verified' | 'pending' | 'failed';
-  royaltyCC: number;
+  citations: number; // real in-degree within the loaded corpus (dtus.citationGraph)
+  quality: number; // 0-100, derived from real DTU.coherence
   description: string;
 }
 
@@ -21,7 +42,6 @@ interface GraphEdge {
   from: string;
   to: string;
   label: string;
-  weight: number;
 }
 
 interface LayoutPosition {
@@ -29,121 +49,123 @@ interface LayoutPosition {
   y: number;
 }
 
-// ── Seed Data ──────────────────────────────────────────────────────────────────
+interface CitationGraphMacroResult {
+  nodes: { id: string; label: string; tier: string; inDegree: number; outDegree: number; influence: number; size: number }[];
+  edges: { source: string; target: string }[];
+  stats?: { nodeCount: number; edgeCount: number; isolated: number; density: number };
+}
 
-const NODES: GraphNode[] = [
-  { id: 'n1', name: 'USB-A Beam 6m', type: 'Component', creator: 'eng.martinez', citations: 3204, validationStatus: 'verified', royaltyCC: 320, description: 'Primary structural beam, USB-A profile, 6-meter span.' },
-  { id: 'n2', name: 'USB-A Material', type: 'Material', creator: 'mat.johnson', citations: 890, validationStatus: 'verified', royaltyCC: 89, description: 'Composite USB-A material specification and properties.' },
-  { id: 'n3', name: 'Seismic Foundation Class 7', type: 'Component', creator: 'eng.tanaka', citations: 412, validationStatus: 'verified', royaltyCC: 41, description: 'Foundation system rated for Class 7 seismic zones.' },
-  { id: 'n4', name: 'Steel Column WF', type: 'Component', creator: 'eng.martinez', citations: 287, validationStatus: 'pending', royaltyCC: 29, description: 'Wide-flange steel column, standard connection points.' },
-  { id: 'n5', name: 'Riverside Library', type: 'Structure', creator: 'arch.wong', citations: 156, validationStatus: 'verified', royaltyCC: 78, description: 'Public library structure using USB-A beam system.' },
-  { id: 'n6', name: 'Main St Bridge', type: 'Infrastructure', creator: 'eng.chen', citations: 203, validationStatus: 'verified', royaltyCC: 101, description: 'Pedestrian bridge spanning Main Street, 24m.' },
-  { id: 'n7', name: 'District 7 Tower', type: 'Structure', creator: 'arch.patel', citations: 98, validationStatus: 'pending', royaltyCC: 49, description: 'Mixed-use tower in District 7, 12 stories.' },
-  { id: 'n8', name: 'USB-A Beam 8m Fork', type: 'Component', creator: 'eng.chen', citations: 64, validationStatus: 'verified', royaltyCC: 32, description: 'Extended 8m variant forked from USB-A Beam 6m.' },
-  { id: 'n9', name: 'Building Code IBC-2024', type: 'Policy', creator: 'gov.standards', citations: 1420, validationStatus: 'verified', royaltyCC: 71, description: 'International Building Code 2024 compliance reference.' },
-  { id: 'n10', name: 'Bridge Quest', type: 'Infrastructure', creator: 'quest.master', citations: 37, validationStatus: 'failed', royaltyCC: 37, description: 'Community quest: Design a bridge for the Northern Pass.' },
-];
+// ── Layouts (computed from the real fetched graph, not hardcoded ids) ──────────
 
-const EDGES: GraphEdge[] = [
-  { from: 'n2', to: 'n1', label: 'material-of', weight: 3 },
-  { from: 'n1', to: 'n5', label: 'used-in', weight: 2 },
-  { from: 'n1', to: 'n6', label: 'used-in', weight: 2 },
-  { from: 'n1', to: 'n7', label: 'used-in', weight: 1 },
-  { from: 'n3', to: 'n5', label: 'foundation-for', weight: 2 },
-  { from: 'n3', to: 'n7', label: 'foundation-for', weight: 2 },
-  { from: 'n4', to: 'n5', label: 'column-for', weight: 1 },
-  { from: 'n4', to: 'n6', label: 'column-for', weight: 1 },
-  { from: 'n1', to: 'n8', label: 'forked-to', weight: 2 },
-  { from: 'n9', to: 'n1', label: 'governs', weight: 1 },
-  { from: 'n9', to: 'n3', label: 'governs', weight: 1 },
-  { from: 'n6', to: 'n10', label: 'quest-target', weight: 1 },
-];
-
-// ── Layouts ────────────────────────────────────────────────────────────────────
-
-function radialLayout(): Record<string, LayoutPosition> {
+function radialLayout(nodes: GraphNode[]): Record<string, LayoutPosition> {
   const cx = 300, cy = 200;
-  const rings: Record<string, { r: number; nodes: string[] }> = {
-    center: { r: 0, nodes: ['n1'] },
-    ring1: { r: 110, nodes: ['n2', 'n3', 'n4'] },
-    ring2: { r: 190, nodes: ['n5', 'n6', 'n7'] },
-    ring3: { r: 260, nodes: ['n8', 'n9', 'n10'] },
-  };
   const pos: Record<string, LayoutPosition> = {};
-  Object.values(rings).forEach(({ r, nodes }) => {
-    nodes.forEach((id, i) => {
-      if (r === 0) { pos[id] = { x: cx, y: cy }; return; }
-      const angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
-      pos[id] = { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  if (nodes.length === 0) return pos;
+  const sorted = [...nodes].sort((a, b) => b.citations - a.citations);
+  sorted.forEach((n, i) => {
+    if (i === 0) { pos[n.id] = { x: cx, y: cy }; return; }
+    const ring = Math.ceil(i / 8);
+    const idxInRing = (i - 1) % 8;
+    const nodesInThisRing = Math.min(8, sorted.length - 1 - (ring - 1) * 8);
+    const radius = 80 * ring;
+    const angle = (2 * Math.PI * idxInRing) / Math.max(1, nodesInThisRing) - Math.PI / 2;
+    pos[n.id] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  });
+  return pos;
+}
+
+// Tier order reflects the real consolidation hierarchy: regular DTUs roll up
+// into MEGA, MEGA rolls up into HYPER (see CLAUDE.md "DTU substrate").
+const TIER_LAYER_ORDER = ['hyper', 'mega', 'regular', 'shadow', 'archive'];
+
+function hierarchicalLayout(nodes: GraphNode[]): Record<string, LayoutPosition> {
+  const pos: Record<string, LayoutPosition> = {};
+  const byTier = new Map<string, GraphNode[]>();
+  nodes.forEach((n) => {
+    const list = byTier.get(n.tier) || [];
+    list.push(n);
+    byTier.set(n.tier, list);
+  });
+  const layers = TIER_LAYER_ORDER.filter((t) => byTier.has(t));
+  layers.forEach((tier, li) => {
+    const layerNodes = byTier.get(tier)!;
+    const y = 40 + li * 90;
+    const spacing = 600 / (layerNodes.length + 1);
+    layerNodes.forEach((n, ni) => {
+      pos[n.id] = { x: spacing * (ni + 1), y };
     });
   });
   return pos;
 }
 
-function hierarchicalLayout(): Record<string, LayoutPosition> {
-  const layers: string[][] = [
-    ['n9'],
-    ['n2', 'n3', 'n4'],
-    ['n1'],
-    ['n5', 'n6', 'n7', 'n8'],
-    ['n10'],
-  ];
-  const pos: Record<string, LayoutPosition> = {};
-  layers.forEach((layer, li) => {
-    const y = 40 + li * 80;
-    const spacing = 600 / (layer.length + 1);
-    layer.forEach((id, ni) => {
-      pos[id] = { x: spacing * (ni + 1), y };
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v));
+}
+
+/** A small real spring/repulsion simulation seeded from the radial layout —
+ * genuinely force-directed off the real edges, unlike the previous fixed,
+ * hand-picked coordinates for 10 nonexistent nodes. */
+function forceDirectedLayout(nodes: GraphNode[], edges: GraphEdge[]): Record<string, LayoutPosition> {
+  const pos = radialLayout(nodes);
+  const ids = nodes.map((n) => n.id);
+  if (ids.length < 2) return pos;
+  const REPULSION = 2200;
+  const SPRING = 0.02;
+  const IDEAL_LEN = 90;
+  for (let it = 0; it < 60; it++) {
+    const disp: Record<string, LayoutPosition> = {};
+    ids.forEach((id) => { disp[id] = { x: 0, y: 0 }; });
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = pos[ids[i]], b = pos[ids[j]];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const distSq = Math.max(dx * dx + dy * dy, 0.01);
+        const dist = Math.sqrt(distSq);
+        const force = REPULSION / distSq;
+        const fx = (dx / dist) * force, fy = (dy / dist) * force;
+        disp[ids[i]].x += fx; disp[ids[i]].y += fy;
+        disp[ids[j]].x -= fx; disp[ids[j]].y -= fy;
+      }
+    }
+    edges.forEach((e) => {
+      const a = pos[e.from], b = pos[e.to];
+      if (!a || !b) return;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 0.01);
+      const force = SPRING * (dist - IDEAL_LEN);
+      const fx = (dx / dist) * force, fy = (dy / dist) * force;
+      disp[e.from].x += fx; disp[e.from].y += fy;
+      disp[e.to].x -= fx; disp[e.to].y -= fy;
     });
-  });
+    ids.forEach((id) => {
+      pos[id] = {
+        x: clamp(pos[id].x + disp[id].x * 0.05, 30, 570),
+        y: clamp(pos[id].y + disp[id].y * 0.05, 30, 370),
+      };
+    });
+  }
   return pos;
 }
 
-function forceDirectedLayout(): Record<string, LayoutPosition> {
-  // Pseudo force-directed: manually tuned positions that look organic
-  return {
-    n1: { x: 300, y: 190 },
-    n2: { x: 140, y: 130 },
-    n3: { x: 440, y: 100 },
-    n4: { x: 160, y: 280 },
-    n5: { x: 460, y: 240 },
-    n6: { x: 320, y: 340 },
-    n7: { x: 510, y: 150 },
-    n8: { x: 120, y: 50 },
-    n9: { x: 80, y: 200 },
-    n10: { x: 440, y: 360 },
-  };
-}
+// ── Color maps (mirrors components/dtus/CitationGraph.tsx's tier palette) ──────
 
-const LAYOUTS: Record<string, () => Record<string, LayoutPosition>> = {
-  radial: radialLayout,
-  hierarchical: hierarchicalLayout,
-  'force-directed': forceDirectedLayout,
+const tierColor: Record<string, string> = {
+  regular: '#3b82f6',
+  mega: '#a855f7',
+  hyper: '#ec4899',
+  shadow: '#6b7280',
+  archive: '#64748b',
 };
 
-// ── Color maps ─────────────────────────────────────────────────────────────────
-
-const typeColor: Record<NodeType, string> = {
-  Component: '#60a5fa',
-  Material: '#4ade80',
-  Structure: '#fb923c',
-  Infrastructure: '#c084fc',
-  Policy: '#f87171',
+const tierBg: Record<string, string> = {
+  regular: 'bg-blue-500/20 text-blue-300',
+  mega: 'bg-purple-500/20 text-purple-300',
+  hyper: 'bg-pink-500/20 text-pink-300',
+  shadow: 'bg-gray-500/20 text-gray-300',
+  archive: 'bg-slate-500/20 text-slate-300',
 };
 
-const typeBg: Record<NodeType, string> = {
-  Component: 'bg-blue-500/20 text-blue-300',
-  Material: 'bg-green-500/20 text-green-300',
-  Structure: 'bg-orange-500/20 text-orange-300',
-  Infrastructure: 'bg-purple-500/20 text-purple-300',
-  Policy: 'bg-red-500/20 text-red-300',
-};
-
-const validationBadge: Record<string, string> = {
-  verified: 'bg-green-500/20 text-green-400',
-  pending: 'bg-yellow-500/20 text-yellow-400',
-  failed: 'bg-red-500/20 text-red-400',
-};
+const ALL_TIERS: DTUTier[] = ['regular', 'mega', 'hyper', 'shadow', 'archive'];
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
@@ -154,55 +176,123 @@ export default function DependencyGraphViewer() {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showRoyaltyFlow, setShowRoyaltyFlow] = useState(false);
   const [minCitations, setMinCitations] = useState(0);
-  const [typeFilters, setTypeFilters] = useState<Record<NodeType, boolean>>({
-    Component: true,
-    Material: true,
-    Structure: true,
-    Infrastructure: true,
-    Policy: true,
+  const [tierFilters, setTierFilters] = useState<Record<string, boolean>>({
+    regular: true, mega: true, hyper: true, shadow: true, archive: true,
   });
 
   // Dragging state for pan
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const positions = useMemo(() => LAYOUTS[layoutName](), [layoutName]);
+  // Real data
+  const [nodes, setNodes] = useState<GraphNode[]>([]);
+  const [edges, setEdges] = useState<GraphEdge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadGraph = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const listRes = await apiHelpers.dtus.paginated({ limit: 80 });
+      const listData = listRes.data as { ok?: boolean; dtus?: DTU[]; items?: DTU[] };
+      const corpus = listData?.dtus || listData?.items || [];
+
+      if (corpus.length === 0) {
+        setNodes([]);
+        setEdges([]);
+        setLoading(false);
+        return;
+      }
+
+      const graphRes = await lensRun<CitationGraphMacroResult>('dtus', 'citationGraph', { dtus: corpus });
+      if (!graphRes.data.ok || !graphRes.data.result) {
+        setError(graphRes.data.error || 'Citation graph macro returned no result');
+        setLoading(false);
+        return;
+      }
+
+      const corpusById = new Map(corpus.map((d) => [d.id, d]));
+      const mergedNodes: GraphNode[] = graphRes.data.result.nodes.map((n) => {
+        const src = corpusById.get(n.id);
+        return {
+          id: n.id,
+          name: n.label,
+          tier: n.tier || 'regular',
+          creator: src?.ownerId || 'unknown',
+          citations: n.inDegree,
+          quality: src?.coherence !== undefined ? Math.round(src.coherence * 100) : 0,
+          description: src?.summary || '',
+        };
+      });
+      const mergedEdges: GraphEdge[] = graphRes.data.result.edges.map((e) => ({
+        from: e.source,
+        to: e.target,
+        label: 'cites',
+      }));
+
+      setNodes(mergedNodes);
+      setEdges(mergedEdges);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load dependency graph');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadGraph();
+  }, [loadGraph]);
+
+  const positions = useMemo(() => {
+    if (layoutName === 'hierarchical') return hierarchicalLayout(nodes);
+    if (layoutName === 'force-directed') return forceDirectedLayout(nodes, edges);
+    return radialLayout(nodes);
+  }, [layoutName, nodes, edges]);
+
+  const maxCitationsBound = useMemo(
+    () => Math.max(10, ...nodes.map((n) => n.citations)),
+    [nodes]
+  );
 
   const filteredNodeIds = useMemo(() => {
     return new Set(
-      NODES.filter(
-        (n) =>
-          typeFilters[n.type] &&
-          n.citations >= minCitations &&
-          (searchQuery === '' || n.name.toLowerCase().includes(searchQuery.toLowerCase()))
-      ).map((n) => n.id)
+      nodes
+        .filter(
+          (n) =>
+            tierFilters[n.tier] !== false &&
+            n.citations >= minCitations &&
+            (searchQuery === '' || n.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        .map((n) => n.id)
     );
-  }, [typeFilters, minCitations, searchQuery]);
+  }, [nodes, tierFilters, minCitations, searchQuery]);
 
   const filteredEdges = useMemo(
-    () => EDGES.filter((e) => filteredNodeIds.has(e.from) && filteredNodeIds.has(e.to)),
-    [filteredNodeIds]
+    () => edges.filter((e) => filteredNodeIds.has(e.from) && filteredNodeIds.has(e.to)),
+    [edges, filteredNodeIds]
   );
 
   const nodeRadius = (citations: number) => {
     const min = 20, max = 50;
-    const maxCite = 3204;
-    return min + ((citations / maxCite) * (max - min));
+    return min + (citations / maxCitationsBound) * (max - min);
   };
 
   const nodeMap = useMemo(() => {
     const m: Record<string, GraphNode> = {};
-    NODES.forEach((n) => (m[n.id] = n));
+    nodes.forEach((n) => (m[n.id] = n));
     return m;
-  }, []);
+  }, [nodes]);
 
   const selectedNodeData = selectedNode ? nodeMap[selectedNode] : null;
   const hoveredNodeData = hoveredNode ? nodeMap[hoveredNode] : null;
 
-  const totalRoyalty = NODES.reduce((s, n) => s + n.royaltyCC, 0);
-  const creators = new Set(NODES.map((n) => n.creator));
+  const creators = useMemo(() => new Set(nodes.map((n) => n.creator)), [nodes]);
+  const avgQuality = useMemo(() => {
+    if (nodes.length === 0) return 0;
+    return Math.round(nodes.reduce((s, n) => s + n.quality, 0) / nodes.length);
+  }, [nodes]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).tagName === 'circle') return;
@@ -222,12 +312,12 @@ export default function DependencyGraphViewer() {
     setOffset({ x: 0, y: 0 });
   };
 
-  const toggleType = (t: NodeType) => {
-    setTypeFilters((prev) => ({ ...prev, [t]: !prev[t] }));
+  const toggleTier = (t: string) => {
+    setTierFilters((prev) => ({ ...prev, [t]: !prev[t] }));
   };
 
   const handleExport = () => {
-    const data = { nodes: NODES, edges: EDGES, layout: positions };
+    const data = { nodes, edges, layout: positions };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -237,20 +327,50 @@ export default function DependencyGraphViewer() {
     URL.revokeObjectURL(url);
   };
 
-  // Keyframe animation style for royalty flow dots
-  const royaltyAnimStyle = `
-    @keyframes flowDot {
-      0% { offset-distance: 0%; opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { offset-distance: 100%; opacity: 0; }
-    }
-  `;
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="w-full max-w-7xl mx-auto p-4 font-mono text-sm">
+        <div className="flex gap-4 flex-col lg:flex-row">
+          <div className="w-full lg:w-56 shrink-0 space-y-3">
+            <Skeleton variant="block" height={80} />
+            <Skeleton variant="block" height={140} />
+            <Skeleton variant="block" height={70} />
+          </div>
+          <div className="flex-1 space-y-3">
+            <Skeleton variant="block" height={44} />
+            <Skeleton variant="block" height={440} />
+            <Skeleton variant="block" height={48} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error ──────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="w-full max-w-7xl mx-auto p-4">
+        <ErrorState message={error} title="Dependency graph unavailable" onRetry={loadGraph} />
+      </div>
+    );
+  }
+
+  // ── Empty ──────────────────────────────────────────────────────────────────
+  if (nodes.length === 0) {
+    return (
+      <div className="w-full max-w-7xl mx-auto p-4">
+        <EmptyState
+          icon={<Network className="h-5 w-5" />}
+          title="No dependency data yet"
+          description="No DTUs with citation links were found. Create DTUs that cite one another (components, materials, structures) to see their dependency graph here."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 font-mono text-sm text-white/90">
-      {showRoyaltyFlow && <style>{royaltyAnimStyle}</style>}
-
       <div className="flex gap-4 flex-col lg:flex-row">
         {/* ── Left sidebar: Filters ─────────────────────────────────── */}
         <div className="w-full lg:w-56 shrink-0 space-y-3">
@@ -268,25 +388,25 @@ export default function DependencyGraphViewer() {
             />
           </div>
 
-          {/* Type filters */}
+          {/* Tier filters */}
           <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-4">
             <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">
-              Node Types
+              DTU Tiers
             </label>
             <div className="space-y-2">
-              {(Object.keys(typeFilters) as NodeType[]).map((t) => (
+              {ALL_TIERS.map((t) => (
                 <label key={t} className="flex items-center gap-2 cursor-pointer group">
                   <input
                     type="checkbox"
-                    checked={typeFilters[t]}
-                    onChange={() => toggleType(t)}
+                    checked={tierFilters[t] !== false}
+                    onChange={() => toggleTier(t)}
                     className="rounded border-white/20 bg-black/40 text-blue-500 focus:ring-0 focus:ring-offset-0"
                   />
                   <span
                     className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: typeColor[t] }}
+                    style={{ backgroundColor: tierColor[t] }}
                   />
-                  <span className="text-xs text-white/60 group-hover:text-white/80">{t}</span>
+                  <span className="text-xs text-white/60 group-hover:text-white/80 capitalize">{t}</span>
                 </label>
               ))}
             </div>
@@ -300,25 +420,12 @@ export default function DependencyGraphViewer() {
             <input
               type="range"
               min={0}
-              max={1000}
-              step={10}
+              max={maxCitationsBound}
+              step={1}
               value={minCitations}
               onChange={(e) => setMinCitations(Number(e.target.value))}
               className="w-full accent-blue-500"
             />
-          </div>
-
-          {/* Royalty toggle */}
-          <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showRoyaltyFlow}
-                onChange={() => setShowRoyaltyFlow(!showRoyaltyFlow)}
-                className="rounded border-white/20 bg-black/40 text-blue-500 focus:ring-0 focus:ring-offset-0"
-              />
-              <span className="text-xs text-white/60">Royalty Flow</span>
-            </label>
           </div>
 
           {/* Export */}
@@ -335,7 +442,7 @@ export default function DependencyGraphViewer() {
           {/* Controls bar */}
           <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-3 flex items-center gap-3 flex-wrap">
             <span className="text-xs text-white/40 uppercase tracking-wider mr-2">Layout</span>
-            {Object.keys(LAYOUTS).map((l) => (
+            {['radial', 'hierarchical', 'force-directed'].map((l) => (
               <button
                 key={l}
                 onClick={() => setLayoutName(l)}
@@ -404,52 +511,33 @@ export default function DependencyGraphViewer() {
                 {filteredEdges.map((edge, i) => {
                   const from = positions[edge.from];
                   const to = positions[edge.to];
-                  if (!from || !to) return null;
-                  const r = nodeRadius(nodeMap[edge.to].citations);
+                  const targetNode = nodeMap[edge.to];
+                  if (!from || !to || !targetNode) return null;
+                  const r = nodeRadius(targetNode.citations);
                   const dx = to.x - from.x;
                   const dy = to.y - from.y;
-                  const dist = Math.sqrt(dx * dx + dy * dy);
+                  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
                   const nx = dx / dist;
                   const ny = dy / dist;
                   const tx = to.x - nx * r;
                   const ty = to.y - ny * r;
 
                   return (
-                    <g key={`edge-${i}`}>
-                      <line
-                        x1={from.x}
-                        y1={from.y}
-                        x2={tx}
-                        y2={ty}
-                        stroke="rgba(255,255,255,0.08)"
-                        strokeWidth={edge.weight}
-                        markerEnd="url(#arrowhead)"
-                      />
-                      {showRoyaltyFlow && (
-                        <>
-                          <circle r="3" fill="#60a5fa" opacity="0.8">
-                            <animateMotion
-                              dur={`${2 + i * 0.3}s`}
-                              repeatCount="indefinite"
-                              path={`M${from.x},${from.y} L${tx},${ty}`}
-                            />
-                          </circle>
-                          <circle r="2" fill="#818cf8" opacity="0.6">
-                            <animateMotion
-                              dur={`${2 + i * 0.3}s`}
-                              repeatCount="indefinite"
-                              begin={`${1 + i * 0.15}s`}
-                              path={`M${from.x},${from.y} L${tx},${ty}`}
-                            />
-                          </circle>
-                        </>
-                      )}
-                    </g>
+                    <line
+                      key={`edge-${i}`}
+                      x1={from.x}
+                      y1={from.y}
+                      x2={tx}
+                      y2={ty}
+                      stroke="rgba(255,255,255,0.08)"
+                      strokeWidth={1.5}
+                      markerEnd="url(#arrowhead)"
+                    />
                   );
                 })}
 
                 {/* Nodes */}
-                {NODES.filter((n) => filteredNodeIds.has(n.id)).map((node) => {
+                {nodes.filter((n) => filteredNodeIds.has(n.id)).map((node) => {
                   const pos = positions[node.id];
                   if (!pos) return null;
                   const r = nodeRadius(node.citations);
@@ -486,7 +574,7 @@ export default function DependencyGraphViewer() {
                         cx={pos.x}
                         cy={pos.y}
                         r={r}
-                        fill={typeColor[node.type]}
+                        fill={tierColor[node.tier] || tierColor.regular}
                         opacity={isHovered ? 0.9 : 0.55}
                         stroke={isHovered ? 'white' : 'transparent'}
                         strokeWidth={1.5}
@@ -537,7 +625,7 @@ export default function DependencyGraphViewer() {
               >
                 <div className="font-semibold text-white/90">{hoveredNodeData.name}</div>
                 <div className="text-white/50">
-                  Type: <span className="text-white/70">{hoveredNodeData.type}</span>
+                  Tier: <span className="text-white/70 capitalize">{hoveredNodeData.tier}</span>
                 </div>
                 <div className="text-white/50">
                   Creator: <span className="text-white/70">{hoveredNodeData.creator}</span>
@@ -546,14 +634,7 @@ export default function DependencyGraphViewer() {
                   Citations: <span className="text-white/70">{hoveredNodeData.citations}</span>
                 </div>
                 <div className="text-white/50">
-                  Status:{' '}
-                  <span
-                    className={`inline-block px-1.5 py-0.5 rounded text-[10px] ${
-                      validationBadge[hoveredNodeData.validationStatus]
-                    }`}
-                  >
-                    {hoveredNodeData.validationStatus}
-                  </span>
+                  Quality: <span className="text-white/70">{hoveredNodeData.quality}%</span>
                 </div>
               </div>
             )}
@@ -574,8 +655,7 @@ export default function DependencyGraphViewer() {
             </span>
             <span className="text-white/10">|</span>
             <span>
-              <span className="text-yellow-400 font-medium">{totalRoyalty} CC</span> total royalty
-              flow
+              <span className="text-green-400 font-medium">{avgQuality}%</span> avg quality
             </span>
           </div>
         </div>
@@ -598,15 +678,17 @@ export default function DependencyGraphViewer() {
 
               <span
                 className={`inline-block px-2 py-0.5 rounded text-[10px] uppercase tracking-wider ${
-                  typeBg[selectedNodeData.type]
+                  tierBg[selectedNodeData.tier] || tierBg.regular
                 }`}
               >
-                {selectedNodeData.type}
+                {selectedNodeData.tier}
               </span>
 
-              <p className="text-xs text-white/50 leading-relaxed">
-                {selectedNodeData.description}
-              </p>
+              {selectedNodeData.description && (
+                <p className="text-xs text-white/50 leading-relaxed">
+                  {selectedNodeData.description}
+                </p>
+              )}
 
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between">
@@ -618,18 +700,8 @@ export default function DependencyGraphViewer() {
                   <span className="text-white/70">{selectedNodeData.citations}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/40">Royalty</span>
-                  <span className="text-yellow-400">{selectedNodeData.royaltyCC} CC</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/40">Validation</span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] ${
-                      validationBadge[selectedNodeData.validationStatus]
-                    }`}
-                  >
-                    {selectedNodeData.validationStatus}
-                  </span>
+                  <span className="text-white/40">Quality</span>
+                  <span className="text-green-400">{selectedNodeData.quality}%</span>
                 </div>
               </div>
 
@@ -639,29 +711,28 @@ export default function DependencyGraphViewer() {
                   Connections
                 </div>
                 <div className="space-y-1">
-                  {EDGES.filter(
-                    (e) => e.from === selectedNodeData.id || e.to === selectedNodeData.id
-                  ).map((e, i) => {
-                    const otherId =
-                      e.from === selectedNodeData.id ? e.to : e.from;
-                    const other = nodeMap[otherId];
-                    const direction =
-                      e.from === selectedNodeData.id ? '->' : '<-';
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-center gap-1.5 text-[11px] text-white/50"
-                      >
-                        <span className="text-white/20">{direction}</span>
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: typeColor[other.type] }}
-                        />
-                        <span className="truncate">{other.name}</span>
-                        <span className="text-white/20 ml-auto text-[9px]">{e.label}</span>
-                      </div>
-                    );
-                  })}
+                  {edges
+                    .filter((e) => e.from === selectedNodeData.id || e.to === selectedNodeData.id)
+                    .map((e, i) => {
+                      const otherId = e.from === selectedNodeData.id ? e.to : e.from;
+                      const other = nodeMap[otherId];
+                      if (!other) return null;
+                      const direction = e.from === selectedNodeData.id ? '->' : '<-';
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center gap-1.5 text-[11px] text-white/50"
+                        >
+                          <span className="text-white/20">{direction}</span>
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: tierColor[other.tier] || tierColor.regular }}
+                          />
+                          <span className="truncate">{other.name}</span>
+                          <span className="text-white/20 ml-auto text-[9px]">{e.label}</span>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
 
