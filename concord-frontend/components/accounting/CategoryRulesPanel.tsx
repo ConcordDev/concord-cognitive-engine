@@ -70,11 +70,11 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
   }, [accounts]);
 
   return (
-    <div className={cn('rounded-xl border border-zinc-800 bg-zinc-950/40 p-4', className)}>
+    <div className={cn('rounded-xl border border-lattice-border bg-lattice-surface/40 p-4', className)}>
       <div className="flex items-center gap-2 mb-3">
         <Wand2 className="w-4 h-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-zinc-100">Auto-categorization rules</h3>
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />}
+        <h3 className="text-sm font-semibold text-gray-100">Auto-categorization rules</h3>
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
       </div>
 
       {error && (
@@ -85,13 +85,13 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
 
       <div className="space-y-1.5 mb-3">
         {rules.length === 0 && !loading && (
-          <p className="text-xs text-zinc-500">No rules yet — transactions matching a pattern will auto-post to the chosen account.</p>
+          <p className="text-xs text-gray-500">No rules yet — transactions matching a pattern will auto-post to the chosen account.</p>
         )}
         {rules.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-xs group">
-            <span className="text-zinc-400">If description contains</span>
-            <span className="font-mono text-zinc-100 bg-zinc-900 px-1.5 py-0.5 rounded">{r.pattern}</span>
-            <span className="text-zinc-400">→</span>
+            <span className="text-gray-400">If description contains</span>
+            <span className="font-mono text-gray-100 bg-lattice-elevated px-1.5 py-0.5 rounded">{r.pattern}</span>
+            <span className="text-gray-400">→</span>
             <span className="text-emerald-300 font-medium flex-1 truncate">{accName(r.accountId)}</span>
             <button type="button" onClick={() => void remove(r.id)} aria-label="Delete rule"
               className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
@@ -100,12 +100,12 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); void create(); }} className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-zinc-500">If contains</span>
+        <span className="text-xs text-gray-500">If contains</span>
         <input value={pattern} onChange={(e) => setPattern(e.target.value)} placeholder="e.g. AMAZON" maxLength={60}
-          className="w-32 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none" />
-        <span className="text-xs text-zinc-500">post to</span>
+          className="w-32 bg-lattice-elevated border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-100 focus:border-emerald-500 focus:outline-none" />
+        <span className="text-xs text-gray-500">post to</span>
         <select value={accountId} onChange={(e) => setAccountId(e.target.value)}
-          className="flex-1 min-w-[10rem] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:outline-none">
+          className="flex-1 min-w-[10rem] bg-lattice-elevated border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-100 focus:outline-none">
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ''}{a.name}</option>)}
         </select>
         <button type="submit" disabled={saving || !pattern.trim() || !accountId}

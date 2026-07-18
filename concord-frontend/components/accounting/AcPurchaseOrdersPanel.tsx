@@ -83,9 +83,9 @@ export function AcPurchaseOrdersPanel() {
           {pos.map((po) => (
             <li key={po.id} className="bg-black/20 border border-white/10 rounded-lg p-2.5">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-emerald-400">{po.number}</span>
+                <span className="text-xs font-mono tabular-nums text-emerald-400">{po.number}</span>
                 <span className="text-xs text-gray-200 flex-1">{po.vendorName}</span>
-                <span className="text-xs text-gray-300">${po.total.toLocaleString()}</span>
+                <span className="text-xs text-gray-300 font-mono tabular-nums">${po.total.toLocaleString()}</span>
                 {po.status === 'open' ? (
                   <button type="button" onClick={() => receive(po.id)}
                     className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded">

@@ -27,6 +27,7 @@ import {
   AlertCircle, Wallet,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { Skeleton } from '@/components/ui';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface LocalInvoice {
@@ -139,7 +140,7 @@ export function StripeInvoicePanel() {
         <div className="flex items-center gap-2">
           <Receipt className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Invoices & Payments</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">
             stripe live
           </span>
         </div>
@@ -169,14 +170,14 @@ export function StripeInvoicePanel() {
                 placeholder="Customer name"
                 value={composerData.customerName}
                 onChange={(e) => setComposerData({ ...composerData, customerName: e.target.value })}
-                className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-5"
+                className="rounded-md border border-lattice-border bg-lattice-void px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-5"
               />
               <input
                 type="email"
                 placeholder="customer@example.com"
                 value={composerData.customerEmail}
                 onChange={(e) => setComposerData({ ...composerData, customerEmail: e.target.value })}
-                className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-4"
+                className="rounded-md border border-lattice-border bg-lattice-void px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-4"
               />
               <input
                 type="number"
@@ -184,7 +185,7 @@ export function StripeInvoicePanel() {
                 placeholder="Total $"
                 value={composerData.total}
                 onChange={(e) => setComposerData({ ...composerData, total: e.target.value })}
-                className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-2"
+                className="rounded-md border border-lattice-border bg-lattice-void px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-2"
               />
               <button
                 type="submit"
@@ -206,7 +207,7 @@ export function StripeInvoicePanel() {
         </div>
       )}
 
-      <div className="flex items-center gap-1 border-b border-zinc-800">
+      <div className="flex items-center gap-1 border-b border-lattice-border">
         {([
           { id: 'draft' as const, label: 'Draft', count: grouped.draft.length },
           { id: 'unpaid' as const, label: 'Unpaid', count: grouped.unpaid.length },
@@ -217,23 +218,27 @@ export function StripeInvoicePanel() {
             type="button"
             onClick={() => setFilter(t.id)}
             className={`flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-medium transition-colors ${
-              filter === t.id ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-zinc-400 hover:text-zinc-200'
+              filter === t.id ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-gray-400 hover:text-gray-200'
             }`}
           >
             {t.label}
-            <span className="rounded-full bg-zinc-800 px-1.5 font-mono text-[10px] text-zinc-400">{t.count}</span>
+            <span className="rounded-full bg-lattice-elevated px-1.5 font-mono text-[10px] text-gray-400">{t.count}</span>
           </button>
         ))}
       </div>
 
       {listMutation.isPending && invoices.length === 0 && (
-        <div className="flex items-center justify-center py-6 text-xs text-zinc-400">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading invoices…
+        <div className="space-y-2" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-md border border-lattice-border bg-lattice-surface/40 p-3">
+              <Skeleton variant="line" lines={2} />
+            </div>
+          ))}
         </div>
       )}
 
       {!listMutation.isPending && visible.length === 0 && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
+        <div className="rounded-md border border-dashed border-lattice-border bg-lattice-surface/40 px-3 py-6 text-center text-xs text-gray-400">
           No {filter} invoices yet — create one above and finalize via Stripe.
         </div>
       )}
@@ -269,7 +274,7 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
     invoice.status === 'paid' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
     isOverdue ? 'bg-red-500/15 text-red-300 border-red-500/30' :
     invoice.status === 'open' ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' :
-    'bg-zinc-800 text-zinc-400 border-zinc-700';
+    'bg-lattice-elevated text-gray-400 border-lattice-border';
 
   return (
     <motion.div
@@ -278,7 +283,7 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.15 }}
-      className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3"
+      className="rounded-md border border-lattice-border bg-lattice-surface/40 p-3"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -294,14 +299,14 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[11px] text-zinc-400">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[11px] text-gray-400">
             <span>Issued {invoice.issuedAt}</span>
             <span>Due {invoice.dueAt}</span>
             {invoice.paidAt && <span className="text-emerald-400">Paid {invoice.paidAt}</span>}
           </div>
         </div>
         <div className="text-right">
-          <div className="font-mono text-base font-semibold text-white">${invoice.total.toFixed(2)}</div>
+          <div className="font-mono tabular-nums text-base font-semibold text-white">${invoice.total.toFixed(2)}</div>
         </div>
       </div>
 
@@ -313,7 +318,7 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="customer email"
-              className="rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-[11px] text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
+              className="rounded-md border border-lattice-border bg-lattice-void px-2 py-1 text-[11px] text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none"
             />
             <button
               type="button"
@@ -342,7 +347,7 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
                 href={invoice.stripeInvoicePdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 px-2.5 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-200"
+                className="inline-flex items-center gap-1.5 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-400 transition-colors hover:bg-lattice-elevated hover:text-gray-200"
               >
                 <FileDown className="h-3 w-3" />
                 PDF
@@ -375,7 +380,7 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
           <button
             type="button"
             onClick={onMarkPaid}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-zinc-800 px-2.5 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-300"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-300"
           >
             <CheckCircle2 className="h-3 w-3" />
             Mark paid

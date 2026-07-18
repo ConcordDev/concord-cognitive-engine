@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { AdvancedAccountingPanel } from './AdvancedAccountingPanel';
 
 export interface Account {
@@ -109,6 +110,7 @@ export function AccountingWorkbench({ open, onClose }: Props) {
 function ChartOfAccountsTab() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ code: '', name: '', category: 'expense' as Account['category'] });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -116,6 +118,7 @@ function ChartOfAccountsTab() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await lensRun({
         domain: 'accounting',
@@ -126,6 +129,7 @@ function ChartOfAccountsTab() {
       setAccounts(result?.accounts || []);
     } catch (e) {
       console.error('[CoaTab] list failed', e);
+      setError('Could not load the chart of accounts. Retry in a moment.');
     } finally {
       setLoading(false);
     }
@@ -184,11 +188,13 @@ function ChartOfAccountsTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-xs text-gray-400">
-        <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
+      <div className="p-3">
+        <Skeleton variant="line" lines={4} />
       </div>
     );
   }
+
+  const activeCount = accounts.filter((a) => !a.archived).length;
 
   return (
     <div className="p-3 space-y-2">
@@ -199,6 +205,18 @@ function ChartOfAccountsTab() {
       >
         <Plus className="w-3 h-3" /> New account
       </button>
+
+      {error && (
+        <p className="flex items-center gap-1.5 text-[11px] text-rose-300 px-1 py-1.5">
+          <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {error}
+        </p>
+      )}
+
+      {!error && activeCount === 0 && !creating && (
+        <p className="text-center text-xs text-gray-400 py-8">
+          No accounts yet. Create your first account to start posting entries.
+        </p>
+      )}
 
       {creating && (
         <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
@@ -437,7 +455,7 @@ function JournalEntryTab() {
                     min="0"
                     value={l.debit || ''}
                     onChange={(e) => updateLine(i, { debit: Number(e.target.value), credit: 0 })}
-                    className="w-full bg-black/40 border border-white/10 rounded px-1 py-1 text-xs text-right font-mono text-gray-100"
+                    className="w-full bg-black/40 border border-white/10 rounded px-1 py-1 text-xs text-right font-mono tabular-nums text-gray-100"
                   />
                 </td>
                 <td className="px-2 py-1">
@@ -447,7 +465,7 @@ function JournalEntryTab() {
                     min="0"
                     value={l.credit || ''}
                     onChange={(e) => updateLine(i, { credit: Number(e.target.value), debit: 0 })}
-                    className="w-full bg-black/40 border border-white/10 rounded px-1 py-1 text-xs text-right font-mono text-gray-100"
+                    className="w-full bg-black/40 border border-white/10 rounded px-1 py-1 text-xs text-right font-mono tabular-nums text-gray-100"
                   />
                 </td>
                 <td className="px-1">
@@ -468,8 +486,8 @@ function JournalEntryTab() {
           <tfoot className="bg-black/40 border-t border-white/10">
             <tr className="text-xs">
               <td className="px-2 py-1.5 text-gray-400">Totals</td>
-              <td className="px-2 py-1.5 text-right font-mono text-gray-200">{totalDebit.toFixed(2)}</td>
-              <td className="px-2 py-1.5 text-right font-mono text-gray-200">{totalCredit.toFixed(2)}</td>
+              <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-200">{totalDebit.toFixed(2)}</td>
+              <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-200">{totalCredit.toFixed(2)}</td>
               <td />
             </tr>
           </tfoot>
@@ -487,7 +505,7 @@ function JournalEntryTab() {
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px]',
+              'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] tabular-nums',
               balanced
                 ? 'bg-emerald-500/15 text-emerald-300'
                 : 'bg-amber-500/15 text-amber-300',
@@ -546,10 +564,12 @@ function LedgerTab() {
   const [dims, setDims] = useState<DimensionOpt[]>([]);
   const [accountFilter, setAccountFilter] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tagMenuFor, setTagMenuFor] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [coa, ledger, dimList] = await Promise.all([
         lensRun({ domain: 'accounting', action: 'coa-list', input: {} }),
@@ -564,6 +584,7 @@ function LedgerTab() {
       setDims(((dimList.data as { result?: { dimensions?: DimensionOpt[] } })?.result?.dimensions || []));
     } catch (e) {
       console.error('[LedgerTab] fetch failed', e);
+      setError('Could not load ledger entries. Retry in a moment.');
     } finally {
       setLoading(false);
     }
@@ -605,9 +626,13 @@ function LedgerTab() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
+        <div className="border border-white/10 rounded overflow-hidden">
+          <SkeletonTableRows rows={6} columns={6} />
         </div>
+      ) : error ? (
+        <p className="flex items-center justify-center gap-1.5 text-center text-xs text-rose-300 py-8">
+          <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {error}
+        </p>
       ) : rows.length === 0 ? (
         <p className="text-center text-xs text-gray-400 py-8">No entries posted yet.</p>
       ) : (
@@ -626,13 +651,13 @@ function LedgerTab() {
             <tbody>
               {rows.map((r, i) => (
                 <tr key={`${r.entryId}_${i}`} className="border-t border-white/5 align-top">
-                  <td className="px-2 py-1 text-gray-400 font-mono">{r.date}</td>
-                  <td className="px-2 py-1 text-gray-400 font-mono">{r.number}</td>
+                  <td className="px-2 py-1 text-gray-400 font-mono tabular-nums">{r.date}</td>
+                  <td className="px-2 py-1 text-gray-400 font-mono tabular-nums">{r.number}</td>
                   <td className="px-2 py-1 text-gray-200">{accountName(r.accountId)}</td>
-                  <td className="px-2 py-1 text-right font-mono text-emerald-300">
+                  <td className="px-2 py-1 text-right font-mono tabular-nums text-emerald-300">
                     {r.debit > 0 ? r.debit.toFixed(2) : ''}
                   </td>
-                  <td className="px-2 py-1 text-right font-mono text-cyan-300">
+                  <td className="px-2 py-1 text-right font-mono tabular-nums text-cyan-300">
                     {r.credit > 0 ? r.credit.toFixed(2) : ''}
                   </td>
                   <td className="px-2 py-1">
@@ -727,8 +752,8 @@ function BalanceSheetTab() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin mr-2" /> Computing…
+        <div className="py-2">
+          <Skeleton variant="line" lines={4} />
         </div>
       ) : !bs ? (
         <p className="text-xs text-gray-400">No data</p>
@@ -739,7 +764,7 @@ function BalanceSheetTab() {
               <Check className="w-3 h-3" /> Balanced
             </div>
           ) : (
-            <div className="text-[11px] text-rose-300 inline-flex items-center gap-1">
+            <div className="text-[11px] text-rose-300 inline-flex items-center gap-1 tabular-nums">
               <AlertTriangle className="w-3 h-3" /> Out of balance by {fmt(bs.imbalance)}
             </div>
           )}
@@ -758,14 +783,14 @@ function BalanceSheetTab() {
               ) : (
                 section.items.map((a) => (
                   <div key={a.id} className="flex justify-between px-3 py-1 text-xs border-t border-white/5">
-                    <span className="text-gray-300"><code className="text-gray-400 mr-2">{a.code}</code>{a.name}</span>
-                    <span className="font-mono text-gray-200">{fmt(a.balance)}</span>
+                    <span className="text-gray-300"><code className="text-gray-400 mr-2 font-mono tabular-nums">{a.code}</code>{a.name}</span>
+                    <span className="font-mono tabular-nums text-gray-200">{fmt(a.balance)}</span>
                   </div>
                 ))
               )}
               <div className="flex justify-between px-3 py-1.5 text-xs border-t border-white/10 bg-black/30">
                 <span className="text-gray-400 uppercase tracking-wider text-[10px]">Total {section.title}</span>
-                <span className="font-mono font-semibold text-gray-100">{fmt(section.total)}</span>
+                <span className="font-mono tabular-nums font-semibold text-gray-100">{fmt(section.total)}</span>
               </div>
             </div>
           ))}
@@ -869,7 +894,7 @@ function AgingTab() {
     <div className="p-3 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-400">
-          Total open: <span className="font-mono text-gray-200">${fmt(totalOpen)}</span>
+          Total open: <span className="font-mono tabular-nums text-gray-200">${fmt(totalOpen)}</span>
         </span>
         <button
           type="button"
@@ -924,15 +949,17 @@ function AgingTab() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
+        <div className="py-2">
+          <Skeleton variant="line" lines={4} />
         </div>
+      ) : buckets.length === 0 ? (
+        <p className="text-center text-xs text-gray-400 py-8">No open invoices. Create one to start tracking receivables.</p>
       ) : (
         buckets.map((b) => (
           <div key={b.key} className="border border-white/10 rounded overflow-hidden">
             <div className="px-3 py-1.5 bg-black/40 flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-wider text-gray-400">{b.label}</span>
-              <span className="font-mono text-xs text-gray-200">${fmt(b.total)}</span>
+              <span className="font-mono tabular-nums text-xs text-gray-200">${fmt(b.total)}</span>
             </div>
             {b.invoices.length === 0 ? (
               <p className="px-3 py-2 text-[11px] text-gray-400">(no open invoices in this bucket)</p>
@@ -941,10 +968,10 @@ function AgingTab() {
                 <div key={inv.id} className="px-3 py-1.5 text-xs border-t border-white/5 flex items-center justify-between group">
                   <div className="min-w-0">
                     <p className="text-gray-200 truncate">{inv.customerName}</p>
-                    <p className="text-[10px] text-gray-400">{inv.number} · due {inv.dueAt} · {inv.daysPastDue > 0 ? `${inv.daysPastDue}d past due` : 'not yet due'}</p>
+                    <p className="text-[10px] text-gray-400 tabular-nums">{inv.number} · due {inv.dueAt} · {inv.daysPastDue > 0 ? `${inv.daysPastDue}d past due` : 'not yet due'}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-gray-200">${fmt(inv.total)}</span>
+                    <span className="font-mono tabular-nums text-gray-200">${fmt(inv.total)}</span>
                     <button
                       type="button"
                       onClick={() => { setLinkPrompt(inv.id); setLinkEmail(''); setLinkResult(null); setLinkError(null); }}
@@ -972,7 +999,7 @@ function AgingTab() {
         <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-cyan-200">Send Stripe payment link</span>
-            <button type="button" aria-label="Close" onClick={() => setLinkPrompt(null)} className="text-zinc-400 hover:text-zinc-300">
+            <button type="button" aria-label="Close" onClick={() => setLinkPrompt(null)} className="text-gray-400 hover:text-gray-300">
               <X className="w-3 h-3" />
             </button>
           </div>
@@ -1004,7 +1031,7 @@ function AgingTab() {
                 </button>
                 {linkResult.pdf && (
                   <a href={linkResult.pdf} target="_blank" rel="noopener noreferrer"
-                    className="flex-1 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-xs text-zinc-200 text-center">
+                    className="flex-1 px-2 py-1 rounded border border-lattice-border bg-lattice-elevated text-xs text-gray-200 text-center">
                     Open PDF
                   </a>
                 )}

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Banknote, Loader2, Sparkles, Check, RefreshCw, Plus, Upload, Undo2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
 interface BankTxn {
@@ -180,7 +181,7 @@ export function BankFeedsInbox() {
 
       {view === 'categorized' && (
         categorizedLoading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="p-2"><SkeletonTableRows rows={5} columns={4} /></div>
         ) : categorized.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Check className="w-6 h-6 mx-auto mb-2 opacity-30" />No categorized transactions yet.</div>
         ) : (
@@ -189,7 +190,7 @@ export function BankFeedsInbox() {
               const isDeposit = t.amount > 0;
               return (
                 <li key={t.id} className="px-4 py-2.5 hover:bg-white/[0.02] group flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
+                  <span className="text-[10px] text-gray-400 font-mono tabular-nums w-20">{t.date}</span>
                   <span className="text-xs text-white flex-1 truncate">{t.description}</span>
                   <span className="text-[10px] text-gray-400">{accountName(t.accountId)}</span>
                   <span className={cn('text-xs font-mono tabular-nums w-24 text-right', isDeposit ? 'text-emerald-300' : 'text-rose-300')}>
@@ -248,7 +249,7 @@ export function BankFeedsInbox() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="p-2"><SkeletonTableRows rows={5} columns={4} /></div>
       ) : txns.length === 0 ? (
         <div className="px-3 py-10 text-center text-xs text-gray-400"><RefreshCw className="w-6 h-6 mx-auto mb-2 opacity-30" />Inbox clear. Import a bank txn to start.</div>
       ) : (
@@ -259,7 +260,7 @@ export function BankFeedsInbox() {
             return (
               <li key={t.id} className="px-4 py-2.5 hover:bg-white/[0.02] group">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
+                  <span className="text-[10px] text-gray-400 font-mono tabular-nums w-20">{t.date}</span>
                   <span className="text-xs text-white flex-1 truncate">{t.description}</span>
                   <span className={cn('text-xs font-mono tabular-nums w-24 text-right', isDeposit ? 'text-emerald-300' : 'text-rose-300')}>
                     {isDeposit ? '+' : ''}${Math.abs(t.amount).toFixed(2)}
@@ -287,7 +288,7 @@ export function BankFeedsInbox() {
                             <option key={a.id} value={a.id}>{a.code} {a.name}</option>
                           ))}
                       </select>
-                      <span className={cn('text-[9px] px-1.5 py-0.5 rounded font-mono', sugg.highConfidence ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/15 text-amber-300')}>
+                      <span className={cn('text-[9px] px-1.5 py-0.5 rounded font-mono tabular-nums', sugg.highConfidence ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/15 text-amber-300')}>
                         {Math.round(sugg.confidence * 100)}% · {sugg.source}
                       </span>
                       <button

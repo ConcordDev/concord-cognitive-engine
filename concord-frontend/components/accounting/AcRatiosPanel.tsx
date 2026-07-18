@@ -3,8 +3,8 @@
 /** AcRatiosPanel — key financial ratios computed from the ledger. */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { Skeleton } from '@/components/ui';
 
 interface Ratios {
   currentRatio: number | null; quickRatio: number | null; debtToEquity: number | null;
@@ -26,7 +26,14 @@ export function AcRatiosPanel() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  if (loading || !r) return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  if (loading || !r) return (
+    <div className="space-y-4 p-1" aria-busy="true">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} variant="block" height="4.5rem" />)}
+      </div>
+      <Skeleton variant="block" height="7rem" />
+    </div>
+  );
 
   const fmt = (v: number | null) => (v == null ? '—' : v.toString());
   const fmtPct = (v: number | null) => (v == null ? '—' : `${v}%`);
@@ -45,12 +52,12 @@ export function AcRatiosPanel() {
       <div className="bg-black/30 border border-white/10 rounded-lg p-3">
         <h3 className="text-xs font-semibold text-gray-300 mb-2">Underlying totals</h3>
         <ul className="grid grid-cols-2 gap-1 text-[11px] text-gray-400">
-          <li>Current assets: <span className="text-gray-200">${r.totals.currentAssets.toLocaleString()}</span></li>
-          <li>Total assets: <span className="text-gray-200">${r.totals.totalAssets.toLocaleString()}</span></li>
-          <li>Current liabilities: <span className="text-gray-200">${r.totals.currentLiabilities.toLocaleString()}</span></li>
-          <li>Total liabilities: <span className="text-gray-200">${r.totals.totalLiabilities.toLocaleString()}</span></li>
-          <li>Revenue: <span className="text-gray-200">${r.totals.revenue.toLocaleString()}</span></li>
-          <li>Net income: <span className="text-gray-200">${r.totals.netIncome.toLocaleString()}</span></li>
+          <li>Current assets: <span className="font-mono tabular-nums text-gray-200">${r.totals.currentAssets.toLocaleString()}</span></li>
+          <li>Total assets: <span className="font-mono tabular-nums text-gray-200">${r.totals.totalAssets.toLocaleString()}</span></li>
+          <li>Current liabilities: <span className="font-mono tabular-nums text-gray-200">${r.totals.currentLiabilities.toLocaleString()}</span></li>
+          <li>Total liabilities: <span className="font-mono tabular-nums text-gray-200">${r.totals.totalLiabilities.toLocaleString()}</span></li>
+          <li>Revenue: <span className="font-mono tabular-nums text-gray-200">${r.totals.revenue.toLocaleString()}</span></li>
+          <li>Net income: <span className="font-mono tabular-nums text-gray-200">${r.totals.netIncome.toLocaleString()}</span></li>
         </ul>
         <p className="text-[10px] text-gray-400 mt-2">{r.note}</p>
       </div>
@@ -61,7 +68,7 @@ export function AcRatiosPanel() {
 function Card({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="bg-black/30 border border-white/10 rounded-lg p-3">
-      <p className="text-xl font-bold text-emerald-300">{value}</p>
+      <p className="text-xl font-mono font-bold tabular-nums text-emerald-300">{value}</p>
       <p className="text-[11px] text-gray-300">{label}</p>
       <p className="text-[9px] text-gray-400 mt-0.5">{hint}</p>
     </div>

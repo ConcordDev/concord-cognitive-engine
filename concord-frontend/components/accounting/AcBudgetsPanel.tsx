@@ -100,9 +100,9 @@ export function AcBudgetsPanel() {
                   {bva.rows.map((r) => (
                     <li key={r.accountId} className="flex items-center gap-2 text-xs bg-black/20 border border-white/10 rounded px-2 py-1.5">
                       <span className="flex-1 text-gray-200">{r.account}</span>
-                      <span className="text-gray-400">budget ${r.budgeted.toLocaleString()}</span>
-                      <span className="text-gray-300">actual ${r.actual.toLocaleString()}</span>
-                      <span className={r.variance >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      <span className="text-gray-400 font-mono tabular-nums">budget ${r.budgeted.toLocaleString()}</span>
+                      <span className="text-gray-300 font-mono tabular-nums">actual ${r.actual.toLocaleString()}</span>
+                      <span className={`font-mono tabular-nums ${r.variance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {r.variance >= 0 ? '+' : ''}{r.variance.toLocaleString()}
                       </span>
                     </li>

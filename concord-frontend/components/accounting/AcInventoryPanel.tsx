@@ -115,10 +115,10 @@ export function AcInventoryPanel() {
               <li key={it.id} className="flex items-center gap-2 text-xs bg-black/20 border border-white/10 rounded px-2 py-1.5">
                 {low && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
                 <span className="flex-1 text-gray-200">{it.name}{it.sku && <span className="text-gray-400"> · {it.sku}</span>}</span>
-                <span className="text-gray-400">${it.price} / cost ${it.cost}</span>
+                <span className="text-gray-400 font-mono tabular-nums">${it.price} / cost ${it.cost}</span>
                 {it.type === 'inventory' && (
                   <>
-                    <span className={low ? 'text-amber-400' : 'text-gray-400'}>{it.qtyOnHand} on hand</span>
+                    <span className={`font-mono tabular-nums ${low ? 'text-amber-400' : 'text-gray-400'}`}>{it.qtyOnHand} on hand</span>
                     <input placeholder="±" value={adj[it.id] || ''}
                       onChange={(e) => setAdj((p) => ({ ...p, [it.id]: e.target.value }))}
                       className="w-12 bg-black/40 border border-white/10 rounded px-1 py-0.5 text-[11px]" />
@@ -145,7 +145,7 @@ function Empty({ text }: { text: string }) { return <p className="text-[11px] te
 function Stat({ label, value, alert }: { label: string; value: string | number; alert?: boolean }) {
   return (
     <div className="bg-black/30 border border-white/10 rounded-lg p-3 text-center">
-      <p className={`text-xl font-bold ${alert ? 'text-amber-300' : 'text-gray-100'}`}>{value}</p>
+      <p className={`text-xl font-bold font-mono tabular-nums ${alert ? 'text-amber-300' : 'text-gray-100'}`}>{value}</p>
       <p className="text-[10px] text-gray-400 uppercase">{label}</p>
     </div>
   );

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Loader2, Plus, Trash2, Mail, Phone, Building2, Pencil, Check, X } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, Phone, Building2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Customer {
   id: string; number: string; name: string; email: string; phone: string;
@@ -67,7 +68,7 @@ export function CustomersPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Customers</span>
-        <span className="text-[10px] text-gray-400">{list.length}</span>
+        <span className="text-[10px] text-gray-400 font-mono tabular-nums">{list.length}</span>
         <button
           onClick={() => setCreating(v => !v)}
           className="ml-auto px-2.5 py-1 text-xs rounded bg-emerald-500 text-black font-semibold hover:bg-emerald-400 inline-flex items-center gap-1"
@@ -83,14 +84,14 @@ export function CustomersPanel() {
           <input value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draft.billingAddress} onChange={e => setDraft({ ...draft, billingAddress: e.target.value })} placeholder="Billing address" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.taxId} onChange={e => setDraft({ ...draft, taxId: e.target.value })} placeholder="Tax ID" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input value={draft.taxId} onChange={e => setDraft({ ...draft, taxId: e.target.value })} placeholder="Tax ID" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
           <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Save customer</button>
         </div>
       )}
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={5} columns={4} />
         ) : list.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No customers yet.</div>
         ) : (
@@ -103,7 +104,7 @@ export function CustomersPanel() {
                   <input value={editDraft.email} onChange={e => setEditDraft({ ...editDraft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <input value={editDraft.phone} onChange={e => setEditDraft({ ...editDraft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <input value={editDraft.billingAddress} onChange={e => setEditDraft({ ...editDraft, billingAddress: e.target.value })} placeholder="Billing address" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                  <input value={editDraft.taxId} onChange={e => setEditDraft({ ...editDraft, taxId: e.target.value })} placeholder="Tax ID" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                  <input value={editDraft.taxId} onChange={e => setEditDraft({ ...editDraft, taxId: e.target.value })} placeholder="Tax ID" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
                   <div className="col-span-12 flex gap-2">
                     <button onClick={() => saveEdit(c.id)} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center gap-1"><Check className="w-3 h-3" />Save</button>
                     <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs rounded border border-white/15 text-gray-300 hover:bg-white/5 inline-flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
@@ -117,7 +118,7 @@ export function CustomersPanel() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{c.name} {c.company && <span className="text-[10px] text-gray-400">· {c.company}</span>}</div>
                   <div className="text-[10px] text-gray-400 flex items-center gap-3">
-                    <span className="font-mono">{c.number}</span>
+                    <span className="font-mono tabular-nums">{c.number}</span>
                     {c.email && <span className="inline-flex items-center gap-0.5"><Mail className="w-2.5 h-2.5" />{c.email}</span>}
                     {c.phone && <span className="inline-flex items-center gap-0.5"><Phone className="w-2.5 h-2.5" />{c.phone}</span>}
                     {c.taxId && <span className="inline-flex items-center gap-0.5"><Building2 className="w-2.5 h-2.5" />{c.taxId}</span>}
