@@ -13,8 +13,8 @@
  * search (`query`/`field`), unchanged in shape and behavior.
  */
 
-import { useState } from 'react';
-import { Lightbulb, Loader2, Search, ExternalLink, Calendar, Building2, Users, Plus, X, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Lightbulb, Loader2, Search, ExternalLink, Calendar, Building2, Users, Plus, X, SlidersHorizontal, FileText, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { EmptyState } from '@/components/ui';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
@@ -48,6 +48,26 @@ interface PatentSearchResult {
   source: string;
 }
 
+interface PatentClaim {
+  claimId: string | null;
+  sequence: number | null;
+  number: number | string | null;
+  text: string | null;
+  dependent: string | number | null;
+  exemplary: boolean | null;
+}
+interface PatentClaimsResult {
+  patentId: string;
+  title: string | null;
+  date: string | null;
+  claims: PatentClaim[];
+  count: number;
+  titleLookupFailed?: boolean;
+  source: string;
+  legalStatus: 'not_available';
+  disclosure: string;
+}
+
 const FIELDS: { id: Field; label: string }[] = [
   { id: 'title', label: 'Title' },
   { id: 'abstract', label: 'Abstract' },
@@ -59,12 +79,100 @@ function emptyFilterRow(): FilterRow {
   return { field: 'title', value: '' };
 }
 
+/**
+ * PatentClaimsPanel — real claim TEXT for one patent, wired to
+ * `law.patent-claims`. Mounted inline under a patent card when its
+ * "View claims" toggle is open; fetches once on first expand (cached on
+ * the backend via a long-TTL cache — claim text never changes).
+ *
+ * HONESTY: the legal-status disclosure below is not decorative — it is
+ * the load-bearing reason this panel exists in this shape. PatentsView's
+ * free data has no reexamination/reissue/disclaimer/litigation/lapse
+ * signal, so this panel MUST NOT render, imply, or let a user infer an
+ * active/expired/enforceable status from claim presence or count. The
+ * banner is always shown whenever real claim data renders — never
+ * conditionally hidden once trust is established.
+ */
+function PatentClaimsPanel({ patentId, fallbackTitle }: { patentId: string; fallbackTitle: string }) {
+  const { status, error, result, dispatch } = useMacroDispatchFeedback<PatentClaimsResult>();
+  const busy = status === 'dispatched' || status === 'running';
+
+  useEffect(() => {
+    void dispatch('law', 'patent-claims', { patentId, limit: 100 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patentId]);
+
+  return (
+    <div className="mt-2 rounded-lg border border-amber-400/20 bg-black/30 p-2.5 space-y-2">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-300/90">
+        <FileText className="h-3 w-3" />
+        Claims — {fallbackTitle}
+      </div>
+
+      {busy && (
+        <div className="flex items-center gap-2 py-3 text-xs text-gray-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Fetching claim text from USPTO PatentsView…
+        </div>
+      )}
+
+      {status === 'error' && (
+        <p className="text-xs text-rose-400" role="alert">{error}</p>
+      )}
+
+      {status === 'done' && result && (
+        <>
+          {/* Non-negotiable honest disclosure — legal status is never
+              computed or implied from this data. See component docstring. */}
+          <div className="flex items-start gap-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[10px] leading-snug text-amber-200/90">
+            <ShieldAlert className="mt-0.5 h-3 w-3 shrink-0" />
+            <span>
+              <strong>Legal status not available.</strong> This is claim text only — active / expired / lapsed / litigated
+              status is not part of this free data source and is never inferred here. Verify current status directly
+              with USPTO Patent Center before relying on this for any filing, licensing, or freedom-to-operate decision.
+            </span>
+          </div>
+
+          {result.titleLookupFailed && (
+            <p className="text-[10px] text-gray-500">(Title/date lookup failed — showing claims only.)</p>
+          )}
+
+          {result.claims.length === 0 && (
+            <EmptyState compact title="No claim text found for this patent." ariaLabel="No claims" />
+          )}
+
+          {result.claims.length > 0 && (
+            <ol className="space-y-1.5">
+              {result.claims.map((c, i) => (
+                <li key={c.claimId || i} className="text-xs text-gray-300 leading-relaxed">
+                  <div className="flex items-baseline gap-1.5">
+                    {c.exemplary && (
+                      <span className="rounded bg-amber-400/20 px-1 text-[9px] font-semibold uppercase text-amber-300">
+                        Exemplary
+                      </span>
+                    )}
+                    {c.dependent != null && (
+                      <span className="text-[10px] text-gray-500">(depends on claim {c.dependent})</span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 whitespace-pre-wrap">{c.text}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function PatentSearch() {
   const [query, setQuery] = useState('');
   const [field, setField] = useState<Field>('title');
   const [advanced, setAdvanced] = useState(false);
   const [filters, setFilters] = useState<FilterRow[]>([emptyFilterRow(), emptyFilterRow()]);
   const [combinator, setCombinator] = useState<Combinator>('and');
+  const [expandedClaimsFor, setExpandedClaimsFor] = useState<string | null>(null);
   const { status, error, result, dispatch } = useMacroDispatchFeedback<PatentSearchResult>();
   const busy = status === 'dispatched' || status === 'running';
 
@@ -293,8 +401,22 @@ export function PatentSearch() {
                   >
                     <ExternalLink className="h-3 w-3" />
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedClaimsFor((cur) => (cur === p.patentId ? null : p.patentId))}
+                    aria-expanded={expandedClaimsFor === p.patentId}
+                    className="flex h-7 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium text-gray-400 transition-colors hover:bg-white/10 hover:text-gray-200"
+                    title="View claim text (USPTO PatentsView)"
+                  >
+                    <FileText className="h-3 w-3" />
+                    Claims
+                    {expandedClaimsFor === p.patentId ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                  </button>
                 </div>
               </div>
+              {expandedClaimsFor === p.patentId && (
+                <PatentClaimsPanel patentId={p.patentId} fallbackTitle={p.title || `US ${p.patentId}`} />
+              )}
             </div>
           ))}
         </div>

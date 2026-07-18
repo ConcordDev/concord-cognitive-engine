@@ -9,9 +9,14 @@
 
 import { createHash } from "node:crypto";
 import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
+import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
+// Granted-patent claim text never changes once granted — safe to cache
+// long. Cuts real network traffic to search.patentsview.org (rate limit
+// 45 req/min per API key) for repeat views of the same patent.
+const PATENT_CLAIMS_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 // USPTO PatentsView field → column mapping, shared by the single-field
 // quick-search path and the multi-field boolean query builder below (closes
@@ -28,6 +33,30 @@ const USPTO_FIELD_COLUMN = {
 function _usptoFieldClause(field, value) {
   const column = USPTO_FIELD_COLUMN[field] || USPTO_FIELD_COLUMN.title;
   return { _text_phrase: { [column]: value } };
+}
+
+// Normalizes a user-typed patent number ("US 10,000,000 B2", "10000000",
+// "10,000,000") down to the bare digit string PatentsView's `patent_id`
+// column expects. Grant numbers for utility patents (the overwhelming
+// common case for a claims lookup) are numeric; a non-numeric remainder
+// (e.g. a design patent "D987654") simply won't match `g_claim` and the
+// macro returns an honest empty result rather than throwing.
+//
+// A naive "strip every non-digit" pass would corrupt the number on a
+// fully-formatted input like "US10000000B2" — the kind-code suffix's own
+// digit(s) ("2") would get appended onto the real grant number, turning
+// 10000000 into 100000002. So a leading "US" country prefix and a
+// trailing kind-code (one letter + 1-2 digits, e.g. "B2"/"A1"/"S1") are
+// stripped as whole tokens FIRST — the kind code is only stripped when
+// at least 5 digits already precede it, so it can never eat a genuine
+// short number's real trailing digit.
+function _normalizePatentId(raw) {
+  let s = String(raw || "").trim().replace(/^US\s*/i, "");
+  s = s.replace(/\s*[A-Z]\d{1,2}\s*$/i, (m, offset, str) => {
+    const digitsBefore = (str.slice(0, offset).match(/\d/g) || []).length;
+    return digitsBefore >= 5 ? "" : m;
+  });
+  return s.replace(/[^0-9]/g, "");
 }
 
 // ─── Contract redlining — pure helpers, module-scope + exported ───
@@ -582,6 +611,136 @@ export default function registerLawActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `uspto unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  /**
+   * patent-claims — real patent CLAIMS TEXT via USPTO PatentsView's
+   * PatentSearch API `g_claim` entity (verbatim per-claim text for a
+   * granted US patent), enriched with title + grant date from the
+   * sibling `g_patent` entity. Closes the
+   * docs/lens-specs/law-capability-map.md patent-claims-text gap:
+   * `uspto-patent-search` above returns only the abstract, never the
+   * claims — the part that actually defines the scope of protection.
+   *
+   * API-KEY REALITY CHECK (verified 2026-07-17, this macro only): unlike
+   * `uspto-patent-search`'s "Free, no API key" header comment above, that
+   * claim is now STALE for the live API — PatentsView retired its truly
+   * keyless Legacy API on 2025-05-01, and the PatentSearch API (the SAME
+   * `search.patentsview.org/api/v1` base both macros hit) has required an
+   * `X-Api-Key` header on every request since (confirmed via PatentsView's
+   * own forum + the rOpenSci client's docs; a direct fetch of
+   * patentsview.org / search.patentsview.org itself is DNS/policy-blocked
+   * in this sandbox, the same constraint already documented on
+   * `recapDocketSearchHandler`/`citation-graph` below — so this was cross-
+   * checked across two independent sources rather than taken on faith).
+   * Dispatching a keyless request today would be a guaranteed 401/403 on
+   * every call, burning the 45-req/min budget for nothing — so this macro
+   * fails FAST and HONEST when `PATENTSVIEW_API_KEY` is unset, the exact
+   * convention `materials.mp-structure` already uses for
+   * `MATERIALS_PROJECT_API_KEY`. Free key: PatentsView's support portal
+   * (patentsview-support.atlassian.net/servicedesk/customer/portals).
+   *
+   * FIELD NAMES: the `g_claim`/`g_patent` field names below
+   * (claim_sequence, claim_number, claim_text, claim_dependent,
+   * exemplary, patent_title, patent_date) were cross-checked against
+   * PatentsView's public release notes and third-party citations of the
+   * schema — the docs site fetch itself is blocked here, same as above —
+   * and are read DEFENSIVELY with fallback keys; an unrecognized/renamed
+   * field degrades to `null`, never a fabricated value, matching this
+   * file's established convention.
+   *
+   * HONESTY — legal status is NEVER computed or implied. PatentsView's
+   * data is grant-time bibliographic + claim text only: no reexamination,
+   * reissue, terminal-disclaimer, maintenance-fee-lapse, or litigation
+   * signal. This macro has no basis to say whether a patent is currently
+   * active, expired, or invalidated, and it never guesses — `legalStatus`
+   * is always the literal string `"not_available"` with a `disclosure`
+   * string explaining why. A UI consuming this MUST NOT infer status from
+   * whether claims were found, how many, or their content. There is no
+   * free bulk source for legal status; verifying it requires USPTO Patent
+   * Center (public, free, but not a bulk API) or a paid PAIR/legal-status
+   * provider.
+   *
+   * params: { patentId?: string, query?: string (alias for patentId — a
+   *           raw patent-number string like "10,000,000" or
+   *           "US10000000B2", normalized to digits-only via
+   *           `_normalizePatentId`), limit?: 1-200 claims (default 50) }
+   * requires patentId OR query.
+   */
+  registerLensAction("law", "patent-claims", async (_ctx, _artifact, params = {}) => {
+    const patentId = _normalizePatentId(params.patentId || params.query);
+    if (!patentId) return { ok: false, error: "patentId or query (a patent number) required" };
+    const limit = Math.max(1, Math.min(200, Math.round(Number(params.limit) || 50)));
+
+    const apiKey = process.env.PATENTSVIEW_API_KEY;
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: "PATENTSVIEW_API_KEY env required — PatentsView's PatentSearch API has required an API key on every request since its keyless Legacy API was retired 2025-05-01 (free key: patentsview-support.atlassian.net/servicedesk/customer/portals)",
+      };
+    }
+    const headers = { "X-Api-Key": apiKey, Accept: "application/json" };
+
+    const patentUrl = `${USPTO_PATENTSVIEW}/g_patent/?q=${encodeURIComponent(JSON.stringify({ patent_id: patentId }))}&f=${encodeURIComponent(JSON.stringify(["patent_id", "patent_title", "patent_date"]))}`;
+    const claimUrl = `${USPTO_PATENTSVIEW}/g_claim/?q=${encodeURIComponent(JSON.stringify({ patent_id: patentId }))}&f=${encodeURIComponent(JSON.stringify(["patent_id", "claim_id", "claim_sequence", "claim_number", "claim_text", "claim_dependent", "exemplary"]))}&o=${encodeURIComponent(JSON.stringify({ per_page: limit }))}`;
+
+    const [patentSettled, claimSettled] = await Promise.allSettled([
+      cachedFetchJson(patentUrl, { ttlMs: PATENT_CLAIMS_TTL_MS, opts: { headers } }),
+      cachedFetchJson(claimUrl, { ttlMs: PATENT_CLAIMS_TTL_MS, opts: { headers } }),
+    ]);
+
+    // Claims are the entire point of this macro — a failure here is a
+    // genuine honest failure, never papered over with empty/fabricated data.
+    if (claimSettled.status === "rejected") {
+      const msg = claimSettled.reason instanceof Error ? claimSettled.reason.message : String(claimSettled.reason);
+      if (/HTTP 40[13]/.test(msg)) {
+        return { ok: false, error: `patentsview auth rejected — check PATENTSVIEW_API_KEY validity (${msg})` };
+      }
+      return { ok: false, error: `patentsview unreachable: ${msg}` };
+    }
+
+    const claimData = claimSettled.value;
+    const rawClaims = Array.isArray(claimData?.g_claim) ? claimData.g_claim
+      : Array.isArray(claimData?.claims) ? claimData.claims : [];
+    const claims = rawClaims
+      .map((c) => ({
+        claimId: c.claim_id ?? c.claimId ?? null,
+        sequence: c.claim_sequence != null ? Number(c.claim_sequence) : (c.claimSequence != null ? Number(c.claimSequence) : null),
+        number: c.claim_number ?? c.claimNumber ?? null,
+        text: c.claim_text ?? c.claimText ?? null,
+        dependent: c.claim_dependent ?? c.dependent ?? null,
+        exemplary: typeof c.exemplary === "boolean" ? c.exemplary : (c.exemplary != null ? !!Number(c.exemplary) : null),
+      }))
+      .filter((c) => c.text)
+      .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+
+    // Title/date is enrichment, not the core value of this macro — a
+    // failure here degrades honestly to null fields rather than failing
+    // the whole call (the real claim text is still useful without it).
+    let title = null, date = null, titleLookupFailed = false;
+    if (patentSettled.status === "fulfilled") {
+      const rows = Array.isArray(patentSettled.value?.g_patent) ? patentSettled.value.g_patent
+        : Array.isArray(patentSettled.value?.patents) ? patentSettled.value.patents : [];
+      const row = rows[0] || null;
+      if (row) { title = row.patent_title ?? null; date = row.patent_date ?? null; }
+    } else {
+      titleLookupFailed = true;
+    }
+
+    return {
+      ok: true,
+      result: {
+        patentId,
+        title,
+        date,
+        claims,
+        count: claims.length,
+        ...(titleLookupFailed ? { titleLookupFailed: true } : {}),
+        source: "uspto-patentsview",
+        legalStatus: "not_available",
+        disclosure: "Legal status (active / expired / lapsed / invalidated / litigated) is NOT available from this free data source and is never inferred from claim presence, count, or content — verify current status directly with USPTO Patent Center before relying on this for any filing, licensing, or freedom-to-operate decision.",
+      },
+    };
   });
 
   /**
