@@ -13,13 +13,14 @@
 // createMountGroup is mounted), disposing it on unmount. Nothing is invented — the
 // silhouette is a pure function of the backend's real topology + coat colour.
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { createCreatureMesh } from '@/lib/world-lens/creature-mesh-builder';
 import type { CreatureTopology } from '@/lib/world-lens/creature-mesh-builder';
 import type { ConkayCreatureArtifact } from '@/lib/conkay/artifact-kinds';
+import { StepInControls } from './StepInControls';
+import { StepInToggle } from './StepInToggle';
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -58,14 +59,27 @@ export function CreatureAdapter({ artifact }: { artifact: ConkayCreatureArtifact
   const camDist = 2.6 * scale;
   const targetY = 0.6 * scale;
 
+  // S2-b — orbit ↔ walk. Scene units track metres (the mesh is scaled by real
+  // height / 1.2), so the walk start pose is derived from the creature's REAL
+  // reported height: stand ~mid-body eye height (capped at human ~1.7m) a step
+  // back, aimed at the creature's centre. "Real scale" is honest by construction.
+  const [mode, setMode] = useState<'orbit' | 'walk'>('orbit');
+  const heightM = artifact.heightM && artifact.heightM > 0 ? artifact.heightM : 1.2;
+  const eyeY = clamp(heightM * 0.55, 0.35, 1.7);
+  const backDist = Math.max(heightM * 1.7, 1.4);
+  const walkStart: [number, number, number] = [0, eyeY, backDist];
+
   return (
     <div data-testid="ck-adapter-creature" className="relative h-[340px] w-full overflow-hidden rounded-lg bg-black">
       <Canvas camera={{ position: [camDist, camDist * 0.55, camDist], fov: 45 }}>
         <ambientLight intensity={0.75} />
         <directionalLight position={[3, 5, 2]} intensity={0.85} />
         <CreatureMeshBridge topology={artifact.topology} coatColor={artifact.coatColor} scale={scale} />
-        <OrbitControls target={[0, targetY, 0]} enablePan={false} />
+        <StepInControls mode={mode} target={[0, targetY, 0]} walkStart={walkStart} />
       </Canvas>
+
+      <StepInToggle mode={mode} onToggle={() => setMode((m) => (m === 'orbit' ? 'walk' : 'orbit'))} />
+
 
       {/* Honest facts, straight from the publish result — labels, not invented stats. */}
       <div
