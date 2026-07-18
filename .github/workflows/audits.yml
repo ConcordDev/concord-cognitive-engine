@@ -104,6 +104,20 @@ jobs:
           # new scope) fails the build.
           node scripts/check-name-collisions.mjs --ci
 
+      - name: ConKay honest-hologram motion gate
+        run: |
+          # "Honest-hologram motion" class of the Content Integrity Sweep
+          # (docs/CONTENT_INTEGRITY_SWEEP.md): ConKay's flagship rule
+          # (docs/CONKAY_HONEST_HOLOGRAM_PLAN.md) that every animated element is a
+          # pure function of a real backend event — ZERO setInterval/setTimeout
+          # driving "work"/progress animation (rAF is the allowed mechanism).
+          # Repo-wide scan of concord-frontend/{components,lib}/conkay; known-safe
+          # UX-teardown timers (voice re-arm, finished-spine clear, nav delay) live
+          # in the script's explicit (file, snippet) allowlist. A NEW un-allowlisted
+          # timer fails the build. Pinned by
+          # server/tests/conkay-honest-motion-gate.test.js.
+          node scripts/check-conkay-honest-motion.mjs --ci
+
       - name: Move-render coverage gate
         run: |
           # Self-deriving gate: every move/skill/element/verb must resolve to a
