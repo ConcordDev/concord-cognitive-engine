@@ -1,0 +1,130 @@
+[
+  {
+    "state": "California",
+    "stateCode": "CA",
+    "propertyRegime": "community_property",
+    "source": "California Probate Code, Division 6, Part 2, Chapter 1 (Intestate Succession)",
+    "citation": "Cal. Prob. Code §§ 6401–6402",
+    "summary": "California is a community property state. Community/quasi-community property and separate property are treated differently when there is no valid will.",
+    "scenarios": [
+      { "survivedBy": "Spouse only (no descendants, no parents, no siblings)", "share": "Spouse takes the entire estate — all community/quasi-community property and all separate property." },
+      { "survivedBy": "Spouse + one child (or the descendants of one deceased child)", "share": "Spouse takes all community property, plus one-half of the decedent's separate property; the child (or that child's descendants) takes the remaining one-half of the separate property." },
+      { "survivedBy": "Spouse + two or more children (or their descendants)", "share": "Spouse takes all community property, plus one-third of separate property; the descendants share the remaining two-thirds per stirpes." },
+      { "survivedBy": "Spouse + no descendants, but a parent or sibling survives", "share": "Spouse takes all community property, plus one-half of separate property; the surviving parent(s) or sibling(s) take the remaining one-half of separate property." },
+      { "survivedBy": "Descendants only, no surviving spouse", "share": "Descendants take the entire estate, per stirpes." },
+      { "survivedBy": "No surviving spouse, no descendants", "share": "Estate passes to surviving parents; if none, to siblings and their descendants; then to a widening circle of relatives under the statutory table." }
+    ],
+    "disclaimer": "This is a simplified summary of a real statute for educational reference only — it is not legal advice. Intestacy law has many exceptions (adopted children, half-relatives, putative spouses, disclaimers, advancements, registered domestic partners, etc.) not captured here, and statutes are amended over time. Verify the current statute and consult a licensed estate-planning attorney before relying on this for an actual estate."
+  },
+  {
+    "state": "Texas",
+    "stateCode": "TX",
+    "propertyRegime": "community_property",
+    "source": "Texas Estates Code, Chapter 201 (Subchapters B and C — Descent and Distribution)",
+    "citation": "Tex. Est. Code, Chapter 201 (Subchapters B–C)",
+    "summary": "Texas is a community property state whose intestacy rules further distinguish community property from separate property, and separate real property from separate personal property — one of the more granular schemes among US states. The shares below are a simplified overview; consult the statute directly for exact fractions, especially for separate real property.",
+    "scenarios": [
+      { "survivedBy": "Spouse + descendants who are ALL also descendants of the surviving spouse", "share": "Spouse takes the entire community estate. Separate property is still split with descendants under the statute's separate-property rules (spouse typically retains a life-use interest in a fraction of separate real property, plus a fraction of separate personal property outright)." },
+      { "survivedBy": "Spouse + one or more descendants who are NOT also descendants of the surviving spouse (e.g., children from a prior relationship)", "share": "Spouse's community-property share drops to one-half; the decedent's one-half of the community estate passes to the descendants. Separate property is again split between spouse and descendants per the statute." },
+      { "survivedBy": "Spouse only, no descendants", "share": "Spouse takes all community property. Separate personal property passes entirely to the spouse; separate real property is shared with the decedent's parents/siblings if any survive, otherwise the spouse takes it all." },
+      { "survivedBy": "Descendants only, no surviving spouse", "share": "Descendants take the entire estate, per stirpes." },
+      { "survivedBy": "No surviving spouse, no descendants", "share": "Estate passes to surviving parents; if none, to siblings and their descendants; then to a widening circle of relatives under the statutory table." }
+    ],
+    "disclaimer": "This is a simplified summary of a real statute for educational reference only — it is not legal advice. Texas's real-property vs. personal-property distinctions for separate property are genuinely intricate and are only sketched here; verify the current statute and consult a licensed estate-planning attorney before relying on this for an actual estate."
+  },
+  {
+    "state": "New York",
+    "stateCode": "NY",
+    "propertyRegime": "common_law",
+    "source": "New York Estates, Powers & Trusts Law (EPTL), Article 4",
+    "citation": "N.Y. EPTL § 4-1.1",
+    "summary": "New York uses a fixed-dollar-allowance-plus-fraction formula for a surviving spouse when descendants also survive. The exact dollar figure is set by statute and has been amended over time — verify the current amount before relying on it.",
+    "scenarios": [
+      { "survivedBy": "Spouse + descendants", "share": "Spouse takes a statutory dollar allowance off the top (commonly cited as $50,000, but verify the current figure) plus one-half of the remaining estate; the descendants share the other half per stirpes." },
+      { "survivedBy": "Spouse only, no descendants", "share": "Spouse takes the entire estate." },
+      { "survivedBy": "Descendants only, no surviving spouse", "share": "Descendants take the entire estate, per stirpes." },
+      { "survivedBy": "No surviving spouse, no descendants", "share": "Estate passes to surviving parents; if none, to siblings and their descendants; then to a widening circle of relatives under the statutory table." }
+    ],
+    "disclaimer": "This is a simplified summary of a real statute for educational reference only — it is not legal advice. The dollar allowance is set by statute and is periodically amended by the legislature; verify the current figure and consult a licensed estate-planning attorney before relying on this for an actual estate."
+  },
+  {
+    "state": "Florida",
+    "stateCode": "FL",
+    "propertyRegime": "common_law",
+    "source": "Florida Probate Code, Chapter 732",
+    "citation": "Fla. Stat. §§ 732.102–732.103",
+    "summary": "Florida gives the surviving spouse the entire estate in the common case where there are no descendants outside the marriage; the share is reduced when either spouse has descendants from outside the relationship.",
+    "scenarios": [
+      { "survivedBy": "Spouse + descendants who are ALL also descendants of the surviving spouse, and the surviving spouse has no other descendants", "share": "Spouse takes the entire estate." },
+      { "survivedBy": "Spouse + one or more descendants who are NOT also descendants of the surviving spouse, OR the surviving spouse has descendants not of the decedent", "share": "Spouse takes one-half of the estate; the decedent's descendants share the other half per stirpes." },
+      { "survivedBy": "Spouse only, no descendants", "share": "Spouse takes the entire estate." },
+      { "survivedBy": "Descendants only, no surviving spouse", "share": "Descendants take the entire estate, per stirpes." },
+      { "survivedBy": "No surviving spouse, no descendants", "share": "Estate passes to surviving parents; if none, to siblings and their descendants; then to a widening circle of relatives under the statutory table." }
+    ],
+    "disclaimer": "This is a simplified summary of a real statute for educational reference only — it is not legal advice. Verify the current statute (Florida's spousal-share rule was amended in 2011) and consult a licensed estate-planning attorney before relying on this for an actual estate."
+  },
+  {
+    "state": "Illinois",
+    "stateCode": "IL",
+    "propertyRegime": "common_law",
+    "source": "Illinois Probate Act of 1975, Article II",
+    "citation": "755 ILCS 5/2-1",
+    "summary": "Illinois splits the estate evenly between spouse and descendants when both survive, rather than giving the spouse a majority or minority share tied to the number of children.",
+    "scenarios": [
+      { "survivedBy": "Spouse + descendants", "share": "Spouse takes one-half of the estate; the descendants share the other half per stirpes." },
+      { "survivedBy": "Spouse only, no descendants", "share": "Spouse takes the entire estate." },
+      { "survivedBy": "Descendants only, no surviving spouse", "share": "Descendants take the entire estate, per stirpes." },
+      { "survivedBy": "No surviving spouse, no descendants", "share": "Estate passes to surviving parents and siblings (with a surviving parent typically counted for a larger share than a sibling under the statutory formula); if none survive, to a widening circle of relatives under the statutory table." }
+    ],
+    "disclaimer": "This is a simplified summary of a real statute for educational reference only — it is not legal advice. Verify the current statute and consult a licensed estate-planning attorney before relying on this for an actual estate."
+  },
+  {
+    "state": "Pennsylvania",
+    "stateCode": "PA",
+    "propertyRegime": "common_law",
+    "source": "Pennsylvania Probate, Estates and Fiduciaries Code, Chapter 21 (Intestate Succession)",
+    "citation": "20 Pa. Cons. Stat. §§ 2102–2103",
+    "summary": "Pennsylvania uses a fixed-dollar-allowance-plus-fraction formula for the surviving spouse, with the fraction and allowance both depending on who else survives. The exact dollar figure is set by statute — verify the current amount.",
+    "scenarios": [
+      { "survivedBy": "Spouse only, no descendants, no surviving parent", "share": "Spouse takes the entire estate." },
+      { "survivedBy": "Spouse + no descendants, but a parent survives", "share": "Spouse takes a statutory dollar allowance off the top (commonly cited as $30,000, but verify the current figure) plus one-half of the remaining estate; the surviving parent(s) take the rest." },
+      { "survivedBy": "Spouse + descendants who are ALL also descendants of the surviving spouse", "share": "Spouse takes a statutory dollar allowance off the top (commonly cited as $30,000, but verify the current figure) plus one-half of the remaining estate; the descendants share the rest per stirpes." },
+      { "survivedBy": "Spouse + one or more descendants who are NOT also descendants of the surviving spouse", "share": "Spouse takes one-half of the estate (no dollar allowance); the descendants share the other half per stirpes." },
+      { "survivedBy": "Descendants only, no surviving spouse", "share": "Descendants take the entire estate, per stirpes." },
+      { "survivedBy": "No surviving spouse, no descendants", "share": "Estate passes to surviving parents; if none, to siblings and their descendants; then to a widening circle of relatives under the statutory table." }
+    ],
+    "disclaimer": "This is a simplified summary of a real statute for educational reference only — it is not legal advice. The dollar allowance is set by statute and is periodically amended by the legislature; verify the current figure and consult a licensed estate-planning attorney before relying on this for an actual estate."
+  },
+  {
+    "state": "Ohio",
+    "stateCode": "OH",
+    "propertyRegime": "common_law",
+    "source": "Ohio Revised Code, Chapter 2105 (Descent and Distribution)",
+    "citation": "Ohio Rev. Code § 2105.06",
+    "summary": "Ohio's spousal share depends on the number and parentage of surviving descendants, including statutory dollar allowances in some tiers. This summary intentionally omits the exact dollar figures, which are set by statute and change over time — verify the current statute directly.",
+    "scenarios": [
+      { "survivedBy": "Spouse only, no descendants", "share": "Spouse takes the entire estate." },
+      { "survivedBy": "Spouse + descendants who are ALL also descendants of the surviving spouse (and the spouse has no other descendants)", "share": "Spouse takes the entire estate." },
+      { "survivedBy": "Spouse + descendants where one or more are NOT also descendants of the surviving spouse", "share": "Spouse takes a statutory dollar allowance plus a fraction of the balance (the exact allowance and fraction depend on the number of descendants involved — see the current statute); the descendants share the remainder per stirpes." },
+      { "survivedBy": "Descendants only, no surviving spouse", "share": "Descendants take the entire estate, per stirpes." },
+      { "survivedBy": "No surviving spouse, no descendants", "share": "Estate passes to surviving parents; if none, to siblings and their descendants; then to a widening circle of relatives under the statutory table." }
+    ],
+    "disclaimer": "This is a simplified summary of a real statute for educational reference only — it is not legal advice. The tiered dollar allowances are deliberately omitted here because they are set by statute and amended periodically; verify the current statute and consult a licensed estate-planning attorney before relying on this for an actual estate."
+  },
+  {
+    "state": "Georgia",
+    "stateCode": "GA",
+    "propertyRegime": "common_law",
+    "source": "Georgia Probate Code, Title 53, Chapter 2 (Descent and Distribution)",
+    "citation": "O.C.G.A. § 53-2-1",
+    "summary": "Georgia is notable for guaranteeing the surviving spouse a minimum one-third share when descendants also survive, regardless of how many children there are.",
+    "scenarios": [
+      { "survivedBy": "Spouse + one child", "share": "Spouse and the child split the estate equally (one-half each)." },
+      { "survivedBy": "Spouse + two or more children (or their descendants)", "share": "Spouse takes a share equal to what each child takes, but never less than one-third of the estate; the descendants share the remainder per stirpes." },
+      { "survivedBy": "Spouse only, no descendants", "share": "Spouse takes the entire estate." },
+      { "survivedBy": "Descendants only, no surviving spouse", "share": "Descendants take the entire estate, per stirpes." },
+      { "survivedBy": "No surviving spouse, no descendants", "share": "Estate passes to surviving parents; if none, to siblings and their descendants; then to a widening circle of relatives under the statutory table." }
+    ],
+    "disclaimer": "This is a simplified summary of a real statute for educational reference only — it is not legal advice. Verify the current statute and consult a licensed estate-planning attorney before relying on this for an actual estate."
+  }
+]

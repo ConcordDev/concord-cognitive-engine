@@ -1,3 +1,16 @@
+// Track D (CURATION): `procedure-reference` below reads a small, authored,
+// cited reference table of real state civil-procedure rules
+// (content/court-procedure-reference.json via
+// server/lib/court-procedure-reference.js) — mirroring the
+// healthcare.protocolMatch / content/healthcare-protocols.json pattern. See
+// that lib file's header for the full honesty rationale. This closes the
+// "No cross-jurisdiction state-specific court rules... no free/open
+// equivalent dataset to wire" gap noted in
+// docs/lens-specs/legal-capability-map.md as DATA-SOURCING — reclassified
+// to CURATION because the primary source (state rules of civil procedure)
+// is real public-domain legal text, just not aggregated behind a free API.
+import { getProcedureForState, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
+
 export default function registerLegalActions(registerLensAction) {
   // Fail-CLOSED numeric coercion. parseFloat("Infinity") === Infinity and
   // Number("1e999") === Infinity both slip past a bare `|| 0`, leaking a
@@ -1737,6 +1750,78 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Real-world reference: state court-procedure rule pointers ─────
+  // (Track D, CURATION — see the file-header note above and
+  // server/lib/court-procedure-reference.js for the full rationale.)
+  const PROCEDURE_DISCLAIMER =
+    "This is a paraphrased, simplified summary of real published rules for " +
+    "educational reference only — it is NOT legal advice. Deadlines have " +
+    "numerous exceptions (extensions, local court rules, service method, " +
+    "party type). Verify the current rule text and consult a licensed " +
+    "attorney before relying on this for an actual filing.";
+
+  registerLensAction("legal", "procedure-reference", (_ctx, _a, params = {}) => {
+    try {
+      const state = String(params.state || params.stateCode || "").trim();
+      const statesCovered = listProcedureStateSummaries();
+      if (!state) {
+        return {
+          ok: true,
+          result: {
+            covered: false,
+            message: "No state supplied.",
+            statesCovered,
+            representativeSubset: true,
+            disclaimer: PROCEDURE_DISCLAIMER,
+          },
+        };
+      }
+      const entry = getProcedureForState(state);
+      if (!entry) {
+        return {
+          ok: true,
+          result: {
+            covered: false,
+            state,
+            message: `"${state}" is not in this reference set. This is a representative subset of US states, not full 50-state coverage.`,
+            statesCovered,
+            representativeSubset: true,
+            disclaimer: PROCEDURE_DISCLAIMER,
+          },
+        };
+      }
+      return {
+        ok: true,
+        result: {
+          covered: true,
+          state: entry.state,
+          stateCode: entry.stateCode,
+          rulesBody: entry.rulesBody,
+          source: entry.source,
+          rules: entry.rules,
+          representativeSubset: true,
+          disclaimer: entry.disclaimer || PROCEDURE_DISCLAIMER,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("legal", "procedure-reference-states-list", (_ctx, _a, _params = {}) => {
+    try {
+      const statesCovered = listProcedureStateSummaries();
+      return {
+        ok: true,
+        result: {
+          statesCovered,
+          total: statesCovered.length,
+          representativeSubset: true,
+          message: "Representative subset of US states, not full 50-state coverage.",
+          disclaimer: PROCEDURE_DISCLAIMER,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 };
 
 function extractJsonLegal(text) {

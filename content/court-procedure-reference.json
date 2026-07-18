@@ -1,0 +1,194 @@
+[
+  {
+    "state": "California",
+    "stateCode": "CA",
+    "rulesBody": "California Code of Civil Procedure (CCP)",
+    "source": "California Code of Civil Procedure, Parts 2 (Civil Actions)",
+    "rules": [
+      {
+        "topic": "Service of process",
+        "citation": "Cal. Civ. Proc. Code §§ 415.10, 415.20",
+        "summary": "Personal delivery of the summons and complaint is the primary method; substituted service on a competent member of the household or a person in charge at the usual place of business is permitted when personal service can't reasonably be accomplished, followed by mailing a copy."
+      },
+      {
+        "topic": "Time to respond to a complaint",
+        "citation": "Cal. Civ. Proc. Code § 412.20",
+        "summary": "A defendant generally has 30 days after service of the summons to file an answer or other responsive pleading."
+      },
+      {
+        "topic": "Summary judgment",
+        "citation": "Cal. Civ. Proc. Code § 437c",
+        "summary": "A party may move for summary judgment (or summary adjudication of specific issues) on the ground there is no triable issue of material fact; motions generally must be filed and heard within statutory notice windows before trial."
+      }
+    ],
+    "disclaimer": "This is a paraphrased, simplified summary of real published rules for educational reference only — it is not legal advice. Deadlines have numerous exceptions (extensions, local court rules, service method, party type). Verify the current rule text and consult a licensed attorney before relying on this for an actual filing."
+  },
+  {
+    "state": "Texas",
+    "stateCode": "TX",
+    "rulesBody": "Texas Rules of Civil Procedure (TRCP)",
+    "source": "Texas Rules of Civil Procedure, Part II (Rules of Practice in District and County Courts)",
+    "rules": [
+      {
+        "topic": "Service of process",
+        "citation": "Tex. R. Civ. P. 106",
+        "summary": "Citation is typically served by a sheriff, constable, or authorized process server, delivering a copy to the defendant in person or leaving it with someone over 16 at the defendant's usual place of abode; substituted service requires court authorization."
+      },
+      {
+        "topic": "Time to answer",
+        "citation": "Tex. R. Civ. P. 99",
+        "summary": "Texas's distinctive rule: the answer is due on the Monday next after the expiration of 20 days from the date of service — not a flat 20- or 30-day count like most states."
+      },
+      {
+        "topic": "Summary judgment",
+        "citation": "Tex. R. Civ. P. 166a",
+        "summary": "A party may move for summary judgment on the ground there is no genuine issue of material fact; the motion and supporting evidence must be filed and served on the adverse party a minimum number of days before the hearing."
+      }
+    ],
+    "disclaimer": "This is a paraphrased, simplified summary of real published rules for educational reference only — it is not legal advice. Deadlines have numerous exceptions (extensions, local court rules, service method, party type). Verify the current rule text and consult a licensed attorney before relying on this for an actual filing."
+  },
+  {
+    "state": "New York",
+    "stateCode": "NY",
+    "rulesBody": "New York Civil Practice Law and Rules (CPLR)",
+    "source": "New York Civil Practice Law and Rules, Article 3 (Jurisdiction and Service, Appearance and Choice of Court) and Article 32 (Accelerated Judgment)",
+    "rules": [
+      {
+        "topic": "Service of process",
+        "citation": "N.Y. CPLR § 308",
+        "summary": "Personal delivery to the person is the primary method; CPLR § 308 also permits delivery to a person of suitable age and discretion at the defendant's residence or business plus a follow-up mailing, and other alternatives when those aren't practicable."
+      },
+      {
+        "topic": "Time to answer",
+        "citation": "N.Y. CPLR § 320(a)",
+        "summary": "Generally 20 days to answer after personal delivery of the summons within New York State, or 30 days if service was made by another method or the defendant was served outside the state."
+      },
+      {
+        "topic": "Summary judgment",
+        "citation": "N.Y. CPLR § 3212",
+        "summary": "A party may move for summary judgment after issue is joined, on the ground the cause of action or defense has no merit as a matter of law; the court must deny the motion if a genuine, material factual dispute exists."
+      }
+    ],
+    "disclaimer": "This is a paraphrased, simplified summary of real published rules for educational reference only — it is not legal advice. Deadlines have numerous exceptions (extensions, local court rules, service method, party type). Verify the current rule text and consult a licensed attorney before relying on this for an actual filing."
+  },
+  {
+    "state": "Florida",
+    "stateCode": "FL",
+    "rulesBody": "Florida Rules of Civil Procedure",
+    "source": "Florida Rules of Civil Procedure, and Florida Statutes Chapter 48 (Process and Service of Process)",
+    "rules": [
+      {
+        "topic": "Service of process",
+        "citation": "Fla. R. Civ. P. 1.070; Fla. Stat. ch. 48",
+        "summary": "A summons and complaint are generally served by a sheriff or certified process server, delivering the papers to the defendant personally or per the substituted-service methods set out in Florida Statutes Chapter 48."
+      },
+      {
+        "topic": "Time to answer",
+        "citation": "Fla. R. Civ. P. 1.140",
+        "summary": "A defendant generally must serve an answer or other responsive pleading within 20 days after service of the complaint."
+      },
+      {
+        "topic": "Summary judgment",
+        "citation": "Fla. R. Civ. P. 1.510",
+        "summary": "A party may move for summary judgment on the ground there is no genuine dispute as to any material fact; Florida's rule was rewritten in 2021 to track the federal Rule 56 standard more closely."
+      }
+    ],
+    "disclaimer": "This is a paraphrased, simplified summary of real published rules for educational reference only — it is not legal advice. Deadlines have numerous exceptions (extensions, local court rules, service method, party type). Verify the current rule text and consult a licensed attorney before relying on this for an actual filing."
+  },
+  {
+    "state": "Illinois",
+    "stateCode": "IL",
+    "rulesBody": "Illinois Code of Civil Procedure (735 ILCS 5) and Illinois Supreme Court Rules",
+    "source": "Illinois Code of Civil Procedure, Article II (Civil Practice)",
+    "rules": [
+      {
+        "topic": "Service of process",
+        "citation": "735 ILCS 5/2-203",
+        "summary": "Personal service is made by leaving a copy of the summons with the defendant personally, or with a family member/household member 13 or older at the defendant's usual place of abode, plus a follow-up mailing."
+      },
+      {
+        "topic": "Time to appear/answer",
+        "citation": "governed by Illinois Supreme Court Rule and the summons form (specific rule number not confidently cited here — verify current rule)",
+        "summary": "The summons itself states the appearance date, which is commonly around 30 days from service; the exact governing rule and any local circuit variation should be verified directly rather than assumed."
+      },
+      {
+        "topic": "Summary judgment",
+        "citation": "735 ILCS 5/2-1005",
+        "summary": "A party may move for summary judgment on the ground the pleadings, depositions, and admissions on file show there is no genuine issue of material fact."
+      }
+    ],
+    "disclaimer": "This is a paraphrased, simplified summary of real published rules for educational reference only — it is not legal advice. One item above (the appearance-deadline rule number) is intentionally described generically rather than cited to a specific rule number, because that citation could not be confidently verified — see the summary's own note. Verify all current rule text and consult a licensed attorney before relying on this for an actual filing."
+  },
+  {
+    "state": "Pennsylvania",
+    "stateCode": "PA",
+    "rulesBody": "Pennsylvania Rules of Civil Procedure (Pa.R.C.P.)",
+    "source": "Pennsylvania Rules of Civil Procedure, Chapter 400 (Process) and Chapter 1000 (Actions at Law)",
+    "rules": [
+      {
+        "topic": "Service of process",
+        "citation": "Pa. R. Civ. P. 402",
+        "summary": "Original process is generally served by handing a copy to the defendant, or to an adult member of the household at the defendant's residence, among other permitted methods."
+      },
+      {
+        "topic": "Time to plead",
+        "citation": "Pa. R. Civ. P. 1026",
+        "summary": "Every pleading subsequent to the complaint is generally due within 20 days after service of the preceding pleading. Pennsylvania's distinctive notice-to-defend / ten-day-notice practice governs when a default judgment can actually be entered for a failure to respond — a separate mechanism from the 20-day pleading deadline itself."
+      },
+      {
+        "topic": "Summary judgment",
+        "citation": "Pa. R. Civ. P. 1035.2",
+        "summary": "A party may move for summary judgment after the relevant pleadings are closed, on the ground there is no genuine issue of material fact as to a necessary element of a claim or defense."
+      }
+    ],
+    "disclaimer": "This is a paraphrased, simplified summary of real published rules for educational reference only — it is not legal advice. Deadlines have numerous exceptions (extensions, local court rules, service method, party type, Pennsylvania's notice-to-defend practice). Verify the current rule text and consult a licensed attorney before relying on this for an actual filing."
+  },
+  {
+    "state": "Ohio",
+    "stateCode": "OH",
+    "rulesBody": "Ohio Rules of Civil Procedure (Ohio Civ.R.)",
+    "source": "Ohio Rules of Civil Procedure",
+    "rules": [
+      {
+        "topic": "Service of process",
+        "citation": "Ohio Civ.R. 4.1",
+        "summary": "Service is generally made by certified or express mail, or by personal or residence service through the clerk, sheriff, or a process server."
+      },
+      {
+        "topic": "Time to answer",
+        "citation": "Ohio Civ.R. 12(A)",
+        "summary": "A defendant generally must serve an answer within 28 days after service of the summons and complaint."
+      },
+      {
+        "topic": "Summary judgment",
+        "citation": "Ohio Civ.R. 56",
+        "summary": "A party may move for summary judgment on the ground there is no genuine issue of material fact and the moving party is entitled to judgment as a matter of law."
+      }
+    ],
+    "disclaimer": "This is a paraphrased, simplified summary of real published rules for educational reference only — it is not legal advice. Deadlines have numerous exceptions (extensions, local court rules, service method, party type). Verify the current rule text and consult a licensed attorney before relying on this for an actual filing."
+  },
+  {
+    "state": "Georgia",
+    "stateCode": "GA",
+    "rulesBody": "Georgia Civil Practice Act",
+    "source": "O.C.G.A. Title 9, Chapter 11 (Georgia Civil Practice Act, modeled closely on the Federal Rules of Civil Procedure)",
+    "rules": [
+      {
+        "topic": "Service of process",
+        "citation": "O.C.G.A. § 9-11-4",
+        "summary": "Service is generally made by the sheriff or a specially appointed process server, delivering the summons and complaint to the defendant personally or by leaving copies at the defendant's dwelling with a resident of suitable age and discretion."
+      },
+      {
+        "topic": "Time to answer",
+        "citation": "O.C.G.A. § 9-11-12(a)",
+        "summary": "A defendant generally must serve an answer within 30 days after service of the summons and complaint."
+      },
+      {
+        "topic": "Summary judgment",
+        "citation": "O.C.G.A. § 9-11-56",
+        "summary": "A party may move for summary judgment on the ground the pleadings, depositions, admissions, and affidavits on file show there is no genuine issue as to any material fact."
+      }
+    ],
+    "disclaimer": "This is a paraphrased, simplified summary of real published rules for educational reference only — it is not legal advice. Deadlines have numerous exceptions (extensions, local court rules, service method, party type). Verify the current rule text and consult a licensed attorney before relying on this for an actual filing."
+  }
+]

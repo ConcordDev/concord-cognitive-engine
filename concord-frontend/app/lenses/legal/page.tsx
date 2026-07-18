@@ -57,6 +57,7 @@ import CaseTracker from '@/components/legal/CaseTracker';
 import LegalQA from '@/components/legal/LegalQA';
 import { LegalCaseSearch } from '@/components/legal/LegalCaseSearch';
 import { LegalActionPanel } from '@/components/legal/LegalActionPanel';
+import { CourtProcedureReference } from '@/components/legal/CourtProcedureReference';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -185,6 +186,9 @@ export default function LegalLensPage() {
         <PipingProvider>
           <LegalActionPanel />
         </PipingProvider>
+
+        {/* State intestacy + court-procedure reference (Track D, CURATION) */}
+        <CourtProcedureReference />
 
         {/* Live Web Feed */}
         <LensFeedPanel lensId="legal" />
