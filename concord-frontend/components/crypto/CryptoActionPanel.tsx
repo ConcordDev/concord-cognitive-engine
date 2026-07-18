@@ -202,7 +202,7 @@ export function CryptoActionPanel() {
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
+              <div className="text-[11px] font-semibold text-white leading-tight">{a.label}</div>
               <div className="text-[10px] text-gray-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
@@ -242,7 +242,7 @@ export function CryptoActionPanel() {
       {agentReply && (
         <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto">
           <div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Rebalance move</div>
-          <pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre>
+          <pre className="whitespace-pre-wrap font-sans text-[11px] text-gray-200 leading-relaxed">{agentReply}</pre>
         </div>
       )}
 
