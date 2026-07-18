@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, ClipboardList, Mail, Pill, AlertTriangle, FlaskConical, Calendar, Loader2 } from 'lucide-react';
+import { Users, ClipboardList, Mail, Pill, AlertTriangle, FlaskConical, Calendar } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 import type { EpicNav } from './EpicShell';
 
 interface Summary {
@@ -34,7 +35,20 @@ export function HealthcareDashboard({ onJumpTo }: { onJumpTo?: (n: EpicNav) => v
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>;
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-3 rounded-lg border border-white/10 bg-black/30">
+              <Skeleton variant="line" width="60%" height="0.625rem" className="mb-2" />
+              <Skeleton variant="line" width="40%" height="1.5rem" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (!data) return <div className="p-10 text-center text-xs text-gray-400">No data yet.</div>;
 
   return (

@@ -286,16 +286,16 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
   }, [micOn]);
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-black p-3 space-y-3">
+    <div className="rounded-lg border border-lattice-border bg-black p-3 space-y-3">
       <div className="flex items-center gap-2">
         <Video className="w-4 h-4 text-emerald-400" />
-        <h3 className="text-sm font-medium text-zinc-200">Video visit</h3>
+        <h3 className="text-sm font-medium text-gray-200">Video visit</h3>
         <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full ${
           status === 'live' ? 'bg-emerald-500/20 text-emerald-300' :
           status === 'connecting' ? 'bg-amber-500/20 text-amber-300' :
           status === 'error' ? 'bg-rose-500/20 text-rose-300' :
-          status === 'ended' ? 'bg-zinc-500/20 text-zinc-400' :
-          'bg-zinc-600/20 text-zinc-400'
+          status === 'ended' ? 'bg-gray-500/20 text-gray-400' :
+          'bg-gray-600/20 text-gray-400'
         }`}>
           {status === 'live' ? 'Live' :
            status === 'connecting' ? 'Connecting…' :
@@ -320,7 +320,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
         remotes.size === 2 ? 'grid-cols-1 md:grid-cols-3' :
         'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
       }`}>
-        <div className="relative aspect-video rounded-lg bg-zinc-950 overflow-hidden">
+        <div className="relative aspect-video rounded-lg bg-lattice-void overflow-hidden">
           <video
             ref={localVideoRef}
             autoPlay
@@ -329,28 +329,28 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
             className="w-full h-full object-cover"
           />
           {!localStream && (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-xs">
+            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
               {status === 'connecting' ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Requesting camera…</> : '—'}
             </div>
           )}
-          <p className="absolute bottom-1 left-2 text-[10px] text-zinc-300 bg-black/40 px-1.5 py-0.5 rounded">You</p>
+          <p className="absolute bottom-1 left-2 text-[10px] text-gray-300 bg-black/40 px-1.5 py-0.5 rounded">You</p>
         </div>
         {Array.from(remotes.values()).map(tile => (
           <RemoteTile key={tile.peerId} tile={tile} />
         ))}
         {remotes.size === 0 && (
-          <div className="relative aspect-video rounded-lg bg-zinc-950 overflow-hidden">
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-xs">
+          <div className="relative aspect-video rounded-lg bg-lattice-void overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Waiting for other participants…
             </div>
-            <p className="absolute bottom-1 left-2 text-[10px] text-zinc-300 bg-black/40 px-1.5 py-0.5 rounded">
+            <p className="absolute bottom-1 left-2 text-[10px] text-gray-300 bg-black/40 px-1.5 py-0.5 rounded">
               {initiator ? 'Patient' : 'Provider'}
             </p>
           </div>
         )}
       </div>
       {remotes.size > 1 && (
-        <p className="text-[10px] text-zinc-400 flex items-center gap-1.5">
+        <p className="text-[10px] text-gray-400 flex items-center gap-1.5">
           <Users className="w-3 h-3" /> {remotes.size + 1}-way visit · all peers connected mesh-style (no SFU)
         </p>
       )}
@@ -361,7 +361,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
           onClick={toggleCamera}
           disabled={!localStream}
           className={`p-2 rounded-full border ${
-            cameraOn ? 'border-zinc-700 bg-zinc-900 text-zinc-200' : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
+            cameraOn ? 'border-lattice-border bg-lattice-surface text-gray-200' : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
           } disabled:opacity-40`}
           aria-label={cameraOn ? 'Turn camera off' : 'Turn camera on'}
         >
@@ -372,7 +372,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
           onClick={toggleMic}
           disabled={!localStream}
           className={`p-2 rounded-full border ${
-            micOn ? 'border-zinc-700 bg-zinc-900 text-zinc-200' : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
+            micOn ? 'border-lattice-border bg-lattice-surface text-gray-200' : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
           } disabled:opacity-40`}
           aria-label={micOn ? 'Mute' : 'Unmute'}
         >
@@ -401,7 +401,7 @@ function RemoteTile({ tile }: { tile: RemoteTile }) {
     }
   }, [tile.stream]);
   return (
-    <div className="relative aspect-video rounded-lg bg-zinc-950 overflow-hidden">
+    <div className="relative aspect-video rounded-lg bg-lattice-void overflow-hidden">
       <video
         ref={videoRef}
         autoPlay
@@ -409,13 +409,13 @@ function RemoteTile({ tile }: { tile: RemoteTile }) {
         className="w-full h-full object-cover"
       />
       {!tile.stream && (
-        <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-xs">
+        <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
           {tile.state === 'error' ? 'Connection error' : (
             <><Loader2 className="w-4 h-4 animate-spin mr-2" />Connecting…</>
           )}
         </div>
       )}
-      <p className="absolute bottom-1 left-2 text-[10px] text-zinc-300 bg-black/40 px-1.5 py-0.5 rounded font-mono">
+      <p className="absolute bottom-1 left-2 text-[10px] text-gray-300 bg-black/40 px-1.5 py-0.5 rounded font-mono">
         peer · {tile.peerId.slice(0, 6)}
       </p>
     </div>

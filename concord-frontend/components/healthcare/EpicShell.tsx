@@ -79,8 +79,8 @@ export interface EpicShellProps {
 export function EpicShell({ activeNav, onNavChange, badges = {}, children, askBar }: EpicShellProps) {
   const groups: NavItem['group'][] = ['home', 'clinical', 'patient', 'communications', 'tools'];
   return (
-    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
-      <aside className="w-44 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
+    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
+      <aside className="w-44 bg-lattice-void border-r border-white/5 flex flex-col flex-shrink-0">
         <header className="px-3 py-3 border-b border-white/5 flex items-center gap-2">
           <Stethoscope className="w-4 h-4 text-cyan-400" />
           <span className="text-xs font-semibold text-gray-200 tracking-wide">Clinical</span>
@@ -124,7 +124,7 @@ export function EpicShell({ activeNav, onNavChange, badges = {}, children, askBa
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden">
         {askBar && (
-          <header className="px-4 py-2 border-b border-white/5 bg-[#0a0c10]/60">
+          <header className="px-4 py-2 border-b border-white/5 bg-lattice-void/60">
             {askBar}
           </header>
         )}

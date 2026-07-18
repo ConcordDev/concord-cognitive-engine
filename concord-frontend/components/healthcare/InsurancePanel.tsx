@@ -8,9 +8,10 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { ShieldCheck, Loader2, Plus, CheckCircle, Send, FileText, Trash2 } from 'lucide-react';
+import { ShieldCheck, Plus, CheckCircle, Send, FileText, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Policy {
   id: string; patientId: string; payer: string; memberId: string;
@@ -139,7 +140,7 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
   return (
     <div className="space-y-4">
       {/* Coverage policies */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Insurance coverage</span>
@@ -164,7 +165,7 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={3} columns={3} />
         ) : policies.length === 0 ? (
           <div className="px-3 py-8 text-center text-xs text-gray-400">No coverage on file.</div>
         ) : (
@@ -177,7 +178,7 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
                   'bg-gray-500/20 text-gray-300')}>{p.eligibilityStatus}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{p.payer} <span className="text-[10px] text-gray-400">{p.planType}{p.planName && ` · ${p.planName}`}</span></div>
-                  <div className="text-[10px] text-gray-400 truncate">
+                  <div className="text-[10px] text-gray-400 truncate tabular-nums">
                     Member {p.memberId}
                     {p.copayUsd != null && ` · copay $${p.copayUsd}`}
                     {p.deductibleUsd != null && ` · deductible $${p.deductibleUsd}`}
@@ -191,12 +192,12 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
       </div>
 
       {/* Claims */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <FileText className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Claims &amp; billing</span>
           <span className="text-[10px] text-gray-400">{claims.length}</span>
-          {outstanding > 0 && <span className="text-[10px] text-amber-300">outstanding ${outstanding.toFixed(2)}</span>}
+          {outstanding > 0 && <span className="text-[10px] text-amber-300 tabular-nums">outstanding ${outstanding.toFixed(2)}</span>}
           <button onClick={() => setAddingClaim(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />New claim
           </button>
@@ -233,7 +234,7 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', CLAIM_STATUS_STYLE[c.status])}>{c.status}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate font-mono">{c.claimNumber}</div>
-                    <div className="text-[10px] text-gray-400 truncate">
+                    <div className="text-[10px] text-gray-400 truncate tabular-nums">
                       {c.lines.length} line{c.lines.length === 1 ? '' : 's'} · charge ${c.totalChargeUsd.toFixed(2)}
                       {c.paidUsd != null && ` · paid $${c.paidUsd.toFixed(2)}`}
                       {c.patientResponsibilityUsd != null && c.patientResponsibilityUsd > 0 && ` · patient $${c.patientResponsibilityUsd.toFixed(2)}`}

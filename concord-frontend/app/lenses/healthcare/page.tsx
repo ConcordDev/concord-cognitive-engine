@@ -77,6 +77,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { Skeleton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -349,7 +350,7 @@ function getVitalColor(key: string, value: number): string {
 
 function getVitalBg(key: string, value: number): string {
   const range = VITAL_RANGES[key];
-  if (!range) return 'bg-gray-500/10';
+  if (!range) return 'bg-lattice-elevated/50';
   if (value < range.critLow || value > range.critHigh) return 'bg-red-500/10 border-red-500/30';
   if (value < range.low || value > range.high) return 'bg-yellow-500/10 border-yellow-500/30';
   return 'bg-green-500/10 border-green-500/30';
@@ -441,6 +442,7 @@ function VitalGauge({
             fill={color}
             fontSize="13"
             fontWeight="bold"
+            className="tabular-nums"
           >
             {value}
           </text>
@@ -1075,10 +1077,21 @@ export default function HealthcareLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+      <div className={ds.pageContainer}>
+        <div className="flex items-center justify-between">
+          <Skeleton variant="line" width="10rem" height="1.5rem" />
+          <Skeleton variant="line" width="6rem" height="2rem" />
+        </div>
+        <div className={ds.grid3}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={ds.panel}>
+              <div className="flex items-start justify-between mb-2">
+                <Skeleton variant="line" width="60%" height="1.125rem" />
+                <Skeleton variant="line" width="3.5rem" height="1.25rem" />
+              </div>
+              <Skeleton variant="line" lines={2} />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -1115,7 +1128,7 @@ export default function HealthcareLensPage() {
       <div
         className={cn(
           'rounded-lg border p-3 flex items-center gap-3',
-          value ? getVitalBg(vitalKey, value) : 'bg-gray-500/10 border-lattice-border',
+          value ? getVitalBg(vitalKey, value) : 'bg-lattice-elevated/50 border-lattice-border',
           critical && 'pulse-critical-glow'
         )}
       >
@@ -1140,7 +1153,7 @@ export default function HealthcareLensPage() {
           </div>
           <p
             className={cn(
-              'text-lg font-bold',
+              'text-lg font-bold tabular-nums',
               value ? getVitalColor(vitalKey, value) : 'text-gray-400'
             )}
           >
@@ -1148,7 +1161,7 @@ export default function HealthcareLensPage() {
             <span className="text-xs font-normal ml-1">{displayUnit}</span>
           </p>
           {range && (
-            <p className="text-[10px] text-gray-400">
+            <p className="text-[10px] text-gray-400 tabular-nums">
               {range.low}-{range.high} {displayUnit}
             </p>
           )}
@@ -1195,7 +1208,7 @@ export default function HealthcareLensPage() {
           <p className={cn(ds.textMuted, 'line-clamp-2 mb-2')}>{d.description}</p>
           <div className="flex items-center gap-4 text-xs text-gray-400">
             {d.date && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 tabular-nums">
                 <Clock className="w-3 h-3" />
                 {d.date}
               </span>
@@ -1230,7 +1243,7 @@ export default function HealthcareLensPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-gray-400 block">Dosage</span>
-            <span className="text-gray-200 font-medium">{d.dosage || '--'}</span>
+            <span className="text-gray-200 font-medium tabular-nums">{d.dosage || '--'}</span>
           </div>
           <div>
             <span className="text-gray-400 block">Frequency</span>
@@ -1242,7 +1255,7 @@ export default function HealthcareLensPage() {
           </div>
           <div>
             <span className="text-gray-400 block">Start Date</span>
-            <span className="text-gray-200 font-medium">{d.startDate || d.date || '--'}</span>
+            <span className="text-gray-200 font-medium tabular-nums">{d.startDate || d.date || '--'}</span>
           </div>
         </div>
         <div className="flex items-center gap-4 mt-2">
@@ -1251,14 +1264,14 @@ export default function HealthcareLensPage() {
             <RefreshCw className="w-3 h-3 text-gray-400" />
             <span className="text-gray-400">
               Refills:{' '}
-              <span className="text-gray-200 font-medium">{d.refillsRemaining ?? '--'}</span>
+              <span className="text-gray-200 font-medium tabular-nums">{d.refillsRemaining ?? '--'}</span>
             </span>
           </div>
           {/* Days remaining */}
           {daysLeft >= 0 && (
             <div
               className={cn(
-                'flex items-center gap-1 text-xs',
+                'flex items-center gap-1 text-xs tabular-nums',
                 daysLeft <= 7
                   ? 'text-red-400'
                   : daysLeft <= 14
@@ -1273,7 +1286,7 @@ export default function HealthcareLensPage() {
           {/* Adherence */}
           <div className="flex items-center gap-2 text-xs flex-1">
             <span className="text-gray-400">Adherence:</span>
-            <div className="flex-1 bg-gray-800 rounded-full h-1.5 max-w-[80px]">
+            <div className="flex-1 bg-lattice-border rounded-full h-1.5 max-w-[80px]">
               <div
                 className={cn(
                   'h-full rounded-full',
@@ -1288,6 +1301,7 @@ export default function HealthcareLensPage() {
             </div>
             <span
               className={cn(
+                'tabular-nums',
                 adherence >= 80
                   ? 'text-green-400'
                   : adherence >= 50
@@ -1347,7 +1361,7 @@ export default function HealthcareLensPage() {
             <span className="text-gray-400 block">Result</span>
             <span
               className={cn(
-                'font-bold text-sm',
+                'font-bold text-sm tabular-nums',
                 outOfRange ? 'text-red-400' : 'text-green-400',
                 outOfRange && 'pulse-critical-glow rounded px-1'
               )}
@@ -1357,7 +1371,7 @@ export default function HealthcareLensPage() {
           </div>
           <div>
             <span className="text-gray-400 block">Reference Range</span>
-            <span className="text-gray-200">
+            <span className="text-gray-200 tabular-nums">
               {d.referenceRange || '--'} {d.unit || ''}
             </span>
           </div>
@@ -1413,6 +1427,7 @@ export default function HealthcareLensPage() {
             <span className="text-gray-400">Overall Progress</span>
             <span
               className={cn(
+                'tabular-nums',
                 overallProgress >= 75
                   ? 'text-green-400'
                   : overallProgress >= 40
@@ -1423,7 +1438,7 @@ export default function HealthcareLensPage() {
               {overallProgress}%
             </span>
           </div>
-          <div className="bg-gray-800 rounded-full h-2">
+          <div className="bg-lattice-border rounded-full h-2">
             <div
               className={cn(
                 'h-full rounded-full transition-all',
@@ -1452,7 +1467,7 @@ export default function HealthcareLensPage() {
                   <span className="text-gray-300 truncate">{g.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="bg-gray-800 rounded-full h-1 w-16">
+                  <div className="bg-lattice-border rounded-full h-1 w-16">
                     <div
                       className={cn(
                         'h-full rounded-full',
@@ -1461,7 +1476,7 @@ export default function HealthcareLensPage() {
                       style={{ width: `${Math.min(g.percent, 100)}%` }}
                     />
                   </div>
-                  <span className="text-gray-400 w-8 text-right">{g.percent}%</span>
+                  <span className="text-gray-400 w-8 text-right tabular-nums">{g.percent}%</span>
                 </div>
               </div>
             ))}
@@ -2083,7 +2098,14 @@ export default function HealthcareLensPage() {
           </div>
 
           {isLoading ? (
-            <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
+            <div className={ds.grid3}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className={ds.panel}>
+                  <Skeleton variant="line" width="60%" height="1.125rem" className="mb-2" />
+                  <Skeleton variant="line" lines={2} />
+                </div>
+              ))}
+            </div>
           ) : (activeTab === 'Pharmacy'
               ? filteredMeds
               : activeTab === 'Lab'
@@ -2209,7 +2231,7 @@ export default function HealthcareLensPage() {
                             )}
                           </div>
                           {d.date && (
-                            <span className="flex items-center gap-1 text-gray-400">
+                            <span className="flex items-center gap-1 text-gray-400 tabular-nums">
                               <Clock className="w-3 h-3" /> {d.date}
                             </span>
                           )}
@@ -2264,7 +2286,7 @@ export default function HealthcareLensPage() {
                         <div className="flex items-center justify-between text-xs">
                           {d.provider && <span className={ds.textMuted}>{d.provider}</span>}
                           {d.date && (
-                            <span className="flex items-center gap-1 text-gray-400">
+                            <span className="flex items-center gap-1 text-gray-400 tabular-nums">
                               <Clock className="w-3 h-3" /> {d.date}
                             </span>
                           )}
@@ -2302,7 +2324,7 @@ export default function HealthcareLensPage() {
                         <div className="flex items-center justify-between text-xs">
                           {d.provider && <span className={ds.textMuted}>{d.provider}</span>}
                           {d.date && (
-                            <span className="flex items-center gap-1 text-gray-400">
+                            <span className="flex items-center gap-1 text-gray-400 tabular-nums">
                               <Clock className="w-3 h-3" /> {d.date}
                             </span>
                           )}
@@ -2473,7 +2495,7 @@ export default function HealthcareLensPage() {
                           <p className={cn(ds.textMuted, 'line-clamp-2')}>{d.description}</p>
                           <div className="flex items-center gap-3">
                             <div className={cn('rounded-lg border px-3 py-1.5', sevBg)}>
-                              <span className={cn('text-lg font-bold', sevColor)}>{sev}/10</span>
+                              <span className={cn('text-lg font-bold tabular-nums', sevColor)}>{sev}/10</span>
                               <span className="text-xs text-gray-400 ml-1">severity</span>
                             </div>
                             {d.symptomCategory && (
@@ -2482,7 +2504,7 @@ export default function HealthcareLensPage() {
                           </div>
                           <div className="flex items-center gap-3 text-xs text-gray-400">
                             {d.symptomDate && (
-                              <span className="flex items-center gap-1">
+                              <span className="flex items-center gap-1 tabular-nums">
                                 <Clock className="w-3 h-3" />
                                 {d.symptomDate}
                               </span>

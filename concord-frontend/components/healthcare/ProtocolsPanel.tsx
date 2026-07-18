@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 
 interface Protocol {
   id: string;
@@ -125,7 +126,7 @@ export function ProtocolsPanel({ patientId }: { patientId?: string | null }) {
       </div>
 
       {/* Patient condition match */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ClipboardCheck className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Match against active conditions</span>
@@ -187,7 +188,7 @@ export function ProtocolsPanel({ patientId }: { patientId?: string | null }) {
       </div>
 
       {/* Browse library */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2 flex-wrap">
           <BookOpen className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Protocol library</span>
@@ -203,8 +204,13 @@ export function ProtocolsPanel({ patientId }: { patientId?: string | null }) {
         </header>
         <div className="p-3">
           {loadingLibrary && (
-            <div className="flex items-center justify-center py-8 text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading protocol library…
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="border border-white/10 rounded p-3 bg-black/30">
+                  <Skeleton variant="line" width="70%" height="0.875rem" className="mb-2" />
+                  <Skeleton variant="line" lines={2} />
+                </div>
+              ))}
             </div>
           )}
           {!loadingLibrary && protocols.length === 0 && (

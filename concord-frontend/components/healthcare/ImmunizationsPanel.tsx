@@ -74,11 +74,11 @@ export function ImmunizationsPanel({ className }: { className?: string }) {
   const pLabel = (p: Patient) => `${p.lastName || ''}${p.firstName ? ', ' + p.firstName : ''}${p.mrn ? ' (' + p.mrn + ')' : ''}` || p.id;
 
   return (
-    <div className={cn('rounded-xl border border-zinc-800 bg-zinc-950/40 p-4', className)}>
+    <div className={cn('rounded-xl border border-lattice-border bg-lattice-void/40 p-4', className)}>
       <div className="flex items-center gap-2 mb-3">
         <Syringe className="w-4 h-4 text-cyan-400" />
-        <h3 className="text-sm font-semibold text-zinc-100">Immunizations</h3>
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />}
+        <h3 className="text-sm font-semibold text-white">Immunizations</h3>
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
       </div>
 
       {error && (
@@ -89,28 +89,28 @@ export function ImmunizationsPanel({ className }: { className?: string }) {
 
       <div className="mb-3">
         <select value={patientId} onChange={(e) => setPatientId(e.target.value)}
-          className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-cyan-500 focus:outline-none">
+          className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-white focus:border-cyan-500 focus:outline-none">
           {patients.length === 0 && <option value="">No patients</option>}
           {patients.map((p) => <option key={p.id} value={p.id}>{pLabel(p)}</option>)}
         </select>
       </div>
 
       <div className="space-y-1.5 mb-3">
-        {records.length === 0 && !loading && <p className="text-xs text-zinc-500">No immunizations recorded for this patient.</p>}
+        {records.length === 0 && !loading && <p className="text-xs text-gray-500">No immunizations recorded for this patient.</p>}
         {records.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-xs">
-            <span className="text-zinc-100 font-medium flex-1">{r.vaccine}</span>
-            {r.doseSeries && <span className="text-zinc-500">{r.doseSeries}</span>}
-            {r.administeredAt && <span className="text-cyan-300/80 font-mono">{String(r.administeredAt).slice(0, 10)}</span>}
+            <span className="text-white font-medium flex-1">{r.vaccine}</span>
+            {r.doseSeries && <span className="text-gray-500">{r.doseSeries}</span>}
+            {r.administeredAt && <span className="text-cyan-300/80 font-mono tabular-nums">{String(r.administeredAt).slice(0, 10)}</span>}
           </div>
         ))}
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); void add(); }} className="flex flex-wrap items-center gap-2">
         <input value={vaccine} onChange={(e) => setVaccine(e.target.value)} placeholder="Vaccine (e.g. MMR)" maxLength={60} disabled={!patientId}
-          className="flex-1 min-w-[8rem] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-cyan-500 focus:outline-none disabled:opacity-50" />
+          className="flex-1 min-w-[8rem] bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-white focus:border-cyan-500 focus:outline-none disabled:opacity-50" />
         <input value={date} onChange={(e) => setDate(e.target.value)} type="date" disabled={!patientId}
-          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:outline-none disabled:opacity-50" />
+          className="bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-white focus:outline-none disabled:opacity-50" />
         <button type="submit" disabled={saving || !patientId || !vaccine.trim()}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-medium hover:bg-cyan-500/30 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50">
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Record

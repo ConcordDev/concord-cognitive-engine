@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Loader2, Plus, Search } from 'lucide-react';
+import { Users, Plus, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Patient {
   id: string; mrn: string; firstName: string; lastName: string;
@@ -52,7 +53,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
   }
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Patients</span>
@@ -93,7 +94,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={5} columns={3} />
         ) : list.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No patients yet.</div>
         ) : (
@@ -106,7 +107,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
                 )}>{p.firstName.slice(0, 1)}{p.lastName.slice(0, 1)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{p.lastName}, {p.firstName}</div>
-                  <div className="text-[10px] text-gray-400 truncate">
+                  <div className="text-[10px] text-gray-400 truncate tabular-nums">
                     <span className="font-mono">{p.mrn}</span>
                     {p.dob && <span> · DOB {p.dob} ({age(p.dob)})</span>}
                     <span> · {p.sex}</span>

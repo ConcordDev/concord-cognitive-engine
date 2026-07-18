@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Order {
   id: string; number: string; kind: string; name: string; status: string;
@@ -75,7 +76,7 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
   return (
     <div className="space-y-3">
       {/* Order entry */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <FlaskConical className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Place order</span>
@@ -109,7 +110,7 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
       </div>
 
       {/* Interaction checker */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Interaction check</span>
@@ -149,14 +150,14 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
       </div>
 
       {/* Order list */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ClipboardListIcon />
           <span className="text-sm font-semibold text-gray-200">Orders</span>
           <span className="text-[10px] text-gray-400">{orders.length}</span>
         </header>
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+          <SkeletonTableRows rows={4} columns={3} />
         ) : orders.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400">No orders for this patient yet.</div>
         ) : (
@@ -176,7 +177,7 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
                   <div className="flex-1" />
                   <select value={o.status} onChange={(e) => setStatus(o.id, e.target.value)} disabled={closed}
                     className={cn('text-[10px] bg-transparent border border-white/10 rounded px-1 py-0.5 disabled:opacity-50', STATUS_COLOR[o.status])}>
-                    {STATUSES.map((st) => <option key={st} value={st} className="bg-[#0d1117]">{st}</option>)}
+                    {STATUSES.map((st) => <option key={st} value={st} className="bg-lattice-deep">{st}</option>)}
                   </select>
                   {!closed && (
                     <button aria-label="Cancel order" type="button" onClick={() => cancel(o.id)} className="text-gray-400 hover:text-rose-300">

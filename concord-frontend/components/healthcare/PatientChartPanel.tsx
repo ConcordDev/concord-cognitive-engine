@@ -5,6 +5,7 @@ import type { ChangeEvent } from 'react';
 import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search, Pencil, X, Check, Camera, Trash2, AlertCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 
 interface Patient { id: string; mrn: string; firstName: string; lastName: string; dob: string; sex: string; phone: string; email: string; insurancePlan: string; insuranceMemberId?: string; address: string; emergencyContact?: string; preferredPharmacy?: string }
 interface Problem { id: string; name: string; icd10: string; status: 'active' | 'resolved' | 'inactive'; onsetDate: string; resolvedDate: string | null }
@@ -227,7 +228,34 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
     } catch (e) { console.error('[Chart] lab', e); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading chart…</div>;
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg p-3">
+          <div className="grid grid-cols-12 gap-3 items-center">
+            <div className="col-span-3 flex items-center gap-3">
+              <Skeleton variant="avatar" width={48} height={48} />
+              <div className="space-y-1.5">
+                <Skeleton variant="line" width="8rem" height="1rem" />
+                <Skeleton variant="line" width="5rem" height="0.625rem" />
+              </div>
+            </div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="col-span-2 space-y-1.5">
+                <Skeleton variant="line" width="70%" height="0.625rem" />
+                <Skeleton variant="line" width="90%" height="0.75rem" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
+          <Skeleton variant="table-row" columns={4} />
+          <Skeleton variant="table-row" columns={4} />
+          <Skeleton variant="table-row" columns={4} />
+        </div>
+      </div>
+    );
+  }
   if (!data) return <div className="p-10 text-center text-xs text-gray-400">Patient not found.</div>;
 
   const p = data.patient;
@@ -238,7 +266,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   return (
     <div className="space-y-3">
       {/* Patient banner (Epic-style) */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg p-3">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg p-3">
         <div className="grid grid-cols-12 gap-3 items-center">
           <div className="col-span-3 flex items-center gap-3">
             <div className={cn(
@@ -295,7 +323,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
       </div>
 
       {/* Chart tabs */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <nav className="flex items-center gap-1 border-b border-white/10 px-2 py-2 overflow-x-auto">
           {([
             { id: 'problems',      label: 'Problem List', count: activeProblems.length, icon: ClipboardList },

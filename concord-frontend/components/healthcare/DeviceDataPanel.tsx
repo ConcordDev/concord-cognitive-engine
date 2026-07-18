@@ -7,10 +7,11 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Watch, Loader2, Plus, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { Watch, Plus, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Reading {
   id: string; patientId: string; metric: string; value: number;
@@ -80,7 +81,7 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
   }, [readings, chartMetric]);
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Watch className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Wearable / home device data</span>
@@ -103,7 +104,7 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <SkeletonTableRows rows={5} columns={3} />
       ) : readings.length === 0 ? (
         <div className="px-3 py-10 text-center text-xs text-gray-400"><Watch className="w-6 h-6 mx-auto mb-2 opacity-30" />No device readings yet.</div>
       ) : (
@@ -114,7 +115,7 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
               <div key={s.metric} className="bg-lattice-deep/50 border border-white/5 rounded p-2">
                 <div className="text-[9px] uppercase text-gray-400 tracking-wider">{s.metric.replace('_', ' ')}</div>
                 <div className="flex items-center gap-1">
-                  <span className={cn('text-base font-bold', FLAG_STYLE[s.latestFlag])}>{s.latest}</span>
+                  <span className={cn('text-base font-bold tabular-nums', FLAG_STYLE[s.latestFlag])}>{s.latest}</span>
                   <span className="text-[10px] text-gray-400">{s.unit}</span>
                   {s.trend === 'up' && <ArrowUp className="w-3 h-3 text-rose-400" />}
                   {s.trend === 'down' && <ArrowDown className="w-3 h-3 text-cyan-400" />}
@@ -138,8 +139,8 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
             {readings.map(r => (
               <li key={r.id} className="px-4 py-2 hover:bg-white/[0.02] flex items-center gap-3">
                 <span className="text-[9px] uppercase text-gray-400 font-mono w-20">{r.metric.replace('_', ' ')}</span>
-                <span className={cn('text-sm font-semibold', FLAG_STYLE[r.flag])}>{r.value} <span className="text-[10px] text-gray-400">{r.unit}</span></span>
-                <span className="text-[10px] text-gray-400 ml-auto truncate">{r.device} · {r.recordedAt.slice(0, 16).replace('T', ' ')}</span>
+                <span className={cn('text-sm font-semibold tabular-nums', FLAG_STYLE[r.flag])}>{r.value} <span className="text-[10px] text-gray-400">{r.unit}</span></span>
+                <span className="text-[10px] text-gray-400 ml-auto truncate tabular-nums">{r.device} · {r.recordedAt.slice(0, 16).replace('T', ' ')}</span>
               </li>
             ))}
           </ul>
