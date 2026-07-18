@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Collaborator {
   id: string; collaborator: string; cursorX: number; cursorY: number;
@@ -202,26 +203,32 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return (
+      <div className="space-y-5" aria-busy="true">
+        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={3} /></div>
+        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={3} columns={3} /></div>
+        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={3} /></div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-5">
       {/* Live presence */}
       <section>
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-gray-300 mb-2">
           <Radio className="w-3.5 h-3.5 text-emerald-400" /> Live collaborators
-          <span className="text-[10px] text-zinc-400 font-normal">— real-time presence, idle &gt;45s drops off</span>
+          <span className="text-[10px] text-gray-400 font-normal">— real-time presence, idle &gt;45s drops off</span>
         </h3>
         {presence.length === 0 ? (
           <Empty text="No collaborators active right now." />
         ) : (
           <div className="flex flex-wrap gap-2">
             {presence.map((c) => (
-              <span key={c.id} className="flex items-center gap-1.5 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1">
+              <span key={c.id} className="flex items-center gap-1.5 bg-lattice-surface/70 border border-lattice-border rounded-lg px-2.5 py-1">
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: cssColor(c.color) }} />
-                <span className="text-[11px] text-zinc-200">{c.collaborator}</span>
-                <span className="text-[10px] text-zinc-400">viewing {c.viewing}</span>
+                <span className="text-[11px] text-gray-200">{c.collaborator}</span>
+                <span className="text-[10px] text-gray-400">viewing {c.viewing}</span>
               </span>
             ))}
           </div>
@@ -231,11 +238,11 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
       {/* Notification inbox */}
       <section>
         <div className="flex items-center gap-2 mb-2">
-          <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold text-gray-300">
             <Bell className="w-3.5 h-3.5 text-indigo-400" /> Notification inbox
           </h3>
           {unread > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-600 text-white">{unread} unread</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-600 text-white tabular-nums">{unread} unread</span>
           )}
           <span className="flex-1" />
           {notifications.length > 0 && (
@@ -252,13 +259,13 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
             {notifications.slice(0, 12).map((n) => (
               <li key={n.id}
                 className={cn('flex items-start gap-2 rounded-lg px-3 py-1.5 border',
-                  n.read ? 'bg-zinc-900/40 border-zinc-800' : 'bg-indigo-950/40 border-indigo-900/50')}>
+                  n.read ? 'bg-lattice-surface/40 border-lattice-border' : 'bg-indigo-950/40 border-indigo-900/50')}>
                 <span className={cn('mt-1 w-1.5 h-1.5 rounded-full shrink-0', n.read ? 'bg-zinc-600' : 'bg-indigo-400')} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-zinc-200">{n.title}</p>
-                  {n.detail && <p className="text-[10px] text-zinc-400 truncate">{n.detail}</p>}
+                  <p className="text-[11px] text-gray-200">{n.title}</p>
+                  {n.detail && <p className="text-[10px] text-gray-400 truncate">{n.detail}</p>}
                 </div>
-                <span className="text-[9px] text-zinc-400 shrink-0">{n.kind}</span>
+                <span className="text-[9px] text-gray-400 shrink-0">{n.kind}</span>
                 {!n.read && (
                   <button type="button" onClick={() => markRead(n.id)} className="text-[10px] text-indigo-400 hover:text-indigo-300 shrink-0">
                     read
@@ -272,7 +279,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
 
       {/* Integrations */}
       <section>
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-gray-300 mb-2">
           <Plug className="w-3.5 h-3.5 text-teal-400" /> GitHub / Slack / CI integrations
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-2 mb-2">
@@ -291,33 +298,33 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
             {integrations.map((i) => {
               const Icon = i.kind === 'github' ? Github : i.kind === 'slack' ? MessageSquare : CheckCircle2;
               return (
-                <li key={i.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                  <Icon className="w-3.5 h-3.5 text-zinc-400" />
-                  <span className="text-xs text-zinc-200">{i.target}</span>
-                  <span className="text-[10px] text-zinc-400">{i.linkCount} link{i.linkCount === 1 ? '' : 's'}</span>
+                <li key={i.id} className="flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-1.5">
+                  <Icon className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-xs text-gray-200">{i.target}</span>
+                  <span className="text-[10px] text-gray-400 tabular-nums">{i.linkCount} link{i.linkCount === 1 ? '' : 's'}</span>
                   <span className="flex-1" />
                   <button type="button"
                     onClick={() => lensRun('projects', 'integration-toggle', { id: i.id, enabled: !i.enabled }).then(refresh)}
-                    className={cn('text-[10px] px-1.5 py-0.5 rounded', i.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-400')}>
+                    className={cn('text-[10px] px-1.5 py-0.5 rounded', i.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-lattice-elevated text-gray-400')}>
                     {i.enabled ? 'on' : 'off'}
                   </button>
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'integration-delete', { id: i.id }).then(refresh)}
-                    className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </li>
               );
             })}
           </ul>
         )}
-        <p className="text-[10px] text-zinc-400 mt-1.5">
+        <p className="text-[10px] text-gray-400 mt-1.5">
           Link a PR, CI run or Slack thread to any issue from its detail view. A passing CI link auto-advances an in-review issue to done.
         </p>
       </section>
 
       {/* Triage inbox */}
       <section>
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-gray-300 mb-2">
           <Inbox className="w-3.5 h-3.5 text-amber-400" /> Triage inbox
-          <span className="text-[10px] text-zinc-400 font-normal">— incoming issues before the backlog</span>
+          <span className="text-[10px] text-gray-400 font-normal">— incoming issues before the backlog</span>
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 mb-2">
           <input placeholder="Incoming issue title" value={triageForm.title}
@@ -334,16 +341,16 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
         ) : (
           <ul className="space-y-1.5">
             {triage.map((t) => (
-              <li key={t.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 space-y-1.5">
+              <li key={t.id} className="bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-2 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono text-amber-400">{t.ref}</span>
-                  <span className="text-xs text-zinc-200 flex-1 truncate">{t.title}</span>
-                  <span className="text-[9px] text-zinc-400">{t.type} · {t.triageSource}</span>
+                  <span className="text-xs text-gray-200 flex-1 truncate">{t.title}</span>
+                  <span className="text-[9px] text-gray-400">{t.type} · {t.triageSource}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <TriageAccept onAccept={(p, st) => acceptTriage(t.id, p, st)} />
                   <button type="button" onClick={() => declineTriage(t.id)}
-                    className="text-[10px] px-2 py-1 bg-zinc-800 hover:bg-rose-900 text-zinc-300 rounded">Decline</button>
+                    className="text-[10px] px-2 py-1 bg-lattice-elevated hover:bg-rose-900 text-gray-300 rounded">Decline</button>
                 </div>
               </li>
             ))}
@@ -353,7 +360,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
 
       {/* SLA escalation */}
       <section>
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-gray-300 mb-2">
           <Timer className="w-3.5 h-3.5 text-rose-400" /> SLA / due-date escalation
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
@@ -372,12 +379,12 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
         ) : (
           <ul className="space-y-1 mb-2">
             {policies.map((p) => (
-              <li key={p.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5 text-[11px]">
-                <span className="text-zinc-200 flex-1">
-                  {p.priority} issues respond within <span className="text-rose-300">{p.responseDays}d</span>, escalate to <span className="text-rose-300">{p.escalateTo}</span>
+              <li key={p.id} className="flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-1.5 text-[11px]">
+                <span className="text-gray-200 flex-1">
+                  {p.priority} issues respond within <span className="text-rose-300 tabular-nums">{p.responseDays}d</span>, escalate to <span className="text-rose-300">{p.escalateTo}</span>
                 </span>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'sla-policy-delete', { id: p.id }).then(refresh)}
-                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>
@@ -391,18 +398,18 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
           <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="rounded-lg border border-rose-900/50 bg-rose-950/30 p-2.5">
               <p className="text-[10px] font-semibold text-rose-300 uppercase tracking-wide mb-1">
-                Breached ({slaResult.breachedCount}) · {slaResult.escalated} escalated
+                Breached (<span className="tabular-nums">{slaResult.breachedCount}</span>) · <span className="tabular-nums">{slaResult.escalated}</span> escalated
               </p>
               {slaResult.breached.length === 0 ? (
-                <p className="text-[10px] text-zinc-400">No breaches.</p>
+                <p className="text-[10px] text-gray-400">No breaches.</p>
               ) : (
                 <ul className="space-y-0.5">
                   {slaResult.breached.slice(0, 6).map((b) => (
-                    <li key={b.id} className="text-[10px] text-zinc-300 flex items-center gap-1.5">
+                    <li key={b.id} className="text-[10px] text-gray-300 flex items-center gap-1.5">
                       <XCircle className="w-3 h-3 text-rose-400 shrink-0" />
-                      <span className="font-mono text-zinc-400">{b.ref}</span>
+                      <span className="font-mono text-gray-400">{b.ref}</span>
                       <span className="truncate flex-1">{b.title}</span>
-                      <span className="text-rose-400">{b.overdueDays}d over</span>
+                      <span className="text-rose-400 tabular-nums">{b.overdueDays}d over</span>
                     </li>
                   ))}
                 </ul>
@@ -410,18 +417,18 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
             </div>
             <div className="rounded-lg border border-amber-900/50 bg-amber-950/30 p-2.5">
               <p className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide mb-1">
-                At risk ({slaResult.atRiskCount})
+                At risk (<span className="tabular-nums">{slaResult.atRiskCount}</span>)
               </p>
               {slaResult.atRisk.length === 0 ? (
-                <p className="text-[10px] text-zinc-400">Nothing due soon.</p>
+                <p className="text-[10px] text-gray-400">Nothing due soon.</p>
               ) : (
                 <ul className="space-y-0.5">
                   {slaResult.atRisk.slice(0, 6).map((a) => (
-                    <li key={a.id} className="text-[10px] text-zinc-300 flex items-center gap-1.5">
+                    <li key={a.id} className="text-[10px] text-gray-300 flex items-center gap-1.5">
                       <Timer className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="font-mono text-zinc-400">{a.ref}</span>
+                      <span className="font-mono text-gray-400">{a.ref}</span>
                       <span className="truncate flex-1">{a.title}</span>
-                      <span className="text-amber-400">{a.hoursLeft}h left</span>
+                      <span className="text-amber-400 tabular-nums">{a.hoursLeft}h left</span>
                     </li>
                   ))}
                 </ul>
@@ -433,29 +440,29 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
 
       {/* Command bar */}
       <section>
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold text-gray-300 mb-2">
           <Command className="w-3.5 h-3.5 text-violet-400" /> Command bar
         </h3>
         <button type="button" onClick={() => setCmdOpen(true)}
-          className="w-full flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 rounded-lg px-3 py-2 text-[11px] text-zinc-400">
+          className="w-full flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border hover:border-lattice-border rounded-lg px-3 py-2 text-[11px] text-gray-400">
           <Command className="w-3.5 h-3.5" />
           Search projects &amp; issues, jump anywhere
           <span className="flex-1" />
-          <kbd className="text-[9px] px-1.5 py-0.5 bg-zinc-800 rounded border border-zinc-700">⌘K</kbd>
+          <kbd className="text-[9px] px-1.5 py-0.5 bg-lattice-elevated rounded border border-lattice-border">⌘K</kbd>
         </button>
       </section>
 
       {cmdOpen && (
         <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 pt-24"
           onClick={() => setCmdOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden"
+          <div className="w-full max-w-lg bg-lattice-void border border-lattice-border rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-zinc-800">
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-lattice-border">
               <Command className="w-4 h-4 text-violet-400" />
               <input ref={cmdInputRef} value={cmdQuery} onChange={(e) => setCmdQuery(e.target.value)}
                 placeholder="Type to search or create…"
-                className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none" />
-              <kbd className="text-[9px] px-1.5 py-0.5 bg-zinc-800 rounded border border-zinc-700 text-zinc-400">ESC</kbd>
+                className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none" />
+              <kbd className="text-[9px] px-1.5 py-0.5 bg-lattice-elevated rounded border border-lattice-border text-gray-400">ESC</kbd>
             </div>
             <div className="max-h-80 overflow-y-auto p-2">
               {(cmdResult?.commands || []).map((c) => (
@@ -471,20 +478,20 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
                   }}
                   className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-violet-950/50 text-left">
                   <Plus className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                  <span className="text-[12px] text-zinc-200">{c.label}</span>
+                  <span className="text-[12px] text-gray-200">{c.label}</span>
                 </button>
               ))}
               {(cmdResult?.results || []).map((r) => (
                 <div key={`${r.kind}-${r.id}`}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-zinc-900 text-left">
-                  <ArrowUpRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                  <span className="text-[12px] text-zinc-200 flex-1 truncate">{r.label}</span>
-                  <span className="text-[10px] font-mono text-zinc-400">{r.sub}</span>
-                  {r.status && <span className="text-[9px] text-zinc-400">{r.status.replace(/_/g, ' ')}</span>}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-lattice-surface text-left">
+                  <ArrowUpRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <span className="text-[12px] text-gray-200 flex-1 truncate">{r.label}</span>
+                  <span className="text-[10px] font-mono text-gray-400">{r.sub}</span>
+                  {r.status && <span className="text-[9px] text-gray-400">{r.status.replace(/_/g, ' ')}</span>}
                 </div>
               ))}
               {cmdResult && cmdResult.results.length === 0 && cmdResult.commands.length === 0 && (
-                <p className="text-[11px] text-zinc-400 italic px-2.5 py-3">Type to search projects and issues.</p>
+                <p className="text-[11px] text-gray-400 italic px-2.5 py-3">Type to search projects and issues.</p>
               )}
             </div>
           </div>
@@ -492,7 +499,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
       )}
 
       {members.length === 0 && (
-        <p className="text-[10px] text-zinc-400 italic">
+        <p className="text-[10px] text-gray-400 italic">
           Add members in the Team tab to assign triaged issues during acceptance.
         </p>
       )}
@@ -506,11 +513,11 @@ function TriageAccept({ onAccept }: { onAccept: (priority: string, status: strin
   return (
     <div className="flex items-center gap-1.5">
       <select value={priority} onChange={(e) => setPriority(e.target.value)}
-        className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[10px] text-zinc-100">
+        className="bg-lattice-void border border-lattice-border rounded px-1.5 py-1 text-[10px] text-white">
         {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
       </select>
       <select value={status} onChange={(e) => setStatus(e.target.value)}
-        className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[10px] text-zinc-100">
+        className="bg-lattice-void border border-lattice-border rounded px-1.5 py-1 text-[10px] text-white">
         {STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
       </select>
       <button type="button" onClick={() => onAccept(priority, status)}
@@ -519,12 +526,12 @@ function TriageAccept({ onAccept }: { onAccept: (priority: string, status: strin
   );
 }
 
-const inp = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100';
+const inp = 'bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white';
 const btn = 'flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg px-2.5 py-1.5';
-const ghostBtn = 'text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded';
+const ghostBtn = 'text-[10px] px-2 py-0.5 bg-lattice-elevated hover:bg-lattice-border text-gray-400 rounded';
 
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-zinc-400 italic">{text}</p>;
+  return <p className="text-[11px] text-gray-400 italic">{text}</p>;
 }
 
 function cssColor(c: string): string {

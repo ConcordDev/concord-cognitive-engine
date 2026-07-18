@@ -6,8 +6,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { Loader2, Plus, Repeat, CheckCircle2 } from 'lucide-react';
+import { Plus, Repeat, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Sprint {
   id: string; name: string; startDate: string; endDate: string; status: string;
@@ -56,20 +57,24 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return (
+      <div className="space-y-4" aria-busy="true">
+        <div className="rounded-xl border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={4} columns={4} /></div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
         <input placeholder="Sprint name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
         <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
         <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
         <button type="button" onClick={addSprint}
           className="flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Sprint
@@ -77,9 +82,9 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
       </section>
 
       {burndown && (
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <h3 className="text-xs font-semibold text-zinc-300 mb-2">
-            Burndown · {burndown.sprint} <span className="text-zinc-400 font-normal">({burndown.donePoints}/{burndown.totalPoints} pts)</span>
+        <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
+          <h3 className="text-xs font-semibold text-gray-300 mb-2">
+            Burndown · {burndown.sprint} <span className="text-gray-400 font-normal tabular-nums">({burndown.donePoints}/{burndown.totalPoints} pts)</span>
           </h3>
           <ResponsiveContainer width="100%" height={170}>
             <LineChart data={burndown.series}>
@@ -96,21 +101,21 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
       )}
 
       {sprints.length === 0 ? (
-        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No sprints yet.</p>
+        <p className="text-[11px] text-gray-400 italic py-6 text-center">No sprints yet.</p>
       ) : (
         <ul className="space-y-2">
           {sprints.map((sp) => (
-            <li key={sp.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+            <li key={sp.id} className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
               <div className="flex items-center gap-2">
                 <Repeat className="w-4 h-4 text-indigo-400 shrink-0" />
                 <button type="button" onClick={() => showBurndown(sp.id)} className="flex-1 text-left">
-                  <span className="text-sm font-semibold text-zinc-100">{sp.name}</span>
-                  <span className="text-[10px] text-zinc-400 ml-2">{sp.startDate} → {sp.endDate}</span>
+                  <span className="text-sm font-semibold text-white">{sp.name}</span>
+                  <span className="text-[10px] text-gray-400 ml-2 tabular-nums">{sp.startDate} → {sp.endDate}</span>
                 </button>
-                <span className="text-[11px] text-zinc-400">{sp.donePoints}/{sp.totalPoints} pts</span>
+                <span className="text-[11px] text-gray-400 tabular-nums">{sp.donePoints}/{sp.totalPoints} pts</span>
                 {sp.status === 'active' ? (
                   <button type="button" onClick={() => complete(sp.id)}
-                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-lattice-elevated hover:bg-lattice-border text-gray-200 rounded">
                     <CheckCircle2 className="w-3 h-3" /> Complete
                   </button>
                 ) : (

@@ -5,16 +5,17 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Flag, AlertTriangle, Target, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Flag, AlertTriangle, Target, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Milestone { id: string; name: string; dueDate: string | null; status: string; taskCount: number; doneCount: number; progressPct: number }
 interface Risk { id: string; name: string; likelihood: number; impact: number; score: number; severity: string; mitigation: string | null }
 interface Goal { id: string; name: string; metric: string; target: number; current: number; progressPct: number }
 
 const SEVERITY_COLOR: Record<string, string> = {
-  critical: 'text-rose-400', high: 'text-orange-400', medium: 'text-amber-400', low: 'text-zinc-400',
+  critical: 'text-rose-400', high: 'text-orange-400', medium: 'text-amber-400', low: 'text-gray-400',
 };
 
 export function PjPlanningPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
@@ -68,14 +69,20 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return (
+      <div className="space-y-5" aria-busy="true">
+        <div className="rounded-xl border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={3} columns={3} /></div>
+        <div className="rounded-xl border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={3} columns={4} /></div>
+        <div className="rounded-xl border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={3} /></div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-5">
       {/* Milestones */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <Flag className="w-3.5 h-3.5 text-indigo-400" /> Milestones
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
@@ -86,24 +93,24 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
         {milestones.length === 0 ? <Empty text="No milestones." /> : (
           <ul className="space-y-1.5">
             {milestones.map((m) => (
-              <li key={m.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2.5">
+              <li key={m.id} className="bg-lattice-surface/70 border border-lattice-border rounded-lg p-2.5">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold text-zinc-100 flex-1">{m.name}</span>
-                  {m.dueDate && <span className="text-[10px] text-zinc-400">{m.dueDate}</span>}
+                  <span className="text-xs font-semibold text-white flex-1">{m.name}</span>
+                  {m.dueDate && <span className="text-[10px] text-gray-400 tabular-nums">{m.dueDate}</span>}
                   <button type="button"
                     onClick={() => lensRun('projects', 'milestone-complete', { id: m.id, reopen: m.status === 'completed' }).then(refresh)}
                     className={cn('text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1',
-                      m.status === 'completed' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-300')}>
+                      m.status === 'completed' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-lattice-elevated text-gray-300')}>
                     <CheckCircle2 className="w-3 h-3" />{m.status === 'completed' ? 'Done' : 'Mark'}
                   </button>
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'milestone-delete', { id: m.id }).then(refresh)}
-                    className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                  <div className="flex-1 h-1.5 rounded-full bg-lattice-elevated overflow-hidden">
                     <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${m.progressPct}%` }} />
                   </div>
-                  <span className="text-[10px] text-zinc-400">{m.doneCount}/{m.taskCount}</span>
+                  <span className="text-[10px] text-gray-400 tabular-nums">{m.doneCount}/{m.taskCount}</span>
                 </div>
               </li>
             ))}
@@ -113,7 +120,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
 
       {/* Risks */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Risk register
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-2">
@@ -130,12 +137,12 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
         {risks.length === 0 ? <Empty text="No risks logged." /> : (
           <ul className="space-y-1">
             {risks.map((r) => (
-              <li key={r.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+              <li key={r.id} className="flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-1.5">
                 <span className={cn('text-[10px] font-bold uppercase w-14', SEVERITY_COLOR[r.severity])}>{r.severity}</span>
-                <span className="text-xs text-zinc-200 flex-1 truncate">{r.name}</span>
-                <span className="text-[10px] text-zinc-400">L{r.likelihood}×I{r.impact} = {r.score}</span>
+                <span className="text-xs text-gray-200 flex-1 truncate">{r.name}</span>
+                <span className="text-[10px] text-gray-400 tabular-nums">L{r.likelihood}×I{r.impact} = {r.score}</span>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'risk-delete', { id: r.id }).then(refresh)}
-                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -144,7 +151,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
 
       {/* Goals */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <Target className="w-3.5 h-3.5 text-emerald-400" /> Goals
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
@@ -157,17 +164,17 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
         {goals.length === 0 ? <Empty text="No goals." /> : (
           <ul className="space-y-1.5">
             {goals.map((g) => (
-              <li key={g.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2.5">
+              <li key={g.id} className="bg-lattice-surface/70 border border-lattice-border rounded-lg p-2.5">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold text-zinc-100 flex-1">{g.name}</span>
+                  <span className="text-xs font-semibold text-white flex-1">{g.name}</span>
                   <input type="number" defaultValue={g.current}
                     onBlur={(e) => lensRun('projects', 'goal-update-progress', { id: g.id, current: Number(e.target.value) }).then(refresh)}
-                    className="w-16 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-zinc-100" />
-                  <span className="text-[10px] text-zinc-400">/ {g.target} {g.metric}</span>
+                    className="w-16 bg-lattice-void border border-lattice-border rounded px-1.5 py-0.5 text-[11px] text-white tabular-nums" />
+                  <span className="text-[10px] text-gray-400 tabular-nums">/ {g.target} {g.metric}</span>
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'goal-delete', { id: g.id }).then(refresh)}
-                    className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
-                <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                <div className="h-1.5 rounded-full bg-lattice-elevated overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, g.progressPct)}%` }} />
                 </div>
               </li>
@@ -179,8 +186,8 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
   );
 }
 
-const inp = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100';
+const inp = 'bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white';
 const btn = 'flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg';
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-zinc-400 italic">{text}</p>;
+  return <p className="text-[11px] text-gray-400 italic">{text}</p>;
 }

@@ -42,7 +42,7 @@ export default function ProjectsLensPage() {
         <ProjectsSection />
       </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
         <ProjectMgmtRepos />
       </section>
     </div>
