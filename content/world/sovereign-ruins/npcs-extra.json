@@ -744,6 +744,81 @@
     "starting_sparks": 2500
   },
   {
+    "id": "the_almoner",
+    "name": "The Almoner",
+    "title": "Keeper of the Open Stores",
+    "faction_id": "ruins_pilgrims",
+    "world_id": "sovereign-ruins",
+    "archetype": "healer",
+    "personality": "The Almoner gives away everything the Open Stores hold and asks nothing back — not labor, not loyalty, not a name. Calm in a way that unsettles people who expect charity to have a catch. Refuses every offer to formalize the giving into a ledger, a loan, or a lien, because a ledger is how mercy turns into ownership.",
+    "appearance": "Weathered, sun-cracked hands, robes patched so many times the original cloth is a memory. Carries no weapon and no keys — the Open Stores have no lock.",
+    "background": "Took up the Open Stores after the collapse, when the ruins' scattered survivors needed food, water, and shelter faster than any formal relief could reach them. Has kept giving for longer than anyone expected the stores to last, refilled by scavengers and pilgrims who give back what they can, when they can, with no accounting kept.",
+    "narrative_context": {
+      "secret": "The Almoner knows exactly how close to empty the Open Stores run some seasons, and has quietly gone without to keep the count from ever showing it. Across the Concord Link, a sere-world relief officer keeps arguing that charity without a ledger cannot possibly work — the Almoner has never found the words to explain that the ledger is exactly what would break it.",
+      "weaponise_at": "If a rival faction ever proved the Almoner has been rationing their own share to keep the Stores looking full, it would either make the Almoner a legend or expose the Open Stores as one person's unsustainable sacrifice rather than the ruins' shared mercy everyone believes it to be."
+    },
+    "concord_link_resonance": "sere:mercy_fund_director_aurel_pace",
+    "dialogue_style": "quiet, patient, never explains the same thing twice",
+    "needs": [
+      {
+        "id": "provisioning",
+        "priority": "primary",
+        "satisfaction_method": "daily_open_stores_distribution"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [1, 4],
+        "location": "ruins_open_stores",
+        "activity": "counts what's left, alone, before anyone can see the count",
+        "need_addressed": "provisioning",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [5, 9],
+        "location": "ruins_open_stores",
+        "activity": "opens the Stores; gives to whoever is first in line",
+        "need_addressed": "provisioning",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [9, 14],
+        "location": "ruins_open_stores",
+        "activity": "distributes through the midday rush; turns no one away",
+        "need_addressed": "provisioning",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [13, 16],
+        "location": "ruins_market_square",
+        "activity": "walks the market checking on the ruins' most fragile households",
+        "need_addressed": "provisioning",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [17, 20],
+        "location": "ruins_open_stores",
+        "activity": "receives what scavengers and pilgrims give back, unasked",
+        "need_addressed": "provisioning",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [21, 24],
+        "location": "ruins_open_stores",
+        "activity": "goes without supper again; tells no one",
+        "need_addressed": "provisioning",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 800
+  },
+  {
     "id": "gen_sovereign-ruins_0000",
     "name": "Gale Sable",
     "archetype": "guard",
