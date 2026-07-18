@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -37,6 +37,13 @@ export interface FEAResultViewerProps {
   showDeformed?: boolean;
   showStress?: boolean;
   height?: string;
+  /**
+   * S2-b — optional replacement for the default in-scene <OrbitControls>. When
+   * provided (e.g. ConKay's <StepInControls> orbit↔walk cam), it renders inside
+   * the Canvas in place of OrbitControls. Omitted everywhere else, so the
+   * default orbit view (ForwardSimPanel, the engineering lens) is unchanged.
+   */
+  cameraControls?: ReactNode;
 }
 
 // ── Stress color: blue(0) → green(0.5) → red(1.0+) ──────────────────────────
@@ -96,7 +103,10 @@ function FEAScene({
   amplification,
   showDeformed,
   showStress,
-}: Required<Omit<FEAResultViewerProps, 'height'>>) {
+  cameraControls,
+}: Required<Omit<FEAResultViewerProps, 'height' | 'cameraControls'>> & {
+  cameraControls?: ReactNode;
+}) {
   // Build lookup maps
   const nodeMap = useMemo(() => {
     const m = new Map<string, FEANode>();
@@ -136,7 +146,9 @@ function FEAScene({
       <directionalLight position={[10, 20, 10]} intensity={0.8} />
       <axesHelper args={[2]} />
       <CameraRig nodes={nodes} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08} />
+      {/* S2-b — a caller (ConKay "step in") may swap in its own orbit↔walk cam;
+          default is the standard OrbitControls (ForwardSimPanel path unchanged). */}
+      {cameraControls ?? <OrbitControls makeDefault enableDamping dampingFactor={0.08} />}
 
       {members.map((member) => {
         const nI = nodeMap.get(member.nodeI);
@@ -244,6 +256,7 @@ export function FEAResultViewer({
   showDeformed = true,
   showStress = true,
   height = '400px',
+  cameraControls,
 }: FEAResultViewerProps) {
   const sortedMembers = useMemo(
     () => [...members].sort((a, b) => b.utilization - a.utilization),
@@ -274,6 +287,7 @@ export function FEAResultViewer({
               amplification={amplification}
               showDeformed={showDeformed}
               showStress={showStress}
+              cameraControls={cameraControls}
             />
           </Canvas>
         )}
