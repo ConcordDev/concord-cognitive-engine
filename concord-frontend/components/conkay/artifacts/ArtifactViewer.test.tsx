@@ -27,6 +27,8 @@ vi.mock('./FeaAdapter', () => ({ FeaAdapter: () => <div data-testid="mock-fea" /
 vi.mock('./BuildingAdapter', () => ({ BuildingAdapter: () => <div data-testid="mock-building" /> }));
 vi.mock('./FoundryAdapter', () => ({ FoundryAdapter: () => <div data-testid="mock-foundry" /> }));
 vi.mock('./ForgeAdapter', () => ({ ForgeAdapter: () => <div data-testid="mock-forge" /> }));
+vi.mock('./RoboticsArmAdapter', () => ({ RoboticsArmAdapter: () => <div data-testid="mock-robotics" /> }));
+vi.mock('./CreatureAdapter', () => ({ CreatureAdapter: () => <div data-testid="mock-creature" /> }));
 
 const base = { components: [], sourceDomain: 'd', sourceMacro: 'm' };
 
@@ -45,6 +47,8 @@ describe('ArtifactViewer', () => {
     expect(screen.queryByTestId('mock-building')).toBeNull();
     expect(screen.queryByTestId('mock-foundry')).toBeNull();
     expect(screen.queryByTestId('mock-forge')).toBeNull();
+    expect(screen.queryByTestId('mock-robotics')).toBeNull();
+    expect(screen.queryByTestId('mock-creature')).toBeNull();
   });
 
   it('(b) dispatches each registered kind to its real adapter', () => {
@@ -54,6 +58,8 @@ describe('ArtifactViewer', () => {
       ['building', 'mock-building'],
       ['foundry-worldspec', 'mock-foundry'],
       ['forge-app', 'mock-forge'],
+      ['robotics-arm', 'mock-robotics'],
+      ['creature', 'mock-creature'],
     ];
     for (const [kind, testid] of cases) {
       const { unmount } = render(
