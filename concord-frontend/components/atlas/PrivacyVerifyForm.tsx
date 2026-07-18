@@ -41,26 +41,26 @@ export function PrivacyVerifyForm({ zones }: PrivacyVerifyFormProps) {
   }
 
   return (
-    <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-4 space-y-3">
+    <div className="rounded-lg bg-lattice-elevated/50 border border-lattice-border/50 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <ShieldCheck size={16} className="text-red-400" />
-        <span className="text-sm font-medium text-zinc-200">Verify Zone Integrity</span>
+        <span className="text-sm font-medium text-gray-200">Verify Zone Integrity</span>
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-gray-500">
         Confirms a zone&apos;s interior-never-generated guarantee holds — no interior data
         exists and none is reconstructable. Pick a real zone from the list above; this deployment
         has none until a signal profile is classified into a protected zone.
       </p>
 
       {zones.length === 0 ? (
-        <p className="text-xs text-zinc-400">No privacy zones exist yet to verify.</p>
+        <p className="text-xs text-gray-400">No privacy zones exist yet to verify.</p>
       ) : (
         <form onSubmit={submit} className="flex items-center gap-2">
           <select
             value={selectedZoneId}
             onChange={(e) => setSelectedZoneId(e.target.value)}
             aria-label="Select privacy zone to verify"
-            className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500/60"
+            className="flex-1 bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-red-500/60"
           >
             <option value="">Select a zone…</option>
             {zones.map((z) => (

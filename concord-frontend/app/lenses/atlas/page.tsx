@@ -52,7 +52,7 @@ export default function AtlasLensPage() {
   return (
     <LensShell lensId="atlas" asMain={false}>
       <FirstRunTour lensId="atlas" />
-      <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 space-y-4">
+      <div data-lens-theme="atlas" className="min-h-screen bg-lattice-void text-gray-100 p-4 sm:p-6 space-y-4">
         {/* Header + mode toggle. Two distinct backends live under this one
             lens: a real Google-Maps-parity places/trips/directions tool
             (server/domains/atlas.js) and a sci-fi signal-tomography
@@ -66,17 +66,17 @@ export default function AtlasLensPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold">Atlas</h1>
-              <p className="text-sm text-zinc-400">{mode === 'map' ? 'Places, trips & navigation' : 'Signal tomography & spatial intelligence'}</p>
+              <p className="text-sm text-gray-400">{mode === 'map' ? 'Places, trips & navigation' : 'Signal tomography & spatial intelligence'}</p>
             </div>
             <DepthBadge lensId="atlas" size="sm" className="ml-1" />
           </div>
-          <div className="flex items-center gap-1 rounded-lg bg-zinc-900 border border-zinc-800 p-1" role="tablist" aria-label="Atlas mode">
+          <div className="flex items-center gap-1 rounded-lg bg-lattice-surface border border-lattice-border p-1" role="tablist" aria-label="Atlas mode">
             <button
               type="button"
               role="tab"
               aria-selected={mode === 'map'}
               onClick={() => setMode('map')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'map' ? 'bg-teal-500/20 text-teal-200' : 'text-zinc-400 hover:text-zinc-200'}`}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'map' ? 'bg-teal-500/20 text-teal-200' : 'text-gray-400 hover:text-gray-200'}`}
             >
               <MapPinned className="w-3.5 h-3.5" /> Map &amp; trips
             </button>
@@ -85,7 +85,7 @@ export default function AtlasLensPage() {
               role="tab"
               aria-selected={mode === 'tomography'}
               onClick={() => setMode('tomography')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'tomography' ? 'bg-purple-500/20 text-purple-200' : 'text-zinc-400 hover:text-zinc-200'}`}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'tomography' ? 'bg-purple-500/20 text-purple-200' : 'text-gray-400 hover:text-gray-200'}`}
             >
               <Satellite className="w-3.5 h-3.5" /> Signal tomography
             </button>
@@ -215,9 +215,9 @@ function SignalTomography() {
 
       {/* ── Four UX states ── */}
       {(coverageLoading || anomalyLoading) && !coverageError && !anomalyError && (
-        <div role="status" aria-live="polite" className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 flex items-center gap-2">
+        <div role="status" aria-live="polite" className="bg-lattice-surface border border-lattice-border rounded-lg p-3 flex items-center gap-2">
           <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
-          <p className="text-sm text-zinc-400">Scanning signal tomography…</p>
+          <p className="text-sm text-gray-400">Scanning signal tomography…</p>
         </div>
       )}
       {(coverageError || anomalyError) && (
@@ -235,9 +235,9 @@ function SignalTomography() {
         markers.length === 0 &&
         ((taxonomyData as { signals?: unknown[]; total?: number })?.signals?.length || (taxonomyData as { total?: number })?.total || 0) === 0 &&
         ((anomalyData as { anomalies?: unknown[]; total?: number })?.anomalies?.length || (anomalyData as { total?: number })?.total || 0) === 0 && (
-        <div className="bg-zinc-900 border border-dashed border-zinc-700 rounded-lg p-4 text-center">
-          <p className="text-sm text-zinc-300 font-medium">No signal coverage yet</p>
-          <p className="text-xs text-zinc-500 mt-1">Query a tile by latitude/longitude below to confirm — or check back once a mesh network is feeding this pipeline.</p>
+        <div className="bg-lattice-surface border border-dashed border-lattice-border rounded-lg p-4 text-center">
+          <p className="text-sm text-gray-300 font-medium">No signal coverage yet</p>
+          <p className="text-xs text-gray-500 mt-1">Query a tile by latitude/longitude below to confirm — or check back once a mesh network is feeding this pipeline.</p>
         </div>
       )}
 
@@ -254,29 +254,29 @@ function SignalTomography() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08, duration: 0.4 }}
-            className="rounded-lg bg-zinc-900 border border-zinc-800 p-3"
+            className="rounded-lg bg-lattice-surface border border-lattice-border p-3"
           >
             <div className={`w-8 h-8 rounded-lg ${stat.color} flex items-center justify-center mb-2`}>
               <stat.icon className="w-4 h-4" />
             </div>
-            <p className="text-xl font-bold text-white">{stat.value}</p>
-            <p className="text-xs text-zinc-400">{stat.label}</p>
+            <p className="text-xl font-bold text-white font-mono tabular-nums">{stat.value}</p>
+            <p className="text-xs text-gray-400">{stat.label}</p>
           </motion.div>
         ))}
       </div>
 
       {/* Zoom Level Indicator */}
-      <div className="flex items-center gap-2 text-xs text-zinc-400">
+      <div className="flex items-center gap-2 text-xs text-gray-400">
         <Compass className="w-3.5 h-3.5 text-purple-400" />
-        <span>Lat: {queryLat || '--'}</span>
-        <span className="text-zinc-700">|</span>
-        <span>Lng: {queryLng || '--'}</span>
-        <span className="text-zinc-700">|</span>
-        <span className="text-purple-400">{markers.length} markers loaded</span>
+        <span>Lat: <span className="font-mono tabular-nums text-gray-300">{queryLat || '--'}</span></span>
+        <span className="text-gray-700">|</span>
+        <span>Lng: <span className="font-mono tabular-nums text-gray-300">{queryLng || '--'}</span></span>
+        <span className="text-gray-700">|</span>
+        <span className="text-purple-400"><span className="font-mono tabular-nums">{markers.length}</span> markers loaded</span>
       </div>
 
       {/* Map */}
-      <div className="rounded-lg overflow-hidden border border-zinc-800">
+      <div className="rounded-lg overflow-hidden border border-lattice-border">
         <SafeCard label="Signal tomography map" className="h-[320px]">
           <MapView markers={markers} className="h-[320px]" onMarkerClick={handleMarkerClick} />
         </SafeCard>
@@ -290,7 +290,7 @@ function SignalTomography() {
           placeholder="Latitude"
           value={queryLat}
           onChange={(e) => setQueryLat(e.target.value)}
-          className="bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-200 w-32"
+          className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-sm text-gray-200 w-32"
         />
         <input
           type="number"
@@ -298,7 +298,7 @@ function SignalTomography() {
           placeholder="Longitude"
           value={queryLng}
           onChange={(e) => setQueryLng(e.target.value)}
-          className="bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-200 w-32"
+          className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-sm text-gray-200 w-32"
         />
         <button
           onClick={() => refetchTile()}
@@ -314,13 +314,13 @@ function SignalTomography() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1">
+      <div className="flex gap-1 bg-lattice-surface rounded-lg p-1">
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              tab === t.id ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
+              tab === t.id ? 'bg-lattice-elevated text-white' : 'text-gray-400 hover:text-gray-300'
             }`}
           >
             {t.icon}

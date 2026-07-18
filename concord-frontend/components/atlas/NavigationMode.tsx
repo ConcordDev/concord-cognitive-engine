@@ -155,8 +155,8 @@ export function NavigationMode() {
     : 0;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-      <div className="border-b border-zinc-800 bg-zinc-900/60 p-3">
+    <div className="overflow-hidden rounded-xl border border-lattice-border bg-lattice-void">
+      <div className="border-b border-lattice-border bg-lattice-surface/60 p-3">
         <div className="flex items-center gap-2">
           <Navigation className="h-4 w-4 text-violet-400" />
           <span className="text-sm font-semibold text-white">Navigation mode</span>
@@ -164,23 +164,23 @@ export function NavigationMode() {
 
         {!session && (
           <>
-            <div className="mt-3 flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950 p-1">
+            <div className="mt-3 flex items-center gap-1 rounded-lg border border-lattice-border bg-lattice-void p-1">
               {(['driving', 'walking', 'cycling'] as Mode[]).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
-                  className={`flex-1 rounded px-2 py-1.5 text-[11px] capitalize transition ${mode === m ? 'bg-violet-500/20 text-violet-200' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'}`}
+                  className={`flex-1 rounded px-2 py-1.5 text-[11px] capitalize transition ${mode === m ? 'bg-violet-500/20 text-violet-200' : 'text-gray-400 hover:bg-lattice-elevated/60 hover:text-gray-200'}`}
                 >
                   {m}
                 </button>
               ))}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <input type="number" step="any" placeholder="Start lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-violet-500/40 focus:outline-none" />
-              <input type="number" step="any" placeholder="Start lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-violet-500/40 focus:outline-none" />
-              <input type="number" step="any" placeholder="Dest lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-violet-500/40 focus:outline-none" />
-              <input type="number" step="any" placeholder="Dest lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-violet-500/40 focus:outline-none" />
+              <input type="number" step="any" placeholder="Start lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-violet-500/40 focus:outline-none" />
+              <input type="number" step="any" placeholder="Start lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-violet-500/40 focus:outline-none" />
+              <input type="number" step="any" placeholder="Dest lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-violet-500/40 focus:outline-none" />
+              <input type="number" step="any" placeholder="Dest lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-violet-500/40 focus:outline-none" />
             </div>
             <button
               type="button"
@@ -219,7 +219,7 @@ export function NavigationMode() {
           <div className="mb-2 rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {!session && !error && !loading && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
+          <div className="rounded border border-dashed border-lattice-border p-6 text-center text-[11px] text-gray-400">
             No data yet. Enter a start and destination to begin a live navigation session.
             Device GPS feeds positions automatically; "Push position" sends the start coordinates manually.
           </div>
@@ -232,12 +232,12 @@ export function NavigationMode() {
               </div>
             ) : (
               <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-400">Next instruction</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400">Next instruction</p>
                 <p className="mt-1 text-sm capitalize text-white">
                   {lastUpdate?.nextStep?.instruction || session.steps[session.currentStepIndex]?.instruction || 'Proceed to route'}
                 </p>
                 {(lastUpdate?.nextStep?.roadName || session.steps[session.currentStepIndex]?.roadName) && (
-                  <p className="text-[11px] text-zinc-400">
+                  <p className="text-[11px] text-gray-400">
                     on {lastUpdate?.nextStep?.roadName || session.steps[session.currentStepIndex]?.roadName}
                   </p>
                 )}
@@ -245,27 +245,27 @@ export function NavigationMode() {
             )}
 
             <div>
-              <div className="mb-1 flex items-center justify-between text-[10px] text-zinc-400">
+              <div className="mb-1 flex items-center justify-between text-[10px] text-gray-400">
                 <span>{fmtMeters(session.progressMeters)} done</span>
                 <span>{lastUpdate?.remainingText ? `${lastUpdate.remainingText} left` : `${fmtMeters(session.totalDistanceMeters)} total`}</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+              <div className="h-2 overflow-hidden rounded-full bg-lattice-elevated">
                 <div className="h-full bg-violet-500 transition-all" style={{ width: `${progressPct}%` }} />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-                <p className="font-mono text-sm text-white capitalize">{session.mode}</p>
-                <p className="text-[9px] text-zinc-400">Mode</p>
+              <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2 text-center">
+                <p className="font-mono tabular-nums text-sm text-white capitalize">{session.mode}</p>
+                <p className="text-[9px] text-gray-400">Mode</p>
               </div>
-              <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-                <p className="font-mono text-sm text-white">{session.rerouteCount}</p>
-                <p className="text-[9px] text-zinc-400">Reroutes</p>
+              <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2 text-center">
+                <p className="font-mono tabular-nums text-sm text-white">{session.rerouteCount}</p>
+                <p className="text-[9px] text-gray-400">Reroutes</p>
               </div>
-              <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-                <p className="font-mono text-sm text-white">{progressPct}%</p>
-                <p className="text-[9px] text-zinc-400">Progress</p>
+              <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2 text-center">
+                <p className="font-mono tabular-nums text-sm text-white">{progressPct}%</p>
+                <p className="text-[9px] text-gray-400">Progress</p>
               </div>
             </div>
 
@@ -276,13 +276,13 @@ export function NavigationMode() {
             )}
 
             <div className="space-y-1">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Upcoming steps</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">Upcoming steps</div>
               {session.steps.slice(session.currentStepIndex, session.currentStepIndex + 6).map((step, i) => (
-                <div key={i} className="flex items-start gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
-                  <ChevronRight className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${i === 0 ? 'text-violet-400' : 'text-zinc-600'}`} />
+                <div key={i} className="flex items-start gap-2 rounded border border-lattice-border bg-lattice-surface/40 px-2.5 py-1.5">
+                  <ChevronRight className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${i === 0 ? 'text-violet-400' : 'text-gray-600'}`} />
                   <div className="flex-1 text-[11px]">
-                    <div className="capitalize text-zinc-100">{step.instruction}</div>
-                    <div className="text-[10px] text-zinc-400">
+                    <div className="capitalize text-gray-100">{step.instruction}</div>
+                    <div className="text-[10px] text-gray-400">
                       {step.roadName && <span>{step.roadName} · </span>}{fmtMeters(step.distanceMeters)}
                     </div>
                   </div>

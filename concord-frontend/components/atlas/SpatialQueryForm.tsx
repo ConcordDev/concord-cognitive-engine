@@ -76,7 +76,7 @@ interface SpatialQueryResult {
   changes?: ChangeRecord[];
 }
 
-const inputCls = 'bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/60';
+const inputCls = 'bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-purple-500/60';
 
 const FIELD_SETS: Record<QueryType, { point: boolean; bounds: boolean; radius: boolean; changesExtra: boolean }> = {
   point: { point: true, bounds: false, radius: false, changesExtra: false },
@@ -200,12 +200,12 @@ export function SpatialQueryForm() {
   }
 
   return (
-    <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-4 space-y-3">
+    <div className="rounded-lg bg-lattice-elevated/50 border border-lattice-border/50 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Search size={16} className="text-purple-400" />
-        <span className="text-sm font-medium text-zinc-200">Ad-hoc Spatial Query</span>
+        <span className="text-sm font-medium text-gray-200">Ad-hoc Spatial Query</span>
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-gray-500">
         Power-user query against the atlas substrate — point/area/radius tile lookups, material
         classification, subsurface detail, and change history. This deployment has no
         signal-ingestion pipeline wired yet, so a well-formed query correctly returns an honest
@@ -328,7 +328,7 @@ function QueryResultPanel({ type, result }: { type: QueryType; result: SpatialQu
   if (type === 'point') {
     if (!result.tile) {
       return (
-        <div role="status" className="flex items-center gap-1.5 text-xs text-zinc-400">
+        <div role="status" className="flex items-center gap-1.5 text-xs text-gray-400">
           <Info className="w-3.5 h-3.5 shrink-0" /> No tile at these coordinates — an honestly empty lookup, not an error.
         </div>
       );
@@ -338,7 +338,7 @@ function QueryResultPanel({ type, result }: { type: QueryType; result: SpatialQu
         <div className="flex items-center gap-1.5 text-emerald-400">
           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Tile {result.tile.id}
         </div>
-        <p className="text-zinc-400">
+        <p className="text-gray-400">
           Confidence {result.tile.confidence !== undefined ? `${Math.round(result.tile.confidence * 100)}%` : '--'}
           {result.tile.resolution_cm ? ` · ${result.tile.resolution_cm}cm resolution` : ''}
         </p>
@@ -362,7 +362,7 @@ function QueryResultPanel({ type, result }: { type: QueryType; result: SpatialQu
     const count = result.tileCount ?? result.tiles?.length ?? 0;
     if (count === 0) {
       return (
-        <div role="status" className="flex items-center gap-1.5 text-xs text-zinc-400">
+        <div role="status" className="flex items-center gap-1.5 text-xs text-gray-400">
           <Info className="w-3.5 h-3.5 shrink-0" /> No tiles found in this region — an honestly empty lookup, not an error.
         </div>
       );
@@ -372,10 +372,10 @@ function QueryResultPanel({ type, result }: { type: QueryType; result: SpatialQu
         <div className="flex items-center gap-1.5 text-emerald-400">
           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {count} tile{count === 1 ? '' : 's'} found{result.tier ? ` (tier: ${result.tier})` : ''}
         </div>
-        <ul className="space-y-0.5 text-zinc-400">
+        <ul className="space-y-0.5 text-gray-400">
           {(result.tiles || []).slice(0, 5).map((t) => (
             <li key={t.id} className="flex items-center gap-1.5">
-              <MapPin className="w-3 h-3 shrink-0 text-zinc-600" /> {t.id}
+              <MapPin className="w-3 h-3 shrink-0 text-gray-600" /> {t.id}
             </li>
           ))}
         </ul>
@@ -387,7 +387,7 @@ function QueryResultPanel({ type, result }: { type: QueryType; result: SpatialQu
   const count = result.count ?? result.changes?.length ?? 0;
   if (count === 0) {
     return (
-      <div role="status" className="flex items-center gap-1.5 text-xs text-zinc-400">
+      <div role="status" className="flex items-center gap-1.5 text-xs text-gray-400">
         <Info className="w-3.5 h-3.5 shrink-0" /> No changes recorded in this window — an honestly empty lookup, not an error.
       </div>
     );
@@ -397,10 +397,10 @@ function QueryResultPanel({ type, result }: { type: QueryType; result: SpatialQu
       <div className="flex items-center gap-1.5 text-emerald-400">
         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {count} of {result.total ?? count} change{count === 1 ? '' : 's'}
       </div>
-      <ul className="space-y-0.5 text-zinc-400">
+      <ul className="space-y-0.5 text-gray-400">
         {(result.changes || []).slice(0, 5).map((c) => (
           <li key={c.id} className="flex items-center gap-1.5">
-            <MapPin className="w-3 h-3 shrink-0 text-zinc-600" /> {c.type || 'change'} — {c.detectedAt || 'unknown time'}
+            <MapPin className="w-3 h-3 shrink-0 text-gray-600" /> {c.type || 'change'} — {c.detectedAt || 'unknown time'}
           </li>
         ))}
       </ul>

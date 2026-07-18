@@ -74,7 +74,7 @@ export function PlacesGraph() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <div className="rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
           <Network className="h-4 w-4 text-emerald-400" /> Saved-places graph
@@ -82,18 +82,18 @@ export function PlacesGraph() {
         <button
           type="button"
           onClick={refresh}
-          className="rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700"
+          className="rounded bg-lattice-elevated px-2 py-1 text-[10px] text-gray-300 hover:bg-lattice-elevated"
         >
           Refresh
         </button>
       </div>
       {loading ? (
-        <div className="flex h-[300px] items-center justify-center text-zinc-400">
+        <div className="flex h-[300px] items-center justify-center text-gray-400">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : nodes.length === 0 ? (
-        <div className="flex h-[300px] flex-col items-center justify-center gap-2 rounded border border-dashed border-zinc-800 text-center text-[11px] text-zinc-400">
-          <Network className="h-6 w-6 text-zinc-700" />
+        <div className="flex h-[300px] flex-col items-center justify-center gap-2 rounded border border-dashed border-lattice-border text-center text-[11px] text-gray-400">
+          <Network className="h-6 w-6 text-gray-700" />
           No data yet. Save places and group them into lists — they appear here as a connected graph.
         </div>
       ) : (
