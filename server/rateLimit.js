@@ -8,32 +8,36 @@
 const rateLimits = new Map(); // key → { count, windowStart }
 const MAX_RATE_LIMIT_ENTRIES = 50000;
 
+// RATE-LIMIT PHILOSOPHY (owner directive, 2026-07-18): "take the leashes off."
+// Concord's compute runs on LOCAL Ollama — there is no per-request token cost to
+// meter, and the whole platform is mostly DETERMINISTIC (a rich lens fires many
+// cheap macro POSTs per load; HUDs + heartbeats poll continuously). So the
+// COMPUTE/INTERACTIVE buckets below are set to a ceiling no human interaction
+// can reach — they exist ONLY as a runaway-client backstop (a bugged infinite
+// loop shouldn't be able to melt the box), not as a leash on real use. The few
+// buckets kept deliberately LOW are the ones that protect something OTHER than
+// compute: governance (marketplace submit), outbound side-effects with real-
+// world blast radius (email), and abuse/spam vectors — none of which "free
+// Ollama" makes safe to uncap. CONCORD_RATE_LIMIT_BYPASS=1 disables everything.
 const LIMITS = {
-  'conscious.chat': { max: 30, windowMs: 60000 },       // 30/min — GPU: conversational speed
-  'utility.call': { max: 240, windowMs: 60000 },         // 240/min — entities need real-time interaction; deterministic, cheap
-  'marketplace.submit': { max: 5, windowMs: 3600000 },   // 5/hour — governance, not hardware
-  'global.pull': { max: 20, windowMs: 3600000 },         // 20/hour — stays same
-  'semantic.search': { max: 100, windowMs: 60000 },      // 100/min — GPU: embedding search is near-instant
-  'default': { max: 300, windowMs: 60000 },              // 300/min — GPU: room for background + user
+  // ── Compute / interactive — effectively uncapped (runaway backstop only) ──
+  'conscious.chat':  { max: 600,   windowMs: 60000 },    // chat/reasoning — 10/s, local Ollama
+  'utility.call':    { max: 6000,  windowMs: 60000 },    // entity/lens quick calls — 100/s
+  'semantic.search': { max: 6000,  windowMs: 60000 },    // embedding search is near-instant
+  'default':         { max: 6000,  windowMs: 60000 },    // 100/s catch-all
+  'write.chat':      { max: 600,   windowMs: 60000 },    // POST /api/chat
+  'write.lens':      { max: 6000,  windowMs: 60000 },    // POST /api/lens/* — EVERY lens action funnels here
+  'write.dtus':      { max: 2000,  windowMs: 60000 },    // POST /api/dtus
+  'write.default':   { max: 2000,  windowMs: 60000 },    // all other mutating routes
+  'read.default':    { max: 12000, windowMs: 60000 },    // GET routes — 200/s; HUD polls + heartbeat feeds
 
-  // Post-launch write endpoint limits (per IP). write.lens was 10/min shared
-  // across EVERY lens's write action (all funnel through POST /api/lens/run,
-  // the single dispatch endpoint for all 260+ lenses) — normal use blew
-  // through that in seconds ("too many requests" reported site-wide). Concord
-  // is mostly DETERMINISTIC: a rich lens fires many cheap macro POSTs per page
-  // load + interaction, and HUDs/heartbeats poll continuously, so interactive
-  // buckets are sized for burst throughput, not throttled like a scarce GPU
-  // resource. Governance (marketplace.submit) + anti-spam (social/mail/upload)
-  // buckets stay tight on purpose. See docs/LIVE_OPS_PUNCHLIST_2026-07-07.md A.2.
-  'write.chat':         { max: 60,  windowMs: 60000 },   // POST /api/chat — 60/min
-  'write.social':       { max: 20,  windowMs: 60000 },   // POST /api/social/* — 20/min (anti-spam)
-  'write.lens':         { max: 300, windowMs: 60000 },   // POST /api/lens/* — 300/min (shared by EVERY lens action; deterministic burst)
-  'write.dtus':         { max: 60,  windowMs: 60000 },   // POST /api/dtus — 60/min
-  'write.media.upload': { max: 5,   windowMs: 60000 },   // POST /api/media/upload — 5/min
-  'write.mail':         { max: 10,  windowMs: 60000 },   // POST /api/mail/send — 10/min per user (anti-spam; auth-gated, capped payload)
-  'write.client-error': { max: 50,  windowMs: 60000 },   // POST /api/client-error — 50/min per IP (anon telemetry; an error storm must not self-DoS)
-  'write.default':      { max: 120, windowMs: 60000 },   // All other POST/PUT/DELETE — 120/min
-  'read.default':       { max: 1200, windowMs: 60000 },  // GET routes — 1200/min (20/s; many HUDs poll every 1-2s + heartbeat feeds)
+  // ── Kept LOW on purpose — these protect NON-compute concerns ──
+  'marketplace.submit': { max: 5,   windowMs: 3600000 }, // 5/hour — governance, constitutional
+  'global.pull':        { max: 20,  windowMs: 3600000 }, // 20/hour — federation politeness
+  'write.social':       { max: 120, windowMs: 60000 },   // relaxed, but a spam/abuse vector
+  'write.media.upload': { max: 30,  windowMs: 60000 },   // bandwidth/disk, not tokens
+  'write.mail':         { max: 30,  windowMs: 60000 },   // REAL outbound email — anti-spam
+  'write.client-error': { max: 200, windowMs: 60000 },   // anon telemetry; an error storm must not self-DoS
 };
 
 /**

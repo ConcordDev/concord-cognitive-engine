@@ -10,23 +10,26 @@ describe("rateLimit", () => {
   // ── LIMITS constant ──────────────────────────────────────────
   describe("LIMITS", () => {
     it("defines expected endpoint limits", () => {
-      assert.deepStrictEqual(LIMITS["conscious.chat"], { max: 30, windowMs: 60000 });
-      assert.deepStrictEqual(LIMITS["utility.call"], { max: 240, windowMs: 60000 });
+      assert.deepStrictEqual(LIMITS["conscious.chat"], { max: 600, windowMs: 60000 });
+      assert.deepStrictEqual(LIMITS["utility.call"], { max: 6000, windowMs: 60000 });
       assert.deepStrictEqual(LIMITS["marketplace.submit"], { max: 5, windowMs: 3600000 });
       assert.deepStrictEqual(LIMITS["global.pull"], { max: 20, windowMs: 3600000 });
-      assert.deepStrictEqual(LIMITS["semantic.search"], { max: 100, windowMs: 60000 });
-      assert.deepStrictEqual(LIMITS["default"], { max: 300, windowMs: 60000 });
+      assert.deepStrictEqual(LIMITS["semantic.search"], { max: 6000, windowMs: 60000 });
+      assert.deepStrictEqual(LIMITS["default"], { max: 6000, windowMs: 60000 });
     });
 
-    it("sizes interactive write buckets for deterministic burst, keeps governance tight", () => {
-      // Every lens action funnels through POST /api/lens/run — must be burst-sized.
-      assert.equal(LIMITS["write.lens"].max, 300);
-      // GET HUDs poll every 1-2s + heartbeat feeds — 20/s headroom.
-      assert.equal(LIMITS["read.default"].max, 1200);
-      // Governance + anti-spam stay tight on purpose.
-      assert.equal(LIMITS["marketplace.submit"].max, 5);
-      assert.equal(LIMITS["write.media.upload"].max, 5);
-      assert.equal(LIMITS["write.mail"].max, 10);
+    it("leashes off compute buckets (local Ollama = no per-request cost), keeps non-compute guards tight", () => {
+      // Compute/interactive buckets are runaway-backstop-only — no human reaches them.
+      assert.equal(LIMITS["write.lens"].max, 6000);   // every lens action funnels through POST /api/lens/run
+      assert.equal(LIMITS["read.default"].max, 12000); // HUD polls + heartbeat feeds, 200/s
+      assert.equal(LIMITS["utility.call"].max, 6000);
+      assert.equal(LIMITS["default"].max, 6000);
+      // Kept LOW because they protect NON-compute concerns, which free Ollama doesn't make safe.
+      assert.equal(LIMITS["marketplace.submit"].max, 5); // governance, constitutional
+      assert.equal(LIMITS["write.mail"].max, 30);        // REAL outbound email — anti-spam
+      assert.equal(LIMITS["write.media.upload"].max, 30); // bandwidth/disk
+      // marketplace.submit + global.pull stay on the hour window, not the minute window.
+      assert.equal(LIMITS["marketplace.submit"].windowMs, 3600000);
     });
   });
 
@@ -67,15 +70,15 @@ describe("rateLimit", () => {
       const userId = `user_first_${Date.now()}`;
       const result = checkRateLimit(userId, "conscious.chat");
       assert.equal(result.allowed, true);
-      assert.equal(result.remaining, 29); // max 30 - 1
+      assert.equal(result.remaining, 599); // max 600 - 1
     });
 
     it("counts down remaining on subsequent calls", () => {
       const userId = `user_count_${Date.now()}`;
-      checkRateLimit(userId, "conscious.chat"); // remaining = 29
-      const r2 = checkRateLimit(userId, "conscious.chat"); // remaining = 28
+      checkRateLimit(userId, "conscious.chat"); // remaining = 599
+      const r2 = checkRateLimit(userId, "conscious.chat"); // remaining = 598
       assert.equal(r2.allowed, true);
-      assert.equal(r2.remaining, 28);
+      assert.equal(r2.remaining, 598);
     });
 
     it("denies when limit exceeded", () => {
@@ -100,7 +103,7 @@ describe("rateLimit", () => {
       const userId = `user_default_${Date.now()}`;
       const result = checkRateLimit(userId, "unknown.endpoint");
       assert.equal(result.allowed, true);
-      assert.equal(result.remaining, 299); // default max: 300
+      assert.equal(result.remaining, 5999); // default max: 6000
     });
 
     it("resets after window expires", () => {
@@ -124,8 +127,8 @@ describe("rateLimit", () => {
       const userId = `user_sep_${Date.now()}`;
       const r1 = checkRateLimit(userId, "conscious.chat");
       const r2 = checkRateLimit(userId, "utility.call");
-      assert.equal(r1.remaining, 29); // 30 - 1
-      assert.equal(r2.remaining, 239); // utility.call 240 - 1
+      assert.equal(r1.remaining, 599); // conscious.chat 600 - 1
+      assert.equal(r2.remaining, 5999); // utility.call 6000 - 1
     });
 
     it("tracks separate keys for different users", () => {
@@ -136,8 +139,8 @@ describe("rateLimit", () => {
       const r1 = checkRateLimit(u1, "conscious.chat");
       const r2 = checkRateLimit(u2, "conscious.chat");
 
-      assert.equal(r1.remaining, 27); // 3rd call
-      assert.equal(r2.remaining, 29); // 1st call for u2
+      assert.equal(r1.remaining, 597); // 3rd call (conscious.chat 600)
+      assert.equal(r2.remaining, 599); // 1st call for u2
     });
   });
 

@@ -52,8 +52,14 @@ if (typeof window !== 'undefined') {
 // SECURITY: withCredentials ensures httpOnly cookies are sent with requests
 export const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  // @env-config-ok: axios default — 30s covers slow LLM-backed routes
-  timeout: 30000,
+  // @env-config-ok: 120s matches the nginx/proxy ceiling (default.conf) so the
+  // client never aborts a slow non-streaming LLM route (council/research/agent)
+  // BEFORE the proxy would — the old 30s cut those off with a false "Something
+  // went wrong" while the backend was still working. Compute is local Ollama, so
+  // there's no cost reason to cap tight; a genuinely-hung request still fails
+  // VISIBLY at 120s (never silently), and streaming routes emit tokens early and
+  // are unaffected. Per-call `timeout` overrides remain available for outliers.
+  timeout: 120000,
   headers: {
     'Content-Type': 'application/json',
   },
