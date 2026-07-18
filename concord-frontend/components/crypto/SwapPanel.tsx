@@ -122,7 +122,7 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
   const priceImpactCrit = (quote?.priceImpactPercent || 0) > 15;
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-xl p-4 space-y-3 w-full max-w-md">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-xl p-4 space-y-3 w-full max-w-md">
       <header className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-cyan-300">Swap</h3>
         <button
@@ -136,14 +136,14 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
       </header>
 
       {showSettings && (
-        <div className="p-3 border border-white/10 rounded-lg bg-white/[0.02] space-y-2">
+        <div className="p-3 border border-lattice-border rounded-lg bg-white/[0.02] space-y-2">
           <p className="text-[10px] uppercase text-gray-400 tracking-wider">Slippage tolerance</p>
           <div className="flex items-center gap-2">
             {SLIPPAGE_PRESETS.map(s => (
               <button
                 key={s}
                 onClick={() => setSlippage(s)}
-                className={cn('px-2 py-1 text-xs rounded', slippage === s ? 'bg-cyan-500 text-black font-bold' : 'border border-white/10 text-gray-300 hover:text-white')}
+                className={cn('px-2 py-1 text-xs rounded', slippage === s ? 'bg-cyan-500 text-black font-bold' : 'border border-lattice-border text-gray-300 hover:text-white')}
               >
                 {s}%
               </button>
@@ -236,7 +236,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   return (
     <div className="flex items-center justify-between">
       <span className="text-gray-400">{label}</span>
-      <span className="text-gray-200 tabular-nums">{children}</span>
+      <span className="text-gray-200 font-mono tabular-nums">{children}</span>
     </div>
   );
 }
@@ -255,12 +255,12 @@ function SwapBox({
 }) {
   const token = tokens.find(t => t.id === tokenId);
   return (
-    <div className="p-3 rounded-lg border border-white/10 bg-[#0a0e17] space-y-1.5">
+    <div className="p-3 rounded-lg border border-lattice-border bg-[#0a0e17] space-y-1.5">
       <div className="flex items-center justify-between text-[10px] text-gray-400 uppercase tracking-wider">
         <span>{label}</span>
         {token?.balance != null && (
           <span>
-            Bal: {token.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })} {token.symbol}
+            Bal: <span className="font-mono tabular-nums">{token.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span> {token.symbol}
             {showMax && onChangeAmount && (
               <button
                 onClick={() => onChangeAmount(String(token.balance))}
@@ -293,7 +293,7 @@ function SwapBox({
         </select>
       </div>
       {amount && token && (
-        <div className="text-[10px] text-gray-400 text-right">
+        <div className="text-[10px] text-gray-400 text-right font-mono tabular-nums">
           ≈ ${(Number(amount) * (token.priceUsd || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </div>
       )}

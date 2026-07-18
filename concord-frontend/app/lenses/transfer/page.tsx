@@ -261,7 +261,6 @@ export default function TransferLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#transfer-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to transfer content</a>
           <RecentMineCard domain="transfer" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="transfer" hideWhenEmpty className="mt-3" />

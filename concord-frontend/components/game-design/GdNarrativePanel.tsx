@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, GitBranch, ArrowRight, Flag, Square } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Node { id: string; title: string; kind: string; body: string }
 interface Link { id: string; fromId: string; toId: string; label: string }
@@ -29,6 +30,7 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
   const [links, setLinks] = useState<Link[]>([]);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', kind: 'scene', body: '' });
   const [linkDraft, setLinkDraft] = useState<Record<string, { toId: string; label: string }>>({});
@@ -40,6 +42,12 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
       lensRun('game-design', 'narrative-node-list', { gameId }),
       lensRun('game-design', 'narrative-graph', { gameId }),
     ]);
+    if (n.data?.ok === false) {
+      setLoadError(n.data?.error || 'Could not load narrative graph.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setNodes(n.data?.result?.nodes || []);
     setLinks(n.data?.result?.links || []);
     setGraph((g.data?.result?.totalNodes ? g.data.result : null) as Graph | null);
@@ -87,6 +95,10 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const titleOf = (id: string) => nodes.find((n) => n.id === id)?.title || '—';

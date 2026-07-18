@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Budget { id: string; name: string; fiscalYear: number; lines: Record<string, number> }
 interface Account { id: string; code: string; name: string }
@@ -16,6 +17,7 @@ export function AcBudgetsPanel() {
   const [active, setActive] = useState<string>('');
   const [bva, setBva] = useState<{ rows: BvaRow[]; totalBudgeted: number; totalActual: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', fiscalYear: String(new Date().getUTCFullYear()) });
   const [line, setLine] = useState({ accountId: '', annualAmount: '' });
 
@@ -25,6 +27,12 @@ export function AcBudgetsPanel() {
       lensRun({ domain: 'accounting', action: 'budget-list', input: {} }),
       lensRun({ domain: 'accounting', action: 'coa-list', input: {} }),
     ]);
+    if (b.data?.ok === false || c.data?.ok === false) {
+      setLoadError(b.data?.error || c.data?.error || 'Could not load budgets.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Budget[] = b.data?.result?.budgets || [];
     setBudgets(list);
     setAccounts(c.data?.result?.accounts || []);
@@ -56,6 +64,7 @@ export function AcBudgetsPanel() {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <ErrorState message={loadError} onRetry={() => void refresh()} />;
 
   return (
     <div className="space-y-4 p-1">
@@ -100,9 +109,9 @@ export function AcBudgetsPanel() {
                   {bva.rows.map((r) => (
                     <li key={r.accountId} className="flex items-center gap-2 text-xs bg-black/20 border border-white/10 rounded px-2 py-1.5">
                       <span className="flex-1 text-gray-200">{r.account}</span>
-                      <span className="text-gray-400">budget ${r.budgeted.toLocaleString()}</span>
-                      <span className="text-gray-300">actual ${r.actual.toLocaleString()}</span>
-                      <span className={r.variance >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      <span className="text-gray-400 font-mono tabular-nums">budget ${r.budgeted.toLocaleString()}</span>
+                      <span className="text-gray-300 font-mono tabular-nums">actual ${r.actual.toLocaleString()}</span>
+                      <span className={`font-mono tabular-nums ${r.variance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {r.variance >= 0 ? '+' : ''}{r.variance.toLocaleString()}
                       </span>
                     </li>

@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Store, Loader2, Globe, ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { Store, Globe, ShoppingCart, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton, SkeletonTableRows } from '@/components/ui';
 
 interface Storefront {
   slug: string | null; name: string; tagline: string;
@@ -106,7 +107,7 @@ export function StorefrontManager() {
   const publishedSet = new Set(storefront?.publishedSkus || []);
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Store className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Storefront</span>
@@ -118,7 +119,10 @@ export function StorefrontManager() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="p-3 space-y-3" aria-label="Loading storefront">
+          <Skeleton variant="line" lines={2} />
+          <SkeletonTableRows rows={3} columns={2} />
+        </div>
       ) : (
         <div className="p-3 space-y-3">
           {/* Configure */}

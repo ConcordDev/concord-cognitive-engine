@@ -27,9 +27,10 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { LayoutTemplate, Plus, Trash2, Loader2, RotateCcw, Eye, ShoppingBag, CheckCircle2 } from 'lucide-react';
+import { LayoutTemplate, Plus, Trash2, RotateCcw, Eye, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 type DisplayType = 'endcap' | 'window' | 'checkout-counter' | 'floor-display' | 'shelf-talker' | 'promotional-table';
 type Status = 'planned' | 'active' | 'removed';
@@ -194,7 +195,7 @@ export function DisplaysPanel() {
   };
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <LayoutTemplate className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">In-store displays</span>
@@ -267,7 +268,7 @@ export function DisplaysPanel() {
       </nav>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <SkeletonTableRows rows={5} columns={4} />
       ) : (
         <div className="flex flex-col md:flex-row">
           <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-white/10 max-h-[30rem] overflow-y-auto">
@@ -304,7 +305,7 @@ export function DisplaysPanel() {
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
-                    <div className="mt-1.5 grid grid-cols-4 gap-1 text-[10px] text-gray-400" data-testid={`stat-row-${d.id}`}>
+                    <div className="mt-1.5 grid grid-cols-4 gap-1 text-[10px] text-gray-400 tabular-nums" data-testid={`stat-row-${d.id}`}>
                       <span><Eye className="w-2.5 h-2.5 inline mr-0.5" />{d.impressions}</span>
                       <span><ShoppingBag className="w-2.5 h-2.5 inline mr-0.5" />{d.conversions}</span>
                       <span>{pct(d.conversionRate)}</span>

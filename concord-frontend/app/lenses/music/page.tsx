@@ -1019,18 +1019,7 @@ export default function MusicLensPage() {
                     { id: 'bridge', name: 'Bridge' },
                     { id: 'outro',  name: 'Outro' },
                   ]}
-                  clips={{
-                    'drums:intro':   { trackId: 'drums', sceneId: 'intro',  hasContent: true,  label: 'kick-only', durationBeats: 8 },
-                    'drums:verse':   { trackId: 'drums', sceneId: 'verse',  hasContent: true,  label: 'half-time', durationBeats: 16 },
-                    'drums:chorus':  { trackId: 'drums', sceneId: 'chorus', hasContent: true,  label: 'four-floor', durationBeats: 16 },
-                    'bass:verse':    { trackId: 'bass',  sceneId: 'verse',  hasContent: true,  label: 'sub roll', durationBeats: 16 },
-                    'bass:chorus':   { trackId: 'bass',  sceneId: 'chorus', hasContent: true,  label: 'sub punch', durationBeats: 16 },
-                    'keys:verse':    { trackId: 'keys',  sceneId: 'verse',  hasContent: true,  label: 'rhodes', durationBeats: 16 },
-                    'keys:bridge':   { trackId: 'keys',  sceneId: 'bridge', hasContent: true,  label: 'pad swell', durationBeats: 32 },
-                    'lead:chorus':   { trackId: 'lead',  sceneId: 'chorus', hasContent: true,  label: 'hook A', durationBeats: 16 },
-                    'fx:intro':      { trackId: 'fx',    sceneId: 'intro',  hasContent: true,  label: 'riser', durationBeats: 4 },
-                    'fx:outro':      { trackId: 'fx',    sceneId: 'outro',  hasContent: true,  label: 'tail', durationBeats: 8 },
-                  }}
+                  clips={{}}
                   tempo={120}
                 />
               </div>
@@ -2247,8 +2236,6 @@ export default function MusicLensPage() {
       lensPrompt="You're inside Concord's Music lens — a marketplace + playlist + curation surface. Prefer run_lens_action for music actions, expert_mode for cited research about artists/tracks, generate_image for cover art."
     />
     
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <SessionRail lensId="music" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="music" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="music" hideWhenEmpty className="mt-3" title="More actions" />

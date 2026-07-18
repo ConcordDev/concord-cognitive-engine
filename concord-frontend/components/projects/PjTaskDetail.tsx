@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 
 interface Member { id: string; name: string }
 interface Sprint { id: string; name: string }
@@ -187,8 +188,15 @@ export function PjTaskDetail({
 
   if (loading || !detail) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+      <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto p-4">
+        <div className="w-full max-w-3xl bg-lattice-void border border-lattice-border rounded-2xl my-4 p-4 space-y-3" aria-busy="true">
+          <Skeleton width="70%" height={20} />
+          <Skeleton lines={2} />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="block" height={40} />)}
+          </div>
+          <Skeleton variant="block" height={80} />
+        </div>
       </div>
     );
   }
@@ -197,16 +205,16 @@ export function PjTaskDetail({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto p-4">
-      <div className="w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-2xl my-4">
+      <div className="w-full max-w-3xl bg-lattice-void border border-lattice-border rounded-2xl my-4">
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border">
           <span className="text-[10px] font-mono text-indigo-400">{t.ref}</span>
           <select value={t.type} onChange={(e) => patch({ type: e.target.value })}
-            className="bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-200 capitalize">
+            className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-0.5 text-[10px] text-gray-200 capitalize">
             {TYPES.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
           <span className="flex-1" />
-          <button aria-label="Close" type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+          <button aria-label="Close" type="button" onClick={onClose} className="text-gray-400 hover:text-gray-200">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -214,11 +222,11 @@ export function PjTaskDetail({
         <div className="p-4 space-y-3">
           <input value={t.title} onChange={(e) => setDetail({ ...detail, task: { ...t, title: e.target.value } })}
             onBlur={(e) => patch({ title: e.target.value })}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm font-semibold text-zinc-100" />
+            className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm font-semibold text-white" />
           <textarea value={t.description || ''} placeholder="Description"
             onChange={(e) => setDetail({ ...detail, task: { ...t, description: e.target.value } })}
             onBlur={(e) => patch({ description: e.target.value })}
-            rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 resize-y" />
+            rows={3} className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-xs text-white resize-y" />
 
           {/* Field grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -240,7 +248,7 @@ export function PjTaskDetail({
             </Field>
             <Field label="Points">
               <input type="number" value={t.points || ''} onChange={(e) => patch({ points: Number(e.target.value) || 0 })}
-                className={selCls} />
+                className={cn(selCls, 'tabular-nums')} />
             </Field>
             <Field label="Sprint">
               <select value={t.sprintId || ''} onChange={(e) => patch({ sprintId: e.target.value })} className={selCls}>
@@ -255,10 +263,10 @@ export function PjTaskDetail({
               </select>
             </Field>
             <Field label="Start">
-              <input type="date" value={t.startDate || ''} onChange={(e) => patch({ startDate: e.target.value })} className={selCls} />
+              <input type="date" value={t.startDate || ''} onChange={(e) => patch({ startDate: e.target.value })} className={cn(selCls, 'tabular-nums')} />
             </Field>
             <Field label="Due">
-              <input type="date" value={t.dueDate || ''} onChange={(e) => patch({ dueDate: e.target.value })} className={selCls} />
+              <input type="date" value={t.dueDate || ''} onChange={(e) => patch({ dueDate: e.target.value })} className={cn(selCls, 'tabular-nums')} />
             </Field>
           </div>
 
@@ -273,7 +281,7 @@ export function PjTaskDetail({
           {/* Labels */}
           {labels.length > 0 && (
             <div>
-              <p className="text-[10px] text-zinc-400 uppercase mb-1">Labels</p>
+              <p className="text-[10px] text-gray-400 uppercase mb-1">Labels</p>
               <div className="flex flex-wrap gap-1">
                 {labels.map((l) => {
                   const on = t.labels.includes(l.name);
@@ -281,7 +289,7 @@ export function PjTaskDetail({
                     <button key={l.id} type="button"
                       onClick={() => patch({ labels: on ? t.labels.filter((x) => x !== l.name) : [...t.labels, l.name] })}
                       className={cn('text-[10px] px-2 py-0.5 rounded border',
-                        on ? 'border-transparent text-white' : 'border-zinc-700 text-zinc-400',
+                        on ? 'border-transparent text-white' : 'border-lattice-border text-gray-400',
                         on ? `bg-${l.color}-600` : '')}
                       style={on ? { background: cssColor(l.color) } : {}}>
                       {l.name}
@@ -313,20 +321,20 @@ export function PjTaskDetail({
           )}
 
           {/* Subtasks */}
-          <Section icon={GitBranch} title={`Sub-issues${detail.subtaskProgress != null ? ` · ${detail.subtaskProgress}%` : ''}`}>
+          <Section icon={GitBranch} title={`Sub-issues${detail.subtaskProgress != null ? ` · ${detail.subtaskProgress}%` : ''}`} numeric>
             <ul className="space-y-1 mb-1.5">
               {detail.subtasks.map((st) => (
-                <li key={st.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
-                  <span className="font-mono text-zinc-400">{st.ref}</span>
+                <li key={st.id} className="flex items-center gap-2 text-[11px] text-gray-300">
+                  <span className="font-mono text-gray-400">{st.ref}</span>
                   <span className="flex-1 truncate">{st.title}</span>
-                  <span className="text-zinc-400">{st.status.replace(/_/g, ' ')}</span>
+                  <span className="text-gray-400">{st.status.replace(/_/g, ' ')}</span>
                 </li>
               ))}
             </ul>
             <div className="flex items-center gap-2">
               <input placeholder="New sub-issue" value={subtaskTitle} onChange={(e) => setSubtaskTitle(e.target.value)}
-                className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
-              <button type="button" onClick={addSubtask} className="text-[11px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200">Add</button>
+                className="flex-1 bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white" />
+              <button type="button" onClick={addSubtask} className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border rounded text-gray-200">Add</button>
             </div>
           </Section>
 
@@ -336,23 +344,23 @@ export function PjTaskDetail({
               {detail.relations.map((r) => (
                 <li key={r.id} className="flex items-center gap-2 text-[11px]">
                   <span className="text-indigo-400 w-20">{r.kind.replace(/_/g, ' ')}</span>
-                  <span className="flex-1 truncate text-zinc-300">{r.task ? `${r.task.ref} ${r.task.title}` : '—'}</span>
+                  <span className="flex-1 truncate text-gray-300">{r.task ? `${r.task.ref} ${r.task.title}` : '—'}</span>
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'relation-delete', { id: r.id }).then(refresh)}
-                    className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               ))}
             </ul>
             <div className="flex items-center gap-2">
               <select value={rel.kind} onChange={(e) => setRel({ ...rel, kind: e.target.value })}
-                className="bg-zinc-900 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-white">
                 {REL_KINDS.map((k) => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
               </select>
               <select value={rel.toTaskId} onChange={(e) => setRel({ ...rel, toTaskId: e.target.value })}
-                className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                className="flex-1 bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-white">
                 <option value="">Pick issue…</option>
                 {allTasks.filter((x) => x.id !== t.id).map((x) => <option key={x.id} value={x.id}>{x.ref} {x.title}</option>)}
               </select>
-              <button type="button" onClick={addRelation} className="text-[11px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200">Link</button>
+              <button type="button" onClick={addRelation} className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border rounded text-gray-200">Link</button>
             </div>
           </Section>
 
@@ -369,7 +377,7 @@ export function PjTaskDetail({
                         <FileDown className="w-3 h-3 text-emerald-400 shrink-0" />
                         <button type="button" onClick={() => downloadAttachment(a.id, a.fileName || a.name)}
                           className="flex-1 truncate text-emerald-400 hover:underline text-left">{a.name}</button>
-                        <span className="text-[9px] text-zinc-400">{fmtBytes(a.bytes || 0)}</span>
+                        <span className="text-[9px] text-gray-400 tabular-nums">{fmtBytes(a.bytes || 0)}</span>
                       </>
                     ) : a.kind === 'integration' ? (
                       <>
@@ -390,30 +398,30 @@ export function PjTaskDetail({
                       </>
                     )}
                     <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'attachment-delete', { id: a.id }).then(refresh)}
-                      className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </li>
                 );
               })}
               {detail.attachments.length === 0 && (
-                <li className="text-[10px] text-zinc-400 italic">No attachments yet.</li>
+                <li className="text-[10px] text-gray-400 italic">No attachments yet.</li>
               )}
             </ul>
             {integrations.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <select value={itgLink.integrationId} onChange={(e) => setItgLink({ ...itgLink, integrationId: e.target.value })}
-                  className="bg-zinc-900 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                  className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-white">
                   <option value="">Link integration…</option>
                   {integrations.map((i) => <option key={i.id} value={i.id}>{i.kind}: {i.target}</option>)}
                 </select>
                 <input placeholder="https://… PR / run / thread" value={itgLink.url}
                   onChange={(e) => setItgLink({ ...itgLink, url: e.target.value })}
-                  className="flex-1 min-w-[10rem] bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                  className="flex-1 min-w-[10rem] bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white" />
                 <input placeholder="Label (optional)" value={itgLink.label}
                   onChange={(e) => setItgLink({ ...itgLink, label: e.target.value })}
-                  className="w-28 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                  className="w-28 bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white" />
                 {selectedIntegration?.kind === 'ci' && (
                   <select value={itgLink.ciStatus} onChange={(e) => setItgLink({ ...itgLink, ciStatus: e.target.value })}
-                    className="bg-zinc-900 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                    className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-white">
                     {CI_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 )}
@@ -426,10 +434,10 @@ export function PjTaskDetail({
             )}
             <div className="flex items-center gap-2 mb-1.5">
               <input placeholder="Name" value={att.name} onChange={(e) => setAtt({ ...att, name: e.target.value })}
-                className="w-28 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                className="w-28 bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white" />
               <input placeholder="https://… link" value={att.url} onChange={(e) => setAtt({ ...att, url: e.target.value })}
-                className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
-              <button type="button" onClick={addAttachment} className="text-[11px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200">Add link</button>
+                className="flex-1 bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white" />
+              <button type="button" onClick={addAttachment} className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border rounded text-gray-200">Add link</button>
             </div>
             <div className="flex items-center gap-2">
               <input ref={fileInputRef} type="file" className="hidden"
@@ -439,7 +447,7 @@ export function PjTaskDetail({
                 {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                 {uploading ? 'Uploading…' : 'Upload file'}
               </button>
-              <span className="text-[9px] text-zinc-400">Binary files up to 5 MB</span>
+              <span className="text-[9px] text-gray-400">Binary files up to 5 MB</span>
             </div>
             {uploadError && <p className="text-[10px] text-rose-400 mt-1">{uploadError}</p>}
           </Section>
@@ -448,9 +456,9 @@ export function PjTaskDetail({
           <Section icon={MessageSquare} title="Comments">
             <ul className="space-y-1.5 mb-1.5">
               {detail.comments.map((c) => (
-                <li key={c.id} className={cn('text-[11px] bg-zinc-900 rounded px-2 py-1.5', c.parentCommentId && 'ml-4')}>
-                  <p className="text-zinc-200">{c.body}</p>
-                  <p className="text-[9px] text-zinc-400">
+                <li key={c.id} className={cn('text-[11px] bg-lattice-surface rounded px-2 py-1.5', c.parentCommentId && 'ml-4')}>
+                  <p className="text-gray-200">{c.body}</p>
+                  <p className="text-[9px] text-gray-400">
                     {c.author}
                     <button type="button" onClick={() => setReplyTo(c.id)} className="ml-2 hover:text-indigo-300">reply</button>
                   </p>
@@ -461,8 +469,8 @@ export function PjTaskDetail({
               <input placeholder={replyTo ? 'Reply…' : 'Comment…'} value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void addComment(); }}
-                className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
-              {replyTo && <button type="button" onClick={() => setReplyTo(null)} className="text-[10px] text-zinc-400">cancel</button>}
+                className="flex-1 bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white" />
+              {replyTo && <button type="button" onClick={() => setReplyTo(null)} className="text-[10px] text-gray-400">cancel</button>}
               <button type="button" onClick={addComment} className="text-[11px] px-2 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-white">Post</button>
             </div>
           </Section>
@@ -471,15 +479,15 @@ export function PjTaskDetail({
           <Section icon={History} title="Activity">
             <ul className="space-y-0.5">
               {detail.activity.map((a) => (
-                <li key={a.id} className="text-[10px] text-zinc-400">
-                  <span className="text-zinc-400">{a.action}</span>{a.detail ? ` — ${a.detail}` : ''}
+                <li key={a.id} className="text-[10px] text-gray-400">
+                  <span className="text-gray-400">{a.action}</span>{a.detail ? ` — ${a.detail}` : ''}
                 </li>
               ))}
             </ul>
           </Section>
 
           <button type="button" onClick={() => lensRun('projects', 'task-delete', { id: taskId }).then(() => { onChange(); onClose(); })}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded-lg">
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-lattice-elevated hover:bg-rose-900 text-gray-200 rounded-lg">
             <Trash2 className="w-3.5 h-3.5" /> Delete issue
           </button>
         </div>
@@ -488,7 +496,7 @@ export function PjTaskDetail({
   );
 }
 
-const selCls = 'w-full bg-zinc-900 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100';
+const selCls = 'w-full bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-white';
 
 function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -509,16 +517,16 @@ function cssColor(c: string): string {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[9px] text-zinc-400 uppercase mb-0.5">{label}</span>
+      <span className="block text-[9px] text-gray-400 uppercase mb-0.5">{label}</span>
       {children}
     </label>
   );
 }
 
-function Section({ icon: Icon, title, children }: { icon: typeof Link2; title: string; children: React.ReactNode }) {
+function Section({ icon: Icon, title, children, numeric }: { icon: typeof Link2; title: string; children: React.ReactNode; numeric?: boolean }) {
   return (
-    <div className="border-t border-zinc-800 pt-2.5">
-      <p className="flex items-center gap-1 text-[11px] font-semibold text-zinc-400 mb-1.5">
+    <div className="border-t border-lattice-border pt-2.5">
+      <p className={cn('flex items-center gap-1 text-[11px] font-semibold text-gray-400 mb-1.5', numeric && 'tabular-nums')}>
         <Icon className="w-3 h-3" /> {title}
       </p>
       {children}

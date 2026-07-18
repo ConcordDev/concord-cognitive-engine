@@ -163,33 +163,33 @@ export function RetailActionPanel() {
   ];
 
   return (
-    <div className="rounded-lg border border-rose-500/20 bg-zinc-950/60 p-3 space-y-3">
+    <div className="rounded-lg border border-rose-500/20 bg-lattice-deep/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-rose-500/10 pb-2">
         <ShoppingCart className="h-4 w-4 text-rose-400" />
         <h3 className="text-sm font-semibold text-white">Retail ops</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reorder · pipeline · LTV · SLA</span>
+        <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">reorder · pipeline · LTV · SLA</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Products JSON</label>
-          <textarea value={productsText} onChange={(e) => setProductsText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={productsText} onChange={(e) => setProductsText(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Deals JSON</label>
-          <textarea value={dealsText} onChange={(e) => setDealsText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={dealsText} onChange={(e) => setDealsText(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">LTV inputs</div>
           <div className="grid grid-cols-2 gap-1">
-            <input type="text" value={aov} onChange={(e) => setAov(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="AOV $" />
-            <input type="text" value={freq} onChange={(e) => setFreq(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Freq/yr" />
-            <input type="text" value={lifespan} onChange={(e) => setLifespan(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Span yr" />
-            <input type="text" value={cac} onChange={(e) => setCac(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="CAC $" />
+            <input type="text" value={aov} onChange={(e) => setAov(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="AOV $" />
+            <input type="text" value={freq} onChange={(e) => setFreq(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Freq/yr" />
+            <input type="text" value={lifespan} onChange={(e) => setLifespan(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Span yr" />
+            <input type="text" value={cac} onChange={(e) => setCac(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="CAC $" />
           </div>
           <div className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold mt-1.5">Incidents JSON</div>
-          <textarea value={incidentsText} onChange={(e) => setIncidentsText(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono" />
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <textarea value={incidentsText} onChange={(e) => setIncidentsText(e.target.value)} rows={2} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono" />
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />
@@ -202,12 +202,12 @@ export function RetailActionPanel() {
           const Icon = act.icon; const isBusy = busy === act.id;
           return (
             <button key={act.id} type="button" disabled={!!busy} onClick={act.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-lattice-surface/40 border-lattice-border hover:bg-lattice-elevated/60 hover:border-white/20', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[11px] font-semibold text-gray-100 leading-tight">{act.label}</div>
+              <div className="text-[10px] text-gray-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -215,41 +215,41 @@ export function RetailActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {reorderResult && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5 max-h-44 overflow-y-auto">
+          <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5 max-h-44 overflow-y-auto tabular-nums">
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">Reorder · {reorderResult.totalProducts} SKUs</div>
-            <div className="text-2xl font-bold text-red-300">{reorderResult.criticalCount} <span className="text-xs text-zinc-400">critical</span></div>
+            <div className="text-2xl font-bold text-red-300">{reorderResult.criticalCount} <span className="text-xs text-gray-400">critical</span></div>
             <div className="text-[10px] text-amber-300">{reorderResult.reorderCount} below ROP · <span className="text-emerald-300">{reorderResult.sufficientCount} OK</span></div>
             {reorderResult.critical.slice(0, 3).map((p, i) => <div key={i} className="text-[10px] text-red-200 mt-0.5"><span className="font-mono">{p.sku}</span> · {p.onHand} on hand · {p.status}</div>)}
           </div>
         )}
         {pipeResult && (
-          <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
+          <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 tabular-nums">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Pipeline · {pipeResult.totalDeals} deals</div>
             <div className="text-2xl font-bold text-blue-300">${pipeResult.totalWeighted?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">unweighted ${pipeResult.totalUnweighted?.toLocaleString()}</div>
+            <div className="text-[10px] text-gray-400">unweighted ${pipeResult.totalUnweighted?.toLocaleString()}</div>
             {pipeResult.expectedRevenue != null && <div className="text-[10px] text-blue-200">expected ${pipeResult.expectedRevenue.toLocaleString()}</div>}
-            {pipeResult.byStage && Object.entries(pipeResult.byStage).slice(0, 4).map(([s, b]) => <div key={s} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono text-blue-200">{s}</span>: {b.count} · ${b.weighted?.toLocaleString()}</div>)}
+            {pipeResult.byStage && Object.entries(pipeResult.byStage).slice(0, 4).map(([s, b]) => <div key={s} className="text-[10px] text-gray-400 mt-0.5"><span className="font-mono text-blue-200">{s}</span>: {b.count} · ${b.weighted?.toLocaleString()}</div>)}
           </div>
         )}
         {ltvResult && (
-          <div className={cn('rounded-md border p-2.5', (ltvResult.ltvToCacRatio ?? 0) >= 3 ? 'border-emerald-500/30 bg-emerald-500/5' : (ltvResult.ltvToCacRatio ?? 0) >= 1 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
+          <div className={cn('rounded-md border p-2.5 tabular-nums', (ltvResult.ltvToCacRatio ?? 0) >= 3 ? 'border-emerald-500/30 bg-emerald-500/5' : (ltvResult.ltvToCacRatio ?? 0) >= 1 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">LTV / CAC</div>
             <div className="text-2xl font-bold text-green-300">${ltvResult.ltv?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">AOV ${ltvResult.avgOrderValue} × {ltvResult.purchaseFrequency}/yr × {ltvResult.customerLifespanYears}yr</div>
-            <div className="text-[10px] text-zinc-400">CAC ${ltvResult.cac} · ratio <span className={(ltvResult.ltvToCacRatio ?? 0) >= 3 ? 'text-emerald-300' : (ltvResult.ltvToCacRatio ?? 0) >= 1 ? 'text-amber-300' : 'text-red-300'}>{ltvResult.ltvToCacRatio?.toFixed(2)}×</span></div>
+            <div className="text-[10px] text-gray-400">AOV ${ltvResult.avgOrderValue} × {ltvResult.purchaseFrequency}/yr × {ltvResult.customerLifespanYears}yr</div>
+            <div className="text-[10px] text-gray-400">CAC ${ltvResult.cac} · ratio <span className={(ltvResult.ltvToCacRatio ?? 0) >= 3 ? 'text-emerald-300' : (ltvResult.ltvToCacRatio ?? 0) >= 1 ? 'text-amber-300' : 'text-red-300'}>{ltvResult.ltvToCacRatio?.toFixed(2)}×</span></div>
           </div>
         )}
         {slaResult && (
-          <div className={cn('rounded-md border p-2.5', (slaResult.complianceRate ?? 0) >= 95 ? 'border-emerald-500/30 bg-emerald-500/5' : (slaResult.complianceRate ?? 0) >= 80 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
+          <div className={cn('rounded-md border p-2.5 tabular-nums', (slaResult.complianceRate ?? 0) >= 95 ? 'border-emerald-500/30 bg-emerald-500/5' : (slaResult.complianceRate ?? 0) >= 80 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">SLA · {slaResult.tier}</div>
             <div className="text-2xl font-bold text-amber-300">{slaResult.complianceRate}%</div>
-            <div className="text-[10px] text-zinc-400">{slaResult.withinSLA} within / {slaResult.breaches} breaches</div>
-            <div className="text-[10px] text-zinc-400">avg {slaResult.avgResponseMinutes}min response</div>
+            <div className="text-[10px] text-gray-400">{slaResult.withinSLA} within / {slaResult.breaches} breaches</div>
+            <div className="text-[10px] text-gray-400">avg {slaResult.avgResponseMinutes}min response</div>
           </div>
         )}
       </div>
 
-      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Top lever</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
+      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Top lever</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-gray-200 leading-relaxed">{agentReply}</pre></div>)}
 
       <AnimatePresence>
         {feedback && (<motion.div key={feedback.text} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} className={cn('px-3 py-2 rounded text-[11px] flex items-start gap-2 border', feedback.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30')}>{feedback.kind === 'ok' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}<span>{feedback.text}</span></motion.div>)}

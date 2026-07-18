@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, CalendarRange, FlaskConical, Trash2, Trophy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Content { id: string; title: string; channel: string; type: string; scheduledDate: string | null; status: string }
 interface Variant { label: string; visitors: number; conversions: number; conversionRate: number }
@@ -23,6 +24,7 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
   const [tests, setTests] = useState<AbTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [cForm, setCForm] = useState({ title: '', channel: 'content', type: 'post', scheduledDate: '' });
   const [tForm, setTForm] = useState({ name: '', variantA: '', variantB: '' });
   const [recordForm, setRecordForm] = useState<Record<string, { visitors: string; conversions: string }>>({});
@@ -33,6 +35,12 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
       lensRun('marketing', 'content-list', {}),
       lensRun('marketing', 'abtest-list', {}),
     ]);
+    if (c.data?.ok === false || t.data?.ok === false) {
+      setLoadError(c.data?.error || t.data?.error || 'Could not load content data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setContent(c.data?.result?.content || []);
     setTests(t.data?.result?.tests || []);
     setLoading(false);
@@ -82,6 +90,10 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

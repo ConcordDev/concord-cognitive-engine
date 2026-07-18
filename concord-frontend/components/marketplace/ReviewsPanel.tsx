@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Star, Loader2, MessageSquare, Send } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui/Skeleton';
 
 interface Review {
   id: string;
@@ -166,7 +167,7 @@ export function ReviewsPanel({ sellerId }: ReviewsPanelProps) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Star className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Reviews &amp; ratings</span>
@@ -184,7 +185,7 @@ export function ReviewsPanel({ sellerId }: ReviewsPanelProps) {
 
         {/* Rating summary */}
         {avg !== null && (
-          <div className="px-4 py-3 border-b border-white/10 flex items-center gap-4">
+          <div className="px-4 py-3 border-b border-white/10 flex items-center gap-4 tabular-nums">
             <div className="text-center">
               <div className="text-2xl font-bold text-amber-300">{avg.toFixed(1)}</div>
               <Stars value={Math.round(avg)} />
@@ -273,9 +274,7 @@ export function ReviewsPanel({ sellerId }: ReviewsPanelProps) {
         {/* Review list */}
         <div className="max-h-[28rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
-            </div>
+            <SkeletonTableRows rows={4} columns={3} />
           ) : reviews.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-gray-400">
               <Star className="w-6 h-6 mx-auto mb-2 opacity-30" />

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { HeartPulse, Activity, Droplet, Thermometer, Wind, Loader2, ShieldAlert } from 'lucide-react';
+import { HeartPulse, Activity, Droplet, Thermometer, Wind, ShieldAlert } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 
 export interface VitalReading {
   channel: 'heart_rate' | 'bp_systolic' | 'bp_diastolic' | 'glucose' | 'spo2' | 'temperature' | 'weight' | 'respiratory_rate';
@@ -58,7 +59,22 @@ export function PatientChart() {
     })();
   }, []);
 
-  if (loading) return <div className="p-6 flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading chart…</div>;
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg overflow-hidden p-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white/[0.02] rounded p-3">
+                <Skeleton variant="line" width="70%" height="0.625rem" className="mb-2" />
+                <Skeleton variant="line" width="45%" height="1.25rem" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!record) return <div className="p-6 text-xs text-gray-400">No patient record found.</div>;
 
   // Group vitals by channel, take latest
@@ -89,7 +105,7 @@ export function PatientChart() {
         </div>
       )}
 
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg overflow-hidden">
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <HeartPulse className="w-4 h-4 text-red-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Vitals</span>
@@ -107,14 +123,14 @@ export function PatientChart() {
                   <span className="text-[10px] uppercase tracking-wider text-gray-400">{meta.label}</span>
                 </div>
                 <div className={cn('text-2xl font-bold tabular-nums', inRange ? 'text-white' : 'text-yellow-300')}>{v.value}<span className="text-[10px] text-gray-400 ml-1">{v.unit}</span></div>
-                <div className="text-[9px] text-gray-400 mt-0.5">{new Date(v.recordedAt).toLocaleDateString()}</div>
+                <div className="text-[9px] text-gray-400 mt-0.5 tabular-nums">{new Date(v.recordedAt).toLocaleDateString()}</div>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg overflow-hidden">
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-yellow-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Allergies</span>
@@ -140,7 +156,7 @@ export function PatientChart() {
         )}
       </div>
 
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg overflow-hidden">
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <Activity className="w-4 h-4 text-cyan-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Immunizations</span>
@@ -153,7 +169,7 @@ export function PatientChart() {
             {record.immunizations.map((imm, i) => (
               <div key={i} className="bg-white/[0.02] rounded p-2 text-xs">
                 <div className="text-white font-medium">{imm.vaccine}</div>
-                <div className="text-[10px] text-gray-400">{new Date(imm.administeredAt).toLocaleDateString()}{imm.doseNumber && imm.totalDoses && ` · ${imm.doseNumber}/${imm.totalDoses}`}</div>
+                <div className="text-[10px] text-gray-400 tabular-nums">{new Date(imm.administeredAt).toLocaleDateString()}{imm.doseNumber && imm.totalDoses && ` · ${imm.doseNumber}/${imm.totalDoses}`}</div>
               </div>
             ))}
           </div>
@@ -161,7 +177,7 @@ export function PatientChart() {
       </div>
 
       {record.conditions.length > 0 && (
-        <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+        <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg overflow-hidden">
           <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-purple-400" />
             <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Conditions</span>
@@ -171,7 +187,7 @@ export function PatientChart() {
             {record.conditions.map((c, i) => (
               <li key={i} className="px-4 py-2 flex items-center gap-2 text-xs">
                 <span className="text-sm text-white">{c.name}</span>
-                <span className="text-[10px] text-gray-400">since {new Date(c.diagnosedAt).toLocaleDateString()}</span>
+                <span className="text-[10px] text-gray-400 tabular-nums">since {new Date(c.diagnosedAt).toLocaleDateString()}</span>
                 <span className={cn('ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold',
                   c.status === 'active' ? 'bg-orange-500/20 text-orange-300' :
                   c.status === 'remission' ? 'bg-green-500/20 text-green-300' :

@@ -292,6 +292,17 @@ function scanLens(lens) {
   const allFiles = [files.pageFile, ...files.componentFiles];
   const blob = allFiles.map(readUtf8).join('\n');
 
+  // Anti-gaming: a `sr-only aria-hidden="true"` node is invisible to EVERYONE
+  // (sr-only reveals to screen readers, aria-hidden hides from them) — a real
+  // accessibility node is never both. Historically ~109 pages padded such
+  // "polish sentinel" divs with text like `renders "No data yet"` /
+  // `LensErrorBoundary` purely to trip EMPTY_STATE_RE / ERROR_UI_RE without
+  // rendering a designed state. Strip those nodes before crediting empty/error
+  // coverage so the gauge measures REAL states, not invisible grader-bait.
+  const visibleBlob = blob
+    .replace(/<(\w+)\b[^>]*\bsr-only\b[^>]*\baria-hidden=["']true["'][^>]*>[\s\S]*?<\/\1>/g, '')
+    .replace(/<(\w+)\b[^>]*\baria-hidden=["']true["'][^>]*\bsr-only\b[^>]*>[\s\S]*?<\/\1>/g, '');
+
   // Page vs bespoke-component split — the honest-mode scaffold signals need
   // the page's own hand-written LOC and the largest bespoke component in
   // components/<lens>/ (a flagship-scale panel = the lens broke from the
@@ -319,8 +330,8 @@ function scanLens(lens) {
     hasMacroButtonWall: MACRO_BUTTON_WALL_RE.test(pageSrc),
     hasInlineActionWall: INLINE_ACTION_WALL_RE.test(blob),
     hasLoading: LOADING_RE.test(blob),
-    hasEmptyState: EMPTY_STATE_RE.test(blob),
-    hasErrorUI: ERROR_UI_RE.test(blob),
+    hasEmptyState: EMPTY_STATE_RE.test(visibleBlob),
+    hasErrorUI: ERROR_UI_RE.test(visibleBlob),
     hasAria: ARIA_ATTR_RE.test(blob) || ROLE_ATTR_RE.test(blob),
     hasNativeButtons: NATIVE_BUTTON_RE.test(blob),
     hasKeyboardHandlers: KEYBOARD_HANDLER_RE.test(blob),

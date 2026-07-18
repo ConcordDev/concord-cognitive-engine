@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, CalendarDays, FileText } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Scene { id: string; number: string; slugline: string; pageEighths: number }
 interface Day {
@@ -26,12 +27,19 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
   const [days, setDays] = useState<Day[]>([]);
   const [unscheduled, setUnscheduled] = useState<Scene[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dayForm, setDayForm] = useState({ date: '', location: '', generalCall: '' });
   const [callSheet, setCallSheet] = useState<CallSheet | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('film-studios', 'stripboard', { projectId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load stripboard.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setDays(r.data?.result?.days || []);
     setUnscheduled(r.data?.result?.unscheduled || []);
     setLoading(false);
@@ -66,6 +74,10 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

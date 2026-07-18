@@ -6,9 +6,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Save, Trash2, ChevronUp, ChevronDown, Play, X } from 'lucide-react';
+import { Save, Trash2, ChevronUp, ChevronDown, Play, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton, SkeletonTableRows, ErrorState } from '@/components/ui';
 import { PjTaskDetail } from './PjTaskDetail';
 
 interface Task {
@@ -34,18 +35,29 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
   const [meta, setMeta] = useState<Meta | null>(null);
   const [views, setViews] = useState<View[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filters, setFilters] = useState({ status: '', assigneeId: '', priority: '', type: '', query: '', sort: 'rank' });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [viewName, setViewName] = useState('');
   const [bulk, setBulk] = useState({ status: '', priority: '' });
   const [activeView, setActiveView] = useState<string | null>(null);
+  const [metaError, setMetaError] = useState<string | null>(null);
 
   const loadMeta = useCallback(async () => {
     const g = await lensRun('projects', 'project-get', { id: projectId });
+    if (g.data?.ok === false) {
+      setMetaError(g.data?.error || 'Could not load project metadata.');
+      return;
+    }
     const res = g.data?.result as (Meta & { project: unknown }) | null;
     setMeta(res ? { members: res.members, sprints: res.sprints, milestones: res.milestones, labels: res.labels, customFields: res.customFields } : null);
     const v = await lensRun('projects', 'view-list', { projectId });
+    if (v.data?.ok === false) {
+      setMetaError(v.data?.error || 'Could not load saved views.');
+      return;
+    }
+    setMetaError(null);
     setViews(v.data?.result?.views || []);
   }, [projectId]);
 
@@ -59,6 +71,12 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
     if (filters.type) params.type = filters.type;
     if (filters.query) params.query = filters.query;
     const r = await lensRun('projects', 'task-list', params);
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load issues.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTasks(r.data?.result?.tasks || []);
     setLoading(false);
     onChange();
@@ -123,13 +141,24 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
   };
 
   if (loading && !tasks.length) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return (
+      <div className="space-y-3" aria-busy="true">
+        <Skeleton variant="block" height={76} className="rounded-xl" />
+        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden">
+          <SkeletonTableRows rows={8} columns={6} />
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={refresh} />;
   }
 
   return (
     <div className="space-y-3">
       {/* Filters */}
-      <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+      <section className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3 space-y-2">
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
           <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} className={selCls}>
             <option value="">Any status</option>
@@ -152,24 +181,25 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
             {SORTS.map((x) => <option key={x} value={x}>sort: {x}</option>)}
           </select>
         </div>
+        {metaError && <ErrorState message={metaError} onRetry={loadMeta} variant="inline" />}
         <div className="flex flex-wrap items-center gap-1.5">
           {views.map((v) => (
             <span key={v.id}
               className={cn('flex items-center gap-1 text-[10px] rounded-lg pl-1 pr-1 py-0.5',
-                activeView === v.name ? 'bg-indigo-950/60 border border-indigo-700/60' : 'bg-zinc-800')}>
+                activeView === v.name ? 'bg-indigo-950/60 border border-indigo-700/60' : 'bg-lattice-elevated')}>
               <button type="button" onClick={() => runView(v)} title={`Run saved view "${v.name}"`}
                 className={cn('flex items-center gap-1 px-1 hover:text-indigo-300',
-                  activeView === v.name ? 'text-indigo-300' : 'text-zinc-300')}>
+                  activeView === v.name ? 'text-indigo-300' : 'text-gray-300')}>
                 <Play className="w-2.5 h-2.5" /> {v.name}
               </button>
               <button type="button" onClick={() => lensRun('projects', 'view-delete', { id: v.id }).then(loadMeta)}
-                className="text-zinc-400 hover:text-rose-300">×</button>
+                className="text-gray-400 hover:text-rose-300">×</button>
             </span>
           ))}
           <input placeholder="Save current as view…" value={viewName} onChange={(e) => setViewName(e.target.value)}
-            className="bg-zinc-950 border border-zinc-700 rounded px-2 py-0.5 text-[10px] text-zinc-100" />
+            className="bg-lattice-void border border-lattice-border rounded px-2 py-0.5 text-[10px] text-white" />
           <button type="button" onClick={saveView}
-            className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+            className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-lattice-elevated hover:bg-lattice-border text-gray-200 rounded">
             <Save className="w-3 h-3" /> Save view
           </button>
         </div>
@@ -182,7 +212,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
           <span className="text-[11px] text-indigo-200">Viewing saved view "{activeView}"</span>
           <span className="flex-1" />
           <button type="button" onClick={clearView}
-            className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-200">
+            className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-200">
             <X className="w-3 h-3" /> Back to filters
           </button>
         </div>
@@ -191,7 +221,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
       {/* Bulk bar */}
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 bg-indigo-950/40 border border-indigo-900/50 rounded-lg px-3 py-2">
-          <span className="text-xs text-indigo-200">{selected.size} selected</span>
+          <span className="text-xs text-indigo-200 tabular-nums">{selected.size} selected</span>
           <select value={bulk.status} onChange={(e) => setBulk({ ...bulk, status: e.target.value })} className={selCls}>
             <option value="">Set status…</option>
             {STATUSES.map((x) => <option key={x} value={x}>{x.replace(/_/g, ' ')}</option>)}
@@ -203,38 +233,38 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
           <button type="button" onClick={applyBulk}
             className="text-[11px] px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Apply</button>
           <button type="button" onClick={bulkDelete}
-            className="text-[11px] px-2.5 py-1 bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded-lg">Delete</button>
+            className="text-[11px] px-2.5 py-1 bg-lattice-elevated hover:bg-rose-900 text-gray-200 rounded-lg">Delete</button>
           <button type="button" onClick={() => setSelected(new Set())}
-            className="text-[11px] text-zinc-400 hover:text-zinc-200">Clear</button>
+            className="text-[11px] text-gray-400 hover:text-gray-200">Clear</button>
         </div>
       )}
 
       {/* List */}
       {tasks.length === 0 ? (
-        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No issues match these filters.</p>
+        <p className="text-[11px] text-gray-400 italic py-6 text-center">No issues match these filters.</p>
       ) : (
         <ul className="space-y-1">
           {tasks.map((t, i) => (
-            <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+            <li key={t.id} className="flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-lg px-2.5 py-1.5">
               <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSel(t.id)}
                 className="accent-indigo-500" />
-              <span className="text-[10px] font-mono text-zinc-400 w-14">{t.ref}</span>
-              <button type="button" onClick={() => setOpenTask(t.id)} className="flex-1 text-left text-xs text-zinc-100 truncate">
+              <span className="text-[10px] font-mono tabular-nums text-gray-400 w-14">{t.ref}</span>
+              <button type="button" onClick={() => setOpenTask(t.id)} className="flex-1 text-left text-xs text-white truncate">
                 {t.title}
               </button>
-              <span className="text-[10px] text-zinc-400 capitalize">{t.type}</span>
-              <span className="text-[10px] text-zinc-400 capitalize">{t.status.replace(/_/g, ' ')}</span>
-              {t.points > 0 && <span className="text-[10px] text-zinc-400">{t.points}pt</span>}
+              <span className="text-[10px] text-gray-400 capitalize">{t.type}</span>
+              <span className="text-[10px] text-gray-400 capitalize">{t.status.replace(/_/g, ' ')}</span>
+              {t.points > 0 && <span className="text-[10px] text-gray-400 tabular-nums">{t.points}pt</span>}
               {filters.sort === 'rank' && (
                 <span className="flex">
                   <button aria-label="Collapse" type="button" onClick={() => rank(t.id, -1)} disabled={i === 0}
-                    className="text-zinc-600 hover:text-zinc-300 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5" /></button>
+                    className="text-gray-600 hover:text-gray-300 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5" /></button>
                   <button aria-label="Expand" type="button" onClick={() => rank(t.id, 1)} disabled={i === tasks.length - 1}
-                    className="text-zinc-600 hover:text-zinc-300 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
+                    className="text-gray-600 hover:text-gray-300 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
                 </span>
               )}
               <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'task-delete', { id: t.id }).then(refresh)}
-                className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
             </li>
           ))}
         </ul>
@@ -253,4 +283,4 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
   );
 }
 
-const selCls = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100';
+const selCls = 'bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white';

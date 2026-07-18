@@ -11,6 +11,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Beer, RefreshCw, AlertTriangle, ExternalLink, MapPin, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Brewery {
   id: string;
@@ -40,8 +41,8 @@ const TYPE_COLOR: Record<string, string> = {
   regional: 'text-emerald-300',
   brewpub:  'text-rose-300',
   large:    'text-blue-300',
-  planning: 'text-zinc-400',
-  closed:   'text-zinc-600',
+  planning: 'text-gray-400',
+  closed:   'text-gray-600',
   contract: 'text-purple-300',
 };
 
@@ -77,30 +78,30 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
   };
 
   return (
-    <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
-      <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
+    <section className={cn('rounded-lg border border-lattice-border bg-lattice-void/80 overflow-hidden', className)}>
+      <header className="flex items-center gap-2 px-3 py-2 border-b border-lattice-border/80 bg-lattice-surface/40">
         <Beer className="w-4 h-4 text-amber-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">Open Brewery DB · US breweries</h3>
+        <h3 className="text-sm font-medium text-white flex-1">Open Brewery DB · US breweries</h3>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
         <button
           type="button"
           onClick={() => void fetchData(city)}
           disabled={loading}
-          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
+          className="p-1 text-gray-400 hover:text-gray-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>
       </header>
 
-      <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
+      <div className="px-3 py-2 border-b border-lattice-border/40 relative">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
         <input
           type="search"
           value={city}
           onChange={(e) => onCityChange(e.target.value)}
           placeholder="Filter by city (or leave empty)…"
-          className="w-full pl-8 pr-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-amber-500/40"
+          className="w-full pl-8 pr-3 py-1.5 text-xs bg-lattice-surface border border-lattice-border rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500/40"
         />
       </div>
 
@@ -110,25 +111,29 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
         </div>
       )}
 
+      {!error && loading && breweries.length === 0 && (
+        <SkeletonTableRows rows={5} columns={2} />
+      )}
+
       {!error && breweries.length === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No breweries match.</div>
+        <div className="px-3 py-6 text-xs text-gray-400 italic text-center">No breweries match.</div>
       )}
 
       {breweries.length > 0 && (
-        <ul className="divide-y divide-zinc-800/40 max-h-[500px] overflow-y-auto">
+        <ul className="divide-y divide-lattice-border/40 max-h-[500px] overflow-y-auto">
           {breweries.map((b) => (
             <li key={b.id} className="px-3 py-2 text-xs">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-zinc-200 font-medium truncate">{b.name}</span>
+                    <span className="text-gray-200 font-medium truncate">{b.name}</span>
                     {b.type && (
-                      <span className={cn('text-[10px] font-mono', TYPE_COLOR[b.type] || 'text-zinc-400')}>
+                      <span className={cn('text-[10px] font-mono', TYPE_COLOR[b.type] || 'text-gray-400')}>
                         {b.type}
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-zinc-400 truncate flex items-center gap-1 mt-0.5">
+                  <div className="text-[10px] text-gray-400 truncate flex items-center gap-1 mt-0.5">
                     <MapPin className="w-2.5 h-2.5 shrink-0" />
                     {b.street ? `${b.street}, ` : ''}{b.city}, {b.state} {b.postalCode || ''}
                   </div>
@@ -137,7 +142,7 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
                   <a
                     href={b.websiteUrl}
                     target="_blank" rel="noopener noreferrer"
-                    className="text-zinc-400 hover:text-amber-300 shrink-0 mt-0.5"
+                    className="text-gray-400 hover:text-amber-300 shrink-0 mt-0.5"
                     aria-label="Open website"
                   >
                     <ExternalLink className="w-3 h-3" />
@@ -149,7 +154,7 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-gray-400 border-t border-lattice-border/40">
         Source: Open Brewery DB · openbrewerydb.org
       </footer>
     </section>

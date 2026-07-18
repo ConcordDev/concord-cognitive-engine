@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, ChevronRight, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Content {
   id: string; title: string; format: string; platform: string | null; stage: string;
@@ -26,11 +27,18 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
   const [items, setItems] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', format: 'video', scheduledDate: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('creator', 'content-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load content pipeline.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setItems(r.data?.result?.items || []);
     setLoading(false);
     onChange();
@@ -60,6 +68,10 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

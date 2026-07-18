@@ -84,7 +84,7 @@ export function BarcodeScanner({ onLogged }: { onLogged?: () => void }) {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ScanBarcode className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Barcode Scanner</span>
@@ -147,7 +147,7 @@ export function BarcodeScanner({ onLogged }: { onLogged?: () => void }) {
                 ['Sodium', `${product.nutrition.sodium_mg}mg`, 'text-purple-400'],
               ] as const).map(([label, value, tone]) => (
                 <div key={label} className="bg-black/30 rounded py-1.5">
-                  <div className={cn('text-sm font-bold', tone)}>{value}</div>
+                  <div className={cn('text-sm font-bold tabular-nums', tone)}>{value}</div>
                   <div className="text-[9px] text-gray-400 uppercase">{label}</div>
                 </div>
               ))}

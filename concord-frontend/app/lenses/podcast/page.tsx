@@ -941,8 +941,6 @@ export default function PodcastLensPage() {
       </PipingProvider>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <RecentMineCard domain="podcast" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="podcast" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="podcast" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

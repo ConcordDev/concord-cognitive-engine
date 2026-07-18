@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, DollarSign, TrendingDown, Ticket } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface PriceRecord {
   id: string; drugName: string; pharmacyName: string;
@@ -21,6 +22,7 @@ export function RxPricePanel() {
   const [prices, setPrices] = useState<PriceRecord[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ drugName: '', pharmacyName: '', cashPrice: '', couponPrice: '' });
   const [compareDrug, setCompareDrug] = useState('');
@@ -34,6 +36,12 @@ export function RxPricePanel() {
       lensRun('pharmacy', 'price-list', {}),
       lensRun('pharmacy', 'coupon-list', {}),
     ]);
+    if (p.data?.ok === false || c.data?.ok === false) {
+      setLoadError(p.data?.error || c.data?.error || 'Could not load prices.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPrices(p.data?.result?.prices || []);
     setCoupons(c.data?.result?.coupons || []);
     setLoading(false);
@@ -75,6 +83,9 @@ export function RxPricePanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const drugs = [...new Set(prices.map((p) => p.drugName))];

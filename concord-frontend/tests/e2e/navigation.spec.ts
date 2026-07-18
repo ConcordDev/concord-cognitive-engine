@@ -222,8 +222,8 @@ test.describe('App Shell Navigation', () => {
     expect(response?.status()).toBeLessThan(500);
     await page.waitForLoadState('domcontentloaded');
 
-    // Footer shows "Concord OS v5.0" and "70% Sovereign"
-    const versionText = page.locator('aside').locator('text=/Concord OS|70%/');
+    // Footer shows "Concord OS v1.0" and "Sovereign"
+    const versionText = page.locator('aside').locator('text=/Concord OS|Sovereign/');
     if (await versionText.first().isVisible().catch(() => false)) {
       await expect(versionText.first()).toBeVisible();
     }

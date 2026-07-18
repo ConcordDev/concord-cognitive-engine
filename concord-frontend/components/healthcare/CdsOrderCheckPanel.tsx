@@ -41,7 +41,7 @@ export function CdsOrderCheckPanel({ patientId }: { patientId: string }) {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <ShieldAlert className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Decision support — order check</span>

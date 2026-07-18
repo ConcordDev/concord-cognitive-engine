@@ -1,6 +1,20 @@
 # Quest Engine Investigation — Wave 4 Gap Closure
 
-> Status: **investigation complete, root cause empirically confirmed, NOT
+> **RESOLVED (2026-07-18).** The fix — **Option 1** below (bridge authored
+> content into the SQL "System B" store at seed time) plus the Finding 2/3/4
+> repairs — landed on this branch in commit `6c4b5a1b`
+> (`content-seeder.js#seedQuestIntoSystemB` + accept-path + quest-emergence
+> objectives + tutorial retarget). It is now covered end-to-end by
+> `server/tests/integration/quest-authored-bridge.test.js` (authored quest →
+> `world_quests` + real `quest_objectives`/`quest_rewards`, dialogue-offer
+> query, accept → progress → `claimQuestRewards` granting a real reward, and
+> `deriveFirstCycleProgress` advancing past "cook"). Named residuals remain
+> honest + documented: `any_of`-branch objectives are omitted (not force-seeded
+> as all-required), only xp/gold/skill_xp rewards bridge, and System A
+> breadcrumbs stay served from System A. The diagnostic below is preserved as
+> the record of the original break.
+>
+> Original status: **investigation complete, root cause empirically confirmed, NOT
 > fixed here.** This is a diagnostic report per the Wave-4 triage rule
 > (CLAUDE.md §6: closing the hard 20% invariant) — the fix requires an
 > architectural decision between at least three plausible directions (see

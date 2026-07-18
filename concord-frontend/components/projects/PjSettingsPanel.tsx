@@ -6,9 +6,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Tag, ListPlus, Zap, FileStack, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Tag, ListPlus, Zap, FileStack, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Label { id: string; name: string; color: string }
 interface CustomField { id: string; name: string; type: string; options: string[] }
@@ -28,6 +29,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
   const [rules, setRules] = useState<Rule[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [lForm, setLForm] = useState({ name: '', color: 'indigo' });
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [lEditForm, setLEditForm] = useState({ name: '', color: 'indigo' });
@@ -43,6 +45,12 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
       lensRun('projects', 'rule-list', { projectId }),
       lensRun('projects', 'template-list', { projectId }),
     ]);
+    if (l.data?.ok === false || f.data?.ok === false || r.data?.ok === false || t.data?.ok === false) {
+      setLoadError(l.data?.error || f.data?.error || r.data?.error || t.data?.error || 'Could not load project settings.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setLabels(l.data?.result?.labels || []);
     setFields(f.data?.result?.fields || []);
     setRules(r.data?.result?.rules || []);
@@ -100,14 +108,25 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return (
+      <div className="space-y-5" aria-busy="true">
+        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={2} /></div>
+        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={3} /></div>
+        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={3} /></div>
+        <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={2} /></div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (
     <div className="space-y-5">
       {/* Labels */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <Tag className="w-3.5 h-3.5 text-indigo-400" /> Labels
         </h3>
         <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -115,7 +134,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
           <div className="flex gap-1">
             {COLORS.map((c) => (
               <button key={c} type="button" onClick={() => setLForm({ ...lForm, color: c })}
-                className={cn('w-5 h-5 rounded-full', lForm.color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-zinc-900' : '')}
+                className={cn('w-5 h-5 rounded-full', lForm.color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-lattice-surface' : '')}
                 style={{ background: cssColor(c) }} />
             ))}
           </div>
@@ -124,21 +143,21 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
         <div className="flex flex-wrap gap-1.5">
           {labels.map((l) => (
             editingLabelId === l.id ? (
-              <span key={l.id} className="flex items-center gap-1.5 bg-zinc-900/70 border border-zinc-700 rounded-lg pl-2 pr-1 py-0.5">
+              <span key={l.id} className="flex items-center gap-1.5 bg-lattice-surface/70 border border-lattice-border rounded-lg pl-2 pr-1 py-0.5">
                 <input value={lEditForm.name} onChange={(e) => setLEditForm({ ...lEditForm, name: e.target.value })}
-                  className="w-24 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />
+                  className="w-24 bg-lattice-void border border-lattice-border rounded px-1.5 py-0.5 text-[10px] text-white" />
                 <div className="flex gap-0.5">
                   {COLORS.map((c) => (
                     <button key={c} type="button" onClick={() => setLEditForm({ ...lEditForm, color: c })}
                       aria-label={`Set label color ${c}`}
-                      className={cn('w-4 h-4 rounded-full', lEditForm.color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-zinc-900' : '')}
+                      className={cn('w-4 h-4 rounded-full', lEditForm.color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-lattice-surface' : '')}
                       style={{ background: cssColor(c) }} />
                   ))}
                 </div>
                 <button aria-label="Save label" type="button" onClick={saveEditLabel} className="text-emerald-400 hover:text-emerald-300">
                   <Check className="w-3.5 h-3.5" />
                 </button>
-                <button aria-label="Cancel edit" type="button" onClick={cancelEditLabel} className="text-zinc-500 hover:text-zinc-300">
+                <button aria-label="Cancel edit" type="button" onClick={cancelEditLabel} className="text-gray-500 hover:text-gray-300">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </span>
@@ -159,7 +178,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
 
       {/* Custom fields */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <ListPlus className="w-3.5 h-3.5 text-indigo-400" /> Custom fields
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
@@ -174,11 +193,11 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
         {fields.length === 0 ? <Empty text="No custom fields." /> : (
           <ul className="space-y-1">
             {fields.map((f) => (
-              <li key={f.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-xs text-zinc-200 flex-1">{f.name}</span>
-                <span className="text-[10px] text-zinc-400">{f.type}{f.options.length ? ` · ${f.options.join('/')}` : ''}</span>
+              <li key={f.id} className="flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-1.5">
+                <span className="text-xs text-gray-200 flex-1">{f.name}</span>
+                <span className="text-[10px] text-gray-400">{f.type}{f.options.length ? ` · ${f.options.join('/')}` : ''}</span>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'custom-field-delete', { id: f.id }).then(refresh)}
-                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -187,7 +206,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
 
       {/* Automation rules */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <Zap className="w-3.5 h-3.5 text-amber-400" /> Automation rules
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
@@ -207,16 +226,16 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
         {rules.length === 0 ? <Empty text="No automation rules." /> : (
           <ul className="space-y-1">
             {rules.map((r) => (
-              <li key={r.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-xs text-zinc-200 flex-1">
-                  {r.name} <span className="text-zinc-400">— when {r.trigger.replace(/_/g, ' ')} → {r.action.replace(/_/g, ' ')} {r.actionValue}</span>
+              <li key={r.id} className="flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-1.5">
+                <span className="text-xs text-gray-200 flex-1">
+                  {r.name} <span className="text-gray-400">— when {r.trigger.replace(/_/g, ' ')} → {r.action.replace(/_/g, ' ')} {r.actionValue}</span>
                 </span>
                 <button type="button" onClick={() => lensRun('projects', 'rule-toggle', { id: r.id, enabled: !r.enabled }).then(refresh)}
-                  className={cn('text-[10px] px-1.5 py-0.5 rounded', r.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-400')}>
+                  className={cn('text-[10px] px-1.5 py-0.5 rounded', r.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-lattice-elevated text-gray-400')}>
                   {r.enabled ? 'on' : 'off'}
                 </button>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'rule-delete', { id: r.id }).then(refresh)}
-                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -225,7 +244,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
 
       {/* Templates */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <FileStack className="w-3.5 h-3.5 text-indigo-400" /> Task templates
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
@@ -240,14 +259,14 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
         {templates.length === 0 ? <Empty text="No templates." /> : (
           <ul className="space-y-1">
             {templates.map((t) => (
-              <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-xs text-zinc-200 flex-1">{t.name}
-                  <span className="text-[10px] text-zinc-400"> · {t.subtasks.length} subtasks</span>
+              <li key={t.id} className="flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-1.5">
+                <span className="text-xs text-gray-200 flex-1">{t.name}
+                  <span className="text-[10px] text-gray-400"> · {t.subtasks.length} subtasks</span>
                 </span>
                 <button type="button" onClick={() => lensRun('projects', 'template-apply', { id: t.id }).then(refresh)}
                   className="text-[10px] px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded">Apply</button>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'template-delete', { id: t.id }).then(refresh)}
-                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -257,10 +276,10 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
   );
 }
 
-const inp = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100';
+const inp = 'bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white';
 const btn = 'flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg';
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-zinc-400 italic">{text}</p>;
+  return <p className="text-[11px] text-gray-400 italic">{text}</p>;
 }
 function cssColor(c: string): string {
   const map: Record<string, string> = {

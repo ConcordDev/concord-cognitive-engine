@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 export interface OptionsRow {
   strike: number;
@@ -62,7 +63,7 @@ export function MarketsWorkbench({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[680px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-cyan-500/20 shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-[680px] max-w-[100vw] z-40 bg-lattice-deep border-l border-cyan-500/20 shadow-2xl overflow-hidden flex flex-col">
       <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-cyan-950/40 to-transparent">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-cyan-400" />
@@ -151,7 +152,7 @@ function OptionsTab() {
 
       {chain.length > 0 && (
         <div className="border border-white/10 rounded overflow-x-auto">
-          <table className="w-full text-[11px] font-mono">
+          <table className="w-full text-[11px] font-mono tabular-nums">
             <thead className="bg-black/40 text-gray-400 uppercase">
               <tr>
                 <th className="text-right px-2 py-1 text-emerald-400">Call Δ</th>
@@ -199,7 +200,13 @@ function FuturesTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+  if (loading) return (
+    <div className="p-3">
+      <div className="border border-white/10 rounded overflow-hidden">
+        <SkeletonTableRows rows={6} columns={6} />
+      </div>
+    </div>
+  );
 
   return (
     <div className="p-3">
@@ -222,11 +229,11 @@ function FuturesTab() {
                 <td className="px-2 py-1 font-mono text-cyan-300">{c.symbol}</td>
                 <td className="px-2 py-1 font-mono text-gray-400">{c.frontContract}</td>
                 <td className="px-2 py-1 text-gray-200">{c.name}</td>
-                <td className="px-2 py-1 text-right font-mono text-gray-100">{c.last}</td>
-                <td className={cn('px-2 py-1 text-right font-mono', c.change >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100">{c.last}</td>
+                <td className={cn('px-2 py-1 text-right font-mono tabular-nums', c.change >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
                   {c.change >= 0 ? '+' : ''}{c.change} ({c.changePercent}%)
                 </td>
-                <td className="px-2 py-1 text-right font-mono text-gray-400">${c.initialMargin.toLocaleString()}</td>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-400">${c.initialMargin.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -250,7 +257,13 @@ function ForexTab() {
     })();
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+  if (loading) return (
+    <div className="p-3">
+      <div className="border border-white/10 rounded overflow-hidden">
+        <SkeletonTableRows rows={6} columns={5} />
+      </div>
+    </div>
+  );
 
   return (
     <div className="p-3">
@@ -263,10 +276,10 @@ function ForexTab() {
             {quotes.map((q) => (
               <tr key={q.pair} className="border-t border-white/5">
                 <td className="px-2 py-1 font-mono text-cyan-300">{q.pair}<p className="text-[9px] text-gray-400 font-sans">{q.name}</p></td>
-                <td className="px-2 py-1 text-right font-mono text-gray-100">{q.bid}</td>
-                <td className="px-2 py-1 text-right font-mono text-gray-100">{q.ask}</td>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100">{q.bid}</td>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-100">{q.ask}</td>
                 <td className="px-2 py-1 text-right text-gray-400">{q.spreadPips}p</td>
-                <td className="px-2 py-1 text-right font-mono text-gray-400">${q.pipValue}</td>
+                <td className="px-2 py-1 text-right font-mono tabular-nums text-gray-400">${q.pipValue}</td>
               </tr>
             ))}
           </tbody>
@@ -310,7 +323,7 @@ function DepthTab() {
           <div className="border border-emerald-500/20 rounded overflow-hidden">
             <p className="px-2 py-1 text-[10px] uppercase text-emerald-400 bg-emerald-500/10">Bids</p>
             {book.bids.map((b, i) => (
-              <div key={i} className="flex justify-between px-2 py-1 text-[11px] font-mono border-t border-white/5">
+              <div key={i} className="flex justify-between px-2 py-1 text-[11px] font-mono tabular-nums border-t border-white/5">
                 <span className="text-emerald-300">{b.price}</span>
                 <span className="text-gray-400">{b.size}</span>
               </div>
@@ -319,7 +332,7 @@ function DepthTab() {
           <div className="border border-rose-500/20 rounded overflow-hidden">
             <p className="px-2 py-1 text-[10px] uppercase text-rose-400 bg-rose-500/10">Asks</p>
             {book.asks.map((a, i) => (
-              <div key={i} className="flex justify-between px-2 py-1 text-[11px] font-mono border-t border-white/5">
+              <div key={i} className="flex justify-between px-2 py-1 text-[11px] font-mono tabular-nums border-t border-white/5">
                 <span className="text-rose-300">{a.price}</span>
                 <span className="text-gray-400">{a.size}</span>
               </div>

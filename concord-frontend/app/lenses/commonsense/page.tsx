@@ -813,7 +813,6 @@ export default function CommonsenseLensPage() {
       </PipingProvider>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#commonsense-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to commonsense content</a>
           <RecentMineCard domain="commonsense" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="commonsense" hideWhenEmpty className="mt-3" title="More actions" />

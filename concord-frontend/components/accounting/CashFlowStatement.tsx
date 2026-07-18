@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { Skeleton } from '@/components/ui';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 
 interface MonthRow { month: string; in: number; out: number; net: number }
@@ -44,7 +45,12 @@ export function CashFlowStatement() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="p-4 space-y-4" aria-busy="true">
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} variant="block" height="4.5rem" />)}
+          </div>
+          <Skeleton variant="block" height="14rem" />
+        </div>
       ) : !cf || cf.series.length === 0 ? (
         <div className="p-10 text-center text-xs text-gray-400">No cash activity in this period.</div>
       ) : (

@@ -66,7 +66,7 @@ export function QRCodeReceive({ address, label, amount, symbol, size = 240 }: QR
     <div className="space-y-3">
       {label && <p className="text-xs text-gray-400">{label}</p>}
       <div className="flex flex-col items-center gap-3 p-4 bg-[#0a0e17] border border-cyan-500/20 rounded-lg">
-        <div className="relative bg-black/30 rounded p-2" style={{ width: size + 16, height: size + 16 }}>
+        <div className="relative bg-lattice-void/30 rounded p-2" style={{ width: size + 16, height: size + 16 }}>
           {loading ? (
             <div className="flex items-center justify-center w-full h-full">
               <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
@@ -84,7 +84,7 @@ export function QRCodeReceive({ address, label, amount, symbol, size = 240 }: QR
         </div>
         {amount && (
           <div className="text-sm text-yellow-300 font-bold">
-            Requesting {amount} {symbol}
+            Requesting <span className="font-mono tabular-nums">{amount}</span> {symbol}
           </div>
         )}
         <div className="flex items-center gap-2">

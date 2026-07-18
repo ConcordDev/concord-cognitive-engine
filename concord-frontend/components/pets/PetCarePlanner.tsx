@@ -28,6 +28,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Loader2, Wand2, Syringe, Utensils, Pill, Receipt, Plus, Trash2 } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { ErrorState } from '@/components/ui';
 
 export interface PetCarePlannerProps {
   petId: string;
@@ -76,6 +77,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
   const [feeding, setFeeding] = useState<FeedingResult | null>(null);
   const [vaccines, setVaccines] = useState<VaccineScheduleResult | null>(null);
   const [medReminders, setMedReminders] = useState<MedReminderResult | null>(null);
+  const [medError, setMedError] = useState<string | null>(null);
   const [costResult, setCostResult] = useState<CostResult | null>(null);
   const [costRows, setCostRows] = useState<Array<{ date: string; category: string; amount: string }>>([
     { date: new Date().toISOString().slice(0, 10), category: 'Vet', amount: '' },
@@ -101,6 +103,12 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
   const computeMeds = useMutation({
     mutationFn: async () => {
       const m = await lensRun('pets', 'medication-list', { petId });
+      if (m.data?.ok === false) {
+        setMedError(m.data?.error || `Could not load ${petName}'s medications.`);
+        setMedReminders(null);
+        return;
+      }
+      setMedError(null);
       const active: Array<{ name: string; frequency: string | null; startDate: string }> =
         (m.data?.result?.medications || []).filter((x: { active: boolean }) => x.active);
       if (active.length === 0) { setMedReminders({ medications: [], overdue: 0, dueNow: 0, onTrack: 0 }); return; }
@@ -204,7 +212,8 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
             {computeMeds.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />} Check doses
           </button>
         </div>
-        {!medReminders && <div className="text-[11px] text-zinc-400">Computes real per-dose overdue/due-now status from {petName}'s active medications.</div>}
+        {medError && <ErrorState message={medError} onRetry={() => computeMeds.mutate()} variant="inline" />}
+        {!medError && !medReminders && <div className="text-[11px] text-zinc-400">Computes real per-dose overdue/due-now status from {petName}'s active medications.</div>}
         {medReminders && medReminders.medications && medReminders.medications.length === 0 && (
           <div className="text-[11px] text-zinc-400">No active medications on file for {petName}.</div>
         )}

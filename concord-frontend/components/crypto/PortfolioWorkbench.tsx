@@ -411,11 +411,11 @@ export function PortfolioWorkbench() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div className="p-3 bg-lattice-deep rounded-lg">
-                <p className="text-lg font-bold">{fmtUsd(stream.totalValueUsd)}</p>
+                <p className="text-lg font-bold font-mono tabular-nums">{fmtUsd(stream.totalValueUsd)}</p>
                 <p className="text-[11px] text-gray-400">Live Portfolio Value</p>
               </div>
               <div className="p-3 bg-lattice-deep rounded-lg">
-                <p className={cn('text-lg font-bold flex items-center gap-1',
+                <p className={cn('text-lg font-bold font-mono tabular-nums flex items-center gap-1',
                   stream.unrealizedPnlUsd >= 0 ? 'text-neon-green' : 'text-neon-pink')}>
                   {stream.unrealizedPnlUsd >= 0
                     ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -424,7 +424,7 @@ export function PortfolioWorkbench() {
                 <p className="text-[11px] text-gray-400">Unrealized P&amp;L ({stream.unrealizedPnlPct}%)</p>
               </div>
               <div className="p-3 bg-lattice-deep rounded-lg">
-                <p className="text-lg font-bold">{stream.ticks.length}</p>
+                <p className="text-lg font-bold font-mono tabular-nums">{stream.ticks.length}</p>
                 <p className="text-[11px] text-gray-400">
                   Tracked · {new Date(stream.at).toLocaleTimeString()}
                 </p>
@@ -434,9 +434,9 @@ export function PortfolioWorkbench() {
               {stream.ticks.map(t => (
                 <div key={t.symbol} className="flex items-center justify-between text-xs px-3 py-1.5 bg-lattice-deep rounded">
                   <span className="font-mono font-semibold text-gray-200">{t.ticker}</span>
-                  <span className="text-gray-400">{fmtUsd(t.priceUsd)}</span>
-                  <span className="text-gray-400">{t.qty} held</span>
-                  <span className={cn('font-mono',
+                  <span className="font-mono tabular-nums text-gray-400">{fmtUsd(t.priceUsd)}</span>
+                  <span className="font-mono tabular-nums text-gray-400">{t.qty} held</span>
+                  <span className={cn('font-mono tabular-nums',
                     (t.unrealizedPnlUsd ?? 0) >= 0 ? 'text-neon-green' : 'text-neon-pink')}>
                     {t.unrealizedPnlUsd != null
                       ? `${t.unrealizedPnlUsd >= 0 ? '+' : ''}${fmtUsd(t.unrealizedPnlUsd)}`
@@ -532,7 +532,7 @@ export function PortfolioWorkbench() {
           <>
             <div className="text-xs text-gray-400 mb-2">
               {chainFilter === 'all' ? 'All networks' : chainFilter} total:{' '}
-              <span className="text-neon-green font-mono font-semibold">{fmtUsd(filteredTotal)}</span>
+              <span className="text-neon-green font-mono tabular-nums font-semibold">{fmtUsd(filteredTotal)}</span>
             </div>
             <div className="space-y-1.5">
               {filteredHoldings.map(h => (
@@ -547,9 +547,9 @@ export function PortfolioWorkbench() {
                       ))}
                     </span>
                   </div>
-                  <span className="text-gray-400">{h.qty} @ {fmtUsd(h.avgCostUsd)}</span>
-                  <span className="text-gray-200 font-mono">{fmtUsd(h.marketValueUsd)}</span>
-                  <span className={cn('font-mono w-24 text-right',
+                  <span className="font-mono tabular-nums text-gray-400">{h.qty} @ {fmtUsd(h.avgCostUsd)}</span>
+                  <span className="text-gray-200 font-mono tabular-nums">{fmtUsd(h.marketValueUsd)}</span>
+                  <span className={cn('font-mono tabular-nums w-24 text-right',
                     (h.unrealizedPnlUsd ?? 0) >= 0 ? 'text-neon-green' : 'text-neon-pink')}>
                     {h.unrealizedPnlUsd != null
                       ? `${h.unrealizedPnlUsd >= 0 ? '+' : ''}${fmtUsd(h.unrealizedPnlUsd)}`
@@ -607,7 +607,7 @@ export function PortfolioWorkbench() {
                   {s.address.slice(0, 8)}…{s.address.slice(-6)}
                 </span>
                 <span className="capitalize text-gray-400">{s.chain}</span>
-                <span className="font-mono text-gray-200">{s.balance} {s.nativeTicker}</span>
+                <span className="font-mono tabular-nums text-gray-200">{s.balance} {s.nativeTicker}</span>
                 <span className="text-gray-600">{new Date(s.syncedAt).toLocaleString()}</span>
               </div>
             ))}
@@ -646,10 +646,10 @@ export function PortfolioWorkbench() {
             {positions.map(p => (
               <div key={p.id} className="flex items-center justify-between px-3 py-2 bg-lattice-deep rounded-lg text-xs">
                 <span className="font-mono font-bold text-gray-100 w-16">{p.ticker}</span>
-                <span className="text-gray-400">{p.qty} staked</span>
-                <span className="text-gray-400">{p.aprPct != null ? `${p.aprPct}% APR` : 'APR n/a'}</span>
+                <span className="font-mono tabular-nums text-gray-400">{p.qty} staked</span>
+                <span className="font-mono tabular-nums text-gray-400">{p.aprPct != null ? `${p.aprPct}% APR` : 'APR n/a'}</span>
                 <span className="text-gray-400 truncate max-w-[120px]">{p.validator || 'no validator'}</span>
-                <span className="text-neon-green font-mono">
+                <span className="text-neon-green font-mono tabular-nums">
                   +{fmtUsd(p.cumulativeRewardsUsd)} rewards
                 </span>
                 {p.active ? (
@@ -715,9 +715,9 @@ export function PortfolioWorkbench() {
                       {r.action}
                     </span>
                     <span className="font-mono font-bold text-gray-100">{r.ticker}</span>
-                    <span className="text-gray-400">{fmtUsd(r.deltaUsd)}</span>
-                    <span className="text-gray-400">{r.deltaQty} units</span>
-                    <span className="text-gray-600">{r.currentPct}% → {r.targetPct}%</span>
+                    <span className="font-mono tabular-nums text-gray-400">{fmtUsd(r.deltaUsd)}</span>
+                    <span className="font-mono tabular-nums text-gray-400">{r.deltaQty} units</span>
+                    <span className="font-mono tabular-nums text-gray-600">{r.currentPct}% → {r.targetPct}%</span>
                   </div>
                 ))}
               </div>

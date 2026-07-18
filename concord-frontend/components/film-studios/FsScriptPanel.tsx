@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Tag, Lock, Unlock, History, Pencil, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface BreakdownEl { id: string; category: string; name: string }
 interface Scene {
@@ -46,6 +47,7 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [form, setForm] = useState({ intExt: 'INT', location: '', timeOfDay: 'DAY', pageEighths: '', description: '' });
@@ -62,6 +64,12 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
       lensRun('film-studios', 'scene-list', { projectId }),
       lensRun('film-studios', 'revision-list', { projectId }),
     ]);
+    if (r.data?.ok === false || rv.data?.ok === false) {
+      setLoadError(r.data?.error || rv.data?.error || 'Could not load script data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setScenes(r.data?.result?.scenes || []);
     setTotalPages(r.data?.result?.totalPages || 0);
     setRevisions(rv.data?.result?.revisions || []);
@@ -149,6 +157,10 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

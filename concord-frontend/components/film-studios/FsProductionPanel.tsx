@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, MapPin, CheckSquare, CalendarDays, Grid3x3, ChevronLeft, ChevronRight, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Location { id: string; name: string; address: string | null; contact: string | null }
 interface Task { id: string; title: string; department: string; assignee: string | null; dueDate: string | null; status: string }
@@ -26,6 +27,7 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dood, setDood] = useState<{ days: number[]; rows: DoodRow[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [locForm, setLocForm] = useState({ name: '', address: '', contact: '' });
   const [editingLoc, setEditingLoc] = useState<string | null>(null);
   const [editLocForm, setEditLocForm] = useState({ name: '', address: '', contact: '' });
@@ -42,6 +44,12 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
       lensRun('film-studios', 'task-list', { projectId }),
       lensRun('film-studios', 'dood-report', { projectId }),
     ]);
+    if (l.data?.ok === false || t.data?.ok === false || d.data?.ok === false) {
+      setLoadError(l.data?.error || t.data?.error || d.data?.error || 'Could not load production data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setLocations(l.data?.result?.locations || []);
     setTasks(t.data?.result?.tasks || []);
     setDood((d.data?.result as { days: number[]; rows: DoodRow[] } | null) || null);
@@ -92,6 +100,10 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

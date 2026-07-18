@@ -46,6 +46,7 @@
 
 import { useEffect, useState } from 'react';
 import { useConkayHudStore } from '../conkayHudStore';
+import { useConnectorStatus, type ConnectorBadgeStatus } from './useConnectorStatus';
 
 interface MacroAction {
   action: string;
@@ -104,6 +105,82 @@ function ActionRow({ a }: { a: MacroAction }) {
   );
 }
 
+// ── Connector honesty badges (unit A3) ─────────────────────────────────────
+// Each badge is a straight passthrough of the backend's derived `status`. The
+// four states are mutually exclusive and each is a real, sourced answer — never
+// a fabricated "connected". "Needs go-live" (operator OAuth client absent) is
+// deliberately distinct from "Not connected" (configured, this user hasn't
+// linked): the former is a deployment-wide gate, the latter a per-user action.
+const CONNECTOR_BADGE_META: Record<
+  ConnectorBadgeStatus,
+  { label: string; className: string; title: string }
+> = {
+  connected: {
+    label: 'Connected',
+    className: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300',
+    title: 'A real OAuth grant is stored for your account (a stored credential on file, not a live network check).',
+  },
+  'needs-go-live': {
+    label: 'Needs go-live',
+    className: 'border-amber-400/30 bg-amber-500/10 text-amber-300',
+    title: "This deployment's operator hasn't configured this connector's OAuth client yet — nobody can link it until they do.",
+  },
+  'not-connected': {
+    label: 'Not connected',
+    className: 'border-zinc-500/30 bg-zinc-700/20 text-zinc-400',
+    title: "The connector is configured — you just haven't linked your account yet.",
+  },
+  unknown: {
+    label: 'Unknown',
+    className: 'border-slate-500/30 bg-slate-700/20 text-slate-400',
+    title: "Couldn't determine this connector's status right now.",
+  },
+};
+
+function ConnectorBadgeStrip() {
+  const { status, entries, error } = useConnectorStatus();
+
+  return (
+    <div
+      data-testid="ck-connector-strip"
+      className="mx-auto max-w-2xl rounded-xl border border-cyan-400/15 bg-black/30 p-2"
+    >
+      <div className="px-1 pb-1 text-[10px] uppercase tracking-wide text-cyan-300/50">connectors</div>
+      {status === 'loading' && (
+        <div className="px-1 py-1 text-[11px] text-cyan-300/60">Loading your connector status…</div>
+      )}
+      {status === 'error' && (
+        <div data-testid="ck-connector-strip-error" className="px-1 py-1 text-[11px] text-slate-400/80">
+          Connector status unavailable{error ? ` (${error})` : ''}.
+        </div>
+      )}
+      {status === 'ok' && (
+        <ul className="space-y-0.5">
+          {entries.map((c) => {
+            const meta = CONNECTOR_BADGE_META[c.status] ?? CONNECTOR_BADGE_META.unknown;
+            return (
+              <li
+                key={c.id}
+                data-testid={`ck-connector-${c.id}`}
+                data-status={c.status}
+                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-[11px]"
+              >
+                <span className="min-w-0 flex-1 truncate text-cyan-100/80">{c.name}</span>
+                <span
+                  title={meta.title}
+                  className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${meta.className}`}
+                >
+                  {meta.label}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ActionGroup({ title, actions }: { title: string; actions: MacroAction[] }) {
   if (actions.length === 0) return null;
   return (
@@ -152,45 +229,50 @@ export function MacroLibraryPanel() {
     };
   }, [domain]);
 
+  let macroBody;
   if (status === 'loading') {
-    return (
-      <div className="mx-auto mt-2 max-w-2xl rounded-xl border border-cyan-400/15 bg-black/30 p-2">
+    macroBody = (
+      <div className="rounded-xl border border-cyan-400/15 bg-black/30 p-2">
         <div className="px-1 py-1 text-[11px] text-cyan-300/60">Loading macro library for {domain}…</div>
       </div>
     );
-  }
-
-  if (status === 'error') {
-    return (
-      <div className="mx-auto mt-2 max-w-2xl rounded-xl border border-rose-400/20 bg-black/30 p-2">
+  } else if (status === 'error') {
+    macroBody = (
+      <div className="rounded-xl border border-rose-400/20 bg-black/30 p-2">
         <div className="px-1 py-1 text-[11px] text-rose-300/80">
           Couldn&apos;t load macro library for {domain}{errorMessage ? ` (${errorMessage})` : ''}.
         </div>
       </div>
     );
+  } else {
+    const actions = data?.actions ?? [];
+    if (actions.length === 0) {
+      macroBody = (
+        <div className="rounded-xl border border-cyan-400/15 bg-black/30 p-2">
+          <div className="px-1 py-1 text-[11px] text-cyan-300/50">No macros registered for {domain}.</div>
+        </div>
+      );
+    } else {
+      const live = actions.filter((a) => a.isLive);
+      const ai = actions.filter((a) => !a.isLive && a.isAi);
+      const compute = actions.filter((a) => !a.isLive && !a.isAi);
+      macroBody = (
+        <div className="rounded-xl border border-cyan-400/15 bg-black/30 p-2">
+          <div className="px-1 pb-1 text-[10px] uppercase tracking-wide text-cyan-300/50">
+            macro library · {domain} ({actions.length})
+          </div>
+          <ActionGroup title="Live" actions={live} />
+          <ActionGroup title="AI-backed" actions={ai} />
+          <ActionGroup title="Compute" actions={compute} />
+        </div>
+      );
+    }
   }
-
-  const actions = data?.actions ?? [];
-  if (actions.length === 0) {
-    return (
-      <div className="mx-auto mt-2 max-w-2xl rounded-xl border border-cyan-400/15 bg-black/30 p-2">
-        <div className="px-1 py-1 text-[11px] text-cyan-300/50">No macros registered for {domain}.</div>
-      </div>
-    );
-  }
-
-  const live = actions.filter((a) => a.isLive);
-  const ai = actions.filter((a) => !a.isLive && a.isAi);
-  const compute = actions.filter((a) => !a.isLive && !a.isAi);
 
   return (
-    <div className="mx-auto mt-2 max-w-2xl rounded-xl border border-cyan-400/15 bg-black/30 p-2">
-      <div className="px-1 pb-1 text-[10px] uppercase tracking-wide text-cyan-300/50">
-        macro library · {domain} ({actions.length})
-      </div>
-      <ActionGroup title="Live" actions={live} />
-      <ActionGroup title="AI-backed" actions={ai} />
-      <ActionGroup title="Compute" actions={compute} />
+    <div className="mx-auto mt-2 max-w-2xl space-y-2">
+      <ConnectorBadgeStrip />
+      {macroBody}
     </div>
   );
 }

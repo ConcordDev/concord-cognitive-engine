@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Cog, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Mechanic { id: string; name: string; category: string; description: string | null }
 
@@ -20,6 +21,7 @@ const CAT_COLOR: Record<string, string> = {
 export function GdMechanicsPanel({ gameId, onChange }: { gameId: string; onChange: () => void }) {
   const [mechanics, setMechanics] = useState<Mechanic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', category: 'core', description: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -28,6 +30,12 @@ export function GdMechanicsPanel({ gameId, onChange }: { gameId: string; onChang
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('game-design', 'game-get', { id: gameId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load mechanics.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setMechanics(r.data?.result?.mechanics || []);
     setLoading(false);
     onChange();
@@ -69,6 +77,10 @@ export function GdMechanicsPanel({ gameId, onChange }: { gameId: string; onChang
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

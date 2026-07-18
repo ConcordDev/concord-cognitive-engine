@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import MultiFileAgentReview, { type MultiFileEdit } from '@/components/code/MultiFileAgentReview';
 import { ErrorState } from '@/components/common/EmptyState';
+import { Skeleton } from '@/components/ui';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
@@ -1324,10 +1325,19 @@ export default function CodeLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+      <div className="h-full p-4 space-y-3">
+        {/* Toolbar row */}
+        <div className="flex items-center gap-3">
+          <Skeleton variant="block" width={140} height={28} />
+          <Skeleton variant="block" width={90} height={28} />
+          <Skeleton variant="block" width={90} height={28} className="ml-auto" />
+        </div>
+        {/* IDE body: file tree + editor pane */}
+        <div className="flex gap-3 h-[calc(100%-2.75rem)]">
+          <Skeleton variant="block" width={220} height="100%" />
+          <div className="flex-1">
+            <Skeleton variant="line" lines={12} height="1rem" />
+          </div>
         </div>
       </div>
     );

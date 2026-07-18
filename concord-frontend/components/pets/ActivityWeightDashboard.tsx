@@ -24,6 +24,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Heart, Loader2, TrendingUp, TrendingDown, Minus, Activity } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { ErrorState } from '@/components/ui';
 
 export interface ActivityWeightDashboardProps {
   petId: string;
@@ -92,6 +93,7 @@ const SPECIES_EMOJI: Record<string, string> = { dog: '🐕', cat: '🐈', rabbit
 
 export function ActivityWeightDashboard({ petId, petName, species, ageYears, weightKg }: ActivityWeightDashboardProps) {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [activity, setActivity] = useState<ActivityResult | null>(null);
@@ -109,10 +111,16 @@ export function ActivityWeightDashboard({ petId, petName, species, ageYears, wei
       lensRun('pets', 'activity-history', { petId }),
       lensRun('pets', 'weight-history', { petId }),
     ]);
+    if (a.data?.ok === false || w.data?.ok === false) {
+      setLoadError(a.data?.error || w.data?.error || `Could not load ${petName}'s history.`);
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setActivities(a.data?.result?.activities || []);
     setWeights(w.data?.result?.series || []);
     setLoading(false);
-  }, [petId]);
+  }, [petId, petName]);
 
   useEffect(() => { void refresh(); setActivity(null); setWeight(null); }, [refresh]);
 
@@ -135,6 +143,9 @@ export function ActivityWeightDashboard({ petId, petName, species, ageYears, wei
 
   if (loading) {
     return <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Loading {petName}'s history…</div>;
+  }
+  if (loadError) {
+    return <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"><ErrorState message={loadError} onRetry={refresh} variant="inline" /></div>;
   }
 
   return (

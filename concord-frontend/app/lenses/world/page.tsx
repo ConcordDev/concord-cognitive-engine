@@ -6998,8 +6998,6 @@ export default function WorldLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       {/* Phase 12 (C4) — mobile mode switcher for World's four core views.
           The 3D scene + HUD overlays use the full viewport, so the bottom
           tab bar is the thumb-reachable way to switch modes on mobile. */}

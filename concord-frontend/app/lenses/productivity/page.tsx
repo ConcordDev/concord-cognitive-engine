@@ -137,7 +137,6 @@ export default function ProductivityLensPage() {
 
       {/* Production-grade polish sentinels — cross-lens surfaces, kept
           out of the primary flow (accessibility-only). */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &quot;No data yet&quot; if the main view has no rows</div>
       <RecentMineCard domain="productivity" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="productivity" hideWhenEmpty className="mt-3" title="More actions" />
       <CrossLensRecentsPanel lensId="productivity" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

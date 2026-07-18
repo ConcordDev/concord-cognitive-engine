@@ -97,23 +97,23 @@ export function PublishAsBlueprintDialog({ boardId, svgDataUrl, onClose }: Publi
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
     >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-lg w-full max-w-xl p-5 text-zinc-200">
+      <div className="bg-lattice-void border border-lattice-border rounded-lg w-full max-w-xl p-5 text-gray-200">
         <div className="flex items-baseline justify-between mb-4">
-          <h2 className="text-sm font-semibold tracking-wide uppercase text-zinc-300">
+          <h2 className="text-sm font-semibold tracking-wide uppercase text-gray-300">
             Publish as building blueprint
           </h2>
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xs">close</button>
+          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-200 text-xs">close</button>
         </div>
 
         <div className="space-y-3">
-          <p className="text-[11px] leading-tight text-zinc-500">
+          <p className="text-[11px] leading-tight text-gray-500">
             Your board becomes the interior decor for one of the 5 building archetypes.
             Marketplace canon picks winners by evolution score; multiple blueprints can
             coexist per archetype.
           </p>
 
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Building archetype</span>
+            <span className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Building archetype</span>
             <div className="grid grid-cols-5 gap-1">
               {ARCHETYPES.map((a) => {
                 const slot = coverage?.archetypes[a];
@@ -127,11 +127,11 @@ export function PublishAsBlueprintDialog({ boardId, svgDataUrl, onClose }: Publi
                       'rounded px-2 py-2 text-xs border ' +
                       (isActive
                         ? 'bg-violet-600/30 border-violet-400 text-violet-100'
-                        : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700')
+                        : 'bg-lattice-surface border-lattice-border text-gray-300 hover:border-white/20')
                     }
                   >
                     <div>{a}</div>
-                    <div className="text-[9px] mt-0.5 text-zinc-500">
+                    <div className="text-[9px] mt-0.5 text-gray-500 tabular-nums">
                       {slot ? `q${slot.qualityLevel}` : '—'}
                     </div>
                   </button>
@@ -141,7 +141,7 @@ export function PublishAsBlueprintDialog({ boardId, svgDataUrl, onClose }: Publi
           </label>
 
           {coverage && (
-            <div className="text-[11px] text-zinc-400">
+            <div className="text-[11px] text-gray-400 tabular-nums">
               You&rsquo;ve published{' '}
               {ARCHETYPES.filter((a) => coverage.archetypes[a]).length} / {ARCHETYPES.length}{' '}
               archetypes.
@@ -160,8 +160,8 @@ export function PublishAsBlueprintDialog({ boardId, svgDataUrl, onClose }: Publi
                 {result.created ? 'Registered' : 'Updated'} as{' '}
                 <span className="font-mono">{result.sourceId}</span>
               </div>
-              <div className="text-zinc-400 font-mono text-[10px] break-all">
-                {result.elementCount} element(s) → {result.resolveUrl}
+              <div className="text-gray-400 font-mono text-[10px] break-all">
+                <span className="tabular-nums">{result.elementCount}</span> element(s) → {result.resolveUrl}
               </div>
             </div>
           )}
@@ -170,7 +170,7 @@ export function PublishAsBlueprintDialog({ boardId, svgDataUrl, onClose }: Publi
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+              className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200"
             >
               Cancel
             </button>

@@ -7,9 +7,10 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { FlaskConical, Loader2, Send, Eye, AlertTriangle } from 'lucide-react';
+import { FlaskConical, Send, Eye, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Lab {
   id: string; number: string; patientId: string; test: string; value: number;
@@ -69,7 +70,7 @@ export function ResultsReleasePanel({ patientId }: { patientId: string }) {
   const shown = view === 'clinician' ? labs : portalLabs;
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <FlaskConical className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Results release</span>
@@ -81,7 +82,7 @@ export function ResultsReleasePanel({ patientId }: { patientId: string }) {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <SkeletonTableRows rows={4} columns={3} />
       ) : shown.length === 0 ? (
         <div className="px-3 py-10 text-center text-xs text-gray-400">
           <FlaskConical className="w-6 h-6 mx-auto mb-2 opacity-30" />

@@ -10,6 +10,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Share2, Loader2, Download, Plus, Users, XCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface FhirBundle { resourceType: string; type: string; entry: unknown[] }
 interface FhirResult { fhirVersion: string; bundle: FhirBundle; resourceCount: number; scope: string }
@@ -91,7 +92,7 @@ export function RecordSharingPanel({ patientId }: { patientId: string }) {
   return (
     <div className="space-y-4">
       {/* FHIR export */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Share2 className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Health-record sharing (FHIR R4)</span>
@@ -115,7 +116,7 @@ export function RecordSharingPanel({ patientId }: { patientId: string }) {
       </div>
 
       {/* Proxy access */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Users className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Family / proxy access</span>
@@ -141,7 +142,7 @@ export function RecordSharingPanel({ patientId }: { patientId: string }) {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={3} columns={3} />
         ) : grants.length === 0 ? (
           <div className="px-3 py-8 text-center text-xs text-gray-400">No proxy access granted.</div>
         ) : (

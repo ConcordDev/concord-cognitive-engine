@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Gift, Plus, Loader2, Copy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface GiftCard {
   id: string; code: string; initialValue: number; balance: number;
@@ -78,7 +79,7 @@ export function GiftCardsPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Gift className="w-4 h-4 text-pink-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Gift cards</span>
@@ -94,7 +95,7 @@ export function GiftCardsPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={3} />
         ) : cards.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Gift className="w-6 h-6 mx-auto mb-2 opacity-30" />No gift cards issued.</div>
         ) : (
@@ -106,7 +107,7 @@ export function GiftCardsPanel() {
                 <div className="flex-1 text-[11px] text-gray-400">{c.recipientName || c.recipientEmail || '—'}</div>
                 <div className="text-right">
                   <div className="font-mono text-sm tabular-nums text-pink-300">${c.balance.toFixed(2)}</div>
-                  <div className="text-[10px] text-gray-400">of ${c.initialValue.toFixed(2)}</div>
+                  <div className="text-[10px] text-gray-400 tabular-nums">of ${c.initialValue.toFixed(2)}</div>
                 </div>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', c.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{c.status}</span>
               </li>

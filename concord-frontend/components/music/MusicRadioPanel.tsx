@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Track { id: string; title: string; artist: string; genre: string; durationSec: number }
 interface Genre { genre: string; trackCount: number; totalPlays: number; liked: number }
@@ -44,6 +45,7 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
   const [blendBusy, setBlendBusy] = useState(false);
   const [blendMsg, setBlendMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [g, s, st, t] = await Promise.all([
@@ -52,6 +54,12 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
       lensRun('music', 'radio-status', {}),
       lensRun('music', 'sleep-timer-get', {}),
     ]);
+    if (g.data?.ok === false || s.data?.ok === false || st.data?.ok === false || t.data?.ok === false) {
+      setLoadError((g.data?.ok === false ? g.data?.error : s.data?.ok === false ? s.data?.error : st.data?.ok === false ? st.data?.error : t.data?.error) || 'Could not load radio.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setGenres(g.data?.result?.genres || []);
     setSettings((s.data?.result?.settings as AudioSettings) || null);
     setStation(st.data?.result?.station || null);
@@ -129,6 +137,10 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

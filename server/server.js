@@ -2581,7 +2581,7 @@ function structuredLog(level, event, data = {}) {
     level,
     event,
     service: "concord-api",
-    version: "5.1.0",
+    version: "1.0.0",
     ...data
   };
 
@@ -2660,7 +2660,7 @@ function releaseMutex() {
 
 // ---- config ----
 const PORT = Number(process.env.PORT || 5050);
-const VERSION = "5.1.0-production";
+const VERSION = "1.0.0";
 const NODE_ENV = process.env.NODE_ENV || "development";
 // Read-only replica role (horizontal read scale-out). When set, this process:
 // opens the SQLite DB read-only, SKIPS every boot-time write (schema creation,
@@ -27078,7 +27078,7 @@ register("system", "status", (_ctx, _input) => {
 
   return {
     ok: true,
-    version: "5.1.0",
+    version: "1.0.0",
     counts: {
       dtus: realDtuCount,
       dtusRaw: STATE.dtus.size,  // raw count for debug/admin

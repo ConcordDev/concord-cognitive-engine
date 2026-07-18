@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Truck, Loader2, Plus, Trash2, Save, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui/Skeleton';
 
 interface Zone {
   region: string;
@@ -142,7 +143,7 @@ export function ShippingProfilesPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Truck className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Shipping profiles</span>
@@ -277,9 +278,7 @@ export function ShippingProfilesPanel() {
         {/* List */}
         <div className="max-h-[24rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
-            </div>
+            <SkeletonTableRows rows={4} columns={3} />
           ) : profiles.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-gray-400">
               <Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />
@@ -315,7 +314,7 @@ export function ShippingProfilesPanel() {
                       {p.zones.map((z, i) => (
                         <li
                           key={i}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 font-mono"
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 font-mono tabular-nums"
                         >
                           {z.region}: ${z.rateUsd.toFixed(2)}
                           {z.additionalItemUsd > 0 && ` +$${z.additionalItemUsd.toFixed(2)}/item`}

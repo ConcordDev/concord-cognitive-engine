@@ -150,12 +150,12 @@ export function ProviderDirectory() {
         <div className="flex items-center gap-2">
           <Stethoscope className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Find Providers</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">
             cms nppes · ~8M providers
           </span>
         </div>
         {result && (
-          <span className="text-[11px] text-zinc-400">
+          <span className="text-[11px] text-gray-400">
             {result.providers.length} of {result.totalMatching} shown
           </span>
         )}
@@ -163,7 +163,7 @@ export function ProviderDirectory() {
 
       {/* Popular specialty chip grid */}
       <div>
-        <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">
+        <div className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">
           Common specialties
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -175,7 +175,7 @@ export function ProviderDirectory() {
               className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
                 specialty === s.label
                   ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-200'
-                  : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-cyan-500/30 hover:text-zinc-200'
+                  : 'border-lattice-border bg-lattice-surface/60 text-gray-400 hover:border-cyan-500/30 hover:text-gray-200'
               }`}
               title={`NUCC taxonomy: ${s.taxonomy}`}
             >
@@ -188,13 +188,13 @@ export function ProviderDirectory() {
       {/* Custom specialty + location controls */}
       <form onSubmit={submitCustom} className="grid grid-cols-1 gap-2 sm:grid-cols-12">
         <div className="relative sm:col-span-5">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             value={customSpecialty}
             onChange={(e) => setCustomSpecialty(e.target.value)}
             placeholder="Other specialty — e.g. Nephrology, Endocrinology…"
-            className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-xs text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
+            className="w-full rounded-md border border-lattice-border bg-lattice-void py-1.5 pl-8 pr-3 text-xs text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none"
           />
         </div>
         <input
@@ -203,7 +203,7 @@ export function ProviderDirectory() {
           onChange={(e) => setZip(e.target.value)}
           placeholder="ZIP"
           maxLength={5}
-          className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-2"
+          className="rounded-md border border-lattice-border bg-lattice-void px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-2"
         />
         <input
           type="text"
@@ -211,14 +211,14 @@ export function ProviderDirectory() {
           onChange={(e) => setStateInput(e.target.value.toUpperCase())}
           placeholder="State"
           maxLength={2}
-          className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs uppercase text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-2"
+          className="rounded-md border border-lattice-border bg-lattice-void px-3 py-1.5 text-xs uppercase text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-2"
         />
         <input
           type="text"
           value={city}
           onChange={(e) => setCity(e.target.value)}
           placeholder="City (optional)"
-          className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-3"
+          className="rounded-md border border-lattice-border bg-lattice-void px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none sm:col-span-3"
         />
       </form>
 
@@ -236,7 +236,7 @@ export function ProviderDirectory() {
           <button
             type="button"
             onClick={() => { setZip(''); setStateInput(''); setCity(''); }}
-            className="rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-lattice-elevated hover:text-gray-200"
           >
             Clear filters
           </button>
@@ -250,7 +250,7 @@ export function ProviderDirectory() {
       )}
 
       {!result && !searchQuery.isPending && !errorMsg && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
+        <div className="rounded-md border border-dashed border-lattice-border bg-lattice-void/50 px-3 py-8 text-center text-xs text-gray-400">
           Pick a specialty above or add ZIP + state to find verified providers from
           the CMS NPI Registry. All providers are NPI-verified at the federal level.
         </div>
@@ -296,10 +296,10 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.16 }}
-      className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 transition-colors hover:border-cyan-500/30"
+      className="flex items-start gap-3 rounded-lg border border-lattice-border bg-lattice-void/40 p-3 transition-colors hover:border-cyan-500/30"
     >
       {/* Photo placeholder (NPPES has no photos) */}
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-cyan-500/20 bg-zinc-900 font-mono text-sm font-semibold text-cyan-300">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-cyan-500/20 bg-lattice-surface font-mono text-sm font-semibold text-cyan-300">
         {provider.gender === 'F' ? <User className="h-5 w-5" /> : initials}
       </div>
 
@@ -312,9 +312,9 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-xs text-zinc-300">{provider.specialty}</p>
+        <p className="mt-0.5 text-xs text-gray-300">{provider.specialty}</p>
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-400">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-400">
           {(provider.city || provider.state) && (
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
@@ -344,7 +344,7 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
           )}
         </div>
 
-        <div className="mt-2 flex items-center gap-1.5 border-t border-zinc-800 pt-1.5 text-[10px] text-zinc-400">
+        <div className="mt-2 flex items-center gap-1.5 border-t border-lattice-border pt-1.5 text-[10px] text-gray-400">
           <ShieldCheck className="h-2.5 w-2.5 text-cyan-400/70" />
           <span title={`NPI: ${provider.npi}${provider.enumeratedAt ? ` · enumerated ${provider.enumeratedAt}` : ''}`}>
             Verified provider · CMS NPI Registry
@@ -359,7 +359,7 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
             saved
               ? 'bg-rose-500/15 text-rose-400'
-              : 'text-zinc-400 hover:bg-rose-500/10 hover:text-rose-400'
+              : 'text-gray-400 hover:bg-rose-500/10 hover:text-rose-400'
           }`}
           title={saved ? 'Saved provider' : 'Save provider'}
           aria-label={saved ? 'Unsave provider' : 'Save provider'}
@@ -390,7 +390,7 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
           href={`https://npiregistry.cms.hhs.gov/provider-view/${provider.npi}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-lattice-elevated hover:text-gray-200"
           title="Open NPI registry page"
           aria-label="Open NPI registry"
         >

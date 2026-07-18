@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Chapter { id: string; title: string; order: number }
 interface Scene {
@@ -44,6 +45,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   const [saving, setSaving] = useState(false);
   const [snapshots, setSnapshots] = useState<{ id: string; title: string; wordCount: number }[]>([]);
   const [comments, setComments] = useState<{ id: string; body: string }[]>([]);
+  const [sceneExtrasError, setSceneExtrasError] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
   // Split-screen reference pane.
   const [refOpen, setRefOpen] = useState(false);
@@ -78,11 +80,16 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   }, [selected, scenes]);
 
   const loadSceneExtras = useCallback(async () => {
-    if (!selected) { setSnapshots([]); setComments([]); return; }
+    if (!selected) { setSnapshots([]); setComments([]); setSceneExtrasError(null); return; }
     const [snaps, cmts] = await Promise.all([
       lensRun('creative-writing', 'snapshot-list', { sceneId: selected }),
       lensRun('creative-writing', 'scene-comment-list', { sceneId: selected }),
     ]);
+    if (snaps.data?.ok === false || cmts.data?.ok === false) {
+      setSceneExtrasError(snaps.data?.error || cmts.data?.error || 'Could not load snapshots/comments.');
+      return;
+    }
+    setSceneExtrasError(null);
     setSnapshots(snaps.data?.result?.snapshots || []);
     setComments(cmts.data?.result?.comments || []);
   }, [selected]);
@@ -340,6 +347,10 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                 <Columns2 className="w-3.5 h-3.5" /> Reference
               </button>
             </div>
+
+            {sceneExtrasError && (
+              <ErrorState variant="inline" message={sceneExtrasError} onRetry={() => void loadSceneExtras()} />
+            )}
 
             {/* Plot threads carried by this scene */}
             {threads.length > 0 && (

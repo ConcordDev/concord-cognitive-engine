@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, FolderPlus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { ProductivityTaskRow, type ProdTask } from './ProductivityTaskRow';
 
 interface Project { id: string; name: string; color: string; taskCount: number }
@@ -18,6 +19,7 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState('');
   const [form, setForm] = useState({ content: '', priority: '4', dueDate: '', projectId: '', labels: '', recurring: '' });
   const [showAdd, setShowAdd] = useState(false);
@@ -29,6 +31,12 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
       lensRun('productivity', 'task-list', projectFilter ? { projectId: projectFilter } : {}),
       lensRun('productivity', 'project-list', {}),
     ]);
+    if (t.data?.ok === false || p.data?.ok === false) {
+      setLoadError(t.data?.error || p.data?.error || 'Could not load tasks or projects.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTasks(t.data?.result?.tasks || []);
     setProjects(p.data?.result?.projects || []);
     setLoading(false);
@@ -64,6 +72,10 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

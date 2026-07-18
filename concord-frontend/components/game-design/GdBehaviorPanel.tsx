@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Zap, ArrowRight, Power } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Rule {
   id: string; trigger: string; action: string;
@@ -35,6 +36,7 @@ export function GdBehaviorPanel({ gameId, onChange }: { gameId: string; onChange
   const [actions, setActions] = useState<string[]>([]);
   const [entities, setEntities] = useState<EntityLite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', entityId: '' });
   const [selected, setSelected] = useState<string | null>(null);
@@ -46,6 +48,12 @@ export function GdBehaviorPanel({ gameId, onChange }: { gameId: string; onChange
       lensRun('game-design', 'behavior-list', { gameId }),
       lensRun('game-design', 'game-get', { id: gameId }),
     ]);
+    if (b.data?.ok === false || g.data?.ok === false) {
+      setLoadError(b.data?.error || g.data?.error || 'Could not load behaviors.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setBehaviors(b.data?.result?.behaviors || []);
     setTriggers(b.data?.result?.triggers || []);
     setActions(b.data?.result?.actions || []);
@@ -109,6 +117,10 @@ export function GdBehaviorPanel({ gameId, onChange }: { gameId: string; onChange
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const entName = (id: string | null) => (id ? entities.find((e) => e.id === id)?.name || 'unknown' : null);

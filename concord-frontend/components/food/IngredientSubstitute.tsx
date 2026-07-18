@@ -61,7 +61,7 @@ export function IngredientSubstitute() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Shuffle className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Ingredient Substitute</span>
@@ -114,7 +114,7 @@ export function IngredientSubstitute() {
               <div key={i} className="bg-lattice-deep border border-lattice-border rounded p-2 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-white font-medium">{s.substitute}</span>
-                  <span className="text-gray-400">{s.ratio} · {Math.round(s.confidence * 100)}% confidence</span>
+                  <span className="text-gray-400 tabular-nums">{s.ratio} · {Math.round(s.confidence * 100)}% confidence</span>
                 </div>
                 {s.caveat && <p className="text-[10px] text-gray-400 mt-0.5">{s.caveat}</p>}
               </div>

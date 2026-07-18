@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Share2, Trash2, CalendarClock, Send } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 const SOCIAL_CHANNELS = ['twitter', 'linkedin', 'facebook', 'instagram', 'tiktok', 'youtube', 'pinterest'] as const;
 
@@ -22,6 +23,7 @@ export function MarketingSocialPanel() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [body, setBody] = useState('');
@@ -32,6 +34,12 @@ export function MarketingSocialPanel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('marketing', 'social-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load scheduled posts.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPosts(r.data?.result?.posts || []);
     setLoading(false);
   }, []);
@@ -69,6 +77,10 @@ export function MarketingSocialPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

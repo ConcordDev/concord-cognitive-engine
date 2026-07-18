@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, PieChart as PieIcon } from 'lucide-react';
+import { PieChart as PieIcon } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface Line { id: string; code: string; name: string; amount: number }
@@ -47,9 +48,9 @@ export function PLStatement() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="p-4"><SkeletonTableRows rows={6} columns={2} /></div>
       ) : !pl ? (
-        <div className="p-10 text-center text-xs text-gray-400">No data.</div>
+        <div className="p-10 text-center text-xs text-gray-400">No profit &amp; loss activity in this period.</div>
       ) : (
         <div className="p-4">
           <Section label="Revenue" lines={pl.revenue.lines} total={pl.revenue.total} tone="positive" />

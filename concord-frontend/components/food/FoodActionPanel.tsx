@@ -164,17 +164,17 @@ export function FoodActionPanel() {
   ];
 
   return (
-    <div className="rounded-lg border border-orange-500/20 bg-zinc-950/60 p-3 space-y-3">
+    <div className="rounded-lg border border-orange-500/20 bg-lattice-void/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-orange-500/10 pb-2">
         <ChefHat className="h-4 w-4 text-orange-400" />
         <h3 className="text-sm font-semibold text-white">Kitchen workbench</h3>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-        <input type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Recipe name" />
-        <input type="text" value={recipeServings} onChange={(e) => setRecipeServings(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Servings" />
-        <input type="text" value={scaleTo} onChange={(e) => setScaleTo(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Scale to" />
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <input type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} className="md:col-span-2 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white" placeholder="Recipe name" />
+        <input type="text" value={recipeServings} onChange={(e) => setRecipeServings(e.target.value.replace(/\D/g, ''))} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white font-mono tabular-nums" placeholder="Servings" />
+        <input type="text" value={scaleTo} onChange={(e) => setScaleTo(e.target.value.replace(/\D/g, ''))} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white font-mono tabular-nums" placeholder="Scale to" />
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <RecallSlot ctl={dmRecall} />
@@ -182,8 +182,8 @@ export function FoodActionPanel() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Ingredients (name qty unit per line)</label><textarea value={recipeIngredients} onChange={(e) => setRecipeIngredients(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-orange-200 font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" /></div>
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Pantry (one per line)</label><textarea value={pantry} onChange={(e) => setPantry(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-orange-200 font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 block">Ingredients (name qty unit per line)</label><textarea value={recipeIngredients} onChange={(e) => setRecipeIngredients(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-orange-200 font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 block">Pantry (one per line)</label><textarea value={pantry} onChange={(e) => setPantry(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-orange-200 font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" /></div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -191,12 +191,12 @@ export function FoodActionPanel() {
           const Icon = a.icon; const isBusy = busy === a.id;
           return (
             <button key={a.id} type="button" disabled={!!busy} onClick={a.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-lattice-surface/40 border-lattice-border hover:bg-lattice-elevated/60 hover:border-lattice-border', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[11px] font-semibold text-white leading-tight">{a.label}</div>
+              <div className="text-[10px] text-gray-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -206,27 +206,27 @@ export function FoodActionPanel() {
         {scaleResult?.ingredients && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold mb-1">Scaled to {scaleResult.servings}</div>
-            {scaleResult.ingredients.slice(0, 8).map((i, idx) => <div key={idx} className="text-[11px] text-zinc-300 font-mono">{i.name}: {i.quantity} {i.unit}</div>)}
+            {scaleResult.ingredients.slice(0, 8).map((i, idx) => <div key={idx} className="text-[11px] text-gray-300 font-mono tabular-nums">{i.name}: {i.quantity} {i.unit}</div>)}
           </div>
         )}
         {costResult && (
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Cost</div>
-            <div className="text-2xl font-bold text-emerald-300">${costResult.perPlate?.toFixed(2)}<span className="text-xs text-zinc-400 ml-1">/plate</span></div>
-            <div className="text-[10px] text-zinc-400">total ${costResult.totalCost?.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-emerald-300 tabular-nums">${costResult.perPlate?.toFixed(2)}<span className="text-xs text-gray-400 ml-1">/plate</span></div>
+            <div className="text-[10px] text-gray-400">total ${costResult.totalCost?.toFixed(2)}</div>
           </div>
         )}
         {suggestResult?.meals && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Suggested ({suggestResult.matched})</div>
-            {suggestResult.meals.slice(0, 6).map((m, i) => <div key={i} className="text-[11px] text-zinc-300">{m.name}{m.cuisine && <span className="text-zinc-400"> · {m.cuisine}</span>}{m.matchScore != null && <span className="text-purple-300 ml-1 font-mono">{Math.round(m.matchScore * 100)}%</span>}</div>)}
+            {suggestResult.meals.slice(0, 6).map((m, i) => <div key={i} className="text-[11px] text-gray-300 tabular-nums">{m.name}{m.cuisine && <span className="text-gray-400"> · {m.cuisine}</span>}{m.matchScore != null && <span className="text-purple-300 ml-1 font-mono">{Math.round(m.matchScore * 100)}%</span>}</div>)}
           </div>
         )}
         {wasteResult && (
           <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-rose-300 font-semibold">Waste</div>
-            <div className="text-2xl font-bold text-rose-300">{wasteResult.weeklyWasteKg}kg<span className="text-xs text-zinc-400 ml-1">/wk</span></div>
-            {wasteResult.suggestion && <div className="text-[11px] text-zinc-400 italic">{wasteResult.suggestion}</div>}
+            <div className="text-2xl font-bold text-rose-300 tabular-nums">{wasteResult.weeklyWasteKg}kg<span className="text-xs text-gray-400 ml-1">/wk</span></div>
+            {wasteResult.suggestion && <div className="text-[11px] text-gray-400 italic">{wasteResult.suggestion}</div>}
           </div>
         )}
       </div>
@@ -234,7 +234,7 @@ export function FoodActionPanel() {
       {agentReply && (
         <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto">
           <div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Substitutions</div>
-          <pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre>
+          <pre className="whitespace-pre-wrap font-sans text-[11px] text-gray-200 leading-relaxed">{agentReply}</pre>
         </div>
       )}
 

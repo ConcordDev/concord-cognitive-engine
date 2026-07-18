@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { Skeleton } from '@/components/ui';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 
 interface MonthRow { month: string; projected: number; in: number; out: number }
@@ -43,9 +44,17 @@ export function RunwayForecast() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="p-4 space-y-3" aria-busy="true">
+          <div className="grid grid-cols-4 gap-2">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="block" height="3.5rem" />)}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} variant="block" height="3.5rem" />)}
+          </div>
+          <Skeleton variant="block" height="14rem" />
+        </div>
       ) : !data ? (
-        <div className="p-10 text-center text-xs text-gray-400">No data.</div>
+        <div className="p-10 text-center text-xs text-gray-400">No forecast data yet.</div>
       ) : (
         <div className="p-4 space-y-3">
           <div className="grid grid-cols-4 gap-2">

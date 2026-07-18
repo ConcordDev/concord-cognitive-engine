@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Wallet, Loader2, Plus, ArrowDownCircle } from 'lucide-react';
+import { Wallet, Plus, ArrowDownCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface Holding {
@@ -109,8 +110,8 @@ export function PortfolioPanel() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Holdings table */}
-        <div className="lg:col-span-2 bg-[#0d1117] border border-blue-500/15 rounded-lg overflow-hidden">
-          <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
+        <div className="lg:col-span-2 bg-lattice-void border border-blue-500/15 rounded-lg overflow-hidden">
+          <header className="px-4 py-2.5 border-b border-lattice-border flex items-center gap-2">
             <Wallet className="w-4 h-4 text-blue-400" />
             <span className="text-sm font-semibold text-gray-200">Holdings</span>
             <span className="text-[10px] text-gray-400">{holdings.length} asset(s)</span>
@@ -120,7 +121,7 @@ export function PortfolioPanel() {
           </header>
 
           {showAddBuy && (
-            <div className="p-3 border-b border-white/10 grid grid-cols-12 gap-2 bg-blue-500/[0.04]">
+            <div className="p-3 border-b border-lattice-border grid grid-cols-12 gap-2 bg-blue-500/[0.04]">
               <input value={buyDraft.symbol} onChange={e => setBuyDraft({ ...buyDraft, symbol: e.target.value, ticker: buyDraft.ticker || e.target.value.toUpperCase() })} placeholder="CoinGecko id (e.g. bitcoin) *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
               <input value={buyDraft.ticker} onChange={e => setBuyDraft({ ...buyDraft, ticker: e.target.value.toUpperCase() })} placeholder="Ticker" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
               <input type="number" step="0.00000001" value={buyDraft.qty} onChange={e => setBuyDraft({ ...buyDraft, qty: e.target.value })} placeholder="Qty *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -134,7 +135,7 @@ export function PortfolioPanel() {
           )}
 
           {showSell && (
-            <div className="p-3 border-b border-white/10 grid grid-cols-12 gap-2 bg-rose-500/[0.04]">
+            <div className="p-3 border-b border-lattice-border grid grid-cols-12 gap-2 bg-rose-500/[0.04]">
               <div className="col-span-12 text-[11px] text-rose-200">Sell {showSell.ticker} (FIFO cost basis applied)</div>
               <input type="number" step="0.00000001" value={sellDraft.qty} onChange={e => setSellDraft({ ...sellDraft, qty: e.target.value })} placeholder="Qty to sell *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
               <input type="number" step="0.01" value={sellDraft.proceedsUsd} onChange={e => setSellDraft({ ...sellDraft, proceedsUsd: e.target.value })} placeholder="Proceeds USD *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -145,7 +146,7 @@ export function PortfolioPanel() {
 
           <div className="max-h-[28rem] overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+              <SkeletonTableRows rows={5} columns={6} className="py-2" />
             ) : holdings.length === 0 ? (
               <div className="px-3 py-10 text-center text-xs text-gray-400"><Wallet className="w-6 h-6 mx-auto mb-2 opacity-30" />No holdings yet. Record your first buy.</div>
             ) : (
@@ -160,11 +161,11 @@ export function PortfolioPanel() {
                         <div className="text-white font-semibold">{h.ticker}</div>
                         <div className="text-[10px] text-gray-400">{h.chains.join(', ')} · {h.lotCount} lot{h.lotCount === 1 ? '' : 's'}</div>
                       </td>
-                      <td className="text-right font-mono text-gray-300">{h.qty.toFixed(h.qty < 1 ? 6 : 4)}</td>
-                      <td className="text-right font-mono text-gray-400">${h.avgCostUsd.toFixed(2)}</td>
-                      <td className="text-right font-mono text-white">{h.priceUsd !== null ? `$${h.priceUsd.toFixed(2)}` : '—'}</td>
-                      <td className="text-right font-mono text-white">{h.marketValueUsd !== null ? `$${h.marketValueUsd.toLocaleString()}` : '—'}</td>
-                      <td className={cn('text-right font-mono', h.unrealizedPnlUsd === null ? 'text-gray-400' : h.unrealizedPnlUsd >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+                      <td className="text-right font-mono tabular-nums text-gray-300">{h.qty.toFixed(h.qty < 1 ? 6 : 4)}</td>
+                      <td className="text-right font-mono tabular-nums text-gray-400">${h.avgCostUsd.toFixed(2)}</td>
+                      <td className="text-right font-mono tabular-nums text-white">{h.priceUsd !== null ? `$${h.priceUsd.toFixed(2)}` : '—'}</td>
+                      <td className="text-right font-mono tabular-nums text-white">{h.marketValueUsd !== null ? `$${h.marketValueUsd.toLocaleString()}` : '—'}</td>
+                      <td className={cn('text-right font-mono tabular-nums', h.unrealizedPnlUsd === null ? 'text-gray-400' : h.unrealizedPnlUsd >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
                         {h.unrealizedPnlUsd !== null && h.unrealizedPnlPct !== null ? `${h.unrealizedPnlUsd >= 0 ? '+' : ''}${h.unrealizedPnlPct.toFixed(2)}%` : '—'}
                       </td>
                       <td className="pr-3 text-right">
@@ -181,7 +182,7 @@ export function PortfolioPanel() {
         </div>
 
         {/* Chain allocation pie */}
-        <div className="bg-[#0d1117] border border-blue-500/15 rounded-lg p-3">
+        <div className="bg-lattice-void border border-blue-500/15 rounded-lg p-3">
           <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">By chain</div>
           {chainData.length === 0 ? (
             <div className="py-10 text-center text-xs text-gray-400">No data yet.</div>
@@ -202,7 +203,7 @@ export function PortfolioPanel() {
               <li key={c.name} className="flex items-center gap-2 text-[11px]">
                 <span className="w-2 h-2 rounded-full" style={{ background: c.fill }} />
                 <span className="capitalize text-gray-300 flex-1">{c.name}</span>
-                <span className="font-mono text-white">${c.value.toLocaleString()}</span>
+                <span className="font-mono tabular-nums text-white">${c.value.toLocaleString()}</span>
               </li>
             ))}
           </ul>
@@ -215,7 +216,7 @@ export function PortfolioPanel() {
 function Tile({ label, value, sub, tone = 'neutral', bold }: { label: string; value: string; sub?: string; tone?: 'positive' | 'negative' | 'amber' | 'neutral'; bold?: boolean }) {
   const colour = tone === 'positive' ? 'text-emerald-300' : tone === 'negative' ? 'text-rose-300' : tone === 'amber' ? 'text-amber-300' : 'text-white';
   return (
-    <div className={cn('p-3 rounded-lg border bg-black/30', bold ? 'border-blue-500/30' : 'border-white/10')}>
+    <div className={cn('p-3 rounded-lg border bg-lattice-void/30', bold ? 'border-blue-500/30' : 'border-lattice-border')}>
       <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={cn('text-xl font-mono tabular-nums', colour, bold && 'text-2xl font-bold')}>{value}</div>
       {sub && <div className={cn('text-[10px] mt-0.5', tone === 'positive' ? 'text-emerald-400' : tone === 'negative' ? 'text-rose-400' : 'text-gray-400')}>{sub}</div>}

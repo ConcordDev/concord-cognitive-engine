@@ -34,6 +34,12 @@ export function AnimationStudioSection() {
 
   const refresh = useCallback(async () => {
     const r = await lensRun('animation', 'anim-list', {});
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load animations.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setAnimations(r.data?.result?.animations || []);
     setLoading(false);
   }, []);

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Target } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Employee { id: string; name: string }
 interface Review { id: string; period: string; rating: number; summary: string | null }
@@ -21,11 +22,18 @@ export function HrPerformancePanel() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [reviewForm, setReviewForm] = useState({ period: '', rating: 4, summary: '' });
   const [goalTitle, setGoalTitle] = useState('');
 
   const loadEmployees = useCallback(async () => {
     const r = await lensRun('hr', 'employee-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load employees.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Employee[] = r.data?.result?.employees || [];
     setEmployees(list);
     setSelected((cur) => cur && list.some((e) => e.id === cur) ? cur : (list[0]?.id || ''));
@@ -40,6 +48,11 @@ export function HrPerformancePanel() {
       lensRun('hr', 'review-list', { employeeId: selected }),
       lensRun('hr', 'goal-list', { employeeId: selected }),
     ]);
+    if (rv.data?.ok === false || g.data?.ok === false) {
+      setLoadError(rv.data?.error || g.data?.error || 'Could not load performance data.');
+      return;
+    }
+    setLoadError(null);
     setReviews(rv.data?.result?.reviews || []);
     setAvgRating(rv.data?.result?.averageRating || 0);
     setGoals(g.data?.result?.goals || []);
@@ -73,6 +86,10 @@ export function HrPerformancePanel() {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
+  if (loadError && employees.length === 0) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={loadEmployees} /></div>;
+  }
+
   if (employees.length === 0) {
     return <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">Add employees in the People tab first.</div>;
   }
@@ -85,6 +102,7 @@ export function HrPerformancePanel() {
       </select>
 
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+      {loadError && <ErrorState message={loadError} onRetry={loadPerformance} variant="inline" />}
 
       {/* Reviews */}
       <section>

@@ -66,7 +66,7 @@ export function WalletShell({
 }: WalletShellProps) {
   const [hidden, setHidden] = useState(false);
   return (
-    <div className={cn('flex flex-col gap-4 p-5 bg-[#0d0e12] text-gray-100', className)}>
+    <div className={cn('flex flex-col gap-4 p-5 bg-lattice-void text-gray-100', className)}>
       {/* Big balance */}
       <header className="space-y-2">
         <div className="flex items-center gap-2">
@@ -116,7 +116,7 @@ export function WalletShell({
                 onClick={() => onSelectAsset?.(a)}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/5 text-left"
               >
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-mono text-gray-300">
+                <div className="w-8 h-8 rounded-full bg-lattice-elevated flex items-center justify-center text-xs font-mono text-gray-300">
                   {a.symbol.slice(0, 3)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -213,7 +213,7 @@ function ActionTile({ icon: Icon, label, onClick }: ActionTileProps) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 flex flex-col items-center gap-1.5 text-sm font-medium text-white hover:bg-white/10 hover:border-white/20 transition"
+      className="rounded-lg border border-lattice-border bg-lattice-elevated px-4 py-3 flex flex-col items-center gap-1.5 text-sm font-medium text-white hover:bg-white/10 hover:border-white/20 transition"
     >
       <Icon className="w-5 h-5 text-cyan-300" aria-hidden="true" />
       {label}

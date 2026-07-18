@@ -197,32 +197,32 @@ export function AccountingActionPanel() {
   ];
 
   return (
-    <div className="rounded-lg border border-emerald-500/20 bg-zinc-950/60 p-3 space-y-3">
+    <div className="rounded-lg border border-emerald-500/20 bg-lattice-surface/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-emerald-500/10 pb-2">
         <Calculator className="h-4 w-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-white">Accounting bench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">TB · P&L · AR aging · variance · validate</span>
+        <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">TB · P&L · AR aging · variance · validate</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">TB JSON</label>
-          <textarea value={tbText} onChange={(e) => setTbText(e.target.value)} rows={5} placeholder='{"accounts":[{"accountNumber":"1000","name":"Cash","type":"asset","entries":[{"date":"2026-01-01","debit":45000,"credit":0}]}]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={tbText} onChange={(e) => setTbText(e.target.value)} rows={5} placeholder='{"accounts":[{"accountNumber":"1000","name":"Cash","type":"asset","entries":[{"date":"2026-01-01","debit":45000,"credit":0}]}]}' className="w-full bg-lattice-elevated border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">P&L JSON</label>
-          <textarea value={plText} onChange={(e) => setPlText(e.target.value)} rows={5} placeholder='{"accounts":[{"accountNumber":"4000","name":"Sales","type":"revenue","entries":[{"date":"2026-01-01","debit":0,"credit":5000}]}]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={plText} onChange={(e) => setPlText(e.target.value)} rows={5} placeholder='{"accounts":[{"accountNumber":"4000","name":"Sales","type":"revenue","entries":[{"date":"2026-01-01","debit":0,"credit":5000}]}]}' className="w-full bg-lattice-elevated border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">AR aging JSON</label>
-          <textarea value={agingText} onChange={(e) => setAgingText(e.target.value)} rows={5} placeholder='{"invoices":[{"invoiceId":"INV-1","customer":"...","amount":N,"dueDate":"YYYY-MM-DD"}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={agingText} onChange={(e) => setAgingText(e.target.value)} rows={5} placeholder='{"invoices":[{"invoiceId":"INV-1","customer":"...","amount":N,"dueDate":"YYYY-MM-DD"}, ...]}' className="w-full bg-lattice-elevated border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Variance JSON</label>
-          <textarea value={varText} onChange={(e) => setVarText(e.target.value)} rows={5} placeholder='{"budget":[{"category":"Marketing","planned":N,"actual":N}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={varText} onChange={(e) => setVarText(e.target.value)} rows={5} placeholder='{"budget":[{"category":"Marketing","planned":N,"actual":N}, ...]}' className="w-full bg-lattice-elevated border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-lattice-elevated border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
         </div>
@@ -233,12 +233,12 @@ export function AccountingActionPanel() {
           const Icon = act.icon; const isBusy = busy === act.id;
           return (
             <button key={act.id} type="button" disabled={!!busy} onClick={act.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-lattice-elevated/40 border-lattice-border hover:bg-lattice-elevated/60 hover:border-lattice-border', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[11px] font-semibold text-gray-100 leading-tight">{act.label}</div>
+              <div className="text-[10px] text-gray-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -248,33 +248,33 @@ export function AccountingActionPanel() {
         {tbResult && (
           <div className={cn('rounded-md border p-2.5', tbResult.isBalanced ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Trial balance</div>
-            <div className={cn('text-2xl font-bold', tbResult.isBalanced ? 'text-emerald-300' : 'text-red-300')}>{tbResult.isBalanced ? '✓' : '⚠'}<span className="text-xs text-zinc-400"> {tbResult.isBalanced ? 'balanced' : 'off by $' + tbResult.difference}</span></div>
-            <div className="text-[10px] text-zinc-400">D ${tbResult.totalDebits?.toLocaleString()} · C ${tbResult.totalCredits?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">{tbResult.accounts?.length ?? 0} accounts</div>
+            <div className={cn('text-2xl font-bold', tbResult.isBalanced ? 'text-emerald-300' : 'text-red-300')}>{tbResult.isBalanced ? '✓' : '⚠'}<span className="text-xs text-gray-400 tabular-nums"> {tbResult.isBalanced ? 'balanced' : 'off by $' + tbResult.difference}</span></div>
+            <div className="text-[10px] text-gray-400 font-mono tabular-nums">D ${tbResult.totalDebits?.toLocaleString()} · C ${tbResult.totalCredits?.toLocaleString()}</div>
+            <div className="text-[10px] text-gray-400 tabular-nums">{tbResult.accounts?.length ?? 0} accounts</div>
           </div>
         )}
         {plResult && (
           <div className={cn('rounded-md border p-2.5', plResult.netIncome >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">P&L · {plPeriodLabel(plResult)}</div>
-            <div className={cn('text-2xl font-bold', plResult.netIncome >= 0 ? 'text-emerald-300' : 'text-red-300')}>${plResult.netIncome.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">rev ${plResult.revenue.total.toLocaleString()} - exp ${plResult.operatingExpenses.total.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">margin {plResult.netMarginPct}%</div>
+            <div className={cn('text-2xl font-bold font-mono tabular-nums', plResult.netIncome >= 0 ? 'text-emerald-300' : 'text-red-300')}>${plResult.netIncome.toLocaleString()}</div>
+            <div className="text-[10px] text-gray-400 font-mono tabular-nums">rev ${plResult.revenue.total.toLocaleString()} - exp ${plResult.operatingExpenses.total.toLocaleString()}</div>
+            <div className="text-[10px] text-gray-400 tabular-nums">margin {plResult.netMarginPct}%</div>
           </div>
         )}
         {agingResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">AR aging</div>
-            <div className="text-2xl font-bold text-amber-300">${agingResult.totalOutstanding.toLocaleString()}</div>
-            <div className="text-[10px] text-red-300">overdue ${agingResult.totalOverdue.toLocaleString()} · {agingResult.avgDaysOutstanding}d avg</div>
-            {Object.entries(agingResult.buckets).map(([k, b]) => <div key={k} className={cn('text-[10px] mt-0.5', k === '90+' ? 'text-red-300' : k === '61-90' ? 'text-orange-300' : k === '31-60' ? 'text-amber-300' : 'text-zinc-300')}><span className="font-mono">{k}d</span>: ${b.total.toLocaleString()} ({b.invoices.length})</div>)}
+            <div className="text-2xl font-bold text-amber-300 font-mono tabular-nums">${agingResult.totalOutstanding.toLocaleString()}</div>
+            <div className="text-[10px] text-red-300 font-mono tabular-nums">overdue ${agingResult.totalOverdue.toLocaleString()} · {agingResult.avgDaysOutstanding}d avg</div>
+            {Object.entries(agingResult.buckets).map(([k, b]) => <div key={k} className={cn('text-[10px] mt-0.5 font-mono tabular-nums', k === '90+' ? 'text-red-300' : k === '61-90' ? 'text-orange-300' : k === '31-60' ? 'text-amber-300' : 'text-gray-300')}><span className="font-mono tabular-nums">{k}d</span>: ${b.total.toLocaleString()} ({b.invoices.length})</div>)}
           </div>
         )}
         {varResult && (
           <div className={cn('rounded-md border p-2.5 max-h-44 overflow-y-auto', varResult.totalVariance >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Variance · {varOverallStatus(varResult)}</div>
-            <div className={cn('text-2xl font-bold', varResult.totalVariance >= 0 ? 'text-emerald-300' : 'text-red-300')}>{varResult.totalVariance >= 0 ? '+' : ''}${varResult.totalVariance.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">${varResult.totalActual.toLocaleString()} / ${varResult.totalPlanned.toLocaleString()}</div>
-            {varResult.lineItems.slice(0, 4).map((l, i) => <div key={i} className={cn('text-[10px] mt-0.5', l.variance < 0 ? 'text-red-300' : 'text-emerald-300')}><span className="font-mono">{l.category}</span> {l.variancePct >= 0 ? '+' : ''}{l.variancePct}%</div>)}
+            <div className={cn('text-2xl font-bold font-mono tabular-nums', varResult.totalVariance >= 0 ? 'text-emerald-300' : 'text-red-300')}>{varResult.totalVariance >= 0 ? '+' : ''}${varResult.totalVariance.toLocaleString()}</div>
+            <div className="text-[10px] text-gray-400 font-mono tabular-nums">${varResult.totalActual.toLocaleString()} / ${varResult.totalPlanned.toLocaleString()}</div>
+            {varResult.lineItems.slice(0, 4).map((l, i) => <div key={i} className={cn('text-[10px] mt-0.5 tabular-nums', l.variance < 0 ? 'text-red-300' : 'text-emerald-300')}><span className="font-mono">{l.category}</span> {l.variancePct >= 0 ? '+' : ''}{l.variancePct}%</div>)}
           </div>
         )}
         {validateResult && (
@@ -282,14 +282,14 @@ export function AccountingActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-teal-300 font-semibold">Ledger validation</div>
             <div className={cn('text-2xl font-bold', validateResult.severity === 'error' ? 'text-red-300' : validateResult.severity === 'warning' ? 'text-amber-300' : 'text-emerald-300')}>
               {validateResult.severity === 'error' ? '✗' : validateResult.severity === 'warning' ? '⚠' : '✓'}
-              <span className="text-xs text-zinc-400"> {validateResult.isBalanced ? 'balanced' : `off by $${validateResult.difference}`}</span>
+              <span className="text-xs text-gray-400 tabular-nums"> {validateResult.isBalanced ? 'balanced' : `off by $${validateResult.difference}`}</span>
             </div>
-            <div className="text-[10px] text-zinc-400">D ${validateResult.totalDebits.toLocaleString()} · C ${validateResult.totalCredits.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">{validateResult.accountCount} account{validateResult.accountCount === 1 ? '' : 's'} checked</div>
+            <div className="text-[10px] text-gray-400 font-mono tabular-nums">D ${validateResult.totalDebits.toLocaleString()} · C ${validateResult.totalCredits.toLocaleString()}</div>
+            <div className="text-[10px] text-gray-400 tabular-nums">{validateResult.accountCount} account{validateResult.accountCount === 1 ? '' : 's'} checked</div>
             {validateResult.accountIssues.length > 0 && (
               <div className="mt-1 space-y-0.5">
                 {validateResult.accountIssues.slice(0, 5).map((iss, i) => (
-                  <div key={i} className="text-[10px] text-amber-300"><span className="font-mono">{iss.account ?? '—'}</span>: {iss.issue} (${iss.balance.toLocaleString()})</div>
+                  <div key={i} className="text-[10px] text-amber-300 tabular-nums"><span className="font-mono">{iss.account ?? '—'}</span>: {iss.issue} (${iss.balance.toLocaleString()})</div>
                 ))}
               </div>
             )}
@@ -297,7 +297,7 @@ export function AccountingActionPanel() {
         )}
       </div>
 
-      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> CFO brief</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
+      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> CFO brief</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-gray-200 leading-relaxed">{agentReply}</pre></div>)}
 
       <AnimatePresence>
         {feedback && (<motion.div key={feedback.text} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} className={cn('px-3 py-2 rounded text-[11px] flex items-start gap-2 border', feedback.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30')}>{feedback.kind === 'ok' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}<span>{feedback.text}</span></motion.div>)}

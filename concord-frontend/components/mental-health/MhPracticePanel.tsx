@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Flower2, Wind, GraduationCap, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Session { id: string; type: string; durationMin: number; title: string | null; date: string }
 interface Course { id: string; name: string; category: string; totalSessions: number; completedSessions: number; progressPct: number; complete: boolean }
@@ -22,6 +23,7 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [sForm, setSForm] = useState({ type: 'meditation', durationMin: '10' });
   const [cForm, setCForm] = useState({ name: '', totalSessions: '10' });
 
@@ -32,6 +34,12 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
       lensRun('mental-health', 'course-list', {}),
       lensRun('mental-health', 'breathing-patterns', {}),
     ]);
+    if (s.data?.ok === false || c.data?.ok === false || p.data?.ok === false) {
+      setLoadError((s.data?.ok === false ? s.data?.error : c.data?.ok === false ? c.data?.error : p.data?.error) || 'Could not load your practice data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSessions(s.data?.result?.sessions || []);
     setCourses(c.data?.result?.courses || []);
     setPatterns(p.data?.result?.patterns || []);
@@ -64,6 +72,10 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

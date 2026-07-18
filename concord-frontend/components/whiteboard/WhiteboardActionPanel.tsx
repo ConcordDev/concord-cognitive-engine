@@ -306,23 +306,23 @@ export function WhiteboardActionPanel() {
   ];
 
   return (
-    <div className="rounded-lg border border-violet-500/20 bg-zinc-950/60 p-3 space-y-3">
+    <div className="rounded-lg border border-violet-500/20 bg-lattice-void/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-violet-500/10 pb-2">
         <Palette className="h-4 w-4 text-violet-400" />
         <h3 className="text-sm font-semibold text-white">Whiteboard session</h3>
-        {templates.length > 0 && <span className="ml-auto text-[10px] text-zinc-400">{templates.length} templates · {boards.length} boards</span>}
+        {templates.length > 0 && <span className="ml-auto text-[10px] text-gray-400 tabular-nums">{templates.length} templates · {boards.length} boards</span>}
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <input type="text" value={boardName} onChange={(e) => setBoardName(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Board name" />
-        <input type="text" value={voteQ} onChange={(e) => setVoteQ(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Vote question" />
-        <textarea value={voteOptions} onChange={(e) => setVoteOptions(e.target.value)} rows={3} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-none" placeholder="Options (one per line)" />
-        <select value={myVote} onChange={(e) => setMyVote(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+        <input type="text" value={boardName} onChange={(e) => setBoardName(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white" placeholder="Board name" />
+        <input type="text" value={voteQ} onChange={(e) => setVoteQ(e.target.value)} className="md:col-span-2 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white" placeholder="Vote question" />
+        <textarea value={voteOptions} onChange={(e) => setVoteOptions(e.target.value)} rows={3} className="md:col-span-2 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-none" placeholder="Options (one per line)" />
+        <select value={myVote} onChange={(e) => setMyVote(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white">
           <option value="">— pick your vote —</option>
           {voteOptions.split('\n').filter(l => l.trim()).map(opt => <option key={opt} value={opt.trim()}>{opt.trim()}</option>)}
         </select>
-        <input type="text" value={shareWith} onChange={(e) => setShareWith(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Share with (comma-separated user ids)" />
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <input type="text" value={shareWith} onChange={(e) => setShareWith(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white" placeholder="Share with (comma-separated user ids)" />
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -331,8 +331,8 @@ export function WhiteboardActionPanel() {
       </div>
 
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Board snapshot JSON</label>
-        <textarea value={boardSnapshot} onChange={(e) => setBoardSnapshot(e.target.value)} rows={6} className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-[11px] text-violet-100 font-mono focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-y" />
+        <label className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 block">Board snapshot JSON</label>
+        <textarea value={boardSnapshot} onChange={(e) => setBoardSnapshot(e.target.value)} rows={6} className="w-full bg-lattice-void border border-lattice-border rounded px-3 py-2 text-[11px] text-violet-100 font-mono focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-y" />
       </div>
 
       <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
@@ -341,23 +341,23 @@ export function WhiteboardActionPanel() {
           const isBusy = busy === a.id;
           return (
             <button key={a.id} type="button" disabled={a.disabled || !!busy} onClick={a.handler}
-              className={cn('group flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+              className={cn('group flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-lattice-surface/40 border-lattice-border hover:bg-lattice-elevated/60 hover:border-white/20', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[11px] font-semibold text-gray-100 leading-tight">{a.label}</div>
+              <div className="text-[10px] text-gray-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
       </div>
 
       {boards.length > 0 && (
-        <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2 max-h-32 overflow-y-auto">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1.5"><FolderOpen className="w-3 h-3" /> Saved boards</div>
+        <div className="rounded-md border border-lattice-border bg-lattice-surface/30 p-2 max-h-32 overflow-y-auto">
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex items-center gap-1.5"><FolderOpen className="w-3 h-3" /> Saved boards</div>
           {boards.slice(0, 10).map(b => (
-            <button key={b.id} onClick={() => setSelectedBoardId(b.id)} className={cn('block w-full text-left text-[11px] py-0.5 px-1 hover:bg-zinc-800 rounded', selectedBoardId === b.id ? 'text-violet-300 font-semibold' : 'text-zinc-300')}>
-              <span className="font-mono text-zinc-400">{b.id.slice(0, 8)}</span> {b.title}
+            <button key={b.id} onClick={() => setSelectedBoardId(b.id)} className={cn('block w-full text-left text-[11px] py-0.5 px-1 hover:bg-lattice-elevated rounded', selectedBoardId === b.id ? 'text-violet-300 font-semibold' : 'text-gray-300')}>
+              <span className="font-mono text-gray-400">{b.id.slice(0, 8)}</span> {b.title}
             </button>
           ))}
         </div>
@@ -365,12 +365,12 @@ export function WhiteboardActionPanel() {
 
       {tallyResult && (
         <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-2.5">
-          <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold flex items-center gap-1.5"><Vote className="w-3 h-3" /> Vote tally ({tallyResult.totalVotes})</div>
-          <div className="text-sm font-semibold text-zinc-100 mt-1">Winner: {tallyResult.winner}</div>
+          <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold flex items-center gap-1.5"><Vote className="w-3 h-3" /> Vote tally (<span className="tabular-nums">{tallyResult.totalVotes}</span>)</div>
+          <div className="text-sm font-semibold text-gray-100 mt-1">Winner: {tallyResult.winner}</div>
           {tallyResult.optionTallies?.map(o => (
-            <div key={o.option} className="text-[11px] text-zinc-300 flex items-center justify-between">
+            <div key={o.option} className="text-[11px] text-gray-300 flex items-center justify-between">
               <span className={cn(o.option === tallyResult.winner && 'font-semibold text-yellow-200')}>{o.option}</span>
-              <span className="font-mono">{o.count} ({o.pct}%)</span>
+              <span className="font-mono tabular-nums">{o.count} ({o.pct}%)</span>
             </div>
           ))}
         </div>
@@ -378,16 +378,16 @@ export function WhiteboardActionPanel() {
 
       {shareResult && (
         <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5 text-[11px]">
-          <Share2 className="w-3 h-3 inline text-orange-300" /> <span className="text-zinc-300">Shared with {shareResult.sharedWith ?? 0} user{shareResult.sharedWith === 1 ? '' : 's'} — board</span>{' '}
+          <Share2 className="w-3 h-3 inline text-orange-300" /> <span className="text-gray-300">Shared with <span className="tabular-nums">{shareResult.sharedWith ?? 0}</span> user{shareResult.sharedWith === 1 ? '' : 's'} — board</span>{' '}
           <code className="text-orange-200 font-mono">{shareResult.sharedBoardId}</code>
-          <span className="text-zinc-300"> — they'll find it under Collab → Shared.</span>
+          <span className="text-gray-300"> — they'll find it under Collab → Shared.</span>
         </div>
       )}
 
       {agentReply && (
         <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-3 max-h-60 overflow-y-auto">
           <div className="flex items-center gap-1.5 text-purple-300 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Session retro</div>
-          <pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed italic">{agentReply}</pre>
+          <pre className="whitespace-pre-wrap font-sans text-[11px] text-gray-200 leading-relaxed italic">{agentReply}</pre>
         </div>
       )}
 

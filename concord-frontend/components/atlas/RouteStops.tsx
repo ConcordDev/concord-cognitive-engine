@@ -36,21 +36,21 @@ export function RouteStops() {
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+    <div className="rounded-2xl border border-lattice-border bg-lattice-void/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <Route className="w-4 h-4 text-emerald-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Add a Stop</h3>
-        <span className="text-[11px] text-zinc-400">Ask Maps shape</span>
+        <h3 className="text-sm font-bold text-gray-100">Add a Stop</h3>
+        <span className="text-[11px] text-gray-400">Ask Maps shape</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
         {([['startLat', 'Start lat'], ['startLng', 'Start lng'], ['endLat', 'End lat'], ['endLng', 'End lng']] as const).map(([k, label]) => (
           <input key={k} value={form[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} placeholder={label}
-            className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+            className="bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-200" />
         ))}
       </div>
       <div className="flex gap-1.5 mb-2">
         <select value={form.amenity} onChange={e => setForm({ ...form, amenity: e.target.value })}
-          className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
+          className="bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-200">
           {AMENITIES.map(a => <option key={a} value={a}>{a.replace('_', ' ')}</option>)}
         </select>
         <button onClick={find} disabled={busy}
@@ -62,15 +62,15 @@ export function RouteStops() {
       {err && <p className="text-xs text-rose-400">{err}</p>}
       {result && (
         <div className="mt-2">
-          <p className="text-[11px] text-zinc-400 mb-1">
+          <p className="text-[11px] text-gray-400 mb-1">
             Route {result.routeDistanceKm} km · {result.routeDurationText} — {result.count} {result.amenity.replace('_', ' ')} stop{result.count === 1 ? '' : 's'} near the midpoint
           </p>
           <ul className="space-y-1 max-h-56 overflow-y-auto">
             {result.stops.map((s, i) => (
-              <li key={i} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+              <li key={i} className="flex items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-1.5">
                 <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="text-xs text-zinc-200 truncate flex-1">{s.name}{s.brand ? ` · ${s.brand}` : ''}</span>
-                <span className="text-[10px] text-zinc-400">{s.detourFromMidKm} km off-mid</span>
+                <span className="text-xs text-gray-200 truncate flex-1">{s.name}{s.brand ? ` · ${s.brand}` : ''}</span>
+                <span className="text-[10px] text-gray-400">{s.detourFromMidKm} km off-mid</span>
               </li>
             ))}
           </ul>

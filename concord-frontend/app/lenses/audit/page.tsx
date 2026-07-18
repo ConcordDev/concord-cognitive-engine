@@ -361,7 +361,6 @@ export default function AuditLensPage() {
       </PipingProvider>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#audit-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to audit content</a>
           <RecentMineCard domain="audit" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="audit" hideWhenEmpty className="mt-3" title="More actions" />

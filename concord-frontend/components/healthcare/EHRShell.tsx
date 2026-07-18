@@ -68,7 +68,7 @@ export function EHRShell({
   className,
 }: EHRShellProps) {
   return (
-    <div className={cn('flex flex-col h-full bg-white text-gray-900 dark:bg-[#1a1d23] dark:text-gray-100', className)}>
+    <div className={cn('flex flex-col h-full bg-white text-gray-900 dark:bg-lattice-surface dark:text-gray-100', className)}>
       {/* Patient header banner — Epic-shape */}
       <header className="bg-gradient-to-r from-blue-900 to-blue-800 text-white px-6 py-3 flex flex-wrap items-center gap-4">
         <div className="flex items-baseline gap-3">
@@ -103,7 +103,7 @@ export function EHRShell({
           <VitalChip icon={Wind}        label="Resp" value={vitals.resp != null ? String(vitals.resp) : '—'} unit="rpm" />
           <VitalChip icon={Droplet}     label="SpO2" value={vitals.spo2 != null ? String(vitals.spo2) : '—'} unit="%" />
           {vitals.takenAt && (
-            <span className="ml-auto text-[10px] text-gray-400 font-mono">
+            <span className="ml-auto text-[10px] text-gray-400 font-mono tabular-nums">
               taken {new Date(vitals.takenAt).toLocaleString()}
             </span>
           )}
@@ -112,7 +112,7 @@ export function EHRShell({
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left rail — encounter timeline */}
-        <aside className="w-56 shrink-0 border-r border-black/10 dark:border-white/10 overflow-y-auto bg-gray-50 dark:bg-[#202327]">
+        <aside className="w-56 shrink-0 border-r border-black/10 dark:border-white/10 overflow-y-auto bg-gray-50 dark:bg-lattice-elevated">
           <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-gray-400 border-b border-black/5 dark:border-white/5">
             Recent encounters
           </div>
@@ -130,7 +130,7 @@ export function EHRShell({
                     )}
                   >
                     <div className="font-medium text-gray-900 dark:text-white">{e.reason}</div>
-                    <div className="text-[10px] text-gray-400 mt-0.5 inline-flex items-center gap-1">
+                    <div className="text-[10px] text-gray-400 mt-0.5 inline-flex items-center gap-1 tabular-nums">
                       <Calendar className="w-3 h-3" />
                       {new Date(e.date).toLocaleDateString()}
                       {e.provider && <> · {e.provider}</>}
@@ -148,7 +148,7 @@ export function EHRShell({
         </main>
 
         {/* Right tab rail — quick links to common sub-views (Epic shape) */}
-        <aside className="w-12 shrink-0 border-l border-black/10 dark:border-white/10 bg-gray-50 dark:bg-[#202327] flex flex-col items-center py-3 gap-1">
+        <aside className="w-12 shrink-0 border-l border-black/10 dark:border-white/10 bg-gray-50 dark:bg-lattice-elevated flex flex-col items-center py-3 gap-1">
           {[
             { icon: ClipboardList, label: 'Notes' },
             { icon: Pill,          label: 'Meds' },

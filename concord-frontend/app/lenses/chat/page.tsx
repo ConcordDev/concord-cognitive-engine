@@ -1354,6 +1354,15 @@ export default function ChatLensPage() {
       const abortController = new AbortController();
       chatAbortControllerRef.current = abortController;
 
+      // Idle-stall watchdog: a half-open TCP / a proxy holding the socket open
+      // with zero bytes would leave the stream reader awaiting forever and the
+      // "typing…" state stuck. If no chunk arrives within IDLE_STALL_MS, abort
+      // the stream (flagged as a stall, NOT a user abort) so the catch below
+      // falls through to the buffered POST instead of hanging. The nginx 15s
+      // SSE heartbeat normally keeps bytes flowing; this is the client backstop.
+      const IDLE_STALL_MS = 45000;
+      let idleStalled = false;
+
       try {
         setIsStreaming(true);
         setStreamingContent('');
@@ -1380,10 +1389,22 @@ export default function ChatLensPage() {
           let finalOut: Record<string, unknown> | null = null;
 
           if (reader) {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              const text = decoder.decode(value, { stream: true });
+            let idleTimer: ReturnType<typeof setTimeout> | null = null;
+            const armIdle = () => {
+              if (idleTimer) clearTimeout(idleTimer);
+              idleTimer = setTimeout(() => {
+                idleStalled = true;
+                try { reader.cancel(); } catch { /* already closed */ }
+                try { abortController.abort(); } catch { /* already aborted */ }
+              }, IDLE_STALL_MS);
+            };
+            try {
+              armIdle(); // start the clock before the first read
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                armIdle(); // bytes arrived — reset the stall clock
+                const text = decoder.decode(value, { stream: true });
               const lines = text.split('\n');
               for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
@@ -1400,6 +1421,9 @@ export default function ChatLensPage() {
                   // Malformed SSE chunk, skip
                 }
               }
+              }
+            } finally {
+              if (idleTimer) clearTimeout(idleTimer);
             }
           }
 
@@ -1423,12 +1447,19 @@ export default function ChatLensPage() {
         const data = await streamRes.json();
         return data;
       } catch (err) {
-        // If the request was aborted (unmount / navigation), don't retry
-        if (abortController.signal.aborted) throw err;
+        // A real user abort (unmount / navigation) must NOT retry. But an
+        // idle-stall abort (the watchdog fired) SHOULD fall through to the
+        // buffered POST — so only re-throw when the abort was NOT a stall.
+        if (abortController.signal.aborted && !idleStalled) throw err;
 
-        // Stream endpoint failed, fall back to regular POST
+        // Stream endpoint failed OR stalled — fall back to regular POST.
         setIsStreaming(false);
         setStreamingContent('');
+        // If the stream was aborted by the stall watchdog, its signal is now
+        // in the aborted state and would instantly kill this POST too. Use a
+        // fresh controller (still cancellable on unmount) for the fallback.
+        const fbController = idleStalled ? new AbortController() : abortController;
+        if (idleStalled) chatAbortControllerRef.current = fbController;
         const response = await api.post(
           '/api/chat',
           {
@@ -1440,7 +1471,7 @@ export default function ChatLensPage() {
             ...(isConKay ? { systemPrompt: CONKAY_PERSONA_PROMPT } : systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           },
-          { signal: abortController.signal }
+          { signal: fbController.signal }
         );
         return response.data;
       }

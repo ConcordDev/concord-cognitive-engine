@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Users, Play, Pencil, Check, X, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Employee { id: string; name: string; payType: string; rate: number; title: string | null; active: boolean }
 interface Stub { employeeName: string; hours: number | null; gross: number; withholding: number; net: number }
@@ -16,6 +17,7 @@ export function AcPayrollPanel() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [detail, setDetail] = useState<{ stubs: Stub[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [emp, setEmp] = useState({ name: '', payType: 'salary', rate: '', title: '' });
   const [run, setRun] = useState({ periodStart: '', periodEnd: '', payDate: '', hours: {} as Record<string, string> });
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
@@ -29,6 +31,12 @@ export function AcPayrollPanel() {
       lensRun({ domain: 'accounting', action: 'payrun-list', input: {} }),
       lensRun({ domain: 'accounting', action: 'payroll-summary', input: {} }),
     ]);
+    if (e.data?.ok === false || r.data?.ok === false || sm.data?.ok === false) {
+      setLoadError(e.data?.error || r.data?.error || sm.data?.error || 'Could not load payroll.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEmployees(e.data?.result?.employees || []);
     setRuns(r.data?.result?.runs || []);
     setSummary((sm.data?.result as PayrollSummary) || null);
@@ -66,6 +74,7 @@ export function AcPayrollPanel() {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <ErrorState message={loadError} onRetry={() => void refresh()} />;
 
   return (
     <div className="space-y-4 p-1">
@@ -109,7 +118,7 @@ export function AcPayrollPanel() {
               ) : (
               <li key={e.id} className="flex items-center gap-2 text-xs text-gray-300 bg-black/20 rounded px-2 py-1">
                 <span className="flex-1">{e.name}{e.title && <span className="text-gray-400"> · {e.title}</span>}</span>
-                <span className="text-gray-400">{e.payType === 'hourly' ? `$${e.rate}/hr` : `$${e.rate.toLocaleString()}/yr`}</span>
+                <span className="text-gray-400 font-mono tabular-nums">{e.payType === 'hourly' ? `$${e.rate}/hr` : `$${e.rate.toLocaleString()}/yr`}</span>
                 {e.payType === 'hourly' && (
                   <input placeholder="hrs" value={run.hours[e.id] || ''}
                     onChange={(ev) => setRun({ ...run, hours: { ...run.hours, [e.id]: ev.target.value } })}
@@ -143,9 +152,9 @@ export function AcPayrollPanel() {
             {detail.stubs.map((st, i) => (
               <li key={i} className="flex items-center gap-2 text-[11px] text-gray-300">
                 <span className="flex-1">{st.employeeName}</span>
-                <span>gross ${st.gross.toLocaleString()}</span>
-                <span className="text-amber-400">−${st.withholding.toLocaleString()}</span>
-                <span className="text-emerald-300 font-medium">net ${st.net.toLocaleString()}</span>
+                <span className="font-mono tabular-nums">gross ${st.gross.toLocaleString()}</span>
+                <span className="text-amber-400 font-mono tabular-nums">−${st.withholding.toLocaleString()}</span>
+                <span className="text-emerald-300 font-medium font-mono tabular-nums">net ${st.net.toLocaleString()}</span>
               </li>
             ))}
           </ul>
@@ -161,9 +170,9 @@ export function AcPayrollPanel() {
                 <button type="button" onClick={() => openRun(r.id)} className="flex-1 text-left hover:text-emerald-300">
                   {r.periodStart} → {r.periodEnd}
                 </button>
-                <span className="text-gray-400">{r.employeeCount} emp</span>
-                <span>gross ${r.totalGross.toLocaleString()}</span>
-                <span className="text-emerald-300">net ${r.totalNet.toLocaleString()}</span>
+                <span className="text-gray-400 font-mono tabular-nums">{r.employeeCount} emp</span>
+                <span className="font-mono tabular-nums">gross ${r.totalGross.toLocaleString()}</span>
+                <span className="text-emerald-300 font-mono tabular-nums">net ${r.totalNet.toLocaleString()}</span>
               </li>
             ))}
           </ul>
@@ -181,7 +190,7 @@ function SummaryStat({ label, value, accent }: { label: string; value: string; a
   const color = accent === 'emerald' ? 'text-emerald-300' : accent === 'amber' ? 'text-amber-300' : 'text-gray-100';
   return (
     <div className="bg-black/30 border border-white/10 rounded-lg p-3 text-center">
-      <p className={`text-lg font-bold ${color} flex items-center justify-center gap-1`}>
+      <p className={`text-lg font-bold font-mono tabular-nums ${color} flex items-center justify-center gap-1`}>
         {accent === 'emerald' && <TrendingUp className="w-3.5 h-3.5" />}
         {value}
       </p>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { DollarSign, Loader2, Search, MapPin } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 export interface PharmacyPrice {
   pharmacy: string;
@@ -40,7 +41,7 @@ export function RxPriceCompare() {
   const savings = mostExpensive - cheapest;
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <DollarSign className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Rx price compare</span>
@@ -61,7 +62,7 @@ export function RxPriceCompare() {
       )}
       <ul className="divide-y divide-white/5 max-h-96 overflow-y-auto">
         {loading ? (
-          <li className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Querying pharmacies…</li>
+          <li><SkeletonTableRows rows={3} columns={2} /></li>
         ) : sorted.length === 0 ? (
           <li className="px-3 py-8 text-center text-xs text-gray-400">No prices found.</li>
         ) : (

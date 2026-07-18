@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { PgTodayPanel } from './PgTodayPanel';
 import { PgSleepPanel } from './PgSleepPanel';
 import { PgSchedulePanel } from './PgSchedulePanel';
@@ -48,10 +49,17 @@ export function ParentingSection() {
   const [tab, setTab] = useState<TabId>('today');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', birthDate: '', sex: 'boy' });
 
   const refreshChildren = useCallback(async () => {
     const r = await lensRun('parenting', 'child-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load children.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Child[] = r.data?.result?.children || [];
     setChildren(list);
     setActiveChild((prev) => (list.some((c) => c.id === prev) ? prev : list[0]?.id || ''));
@@ -89,6 +97,8 @@ export function ParentingSection() {
 
       {loading ? (
         <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+      ) : loadError ? (
+        <div className="p-4"><ErrorState message={loadError} onRetry={refreshChildren} /></div>
       ) : (
         <>
           {/* Child roster */}

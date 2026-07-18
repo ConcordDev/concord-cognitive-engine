@@ -79,20 +79,20 @@ export function BatchGeocodeTool() {
   const result = compute.data;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-      <div className="border-b border-zinc-800 bg-zinc-900/60 p-3">
+    <div className="overflow-hidden rounded-xl border border-lattice-border bg-lattice-void">
+      <div className="border-b border-lattice-border bg-lattice-surface/60 p-3">
         <div className="flex items-center gap-2">
           <MapPinned className="h-4 w-4 text-sky-400" />
           <span className="text-sm font-semibold text-white">Batch geocode &amp; bearing</span>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">atlas.geocode</span>
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono tabular-nums text-[10px] uppercase tracking-wider text-gray-400">atlas.geocode</span>
         </div>
-        <p className="mt-1 text-[11px] text-zinc-400">Resolve several named places at once (built-in reference cities, or your own lat/lon), then measure distance + bearing from an origin.</p>
+        <p className="mt-1 text-[11px] text-gray-400">Resolve several named places at once (built-in reference cities, or your own lat/lon), then measure distance + bearing from an origin.</p>
       </div>
 
       <div className="space-y-3 p-3">
         <div className="grid grid-cols-2 gap-2">
-          <input type="number" step="any" placeholder="Origin lat (optional)" value={originLat} onChange={(e) => setOriginLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-sky-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="Origin lon (optional)" value={originLon} onChange={(e) => setOriginLon(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-sky-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Origin lat (optional)" value={originLat} onChange={(e) => setOriginLat(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-sky-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Origin lon (optional)" value={originLon} onChange={(e) => setOriginLon(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-sky-500/40 focus:outline-none" />
         </div>
         <StructuredArrayEditor<PlaceRow>
           value={places}
@@ -115,21 +115,21 @@ export function BatchGeocodeTool() {
 
         {compute.isError && <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">Batch geocode failed.</div>}
         {!result && !compute.isPending && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
+          <div className="rounded border border-dashed border-lattice-border p-6 text-center text-[11px] text-gray-400">
             No data yet. Add place names above (city names from the built-in reference set resolve without lat/lon).
           </div>
         )}
         {result && (
           <div className="space-y-2">
-            <div className="text-[11px] text-zinc-400">{result.resolvedCount} resolved · {result.unresolvedCount} unresolved{result.nearestToOrigin ? ` · nearest: ${result.nearestToOrigin}` : ''}{result.farthestFromOrigin ? ` · farthest: ${result.farthestFromOrigin}` : ''}</div>
+            <div className="text-[11px] text-gray-400">{result.resolvedCount} resolved · {result.unresolvedCount} unresolved{result.nearestToOrigin ? ` · nearest: ${result.nearestToOrigin}` : ''}{result.farthestFromOrigin ? ` · farthest: ${result.farthestFromOrigin}` : ''}</div>
             {result.resolved.map((p, i) => (
-              <div key={i} className={`rounded border px-2.5 py-1.5 text-[11px] ${p.resolved ? 'border-zinc-800 bg-zinc-900/40' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
+              <div key={i} className={`rounded border px-2.5 py-1.5 text-[11px] ${p.resolved ? 'border-lattice-border bg-lattice-surface/40' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
                 {p.resolved ? (
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
-                    <span className="text-zinc-100">{p.name}</span>
-                    <span className="font-mono text-zinc-400">{p.lat?.toFixed(3)}, {p.lon?.toFixed(3)} · {p.hemisphere} · UTC{(p.estimatedUTCOffset ?? 0) >= 0 ? '+' : ''}{p.estimatedUTCOffset}</span>
+                    <span className="text-gray-100">{p.name}</span>
+                    <span className="font-mono tabular-nums text-gray-400">{p.lat?.toFixed(3)}, {p.lon?.toFixed(3)} · {p.hemisphere} · UTC{(p.estimatedUTCOffset ?? 0) >= 0 ? '+' : ''}{p.estimatedUTCOffset}</span>
                     {p.distanceFromOriginKm !== undefined && (
-                      <span className="font-mono text-sky-300">{p.distanceFromOriginKm} km {p.directionFromOrigin}</span>
+                      <span className="font-mono tabular-nums text-sky-300">{p.distanceFromOriginKm} km {p.directionFromOrigin}</span>
                     )}
                   </div>
                 ) : (

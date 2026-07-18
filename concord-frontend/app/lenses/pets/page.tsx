@@ -34,7 +34,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { PetCareSection } from '@/components/pets/PetCareSection';
-import { DensityToggle } from '@/components/ui';
+import { DensityToggle, ErrorState } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
@@ -47,10 +47,17 @@ export default function PetsLensPage() {
 
   const [activeLostCards, setActiveLostCards] = useState<LostCard[]>([]);
   const [lostLoading, setLostLoading] = useState(true);
+  const [lostLoadError, setLostLoadError] = useState<string | null>(null);
 
   const refreshLostCards = useCallback(async () => {
     setLostLoading(true);
     const r = await lensRun('pets', 'lost-card-list', {});
+    if (r.data?.ok === false) {
+      setLostLoadError(r.data?.error || 'Could not load lost-pet alerts.');
+      setLostLoading(false);
+      return;
+    }
+    setLostLoadError(null);
     const cards: LostCard[] = r.data?.result?.cards || [];
     setActiveLostCards(cards.filter((c) => c.status === 'lost'));
     setLostLoading(false);
@@ -97,6 +104,10 @@ export default function PetsLensPage() {
             <DTUExportButton domain="pets" data={{}} compact />
           </div>
         </header>
+
+        {lostLoadError && (
+          <ErrorState variant="inline" message={lostLoadError} onRetry={() => void refreshLostCards()} />
+        )}
 
         {activeLostCards.length > 0 && (
           <div role="alert" className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">

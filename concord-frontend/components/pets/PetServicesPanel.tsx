@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Star, CalendarPlus, UserPlus, PawPrint } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Caregiver {
   id: string; name: string; bio: string | null; services: string[];
@@ -34,6 +35,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [asCaregiver, setAsCaregiver] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [reg, setReg] = useState({ name: '', bio: '', services: ['walking'], walkRate: '', boardRate: '' });
@@ -44,6 +46,12 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
       lensRun('pets', 'caregiver-list', {}),
       lensRun('pets', 'booking-list', {}),
     ]);
+    if (c.data?.ok === false || b.data?.ok === false) {
+      setLoadError(c.data?.error || b.data?.error || 'Could not load care services.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCaregivers(c.data?.result?.caregivers || []);
     setBookings(b.data?.result?.bookings || []);
     setAsCaregiver(b.data?.result?.asCaregiver || []);
@@ -86,6 +94,9 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

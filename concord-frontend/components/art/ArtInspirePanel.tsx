@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Lightbulb, Shuffle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Prompt { category: string; text: string }
 interface Dash {
@@ -22,12 +23,19 @@ export function ArtInspirePanel() {
   const [activeCat, setActiveCat] = useState<string>('');
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [p, d] = await Promise.all([
       lensRun('art', 'art-prompt', {}),
       lensRun('art', 'art-dashboard', {}),
     ]);
+    if (p.data?.ok === false || d.data?.ok === false) {
+      setLoadError(p.data?.error || d.data?.error || 'Could not load art prompt.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPrompt((p.data?.result?.prompt as Prompt) || null);
     setCategories(p.data?.result?.categories || []);
     setDash((d.data?.result as Dash | null) || null);
@@ -44,6 +52,9 @@ export function ArtInspirePanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={() => void refresh()} />;
   }
 
   return (

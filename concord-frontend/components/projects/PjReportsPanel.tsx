@@ -8,8 +8,9 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
-import { Loader2, Gauge, Activity, Timer, TrendingUp } from 'lucide-react';
+import { Gauge, Activity, Timer, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { Skeleton } from '@/components/ui';
 
 interface Velocity { series: { sprint: string; committed: number; completed: number }[]; avgVelocity: number; completedSprints: number }
 interface Flow { series: { date: string; created: number; completed: number; open: number }[] }
@@ -41,7 +42,18 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return (
+      <div className="space-y-4" aria-busy="true">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Skeleton variant="block" height={56} className="rounded-xl" />
+          <Skeleton variant="block" height={56} className="rounded-xl" />
+          <Skeleton variant="block" height={56} className="rounded-xl" />
+          <Skeleton variant="block" height={56} className="rounded-xl" />
+        </div>
+        <Skeleton variant="block" height={170} className="rounded-xl" />
+        <Skeleton variant="block" height={170} className="rounded-xl" />
+      </div>
+    );
   }
 
   return (
@@ -57,8 +69,8 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
       </div>
 
       {/* Velocity */}
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+      <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <Gauge className="w-3.5 h-3.5 text-indigo-400" /> Velocity — committed vs completed
         </h3>
         {velocity && velocity.series.length > 0 ? (
@@ -73,12 +85,12 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
               <Bar dataKey="completed" fill="#818cf8" radius={[2, 2, 0, 0]} name="Completed" />
             </BarChart>
           </ResponsiveContainer>
-        ) : <p className="text-[11px] text-zinc-400 italic py-6 text-center">Complete a sprint to see velocity.</p>}
+        ) : <p className="text-[11px] text-gray-400 italic py-6 text-center">Complete a sprint to see velocity.</p>}
       </div>
 
       {/* Cumulative flow */}
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+      <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2">
           <Activity className="w-3.5 h-3.5 text-indigo-400" /> Cumulative flow (30d)
         </h3>
         {flow && flow.series.length > 0 ? (
@@ -94,20 +106,20 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
               <Line type="monotone" dataKey="completed" stroke="#34d399" strokeWidth={2} dot={false} name="Completed" />
             </LineChart>
           </ResponsiveContainer>
-        ) : <p className="text-[11px] text-zinc-400 italic py-6 text-center">No flow data yet.</p>}
+        ) : <p className="text-[11px] text-gray-400 italic py-6 text-center">No flow data yet.</p>}
       </div>
 
       {/* Forecast detail */}
       {forecast && (
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300">
-          <h3 className="text-xs font-semibold text-zinc-300 mb-1">Forecast</h3>
+        <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3 text-xs text-gray-300">
+          <h3 className="text-xs font-semibold text-gray-300 mb-1">Forecast</h3>
           {forecast.basis === 0 ? (
-            <p className="text-zinc-400 italic">Complete at least one sprint for a velocity-based forecast.</p>
+            <p className="text-gray-400 italic">Complete at least one sprint for a velocity-based forecast.</p>
           ) : (
-            <p>
+            <p className="tabular-nums">
               {forecast.remainingPoints} points remaining at {forecast.avgVelocity} pts/sprint →
               <span className="text-indigo-300 font-semibold"> ~{forecast.projectedSprints} sprints</span> to completion
-              <span className="text-zinc-400"> (based on {forecast.basis} completed sprint{forecast.basis === 1 ? '' : 's'})</span>.
+              <span className="text-gray-400"> (based on {forecast.basis} completed sprint{forecast.basis === 1 ? '' : 's'})</span>.
             </p>
           )}
         </div>
@@ -120,11 +132,11 @@ const tooltipCss = { background: '#18181b', border: '1px solid #3f3f46', borderR
 
 function Kpi({ icon: Icon, label, value, suffix }: { icon: typeof Gauge; label: string; value: string | number; suffix?: string }) {
   return (
-    <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
-      <p className="flex items-center justify-center gap-1 text-lg font-bold text-zinc-100">
+    <div className="bg-lattice-surface/70 border border-lattice-border rounded-xl p-3 text-center">
+      <p className="flex items-center justify-center gap-1 text-lg font-bold text-white tabular-nums">
         <Icon className="w-4 h-4 text-indigo-400" />{value}{suffix}
       </p>
-      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

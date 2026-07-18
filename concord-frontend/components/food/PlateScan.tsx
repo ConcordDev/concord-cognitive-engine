@@ -70,7 +70,7 @@ export function PlateScan({ onLog }: PlateScanProps) {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Camera className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Plate scan</span>
@@ -97,12 +97,12 @@ export function PlateScan({ onLog }: PlateScanProps) {
                 <div className="bg-white/[0.02] rounded p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-base font-bold text-white">{result.dish}</h3>
-                    <span className="text-[10px] text-gray-400">{Math.round(result.confidence * 100)}% confidence</span>
+                    <span className="text-[10px] text-gray-400 tabular-nums">{Math.round(result.confidence * 100)}% confidence</span>
                   </div>
                   <div className="text-sm">
-                    <span className="text-yellow-300 font-mono text-xl">{Math.round(result.estimatedCalories)} kcal</span>
+                    <span className="text-yellow-300 font-mono text-xl tabular-nums">{Math.round(result.estimatedCalories)} kcal</span>
                     {result.macros && (
-                      <span className="ml-3 text-xs text-gray-400">
+                      <span className="ml-3 text-xs text-gray-400 tabular-nums">
                         P {Math.round(result.macros.protein_g)}g · C {Math.round(result.macros.carbs_g)}g · F {Math.round(result.macros.fat_g)}g
                       </span>
                     )}

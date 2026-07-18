@@ -12,6 +12,7 @@ import { AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { AtlasShell, AtlasNav } from './AtlasShell';
+import { Skeleton } from '@/components/ui';
 import { PlacesGraph } from './PlacesGraph';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { PlaceShareSheet, type PlaceLike } from './PlaceShareSheet';
@@ -84,7 +85,12 @@ export function AtlasSection() {
       badges={{ places: places.length, lists: lists.length, trips: trips.length }}
       panel={
         loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+          <div className="p-3 space-y-3" aria-busy="true">
+            <Skeleton variant="line" width="45%" height="0.75rem" />
+            <Skeleton variant="block" height="3rem" />
+            <Skeleton variant="block" height="3rem" />
+            <Skeleton variant="block" height="3rem" />
+          </div>
         ) : (
           <>
             {nav === 'explore'    && <ExplorePanel onSaved={refresh} onShowOnMap={showOnMap} />}
@@ -339,7 +345,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Saved places</span>
-        <span className="text-[10px] text-gray-400">{places.length}</span>
+        <span className="text-[10px] text-gray-400 font-mono tabular-nums">{places.length}</span>
         <button onClick={() => onShowOnMap(places.map(p => ({ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` })))} className="ml-auto text-[10px] text-teal-300 hover:text-teal-200">Show all</button>
         <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
       </header>
@@ -383,7 +389,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
             <span className="text-base">{CAT_EMOJI[p.category] || '📍'}</span>
             <div className="flex-1 min-w-0">
               <div className="text-xs text-white truncate">{p.name}</div>
-              <div className="text-[10px] text-gray-400 truncate">{p.address || `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`}</div>
+              <div className={cn('text-[10px] text-gray-400 truncate', !p.address && 'font-mono tabular-nums')}>{p.address || `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`}</div>
               {p.notes && <div className="text-[10px] text-gray-400 truncate">{p.notes}</div>}
             </div>
             {p.rating !== null && <span className="text-[10px] text-amber-300 inline-flex items-center gap-0.5"><Star className="w-2.5 h-2.5 fill-current" />{p.rating}</span>}
@@ -429,7 +435,7 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Lists</span>
-        <span className="text-[10px] text-gray-400">{lists.length}</span>
+        <span className="text-[10px] text-gray-400 font-mono tabular-nums">{lists.length}</span>
         <button
           onClick={() => setShowGraph(v => !v)}
           className={cn('ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border', showGraph ? 'border-teal-500/40 bg-teal-500/15 text-teal-200' : 'border-white/10 text-gray-400 hover:text-white')}
@@ -461,7 +467,7 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
                 <button aria-label="Next" onClick={() => setExpand(isOpen ? null : l.id)}><ChevronRight className={cn('w-3 h-3 text-gray-400 transition', isOpen && 'rotate-90')} /></button>
                 <ListChecks className="w-3.5 h-3.5" style={{ color: l.color }} />
                 <span className="flex-1 text-xs text-white truncate">{l.name}</span>
-                <span className="text-[10px] text-gray-400">{l.placeCount}</span>
+                <span className="text-[10px] text-gray-400 font-mono tabular-nums">{l.placeCount}</span>
                 <button onClick={() => onShowOnMap(l.places.map(p => ({ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` })))} className="opacity-0 group-hover:opacity-100 text-[10px] text-teal-300">map</button>
                 <button aria-label="Delete" onClick={() => del(l.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
               </div>
@@ -530,7 +536,7 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Trips</span>
-        <span className="text-[10px] text-gray-400">{trips.length}</span>
+        <span className="text-[10px] text-gray-400 font-mono tabular-nums">{trips.length}</span>
       </header>
       <div className="p-2 border-b border-white/10 flex gap-1">
         <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && create()} placeholder="New trip name" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -710,8 +716,8 @@ function DirectionsPanel({ places, onShowOnMap }: { places: Place[]; onShowOnMap
             {result && (
               <div className="space-y-2">
                 <div className="rounded border border-teal-500/30 bg-teal-500/[0.05] p-3 text-center">
-                  <div className="text-2xl font-mono text-teal-200">{result.durationText}</div>
-                  <div className="text-xs text-gray-400">{result.distanceKm} km · {result.distanceMiles} mi · via {result.mode}</div>
+                  <div className="text-2xl font-mono tabular-nums text-teal-200">{result.durationText}</div>
+                  <div className="text-xs text-gray-400"><span className="font-mono tabular-nums text-gray-300">{result.distanceKm}</span> km · <span className="font-mono tabular-nums text-gray-300">{result.distanceMiles}</span> mi · via {result.mode}</div>
                 </div>
                 {resolvedNames.length > 0 && (
                   <ol className="space-y-0.5">
@@ -879,7 +885,7 @@ function RecentPanel() {
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Recent searches</span>
-        <span className="text-[10px] text-gray-400">{recent.length}</span>
+        <span className="text-[10px] text-gray-400 font-mono tabular-nums">{recent.length}</span>
         {recent.length > 0 && <button onClick={clear} className="ml-auto text-[10px] text-rose-300 hover:text-rose-200">Clear</button>}
       </header>
       {snapshot && (
@@ -897,14 +903,18 @@ function RecentPanel() {
       )}
       <ul className="flex-1 overflow-y-auto divide-y divide-white/5">
         {loading ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
+          <li className="px-1 py-2" aria-busy="true">
+            <Skeleton variant="table-row" columns={2} />
+            <Skeleton variant="table-row" columns={2} />
+            <Skeleton variant="table-row" columns={2} />
+          </li>
         ) : recent.length === 0 ? (
           <li className="px-3 py-8 text-center text-xs text-gray-400">No recent searches.</li>
         ) : recent.map((r, i) => (
           <li key={i} className="px-3 py-2 flex items-center gap-2 text-xs text-gray-300">
             <History className="w-3 h-3 text-gray-400" />
             <span className="flex-1 truncate">{r.query}</span>
-            <span className="text-[10px] text-gray-400">{r.at.slice(0, 10)}</span>
+            <span className="text-[10px] text-gray-400 font-mono tabular-nums">{r.at.slice(0, 10)}</span>
           </li>
         ))}
       </ul>
@@ -915,7 +925,7 @@ function RecentPanel() {
 function SnapshotStat({ label, value, small }: { label: string; value: number | string; small?: boolean }) {
   return (
     <div className="rounded border border-white/10 bg-black/20 px-1.5 py-1">
-      <div className={cn('font-mono text-white', small ? 'text-[10px] truncate' : 'text-xs')}>{value}</div>
+      <div className={cn('font-mono tabular-nums text-white', small ? 'text-[10px] truncate' : 'text-xs')}>{value}</div>
       <div className="text-[9px] text-gray-400">{label}</div>
     </div>
   );

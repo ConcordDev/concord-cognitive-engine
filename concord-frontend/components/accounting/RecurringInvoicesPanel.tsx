@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Calendar, Loader2, Plus, Play, Pause, Zap } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface Recurring {
@@ -72,7 +73,7 @@ export function RecurringInvoicesPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Calendar className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Recurring invoices</span>
-        <span className="text-[10px] text-gray-400">{list.filter(r => r.active).length} active</span>
+        <span className="text-[10px] text-gray-400 font-mono tabular-nums">{list.filter(r => r.active).length} active</span>
         <button onClick={runDue} disabled={running} className="ml-auto px-2.5 py-1 text-xs rounded border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40 inline-flex items-center gap-1">
           {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}Run due
         </button>
@@ -84,11 +85,11 @@ export function RecurringInvoicesPanel() {
       {creating && (
         <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
           <input value={draft.customerName} onChange={e => setDraft({ ...draft, customerName: e.target.value })} placeholder="Customer *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Amount *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Amount *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
           <select value={draft.cadence} onChange={e => setDraft({ ...draft, cadence: e.target.value as Recurring['cadence'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {CADENCES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
-          <input type="date" value={draft.startAt} onChange={e => setDraft({ ...draft, startAt: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input type="date" value={draft.startAt} onChange={e => setDraft({ ...draft, startAt: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
           <input value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} placeholder="Memo" className="col-span-9 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={create} className="col-span-3 px-2 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Save</button>
         </div>
@@ -96,7 +97,7 @@ export function RecurringInvoicesPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={5} columns={3} />
         ) : list.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No recurring invoices.</div>
         ) : (
@@ -108,7 +109,7 @@ export function RecurringInvoicesPanel() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-gray-400">{r.number}</span>
+                    <span className="font-mono tabular-nums text-[10px] text-gray-400">{r.number}</span>
                     <span>{r.customerName}</span>
                     <span className="text-[10px] text-emerald-300">{CADENCES.find(c => c.id === r.cadence)?.label}</span>
                   </div>

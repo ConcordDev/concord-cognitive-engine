@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Play, Square, ShieldAlert, Gamepad2, BarChart3, RotateCcw, ListOrdered, ChevronDown, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface LevelMeta { id: string; name: string; cols: number; rows: number }
 interface Tile { id: string; name: string; color: string }
@@ -69,6 +70,7 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
   const [showRuns, setShowRuns] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState<string>('');
 
@@ -87,6 +89,12 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
       lensRun('game-design', 'level-list', { gameId }),
       lensRun('game-design', 'tile-list', { gameId }),
     ]);
+    if (lv.data?.ok === false || tl.data?.ok === false) {
+      setLoadError(lv.data?.error || tl.data?.error || 'Could not load levels.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: LevelMeta[] = lv.data?.result?.levels || [];
     setLevels(list);
     setTiles(tl.data?.result?.all || []);
@@ -340,6 +348,10 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   if (levels.length === 0) {

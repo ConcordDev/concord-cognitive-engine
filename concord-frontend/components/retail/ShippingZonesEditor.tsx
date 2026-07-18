@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Truck, Plus, Trash2, Loader2, Globe } from 'lucide-react';
+import { Truck, Plus, Trash2, Globe } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Zone {
   id: string; name: string; countries: string[];
@@ -64,7 +65,7 @@ export function ShippingZonesEditor() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Truck className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Shipping zones</span>
@@ -85,7 +86,7 @@ export function ShippingZonesEditor() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={3} />
         ) : zones.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No shipping zones. Hit + to add.</div>
         ) : (
@@ -100,7 +101,7 @@ export function ShippingZonesEditor() {
                 </div>
                 <div className="mt-1 grid grid-cols-2 gap-1 text-[11px]">
                   {z.rates.map(r => (
-                    <div key={r.id} className="flex items-center gap-2 px-2 py-1 rounded bg-white/[0.03]">
+                    <div key={r.id} className="flex items-center gap-2 px-2 py-1 rounded bg-white/[0.03] tabular-nums">
                       <span className="text-gray-400">{r.name}</span>
                       <span className="ml-auto font-mono text-cyan-300">${(r.priceCents / 100).toFixed(2)}</span>
                       {r.freeThreshold != null && <span className="text-[10px] text-emerald-300">free ≥${r.freeThreshold}</span>}

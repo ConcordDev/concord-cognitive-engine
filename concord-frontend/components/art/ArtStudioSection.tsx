@@ -7,21 +7,23 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Palette, Plus, Brush, Droplet, Image as ImageIcon, Lightbulb, Loader2, Trash2 } from 'lucide-react';
+import { Palette, Plus, Brush, Droplet, Image as ImageIcon, Lightbulb, Library, Loader2, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ArtCanvas } from './ArtCanvas';
 import { ArtPalettesPanel } from './ArtPalettesPanel';
 import { ArtReferencesPanel } from './ArtReferencesPanel';
 import { ArtInspirePanel } from './ArtInspirePanel';
+import { ConceptArtBoard } from './ConceptArtBoard';
 
 interface ArtworkMeta {
   id: string; title: string; width: number; height: number; background: string;
   thumbnail: string | null; layerCount: number; strokeCount: number;
 }
-type TabId = 'studio' | 'palettes' | 'references' | 'inspire';
+type TabId = 'studio' | 'board' | 'palettes' | 'references' | 'inspire';
 const TABS: { id: TabId; label: string; icon: typeof Brush }[] = [
   { id: 'studio', label: 'Studio', icon: Brush },
+  { id: 'board', label: 'Board', icon: Library },
   { id: 'palettes', label: 'Palettes', icon: Droplet },
   { id: 'references', label: 'References', icon: ImageIcon },
   { id: 'inspire', label: 'Inspire', icon: Lightbulb },
@@ -43,6 +45,12 @@ export function ArtStudioSection() {
 
   const refresh = useCallback(async () => {
     const r = await lensRun('art', 'artwork-list', {});
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load artworks.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setArtworks(r.data?.result?.artworks || []);
     setLoading(false);
   }, []);
@@ -155,6 +163,7 @@ export function ArtStudioSection() {
             </div>
           )
         )}
+        {tab === 'board' && <ConceptArtBoard />}
         {tab === 'palettes' && <ArtPalettesPanel />}
         {tab === 'references' && <ArtReferencesPanel />}
         {tab === 'inspire' && <ArtInspirePanel />}

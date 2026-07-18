@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ClipboardList, Loader2, Plus, Sparkles, CheckCircle, Save, FileText, X, Download } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
 interface Encounter {
@@ -157,7 +158,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
 
   return (
     <div className="grid grid-cols-12 gap-3">
-      <div className="col-span-4 bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="col-span-4 bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Encounters</span>
@@ -179,7 +180,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
         )}
         <ul className="max-h-[36rem] overflow-y-auto divide-y divide-white/5">
           {loading ? (
-            <li className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</li>
+            <li><SkeletonTableRows rows={4} columns={3} /></li>
           ) : list.length === 0 ? (
             <li className="px-3 py-8 text-center text-xs text-gray-400">No encounters yet.</li>
           ) : (
@@ -200,7 +201,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
       {/* SOAP editor */}
       <div className="col-span-8">
         {active ? (
-          <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+          <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
             <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
               <ClipboardList className="w-4 h-4 text-cyan-400" />
               <span className="text-sm font-semibold text-gray-200">{active.encounterType.replace('_', ' ')} · {active.encounteredAt.slice(0, 10)}</span>
@@ -266,13 +267,13 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full bg-[#0d1117] border border-cyan-500/15 rounded-lg p-10 text-xs text-gray-400">Pick an encounter or start a new one.</div>
+          <div className="flex items-center justify-center h-full bg-lattice-deep border border-cyan-500/15 rounded-lg p-10 text-xs text-gray-400">Pick an encounter or start a new one.</div>
         )}
       </div>
 
       {avsText !== null && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setAvsText(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg w-full max-w-xl max-h-[80%] flex flex-col overflow-hidden"
+          <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg w-full max-w-xl max-h-[80%] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <FileText className="w-3.5 h-3.5 text-cyan-400" />
@@ -286,7 +287,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
 
       {exportJson !== null && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setExportJson(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg w-full max-w-xl max-h-[80%] flex flex-col overflow-hidden"
+          <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg w-full max-w-xl max-h-[80%] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <Download className="w-3.5 h-3.5 text-cyan-400" />

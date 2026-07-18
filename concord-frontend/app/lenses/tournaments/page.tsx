@@ -218,7 +218,6 @@ export default function TournamentsPage() {
         </div>
       </div>
 
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows</div>
       <RecentMineCard domain="tournaments" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="tournaments" hideWhenEmpty className="mt-3" />
       <CrossLensRecentsPanel lensId="tournaments" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

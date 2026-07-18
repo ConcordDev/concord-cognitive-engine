@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { MessageSquare, Loader2, Send, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface ThreadSummary {
   id: string;
@@ -144,7 +145,7 @@ export function MessagesPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden flex h-[34rem]">
+    <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden flex h-[34rem]">
       {/* Thread list */}
       <div className="w-56 border-r border-white/10 flex flex-col flex-shrink-0">
         <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
@@ -194,8 +195,13 @@ export function MessagesPanel() {
         )}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-8 text-xs text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="p-2 space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="px-1 py-1.5 space-y-1">
+                  <Skeleton variant="line" width="70%" />
+                  <Skeleton variant="line" width="45%" height={10} />
+                </div>
+              ))}
             </div>
           ) : threads.length === 0 ? (
             <div className="px-3 py-8 text-center text-xs text-gray-400">No conversations.</div>

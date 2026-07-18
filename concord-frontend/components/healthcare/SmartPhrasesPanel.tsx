@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileSearch, Loader2, Plus, Trash2 } from 'lucide-react';
+import { FileSearch, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface SmartPhrase { id: string; name: string; text: string; createdAt: string }
 
@@ -42,7 +43,7 @@ export function SmartPhrasesPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <FileSearch className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">SmartPhrases</span>
@@ -62,7 +63,7 @@ export function SmartPhrasesPanel() {
 
       <div className="max-h-[32rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={2} />
         ) : list.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><FileSearch className="w-6 h-6 mx-auto mb-2 opacity-30" />No SmartPhrases.</div>
         ) : (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Store, Loader2, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface Shop {
   id: string; name: string; slug: string; tagline: string; bio: string;
@@ -42,11 +43,27 @@ export function ShopSettingsPanel({ onUpdated }: { onUpdated?: (shop: Shop) => v
     finally { setSaving(false); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+  if (loading) {
+    return (
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden p-4 space-y-3">
+        <div className="grid grid-cols-12 gap-2">
+          <Skeleton variant="block" height={30} className="col-span-6" />
+          <Skeleton variant="block" height={30} className="col-span-4" />
+          <Skeleton variant="block" height={30} className="col-span-2" />
+        </div>
+        <Skeleton variant="block" height={30} />
+        <Skeleton variant="block" height={80} />
+        <div className="grid grid-cols-2 gap-2">
+          <Skeleton variant="block" height={30} />
+          <Skeleton variant="block" height={30} />
+        </div>
+      </div>
+    );
+  }
   if (!shop) return <div className="p-10 text-center text-xs text-gray-400">Shop not found.</div>;
 
   return (
-    <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Store className="w-4 h-4 text-orange-400" />
         <span className="text-sm font-semibold text-gray-200">Shop settings</span>

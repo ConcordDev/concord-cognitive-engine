@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Tag, Loader2, Plus, Eye, EyeOff, Trash2, Sparkles, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui/Skeleton';
 
 interface Listing {
   id: string; number: string; title: string; slug: string;
@@ -143,7 +144,7 @@ export function ListingsPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Tag className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Listings</span>
@@ -176,7 +177,7 @@ export function ListingsPanel() {
 
         <div className="max-h-[32rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+            <SkeletonTableRows rows={6} columns={5} />
           ) : list.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-gray-400"><Tag className="w-6 h-6 mx-auto mb-2 opacity-30" />No listings yet.</div>
           ) : (
@@ -205,7 +206,7 @@ export function ListingsPanel() {
                           {l.kind.replace(/_/g, ' ')} · {l.stockQty === null ? '∞ stock' : `${l.stockQty} in stock`} · {l.tags.length} tags
                         </div>
                       </div>
-                      <div className="text-sm font-mono text-orange-300 w-20 text-right">${l.priceUsd.toFixed(2)}</div>
+                      <div className="text-sm font-mono tabular-nums text-orange-300 w-20 text-right">${l.priceUsd.toFixed(2)}</div>
                       {l.status === 'published' ? (
                         <button onClick={() => unpublish(l.id)} className="p-1.5 rounded hover:bg-white/[0.05] text-gray-400" title="Unpublish"><EyeOff className="w-3.5 h-3.5" /></button>
                       ) : (
@@ -280,7 +281,7 @@ export function ListingsPanel() {
                             {priceResult.message ? (
                               <div className="text-emerald-200">{priceResult.message}</div>
                             ) : priceResult.peerStats && priceResult.suggestion ? (
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className="grid grid-cols-3 gap-2 tabular-nums">
                                 <div>
                                   <div className="text-[10px] uppercase text-emerald-300">Aggressive</div>
                                   <div className="text-base font-mono text-white">${priceResult.suggestion.aggressive}</div>

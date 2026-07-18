@@ -30,7 +30,7 @@ interface ClassifyResponse {
   signal?: ClassifiedSignalResult;
 }
 
-const inputCls = 'bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/60';
+const inputCls = 'bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-purple-500/60';
 
 export function SignalClassifyForm() {
   const queryClient = useQueryClient();
@@ -99,12 +99,12 @@ export function SignalClassifyForm() {
   }
 
   return (
-    <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-4 space-y-3">
+    <div className="rounded-lg bg-lattice-elevated/50 border border-lattice-border/50 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Radio size={16} className="text-purple-400" />
-        <span className="text-sm font-medium text-zinc-200">Report a Signal</span>
+        <span className="text-sm font-medium text-gray-200">Report a Signal</span>
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-gray-500">
         Manually submit a signal for 5-property classification (identity, location, purpose,
         measurement, adjustability). This is the only write path into the taxonomy above —
         a successful submission appears there immediately.

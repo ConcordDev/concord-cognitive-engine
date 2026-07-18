@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Camera, ChevronUp, ChevronDown, Link2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Scene { id: string; number: string; slugline: string }
 interface Shot {
@@ -31,11 +32,18 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
   const [shots, setShots] = useState<Shot[]>([]);
   const [board, setBoard] = useState<BoardFrame[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [view, setView] = useState<'list' | 'board'>('list');
   const [form, setForm] = useState({ size: 'MS', angle: 'eye_level', movement: 'static', lens: '', description: '' });
 
   const loadScenes = useCallback(async () => {
     const r = await lensRun('film-studios', 'scene-list', { projectId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load scenes.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Scene[] = r.data?.result?.scenes || [];
     setScenes(list);
     setActiveScene((prev) => (list.some((s) => s.id === prev) ? prev : list[0]?.id || ''));
@@ -48,6 +56,10 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
       lensRun('film-studios', 'shot-list', { sceneId: activeScene }),
       lensRun('film-studios', 'shot-board-sequence', { sceneId: activeScene }),
     ]);
+    if (r.data?.ok === false || b.data?.ok === false) {
+      setLoadError(r.data?.error || b.data?.error || 'Could not load shots.');
+      return;
+    }
     setShots(r.data?.result?.shots || []);
     setBoard(b.data?.result?.frames || []);
   }, [activeScene]);
@@ -86,6 +98,10 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={() => { void loadScenes(); void loadShots(); }} /></div>;
   }
 
   if (scenes.length === 0) {

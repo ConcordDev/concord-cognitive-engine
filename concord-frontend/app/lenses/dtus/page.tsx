@@ -31,6 +31,7 @@ import { VirtualDTUList } from '@/components/lists/VirtualDTUList';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { DTUQuickCreate } from '@/components/dtu/DTUQuickCreate';
 import { LiveDTUFeed } from '@/components/live/LiveDTUFeed';
+import { Skeleton, SkeletonTableRows, EmptyState, ErrorState } from '@/components/ui';
 import { useLatticeStore, selectDTUsByTier, selectFilteredDTUs } from '@/store/lattice';
 import { cn } from '@/lib/utils';
 import {
@@ -167,7 +168,7 @@ export default function DTUBrowserPage() {
   }), [page, searchQuery, tierFilter]);
 
   // Fetch paginated DTUs
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['dtus-browser', queryParams],
     queryFn: async () => {
       const res = await apiHelpers.dtus.paginated(queryParams);
@@ -281,7 +282,7 @@ export default function DTUBrowserPage() {
               <div>
                 <h1 className="text-xl font-bold">DTU Browser</h1>
                 <p className="text-xs text-gray-400">
-                  {total} discrete thought units
+                  <span className="tabular-nums">{total}</span> discrete thought units
                 </p>
               </div>
             </div>
@@ -398,22 +399,22 @@ export default function DTUBrowserPage() {
         <div className="grid grid-cols-4 gap-4">
           <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
             <Database className="w-5 h-5 text-neon-blue" />
-            <div><p className="text-lg font-bold">{total}</p><p className="text-xs text-gray-400">Total DTUs</p></div>
+            <div><p className="text-lg font-bold tabular-nums">{total}</p><p className="text-xs text-gray-400">Total DTUs</p></div>
           </div>
           <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
             <Tag className="w-5 h-5 text-neon-purple" />
             <div>
-              <p className="text-lg font-bold">{(tierCounts.mega + tierCounts.hyper) || dtus.filter(d => d.tier === 'mega' || d.tier === 'hyper').length}</p>
+              <p className="text-lg font-bold tabular-nums">{(tierCounts.mega + tierCounts.hyper) || dtus.filter(d => d.tier === 'mega' || d.tier === 'hyper').length}</p>
               <p className="text-xs text-gray-400">Mega/Hyper</p>
             </div>
           </div>
           <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
             <Zap className="w-5 h-5 text-neon-cyan" />
-            <div><p className="text-lg font-bold">{tierCounts.regular || dtus.filter(d => d.tier === 'regular').length}</p><p className="text-xs text-gray-400">Regular</p></div>
+            <div><p className="text-lg font-bold tabular-nums">{tierCounts.regular || dtus.filter(d => d.tier === 'regular').length}</p><p className="text-xs text-gray-400">Regular</p></div>
           </div>
           <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
             <Clock className="w-5 h-5 text-gray-400" />
-            <div><p className="text-lg font-bold">{tierCounts.shadow || dtus.filter(d => d.tier === 'shadow').length}</p><p className="text-xs text-gray-400">Shadow</p></div>
+            <div><p className="text-lg font-bold tabular-nums">{tierCounts.shadow || dtus.filter(d => d.tier === 'shadow').length}</p><p className="text-xs text-gray-400">Shadow</p></div>
           </div>
         </div>
       </div>
@@ -424,25 +425,38 @@ export default function DTUBrowserPage() {
           {/* Main list area */}
           <div className="flex-1 min-w-0">
             {isError ? (
-              <div className="text-center py-12">
-                <p className="text-red-400 mb-2">Failed to load DTUs</p>
-                <button
-                  onClick={() => refetch()}
-                  className="text-sm text-neon-cyan hover:underline"
-                >
-                  Try again
-                </button>
-              </div>
+              <ErrorState
+                message={error instanceof Error ? error.message : 'Failed to load DTUs from the substrate.'}
+                onRetry={() => refetch()}
+                retrying={isLoading}
+              />
             ) : viewMode === 'list' ? (
               <div className="border border-lattice-border rounded-xl overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
-                <VirtualDTUList
-                  dtus={listDtus}
-                  selectedId={selectedDtuId || undefined}
-                  onSelect={handleSelectDtu}
-                  showFilters={false}
-                  emptyMessage={isLoading ? 'Loading DTUs...' : 'No DTUs found'}
-                />
+                {isLoading && dtus.length === 0 ? (
+                  <SkeletonTableRows rows={14} columns={5} className="p-2" />
+                ) : (
+                  <VirtualDTUList
+                    dtus={listDtus}
+                    selectedId={selectedDtuId || undefined}
+                    onSelect={handleSelectDtu}
+                    showFilters={false}
+                    emptyMessage="No DTUs found"
+                  />
+                )}
               </div>
+            ) : isLoading && dtus.length === 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <Skeleton key={i} variant="block" height="9.5rem" className="rounded-xl" />
+                ))}
+              </div>
+            ) : dtus.length === 0 ? (
+              <EmptyState
+                icon={<Database className="w-5 h-5" aria-hidden="true" />}
+                title="No DTUs found"
+                description="Adjust the search or tier filter, or create the first DTU to seed this corpus."
+                action={{ label: 'New DTU', onClick: () => setShowCreateForm(true) }}
+              />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {dtus.map((dtu, index) => (
@@ -480,7 +494,7 @@ export default function DTUBrowserPage() {
                       {dtu.summary || dtu.content?.slice(0, 100)}
                     </p>
                     <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400">
-                      <span>{new Date(dtu.timestamp).toLocaleDateString()}</span>
+                      <span className="tabular-nums">{new Date(dtu.timestamp).toLocaleDateString()}</span>
                       {dtu.tags?.length > 0 && (
                         <span>#{dtu.tags[0]}</span>
                       )}
@@ -488,14 +502,8 @@ export default function DTUBrowserPage() {
                   </motion.button>
                 ))}
                 {isLoading && (
-                  <div className="col-span-full text-center py-8">
-                    <div className="w-6 h-6 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-                  </div>
-                )}
-                {!isLoading && dtus.length === 0 && (
-                  <div className="col-span-full text-center py-12">
-                    <Database className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                    <p className="text-gray-400">No DTUs found</p>
+                  <div className="col-span-full flex items-center justify-center gap-2 py-4 text-xs text-gray-400">
+                    <Skeleton variant="line" width="8rem" />
                   </div>
                 )}
               </div>
@@ -503,7 +511,7 @@ export default function DTUBrowserPage() {
 
             {/* Pagination */}
             <div className="flex items-center justify-between mt-4 px-2">
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 tabular-nums">
                 Showing {page * PAGE_SIZE + 1}--{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
               </span>
               <div className="flex items-center gap-2">
@@ -515,7 +523,7 @@ export default function DTUBrowserPage() {
                   <ChevronLeft className="w-3.5 h-3.5" />
                   Previous
                 </button>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-gray-400 tabular-nums">
                   Page {page + 1} of {Math.max(1, totalPages)}
                 </span>
                 <button
@@ -603,9 +611,9 @@ export default function DTUBrowserPage() {
                     <span className="text-xs text-gray-400">{actionResult.title as string}</span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.depth as number}</p><p className="text-[10px] text-gray-400">Depth</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.forkCount as number}</p><p className="text-[10px] text-gray-400">Forks</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.totalDescendants as number}</p><p className="text-[10px] text-gray-400">Descendants</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan tabular-nums">{actionResult.depth as number}</p><p className="text-[10px] text-gray-400">Depth</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green tabular-nums">{actionResult.forkCount as number}</p><p className="text-[10px] text-gray-400">Forks</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple tabular-nums">{actionResult.totalDescendants as number}</p><p className="text-[10px] text-gray-400">Descendants</p></div>
                     <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-white">{actionResult.isRoot ? 'Root' : actionResult.isLeaf ? 'Leaf' : 'Branch'}</p><p className="text-[10px] text-gray-400">Position</p></div>
                   </div>
                   {!!actionResult.oldestAncestor && <p className="text-xs text-gray-400">Oldest ancestor: <span className="text-white">{actionResult.oldestAncestor as string}</span></p>}
@@ -623,7 +631,7 @@ export default function DTUBrowserPage() {
                       'text-red-400'
                     }`}>{actionResult.grade as string}</span>
                     <div>
-                      <p className="text-lg font-bold text-white">{actionResult.totalScore as number}/100</p>
+                      <p className="text-lg font-bold text-white tabular-nums">{actionResult.totalScore as number}/100</p>
                       <p className="text-xs text-gray-400">{actionResult.title as string}</p>
                     </div>
                   </div>
@@ -631,7 +639,7 @@ export default function DTUBrowserPage() {
                     {Object.entries(actionResult.breakdown as Record<string, number>).map(([key, val]) => (
                       <div key={key} className="p-2 bg-lattice-deep rounded">
                         <div className="h-1.5 bg-lattice-border rounded-full overflow-hidden mb-1"><div className="h-full bg-neon-cyan rounded-full" style={{ width: `${(val / 25) * 100}%` }} /></div>
-                        <p className="text-xs font-bold text-white">{val}/25</p>
+                        <p className="text-xs font-bold text-white tabular-nums">{val}/25</p>
                         <p className="text-[10px] text-gray-400 capitalize">{key}</p>
                       </div>
                     ))}
@@ -648,20 +656,20 @@ export default function DTUBrowserPage() {
               {actionResult.influenceScore !== undefined && actionResult.inDegree !== undefined && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl font-bold text-neon-purple">{actionResult.influenceScore as number}</span>
+                    <span className="text-3xl font-bold text-neon-purple tabular-nums">{actionResult.influenceScore as number}</span>
                     <div>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded ${
                         (actionResult.influenceLevel as string) === 'high' ? 'bg-green-500/20 text-green-400' :
                         (actionResult.influenceLevel as string) === 'moderate' ? 'bg-yellow-500/20 text-yellow-400' :
                         'bg-gray-500/20 text-gray-400'
                       }`}>{actionResult.influenceLevel as string} influence</span>
-                      <p className="text-xs text-gray-400 mt-1">h-index: {actionResult.hIndex as number}</p>
+                      <p className="text-xs text-gray-400 mt-1 tabular-nums">h-index: {actionResult.hIndex as number}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.inDegree as number}</p><p className="text-[10px] text-gray-400">Cited By</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.outDegree as number}</p><p className="text-[10px] text-gray-400">References</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.reciprocalCount as number}</p><p className="text-[10px] text-gray-400">Reciprocal</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan tabular-nums">{actionResult.inDegree as number}</p><p className="text-[10px] text-gray-400">Cited By</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple tabular-nums">{actionResult.outDegree as number}</p><p className="text-[10px] text-gray-400">References</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green tabular-nums">{actionResult.reciprocalCount as number}</p><p className="text-[10px] text-gray-400">Reciprocal</p></div>
                   </div>
                   {(actionResult.topCiters as Array<{ title: string; count: number }>)?.length > 0 && (
                     <div>
@@ -669,7 +677,7 @@ export default function DTUBrowserPage() {
                       {(actionResult.topCiters as Array<{ title: string; count: number }>).map((c, i) => (
                         <div key={i} className="flex items-center justify-between text-xs p-1.5 bg-lattice-deep rounded mb-1">
                           <span className="text-white truncate">{c.title}</span>
-                          <span className="text-neon-cyan font-bold">{c.count}</span>
+                          <span className="text-neon-cyan font-bold tabular-nums">{c.count}</span>
                         </div>
                       ))}
                     </div>
@@ -693,7 +701,7 @@ export default function DTUBrowserPage() {
                     <div className="grid grid-cols-4 gap-2">
                       {Object.entries(actionResult.metrics as Record<string, number>).map(([key, val]) => (
                         <div key={key} className="p-2 bg-lattice-deep rounded text-center">
-                          <p className="text-sm font-bold text-white">{val}</p>
+                          <p className="text-sm font-bold text-white tabular-nums">{val}</p>
                           <p className="text-[10px] text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
                         </div>
                       ))}
@@ -708,14 +716,14 @@ export default function DTUBrowserPage() {
                   <div className="flex items-center gap-3">
                     {(actionResult.isUnique as boolean)
                       ? <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-500/20 text-green-400">Unique</span>
-                      : <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-500/20 text-red-400">{actionResult.duplicatesFound as number} duplicates</span>
+                      : <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-500/20 text-red-400 tabular-nums">{actionResult.duplicatesFound as number} duplicates</span>
                     }
-                    <span className="text-xs text-gray-400">Checked {actionResult.totalChecked as number} DTUs</span>
+                    <span className="text-xs text-gray-400 tabular-nums">Checked {actionResult.totalChecked as number} DTUs</span>
                   </div>
                   {(actionResult.duplicates as Array<{ title: string; combinedScore: number; titleSimilarity: number }>)?.map((d, i) => (
                     <div key={i} className="flex items-center justify-between text-xs p-2 bg-red-500/10 rounded">
                       <span className="text-white truncate flex-1">{d.title}</span>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0 tabular-nums">
                         <span className="text-gray-400">Title: {d.titleSimilarity}%</span>
                         <span className="text-red-400 font-bold">{d.combinedScore}%</span>
                       </div>
@@ -724,7 +732,7 @@ export default function DTUBrowserPage() {
                   {(actionResult.possibleDuplicates as Array<{ title: string; combinedScore: number }>)?.map((d, i) => (
                     <div key={i} className="flex items-center justify-between text-xs p-2 bg-yellow-500/10 rounded">
                       <span className="text-white truncate flex-1">{d.title}</span>
-                      <span className="text-yellow-400 font-bold">{d.combinedScore}%</span>
+                      <span className="text-yellow-400 font-bold tabular-nums">{d.combinedScore}%</span>
                     </div>
                   ))}
                 </div>
@@ -785,13 +793,11 @@ export default function DTUBrowserPage() {
           onSuccess={handleCreateSuccess}
         />
       )}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-deep/40 p-4">
         <TrendingDtus />
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <RecentMineCard domain="dtus" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="dtus" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="dtus" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

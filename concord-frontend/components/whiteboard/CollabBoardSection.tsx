@@ -18,6 +18,7 @@ import { WhiteboardWorkspaceSummary } from './WhiteboardWorkspaceSummary';
 import { useWhiteboardCollab } from '@/hooks/useWhiteboardCollab';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 
 interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number }
 interface Cluster { theme: string; memberIds: string[]; size: number }
@@ -313,25 +314,29 @@ export function CollabBoardSection() {
   const totalOpenComments = useMemo(() => Object.values(comments).reduce((s, arr) => s + arr.filter(c => !c.resolved).length, 0), [comments]);
 
   return (
-    <div className="flex flex-col bg-[#0d1117] border border-pink-500/20 rounded-lg overflow-hidden">
+    <div className="flex flex-col bg-lattice-deep border border-pink-500/20 rounded-lg overflow-hidden">
       <WhiteboardWorkspaceSummary refreshToken={summaryRefreshToken} />
     <div className="flex h-[calc(100vh-236px)] min-h-[560px]">
       {/* Boards rail */}
-      <aside className="w-56 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
+      <aside className="w-56 bg-lattice-void border-r border-white/5 flex flex-col flex-shrink-0">
         <header className="px-3 py-2.5 border-b border-white/5 flex items-center gap-2">
           <span className="text-xs font-semibold text-gray-200 flex-1">Boards</span>
           <button onClick={createBoard} className="p-1 text-pink-300 hover:text-pink-200" title="New board"><FolderPlus className="w-3.5 h-3.5" /></button>
         </header>
         <ul className="flex-1 overflow-y-auto">
           {loading ? (
-            <li className="px-3 py-2 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
+            <li className="px-3 py-2 space-y-2" aria-busy="true">
+              <Skeleton variant="block" height={38} />
+              <Skeleton variant="block" height={38} />
+              <Skeleton variant="block" height={38} />
+            </li>
           ) : boards.length === 0 ? (
             <li className="px-3 py-6 text-xs text-gray-400 text-center italic">No boards yet. <button onClick={createBoard} className="text-pink-300 underline">Create one</button></li>
           ) : boards.map(b => (
             <li key={b.id} className={cn('group px-3 py-1.5 flex items-center gap-2 cursor-pointer text-xs hover:bg-white/[0.04]', activeId === b.id && 'bg-pink-500/10 text-pink-200 border-l-2 border-pink-400')} onClick={() => openBoard(b.id)}>
               <div className="flex-1 min-w-0">
                 <div className="truncate text-white">{b.title}</div>
-                <div className="text-[10px] text-gray-400">{b.elementCount} elements · {b.updatedAt.slice(0, 10)}</div>
+                <div className="text-[10px] text-gray-400 tabular-nums">{b.elementCount} elements · {b.updatedAt.slice(0, 10)}</div>
               </div>
               <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); deleteBoard(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -356,7 +361,7 @@ export function CollabBoardSection() {
               {isSharedBoard && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-200 border border-sky-500/30 uppercase tracking-wide">Shared · live</span>
               )}
-              <span className="text-[10px] text-gray-400">{activeShapes.length} elements</span>
+              <span className="text-[10px] text-gray-400 tabular-nums">{activeShapes.length} elements</span>
               {!isSharedBoard && dirty && <span className="text-[10px] text-amber-300">● unsaved</span>}
               <BoardTimer boardId={activeId} />
               {!isSharedBoard && (
@@ -403,7 +408,7 @@ export function CollabBoardSection() {
 
       {/* AI sidebar */}
       {showAI && (
-        <aside className="w-80 bg-[#0a0c10] border-l border-white/5 overflow-hidden flex flex-col flex-shrink-0">
+        <aside className="w-80 bg-lattice-void border-l border-white/5 overflow-hidden flex flex-col flex-shrink-0">
           <nav className="flex items-center gap-1 px-2 py-2 border-b border-white/10 overflow-x-auto">
             {([
               { id: 'cluster',   label: 'Cluster' },
@@ -508,7 +513,7 @@ function BoardTimer({ boardId }: { boardId: string }) {
       <button onClick={stop} title={`${label} — click to stop`}
         className={cn('px-2 py-1 text-[11px] rounded inline-flex items-center gap-1 font-mono',
           low ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40' : 'bg-pink-500/15 text-pink-200 border border-pink-500/30')}>
-        <Timer className="w-3 h-3" />{mm}:{ss}<Square className="w-2.5 h-2.5 ml-0.5" />
+        <Timer className="w-3 h-3" /><span className="tabular-nums">{mm}:{ss}</span><Square className="w-2.5 h-2.5 ml-0.5" />
       </button>
     );
   }
@@ -518,7 +523,7 @@ function BoardTimer({ boardId }: { boardId: string }) {
         <Timer className="w-3 h-3" />Timer
       </button>
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-20 bg-[#0a0c10] border border-white/10 rounded shadow-lg p-1">
+        <div className="absolute right-0 top-full mt-1 z-20 bg-lattice-void border border-white/10 rounded shadow-lg p-1">
           {[1, 3, 5, 10, 15, 30].map(m => (
             <button key={m} onClick={() => start(m)} className="block w-full text-left px-3 py-1 text-[11px] text-gray-300 hover:bg-pink-500/15 hover:text-pink-200 rounded whitespace-nowrap">
               {m} min
@@ -545,10 +550,10 @@ function ClusterTab({ clusters, loading, onRun, active, stickyCount }: { cluster
           {clusters.map((c, i) => (
             <li key={i} className="rounded border border-pink-500/30 bg-pink-500/[0.04] p-2">
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-200 font-mono text-[9px]">{c.size}</span>
+                <span className="px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-200 font-mono text-[9px] tabular-nums">{c.size}</span>
                 <span className="font-semibold text-pink-100">{c.theme}</span>
               </div>
-              <div className="text-[10px] text-pink-200/70 font-mono">{c.memberIds.length} members</div>
+              <div className="text-[10px] text-pink-200/70 font-mono tabular-nums">{c.memberIds.length} members</div>
             </li>
           ))}
         </ul>
@@ -572,7 +577,7 @@ function SummarizeTab({ summary, loading, onRun, active }: { summary: SummaryRes
           </div>
           {summary.actionItems.length > 0 && (
             <div className="rounded border border-emerald-500/30 bg-emerald-500/[0.04] p-2">
-              <div className="text-[10px] uppercase tracking-wider text-emerald-300 mb-1">Action items · {summary.actionItems.length}</div>
+              <div className="text-[10px] uppercase tracking-wider text-emerald-300 mb-1">Action items · <span className="tabular-nums">{summary.actionItems.length}</span></div>
               <ul className="space-y-1">
                 {summary.actionItems.map((a, i) => (
                   <li key={i} className="text-emerald-100">

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Bell, Plus, Trash2, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Reminder { id: string; kind: string; time: string; enabled: boolean }
 interface DueItem { id: string; kind: string; time: string }
@@ -21,6 +22,7 @@ export function MhRemindersPanel() {
   const [due, setDue] = useState<DueResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [kind, setKind] = useState<typeof KINDS[number]>('mood');
   const [time, setTime] = useState('20:00');
 
@@ -30,6 +32,12 @@ export function MhRemindersPanel() {
       lensRun('mental-health', 'reminder-list', {}),
       lensRun('mental-health', 'reminder-due', {}),
     ]);
+    if (l.data?.ok === false || d.data?.ok === false) {
+      setLoadError((l.data?.ok === false ? l.data?.error : d.data?.error) || 'Could not load your reminders.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setReminders(l.data?.result?.reminders || []);
     setDue((d.data?.result as DueResult | null) || null);
     setLoading(false);
@@ -56,6 +64,10 @@ export function MhRemindersPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

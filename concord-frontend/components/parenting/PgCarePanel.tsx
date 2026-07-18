@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 type SubTab = 'feeding' | 'diapers' | 'activities' | 'medicine' | 'pumping';
 const SUBS: { id: SubTab; label: string; icon: typeof Milk }[] = [
@@ -40,6 +41,7 @@ function FeedingView({ childId }: { childId: string }) {
   const [entries, setEntries] = useState<FeedEntry[]>([]);
   const [stats, setStats] = useState<FeedStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -47,6 +49,12 @@ function FeedingView({ childId }: { childId: string }) {
       lensRun('parenting', 'feed-history', { childId, days: 7 }),
       lensRun('parenting', 'feed-stats', { childId }),
     ]);
+    if (h.data?.ok === false || s.data?.ok === false) {
+      setLoadError(h.data?.error || s.data?.error || 'Could not load feeding data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntries(h.data?.result?.entries || []);
     setStats((s.data?.result as FeedStats | null) || null);
     setLoading(false);
@@ -55,6 +63,7 @@ function FeedingView({ childId }: { childId: string }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) return <PanelLoading />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} variant="inline" /></div>;
 
   return (
     <div className="space-y-3">
@@ -128,12 +137,19 @@ interface ActivityEntry { id: string; kind: string; durationMin: number; note: s
 function ActivitiesView({ childId }: { childId: string }) {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ kind: 'play' as string, durationMin: '', note: '' });
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('parenting', 'activity-history', { childId, days: 7 });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load activities.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntries(r.data?.result?.entries || []);
     setLoading(false);
   }, [childId]);
@@ -151,6 +167,7 @@ function ActivitiesView({ childId }: { childId: string }) {
   };
 
   if (loading) return <PanelLoading />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} variant="inline" /></div>;
 
   return (
     <div className="space-y-3">
@@ -194,10 +211,17 @@ interface MedEntry { id: string; name: string; dose: string | null; at: string }
 function MedicineView({ childId }: { childId: string }) {
   const [entries, setEntries] = useState<MedEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('parenting', 'medicine-history', { childId, days: 14 });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load medicine history.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntries(r.data?.result?.entries || []);
     setLoading(false);
   }, [childId]);
@@ -205,6 +229,7 @@ function MedicineView({ childId }: { childId: string }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) return <PanelLoading />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} variant="inline" /></div>;
 
   return (
     <div className="space-y-3">

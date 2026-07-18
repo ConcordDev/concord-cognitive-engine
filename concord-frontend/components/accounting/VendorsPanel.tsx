@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Truck, Loader2, Plus, Trash2, Mail, Phone, Building2, Pencil, Check, X } from 'lucide-react';
+import { Truck, Plus, Trash2, Mail, Phone, Building2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
@@ -82,7 +83,7 @@ export function VendorsPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Truck className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Vendors</span>
-        <span className="text-[10px] text-gray-400">{list.length} · {list.filter(v => v.is1099).length} 1099</span>
+        <span className="text-[10px] text-gray-400 font-mono tabular-nums">{list.length} · {list.filter(v => v.is1099).length} 1099</span>
         <button
           onClick={() => setCreating(v => !v)}
           className="ml-auto px-2.5 py-1 text-xs rounded bg-emerald-500 text-black font-semibold hover:bg-emerald-400 inline-flex items-center gap-1"
@@ -96,7 +97,7 @@ export function VendorsPanel() {
           <input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} placeholder="Vendor name *" className="col-span-5 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.taxId} onChange={e => setDraft({ ...draft, taxId: e.target.value })} placeholder="EIN / SSN" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input value={draft.taxId} onChange={e => setDraft({ ...draft, taxId: e.target.value })} placeholder="EIN / SSN" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
           <select value={draft.paymentTerms} onChange={e => setDraft({ ...draft, paymentTerms: e.target.value as Vendor['paymentTerms'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {TERMS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
@@ -113,7 +114,7 @@ export function VendorsPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={5} columns={4} />
         ) : list.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No vendors yet.</div>
         ) : (
@@ -124,7 +125,7 @@ export function VendorsPanel() {
                   <input value={editDraft.name} onChange={e => setEditDraft({ ...editDraft, name: e.target.value })} placeholder="Vendor name *" className="col-span-5 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <input value={editDraft.email} onChange={e => setEditDraft({ ...editDraft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <input value={editDraft.phone} onChange={e => setEditDraft({ ...editDraft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                  <input value={editDraft.taxId} onChange={e => setEditDraft({ ...editDraft, taxId: e.target.value })} placeholder="EIN / SSN" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                  <input value={editDraft.taxId} onChange={e => setEditDraft({ ...editDraft, taxId: e.target.value })} placeholder="EIN / SSN" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
                   <select value={editDraft.paymentTerms} onChange={e => setEditDraft({ ...editDraft, paymentTerms: e.target.value as Vendor['paymentTerms'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
                     {TERMS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
@@ -148,14 +149,14 @@ export function VendorsPanel() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate flex items-center gap-2">
                     {v.name}
-                    {v.is1099 && <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">1099</span>}
+                    {v.is1099 && <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono tabular-nums">1099</span>}
                   </div>
                   <div className="text-[10px] text-gray-400 flex items-center gap-3">
-                    <span className="font-mono">{v.number}</span>
+                    <span className="font-mono tabular-nums">{v.number}</span>
                     <span>{TERMS.find(t => t.id === v.paymentTerms)?.label}</span>
                     {v.email && <span className="inline-flex items-center gap-0.5"><Mail className="w-2.5 h-2.5" />{v.email}</span>}
                     {v.phone && <span className="inline-flex items-center gap-0.5"><Phone className="w-2.5 h-2.5" />{v.phone}</span>}
-                    {v.taxId && <span className={cn('inline-flex items-center gap-0.5 font-mono', v.is1099 && 'text-amber-300')}><Building2 className="w-2.5 h-2.5" />{v.taxId}</span>}
+                    {v.taxId && <span className={cn('inline-flex items-center gap-0.5 font-mono tabular-nums', v.is1099 && 'text-amber-300')}><Building2 className="w-2.5 h-2.5" />{v.taxId}</span>}
                   </div>
                 </div>
                 <button onClick={() => startEdit(v)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-white/10 text-gray-300" title="Edit">

@@ -22,6 +22,7 @@ import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
 import { useConkayHudStore, feaResultFromRun } from './conkayHudStore';
+import { useConkayRunStore, type RawToolCall } from './conkayRunStore';
 import { detectArtifact } from '@/lib/conkay/artifact-kinds';
 import { isMutatingMacro } from '@/lib/conkay/mutating-macros';
 import { ConKayActionConfirm } from './ConKayActionConfirm';
@@ -585,12 +586,19 @@ export function ConKayOverlay() {
     setInput('');
     setRunning(true);
     beginWork('Thinking…', [{ id: 'agent', label: 'Reasoning', state: 'active' }]);
+    // A4 — promote this free-form run into the mission-control plan store. Its
+    // ONLY writes are runStarted (here), toolCallReceived (per real tool_call SSE
+    // event, below), and runFinished (finally) — every step is a real event.
+    useConkayRunStore.getState().runStarted();
     const aid = `a-${Date.now()}`;
     let placed = false;
     let liveText = '';
     const liveToolCalls: unknown[] = [];
     const liveDtuRefs: Array<{ id: string; title: string | null; tier: string | null }> = [];
     let toolCount = 0;
+    // A4 — run outcome, hoisted so the `finally` can report it to the run store.
+    let finalOk = true;
+    let finalErr = '';
     // Push the live-updating assistant message (content/toolCalls/dtuRefs) —
     // called from every branch below so text, tool chips, and artifacts all
     // land on screen as they actually happen, not just at the end.
@@ -619,8 +627,6 @@ export function ConKayOverlay() {
       const decoder = new TextDecoder();
       let buf = '';
       let done_ = false;
-      let finalOk = true;
-      let finalErr = '';
       while (!done_) {
         const { value, done: streamDone } = await reader.read();
         if (streamDone) break;
@@ -650,6 +656,10 @@ export function ConKayOverlay() {
             // (the step line below + the artifact/DTU rendering further
             // down), never implying the user was asked first.
             liveToolCalls.push(data);
+            // A4 — mirror this REAL tool_call receipt into the mission-control
+            // run store (the panel's sole data source). The store re-validates
+            // every field with typeof guards, so the cast only narrows the view.
+            useConkayRunStore.getState().toolCallReceived(data as RawToolCall);
             toolCount += 1;
             const tc = data as {
               tool?: string; ok?: boolean; key?: string; domain?: string; action?: string;
@@ -703,6 +713,8 @@ export function ConKayOverlay() {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      finalOk = false;
+      finalErr = msg;
       setStep('agent', 'error', 'Hit a snag');
       // A tool call may already have placed a message shell (real tool chips
       // on screen) even though the stream then failed before any answer text
@@ -713,6 +725,9 @@ export function ConKayOverlay() {
         syncMessage();
       }
     } finally {
+      // A4 — real run outcome to the mission-control store (stops the header's
+      // "running" pulse; flags an error only if the run genuinely failed).
+      useConkayRunStore.getState().runFinished({ ok: finalOk, error: finalErr });
       setRunning(false);
       clearWork();
     }

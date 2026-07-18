@@ -35,6 +35,7 @@ import { LensPageShell } from '@/components/lens/LensPageShell';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import LiveFeed from '@/components/lens/LiveFeed';
@@ -187,10 +188,16 @@ export default function LogisticsLensPage() {
 
   // Fleet vehicle geolocation for the Map tab — real fleet-vehicles-list
   // (each vehicle carries an optional lat/lng set via fleet-vehicles-update-status).
-  const { data: mapVehicles } = useQuery<MapVehicle[]>({
+  const {
+    data: mapVehicles,
+    isError: isMapError,
+    error: mapError,
+    refetch: refetchMap,
+  } = useQuery<MapVehicle[]>({
     queryKey: ['logistics', 'map-vehicles'],
     queryFn: async () => {
       const res = await lensRun('logistics', 'fleet-vehicles-list', {});
+      if (res.data?.ok === false) throw new Error(res.data?.error || 'Could not load fleet vehicles.');
       return (res.data?.result?.vehicles || []) as MapVehicle[];
     },
     enabled: mode === 'map',
@@ -290,6 +297,10 @@ export default function LogisticsLensPage() {
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
               <Map className="w-4 h-4 text-neon-cyan" /> Fleet Map
             </h3>
+            {isMapError ? (
+              <ErrorState message={(mapError as Error | null)?.message || 'Could not load fleet vehicles.'} onRetry={() => void refetchMap()} />
+            ) : (
+              <>
             <MapView
               markers={(mapVehicles || [])
                 .filter((v) => v.lat != null && v.lng != null)
@@ -306,6 +317,8 @@ export default function LogisticsLensPage() {
                 No vehicle GPS positions yet — positions are set via fleet dispatch status updates.
               </p>
             )}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -318,8 +331,6 @@ export default function LogisticsLensPage() {
       </section>
     </LensPageShell>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#logistics-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to logistics content</a>
           <RecentMineCard domain="logistics" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="logistics" hideWhenEmpty className="mt-3" />

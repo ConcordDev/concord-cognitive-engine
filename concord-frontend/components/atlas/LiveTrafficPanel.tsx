@@ -87,20 +87,20 @@ export function LiveTrafficPanel() {
   const levelClass = result ? LEVEL_COLOR[result.congestionLevel] || LEVEL_COLOR.moderate : '';
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-      <div className="border-b border-zinc-800 bg-zinc-900/60 p-3">
+    <div className="overflow-hidden rounded-xl border border-lattice-border bg-lattice-void">
+      <div className="border-b border-lattice-border bg-lattice-surface/60 p-3">
         <div className="flex items-center gap-2">
           <TrafficCone className="h-4 w-4 text-amber-400" />
           <span className="text-sm font-semibold text-white">Live traffic &amp; ETA</span>
         </div>
 
-        <div className="mt-3 flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950 p-1">
+        <div className="mt-3 flex items-center gap-1 rounded-lg border border-lattice-border bg-lattice-void p-1">
           {(['driving', 'walking', 'cycling'] as Mode[]).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setMode(m)}
-              className={`flex-1 rounded px-2 py-1.5 text-[11px] capitalize transition ${mode === m ? 'bg-amber-500/20 text-amber-200' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'}`}
+              className={`flex-1 rounded px-2 py-1.5 text-[11px] capitalize transition ${mode === m ? 'bg-amber-500/20 text-amber-200' : 'text-gray-400 hover:bg-lattice-elevated/60 hover:text-gray-200'}`}
             >
               {m}
             </button>
@@ -108,10 +108,10 @@ export function LiveTrafficPanel() {
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <input type="number" step="any" placeholder="Start lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-amber-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="Start lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-amber-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="Dest lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-amber-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="Dest lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-amber-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Start lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-amber-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Start lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-amber-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Dest lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-amber-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Dest lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-amber-500/40 focus:outline-none" />
         </div>
 
         <button
@@ -130,7 +130,7 @@ export function LiveTrafficPanel() {
           <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {!result && !error && !loading && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
+          <div className="rounded border border-dashed border-lattice-border p-6 text-center text-[11px] text-gray-400">
             No data yet. Enter route coordinates to see a traffic-adjusted ETA.
           </div>
         )}
@@ -138,9 +138,9 @@ export function LiveTrafficPanel() {
           <div className="space-y-3">
             <div className={`rounded-lg border p-3 ${levelClass}`}>
               <div className="flex items-baseline justify-between">
-                <span className="font-mono text-2xl">{result.trafficText}</span>
+                <span className="font-mono tabular-nums text-2xl">{result.trafficText}</span>
                 {eta && (
-                  <span className="flex items-center gap-1 font-mono text-sm">
+                  <span className="flex items-center gap-1 font-mono tabular-nums text-sm">
                     <Clock className="h-3.5 w-3.5" /> arrive {eta}
                   </span>
                 )}
@@ -151,31 +151,31 @@ export function LiveTrafficPanel() {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-                <p className="font-mono text-sm text-white">{result.distanceKm} km</p>
-                <p className="text-[10px] text-zinc-400">Distance</p>
+              <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2 text-center">
+                <p className="font-mono tabular-nums text-sm text-white">{result.distanceKm} km</p>
+                <p className="text-[10px] text-gray-400">Distance</p>
               </div>
-              <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-                <p className="font-mono text-sm text-white">{result.localHour}h</p>
-                <p className="text-[10px] text-zinc-400">Local hour</p>
+              <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2 text-center">
+                <p className="font-mono tabular-nums text-sm text-white">{result.localHour}h</p>
+                <p className="text-[10px] text-gray-400">Local hour</p>
               </div>
-              <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-                <p className="font-mono text-sm text-white">{result.legs.length}</p>
-                <p className="text-[10px] text-zinc-400">Legs</p>
+              <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2 text-center">
+                <p className="font-mono tabular-nums text-sm text-white">{result.legs.length}</p>
+                <p className="text-[10px] text-gray-400">Legs</p>
               </div>
             </div>
             {result.legs.length > 0 && (
               <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Per-leg congestion</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">Per-leg congestion</div>
                 {result.legs.map((leg) => (
-                  <div key={leg.index} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[11px]">
-                    <span className="text-zinc-300">Leg {leg.index + 1} · {leg.distanceKm} km</span>
-                    <span className="font-mono text-zinc-400">{leg.freeFlowText} → <span className="text-amber-300">{leg.trafficText}</span></span>
+                  <div key={leg.index} className="flex items-center justify-between rounded border border-lattice-border bg-lattice-surface/40 px-2.5 py-1.5 text-[11px]">
+                    <span className="text-gray-300">Leg {leg.index + 1} · {leg.distanceKm} km</span>
+                    <span className="font-mono tabular-nums text-gray-400">{leg.freeFlowText} → <span className="text-amber-300">{leg.trafficText}</span></span>
                   </div>
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-zinc-400">Source: {result.source}</p>
+            <p className="text-[10px] text-gray-400">Source: {result.source}</p>
           </div>
         )}
       </div>

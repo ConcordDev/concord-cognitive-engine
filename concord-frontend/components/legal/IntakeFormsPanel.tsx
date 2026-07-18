@@ -180,7 +180,7 @@ export function IntakeFormsPanel() {
       )}
 
       {/* Forms list */}
-      <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Client Intake Forms</span>
@@ -316,7 +316,7 @@ export function IntakeFormsPanel() {
 
       {/* Submission form (fill out selected form) */}
       {selectedForm && (
-        <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
+        <div className="bg-lattice-surface border border-emerald-500/20 rounded-lg overflow-hidden">
           <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
             <Send className="w-4 h-4 text-emerald-400" />
             <span className="text-sm font-semibold text-gray-200">Submit: {selectedForm.name}</span>
@@ -381,7 +381,7 @@ export function IntakeFormsPanel() {
       )}
 
       {/* Submissions */}
-      <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <UserPlus className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Submissions</span>

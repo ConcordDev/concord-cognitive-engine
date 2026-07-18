@@ -49,8 +49,8 @@ export interface ShopfrontShellProps {
 
 export function ShopfrontShell({ activeNav, onNavChange, badges = {}, shopName, currency, children }: ShopfrontShellProps) {
   return (
-    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
-      <aside className="w-48 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
+    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
+      <aside className="w-48 bg-lattice-void border-r border-white/5 flex flex-col flex-shrink-0">
         <header className="px-3 py-3 border-b border-white/5">
           <div className="flex items-center gap-2">
             <Wallet className="w-4 h-4 text-orange-400" />

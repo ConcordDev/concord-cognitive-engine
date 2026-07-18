@@ -5,6 +5,7 @@ import { Calendar, Search, Loader2, Video, MapPin, CreditCard, ListChecks } from
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface MyAppointment {
   id: string; providerId: string; date: string; time: string; kind: 'in_person' | 'telehealth';
@@ -147,7 +148,7 @@ export function AppointmentScheduler() {
   }, {} as Record<string, AppointmentSlot[]>);
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Calendar className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Appointments</span>
@@ -160,7 +161,7 @@ export function AppointmentScheduler() {
       {view === 'mine' ? (
         <div className="p-3">
           {myLoading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+            <SkeletonTableRows rows={3} columns={3} />
           ) : myAppointments.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-gray-400">No appointments yet.</div>
           ) : (
@@ -274,18 +275,18 @@ export function AppointmentScheduler() {
             <div className="space-y-3">
               <div className="text-sm font-medium text-white">{selectedProvider.name}</div>
               <div className="text-xs text-gray-400">{selectedProvider.specialty} · {selectedProvider.practice}</div>
-              <div className="rounded border border-zinc-700 bg-zinc-900/60 p-2">
-                <label className="text-[10px] uppercase tracking-wider text-zinc-400">Co-pay (USD, optional)</label>
+              <div className="rounded border border-lattice-border bg-lattice-surface/60 p-2">
+                <label className="text-[10px] uppercase tracking-wider text-gray-400">Co-pay (USD, optional)</label>
                 <input
                   type="number" min={0} step="0.01" placeholder="0.00"
                   value={copayUsd}
                   onChange={(e) => setCopayUsd(e.target.value)}
-                  className="mt-1 w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 font-mono"
+                  className="mt-1 w-full bg-lattice-void border border-lattice-border rounded px-2 py-1 text-xs text-white font-mono"
                 />
               </div>
               {Object.entries(slotsByDate).slice(0, 10).map(([date, daySlots]) => (
                 <div key={date}>
-                  <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 tabular-nums">
                     {new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
                   </div>
                   <div className="flex flex-wrap gap-1.5">

@@ -31,6 +31,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
+import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -650,9 +651,22 @@ export default function CryptoLensPage() {
       {/* AI Actions */}
       <UniversalActions domain="crypto" artifactId={chainItems[0]?.id} compact />
       {isLoading ? (
-        <div className="flex items-center justify-center p-12 text-gray-400">
-          <Loader2 className="w-6 h-6 animate-spin mr-2" />
-          Loading crypto data...
+        <div className="space-y-6" aria-busy="true">
+          {/* Summary tiles skeleton — matches the 4-up KPI grid below */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="lens-card space-y-2">
+                <Skeleton variant="avatar" width={20} height={20} />
+                <Skeleton width="70%" height="1.75rem" />
+                <Skeleton width="45%" height="0.75rem" />
+              </div>
+            ))}
+          </div>
+          {/* Holdings table skeleton — matches the Price Overview rail */}
+          <div className="panel p-4">
+            <Skeleton width="180px" height="1rem" className="mb-4" />
+            <SkeletonTableRows rows={6} columns={4} />
+          </div>
         </div>
       ) : (
         <>
@@ -661,12 +675,12 @@ export default function CryptoLensPage() {
             <div className="lens-card">
               <Wallet className="w-5 h-5 text-neon-green mb-2" />
               <p
-                className="text-2xl font-bold"
+                className="text-2xl font-bold font-mono tabular-nums"
                 style={{
                   animation: 'portfolioGlow 3s ease-in-out infinite',
                 }}
               >
-                {showBalances ? `$${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '****'}
+                {showBalances ? `$${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '••••••'}
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <p className="text-sm text-gray-400">Total Portfolio Value</p>
@@ -691,17 +705,17 @@ export default function CryptoLensPage() {
             </div>
             <div className="lens-card">
               <BarChart3 className="w-5 h-5 text-neon-blue mb-2" />
-              <p className="text-2xl font-bold">{chains.length}</p>
+              <p className="text-2xl font-bold font-mono tabular-nums">{chains.length}</p>
               <p className="text-sm text-gray-400">Chains</p>
             </div>
             <div className="lens-card">
               <ArrowRightLeft className="w-5 h-5 text-neon-purple mb-2" />
-              <p className="text-2xl font-bold">{transactions.length}</p>
+              <p className="text-2xl font-bold font-mono tabular-nums">{transactions.length}</p>
               <p className="text-sm text-gray-400">Transactions</p>
             </div>
             <div className="lens-card">
               <Lock className="w-5 h-5 text-neon-cyan mb-2" />
-              <p className="text-2xl font-bold">{wallets.length}</p>
+              <p className="text-2xl font-bold font-mono tabular-nums">{wallets.length}</p>
               <p className="text-sm text-gray-400">Wallets</p>
             </div>
           </div>
@@ -739,7 +753,7 @@ export default function CryptoLensPage() {
                     <div key={chain.id} className="flex items-center gap-1.5 text-xs">
                       <span className={`w-2 h-2 rounded-full ${color.bg}`} />
                       <span className={`${color.text} font-mono font-semibold`}>{chain.symbol}</span>
-                      <span className="text-gray-400">{pct.toFixed(1)}%</span>
+                      <span className="text-gray-400 font-mono tabular-nums">{pct.toFixed(1)}%</span>
                     </div>
                   );
                 })}
@@ -825,13 +839,13 @@ export default function CryptoLensPage() {
                               {chain.symbol}
                             </span>
                           </div>
-                          <p className="text-2xl font-bold text-neon-green">
-                            {showBalances ? `${chain.balance.toLocaleString()} ${chain.symbol}` : '****'}
+                          <p className="text-2xl font-bold font-mono tabular-nums text-neon-green">
+                            {showBalances ? `${chain.balance.toLocaleString()} ${chain.symbol}` : '••••'}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-gray-400 mt-1 font-mono tabular-nums">
                             {showBalances
                               ? `$${(chain.balance * chain.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} @ $${chain.price}`
-                              : '****'}
+                              : '••••'}
                           </p>
                           {/* Transaction sparkline dots */}
                           {chainSparklines[chain.symbol]?.length > 0 && (
@@ -910,9 +924,9 @@ export default function CryptoLensPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-mono font-bold">${chain.price.toLocaleString()}</p>
-                          <p className="text-xs text-gray-400">
-                            Holdings: {showBalances ? `$${(chain.balance * chain.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '****'}
+                          <p className="font-mono tabular-nums font-bold">${chain.price.toLocaleString()}</p>
+                          <p className="text-xs text-gray-400 font-mono tabular-nums">
+                            Holdings: {showBalances ? `$${(chain.balance * chain.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '••••'}
                           </p>
                         </div>
                       </div>
@@ -940,21 +954,21 @@ export default function CryptoLensPage() {
                     <ArrowDownLeft className="w-3.5 h-3.5 text-neon-green" />
                     Total Earned
                   </div>
-                  <p className="font-mono font-bold text-neon-green text-lg">+{totalEarned.toLocaleString()}</p>
+                  <p className="font-mono tabular-nums font-bold text-neon-green text-lg">+{totalEarned.toLocaleString()}</p>
                 </div>
                 <div className="panel p-3 flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
                     <ArrowUpRight className="w-3.5 h-3.5 text-neon-pink" />
                     Total Spent
                   </div>
-                  <p className="font-mono font-bold text-neon-pink text-lg">-{totalSpent.toLocaleString()}</p>
+                  <p className="font-mono tabular-nums font-bold text-neon-pink text-lg">-{totalSpent.toLocaleString()}</p>
                 </div>
                 <div className="panel p-3 flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
                     <Send className="w-3.5 h-3.5 text-neon-blue" />
                     Transferred
                   </div>
-                  <p className="font-mono font-bold text-neon-blue text-lg">{totalTransferred.toLocaleString()}</p>
+                  <p className="font-mono tabular-nums font-bold text-neon-blue text-lg">{totalTransferred.toLocaleString()}</p>
                 </div>
                 <div className="panel p-3 flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
@@ -964,7 +978,7 @@ export default function CryptoLensPage() {
                     }
                     Net Flow
                   </div>
-                  <p className={cn('font-mono font-bold text-lg', netFlow >= 0 ? 'text-neon-green' : 'text-neon-pink')}>
+                  <p className={cn('font-mono tabular-nums font-bold text-lg', netFlow >= 0 ? 'text-neon-green' : 'text-neon-pink')}>
                     {netFlow >= 0 ? '+' : ''}{netFlow.toLocaleString()}
                   </p>
                 </div>
@@ -1025,7 +1039,7 @@ export default function CryptoLensPage() {
                           </div>
                         </div>
                         <span className={cn(
-                          'font-mono font-semibold',
+                          'font-mono tabular-nums font-semibold',
                           tx.type === 'earn' ? 'text-neon-green' : tx.type === 'spend' ? 'text-neon-pink' : 'text-neon-blue'
                         )}>
                           {tx.type === 'earn' ? '+' : '-'}{tx.amount} {tx.symbol}
@@ -1276,7 +1290,7 @@ export default function CryptoLensPage() {
             onClick={() => setShowReceive(false)}
           >
             <motion.div
-              className="bg-[#0d1117] border border-cyan-500/30 rounded-xl p-4 max-w-md w-full mx-4"
+              className="bg-lattice-elevated border border-cyan-500/30 rounded-xl p-4 max-w-md w-full mx-4"
               onClick={(e) => e.stopPropagation()}
               initial={{ y: -12, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -1308,7 +1322,7 @@ export default function CryptoLensPage() {
           >
             <motion.div
               key="send-modal-panel"
-              className="bg-lattice-bg border border-lattice-border rounded-lg p-6 w-full max-w-md space-y-4"
+              className="bg-lattice-elevated border border-lattice-border rounded-lg p-6 w-full max-w-md space-y-4"
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
@@ -1320,7 +1334,7 @@ export default function CryptoLensPage() {
                 <button onClick={() => setShowSendModal(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <p className="text-sm text-gray-400">
-                Available: {showBalances ? `${selectedChainData.balance} ${selectedChainData.symbol}` : '****'}
+                Available: <span className="font-mono tabular-nums">{showBalances ? `${selectedChainData.balance} ${selectedChainData.symbol}` : '••••'}</span>
               </p>
               <input
                 type="text"
@@ -1376,7 +1390,7 @@ export default function CryptoLensPage() {
           >
             <motion.div
               key="add-wallet-panel"
-              className="bg-lattice-bg border border-lattice-border rounded-lg p-6 w-full max-w-md space-y-4"
+              className="bg-lattice-elevated border border-lattice-border rounded-lg p-6 w-full max-w-md space-y-4"
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
@@ -1437,7 +1451,7 @@ export default function CryptoLensPage() {
           >
             <motion.div
               key="add-chain-panel"
-              className="bg-lattice-bg border border-lattice-border rounded-lg p-6 w-full max-w-md space-y-4"
+              className="bg-lattice-elevated border border-lattice-border rounded-lg p-6 w-full max-w-md space-y-4"
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
@@ -1528,12 +1542,12 @@ export default function CryptoLensPage() {
                   {r?.totalValue !== undefined && r?.allocations !== undefined && (
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2 bg-lattice-bg rounded text-center">
-                          <p className="text-sm font-bold text-neon-green">${r.totalValue.toLocaleString()}</p>
+                        <div className="p-2 bg-lattice-deep rounded text-center">
+                          <p className="text-sm font-bold font-mono tabular-nums text-neon-green">${r.totalValue.toLocaleString()}</p>
                           <p className="text-[10px] text-gray-400">Total Value</p>
                         </div>
-                        <div className="p-2 bg-lattice-bg rounded text-center">
-                          <p className={`text-sm font-bold ${(r.totalUnrealizedPnl ?? 0) >= 0 ? 'text-neon-green' : 'text-red-400'}`}>
+                        <div className="p-2 bg-lattice-deep rounded text-center">
+                          <p className={`text-sm font-bold font-mono tabular-nums ${(r.totalUnrealizedPnl ?? 0) >= 0 ? 'text-neon-green' : 'text-red-400'}`}>
                             {r.totalUnrealizedPnl != null ? `${r.totalUnrealizedPnl >= 0 ? '+' : ''}$${r.totalUnrealizedPnl.toLocaleString()}` : '—'}
                           </p>
                           <p className="text-[10px] text-gray-400">Unrealized P&L</p>
@@ -1550,7 +1564,7 @@ export default function CryptoLensPage() {
                         {(r.allocations as Allocation[]).map((h: Allocation) => (
                           <div key={h.token} className="flex items-center gap-2">
                             <span className="text-gray-300 w-12 font-mono">{h.token}</span>
-                            <div className="flex-1 bg-lattice-bg rounded-full h-1.5">
+                            <div className="flex-1 bg-lattice-deep rounded-full h-1.5">
                               <div className="bg-neon-green h-1.5 rounded-full" style={{ width: `${h.weight}%` }} />
                             </div>
                             <span className="text-gray-400 w-10 text-right">{h.weight}%</span>
@@ -1597,18 +1611,18 @@ export default function CryptoLensPage() {
                   {r?.recommendations !== undefined && r?.gasLimit !== undefined && (
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2 bg-lattice-bg rounded text-center">
+                        <div className="p-2 bg-lattice-deep rounded text-center">
                           <p className="font-bold text-neon-green">{r.gasLimit.toLocaleString()}</p>
                           <p className="text-[10px] text-gray-400">Gas Limit</p>
                         </div>
-                        <div className="p-2 bg-lattice-bg rounded text-center">
+                        <div className="p-2 bg-lattice-deep rounded text-center">
                           <p className={`font-bold ${r.networkCongestion === 'low' ? 'text-neon-green' : r.networkCongestion === 'moderate' ? 'text-yellow-400' : 'text-red-400'}`}>{r.networkCongestion ?? 'N/A'}</p>
                           <p className="text-[10px] text-gray-400">Congestion</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         {(['slow', 'standard', 'fast'] as const).map(speed => (
-                          <div key={speed} className="p-2 bg-lattice-bg rounded text-center space-y-0.5">
+                          <div key={speed} className="p-2 bg-lattice-deep rounded text-center space-y-0.5">
                             <p className="text-[10px] text-gray-400 capitalize">{speed}</p>
                             <p className="font-bold text-neon-green text-sm">{(r.recommendations as Record<string, GasRecommendation>)[speed].maxFeeGwei} Gwei</p>
                             <p className="text-[10px] text-gray-400">+{(r.recommendations as Record<string, GasRecommendation>)[speed].priorityFeeGwei} tip</p>
@@ -1626,15 +1640,15 @@ export default function CryptoLensPage() {
                   {r?.patterns !== undefined && (
                     <div className="space-y-2">
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="p-2 bg-lattice-bg rounded text-center">
+                        <div className="p-2 bg-lattice-deep rounded text-center">
                           <p className="font-bold text-red-400">{r.riskSummary?.high ?? 0}</p>
                           <p className="text-[10px] text-gray-400">High Risk</p>
                         </div>
-                        <div className="p-2 bg-lattice-bg rounded text-center">
+                        <div className="p-2 bg-lattice-deep rounded text-center">
                           <p className="font-bold text-yellow-400">{r.riskSummary?.moderate ?? 0}</p>
                           <p className="text-[10px] text-gray-400">Moderate</p>
                         </div>
-                        <div className="p-2 bg-lattice-bg rounded text-center">
+                        <div className="p-2 bg-lattice-deep rounded text-center">
                           <p className="font-bold text-neon-green">{r.riskSummary?.informational ?? 0}</p>
                           <p className="text-[10px] text-gray-400">Info</p>
                         </div>
@@ -1645,7 +1659,7 @@ export default function CryptoLensPage() {
                       )}
                       <div className="space-y-1">
                         {(r.patterns as DetectedPattern[]).map((p: DetectedPattern, i: number) => (
-                          <div key={i} className="p-2 bg-lattice-bg rounded space-y-0.5">
+                          <div key={i} className="p-2 bg-lattice-deep rounded space-y-0.5">
                             <div className="flex items-center justify-between">
                               <span className="text-gray-200 font-mono text-[10px]">{p.type.replace(/_/g, ' ')}</span>
                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${p.risk === 'high' ? 'bg-red-500/20 text-red-400' : p.risk === 'moderate' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400'}`}>
@@ -1687,10 +1701,10 @@ export default function CryptoLensPage() {
       </div>
 
       {/* Bespoke 0x aggregator swap-route preview with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
         <SwapRoutePanel />
       </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
         <CoinGeckoTicker />
       </section>
 

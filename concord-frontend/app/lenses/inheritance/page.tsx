@@ -877,8 +877,6 @@ export default function InheritancePage() {
         </section>
       </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows</div>
       <a href="#inheritance-skip" className="sr-only focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-amber-500">Skip to inheritance content</a>
       <RecentMineCard domain="inheritance" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="inheritance" hideWhenEmpty className="mt-3" />

@@ -19,6 +19,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { getPlayer } from '@/lib/music/player';
+import { ErrorState } from '@/components/ui';
 
 // ── shared types ────────────────────────────────────────────────────
 interface Track {
@@ -101,6 +102,7 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
   const [downloads, setDownloads] = useState<DownloadEntry[]>([]);
   const [downloadKb, setDownloadKb] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [lyricsMsg, setLyricsMsg] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
@@ -108,6 +110,12 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
       lensRun('music', 'track-list', {}),
       lensRun('music', 'download-list', {}),
     ]);
+    if (t.data?.ok === false || d.data?.ok === false) {
+      setLoadError((t.data?.ok === false ? t.data?.error : d.data?.error) || 'Could not load your catalog.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTracks(t.data?.result?.tracks || []);
     setDownloads(d.data?.result?.downloads || []);
     setDownloadKb(d.data?.result?.totalSizeKb || 0);
@@ -151,6 +159,7 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   return (
     <div className="space-y-4">
       {/* Free-API ingestion (iTunes / Jamendo / Audius) */}
@@ -235,6 +244,7 @@ function EngineTab() {
   const [cfg, setCfg] = useState<EngineConfig | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deviceName, setDeviceName] = useState('');
   const [deviceKind, setDeviceKind] = useState('web');
 
@@ -243,6 +253,12 @@ function EngineTab() {
       lensRun('music', 'engine-config', {}),
       lensRun('music', 'device-list', {}),
     ]);
+    if (c.data?.ok === false || d.data?.ok === false) {
+      setLoadError((c.data?.ok === false ? c.data?.error : d.data?.error) || 'Could not load playback settings.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const cfgVal = (c.data?.result as EngineConfig | null) || null;
     setCfg(cfgVal);
     setDevices(d.data?.result?.devices || []);
@@ -290,6 +306,7 @@ function EngineTab() {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   const eq = cfg?.config.eq;
   const karaoke = cfg?.config.karaoke;
   return (
@@ -390,12 +407,19 @@ function DiscoverTab({ onChange }: { onChange: () => void }) {
   const [recs, setRecs] = useState<Track[]>([]);
   const [recBasis, setRecBasis] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [sp, sr] = await Promise.all([
       lensRun('music', 'scheduled-playlist-list', {}),
       lensRun('music', 'smart-recommend', {}),
     ]);
+    if (sp.data?.ok === false || sr.data?.ok === false) {
+      setLoadError((sp.data?.ok === false ? sp.data?.error : sr.data?.error) || 'Could not load discovery.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setScheduled(sp.data?.result?.playlists || []);
     setRecs(sr.data?.result?.tracks || []);
     setRecBasis(sr.data?.result?.basis || '');
@@ -441,6 +465,7 @@ function DiscoverTab({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   return (
     <div className="space-y-4">
       {/* AI DJ with voice */}
@@ -541,6 +566,7 @@ function SocialTab({ onChange }: { onChange: () => void }) {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [collabMsg, setCollabMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [fa, pl, tr] = await Promise.all([
@@ -548,6 +574,12 @@ function SocialTab({ onChange }: { onChange: () => void }) {
       lensRun('music', 'playlist-list', {}),
       lensRun('music', 'track-list', {}),
     ]);
+    if (fa.data?.ok === false || pl.data?.ok === false || tr.data?.ok === false) {
+      setLoadError((fa.data?.ok === false ? fa.data?.error : pl.data?.ok === false ? pl.data?.error : tr.data?.error) || 'Could not load social data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setActivity(fa.data?.result?.activity || []);
     setPlaylists(pl.data?.result?.playlists || []);
     setTracks(tr.data?.result?.tracks || []);
@@ -614,6 +646,7 @@ function SocialTab({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   return (
     <div className="space-y-4">
       {/* Jam */}
@@ -737,6 +770,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
   const [concerts, setConcerts] = useState<ConcertEvent[]>([]);
   const [concertMsg, setConcertMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [an, pr, tr] = await Promise.all([
@@ -744,6 +778,12 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
       lensRun('music', 'artist-profile-get', {}),
       lensRun('music', 'track-list', {}),
     ]);
+    if (an.data?.ok === false || pr.data?.ok === false || tr.data?.ok === false) {
+      setLoadError((an.data?.ok === false ? an.data?.error : pr.data?.ok === false ? pr.data?.error : tr.data?.error) || 'Could not load artist data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setAnalytics((an.data?.result as StreamAnalytics | null) || null);
     const p = (pr.data?.result?.profile as ArtistProfile) || null;
     setProfile(p);
@@ -777,6 +817,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   return (
     <div className="space-y-4">
       {/* Stream analytics */}

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Filter, Save, Play } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { ProductivityTaskRow, type ProdTask } from './ProductivityTaskRow';
 
 interface SavedFilter {
@@ -28,6 +29,7 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [results, setResults] = useState<ProdTask[] | null>(null);
   const [activeName, setActiveName] = useState<string | null>(null);
   const [query, setQuery] = useState({ projectId: '', label: '', priority: '', due: '' as DueBucket, search: '' });
@@ -39,6 +41,12 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
       lensRun('productivity', 'filter-list', {}),
       lensRun('productivity', 'project-list', {}),
     ]);
+    if (f.data?.ok === false || p.data?.ok === false) {
+      setLoadError(f.data?.error || p.data?.error || 'Could not load filters or projects.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setFilters(f.data?.result?.filters || []);
     setProjects((p.data?.result?.projects || []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
     setLoading(false);
@@ -78,6 +86,10 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, RefreshCw, ShieldAlert, Flame, Award, Trophy, Star, CheckCircle2, CalendarDays, Gauge, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Medication { id: string; name: string }
 interface AutoReorderConfig { medId: string; medName: string; thresholdDays: number; pharmacy: string | null; enabled: boolean }
@@ -58,6 +59,7 @@ export function RxAdherencePanel() {
   const [risk, setRisk] = useState<RiskResult | null>(null);
   const [expandedRiskMed, setExpandedRiskMed] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reorderForm, setReorderForm] = useState({ medId: '', thresholdDays: '7', pharmacy: '' });
   const [reorderMsg, setReorderMsg] = useState<string | null>(null);
@@ -73,6 +75,12 @@ export function RxAdherencePanel() {
       lensRun('pharmacy', 'adherence-streak', {}),
       lensRun('pharmacy', 'adherence-risk', {}),
     ]);
+    if (m.data?.ok === false || c.data?.ok === false || cal.data?.ok === false || st.data?.ok === false || rk.data?.ok === false) {
+      setLoadError(m.data?.error || c.data?.error || cal.data?.error || st.data?.error || rk.data?.error || 'Could not load adherence data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setMeds(m.data?.result?.medications || []);
     setConfigs(c.data?.result?.configs || []);
     setCalendar((cal.data?.result as CalendarResult) || null);
@@ -118,6 +126,9 @@ export function RxAdherencePanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

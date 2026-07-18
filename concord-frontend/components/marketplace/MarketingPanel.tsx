@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
+import { SkeletonTableRows } from '@/components/ui/Skeleton';
 
 interface Promotion {
   id: string; number: string; code: string;
@@ -51,7 +52,7 @@ export function MarketingPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-sm font-semibold text-gray-200">Promotions / coupons</span>
         <span className="text-[10px] text-gray-400">{list.length}</span>
@@ -79,7 +80,7 @@ export function MarketingPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={4} />
         ) : list.length === 0 ? (
           <EmptyStateCTA lensId="marketplace" accent="amber" headline="No promotions yet"
             caption="Create a promotion to drive sales on your listings."
@@ -92,12 +93,12 @@ export function MarketingPanel() {
                   {p.active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
                 </button>
                 <span className="font-mono text-sm text-orange-300 font-bold">{p.code}</span>
-                <div className="flex-1 text-xs text-gray-300">
+                <div className="flex-1 text-xs text-gray-300 tabular-nums">
                   {p.kind === 'percent' ? `${p.amount}% off` : p.kind === 'fixed' ? `$${p.amount} off` : 'Free shipping'}
                   {p.minOrderUsd > 0 && <span className="text-gray-400"> · min ${p.minOrderUsd}</span>}
                   {p.validUntil && <span className="text-gray-400"> · expires {p.validUntil}</span>}
                 </div>
-                <span className="text-[10px] text-gray-400 font-mono">{p.usageCount} uses</span>
+                <span className="text-[10px] text-gray-400 font-mono tabular-nums">{p.usageCount} uses</span>
               </li>
             ))}
           </ul>

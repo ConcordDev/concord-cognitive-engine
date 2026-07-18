@@ -109,10 +109,10 @@ export default function AccountingLensPage() {
           <div className="flex items-center gap-3">
             {balance != null && (
               <div className="text-right leading-tight">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Wallet</div>
-                <div className="text-sm font-mono text-zinc-100">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">Wallet</div>
+                <div className="text-sm font-mono tabular-nums text-gray-100">
                   {Math.round(balance).toLocaleString()} CC
-                  {tier && <span className="ml-1 text-[10px] uppercase text-zinc-500">{tier}</span>}
+                  {tier && <span className="ml-1 text-[10px] uppercase text-gray-500">{tier}</span>}
                 </div>
               </div>
             )}
@@ -131,10 +131,10 @@ export default function AccountingLensPage() {
         <BooksSection nav={booksNav} onNavChange={setBooksNav} />
 
         {/* Macro context — World Bank economic indicators, real external feed. */}
-        <details className="rounded-xl border border-white/10 bg-zinc-900/30 backdrop-blur-sm overflow-hidden">
-          <summary className="px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-400 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between">
+        <details className="rounded-xl border border-lattice-border bg-lattice-surface/40 backdrop-blur-sm overflow-hidden">
+          <summary className="px-4 py-2 text-[10px] uppercase tracking-wider text-gray-400 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between">
             <span>Macro context — World Bank indicators</span>
-            <span className="text-zinc-600">expand</span>
+            <span className="text-gray-600">expand</span>
           </summary>
           <div className="p-2 border-t border-white/10">
             <IndicatorChart

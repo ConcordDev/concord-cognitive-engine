@@ -28,6 +28,18 @@ const SOCKET_URL_WAS_UNCONFIGURED =
 
 let socket: Socket | null = null;
 
+// ---- Room re-join tracking (durability) ----
+// A reconnect gives the socket a NEW server-side session with EMPTY room
+// membership — the server's `room:join` handler adds `socket.id` to a room,
+// and the old socket.id is gone. So without re-joining, a page that had
+// subscribed to `world:<id>` / `org:<id>` / a ConKay run room goes silent
+// after any reconnect (the events fan out to a room this socket is no longer
+// in). Track every joined room and replay the joins on each `connect`.
+const _joinedRooms = new Set<string>();
+
+// Guard so the global `online` listener is wired exactly once.
+let _onlineListenerWired = false;
+
 // ---- Event Ordering (Category 2: Concurrency) ----
 // Track last-seen sequence number per event type for out-of-order detection
 const _lastSeq: Record<string, number> = {};
@@ -59,13 +71,16 @@ function getAuthCredentials(): { apiKey?: string } {
 // on a brief blip, so the disconnect handler waits out a grace period before
 // declaring the backend gone.
 //
-// Duration reasoning: the manager here retries 5× at ~1s base delay (see
-// getSocket's reconnection opts), so a normal Wi-Fi flap or server
-// restart-in-place almost always recovers on the first attempt or two (~1–3s).
-// 6s is comfortably longer than that (absorbs the blip) yet short enough that a
-// genuine backend death resolves within a reasonable demo/test window rather
-// than waiting for the full ~17s reconnect-exhaustion. Motion stopping a few
-// seconds after a real kill is honest; wiping in-flight work on a 1s flap is not.
+// Duration reasoning: the manager retries indefinitely with ~1s base delay
+// capped at 5s (see getSocket's reconnection opts), so a normal Wi-Fi flap or
+// server restart-in-place almost always recovers on the first attempt or two
+// (~1–3s). 6s is comfortably longer than that (absorbs the blip) yet short
+// enough that a genuine backend death surfaces the "connection lost" state
+// within a reasonable demo/test window. The socket keeps retrying underneath
+// regardless, so recovery from a longer outage is automatic; this timer only
+// governs WHEN to tell in-flight work (e.g. ConKay's rings) the backend went
+// quiet. Motion stopping a few seconds after a real kill is honest; wiping
+// in-flight work on a 1s flap is not.
 const CONNECTION_LOST_GRACE_MS = 6000;
 let _connectionLostTimer: ReturnType<typeof setTimeout> | null = null;
 const _connectionLostListeners = new Set<() => void>();
@@ -129,14 +144,36 @@ export function getSocket(): Socket {
     socket = io(SOCKET_URL, {
       autoConnect: false,
       reconnection: true,
-      reconnectionAttempts: 5,
+      // Never give up. A laptop that sleeps for an hour, a phone that loses
+      // signal in a tunnel, a backend that restarts mid-deploy — all recover
+      // on their own once connectivity returns. Capping attempts at 5 (~6s of
+      // retries, then `reconnect_failed` and permanent silence) was the root
+      // cause of "connection lost mid-operation and never came back": one bad
+      // ~6s window stranded the client offline until a full page reload. The
+      // capped backoff (reconnectionDelayMax) keeps the retry cost bounded.
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       transports: ['websocket', 'polling'],
       // SECURITY: Include cookies for httpOnly cookie auth
       withCredentials: true,
       // SECURITY: API key fallback for programmatic clients
       auth,
     });
+
+    // Kick a reconnect the instant the browser reports connectivity is back,
+    // instead of waiting for the next backoff tick. Cheap, idempotent (connect
+    // on an already-connected/connecting socket is a no-op), and the single
+    // biggest UX win for "came back from sleep / tunnel and it just works".
+    if (typeof window !== 'undefined' && !_onlineListenerWired) {
+      _onlineListenerWired = true;
+      window.addEventListener('online', () => {
+        if (socket && !socket.connected) {
+          console.debug('[Socket] Browser back online — reconnecting');
+          socket.connect();
+        }
+      });
+    }
 
     // Connection event handlers
     socket.on('connect', () => {
@@ -145,6 +182,15 @@ export function getSocket(): Socket {
       // transient blip, not a real backend death — cancel the pending
       // "connection lost" so legitimately in-flight work is never wrongly wiped.
       _clearConnectionLostTimer();
+      // Re-join every room this client had joined — the reconnected socket has
+      // a fresh, empty server-side room set, so without this the page silently
+      // stops receiving room-scoped events after any reconnect.
+      if (_joinedRooms.size > 0) {
+        for (const room of _joinedRooms) {
+          socket?.emit('room:join', { room });
+        }
+        console.debug('[Socket] Re-joined rooms after reconnect:', [..._joinedRooms]);
+      }
       _notify(_reconnectedListeners);
       // Reset sequence tracking on reconnect
       Object.keys(_lastSeq).forEach((k) => delete _lastSeq[k]);
@@ -179,24 +225,30 @@ export function getSocket(): Socket {
       }
     });
 
-    // reconnect_failed fires once, after all `reconnectionAttempts` are
-    // exhausted (~5-6s here) — a genuinely different situation from a single
-    // transient `connect_error`. Give the "was never configured" case (the
-    // pre-fix default-empty-string failure mode above) its own distinct,
-    // actionable diagnostic instead of blending into the generic "will
-    // retry" debug noise, since it's a config problem a developer can fix in
-    // seconds, not a real backend outage.
-    socket.on('reconnect_failed', () => {
-      if (SOCKET_URL_WAS_UNCONFIGURED) {
-        console.warn(
-          '[Socket] Giving up after 5 reconnect attempts — NEXT_PUBLIC_SOCKET_URL and ' +
-            'NEXT_PUBLIC_API_URL are both unset. Copy concord-frontend/.env.example to ' +
-            '.env.local (or set one of those vars) and restart the dev server.'
-        );
-      } else {
-        console.debug('[Socket] Giving up after 5 reconnect attempts against', SOCKET_URL);
+    // We retry FOREVER now (reconnectionAttempts: Infinity), so `reconnect_failed`
+    // never fires and can't carry the "was never configured" developer
+    // diagnostic anymore. Preserve that hint via a one-time warning at attempt 5
+    // — enough failed attempts to distinguish a real config problem from a
+    // transient blip — WITHOUT ever stopping the retries. It's a config problem
+    // a developer can fix in seconds, not a reason to strand the client offline.
+    let _diagnosticShown = false;
+    socket.io.on('reconnect_attempt', (attempt: number) => {
+      if (attempt >= 5 && !_diagnosticShown) {
+        _diagnosticShown = true;
+        if (SOCKET_URL_WAS_UNCONFIGURED) {
+          console.warn(
+            '[Socket] Still reconnecting after 5 attempts — NEXT_PUBLIC_SOCKET_URL and ' +
+              'NEXT_PUBLIC_API_URL are both unset. Copy concord-frontend/.env.example to ' +
+              '.env.local (or set one of those vars) and restart the dev server. ' +
+              '(Retries continue automatically once a backend is reachable.)'
+          );
+        } else {
+          console.debug('[Socket] Still reconnecting (attempt', attempt, ') against', SOCKET_URL);
+        }
       }
     });
+    // Once connected, clear the latch so a LATER outage can warn again.
+    socket.on('connect', () => { _diagnosticShown = false; });
 
     // Handle hello message from server
     socket.on('hello', (data) => {
@@ -673,10 +725,13 @@ export function emit(event: string, data?: unknown): void {
 
 // Room management
 export function joinRoom(room: string): void {
+  // Remember the room so it's automatically re-joined on every reconnect.
+  _joinedRooms.add(room);
   emit('room:join', { room });
 }
 
 export function leaveRoom(room: string): void {
+  _joinedRooms.delete(room);
   emit('room:leave', { room });
 }
 

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Target } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Game { id: string; homeTeam: string; awayTeam: string; status: string }
 interface Prediction { id: string; gameId: string; predictedWinner: string; matchup: string; outcome: string }
@@ -23,6 +24,7 @@ export function SportsPredictionsPanel({ onChange }: { onChange: () => void }) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [record, setRecord] = useState<PredictionRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -31,6 +33,12 @@ export function SportsPredictionsPanel({ onChange }: { onChange: () => void }) {
       lensRun('sports', 'prediction-list', {}),
       lensRun('sports', 'prediction-record', {}),
     ]);
+    if (g.data?.ok === false || p.data?.ok === false || r.data?.ok === false) {
+      setLoadError(g.data?.error || p.data?.error || r.data?.error || 'Could not load predictions.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setGames(g.data?.result?.games || []);
     setPredictions(p.data?.result?.predictions || []);
     setRecord((r.data?.result as PredictionRecord | null) || null);
@@ -47,6 +55,10 @@ export function SportsPredictionsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const predByGame = new Map(predictions.map((p) => [p.gameId, p]));

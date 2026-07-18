@@ -10,6 +10,7 @@ import { Loader2, Plus, Heart, Play, ListPlus, ListStart, Trash2, ListMusic, Che
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
+import { ErrorState } from '@/components/ui';
 
 interface Track { id: string; title: string; artist: string; album: string | null; genre: string; durationSec: number; liked: boolean; playCount: number; addedAt?: string }
 interface Playlist { id: string; name: string; trackCount: number; durationSec: number }
@@ -24,6 +25,9 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [likedError, setLikedError] = useState<string | null>(null);
+  const [plError, setPlError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', artist: '', album: '', genre: 'pop', durationMin: '' });
@@ -50,6 +54,12 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
       lensRun('music', 'track-list', query.trim() ? { query: query.trim() } : {}),
       lensRun('music', 'playlist-list', {}),
     ]);
+    if (t.data?.ok === false || p.data?.ok === false) {
+      setLoadError((t.data?.ok === false ? t.data?.error : p.data?.error) || 'Could not load your library.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTracks(t.data?.result?.tracks || []);
     setPlaylists(p.data?.result?.playlists || []);
     setLoading(false);
@@ -70,6 +80,8 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
   };
   const loadLiked = useCallback(async () => {
     const r = await lensRun('music', 'liked-songs', {});
+    if (r.data?.ok === false) { setLikedError(r.data?.error || 'Could not load liked songs.'); return; }
+    setLikedError(null);
     setLikedTracks(r.data?.result?.tracks || []);
   }, []);
   const like = async (id: string) => {
@@ -97,21 +109,32 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
     setPlName(''); setPlCollab(false); setError(null);
     await refresh(); onChange();
   };
+  const loadPlaylistDetail = async (id: string) => {
+    const r = await lensRun('music', 'playlist-detail', { id });
+    if (r.data?.ok === false) { setPlError(r.data?.error || 'Could not load playlist.'); return; }
+    setPlError(null);
+    setPlTracks(r.data?.result?.tracks || []);
+  };
   const openPlaylist = async (id: string) => {
     if (openPl === id) { setOpenPl(null); return; }
     setOpenPl(id);
-    const r = await lensRun('music', 'playlist-detail', { id });
-    setPlTracks(r.data?.ok === false ? [] : (r.data?.result?.tracks || []));
+    await loadPlaylistDetail(id);
   };
   const addToPlaylist = async (playlistId: string, trackId: string) => {
-    await lensRun('music', 'playlist-add-track', { playlistId, trackId });
+    const addRes = await lensRun('music', 'playlist-add-track', { playlistId, trackId });
+    if (addRes.data?.ok === false) { setPlError(addRes.data?.error || 'Could not add track to playlist.'); return; }
     const r = await lensRun('music', 'playlist-detail', { id: playlistId });
+    if (r.data?.ok === false) { setPlError(r.data?.error || 'Could not load playlist.'); return; }
+    setPlError(null);
     setPlTracks(r.data?.result?.tracks || []);
     await refresh();
   };
   const reorderTrack = async (playlistId: string, trackId: string, direction: 'up' | 'down') => {
-    await lensRun('music', 'playlist-reorder', { id: playlistId, trackId, direction });
+    const reorderRes = await lensRun('music', 'playlist-reorder', { id: playlistId, trackId, direction });
+    if (reorderRes.data?.ok === false) { setPlError(reorderRes.data?.error || 'Could not reorder track.'); return; }
     const r = await lensRun('music', 'playlist-detail', { id: playlistId });
+    if (r.data?.ok === false) { setPlError(r.data?.error || 'Could not load playlist.'); return; }
+    setPlError(null);
     setPlTracks(r.data?.result?.tracks || []);
   };
   const deletePlaylist = async (id: string) => {
@@ -122,6 +145,10 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (
@@ -162,6 +189,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
                 </div>
                 {openPl === p.id && (
                   <div className="border-t border-zinc-800 p-2 bg-zinc-950/50">
+                    {plError && <div className="mb-2"><ErrorState message={plError} onRetry={() => loadPlaylistDetail(p.id)} variant="inline" /></div>}
                     {plTracks.length > 0 && (
                       <ul className="mb-2 space-y-0.5">
                         {plTracks.map((t, ti) => (
@@ -199,7 +227,9 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
           <ChevronRight className={cn('w-3.5 h-3.5 text-zinc-600 transition-transform', showLiked && 'rotate-90')} />
         </button>
         {showLiked && (
-          likedTracks.length === 0 ? (
+          likedError ? (
+            <ErrorState message={likedError} onRetry={loadLiked} variant="inline" />
+          ) : likedTracks.length === 0 ? (
             <p className="text-[11px] text-zinc-400 italic">No liked songs yet — tap the heart on a track.</p>
           ) : (
             <ul className="space-y-1">

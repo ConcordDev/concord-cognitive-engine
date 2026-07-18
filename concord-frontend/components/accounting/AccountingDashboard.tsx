@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Wallet, Receipt, FileText, TrendingUp, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { Wallet, Receipt, FileText, TrendingUp, Sparkles, AlertCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { Skeleton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface DashboardSummary {
@@ -28,7 +29,22 @@ export function AccountingDashboard({ onJumpTo }: { onJumpTo?: (nav: string) => 
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading dashboard…</div>;
+    return (
+      <div className="space-y-3" aria-busy="true">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-3 rounded-lg border border-white/10 bg-black/30">
+              <Skeleton variant="line" width="60%" height="0.625rem" />
+              <Skeleton variant="line" className="mt-2" width="80%" height="1.25rem" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton variant="block" height="3.5rem" />
+          <Skeleton variant="block" height="3.5rem" />
+        </div>
+      </div>
+    );
   }
   if (!data) {
     return <div className="p-10 text-center text-xs text-gray-400">No dashboard data yet.</div>;
@@ -62,7 +78,7 @@ export function AccountingDashboard({ onJumpTo }: { onJumpTo?: (nav: string) => 
           onClick={() => onJumpTo?.('customers')}
           className="p-3 rounded border border-white/10 bg-black/30 hover:bg-white/[0.04] text-left flex items-center gap-3"
         >
-          <div className="text-2xl font-mono text-emerald-300">{data.customerCount}</div>
+          <div className="text-2xl font-mono tabular-nums text-emerald-300">{data.customerCount}</div>
           <div>
             <div className="text-xs text-white">Customers</div>
             <div className="text-[10px] text-gray-400">Manage → bills, invoices</div>
@@ -72,7 +88,7 @@ export function AccountingDashboard({ onJumpTo }: { onJumpTo?: (nav: string) => 
           onClick={() => onJumpTo?.('vendors')}
           className="p-3 rounded border border-white/10 bg-black/30 hover:bg-white/[0.04] text-left flex items-center gap-3"
         >
-          <div className="text-2xl font-mono text-amber-300">{data.vendorCount}</div>
+          <div className="text-2xl font-mono tabular-nums text-amber-300">{data.vendorCount}</div>
           <div>
             <div className="text-xs text-white">Vendors</div>
             <div className="text-[10px] text-gray-400">Including 1099 contractors</div>

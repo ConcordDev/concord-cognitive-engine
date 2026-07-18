@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, DollarSign } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface RevenueEntry { id: string; source: string; amount: number; note: string | null; date: string }
 interface Summary { total: number; thisMonth: number; bySource: Record<string, number> }
@@ -18,6 +19,7 @@ export function CrtRevenuePanel({ onChange }: { onChange: () => void }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ source: 'sponsorship', amount: '', note: '' });
 
   const refresh = useCallback(async () => {
@@ -26,6 +28,12 @@ export function CrtRevenuePanel({ onChange }: { onChange: () => void }) {
       lensRun('creator', 'revenue-list', { days: 180 }),
       lensRun('creator', 'revenue-summary', {}),
     ]);
+    if (e.data?.ok === false || s.data?.ok === false) {
+      setLoadError(e.data?.error || s.data?.error || 'Could not load revenue.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntries(e.data?.result?.entries || []);
     setSummary((s.data?.result as Summary | null) || null);
     setLoading(false);
@@ -46,6 +54,10 @@ export function CrtRevenuePanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const maxSource = summary ? Math.max(1, ...Object.values(summary.bySource)) : 1;

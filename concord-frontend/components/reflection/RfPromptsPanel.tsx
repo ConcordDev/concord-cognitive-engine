@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Lightbulb, Shuffle, FileText, PenLine } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Prompt { category: string; text: string }
 interface Template { id: string; name: string; category: string; body: string }
@@ -20,6 +21,7 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activeCat, setActiveCat] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -29,6 +31,12 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
       lensRun('reflection', 'prompt-library', {}),
       lensRun('reflection', 'templates-list', {}),
     ]);
+    if (pt.data?.ok === false || lib.data?.ok === false || tpl.data?.ok === false) {
+      setLoadError(pt.data?.error || lib.data?.error || tpl.data?.error || 'Could not load prompts.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setToday((pt.data?.result?.prompt as Prompt) || null);
     setPrompts(lib.data?.result?.prompts || []);
     setCategories(lib.data?.result?.categories || []);
@@ -52,6 +60,10 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const shown = activeCat ? prompts.filter((p) => p.category === activeCat) : prompts;

@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { Skeleton } from '@/components/ui';
 
 interface SearchHit {
   id: number;
@@ -175,12 +176,12 @@ export function LegalCaseSearch() {
         <div className="flex items-center gap-2">
           <Scale className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Case Law Search</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">
             courtlistener · 9M+ opinions
           </span>
         </div>
         {result && (
-          <span className="text-[11px] text-zinc-400">
+          <span className="text-[11px] text-gray-400 font-mono tabular-nums">
             {result.results.length} of {result.totalHits?.toLocaleString() || '?'} hits
             {result.semantic && <span className="ml-2 text-violet-300/80">· semantic</span>}
             {result.authenticatedWithToken && <span className="ml-2 text-cyan-300/80">· authenticated</span>}
@@ -191,7 +192,7 @@ export function LegalCaseSearch() {
       <form onSubmit={runSearch} className="space-y-2">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={queryInput}
@@ -201,13 +202,13 @@ export function LegalCaseSearch() {
                   ? 'Describe what you’re looking for, e.g. "a police officer used excessive force during a routine stop"'
                   : 'Brown v. Board · "qualified immunity" · 4th amendment search'
               }
-              className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
+              className="w-full rounded-md border border-lattice-border bg-lattice-void py-1.5 pl-8 pr-3 text-sm text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none"
             />
           </div>
           <div
             role="radiogroup"
             aria-label="Search mode"
-            className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-zinc-800 bg-zinc-950 p-0.5"
+            className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-lattice-border bg-lattice-void p-0.5"
           >
             <button
               type="button"
@@ -216,7 +217,7 @@ export function LegalCaseSearch() {
               onClick={() => setSemantic(false)}
               title="Keyword search — exact terms, boolean connectors"
               className={`inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
-                !semantic ? 'bg-cyan-500/15 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'
+                !semantic ? 'bg-cyan-500/15 text-cyan-200' : 'text-gray-500 hover:text-gray-300'
               }`}
             >
               <Hash className="h-3 w-3" />
@@ -229,7 +230,7 @@ export function LegalCaseSearch() {
               onClick={() => setSemantic(true)}
               title="Semantic search — natural language, CourtListener v4 semantic=true"
               className={`inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
-                semantic ? 'bg-violet-500/15 text-violet-200' : 'text-zinc-500 hover:text-zinc-300'
+                semantic ? 'bg-violet-500/15 text-violet-200' : 'text-gray-500 hover:text-gray-300'
               }`}
             >
               <Sparkles className="h-3 w-3" />
@@ -242,7 +243,7 @@ export function LegalCaseSearch() {
             className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
               hasActiveFilters || showFilters
                 ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300'
-                : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-200'
+                : 'border-lattice-border bg-lattice-void text-gray-400 hover:text-gray-200'
             }`}
           >
             <Filter className="h-3.5 w-3.5" />
@@ -269,9 +270,9 @@ export function LegalCaseSearch() {
               transition={{ duration: 0.15 }}
               className="overflow-hidden"
             >
-              <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
+              <div className="space-y-2 rounded-md border border-lattice-border bg-lattice-void/40 p-3">
                 <div>
-                  <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Court</div>
+                  <div className="mb-1 text-[10px] uppercase tracking-wider text-gray-400">Court</div>
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
@@ -279,7 +280,7 @@ export function LegalCaseSearch() {
                       className={`rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
                         court === ''
                           ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-200'
-                          : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-cyan-500/30'
+                          : 'border-lattice-border bg-lattice-elevated text-gray-400 hover:border-cyan-500/30'
                       }`}
                     >
                       All courts
@@ -292,7 +293,7 @@ export function LegalCaseSearch() {
                         className={`rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
                           court === c.id
                             ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-200'
-                            : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-cyan-500/30'
+                            : 'border-lattice-border bg-lattice-elevated text-gray-400 hover:border-cyan-500/30'
                         }`}
                       >
                         {c.label}
@@ -303,28 +304,28 @@ export function LegalCaseSearch() {
                       value={court}
                       onChange={(e) => setCourt(e.target.value)}
                       placeholder="other court id"
-                      className="rounded-full border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[10px] text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
+                      className="rounded-full border border-lattice-border bg-lattice-elevated px-2 py-0.5 text-[10px] text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-400">Filed after</label>
+                    <label className="mb-1 block text-[10px] uppercase tracking-wider text-gray-400">Filed after</label>
                     <input
                       type="date"
                       value={dateAfter}
                       onChange={(e) => setDateAfter(e.target.value)}
-                      className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white focus:border-cyan-500/40 focus:outline-none"
+                      className="w-full rounded-md border border-lattice-border bg-lattice-void px-2 py-1 text-xs text-white focus:border-cyan-500/40 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-400">Filed before</label>
+                    <label className="mb-1 block text-[10px] uppercase tracking-wider text-gray-400">Filed before</label>
                     <input
                       type="date"
                       value={dateBefore}
                       onChange={(e) => setDateBefore(e.target.value)}
-                      className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white focus:border-cyan-500/40 focus:outline-none"
+                      className="w-full rounded-md border border-lattice-border bg-lattice-void px-2 py-1 text-xs text-white focus:border-cyan-500/40 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -333,7 +334,7 @@ export function LegalCaseSearch() {
                   <button
                     type="button"
                     onClick={() => { setCourt(''); setDateAfter(''); setDateBefore(''); }}
-                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-gray-400 transition-colors hover:bg-lattice-elevated hover:text-gray-200"
                   >
                     <X className="h-2.5 w-2.5" />
                     Clear filters
@@ -351,13 +352,25 @@ export function LegalCaseSearch() {
         </div>
       )}
 
+      {searchQuery.isPending && (
+        <div className="space-y-2" aria-label="Searching CourtListener" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-lattice-border bg-lattice-void/40 p-3 space-y-2">
+              <Skeleton variant="line" width="55%" height="0.875rem" />
+              <Skeleton variant="line" width="35%" height="0.65rem" />
+              <Skeleton variant="line" lines={2} height="0.75rem" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {!result && !searchQuery.isPending && !errorMsg && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
+        <div className="rounded-md border border-dashed border-lattice-border bg-lattice-void/50 px-3 py-8 text-center text-xs text-gray-400">
           Search 9M+ federal and state court opinions via the CourtListener REST API.
           Free without a key; <code className="text-cyan-300">COURTLISTENER_API_TOKEN</code> env unlocks higher rate limits.
           <br />
-          <span className="text-zinc-500">
-            <strong className="text-zinc-400">Keyword</strong> matches exact terms and boolean connectors;{' '}
+          <span className="text-gray-500">
+            <strong className="text-gray-400">Keyword</strong> matches exact terms and boolean connectors;{' '}
             <strong className="text-violet-300/80">Semantic</strong> understands a plain-language description of the
             case even when it shares no words with the opinion.
           </span>
@@ -407,7 +420,7 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
-      className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 transition-colors hover:border-cyan-500/30"
+      className="rounded-lg border border-lattice-border bg-lattice-void/40 p-3 transition-colors hover:border-cyan-500/30"
     >
       <div className="flex items-start gap-3">
         <BookOpen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-400/80" />
@@ -421,23 +434,23 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
           </div>
 
           {/* Line 2: court · date · judge · docket · precedential status */}
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-zinc-400">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-gray-400">
             {hit.court && <span>{hit.court}</span>}
             {hit.dateFiled && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 font-mono tabular-nums">
                 <Calendar className="h-2.5 w-2.5" />
                 {hit.dateFiled}
               </span>
             )}
             {hit.author && <span>by {hit.author}</span>}
             {hit.docketNumber && (
-              <span className="font-mono">{hit.docketNumber}</span>
+              <span className="font-mono tabular-nums">{hit.docketNumber}</span>
             )}
             {hit.precedentialStatus && (
               <span className={`rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${
                 hit.precedentialStatus === 'Published'
                   ? 'bg-emerald-500/15 text-emerald-300'
-                  : 'bg-zinc-800 text-zinc-400'
+                  : 'bg-lattice-elevated text-gray-400'
               }`}>
                 {hit.precedentialStatus}
               </span>
@@ -450,14 +463,14 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
                 title="CourtListener semantic relevance score"
               >
                 <Sparkles className="h-2.5 w-2.5" />
-                {Math.round(hit.semanticScore * 100)}% match
+                <span className="font-mono tabular-nums">{Math.round(hit.semanticScore * 100)}%</span> match
               </span>
             )}
           </div>
 
           {/* Line 3: snippet with query-term highlight */}
           {hit.snippet && (
-            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-zinc-300">
+            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-300">
               <HighlightedSnippet text={hit.snippet} query={query} />
             </p>
           )}
@@ -466,7 +479,7 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
           <button
             type="button"
             onClick={() => setCitingOpen((v) => !v)}
-            className="mt-1.5 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 transition-colors hover:text-cyan-300"
+            className="mt-1.5 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-500 transition-colors hover:text-cyan-300"
             aria-expanded={citingOpen}
           >
             <Network className="h-2.5 w-2.5" />
@@ -486,7 +499,7 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
             className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
               clipped
                 ? 'bg-cyan-500/15 text-cyan-300'
-                : 'text-zinc-400 hover:bg-zinc-800 hover:text-cyan-300'
+                : 'text-gray-400 hover:bg-lattice-elevated hover:text-cyan-300'
             }`}
             title={clipped ? 'Clipped to folder' : 'Clip to folder'}
             aria-label={clipped ? 'Unclip' : 'Clip to folder'}
@@ -519,7 +532,7 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
               href={hit.absoluteUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-lattice-elevated hover:text-gray-200"
               title="Open full opinion on CourtListener"
               aria-label="Open opinion"
             >
@@ -558,13 +571,13 @@ function CitingOpinionsPanel({ opinionId }: { opinionId: number }) {
       className="overflow-hidden"
     >
       <div
-        className="mt-1.5 rounded-md border border-zinc-800 bg-zinc-950/60 p-2"
+        className="mt-1.5 rounded-md border border-lattice-border bg-lattice-void/60 p-2"
         aria-label="Citing opinions"
       >
         {citingQuery.isPending && (
-          <div className="flex items-center gap-1.5 py-1 text-[11px] text-zinc-400">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Loading citing opinions…
+          <div className="space-y-1 py-0.5" aria-label="Loading citing opinions" aria-busy="true">
+            <Skeleton variant="line" width="70%" height="0.7rem" />
+            <Skeleton variant="line" width="50%" height="0.7rem" />
           </div>
         )}
 
@@ -576,17 +589,17 @@ function CitingOpinionsPanel({ opinionId }: { opinionId: number }) {
 
         {!citingQuery.isPending && citingQuery.data?.ok && citingQuery.data.result && (
           citingQuery.data.result.citations.length === 0 ? (
-            <div className="py-1 text-[11px] text-zinc-500">
+            <div className="py-1 text-[11px] text-gray-500">
               No opinions on CourtListener currently cite this one.
             </div>
           ) : (
             <ul className="space-y-1">
               {citingQuery.data.result.citations.map((c, i) => (
                 <li key={c.id ?? `${c.otherOpinionId}-${i}`} className="flex items-center justify-between gap-2 text-[11px]">
-                  <span className="text-zinc-300">
+                  <span className="text-gray-300 font-mono tabular-nums">
                     Opinion #{c.otherOpinionId ?? '?'}
                     {c.depth != null && (
-                      <span className="ml-1.5 text-zinc-500">· cited {c.depth}×</span>
+                      <span className="ml-1.5 text-gray-500">· cited {c.depth}×</span>
                     )}
                   </span>
                   {c.citingOpinionUrl && (
@@ -594,7 +607,7 @@ function CitingOpinionsPanel({ opinionId }: { opinionId: number }) {
                       href={c.citingOpinionUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-cyan-300"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-500 transition-colors hover:bg-lattice-elevated hover:text-cyan-300"
                       title="Open citing opinion on CourtListener"
                       aria-label="Open citing opinion"
                     >
@@ -604,7 +617,7 @@ function CitingOpinionsPanel({ opinionId }: { opinionId: number }) {
                 </li>
               ))}
               {citingQuery.data.result.totalHits > citingQuery.data.result.citations.length && (
-                <li className="pt-0.5 text-[10px] text-zinc-600">
+                <li className="pt-0.5 text-[10px] text-gray-600">
                   {citingQuery.data.result.totalHits.toLocaleString()} total citing opinions on CourtListener — showing first {citingQuery.data.result.citations.length}.
                 </li>
               )}

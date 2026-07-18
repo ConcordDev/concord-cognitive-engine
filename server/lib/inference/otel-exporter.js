@@ -81,7 +81,7 @@ function buildResourceSpan(trace) {
     resource: {
       attributes: [
         { key: "service.name", value: { stringValue: "concord" } },
-        { key: "service.version", value: { stringValue: "5.0.0" } },
+        { key: "service.version", value: { stringValue: "1.0.0" } },
       ],
     },
     scopeSpans: [{

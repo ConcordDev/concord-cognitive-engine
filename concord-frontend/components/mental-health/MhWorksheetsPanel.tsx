@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, ClipboardList, Trash2, ChevronDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface TplField { key: string; label: string; type: string }
 interface Template { id: string; title: string; modality: string; fieldCount: number; fields: TplField[] }
@@ -20,6 +21,7 @@ export function MhWorksheetsPanel() {
   const [worksheets, setWorksheets] = useState<Worksheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTpl, setActiveTpl] = useState<string | null>(null);
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -31,6 +33,12 @@ export function MhWorksheetsPanel() {
       lensRun('mental-health', 'worksheet-templates', {}),
       lensRun('mental-health', 'worksheet-list', {}),
     ]);
+    if (t.data?.ok === false || w.data?.ok === false) {
+      setLoadError((t.data?.ok === false ? t.data?.error : w.data?.error) || 'Could not load worksheets.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTemplates(t.data?.result?.templates || []);
     setWorksheets(w.data?.result?.worksheets || []);
     setLoading(false);
@@ -57,6 +65,10 @@ export function MhWorksheetsPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

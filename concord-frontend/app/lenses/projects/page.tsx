@@ -42,12 +42,11 @@ export default function ProjectsLensPage() {
         <ProjectsSection />
       </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
         <ProjectMgmtRepos />
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#projects-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to projects content</a>
           <SessionRail lensId="projects" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="projects" limit={10} hideWhenEmpty className="mt-4" />

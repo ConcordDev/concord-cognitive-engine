@@ -6,9 +6,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton, ErrorState } from '@/components/ui';
 import { PjTaskDetail } from './PjTaskDetail';
 
 interface Task {
@@ -34,12 +35,12 @@ const STATUSES = [
 ];
 const PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'];
 const PRIORITY_COLOR: Record<string, string> = {
-  none: 'text-zinc-600', low: 'text-sky-400', medium: 'text-amber-400',
+  none: 'text-gray-600', low: 'text-sky-400', medium: 'text-amber-400',
   high: 'text-orange-400', urgent: 'text-rose-400',
 };
 const TYPE_COLOR: Record<string, string> = {
   story: 'text-emerald-400', bug: 'text-rose-400', task: 'text-sky-400',
-  epic: 'text-violet-400', chore: 'text-zinc-400',
+  epic: 'text-violet-400', chore: 'text-gray-400',
 };
 
 export function PjBoardPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
@@ -50,9 +51,11 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
   const [allTasks, setAllTasks] = useState<{ id: string; ref: string; title: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<string>('none');
   const [form, setForm] = useState({ title: '', type: 'task', priority: 'none' });
   const [openTask, setOpenTask] = useState<string | null>(null);
+  const [swimlaneError, setSwimlaneError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -62,6 +65,8 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
       lensRun('projects', 'project-get', { id: projectId }),
       lensRun('projects', 'task-list', { projectId }),
     ]);
+    if (b.data?.ok === false) { setLoadError(b.data?.error || 'Could not load the board.'); setLoading(false); return; }
+    setLoadError(null);
     setColumns(b.data?.result?.columns || []);
     const wmap: Record<string, number> = {};
     for (const lim of (w.data?.result?.limits || []) as { status: string; limit: number }[]) wmap[lim.status] = lim.limit;
@@ -71,7 +76,14 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
     setAllTasks(((list.data?.result?.tasks || []) as Task[]).map((t) => ({ id: t.id, ref: t.ref, title: t.title })));
     if (groupBy !== 'none') {
       const sl = await lensRun('projects', 'board-swimlanes', { projectId, groupBy });
-      setSwimlanes(sl.data?.result?.swimlanes || []);
+      if (sl.data?.ok === false) {
+        setSwimlaneError(sl.data?.error || 'Could not load swimlanes.');
+      } else {
+        setSwimlaneError(null);
+        setSwimlanes(sl.data?.result?.swimlanes || []);
+      }
+    } else {
+      setSwimlaneError(null);
     }
     setLoading(false);
     onChange();
@@ -104,14 +116,14 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
   const labelColor = (name: string) => meta?.labels.find((l) => l.name === name)?.color || 'zinc';
 
   const renderCard = (t: Task) => (
-    <li key={t.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2">
+    <li key={t.id} className="bg-lattice-surface border border-lattice-border rounded-lg p-2">
       <button type="button" onClick={() => setOpenTask(t.id)} className="block w-full text-left">
-        <p className="text-xs text-zinc-100">{t.title}</p>
+        <p className="text-xs text-white">{t.title}</p>
         <div className="flex flex-wrap items-center gap-1.5 mt-1">
-          <span className="text-[9px] font-mono text-zinc-400">{t.ref}</span>
+          <span className="text-[9px] font-mono text-gray-400">{t.ref}</span>
           <span className={cn('text-[9px] uppercase', TYPE_COLOR[t.type])}>{t.type}</span>
           {t.priority !== 'none' && <span className={cn('text-[9px] uppercase', PRIORITY_COLOR[t.priority])}>{t.priority}</span>}
-          {t.points > 0 && <span className="text-[9px] text-zinc-400">{t.points}pt</span>}
+          {t.points > 0 && <span className="text-[9px] text-gray-400 tabular-nums">{t.points}pt</span>}
           {t.assigneeName && <span className="text-[9px] text-indigo-400">{t.assigneeName}</span>}
           {t.labels.map((l) => (
             <span key={l} className="text-[9px] px-1 rounded text-white" style={{ background: cssColor(labelColor(l)) }}>{l}</span>
@@ -119,14 +131,31 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
         </div>
       </button>
       <select value={t.status} onChange={(e) => moveStatus(t.id, e.target.value)}
-        className="mt-1.5 w-full bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-300">
+        className="mt-1.5 w-full bg-lattice-void border border-lattice-border rounded px-1 py-0.5 text-[10px] text-gray-300">
         {STATUSES.map((sx) => <option key={sx.id} value={sx.id}>{sx.label}</option>)}
       </select>
     </li>
   );
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return (
+      <div className="space-y-4" aria-busy="true">
+        <Skeleton variant="block" height={44} className="rounded-xl" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {STATUSES.map((col) => (
+            <div key={col.id} className="bg-lattice-surface/50 border-t-2 border-lattice-border rounded-lg p-2 space-y-1.5">
+              <Skeleton width="60%" height={10} />
+              <Skeleton variant="block" height={48} />
+              <Skeleton variant="block" height={48} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={refresh} />;
   }
 
   return (
@@ -134,24 +163,24 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {/* New task + swimlane toggle */}
-      <section className="flex flex-wrap items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+      <section className="flex flex-wrap items-center gap-2 bg-lattice-surface/70 border border-lattice-border rounded-xl p-3">
         <input placeholder="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-          className="flex-1 min-w-[140px] bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          className="flex-1 min-w-[140px] bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
         <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
+          className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white capitalize">
           {['task', 'story', 'bug', 'epic', 'chore'].map((x) => <option key={x} value={x}>{x}</option>)}
         </select>
         <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
+          className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white capitalize">
           {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
         <button type="button" onClick={addTask}
           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Task
         </button>
-        <span className="text-[11px] text-zinc-400 ml-auto">Swimlanes</span>
+        <span className="text-[11px] text-gray-400 ml-auto">Swimlanes</span>
         <select value={groupBy} onChange={(e) => setGroupBy(e.target.value)}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+          className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white">
           {['none', 'assignee', 'epic', 'priority', 'type'].map((g) => <option key={g} value={g}>{g}</option>)}
         </select>
       </section>
@@ -164,10 +193,10 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
             const limit = wip[col.id];
             const over = limit > 0 && tasks.length > limit;
             return (
-              <div key={col.id} className={cn('bg-zinc-900/50 border-t-2 rounded-lg p-2', over ? 'border-rose-600' : 'border-indigo-700')}>
+              <div key={col.id} className={cn('bg-lattice-surface/50 border-t-2 rounded-lg p-2', over ? 'border-rose-600' : 'border-indigo-700')}>
                 <div className="flex items-center justify-between gap-1 mb-1.5">
-                  <p className="text-[10px] font-semibold text-zinc-400 uppercase">
-                    {col.label} <span className={over ? 'text-rose-400' : 'text-zinc-600'}>{tasks.length}{limit > 0 ? `/${limit}` : ''}</span>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase">
+                    {col.label} <span className={cn('tabular-nums', over ? 'text-rose-400' : 'text-gray-600')}>{tasks.length}{limit > 0 ? `/${limit}` : ''}</span>
                   </p>
                   <input
                     type="number"
@@ -176,17 +205,19 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
                     placeholder="WIP"
                     title={`WIP limit for ${col.label} (0 = none)`}
                     onBlur={(e) => { if (Number(e.target.value || 0) !== (limit || 0)) setWipLimit(col.id, e.target.value); }}
-                    className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 text-[9px] text-zinc-300"
+                    className="w-12 bg-lattice-void border border-lattice-border rounded px-1 py-0.5 text-[9px] text-gray-300"
                   />
                 </div>
                 <ul className="space-y-1.5">
                   {tasks.map(renderCard)}
-                  {tasks.length === 0 && <li className="text-[10px] text-zinc-400 italic px-1">Empty</li>}
+                  {tasks.length === 0 && <li className="text-[10px] text-gray-400 italic px-1">Empty</li>}
                 </ul>
               </div>
             );
           })}
         </div>
+      ) : swimlaneError ? (
+        <ErrorState message={swimlaneError} onRetry={refresh} variant="inline" />
       ) : (
         <div className="space-y-3">
           {swimlanes.map((lane) => (
@@ -196,8 +227,8 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
                 {STATUSES.map((col) => {
                   const tasks = lane.columns.find((c) => c.status === col.id)?.tasks || [];
                   return (
-                    <div key={col.id} className="bg-zinc-900/50 border-t-2 border-zinc-700 rounded-lg p-2">
-                      <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1.5">{col.label} {tasks.length}</p>
+                    <div key={col.id} className="bg-lattice-surface/50 border-t-2 border-lattice-border rounded-lg p-2">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1.5">{col.label} <span className="tabular-nums">{tasks.length}</span></p>
                       <ul className="space-y-1.5">{tasks.map(renderCard)}</ul>
                     </div>
                   );

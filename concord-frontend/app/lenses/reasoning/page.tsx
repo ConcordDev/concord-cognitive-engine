@@ -2762,7 +2762,6 @@ export default function ReasoningLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#reasoning-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reasoning content</a>
           <RecentMineCard domain="reasoning" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="reasoning" hideWhenEmpty className="mt-3" />

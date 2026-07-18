@@ -33,6 +33,12 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('astronomy', 'session-list', {});
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load sessions.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setSessions(r.data?.result?.sessions || []);
     setLoading(false);
     onChange();

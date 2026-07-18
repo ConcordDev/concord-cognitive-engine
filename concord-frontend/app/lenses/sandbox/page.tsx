@@ -430,10 +430,6 @@ export default function CombatSandboxPage() {
         <SandboxRepos />
       </section>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows</div>
-      <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
-      <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
       <RecentMineCard domain="sandbox" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="sandbox" hideWhenEmpty className="mt-3" />
       <CrossLensRecentsPanel lensId="sandbox" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

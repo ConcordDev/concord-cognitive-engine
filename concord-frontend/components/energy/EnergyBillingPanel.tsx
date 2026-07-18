@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Receipt, Target, Trash2, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Bill {
   month: string; consumedKwh: number; solarKwh: number; netKwh: number;
@@ -37,6 +38,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [rateForm, setRateForm] = useState({ ratePerKwh: '', utility: '' });
   const [goalForm, setGoalForm] = useState({ label: '', targetKwh: '', period: 'month' });
 
@@ -48,6 +50,13 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
       lensRun('energy', 'cost-projection', {}),
       lensRun('energy', 'goal-list', {}),
     ]);
+    const failed = [r, b, p, g].find((x) => x.data?.ok === false);
+    if (failed) {
+      setLoadError(failed.data?.error || 'Could not load energy billing data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setRate(r.data?.result?.rate || null);
     setIsDefaultRate(!!r.data?.result?.isDefault);
     setBill((b.data?.result as Bill | null) || null);
@@ -79,6 +88,10 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

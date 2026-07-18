@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ScrollText, Loader2, Plus, ArrowRight } from 'lucide-react';
+import { ScrollText, Plus, ArrowRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface Estimate {
@@ -54,7 +55,7 @@ export function EstimatesPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <ScrollText className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Estimates</span>
-        <span className="text-[10px] text-gray-400">{list.length}</span>
+        <span className="text-[10px] text-gray-400 font-mono tabular-nums">{list.length}</span>
         <button onClick={() => setCreating(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-emerald-500 text-black font-semibold hover:bg-emerald-400 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />New
         </button>
@@ -63,8 +64,8 @@ export function EstimatesPanel() {
       {creating && (
         <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
           <input value={draft.customerName} onChange={e => setDraft({ ...draft, customerName: e.target.value })} placeholder="Customer name *" className="col-span-5 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Total *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <input type="date" value={draft.expiresAt} onChange={e => setDraft({ ...draft, expiresAt: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Total *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
+          <input type="date" value={draft.expiresAt} onChange={e => setDraft({ ...draft, expiresAt: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
           <button onClick={create} className="col-span-2 px-2 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Save</button>
           <input value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} placeholder="Memo / scope" className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
@@ -72,7 +73,7 @@ export function EstimatesPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={5} columns={4} />
         ) : list.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><ScrollText className="w-6 h-6 mx-auto mb-2 opacity-30" />No estimates yet.</div>
         ) : (
@@ -85,7 +86,7 @@ export function EstimatesPanel() {
                 )}>{e.status}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-gray-400">{e.number}</span>
+                    <span className="font-mono tabular-nums text-[10px] text-gray-400">{e.number}</span>
                     <span>{e.customerName}</span>
                   </div>
                   {e.memo && <div className="text-[11px] text-gray-400 truncate">{e.memo}</div>}

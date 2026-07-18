@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 export interface PriceHistoryEntry { oldPrice: number | null; newPrice: number; changedAt: string }
 export type AbcClass = 'A' | 'B' | 'C' | null;
@@ -260,7 +261,7 @@ export function ProductCatalogPanel() {
       )}
 
       {loading ? (
-        <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
+        <SkeletonTableRows rows={5} columns={4} />
       ) : products.length === 0 ? (
         <p className="text-center text-xs text-gray-400 py-8">No products yet. Add one above.</p>
       ) : (
@@ -281,7 +282,7 @@ export function ProductCatalogPanel() {
                         </span>
                       )}
                     </p>
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[11px] text-gray-400 tabular-nums">
                       ${p.price} · {p.stock} in stock · {p.category || 'uncategorized'}
                       {p.supplier && <> · {p.supplier}</>}
                       {p.leadTimeDays !== null && <> · {p.leadTimeDays}d lead</>}
@@ -306,7 +307,7 @@ export function ProductCatalogPanel() {
                     ) : (
                       <ul className="space-y-0.5">
                         {p.priceHistory.slice().reverse().map((h, i) => (
-                          <li key={i} className="text-[11px] text-gray-400 font-mono flex items-center gap-2">
+                          <li key={i} className="text-[11px] text-gray-400 font-mono flex items-center gap-2 tabular-nums">
                             <span className="text-gray-600">{new Date(h.changedAt).toLocaleDateString()}</span>
                             {h.oldPrice === null ? <span>{money(h.newPrice)} (initial)</span> : <span>{money(h.oldPrice)} → {money(h.newPrice)}</span>}
                           </li>
@@ -324,7 +325,7 @@ export function ProductCatalogPanel() {
                     ) : (
                       <ul className="space-y-1 mb-2">
                         {variants.map((v) => (
-                          <li key={v.sku} className="flex items-center justify-between text-[11px] text-gray-300 bg-black/20 rounded px-2 py-1">
+                          <li key={v.sku} className="flex items-center justify-between text-[11px] text-gray-300 bg-black/20 rounded px-2 py-1 tabular-nums">
                             <span>
                               <code className="text-gray-400">{v.sku}</code>{' '}
                               {[v.size, v.color, v.style].filter(Boolean).join(' / ')} · {v.stock} in stock · {money(v.price)}

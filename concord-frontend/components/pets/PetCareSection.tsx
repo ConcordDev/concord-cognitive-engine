@@ -11,6 +11,7 @@ import { PawPrint, Plus, HeartPulse, Activity, BellRing, CalendarHeart, ShieldCh
 import { AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { PetHealthPanel } from './PetHealthPanel';
 import { PetWellnessPanel } from './PetWellnessPanel';
 import { PetRemindersPanel } from './PetRemindersPanel';
@@ -47,6 +48,7 @@ export function PetCareSection() {
   const [selected, setSelected] = useState<string>('');
   const [tab, setTab] = useState<TabId>('health');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,12 @@ export function PetCareSection() {
       lensRun('pets', 'pet-list', {}),
       lensRun('pets', 'pets-dashboard', {}),
     ]);
+    if (p.data?.ok === false || d.data?.ok === false) {
+      setLoadError(p.data?.error || d.data?.error || 'Could not load your pets.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Pet[] = p.data?.result?.pets || [];
     setPets(list);
     setDash((d.data?.result as Dash | null) || null);
@@ -84,6 +92,13 @@ export function PetCareSection() {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 flex items-center justify-center py-12">
         <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+  if (loadError) {
+    return (
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <ErrorState message={loadError} onRetry={refresh} />
       </div>
     );
   }

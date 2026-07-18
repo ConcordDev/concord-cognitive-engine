@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Form1099Row {
   vendorId: string; vendorName: string; taxId: string;
@@ -35,14 +36,14 @@ export function Form1099Panel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <FileText className="w-4 h-4 text-amber-400" />
         <span className="text-sm font-semibold text-gray-200">1099-NEC summary</span>
-        {data && <span className="text-[10px] text-gray-400">threshold ≥ ${data.threshold} per IRS</span>}
-        <select value={year} onChange={e => setYear(Number(e.target.value))} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono">
+        {data && <span className="text-[10px] text-gray-400 font-mono tabular-nums">threshold ≥ ${data.threshold} per IRS</span>}
+        <select value={year} onChange={e => setYear(Number(e.target.value))} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums">
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="p-4"><SkeletonTableRows rows={5} columns={4} /></div>
       ) : !data ? (
         <div className="p-10 text-center text-xs text-gray-400">No data.</div>
       ) : data.vendors.length === 0 ? (
@@ -77,8 +78,8 @@ function Table({ rows, highlight }: { rows: Form1099Row[]; highlight?: boolean }
         {rows.map(r => (
           <tr key={r.vendorId} className={cn('hover:bg-white/[0.03]', highlight && 'bg-amber-500/[0.04]')}>
             <td className="py-1.5 text-white">{r.vendorName}</td>
-            <td className="font-mono text-[11px] text-gray-300">{r.taxId || <span className="text-rose-400">missing</span>}</td>
-            <td className="text-right text-gray-400 font-mono">{r.billCount}</td>
+            <td className="font-mono tabular-nums text-[11px] text-gray-300">{r.taxId || <span className="text-rose-400">missing</span>}</td>
+            <td className="text-right text-gray-400 font-mono tabular-nums">{r.billCount}</td>
             <td className="text-right font-mono tabular-nums text-white">${r.total.toFixed(2)}</td>
           </tr>
         ))}

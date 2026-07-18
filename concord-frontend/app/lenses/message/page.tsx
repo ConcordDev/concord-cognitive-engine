@@ -33,7 +33,9 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { InboxShell, type InboxThread } from '@/components/message/InboxShell';
 import { api } from '@/lib/api/client';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { Loader2, Send } from 'lucide-react';
+import { Skeleton, EmptyState, ErrorState } from '@/components/ui';
+import { ds } from '@/lib/design-system';
+import { Loader2, Send, MailPlus } from 'lucide-react';
 import MessageWorkbench from '@/components/message/MessageWorkbench';
 import { SlackSection } from '@/components/message/SlackSection';
 import { GmailSection } from '@/components/message/GmailSection';
@@ -65,6 +67,7 @@ export default function MessageLensPage() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingConvos, setLoadingConvos] = useState(false);
+  const [convoError, setConvoError] = useState<string | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [composing, setComposing] = useState(false);
   const [composeTo, setComposeTo] = useState('');
@@ -83,12 +86,16 @@ export default function MessageLensPage() {
 
   const refreshConversations = useCallback(async () => {
     setLoadingConvos(true);
+    setConvoError(null);
     try {
       const r = await api.get('/api/social/dm/conversations');
       const list = (r.data?.conversations ?? r.data ?? []) as Conversation[];
       setConversations(Array.isArray(list) ? list : []);
-    } catch {
+    } catch (e: unknown) {
+      type AxiosLike = { response?: { data?: { error?: string } }; message?: string };
+      const ax = e as AxiosLike;
       setConversations([]);
+      setConvoError(ax.response?.data?.error ?? ax.message ?? 'Could not load conversations.');
     } finally {
       setLoadingConvos(false);
     }
@@ -260,57 +267,64 @@ export default function MessageLensPage() {
         >
           {composing ? (
             <article className="space-y-3">
-              <h1 className="text-xl font-semibold">New message</h1>
+              <h1 className="text-xl font-semibold text-white">New message</h1>
               <RecipientSearchInput value={composeTo} onChange={setComposeTo} />
               <textarea
                 value={composeBody}
                 onChange={(e) => setComposeBody(e.target.value)}
                 rows={6}
                 placeholder="Body…"
-                className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm"
+                className={`${ds.textarea} text-sm`}
               />
-              {sendError && <p className="text-xs text-rose-300">{sendError}</p>}
+              {sendError && <p className="text-xs text-red-400">{sendError}</p>}
               <div className="flex items-center gap-2">
                 <button
                   onClick={sendMessage}
                   disabled={sending}
-                  className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1"
+                  className={`${ds.btnPrimary} px-3 py-1.5 text-xs inline-flex items-center gap-1`}
                 >
                   {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                   Send
                 </button>
                 <button
                   onClick={() => { setComposing(false); setSendError(null); }}
-                  className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded"
+                  className={`${ds.btnSecondary} px-3 py-1.5 text-xs`}
                 >
                   Cancel
                 </button>
               </div>
             </article>
           ) : loadingMessages ? (
-            <p className="text-sm text-gray-400 inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading messages…</p>
+            <div className="space-y-3 not-prose" aria-busy="true">
+              <Skeleton variant="line" width="40%" height="1.25rem" />
+              <Skeleton variant="block" height="4rem" />
+              <Skeleton variant="block" height="4rem" className="w-3/4" />
+              <Skeleton variant="block" height="4rem" />
+            </div>
           ) : activeThread ? (
             <article className="prose dark:prose-invert max-w-none">
               <header className="mb-4 not-prose">
-                <h1 className="text-xl font-semibold">{activeThread.subject}</h1>
+                <h1 className="text-xl font-semibold text-white">{activeThread.subject}</h1>
                 <div className="text-sm text-gray-400 mt-1">
-                  From {activeThread.from} · {new Date(activeThread.timestamp).toLocaleString()}
+                  From <span className="text-gray-300">{activeThread.from}</span>
+                  {' · '}
+                  <span className="font-mono tabular-nums text-gray-500">{new Date(activeThread.timestamp).toLocaleString()}</span>
                 </div>
                 <ThreadLabelBar threadId={activeThread.id} className="mt-2" />
               </header>
               {messages.length === 0 ? (
-                <p>{activeThread.snippet}</p>
+                <p className="text-gray-300">{activeThread.snippet}</p>
               ) : (
                 <div className="space-y-2 not-prose">
                   {messages.map((m) => (
                     <div
                       key={m.id}
-                      className="border border-white/10 rounded p-3 sm:p-5 bg-white/5"
+                      className="border border-lattice-border rounded-lg p-3 sm:p-5 bg-lattice-surface"
                     >
-                      <div className="text-xs text-gray-400 mb-1">{m.fromUserId}</div>
+                      <div className="text-xs font-mono text-gray-500 mb-1">{m.fromUserId}</div>
                       <div className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</div>
                       {m.createdAt && (
-                        <div className="text-[10px] text-gray-400 mt-1">
+                        <div className="text-[10px] font-mono tabular-nums text-gray-500 mt-1">
                           {typeof m.createdAt === 'number'
                             ? new Date(m.createdAt).toLocaleString()
                             : new Date(m.createdAt).toLocaleString()}
@@ -324,12 +338,12 @@ export default function MessageLensPage() {
               {/* Inline reply composer — Gmail / Slack idiom.  Doesn't
                   block the thread view; the user can scroll back up to
                   re-read while typing. */}
-              <div className="mt-4 not-prose border-t border-white/10 pt-4">
+              <div className="mt-4 not-prose border-t border-lattice-border pt-4">
                 <div className="text-xs text-gray-400 mb-2 flex items-center justify-between">
                   <span>
                     Replying to <span className="text-gray-300 font-medium">{activeThread.from}</span>
                   </span>
-                  <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">⌘⏎ send</kbd>
+                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-lattice-elevated border border-lattice-border text-gray-400">⌘⏎ send</kbd>
                 </div>
                 <textarea
                   id="msg-reply-textarea"
@@ -339,14 +353,14 @@ export default function MessageLensPage() {
                   rows={3}
                   placeholder="Write a reply…"
                   disabled={replying}
-                  className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-violet-400/50"
+                  className={`${ds.textarea} text-sm`}
                 />
-                {replyError && <p className="text-xs text-rose-300 mt-1">{replyError}</p>}
+                {replyError && <p className="text-xs text-red-400 mt-1">{replyError}</p>}
                 <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={sendReply}
                     disabled={replying || !replyBody.trim()}
-                    className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 rounded text-white inline-flex items-center gap-1"
+                    className={`${ds.btnPrimary} px-3 py-1.5 text-xs inline-flex items-center gap-1`}
                   >
                     {replying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                     {replying ? 'Sending…' : 'Reply'}
@@ -355,7 +369,7 @@ export default function MessageLensPage() {
                     <button
                       onClick={() => { setReplyBody(''); setReplyError(null); }}
                       disabled={replying}
-                      className="px-3 py-1.5 text-xs text-gray-400 hover:text-white"
+                      className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
                     >
                       Discard
                     </button>
@@ -364,40 +378,51 @@ export default function MessageLensPage() {
               </div>
             </article>
           ) : loadingConvos ? (
-            <p className="text-sm text-gray-400 inline-flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading conversations…
-            </p>
-          ) : conversations.length === 0 ? (
-            <div className="text-sm text-gray-400">
-              <p>No conversations yet.</p>
-              <button
-                onClick={() => setComposing(true)}
-                className="mt-3 px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 rounded text-white inline-flex items-center gap-1"
-              >
-                <Send className="w-3 h-3" /> Start a conversation
-              </button>
+            <div className="not-prose divide-y divide-lattice-border/60" aria-busy="true">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="py-2.5 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Skeleton variant="line" width="35%" height="0.9rem" />
+                    <Skeleton variant="line" width="3rem" height="0.7rem" className="ml-auto" />
+                  </div>
+                  <Skeleton variant="line" width="70%" height="0.9rem" />
+                  <Skeleton variant="line" width="55%" height="0.75rem" />
+                </div>
+              ))}
             </div>
+          ) : convoError ? (
+            <ErrorState
+              message={convoError}
+              title="Couldn't load conversations."
+              onRetry={refreshConversations}
+              retrying={loadingConvos}
+            />
+          ) : conversations.length === 0 ? (
+            <EmptyState
+              icon={<MailPlus className="h-5 w-5" />}
+              title="No messages yet."
+              description="Your direct messages will show up here. Start a conversation to begin."
+              action={{ label: 'Compose', onClick: () => setComposing(true) }}
+            />
           ) : (
             <p className="text-sm text-gray-400">Select a conversation from the inbox.</p>
           )}
         </InboxShell>
       </div>
     
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
 
       {/* 2026 parity workbench — saved, search, voice, reactions */}
       <button
         type="button"
         onClick={() => setWorkbenchOpen(true)}
-        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-sky-500 hover:bg-sky-400 text-sky-50 shadow-2xl text-sm font-medium"
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-neon-blue text-lattice-void font-semibold hover:bg-neon-blue/90 shadow-lg text-sm transition-colors duration-150"
         title="Message Workbench — saved/starred, search, voice notes, reactions"
       >
         Message Workbench
       </button>
       <MessageWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
       <LabelManagerPanel className="mt-6" />
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
         <MessagingRepos />
       </section>
           <RecentMineCard domain="message" limit={10} hideWhenEmpty className="mt-4" />

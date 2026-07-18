@@ -6,6 +6,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 import { ProductCatalogPanel } from '@/components/retail/ProductCatalogPanel';
+import { SkeletonTableRows } from '@/components/ui';
 
 export interface Product {
   sku: string;
@@ -39,7 +40,7 @@ export function RetailWorkbench({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[660px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-rose-500/20 shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-[660px] max-w-[100vw] z-40 bg-lattice-deep border-l border-rose-500/20 shadow-2xl overflow-hidden flex flex-col">
       <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-rose-950/40 to-transparent">
         <div className="flex items-center gap-2">
           <ShoppingCart className="w-4 h-4 text-rose-400" />
@@ -91,6 +92,7 @@ function POSTab() {
   const [tenderAmount, setTenderAmount] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [cardIntent, setCardIntent] = useState<{ clientSecret: string; paymentIntentId: string; total: number } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refreshProducts = useCallback(async () => {
     try {
@@ -110,7 +112,10 @@ function POSTab() {
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { refreshProducts(); openCart(); }, [refreshProducts, openCart]);
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([refreshProducts(), openCart()]).finally(() => setLoading(false));
+  }, [refreshProducts, openCart]);
 
   const addToCart = async (sku: string) => {
     if (!cartId) return;
@@ -188,12 +193,14 @@ function POSTab() {
     <div className="grid grid-cols-2 gap-2 p-3 h-full">
       <div className="space-y-1 overflow-y-auto">
         <p className="text-[10px] uppercase text-gray-400 mb-1">Tap to add</p>
-        {products.length === 0 ? <p className="text-xs text-gray-400">No products. Add some in Catalog tab.</p> :
+        {loading ? (
+          <SkeletonTableRows rows={4} columns={2} />
+        ) : products.length === 0 ? <p className="text-xs text-gray-400">No products. Add some in Catalog tab.</p> :
           products.map((p) => (
             <button key={p.sku} type="button" onClick={() => addToCart(p.sku)}
               className="w-full text-left rounded border border-white/10 bg-black/20 hover:bg-rose-500/10 p-2">
               <p className="text-sm text-gray-100">{p.name}</p>
-              <div className="flex justify-between text-[11px]">
+              <div className="flex justify-between text-[11px] tabular-nums">
                 <span className="font-mono text-rose-300">${p.price}</span>
                 <span className="text-gray-400">{p.stock} in stock</span>
               </div>
@@ -207,7 +214,7 @@ function POSTab() {
         <div className="flex-1 overflow-y-auto">
           {cart?.lines.length === 0 ? <p className="text-xs text-gray-400">Empty.</p> :
             cart?.lines.map((l) => (
-              <div key={l.sku} className="flex justify-between text-xs py-1 border-b border-white/5">
+              <div key={l.sku} className="flex justify-between text-xs py-1 border-b border-white/5 tabular-nums">
                 <span className="text-gray-200">{l.qty}× {l.name}</span>
                 <span className="font-mono text-gray-300">${(l.qty * l.unitPrice).toFixed(2)}</span>
               </div>
@@ -215,7 +222,7 @@ function POSTab() {
           }
         </div>
         {totals && (
-          <div className="mt-2 border-t border-white/10 pt-2 text-xs space-y-0.5 font-mono">
+          <div className="mt-2 border-t border-white/10 pt-2 text-xs space-y-0.5 font-mono tabular-nums">
             <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span>${totals.subtotal}</span></div>
             <div className="flex justify-between"><span className="text-gray-400">Tax (8%)</span><span>${totals.tax}</span></div>
             <div className="flex justify-between font-bold text-lg"><span>Total</span><span className="text-rose-300">${totals.total}</span></div>
@@ -260,21 +267,26 @@ function POSTab() {
 
 function OrdersTab() {
   const [orders, setOrders] = useState<{ id: string; number: string; total: number; itemCount?: number; completedAt: string; lines: { sku: string; name: string; qty: number }[] }[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
         const r = await lensRun({ domain: 'retail', action: 'orders-list', input: {} });
         setOrders(((r.data as { result?: { orders?: typeof orders } }).result?.orders) || []);
       } catch (e) { console.error(e); }
+      finally { setLoading(false); }
     })();
   }, []);
 
   return (
     <div className="p-3 space-y-2">
-      {orders.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No orders yet. Use POS to ring one up.</p> :
+      {loading ? (
+        <SkeletonTableRows rows={4} columns={3} />
+      ) : orders.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No orders yet. Use POS to ring one up.</p> :
         orders.map((o) => (
-          <div key={o.id} className="rounded border border-white/10 bg-black/20 p-3">
+          <div key={o.id} className="rounded border border-white/10 bg-black/20 p-3 tabular-nums">
             <div className="flex justify-between">
               <span className="font-mono text-rose-300">{o.number}</span>
               <span className="font-mono text-gray-100">${o.total}</span>
@@ -291,22 +303,27 @@ function OrdersTab() {
 function LowStockTab() {
   const [items, setItems] = useState<Product[]>([]);
   const [threshold] = useState(5);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
         const r = await lensRun({ domain: 'retail', action: 'low-stock', input: { threshold } });
         setItems(((r.data as { result?: { lowStock?: Product[] } }).result?.lowStock) || []);
       } catch (e) { console.error(e); }
+      finally { setLoading(false); }
     })();
   }, [threshold]);
 
   return (
     <div className="p-3 space-y-2">
       <p className="text-[11px] text-gray-400">Products with stock ≤ {threshold}</p>
-      {items.length === 0 ? <p className="text-center text-xs text-emerald-300 py-8">✓ All stock above threshold.</p> :
+      {loading ? (
+        <SkeletonTableRows rows={4} columns={2} />
+      ) : items.length === 0 ? <p className="text-center text-xs text-emerald-300 py-8">✓ All stock above threshold.</p> :
         items.map((p) => (
-          <div key={p.sku} className="rounded border border-amber-500/20 bg-amber-500/5 p-3 flex justify-between">
+          <div key={p.sku} className="rounded border border-amber-500/20 bg-amber-500/5 p-3 flex justify-between tabular-nums">
             <div>
               <p className="text-sm text-gray-100">{p.name}</p>
               <p className="text-[11px] text-gray-400">{p.sku}</p>

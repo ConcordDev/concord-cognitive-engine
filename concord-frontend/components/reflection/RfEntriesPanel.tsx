@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Search, Trash2, BookMarked, MapPin, CloudSun } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { RfEntryDetailModal } from './RfEntryDetailModal';
 
 interface Journal { id: string; name: string; color: string; entryCount: number }
@@ -30,6 +31,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeJournal, setActiveJournal] = useState<string>('');
   const [newJournal, setNewJournal] = useState('');
   const [query, setQuery] = useState('');
@@ -45,6 +47,13 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
       lensRun('reflection', 'journal-list', {}),
       lensRun('reflection', 'entry-list', activeJournal ? { journalId: activeJournal } : {}),
     ]);
+    if (j.data?.ok === false || e.data?.ok === false) {
+      setLoadError(j.data?.error || e.data?.error || 'Could not load journals.');
+      setSearching(false);
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setJournals(j.data?.result?.journals || []);
     setEntries(e.data?.result?.entries || []);
     setSearching(false);
@@ -96,6 +105,12 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
     if (!query.trim()) { await refresh(); return; }
     setLoading(true);
     const r = await lensRun('reflection', 'entry-search', { query: query.trim() });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Search failed.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntries(r.data?.result?.entries || []);
     setSearching(true);
     setLoading(false);
@@ -188,6 +203,8 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
 
         {loading ? (
           <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={refresh} variant="inline" />
         ) : entries.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic py-6 text-center">
             {searching ? 'No entries match your search.' : 'No entries yet. Write your first one above.'}

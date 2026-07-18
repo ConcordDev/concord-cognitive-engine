@@ -183,7 +183,7 @@ export function ReportsPanel() {
       )}
 
       {/* Firm-wide rollup */}
-      <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Firm Realization Rollup</span>
@@ -202,7 +202,7 @@ export function ReportsPanel() {
                 { label: 'Realization', value: pct(totals?.firmRealizationRate) },
                 { label: 'Collection', value: pct(totals?.firmCollectionRate) },
               ].map((kpi) => (
-                <div key={kpi.label} className="bg-[#0d1117] px-3 py-2.5 text-center">
+                <div key={kpi.label} className="bg-lattice-surface px-3 py-2.5 text-center">
                   <div className="text-base font-bold text-white">{kpi.value}</div>
                   <div className="text-[9px] uppercase tracking-wider text-gray-400">{kpi.label}</div>
                 </div>
@@ -261,7 +261,7 @@ export function ReportsPanel() {
       </div>
 
       {/* Per-matter budget + realization */}
-      <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Target className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Matter Budget &amp; Realization</span>
@@ -378,7 +378,7 @@ export function ReportsPanel() {
                 { label: 'Overall', value: pct(report.overallRate) },
                 { label: 'Utilization', value: pct(report.utilizationRate) },
               ].map((kpi) => (
-                <div key={kpi.label} className="bg-[#0d1117] px-2 py-2 text-center">
+                <div key={kpi.label} className="bg-lattice-surface px-2 py-2 text-center">
                   <div className="text-sm font-bold text-white">{kpi.value}</div>
                   <div className="text-[9px] uppercase tracking-wider text-gray-400">{kpi.label}</div>
                 </div>

@@ -24,6 +24,12 @@ export function AstroGearPanel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('astronomy', 'equipment-list', {});
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load equipment.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setEquipment(r.data?.result?.equipment || []);
     setLoading(false);
   }, []);

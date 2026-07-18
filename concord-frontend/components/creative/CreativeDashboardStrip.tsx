@@ -15,6 +15,7 @@ import {
   LayoutDashboard, ListChecks, Film, ClipboardList, Layers, CalendarClock, Link2, Loader2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Stats {
   boards: number; cards: number; openTasks: number; doneTasks: number;
@@ -37,6 +38,7 @@ const EMPTY: Stats = {
 export function CreativeDashboardStrip() {
   const [stats, setStats] = useState<Stats>(EMPTY);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [board, assets, sheets, deliverables, cal, links] = await Promise.all([
@@ -47,6 +49,13 @@ export function CreativeDashboardStrip() {
       lensRun('creative', 'calendar-list', {}),
       lensRun('creative', 'prooflink-list', {}),
     ]);
+    const failed = [board, assets, sheets, deliverables, cal, links].find((x) => x.data?.ok === false);
+    if (failed) {
+      setLoadError(failed.data?.error || 'Could not load the creative dashboard.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const d = board.data?.result || {};
     const assetList = (assets.data?.result?.assets || []) as { openCount?: number }[];
     const deliverableList = (deliverables.data?.result?.deliverables || []) as { status?: string }[];
@@ -77,6 +86,10 @@ export function CreativeDashboardStrip() {
         <Loader2 className="w-5 h-5 animate-spin" />
       </div>
     );
+  }
+
+  if (loadError) {
+    return <ErrorState message={loadError} onRetry={refresh} variant="inline" />;
   }
 
   const tiles = [

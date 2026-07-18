@@ -34,7 +34,7 @@ export function FoodParityPanel() {
   const [recipeVersion, setRecipeVersion] = useState(0);
 
   return (
-    <div className="bg-[#0a0e14] border border-cyan-500/20 rounded-xl overflow-hidden">
+    <div className="bg-lattice-void border border-cyan-500/20 rounded-xl overflow-hidden">
       <header className="px-4 py-3 border-b border-white/10">
         <h2 className="text-sm font-semibold text-white flex items-center gap-2">
           <ScanBarcode className="w-4 h-4 text-cyan-400" />

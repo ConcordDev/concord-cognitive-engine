@@ -810,8 +810,6 @@ export default function ElectricalLensPage() {
       </section>
     </LensPageShell>
     
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#electrical-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to electrical content</a>
           <RecentMineCard domain="electrical" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="electrical" hideWhenEmpty className="mt-3" />

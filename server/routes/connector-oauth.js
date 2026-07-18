@@ -135,6 +135,69 @@ export const PROVIDERS = {
   },
 };
 
+// The six marquee connectors ConKay surfaces as honest per-user status badges.
+// `provider` keys into PROVIDERS (the operator-config source — env client
+// id/secret); `id` keys into CONNECTOR_TOKEN_KEY (the per-user token-store key).
+export const MARQUEE_CONNECTORS = [
+  { id: "gmail", name: "Gmail", provider: "google" },
+  { id: "google-calendar", name: "Google Calendar", provider: "google" },
+  { id: "slack", name: "Slack", provider: "slack" },
+  { id: "google-sheets", name: "Google Sheets", provider: "google" },
+  { id: "github", name: "GitHub", provider: "github" },
+  { id: "notion", name: "Notion", provider: "notion" },
+];
+
+/**
+ * Compute the CALLER's per-connector honest status for the marquee connectors.
+ * Pure over (db, userId) — the token query is ALWAYS scoped to the passed
+ * userId (WHERE user_id = ?), and there is no parameter that could widen it, so
+ * it is structurally impossible to read another user's connector state.
+ * Exported for direct unit pinning.
+ *
+ * The two questions are answered from two DIFFERENT sources, deliberately:
+ *   - "operator go-live" is a DEPLOYMENT-wide fact, knowable server-side from
+ *     PROVIDERS[provider].clientId()/clientSecret() (env presence) — never
+ *     per-user.
+ *   - "this user linked" is PER-USER, from a grant row in connector_oauth_tokens
+ *     scoped to userId.
+ *
+ * Per-connector status:
+ *   - "needs-go-live" : operator OAuth client absent (provider client id/secret
+ *                       not in the deploy env). Whole deployment can't connect
+ *                       this connector until an operator supplies credentials.
+ *   - "connected"     : operator configured AND this user has a stored OAuth
+ *                       grant row. Reflects a stored grant on file — NOT a live
+ *                       network probe of the token — but it is a real credential
+ *                       row, never a guess or a fabricated success.
+ *   - "not-connected" : operator configured, but this user has no grant row —
+ *                       they simply haven't completed the connect/OAuth flow.
+ *   - "unknown"       : the token store couldn't be read (no db / query threw).
+ *                       Honest non-answer — never downgraded to a fake state.
+ */
+export function buildConnectorStatusList(db, userId) {
+  return MARQUEE_CONNECTORS.map((c) => {
+    const provider = PROVIDERS[c.provider];
+    const operatorConfigured = !!(provider && provider.clientId() && provider.clientSecret());
+    const tokenKey = CONNECTOR_TOKEN_KEY[c.id] || c.id;
+    let hasToken = null; // null === unknown (db unavailable / read failed)
+    if (operatorConfigured) {
+      try {
+        if (db && userId) {
+          const row = db
+            .prepare("SELECT 1 FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ? LIMIT 1")
+            .get(userId, tokenKey);
+          hasToken = !!row;
+        }
+      } catch { hasToken = null; }
+    }
+    let status;
+    if (!operatorConfigured) status = "needs-go-live";
+    else if (hasToken === null) status = "unknown";
+    else status = hasToken ? "connected" : "not-connected";
+    return { id: c.id, name: c.name, provider: c.provider, tokenKey, operatorConfigured, status };
+  });
+}
+
 /** Build a provider consent URL (pure — unit-tested). */
 export function buildAuthorizeUrl({ provider, clientId, redirectUri, scopes, state }) {
   const p = PROVIDERS[provider];
@@ -326,6 +389,17 @@ export default function registerConnectorOAuthRoutes(app, { db, structuredLog, f
     if (entry.connectionId) markIngestConnectionConfigured(entry.userId, entry.connectionId, entry.tokenKey);
     log("info", "connector_oauth_connected", { userId: entry.userId, provider, tokenKey: entry.tokenKey });
     return res.redirect(302, frontendDone(entry.redirect, { connector: "connected", key: entry.tokenKey }));
+  });
+
+  // GET /api/oauth/connector-status — the CALLER's own honest per-connector
+  // state for the six marquee connectors. Read-only; strictly scoped to
+  // req.user.id (buildConnectorStatusList only queries WHERE user_id = ?), so
+  // it can never leak another user's connector state. Not signed in → 401 (no
+  // fabricated state). See buildConnectorStatusList for the status semantics.
+  app.get("/api/oauth/connector-status", (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "login_required" });
+    return res.json({ ok: true, connectors: buildConnectorStatusList(db, userId) });
   });
 }
 

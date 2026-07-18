@@ -22,6 +22,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Bell, BellRing, MapPin, Clock, Trash2, Plus, Radio } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { useSocket } from '@/hooks/useSocket';
 import { useUIStore } from '@/store/ui';
 
@@ -49,6 +50,7 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
   const [liveFired, setLiveFired] = useState<LiveFiredReminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ taskId: '', kind: 'time' as 'time' | 'location', remindAt: '', location: '', note: '' });
   const { on, off, isConnected } = useSocket({ autoConnect: true });
   const addToast = useUIStore((s) => s.addToast);
@@ -59,6 +61,12 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
       lensRun('productivity', 'reminder-list', {}),
       lensRun('productivity', 'task-list', {}),
     ]);
+    if (r.data?.ok === false || t.data?.ok === false) {
+      setLoadError(r.data?.error || t.data?.error || 'Could not load reminders or tasks.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setReminders(r.data?.result?.reminders || []);
     setTasks((t.data?.result?.tasks || []).map((x: { id: string; content: string }) => ({ id: x.id, content: x.content })));
     setLoading(false);
@@ -111,12 +119,18 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
   };
   const checkDue = async () => {
     const r = await lensRun('productivity', 'reminders-due', { markFired: true });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not check due reminders.'); return; }
+    setError(null);
     setDue(r.data?.result?.due || []);
     await refresh();
   };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

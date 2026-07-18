@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Receipt, Loader2, Plus, Trash2, CheckCircle, AlertCircle, Sparkles, Truck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
@@ -150,13 +151,13 @@ export function BillsPanel() {
       {/* Aging summary */}
       {aging && aging.totalOpen > 0 && (
         <div className="bg-[#0d1117] border border-emerald-500/15 rounded-lg p-3">
-          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">A/P aging · ${aging.totalOpen.toFixed(0)} open</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">A/P aging · <span className="font-mono tabular-nums">${aging.totalOpen.toFixed(0)}</span> open</div>
           <div className="grid grid-cols-4 gap-2">
             {aging.buckets.map(b => (
               <div key={b.key} className="rounded border border-white/10 bg-black/30 p-2">
                 <div className="text-[10px] text-gray-400">{b.label}</div>
-                <div className="text-lg font-mono text-amber-200 mt-0.5">${b.total.toFixed(0)}</div>
-                <div className="text-[9px] text-gray-400">{b.bills.length} bill{b.bills.length === 1 ? '' : 's'}</div>
+                <div className="text-lg font-mono tabular-nums text-amber-200 mt-0.5">${b.total.toFixed(0)}</div>
+                <div className="text-[9px] text-gray-400"><span className="font-mono tabular-nums">{b.bills.length}</span> bill{b.bills.length === 1 ? '' : 's'}</div>
               </div>
             ))}
           </div>
@@ -167,7 +168,7 @@ export function BillsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Receipt className="w-4 h-4 text-emerald-400" />
           <span className="text-sm font-semibold text-gray-200">Bills</span>
-          <span className="text-[10px] text-gray-400">{bills.length}</span>
+          <span className="text-[10px] text-gray-400 font-mono tabular-nums">{bills.length}</span>
           <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="open">Open</option>
             <option value="paid">Paid</option>
@@ -222,7 +223,7 @@ export function BillsPanel() {
                       })}
                       className="w-full text-left px-2 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/10 flex items-center gap-1.5 border-t border-white/5"
                     >
-                      <Sparkles className="w-3 h-3 flex-shrink-0" />AI match: {vendorSuggestion.vendorName} · {Math.round((vendorSuggestion.score ?? 0) * 100)}%
+                      <Sparkles className="w-3 h-3 flex-shrink-0" />AI match: {vendorSuggestion.vendorName} · <span className="font-mono tabular-nums">{Math.round((vendorSuggestion.score ?? 0) * 100)}%</span>
                     </button>
                   )}
                   {!suggestingVendor && vendorSuggestion && !vendorSuggestion.matched && vendorSuggestion.suggestedNewVendor && (
@@ -239,21 +240,21 @@ export function BillsPanel() {
                 </div>
               )}
             </div>
-            <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Total *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Total *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
             <select value={draft.expenseAccountId} onChange={e => setDraft({ ...draft, expenseAccountId: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               <option value="">Expense account…</option>
               {expenseAccounts.map(a => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
             </select>
-            <input type="date" value={draft.issuedAt} onChange={e => setDraft({ ...draft, issuedAt: e.target.value })} placeholder="Issued" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <input type="date" value={draft.issuedAt} onChange={e => setDraft({ ...draft, issuedAt: e.target.value })} placeholder="Issued" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
             <input value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} placeholder="Memo" className="col-span-9 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input type="date" value={draft.dueAt} onChange={e => setDraft({ ...draft, dueAt: e.target.value })} placeholder="Due" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <input type="date" value={draft.dueAt} onChange={e => setDraft({ ...draft, dueAt: e.target.value })} placeholder="Due" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
             <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Post bill (auto-creates JE: Dr Expense / Cr A/P)</button>
           </div>
         )}
 
         <div className="max-h-[28rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+            <SkeletonTableRows rows={5} columns={5} />
           ) : bills.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-gray-400"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No bills in this view.</div>
           ) : (
@@ -266,7 +267,7 @@ export function BillsPanel() {
                     <Receipt className={cn('w-3.5 h-3.5 flex-shrink-0', b.status === 'paid' ? 'text-emerald-400' : overdue ? 'text-rose-400' : 'text-amber-400')} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-gray-400">{b.number}</span>
+                        <span className="font-mono tabular-nums text-[10px] text-gray-400">{b.number}</span>
                         <span>{b.vendorName}</span>
                         {overdue && <span className="inline-flex items-center gap-0.5 text-[9px] uppercase text-rose-300"><AlertCircle className="w-2.5 h-2.5" />Overdue</span>}
                       </div>

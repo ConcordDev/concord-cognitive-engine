@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Pill, Check, X, Clock, Archive, ChevronDown, ChevronRight, Pencil, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Medication { id: string; name: string; strength: string | null; form: string; quantity: number; refillsRemaining: number; hasSchedule: boolean }
 interface TodayDose { medId: string; medName: string; time: string; doseAmount: string; status: string }
@@ -31,6 +32,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
   const [doses, setDoses] = useState<TodayDose[]>([]);
   const [adherence, setAdherence] = useState<{ overall: number | null; perMed: AdherenceRow[] }>({ overall: null, perMed: [] });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', strength: '', form: 'tablet', quantity: '', refillsRemaining: '' });
@@ -55,6 +57,12 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
       lensRun('pharmacy', 'today-doses', {}),
       lensRun('pharmacy', 'adherence-report', { days: 30 }),
     ]);
+    if (m.data?.ok === false || t.data?.ok === false || a.data?.ok === false) {
+      setLoadError(m.data?.error || t.data?.error || a.data?.error || 'Could not load medications.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setMeds(m.data?.result?.medications || []);
     setDoses(t.data?.result?.doses || []);
     setAdherence({ overall: a.data?.result?.overall ?? null, perMed: a.data?.result?.perMed || [] });
@@ -130,6 +138,9 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

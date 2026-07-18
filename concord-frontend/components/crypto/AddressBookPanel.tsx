@@ -61,7 +61,7 @@ export function AddressBookPanel({ className }: { className?: string }) {
   }, [load]);
 
   return (
-    <div className={cn('rounded-xl border border-white/10 bg-[#0d1117] p-4', className)}>
+    <div className={cn('rounded-xl border border-lattice-border bg-lattice-void p-4', className)}>
       <div className="flex items-center gap-2 mb-3">
         <BookUser className="w-4 h-4 text-neon-cyan" />
         <h3 className="text-sm font-semibold text-gray-100">Address Book</h3>
@@ -101,11 +101,11 @@ export function AddressBookPanel({ className }: { className?: string }) {
 
       <form onSubmit={(ev) => { ev.preventDefault(); void save(); }} className="flex flex-wrap items-center gap-2">
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label" maxLength={40}
-          className="w-24 bg-[#161b22] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100 focus:border-neon-cyan focus:outline-none" />
+          className="w-24 bg-lattice-elevated border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-100 focus:border-neon-cyan focus:outline-none" />
         <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="0x… / address" maxLength={120}
-          className="flex-1 min-w-[10rem] bg-[#161b22] border border-white/10 rounded px-2 py-1.5 text-xs font-mono text-gray-100 focus:border-neon-cyan focus:outline-none" />
+          className="flex-1 min-w-[10rem] bg-lattice-elevated border border-lattice-border rounded px-2 py-1.5 text-xs font-mono text-gray-100 focus:border-neon-cyan focus:outline-none" />
         <select value={chain} onChange={(e) => setChain(e.target.value)}
-          className="bg-[#161b22] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100 focus:outline-none">
+          className="bg-lattice-elevated border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-100 focus:outline-none">
           {CHAINS.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <button type="submit" disabled={saving || !label.trim() || !address.trim()}

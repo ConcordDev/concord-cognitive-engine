@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface PlannedMeal {
   date: string;
@@ -160,7 +161,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
   return (
     <div className="space-y-4">
       {/* Generation controls */}
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+      <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-cyan-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Pantry-Aware Meal Plan</span>
@@ -204,7 +205,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
 
         {plan && (
           <div className="px-3 pb-3 space-y-2">
-            <div className="text-[10px] text-gray-400">
+            <div className="text-[10px] text-gray-400 tabular-nums">
               {plan.meals.length} meals · {plan.recipesConsidered} recipes considered · {plan.pantryItemsUsed} pantry items used
             </div>
             {Object.entries(mealsByDate).map(([date, meals]) => (
@@ -215,7 +216,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
                     <div key={`${m.date}-${m.slot}`} className="flex items-center gap-2 text-xs">
                       <span className="text-gray-400 w-16 shrink-0">{m.slot}</span>
                       <span className="text-white flex-1 truncate">{m.title}</span>
-                      {m.calories > 0 && <span className="text-orange-400">{m.calories} kcal</span>}
+                      {m.calories > 0 && <span className="text-orange-400 tabular-nums">{m.calories} kcal</span>}
                     </div>
                   ))}
                 </div>
@@ -232,11 +233,11 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
 
       {/* Store layout editor */}
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+      <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <Store className="w-4 h-4 text-cyan-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Store Layout</span>
-          <span className="ml-auto text-[10px] text-gray-400">{layouts.length} saved</span>
+          <span className="ml-auto text-[10px] text-gray-400 tabular-nums">{layouts.length} saved</span>
         </header>
         <div className="p-3 space-y-2 text-xs">
           <p className="text-[10px] text-gray-400">
@@ -261,7 +262,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
                 <button
                   key={l.id}
                   onClick={() => { setStoreName(l.storeName); setAisleOrder(l.aisleOrder.join(', ')); }}
-                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px]"
+                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] tabular-nums"
                 >
                   {l.storeName} ({l.aisleOrder.length} aisles)
                 </button>
@@ -273,12 +274,12 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
 
       {/* Aisle-grouped shopping list */}
       {(listLoading || list) && (
-        <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
+        <div className="bg-lattice-void border border-cyan-500/20 rounded-lg overflow-hidden">
           <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-green-400" />
             <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Shopping List</span>
             {list && (
-              <span className="ml-auto text-[10px] text-gray-400">
+              <span className="ml-auto text-[10px] text-gray-400 tabular-nums">
                 {list.totalToBuy} to buy · {list.alreadyHave} in pantry
                 {list.storeName ? ` · ${list.storeName} order` : ''}
               </span>
@@ -286,7 +287,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
           </header>
           <div className="p-3">
             {listLoading ? (
-              <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Building list…</div>
+              <SkeletonTableRows rows={4} columns={2} />
             ) : list && list.byAisle.length === 0 ? (
               <div className="py-6 text-center text-xs text-gray-400">
                 No ingredients to buy — recipes in the plan have no ingredient data yet.
@@ -313,7 +314,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
                               <span className={cn('flex-1', isChecked ? 'line-through text-gray-600' : 'text-white')}>
                                 {it.name}
                               </span>
-                              <span className="text-gray-400">{it.qty} {it.unit}</span>
+                              <span className="text-gray-400 tabular-nums">{it.qty} {it.unit}</span>
                               {it.haveInPantry && <span className="text-[9px] text-green-400">in pantry</span>}
                             </button>
                           </li>

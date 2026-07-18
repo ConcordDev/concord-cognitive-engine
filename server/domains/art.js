@@ -1086,6 +1086,68 @@ export default function registerArtActions(registerLensAction) {
     };
   });
 
+  // ── The concept board: read the creator's persisted concept-art DTUs ──
+  //
+  // artwork-publish-as-concept (above) mints a real, permanent `dtus` row
+  // per published artwork. This is the read side — the "My concept art"
+  // board. It queries the REAL `dtus` table (not the ephemeral
+  // STATE.artLens.artworks Map), scoped to the authenticated creator via
+  // owner_user_id, and filtered to concept-art rows by the canonical
+  // meta.type='concept_art' stamp. Everything it returns is read straight
+  // out of the persisted row — the thumbnail is whatever was actually
+  // saved (null if none), never a fabricated raster.
+  //
+  // An unauthenticated/anon caller has no owned rows, so this returns an
+  // honest empty board ({ conceptArt: [], count: 0 }) rather than an error
+  // — a read of "your" board when there is no "you" is legitimately empty.
+  registerLensAction("art", "concept-art-list", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!userId || userId === "anon") {
+      return { ok: true, result: { conceptArt: [], count: 0 } };
+    }
+
+    const limit = Math.floor(atClamp(params.limit, 1, 500, 200));
+    let rows;
+    try {
+      rows = db.prepare(`
+        SELECT id, title, visibility, body_json, created_at, updated_at
+        FROM dtus
+        WHERE owner_user_id = ?
+          AND json_extract(body_json, '$.meta.type') = 'concept_art'
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).all(userId, limit);
+    } catch (err) {
+      return { ok: false, error: `failed to read concept-art board: ${err?.message || err}` };
+    }
+
+    const conceptArt = rows.map((row) => {
+      let body = {};
+      try { body = JSON.parse(row.body_json || "{}"); } catch { /* tolerate a corrupt body — surface identity only */ }
+      const meta = (body && typeof body.meta === "object" && body.meta) || {};
+      const art = (body && typeof body.artwork === "object" && body.artwork) || {};
+      return {
+        dtuId: row.id,
+        title: row.title,
+        visibility: row.visibility,
+        artworkId: meta.artworkId || null,
+        width: atNum(meta.width, null),
+        height: atNum(meta.height, null),
+        background: meta.background || null,
+        layerCount: atNum(meta.layerCount, 0),
+        strokeCount: atNum(meta.strokeCount, 0),
+        // Real saved thumbnail data URL or null — no fabricated raster.
+        thumbnail: typeof art.thumbnail === "string" ? art.thumbnail : null,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    });
+
+    return { ok: true, result: { conceptArt, count: conceptArt.length } };
+  });
+
   // ── Layers ──────────────────────────────────────────────────────────
   function findArt(s, userId, artworkId) {
     return (s.artworks.get(userId) || []).find((a) => a.id === artworkId) || null;

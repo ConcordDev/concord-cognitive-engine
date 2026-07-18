@@ -408,7 +408,6 @@ export default function ReflectionLensPage() {
           )}
         </div>
 
-        {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
         <a href="#reflection-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reflection content</a>
       </div>
     </LensShell>

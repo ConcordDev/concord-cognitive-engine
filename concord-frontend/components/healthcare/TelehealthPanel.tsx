@@ -12,9 +12,10 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { Video, Loader2, Plus, Play, CheckCircle, XCircle, ExternalLink, UserX } from 'lucide-react';
+import { Video, Plus, Play, CheckCircle, XCircle, ExternalLink, UserX } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 import { TelehealthVideoCall } from './TelehealthVideoCall';
 
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
@@ -91,7 +92,7 @@ export function TelehealthPanel({ patientId }: { patientId: string }) {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Video className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Telehealth video visits</span>
@@ -116,7 +117,7 @@ export function TelehealthPanel({ patientId }: { patientId: string }) {
           webrtc:leave) but does NOT change the visit's clinical status —
           the provider still has to click "End" to mark it completed. */}
       {activeVisitId && (
-        <div className="border-b border-white/10 p-3 bg-zinc-950/30">
+        <div className="border-b border-white/10 p-3 bg-lattice-void/30">
           <TelehealthVideoCall
             visitId={activeVisitId}
             initiator={true}
@@ -127,7 +128,7 @@ export function TelehealthPanel({ patientId }: { patientId: string }) {
 
       <div className="max-h-[32rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={4} columns={3} />
         ) : visits.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Video className="w-6 h-6 mx-auto mb-2 opacity-30" />No telehealth visits yet.</div>
         ) : (
@@ -137,7 +138,7 @@ export function TelehealthPanel({ patientId }: { patientId: string }) {
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', STATUS_STYLE[v.status])}>{v.status.replace('_', ' ')}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{patientName(v.patientId)}{v.provider && <span className="text-[10px] text-gray-400"> · {v.provider}</span>}</div>
-                  <div className="text-[10px] text-gray-400 truncate">
+                  <div className="text-[10px] text-gray-400 truncate tabular-nums">
                     {new Date(v.scheduledAt).toLocaleString()} · {v.roomProvider}
                     {v.videoReady === false && <span className="text-amber-400/80"> · video not configured</span>}
                   </div>

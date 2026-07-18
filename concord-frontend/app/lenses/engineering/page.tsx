@@ -1180,8 +1180,6 @@ export default function EngineeringPage() {
       </PipingProvider>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <RecentMineCard domain="engineering" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="engineering" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="engineering" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

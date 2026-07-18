@@ -29,6 +29,12 @@ export function ArtPalettesPanel() {
 
   const refresh = useCallback(async () => {
     const r = await lensRun('art', 'palette-list', {});
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load palettes.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setPalettes(r.data?.result?.palettes || []);
     setLoading(false);
   }, []);
@@ -37,6 +43,8 @@ export function ArtPalettesPanel() {
 
   const generate = async () => {
     const r = await lensRun('art', 'palette-harmony', { baseColor, scheme });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not generate harmony.'); return; }
+    setError(null);
     setHarmony(r.data?.result?.colors || []);
   };
 

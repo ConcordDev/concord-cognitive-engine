@@ -66,14 +66,14 @@ export function RegionStatsTool() {
   const result = compute.data;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-      <div className="border-b border-zinc-800 bg-zinc-900/60 p-3">
+    <div className="overflow-hidden rounded-xl border border-lattice-border bg-lattice-void">
+      <div className="border-b border-lattice-border bg-lattice-surface/60 p-3">
         <div className="flex items-center gap-2">
           <Globe2 className="h-4 w-4 text-lime-400" />
           <span className="text-sm font-semibold text-white">Region comparator</span>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">atlas.regionStats</span>
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono tabular-nums text-[10px] uppercase tracking-wider text-gray-400">atlas.regionStats</span>
         </div>
-        <p className="mt-1 text-[11px] text-zinc-400">Compare regions by population, area, GDP and growth — rankings, income tiers, and a population concentration (Gini) index.</p>
+        <p className="mt-1 text-[11px] text-gray-400">Compare regions by population, area, GDP and growth — rankings, income tiers, and a population concentration (Gini) index.</p>
       </div>
 
       <div className="space-y-3 p-3">
@@ -98,11 +98,11 @@ export function RegionStatsTool() {
 
         {compute.isError && <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">Comparison failed.</div>}
         {!result && !compute.isPending && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
+          <div className="rounded border border-dashed border-lattice-border p-6 text-center text-[11px] text-gray-400">
             No data yet. Add at least one region above, then compare.
           </div>
         )}
-        {result?.message && <div className="text-[11px] text-zinc-400">{result.message}</div>}
+        {result?.message && <div className="text-[11px] text-gray-400">{result.message}</div>}
         {result && result.regionCount > 0 && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -111,9 +111,9 @@ export function RegionStatsTool() {
               <Stat label="Total GDP" value={`$${result.totals.gdp.toLocaleString()}`} />
               <Stat label="Avg growth" value={`${result.averages.growthRate}%`} />
             </div>
-            <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Population distribution</div>
-              <div className="mt-1 text-[11px] text-zinc-200">
+            <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2.5">
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">Population distribution</div>
+              <div className="mt-1 text-[11px] text-gray-200">
                 Gini {result.distribution.populationGini} · <span className="capitalize">{result.distribution.concentration.replace('-', ' ')}</span> · σ {result.distribution.populationStdDev.toLocaleString()}
               </div>
             </div>
@@ -122,11 +122,11 @@ export function RegionStatsTool() {
               <RankList title="By GDP" rows={result.rankings.byGdp} suffix="" prefix="$" />
             </div>
             <div className="space-y-1">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Income tiers (GDP per capita)</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">Income tiers (GDP per capita)</div>
               {result.incomeTiers.map((t) => (
                 <div key={t.name} className={`flex items-center justify-between rounded border px-2.5 py-1.5 text-[11px] ${TIER_STYLE[t.tier] || TIER_STYLE['low-income']}`}>
                   <span>{t.name}</span>
-                  <span className="font-mono">${t.gdpPerCapita.toLocaleString()} · <span className="capitalize">{t.tier.replace('-', ' ')}</span></span>
+                  <span className="font-mono tabular-nums">${t.gdpPerCapita.toLocaleString()} · <span className="capitalize">{t.tier.replace('-', ' ')}</span></span>
                 </div>
               ))}
             </div>
@@ -139,9 +139,9 @@ export function RegionStatsTool() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-      <p className="font-mono text-sm text-white">{value}</p>
-      <p className="text-[9px] text-zinc-400">{label}</p>
+    <div className="rounded border border-lattice-border bg-lattice-surface/40 p-2 text-center">
+      <p className="font-mono tabular-nums text-sm text-white">{value}</p>
+      <p className="text-[9px] text-gray-400">{label}</p>
     </div>
   );
 }
@@ -149,11 +149,11 @@ function Stat({ label, value }: { label: string; value: string }) {
 function RankList({ title, rows, prefix = '', suffix = '' }: { title: string; rows: Array<{ rank: number; name: string; value: number }>; prefix?: string; suffix?: string }) {
   return (
     <div className="space-y-1">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{title}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{title}</div>
       {rows.slice(0, 8).map((r) => (
-        <div key={r.name} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1 text-[11px]">
-          <span className="text-zinc-300">{r.rank}. {r.name}</span>
-          <span className="font-mono text-zinc-100">{prefix}{r.value.toLocaleString()}{suffix}</span>
+        <div key={r.name} className="flex items-center justify-between rounded border border-lattice-border bg-lattice-surface/40 px-2 py-1 text-[11px]">
+          <span className="text-gray-300">{r.rank}. {r.name}</span>
+          <span className="font-mono tabular-nums text-gray-100">{prefix}{r.value.toLocaleString()}{suffix}</span>
         </div>
       ))}
     </div>

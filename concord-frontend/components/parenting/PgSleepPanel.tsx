@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Moon, Sparkles, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface SweetSpot {
   ageMonths: number;
@@ -28,6 +29,7 @@ export function PgSleepPanel({ childId }: { childId: string }) {
   const [history, setHistory] = useState<SleepEntry[]>([]);
   const [stats, setStats] = useState<SleepStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ type: 'nap', durationMin: '' });
 
   const refresh = useCallback(async () => {
@@ -37,6 +39,12 @@ export function PgSleepPanel({ childId }: { childId: string }) {
       lensRun('parenting', 'sleep-history', { childId, days: 7 }),
       lensRun('parenting', 'sleep-stats', { childId }),
     ]);
+    if (s.data?.ok === false || h.data?.ok === false || st.data?.ok === false) {
+      setLoadError(s.data?.error || h.data?.error || st.data?.error || 'Could not load sleep data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSpot((s.data?.result as SweetSpot | null) || null);
     setHistory(h.data?.result?.entries || []);
     setStats((st.data?.result as SleepStats | null) || null);
@@ -55,6 +63,9 @@ export function PgSleepPanel({ childId }: { childId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

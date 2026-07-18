@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FolderOpen, Loader2, Plus, FileText, Send, Eye } from 'lucide-react';
+import { FolderOpen, Plus, FileText, Send, Eye } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Matter { id: string; name: string }
 interface Template { id: string; name: string; body: string; kind: string }
@@ -89,7 +90,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
   }
 
   return (
-    <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <FolderOpen className="w-4 h-4 text-amber-400" />
         <span className="text-sm font-semibold text-gray-200">Documents</span>
@@ -146,7 +147,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
       {/* List body */}
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={5} columns={3} />
         ) : tab === 'documents' ? (
           docs.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-gray-400"><FolderOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />No documents yet. Generate one from a template.</div>
@@ -157,7 +158,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
                   <FileText className={cn('w-3.5 h-3.5', d.status === 'signed' ? 'text-emerald-400' : d.status === 'sent_for_signature' ? 'text-amber-400' : 'text-gray-400')} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate">{d.name}</div>
-                    <div className="text-[10px] text-gray-400 truncate">{d.matterName} · {d.templateName} · v{d.version}</div>
+                    <div className="text-[10px] text-gray-400 truncate">{d.matterName} · {d.templateName} · <span className="font-mono tabular-nums">v{d.version}</span></div>
                   </div>
                   <span className={cn(
                     'text-[9px] uppercase px-1.5 py-0.5 rounded font-mono',
@@ -197,7 +198,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
       {/* View modal */}
       {viewDoc && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setViewDoc(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-[#0d1117] border border-amber-500/30 rounded-lg max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-lattice-surface border border-amber-500/30 rounded-lg max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <FileText className="w-4 h-4 text-amber-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{viewDoc.name}</span>
@@ -211,7 +212,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
       {/* E-sign envelope modal */}
       {esignDoc && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEsignDoc(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-[#0d1117] border border-amber-500/30 rounded-lg max-w-xl w-full overflow-hidden" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-lattice-surface border border-amber-500/30 rounded-lg max-w-xl w-full overflow-hidden" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <Send className="w-4 h-4 text-amber-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">Send for e-signature</span>

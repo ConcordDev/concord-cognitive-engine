@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, SlidersHorizontal, Trash2, X, Target } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface ScoringRule { signal: string; points: number }
 interface ScoringModel {
@@ -27,6 +28,7 @@ export function MarketingScoringPanel() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [creating, setCreating] = useState(false);
@@ -46,6 +48,12 @@ export function MarketingScoringPanel() {
       lensRun('marketing', 'scoring-model-list', {}),
       lensRun('marketing', 'lead-list', {}),
     ]);
+    if (m.data?.ok === false || l.data?.ok === false) {
+      setLoadError(m.data?.error || l.data?.error || 'Could not load scoring models.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setModels(m.data?.result?.models || []);
     setLeads(l.data?.result?.leads || []);
     setLoading(false);
@@ -115,6 +123,10 @@ export function MarketingScoringPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

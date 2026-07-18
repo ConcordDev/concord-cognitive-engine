@@ -507,7 +507,7 @@ function DashboardPage() {
             <span className="animate-pulse">Connecting to lattice...</span>
           ) : (
             <>
-              {status?.version || 'v5.0'} &middot; {dtuCount.toLocaleString()} DTUs &middot;{' '}
+              {status?.version || 'v1.0'} &middot; {dtuCount.toLocaleString()} DTUs &middot;{' '}
               {status?.llm?.enabled ? 'LLM Active' : 'Local Mode'} &middot;{' '}
               {healthData?.status === 'ok' ? (
                 <span className="text-neon-green">Healthy</span>

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, User, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Character {
   id: string; name: string; role: string; description: string | null; arc: string | null;
@@ -23,6 +24,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', role: 'supporting', description: '', arc: '' });
   const [relationships, setRelationships] = useState<{ id: string; kind: string; fromName: string; toName: string }[]>([]);
   const [relForm, setRelForm] = useState({ fromId: '', toId: '', kind: 'friend' });
@@ -36,6 +38,12 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
       lensRun('creative-writing', 'character-list', { projectId }),
       lensRun('creative-writing', 'character-relationships', { projectId }),
     ]);
+    if (r.data?.ok === false || rels.data?.ok === false) {
+      setLoadError(r.data?.error || rels.data?.error || 'Could not load characters.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCharacters(r.data?.result?.characters || []);
     setRelationships(rels.data?.result?.relationships || []);
     setLoading(false);
@@ -91,6 +99,10 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

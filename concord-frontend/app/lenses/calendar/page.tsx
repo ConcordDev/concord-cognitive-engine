@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
+import { Skeleton } from '@/components/ui';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -828,7 +829,7 @@ export default function CalendarLensPage() {
                 <div className="flex items-center justify-between mb-1">
                   <span
                     className={cn(
-                      'w-7 h-7 flex items-center justify-center rounded-full text-sm',
+                      'w-7 h-7 flex items-center justify-center rounded-full text-sm tabular-nums',
                       isToday(date) && 'bg-neon-blue text-white',
                       !isCurrentMonth && 'text-gray-400'
                     )}
@@ -836,7 +837,7 @@ export default function CalendarLensPage() {
                     {date.getDate()}
                   </span>
                   {dayEvents.length > 3 && (
-                    <span className="text-xs text-gray-400">+{dayEvents.length - 3}</span>
+                    <span className="text-xs text-gray-400 tabular-nums">+{dayEvents.length - 3}</span>
                   )}
                 </div>
 
@@ -854,7 +855,7 @@ export default function CalendarLensPage() {
                     >
                       <CategoryIcon type={event.eventType} className="w-3 h-3 flex-shrink-0" />
                       {!event.allDay && (
-                        <span className="opacity-70">{formatTime(new Date(event.startDate))} </span>
+                        <span className="opacity-70 tabular-nums">{formatTime(new Date(event.startDate))} </span>
                       )}
                       <span className="truncate">{event.title}</span>
                     </button>
@@ -885,7 +886,7 @@ export default function CalendarLensPage() {
               )}
             >
               <p className="text-xs text-gray-400">{DAY_NAMES[i]}</p>
-              <p className={cn('text-lg font-semibold', isToday(date) && 'text-neon-blue')}>
+              <p className={cn('text-lg font-semibold tabular-nums', isToday(date) && 'text-neon-blue')}>
                 {date.getDate()}
               </p>
             </div>
@@ -923,7 +924,7 @@ export default function CalendarLensPage() {
           <div className="relative">
             {hours.map((hour) => (
               <div key={hour} className="flex h-16 border-b border-lattice-border/50">
-                <div className="w-16 flex-shrink-0 flex items-start justify-center -mt-2 text-xs text-gray-400">
+                <div className="w-16 flex-shrink-0 flex items-start justify-center -mt-2 text-xs text-gray-400 tabular-nums">
                   {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
                 </div>
                 {weekDates.map((date, i) => {
@@ -969,7 +970,7 @@ export default function CalendarLensPage() {
                               <CategoryIcon type={event.eventType} className="w-3 h-3" />
                               {event.title}
                             </p>
-                            <p className="opacity-70 text-[10px]">{formatTime(start)}</p>
+                            <p className="opacity-70 text-[10px] tabular-nums">{formatTime(start)}</p>
                           </button>
                         );
                       })}
@@ -993,10 +994,10 @@ export default function CalendarLensPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="py-4 text-center border-b border-lattice-border">
           <p className="text-sm text-gray-400">{DAY_NAMES_FULL[selectedDate.getDay()]}</p>
-          <p className={cn('text-3xl font-bold', isToday(selectedDate) && 'text-neon-blue')}>
+          <p className={cn('text-3xl font-bold tabular-nums', isToday(selectedDate) && 'text-neon-blue')}>
             {selectedDate.getDate()}
           </p>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-400 tabular-nums">
             {MONTH_NAMES[selectedDate.getMonth()]} {selectedDate.getFullYear()}
           </p>
         </div>
@@ -1027,7 +1028,7 @@ export default function CalendarLensPage() {
 
             return (
               <div key={hour} className="flex h-20 border-b border-lattice-border/50">
-                <div className="w-20 flex-shrink-0 flex items-start justify-center pt-1 text-sm text-gray-400">
+                <div className="w-20 flex-shrink-0 flex items-start justify-center pt-1 text-sm text-gray-400 tabular-nums">
                   {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
                 </div>
                 <div
@@ -1069,7 +1070,7 @@ export default function CalendarLensPage() {
                           <CategoryIcon type={event.eventType} className="w-4 h-4" />
                           {event.title}
                         </p>
-                        <p className="text-xs opacity-70">
+                        <p className="text-xs opacity-70 tabular-nums">
                           {formatDateRange(start, end, event.allDay)}
                         </p>
                         {event.location && (
@@ -1135,7 +1136,7 @@ export default function CalendarLensPage() {
                         <CalendarDays className="w-8 h-8" style={{ color: event.artworkColor || event.color }} />
                       </div>
                       <p className="font-semibold text-sm truncate">{event.title}</p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-gray-400 mt-1 tabular-nums">
                         {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </p>
                       {/* Platform icons */}
@@ -1155,7 +1156,7 @@ export default function CalendarLensPage() {
                       <div className="mt-2 flex items-center gap-1">
                         <Timer className="w-3 h-3 text-neon-cyan" />
                         <span className={cn(
-                          'text-xs font-semibold',
+                          'text-xs font-semibold tabular-nums',
                           daysLeft <= 3 ? 'text-red-400' : daysLeft <= 7 ? 'text-yellow-400' : 'text-neon-cyan'
                         )}>
                           {daysLeft <= 0 ? 'Today!' : `${daysLeft}d left`}
@@ -1200,11 +1201,11 @@ export default function CalendarLensPage() {
                     )}
                   >
                     <span className="text-xs">{DAY_NAMES[date.getDay()]}</span>
-                    <span className="text-lg font-bold">{date.getDate()}</span>
+                    <span className="text-lg font-bold tabular-nums">{date.getDate()}</span>
                   </div>
                   <div>
                     <p className="font-semibold">{DAY_NAMES_FULL[date.getDay()]}</p>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-gray-400 tabular-nums">
                       {MONTH_NAMES[date.getMonth()]} {date.getFullYear()}
                     </p>
                   </div>
@@ -1226,7 +1227,7 @@ export default function CalendarLensPage() {
                           <CategoryIcon type={event.eventType} className="w-4 h-4" />
                           {event.title}
                         </h4>
-                        <span className="text-sm text-gray-400">
+                        <span className="text-sm text-gray-400 tabular-nums">
                           {formatDateRange(new Date(event.startDate), new Date(event.endDate), event.allDay)}
                         </span>
                       </div>
@@ -1291,7 +1292,7 @@ export default function CalendarLensPage() {
                 <button onClick={() => navigateMonth(-1)} className="p-1 rounded hover:bg-lattice-elevated" aria-label="Previous">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium tabular-nums">
                   {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
                 </span>
                 <button onClick={() => navigateMonth(1)} className="p-1 rounded hover:bg-lattice-elevated" aria-label="Next">
@@ -1324,7 +1325,7 @@ export default function CalendarLensPage() {
                         key={i}
                         onClick={() => setSelectedDate(date)}
                         className={cn(
-                          'w-7 h-7 rounded-full text-xs transition-colors relative',
+                          'w-7 h-7 rounded-full text-xs tabular-nums transition-colors relative',
                           isToday(date) && 'bg-neon-blue text-white',
                           isSameDay(date, selectedDate) && !isToday(date) && 'bg-neon-cyan/20 text-neon-cyan',
                           !isToday(date) && !isSameDay(date, selectedDate) && 'hover:bg-lattice-elevated'
@@ -1369,7 +1370,7 @@ export default function CalendarLensPage() {
               </div>
               <div className="space-y-2">
                 {calendars.length === 0 && (
-                  <p className="text-xs text-gray-400 py-2">Loading calendars…</p>
+                  <p className="text-xs text-gray-400 py-2">No calendars yet.</p>
                 )}
                 {calendars.map((cal) => (
                   <button
@@ -1446,7 +1447,7 @@ export default function CalendarLensPage() {
                         <CategoryIcon type={event.eventType} className="w-3 h-3" />
                         {event.title}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 tabular-nums">
                         {formatDateRange(new Date(event.startDate), new Date(event.endDate), event.allDay)}
                       </p>
                     </button>
@@ -1469,11 +1470,56 @@ export default function CalendarLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8" role="status" aria-live="polite" aria-busy="true">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading calendar…</p>
-          <span className="sr-only">Loading calendar</span>
+      <div className="h-[calc(100vh-4rem)] flex flex-col" role="status" aria-live="polite" aria-busy="true">
+        <span className="sr-only">Loading calendar</span>
+        {/* Header skeleton — mirrors the toolbar (today / nav / title / view switch) */}
+        <header className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">
+          <div className="flex items-center gap-4">
+            <Skeleton variant="block" width={36} height={36} className="!rounded-lg" />
+            <Skeleton variant="line" width="4.5rem" height="2rem" className="!rounded-lg" />
+            <Skeleton variant="line" width="8rem" height="1.5rem" />
+          </div>
+          <Skeleton variant="line" width="12rem" height="2rem" className="!rounded-lg" />
+        </header>
+
+        <div className="flex-1 flex overflow-hidden">
+          {/* Sidebar skeleton — mini calendar + calendars + categories */}
+          <aside className="w-[280px] border-r border-lattice-border bg-lattice-surface/30 p-4 space-y-6 flex-shrink-0">
+            <div className="panel p-3 space-y-2">
+              <Skeleton variant="line" width="60%" className="mx-auto" />
+              <div className="grid grid-cols-7 gap-1.5 pt-2">
+                {Array.from({ length: 28 }).map((_, i) => (
+                  <Skeleton key={i} variant="avatar" width="100%" height={22} className="!rounded" />
+                ))}
+              </div>
+            </div>
+            <Skeleton variant="line" height="2.25rem" className="!rounded-lg" />
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton variant="avatar" width={16} height={16} className="!rounded" />
+                  <Skeleton variant="line" width={`${50 + i * 8}%`} />
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          {/* Grid skeleton — 7-column month grid, matching the real header + cells */}
+          <main className="flex-1 flex flex-col overflow-hidden bg-lattice-deep">
+            <div className="grid grid-cols-7 border-b border-lattice-border">
+              {DAY_NAMES.map((day) => (
+                <div key={day} className="py-3 text-center text-sm font-medium text-gray-400">{day}</div>
+              ))}
+            </div>
+            <div className="flex-1 grid grid-cols-7 grid-rows-5">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div key={i} className="min-h-[100px] border-b border-r border-lattice-border p-1.5 space-y-1.5">
+                  <Skeleton variant="line" width="1.25rem" height="1.25rem" className="!rounded-full" />
+                  {(i * 7) % 5 === 0 && <Skeleton variant="line" height="0.875rem" />}
+                </div>
+              ))}
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -1531,7 +1577,7 @@ export default function CalendarLensPage() {
             </button>
           </div>
 
-          <h1 className="text-xl font-semibold">
+          <h1 className="text-xl font-semibold tabular-nums">
             {viewMode === 'month' && `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
             {viewMode === 'week' && `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
             {viewMode === 'day' && selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
@@ -1671,7 +1717,7 @@ export default function CalendarLensPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3 text-gray-400">
                   <Clock className="w-5 h-5" />
-                  <div>
+                  <div className="tabular-nums">
                     <p>
                       {new Date(selectedEvent.startDate).toLocaleDateString('en-US', {
                         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -1741,7 +1787,7 @@ export default function CalendarLensPage() {
                 {selectedEvent.reminders && selectedEvent.reminders.length > 0 && (
                   <div className="flex items-center gap-3 text-gray-400">
                     <Bell className="w-5 h-5" />
-                    <span>
+                    <span className="tabular-nums">
                       {selectedEvent.reminders.map((r) => `${r.time} ${r.unit}`).join(', ')} before
                     </span>
                   </div>
@@ -1816,7 +1862,7 @@ export default function CalendarLensPage() {
                             'flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors text-xs',
                             isActive
                               ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                              : 'border-lattice-border hover:border-gray-500 text-gray-400'
+                              : 'border-lattice-border hover:border-white/20 text-gray-400'
                           )}
                         >
                           <CategoryIcon type={type} className="w-4 h-4" />
@@ -1887,7 +1933,7 @@ export default function CalendarLensPage() {
                       Conflicts with {conflicts.length} existing event{conflicts.length === 1 ? '' : 's'}
                     </div>
                     {conflicts.map((c) => (
-                      <div key={`${c.eventId}-${c.start}`} className="text-yellow-200/80">
+                      <div key={`${c.eventId}-${c.start}`} className="text-yellow-200/80 tabular-nums">
                         {c.title} — {new Date(c.start).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </div>
                     ))}
@@ -2005,7 +2051,7 @@ export default function CalendarLensPage() {
                               'text-xs px-3 py-1.5 rounded-full border transition-colors',
                               isSelected
                                 ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                                : 'border-lattice-border text-gray-400 hover:border-gray-500'
+                                : 'border-lattice-border text-gray-400 hover:border-white/20'
                             )}
                           >
                             {platform}
@@ -2086,7 +2132,7 @@ export default function CalendarLensPage() {
                             'text-xs px-3 py-1.5 rounded-full border transition-colors',
                             isSelected
                               ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                              : 'border-lattice-border text-gray-400 hover:border-gray-500'
+                              : 'border-lattice-border text-gray-400 hover:border-white/20'
                           )}
                         >
                           <Bell className="w-3 h-3 inline mr-1" />
@@ -2195,7 +2241,7 @@ export default function CalendarLensPage() {
                           'px-3 py-2 rounded-lg border text-sm transition-colors text-left',
                           bookSession.sessionType === type
                             ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                            : 'border-lattice-border text-gray-400 hover:border-gray-500'
+                            : 'border-lattice-border text-gray-400 hover:border-white/20'
                         )}
                       >
                         {type}
@@ -2224,10 +2270,10 @@ export default function CalendarLensPage() {
                         key={hour}
                         onClick={() => setBookSession({ ...bookSession, hour })}
                         className={cn(
-                          'px-2 py-1.5 rounded-lg border text-xs transition-colors',
+                          'px-2 py-1.5 rounded-lg border text-xs tabular-nums transition-colors',
                           bookSession.hour === hour
                             ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                            : 'border-lattice-border text-gray-400 hover:border-gray-500'
+                            : 'border-lattice-border text-gray-400 hover:border-white/20'
                         )}
                       >
                         {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
@@ -2245,10 +2291,10 @@ export default function CalendarLensPage() {
                         key={dur}
                         onClick={() => setBookSession({ ...bookSession, duration: dur })}
                         className={cn(
-                          'flex-1 px-3 py-2 rounded-lg border text-sm transition-colors',
+                          'flex-1 px-3 py-2 rounded-lg border text-sm tabular-nums transition-colors',
                           bookSession.duration === dur
                             ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                            : 'border-lattice-border text-gray-400 hover:border-gray-500'
+                            : 'border-lattice-border text-gray-400 hover:border-white/20'
                         )}
                       >
                         {dur}h
@@ -2261,7 +2307,7 @@ export default function CalendarLensPage() {
                 <div className="p-3 rounded-lg bg-lattice-deep border border-lattice-border">
                   <p className="text-sm text-gray-400">Session summary</p>
                   <p className="font-semibold mt-1">{bookSession.sessionType}</p>
-                  <p className="text-sm text-gray-300">
+                  <p className="text-sm text-gray-300 tabular-nums">
                     {bookSession.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                     {' at '}
                     {bookSession.hour === 0 ? '12 AM' : bookSession.hour < 12 ? `${bookSession.hour} AM` : bookSession.hour === 12 ? '12 PM' : `${bookSession.hour - 12} PM`}
@@ -2308,15 +2354,15 @@ export default function CalendarLensPage() {
       )}
 
       {/* Bespoke timezone + iCal tools with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
         <TimezoneTools />
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
         <ScheduleAnalyzer />
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
         <LensFeedButton domain="calendar" />
         <AppointmentSchedules />
       </section>

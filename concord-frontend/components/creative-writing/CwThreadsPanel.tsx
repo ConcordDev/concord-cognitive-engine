@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, GitBranch } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Thread { id: string; name: string; color: string; sceneCount: number }
 interface PlotGrid {
@@ -27,6 +28,7 @@ export function CwThreadsPanel({ projectId, onChange }: { projectId: string; onC
   const [grid, setGrid] = useState<PlotGrid | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', color: 'indigo' });
 
   const refresh = useCallback(async () => {
@@ -35,6 +37,12 @@ export function CwThreadsPanel({ projectId, onChange }: { projectId: string; onC
       lensRun('creative-writing', 'thread-list', { projectId }),
       lensRun('creative-writing', 'plot-grid', { projectId }),
     ]);
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load plot threads.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setThreads(r.data?.result?.threads || []);
     setGrid((g.data?.result as PlotGrid | null) || null);
     setLoading(false);
@@ -59,6 +67,10 @@ export function CwThreadsPanel({ projectId, onChange }: { projectId: string; onC
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

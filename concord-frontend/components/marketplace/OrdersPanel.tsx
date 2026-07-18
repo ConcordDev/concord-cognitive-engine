@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Package, Loader2, CheckCircle, Truck, XCircle, Plus, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui/Skeleton';
 
 interface Order {
   id: string; number: string;
@@ -93,7 +94,7 @@ export function OrdersPanel() {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+    <div className="bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Package className="w-4 h-4 text-orange-400" />
         <span className="text-sm font-semibold text-gray-200">Orders</span>
@@ -141,7 +142,7 @@ export function OrdersPanel() {
 
       <div className="max-h-[36rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <SkeletonTableRows rows={6} columns={4} />
         ) : list.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Package className="w-6 h-6 mx-auto mb-2 opacity-30" />No orders in this view.</div>
         ) : (
@@ -160,7 +161,7 @@ export function OrdersPanel() {
                     {o.trackingNumber && <span> · 🚚 {o.carrier} {o.trackingNumber}</span>}
                   </div>
                 </div>
-                <div className="text-sm font-mono text-white w-20 text-right">${o.totalUsd.toFixed(2)}</div>
+                <div className="text-sm font-mono tabular-nums text-white w-20 text-right">${o.totalUsd.toFixed(2)}</div>
                 {o.status === 'paid' && (
                   <button onClick={() => setShipForm({ id: o.id, trackingNumber: '', carrier: '' })} className="px-2 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1">
                     <Truck className="w-3 h-3" />Ship

@@ -7,9 +7,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, HeartPulse, ShieldCheck, AlertTriangle, UserPlus } from 'lucide-react';
+import { Plus, Trash2, HeartPulse, ShieldCheck, AlertTriangle, UserPlus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 interface Gap { item: string; status: 'due' | 'overdue'; reason: string; lastDone: string | null }
 interface TeamMember { id: string; providerName: string; role: string; specialty: string }
@@ -51,13 +52,22 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+    return (
+      <div className="space-y-3">
+        <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
+          <SkeletonTableRows rows={3} columns={3} />
+        </div>
+        <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
+          <SkeletonTableRows rows={2} columns={3} />
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-3">
       {/* Care gaps */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <HeartPulse className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Health maintenance</span>
@@ -90,7 +100,7 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
       </div>
 
       {/* Care team */}
-      <div className="bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <UserPlus className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Care team</span>

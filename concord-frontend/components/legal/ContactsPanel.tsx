@@ -129,7 +129,7 @@ export function ContactsPanel() {
       </div>
 
       {/* Contacts list */}
-      <div className="bg-[#0d1117] border border-amber-500/15 rounded-lg overflow-hidden">
+      <div className="bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Users className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Contacts</span>

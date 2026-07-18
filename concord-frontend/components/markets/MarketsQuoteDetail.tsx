@@ -172,7 +172,7 @@ export function MarketsQuoteDetail() {
         <div className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Quote Research</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">
             yahoo finance · OHLCV
           </span>
         </div>
@@ -180,7 +180,7 @@ export function MarketsQuoteDetail() {
           <button
             type="button"
             onClick={reset}
-            className="rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-lattice-elevated hover:text-gray-200"
           >
             New lookup
           </button>
@@ -189,13 +189,13 @@ export function MarketsQuoteDetail() {
 
       <form onSubmit={submitSearch} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value.toUpperCase())}
             placeholder="Ticker — AAPL, SPY, MSFT, BTC-USD, EURUSD=X, ^GSPC…"
-            className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm font-mono text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
+            className="w-full rounded-md border border-lattice-border bg-lattice-void py-1.5 pl-8 pr-3 text-sm font-mono text-white placeholder-gray-600 focus:border-cyan-500/40 focus:outline-none"
           />
         </div>
         <button
@@ -215,7 +215,7 @@ export function MarketsQuoteDetail() {
       )}
 
       {!primarySymbol && !errorMsg && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
+        <div className="rounded-md border border-dashed border-lattice-border bg-lattice-void/50 px-3 py-8 text-center text-xs text-gray-400">
           Pull a real-time quote, price chart, and side-by-side comparison for any Yahoo-listed ticker —
           equities, ETFs, indices (^GSPC), futures (ES=F), forex (EURUSD=X), or crypto (BTC-USD).
         </div>
@@ -243,7 +243,7 @@ export function MarketsQuoteDetail() {
 
           {comparisons.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-zinc-400">Comparing:</span>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400">Comparing:</span>
               {[primarySymbol, ...comparisons].map((sym, i) => (
                 <span
                   key={sym}
@@ -256,7 +256,7 @@ export function MarketsQuoteDetail() {
                     <button
                       type="button"
                       onClick={() => removeCompare(sym)}
-                      className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-zinc-800"
+                      className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-lattice-elevated"
                       aria-label={`Remove ${sym}`}
                     >
                       <X className="h-2.5 w-2.5" />
@@ -291,7 +291,7 @@ function QuoteHero({ symbol, quote, history }: { symbol: string; quote: Quote | 
   const deltaPct = quote?.pctChange1d ?? (delta != null && prevClose ? (delta / prevClose) * 100 : null);
   const isUp = (deltaPct ?? 0) > 0;
   const isDown = (deltaPct ?? 0) < 0;
-  const trendColor = isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-zinc-400';
+  const trendColor = isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-gray-400';
   const TrendIcon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
 
   return (
@@ -300,37 +300,37 @@ function QuoteHero({ symbol, quote, history }: { symbol: string; quote: Quote | 
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-4"
+      className="rounded-lg border border-cyan-500/20 bg-lattice-void/60 p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-3">
             <h3 className="font-mono text-2xl font-bold tracking-tight text-white">{symbol}</h3>
             {quote?.name && (
-              <span className="truncate text-xs text-zinc-400">{quote.name}</span>
+              <span className="truncate text-xs text-gray-400">{quote.name}</span>
             )}
           </div>
           <div className="mt-2 flex items-end gap-3">
-            <span className="font-mono text-3xl font-semibold text-white">
+            <span className="font-mono tabular-nums text-3xl font-semibold text-white">
               {price != null ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
             </span>
             <div className={`flex items-center gap-1.5 ${trendColor}`}>
               <TrendIcon className="h-4 w-4" />
-              <span className="font-mono text-sm font-semibold">
+              <span className="font-mono tabular-nums text-sm font-semibold">
                 {delta != null ? (delta >= 0 ? '+' : '') + delta.toFixed(2) : '—'}
               </span>
-              <span className="font-mono text-sm">
+              <span className="font-mono tabular-nums text-sm">
                 ({deltaPct != null ? (deltaPct >= 0 ? '+' : '') + deltaPct.toFixed(2) : '—'}%)
               </span>
             </div>
             {history?.currency && history.currency !== 'USD' && (
-              <span className="text-[10px] uppercase tracking-wider text-zinc-400">
+              <span className="text-[10px] uppercase tracking-wider text-gray-400">
                 {history.currency}
               </span>
             )}
           </div>
           {history?.exchangeName && (
-            <p className="mt-1 text-[11px] text-zinc-400">
+            <p className="mt-1 text-[11px] text-gray-400">
               {history.exchangeName}
             </p>
           )}
@@ -370,9 +370,9 @@ function QuoteFundamentals({ quote }: { quote: Quote }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
       {cells.map((c) => (
-        <div key={c.label} className="rounded-md border border-zinc-800 bg-zinc-950/40 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-400">{c.label}</div>
-          <div className={`font-mono text-sm font-medium ${c.color ?? 'text-white'}`}>{c.value ?? '—'}</div>
+        <div key={c.label} className="rounded-md border border-lattice-border bg-lattice-void/40 px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">{c.label}</div>
+          <div className={`font-mono tabular-nums text-sm font-medium ${c.color ?? 'text-white'}`}>{c.value ?? '—'}</div>
         </div>
       ))}
     </div>
@@ -402,7 +402,7 @@ function ChartControls({
             className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
               activeRange === p.label
                 ? 'bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/30'
-                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                : 'text-gray-400 hover:bg-lattice-elevated hover:text-gray-200'
             }`}
           >
             {p.label}
@@ -411,14 +411,14 @@ function ChartControls({
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-0.5 rounded-md border border-zinc-800 bg-zinc-950 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-md border border-lattice-border bg-lattice-void p-0.5">
           {(['line', 'area'] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setChartType(t)}
               className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-                chartType === t ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'
+                chartType === t ? 'bg-cyan-500/15 text-cyan-300' : 'text-gray-400 hover:text-gray-300'
               }`}
             >
               <Activity className="h-3 w-3" />
@@ -427,8 +427,8 @@ function ChartControls({
           ))}
         </div>
 
-        <div className="flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950 p-1">
-          <Plus className="h-3 w-3 text-zinc-400" />
+        <div className="flex items-center gap-1.5 rounded-md border border-lattice-border bg-lattice-void p-1">
+          <Plus className="h-3 w-3 text-gray-400" />
           <input
             type="text"
             value={comparisonInput}
@@ -436,7 +436,7 @@ function ChartControls({
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAddCompare(); } }}
             placeholder={comparing ? 'add ticker' : 'compare with…'}
             disabled={!canAdd}
-            className="w-24 bg-transparent text-[11px] font-mono text-white placeholder-zinc-600 focus:outline-none disabled:opacity-50"
+            className="w-24 bg-transparent text-[11px] font-mono text-white placeholder-gray-600 focus:outline-none disabled:opacity-50"
           />
           <button
             type="button"
@@ -480,10 +480,10 @@ function LightChart({ symbols, series, comparing, chartType, isLoading }: {
     if (!hostRef.current) return;
     const chart = mod.createChart(hostRef.current, {
       height: 360,
-      layout: { background: { color: '#09090b' }, textColor: '#a1a1aa', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 },
-      grid: { vertLines: { color: '#27272a40' }, horzLines: { color: '#27272a40' } },
-      rightPriceScale: { borderColor: '#27272a' },
-      timeScale: { borderColor: '#27272a', timeVisible: true, secondsVisible: false },
+      layout: { background: { color: '#0a0a0f' }, textColor: '#9ca3af', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 },
+      grid: { vertLines: { color: '#2a2a3a40' }, horzLines: { color: '#2a2a3a40' } },
+      rightPriceScale: { borderColor: '#2a2a3a' },
+      timeScale: { borderColor: '#2a2a3a', timeVisible: true, secondsVisible: false },
       crosshair: { mode: 1 },
       autoSize: true,
     });
@@ -553,15 +553,15 @@ function LightChart({ symbols, series, comparing, chartType, isLoading }: {
   const hasAnyData = symbols.some((s) => series[s]?.bars.length);
 
   return (
-    <div className="relative overflow-hidden rounded-md border border-zinc-800 bg-zinc-950" style={{ height: 360 }}>
+    <div className="relative overflow-hidden rounded-md border border-lattice-border bg-lattice-void" style={{ height: 360 }}>
       <div ref={hostRef} className="absolute inset-0" />
       {isLoading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-zinc-950/80">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-lattice-void/80">
           <Loader2 className="h-5 w-5 animate-spin text-cyan-400" />
         </div>
       )}
       {!isLoading && !hasAnyData && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center text-xs text-zinc-400">
+        <div className="absolute inset-0 z-10 flex items-center justify-center text-xs text-gray-400">
           No chart data for the selected range
         </div>
       )}

@@ -132,6 +132,11 @@ export default function ManufacturingLensPage() {
         lensRun('manufacturing', 'andon-board', {}),
         lensRun('manufacturing', 'ncr-list', {}),
       ]);
+      if (oee.data?.ok === false || wo.data?.ok === false || andon.data?.ok === false || ncr.data?.ok === false) {
+        throw new Error(
+          oee.data?.error || wo.data?.error || andon.data?.error || ncr.data?.error || 'Could not load manufacturing KPIs.'
+        );
+      }
       const machines = (oee.data?.result?.machines || []) as Array<{ status?: string }>;
       return {
         machineCount: machines.length,
@@ -235,8 +240,6 @@ export default function ManufacturingLensPage() {
       </PipingProvider>
     </LensPageShell>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#manufacturing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to manufacturing content</a>
           <RecentMineCard domain="manufacturing" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="manufacturing" hideWhenEmpty className="mt-3" title="More actions" />

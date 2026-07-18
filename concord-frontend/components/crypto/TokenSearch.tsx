@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Star, StarOff, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Search, Star, StarOff, TrendingUp, TrendingDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkeletonTableRows } from '@/components/ui';
 
 export interface TokenSummary {
   id: string;
@@ -83,7 +84,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
   }, [tokens, query]);
 
   return (
-    <div className={cn('flex flex-col bg-[#0d1117] border border-lattice-border rounded overflow-hidden', className)}>
+    <div className={cn('flex flex-col bg-lattice-void border border-lattice-border rounded overflow-hidden', className)}>
       <form onSubmit={onSearch} className="p-2 border-b border-white/10 flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
@@ -107,9 +108,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading market data…
-          </div>
+          <SkeletonTableRows rows={6} columns={5} className="px-3 py-1.5" />
         ) : error ? (
           <div className="px-3 py-6 text-xs text-red-400 text-center">{error}</div>
         ) : visible.length === 0 ? (
@@ -121,7 +120,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
               const up = t.change24h >= 0;
               return (
                 <li key={t.id} className="grid grid-cols-12 px-3 py-1.5 items-center hover:bg-white/[0.03] text-xs border-b border-white/5">
-                  <span className="col-span-1 text-gray-400">{t.rank ?? '·'}</span>
+                  <span className="col-span-1 font-mono tabular-nums text-gray-400">{t.rank ?? '·'}</span>
                   <button
                     onClick={() => onSelect?.(t)}
                     className="col-span-4 flex items-center gap-2 text-left hover:text-cyan-300"
@@ -137,8 +136,8 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
                       <div className="text-[9px] text-gray-400 uppercase">{t.symbol}</div>
                     </div>
                   </button>
-                  <span className="col-span-3 text-right text-white tabular-nums">${t.priceUsd?.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
-                  <span className={cn('col-span-2 text-right tabular-nums inline-flex items-center justify-end gap-0.5', up ? 'text-green-400' : 'text-red-400')}>
+                  <span className="col-span-3 text-right text-white font-mono tabular-nums">${t.priceUsd?.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
+                  <span className={cn('col-span-2 text-right font-mono tabular-nums inline-flex items-center justify-end gap-0.5', up ? 'text-green-400' : 'text-red-400')}>
                     {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                     {t.change24h?.toFixed(2)}%
                   </span>

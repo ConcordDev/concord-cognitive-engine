@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Repeat, Scissors, Eye, Shirt } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Item {
   id: string; name: string; category: string; brand: string | null; color: string | null;
@@ -40,6 +41,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [laundryFilter, setLaundryFilter] = useState<LaundryStatus | ''>('');
   const [showAdd, setShowAdd] = useState(false);
@@ -54,6 +56,12 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
     if (filter) params.category = filter;
     if (laundryFilter) params.laundryStatus = laundryFilter;
     const r = await lensRun('fashion', 'item-list', params);
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load closet items.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setItems(r.data?.result?.items || []);
     setLoading(false);
   }, [filter, laundryFilter]);
@@ -98,6 +106,10 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

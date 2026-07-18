@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Radio, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface ChannelRow {
   channel: string; campaigns: number;
@@ -21,6 +22,7 @@ export function MarketingChannelsPanel() {
   const [totalReach, setTotalReach] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', criteria: '', size: '' });
 
   const refresh = useCallback(async () => {
@@ -29,6 +31,12 @@ export function MarketingChannelsPanel() {
       lensRun('marketing', 'channel-performance', {}),
       lensRun('marketing', 'segment-list', {}),
     ]);
+    if (c.data?.ok === false || s.data?.ok === false) {
+      setLoadError(c.data?.error || s.data?.error || 'Could not load channel data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setChannels(c.data?.result?.channels || []);
     setSegments(s.data?.result?.segments || []);
     setTotalReach(s.data?.result?.totalReach || 0);
@@ -50,6 +58,10 @@ export function MarketingChannelsPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const maxRoas = Math.max(1, ...channels.map((c) => c.kpis.roas));

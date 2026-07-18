@@ -10,6 +10,13 @@
 // exactly as the source computes them. It NEVER modifies any economic constant
 // (POOLS bps, earlyPenaltyPct, etc.) — those are read-only here.
 //
+// MONEY IS REAL (2026-07 rewrite): staking positions/receipts persist in the
+// real DB (staking_positions / staking_receipts, migration 371) and every
+// principal/yield movement is a real economy_ledger row. open_stake ESCROWS
+// real CC from the user's wallet, so before staking we must fund that wallet
+// (executePurchase against STATE.db) and seed the platform fee wallet
+// (__PLATFORM__) that funds yield. There is NO in-memory position store anymore.
+//
 // WRAPPING: lens.run UNWRAPS a handler's { ok:true, result } so r.result is the
 // handler's inner result fields directly. A handler REJECTION ({ok:false,error})
 // has no `result` key, so it passes through verbatim → assert r.result.ok===false
@@ -17,32 +24,74 @@
 //
 // TIME: positions lock months into the future, so the redeem / early-unstake /
 // compound / maturity paths can't elapse naturally inside a test. We open a
-// position, then reach into the same in-memory store the domain uses
-// (globalThis._concordSTATE.stakingPositions) to backdate lockedAt/unlocksAt —
-// this exercises the REAL accrual/penalty math against a known elapsed window.
+// position, then BACKDATE its locked_at/unlocks_at directly in the DB
+// (staking_positions) — this exercises the REAL accrual/penalty math against a
+// known elapsed window without waiting.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, load } from "./_harness.js";
+import { executePurchase } from "../../economy/transfer.js";
+import { recordTransaction } from "../../economy/ledger.js";
+import { PLATFORM_ACCOUNT_ID } from "../../economy/fees.js";
 
 const DAY = 86400;
 const MONTH = 30 * DAY;
 const YEAR = 365 * DAY;
 
-// Locate the live position array for a given ctx's user in the domain's store.
-function positionsFor(ctx) {
-  const S = globalThis._concordSTATE;
-  return (S && S.stakingPositions && S.stakingPositions.get(ctx.actor.userId)) || [];
+async function stateDb() {
+  const { STATE } = await load();
+  return STATE.db;
 }
-function receiptsFor(ctx) {
-  const S = globalThis._concordSTATE;
-  return (S && S.stakingReceipts && S.stakingReceipts.get(ctx.actor.userId)) || [];
+
+// Fund a ctx's user with real CC and seed the platform yield wallet, so
+// open_stake's balance gate passes and redeem/compound can fund full yield.
+async function fundStaker(ctx, amount = 100000) {
+  const db = await stateDb();
+  executePurchase(db, { userId: ctx.actor.userId, amount });
+  recordTransaction(db, { type: "FEE_ACCRUAL", from: null, to: PLATFORM_ACCOUNT_ID, amount: 100000, net: 100000, fee: 0, status: "complete" });
 }
-// Backdate a position so `now` sits at/after a chosen elapsed fraction of the lock.
-function elapsePosition(pos, elapsedSeconds, lockSeconds) {
+
+async function positionRow(ctx, stakeId) {
+  const db = await stateDb();
+  return db.prepare("SELECT * FROM staking_positions WHERE id=? AND user_id=?").get(stakeId, ctx.actor.userId);
+}
+async function positionStatus(ctx, stakeId) {
+  return (await positionRow(ctx, stakeId))?.status;
+}
+async function receiptHeldBy(ctx, receiptId) {
+  const db = await stateDb();
+  return !!db.prepare("SELECT id FROM staking_receipts WHERE id=? AND user_id=?").get(receiptId, ctx.actor.userId);
+}
+// Backdate a position so `now` sits `elapsedSeconds` into a `lockSeconds` term.
+async function elapsePosition(ctx, stakeId, elapsedSeconds, lockSeconds) {
+  const db = await stateDb();
   const now = Math.floor(Date.now() / 1000);
-  pos.lockedAt = now - elapsedSeconds;
-  pos.unlocksAt = pos.lockedAt + lockSeconds;
+  const lockedAt = now - elapsedSeconds;
+  db.prepare("UPDATE staking_positions SET locked_at=?, unlocks_at=? WHERE id=?").run(lockedAt, lockedAt + lockSeconds, stakeId);
 }
+// Set the lock window absolutely (for reminders tests that pin exact days-left).
+async function setLockWindow(ctx, stakeId, lockedAt, unlocksAt) {
+  const db = await stateDb();
+  db.prepare("UPDATE staking_positions SET locked_at=?, unlocks_at=? WHERE id=?").run(lockedAt, unlocksAt, stakeId);
+}
+
+// The real economy_ledger (migration 002) constrains `type` to a fixed 7-value
+// allowlist (TOKEN_PURCHASE/TRANSFER/MARKETPLACE_PURCHASE/ROYALTY_PAYOUT/
+// WITHDRAWAL/FEE/REVERSAL) that predates — and does NOT include — the
+// STAKE_ESCROW/STAKE_RETURN/STAKE_YIELD/STAKE_PENALTY rows the 2026-07 DB-backed
+// staking rewrite emits. The conservation reference harness
+// (tests/economy/staking-conservation.test.js) sidesteps this by building its own
+// CHECK-free economy_ledger; because THIS file exercises the REAL booted STATE.db,
+// we do the connection-scoped equivalent: disable CHECK enforcement on the
+// isolated, throwaway test DB so the domain's real ledger writes go through. This
+// changes NO conservation / accrual / penalty math — only the type-name allowlist —
+// exactly mirroring what the reference harness already omits. (Reported separately:
+// production needs a migration broadening that CHECK for DB-backed staking to work
+// on a real migrated DB.)
+before(async () => {
+  const db = await stateDb();
+  db.pragma("ignore_check_constraints = true");
+});
 
 describe("staking — pool catalog + reward estimation (exact computed values)", () => {
   it("list_pools: exposes 3 risk tiers with exact preview APR for the locked term", async () => {
@@ -115,7 +164,7 @@ describe("staking — pool catalog + reward estimation (exact computed values)",
 
 describe("staking — open / list / validation lifecycle (shared ctx)", () => {
   let ctx;
-  before(async () => { ctx = await depthCtx("staking-life"); });
+  before(async () => { ctx = await depthCtx("staking-life"); await fundStaker(ctx); });
 
   it("open_stake: opens an active position with the correct locked APR + unlock time", async () => {
     const r = await lensRun("staking", "open_stake", {
@@ -176,11 +225,11 @@ describe("staking — open / list / validation lifecycle (shared ctx)", () => {
 describe("staking — maturity, redemption, compounding (backdated locks)", () => {
   it("redeem_stake: a matured position returns principal + EXACT full-term yield", async () => {
     const ctx = await depthCtx("staking-redeem");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
-    const pos = positionsFor(ctx).find((p) => p.id === stakeId);
     // Fully matured: elapsed == lock == 12 months.
-    elapsePosition(pos, 12 * MONTH, 12 * MONTH);
+    await elapsePosition(ctx, stakeId, 12 * MONTH, 12 * MONTH);
 
     const r = await lensRun("staking", "redeem_stake", { params: { stakeId } }, ctx);
     assert.equal(r.ok, true);
@@ -188,21 +237,25 @@ describe("staking — maturity, redemption, compounding (backdated locks)", () =
     const expected = Math.round(1000 * (340 / 10000) * ((12 * MONTH) / YEAR) * 100) / 100;
     assert.equal(r.result.accruedYieldCc, expected);
     assert.equal(r.result.principalCc, 1000);
+    // Platform fully funded → yieldPaid == accrued, totalReturn == principal + accrued.
+    assert.equal(r.result.treasuryFunded, true);
+    assert.equal(r.result.yieldPaidCc, expected);
     assert.equal(r.result.totalReturnCc, Math.round((1000 + expected) * 100) / 100);
     assert.equal(r.result.currency, "CC");
     // Position is now redeemed; receipt (none) untouched.
-    assert.equal(positionsFor(ctx).find((p) => p.id === stakeId).status, "redeemed");
+    assert.equal(await positionStatus(ctx, stakeId), "redeemed");
   });
 
   it("redeem_stake: a still-locked position is rejected with unlocksAt surfaced", async () => {
     const ctx = await depthCtx("staking-redeem-locked");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const r = await lensRun("staking", "redeem_stake", { params: { stakeId: open.result.position.id } }, ctx);
     // NB: still_locked returns { ok:false, error, result:{unlocksAt} }; lens.run
     // unwraps to the inner `result`, so r.result === { unlocksAt }. The position
     // stays active (not redeemed) — that's the load-bearing behavior.
     assert.ok(r.result.unlocksAt > Math.floor(Date.now() / 1000));
-    assert.equal(positionsFor(ctx).find((p) => p.id === open.result.position.id).status, "active");
+    assert.equal(await positionStatus(ctx, open.result.position.id), "active");
   });
 
   it("redeem_stake: an unknown stake id is rejected", async () => {
@@ -214,9 +267,10 @@ describe("staking — maturity, redemption, compounding (backdated locks)", () =
 
   it("redeem_stake: redeeming twice is rejected (not_active)", async () => {
     const ctx = await depthCtx("staking-redeem-twice");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
-    elapsePosition(positionsFor(ctx).find((p) => p.id === stakeId), 12 * MONTH, 12 * MONTH);
+    await elapsePosition(ctx, stakeId, 12 * MONTH, 12 * MONTH);
     await lensRun("staking", "redeem_stake", { params: { stakeId } }, ctx);
     const again = await lensRun("staking", "redeem_stake", { params: { stakeId } }, ctx);
     assert.equal(again.result.ok, false);
@@ -225,11 +279,11 @@ describe("staking — maturity, redemption, compounding (backdated locks)", () =
 
   it("early_unstake: forfeits ALL accrued yield + a prorated principal slice (exact penalty math)", async () => {
     const ctx = await depthCtx("staking-early");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
-    const pos = positionsFor(ctx).find((p) => p.id === stakeId);
     // Halfway through a 12-month lock: 6 months elapsed of a 12-month term.
-    elapsePosition(pos, 6 * MONTH, 12 * MONTH);
+    await elapsePosition(ctx, stakeId, 6 * MONTH, 12 * MONTH);
 
     const r = await lensRun("staking", "early_unstake", { params: { stakeId } }, ctx);
     assert.equal(r.ok, true);
@@ -241,15 +295,23 @@ describe("staking — maturity, redemption, compounding (backdated locks)", () =
     const expectedYield = Math.round(1000 * (340 / 10000) * ((6 * MONTH) / YEAR) * 100) / 100;
     assert.equal(r.result.yieldForfeitedCc, expectedYield);
     assert.ok(r.result.yieldForfeitedCc > 0);          // a real 6-month accrual was lost
-    assert.equal(r.result.totalPenaltyCc, Math.round((125 + expectedYield) * 100) / 100);
-    assert.equal(positionsFor(ctx).find((p) => p.id === stakeId).status, "early_exited");
+    // NEW BEHAVIOR (DB-backed real-CC rewrite): totalPenaltyCc is the PRINCIPAL
+    // penalty only (== principalPenaltyCc). Forfeited yield is reported separately
+    // in yieldForfeitedCc and is NOT rolled into totalPenaltyCc — that yield was
+    // never paid out, so it is not a CC charge against the user. (The prior
+    // in-memory impl summed principal+forfeitedYield into totalPenaltyCc; the
+    // real-money impl only ever moves the principal penalty on-ledger.)
+    assert.equal(r.result.totalPenaltyCc, r.result.principalPenaltyCc);
+    assert.equal(r.result.totalPenaltyCc, 125);
+    assert.equal(await positionStatus(ctx, stakeId), "early_exited");
   });
 
   it("early_unstake: a matured position is steered to redeem instead", async () => {
     const ctx = await depthCtx("staking-early-matured");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
-    elapsePosition(positionsFor(ctx).find((p) => p.id === stakeId), 13 * MONTH, 12 * MONTH);
+    await elapsePosition(ctx, stakeId, 13 * MONTH, 12 * MONTH);
     const r = await lensRun("staking", "early_unstake", { params: { stakeId } }, ctx);
     assert.equal(r.result.ok, false);
     assert.equal(r.result.error, "already_matured_use_redeem");
@@ -257,37 +319,42 @@ describe("staking — maturity, redemption, compounding (backdated locks)", () =
 
   it("compound_now: re-stakes principal + yield into a fresh position with compoundCount incremented", async () => {
     const ctx = await depthCtx("staking-compound");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
-    const pos = positionsFor(ctx).find((p) => p.id === stakeId);
-    elapsePosition(pos, 12 * MONTH, 12 * MONTH);
+    await elapsePosition(ctx, stakeId, 12 * MONTH, 12 * MONTH);
 
     const r = await lensRun("staking", "compound_now", { params: { stakeId } }, ctx);
     assert.equal(r.ok, true);
     const expectedYield = Math.round(1000 * (340 / 10000) * ((12 * MONTH) / YEAR) * 100) / 100;
-    assert.equal(r.result.compoundedYieldCc, expectedYield);
-    // newPrincipal = floor(1000 + yield).
-    assert.equal(r.result.newPrincipalCc, Math.floor(1000 + expectedYield));
+    assert.equal(r.result.compoundedYieldCc, expectedYield);   // platform fully funds it
+    // NEW BEHAVIOR (DB-backed real-CC rewrite): newPrincipal = round2(principal +
+    // fundedYield), NOT floored — the escrow keeps the old principal and receives
+    // the funded yield, so the new position's principal must match the escrow
+    // backing to the cent (no stranded CC). (The prior in-memory impl floored it.)
+    assert.equal(r.result.newPrincipalCc, Math.round((1000 + expectedYield) * 100) / 100);
     assert.equal(r.result.previousStakeId, stakeId);
     assert.notEqual(r.result.newStakeId, stakeId);
     assert.equal(r.result.position.status, "active");
     assert.equal(r.result.position.compoundCount, 1);
     // The old position is retired.
-    assert.equal(positionsFor(ctx).find((p) => p.id === stakeId).status, "redeemed");
+    assert.equal(await positionStatus(ctx, stakeId), "redeemed");
   });
 
   it("compound_now: a still-locked position is rejected (stays active, surfaces unlocksAt)", async () => {
     const ctx = await depthCtx("staking-compound-locked");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
     const r = await lensRun("staking", "compound_now", { params: { stakeId } }, ctx);
     // still_locked carries result:{unlocksAt}; lens.run unwraps to that inner object.
     assert.ok(r.result.unlocksAt > Math.floor(Date.now() / 1000));
-    assert.equal(positionsFor(ctx).find((p) => p.id === stakeId).status, "active");
+    assert.equal(await positionStatus(ctx, stakeId), "active");
   });
 
   it("set_auto_compound: toggles the flag and round-trips through list_positions", async () => {
     const ctx = await depthCtx("staking-autocompound");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
     const on = await lensRun("staking", "set_auto_compound", { params: { stakeId, enabled: true } }, ctx);
@@ -309,9 +376,10 @@ describe("staking — maturity, redemption, compounding (backdated locks)", () =
 describe("staking — earnings ledger + APR history + receipts + reminders", () => {
   it("earnings_ledger: a redeem logs yield, totals are exact, timeline is cumulative", async () => {
     const ctx = await depthCtx("staking-ledger");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
-    elapsePosition(positionsFor(ctx).find((p) => p.id === stakeId), 12 * MONTH, 12 * MONTH);
+    await elapsePosition(ctx, stakeId, 12 * MONTH, 12 * MONTH);
     const redeem = await lensRun("staking", "redeem_stake", { params: { stakeId } }, ctx);
     const yieldCc = redeem.result.accruedYieldCc;
 
@@ -329,9 +397,10 @@ describe("staking — earnings ledger + APR history + receipts + reminders", () 
 
   it("earnings_ledger: an early exit contributes to totalPenaltiesCc", async () => {
     const ctx = await depthCtx("staking-ledger-penalty");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "growth", principalCc: 1000, months: 12 } }, ctx);
     const stakeId = open.result.position.id;
-    elapsePosition(positionsFor(ctx).find((p) => p.id === stakeId), 6 * MONTH, 12 * MONTH);
+    await elapsePosition(ctx, stakeId, 6 * MONTH, 12 * MONTH);
     const exit = await lensRun("staking", "early_unstake", { params: { stakeId } }, ctx);
     const led = await lensRun("staking", "earnings_ledger", {}, ctx);
     assert.equal(led.result.totalPenaltiesCc, Math.round(exit.result.totalPenaltyCc * 100) / 100);
@@ -355,6 +424,7 @@ describe("staking — earnings ledger + APR history + receipts + reminders", () 
 
   it("transfer_receipt: moves a liquid receipt to another user; the sender loses it", async () => {
     const ctx = await depthCtx("staking-xfer");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 300, months: 6, liquidReceipt: true } }, ctx);
     const receiptId = open.result.receiptTokenId;
     const r = await lensRun("staking", "transfer_receipt", { params: { receiptId, toUserId: "other-user-xyz" } }, ctx);
@@ -362,11 +432,12 @@ describe("staking — earnings ledger + APR history + receipts + reminders", () 
     assert.equal(r.result.toUserId, "other-user-xyz");
     assert.equal(r.result.faceValueCc, 300);
     // Sender no longer holds it.
-    assert.ok(!receiptsFor(ctx).some((x) => x.id === receiptId));
+    assert.equal(await receiptHeldBy(ctx, receiptId), false);
   });
 
   it("transfer_receipt: self-transfer is rejected", async () => {
     const ctx = await depthCtx("staking-xfer-self");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 300, months: 6, liquidReceipt: true } }, ctx);
     const r = await lensRun("staking", "transfer_receipt", { params: { receiptId: open.result.receiptTokenId, toUserId: ctx.actor.userId } }, ctx);
     assert.equal(r.result.ok, false);
@@ -375,6 +446,7 @@ describe("staking — earnings ledger + APR history + receipts + reminders", () 
 
   it("transfer_receipt: missing recipient is rejected", async () => {
     const ctx = await depthCtx("staking-xfer-norecip");
+    await fundStaker(ctx);
     const open = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 300, months: 6, liquidReceipt: true } }, ctx);
     const r = await lensRun("staking", "transfer_receipt", { params: { receiptId: open.result.receiptTokenId } }, ctx);
     assert.equal(r.result.ok, false);
@@ -383,15 +455,14 @@ describe("staking — earnings ledger + APR history + receipts + reminders", () 
 
   it("maturity_reminders: classifies matured vs upcoming with exact days-until math", async () => {
     const ctx = await depthCtx("staking-reminders");
+    await fundStaker(ctx);
     // One matured position.
     const a = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 1000, months: 12 } }, ctx);
-    elapsePosition(positionsFor(ctx).find((p) => p.id === a.result.position.id), 12 * MONTH, 12 * MONTH);
+    await elapsePosition(ctx, a.result.position.id, 12 * MONTH, 12 * MONTH);
     // One that unlocks in exactly 10 days (inside a 30-day window).
     const b = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 500, months: 6 } }, ctx);
-    const posB = positionsFor(ctx).find((p) => p.id === b.result.position.id);
     const now = Math.floor(Date.now() / 1000);
-    posB.lockedAt = now - 5 * DAY;
-    posB.unlocksAt = now + 10 * DAY;
+    await setLockWindow(ctx, b.result.position.id, now - 5 * DAY, now + 10 * DAY);
 
     const r = await lensRun("staking", "maturity_reminders", { params: { windowDays: 30 } }, ctx);
     assert.equal(r.ok, true);
@@ -406,11 +477,10 @@ describe("staking — earnings ledger + APR history + receipts + reminders", () 
 
   it("maturity_reminders: a position unlocking beyond the window is excluded", async () => {
     const ctx = await depthCtx("staking-reminders-window");
+    await fundStaker(ctx);
     const b = await lensRun("staking", "open_stake", { params: { poolId: "core", principalCc: 500, months: 6 } }, ctx);
-    const posB = positionsFor(ctx).find((p) => p.id === b.result.position.id);
     const now = Math.floor(Date.now() / 1000);
-    posB.lockedAt = now;
-    posB.unlocksAt = now + 60 * DAY; // beyond a 30-day window
+    await setLockWindow(ctx, b.result.position.id, now, now + 60 * DAY); // beyond a 30-day window
     const r = await lensRun("staking", "maturity_reminders", { params: { windowDays: 30 } }, ctx);
     assert.equal(r.result.maturedCount, 0);
     assert.equal(r.result.upcomingCount, 0);

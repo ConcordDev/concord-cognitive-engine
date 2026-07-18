@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, BookMarked, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Reference {
   id: string; title: string; authors: string | null; year: number | null;
@@ -91,6 +92,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [references, setReferences] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [tags, setTags] = useState<TagCount[]>([]);
@@ -113,6 +115,12 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     if (query.trim()) params.query = query.trim();
     if (activeTag) params.tag = activeTag;
     const r = await lensRun('research', 'reference-list', params);
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load the library.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setReferences(r.data?.result?.references || []);
     setLoading(false);
   }, [query, activeTag]);
@@ -134,6 +142,11 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     setSelected(ref);
     setEditing(false);
     const r = await lensRun('research', 'reference-detail', { id: ref.id });
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load this reference.');
+      return;
+    }
+    setError(null);
     const baseCitations = r.data?.result?.citations || null;
     setCitations(baseCitations);
     setAnnotations(r.data?.result?.annotations || []);
@@ -403,6 +416,10 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         </div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   // ── Library list ──

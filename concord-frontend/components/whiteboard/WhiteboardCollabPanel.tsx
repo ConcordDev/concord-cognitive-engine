@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui';
 import type { Shape } from './WhiteboardCanvas';
 import type { LivePresence, LiveReaction } from '@/hooks/useWhiteboardCollab';
 
@@ -147,13 +148,13 @@ function FramesTab({ boardId }: { boardId: string }) {
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-sky-300">Presentation · slide {presentIdx + 1}/{slides.length}</span>
+          <span className="text-[10px] uppercase tracking-wider text-sky-300 tabular-nums">Presentation · slide {presentIdx + 1}/{slides.length}</span>
           <button aria-label="Close" onClick={() => setSlides(null)} className="text-gray-400 hover:text-white"><X className="w-3.5 h-3.5" /></button>
         </div>
         <div className="rounded border border-sky-500/30 bg-sky-500/[0.05] p-3">
           <div className="font-semibold text-sky-100 text-sm">{s.title}</div>
           <div className="text-[10px] text-sky-200/70 font-mono mt-1">
-            camera {Math.round(s.camera.width)}×{Math.round(s.camera.height)} · {s.memberIds.length} element{s.memberIds.length === 1 ? '' : 's'}
+            <span className="tabular-nums">camera {Math.round(s.camera.width)}×{Math.round(s.camera.height)} · {s.memberIds.length} element{s.memberIds.length === 1 ? '' : 's'}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -184,7 +185,10 @@ function FramesTab({ boardId }: { boardId: string }) {
         </button>
       </div>
       {loading ? (
-        <div className="text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading frames…</div>
+        <div className="space-y-1" aria-busy="true">
+          <Skeleton variant="block" height={34} />
+          <Skeleton variant="block" height={34} />
+        </div>
       ) : frames.length === 0 ? (
         <div className="text-gray-400 italic">No frames yet.</div>
       ) : (
@@ -211,7 +215,7 @@ function FramesTab({ boardId }: { boardId: string }) {
                   <Frame className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="truncate text-white">{f.label}</div>
-                    <div className="text-[10px] text-gray-400 font-mono">{f.memberIds.length} member{f.memberIds.length === 1 ? '' : 's'} · {Math.round(f.w)}×{Math.round(f.h)}</div>
+                    <div className="text-[10px] text-gray-400 font-mono tabular-nums">{f.memberIds.length} member{f.memberIds.length === 1 ? '' : 's'} · {Math.round(f.w)}×{Math.round(f.h)}</div>
                   </div>
                   <button aria-label="Edit" onClick={() => startEditFrame(f)} className="p-0.5 text-sky-300 hover:bg-sky-500/20 rounded"><Pencil className="w-3 h-3" /></button>
                   <button aria-label="Delete" onClick={() => deleteFrame(f.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
@@ -293,7 +297,10 @@ function ConnectorsTab({ boardId, shapes }: { boardId: string; shapes: Shape[] }
       )}
       {error && <div className="text-rose-300 text-[11px]">{error}</div>}
       {loading ? (
-        <div className="text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading connectors…</div>
+        <div className="space-y-1" aria-busy="true">
+          <Skeleton variant="block" height={34} />
+          <Skeleton variant="block" height={34} />
+        </div>
       ) : connectors.length === 0 ? (
         <div className="text-gray-400 italic">No connectors yet.</div>
       ) : (
@@ -303,7 +310,7 @@ function ConnectorsTab({ boardId, shapes }: { boardId: string; shapes: Shape[] }
               <Link2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: c.color }} />
               <div className="flex-1 min-w-0">
                 <div className="truncate text-white">{shapeLabel(c.fromId)} → {shapeLabel(c.toId)}</div>
-                <div className="text-[10px] text-gray-400 font-mono">
+                <div className="text-[10px] text-gray-400 font-mono tabular-nums">
                   {c.label && <span className="text-sky-300">{c.label} · </span>}
                   {c.unresolved ? <span className="text-amber-300">endpoint missing</span> : `route ${c.route?.length ?? 0}px · ${c.route?.waypoints.length ?? 0} waypoints`}
                 </div>
@@ -396,7 +403,10 @@ function EmbedsTab({ boardId }: { boardId: string }) {
       </div>
       {error && <div className="text-rose-300 text-[11px]">{error}</div>}
       {loading ? (
-        <div className="text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading embeds…</div>
+        <div className="space-y-1" aria-busy="true">
+          <Skeleton variant="block" height={34} />
+          <Skeleton variant="block" height={34} />
+        </div>
       ) : embeds.length === 0 ? (
         <div className="text-gray-400 italic">No embeds yet.</div>
       ) : (
@@ -498,8 +508,8 @@ function ExportTab({ boardId }: { boardId: string }) {
         <div className="rounded border border-sky-500/30 bg-sky-500/[0.04] p-2 space-y-1 font-mono text-[11px] text-sky-100">
           <div>format: <span className="text-sky-300">{plan.format.toUpperCase()}</span> @ {plan.scale}×</div>
           <div>content bounds: {plan.bounds.width}×{plan.bounds.height}</div>
-          <div>raster size: {plan.pixelDimensions.width}×{plan.pixelDimensions.height}px</div>
-          <div>elements: {plan.elementCount}</div>
+          <div className="tabular-nums">raster size: {plan.pixelDimensions.width}×{plan.pixelDimensions.height}px</div>
+          <div className="tabular-nums">elements: {plan.elementCount}</div>
           {plan.pages && <div>pdf pages: {plan.pages.length}</div>}
           {plan.warnings && plan.warnings.length > 0 && (
             <div className="text-amber-300">{plan.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}</div>
@@ -547,7 +557,10 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
     <div className="space-y-2">
       <p className="text-gray-400">Boards someone shared with you, or that you promoted from a private board via the session workbench's Share action. Opening one joins its live room — edits broadcast to every participant in real time.</p>
       {loading ? (
-        <div className="text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading…</div>
+        <div className="space-y-1.5" aria-busy="true">
+          <Skeleton variant="block" height={46} />
+          <Skeleton variant="block" height={46} />
+        </div>
       ) : boards.length === 0 ? (
         <div className="text-gray-400 italic">No shared boards yet. Save a board, then use the session workbench's Share action to invite others.</div>
       ) : (
@@ -558,7 +571,7 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
                 <Users className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="truncate text-white">{b.title}{activeBoardId === b.id && <span className="text-sky-300 text-[9px] ml-1.5 uppercase">open</span>}</div>
-                  <div className="text-[10px] text-gray-400 font-mono">{b.participantCount} participant{b.participantCount === 1 ? '' : 's'} · {b.elementCount} elements · updated {new Date(b.updatedAt).toLocaleDateString()}</div>
+                  <div className="text-[10px] text-gray-400 font-mono tabular-nums">{b.participantCount} participant{b.participantCount === 1 ? '' : 's'} · {b.elementCount} elements · updated {new Date(b.updatedAt).toLocaleDateString()}</div>
                 </div>
                 <button
                   onClick={() => onOpenShared?.(b.id, b.title)}
@@ -580,7 +593,7 @@ function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | nu
                       {tally.rows.map(row => (
                         <li key={row.elementId} className="flex justify-between font-mono">
                           <span className="text-gray-400 truncate">{row.elementId.slice(0, 16)}</span>
-                          <span>{row.count} vote{row.count === 1 ? '' : 's'}</span>
+                          <span className="tabular-nums">{row.count} vote{row.count === 1 ? '' : 's'}</span>
                         </li>
                       ))}
                     </ul>
@@ -678,7 +691,7 @@ function LiveTab({
               <li key={p.userId} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: p.color }} />
                 <span className="flex-1 truncate text-white">{p.name}{p.userId === selfId && <span className="text-gray-400"> (you)</span>}</span>
-                <span className="text-[10px] text-gray-400 font-mono">{Math.round(p.x)}, {Math.round(p.y)}</span>
+                <span className="text-[10px] text-gray-400 font-mono tabular-nums">{Math.round(p.x)}, {Math.round(p.y)}</span>
               </li>
             ))}
           </ul>

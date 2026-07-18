@@ -2928,8 +2928,6 @@ export default function StudioLensPage() {
       />
     </div>
     
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
 
       {/* 2026 parity workbench — project + track + effects persistence */}
       <button

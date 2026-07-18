@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'reac
 import { Loader2, Plus, FileText, AlertTriangle, Paperclip, FileDown, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn, formatBytes } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface TravelDocAttachment {
   id: string; fileName: string; mimeType: string; bytes: number; createdAt: string;
@@ -29,6 +30,7 @@ export function TravelDocsPanel() {
   const [docs, setDocs] = useState<TravelDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', kind: 'passport', number: '', expiryDate: '' });
   // Attachment upload/download state — honest: nothing here is set to a
   // "success" shape until the backend macro actually confirms it.
@@ -40,6 +42,12 @@ export function TravelDocsPanel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('travel', 'travel-doc-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load travel documents.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setDocs(r.data?.result?.documents || []);
     setLoading(false);
   }, []);
@@ -126,6 +134,10 @@ export function TravelDocsPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

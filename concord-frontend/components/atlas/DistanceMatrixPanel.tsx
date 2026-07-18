@@ -72,7 +72,7 @@ export function DistanceMatrixPanel() {
         <div className="flex items-center gap-2">
           <Map className="h-5 w-5 text-emerald-400" />
           <h2 className="text-sm font-semibold text-white">Distance matrix + route optimizer</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">atlas.distanceMatrix + routeOptimize</span>
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono tabular-nums text-[10px] uppercase tracking-wider text-gray-400">atlas.distanceMatrix + routeOptimize</span>
         </div>
         {(matrix || route) && (
           <SaveAsDtuButton
@@ -87,20 +87,20 @@ export function DistanceMatrixPanel() {
       </header>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_120px_120px_40px] gap-2 text-[10px] uppercase tracking-wider text-zinc-400">
+        <div className="grid grid-cols-[1fr_120px_120px_40px] gap-2 text-[10px] uppercase tracking-wider text-gray-400">
           <span>Name</span><span>Latitude</span><span>Longitude</span><span></span>
         </div>
         {waypoints.map((w, i) => (
           <div key={i} className="grid grid-cols-[1fr_120px_120px_40px] gap-2">
-            <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" placeholder={`Point_${i}`} value={w.name} onChange={(e) => updateRow(i, 'name', e.target.value)} />
-            <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" placeholder="40.71" value={w.lat} onChange={(e) => updateRow(i, 'lat', e.target.value)} />
-            <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" placeholder="-74.00" value={w.lon} onChange={(e) => updateRow(i, 'lon', e.target.value)} />
-            <button type="button" onClick={() => removeRow(i)} className="rounded border border-zinc-800 bg-zinc-950 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3.5 w-3.5" /></button>
+            <input className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white" placeholder={`Point_${i}`} value={w.name} onChange={(e) => updateRow(i, 'name', e.target.value)} />
+            <input className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white font-mono tabular-nums" placeholder="40.71" value={w.lat} onChange={(e) => updateRow(i, 'lat', e.target.value)} />
+            <input className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white font-mono tabular-nums" placeholder="-74.00" value={w.lon} onChange={(e) => updateRow(i, 'lon', e.target.value)} />
+            <button type="button" onClick={() => removeRow(i)} className="rounded border border-lattice-border bg-lattice-void text-xs text-gray-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3.5 w-3.5" /></button>
           </div>
         ))}
         <div className="flex items-center gap-2">
-          <button type="button" onClick={addRow} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-emerald-500/40 hover:text-emerald-200"><Plus className="h-3 w-3" />Add point</button>
-          <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || waypoints.filter((w) => w.lat && w.lon).length < 2} className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-xs font-mono text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50">
+          <button type="button" onClick={addRow} className="inline-flex items-center gap-1 rounded border border-lattice-border bg-lattice-void px-2 py-1 text-xs text-gray-300 hover:border-emerald-500/40 hover:text-emerald-200"><Plus className="h-3 w-3" />Add point</button>
+          <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || waypoints.filter((w) => w.lat && w.lon).length < 2} className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-xs font-mono tabular-nums text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Route className="h-3.5 w-3.5" />}
             Compute
           </button>
@@ -111,21 +111,21 @@ export function DistanceMatrixPanel() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Distance matrix (km)</div>
-          {!matrix && <div className="text-[11px] text-zinc-400">Compute to populate.</div>}
+          <div className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">Distance matrix (km)</div>
+          {!matrix && <div className="text-[11px] text-gray-400">Compute to populate.</div>}
           {matrix?.matrix && matrix.labels && (
             <div className="overflow-x-auto">
-              <table className="w-full text-[10px] font-mono">
+              <table className="w-full text-[10px] font-mono tabular-nums">
                 <thead>
                   <tr>
                     <th></th>
-                    {matrix.labels.map((l) => <th key={l} className="px-1 py-0.5 text-zinc-400">{l.slice(0, 6)}</th>)}
+                    {matrix.labels.map((l) => <th key={l} className="px-1 py-0.5 text-gray-400">{l.slice(0, 6)}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {matrix.matrix.map((row, i) => (
                     <tr key={i}>
-                      <td className="px-1 py-0.5 text-zinc-400">{matrix.labels?.[i].slice(0, 6)}</td>
+                      <td className="px-1 py-0.5 text-gray-400">{matrix.labels?.[i].slice(0, 6)}</td>
                       {row.map((v, j) => {
                         const intensity = v > 0 ? Math.min(1, v / max) : 0;
                         return <td key={j} className="px-1 py-0.5 text-center text-emerald-200" style={{ backgroundColor: v > 0 ? `rgba(16, 185, 129, ${intensity * 0.4})` : 'transparent' }}>{v > 0 ? v.toFixed(0) : '—'}</td>;
@@ -135,39 +135,39 @@ export function DistanceMatrixPanel() {
                 </tbody>
               </table>
               {matrix.stats && (
-                <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
-                  <div>Mean: <span className="font-mono text-emerald-200">{matrix.stats.meanKm} km</span></div>
-                  <div>Max: <span className="font-mono text-emerald-200">{matrix.stats.maxKm} km</span></div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-gray-400">
+                  <div>Mean: <span className="font-mono tabular-nums text-emerald-200">{matrix.stats.meanKm} km</span></div>
+                  <div>Max: <span className="font-mono tabular-nums text-emerald-200">{matrix.stats.maxKm} km</span></div>
                 </div>
               )}
             </div>
           )}
         </div>
         <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Optimal route (nearest-neighbor TSP)</div>
-          {!route && <div className="text-[11px] text-zinc-400">Compute to populate.</div>}
+          <div className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">Optimal route (nearest-neighbor TSP)</div>
+          {!route && <div className="text-[11px] text-gray-400">Compute to populate.</div>}
           {route?.route && (
             <div className="space-y-1 text-[11px]">
-              <div className="mb-2 rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1.5">
-                <div className="text-[9px] uppercase tracking-wider text-zinc-400">Total distance</div>
-                <div className="font-mono text-sky-200">{route.totalDistanceKm} km</div>
+              <div className="mb-2 rounded border border-sky-500/15 bg-lattice-void/40 px-2 py-1.5">
+                <div className="text-[9px] uppercase tracking-wider text-gray-400">Total distance</div>
+                <div className="font-mono tabular-nums text-sky-200">{route.totalDistanceKm} km</div>
               </div>
               <ol className="space-y-0.5">
                 {route.route.map((r, i) => (
-                  <li key={i} className="flex items-center gap-2 rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1">
-                    <span className="font-mono text-[9px] text-zinc-400">{(i + 1).toString().padStart(2, '0')}</span>
-                    <span className="text-zinc-100">{r}</span>
+                  <li key={i} className="flex items-center gap-2 rounded border border-sky-500/15 bg-lattice-void/40 px-2 py-1">
+                    <span className="font-mono tabular-nums text-[9px] text-gray-400">{(i + 1).toString().padStart(2, '0')}</span>
+                    <span className="text-gray-100">{r}</span>
                   </li>
                 ))}
               </ol>
               {route.legs && route.legs.length > 0 && (
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-[10px] text-zinc-400 hover:text-zinc-300">Legs ({route.legs.length})</summary>
+                  <summary className="cursor-pointer text-[10px] text-gray-400 hover:text-gray-300">Legs ({route.legs.length})</summary>
                   <div className="mt-1 space-y-0.5">
                     {route.legs.map((leg, i) => (
-                      <div key={i} className="flex items-center justify-between rounded border border-sky-500/10 bg-zinc-950/40 px-2 py-0.5 text-[10px]">
-                        <span className="text-zinc-300">{leg.from} → {leg.to}</span>
-                        <span className="font-mono text-sky-200">{leg.km} km</span>
+                      <div key={i} className="flex items-center justify-between rounded border border-sky-500/10 bg-lattice-void/40 px-2 py-0.5 text-[10px]">
+                        <span className="text-gray-300">{leg.from} → {leg.to}</span>
+                        <span className="font-mono tabular-nums text-sky-200">{leg.km} km</span>
                       </div>
                     ))}
                   </div>

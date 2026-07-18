@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Globe, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface SeoCheck { label: string; pass: boolean; hint: string | null }
 interface SeoAudit {
@@ -29,6 +30,7 @@ export function MarketingSEOPanel() {
   const [avgScore, setAvgScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [url, setUrl] = useState('');
@@ -43,6 +45,12 @@ export function MarketingSEOPanel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('marketing', 'seo-audit-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load SEO audits.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setAudits(r.data?.result?.audits || []);
     setAvgScore(r.data?.result?.avgScore || 0);
     setLoading(false);
@@ -75,6 +83,10 @@ export function MarketingSEOPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

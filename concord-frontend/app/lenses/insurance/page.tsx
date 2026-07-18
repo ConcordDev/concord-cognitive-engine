@@ -202,7 +202,6 @@ export default function InsuranceLensPage() {
         </PipingProvider>
       </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#insurance-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to insurance content</a>
       <RecentMineCard domain="insurance" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="insurance" hideWhenEmpty className="mt-3" title="More actions" />

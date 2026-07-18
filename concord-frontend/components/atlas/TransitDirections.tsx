@@ -82,17 +82,17 @@ export function TransitDirections() {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-      <div className="border-b border-zinc-800 bg-zinc-900/60 p-3">
+    <div className="overflow-hidden rounded-xl border border-lattice-border bg-lattice-void">
+      <div className="border-b border-lattice-border bg-lattice-surface/60 p-3">
         <div className="flex items-center gap-2">
           <TrainFront className="h-4 w-4 text-emerald-400" />
           <span className="text-sm font-semibold text-white">Transit directions</span>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <input type="number" step="any" placeholder="From lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-emerald-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="From lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-emerald-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="To lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-emerald-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="To lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-emerald-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="From lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-emerald-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="From lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-emerald-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="To lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-emerald-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="To lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-lattice-border bg-lattice-void px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:border-emerald-500/40 focus:outline-none" />
         </div>
         <button
           type="button"
@@ -110,7 +110,7 @@ export function TransitDirections() {
           <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {!result && !error && !loading && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
+          <div className="rounded border border-dashed border-lattice-border p-6 text-center text-[11px] text-gray-400">
             No data yet. Enter origin and destination coordinates to find transit stops and routes.
           </div>
         )}
@@ -122,8 +122,8 @@ export function TransitDirections() {
         {result && result.feasible && result.legs && (
           <div className="space-y-3">
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-              <span className="font-mono text-2xl text-emerald-200">{result.totalDurationText}</span>
-              <div className="mt-1 text-[10px] text-zinc-400">
+              <span className="font-mono tabular-nums text-2xl text-emerald-200">{result.totalDurationText}</span>
+              <div className="mt-1 text-[10px] text-gray-400">
                 {result.legs.length} legs · board at {result.boardStop?.name} · alight at {result.alightStop?.name}
               </div>
             </div>
@@ -131,14 +131,14 @@ export function TransitDirections() {
               {result.legs.map((leg, i) => {
                 const Icon = legIcon(leg);
                 return (
-                  <div key={i} className="flex items-start gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
-                    <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${leg.type === 'transit' ? 'text-emerald-400' : 'text-zinc-400'}`} />
+                  <div key={i} className="flex items-start gap-2 rounded border border-lattice-border bg-lattice-surface/40 px-2.5 py-1.5">
+                    <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${leg.type === 'transit' ? 'text-emerald-400' : 'text-gray-400'}`} />
                     <div className="flex-1 text-[11px]">
-                      <div className="text-zinc-100">
+                      <div className="text-gray-100">
                         {leg.from} → {leg.to}
                         {leg.mode && <span className="ml-1 rounded bg-emerald-500/15 px-1 text-[9px] uppercase text-emerald-300">{leg.mode}</span>}
                       </div>
-                      <div className="text-[10px] text-zinc-400">{leg.distanceKm} km · {leg.durationText}</div>
+                      <div className="text-[10px] text-gray-400">{leg.distanceKm} km · {leg.durationText}</div>
                     </div>
                   </div>
                 );
@@ -146,16 +146,16 @@ export function TransitDirections() {
             </div>
             {result.originStops && result.originStops.length > 0 && (
               <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Nearby stops at origin</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">Nearby stops at origin</div>
                 {result.originStops.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1 text-[10px]">
-                    <span className="flex items-center gap-1 text-zinc-300"><MapPin className="h-3 w-3" />{s.name}</span>
-                    <span className="font-mono text-zinc-400">{s.kind} · {s.walkKm} km</span>
+                  <div key={i} className="flex items-center justify-between rounded border border-lattice-border bg-lattice-surface/40 px-2.5 py-1 text-[10px]">
+                    <span className="flex items-center gap-1 text-gray-300"><MapPin className="h-3 w-3" />{s.name}</span>
+                    <span className="font-mono tabular-nums text-gray-400">{s.kind} · {s.walkKm} km</span>
                   </div>
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-zinc-400">Source: {result.source}</p>
+            <p className="text-[10px] text-gray-400">Source: {result.source}</p>
           </div>
         )}
       </div>

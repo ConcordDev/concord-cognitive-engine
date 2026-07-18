@@ -10,6 +10,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { Loader2, Plus, Scale, Footprints, Activity, TrendingUp, TrendingDown, Minus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface WeightEntry { id: string; date: string; weightKg: number }
 interface CareActivity { id: string; kind: string; note: string | null; durationMin: number; date: string }
@@ -24,6 +25,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
   const [activities, setActivities] = useState<CareActivity[]>([]);
   const [symptoms, setSymptoms] = useState<Symptom[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [weightInput, setWeightInput] = useState('');
   const [actInput, setActInput] = useState({ kind: 'walk', note: '', durationMin: '' });
@@ -37,6 +39,12 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
       lensRun('pets', 'activity-history', { petId }),
       lensRun('pets', 'symptom-list', { petId }),
     ]);
+    if (w.data?.ok === false || a.data?.ok === false || s.data?.ok === false) {
+      setLoadError(w.data?.error || a.data?.error || s.data?.error || 'Could not load wellness data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setWeights(w.data?.result?.series || []);
     setTrend({
       trend: w.data?.result?.trend || 'no_data',
@@ -82,6 +90,9 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const TrendIcon = trend.trend === 'gaining' ? TrendingUp : trend.trend === 'losing' ? TrendingDown : Minus;

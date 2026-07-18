@@ -20,6 +20,7 @@ import { CalendarClock, Loader2, AlertCircle, Clock, CalendarX } from 'lucide-re
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { Skeleton } from '@/components/ui';
 
 interface CalendarEventArtifact {
   title?: string;
@@ -80,14 +81,32 @@ export function ScheduleAnalyzer() {
     },
   });
 
-  if (isLoading) return <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Loading calendar events…</div>;
+  if (isLoading) {
+    return (
+      <div className="space-y-3" role="status" aria-live="polite" aria-busy="true">
+        <span className="sr-only">Loading calendar events</span>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded border border-lattice-border bg-lattice-deep p-2">
+              <Skeleton variant="line" height="0.625rem" width="60%" className="mb-2" />
+              <Skeleton variant="line" height="1.5rem" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Skeleton variant="block" height="6rem" />
+          <Skeleton variant="block" height="6rem" />
+        </div>
+      </div>
+    );
+  }
 
   if (realEvents.length < 2) {
     return (
-      <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950 p-8 text-center">
-        <CalendarX className="mx-auto h-8 w-8 text-zinc-600" />
-        <div className="mt-3 text-sm text-zinc-300">Add 2+ calendar events to analyze.</div>
-        <div className="mt-1 text-xs text-zinc-400">Use the lens's "New event" button above. This panel will then detect overlapping events and surface free slots in your work day.</div>
+      <div className="rounded-xl border border-dashed border-lattice-border bg-lattice-deep p-8 text-center">
+        <CalendarX className="mx-auto h-8 w-8 text-gray-600" />
+        <div className="mt-3 text-sm text-gray-300">Add 2+ calendar events to analyze.</div>
+        <div className="mt-1 text-xs text-gray-400">Use the lens's "New event" button above. This panel will then detect overlapping events and surface free slots in your work day.</div>
       </div>
     );
   }
@@ -98,8 +117,8 @@ export function ScheduleAnalyzer() {
         <div className="flex items-center gap-2">
           <CalendarClock className="h-5 w-5 text-indigo-400" />
           <h2 className="text-sm font-semibold text-white">Schedule analyzer</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">calendar.detectConflicts + findAvailability</span>
-          <span className="text-[10px] text-zinc-400">· {realEvents.length} real events</span>
+          <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">calendar.detectConflicts + findAvailability</span>
+          <span className="text-[10px] text-gray-400">· {realEvents.length} real events</span>
         </div>
         {(conflicts || availability) && (
           <SaveAsDtuButton
@@ -114,14 +133,14 @@ export function ScheduleAnalyzer() {
       </header>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Free-slot date</span>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" /></label>
-        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Work start (h)</span>
-          <input type="number" min={0} max={23} value={workStart} onChange={(e) => setWorkStart(Math.max(0, Math.min(23, Number(e.target.value) || 9)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" /></label>
-        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Work end (h)</span>
-          <input type="number" min={1} max={24} value={workEnd} onChange={(e) => setWorkEnd(Math.max(1, Math.min(24, Number(e.target.value) || 17)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" /></label>
-        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Min slot (min)</span>
-          <input type="number" min={5} max={240} value={slot} onChange={(e) => setSlot(Math.max(5, Math.min(240, Number(e.target.value) || 30)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" /></label>
+        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Free-slot date</span>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 w-full rounded border border-lattice-border bg-lattice-deep px-2 py-1.5 text-xs text-white" /></label>
+        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Work start (h)</span>
+          <input type="number" min={0} max={23} value={workStart} onChange={(e) => setWorkStart(Math.max(0, Math.min(23, Number(e.target.value) || 9)))} className="mt-1 w-full rounded border border-lattice-border bg-lattice-deep px-2 py-1.5 text-xs text-white" /></label>
+        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Work end (h)</span>
+          <input type="number" min={1} max={24} value={workEnd} onChange={(e) => setWorkEnd(Math.max(1, Math.min(24, Number(e.target.value) || 17)))} className="mt-1 w-full rounded border border-lattice-border bg-lattice-deep px-2 py-1.5 text-xs text-white" /></label>
+        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Min slot (min)</span>
+          <input type="number" min={5} max={240} value={slot} onChange={(e) => setSlot(Math.max(5, Math.min(240, Number(e.target.value) || 30)))} className="mt-1 w-full rounded border border-lattice-border bg-lattice-deep px-2 py-1.5 text-xs text-white" /></label>
       </div>
 
       <button type="button" onClick={() => analyze.mutate()} disabled={analyze.isPending} className="inline-flex items-center gap-1 rounded border border-indigo-500/40 bg-indigo-500/15 px-3 py-1 text-xs font-mono text-indigo-200 hover:bg-indigo-500/25 disabled:opacity-50">
@@ -133,32 +152,32 @@ export function ScheduleAnalyzer() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><AlertCircle className="h-3 w-3" />Conflicts (all events)</div>
-          {!conflicts && <div className="text-[11px] text-zinc-400">Analyze to detect.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-400"><AlertCircle className="h-3 w-3" />Conflicts (all events)</div>
+          {!conflicts && <div className="text-[11px] text-gray-400">Analyze to detect.</div>}
           {conflicts && conflicts.conflictFree && <div className="text-[11px] text-emerald-300">No conflicts across your {realEvents.length} events.</div>}
           {conflicts && !conflicts.conflictFree && conflicts.conflicts && (
             <div className="space-y-1.5 text-[11px]">
-              <div className="text-zinc-400">{conflicts.conflictCount} conflict{conflicts.conflictCount === 1 ? '' : 's'} across {conflicts.totalEvents} events</div>
+              <div className="text-gray-400">{conflicts.conflictCount} conflict{conflicts.conflictCount === 1 ? '' : 's'} across {conflicts.totalEvents} events</div>
               {conflicts.conflicts.map((c, i) => (
                 <div key={i} className="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1.5">
-                  <div className="text-zinc-100">{c.event1} <span className="text-rose-300">↔</span> {c.event2}</div>
-                  <div className="font-mono text-[10px] text-rose-300">{c.overlapMinutes} min overlap</div>
+                  <div className="text-white">{c.event1} <span className="text-rose-300">↔</span> {c.event2}</div>
+                  <div className="font-mono text-[10px] text-rose-300 tabular-nums">{c.overlapMinutes} min overlap</div>
                 </div>
               ))}
             </div>
           )}
         </div>
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Clock className="h-3 w-3" />Free slots on {date}</div>
-          {!availability && <div className="text-[11px] text-zinc-400">Analyze to scan.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-400"><Clock className="h-3 w-3" />Free slots on {date}</div>
+          {!availability && <div className="text-[11px] text-gray-400">Analyze to scan.</div>}
           {availability && (
             <div className="space-y-1.5 text-[11px]">
-              <div className="text-zinc-400">{availability.totalFreeMinutes} min free across {availability.availableSlots?.length || 0} slot{availability.availableSlots?.length === 1 ? '' : 's'} ({availability.workHours}) · {eventsOnDate.length} event{eventsOnDate.length === 1 ? '' : 's'} on this date</div>
+              <div className="text-gray-400">{availability.totalFreeMinutes} min free across {availability.availableSlots?.length || 0} slot{availability.availableSlots?.length === 1 ? '' : 's'} ({availability.workHours}) · {eventsOnDate.length} event{eventsOnDate.length === 1 ? '' : 's'} on this date</div>
               {availability.availableSlots?.length === 0 && <div className="text-amber-300">No free slots in work hours.</div>}
               {availability.availableSlots?.map((s, i) => (
                 <div key={i} className="flex items-center justify-between rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5">
-                  <span className="font-mono text-zinc-100">{s.start} – {s.end}</span>
-                  <span className="font-mono text-[10px] text-emerald-200">{s.minutes} min</span>
+                  <span className="font-mono tabular-nums text-white">{s.start} – {s.end}</span>
+                  <span className="font-mono tabular-nums text-[10px] text-emerald-200">{s.minutes} min</span>
                 </div>
               ))}
             </div>

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Video, Film, Camera, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Media {
   id: string; name: string; kind: string; sourceUrl: string | null;
@@ -34,6 +35,7 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
   const [proxyCount, setProxyCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', kind: 'video', camera: '', sourceUrl: '', proxyUrl: '' });
   const [grpName, setGrpName] = useState('');
   const [grpPick, setGrpPick] = useState<string[]>([]);
@@ -45,6 +47,12 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
       lensRun('film-studios', 'media-list', { projectId }),
       lensRun('film-studios', 'multicam-list', { projectId }),
     ]);
+    if (mr.data?.ok === false || gr.data?.ok === false) {
+      setLoadError(mr.data?.error || gr.data?.error || 'Could not load media.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setMedia(mr.data?.result?.media || []);
     setProxyCount(mr.data?.result?.proxyCount || 0);
     setGroups(gr.data?.result?.groups || []);
@@ -115,6 +123,10 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

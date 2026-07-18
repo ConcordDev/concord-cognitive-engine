@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Users, Radio, Send, DoorOpen, DoorClosed, Copy, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface LevelMeta { id: string; name: string }
 interface Participant { id: string; joinedAt: string; lastSeen: string }
@@ -22,6 +23,7 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
   const [levels, setLevels] = useState<LevelMeta[]>([]);
   const [levelId, setLevelId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState('');
   const [joinId, setJoinId] = useState('');
@@ -37,6 +39,12 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('game-design', 'level-list', { gameId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load levels.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: LevelMeta[] = r.data?.result?.levels || [];
     setLevels(list);
     setLevelId((prev) => (list.some((l) => l.id === prev) ? prev : list[0]?.id || ''));
@@ -126,6 +134,10 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   if (levels.length === 0) {

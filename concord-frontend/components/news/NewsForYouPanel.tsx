@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { NewsArticleCard, type NewsArticle } from './NewsArticleCard';
+import { ErrorState } from '@/components/ui';
 
 export function NewsForYouPanel({ onChange }: { onChange: () => void }) {
   const [feed, setFeed] = useState<NewsArticle[]>([]);
@@ -16,6 +17,7 @@ export function NewsForYouPanel({ onChange }: { onChange: () => void }) {
   const [personalized, setPersonalized] = useState(false);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -23,6 +25,12 @@ export function NewsForYouPanel({ onChange }: { onChange: () => void }) {
       lensRun('news', 'feed', {}),
       lensRun('news', 'recommended', {}),
     ]);
+    if (f.data?.ok === false || r.data?.ok === false) {
+      setLoadError((f.data?.ok === false ? f.data?.error : r.data?.error) || 'Could not load your feed.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setFeed(f.data?.result?.articles || []);
     setPersonalized(!!f.data?.result?.personalized);
     setUnread(f.data?.result?.unread || 0);
@@ -35,6 +43,10 @@ export function NewsForYouPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

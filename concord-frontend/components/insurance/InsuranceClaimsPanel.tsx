@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { ClientAutocomplete } from './ClientAutocomplete';
 import type { ClientRecord } from './ClientAutocomplete';
 
@@ -36,6 +37,7 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ carrier: '', description: '', kind: 'collision', claimAmount: '' });
   const [clientText, setClientText] = useState('');
@@ -44,6 +46,12 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('insurance', 'claim-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load claims.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setClaims(r.data?.result?.claims || []);
     setLoading(false);
     onChange();
@@ -112,7 +120,9 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
         </div>
       )}
 
-      {claims.length === 0 ? (
+      {loadError ? (
+        <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>
+      ) : claims.length === 0 ? (
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No claims filed.
         </div>

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface TaxCode { id: string; name: string; rate: number }
 
@@ -12,6 +13,7 @@ export function AcSalesTaxPanel() {
   const [codes, setCodes] = useState<TaxCode[]>([]);
   const [liability, setLiability] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', rate: '' });
   const [payment, setPayment] = useState('');
   const [note, setNote] = useState<string | null>(null);
@@ -22,6 +24,12 @@ export function AcSalesTaxPanel() {
       lensRun({ domain: 'accounting', action: 'tax-code-list', input: {} }),
       lensRun({ domain: 'accounting', action: 'tax-liability', input: {} }),
     ]);
+    if (c.data?.ok === false || l.data?.ok === false) {
+      setLoadError(c.data?.error || l.data?.error || 'Could not load sales tax data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCodes(c.data?.result?.taxCodes || []);
     setLiability(l.data?.result?.salesTaxPayable || 0);
     setLoading(false);
@@ -45,11 +53,12 @@ export function AcSalesTaxPanel() {
   };
 
   if (loading) return <Spin />;
+  if (loadError) return <ErrorState message={loadError} onRetry={() => void refresh()} />;
 
   return (
     <div className="space-y-4 p-1">
       <div className="bg-black/30 border border-white/10 rounded-lg p-3 text-center">
-        <p className="text-2xl font-bold text-amber-300">${liability.toLocaleString()}</p>
+        <p className="text-2xl font-bold font-mono tabular-nums text-amber-300">${liability.toLocaleString()}</p>
         <p className="text-[10px] text-gray-400 uppercase">Sales tax payable</p>
       </div>
 
@@ -75,7 +84,7 @@ export function AcSalesTaxPanel() {
             {codes.map((c) => (
               <li key={c.id} className="flex items-center gap-2 text-xs text-gray-300 bg-black/20 rounded px-2 py-1">
                 <span className="flex-1">{c.name}</span>
-                <span className="text-gray-400">{c.rate}%</span>
+                <span className="text-gray-400 font-mono tabular-nums">{c.rate}%</span>
                 <button aria-label="Delete" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'tax-code-delete', input: { id: c.id } }).then(refresh)}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>

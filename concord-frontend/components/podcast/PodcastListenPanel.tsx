@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Play, Check, ListPlus, ListX, ArrowUp, ArrowDown, Gauge } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Episode {
   id: string; title: string; showTitle: string; durationSec: number;
@@ -86,6 +87,7 @@ export function PodcastListenPanel({ onChange }: { onChange: () => void }) {
   const [queue, setQueue] = useState<Episode[]>([]);
   const [speed, setSpeed] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -94,6 +96,12 @@ export function PodcastListenPanel({ onChange }: { onChange: () => void }) {
       lensRun('podcast', 'new-episodes', {}),
       lensRun('podcast', 'queue-list', {}),
     ]);
+    if (c.data?.ok === false || n.data?.ok === false || q.data?.ok === false) {
+      setLoadError(c.data?.error || n.data?.error || q.data?.error || 'Could not load your listening queue.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setContinueList(c.data?.result?.episodes || []);
     setNewEps(n.data?.result?.episodes || []);
     setQueue(q.data?.result?.episodes || []);
@@ -114,6 +122,10 @@ export function PodcastListenPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

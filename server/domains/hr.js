@@ -7,6 +7,20 @@
 
 const BLS_API = "https://api.bls.gov/publicAPI/v2";
 
+// Curated set of REAL BLS v2 series for labor/wage forecasting. Every id below
+// is a genuine, publicly-documented Bureau of Labor Statistics series
+// identifier — never a placeholder. Used by hr.laborForecast so the lens can
+// offer a "pick an occupation/indicator" form without the caller having to
+// know raw series ids (a raw seriesId still overrides this map).
+const LABOR_SERIES = {
+  "unemployment-rate": { seriesId: "LNS14000000", label: "Unemployment rate (U-3, seasonally adjusted)", unit: "%" },
+  "labor-force-participation": { seriesId: "LNS11300000", label: "Labor force participation rate (16+)", unit: "%" },
+  "nonfarm-payrolls": { seriesId: "CES0000000001", label: "Total nonfarm payroll employment", unit: "thousands" },
+  "avg-hourly-earnings": { seriesId: "CES0500000003", label: "Average hourly earnings, total private", unit: "USD/hr" },
+  "cpi-all-items": { seriesId: "CUUR0000SA0", label: "CPI-U, all items (U.S. city average)", unit: "index 1982-84=100" },
+  "job-openings": { seriesId: "JTS000000000000000JOL", label: "Job openings, total nonfarm (JOLTS)", unit: "thousands" },
+};
+
 export default function registerHRActions(registerLensAction) {
   // ── Pure-compute numeric coercion (fail-CLOSED) ─────────────────────
   // Number()+Number.isFinite, never parseFloat: parseFloat("Infinity")===Infinity
@@ -208,6 +222,126 @@ export default function registerHRActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `bls unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  /**
+   * laborForecast — ASSEMBLES two real substrates that already exist but were
+   * never wired together server-side into a single, agent-composable macro:
+   *   1. the real BLS connector  (hr.bls-series-lookup, SSRF-safe fetch to
+   *      api.bls.gov/publicAPI/v2), and
+   *   2. the real Holt-Winters engine (temporal.forecast — additive seasonal
+   *      triple-exponential smoothing with an auto-tuned grid search and true
+   *      residual-std prediction intervals).
+   *
+   * It pulls a real labor/wage series, normalises it to a clean chronological
+   * value series, infers seasonality from the BLS period codes, and runs it
+   * through temporal.forecast — returning the forecast + 80/95% confidence
+   * bands the math actually produces. No math is re-implemented here; both
+   * engines are invoked by their registered handlers.
+   *
+   * params: { seriesId?, series? (LABOR_SERIES key), horizon?, startYear?, endYear? }
+   *
+   * Honest failure: BLS needs outbound network egress at runtime. If the box
+   * has no egress the connector reports "bls unreachable: …" and this macro
+   * returns { ok:false, reason:'no_egress' } — never a fabricated series. A
+   * free BLS_API_KEY (data.bls.gov/registrationEngine/) is an OPERATOR gate
+   * that raises the anon 25/day limit to 500/day; it is not required and is
+   * never hardcoded.
+   */
+  registerLensAction("hr", "laborForecast", async (ctx, _artifact, params = {}) => {
+    const lensActions = globalThis.__concordLensActions;
+    // Resolve the requested BLS series (friendly key or raw id).
+    const key = String(params.series || "").trim();
+    const preset = key && LABOR_SERIES[key] ? LABOR_SERIES[key] : null;
+    const seriesId = String(params.seriesId || preset?.seriesId || "").trim();
+    if (!seriesId) {
+      return { ok: false, error: "seriesId or series required", availableSeries: Object.keys(LABOR_SERIES) };
+    }
+    const horizon = Math.max(1, Math.min(Math.trunc(Number(params.horizon)) || 12, 24));
+    const endYear = Math.trunc(Number(params.endYear)) || new Date().getFullYear();
+    // Wide default window so seasonal Holt-Winters has ≥2 seasonal cycles.
+    const startYear = Math.trunc(Number(params.startYear)) || (endYear - 10);
+
+    // 1) Pull the real series via the existing SSRF-safe BLS connector.
+    const blsHandler = lensActions?.get("hr.bls-series-lookup");
+    if (typeof blsHandler !== "function") return { ok: false, reason: "connector_unavailable" };
+    let bls;
+    try {
+      bls = await blsHandler(ctx, { domain: "hr", data: {} }, { seriesId, startYear, endYear });
+    } catch (e) {
+      return { ok: false, reason: "no_egress", detail: String(e?.message || e) };
+    }
+    if (!bls || !bls.ok) {
+      const msg = String(bls?.error || "bls unavailable");
+      // The connector reports a network failure as "bls unreachable: …" — that
+      // is the honest no-egress state, NOT a fabricated series.
+      if (/unreachable|fetch failed|enotfound|econn|network|timeout|getaddrinfo/i.test(msg)) {
+        return { ok: false, reason: "no_egress", detail: msg };
+      }
+      return { ok: false, reason: "bls_error", detail: msg };
+    }
+    const series = bls.result?.series?.[0];
+    const points = Array.isArray(series?.data) ? series.data : [];
+    if (points.length === 0) return { ok: false, reason: "no_data", seriesId };
+
+    // 2) Normalise to a clean chronological value series + infer seasonality
+    //    from the BLS period codes (drop annual roll-up pseudo-periods like
+    //    M13 / Q05 that would corrupt a monthly/quarterly series).
+    const monthly = points.filter((p) => /^M(0[1-9]|1[0-2])$/.test(String(p.period)));
+    const quarterly = points.filter((p) => /^Q0[1-4]$/.test(String(p.period)));
+    let chosen, inferredPeriod, granularity;
+    if (monthly.length >= 4) { chosen = monthly; inferredPeriod = 12; granularity = "monthly"; }
+    else if (quarterly.length >= 4) { chosen = quarterly; inferredPeriod = 4; granularity = "quarterly"; }
+    else { chosen = points; inferredPeriod = 0; granularity = "annual"; }
+    const ordered = [...chosen].sort((a, b) =>
+      (Number(a.year) - Number(b.year)) ||
+      (Number(String(a.period).slice(1)) - Number(String(b.period).slice(1)))
+    );
+    const values = ordered.map((p) => Number(p.value)).filter((v) => Number.isFinite(v));
+    if (values.length < 4) return { ok: false, reason: "insufficient_history", have: values.length, need: 4, seriesId };
+
+    // 3) Run the REAL Holt-Winters engine (temporal.forecast). Seasonal
+    //    additive when there are ≥2 full cycles; else Holt double-exponential.
+    const forecastHandler = lensActions?.get("temporal.forecast");
+    if (typeof forecastHandler !== "function") return { ok: false, reason: "forecast_unavailable" };
+    const seasonal = inferredPeriod >= 2 && values.length >= inferredPeriod * 2;
+    const fcParams = { values, horizon, ...(seasonal ? { period: inferredPeriod } : {}) };
+    let fc;
+    try {
+      fc = await forecastHandler(ctx, { domain: "temporal", data: {} }, fcParams);
+    } catch (e) {
+      return { ok: false, reason: "forecast_error", detail: String(e?.message || e) };
+    }
+    if (!fc || !fc.ok || !fc.result) {
+      return { ok: false, reason: "forecast_error", detail: String(fc?.error || "forecast failed") };
+    }
+    const f = fc.result;
+    const last = ordered[ordered.length - 1];
+    const catalogTitle = series?.catalog && typeof series.catalog === "object" ? series.catalog.series_title : null;
+    return {
+      ok: true,
+      result: {
+        seriesId,
+        seriesLabel: preset?.label || catalogTitle || seriesId,
+        unit: preset?.unit || null,
+        granularity,
+        seasonal,
+        observations: values.length,
+        window: { startYear: bls.result.startYear, endYear: bls.result.endYear },
+        latest: last ? { value: Number(last.value), period: last.periodName, year: last.year } : null,
+        method: f.method,
+        parameters: f.parameters,
+        horizon: f.horizon,
+        // [{ step, forecast, lower95, upper95, lower80, upper80 }] — the exact
+        // intervals temporal.forecast computes from residual std × √h × z.
+        forecast: f.predictions,
+        trend: f.trend,
+        accuracy: f.accuracy,
+        accuracyLabel: f.accuracyLabel,
+        authenticated: !!bls.result.authenticated,
+        source: "bls-public-api-v2 → temporal.holt-winters",
+      },
+    };
   });
 
   // ─── Workday + BambooHR 2026 parity — HRIS ──────────────────────────

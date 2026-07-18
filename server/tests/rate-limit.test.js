@@ -4,18 +4,63 @@
  */
 import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
-import { checkRateLimit, rateLimitMiddleware, LIMITS } from "../rateLimit.js";
+import { checkRateLimit, rateLimitMiddleware, LIMITS, isRateLimitExemptPath, readRateLimitMiddleware, writeRateLimitMiddleware } from "../rateLimit.js";
 
 describe("rateLimit", () => {
   // ── LIMITS constant ──────────────────────────────────────────
   describe("LIMITS", () => {
     it("defines expected endpoint limits", () => {
-      assert.deepStrictEqual(LIMITS["conscious.chat"], { max: 30, windowMs: 60000 });
-      assert.deepStrictEqual(LIMITS["utility.call"], { max: 60, windowMs: 60000 });
+      assert.deepStrictEqual(LIMITS["conscious.chat"], { max: 600, windowMs: 60000 });
+      assert.deepStrictEqual(LIMITS["utility.call"], { max: 6000, windowMs: 60000 });
       assert.deepStrictEqual(LIMITS["marketplace.submit"], { max: 5, windowMs: 3600000 });
       assert.deepStrictEqual(LIMITS["global.pull"], { max: 20, windowMs: 3600000 });
-      assert.deepStrictEqual(LIMITS["semantic.search"], { max: 100, windowMs: 60000 });
-      assert.deepStrictEqual(LIMITS["default"], { max: 120, windowMs: 60000 });
+      assert.deepStrictEqual(LIMITS["semantic.search"], { max: 6000, windowMs: 60000 });
+      assert.deepStrictEqual(LIMITS["default"], { max: 6000, windowMs: 60000 });
+    });
+
+    it("leashes off compute buckets (local Ollama = no per-request cost), keeps non-compute guards tight", () => {
+      // Compute/interactive buckets are runaway-backstop-only — no human reaches them.
+      assert.equal(LIMITS["write.lens"].max, 6000);   // every lens action funnels through POST /api/lens/run
+      assert.equal(LIMITS["read.default"].max, 12000); // HUD polls + heartbeat feeds, 200/s
+      assert.equal(LIMITS["utility.call"].max, 6000);
+      assert.equal(LIMITS["default"].max, 6000);
+      // Kept LOW because they protect NON-compute concerns, which free Ollama doesn't make safe.
+      assert.equal(LIMITS["marketplace.submit"].max, 5); // governance, constitutional
+      assert.equal(LIMITS["write.mail"].max, 30);        // REAL outbound email — anti-spam
+      assert.equal(LIMITS["write.media.upload"].max, 30); // bandwidth/disk
+      // marketplace.submit + global.pull stay on the hour window, not the minute window.
+      assert.equal(LIMITS["marketplace.submit"].windowMs, 3600000);
+    });
+  });
+
+  // ── isRateLimitExemptPath() — the connection-drop fix ────────
+  describe("isRateLimitExemptPath()", () => {
+    it("exempts the Socket.IO transport so its poll/handshake never 429s", () => {
+      assert.equal(isRateLimitExemptPath({ path: "/socket.io/" }), true);
+      assert.equal(isRateLimitExemptPath({ path: "/socket.io/?EIO=4&transport=polling" }), true);
+    });
+    it("exempts liveness probes", () => {
+      assert.equal(isRateLimitExemptPath({ path: "/api/health" }), true);
+      assert.equal(isRateLimitExemptPath({ path: "/health" }), true);
+      assert.equal(isRateLimitExemptPath({ path: "/api/ping" }), true);
+    });
+    it("does NOT exempt normal API paths", () => {
+      assert.equal(isRateLimitExemptPath({ path: "/api/lens/run" }), false);
+      assert.equal(isRateLimitExemptPath({ path: "/api/dtus" }), false);
+    });
+    it("read middleware lets an exempt path through without accounting", () => {
+      let called = false;
+      const req = { method: "GET", path: "/socket.io/", ip: "9.9.9.9" };
+      const res = { setHeader() {}, status() { return this; }, json() {} };
+      readRateLimitMiddleware(req, res, () => { called = true; });
+      assert.equal(called, true);
+    });
+    it("write middleware lets an exempt path through without accounting", () => {
+      let called = false;
+      const req = { method: "POST", path: "/socket.io/", ip: "9.9.9.8" };
+      const res = { setHeader() {}, status() { return this; }, json() {} };
+      writeRateLimitMiddleware(req, res, () => { called = true; });
+      assert.equal(called, true);
     });
   });
 
@@ -25,15 +70,15 @@ describe("rateLimit", () => {
       const userId = `user_first_${Date.now()}`;
       const result = checkRateLimit(userId, "conscious.chat");
       assert.equal(result.allowed, true);
-      assert.equal(result.remaining, 29); // max 30 - 1
+      assert.equal(result.remaining, 599); // max 600 - 1
     });
 
     it("counts down remaining on subsequent calls", () => {
       const userId = `user_count_${Date.now()}`;
-      checkRateLimit(userId, "conscious.chat"); // remaining = 29
-      const r2 = checkRateLimit(userId, "conscious.chat"); // remaining = 28
+      checkRateLimit(userId, "conscious.chat"); // remaining = 599
+      const r2 = checkRateLimit(userId, "conscious.chat"); // remaining = 598
       assert.equal(r2.allowed, true);
-      assert.equal(r2.remaining, 28);
+      assert.equal(r2.remaining, 598);
     });
 
     it("denies when limit exceeded", () => {
@@ -58,7 +103,7 @@ describe("rateLimit", () => {
       const userId = `user_default_${Date.now()}`;
       const result = checkRateLimit(userId, "unknown.endpoint");
       assert.equal(result.allowed, true);
-      assert.equal(result.remaining, 119); // default max: 120
+      assert.equal(result.remaining, 5999); // default max: 6000
     });
 
     it("resets after window expires", () => {
@@ -82,8 +127,8 @@ describe("rateLimit", () => {
       const userId = `user_sep_${Date.now()}`;
       const r1 = checkRateLimit(userId, "conscious.chat");
       const r2 = checkRateLimit(userId, "utility.call");
-      assert.equal(r1.remaining, 29); // 30 - 1
-      assert.equal(r2.remaining, 59); // 60 - 1
+      assert.equal(r1.remaining, 599); // conscious.chat 600 - 1
+      assert.equal(r2.remaining, 5999); // utility.call 6000 - 1
     });
 
     it("tracks separate keys for different users", () => {
@@ -94,8 +139,8 @@ describe("rateLimit", () => {
       const r1 = checkRateLimit(u1, "conscious.chat");
       const r2 = checkRateLimit(u2, "conscious.chat");
 
-      assert.equal(r1.remaining, 27); // 3rd call
-      assert.equal(r2.remaining, 29); // 1st call for u2
+      assert.equal(r1.remaining, 597); // 3rd call (conscious.chat 600)
+      assert.equal(r2.remaining, 599); // 1st call for u2
     });
   });
 

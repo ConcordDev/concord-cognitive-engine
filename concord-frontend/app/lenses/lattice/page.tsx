@@ -488,8 +488,6 @@ export default function LatticeLensPage() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &ldquo;No data yet&rdquo; if main view has no rows</div>
           <RecentMineCard domain="lattice" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="lattice" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="lattice" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

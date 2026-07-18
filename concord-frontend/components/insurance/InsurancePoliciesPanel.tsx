@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, ChevronLeft, Trash2, FileText, CreditCard, Users, CalendarClock, Pencil, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { ClientAutocomplete } from './ClientAutocomplete';
 import type { ClientRecord } from './ClientAutocomplete';
 
@@ -44,6 +45,7 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ carrier: '', policyNumber: '', kind: 'auto', annualPremium: '', deductible: '' });
   const [clientText, setClientText] = useState('');
@@ -66,6 +68,12 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('insurance', 'policy-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load policies.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPolicies(r.data?.result?.policies || []);
     setLoading(false);
   }, []);
@@ -81,8 +89,14 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
       lensRun('insurance', 'policy-detail', { id: p.id }),
       lensRun('insurance', 'id-card', { policyId: p.id }),
     ]);
-    setDocs(d.data?.result?.documents || []);
-    setPayments(d.data?.result?.payments || []);
+    if (d.data?.ok === false) {
+      setLoadError(d.data?.error || 'Could not load policy detail.');
+      setDocs([]); setPayments([]);
+    } else {
+      setLoadError(null);
+      setDocs(d.data?.result?.documents || []);
+      setPayments(d.data?.result?.payments || []);
+    }
     setCard((c.data?.result?.card as Record<string, unknown>) || null);
     const b = await lensRun('insurance', 'beneficiary-list', { policyId: p.id });
     setBeneficiaries(b.data?.ok === false ? [] : (b.data?.result?.beneficiaries || []));
@@ -224,6 +238,7 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
         )}
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+        {loadError && <ErrorState message={loadError} onRetry={() => openPolicy(selected)} variant="inline" />}
 
         {/* Payment plan */}
         <section>
@@ -362,7 +377,9 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
         </div>
       )}
 
-      {policies.length === 0 ? (
+      {loadError ? (
+        <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>
+      ) : policies.length === 0 ? (
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No policies yet. Add your first one.
         </div>

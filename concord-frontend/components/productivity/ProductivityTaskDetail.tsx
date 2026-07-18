@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Check, Trash2, MessageSquare, UserPlus, Repeat } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Subtask {
   id: string;
@@ -86,6 +87,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [subForm, setSubForm] = useState({ content: '', priority: '4', dueDate: '' });
   const [assignee, setAssignee] = useState('');
   const [commentBody, setCommentBody] = useState('');
@@ -99,6 +101,12 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
       lensRun('productivity', 'task-detail', { id: taskId }),
       lensRun('productivity', 'task-comments', { taskId }),
     ]);
+    if (d.data?.ok === false || c.data?.ok === false) {
+      setLoadError(d.data?.error || c.data?.error || 'Could not load this task.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const t = (d.data?.result?.task as TaskDetail | undefined) || null;
     setTask(t);
     setAssignee(t?.assigneeId || '');
@@ -164,6 +172,9 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
 
   if (loading) {
     return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (loadError) {
+    return <div className="p-2"><ErrorState message={loadError} onRetry={refresh} variant="inline" /></div>;
   }
   if (!task) {
     return <div className="text-xs text-zinc-400 italic py-4">Task not found.</div>;

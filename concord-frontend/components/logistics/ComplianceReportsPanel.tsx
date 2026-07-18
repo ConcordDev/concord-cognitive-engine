@@ -146,10 +146,12 @@ export function ComplianceReportsPanel() {
 
   async function loadVehicles(): Promise<Vehicle[]> {
     const res = await lensRun({ domain: 'logistics', action: 'fleet-vehicles-list', input: {} });
+    if (res.data?.ok === false) throw new Error(res.data?.error || 'Could not load fleet vehicles.');
     return (res.data?.result?.vehicles || []) as Vehicle[];
   }
   async function loadShipments(): Promise<Shipment[]> {
     const res = await lensRun({ domain: 'logistics', action: 'shipments-list', input: {} });
+    if (res.data?.ok === false) throw new Error(res.data?.error || 'Could not load shipments.');
     return (res.data?.result?.shipments || []) as Shipment[];
   }
 

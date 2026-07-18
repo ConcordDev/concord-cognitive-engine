@@ -20,6 +20,12 @@ export function ArtReferencesPanel() {
 
   const refresh = useCallback(async () => {
     const r = await lensRun('art', 'reference-board-list', {});
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load reference boards.');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setBoards(r.data?.result?.boards || []);
     setLoading(false);
   }, []);
