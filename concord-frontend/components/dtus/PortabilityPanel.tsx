@@ -225,7 +225,7 @@ export function PortabilityPanel() {
           Export my corpus
         </button>
         {exportResult && (
-          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-green-400">
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-green-400 tabular-nums">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Downloaded — {exportResult.dtus} DTU(s), {exportResult.citations} citation(s)
             {exportResult.economy ? `, ${exportResult.economy} ledger row(s)` : ''}
@@ -274,19 +274,19 @@ export function PortabilityPanel() {
                 </p>
                 <div className="mt-2 grid grid-cols-4 gap-2">
                   <div className="rounded bg-lattice-surface p-2 text-center">
-                    <p className="text-sm font-bold text-white">{validation.dtuCount ?? 0}</p>
+                    <p className="text-sm font-bold text-white tabular-nums">{validation.dtuCount ?? 0}</p>
                     <p className="text-[10px] text-gray-400">DTUs</p>
                   </div>
                   <div className="rounded bg-lattice-surface p-2 text-center">
-                    <p className="text-sm font-bold text-white">{validation.citationCount ?? 0}</p>
+                    <p className="text-sm font-bold text-white tabular-nums">{validation.citationCount ?? 0}</p>
                     <p className="text-[10px] text-gray-400">Citations</p>
                   </div>
                   <div className="rounded bg-lattice-surface p-2 text-center">
-                    <p className="text-sm font-bold text-white">{validation.economyCount ?? 0}</p>
+                    <p className="text-sm font-bold text-white tabular-nums">{validation.economyCount ?? 0}</p>
                     <p className="text-[10px] text-gray-400">Ledger rows</p>
                   </div>
                   <div className="rounded bg-lattice-surface p-2 text-center">
-                    <p className="text-sm font-bold text-white">{validation.attachmentCount ?? 0}</p>
+                    <p className="text-sm font-bold text-white tabular-nums">{validation.attachmentCount ?? 0}</p>
                     <p className="text-[10px] text-gray-400">Attachments</p>
                   </div>
                 </div>
@@ -312,7 +312,7 @@ export function PortabilityPanel() {
         </button>
 
         {importResult && (
-          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-green-400">
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-green-400 tabular-nums">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Imported {importResult.dtus} DTU(s), {importResult.citations} citation(s)
             {importResult.attachments ? `, ${importResult.attachments} attachment(s)` : ''}.

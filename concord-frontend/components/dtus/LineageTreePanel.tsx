@@ -97,7 +97,7 @@ export function LineageTreePanel({
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded border border-lattice-border bg-lattice-surface p-2 text-center">
-      <p className="text-sm font-bold text-white">{value}</p>
+      <p className="text-sm font-bold text-white tabular-nums">{value}</p>
       <p className="text-[10px] text-gray-400">{label}</p>
     </div>
   );
