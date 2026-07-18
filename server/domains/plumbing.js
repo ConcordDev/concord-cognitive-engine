@@ -4,6 +4,8 @@
 // substrate — dispatch board, quote-to-invoice flow, price book,
 // technician mobile workflow, maintenance plans, customer notifications,
 // and parts-inventory deduction tied to job completion.
+import { listCodeReferences, listCodeReferenceCategories, PLUMBING_CODE_DISCLAIMER } from "../lib/plumbing-code-reference.js";
+
 export default function registerPlumbingActions(registerLensAction) {
   // Finite-coercing numeric reader. parseFloat/parseInt PASS "Infinity" through
   // (and `Infinity || default === Infinity`), so a poisoned/garbage numeric
@@ -15,6 +17,36 @@ export default function registerPlumbingActions(registerLensAction) {
   registerLensAction("plumbing", "waterHeaterSize", (ctx, artifact, _params) => { const data = artifact.data || {}; const people = fInt(data.household, 2) || 2; const simultaneous = fInt(data.simultaneousFixtures, 2) || 2; const peakGPM = simultaneous * 2.5; const tankGallons = people * 15; /* Electric tankless sizing: kW = GPM · 8.33 lb/gal · 60 min/hr · ΔT(°F) / 3412 BTU/kWh. The prior code omitted the temperature rise entirely, yielding an absurd ~1 kW whole-house unit (real units are 18–54 kW). ΔT defaults to the industry-standard 70°F rise (≈50°F incoming → 120°F setpoint), overridable via data.tempRiseF. */ const tempRiseF = fNum(data.tempRiseF, 70) || 70; const tanklessKW = Math.round(peakGPM * 8.33 * 60 * tempRiseF / 3412); return { ok: true, result: { household: people, peakDemandGPM: peakGPM, tankRecommendation: `${Math.ceil(tankGallons/10)*10} gallon tank`, tanklessRecommendation: `${tanklessKW} kW tankless`, firstHourRating: Math.round(tankGallons * 1.5), recommendation: people > 4 ? "Consider tankless for unlimited hot water" : "Standard tank should suffice" } }; });
   registerLensAction("plumbing", "drainSlope", (ctx, artifact, _params) => { const data = artifact.data || {}; const pipeSize = fNum(data.pipeSizeInches, 2) || 2; const length = fNum(data.lengthFeet, 10) || 10; const slopePerFoot = pipeSize <= 2 ? 0.25 : pipeSize <= 3 ? 0.1875 : 0.125; const totalDrop = Math.round(length * slopePerFoot * 100) / 100; return { ok: true, result: { pipeSize: `${pipeSize}"`, length: `${length} ft`, slopePerFoot: `${slopePerFoot}" per foot (${slopePerFoot/12*100}%)`, totalDrop: `${totalDrop}"`, ipcCode: `IPC Table 704.1 — ${pipeSize}" pipe requires ${slopePerFoot}"/ft minimum`, tip: "Use a level and measure drop at each joint" } }; });
   registerLensAction("plumbing", "fixtureCount", (ctx, artifact, _params) => { const fixtures = Array.isArray(artifact.data?.fixtures) ? artifact.data.fixtures : []; if (fixtures.length === 0) return { ok: true, result: { message: "Add fixtures to calculate water supply needs." } }; const wsfuValues = { toilet: 2.5, lavatory: 1, bathtub: 2, shower: 2, "kitchen-sink": 1.5, dishwasher: 1.5, "washing-machine": 2, "hose-bib": 2.5 }; const totalWSFU = fixtures.reduce((s, f) => { if (!f || typeof f !== "object") return s; const type = (f.type || f.name || "").toLowerCase(); return s + (wsfuValues[type] || 1.5) * (fInt(f.count, 1) || 1); }, 0); const meterSize = totalWSFU <= 15 ? '3/4"' : totalWSFU <= 30 ? '1"' : totalWSFU <= 60 ? '1.5"' : '2"'; return { ok: true, result: { fixtures: fixtures.length, totalWSFU, meterSize, supplyLine: totalWSFU <= 20 ? '3/4" main' : '1" main', note: "WSFU = Water Supply Fixture Units per IPC/UPC" } }; });
+
+  // ─── Code quick-reference library (Track D, copyright-aware) ────────
+  // Closes the "Codes" deferred-permit gap (docs/lens-specs/plumbing-
+  // capability-map.md): the IPC/UPC are copyrighted model codes, so this is
+  // NOT a verbatim code-text library — every entry in
+  // content/plumbing-code-reference.json is a paraphrased summary that
+  // cites a real table/section number only when the author is confident
+  // it's correct; otherwise it's flagged `citationConfidence:
+  // "general-pattern"` with `citation: null` rather than risking a
+  // fabricated citation. Every entry carries its own disclaimer, and the
+  // macro also returns a library-wide disclaimer, per the honest-by-
+  // construction invariant (mirrors healthcare.protocols-list /
+  // content/healthcare-protocols.json). params.category optionally filters
+  // to one category (e.g. "drain-slope", "fixture-units").
+  registerLensAction("plumbing", "codeReference", (_ctx, _artifact, params = {}) => {
+    try {
+      const category = String(params.category || "").trim();
+      const all = listCodeReferences();
+      const entries = category ? all.filter((e) => e.category === category) : all;
+      return {
+        ok: true,
+        result: {
+          entries,
+          categories: listCodeReferenceCategories(),
+          total: all.length,
+          disclaimer: PLUMBING_CODE_DISCLAIMER,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 
   // ─── Field-service substrate (per-user, STATE-backed) ───────────────
   function getPlumbState() {

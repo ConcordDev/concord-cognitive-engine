@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { CodeReferencePanel } from '@/components/plumbing/CodeReferencePanel';
 
 async function callPlumbing<T>(action: string, data: Record<string, unknown>): Promise<T | null> {
   try {
@@ -377,6 +378,7 @@ export function PlumbCalc() {
       <WaterHeaterSizer />
       <DrainSlopeCalculator />
       <FixtureSupplyCalc />
+      <CodeReferencePanel />
     </div>
   );
 }

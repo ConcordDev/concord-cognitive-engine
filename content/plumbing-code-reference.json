@@ -1,0 +1,56 @@
+[
+  {
+    "id": "drain-slope-min",
+    "category": "drain-slope",
+    "title": "Minimum horizontal drain slope",
+    "citation": "IPC Table 704.1",
+    "citationConfidence": "table-cited",
+    "summary": "Smaller-diameter horizontal drain piping (roughly 2.5 inches or less) is generally required to fall at least about a quarter inch per foot of run; larger drain piping (in the 3-to-6-inch range) is generally allowed a shallower minimum fall, on the order of an eighth of an inch per foot. This is the same minimum-slope table the `plumbing.drainSlope` calculator's `ipcCode` note references.",
+    "disclaimer": "Paraphrased quick reference only, not the verbatim table text. Verify the exact slope requirement against your locally adopted code edition (IPC/UPC) and any local amendments before design or construction."
+  },
+  {
+    "id": "fixture-dfu-values",
+    "category": "fixture-units",
+    "title": "Drainage fixture unit (DFU) load per fixture",
+    "citation": "IPC Table 709.1",
+    "citationConfidence": "table-cited",
+    "summary": "Each plumbing fixture is assigned a drainage-fixture-unit (DFU) load that drain/waste/vent sizing is built around. Small fixtures like a lavatory or bar sink are typically assigned a low DFU load; a kitchen sink, bathtub, or shower is typically assigned a moderate load; a water closet is typically assigned one of the highest single-fixture loads in the table.",
+    "disclaimer": "Paraphrased quick reference only, not the verbatim table text. DFU assignments vary between IPC and UPC and by code edition — verify against your locally adopted code before sizing any real system."
+  },
+  {
+    "id": "trap-size-min",
+    "category": "trap-sizes",
+    "title": "Minimum trap size by fixture type",
+    "citation": "IPC Table 709.1",
+    "citationConfidence": "table-cited",
+    "summary": "The same fixture-unit table that assigns DFU loads also sets a minimum trap size per fixture type. Smaller fixtures (lavatory, bar sink) generally take the smallest listed trap size; mid-size fixtures (kitchen sink, bathtub, laundry standpipe) generally take a mid-size trap; a shower stall typically takes a larger trap than a lavatory or kitchen sink.",
+    "disclaimer": "Paraphrased quick reference only, not the verbatim table text. Confirm exact trap sizes against your locally adopted code edition — some jurisdictions amend these values."
+  },
+  {
+    "id": "branch-stack-capacity",
+    "category": "branch-stack-sizing",
+    "title": "Horizontal branch & stack fixture-unit capacity",
+    "citation": "IPC Table 710.1(1) / 710.1(2)",
+    "citationConfidence": "table-cited",
+    "summary": "Separate tables cap the total DFU load that a horizontal branch, a vertical stack, or a building drain/sewer of a given pipe diameter is allowed to carry. Larger pipe diameters allow proportionally larger permitted fixture-unit loads, and for a building drain/sewer the allowed load also depends on the pipe's slope.",
+    "disclaimer": "Paraphrased quick reference only, not the verbatim table text. Actual allowable loads differ by code edition and pipe material — verify against your locally adopted code before sizing a real drain system."
+  },
+  {
+    "id": "vent-sizing-rule-of-thumb",
+    "category": "vent-sizing",
+    "title": "Vent pipe minimum sizing — general pattern",
+    "citation": null,
+    "citationConfidence": "general-pattern",
+    "summary": "A commonly applied rule of thumb across multiple plumbing code families is that an individual vent should be no smaller than roughly half the diameter of the drain it serves, subject to a code-specified overall minimum pipe diameter. The exact minimum diameter and the governing table/section differ between the IPC, the UPC, and local amendments, so this is illustrative only — no specific table number is cited here because it isn't the same section across code families.",
+    "disclaimer": "General pattern, not a verified section citation. Confirm the exact minimum vent size and governing section against your locally adopted code edition before design or construction."
+  },
+  {
+    "id": "cleanout-spacing",
+    "category": "cleanout-spacing",
+    "title": "Cleanout spacing on horizontal drain runs — general pattern",
+    "citation": null,
+    "citationConfidence": "general-pattern",
+    "summary": "Plumbing codes generally require a cleanout at intervals along long horizontal drain runs (commonly cited on the order of 100 feet for larger pipe, tighter for smaller pipe), plus at each change of direction beyond a set angle and near the building's exterior. The exact interval, angle threshold, and governing table/section differ between code families and local amendments, so this is illustrative only.",
+    "disclaimer": "General pattern, not a verified section citation. Confirm exact cleanout spacing and placement requirements against your locally adopted code edition before design or construction."
+  }
+]

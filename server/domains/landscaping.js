@@ -7,6 +7,10 @@
 // trefle.io/users/sign_up.
 
 import { callVision, callVisionUrl } from "../lib/vision-inference.js";
+import {
+  listPermitReferences, listPermitReferenceJurisdictions, listPermitReferenceCategories,
+  LANDSCAPING_PERMIT_DISCLAIMER,
+} from "../lib/landscaping-code-reference.js";
 
 const TREFLE_BASE = "https://trefle.io/api/v1";
 
@@ -58,6 +62,41 @@ export default function registerLandscapingActions(registerLensAction) {
     const prices = { mulch: 35, gravel: 45, topsoil: 30, compost: 40, sand: 35, pavers: 0 };
     const costPerYard = prices[material] || 35;
     return { ok: true, result: { material, squareFootage: sqft, depthInches, cubicYards, bags: Math.ceil(cubicYards * 13.5), estimatedCost: Math.round(cubicYards * costPerYard), deliveryNote: cubicYards > 3 ? "Bulk delivery recommended" : "Bagged purchase sufficient" } };
+  });
+
+  // ─── Permit / zoning quick-reference library (Track D, copyright-aware) ─
+  // Closes the "Codes" deferred-permit gap (docs/lens-specs/landscaping-
+  // capability-map.md): unlike plumbing (one national model-code family),
+  // there's no single national source for landscaping/zoning permit rules —
+  // municipal ordinances are public record but vary by jurisdiction. This is
+  // a SMALL representative sample of named example jurisdictions
+  // (content/landscaping-code-reference.json), each entry a paraphrased
+  // summary citing the real, named ordinance/permit program — never
+  // verbatim ordinance text, and never a fabricated section number the
+  // author isn't confident of (those are flagged `citationConfidence:
+  // "general-pattern"` with `citation: null` instead). Every entry carries
+  // its own "confirm with your jurisdiction" disclaimer; the macro also
+  // returns a library-wide disclaimer. params.jurisdiction and/or
+  // params.category optionally filter the result set.
+  registerLensAction("landscaping", "permit-reference", (_ctx, _a, params = {}) => {
+    try {
+      const jurisdiction = String(params.jurisdiction || "").trim();
+      const category = String(params.category || "").trim();
+      const all = listPermitReferences();
+      let entries = all;
+      if (jurisdiction) entries = entries.filter((e) => e.jurisdiction === jurisdiction);
+      if (category) entries = entries.filter((e) => e.category === category);
+      return {
+        ok: true,
+        result: {
+          entries,
+          jurisdictions: listPermitReferenceJurisdictions(),
+          categories: listPermitReferenceCategories(),
+          total: all.length,
+          disclaimer: LANDSCAPING_PERMIT_DISCLAIMER,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   /**

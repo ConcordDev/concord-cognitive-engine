@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { PermitReferencePanel } from '@/components/landscaping/PermitReferencePanel';
 
 async function callLand<T>(action: string, data: Record<string, unknown>): Promise<T | null> {
   try {
@@ -320,6 +321,7 @@ export function ProLandscape() {
       <IrrigationCalc />
       <SeasonalPlanCalendar />
       <MaterialEstimator />
+      <PermitReferencePanel />
     </div>
   );
 }

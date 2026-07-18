@@ -1,0 +1,52 @@
+[
+  {
+    "id": "nyc-street-tree-permit",
+    "jurisdiction": "New York City, NY",
+    "category": "tree-permit",
+    "title": "Street/park tree work permit",
+    "citation": "NYC Parks Department — Tree Work Permit program (NYC Administrative Code Title 18, Parks and Recreation)",
+    "citationConfidence": "named-program",
+    "summary": "In New York City, planting, pruning, or removing a street tree or a tree on other city property generally requires a permit from NYC Parks & Recreation before work begins. Unpermitted tree work on city trees can carry fines.",
+    "disclaimer": "Paraphrased quick reference only, not verified current code/rule text. Confirm current permit requirements and the exact process with NYC Parks & Recreation before doing any tree work — rules and fee schedules change."
+  },
+  {
+    "id": "la-protected-tree-ordinance",
+    "jurisdiction": "Los Angeles, CA",
+    "category": "tree-permit",
+    "title": "Protected tree removal permit",
+    "citation": "Los Angeles Municipal Code — Protected Tree Ordinance (LA Dept. of City Planning)",
+    "citationConfidence": "named-ordinance",
+    "summary": "Los Angeles's Protected Tree Ordinance requires a permit before removing, relocating, or significantly pruning certain native tree species on private property — historically including California oak, Southern California black walnut, Western sycamore, California bay, and toyon. The current protected-species list and permit process should be confirmed with the city before any work.",
+    "disclaimer": "Paraphrased quick reference only, not verified current ordinance text. Confirm the current protected-species list and permit process with LA City Planning before removing or pruning any tree that might be protected."
+  },
+  {
+    "id": "chicago-landscape-ordinance",
+    "jurisdiction": "Chicago, IL",
+    "category": "commercial-landscaping",
+    "title": "Parking lot / commercial development landscaping requirement",
+    "citation": "City of Chicago — Chicago Landscape Ordinance (Dept. of Planning and Development)",
+    "citationConfidence": "named-ordinance",
+    "summary": "Chicago's Landscape Ordinance requires many new or renovated parking lots and commercial developments to include a minimum amount of on-site landscaping — perimeter plantings, parking-lot islands, and ground cover. The exact ratios and species requirements depend on lot size and zoning district.",
+    "disclaimer": "Paraphrased quick reference only, not verified current ordinance text. Confirm the current landscaping ratio and species requirements for the specific lot/zoning district with Chicago DPD before design."
+  },
+  {
+    "id": "seattle-sf-setback",
+    "jurisdiction": "Seattle, WA",
+    "category": "setback",
+    "title": "Single-family zone yard setbacks — general pattern",
+    "citation": "Seattle Municipal Code, Title 23 (Land Use Code) — exact subsection varies by sub-zone",
+    "citationConfidence": "general-pattern",
+    "summary": "Seattle's single-family zoning generally sets a front-yard setback (commonly described as around 20 feet, or matched to the block's average) with smaller side and rear setbacks. The actual required distances vary by the parcel's specific zone designation and must be confirmed against the current code and zoning map for that parcel — no single subsection number is cited here because it differs by sub-zone.",
+    "disclaimer": "General pattern only, not a verified subsection citation. Confirm the exact setback for the specific parcel and zone with Seattle Dept. of Construction & Inspections before design."
+  },
+  {
+    "id": "fence-height-general-pattern",
+    "jurisdiction": "General — most U.S. municipalities",
+    "category": "fence-permit",
+    "title": "Fence height & permit threshold — general pattern",
+    "citation": null,
+    "citationConfidence": "general-pattern",
+    "summary": "Most U.S. municipalities regulate fence height differently by yard type — commonly capping front-yard fences lower than side- or rear-yard fences — and require a building permit above a height threshold that is frequently cited around 6 feet for rear/side fences. This pattern is extremely common but the exact height, permit trigger, and any material restrictions are set locally and vary widely; no specific jurisdiction is cited here because this is a cross-jurisdiction pattern, not one ordinance.",
+    "disclaimer": "General pattern only, not tied to one verified ordinance. Always check your specific municipal code and any HOA rules before building or modifying a fence."
+  }
+]
