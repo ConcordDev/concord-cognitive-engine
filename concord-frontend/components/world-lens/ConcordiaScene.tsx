@@ -9,6 +9,7 @@ import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor
 import { createTraumaShake, type TraumaShake } from '@/lib/concordia/screen-trauma';
 import { disposeBuildingArchetype } from '@/lib/world-lens/procedural-buildings';
 import { clearProceduralCache } from '@/lib/world-lens/procedural-texture';
+import { resolveSceneWorldId } from '@/lib/world-lens/resolve-scene-world-id';
 
 // Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
 // the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
@@ -125,6 +126,13 @@ interface ConcordiaSceneProps {
   cameraMode?: 'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic';
   /** Per-frame player position + yaw, used for follow + first-person camera. */
   getPlayerPose?: () => { x: number; y: number; z: number; yaw: number } | null;
+}
+
+/** Read the ambient active world from localStorage (SSR-safe). The S2-a
+ *  binding rule (prop-over-ambient) lives in `resolveSceneWorldId`. */
+function ambientActiveWorldId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage?.getItem('concordia:activeWorldId') ?? null;
 }
 
 // ── Quality Presets ──────────────────────────────────────────────
@@ -515,9 +523,10 @@ export default function ConcordiaScene({
                 import('@/lib/realtime/socket'),
               ]);
               if (disposed) return;
-              const worldId =
-                (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) ||
-                'concordia-hub';
+              // S2-a — prop-driven world binding (see resolveSceneWorldId): the
+              // scene fetches the district it was mounted for, not the viewer's
+              // ambient localStorage world, so an artifact host shows ITS world.
+              const worldId = resolveSceneWorldId(districtId, ambientActiveWorldId());
               const enabled = (window as { __concordClientConfig?: { CONCORD_TERRAIN_DEFORM_RENDER?: unknown } })
                 .__concordClientConfig?.CONCORD_TERRAIN_DEFORM_RENDER !== 0;
               terrainDeformRef.current = attachTerrainDeformation({
@@ -547,9 +556,8 @@ export default function ConcordiaScene({
               const hydroEnabled = (window as { __concordClientConfig?: { CONCORD_HYDRO_RENDER?: unknown } })
                 .__concordClientConfig?.CONCORD_HYDRO_RENDER !== 0;
               if (!hydroEnabled) return;
-              const worldId =
-                (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) ||
-                'concordia-hub';
+              // S2-a — prop-driven world binding (see resolveSceneWorldId).
+              const worldId = resolveSceneWorldId(districtId, ambientActiveWorldId());
               const waterLayer = (layersRef.current?.['water'] ?? layersRef.current?.['particles']) as
                 InstanceType<typeof import('three').Group> | undefined;
               if (!waterLayer) return;
@@ -639,7 +647,8 @@ export default function ConcordiaScene({
       // strip slightly south. Registers the water-Y so AvatarSystem3D's
       // swim-mode toggle activates when the player walks below.
       try {
-        const worldId = (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) || 'concordia-hub';
+        // S2-a — prop-driven world binding (see resolveSceneWorldId).
+        const worldId = resolveSceneWorldId(districtId, ambientActiveWorldId());
         const waterY = 2.0;
         physicsWorld.registerWaterPlane?.(worldId, waterY);
         const waterMat = new THREE.MeshStandardMaterial({
@@ -1120,9 +1129,8 @@ export default function ConcordiaScene({
       // is driven from the same handle (one update fans out to all four).
       try {
         const { attachWorldRenderers } = await import('@/lib/world-lens/attach-world-renderers');
-        const worldId =
-          (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) ||
-          'concordia-hub';
+        // S2-a — prop-driven world binding (see resolveSceneWorldId).
+        const worldId = resolveSceneWorldId(districtId, ambientActiveWorldId());
         const handle = attachWorldRenderers(layers.infrastructure, layers.particles, { worldId });
         worldRenderersRef.current = handle;
         (layers.infrastructure.userData as { update?: (d: number, e: number) => void }).update = (

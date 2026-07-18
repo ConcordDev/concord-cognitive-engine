@@ -45,6 +45,7 @@ is doing that for the not-yet-mechanized classes.
 | Behavioral depth floor | ◑ measured, grind-to-ceiling | `scripts/grade-macro-depth.mjs --honest` (depth-fleet loop) |
 | Capability-map "genuinely missing" gaps | ◑ per-lens manual triage | Frontend-Rebuild Wave-4 gap-closure (DATA-SOURCING / ENGINEERING / CURATION) |
 | **Real-name / IP-name collisions** | **✅ mechanized + gated (2026-07-17)** | `scripts/check-name-collisions.mjs --ci` (E3 gate, wired in `audits.yml`), pinned by `name-collision-gate.test.js` |
+| Honest-hologram motion (no `setInterval` work-animation in ConKay) | ✅ mechanized + gated | `scripts/check-conkay-honest-motion.mjs --ci` (allowlist of named UX-teardown timers, wired in `audits.yml`), pinned by `conkay-honest-motion-gate.test.js` |
 
 The last row is the one this doc opens. The base rate matters: **tunya alone
 carried ≥3 collisions** (Cree, Kree, Naheya/Wiyowak) in a single sub-world, which

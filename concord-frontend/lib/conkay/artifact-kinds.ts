@@ -27,6 +27,15 @@
 //                                                 — archetype/feature/dimensions/name/position — + the result's
 //                                                 buildingId, see normalizeBuildingPublish)
 //                        ← (shape-driven)    → { buildings[], validationData[] }  — see normalizeBuilding's note
+//       robotics-arm     ← robotics.forwardKinematics /  → { points[{x,y}], endEffector, dof, maxReach,
+//                            robotics.inverseKinematics     orientation | angles/target/reachable/converged/
+//                                                (server/domains/robotics.js#forwardKinematics/inverseKinematics;
+//                                                 a REAL 2D planar joint chain, lifted to z=0 — the solver's own
+//                                                 solved pose, never a re-simulated solve)
+//       creature         ← creatures.creature-publish → { ok, topology, coatColor?, massKg, heightM,
+//                                                species_id, creatureId, spawned }
+//                                                (server/domains/creatures.js#creature-publish; topology is the
+//                                                 REAL generated rig topology — renders via createCreatureMesh)
 //
 // This module is intentionally React-free so it can be unit-tested as a pure
 // function (see tests/lib/conkay/artifact-kinds.test.ts). The mapping from
@@ -44,6 +53,9 @@ import { feaResultFromRun, type ConkayFeaResult } from '@/components/conkay/conk
 // Type-only reuse of the real building renderer's prop shapes — so the building
 // artifact carries EXACTLY what BuildingRenderer3D consumes, nothing invented.
 import type { BuildingDTU, ValidationData } from '@/components/world-lens/BuildingRenderer3D';
+// Type-only reuse of the real creature-mesh factory's topology union — so the
+// creature artifact carries EXACTLY the topology tag createCreatureMesh consumes.
+import type { CreatureTopology } from '@/lib/world-lens/creature-mesh-builder';
 
 /** The artifact kinds that have a registered real-macro normalizer + adapter. */
 export type ConkayArtifactKind =
@@ -51,7 +63,9 @@ export type ConkayArtifactKind =
   | 'fea-frame'
   | 'building'
   | 'foundry-worldspec'
-  | 'forge-app';
+  | 'forge-app'
+  | 'robotics-arm'
+  | 'creature';
 
 /** A kind-agnostic summary of one inspectable sub-part of an artifact (a
  *  drawList object / FEA member / activated system / project). Used for the
@@ -71,6 +85,25 @@ interface ConkayArtifactBase {
   sourceDomain: string;
   /** Provenance — the real macro name that produced this artifact. */
   sourceMacro: string;
+  /**
+   * Provenance — the real macro INPUT that produced this artifact, carried
+   * through untouched (like sourceDomain/sourceMacro). Present only for kinds
+   * whose normalizer preserves it (currently `building`, for the S3 Iterate
+   * re-run loop — a delta is applied to this and the macro is re-run). Absent
+   * (undefined) for kinds that don't yet support iterate; never fabricated.
+   */
+  sourceInput?: Record<string, unknown>;
+  /**
+   * Provenance — the real persisted DTU id this artifact was published as, when
+   * one exists (the macro result's `dtuId`). Absent for an un-published edit
+   * (e.g. a locally-iterated building not yet re-published) — the provenance
+   * overlay then honestly says "not yet published", never inventing an id. This
+   * is the anchor the S4 "Own it / list it" path uses.
+   */
+  dtuId?: string | null;
+  /** Provenance — parent DTU ids this artifact cites (its lineage), when the
+   *  publish registered citations. Empty/absent when it has no parents. */
+  lineage?: string[];
 }
 
 /** One `ar.render` drawList object — structurally the shape ConKayArtifactExploded
@@ -133,6 +166,62 @@ export interface ConkayForgeArtifact extends ConkayArtifactBase {
   fileCount: number | null;
 }
 
+/** A 3D point — the robotics macros return planar (x,y) chains, lifted to z=0. */
+export interface ConkayVec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/** A solved planar robot-arm pose — the exact joint chain `robotics.forwardKinematics`
+ *  / `robotics.inverseKinematics` returned, lifted to 3D (z=0). It is a STATIC
+ *  solved pose (the returned points), never a re-simulated CCD solve. */
+export interface ConkayRoboticsArtifact extends ConkayArtifactBase {
+  kind: 'robotics-arm';
+  /** The solved joint positions, 3D-lifted. points[0] is the base. ≥2 points. */
+  points: ConkayVec3[];
+  /** The solved end-effector position (3D-lifted). */
+  endEffector: ConkayVec3;
+  /** Degrees of freedom = number of links (macro's `dof`, else points.length-1). */
+  dof: number;
+  /** Total kinematic reach (sum of link lengths) when the macro reported it (FK). */
+  maxReach: number | null;
+  /** Which macro produced the pose — 'IK' carries target + convergence facts. */
+  solver: 'FK' | 'IK';
+  /** IK target (3D-lifted), or null for an FK pose. */
+  target: ConkayVec3 | null;
+  /** IK: did CCD converge within tolerance (null for FK). */
+  converged: boolean | null;
+  /** IK: CCD iteration count (null for FK). */
+  iterations: number | null;
+  /** IK: was the target within reach (null for FK). */
+  reachable: boolean | null;
+  /** IK: residual distance from the target (null for FK). */
+  error: number | null;
+}
+
+/** A published creature blueprint — rendered via `createCreatureMesh` from the
+ *  REAL generated rig topology `creatures.creature-publish` reported. Renders 3D
+ *  ONLY when the backend enrichment supplied `topology`; else the normalizer
+ *  returns null (the honest STOP-POINT). */
+export interface ConkayCreatureArtifact extends ConkayArtifactBase {
+  kind: 'creature';
+  /** The real generated rig topology (drives createCreatureMesh's silhouette). */
+  topology: CreatureTopology;
+  /** The creature's coat colour the macro reported (or null → builder default). */
+  coatColor: string | null;
+  /** The physics-validated mass in kg the generator computed (or null). */
+  massKg: number | null;
+  /** The physics-validated height in metres the generator computed (or null). */
+  heightM: number | null;
+  /** The species id the blueprint was authored for (or null). */
+  speciesId: string | null;
+  /** The live spawned creature's id, when a world spawn happened (or null). */
+  creatureId: string | null;
+  /** Whether a live creature was spawned alongside the blueprint DTU. */
+  spawned: boolean;
+}
+
 /** The canonical artifact union — every member is a pure function of a real
  *  macro result (see the per-normalizer sources above). */
 export type ConkayArtifact =
@@ -140,7 +229,9 @@ export type ConkayArtifact =
   | ConkayFeaArtifact
   | ConkayBuildingArtifact
   | ConkayFoundryArtifact
-  | ConkayForgeArtifact;
+  | ConkayForgeArtifact
+  | ConkayRoboticsArtifact
+  | ConkayCreatureArtifact;
 
 // ── small honest coercers (mirror conkayHudStore's `num`/`asRecordArray`) ────
 function asObj(v: unknown): Record<string, unknown> {
@@ -192,7 +283,12 @@ function normalizeFea(domain: string, macro: string, input: unknown, result: unk
     label: `${m.nodeI} → ${m.nodeJ}`,
     kind: 'member',
   }));
-  return { kind: 'fea-frame', fea, components, sourceDomain: domain, sourceMacro: macro };
+  // S3-c — carry the full input model (nodes/members/loads/supports, WITH the
+  // section + load fields feaResultFromRun drops) so the Iterate loop can
+  // transform it and re-run the real solver. Pure provenance, not invented.
+  const sourceInput =
+    input && typeof input === 'object' ? (input as Record<string, unknown>) : undefined;
+  return { kind: 'fea-frame', fea, components, sourceDomain: domain, sourceMacro: macro, sourceInput };
 }
 
 /** foundry.preview → a compiled-world artifact. Requires a real previewWorldId
@@ -232,6 +328,102 @@ function normalizeForge(domain: string, macro: string, _input: unknown, result: 
     ? [{ id: projectId, label: `project ${projectId}`, kind: 'forge-app' }]
     : [];
   return { kind: 'forge-app', html, projectId, fileCount, components, sourceDomain: domain, sourceMacro: macro };
+}
+
+/** robotics.forwardKinematics | inverseKinematics → a solved planar arm pose.
+ *  The macros return a 2D (x,y) joint chain; every joint is lifted to z=0. A real
+ *  pose needs ≥2 points (base + at least one joint) — a `{ ok:false }` error (no
+ *  `points`) or a single-point degenerate chain returns null (the STOP-POINT).
+ *  Renders the FINAL solved pose truthfully; the CCD iterations are NOT replayed. */
+function normalizeRobotics(domain: string, macro: string, _input: unknown, result: unknown): ConkayRoboticsArtifact | null {
+  if (domain !== 'robotics') return null;
+  if (macro !== 'forwardKinematics' && macro !== 'inverseKinematics') return null;
+  const res = asObj(result);
+  const rawPoints = asArray(res.points);
+  if (rawPoints.length < 2) return null; // no real chain to draw ⟹ STOP-POINT
+  const points: ConkayVec3[] = rawPoints.map((p) => {
+    const o = asObj(p);
+    return { x: num(o.x), y: num(o.y), z: 0 };
+  });
+
+  const endRaw = asObj(res.endEffector);
+  const endEffector: ConkayVec3 =
+    typeof endRaw.x === 'number' && typeof endRaw.y === 'number'
+      ? { x: num(endRaw.x), y: num(endRaw.y), z: 0 }
+      : points[points.length - 1];
+
+  const solver: 'FK' | 'IK' = macro === 'inverseKinematics' ? 'IK' : 'FK';
+  const dof = typeof res.dof === 'number' && Number.isFinite(res.dof) ? res.dof : points.length - 1;
+  const maxReach = typeof res.maxReach === 'number' && Number.isFinite(res.maxReach) ? res.maxReach : null;
+
+  let target: ConkayVec3 | null = null;
+  let converged: boolean | null = null;
+  let iterations: number | null = null;
+  let reachable: boolean | null = null;
+  let error: number | null = null;
+  if (solver === 'IK') {
+    const t = asObj(res.target);
+    if (typeof t.x === 'number' && typeof t.y === 'number') target = { x: num(t.x), y: num(t.y), z: 0 };
+    converged = typeof res.converged === 'boolean' ? res.converged : null;
+    iterations = typeof res.iterations === 'number' && Number.isFinite(res.iterations) ? res.iterations : null;
+    reachable = typeof res.reachable === 'boolean' ? res.reachable : null;
+    error = typeof res.error === 'number' && Number.isFinite(res.error) ? res.error : null;
+  }
+
+  const components: ConkayArtifactComponent[] = points.map((_p, i) => ({
+    id: `joint_${i}`,
+    label: i === 0 ? 'base' : i === points.length - 1 ? 'end effector' : `joint ${i}`,
+    kind: 'joint',
+  }));
+
+  return {
+    kind: 'robotics-arm',
+    points,
+    endEffector,
+    dof,
+    maxReach,
+    solver,
+    target,
+    converged,
+    iterations,
+    reachable,
+    error,
+    components,
+    sourceDomain: domain,
+    sourceMacro: macro,
+  };
+}
+
+/** creatures.creature-publish → a published-creature artifact. Requires the
+ *  backend's real `topology` enrichment on an `ok` result — absent it (older
+ *  enrichment, or a failure), the normalizer returns null so the viewer shows
+ *  its STOP-POINT rather than a fabricated silhouette. */
+function normalizeCreature(domain: string, macro: string, _input: unknown, result: unknown): ConkayCreatureArtifact | null {
+  if (domain !== 'creatures' || macro !== 'creature-publish') return null;
+  const res = asObj(result);
+  if (res.ok !== true) return null; // honest failure ⟹ STOP-POINT, never a placeholder
+  if (typeof res.topology !== 'string' || res.topology.length === 0) return null; // no real rig ⟹ STOP-POINT
+  const topology = res.topology as CreatureTopology;
+  const speciesId = str(res.species_id);
+  const creatureId = str(res.creatureId);
+  const components: ConkayArtifactComponent[] = [
+    { id: creatureId ?? speciesId ?? 'creature', label: speciesId ?? topology, kind: 'creature' },
+  ];
+  return {
+    kind: 'creature',
+    topology,
+    coatColor: str(res.coatColor),
+    massKg: typeof res.massKg === 'number' && Number.isFinite(res.massKg) ? res.massKg : null,
+    heightM: typeof res.heightM === 'number' && Number.isFinite(res.heightM) ? res.heightM : null,
+    speciesId,
+    creatureId,
+    spawned: res.spawned === true,
+    components,
+    sourceDomain: domain,
+    sourceMacro: macro,
+    // S4 provenance — the real published blueprint DTU id.
+    dtuId: str(res.dtuId),
+  };
 }
 
 /** True iff a value carries the load-bearing fields BuildingRenderer3D needs to
@@ -329,7 +521,24 @@ function normalizeBuildingPublish(domain: string, macro: string, input: unknown,
   };
 
   const components: ConkayArtifactComponent[] = [{ id: building.id, label: building.name, kind: 'building' }];
-  return { kind: 'building', buildings: [building], validation: [], components, sourceDomain: domain, sourceMacro: macro };
+  return {
+    kind: 'building',
+    buildings: [building],
+    validation: [],
+    components,
+    sourceDomain: domain,
+    sourceMacro: macro,
+    // Carry the real macro input untouched so the S3 Iterate loop can apply a
+    // dimension delta and re-run building-publish. Pure provenance, not invented.
+    sourceInput: inp,
+    // S4 provenance — the real published DTU id + lineage (parent DTUs cited).
+    // A locally-iterated (un-republished) building has no dtuId here — honestly
+    // "not yet published" until Owned.
+    dtuId: str(res.dtuId),
+    lineage: asArray(res.citations)
+      .map((c) => str(asObj(c).parentId))
+      .filter((p): p is string => !!p),
+  };
 }
 
 /** Shape-driven (NOT domain-gated) → a structural-building artifact. Matches any
@@ -372,7 +581,7 @@ export interface ArtifactKindEntry {
 /** The kind registry. Order matters: the domain-gated kinds are tried before
  *  the shape-driven `building` detector so a domain-specific match always wins.
  *  The `building` entry itself composes two normalizers behind one kind (kept
- *  as ONE registry row, not two, so `ARTIFACT_KINDS` stays a 5-kind, unique-
+ *  as ONE registry row, not two, so `ARTIFACT_KINDS` stays a 7-kind, unique-
  *  key registry): the domain-gated `game-design.building-publish` detector
  *  tried first, falling back to the shape-driven `buildings[]` detector when
  *  it doesn't match — the same domain-gated-before-shape-driven ordering the
@@ -382,6 +591,8 @@ export const ARTIFACT_KINDS: ArtifactKindEntry[] = [
   { kind: 'fea-frame', label: 'FEA frame', normalize: normalizeFea },
   { kind: 'foundry-worldspec', label: 'Foundry world', normalize: normalizeFoundry },
   { kind: 'forge-app', label: 'Forge app', normalize: normalizeForge },
+  { kind: 'robotics-arm', label: 'Robotic arm', normalize: normalizeRobotics },
+  { kind: 'creature', label: 'Creature', normalize: normalizeCreature },
   {
     kind: 'building',
     label: 'Structural building',

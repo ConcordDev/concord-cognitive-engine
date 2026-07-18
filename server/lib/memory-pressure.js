@@ -256,6 +256,15 @@ export function _aggressiveEviction(STATE) {
     // engine .set() into unboundedly → OOM/scale risk. The watchdog now
     // LRU-trims it like every other unbounded Map.
     ["shadowDtus", Number(process.env.CONCORD_MAX_SHADOWS) || 50000],
+    // STATE.qualia — the QualiaEngine's per-entity store (`get _store()` in
+    // server/existential/engine.js). Each state's HISTORY is bounded
+    // (HISTORY_MAX=50), but the NUMBER of states was uncapped — the last
+    // unbounded Map in this list, at OOM/scale risk since the qualia hooks
+    // (hookDTUCreation / hookDreamSynthesis / hookAutogen) create a state per
+    // entity under high-volume interaction. LRU-trim it like the rest; the
+    // engine returns `entity_not_found`/null for an evicted id and recreates it
+    // on the next hook, so eviction is safe (the hooks are fire-and-forget).
+    ["qualia", Number(process.env.CONCORD_MAX_QUALIA_STATES) || 50000],
   ];
   for (const [field, cap] of mapCaps) {
     const m = STATE[field];

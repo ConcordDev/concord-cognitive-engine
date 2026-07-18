@@ -27,6 +27,8 @@ import type {
   ConkayBuildingArtifact,
   ConkayFoundryArtifact,
   ConkayForgeArtifact,
+  ConkayRoboticsArtifact,
+  ConkayCreatureArtifact,
 } from '@/lib/conkay/artifact-kinds';
 import { artifactKindLabel } from '@/lib/conkay/artifact-kinds';
 import { ArAdapter } from './ArAdapter';
@@ -34,6 +36,8 @@ import { FeaAdapter } from './FeaAdapter';
 import { BuildingAdapter } from './BuildingAdapter';
 import { FoundryAdapter } from './FoundryAdapter';
 import { ForgeAdapter } from './ForgeAdapter';
+import { RoboticsArmAdapter } from './RoboticsArmAdapter';
+import { CreatureAdapter } from './CreatureAdapter';
 
 // kind → real 3D adapter. Keyed by string (not the ConkayArtifactKind union) so
 // an artifact carrying an UNREGISTERED kind cleanly misses the map and hits the
@@ -45,6 +49,8 @@ const ADAPTERS: Record<string, (artifact: ConkayArtifact) => JSX.Element> = {
   building: (a) => <BuildingAdapter artifact={a as ConkayBuildingArtifact} />,
   'foundry-worldspec': (a) => <FoundryAdapter artifact={a as ConkayFoundryArtifact} />,
   'forge-app': (a) => <ForgeAdapter artifact={a as ConkayForgeArtifact} />,
+  'robotics-arm': (a) => <RoboticsArmAdapter artifact={a as ConkayRoboticsArtifact} />,
+  creature: (a) => <CreatureAdapter artifact={a as ConkayCreatureArtifact} />,
 };
 
 export function ArtifactViewer({ artifact }: { artifact: ConkayArtifact }) {

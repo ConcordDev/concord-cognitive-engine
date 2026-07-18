@@ -1360,7 +1360,15 @@ registerHeartbeat("qualia-persist", {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
       const { persistQualiaState } = await import("./existential/hooks.js");
-      return persistQualiaState(ctxDb);
+      const res = persistQualiaState(ctxDb);
+      // Loud on the exact regression that hid for so long: the persist wire going
+      // dead (engine.snapshot() missing) used to return a `reason` nobody read.
+      if (res?.reason === "no_snapshot_export") {
+        structuredLog("warn", "qualia_persist_dead_wire", {
+          hint: "engine.snapshot() missing — self-model is not persisting",
+        });
+      }
+      return res;
     } catch (err) {
       structuredLog("warn", "qualia_persist_failed", { error: err?.message });
       return { ok: false, reason: "exception" };
@@ -30540,6 +30548,16 @@ try {
   const qualiaEngine = new QualiaEngine(STATE);
   globalThis.qualiaEngine = qualiaEngine;
 
+  // Rehydrate the self-model from the last persisted qualia_state so an entity's
+  // channels survive a restart — persistQualiaState writes them every ~15min, but
+  // without this they were written and never read back (a diary never reopened).
+  // Merge-safe (skips entities already live) + best-effort (a fresh engine is
+  // still valid if the table is empty/absent).
+  try {
+    const restored = qualiaHooks.hydrateQualiaState?.(STATE.db);
+    if (restored?.hydrated) structuredLog("info", "qualia_hydrated", { entities: restored.hydrated });
+  } catch (e) { structuredLog("warn", "qualia_hydrate_failed", { error: e?.message }); }
+
   // Initialize qualia for each existing emergent
   const emergentStore = STATE.emergents || STATE.__emergents;
   if (emergentStore) {
@@ -30550,8 +30568,15 @@ try {
     entries.forEach(id => {
       qualiaEngine.createQualiaState(id, [
         'truth_os', 'logic_os',                                  // Tier 0 — always on
-        'emergence_os', 'probability_os',                        // Tier 2 — simulation awareness
+        'emergence_os', 'probability_os', 'sociodynamics_os',    // Tier 2 — simulation + social awareness
         'meta_growth_os', 'self_repair_os', 'reflection_os',     // Tier 5 — self-awareness
+        // Embodied presence, fed by the mesh→foundation-qualia bridge below
+        // (proprioception + social signals every 5th tick). Activated so the
+        // felt channels surface in the qualia summary instead of being written
+        // into an inactive OS the summary never reads. Only OSes the producer
+        // genuinely feeds are listed — no phantom, permanently-zero OS.
+        'earthsignal_os', 'existence_os',                        // Tier 1/4 — grounding + presence
+        'presence_os', 'proprioception_os',                      // Tier 6 — presence subsystem
       ]);
       // Register each emergent as a mesh peer so it appears in topology and can receive signals
       try {
@@ -35364,8 +35389,28 @@ async function governorTick(reason="heartbeat") {
             const eIds = emergentStore instanceof Map ? Array.from(emergentStore.keys()) : Object.keys(emergentStore);
             eIds.forEach(eid => {
               try {
-                fqb.processSignal(eid, 'proprioception', { strength: avgSignal, meshCoverage: avgSignal });
-                fqb.processSignal(eid, 'social', { density: peerDensity });
+                // The bridge tracks felt experience per entity — register
+                // (idempotent) before feeding, or processSignal returns
+                // entity_not_registered and the whole path is a silent no-op.
+                fqb.registerEntity(eid);
+                // Feed REAL mesh-derived signals using the keys the channel
+                // mappers actually read (avgSignalStrength / activeNodes /
+                // meshCoverage, aggregateDensity). The prior {strength,density}
+                // keys were ignored by every mapper.
+                fqb.processSignal(eid, 'proprioception', {
+                  avgSignalStrength: -100 + avgSignal * 100, // 0..1 quality → strength≈avgSignal
+                  activeNodes: avgSignal,
+                  offlineNodes: 1 - avgSignal,
+                  meshCoverage: avgSignal,
+                });
+                fqb.processSignal(eid, 'social', { aggregateDensity: peerDensity, densityTrend: 0.5 });
+                // Close the loop into the Existential OS. hookFoundationQualia
+                // writes the earthsignal/existence channels; the Tier-6 presence
+                // subsystem (presence_os/proprioception_os) is fed by
+                // hookFoundationSensory from a reshaped live bridge snapshot.
+                fqb.hookFoundationQualia(eid);
+                const sensoryData = fqb.buildSensoryHookData(eid);
+                if (sensoryData) qualiaHooks.hookFoundationSensory?.(eid, sensoryData);
               } catch (_se) { /* per-entity signal errors are non-fatal */ }
             });
           }

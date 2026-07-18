@@ -209,7 +209,7 @@ Make the resonance substrate the connective tissue (all reuse `lib/literary-reso
 An orchestrator (`lib/rnd-orchestrator.js` + `domains/rnd.js` + a lens) that runs one verifiable loop: **goal → hypothesis (#17) → LRL+DTU grounded retrieval → CAS/FEA compute (#19) → causal-closure/residual check (#16/#18) → grounded-LLM synthesis with provenance → new DTUs.** Reuses every Tier-0 engine; this is what "connects 6 features at once."
 
 ### Tier 3 — Complete the partials
-Cognitive Fingerprint time-series #5; Goal-decomposition trees #10 (DTU subgoal graph); Swarm orchestration #9 (planner-executor/maker-checker — research); Shadow Ethics deliberation #42; remaining connectors #50 (Slack/Sheets/GitHub/Notion on `connectorFetch`); federated 6th brain #38; license revocation #37; contribution quests #36; long-horizon planner #14; ConKay voice+affect fusion #15.
+Cognitive Fingerprint time-series #5; Goal-decomposition trees #10 (DTU subgoal graph); Swarm orchestration #9 (planner-executor/maker-checker — research); Shadow Ethics deliberation #42; connectors #50 — **code-complete** (Slack/Sheets/GitHub/Notion built + contract-tested on `connectorFetch`; go-live is operator-credential-gated, not code); federated 6th brain #38; license revocation #37; contribution quests #36; long-horizon planner #14; ConKay voice+affect fusion #15.
 
 ### Tier 4 — New, higher-effort
 Governance Proposal Simulator #41 (world-fork sandbox); Holocron gatekeeper agent #49; Style Transfer #45; HDC/VSA upgrade #40 (per "Holographic Invariant Storage" — VSA runtime safety contracts); Invariant Geometry Mapper #20 viz.

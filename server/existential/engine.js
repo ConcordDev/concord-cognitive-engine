@@ -360,6 +360,31 @@ export class QualiaEngine {
   }
 
   /**
+   * Export raw channel values for EVERY entity, keyed by entityId:
+   *   { entityId: { "os.channel": number, ... }, ... }
+   *
+   * This is the exact shape `hooks.persistQualiaState` upserts into
+   * `qualia_state` and logs deltas into `qualia_log`. That heartbeat prefers
+   * `engine.snapshot()` — which never existed, so it silently returned
+   * `no_snapshot_export` every tick and NO qualia state ever reached the DB (it
+   * lived only in memory and evaporated on restart, and no trajectory/log was
+   * ever written). Implementing it here closes that dead wire. Returns a plain
+   * object (a shallow copy of each channel map) so the persist path can
+   * `Object.keys()` it and can't mutate live state.
+   *
+   * @returns {Record<string, Record<string, number>>}
+   */
+  snapshot() {
+    const out = {};
+    for (const [entityId, state] of this._store.entries()) {
+      if (state && state.channels && typeof state.channels === "object") {
+        out[entityId] = { ...state.channels };
+      }
+    }
+    return out;
+  }
+
+  /**
    * Check policy thresholds for a given channel update.
    * Returns an event object if a policy was triggered, null otherwise.
    *

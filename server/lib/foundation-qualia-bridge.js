@@ -632,6 +632,35 @@ export function getPlanetaryState(entityId) {
 }
 
 /**
+ * Reshape an entity's live bridge state into the `sensoryData` shape that
+ * existential/hooks.js#hookFoundationSensory consumes: { presence, embodiment,
+ * channels }. Channels are flattened to scalar intensities and only included
+ * when they carry a real reading (lastUpdate set) — an unfed channel has no
+ * felt intensity, so it is omitted rather than reported as a fabricated 0.
+ *
+ * This is the missing producer piece: the bridge computes felt experience, but
+ * nothing pushed it into the Existential OS's Tier-6 presence subsystem
+ * (presence_os / proprioception_os / sensory_os) until this shape existed to
+ * feed hookFoundationSensory. Returns null when the entity isn't registered
+ * (honest empty, never a fake shape).
+ */
+export function buildSensoryHookData(entityId) {
+  const state = _bridgeState.entities.get(entityId);
+  if (!state) return null;
+
+  const channels = {};
+  for (const [name, ch] of Object.entries(state.channels)) {
+    if (ch.lastUpdate) channels[name] = ch.intensity;
+  }
+
+  return {
+    presence: { ...state.presence },
+    embodiment: { ...state.embodiment },
+    channels,
+  };
+}
+
+/**
  * Calibrate sensitivity for an entity. Used for maturation.
  */
 export function calibrateSensitivity(entityId, newSensitivity) {

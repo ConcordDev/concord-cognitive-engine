@@ -28,6 +28,8 @@ import {
   type ConkayFoundryArtifact,
   type ConkayForgeArtifact,
   type ConkayBuildingArtifact,
+  type ConkayRoboticsArtifact,
+  type ConkayCreatureArtifact,
 } from '@/lib/conkay/artifact-kinds';
 import { feaResultFromRun } from '@/components/conkay/conkayHudStore';
 
@@ -80,6 +82,50 @@ const FORGE_RESULT = {
   versionId: 'v3',
   html: '<!doctype html><title>Todo</title><body>real generated app</body>',
   fileCount: 4,
+};
+
+// robotics.forwardKinematics → { points:[{x,y}], endEffector, orientation, maxReach, extension, dof }
+const FK_RESULT = {
+  points: [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 150, y: 86.6 },
+  ],
+  endEffector: { x: 150, y: 86.6 },
+  orientation: 60,
+  maxReach: 150,
+  extension: '100%',
+  dof: 2,
+};
+
+// robotics.inverseKinematics → { angles, points, endEffector, target, reachable, error, converged, iterations, method }
+const IK_RESULT = {
+  angles: [30, -45],
+  points: [
+    { x: 0, y: 0 },
+    { x: 86.6, y: 50 },
+    { x: 120, y: 20 },
+  ],
+  endEffector: { x: 120, y: 20 },
+  target: { x: 121, y: 19 },
+  reachable: true,
+  error: 1.41,
+  converged: true,
+  iterations: 7,
+  method: 'CCD',
+};
+
+// creatures.creature-publish (post-enrichment) → { ok, dtuId, creatureId, spawned, species_id, topology, massKg, heightM, coatColor }
+const CREATURE_RESULT = {
+  ok: true,
+  dtuId: 'dtu_abc',
+  creatureId: 'wc_123',
+  spawned: true,
+  species_id: 'dire-wolf',
+  topology: 'quadruped',
+  massKg: 68,
+  heightM: 1.1,
+  coatColor: '#5b4636',
 };
 
 describe('normalizeAr (ar.render → ar-render)', () => {
@@ -191,6 +237,80 @@ describe('normalizeBuilding (shape-driven → building)', () => {
   });
 });
 
+describe('normalizeRobotics (robotics.forwardKinematics | inverseKinematics → robotics-arm)', () => {
+  it('lifts a real FK chain to 3D (z=0) and carries dof + reach', () => {
+    const a = detectArtifact('robotics', 'forwardKinematics', {}, FK_RESULT) as ConkayRoboticsArtifact;
+    expect(a).not.toBeNull();
+    expect(a.kind).toBe('robotics-arm');
+    expect(a.solver).toBe('FK');
+    expect(a.points).toHaveLength(3);
+    // Every point lifted to z=0, x/y preserved.
+    expect(a.points[0]).toEqual({ x: 0, y: 0, z: 0 });
+    expect(a.points[2]).toEqual({ x: 150, y: 86.6, z: 0 });
+    expect(a.endEffector).toEqual({ x: 150, y: 86.6, z: 0 });
+    expect(a.dof).toBe(2);
+    expect(a.maxReach).toBe(150);
+    // FK carries no IK-only facts.
+    expect(a.target).toBeNull();
+    expect(a.converged).toBeNull();
+    expect(a.iterations).toBeNull();
+    expect(a.components.map((c) => c.kind)).toEqual(['joint', 'joint', 'joint']);
+    expect(a.sourceDomain).toBe('robotics');
+    expect(a.sourceMacro).toBe('forwardKinematics');
+  });
+
+  it('carries the IK target + convergence facts (lifted target, converged, iterations)', () => {
+    const a = detectArtifact('robotics', 'inverseKinematics', {}, IK_RESULT) as ConkayRoboticsArtifact;
+    expect(a).not.toBeNull();
+    expect(a.kind).toBe('robotics-arm');
+    expect(a.solver).toBe('IK');
+    expect(a.target).toEqual({ x: 121, y: 19, z: 0 });
+    expect(a.converged).toBe(true);
+    expect(a.iterations).toBe(7);
+    expect(a.reachable).toBe(true);
+    expect(a.error).toBe(1.41);
+    // dof falls back to points.length-1 (IK result carries no `dof`).
+    expect(a.dof).toBe(2);
+    expect(a.maxReach).toBeNull();
+  });
+
+  it('returns null for a failed/degenerate solve (no points array / <2 points → STOP-POINT)', () => {
+    expect(detectArtifact('robotics', 'forwardKinematics', {}, { ok: false, error: 'links array required.' })).toBeNull();
+    expect(detectArtifact('robotics', 'inverseKinematics', {}, { points: [{ x: 0, y: 0 }] })).toBeNull();
+    expect(detectArtifact('robotics', 'telemetry', {}, FK_RESULT)).toBeNull(); // wrong macro
+    expect(detectArtifact('math', 'forwardKinematics', {}, FK_RESULT)).toBeNull(); // wrong domain
+  });
+});
+
+describe('normalizeCreature (creatures.creature-publish → creature)', () => {
+  it('produces a creature artifact from a real ok result carrying topology', () => {
+    const a = detectArtifact('creatures', 'creature-publish', {}, CREATURE_RESULT) as ConkayCreatureArtifact;
+    expect(a).not.toBeNull();
+    expect(a.kind).toBe('creature');
+    expect(a.topology).toBe('quadruped');
+    expect(a.coatColor).toBe('#5b4636');
+    expect(a.massKg).toBe(68);
+    expect(a.heightM).toBe(1.1);
+    expect(a.speciesId).toBe('dire-wolf');
+    expect(a.creatureId).toBe('wc_123');
+    expect(a.spawned).toBe(true);
+    expect(a.components).toEqual([{ id: 'wc_123', label: 'dire-wolf', kind: 'creature' }]);
+    expect(a.sourceDomain).toBe('creatures');
+    expect(a.sourceMacro).toBe('creature-publish');
+  });
+
+  it('returns null (STOP-POINT) when the enrichment topology is absent or the result failed', () => {
+    // Pre-enrichment shape: ok result but no topology → honest STOP-POINT.
+    expect(detectArtifact('creatures', 'creature-publish', {}, { ok: true, dtuId: 'd', creatureId: 'c', spawned: false })).toBeNull();
+    // Honest failure result.
+    expect(detectArtifact('creatures', 'creature-publish', {}, { ok: false, error: 'missing_species_id' })).toBeNull();
+    // topology present but not a string.
+    expect(detectArtifact('creatures', 'creature-publish', {}, { ok: true, topology: 42 })).toBeNull();
+    // Wrong macro.
+    expect(detectArtifact('creatures', 'list', {}, CREATURE_RESULT)).toBeNull();
+  });
+});
+
 describe('detectArtifact registry + STOP-POINT feeder', () => {
   it('returns null for a result that matches no kind (never fabricates one)', () => {
     expect(detectArtifact('music', 'nowPlaying', {}, { track: 'x', ms: 3 })).toBeNull();
@@ -198,9 +318,9 @@ describe('detectArtifact registry + STOP-POINT feeder', () => {
     expect(detectArtifact('x', 'y', {}, null)).toBeNull();
   });
 
-  it('exposes exactly the 5 registered kinds, each with a normalizer + label', () => {
+  it('exposes exactly the 7 registered kinds, each with a normalizer + label', () => {
     expect(ARTIFACT_KINDS.map((e) => e.kind).sort()).toEqual(
-      ['ar-render', 'building', 'fea-frame', 'forge-app', 'foundry-worldspec'],
+      ['ar-render', 'building', 'creature', 'fea-frame', 'forge-app', 'foundry-worldspec', 'robotics-arm'],
     );
     for (const e of ARTIFACT_KINDS) {
       expect(typeof e.normalize).toBe('function');

@@ -21,17 +21,83 @@
 // does. Nothing here invents a building — it only renders the renderer's
 // real prop shape from a real macro call.
 
+import { useEffect, useState } from 'react';
 import BuildingRenderer3D from '@/components/world-lens/BuildingRenderer3D';
 import type { ConkayBuildingArtifact } from '@/lib/conkay/artifact-kinds';
+import { BuildingIterateBar } from './BuildingIterateBar';
+import { rederiveBuildingArtifact, buildingWorldId, canStepInside } from '@/lib/conkay/iterate-building';
+import { ArtifactProvenance } from './ArtifactProvenance';
+import { BuildingWalkthrough } from './BuildingWalkthrough';
 
 export function BuildingAdapter({ artifact }: { artifact: ConkayBuildingArtifact }) {
+  // S3-b — the working copy the Iterate loop mutates. Starts as the real macro
+  // artifact; an accepted iteration re-derives it (real render of the new input,
+  // non-mutating — publishing is the separate S4 step). A fresh artifact prop
+  // (a new macro run) resets both the copy and the edited flag.
+  const [working, setWorking] = useState<ConkayBuildingArtifact>(artifact);
+  const [edited, setEdited] = useState(false);
+  // S2-b (building) — "Step inside": walk the published building in the real
+  // world engine. Reset on a fresh artifact prop.
+  const [inside, setInside] = useState(false);
+  useEffect(() => {
+    setWorking(artifact);
+    setEdited(false);
+    setInside(false);
+  }, [artifact]);
+
+  const stepInOk = canStepInside(working, edited);
+  const worldId = buildingWorldId(working);
+
+  const applyIteration = (newInput: Record<string, unknown>) => {
+    const next = rederiveBuildingArtifact(working, newInput);
+    if (next) {
+      setWorking(next);
+      setEdited(true);
+    }
+  };
+  const revert = () => {
+    setWorking(artifact);
+    setEdited(false);
+  };
+
+  // Walk the real world engine when the user steps inside a published building.
+  if (inside && stepInOk && worldId) {
+    return (
+      <div data-testid="ck-adapter-building">
+        <BuildingWalkthrough worldId={worldId} onExit={() => setInside(false)} />
+        <ArtifactProvenance artifact={working} />
+      </div>
+    );
+  }
+
   return (
-    <div data-testid="ck-adapter-building" className="relative h-[340px] w-full">
-      <BuildingRenderer3D
-        buildings={artifact.buildings}
-        validationData={artifact.validation}
-        viewMode="stress_heatmap"
-      />
+    <div data-testid="ck-adapter-building">
+      <div className="relative h-[340px] w-full">
+        <BuildingRenderer3D
+          buildings={working.buildings}
+          validationData={working.validation}
+          viewMode="stress_heatmap"
+        />
+        {stepInOk && (
+          <button
+            type="button"
+            data-testid="ck-building-stepin"
+            onClick={() => setInside(true)}
+            className="absolute right-2 top-2 z-10 rounded-md border border-cyan-400/30 bg-black/60 px-2 py-1 text-[11px] font-medium text-cyan-200 hover:border-cyan-300/60"
+          >
+            Step inside ⛶
+          </button>
+        )}
+      </div>
+      {working.sourceInput && (
+        <BuildingIterateBar
+          sourceInput={working.sourceInput}
+          dirty={edited}
+          onApply={applyIteration}
+          onRevert={revert}
+        />
+      )}
+      <ArtifactProvenance artifact={working} />
     </div>
   );
 }
