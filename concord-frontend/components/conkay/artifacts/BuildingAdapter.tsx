@@ -21,17 +21,53 @@
 // does. Nothing here invents a building — it only renders the renderer's
 // real prop shape from a real macro call.
 
+import { useEffect, useState } from 'react';
 import BuildingRenderer3D from '@/components/world-lens/BuildingRenderer3D';
 import type { ConkayBuildingArtifact } from '@/lib/conkay/artifact-kinds';
+import { BuildingIterateBar } from './BuildingIterateBar';
+import { rederiveBuildingArtifact } from '@/lib/conkay/iterate-building';
 
 export function BuildingAdapter({ artifact }: { artifact: ConkayBuildingArtifact }) {
+  // S3-b — the working copy the Iterate loop mutates. Starts as the real macro
+  // artifact; an accepted iteration re-derives it (real render of the new input,
+  // non-mutating — publishing is the separate S4 step). A fresh artifact prop
+  // (a new macro run) resets both the copy and the edited flag.
+  const [working, setWorking] = useState<ConkayBuildingArtifact>(artifact);
+  const [edited, setEdited] = useState(false);
+  useEffect(() => {
+    setWorking(artifact);
+    setEdited(false);
+  }, [artifact]);
+
+  const applyIteration = (newInput: Record<string, unknown>) => {
+    const next = rederiveBuildingArtifact(working, newInput);
+    if (next) {
+      setWorking(next);
+      setEdited(true);
+    }
+  };
+  const revert = () => {
+    setWorking(artifact);
+    setEdited(false);
+  };
+
   return (
-    <div data-testid="ck-adapter-building" className="relative h-[340px] w-full">
-      <BuildingRenderer3D
-        buildings={artifact.buildings}
-        validationData={artifact.validation}
-        viewMode="stress_heatmap"
-      />
+    <div data-testid="ck-adapter-building">
+      <div className="relative h-[340px] w-full">
+        <BuildingRenderer3D
+          buildings={working.buildings}
+          validationData={working.validation}
+          viewMode="stress_heatmap"
+        />
+      </div>
+      {working.sourceInput && (
+        <BuildingIterateBar
+          sourceInput={working.sourceInput}
+          dirty={edited}
+          onApply={applyIteration}
+          onRevert={revert}
+        />
+      )}
     </div>
   );
 }
