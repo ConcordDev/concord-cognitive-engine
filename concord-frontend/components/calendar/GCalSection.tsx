@@ -280,9 +280,9 @@ export function GCalSection() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-blue-500/15 rounded-lg overflow-hidden">
+    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-lattice-deep border border-blue-500/15 rounded-lg overflow-hidden">
       {/* Left rail */}
-      <aside className="w-56 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
+      <aside className="w-56 bg-lattice-void border-r border-white/5 flex flex-col flex-shrink-0">
         <header className="px-3 py-3 border-b border-white/5 flex items-center gap-2">
           <CalIcon className="w-4 h-4 text-blue-400" />
           <span className="text-xs font-semibold text-gray-200">Calendar</span>
@@ -337,7 +337,7 @@ export function GCalSection() {
                   <li key={t.id} className="group flex items-center gap-1.5 text-[11px] py-0.5">
                     <button aria-label="Stop" onClick={() => toggleTask(t)}><Square className="w-3 h-3 text-gray-400 hover:text-blue-300" /></button>
                     <span className="truncate flex-1 text-gray-300">{t.title}</span>
-                    <span className={cn('text-[9px]', PRIORITY_COLOUR[t.priority])}>{t.estimateMin}m</span>
+                    <span className={cn('text-[9px] tabular-nums', PRIORITY_COLOUR[t.priority])}>{t.estimateMin}m</span>
                     {t.blockedEventId && <Clock className="w-2.5 h-2.5 text-blue-400" />}
                     <button aria-label="Delete" onClick={() => deleteTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-2.5 h-2.5" /></button>
                   </li>
@@ -361,7 +361,7 @@ export function GCalSection() {
           <button onClick={() => setCursor(new Date())} className="px-2.5 py-1 text-xs rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]">Today</button>
           <button aria-label="Previous" onClick={() => shiftCursor(-1)} className="p-1 text-gray-400 hover:text-white"><ChevronLeft className="w-4 h-4" /></button>
           <button aria-label="Next" onClick={() => shiftCursor(1)} className="p-1 text-gray-400 hover:text-white"><ChevronRight className="w-4 h-4" /></button>
-          <span className="text-sm font-semibold text-gray-200">{headerLabel}</span>
+          <span className="text-sm font-semibold text-gray-200 tabular-nums">{headerLabel}</span>
           {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
           {googleState === 'disconnected' ? (
             <button onClick={connectGoogle} className="ml-2 px-2.5 py-1 text-xs rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10 inline-flex items-center gap-1">
@@ -404,7 +404,7 @@ export function GCalSection() {
             <div className="text-[10px] uppercase tracking-wider text-blue-300 mb-1">{proposals.length} AI proposal(s) — click to commit</div>
             <div className="flex flex-wrap gap-1.5">
               {proposals.map(p => (
-                <button key={p.taskId} onClick={() => commitProposal(p)} className="px-2 py-1 text-[11px] rounded border border-blue-500/30 text-blue-200 hover:bg-blue-500/15 inline-flex items-center gap-1">
+                <button key={p.taskId} onClick={() => commitProposal(p)} className="px-2 py-1 text-[11px] rounded border border-blue-500/30 text-blue-200 hover:bg-blue-500/15 inline-flex items-center gap-1 tabular-nums">
                   <Zap className="w-3 h-3" />{p.title} — {new Date(p.proposedStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </button>
               ))}
@@ -426,7 +426,7 @@ export function GCalSection() {
       {/* Event modal */}
       {editEvent && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditEvent(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-blue-500/30 rounded-lg w-full max-w-md overflow-hidden" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={e => e.stopPropagation()} className="bg-lattice-deep border border-blue-500/30 rounded-lg w-full max-w-md overflow-hidden" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <CalIcon className="w-4 h-4 text-blue-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{editEvent._new ? 'New event' : 'Edit event'}</span>
@@ -481,18 +481,18 @@ function MonthGrid({ grid, cursor, today, eventsForDay, calById, onDayClick, onE
         const isToday = sameDay(d, today);
         const dayEvents = eventsForDay(d);
         return (
-          <div key={i} onClick={() => onDayClick(d)} className={cn('border-r border-b border-white/5 p-1 overflow-hidden cursor-pointer hover:bg-white/[0.02]', !inMonth && 'bg-black/30')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-            <div className={cn('text-[11px] font-mono mb-0.5 w-5 h-5 flex items-center justify-center rounded-full', isToday ? 'bg-blue-500 text-white' : inMonth ? 'text-gray-300' : 'text-gray-600')}>{d.getDate()}</div>
+          <div key={i} onClick={() => onDayClick(d)} className={cn('border-r border-b border-white/5 p-1 overflow-hidden cursor-pointer hover:bg-white/[0.02]', !inMonth && 'bg-lattice-deep/30')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn('text-[11px] font-mono tabular-nums mb-0.5 w-5 h-5 flex items-center justify-center rounded-full', isToday ? 'bg-blue-500 text-white' : inMonth ? 'text-gray-300' : 'text-gray-600')}>{d.getDate()}</div>
             <div className="space-y-0.5">
               {dayEvents.slice(0, 4).map(e => {
                 const cal = calById.get(e.calendarId);
                 return (
-                  <button key={e.id + e.occurrenceStart} onClick={(ev) => { ev.stopPropagation(); onEventClick(e); }} className="w-full text-left text-[10px] px-1 py-0.5 rounded truncate" style={{ background: (cal?.color || '#4285f4') + '33', color: cal?.color || '#4285f4' }}>
+                  <button key={e.id + e.occurrenceStart} onClick={(ev) => { ev.stopPropagation(); onEventClick(e); }} className="w-full text-left text-[10px] px-1 py-0.5 rounded truncate tabular-nums" style={{ background: (cal?.color || '#4285f4') + '33', color: cal?.color || '#4285f4' }}>
                     {e.allDay ? '' : new Date(e.occurrenceStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' '}{e.title}
                   </button>
                 );
               })}
-              {dayEvents.length > 4 && <div className="text-[9px] text-gray-400 px-1">+{dayEvents.length - 4} more</div>}
+              {dayEvents.length > 4 && <div className="text-[9px] text-gray-400 px-1 tabular-nums">+{dayEvents.length - 4} more</div>}
             </div>
           </div>
         );
@@ -517,7 +517,7 @@ function DayColumns({ days, today, eventsForDay, calById, onEventClick, onDayCli
           <div key={i} className="border-r border-white/5 flex flex-col">
             <div onClick={() => onDayClick(d)} className={cn('px-2 py-1.5 border-b border-white/5 cursor-pointer hover:bg-white/[0.03]', isToday && 'bg-blue-500/[0.06]')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="text-[10px] uppercase text-gray-400">{d.toLocaleDateString(undefined, { weekday: 'short' })}</div>
-              <div className={cn('text-sm font-mono', isToday ? 'text-blue-300' : 'text-gray-300')}>{d.getDate()}</div>
+              <div className={cn('text-sm font-mono tabular-nums', isToday ? 'text-blue-300' : 'text-gray-300')}>{d.getDate()}</div>
             </div>
             <div className="flex-1 overflow-y-auto p-1 space-y-1">
               {dayEvents.length === 0 && <div className="text-[10px] text-gray-400 italic px-1 py-2">No events</div>}
@@ -526,7 +526,7 @@ function DayColumns({ days, today, eventsForDay, calById, onEventClick, onDayCli
                 return (
                   <button key={e.id + e.occurrenceStart} onClick={() => onEventClick(e)} className="w-full text-left rounded p-1.5 border-l-2" style={{ borderColor: cal?.color || '#4285f4', background: (cal?.color || '#4285f4') + '1a' }}>
                     <div className="text-[11px] text-white font-medium truncate">{e.title}</div>
-                    <div className="text-[10px] text-gray-400">
+                    <div className="text-[10px] text-gray-400 tabular-nums">
                       {new Date(e.occurrenceStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–{new Date(e.occurrenceEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </div>
                     {e.location && <div className="text-[9px] text-gray-400 truncate">📍 {e.location}</div>}

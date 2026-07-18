@@ -164,24 +164,24 @@ export function CalendarActionPanel() {
   ];
 
   return (
-    <div className="rounded-lg border border-blue-500/20 bg-zinc-950/60 p-3 space-y-3">
+    <div className="rounded-lg border border-blue-500/20 bg-lattice-deep/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-blue-500/10 pb-2">
         <Calendar className="h-4 w-4 text-blue-400" />
         <h3 className="text-sm font-semibold text-white">Scheduler bench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">conflicts · availability · optimize · ICS</span>
+        <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">conflicts · availability · optimize · ICS</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Events JSON</label>
-          <textarea value={eventsText} onChange={(e) => setEventsText(e.target.value)} rows={8} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+          <textarea value={eventsText} onChange={(e) => setEventsText(e.target.value)} rows={8} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Tasks JSON (for optimize)</label>
-          <textarea value={tasksText} onChange={(e) => setTasksText(e.target.value)} rows={8} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+          <textarea value={tasksText} onChange={(e) => setTasksText(e.target.value)} rows={8} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
         </div>
@@ -192,12 +192,12 @@ export function CalendarActionPanel() {
           const Icon = act.icon; const isBusy = busy === act.id;
           return (
             <button key={act.id} type="button" disabled={!!busy} onClick={act.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-lattice-elevated/40 border-lattice-border hover:bg-lattice-elevated/60 hover:border-white/20', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[11px] font-semibold text-white leading-tight">{act.label}</div>
+              <div className="text-[10px] text-gray-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -208,15 +208,15 @@ export function CalendarActionPanel() {
           <div className={cn('rounded-md border p-2.5', confResult.conflictFree ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: confResult.conflictFree ? '#86efac' : '#fca5a5' }}>Conflicts</div>
             <div className={cn('text-2xl font-bold', confResult.conflictFree ? 'text-emerald-300' : 'text-red-300')}>{confResult.conflictCount}</div>
-            <div className="text-[10px] text-zinc-400">of {confResult.totalEvents} events</div>
+            <div className="text-[10px] text-gray-400">of {confResult.totalEvents} events</div>
             {confResult.conflicts.slice(0, 3).map((c, i) => <div key={i} className="text-[10px] text-red-200 mt-0.5">{c.event1} ⨯ {c.event2} · {c.overlapMinutes}min</div>)}
           </div>
         )}
         {availResult && (
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Free time · {availResult.workHours}</div>
-            <div className="text-2xl font-bold text-green-300">{availResult.totalFreeMinutes}<span className="text-xs text-zinc-400"> min</span></div>
-            <div className="text-[10px] text-zinc-400">{availResult.availableSlots.length} slots · {availResult.eventsToday} events today</div>
+            <div className="text-2xl font-bold text-green-300">{availResult.totalFreeMinutes}<span className="text-xs text-gray-400"> min</span></div>
+            <div className="text-[10px] text-gray-400">{availResult.availableSlots.length} slots · {availResult.eventsToday} events today</div>
             {availResult.availableSlots.slice(0, 4).map((s, i) => <div key={i} className="text-[10px] text-green-200 mt-0.5 font-mono">{s.start}–{s.end} ({s.minutes}m)</div>)}
           </div>
         )}
@@ -224,20 +224,20 @@ export function CalendarActionPanel() {
           <div className={cn('rounded-md border p-2.5 md:col-span-2', optResult.fitsInWorkday ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Optimized · {optResult.totalHours}h {optResult.fitsInWorkday ? '✓ fits' : '⚠ overflows'}</div>
             <div className="grid grid-cols-2 gap-2 mt-1">
-              <div className="text-[10px]"><div className="text-amber-300 font-semibold uppercase tracking-wider mb-0.5">Morning (high energy)</div>{optResult.morningBlock.map((t, i) => <div key={i} className="text-zinc-300">→ {t}</div>)}</div>
-              <div className="text-[10px]"><div className="text-blue-300 font-semibold uppercase tracking-wider mb-0.5">Afternoon (low energy)</div>{optResult.afternoonBlock.map((t, i) => <div key={i} className="text-zinc-300">→ {t}</div>)}</div>
+              <div className="text-[10px]"><div className="text-amber-300 font-semibold uppercase tracking-wider mb-0.5">Morning (high energy)</div>{optResult.morningBlock.map((t, i) => <div key={i} className="text-gray-300">→ {t}</div>)}</div>
+              <div className="text-[10px]"><div className="text-blue-300 font-semibold uppercase tracking-wider mb-0.5">Afternoon (low energy)</div>{optResult.afternoonBlock.map((t, i) => <div key={i} className="text-gray-300">→ {t}</div>)}</div>
             </div>
           </div>
         )}
         {icalResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 md:col-span-2">
             <div className="flex items-center justify-between"><div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">ICS · {icalResult.eventCount} events</div><button type="button" onClick={downloadIcs} className="text-[10px] text-cyan-200 bg-cyan-500/20 hover:bg-cyan-500/40 px-2 py-1 rounded font-mono">↓ download .ics</button></div>
-            <pre className="mt-1 text-[9px] font-mono text-cyan-100 max-h-32 overflow-y-auto bg-zinc-900/50 p-2 rounded">{icalResult.ics.slice(0, 600)}{icalResult.ics.length > 600 ? '…' : ''}</pre>
+            <pre className="mt-1 text-[9px] font-mono text-cyan-100 max-h-32 overflow-y-auto bg-lattice-elevated/50 p-2 rounded">{icalResult.ics.slice(0, 600)}{icalResult.ics.length > 600 ? '…' : ''}</pre>
           </div>
         )}
       </div>
 
-      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Plan</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
+      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Plan</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-gray-200 leading-relaxed">{agentReply}</pre></div>)}
 
       <AnimatePresence>
         {feedback && (<motion.div key={feedback.text} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} className={cn('px-3 py-2 rounded text-[11px] flex items-start gap-2 border', feedback.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30')}>{feedback.kind === 'ok' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}<span>{feedback.text}</span></motion.div>)}
