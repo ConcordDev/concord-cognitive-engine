@@ -598,7 +598,7 @@ export default function registerCreatureMacros(register) {
               childId: dtuId, userId,
             })
           : [];
-        return { ok: true, dtuId, creatureId: null, spawned: false, spawnError: e?.message || "spawn_failed", species_id: species, parents: remixParentIds, citations };
+        return { ok: true, dtuId, creatureId: null, spawned: false, spawnError: e?.message || "spawn_failed", species_id: species, topology: blueprint.topology, massKg: blueprint.massKg, heightM: blueprint.heightM, parents: remixParentIds, citations };
       }
     }
 
@@ -613,7 +613,7 @@ export default function registerCreatureMacros(register) {
         })
       : [];
 
-    return { ok: true, dtuId, creatureId, spawned: wantsSpawn, species_id: species, parents: remixParentIds, citations };
+    return { ok: true, dtuId, creatureId, spawned: wantsSpawn, species_id: species, topology: blueprint.topology, massKg: blueprint.massKg, heightM: blueprint.heightM, parents: remixParentIds, citations };
   }, { note: "author/publish a creature as a creator-attributed blueprint DTU (+ optional live spawn + remix royalty lineage)" });
 
   /**
