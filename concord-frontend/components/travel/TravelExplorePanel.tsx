@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Bookmark, ChevronLeft, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Place {
   id: string; name: string; kind: string; destination: string | null;
@@ -31,6 +32,7 @@ export function TravelExplorePanel() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', kind: 'hotel', destination: '', priceLevel: '2' });
@@ -44,6 +46,12 @@ export function TravelExplorePanel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('travel', 'place-list', kindFilter ? { kind: kindFilter } : {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load places.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPlaces(r.data?.result?.places || []);
     setLoading(false);
   }, [kindFilter]);
@@ -102,6 +110,10 @@ export function TravelExplorePanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   if (selected) {

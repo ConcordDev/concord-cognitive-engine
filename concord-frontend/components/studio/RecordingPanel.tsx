@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Mic2, Loader2, Plus, Trash2, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { logStudioCollabEdit } from '@/lib/daw/collab-log';
+import { ErrorState } from '@/components/ui';
 
 interface RecordConfig {
   id: string;
@@ -30,6 +31,7 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
   const [config, setConfig] = useState<RecordConfig | null>(null);
   const [takes, setTakes] = useState<Take[]>([]);
   const [loading, setLoading] = useState(true);
+  const [takesError, setTakesError] = useState<string | null>(null);
   const [takeName, setTakeName] = useState('');
   const [takeDur, setTakeDur] = useState('0');
 
@@ -41,8 +43,15 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
       setConfig((cfgRes.data?.result?.config || null) as RecordConfig | null);
       if (trackId) {
         const tRes = await lensRun('studio', 'takes-list', { trackId });
-        setTakes((tRes.data?.result?.takes || []) as Take[]);
+        if (tRes.data?.ok === false) {
+          setTakesError(tRes.data?.error || 'Could not load takes.');
+          setTakes([]);
+        } else {
+          setTakesError(null);
+          setTakes((tRes.data?.result?.takes || []) as Take[]);
+        }
       } else {
+        setTakesError(null);
         setTakes([]);
       }
     } catch (e) { console.error('[Recording] refresh', e); }
@@ -147,7 +156,9 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
                   <input type="number" step="0.5" value={takeDur} onChange={(e) => setTakeDur(e.target.value)} placeholder="Dur s" className="px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <button onClick={addTake} className="col-span-3 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add take</button>
                 </div>
-                {takes.length === 0 ? (
+                {takesError ? (
+                  <ErrorState message={takesError} onRetry={refresh} variant="inline" />
+                ) : takes.length === 0 ? (
                   <div className="text-[10px] text-gray-400">No takes recorded yet.</div>
                 ) : (
                   <ul className="space-y-1">

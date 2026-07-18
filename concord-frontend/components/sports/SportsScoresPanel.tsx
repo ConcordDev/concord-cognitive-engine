@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Game {
   id: string; homeTeam: string; awayTeam: string; league: string;
@@ -89,6 +90,7 @@ export function SportsScoresPanel({ onChange }: { onChange: () => void }) {
   const [watchIds, setWatchIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ homeTeam: '', awayTeam: '', league: 'nba', date: new Date().toISOString().slice(0, 10) });
 
@@ -99,6 +101,12 @@ export function SportsScoresPanel({ onChange }: { onChange: () => void }) {
       lensRun('sports', 'my-scores', {}),
       lensRun('sports', 'watchlist-list', {}),
     ]);
+    if (g.data?.ok === false || ms.data?.ok === false || w.data?.ok === false) {
+      setLoadError(g.data?.error || ms.data?.error || w.data?.error || 'Could not load scores.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setGames(g.data?.result?.games || []);
     setMyGames(ms.data?.result?.games || []);
     setWatchIds((w.data?.result?.games || []).map((x: Game) => x.id));
@@ -120,6 +128,10 @@ export function SportsScoresPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

@@ -12,6 +12,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { Loader2, Flame, Hash, CalendarDays, BarChart2, Target, Check, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Streak { currentStreak: number; longestStreak: number; daysJournaled: number }
 interface MoodPoint { date: string; mood: string; score: number }
@@ -42,6 +43,7 @@ export function RfInsightsPanel() {
   const [goalDraft, setGoalDraft] = useState<number | null>(null);
   const [goalSaving, setGoalSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -54,6 +56,12 @@ export function RfInsightsPanel() {
       lensRun('reflection', 'journal-stats', {}),
       lensRun('reflection', 'reflection-goal-status', {}),
     ]);
+    if ([s, t, tg, c, st, g].some((res) => res.data?.ok === false)) {
+      setLoadError([s, t, tg, c, st, g].map((res) => res.data?.error).find(Boolean) || 'Could not load insights.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setStreak((s.data?.result as Streak | null) || null);
     setTrend((t.data?.result as MoodTrend | null) || null);
     setTags(tg.data?.result?.tags || []);
@@ -77,6 +85,10 @@ export function RfInsightsPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const daysInMonth = calendar ? new Date(calendar.year, calendar.month, 0).getUTCDate() : 0;

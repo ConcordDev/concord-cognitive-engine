@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, TrendingDown, TrendingUp, Minus, Trash2, RefreshCw } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Watch {
   id: string; subject: string; kind: string; targetPrice: number;
@@ -27,12 +28,19 @@ export function TravelWatchesPanel({ onChange }: { onChange: () => void }) {
   const [watches, setWatches] = useState<Watch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ subject: '', kind: 'flight', targetPrice: '', currentPrice: '' });
   const [priceInput, setPriceInput] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('travel', 'price-watch-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load price watches.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setWatches(r.data?.result?.watches || []);
     setLoading(false);
     onChange();
@@ -64,6 +72,10 @@ export function TravelWatchesPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

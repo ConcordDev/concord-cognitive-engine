@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, UserRound, ChevronLeft } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Athlete { id: string; name: string; team: string | null; position: string | null }
 interface StatLine { id: string; date: string; opponent: string | null; stats: Record<string, number> }
@@ -15,6 +16,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', team: '', position: '' });
   const [selected, setSelected] = useState<Athlete | null>(null);
   const [lines, setLines] = useState<StatLine[]>([]);
@@ -25,6 +27,12 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('sports', 'athlete-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load athletes.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setAthletes(r.data?.result?.athletes || []);
     setLoading(false);
     onChange();
@@ -35,6 +43,11 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
   const openAthlete = useCallback(async (a: Athlete) => {
     setSelected(a);
     const r = await lensRun('sports', 'athlete-stats', { athleteId: a.id });
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not load stats for this athlete.');
+      return;
+    }
+    setError(null);
     setLines(r.data?.result?.statLines || []);
     setTotals(r.data?.result?.totals || {});
     setAverages(r.data?.result?.averages || {});
@@ -64,6 +77,10 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   if (selected) {

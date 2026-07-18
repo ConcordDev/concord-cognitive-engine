@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, BookOpen, Quote, Copy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Reference { id: string; title: string; authors: string | null; year: number | null; status: string }
 interface Collection { id: string; name: string }
@@ -19,6 +20,7 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
   const [queue, setQueue] = useState<Reference[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [style, setStyle] = useState('apa');
   const [scope, setScope] = useState('');
   const [bibliography, setBibliography] = useState<string[]>([]);
@@ -29,6 +31,12 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
       lensRun('research', 'reading-queue', {}),
       lensRun('research', 'collection-list', {}),
     ]);
+    if (q.data?.ok === false || c.data?.ok === false) {
+      setLoadError(q.data?.error || c.data?.error || 'Could not load your reading queue.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setQueue(q.data?.result?.queue || []);
     setCollections(c.data?.result?.collections || []);
     setLoading(false);
@@ -57,6 +65,10 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

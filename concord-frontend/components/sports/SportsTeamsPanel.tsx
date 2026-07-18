@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Newspaper, ListOrdered } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Team { id: string; name: string; league: string }
 interface News { id: string; team: string; headline: string; summary: string | null; date: string }
@@ -18,6 +19,7 @@ export function SportsTeamsPanel({ onChange }: { onChange: () => void }) {
   const [standings, setStandings] = useState<Standing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [teamForm, setTeamForm] = useState({ name: '', league: 'nba' });
   const [newsForm, setNewsForm] = useState({ team: '', headline: '' });
   const [stForm, setStForm] = useState({ team: '', league: 'nba', wins: '', losses: '' });
@@ -29,6 +31,12 @@ export function SportsTeamsPanel({ onChange }: { onChange: () => void }) {
       lensRun('sports', 'team-news-list', {}),
       lensRun('sports', 'standings-table', {}),
     ]);
+    if (t.data?.ok === false || n.data?.ok === false || st.data?.ok === false) {
+      setLoadError(t.data?.error || n.data?.error || st.data?.error || 'Could not load teams.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTeams(t.data?.result?.teams || []);
     setNews(n.data?.result?.news || []);
     setStandings(st.data?.result?.table || []);
@@ -67,6 +75,10 @@ export function SportsTeamsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

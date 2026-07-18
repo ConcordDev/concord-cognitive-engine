@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, CalendarClock } from 'lucide-react';
 
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Entry {
   id: string; title: string | null; text: string; date: string;
@@ -17,10 +18,17 @@ interface Entry {
 export function RfOnThisDayPanel() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('reflection', 'on-this-day', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load past entries.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntries(r.data?.result?.entries || []);
     setLoading(false);
   }, []);
@@ -29,6 +37,10 @@ export function RfOnThisDayPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

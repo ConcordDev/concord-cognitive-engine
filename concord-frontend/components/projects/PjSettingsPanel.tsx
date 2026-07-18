@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2, Tag, ListPlus, Zap, FileStack, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { SkeletonTableRows } from '@/components/ui';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Label { id: string; name: string; color: string }
 interface CustomField { id: string; name: string; type: string; options: string[] }
@@ -29,6 +29,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
   const [rules, setRules] = useState<Rule[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [lForm, setLForm] = useState({ name: '', color: 'indigo' });
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [lEditForm, setLEditForm] = useState({ name: '', color: 'indigo' });
@@ -44,6 +45,12 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
       lensRun('projects', 'rule-list', { projectId }),
       lensRun('projects', 'template-list', { projectId }),
     ]);
+    if (l.data?.ok === false || f.data?.ok === false || r.data?.ok === false || t.data?.ok === false) {
+      setLoadError(l.data?.error || f.data?.error || r.data?.error || t.data?.error || 'Could not load project settings.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setLabels(l.data?.result?.labels || []);
     setFields(f.data?.result?.fields || []);
     setRules(r.data?.result?.rules || []);
@@ -109,6 +116,10 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
         <div className="rounded-lg border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={2} columns={2} /></div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

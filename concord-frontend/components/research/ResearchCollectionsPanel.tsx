@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, FolderOpen, Trash2, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Collection { id: string; name: string; referenceCount: number }
 interface Reference { id: string; title: string; authors: string | null; year: number | null }
@@ -17,6 +18,7 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
   const [allRefs, setAllRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [openRefs, setOpenRefs] = useState<Reference[]>([]);
@@ -27,6 +29,12 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
       lensRun('research', 'collection-list', {}),
       lensRun('research', 'reference-list', {}),
     ]);
+    if (c.data?.ok === false || r.data?.ok === false) {
+      setLoadError(c.data?.error || r.data?.error || 'Could not load collections.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCollections(c.data?.result?.collections || []);
     setAllRefs(r.data?.result?.references || []);
     setLoading(false);
@@ -50,6 +58,8 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
   const toggleRef = async (collectionId: string, referenceId: string, inCol: boolean) => {
     await lensRun('research', 'collection-add-reference', { collectionId, referenceId, remove: inCol });
     const r = await lensRun('research', 'collection-detail', { id: collectionId });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not refresh this collection.'); return; }
+    setError(null);
     setOpenRefs(r.data?.result?.references || []);
     await refresh(); onChange();
   };
@@ -61,6 +71,10 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2, User } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { SkeletonTableRows } from '@/components/ui';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Member { id: string; name: string; role: string; assigned: number }
 
@@ -15,11 +15,18 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', role: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('projects', 'member-list', { projectId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load team members.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setMembers(r.data?.result?.members || []);
     setLoading(false);
     onChange();
@@ -47,6 +54,10 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
         <SkeletonTableRows rows={5} columns={4} />
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

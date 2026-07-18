@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CalendarRange } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui';
+import { Skeleton, ErrorState } from '@/components/ui';
 
 interface TLTask { id: string; ref: string; title: string; status: string; type: string; start: string; end: string }
 interface TLMilestone { id: string; name: string; date: string; status: string }
@@ -23,10 +23,17 @@ export function PjTimelinePanel({ projectId }: { projectId: string }) {
   const [tasks, setTasks] = useState<TLTask[]>([]);
   const [milestones, setMilestones] = useState<TLMilestone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('projects', 'timeline', { projectId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load the timeline.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setTasks(r.data?.result?.tasks || []);
     setMilestones(r.data?.result?.milestones || []);
     setLoading(false);
@@ -47,6 +54,10 @@ export function PjTimelinePanel({ projectId }: { projectId: string }) {
         </div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   if (tasks.length === 0 && milestones.length === 0) {

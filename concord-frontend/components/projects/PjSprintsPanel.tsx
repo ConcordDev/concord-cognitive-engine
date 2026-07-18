@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { Plus, Repeat, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { SkeletonTableRows } from '@/components/ui';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Sprint {
   id: string; name: string; startDate: string; endDate: string; status: string;
@@ -21,12 +21,19 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', startDate: '', endDate: '' });
   const [burndown, setBurndown] = useState<Burndown | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('projects', 'sprint-list', { projectId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load sprints.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSprints(r.data?.result?.sprints || []);
     setLoading(false);
     onChange();
@@ -62,6 +69,10 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
         <div className="rounded-xl border border-lattice-border bg-lattice-surface/70 overflow-hidden"><SkeletonTableRows rows={4} columns={4} /></div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (
