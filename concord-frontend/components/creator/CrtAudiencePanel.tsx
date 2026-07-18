@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Plus, Trash2, Users, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface Platform { platformId: string; name: string; followers: number; growth: number }
 interface Snapshot { id: string; platformId: string; followers: number; date: string }
@@ -16,6 +17,7 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [newPlatform, setNewPlatform] = useState({ name: '', handle: '' });
   const [logForm, setLogForm] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -24,6 +26,12 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('creator', 'audience-summary', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load audience data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPlatforms(r.data?.result?.platforms || []);
     setLoading(false);
     onChange();
@@ -34,6 +42,7 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
   const loadHistory = async (platformId: string) => {
     if (expanded === platformId) { setExpanded(null); return; }
     const r = await lensRun('creator', 'audience-history', { platformId });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not load follower history.'); return; }
     setHistory(r.data?.result?.snapshots || []);
     setExpanded(platformId);
   };
@@ -60,13 +69,19 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
     setLogForm((p) => ({ ...p, [platformId]: '' }));
     if (expanded === platformId) {
       const r = await lensRun('creator', 'audience-history', { platformId });
-      setHistory(r.data?.result?.snapshots || []);
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not load follower history.'); } else {
+        setHistory(r.data?.result?.snapshots || []);
+      }
     }
     await refresh();
   };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Layers, Repeat, Trash2, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Item { id: string; name: string; category: string }
 interface Outfit { id: string; name: string; occasion: string; itemIds: string[]; itemNames: string[]; timesWorn: number }
@@ -19,6 +20,7 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [occasion, setOccasion] = useState('casual');
@@ -31,6 +33,12 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
       lensRun('fashion', 'outfit-list', {}),
       lensRun('fashion', 'item-list', {}),
     ]);
+    if (o.data?.ok === false || i.data?.ok === false) {
+      setLoadError(o.data?.error || i.data?.error || 'Could not load outfits.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setOutfits(o.data?.result?.outfits || []);
     setItems(i.data?.result?.items || []);
     setLoading(false);
@@ -50,6 +58,10 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

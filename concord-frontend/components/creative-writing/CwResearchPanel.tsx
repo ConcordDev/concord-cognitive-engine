@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, NotebookPen, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Note { id: string; title: string; kind: string; body: string }
 
@@ -21,6 +22,7 @@ export function CwResearchPanel({ projectId }: { projectId: string }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState({ title: '', kind: 'research' });
   const [open, setOpen] = useState<string | null>(null);
@@ -29,6 +31,12 @@ export function CwResearchPanel({ projectId }: { projectId: string }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('creative-writing', 'note-list', { projectId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load notes.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setNotes(r.data?.result?.notes || []);
     setLoading(false);
   }, [projectId]);
@@ -55,6 +63,10 @@ export function CwResearchPanel({ projectId }: { projectId: string }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const shown = filter ? notes.filter((n) => n.kind === filter) : notes;

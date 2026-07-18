@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Luggage, BookImage, TrendingUp, ChevronRight, Layers } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Item { id: string; name: string }
 interface Outfit { id: string; name: string; itemIds: string[] }
@@ -27,6 +28,7 @@ export function FashionPlanPanel() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pkName, setPkName] = useState('');
   const [lbName, setLbName] = useState('');
   const [openPk, setOpenPk] = useState<string | null>(null);
@@ -43,6 +45,13 @@ export function FashionPlanPanel() {
       lensRun('fashion', 'outfit-list', {}),
       lensRun('fashion', 'wear-insights', {}),
     ]);
+    const failed = [p, l, i, o, ins].find((x) => x.data?.ok === false);
+    if (failed) {
+      setLoadError(failed.data?.error || 'Could not load fashion planning data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPackingLists(p.data?.result?.packingLists || []);
     setLookbooks(l.data?.result?.lookbooks || []);
     setItems(i.data?.result?.items || []);
@@ -77,6 +86,7 @@ export function FashionPlanPanel() {
   const togglePackItem = async (packingId: string, itemId: string, inList: boolean) => {
     await lensRun('fashion', 'packing-add-item', { packingId, itemId, remove: inList });
     const r = await lensRun('fashion', 'packing-detail', { id: packingId });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not refresh the packing list.'); return; }
     setPkItems(r.data?.result?.items || []);
     await refresh();
   };
@@ -92,7 +102,11 @@ export function FashionPlanPanel() {
       await lensRun('fashion', 'packing-add-item', { packingId, itemId });
     }
     const r = await lensRun('fashion', 'packing-detail', { id: packingId });
-    setPkItems(r.data?.result?.items || []);
+    if (r.data?.ok === false) {
+      setError(r.data?.error || 'Could not refresh the packing list.');
+    } else {
+      setPkItems(r.data?.result?.items || []);
+    }
     setBulkAdding(false);
     setAddOutfitId('');
     await refresh();
@@ -104,6 +118,10 @@ export function FashionPlanPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

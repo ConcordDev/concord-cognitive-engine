@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LayoutDashboard, Plus, Loader2, Trash2, Copy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 import { CreativeBoard } from './CreativeBoard';
 
 interface BoardMeta { id: string; title: string; cardCount: number }
@@ -19,6 +20,7 @@ export function CreativeBoardsSection() {
   const [open, setOpen] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
 
   const refresh = useCallback(async () => {
@@ -26,6 +28,12 @@ export function CreativeBoardsSection() {
       lensRun('creative', 'board-list', {}),
       lensRun('creative', 'board-templates', {}),
     ]);
+    if (b.data?.ok === false || t.data?.ok === false) {
+      setLoadError(b.data?.error || t.data?.error || 'Could not load boards.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setBoards(b.data?.result?.boards || []);
     setTemplates(t.data?.result?.templates || []);
     setLoading(false);
@@ -96,6 +104,8 @@ export function CreativeBoardsSection() {
 
             {loading ? (
               <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+            ) : loadError ? (
+              <ErrorState message={loadError} onRetry={refresh} variant="inline" />
             ) : boards.length === 0 ? (
               <p className="text-[11px] text-zinc-400 italic py-6 text-center">No boards yet. Create one or start from a template.</p>
             ) : (

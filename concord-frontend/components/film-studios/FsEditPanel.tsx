@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Film, Scissors, ChevronUp, ChevronDown, ScissorsLineDashed } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Sequence { id: string; name: string; fps: string; clipCount: number }
 interface CutClip { id: string; name: string; transition: string; durationFrames: number; startTimecode: string; endTimecode: string; mediaId: string | null }
@@ -27,6 +28,7 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
   const [activeSeq, setActiveSeq] = useState<string>('');
   const [cut, setCut] = useState<CutList | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [seqForm, setSeqForm] = useState({ name: '', fps: '24' });
   const [clipForm, setClipForm] = useState({ name: '', track: 'V1', durationSec: '', transition: 'cut' });
   const [markers, setMarkers] = useState<{ id: string; label: string; frame: number }[]>([]);
@@ -36,12 +38,19 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
 
   const loadMedia = useCallback(async () => {
     const r = await lensRun('film-studios', 'media-list', { projectId });
+    if (r.data?.ok === false) { setLoadError(r.data?.error || 'Could not load media.'); return; }
     setMedia(r.data?.result?.media || []);
   }, [projectId]);
   useEffect(() => { void loadMedia(); }, [loadMedia]);
 
   const loadSequences = useCallback(async () => {
     const r = await lensRun('film-studios', 'sequence-list', { projectId });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load sequences.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Sequence[] = r.data?.result?.sequences || [];
     setSequences(list);
     setActiveSeq((prev) => (list.some((q) => q.id === prev) ? prev : list[0]?.id || ''));
@@ -55,6 +64,10 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
       lensRun('film-studios', 'cut-list', { sequenceId: activeSeq }),
       lensRun('film-studios', 'marker-list', { sequenceId: activeSeq }),
     ]);
+    if (r.data?.ok === false || m.data?.ok === false) {
+      setLoadError(r.data?.error || m.data?.error || 'Could not load the timeline.');
+      return;
+    }
     setCut((r.data?.result as CutList | null) || null);
     setMarkers(m.data?.result?.markers || []);
   }, [activeSeq]);
@@ -124,6 +137,17 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-4">
+        <ErrorState
+          message={loadError}
+          onRetry={() => { void loadMedia(); void loadSequences(); void loadCut(); }}
+        />
+      </div>
+    );
   }
 
   return (

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Clapperboard, Plus, FileText, Camera, CalendarDays, Wallet, Scissors, MessageSquare, Loader2, Monitor, Video, Trophy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { FsScriptPanel } from './FsScriptPanel';
 import { FsShotsPanel } from './FsShotsPanel';
 import { FsSchedulePanel } from './FsSchedulePanel';
@@ -52,10 +53,17 @@ export function FilmStudioSection() {
   const [tab, setTab] = useState<TabId>('script');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', format: 'feature' });
 
   const refreshProjects = useCallback(async () => {
     const r = await lensRun('film-studios', 'project-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load film projects.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     const list: Project[] = r.data?.result?.projects || [];
     setProjects(list);
     setActiveProject((prev) => (list.some((p) => p.id === prev) ? prev : list[0]?.id || ''));
@@ -97,6 +105,8 @@ export function FilmStudioSection() {
 
       {loading ? (
         <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+      ) : loadError ? (
+        <div className="p-4"><ErrorState message={loadError} onRetry={refreshProjects} /></div>
       ) : (
         <>
           {/* Project roster */}

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, CalendarDays, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Outfit { id: string; name: string }
 interface Item { id: string; name: string }
@@ -23,6 +24,7 @@ export function FashionCalendarPanel({ onChange }: { onChange: () => void }) {
   const [month, setMonth] = useState(monthNow());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ kind: 'outfit', refId: '', date: new Date().toISOString().slice(0, 10) });
 
   const refreshLists = useCallback(async () => {
@@ -30,6 +32,10 @@ export function FashionCalendarPanel({ onChange }: { onChange: () => void }) {
       lensRun('fashion', 'outfit-list', {}),
       lensRun('fashion', 'item-list', {}),
     ]);
+    if (o.data?.ok === false || i.data?.ok === false) {
+      setLoadError(o.data?.error || i.data?.error || 'Could not load outfits/items.');
+      return;
+    }
     setOutfits(o.data?.result?.outfits || []);
     setItems(i.data?.result?.items || []);
   }, []);
@@ -37,6 +43,12 @@ export function FashionCalendarPanel({ onChange }: { onChange: () => void }) {
   const refreshCalendar = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('fashion', 'calendar-view', { month });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load the wear calendar.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEntries(r.data?.result?.entries || []);
     setLoading(false);
   }, [month]);
@@ -90,6 +102,8 @@ export function FashionCalendarPanel({ onChange }: { onChange: () => void }) {
 
       {loading ? (
         <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={() => { void refreshLists(); void refreshCalendar(); }} variant="inline" />
       ) : entries.length === 0 ? (
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           Nothing logged for {month}. Log what you wear to build your style history.

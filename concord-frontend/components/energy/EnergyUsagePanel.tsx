@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Plus, Activity } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui';
 
 interface DayPoint { date: string; kwh: number; cost: number }
 interface BreakdownRow { category: string; kwh: number; pct: number }
@@ -21,6 +22,7 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
   const [untracked, setUntracked] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ kwh: '', date: new Date().toISOString().slice(0, 10) });
 
   const refresh = useCallback(async () => {
@@ -29,6 +31,12 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
       lensRun('energy', 'reading-history', { days: 30 }),
       lensRun('energy', 'usage-breakdown', { days: 30 }),
     ]);
+    if (h.data?.ok === false || b.data?.ok === false) {
+      setLoadError(h.data?.error || b.data?.error || 'Could not load usage data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setSeries(h.data?.result?.series || []);
     setTotalKwh(h.data?.result?.totalKwh || 0);
     setTotalCost(h.data?.result?.totalCost || 0);
@@ -51,6 +59,10 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   const chartData = series.map((d) => ({ date: d.date.slice(5), kwh: d.kwh }));

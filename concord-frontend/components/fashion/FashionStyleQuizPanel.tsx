@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Sparkles, RotateCcw, Palette } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface QuizOption { value: string; label: string }
 interface QuizQuestion { id: string; question: string; options: QuizOption[] }
@@ -27,6 +28,7 @@ export function FashionStyleQuizPanel() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [retaking, setRetaking] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -35,6 +37,12 @@ export function FashionStyleQuizPanel() {
       lensRun('fashion', 'style-quiz-questions', {}),
       lensRun('fashion', 'style-profile-get', {}),
     ]);
+    if (q.data?.ok === false || p.data?.ok === false) {
+      setLoadError(q.data?.error || p.data?.error || 'Could not load the style quiz.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setQuestions(q.data?.result?.questions || []);
     setProfile((p.data?.result?.profile as StyleProfile | null) || null);
     setLoading(false);
@@ -57,6 +65,10 @@ export function FashionStyleQuizPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   // Show saved profile + recommendations unless retaking.
