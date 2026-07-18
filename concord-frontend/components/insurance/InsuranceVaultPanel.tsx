@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, UserRound, Package, BellRing, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Agent { id: string; name: string; agency: string | null; phone: string | null; role: string }
 interface Asset { id: string; name: string; kind: string; value: number }
@@ -24,6 +25,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [agentForm, setAgentForm] = useState({ name: '', agency: '', phone: '' });
   const [assetForm, setAssetForm] = useState({ name: '', kind: 'vehicle', value: '' });
   const [remForm, setRemForm] = useState({ title: '', kind: 'renewal', dueDate: '' });
@@ -35,6 +37,12 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
       lensRun('insurance', 'asset-list', {}),
       lensRun('insurance', 'reminder-list', {}),
     ]);
+    if (ag.data?.ok === false || as.data?.ok === false || rm.data?.ok === false) {
+      setLoadError(ag.data?.error || as.data?.error || rm.data?.error || 'Could not load vault data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setAgents(ag.data?.result?.agents || []);
     setAssets(as.data?.result?.assets || []);
     setAssetValue(as.data?.result?.totalValue || 0);
@@ -79,6 +87,10 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

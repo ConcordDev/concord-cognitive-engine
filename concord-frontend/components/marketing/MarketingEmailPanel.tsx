@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Mail, Trash2, Send, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 type BlockType = 'heading' | 'text' | 'image' | 'button' | 'divider' | 'spacer';
 const BLOCK_TYPES: BlockType[] = ['heading', 'text', 'image', 'button', 'divider', 'spacer'];
@@ -25,6 +26,7 @@ export function MarketingEmailPanel() {
   const [emails, setEmails] = useState<EmailDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<EmailDoc | null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,6 +45,12 @@ export function MarketingEmailPanel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('marketing', 'email-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load emails.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEmails(r.data?.result?.emails || []);
     setLoading(false);
   }, []);
@@ -108,6 +116,10 @@ export function MarketingEmailPanel() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

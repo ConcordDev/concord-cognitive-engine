@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Contact, Trash2, RefreshCw, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 const LIFECYCLE_STAGES = ['subscriber', 'lead', 'mql', 'sql', 'opportunity', 'customer'] as const;
 
@@ -21,6 +22,7 @@ export function MarketingContactsPanel() {
   const [contacts, setContacts] = useState<CrmContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
   const [syncInfo, setSyncInfo] = useState<string | null>(null);
@@ -34,6 +36,12 @@ export function MarketingContactsPanel() {
   const refresh = useCallback(async (q?: string) => {
     setLoading(true);
     const r = await lensRun('marketing', 'contact-list', q ? { query: q } : {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load contacts.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setContacts(r.data?.result?.contacts || []);
     setLoading(false);
   }, []);
@@ -78,6 +86,7 @@ export function MarketingContactsPanel() {
   return (
     <div className="space-y-4">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+      {loadError && <ErrorState message={loadError} onRetry={() => refresh(query)} variant="inline" />}
       {syncInfo && <div className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-900/50 rounded-lg px-3 py-2">{syncInfo}</div>}
 
       <div className="flex items-center justify-between">
@@ -122,7 +131,7 @@ export function MarketingContactsPanel() {
           placeholder="Search contacts…" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-zinc-100" />
       </div>
 
-      {contacts.length === 0 ? (
+      {loadError ? null : contacts.length === 0 ? (
         <p className="text-[11px] text-zinc-400 italic">No contacts. Add one above or sync from the leads pipeline.</p>
       ) : (
         <ul className="space-y-1.5">

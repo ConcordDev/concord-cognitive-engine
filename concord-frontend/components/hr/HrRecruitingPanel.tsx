@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Briefcase, ChevronLeft } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Job { id: string; title: string; department: string; status: string; applicantCount: number }
 interface Applicant { id: string; name: string; email: string | null; stage: string }
@@ -22,6 +23,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', department: '', location: '' });
   const [selected, setSelected] = useState<Job | null>(null);
   const [applicants, setApplicants] = useState<Applicant[]>([]);
@@ -30,6 +32,12 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('hr', 'job-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load jobs.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setJobs(r.data?.result?.jobs || []);
     setLoading(false);
     onChange();
@@ -40,6 +48,11 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
   const openJob = useCallback(async (job: Job) => {
     setSelected(job);
     const r = await lensRun('hr', 'applicant-list', { jobId: job.id });
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load applicants.');
+      return;
+    }
+    setLoadError(null);
     setApplicants(r.data?.result?.applicants || []);
   }, []);
 
@@ -85,6 +98,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
         </div>
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+        {loadError && <ErrorState message={loadError} onRetry={() => openJob(selected)} variant="inline" />}
 
         <div className="flex gap-2">
           <input placeholder="Applicant name" value={appForm.name} onChange={(e) => setAppForm({ ...appForm, name: e.target.value })}
@@ -141,7 +155,9 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
         </button>
       </div>
 
-      {jobs.length === 0 ? (
+      {loadError ? (
+        <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>
+      ) : jobs.length === 0 ? (
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No open jobs. Post a requisition to start recruiting.
         </div>

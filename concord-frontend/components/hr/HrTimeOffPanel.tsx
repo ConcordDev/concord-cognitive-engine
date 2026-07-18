@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Employee { id: string; name: string }
 interface TimeoffRequest {
@@ -26,6 +27,7 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
   const [requests, setRequests] = useState<TimeoffRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ employeeId: '', kind: 'vacation', days: '', startDate: '' });
   const [balanceFor, setBalanceFor] = useState('');
   const [balances, setBalances] = useState<Balance[]>([]);
@@ -36,6 +38,12 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
       lensRun('hr', 'employee-list', {}),
       lensRun('hr', 'timeoff-list', {}),
     ]);
+    if (e.data?.ok === false || t.data?.ok === false) {
+      setLoadError(e.data?.error || t.data?.error || 'Could not load time-off data.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setEmployees(e.data?.result?.employees || []);
     setRequests(t.data?.result?.requests || []);
     setLoading(false);
@@ -69,6 +77,10 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

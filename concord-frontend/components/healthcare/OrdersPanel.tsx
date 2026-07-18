@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { SkeletonTableRows } from '@/components/ui';
+import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Order {
   id: string; number: string; kind: string; name: string; status: string;
@@ -35,15 +35,23 @@ const STATUS_COLOR: Record<string, string> = {
 export function OrdersPanel({ patientId }: { patientId: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ kind: 'medication', name: '', dose: '', frequency: '', priority: 'routine', details: '' });
   const [candidate, setCandidate] = useState('');
   const [interactions, setInteractions] = useState<Interaction[] | null>(null);
   const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'healthcare', action: 'order-list', input: { patientId } });
+      if (r.data?.ok === false) {
+        setLoadError(r.data?.error || 'Could not load orders.');
+        setLoading(false);
+        return;
+      }
+      setLoadError(null);
       setOrders((r.data?.result?.orders || []) as Order[]);
     } catch (e) { console.error('[Orders] failed', e); }
     finally { setLoading(false); }
@@ -67,8 +75,16 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
   }
   async function checkInteractions() {
     setChecking(true);
+    setCheckError(null);
     try {
       const r = await lensRun({ domain: 'healthcare', action: 'drug-interaction-check', input: { patientId, candidateDrug: candidate.trim() || undefined } });
+      if (r.data?.ok === false) {
+        // Honest failure — never fall back to an empty interactions list here,
+        // which would misread as "no interactions detected" on a real error
+        // (a dangerous false negative in a medical context).
+        setCheckError(r.data?.error || 'Could not run the interaction check.');
+        return;
+      }
       setInteractions((r.data?.result?.interactions || []) as Interaction[]);
     } finally { setChecking(false); }
   }
@@ -124,7 +140,12 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
             {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldAlert className="w-3 h-3" />}Check
           </button>
         </div>
-        {interactions !== null && (
+        {checkError && (
+          <div className="px-3 pb-3">
+            <ErrorState message={checkError} onRetry={checkInteractions} variant="inline" />
+          </div>
+        )}
+        {!checkError && interactions !== null && (
           <div className="px-3 pb-3">
             {interactions.length === 0 ? (
               <div className="text-[11px] text-emerald-300 inline-flex items-center gap-1">
@@ -158,6 +179,8 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
         </header>
         {loading ? (
           <SkeletonTableRows rows={4} columns={3} />
+        ) : loadError ? (
+          <div className="p-3"><ErrorState message={loadError} onRetry={refresh} variant="inline" /></div>
         ) : orders.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400">No orders for this patient yet.</div>
         ) : (

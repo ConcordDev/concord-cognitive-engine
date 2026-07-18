@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, UserPlus, Trash2, Gauge } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 interface Lead { id: string; name: string; email: string | null; source: string; campaignId: string | null; value: number; stage: string; score: number }
 interface Campaign { id: string; name: string }
@@ -27,6 +28,7 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
   const [attrTotal, setAttrTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', source: 'direct', campaignId: '', value: '' });
   const [scoreFor, setScoreFor] = useState<string | null>(null);
@@ -39,6 +41,12 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
       lensRun('marketing', 'campaign-list', {}),
       lensRun('marketing', 'attribution-report', {}),
     ]);
+    if (l.data?.ok === false || c.data?.ok === false || a.data?.ok === false) {
+      setLoadError(l.data?.error || c.data?.error || a.data?.error || 'Could not load leads.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setLeads(l.data?.result?.leads || []);
     setCampaigns(c.data?.result?.campaigns || []);
     setAttribution(a.data?.result?.attribution || []);
@@ -77,6 +85,10 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (

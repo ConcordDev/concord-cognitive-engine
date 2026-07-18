@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, LayoutTemplate, Trash2, X, Inbox, Send } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 
 type FieldType = 'text' | 'email' | 'phone' | 'select' | 'textarea' | 'checkbox';
 const FIELD_TYPES: FieldType[] = ['text', 'email', 'phone', 'select', 'textarea', 'checkbox'];
@@ -26,6 +27,7 @@ export function MarketingPagesPanel() {
   const [pages, setPages] = useState<LandingPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<LandingPage | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,10 +43,17 @@ export function MarketingPagesPanel() {
 
   const [subsFor, setSubsFor] = useState<string | null>(null);
   const [subs, setSubs] = useState<Submission[]>([]);
+  const [subsError, setSubsError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('marketing', 'page-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load landing pages.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setPages(r.data?.result?.pages || []);
     setLoading(false);
   }, []);
@@ -114,12 +123,22 @@ export function MarketingPagesPanel() {
 
   const viewSubs = async (id: string) => {
     setSubsFor(id);
+    setSubsError(null);
     const r = await lensRun('marketing', 'page-submissions', { id });
+    if (r.data?.ok === false) {
+      setSubsError(r.data?.error || 'Could not load submissions.');
+      setSubs([]);
+      return;
+    }
     setSubs(r.data?.result?.submissions || []);
   };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
 
   return (
@@ -283,7 +302,9 @@ export function MarketingPagesPanel() {
               <h4 className="text-sm font-semibold text-white">Submissions ({subs.length})</h4>
               <button type="button" onClick={() => setSubsFor(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
             </div>
-            {subs.length === 0 ? (
+            {subsError ? (
+              <ErrorState message={subsError} onRetry={() => subsFor && viewSubs(subsFor)} variant="inline" />
+            ) : subs.length === 0 ? (
               <p className="text-[11px] text-zinc-400 italic">No submissions captured yet.</p>
             ) : (
               <ul className="space-y-2">

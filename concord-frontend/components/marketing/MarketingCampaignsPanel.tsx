@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Target, ChevronLeft, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/ui';
 import { MarketingGmailSendPanel } from './MarketingGmailSendPanel';
 
 interface Kpis { impressions: number; clicks: number; conversions: number; spend: number; revenue: number; ctr: number; cpc: number; cpa: number; roas: number; conversionRate: number }
@@ -28,6 +29,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', channel: 'search', budget: '', startDate: new Date().toISOString().slice(0, 10), endDate: '' });
   const [selected, setSelected] = useState<Campaign | null>(null);
@@ -39,6 +41,12 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
   const refresh = useCallback(async () => {
     setLoading(true);
     const r = await lensRun('marketing', 'campaign-list', {});
+    if (r.data?.ok === false) {
+      setLoadError(r.data?.error || 'Could not load campaigns.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCampaigns(r.data?.result?.campaigns || []);
     setLoading(false);
   }, []);
@@ -185,7 +193,9 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
         </div>
       )}
 
-      {campaigns.length === 0 ? (
+      {loadError ? (
+        <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>
+      ) : campaigns.length === 0 ? (
         <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No campaigns. Launch one to start tracking performance.
         </div>
