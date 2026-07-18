@@ -38449,6 +38449,33 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   // Every payment computed above MUST hit the wallet immediately.
   // No deferred settlement — creators get paid the instant a sale happens.
   for (const payment of payments) {
+    if (payment.type === "platform_fee" && payment.amount > 0) {
+      // Platform fee — bridge straight into economy_ledger under the
+      // canonical PLATFORM_ACCOUNT_ID, mirroring the "Bridge marketplace fee
+      // to economy ledger" pattern the /api/economic/marketplace purchase
+      // path already uses (server.js, `credit-wallet: 'marketplace_sale'`
+      // handler above). Money-hygiene fix (found proving P-D's dream-purchase
+      // conservation test): this branch used to be skipped entirely
+      // (`payment.recipient !== "platform"` excluded it), so the 5% platform
+      // fee was debited from the buyer's payment but never credited to
+      // anyone — real revenue silently vanishing from the ledger on every
+      // paid dtu.marketplace purchase, not just dreams.
+      if (db) {
+        try {
+          db.prepare(`
+            INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, metadata_json, request_id, ip, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            generateTxId(), 'FEE', null, PLATFORM_ACCOUNT_ID, payment.amount, 0, payment.amount, 'complete',
+            JSON.stringify({ source: 'purchase_with_royalties', dtuId, sourceType: 'MARKETPLACE_PURCHASE', bridged: true }),
+            null, null, new Date().toISOString().replace('T', ' ').replace('Z', ''),
+          );
+        } catch (e) {
+          structuredLog("error", "platform_fee_bridge_failed", { amount: payment.amount, error: e?.message });
+        }
+      }
+      continue;
+    }
     if (payment.recipient && payment.recipient !== "platform" && payment.amount > 0) {
       try {
         creditWallet(
@@ -38462,15 +38489,23 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
       }
     }
   }
-  // Debit buyer
+  // Debit buyer. Routed through debitWallet() — the same helper creditWallet()
+  // (above) already uses — instead of a manual `buyerWallet.balance -= price`
+  // mutation, so the debit is ALSO bridged into economy_ledger as a real row
+  // (debitWallet already has this bridge; it just wasn't being called here).
+  // Money-hygiene fix (found proving P-D's dream-purchase conservation test):
+  // the manual-mutation version only ever touched the in-memory
+  // STATE.economic.wallets Map. Every paid purchaseWithRoyalties call credits
+  // sellers/royalty recipients into economy_ledger via creditWallet's own
+  // bridge — with no offsetting buyer debit, economy_ledger's getBalance()
+  // showed the recipients' gain but never the buyer's loss, i.e. CC minted
+  // from nothing on every paid dtu.marketplace purchase. debitWallet() closes
+  // that gap with a single-sided TRANSFER row (from=buyerId, to=null) that
+  // CREDIT_ROW_PREDICATE already treats correctly.
   try {
     const buyerId = ctx?.actor?.userId;
     if (buyerId && price > 0) {
-      const buyerWallet = getWallet(buyerId);
-      buyerWallet.balance -= price;
-      buyerWallet.tokensSpent = (buyerWallet.tokensSpent || 0) + price;
-      buyerWallet.updatedAt = Date.now();
-      logTransaction({ type: 'debit', odId: buyerId, amount: price, reason: `Purchase: ${dtu.title || dtuId}`, balance: buyerWallet.balance });
+      debitWallet(buyerId, price, `Purchase: ${dtu.title || dtuId}`, `purchase:${dtuId}:${clone.id}:${buyerId}:debit`);
     }
   } catch (_e) {
     structuredLog("error", "buyer_debit_failed", { error: _e?.message });
