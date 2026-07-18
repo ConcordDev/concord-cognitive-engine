@@ -26,6 +26,7 @@ import BuildingRenderer3D from '@/components/world-lens/BuildingRenderer3D';
 import type { ConkayBuildingArtifact } from '@/lib/conkay/artifact-kinds';
 import { BuildingIterateBar } from './BuildingIterateBar';
 import { rederiveBuildingArtifact } from '@/lib/conkay/iterate-building';
+import { ArtifactProvenance } from './ArtifactProvenance';
 
 export function BuildingAdapter({ artifact }: { artifact: ConkayBuildingArtifact }) {
   // S3-b — the working copy the Iterate loop mutates. Starts as the real macro
@@ -68,6 +69,7 @@ export function BuildingAdapter({ artifact }: { artifact: ConkayBuildingArtifact
           onRevert={revert}
         />
       )}
+      <ArtifactProvenance artifact={working} />
     </div>
   );
 }

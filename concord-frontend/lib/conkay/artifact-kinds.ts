@@ -93,6 +93,17 @@ interface ConkayArtifactBase {
    * (undefined) for kinds that don't yet support iterate; never fabricated.
    */
   sourceInput?: Record<string, unknown>;
+  /**
+   * Provenance — the real persisted DTU id this artifact was published as, when
+   * one exists (the macro result's `dtuId`). Absent for an un-published edit
+   * (e.g. a locally-iterated building not yet re-published) — the provenance
+   * overlay then honestly says "not yet published", never inventing an id. This
+   * is the anchor the S4 "Own it / list it" path uses.
+   */
+  dtuId?: string | null;
+  /** Provenance — parent DTU ids this artifact cites (its lineage), when the
+   *  publish registered citations. Empty/absent when it has no parents. */
+  lineage?: string[];
 }
 
 /** One `ar.render` drawList object — structurally the shape ConKayArtifactExploded
@@ -410,6 +421,8 @@ function normalizeCreature(domain: string, macro: string, _input: unknown, resul
     components,
     sourceDomain: domain,
     sourceMacro: macro,
+    // S4 provenance — the real published blueprint DTU id.
+    dtuId: str(res.dtuId),
   };
 }
 
@@ -518,6 +531,13 @@ function normalizeBuildingPublish(domain: string, macro: string, input: unknown,
     // Carry the real macro input untouched so the S3 Iterate loop can apply a
     // dimension delta and re-run building-publish. Pure provenance, not invented.
     sourceInput: inp,
+    // S4 provenance — the real published DTU id + lineage (parent DTUs cited).
+    // A locally-iterated (un-republished) building has no dtuId here — honestly
+    // "not yet published" until Owned.
+    dtuId: str(res.dtuId),
+    lineage: asArray(res.citations)
+      .map((c) => str(asObj(c).parentId))
+      .filter((p): p is string => !!p),
   };
 }
 

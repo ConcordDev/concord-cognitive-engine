@@ -21,6 +21,7 @@ import type { CreatureTopology } from '@/lib/world-lens/creature-mesh-builder';
 import type { ConkayCreatureArtifact } from '@/lib/conkay/artifact-kinds';
 import { StepInControls } from './StepInControls';
 import { StepInToggle } from './StepInToggle';
+import { ArtifactProvenance } from './ArtifactProvenance';
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -70,7 +71,8 @@ export function CreatureAdapter({ artifact }: { artifact: ConkayCreatureArtifact
   const walkStart: [number, number, number] = [0, eyeY, backDist];
 
   return (
-    <div data-testid="ck-adapter-creature" className="relative h-[340px] w-full overflow-hidden rounded-lg bg-black">
+    <div data-testid="ck-adapter-creature">
+      <div className="relative h-[340px] w-full overflow-hidden rounded-lg bg-black">
       <Canvas camera={{ position: [camDist, camDist * 0.55, camDist], fov: 45 }}>
         <ambientLight intensity={0.75} />
         <directionalLight position={[3, 5, 2]} intensity={0.85} />
@@ -92,6 +94,8 @@ export function CreatureAdapter({ artifact }: { artifact: ConkayCreatureArtifact
         {artifact.heightM != null && <span>{artifact.heightM} m</span>}
         {artifact.spawned && <span className="text-cyan-300">spawned live</span>}
       </div>
+      </div>
+      <ArtifactProvenance artifact={artifact} />
     </div>
   );
 }

@@ -22,6 +22,7 @@ import type { FeaModel } from '@/lib/conkay/fea-iterate';
 import { StepInControls } from './StepInControls';
 import { StepInToggle } from './StepInToggle';
 import { FeaIterateBar } from './FeaIterateBar';
+import { ArtifactProvenance } from './ArtifactProvenance';
 
 /** Max utilization out of the solver summary, or null. Red > 1, green < 1. */
 function maxUtil(fea: ConkayFeaArtifact['fea']): number | null {
@@ -141,6 +142,7 @@ export function FeaAdapter({ artifact }: { artifact: ConkayFeaArtifact }) {
           onRevert={revert}
         />
       )}
+      <ArtifactProvenance artifact={working} />
       {/* Honest caveat about the NATURE of the numbers — a deterministic model,
           not a certification of real-world behaviour (mirrors ForwardSimPanel). */}
       <div data-testid="ck-adapter-fea-caveat" className="mt-2 px-1 text-[10px] text-amber-300/60">
