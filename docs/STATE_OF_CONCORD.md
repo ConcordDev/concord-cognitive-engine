@@ -25,11 +25,11 @@ reclassifies 8 data-modules (168k lines, e.g. the deprecated 145k-line
 | Lens wiring | **257 WIRED · 0 broken · 2 by-design** | `node scripts/verify-lens-backends.mjs` |
 | Macro domains | **492** | verifier `macroDomains` |
 | Route prefixes | **2,973** | verifier `routePrefixes` |
-| Backend domain files | **405** | `ls server/domains/*.js \| wc -l` |
-| Numbered migrations | **355** | `ls server/migrations/[0-9]*.js \| wc -l` |
+| Backend domain files | **409** | `ls server/domains/*.js \| wc -l` |
+| Numbered migrations | **369** | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **131** | `ls server/routes/*.js \| wc -l` |
-| Lib modules | **623** top (`ls server/lib/*.js \| wc -l`) · **922** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
-| `server/server.js` | **77,424 lines** | `wc -l server/server.js` |
+| Lib modules | **639** top (`ls server/lib/*.js \| wc -l`) · **949** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
+| `server/server.js` | **79,230 lines** | `wc -l server/server.js` |
 | DB tables (cartographer) | **690** | `npm run cartograph:static` |
 | Socket events | **277** | cartographer |
 | Heartbeats (registered) | **105 static** | cartographer / detector summary |

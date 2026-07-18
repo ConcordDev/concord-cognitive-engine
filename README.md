@@ -2,19 +2,17 @@
 
 # 🜂 Concord Cognitive Engine
 
-### A verifying knowledge substrate that wears 260 faces.
+### AI that shows its receipts.
 
-**One developer · ~2.16M lines of source · 326 catalogued novelties · 0 critical findings**
+**Proves what it claims. Refuses what it can't. Remembers everything — and pays you when your work gets built on.**
 
 [**🌐 Live at concord-os.org**](https://concord-os.org) &nbsp;·&nbsp; [**Why it's different →**](docs/WHY_CONCORD_IS_DIFFERENT.md) &nbsp;·&nbsp; [**The 326 novelties →**](docs/NOVELTY_INVENTORY.md) &nbsp;·&nbsp; [**Verified snapshot →**](docs/STATE_OF_CONCORD.md)
 
-![source](https://img.shields.io/badge/source-~2.16M_LOC-6e40c9)
 ![lenses](https://img.shields.io/badge/lenses-260-22d3ee)
 ![macros](https://img.shields.io/badge/macros-~9,600-22c55e)
 ![brains](https://img.shields.io/badge/AI_brains-5-f59e0b)
 ![tests](https://img.shields.io/badge/tests-27,912_passing-16a34a)
 ![board](https://img.shields.io/badge/detector_board-0_critical-16a34a)
-![dev](https://img.shields.io/badge/developers-1-ef4444)
 
 </div>
 

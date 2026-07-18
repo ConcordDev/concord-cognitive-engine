@@ -506,7 +506,7 @@ and a long tail of Infinity/NaN fail-opens — every one in a lens that "looked 
 56 lenses now through the non-score gate (batches 1–13). The loop continues.
 
 ### Phase-2 batches 14–18 DONE (2026-06-28): the calculator-family completion sweep
-**115 lenses now carry the UX-states gate marker** (`ls concord-frontend/tests/*-lens-states.test.tsx | wc -l`).
+**120 lenses now carry the UX-states gate marker** (`ls concord-frontend/tests/*-lens-states.test.tsx | wc -l`).
 Batches 14–18 swept the rest of the `*ActionPanel`/`*Calc` calculator family (marketing, analytics, retail,
 audit, supplychain, voice — redone after a session-limit interruption — then creative, education, collab,
 commonsense, telecommunications, landscaping, linguistics, mentorship, services, robotics, physics, hr,
