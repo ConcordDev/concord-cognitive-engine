@@ -11,7 +11,10 @@
     "difficulty": 3,
     "prerequisites": [],
     "description": "The measured cut the first settlers learned holding ground they would not yield.",
-    "lore": "Concordia's Founder's Edge — the ancestral blade-form taught at The Seven Spokes Inn. It is not the strongest style, but it is the one that ends a fight rather than starts one. Carried by the Concordant Watch as a mark of office."
+    "lore": "Concordia's Founder's Edge — the ancestral blade-form taught at The Seven Spokes Inn. It is not the strongest style, but it is the one that ends a fight rather than starts one. Carried by the Concordant Watch as a mark of office.",
+    "combo_followups": [
+      { "id": "dtu_refusal_ward_v1", "name": "The Sovereign's Refusal" }
+    ]
   },
   {
     "id": "dtu_refusal_ward_v1",
@@ -25,7 +28,10 @@
     "difficulty": 5,
     "prerequisites": ["dtu_swordsmanship_v1"],
     "description": "A turning parry that converts an aggressor's force into a refusal made physical.",
-    "lore": "From The Refusal That Is the Hub — the Sovereign's discipline of saying no with the body. Low damage, but it staggers and it cannot be baited. The Refusal Keep teaches it only to those who have proven they will not misuse it."
+    "lore": "From The Refusal That Is the Hub — the Sovereign's discipline of saying no with the body. Low damage, but it staggers and it cannot be baited. The Refusal Keep teaches it only to those who have proven they will not misuse it.",
+    "combo_followups": [
+      { "id": "dtu_lattice_arc_v1", "name": "Sundered Lattice Arc" }
+    ]
   },
   {
     "id": "dtu_lattice_arc_v1",
