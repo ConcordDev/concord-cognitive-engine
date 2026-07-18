@@ -48,3 +48,40 @@ describe("G2.3 — heap-limit default", () => {
     assert.doesNotMatch(src, /MAX_OLD_SPACE_SIZE \|\| 3584/);
   });
 });
+
+// Emergent load-hardening — STATE.qualia (the QualiaEngine per-entity store) was
+// the last unbounded Map in the watchdog list: per-state history capped
+// (HISTORY_MAX=50) but the NUMBER of states uncapped. Under high-volume qualia
+// hooks (a state per entity/DTU) it grows without bound → OOM. Now LRU-trimmed
+// like shadowDtus. Eviction is safe: the engine returns entity_not_found/null
+// for an evicted id and recreates on the next hook.
+describe("emergent — qualia state Map is LRU-trimmed by the watchdog", () => {
+  it("trims an oversized STATE.qualia Map toward the cap (oldest first)", async () => {
+    process.env.CONCORD_MAX_QUALIA_STATES = "100";
+    const { _aggressiveEviction } = await import("../../lib/memory-pressure.js?q1");
+    const STATE = { sessions: new Map(), qualia: new Map() };
+    for (let i = 0; i < 250; i++) STATE.qualia.set(`e${i}`, { entityId: `e${i}`, channels: {} });
+    assert.equal(STATE.qualia.size, 250);
+    _aggressiveEviction(STATE);
+    assert.equal(STATE.qualia.size, 80); // floor(cap * 0.8)
+    assert.equal(STATE.qualia.has("e0"), false); // oldest evicted
+    assert.equal(STATE.qualia.has("e249"), true); // newest survive
+    delete process.env.CONCORD_MAX_QUALIA_STATES;
+  });
+
+  it("leaves a within-cap qualia Map untouched", async () => {
+    process.env.CONCORD_MAX_QUALIA_STATES = "1000";
+    const { _aggressiveEviction } = await import("../../lib/memory-pressure.js?q2");
+    const STATE = { sessions: new Map(), qualia: new Map() };
+    for (let i = 0; i < 50; i++) STATE.qualia.set(`e${i}`, { entityId: `e${i}` });
+    _aggressiveEviction(STATE);
+    assert.equal(STATE.qualia.size, 50);
+    delete process.env.CONCORD_MAX_QUALIA_STATES;
+  });
+
+  it("the watchdog cap list actually includes qualia", async () => {
+    const src = await import("node:fs").then((m) =>
+      m.readFileSync(new URL("../../lib/memory-pressure.js", import.meta.url), "utf8"));
+    assert.match(src, /\["qualia", Number\(process\.env\.CONCORD_MAX_QUALIA_STATES\)/);
+  });
+});

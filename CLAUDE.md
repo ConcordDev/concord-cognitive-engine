@@ -184,6 +184,7 @@ The server requires `JWT_SECRET` in production. Without it, the boot log prints 
 **Heap & cap tuning** (32GB-deployment defaults — override on smaller boxes):
 - `MAX_OLD_SPACE_SIZE=32768` and start node with `--max-old-space-size=32768`. Keep both in sync; the memory-pressure watchdog reads the env var.
 - `CONCORD_MAX_SHADOWS` (default 50000) — cap for `STATE.shadowDtus`.
+- `CONCORD_MAX_QUALIA_STATES` (default 50000) — cap for `STATE.qualia` (the QualiaEngine per-entity store). LRU-trimmed by the memory watchdog like `shadowDtus`; the engine returns `entity_not_found` for an evicted id and recreates on the next hook. (Each state's history is separately bounded at `HISTORY_MAX=50`.)
 - `CONCORD_PLAYLIST_LIMIT` (100), `CONCORD_NPC_KNOWLEDGE_BATCH` (1000), `CONCORD_SOCIAL_BRIDGE_BATCH` (2000), `CONCORD_FAUNA_SPAWN_BATCH` (500), `CONCORD_FEED_DTUS_PER_HOUR` (10000), `CONCORD_LLM_QUEUE_DEPTH` (1000), `CONCORD_DIALOGUE_MAX_CONCURRENT` (50), `CONCORD_DOWNLOADS_PER_USER` (25).
 - `CONCORD_FEDERATION_TOKEN` — when set, federation `/api/world/social-shadows` requires Bearer auth.
 
