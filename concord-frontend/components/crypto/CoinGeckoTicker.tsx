@@ -60,7 +60,7 @@ export function CoinGeckoTicker() {
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-lattice-border bg-lattice-surface p-0.5 text-[10px]">
             {VS.map((v) => (
-              <button key={v.id} onClick={() => setVs(v.id)} className={`rounded px-2 py-0.5 font-mono uppercase ${vs === v.id ? 'bg-cyan-500/20 text-cyan-200' : 'text-gray-400 hover:text-zinc-300'}`}>{v.label}</button>
+              <button key={v.id} onClick={() => setVs(v.id)} className={`rounded px-2 py-0.5 font-mono uppercase ${vs === v.id ? 'bg-cyan-500/20 text-cyan-200' : 'text-gray-400 hover:text-gray-300'}`}>{v.label}</button>
             ))}
           </div>
           {list.length > 0 && (
