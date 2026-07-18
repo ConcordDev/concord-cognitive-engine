@@ -30,8 +30,9 @@
   OAuth-signin remain real integration surfaces alongside.
 - **Genuine gaps live in one bucket: hardware / physics / real-world** (robots, suits, AR display,
   tetra/nonlinear FEA, real-world prediction). The connector-depth gap that used to sit here is
-  **closed in code** — Slack/Sheets/GitHub/Notion are the next connectors to wire (the token core +
-  egress chokepoint are connector-agnostic), but Gmail/Calendar — the marquee pair — are done.
+  **closed in code** — Gmail/Calendar are real two-way AND Slack/Sheets/GitHub/Notion are now built +
+  contract-tested on the connector-agnostic token core + egress chokepoint; all six marquee connectors
+  are code-complete (live use is operator-credential-gated, not code).
 - **Two audit surprises:** (a) **engineering CAD/FEA is a real STRENGTH, not a gap** — there is a
   genuine direct-stiffness FEA solver + a real CAS; (b) the **causal-closure analyzer is BUILT**
   (not "designed"). Both are corrections to the earlier draft.
@@ -107,7 +108,7 @@ Legends conception, not current canon.
 | **Private / local / no-harvest** | local Ollama 5-brain + consent gates + `personal_dtus_never_leak` | **🔵 real but niche.** On-prem >50% of 2025 enterprise LLM spend; Ollama ~174k stars — but ChatGPT's ~800–900M users dwarf local by 2–3 orders. **Enterprise/R&D wedge, not a mainstream claim.** |
 | **Controllable, trustworthy memory** | DTU substrate (674 tables, ~1.5M-DTU cap) + scope/consent gates | **🟢 real + monetizing.** Notion ~$500M ARR, >50% AI-attributed; ChatGPT shipped controllable memory. |
 | **Owned / no-subscription** | free + local + take-rate + creator economy | **⚪→🔵 grievance > behavior.** 41–47% subscription fatigue + 81% enterprise lock-in concern, but subs still growing fast; strongest in enterprise/regulated. |
-| **External integration** (connect your stack) | **bidirectional MCP** + Google/Apple OAuth **sign-in** + **real Gmail/Calendar connectors** | 🟢 **mostly real — see §3.** MCP is real; Gmail + Google Calendar are real two-way (send/push + read/inbox/pull) with a polished client; Slack/Sheets/GitHub/Notion are the next to wire (connector-agnostic core). Live use needs a Google OAuth client (operational, not code). |
+| **External integration** (connect your stack) | **bidirectional MCP** + Google/Apple OAuth **sign-in** + **real Gmail/Calendar connectors** | 🟢 **mostly real — see §3.** MCP is real; Gmail + Google Calendar are real two-way (send/push + read/inbox/pull) with a polished client, and Slack/Sheets/GitHub/Notion are now built + contract-tested on the same connector-agnostic core — all six code-complete. Live use needs only operator OAuth client credentials (operational, not code). |
 
 **The white space (from the companion's landscape):** every incumbent owns exactly *one* vector
 (Perplexity=grounded, ChatGPT=general, Copilot=enterprise, Ollama=privacy, Notion=PKM). No one ships
@@ -140,9 +141,11 @@ is closed for the marquee pair — see below.)**
   Tests: `connector-read-paths.test.js` (11) + `connector-oauth*.test.js` (23). **Still required for
   *live* use:** a real `GOOGLE_CLIENT_ID/SECRET` + consent-screen verification (Gmail restricted
   scope ⇒ annual CASA) — operational, not code; see `docs/CONNECTORS_GO_LIVE.md`.
-- **Remaining connectors (Slack/Sheets/GitHub/Notion)** — not yet wired, but the token core +
-  `connectorFetch` chokepoint are connector-agnostic, so each is a thin egress-helper + domain-macro
-  add (the Gmail/Calendar build is the template). MCP remains the other real integration surface.
+- **Slack/Sheets/GitHub/Notion connectors** — now built on the connector-agnostic token core +
+  `connectorFetch` chokepoint (`server/domains/{slack,sheets,github,notion}.js` + `connector-client.js`
+  readers, injected-fetch contract tests), following the Gmail/Calendar template. All six marquee
+  connectors are code-complete; live use is operator-credential-gated. MCP remains the other real
+  integration surface.
 - **Machine translation** — ✅ **shipped** (was a gap): `domains/translation.js` (translate/detect/
   batch/languages) through the local LLM, lens at `/lenses/translation`, 16 tests. No external API.
 - **Physical robots & exo-suits** — hardware; not built. (Where ConKay-as-R&D-partner aims.)
@@ -165,7 +168,7 @@ is closed for the marquee pair — see below.)**
 | Claim in earlier draft | Verified reality | Direction |
 |---|---|---|
 | Engineering CAD/FEA "thin ~13 files, incidental" | Real direct-stiffness FEA + CAS + materials + chem | ⬆ understated → **strength** |
-| External integration "✅ all implemented" | MCP real; OAuth sign-in real; **Gmail + Calendar now real two-way** (2026-06-09); Slack/Sheets/GitHub/Notion still to wire | 🟢 **corrected — marquee pair done** (was overstated, now substantially true) |
+| External integration "✅ all implemented" | MCP real; OAuth sign-in real; **all six marquee connectors code-complete** — Gmail + Calendar real two-way (2026-06-09), Slack/Sheets/GitHub/Notion built + contract-tested | 🟢 **corrected — connector build done** (live use is operator-credential-gated, not code) |
 | Translation "✅ ~28 files" | **0 files — does not exist** (i18n UI only) | ⬇ **false** |
 | causal-closure "designed, not built" | **Built**: `causal-closure.js` + 16/16 tests, wired | ⬆ stale → **built** |
 | Vision/LLaVA "94 files" | 4 files (real router, lightly used) | ⬇ inflated 23.5× |

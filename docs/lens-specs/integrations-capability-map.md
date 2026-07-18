@@ -155,10 +155,11 @@ a connector surface).
 ## Genuinely missing (deferred — triaged per the sixth hard invariant)
 
 - **Real OAuth connect flow for the catalog connectors (ENGINEERING +
-  DATA-SOURCING).** Today `connectApp` records a *selection*; only Gmail +
-  Google Calendar have real two-way egress, and only once a Google OAuth client
-  is configured (`docs/CONNECTORS_GO_LIVE.md`). Slack/Sheets/GitHub/Notion are
-  the named "next thin adds" on the connector-agnostic `connectorFetch` core.
+  DATA-SOURCING).** Today `connectApp` records a *selection*; all six marquee
+  connectors — Gmail, Calendar, Slack, Sheets, GitHub, Notion — now have real
+  two-way egress readers on the connector-agnostic `connectorFetch` core (built +
+  contract-tested), each live only once its OAuth client credentials are
+  configured (`docs/CONNECTORS_GO_LIVE.md`).
   The UI is now honest about this gap (amber "Needs auth" rather than a fake
   "Connected") rather than papering over it. Closing it = wiring each
   provider's OAuth client + token exchange into `connector-tokens.js` — out of
