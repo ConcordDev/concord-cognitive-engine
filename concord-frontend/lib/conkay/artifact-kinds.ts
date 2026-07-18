@@ -272,7 +272,12 @@ function normalizeFea(domain: string, macro: string, input: unknown, result: unk
     label: `${m.nodeI} → ${m.nodeJ}`,
     kind: 'member',
   }));
-  return { kind: 'fea-frame', fea, components, sourceDomain: domain, sourceMacro: macro };
+  // S3-c — carry the full input model (nodes/members/loads/supports, WITH the
+  // section + load fields feaResultFromRun drops) so the Iterate loop can
+  // transform it and re-run the real solver. Pure provenance, not invented.
+  const sourceInput =
+    input && typeof input === 'object' ? (input as Record<string, unknown>) : undefined;
+  return { kind: 'fea-frame', fea, components, sourceDomain: domain, sourceMacro: macro, sourceInput };
 }
 
 /** foundry.preview → a compiled-world artifact. Requires a real previewWorldId
