@@ -70147,6 +70147,7 @@ function adjustConfidenceFromLearning(domain, baseConfidence) {
   const adjustedConfidence = clamp(baseConfidence * adjustment, 0.1, 0.95);
 
   return {
+    ok: true,
     original: baseConfidence,
     adjusted: adjustedConfidence,
     factor: adjustment,
