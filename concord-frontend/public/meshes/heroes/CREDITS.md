@@ -1,42 +1,77 @@
 # Hero mesh asset credits
 
-The 7 base archetype slots (`_archetype_*.glb`, including all per-world
-suffixed variants) are populated with real, textured, animated, correctly
-Mixamo-bone-named character models, replacing the flat-shaded procedural
-placeholders that shipped previously. Source and license:
+## Universal archetype slots (current)
 
-- **Soldier.glb** (used for `warrior`, `guard`, `hunter`) — the "Vanguard"
-  character, originally from Adobe's Mixamo free character library
-  (mixamo.com), redistributed by the three.js project as an official
-  example asset at `examples/models/gltf/Soldier.glb`
-  (https://github.com/mrdoob/three.js, MIT-licensed repository; the
-  three.js example page explicitly credits "model from mixamo.com").
-  Ships with baked Idle/Run/TPose/Walk animation clips (unused by this
-  project — Concordia drives bones directly via its own gait-synthesis
-  system — but harmless to keep).
-- **Michelle.glb** (used for `scholar`, `mystic`, `trader`) — same
-  provenance, `examples/models/gltf/Michelle.glb`.
-- **Xbot.glb** (used for `legend`) — Mixamo's standard default test
-  character, same provenance, `examples/models/gltf/Xbot.glb`.
+Six of the 7 base archetype slots now use **Microsoft Rocketbox** avatars —
+a library of 115 professionally-modeled, rigged, textured (diffuse +
+normal + specular) human characters, developed over ~10 years by Microsoft
+Research and released under the **MIT license**
+(https://github.com/microsoft/Microsoft-Rocketbox). Real fabric/skin
+texture detail, not flat placeholder color — a meaningful step up from the
+generic Mixamo test characters used in the previous pass.
 
-All three are Mixamo-sourced content, which Adobe licenses for free use
-(including in commercial, shipped projects) without a royalty or mandatory
-attribution requirement. This file exists as a provenance record and as
-the easiest place to swap in different/better character art later — every
-file here is a drop-in replacement as long as the skeleton keeps the
-`mixamorig:`-prefixed Mixamo bone names documented in `README.md`.
+| Archetype | Source avatar | Rocketbox path |
+|---|---|---|
+| `warrior` | Wood_Male_01 | `Assets/Avatars/Professions/Wood_Male_01` |
+| `guard` | Sports_Male_01 | `Assets/Avatars/Professions/Sports_Male_01` |
+| `hunter` | Gardener_Male_01 | `Assets/Avatars/Professions/Gardener_Male_01` |
+| `scholar` | Business_Male_01 | `Assets/Avatars/Professions/Business_Male_01` |
+| `mystic` | Female_Adult_02 | `Assets/Avatars/Adults/Female_Adult_02` |
+| `trader` | Business_Female_01 | `Assets/Avatars/Professions/Business_Female_01` |
+| `legend` | Xbot (Mixamo, via three.js) | unchanged from the prior pass — see below |
 
-The four named "Three Above All" meshes (`sovereign_first_refusal.glb`,
+None of Rocketbox's 115 avatars are fantasy/combat-archetype-coded (it's a
+research library: business/medical/fire/police/military/construction/
+sports/everyday-adult characters) — the mapping above is the closest
+reasonable thematic fit, not a perfect one. `legend` deliberately stays on
+the previous pass's Mixamo Xbot rather than forcing a mismatched profession
+onto it.
+
+### Conversion pipeline (for reproducing or extending)
+
+Rocketbox ships as FBX (3ds Max export) with TGA textures — not
+glTF/GLB. Getting each avatar in required:
+
+1. Download the avatar's `.fbx` + `Textures/*_{body,head,opacity}_*.tga`
+   from the Rocketbox repo (`raw.githubusercontent.com`, no auth needed).
+2. Convert FBX → GLB via Facebook's `FBX2glTF` (via the `fbx2gltf` npm
+   package's bundled Linux binary). This produces correct geometry/skin/
+   materials but 1×1 placeholder images — FBX2glTF can't resolve the
+   FBX's internal texture references to real files.
+3. Decode each TGA (via the `tga` npm package) and re-encode as PNG at
+   1024px (via `sharp`), keeping the pipeline reasonable for a web game
+   vs. the source 2048px assets.
+4. Patch the GLB's 5 placeholder images with the real PNGs, in FBX2glTF's
+   fixed emission order (verified empirically, consistent across every
+   avatar tried): `[bodyNormal, bodyColor, headNormal, headColor,
+   opacityColor]` — via `@gltf-transform/core`, which handles the binary
+   buffer/bufferView bookkeeping correctly (no hand-rolled GLB patching).
+
+### Bone naming — a second convention
+
+Rocketbox rigs use 3ds Max's Biped naming (`Bip01 Pelvis`, `Bip01 L
+Thigh`, `Bip01 L UpperArm`, ...), not Mixamo's `mixamorig:`-prefixed
+convention. Rather than rewrite every asset's bone names,
+`lib/concordia/hero-mesh-registry.ts`'s `buildBoneMap()` was extended
+with a `BIPED_TO_CANONICAL` alias table so it now recognizes both
+conventions — any future asset source just needs one more table entry,
+not a GLB-mutating pass.
+
+## `legend` and per-world archetype variants (prior pass, unchanged)
+
+`legend` and every `_archetype_*__<world>.glb` per-world variant still use
+the three.js-sourced Mixamo characters from the previous pass (Soldier.glb
+→ warrior/guard/hunter's OLD per-world variants, Michelle.glb →
+scholar/mystic/trader's OLD per-world variants, Xbot.glb → legend) —
+sourced from `github.com/mrdoob/three.js`'s `examples/models/gltf/`
+(MIT-licensed repo; their own example page credits "model from
+mixamo.com"). Recoloring/re-authoring the per-world variants with more
+Rocketbox avatars (there are 115 to choose from) is a natural follow-up,
+not done in this pass for scope reasons.
+
+## The Three Above All (unchanged)
+
+The four named-entity meshes (`sovereign_first_refusal.glb`,
 `concord_first_thought.glb`, `concordia_first_breath.glb`,
-`weaver_of_echoes.glb`) are unchanged by this pass — they're lore-unique
-entities that deserve bespoke art rather than a reused stock rig, so they
-were deliberately left on the existing procedural-placeholder path pending
-dedicated authored work.
-
-Per-archetype files (including every world-suffixed variant) currently
-reuse one of these three base meshes verbatim — there's no per-world
-recoloring/retexturing pass yet. That's an honest limitation, not a
-regression: every NPC that reaches this fallback tier previously got a
-flat-shaded, untextured placeholder; now it gets a real, textured, rigged
-character. Differentiating per-world archetype looks (recoloring gear,
-swapping textures) is a natural follow-up, not a blocker for this upgrade.
+`weaver_of_echoes.glb`) remain untouched — lore-unique characters that
+deserve bespoke art rather than a reused stock rig.

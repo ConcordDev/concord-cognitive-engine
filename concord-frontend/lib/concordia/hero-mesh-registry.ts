@@ -134,14 +134,48 @@ const CANONICAL_BONES = [
   'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase',
 ];
 
-function buildBoneMap(root: THREE.Object3D): Map<string, THREE.Bone> {
+// 3ds Max Biped rig (Microsoft Rocketbox and other Max-authored characters
+// export with this convention) -> canonical Mixamo name. Space-separated,
+// not a prefix, so this needs an explicit table rather than a regex strip.
+const BIPED_TO_CANONICAL: Record<string, string> = {
+  'Bip01 Pelvis': 'Hips',
+  'Bip01 Spine': 'Spine',
+  'Bip01 Spine1': 'Spine1',
+  'Bip01 Spine2': 'Spine2',
+  'Bip01 Neck': 'Neck',
+  'Bip01 Head': 'Head',
+  'Bip01 L Clavicle': 'LeftShoulder',
+  'Bip01 L UpperArm': 'LeftArm',
+  'Bip01 L Forearm': 'LeftForeArm',
+  'Bip01 L Hand': 'LeftHand',
+  'Bip01 R Clavicle': 'RightShoulder',
+  'Bip01 R UpperArm': 'RightArm',
+  'Bip01 R Forearm': 'RightForeArm',
+  'Bip01 R Hand': 'RightHand',
+  'Bip01 L Thigh': 'LeftUpLeg',
+  'Bip01 L Calf': 'LeftLeg',
+  'Bip01 L Foot': 'LeftFoot',
+  'Bip01 L Toe0': 'LeftToeBase',
+  'Bip01 R Thigh': 'RightUpLeg',
+  'Bip01 R Calf': 'RightLeg',
+  'Bip01 R Foot': 'RightFoot',
+  'Bip01 R Toe0': 'RightToeBase',
+};
+
+/** Exported for tests — maps a loaded skeleton's actual bone names (Mixamo
+ *  or 3ds Max Biped) to canonical Mixamo bone names. */
+export function buildBoneMap(root: THREE.Object3D): Map<string, THREE.Bone> {
   const m = new Map<string, THREE.Bone>();
   root.traverse((obj) => {
     if (!(obj as THREE.Bone).isBone) return;
     const bone = obj as THREE.Bone;
-    let name = bone.name;
-    name = name.replace(/^mixamorig:?/i, '').replace(/^Armature\|/, '');
-    if (CANONICAL_BONES.includes(name)) m.set(name, bone);
+    const raw = bone.name;
+    const stripped = raw.replace(/^mixamorig:?/i, '').replace(/^Armature\|/, '');
+    if (CANONICAL_BONES.includes(stripped)) {
+      m.set(stripped, bone);
+    } else if (BIPED_TO_CANONICAL[raw]) {
+      m.set(BIPED_TO_CANONICAL[raw], bone);
+    }
   });
   return m;
 }
@@ -149,8 +183,8 @@ function buildBoneMap(root: THREE.Object3D): Map<string, THREE.Bone> {
 /** Cache control for tests. */
 export function clearHeroMeshCache(): void { cache.clear(); }
 
-export function getCachedHeroMesh(npcId: string): HeroMeshLoadResult | null {
-  return cache.get(npcId) ?? null;
+export function getCachedHeroMesh(npcId: string, homeWorldId?: string): HeroMeshLoadResult | null {
+  return cache.get(`${npcId}::${homeWorldId ?? ''}`) ?? null;
 }
 
 export const HERO_MESH_CONSTANTS = Object.freeze({
