@@ -48,6 +48,14 @@ import {
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
+
+// Module-level (not per-render) so TerrainRenderer's `lodCenter` prop keeps a
+// stable identity forever — an inline `{ x: 0, z: 0 }` literal in JSX is a
+// fresh object every render, which re-fires TerrainRenderer's terrain-build
+// effect (and the physics heightfield collider registration it drives) on
+// every re-render of this page. See `terrainDistricts` below for the same
+// fix applied to the `districts` prop.
+const TERRAIN_LOD_CENTER_ORIGIN = { x: 0, z: 0 };
 import { mapWorldBuildingToRendererDTU, type WorldBuildingRow } from '@/lib/world-lens/world-building-dto';
 import { worldToScene, sceneToWorldAxis } from '@/lib/world-lens/coord-frame';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
@@ -4496,6 +4504,24 @@ export default function WorldLensPage() {
     [worldBuildings]
   );
 
+  // TerrainRenderer's terrain-build effect depends on `districts` by
+  // reference — same unstable-prop class as `buildingRendererBuildings`
+  // above, but worse: it re-ran `buildTerrain()` (heavy: regenerates the
+  // heightmap, rebuilds the mesh, AND re-registers the Rapier physics
+  // heightfield collider) on every render of this page, not only when
+  // `worldBuildings` actually changed. `deriveTerrainZones(worldBuildings)`
+  // was previously called inline in JSX, allocating a fresh array every
+  // render. Physics compounded the churn: `createHeightfieldCollider` never
+  // removed the PRIOR collider before creating a new one (unlike its sibling
+  // `rebuildHeightfieldWithDeltas`), so this thrash piled up duplicate
+  // heightfield colliders in the same Rapier world — the actual root cause
+  // of the "memory access out of bounds" → cascading "recursive use of an
+  // object" WASM crash that made the World Lens unreliable.
+  const terrainDistricts = useMemo(
+    () => deriveTerrainZones(worldBuildings),
+    [worldBuildings]
+  );
+
   const handleAvatarMove = useCallback(
     (pos: { x: number; y: number; z: number }, rotation: number) => {
       // Update local avatar immediately for snappy response,
@@ -4847,8 +4873,8 @@ export default function WorldLensPage() {
               origin-centred scene frame (transformed at the fetch boundary via
               worldToScene), so it's consumed raw here. */}
           <TerrainRenderer
-            districts={deriveTerrainZones(worldBuildings)}
-            lodCenter={{ x: 0, z: 0 }}
+            districts={terrainDistricts}
+            lodCenter={TERRAIN_LOD_CENTER_ORIGIN}
             quality="medium"
           />
           <BuildingRenderer3D

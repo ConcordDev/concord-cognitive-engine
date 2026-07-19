@@ -213,6 +213,19 @@ class PhysicsWorld {
     this._guard('createHeightfieldCollider', () => {
       if (!this.RAPIER || !this.world) return;
       const RAPIER = this.RAPIER;
+      // Idempotency guard — a caller (e.g. TerrainRenderer's terrain-build
+      // effect re-firing because a parent re-render handed it new-identity
+      // `districts`/`lodCenter` props) can dispatch 'concordia:terrain-ready'
+      // more than once per scene. Without removing the PRIOR heightfield
+      // collider first, each re-fire piled up an additional collider in the
+      // same Rapier world — confirmed via a live crash trace to corrupt the
+      // WASM heap ("memory access out of bounds", cascading into "recursive
+      // use of an object" on every call after). Mirrors the remove-then-
+      // create pattern `rebuildHeightfieldWithDeltas` already uses below.
+      if (this._terrainCollider) {
+        try { this.world.removeCollider(this._terrainCollider, false); } catch { /* already gone */ }
+        this._terrainCollider = null;
+      }
       const desc = RAPIER.ColliderDesc.heightfield(
         hmHeight - 1,
         hmWidth  - 1,
