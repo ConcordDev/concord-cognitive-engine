@@ -49,6 +49,25 @@ export function TreeLayer({ worldId, biome = 'temperate_forest', quality = 'medi
       group = treeGroup;
       groupRef.current = treeGroup;
 
+      // Real-asset-first: pre-load whichever /public/models/vegetation/
+      // tree_NN.glb variants exist (CC0-sourced) once, up front, so the
+      // per-tree loop below can cheaply instance from cache instead of
+      // building L-system geometry. loadAsset() never throws — a missing
+      // variant just leaves that slot null and generateTree/renderTree keep
+      // producing the exact procedural tree this layer always has.
+      const { loadAsset, instanceFromCache, resolveAssetReference } = await import('@/lib/world-lens/asset-loader');
+      const TREE_VARIANTS = ['tree_01', 'tree_02', 'tree_03', 'tree_04'];
+      const realTreeUrls: string[] = [];
+      for (const id of TREE_VARIANTS) {
+        try {
+          const loaded = await loadAsset({ kind: 'vegetation', id }, THREE);
+          if (loaded) {
+            const url = await resolveAssetReference({ kind: 'vegetation', id });
+            if (url) realTreeUrls.push(url);
+          }
+        } catch { /* this variant unavailable — skip it */ }
+      }
+
       const b = bounds ?? { minX: -400, maxX: 400, minZ: -400, maxZ: 400 };
 
       // Deterministic per chunk: chunkIdx -> seed
@@ -67,8 +86,29 @@ export function TreeLayer({ worldId, biome = 'temperate_forest', quality = 'medi
         for (let t = 0; t < treesPerChunk; t++) {
           if (disposed) return;
           const treeSeed = `${seed}::${t}`;
-          const tree = generateTree(species, treeSeed);
-          const treeMesh = renderTree(THREE, tree, SPECIES[species]);
+          let treeMesh: InstanceType<typeof THREE.Group> | null = null;
+          if (realTreeUrls.length > 0) {
+            const pick = realTreeUrls[Math.floor(hashU(treeSeed + ':variant') * realTreeUrls.length)];
+            try {
+              const inst = await instanceFromCache(pick, THREE);
+              if (inst) {
+                const cloned = inst as InstanceType<typeof THREE.Group>;
+                // Real assets vary in scale/orientation from source
+                // authoring; normalize to roughly the procedural trees'
+                // footprint (~3-6 units tall) and randomize yaw for variety.
+                const box = new THREE.Box3().setFromObject(cloned);
+                const size = box.getSize(new THREE.Vector3());
+                const targetHeight = 3.5 + hashU(treeSeed + ':height') * 2.5;
+                if (size.y > 0.001) cloned.scale.multiplyScalar(targetHeight / size.y);
+                cloned.rotation.y = hashU(treeSeed + ':yaw') * Math.PI * 2;
+                treeMesh = cloned;
+              }
+            } catch { /* fall through to procedural for this one tree */ }
+          }
+          if (!treeMesh) {
+            const tree = generateTree(species, treeSeed);
+            treeMesh = renderTree(THREE, tree, SPECIES[species]);
+          }
           // Place inside the cell with jittered offset.
           const u1 = hashU(treeSeed + ':x');
           const u2 = hashU(treeSeed + ':z');

@@ -25,7 +25,8 @@ export type AssetKind =
   | "vehicle"
   | "prop"
   | "weapon"
-  | "vegetation";
+  | "vegetation"
+  | "creature";
 
 export interface AssetReference {
   kind: AssetKind;
