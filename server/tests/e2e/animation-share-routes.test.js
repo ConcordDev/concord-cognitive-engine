@@ -402,11 +402,23 @@ describe('Static source checks — the animation share route stays narrowly scop
       'no mutating HTTP verb should ever be registered under /api/animation/share/');
   });
 
-  it('"/api/animation/share/" is present in WRITE_AUTH_PUBLIC_PATHS, mirroring the welding portal precedent', async function () {
+  it('"/api/animation/share/" is intentionally ABSENT from WRITE_AUTH_PUBLIC_PATHS — unlike welding, it has no POST route to bypass for', async function () {
+    // Correction (authz-coverage security audit): the earlier version of this
+    // test required an entry here "mirroring the welding portal precedent",
+    // but that precedent doesn't actually apply. Welding's entry is load-
+    // bearing because /api/welding/portal/:token/{approve,pay} are REAL
+    // anonymous POST routes that need the bypass. Animation's share route is
+    // GET-only (pinned by the sibling test above) and productionWriteAuthMiddleware
+    // already returns next() for GET/HEAD/OPTIONS BEFORE it ever consults
+    // WRITE_AUTH_PUBLIC_PATHS — so an entry here would do nothing for the real
+    // GET flow while silently pre-authorizing any future POST/PUT/DELETE
+    // mistakenly added under this prefix. See server/server.js's
+    // WRITE_AUTH_PUBLIC_PATHS declaration comment for the same reasoning.
     const { readFileSync } = await import('node:fs');
     const src = readFileSync(SERVER_JS, 'utf8');
     const m = src.match(/const WRITE_AUTH_PUBLIC_PATHS = \[([^\]]*)\]/);
     assert.ok(m, 'WRITE_AUTH_PUBLIC_PATHS not found');
-    assert.ok(/["']\/api\/animation\/share\/["']/.test(m[1]));
+    assert.ok(!/["']\/api\/animation\/share\/["']/.test(m[1]),
+      'no /api/animation/share/ entry should be re-added to the write-auth bypass allowlist — the GET route does not need it');
   });
 });
