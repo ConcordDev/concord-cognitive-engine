@@ -177,6 +177,7 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
   // pre-existing forge_app DTU row — the in-place editor can spawn a
   // blank substrate and author it here.
   registerLensAction("sub_worlds", "spawn", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const badNum = badNumericField(params, ["capacity"]);
     if (badNum) return { ok: false, error: "bad_numeric_field", field: badNum };
@@ -215,7 +216,8 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     // record, which stays canonical for the lens itself.
     seedSubWorldStarterContent(ctx?.db, { worldId: w.world_id, kind: w.kind });
     return { ok: true, result: { world: publicView(w, actor(ctx)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── List own worlds ─────────────────────────────────────────────────
   registerLensAction("sub_worlds", "list", (ctx, _a, params = {}) => {

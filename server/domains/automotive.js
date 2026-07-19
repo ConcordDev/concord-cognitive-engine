@@ -399,6 +399,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   });
 
   registerLensAction("automotive", "vehicles-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const name = String(params.name || "").trim();
@@ -427,7 +428,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     listAu(s.vehicles, userId).push(vehicle);
     saveAuto();
     return { ok: true, result: { vehicle } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "vehicles-update", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };

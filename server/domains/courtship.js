@@ -79,6 +79,7 @@ export default function registerCourtshipMacros(register) {
    * input: { partnerKind?, partnerId, sentiment? }
    */
   register("courtship", "interact", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
@@ -86,7 +87,8 @@ export default function registerCourtshipMacros(register) {
     if (!input?.partnerId) return { ok: false, reason: "missing_inputs" };
     if (badSentiment(input)) return { ok: false, reason: "invalid_sentiment" };
     return courtInteraction(db, userId, partnerKindOf(input), String(input.partnerId), input?.sentiment);
-  }, { note: "courting interaction — shifts affinity" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "courting interaction — shifts affinity" });
 
   /**
    * courtship.propose — engagement. Gated at ROMANCE_CONSTANTS.ENGAGE_THRESHOLD

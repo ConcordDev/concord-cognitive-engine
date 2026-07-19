@@ -8,6 +8,7 @@ export default function registerHVACActions(registerLensAction) {
   const intNum = (v, d) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.floor(n) : d; };
 
   registerLensAction("hvac", "loadCalculation", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const sqft = num(data.squareFootage, 1000);
     const stories = intNum(data.stories, 1);
@@ -49,8 +50,10 @@ export default function registerHVACActions(registerLensAction) {
           ? "Cold climate — size for the heating load and consider a cold-climate heat pump or dual-fuel."
           : "Temperate climate — a properly-sealed SEER 14+ system meets this load.",
     } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("hvac", "energyAudit", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const monthlyBill = num(data.monthlyBill, 0);
     const sqft = num(data.squareFootage, 1000);
@@ -88,8 +91,10 @@ export default function registerHVACActions(registerLensAction) {
         ? "System is operating efficiently — keep up routine maintenance."
         : "Above-average cost per sqft — schedule a tune-up and check insulation/ductwork for recoverable savings.",
     } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("hvac", "maintenanceSchedule", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const systemType = (data.systemType || "central-ac").toLowerCase();
     const lastService = data.lastServiceDate ? new Date(data.lastServiceDate) : null;
@@ -132,8 +137,10 @@ export default function registerHVACActions(registerLensAction) {
         ? `${overdueCount} task${overdueCount === 1 ? "" : "s"} overdue — schedule a ${systemType} service visit.`
         : "On schedule — keep replacing the air filter every 1–3 months.",
     } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("hvac", "zoneBalance", (ctx, artifact, _params) => {
+  try {
     const zones = Array.isArray(artifact.data?.zones) ? artifact.data.zones : [];
     if (zones.length === 0) return { ok: true, result: { zones: [], maxDeviation: 0, avgDeviation: 0, balanced: true, verdict: "no zones", balanceScore: 100, recommendation: "Add zones with current + target temperatures to check balance.", message: "Add zones with temperatures to check balance." } };
     const temps = zones.map(z => {
@@ -159,7 +166,8 @@ export default function registerHVACActions(registerLensAction) {
       recommendations,
       recommendation: recommendations[0],
     } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─────────────────────────────────────────────────────────────────────
   // ServiceTitan / Housecall Pro parity — field-service management.

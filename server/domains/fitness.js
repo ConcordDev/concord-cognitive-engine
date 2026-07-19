@@ -10,6 +10,7 @@ export default function registerFitnessActions(registerLensAction) {
   const fclampN = (v, lo, hi, d = lo) => { const n = ffnum(v, d); return Math.max(lo, Math.min(hi, n)); };
 
   registerLensAction("fitness", "progressionCalc", (ctx, artifact, _params) => {
+  try {
     const exercises = Array.isArray(artifact.data?.exercises) ? artifact.data.exercises : [];
     const recommendations = exercises.map(ex => {
       // Weights/reps/RPE are clamped to physically-sane finite domains so a
@@ -31,7 +32,8 @@ export default function registerFitnessActions(registerLensAction) {
       };
     });
     return { ok: true, result: { recommendations } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "classUtilization", (ctx, artifact, params) => {
     const capacity = fclampN(artifact.data?.capacity, 0, 1000000, 0);
@@ -177,6 +179,7 @@ export default function registerFitnessActions(registerLensAction) {
   });
 
   registerLensAction("fitness", "periodization", (ctx, artifact, params) => {
+  try {
     // Clamp weeks to a finite, sane macrocycle length so a poisoned "1e999"
     // can't produce Infinity phase durations.
     const weeks = fclampN(params?.weeks ?? artifact.data?.weeks, 1, 104, 12);
@@ -194,7 +197,8 @@ export default function registerFitnessActions(registerLensAction) {
       phases.push({ name: 'Recovery', weeks: Math.max(1, weeks - phases.reduce((s, p) => s + p.weeks, 0)), sets: '2', reps: '10-12', intensity: '50-60%' });
     }
     return { ok: true, result: { program: artifact.title, goal, totalWeeks: weeks, phases } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "recruitProfile", (ctx, artifact, _params) => {
     const profile = {
@@ -301,6 +305,7 @@ export default function registerFitnessActions(registerLensAction) {
    * is fabricated.
    */
   registerLensAction("fitness", "recovery-history", (ctx, _artifact, params = {}) => {
+  try {
     const state = getFitState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
@@ -347,7 +352,8 @@ export default function registerFitnessActions(registerLensAction) {
           : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * activity-summary — Reads from STATE.fitnessLens.activityEntries,
@@ -355,6 +361,7 @@ export default function registerFitnessActions(registerLensAction) {
    * No synthesized Apple Fitness-style rings.
    */
   registerLensAction("fitness", "activity-summary", (ctx, _artifact, params = {}) => {
+  try {
     const state = getFitState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
@@ -397,7 +404,8 @@ export default function registerFitnessActions(registerLensAction) {
           : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * workout-plan-generate — Conscious-brain generated multi-week plan.

@@ -276,6 +276,7 @@ export default function registerSessionsMacros(register) {
    * input: { lensId?, status?, limit? }
    */
   register("sessions", "list_mine", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
@@ -310,7 +311,8 @@ export default function registerSessionsMacros(register) {
       })),
       total: rows.length,
     };
-  }, { note: "list caller's sessions" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "list caller's sessions" });
 
   /**
    * sessions.close — transition to 'completed' or 'abandoned'.

@@ -77,6 +77,7 @@ export default function registerMeditationActions(registerLensAction) {
    * rewired off the old dead artifact-based store).
    */
   registerLensAction("meditation", "streakSummary", (ctx, _artifact, _params) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sessions = medList(s.sessions, medActor(ctx));
     if (sessions.length === 0) {
@@ -113,7 +114,8 @@ export default function registerMeditationActions(registerLensAction) {
         lastSessionAt: sessions[sessions.length - 1]?.completedAt || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * dailyPrompt — return a deterministic mindful-presence prompt for

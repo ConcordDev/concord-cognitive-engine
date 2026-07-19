@@ -1601,6 +1601,7 @@ export default function registerParentingActions(registerLensAction) {
   }
 
   registerLensAction("parenting", "event-add", (ctx, _a, params = {}) => {
+  try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.events instanceof Map)) s.events = new Map();
     const userId = pgAid(ctx);
@@ -1640,9 +1641,11 @@ export default function registerParentingActions(registerLensAction) {
     pgListB(s.events, userId).push(entry);
     savePgState();
     return { ok: true, result: { event: entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("parenting", "event-list", (ctx, _a, params = {}) => {
+  try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.events instanceof Map)) s.events = new Map();
     const userId = pgAid(ctx);
@@ -1660,9 +1663,11 @@ export default function registerParentingActions(registerLensAction) {
       ok: true,
       result: { events: all, count: all.length, nextUp: upcoming[0] || null },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("parenting", "event-update", (ctx, _a, params = {}) => {
+  try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.events instanceof Map)) s.events = new Map();
     const userId = pgAid(ctx);
@@ -1718,7 +1723,8 @@ export default function registerParentingActions(registerLensAction) {
     if (params.notes !== undefined) evt.notes = pgClean(params.notes, 300) || null;
     savePgState();
     return { ok: true, result: { event: evt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("parenting", "event-delete", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };

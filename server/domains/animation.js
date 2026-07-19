@@ -398,6 +398,7 @@ export default function registerAnimationActions(registerLensAction) {
   });
 
   registerLensAction("animation", "frame-duplicate", (ctx, _a, params = {}) => {
+  try {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
@@ -423,7 +424,8 @@ export default function registerAnimationActions(registerLensAction) {
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { frame: copy, index: idx + 1 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("animation", "frame-delete", (ctx, _a, params = {}) => {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -525,6 +527,7 @@ export default function registerAnimationActions(registerLensAction) {
   // + display opacity on a dedicated layer the canvas renders as an
   // underlay. Same guard shape as frame-layer-add.
   registerLensAction("animation", "frame-layer-import-image", (ctx, _a, params = {}) => {
+  try {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
@@ -542,7 +545,8 @@ export default function registerAnimationActions(registerLensAction) {
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { layer: { ...layer, strokes: undefined, strokeCount: 0 } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Strokes (commit to the active layer of a frame) ─────────────────
   registerLensAction("animation", "anim-stroke-commit", (ctx, _a, params = {}) => {

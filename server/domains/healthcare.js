@@ -554,6 +554,7 @@ export default function registerHealthcareActions(registerLensAction) {
    * Cerner HealtheLife, Apple HealthKit clinical records).
    */
   registerLensAction("healthcare", "record-get", (ctx, _artifact, _params = {}) => {
+  try {
     const state = getHealthState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const record = state.records.get(userId) || null;
@@ -568,7 +569,8 @@ export default function registerHealthcareActions(registerLensAction) {
       };
     }
     return { ok: true, result: record };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "providers-search", async (_ctx, _artifact, params = {}) => {
     // Real provider search via the CMS National Plan and Provider Enumeration

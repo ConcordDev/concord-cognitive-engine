@@ -198,6 +198,7 @@ export default function registerQuestsMacros(register) {
    * input: { questId, userId?, worldId? }  → { ok, rewards } | { ok:false, error }
    */
   register("quests", "claimRewards", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctxUser(ctx, input);
@@ -205,7 +206,8 @@ export default function registerQuestsMacros(register) {
     if (!input.questId) return { ok: false, reason: "no_quest_id" };
     const worldId = ctxWorld(ctx, input);
     return claimQuestRewards(db, userId, worldId, input.questId);
-  }, { note: "claim a completed quest's rewards (idempotent — once only)" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "claim a completed quest's rewards (idempotent — once only)" });
 
   /**
    * quests.addObjectives — author structured objectives onto a quest (used by

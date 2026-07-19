@@ -391,6 +391,7 @@ export default function registerSimActions(registerLensAction) {
   });
 
   registerLensAction("sim", "monteCarlo", (ctx, artifact, params) => {
+  try {
     const trials = Math.min(parseInt(artifact.data?.trials) || 1000, 10000);
     const variables = artifact.data?.variables || [];
     const formula = artifact.data?.formula || "sum";
@@ -438,7 +439,8 @@ export default function registerSimActions(registerLensAction) {
     const p75 = results[Math.floor(trials * 0.75)];
     const p95 = results[Math.floor(trials * 0.95)];
     return { ok: true, result: { trials, formula, seeded, seed, mean: Math.round(mean * 1000) / 1000, stddev: Math.round(Math.sqrt(variance) * 1000) / 1000, min: Math.round(results[0] * 1000) / 1000, max: Math.round(results[trials - 1] * 1000) / 1000, percentiles: { p5: Math.round(p5 * 1000) / 1000, p25: Math.round(p25 * 1000) / 1000, p50: Math.round(p50 * 1000) / 1000, p75: Math.round(p75 * 1000) / 1000, p95: Math.round(p95 * 1000) / 1000 }, confidenceInterval90: { lower: Math.round(p5 * 1000) / 1000, upper: Math.round(p95 * 1000) / 1000 } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("sim", "sensitivityAnalysis", (ctx, artifact, _params) => {
   try {

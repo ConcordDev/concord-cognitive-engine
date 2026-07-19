@@ -156,6 +156,7 @@ export default function registerReasoningActions(registerLensAction) {
   // deepAnalysis — runs validate + fallacy-scan + premise-extract together
   // against one argument (accepts premises/conclusion OR free text).
   registerLensAction("reasoning", "deepAnalysis", (ctx, artifact, params) => {
+  try {
     const premises = artifact.data?.premises || params?.premises || [];
     const conclusion = artifact.data?.conclusion || params?.conclusion || "";
     const text = artifact.data?.text || artifact.data?.argument || params?.text || params?.argument
@@ -171,7 +172,8 @@ export default function registerReasoningActions(registerLensAction) {
         premises: premiseExtractCore(text),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // strengthAssessment — argument-map strength scoring, deriving a claims
   // graph from premises/conclusion when no explicit graph is supplied.
@@ -213,6 +215,7 @@ export default function registerReasoningActions(registerLensAction) {
   // This is still a rule-based critique engine, not an argumentation-theory
   // reasoner — the broadening is more real signals, not more inference.
   registerLensAction("reasoning", "counterArgumentGen", (ctx, artifact, params) => {
+  try {
     const premises = artifact.data?.premises || params?.premises || [];
     const conclusion = artifact.data?.conclusion || params?.conclusion || "";
     const text = artifact.data?.text || artifact.data?.argument || params?.text || params?.argument
@@ -287,7 +290,8 @@ export default function registerReasoningActions(registerLensAction) {
         ...(mapMeta ? { map: mapMeta } : {}),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /* ================================================================ */
   /*  Persistent argument-map substrate                                */

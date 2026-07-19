@@ -12588,6 +12588,7 @@ const approvalRatio = decisiveVotes > 0 ? (approveCount / decisiveVotes) : 0;
 // `terminal_approve` (see both `allowMacro("entity","terminal_pending",...)`
 // call sites, which mirror the two `terminal_approve` registrations exactly).
 register("entity", "terminal_pending", async (ctx, _input={}) => {
+  try {
   ensureQueues();
   const voterId = String(ctx?.actor?.userId || "");
   const all = STATE.queues?.terminalRequests || [];
@@ -12632,6 +12633,7 @@ register("entity", "terminal_pending", async (ctx, _input={}) => {
     .map(summarize);
 
   return { ok: true, pending, recentHistory };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, {
   summary: "List pending (and recent resolved) entity terminal council-approval proposals (read-only, council-gated)",
   public: false
@@ -12748,6 +12750,7 @@ register("multimodal","image_generate", (ctx, input={}) => {
 }, { public:false });
 
 register("voice","transcribe", async (ctx, input={}) => {
+  try {
   enforceEthosInvariant("transcribe_audio");
   const flags = _c3sessionFlags(ctx);
   if (!ctx.state.__chicken3?.voiceEnabled) return { ok:false, error:"voice disabled" };
@@ -12766,6 +12769,7 @@ register("voice","transcribe", async (ctx, input={}) => {
   }
 
   return { ok:false, error:"No transcription backend configured. Set WHISPER_CPP_BIN (local whisper.cpp)" };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public:false });
 
 register("voice","tts", async (ctx, input={}) => {
@@ -13702,8 +13706,10 @@ register("attention", "queue", (ctx, _input = {}) => {
 }, { public: true });
 
 register("attention", "add_background", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("attention_background");
   return addBackgroundTask(input);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: false });
 
 // ===== END ATTENTION MANAGEMENT MACROS =====
@@ -13919,8 +13925,10 @@ register("grounding", "pending_actions", (ctx, _input = {}) => {
 }, { public: true });
 
 register("grounding", "context", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("grounding_context");
   return { ok: true, context: getCurrentGroundedContext() };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("grounding", "recent_readings", (ctx, input = {}) => {
@@ -14204,15 +14212,19 @@ register("metacognition", "adapt_strategy", (ctx, input = {}) => {
 }, { public: true });
 
 register("metacognition", "introspection_status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("metacognition_introspection_status");
   return getIntrospectionStatus();
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("metacognition", "adjust_confidence", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("metacognition_adjust_confidence");
   const domain = String(input.domain || "general");
   const confidence = clamp(Number(input.confidence || 0.5), 0, 1);
   return adjustConfidenceFromLearning(domain, confidence);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // recordPrediction()/resolvePrediction() persist into STATE.metacognition.predictions
@@ -14248,6 +14260,7 @@ register("metacognition", "assessments_list", (ctx, _input = {}) => {
 // ===== EXPLANATION ENGINE MACROS =====
 
 register("explanation", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("explanation_status");
   ensureExplanationEngine();
   return {
@@ -14256,6 +14269,7 @@ register("explanation", "status", (ctx, _input = {}) => {
     stats: ctx.state.explanations.stats,
     invariants: EXPLANATION_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("explanation", "generate", (ctx, input = {}) => {
@@ -14274,11 +14288,13 @@ register("explanation", "explain_dtu", (ctx, input = {}) => {
 }, { public: true });
 
 register("explanation", "recent", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("explanation_recent");
   ensureExplanationEngine();
   const limit = clamp(Number(input.limit || 20), 1, 100);
   const explanations = ctx.state.explanations.generated.slice(-limit);
   return { ok: true, explanations };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END EXPLANATION ENGINE MACROS =====
@@ -14328,24 +14344,30 @@ register("metalearning", "curriculum", (ctx, input = {}) => {
 }, { public: true });
 
 register("metalearning", "best_strategy", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("metalearning_best");
   const domain = String(input.domain || "general");
   return getBestStrategy(domain);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("metalearning", "list_strategies", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("metalearning_list");
   ensureMetaLearningSystem();
   const strategies = Array.from(ctx.state.metaLearning.strategies.values())
     .map(s => ({ id: s.id, name: s.name, domain: s.domain, uses: s.uses, avgPerformance: s.avgPerformance }));
   return { ok: true, strategies };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("metalearning", "adaptations", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("metalearning_adaptations");
   ensureMetaLearningSystem();
   const adaptations = ctx.state.metaLearning.adaptations.slice(-30);
   return { ok: true, adaptations };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END META-LEARNING MACROS =====
@@ -28715,6 +28737,7 @@ register("research", "truthgate.check", (ctx, input) => {
 // nothing here invents facts; each is deterministic (matches the existing
 // research.generate / research.literature-review honest-fallback pattern).
 register("hypothesis", "generate", async (ctx, input = {}) => {
+  try {
   const topic = normalizeText(input.topic || "").trim();
   if (!topic) return { ok: false, error: "topic required" };
   const count = Math.max(1, Math.min(10, Number(input.count) || 5));
@@ -28755,6 +28778,7 @@ register("hypothesis", "generate", async (ctx, input = {}) => {
     if (r?.ok && r.hypothesis) items.push(r.hypothesis);
   }
   return { ok: true, items };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { summary: "Generate falsifiable hypothesis candidates from a topic + substrate context (deterministic, persists via the hypothesis engine)." });
 
 register("research", "cross-domain-scan", async (ctx, input = {}) => {
@@ -41928,6 +41952,7 @@ registerLensAction("forum", "moderate", (ctx, artifact, params) => {
   return { ok: true, moderation: { action, moderatedAt: nowISO() } };
 });
 registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
+  try {
   const d = artifact.data || {};
   // Real forum posts track one net `score` (+ the caller's own `userVote`) —
   // there is no per-voter up/down ledger. Derive an honest split from the net
@@ -41964,6 +41989,7 @@ registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
       rankedAt: nowISO()
     }
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 registerLensAction("forum", "extract_thesis", (ctx, artifact, _params) => {
   const body = artifact.data?.content || artifact.data?.body || artifact.title || "";

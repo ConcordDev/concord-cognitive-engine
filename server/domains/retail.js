@@ -734,6 +734,7 @@ export default function registerRetailActions(registerLensAction) {
   }
 
   registerLensAction("retail", "product-list", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getRetailState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
@@ -753,9 +754,11 @@ export default function registerRetailActions(registerLensAction) {
       return { ...p, abcClass };
     });
     return { ok: true, result: { products, abcSummary: { A: aCount, B: bCount, C: cCount, unclassified } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("retail", "product-upsert", (ctx, _artifact, params = {}) => {
+  try {
     const s = getRetailState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
@@ -827,7 +830,8 @@ export default function registerRetailActions(registerLensAction) {
     s.products.get(userId).set(sku, product);
     saveRetailState();
     return { ok: true, result: { product } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Read-only view of the auto-appended price-change audit trail for one
   // SKU. Kept as a dedicated macro (rather than requiring the whole

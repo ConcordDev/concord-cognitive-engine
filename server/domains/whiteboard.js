@@ -438,6 +438,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   }
 
   registerLensAction("whiteboard", "share-board", (ctx, _artifact, params = {}) => {
+  try {
     const s = getWhiteboardState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
@@ -471,7 +472,8 @@ export default function registerWhiteboardActions(registerLensAction) {
     s.sharedBoards.set(sharedId, board);
     saveWhiteboardState();
     return { ok: true, result: { board: sharedBoardSummary(board), sharedWith: invited.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("whiteboard", "shared-list", (ctx, _artifact, _params = {}) => {
     const s = getWhiteboardState();
