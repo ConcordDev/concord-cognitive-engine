@@ -1024,7 +1024,7 @@ class PhysicsWorld {
   // Each projectile is a small dynamic body with a sphere collider, ballistic
   // trajectory under gravity, and a TTL after which it auto-disposes.
 
-  private projectiles: Map<string, { body: RigidBody; spawnedAt: number; ttl: number; ownerId?: string; damage?: number; onHit?: (hitEntityId: string) => void }> = new Map();
+  private projectiles: Map<string, { body: RigidBody; collider: Collider; spawnedAt: number; ttl: number; ownerId?: string; damage?: number; onHit?: (hitEntityId: string) => void }> = new Map();
 
   /**
    * Spawn a projectile with an initial velocity. Returns its physics id.
@@ -1056,10 +1056,11 @@ class PhysicsWorld {
       .setRestitution(0.2)
       .setFriction(0.3)
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-    this.world.createCollider(collDesc, body);
+    const collider = this.world.createCollider(collDesc, body);
 
     this.projectiles.set(id, {
       body,
+      collider,
       spawnedAt: performance.now(),
       ttl:       opts.ttlMs ?? 6000,
       ownerId:   opts.ownerId,
@@ -1094,19 +1095,57 @@ class PhysicsWorld {
 
       // Hit detection: scan colliders touching the projectile.
       // Rapier doesn't expose contact events without an EventQueue; we use a
-      // proximity narrow-phase check via intersectionsWith. The bodies' user
-      // data carries an `entityId` set by spawn helpers.
-      const projCollider = this.world.getCollider(0);
-      let hit: { entityId: string } | null = null;
+      // direct contact-manifold query instead.
+      //
+      // Three independent bugs fixed here together (all surfaced chasing
+      // the same CI crash):
+      //  1. `intersectionPair`/`intersectionPairsWith` only report a result
+      //     when AT LEAST ONE of the two colliders is a sensor (per Rapier's
+      //     own docs) — neither the projectile nor any target collider here
+      //     is a sensor, so `intersectionPair` always returned false. The
+      //     ORIGINAL code masked this with `|| this.world.intersectionPairsWith`
+      //     — referencing a method without calling it is always truthy, so
+      //     that clause silently always evaluated true, making every
+      //     projectile "hit" the very first non-owner collider iterated
+      //     regardless of actual proximity. Fixed by using `contactPair`,
+      //     which reports real contact manifolds between two solid
+      //     colliders (verified empirically: true for overlapping, false
+      //     for two colliders 100 units apart).
+      //  2. `this.world.getCollider(0)` does NOT mean "this projectile's own
+      //     collider" — Rapier collider handles are not small sequential
+      //     integers (confirmed: two colliders in a fresh world had handles
+      //     0 and 5e-324), so `getCollider(0)` returns whatever collider
+      //     happens to hold literal handle 0 in the WHOLE world (in practice
+      //     the first-ever-created collider, e.g. terrain or another actor)
+      //     — never reliably the current projectile in this loop iteration.
+      //     Fixed by capturing the collider `spawnProjectile` actually
+      //     creates and storing it on the projectile record.
+      //  3. forEachCollider holds a Rust-side borrow of the world's collider
+      //     set for the duration of its callback. Calling ANY other
+      //     world-borrowing method from inside that callback is a
+      //     recursive/re-entrant borrow — wasm-bindgen's runtime borrow
+      //     check panics ("recursive use of an object detected which would
+      //     lead to unsafe aliasing in rust"), which crashed the renderer
+      //     (SEGV) under CI (E2E Core perf.spec.ts, 2026-07-06 +
+      //     2026-07-19). Fixed by collecting candidate colliders in the
+      //     read-only iteration, then querying contacts in a separate pass
+      //     once the borrow is released.
+      const projCollider = p.collider;
+      const candidates: Collider[] = [];
       this.world.forEachCollider(c => {
-        if (hit) return;
         if (c.parent()?.handle === p.body.handle) return;
-        if (this.world!.intersectionPair(c, projCollider!) || (this.world as unknown as { intersectionPairsWith?: (c: unknown, cb: (other: unknown) => void) => void }).intersectionPairsWith) {
+        candidates.push(c);
+      });
+      let hit: { entityId: string } | null = null;
+      for (const c of candidates) {
+        let touching = false;
+        this.world.contactPair(c, projCollider, () => { touching = true; });
+        if (touching) {
           const other = c.parent();
           const ud = other ? (other.userData as { entityId?: string } | undefined) : undefined;
-          if (ud?.entityId && ud.entityId !== p.ownerId) hit = { entityId: ud.entityId };
+          if (ud?.entityId && ud.entityId !== p.ownerId) { hit = { entityId: ud.entityId }; break; }
         }
-      });
+      }
       if (hit) {
         const hitInfo = hit as { entityId: string };
         try { p.onHit?.(hitInfo.entityId); } catch { /* listener best-effort */ }
