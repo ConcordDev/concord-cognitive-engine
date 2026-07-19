@@ -211,15 +211,15 @@ for (const worldId of CANON_WORLDS) {
         await page.goto(`/lenses/world?district=${worldId}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await page.waitForTimeout(2_500);
 
-        // Click the "Explore 3D" tab — the lens defaults to 2D overview;
-        // the canvas only mounts when explore mode is selected.
-        const explore = page.locator('button:has-text("Explore 3D"), [role="tab"]:has-text("Explore 3D")').first();
-        if (await explore.isVisible({ timeout: 5_000 }).catch(() => false)) {
-          await explore.click();
-          // Initial intro card sits over a 0-FPS canvas for ~3s. Wait
-          // long enough for the lore beat to fade and the terrain to draw.
-          await page.waitForTimeout(8_000);
-        }
+        // The World Lens is 3D-first by design (viewMode defaults to
+        // 'explore' — see app/lenses/world/page.tsx) so the canvas is
+        // already mounting; no tab click needed. This used to click a tab
+        // literally labeled "Explore 3D" before that button was relabeled
+        // "World (3D)" — the stale locator never matched, which silently
+        // skipped the settle wait below and made every screenshot land ~3s
+        // into the entry-overlay lore beat instead of the settled scene.
+        // Wait the same window unconditionally now that no click gates it.
+        await page.waitForTimeout(8_000);
 
         const canvas = page.locator('canvas').first();
         await canvas.waitFor({ state: 'attached', timeout: 10_000 }).catch(() => { /* not fatal */ });
