@@ -58,6 +58,34 @@ function stripComments(s) {
   return out;
 }
 
+// Same length as the input (so byte offsets stay valid against the ORIGINAL
+// source) but with every comment and string/template-literal body blanked to
+// spaces (newlines preserved). Used only to LOCATE genuine `it(`/`test(` call
+// sites — a naive regex scan of raw source matches "it (" / "test(" occurring
+// inside prose comments (e.g. "delete it (it doesn't exist)") or inside a
+// test's own descriptive name string (e.g. "…go with it (no dangling
+// references)"), misidentifying them as call sites. Once a real call site is
+// located this way, callText() re-reads the call from the ORIGINAL src (not
+// this masked copy) so string contents are intact for name-extraction and
+// assertion-body analysis.
+function maskNonCode(s) {
+  let out = "", i = 0; const n = s.length; let q = null;
+  while (i < n) {
+    const c = s[i], d = s[i + 1];
+    if (q) {
+      out += c === "\n" ? "\n" : " ";
+      if (c === "\\") { out += d === "\n" ? "\n" : " "; i += 2; continue; }
+      if (c === q) q = null;
+      i++; continue;
+    }
+    if (c === '"' || c === "'" || c === "`") { q = c; out += " "; i++; continue; }
+    if (c === "/" && d === "/") { while (i < n && s[i] !== "\n") { out += " "; i++; } continue; }
+    if (c === "/" && d === "*") { out += "  "; i += 2; while (i < n && !(s[i] === "*" && s[i + 1] === "/")) { out += s[i] === "\n" ? "\n" : " "; i++; } out += "  "; i += 2; continue; }
+    out += c; i++;
+  }
+  return out;
+}
+
 // A test body is "substantive" if it asserts something beyond shape: a result
 // FIELD other than `ok`, a round-trip search, a structural/value comparison, or
 // an explicit rejection. Bare `assert.equal(r.ok, true)` / typeof-object do NOT
@@ -93,16 +121,34 @@ for (const f of files) {
   if (/@depth-todo|\bit\.todo\b|\btest\.todo\b|\.todo\s*\(/.test(src)) {
     problems.push(`${rel}: contains an unfinished scaffold marker (@depth-todo / it.todo) — complete it before merge.`);
   }
-  // each it("name", … ) / it("name", {opts}, …)
+  // Locate genuine call sites against a MASKED copy (comments + string/
+  // template bodies blanked, same length as `src`) so prose like "delete it
+  // (it doesn't exist)" in a doc comment, or a test's own descriptive name
+  // like "…go with it (no dangling references)", can't be mistaken for a call
+  // site — a naive regex scan of raw source walks into both. Once a real call
+  // site is located, callText() re-reads it from the ORIGINAL src so string
+  // contents are intact for name-extraction and assertion-body analysis.
+  const maskedSrc = maskNonCode(src);
+  // each it("name", … ) / it("name", {opts}, …) / t.test("name", …) subtest
   const re = /\b(?:it|test)\s*\(/g;
   let m;
-  while ((m = re.exec(src)) != null) {
+  while ((m = re.exec(maskedSrc)) != null) {
     const open = m.index + m[0].length - 1;
-    const body = stripComments(callText(src, open));
-    itCount++;
+    const body = callText(src, open);
     const nameMatch = /^\(\s*["'`]([^"'`]+)["'`]/.exec(body);
     const name = nameMatch ? nameMatch[1] : "(anonymous)";
-    if (!isSubstantive(body)) {
+    // `RegExp.prototype.test(str)` / `String.prototype.test(...)` calls (e.g.
+    // `/pattern/i.test(e)`, very common in these files' own assertions) match
+    // the same `test(` token as a real node:test test-definition. Genuine test
+    // calls — including `t.test("name", fn)` subtests, which ARE preceded by a
+    // dot — always start with a string-literal name; a `.test(` call whose
+    // first argument is NOT a string literal is the RegExp/String method, not
+    // a test definition, and must be excluded entirely (not counted, not
+    // flagged) rather than mis-scored as an anonymous shape-only test.
+    const precededByDot = /\.\s*$/.test(maskedSrc.slice(Math.max(0, m.index - 10), m.index));
+    if (precededByDot && !nameMatch) continue;
+    itCount++;
+    if (!isSubstantive(stripComments(body))) {
       problems.push(`${rel}: it("${name.slice(0, 60)}") has no substantive assertion (shape-only). Assert a result field / round-trip / rejection.`);
     }
   }

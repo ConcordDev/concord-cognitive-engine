@@ -787,6 +787,7 @@ export default function registerChemActions(registerLensAction) {
   }
 
   registerLensAction("chem", "periodic-table", (_ctx, _artifact, _params = {}) => {
+  try {
     const elements = {};
     for (const [symbol, el] of Object.entries(PERIODIC_TABLE)) {
       const { group, period } = groupPeriodForZ(el.z);
@@ -799,7 +800,8 @@ export default function registerChemActions(registerLensAction) {
       };
     }
     return { ok: true, result: { elements, count: Object.keys(elements).length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Molecular weight calculator (parses simple formulas like H2O, NaCl, C6H12O6) ──
 

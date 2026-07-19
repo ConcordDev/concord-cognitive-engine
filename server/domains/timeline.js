@@ -653,6 +653,7 @@ export default function registerTimelineActions(registerLensAction) {
 
   // List comments for a post as a nested thread tree.
   registerLensAction("timeline", "comment-list", (ctx, _a, params = {}) => {
+  try {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
@@ -668,7 +669,8 @@ export default function registerTimelineActions(registerLensAction) {
       else roots.push(c);
     }
     return { ok: true, result: { thread: roots, total: flat.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("timeline", "comment-delete", (ctx, _a, params = {}) => {
     const s = getTlState();
@@ -731,6 +733,7 @@ export default function registerTimelineActions(registerLensAction) {
 
   // Full "who reacted" breakdown for a post.
   registerLensAction("timeline", "reactions-breakdown", (ctx, _a, params = {}) => {
+  try {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
@@ -751,10 +754,12 @@ export default function registerTimelineActions(registerLensAction) {
         reactors: list.map((r) => ({ userId: r.userId, kind: r.kind, at: r.at })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Share / repost ─────────────────────────────────────────────────────
   registerLensAction("timeline", "share-post", (ctx, _a, params = {}) => {
+  try {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
@@ -795,7 +800,8 @@ export default function registerTimelineActions(registerLensAction) {
     pushNotif(s, found.post.authorId, actorId, "share", { postId: found.post.id });
     saveTlState();
     return { ok: true, result: { post: shared } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Media albums ───────────────────────────────────────────────────────
   registerLensAction("timeline", "album-create", (ctx, _a, params = {}) => {

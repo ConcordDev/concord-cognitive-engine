@@ -285,7 +285,7 @@ describe("system — cognitive-OS macros (deterministic invariants)", () => {
   it("status: real DTU count never exceeds the raw count; version + uptime contract", async () => {
     const r = await runMacro("system", "status", {}, ctx);
     assert.equal(r.ok, true);
-    assert.equal(r.version, "5.1.0");
+    assert.equal(r.version, "1.0.0");
     // Filtered (real) DTU count is a subset of the raw count.
     assert.ok(r.counts.dtus <= r.counts.dtusRaw);
     assert.ok(r.counts.dtus >= 0);

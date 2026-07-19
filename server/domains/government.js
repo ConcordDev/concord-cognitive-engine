@@ -1478,6 +1478,7 @@ export default function registerGovernmentActions(registerLensAction) {
   const _arr = (v) => Array.isArray(v) ? v : [];
 
   registerLensAction("government", "budget_report", (ctx, artifact, _p = {}) => {
+  try {
     const d = artifact.data || {};
     const lines = _arr(d.lineItems || d.expenses || d.allocations);
     const totalBudget = _num(d.budget ?? d.totalBudget ?? lines.reduce((s, l) => s + _num(l?.budgeted ?? l?.amount), 0));
@@ -1492,9 +1493,11 @@ export default function registerGovernmentActions(registerLensAction) {
     const byCategory = {};
     for (const l of lines) { const c = String(l?.category || l?.name || "general"); byCategory[c] = (byCategory[c] || 0) + _num(l?.spent ?? l?.amount); }
     return { ok: true, result: { entity: artifact.title || "budget", totalBudget, spent, remaining: Math.round((totalBudget - spent) * 100) / 100, utilizationPct: totalBudget > 0 ? Math.round((spent / totalBudget) * 1000) / 10 : 0, lineCount: lines.length, byCategory } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("government", "citizen_impact_report", (ctx, artifact, _p = {}) => {
+  try {
     const d = artifact.data || {};
     // Honest-by-construction: the real Public Works editor has no numeric
     // population/impact-area fields, only a free-text "Citizen Impact
@@ -1514,7 +1517,8 @@ export default function registerGovernmentActions(registerLensAction) {
         ? `${artifact.title || "This action"}: ${narrative}`
         : `${artifact.title || "This action"} — no impact data recorded.`;
     return { ok: true, result: { subject: artifact.title || "initiative", affectedPopulation: hasNumericImpact ? affected : null, impactAreas: areas, areaCount: areas.length, severity, narrativeImpact: narrative || null, summary } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("government", "compliance_check", (ctx, artifact, _p = {}) => {
     const d = artifact.data || {};
@@ -1549,6 +1553,7 @@ export default function registerGovernmentActions(registerLensAction) {
   });
 
   registerLensAction("government", "fee_collection_status", (ctx, artifact, _p = {}) => {
+  try {
     const d = artifact.data || {};
     const fees = _arr(d.fees || d.charges);
     // The real Court Admin editor has flat feesCollected/feesOwed numbers,
@@ -1569,9 +1574,11 @@ export default function registerGovernmentActions(registerLensAction) {
       return { ok: true, result: { account: artifact.title || "account", feeCount: 0, totalDue: 0, collected: 0, outstanding: 0, collectionRatePct: null, status: "no_fees_on_record" } };
     }
     return { ok: true, result: { account: artifact.title || "account", feeCount: fees.length, totalDue, collected, outstanding: Math.round((totalDue - collected) * 100) / 100, collectionRatePct: totalDue > 0 ? Math.round((collected / totalDue) * 1000) / 10 : 100, status: collected >= totalDue ? "paid_in_full" : collected > 0 ? "partial" : "unpaid" } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("government", "fine_calculation", (ctx, artifact, _p = {}) => {
+  try {
     const d = artifact.data || {};
     const base = _num(d.baseFine ?? d.fineAmount ?? 100, 100);
     const daysPast = _num(d.daysPastDue ?? d.daysLate ?? 0);
@@ -1580,7 +1587,8 @@ export default function registerGovernmentActions(registerLensAction) {
     const lateFee = Math.round(base * lateRate * daysPast * 100) / 100;
     const total = Math.round((base * violations + lateFee) * 100) / 100;
     return { ok: true, result: { subject: artifact.title || "violation", baseFine: base, violationCount: violations, daysPastDue: daysPast, lateFee, total, breakdown: `${violations}×$${base} base + $${lateFee} late (${daysPast}d) = $${total}` } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("government", "milestone_update", (ctx, artifact, _p = {}) => {
     const d = artifact.data || {};

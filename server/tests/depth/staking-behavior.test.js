@@ -164,7 +164,18 @@ describe("staking — pool catalog + reward estimation (exact computed values)",
 
 describe("staking — open / list / validation lifecycle (shared ctx)", () => {
   let ctx;
-  before(async () => { ctx = await depthCtx("staking-life"); await fundStaker(ctx); });
+  let baselinePrincipalCc;
+  before(async () => {
+    ctx = await depthCtx("staking-life");
+    await fundStaker(ctx);
+    // depthCtx's label is a fixed string, so this actor is not guaranteed to
+    // be pristine (a prior run against a reused local dev DB, or this suite
+    // re-entering the same describe, can leave positions behind). Capture
+    // whatever's already there and assert DELTAS below instead of hardcoded
+    // absolute totals — robust regardless of what state preceded this run.
+    const before_ = await lensRun("staking", "list_positions", {}, ctx);
+    baselinePrincipalCc = before_.result.totalPrincipalCc;
+  });
 
   it("open_stake: opens an active position with the correct locked APR + unlock time", async () => {
     const r = await lensRun("staking", "open_stake", {
@@ -196,9 +207,12 @@ describe("staking — open / list / validation lifecycle (shared ctx)", () => {
 
   it("list_positions: totals only active principal + live accrued yield", async () => {
     const r = await lensRun("staking", "list_positions", {}, ctx);
-    // The two opens above are both active: 1000 + 200 principal.
+    // The two opens above are both active: 1000 + 200 principal, ON TOP OF
+    // whatever baseline this actor already carried (see the describe's
+    // before() — asserting the delta, not an absolute total, is what makes
+    // this robust to pre-existing state).
     assert.ok(r.result.count >= 2);
-    assert.equal(r.result.totalPrincipalCc, 1200);
+    assert.equal(r.result.totalPrincipalCc - baselinePrincipalCc, 1200);
     // Fresh positions barely accrued (elapsed ~0) → ~0 yield, never negative.
     assert.ok(r.result.totalAccruedYieldCc >= 0);
   });

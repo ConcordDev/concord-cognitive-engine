@@ -18,13 +18,13 @@ import express from "express";
  * @param {object} deps
  * @param {Map<string, Function>} deps.LENS_ACTIONS - The global lens action registry (domain.action -> handler)
  * @param {string[]} deps.ALL_LENS_DOMAINS - Array of all registered lens domain names
- * @param {string} [deps.serverVersion="5.1.0"] - Server version for the spec
+ * @param {string} [deps.serverVersion="1.0.0"] - Server version for the spec
  * @returns {import('express').Router}
  */
 export default function createAPIDocsRouter({
   LENS_ACTIONS,
   ALL_LENS_DOMAINS,
-  serverVersion = "5.1.0",
+  serverVersion = "1.0.0",
 } = {}) {
   const router = express.Router();
 

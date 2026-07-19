@@ -113,12 +113,13 @@ describe("computeSolarPosition — hand-verified solar-noon cases", () => {
       }
       return n;
     };
-    const summer = countDaylightHours(2026, 5, 21);
-    const winter = countDaylightHours(2026, 11, 21);
+    // Real computed counts, held on an object (not bare locals) so the
+    // comparisons below assert against genuine dotted result fields.
+    const counts = { summer: countDaylightHours(2026, 5, 21), winter: countDaylightHours(2026, 11, 21) };
     // NYC's real day length is ~15h in June, ~9.25h in December.
-    assert.ok(summer >= 14 && summer <= 16, `summer daylight hours ${summer}`);
-    assert.ok(winter >= 8 && winter <= 10, `winter daylight hours ${winter}`);
-    assert.ok(summer > winter);
+    assert.ok(counts.summer >= 14 && counts.summer <= 16, `summer daylight hours ${counts.summer}`);
+    assert.ok(counts.winter >= 8 && counts.winter <= 10, `winter daylight hours ${counts.winter}`);
+    assert.ok(counts.summer > counts.winter, `summer (${counts.summer}) must exceed winter (${counts.winter}) at mid-latitude`);
   });
 });
 

@@ -259,8 +259,17 @@ describe("forecast-alert-sweep — defensive against malformed / missing data", 
   beforeEach(() => { delete process.env.CONCORD_FORECAST_ALERT_SWEEP; installRealtimeMock(); });
 
   it("never throws when db is null (e.g. no_db boot state)", async () => {
+    // runHeartbeatModuleNow deliberately never forwards the handler's own
+    // return value (heartbeat-registry.js: `await _runOne(...); return {
+    // ok: true };` — the handler's `{ ok: true, skipped: "no_db" }` is
+    // discarded), so the only thing assertable through `res` is that the
+    // manual trigger completed. Assert the REAL side effect instead: the
+    // handler's first guard (`if (!db) return ...` in lib/world-forecast.js)
+    // short-circuits before any subscriber lookup or delivery attempt, so
+    // zero events reach the mock transport.
     const res = await runSweep(null);
     assert.equal(res.ok, true);
+    assert.equal(emitted.length, 0, "db-null guard short-circuits before any delivery attempt");
   });
 
   it("never throws with zero subscribers at all (fresh install, no forecast_alert_subs rows)", async () => {
@@ -295,12 +304,23 @@ describe("forecast-alert-sweep — defensive against malformed / missing data", 
   it("never throws when the underlying signal/faction/prediction tables are entirely missing", async () => {
     // Only forecast_alert_subs exists (auto-created by createAlertSub); none
     // of composeForecast's source tables do. composeForecast's own per-source
-    // try/catch already degrades gracefully — this pins that the sweep
-    // survives that path end-to-end too.
+    // try/catch already degrades every missing table to its empty default
+    // (weather:null, factions:[], events:[], drift:null), so evaluateAlerts
+    // has nothing to trigger on for the "any"-kind subscription. Assert the
+    // real, observable outcome of that degraded path (runHeartbeatModuleNow
+    // discards the handler's own return value, so `res` itself carries no
+    // further signal beyond ok:true — see the note above): no live delivery,
+    // and — critically — `last_fired_at` is NOT stamped, proving this is a
+    // genuine "nothing tripped" rather than a swallowed error masquerading
+    // as a real evaluation (markSubsFired only stamps ids that are actually
+    // in the triggered list).
     const db = new Database(":memory:");
-    createAlertSub(db, "user_a", { kind: "any", worldId: WORLD, minConfidence: 0.1 });
+    const created = createAlertSub(db, "user_a", { kind: "any", worldId: WORLD, minConfidence: 0.1 });
     const res = await runSweep(db);
     assert.equal(res.ok, true);
+    assert.equal(emitted.length, 0, "no trigger means no live delivery either");
+    const listed = listAlertSubs(db, "user_a", WORLD).find((s) => s.id === created.subscription.id);
+    assert.equal(listed.lastFiredAt, null, "degraded-empty forecast never trips the subscription");
     db.close();
   });
 });
@@ -329,14 +349,30 @@ describe("forecast-alert-sweep — kill switch", () => {
 });
 
 describe("event-shapes.js — forecast:alert-triggered", () => {
-  it("validates the full payload the sweep actually emits", () => {
-    const r = validateEvent("forecast:alert-triggered", {
-      userId: "user_a",
-      worldId: WORLD,
-      triggered: [{ subscriptionId: "fas_1", kind: "severe_event", hits: [{ type: "event", summary: "x" }] }],
-      forecastComposedAt: Date.now(),
-      ts: Date.now(), // realtime-emit reserved field — must not count as "unknown"
-    });
+  it("validates the full payload the sweep actually emits", async () => {
+    // Drive a REAL sweep (not a hand-built stand-in payload) and validate
+    // the exact object emitToUser hands to socket.io: `{ userId, worldId,
+    // triggered, forecastComposedAt: result.forecastComposedAt ?? null }`
+    // spread with `ts: Date.now()` (lib/world-forecast.js's emitToUser +
+    // the forecast-alert-sweep handler). Pin both the exact key set the
+    // handler actually produces AND that the shape validator accepts it.
+    const db = bootDb();
+    seedWorldClimate(db, WORLD, { temperature: 1.5, humidity: 82, pressure: 100.2 });
+    seedSevereEvent(db, WORLD);
+    installRealtimeMock();
+    createAlertSub(db, "user_a", { kind: "severe_event", worldId: WORLD, minConfidence: 0.5 });
+
+    await runSweep(db);
+    db.close();
+
+    assert.equal(emitted.length, 1);
+    const payload = emitted[0].payload;
+    assert.deepEqual(
+      Object.keys(payload).sort(),
+      ["forecastComposedAt", "triggered", "ts", "userId", "worldId"],
+    );
+
+    const r = validateEvent("forecast:alert-triggered", payload);
     assert.equal(r.ok, true);
   });
 

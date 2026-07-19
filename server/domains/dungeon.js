@@ -36,12 +36,14 @@ export default function registerDungeonMacros(register) {
   });
 
   register("dungeon", "hit", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId || !input.instanceId) return { ok: false, reason: "missing_inputs" };
     return recordHit(db, String(input.instanceId), userId, Number(input.damage) || 0);
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   register("dungeon", "down", async (ctx, input = {}) => {
     const db = ctx?.db;

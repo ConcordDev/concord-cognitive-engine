@@ -12,6 +12,14 @@ const mockSocketInstance = {
   disconnect: vi.fn(),
   removeAllListeners: vi.fn(),
   connected: false,
+  // lib/realtime/socket.ts registers reconnect-attempt diagnostics on the
+  // underlying Manager instance (`socket.io.on('reconnect_attempt', ...)`),
+  // not on the socket itself — real socket.io-client sockets always carry
+  // this. Without it here, getSocket() throws on the `.io.on` call.
+  io: {
+    on: vi.fn(),
+    off: vi.fn(),
+  },
 };
 
 // Mock socket.io-client
@@ -47,7 +55,12 @@ describe('useSocket', () => {
       expect.objectContaining({
         autoConnect: false,
         reconnection: true,
-        reconnectionAttempts: 5,
+        // lib/realtime/socket.ts's getSocket() singleton hardcodes
+        // reconnectionAttempts: Infinity ("we retry forever now") — the
+        // hook's own `reconnectionAttempts` option never reaches this
+        // io() call (getSocket() takes no config), so this asserts the
+        // real singleton default, not the hook's unrelated param default.
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
         transports: ['websocket', 'polling'],
         withCredentials: true,

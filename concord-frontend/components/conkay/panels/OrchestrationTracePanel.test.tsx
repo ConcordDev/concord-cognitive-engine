@@ -47,8 +47,8 @@ describe('OrchestrationTracePanel', () => {
       useConkayHudStore.getState().macroCompleted({ runId: 'r1', domain: 'math', action: 'naturalQuery', ok: true, ms: 120 });
       useConkayHudStore.getState().macroStarted({ runId: 'r2', domain: 'astronomy', action: 'celestialPosition' });
       useConkayHudStore.getState().macroCompleted({ runId: 'r2', domain: 'astronomy', action: 'celestialPosition', ok: false, ms: 45 });
-      useConkayHudStore.getState().macroStarted({ runId: 'r3', domain: 'code', action: 'lspHover' });
-      useConkayHudStore.getState().macroCompleted({ runId: 'r3', domain: 'code', action: 'lspHover', ok: true, ms: 8 });
+      useConkayHudStore.getState().macroStarted({ runId: 'r3', domain: 'code', action: 'lsp-hover' });
+      useConkayHudStore.getState().macroCompleted({ runId: 'r3', domain: 'code', action: 'lsp-hover', ok: true, ms: 8 });
     });
 
     render(<OrchestrationTracePanel />);
@@ -65,7 +65,7 @@ describe('OrchestrationTracePanel', () => {
     expect(row1).toHaveTextContent('astronomy.celestialPosition');
     expect(row1.getAttribute('data-status')).toBe('failed');
 
-    expect(row2).toHaveTextContent('code.lspHover');
+    expect(row2).toHaveTextContent('code.lsp-hover');
     expect(row2.getAttribute('data-status')).toBe('done');
 
     expect(screen.queryByTestId('ck-trace-row-3')).toBeNull();

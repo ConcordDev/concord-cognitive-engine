@@ -23,6 +23,8 @@ import { up as upLoops }      from "../../migrations/255_time_loops.js";
 import { up as upHorror }     from "../../migrations/256_asymmetric_horror.js";
 import { up as upPark }       from "../../migrations/257_theme_park.js";
 import { up as upExtr }       from "../../migrations/258_extraction_runs.js";
+import { up as upRunMods }    from "../../migrations/359_run_mode_modifiers.js";
+import { up as upHintCost }   from "../../migrations/358_hacking_hint_cost.js";
 
 // Libraries.
 import { recordRoute }                          from "../../lib/climbing.js";
@@ -55,6 +57,15 @@ function bootDb() {
   upClimb(db); upRoguelite(db); upHorde(db); upFarm(db); upRestaurant(db);
   upTrivia(db); upHO(db); upTurn(db); upParty(db); upHack(db); upProg(db);
   upFactory(db); upLoops(db); upHorror(db); upPark(db); upExtr(db);
+  // 359 ALTERs roguelite_runs with 3 additive columns (hp_bonus_applied,
+  // revives_remaining, draft_picks_available) that lib/roguelite.js's
+  // startRun/endRun/advanceRun/pickDraftBoon/maybeReviveRoguelitePlayer now
+  // depend on — must run after 245 creates the base table.
+  upRunMods(db);
+  // 358 ALTERs hacking_attempts with hints_used, which lib/hacking.js's
+  // getHint/attemptCommand now depend on — must run after 252 creates the
+  // base table.
+  upHintCost(db);
   return db;
 }
 

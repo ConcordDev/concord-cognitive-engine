@@ -162,6 +162,7 @@ export default function registerDetectorMacros(register) {
    * input: { consumer?, minSeverity?, kinds?, actionableOnly? }
    */
   register("detectors", "findings", async (ctx, input = {}) => {
+  try {
     const rejected = rejectInvalidDetectorInput(
       input,
       new Set(["consumer", "minSeverity", "kinds", "actionableOnly"]),
@@ -184,7 +185,8 @@ export default function registerDetectorMacros(register) {
       findingCount: findings.length,
       findings,
     };
-  }, { note: "filtered, flattened findings list" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "filtered, flattened findings list" });
 
   /**
    * detectors.macro_telemetry — runtime fact about which macros are
@@ -253,6 +255,7 @@ export default function registerDetectorMacros(register) {
    * detectors.diff — compute live delta vs BASELINE.json without persisting.
    */
   register("detectors", "diff", async (ctx, input = {}) => {
+  try {
     const rejected = rejectInvalidDetectorInput(input, new Set(["consumer"]));
     if (rejected) return rejected;
     const report = await runAllDetectors({
@@ -276,12 +279,14 @@ export default function registerDetectorMacros(register) {
       },
       budget,
     };
-  }, { note: "delta vs committed baseline" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "delta vs committed baseline" });
 
   /**
    * detectors.summary — short totals-only payload for the HUD.
    */
   register("detectors", "summary", async (ctx, input = {}) => {
+  try {
     const rejected = rejectInvalidDetectorInput(input, new Set(["consumer"]));
     if (rejected) return rejected;
     const report = await runAllDetectors({
@@ -301,7 +306,8 @@ export default function registerDetectorMacros(register) {
         durationMs: r.durationMs,
       })),
     };
-  }, { note: "lightweight detector totals" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "lightweight detector totals" });
 
   // ---------------------------------------------------------------------
   // Code-quality static-analysis surface.

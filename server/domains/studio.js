@@ -694,6 +694,7 @@ export default function registerStudioActions(registerLensAction) {
   // ── Automation lanes ──────────────────────────────────────────
 
   registerLensAction("studio", "automation-list", (ctx, _a, params = {}) => {
+  try {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const trackId = String(params.trackId || "");
@@ -702,7 +703,8 @@ export default function registerStudioActions(registerLensAction) {
     const all = ensureStuBucket(s, "automation", resolvedTrack.ok ? resolvedTrack.ownerUserId : userId);
     const lanes = all.filter(l => l.trackId === trackId);
     return { ok: true, result: { lanes } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("studio", "automation-add-lane", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };

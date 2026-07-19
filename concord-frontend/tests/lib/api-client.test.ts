@@ -33,7 +33,11 @@ describe('API Client', () => {
 
       expect(axios.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          timeout: 30000,
+          // 120s matches the nginx/proxy ceiling so the client never aborts
+          // a slow non-streaming LLM route before the proxy would — see the
+          // @env-config-ok comment in lib/api/client.ts. The old 30s value
+          // this test asserted predates that fix.
+          timeout: 120000,
           headers: {
             'Content-Type': 'application/json',
           },

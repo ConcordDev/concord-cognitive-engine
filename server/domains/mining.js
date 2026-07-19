@@ -184,6 +184,7 @@ export default function registerMiningActions(registerLensAction) {
   };
 
   registerLensAction("mining", "compliance-log", (ctx, _a, params = {}) => {
+  try {
     const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.siteId);
     if (!site) return { ok: false, error: "site not found" };
@@ -207,9 +208,11 @@ export default function registerMiningActions(registerLensAction) {
     if (!Array.isArray(site.complianceRecords)) site.complianceRecords = [];
     site.complianceRecords.push(record); saveMining();
     return { ok: true, result: { record } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("mining", "compliance-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sites = mnSites(s, mnActor(ctx));
     let scoped = sites;
@@ -234,7 +237,8 @@ export default function registerMiningActions(registerLensAction) {
       if (r.isOverdue) overdueCount++;
     }
     return { ok: true, result: { records, count: records.length, violationCount, overdueCount, byCategory } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("mining", "compliance-update", (ctx, _a, params = {}) => {
     const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -300,6 +304,7 @@ export default function registerMiningActions(registerLensAction) {
   });
 
   registerLensAction("mining", "reclamation-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sites = mnSites(s, mnActor(ctx));
     const entries = sites
@@ -318,7 +323,8 @@ export default function registerMiningActions(registerLensAction) {
         return { siteId: site.id, siteName: site.name, reclamation: r, reclamationPercent };
       });
     return { ok: true, result: { sites: entries, count: entries.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Drill-hole database (per-user, STATE-backed) ───────────────────
   // Each hole: id, name, collar {x,y,z}, azimuth, dip, totalDepth,

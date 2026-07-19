@@ -49,6 +49,7 @@ export default function registerAgentsActions(registerLensAction) {
   });
 
   registerLensAction("agents", "routeTask", (ctx, artifact, params) => {
+  try {
     const data = { ...(artifact.data || {}), ...(params || {}) };
     const task = data.task || {};
     const agents = data.agents || [];
@@ -101,7 +102,8 @@ export default function registerAgentsActions(registerLensAction) {
         totalAgents: agents.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("agents", "swarmStatus", (ctx, artifact, params) => {
     const agents = params?.agents || artifact.data?.agents || [];

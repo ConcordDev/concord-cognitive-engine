@@ -125,7 +125,15 @@ describe('BillsPanel vendor autocomplete', () => {
     fireEvent.change(input, { target: { value: 'ACME-INV-2291' } });
     await vi.advanceTimersByTimeAsync(400);
 
-    const match = await screen.findByText(/AI match: Acme Supplies · 83%/);
+    // The score renders in a nested <span> ("AI match: Acme Supplies · " is
+    // the button's own text, "83%" is a separate child element's text), so a
+    // plain getByText/findByText regex against the combined string never
+    // matches a single text node — use a custom matcher against the button's
+    // full textContent instead.
+    const match = await screen.findByText((_content, element) =>
+      element?.tagName.toLowerCase() === 'button' &&
+      element.textContent === 'AI match: Acme Supplies · 83%'
+    );
     expect(match).toBeInTheDocument();
 
     fireEvent.mouseDown(match);

@@ -54,16 +54,27 @@ export function WorldHealthBadge() {
           domain: 'detectors', name: 'summary', input: {},
         });
         if (cancelled) return;
-        setSummary(s.data as SummaryResponse);
+        const summaryData = s.data as SummaryResponse | undefined;
+        // api.post() resolves (doesn't throw) even on a failed macro call —
+        // a non-2xx or {ok:false} response has no `perDetector`, and the
+        // .find() calls below used to assume it was always present. That
+        // crashed the ENTIRE World Lens (via the lens-wide error boundary)
+        // on any transient backend hiccup for this one HUD badge. Only
+        // accept a well-formed response.
+        if (summaryData?.ok && Array.isArray(summaryData.perDetector)) {
+          setSummary(summaryData);
+        }
 
         const f = await api.post('/api/lens/run', {
           domain: 'detectors', name: 'findings',
           input: { minSeverity: 'high', kinds: ['semantic', 'static'] },
         });
         if (cancelled) return;
-        const data = f.data as { ok: boolean; findings: InvariantFinding[] };
-        const invariants = (data.findings || []).filter((x) => x.detector === 'invariant-guardian' || x.detector === 'secret-leak');
-        setFindings(invariants);
+        const data = f.data as { ok: boolean; findings: InvariantFinding[] } | undefined;
+        if (data?.ok && Array.isArray(data.findings)) {
+          const invariants = data.findings.filter((x) => x.detector === 'invariant-guardian' || x.detector === 'secret-leak');
+          setFindings(invariants);
+        }
       } catch {
         /* poll silently — HUD never crashes the app */
       }

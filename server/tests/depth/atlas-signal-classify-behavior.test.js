@@ -67,13 +67,16 @@ describe("cortex.classify — manual signal submission (Wave 4 gap-closure)", ()
   it("rejects a zero/negative frequency", async () => {
     const r1 = await runMacro("cortex", "classify", { frequency: 0, origin: { lat: 1, lng: 1 } }, ctx);
     assert.equal(r1.ok, false);
+    assert.match(r1.error, /frequency \(MHz, > 0\) is required/);
     const r2 = await runMacro("cortex", "classify", { frequency: -5, origin: { lat: 1, lng: 1 } }, ctx);
     assert.equal(r2.ok, false);
+    assert.match(r2.error, /frequency \(MHz, > 0\) is required/);
   });
 
   it("rejects a non-numeric frequency", async () => {
     const r = await runMacro("cortex", "classify", { frequency: "not-a-number", origin: { lat: 1, lng: 1 } }, ctx);
     assert.equal(r.ok, false);
+    assert.match(r.error, /frequency \(MHz, > 0\) is required/);
   });
 
   it("rejects a submission with no origin", async () => {
@@ -85,15 +88,19 @@ describe("cortex.classify — manual signal submission (Wave 4 gap-closure)", ()
   it("rejects an origin with out-of-range coordinates", async () => {
     const r1 = await runMacro("cortex", "classify", { frequency: 900, origin: { lat: 200, lng: 1 } }, ctx);
     assert.equal(r1.ok, false);
+    assert.match(r1.error, /origin\.lat and origin\.lng \(valid coordinates\) are required/);
     const r2 = await runMacro("cortex", "classify", { frequency: 900, origin: { lat: 1, lng: -200 } }, ctx);
     assert.equal(r2.ok, false);
+    assert.match(r2.error, /origin\.lat and origin\.lng \(valid coordinates\) are required/);
   });
 
   it("rejects an origin missing lat or lng", async () => {
     const r1 = await runMacro("cortex", "classify", { frequency: 900, origin: { lng: 1 } }, ctx);
     assert.equal(r1.ok, false);
+    assert.match(r1.error, /origin\.lat and origin\.lng \(valid coordinates\) are required/);
     const r2 = await runMacro("cortex", "classify", { frequency: 900, origin: { lat: 1 } }, ctx);
     assert.equal(r2.ok, false);
+    assert.match(r2.error, /origin\.lat and origin\.lng \(valid coordinates\) are required/);
   });
 
   it("does not write to the taxonomy store on a rejected submission", async () => {

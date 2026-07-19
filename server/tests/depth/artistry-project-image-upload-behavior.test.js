@@ -57,6 +57,16 @@ describe("artistry.project-image-upload", () => {
       fileName: "photo.jpg", mimeType: "image/jpeg", data: `data:image/jpeg;base64,${SMALL_B64}`,
     });
     assert.equal(r.ok, true);
+    // bytes must be computed from the base64 payload alone (post-strip), not
+    // from the raw string including the "data:image/jpeg;base64," prefix.
+    const expectedBytes = Math.floor((SMALL_B64.length * 3) / 4);
+    assert.equal(r.result.image.bytes, expectedBytes);
+    const dl = call("project-image-download", ctxA, { id: r.result.image.id });
+    assert.equal(dl.ok, true);
+    // the stored/returned data is the bare base64 payload — the data: URI
+    // prefix was genuinely stripped before storage, not merely tolerated.
+    assert.equal(dl.result.data, SMALL_B64);
+    assert.doesNotMatch(dl.result.data, /^data:/);
   });
 
   it("defaults mimeType to application/octet-stream when omitted", () => {
@@ -68,6 +78,7 @@ describe("artistry.project-image-upload", () => {
   it("rejects a missing fileName", () => {
     const r = call("project-image-upload", ctxA, { data: SMALL_B64 });
     assert.equal(r.ok, false);
+    assert.match(r.error, /fileName required/);
   });
 
   it("rejects missing file data", () => {
@@ -95,6 +106,13 @@ describe("artistry.project-image-upload", () => {
     const okSize = Buffer.alloc(Math.floor(7.9 * 1024 * 1024), 65).toString("base64");
     const r = call("project-image-upload", ctxA, { fileName: "ok.png", data: okSize });
     assert.equal(r.ok, true);
+    const expectedBytes = Math.floor((okSize.length * 3) / 4);
+    assert.ok(expectedBytes < 8 * 1024 * 1024, "sanity: computed size must genuinely be under the 8 MB cap");
+    assert.equal(r.result.image.bytes, expectedBytes);
+    // round trip: confirm it was actually persisted at that size, not just accepted
+    const dl = call("project-image-download", ctxA, { id: r.result.image.id });
+    assert.equal(dl.ok, true);
+    assert.equal(dl.result.bytes, expectedBytes);
   });
 });
 
@@ -137,6 +155,7 @@ describe("artistry.project-image-download — round trip + ownership isolation",
   it("rejects downloading an unknown image id", () => {
     const r = call("project-image-download", ctxA, { id: "nope" });
     assert.equal(r.ok, false);
+    assert.match(r.error, /image not found/);
   });
 
   it("a different user cannot download another user's image", () => {

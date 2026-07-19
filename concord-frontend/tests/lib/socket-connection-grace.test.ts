@@ -21,6 +21,14 @@ const mockSocketInstance = {
   connected: false,
   id: 'test-socket-id',
   auth: {} as Record<string, unknown>,
+  // lib/realtime/socket.ts registers reconnect-attempt diagnostics on the
+  // underlying Manager instance (`socket.io.on('reconnect_attempt', ...)`),
+  // not on the socket itself — real socket.io-client sockets always carry
+  // this. Without it here, getSocket() throws on the `.io.on` call.
+  io: {
+    on: vi.fn(),
+    off: vi.fn(),
+  },
 };
 
 vi.mock('socket.io-client', () => ({

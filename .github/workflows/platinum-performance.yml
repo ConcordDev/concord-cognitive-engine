@@ -66,10 +66,23 @@ jobs:
         working-directory: ./concord-frontend
         run: npm ci --prefer-offline
 
+      # 261-lens static generation OOM'd at 6GB (clean V8 "Ineffective
+      # mark-compacts near heap limit" — PR #864, run 29683133860). The
+      # actual heap cap lives in `build:ci`'s own NODE_OPTIONS in
+      # package.json, NOT a step-level `env:` here — an inline
+      # `NODE_OPTIONS='...' next build` in an npm script silently wins
+      # over any value the workflow sets in its environment, so a
+      # step-level override here would look like the fix and do
+      # nothing (this is exactly what happened on the first attempt).
+      # Bumped package.json's build:ci to the same 12288 ceiling
+      # ci.yml's server-coverage job verified safe on these runners:
+      # GitHub Actions Linux runners here have 16GB RAM, and 12GB
+      # leaves ~4GB for OS + npm wrapper + non-heap V8 overhead. Don't
+      # bump past this without re-verifying — ci.yml's history shows
+      # 14GB on a 16GB runner gets silently OS-OOM-killed instead of a
+      # clean V8 error, which is a strictly worse failure mode to debug.
       - name: Build frontend (production)
         working-directory: ./concord-frontend
-        env:
-          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run build:ci
 
       - name: Upload .next/ artifact for downstream scans

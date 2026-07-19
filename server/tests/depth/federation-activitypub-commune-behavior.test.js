@@ -38,14 +38,21 @@ describe("federation — ActivityPub identity reads (real, not fabricated)", () 
     const { runMacro, ctx } = await macroRuntime("depth:federation:ap-outbox-fresh");
     const r = await runMacro("federation", "outbox", {}, ctx);
     assert.equal(r.ok, true);
-    assert.ok(Array.isArray(r.items));
+    // `readOutbox` (server/lib/activitypub-bridge.js) queries
+    // `activitypub_outbox WHERE user_id = ?` and maps the returned rows
+    // straight into `items` — no row for this never-before-seen ctx label
+    // means `items` is a real empty array, not just "some array".
+    assert.equal(r.items.length, 0);
   });
 
   it("inbox: starts empty for a fresh user, shaped as {ok, items}", async () => {
     const { runMacro, ctx } = await macroRuntime("depth:federation:ap-inbox-fresh");
     const r = await runMacro("federation", "inbox", {}, ctx);
     assert.equal(r.ok, true);
-    assert.ok(Array.isArray(r.items));
+    // Same shape on the inbox side: `readInbox` queries
+    // `activitypub_inbox WHERE recipient_user_id = ?` and maps rows into
+    // `items` — a fresh user genuinely has zero deliveries.
+    assert.equal(r.items.length, 0);
   });
 });
 

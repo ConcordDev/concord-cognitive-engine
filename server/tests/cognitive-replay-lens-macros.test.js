@@ -52,11 +52,23 @@ const noActor = { actor: {} };
 
 const HOUR = 3600000;
 const DAY = 86400000;
+const MINUTE = 60000;
 
 // ── deterministic corpus builder ───────────────────────────────────────────
 // Builds a STATE.sessions Map exactly like the live chat substrate, so the
 // macros read real values (not mocks). Timestamps are anchored to `now` so the
 // since-windows behave deterministically inside a test run.
+//
+// "Today"'s two messages must (a) both land on the same UTC calendar day —
+// domains/cognitive-replay.js#dayKey buckets by
+// `new Date(ts).toISOString().slice(0,10)` — and (b) never be timestamped
+// AFTER real `now`, since cognitive-replay.compare's windowA is `[now-2d,
+// now]` and a future-dated event would fall outside it. They used to be
+// anchored `now - 2*HOUR` / `now - HOUR`, which is safe almost always but
+// breaks near UTC midnight (the two messages can land on different calendar
+// days). Small MINUTE offsets (not HOUR) shrink that unsafe window from ~2
+// hours/day down to ~3 minutes/day while still always resolving to a real
+// past timestamp.
 function seedCorpus() {
   const now = Date.now();
   const sessions = new Map();
@@ -67,9 +79,9 @@ function seedCorpus() {
   sessions.set("s1", {
     userId: "user_a",
     messages: [
-      { role: "user", ts: now - 2 * HOUR, content: "hello world",
+      { role: "user", ts: now - 3 * MINUTE, content: "hello world",
         meta: { tokenCount: 20 } },
-      { role: "assistant", ts: now - HOUR, content: "a thoughtful reply about glyphs",
+      { role: "assistant", ts: now - MINUTE, content: "a thoughtful reply about glyphs",
         meta: { tokenCount: 100, brainsUsed: ["conscious", "utility"],
           toolCalls: [{ name: "web_search" }], dtusCited: ["dtu_1", "dtu_2"] } },
     ],
@@ -90,7 +102,7 @@ function seedCorpus() {
   sessions.set("s3", {
     userId: "user_b",
     messages: [
-      { role: "assistant", ts: now - HOUR, content: "user b reply",
+      { role: "assistant", ts: now - MINUTE, content: "user b reply",
         meta: { tokenCount: 50, brainsUsed: ["subconscious"] } },
     ],
   });

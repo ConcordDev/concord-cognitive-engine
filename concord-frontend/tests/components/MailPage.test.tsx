@@ -78,11 +78,17 @@ describe('Mail lens page — four UX states', () => {
   });
 
   it('LOADING: renders a busy/loading status before data resolves', async () => {
-    // Never-resolving fetch keeps the page in the loading state.
+    // Never-resolving fetch keeps the page in the loading state. The loading
+    // UI is now a 5-row skeleton list (components/ui/Skeleton.tsx), each row
+    // carrying its own sr-only role=status span — not a single "Loading
+    // mail" message — so assert on the (plural) busy indicators instead.
     fetchMock.mockImplementation(() => new Promise(() => {}));
     render(<MailLensPage />);
-    const status = await screen.findByRole('status');
-    expect(status).toHaveTextContent(/loading mail/i);
+    const statuses = await screen.findAllByRole('status');
+    expect(statuses.length).toBeGreaterThan(0);
+    for (const status of statuses) {
+      expect(status).toHaveAttribute('aria-busy', 'true');
+    }
   });
 
   it('EMPTY: renders an honest empty state when the inbox is empty', async () => {
@@ -92,7 +98,7 @@ describe('Mail lens page — four UX states', () => {
     });
     render(<MailLensPage />);
     await waitFor(() => {
-      expect(screen.getByText(/no mail\./i)).toBeInTheDocument();
+      expect(screen.getByText(/no mail yet/i)).toBeInTheDocument();
     });
     // Not stuck in loading, no error alert.
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -151,7 +157,7 @@ describe('Mail lens page — four UX states', () => {
       return jsonResponse({ ok: true });
     });
     render(<MailLensPage />);
-    await waitFor(() => expect(screen.getByText(/no mail\./i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no mail yet/i)).toBeInTheDocument());
 
     const callsAfterMount = fetchMock.mock.calls.length;
     act(() => {

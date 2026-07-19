@@ -146,6 +146,7 @@ export default function registerCreativeActions(registerLensAction) {
   // line-item `lines[]` array (each with budgeted/actual) or a top-level
   // `budget` + `expenses[]` (amount/category) shape.
   registerLensAction("creative", "budgetTrack", (_ctx, artifact, _params) => {
+  try {
     const d = (artifact && artifact.data) || {};
     let lines = [];
     if (Array.isArray(d.lines)) {
@@ -185,7 +186,8 @@ export default function registerCreativeActions(registerLensAction) {
       ok: true,
       result: { totalBudgeted, totalActual, totalVariance, overBudget: totalVariance < 0, lines },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Producer bench: distribution checklist ─────────────────────────
   // Panel renders r.result.{platform, percent, readyCount, total, deliveryDate,

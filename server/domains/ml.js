@@ -4,6 +4,7 @@ import { buildFeatureMatrix, trainLogisticRegression, trainKMeans } from "../lib
 
 export default function registerMlActions(registerLensAction) {
   registerLensAction("ml", "modelEvaluate", (ctx, artifact, _params) => {
+  try {
     const predictions = artifact.data?.predictions || [];
     const actuals = artifact.data?.actuals || artifact.data?.labels || [];
     if (predictions.length === 0 || actuals.length === 0) return { ok: true, result: { message: "Provide predictions and actuals arrays to evaluate." } };
@@ -47,9 +48,11 @@ export default function registerMlActions(registerLensAction) {
     const ssRes = preds.reduce((s, p, i) => s + Math.pow(acts[i] - p, 2), 0);
     const r2 = ssTot > 0 ? Math.round((1 - ssRes / ssTot) * 1000) / 1000 : 0;
     return { ok: true, result: { type: "regression", samples: n, mse: Math.round(mse * 1000) / 1000, rmse: Math.round(Math.sqrt(mse) * 1000) / 1000, mae: Math.round(mae * 1000) / 1000, r2 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("ml", "featureImportance", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data?.features || artifact.data?.dataset || [];
     const target = artifact.data?.target || artifact.data?.targetField || null;
     if (data.length < 3) return { ok: true, result: { message: "Provide 3+ data rows with features to analyze." } };
@@ -76,7 +79,8 @@ export default function registerMlActions(registerLensAction) {
       return { feature: field, variance: Math.round(variance * 1000) / 1000, stdDev: Math.round(stdDev * 1000) / 1000, correlation, absCorrelation: Math.abs(correlation), importance: Math.round((Math.abs(correlation) * 0.7 + Math.min(1, variance) * 0.3) * 100) };
     }).sort((a, b) => b.importance - a.importance);
     return { ok: true, result: { totalFeatures: fields.length, numericFeatures: numericFields.length, targetField: target, rankings: ranked, topFeatures: ranked.slice(0, 5).map(r => r.feature) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("ml", "datasetProfile", (ctx, artifact, _params) => {
     const data = artifact.data?.dataset || artifact.data?.rows || [];

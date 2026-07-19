@@ -254,6 +254,7 @@ export default function registerPodcastActions(registerLensAction) {
   const EPISODE_STATUSES = ["draft", "published", "scheduled"];
 
   registerLensAction("podcast", "episode-add", (ctx, _a, params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const show = s.shows.get(String(params.showId));
     if (!show) return { ok: false, error: "show not found" };
@@ -278,7 +279,8 @@ export default function registerPodcastActions(registerLensAction) {
     pclistB(s.episodes, show.id).push(ep);
     savePodState();
     return { ok: true, result: { episode: ep } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("podcast", "episode-set-status", (ctx, _a, params = {}) => {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -561,6 +563,7 @@ export default function registerPodcastActions(registerLensAction) {
 
   // ── Stats / discovery ───────────────────────────────────────────────
   registerLensAction("podcast", "new-episodes", (ctx, _a, _params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pcaid(ctx);
     const subs = s.subscriptions.get(userId) || [];
@@ -573,7 +576,8 @@ export default function registerPodcastActions(registerLensAction) {
     }
     episodes.sort((a, b) => String(b.publishDate).localeCompare(String(a.publishDate)));
     return { ok: true, result: { episodes: episodes.slice(0, 50), count: episodes.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("podcast", "listening-stats", (ctx, _a, _params = {}) => {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };

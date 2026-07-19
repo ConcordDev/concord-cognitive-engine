@@ -287,6 +287,7 @@ export default function registerStandardsActions(registerLensAction) {
   // ── compliance-check ──
   // Deterministically evaluate coded rules for a standard against `values`.
   registerLensAction("standards", "compliance-check", (ctx, artifact, params) => {
+  try {
     const standardId = (params?.standardId ?? artifact?.data?.standardId ?? "").toString().trim();
     const values = params?.values ?? artifact?.data?.values;
     if (!standardId) return { ok: false, error: "standardId required" };
@@ -327,7 +328,8 @@ export default function registerStandardsActions(registerLensAction) {
         results,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── saved-list ──
   registerLensAction("standards", "saved-list", (ctx, artifact, _params) => {

@@ -1,5 +1,29 @@
 // Test-only preload (wired via `node --test --import`).
 //
+// ── Per-process DB_PATH isolation ─────────────────────────────────────────────
+// `node --test` with a glob (tests/**/*.test.js) runs each test FILE in its own
+// child process, and by default many run concurrently. server.js's DB_PATH
+// defaults to the single on-disk `server/data/concord.db` (server.js:5109) with
+// no per-process suffix — unlike STATE_PATH, which tests/depth/_harness.js
+// already isolates per-process for depth tests specifically. Without isolation,
+// every concurrently-booting test-file process shares ONE on-disk SQLite file:
+// two processes racing to create+migrate it on a fresh checkout produces
+// `no such table: X` (one process's later migration hasn't landed when another
+// reads); once created, fixed-label test ctxs (`depthCtx("some-label")`, which
+// map to a deterministic userId) accumulate rows ACROSS files that happen to
+// reuse a label, corrupting exact-value assertions non-deterministically run to
+// run. Root-caused 2026-07-19 chasing a real "structural-audits" CI failure
+// (staking-behavior / ops-substrate-admin-gate / quest-moral-branch tests
+// failing in the full suite but passing clean in isolation with a fresh DB).
+// Give every test-file process its own throwaway DB, same pattern as
+// STATE_PATH — but only when the caller hasn't already pinned one (some scripts,
+// e.g. test:depth:raw, deliberately share one DB_PATH across depth files).
+if (String(process.env.NODE_ENV).toLowerCase() === "test" && !process.env.DB_PATH) {
+  const os = await import("node:os");
+  const path = await import("node:path");
+  process.env.DB_PATH = path.join(os.tmpdir(), `concord-test-db-${process.pid}-${Date.now()}.db`);
+}
+//
 // NOTE on --test-force-exit (server/package.json): the runner has used it
 // because booting the live server leaves REF'd handles open that would
 // otherwise block a clean exit. Runtime introspection (getActiveResourcesInfo +

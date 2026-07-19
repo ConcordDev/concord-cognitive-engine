@@ -201,18 +201,47 @@ describe("productivity-reminder-sweep — defensive against malformed state", ()
   });
 
   it("never throws when a user's reminders value is not an array at all", async () => {
+    // runHeartbeatModuleNow deliberately never forwards the handler's own
+    // return value (heartbeat-registry.js: `await _runOne(...); return {
+    // ok: true };`), so the meaningful assertion has to be against real
+    // state, not `res`. computeDueReminders' own `if (!Array.isArray(list))
+    // return [];` guard makes this user's non-array value a legitimate
+    // zero-due read (not a caught exception): nothing is delivered, and the
+    // malformed value is left exactly as-is rather than silently coerced.
     globalThis._concordSTATE.productivityLens = { reminders: new Map([["user_c", "not-an-array"]]) };
     await assert.doesNotReject(() => runSweep());
+    assert.equal(emitted.length, 0, "non-array reminders list yields zero due reminders, zero delivery");
+    assert.equal(globalThis._concordSTATE.productivityLens.reminders.get("user_c"), "not-an-array",
+      "the malformed value itself is untouched, not mutated into an array");
   });
 
   it("never throws when productivityLens.reminders is missing entirely", async () => {
+    // getRemMap() lazily creates an empty `reminders` Map on the EXISTING
+    // productivityLens object (`if (!(s.reminders instanceof Map))
+    // s.reminders = new Map()`) — the sweep proceeds normally over zero
+    // users rather than short-circuiting. Assert that real side effect
+    // directly (see the note in the prior test on why `res` itself is mute).
     globalThis._concordSTATE.productivityLens = {};
     await assert.doesNotReject(() => runSweep());
+    assert.ok(globalThis._concordSTATE.productivityLens.reminders instanceof Map,
+      "getRemMap() lazily creates the reminders Map on the existing productivityLens object");
+    assert.equal(globalThis._concordSTATE.productivityLens.reminders.size, 0);
+    assert.equal(emitted.length, 0);
   });
 
   it("never throws when STATE itself has no productivityLens at all", async () => {
+    // getRemMap() short-circuits to `null` when `STATE.productivityLens`
+    // itself is absent (`if (!STATE || !STATE.productivityLens) return
+    // null;` — it does NOT lazily create productivityLens the way it lazily
+    // creates `.reminders` on an EXISTING productivityLens, per the prior
+    // test). Assert that real, distinguishing side effect: the sweep leaves
+    // STATE exactly as it found it rather than silently sprouting hidden
+    // state, and delivers nothing.
     globalThis._concordSTATE = { dtus: new Map() };
     await assert.doesNotReject(() => runSweep());
+    assert.equal("productivityLens" in globalThis._concordSTATE, false,
+      "no productivityLens on STATE means getRemMap() short-circuits without creating one");
+    assert.equal(emitted.length, 0);
   });
 });
 
@@ -247,12 +276,23 @@ describe("reminders-due manual check — unchanged regression", () => {
 });
 
 describe("event-shapes.js — productivity:reminder-fired", () => {
-  it("validates the full payload the sweep actually emits", () => {
-    const r = validateEvent("productivity:reminder-fired", {
-      userId: "user_a",
-      reminder: { id: "rem_1", taskId: "tsk_1", task: "Ping", remindAt: "2026-07-15T09:00", note: "", kind: "time" },
-      ts: Date.now(), // realtime-emit reserved field — must not count as "unknown"
-    });
+  it("validates the full payload the sweep actually emits", async () => {
+    // Drive a REAL sweep (not a hand-built stand-in payload) and validate
+    // the exact object emitToUser hands to socket.io: `{ userId, reminder:
+    // {...} }` spread with `ts: Date.now()` (domains/productivity.js's
+    // emitToUser + the productivity-reminder-sweep handler). Pin both the
+    // exact key set the handler actually produces AND that the shape
+    // validator accepts it.
+    const t = call("task-add", ctxA, { content: "Validate payload" }).result.task;
+    call("reminder-add", ctxA, { taskId: t.id, remindAt: dayOffset(-1) + "T09:00", note: "ring me" });
+
+    await runSweep();
+
+    assert.equal(emitted.length, 1);
+    const payload = emitted[0].payload;
+    assert.deepEqual(Object.keys(payload).sort(), ["reminder", "ts", "userId"]);
+
+    const r = validateEvent("productivity:reminder-fired", payload);
     assert.equal(r.ok, true);
   });
 

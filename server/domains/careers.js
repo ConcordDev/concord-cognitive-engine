@@ -63,6 +63,7 @@ export default function registerCareerMacros(register) {
   // PLAY a shift: skill-input drives the floor-gated resolver → performance →
   // sparks (credited now) + promotion XP. tier-scaled wage; play fidelity.
   register("careers", "work", async (ctx, input = {}) => {
+  try {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
     const b = badNumericField(input, ["tier", "attribute", "skillInput"]);
@@ -88,7 +89,8 @@ export default function registerCareerMacros(register) {
       paid = !!c?.ok;
     }
     return { ok: true, trackId, tier, performanceScore, wage, xp, paid, fidelity: "play" };
-  }, { note: "careers: play a shift (skill-input → sparks + XP)" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "careers: play a shift (skill-input → sparks + XP)" });
 
   register("careers", "contracts", async (ctx) => {
     const g = gate(ctx); if (g) return g;
@@ -97,6 +99,7 @@ export default function registerCareerMacros(register) {
   }, { note: "careers: my contracts" });
 
   register("careers", "offer", async (ctx, input = {}) => {
+  try {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
     const b = badNumericField(input, ["tier", "baseWage", "durationDays", "signingBonus", "workerReputation"]);
@@ -125,7 +128,8 @@ export default function registerCareerMacros(register) {
       signingBonus: input.signingBonus || 0, bonuses: input.bonuses, clauses: input.clauses,
       offeredByKind: "player", offeredById: uid, workerReputation,
     });
-  }, { note: "careers: offer a contract" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "careers: offer a contract" });
 
   // Employer discovery — which NPCs are hiring, at what track/tier, right
   // now. Read-only against world_npcs; see lib/career-employers.js for the

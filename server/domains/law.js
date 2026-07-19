@@ -668,6 +668,7 @@ export default function registerLawActions(registerLensAction) {
    * requires patentId OR query.
    */
   registerLensAction("law", "patent-claims", async (_ctx, _artifact, params = {}) => {
+  try {
     const patentId = _normalizePatentId(params.patentId || params.query);
     if (!patentId) return { ok: false, error: "patentId or query (a patent number) required" };
     const limit = Math.max(1, Math.min(200, Math.round(Number(params.limit) || 50)));
@@ -741,7 +742,8 @@ export default function registerLawActions(registerLensAction) {
         disclosure: "Legal status (active / expired / lapsed / invalidated / litigated) is NOT available from this free data source and is never inferred from claim presence, count, or content — verify current status directly with USPTO Patent Center before relying on this for any filing, licensing, or freedom-to-operate decision.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * courtlistener-search — Real federal + state case opinion search

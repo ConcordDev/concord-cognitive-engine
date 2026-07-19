@@ -23,6 +23,7 @@
 import { test, before } from "node:test";
 import assert from "node:assert/strict";
 import { macroRuntime } from "./_harness.js";
+import { TOTAL_OVERHEAD } from "../../lib/concord-mesh.js";
 
 let runMacro, owner, other;
 
@@ -74,6 +75,18 @@ test("mesh.send allows sending a public/global-scope DTU regardless of caller", 
 
   const r = await runMacro("mesh", "send", { dtuId: r0.dtu.id, destination: "broadcast" }, other);
   assert.equal(r.ok, true, `a public DTU should be sendable by any caller: ${JSON.stringify(r)}`);
+  assert.ok(["direct", "fragmented", "store_forward"].includes(r.mode), `mode is one of the real substrate modes: ${r.mode}`);
+  if (r.mode !== "store_forward") {
+    assert.ok(r.transmissionId, "a real transmissionId is returned for a live send");
+    // Round-trip: the send must actually be recorded in the mesh transmission
+    // log, not just report ok:true — read it back via mesh.stats.
+    const stats = await runMacro("mesh", "stats", {}, other);
+    assert.equal(stats.ok, true);
+    assert.ok(
+      stats.recentTransmissions.some((t) => t.id === r.transmissionId),
+      `sent transmission ${r.transmissionId} must appear in the mesh transmission log: ${JSON.stringify(stats.recentTransmissions.map((t) => t.id))}`
+    );
+  }
 });
 
 test("mesh.send still requires a DTU (dtu or dtuId) — honest failure, not a silent no-op", async () => {
@@ -89,9 +102,32 @@ test("mesh.send rejects an id for a DTU that doesn't exist (honest failure, not 
 });
 
 test("mesh.send accepts a caller-supplied inline DTU object without an ownership check (no store lookup, no leak risk)", async () => {
+  const inlineDtu = { id: "inline-1", title: "inline", content: "hello mesh" };
   const r = await runMacro("mesh", "send", {
-    dtu: { id: "inline-1", title: "inline", content: "hello mesh" },
+    dtu: inlineDtu,
     destination: "broadcast",
   }, other);
   assert.equal(r.ok, true, `an inline-object send should not be gated by ownership: ${JSON.stringify(r)}`);
+  assert.ok(["direct", "fragmented", "store_forward"].includes(r.mode), `mode is one of the real substrate modes: ${r.mode}`);
+  if (r.mode !== "store_forward") {
+    assert.ok(r.transmissionId, "a real transmissionId is returned for a live send");
+    // Round-trip: the inline object was actually serialized and packetized,
+    // not merely dispatch-accepted — check its recorded byte size against the
+    // substrate's own exact contract (createMeshPacket: contentBytes +
+    // TOTAL_OVERHEAD) for a single, unfragmented packet.
+    const contentBytes = Buffer.byteLength(JSON.stringify(inlineDtu), "utf8");
+    if (r.mode === "direct") {
+      assert.equal(r.totalBytes, contentBytes + TOTAL_OVERHEAD,
+        `totalBytes must exactly equal the serialized payload (${contentBytes}) plus mesh packet overhead (${TOTAL_OVERHEAD}): got ${r.totalBytes}`);
+    } else {
+      assert.ok(Number.isFinite(r.totalBytes) && r.totalBytes >= contentBytes,
+        `totalBytes (${r.totalBytes}) must reflect the actual serialized inline payload (>= ${contentBytes} raw bytes across fragments)`);
+    }
+    const stats = await runMacro("mesh", "stats", {}, other);
+    assert.equal(stats.ok, true);
+    assert.ok(
+      stats.recentTransmissions.some((t) => t.id === r.transmissionId),
+      `sent transmission ${r.transmissionId} must appear in the mesh transmission log: ${JSON.stringify(stats.recentTransmissions.map((t) => t.id))}`
+    );
+  }
 });

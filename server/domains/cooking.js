@@ -56,6 +56,7 @@ export default function registerCookingActions(registerLensAction) {
     return { ok: true, result: { recipe: data.name || artifact?.title, baseServings, targetServings, scaleFactor: Math.round(factor * 100) / 100, ingredients: scaled } };
   });
   registerLensAction("cooking", "nutritionEstimate", (ctx, artifact, _params) => {
+  try {
     const ndata = recipeData(artifact, _params) || {};
     const ingredients = ndata.ingredients || [];
     // Rough per-100g estimates
@@ -73,7 +74,8 @@ export default function registerCookingActions(registerLensAction) {
     }
     const servings = parseFloat(ndata.servings) || 1;
     return { ok: true, result: { totalCalories: Math.round(totalCal), perServing: Math.round(totalCal / servings), macros: { protein: `${Math.round(totalProtein)}g`, carbs: `${Math.round(totalCarbs)}g`, fat: `${Math.round(totalFat)}g` }, servings, note: "Estimates based on common ingredient averages" } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("cooking", "mealPlan", (ctx, artifact, _params) => {
     const days = parseInt(artifact.data?.days) || 7;
     const preferences = artifact.data?.preferences || {};

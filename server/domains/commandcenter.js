@@ -631,6 +631,7 @@ export default function registerCommandCenterActions(registerLensAction) {
   // ---------------------------------------------------------------------------
 
   registerLensAction("command-center", "createAlertRule", (ctx, _artifact, params = {}) => {
+  try {
     const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
     if (!scope.ok) return scope;
     const metric = String(params.metric || "").trim();
@@ -659,7 +660,8 @@ export default function registerCommandCenterActions(registerLensAction) {
     };
     rules.set(rule.id, rule);
     return { ok: true, result: { rule } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("command-center", "listAlertRules", (ctx, _artifact, params = {}) => {
     const scope = ccScope(ctx, params, null);
@@ -715,6 +717,7 @@ export default function registerCommandCenterActions(registerLensAction) {
   // ---------------------------------------------------------------------------
 
   registerLensAction("command-center", "saveDashboard", (ctx, _artifact, params = {}) => {
+  try {
     const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
     if (!scope.ok) return scope;
     const name = String(params.name || "").trim();
@@ -738,7 +741,8 @@ export default function registerCommandCenterActions(registerLensAction) {
       dashboards.set(dash.id, dash);
     }
     return { ok: true, result: { dashboard: dash } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("command-center", "listDashboards", (ctx, _artifact, params = {}) => {
     const scope = ccScope(ctx, params, null);
@@ -903,6 +907,7 @@ export default function registerCommandCenterActions(registerLensAction) {
   });
 
   registerLensAction("command-center", "writePostmortem", (ctx, _artifact, params = {}) => {
+  try {
     const scope = ccScope(ctx, params, WRITE_RESPONDER_OR_LEAD);
     if (!scope.ok) return scope;
     const incidents = userMap("incidents", ctx, scope.key);
@@ -920,9 +925,11 @@ export default function registerCommandCenterActions(registerLensAction) {
       writtenBy: uid(ctx),
     };
     return { ok: true, result: { incident } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("command-center", "listIncidents", (ctx, _artifact, params = {}) => {
+  try {
     const scope = ccScope(ctx, params, null);
     if (!scope.ok) return scope;
     let incidents = [...userMap("incidents", ctx, scope.key).values()];
@@ -945,7 +952,8 @@ export default function registerCommandCenterActions(registerLensAction) {
         mttrMinutes: mttrMs != null ? Math.round((mttrMs / 60000) * 100) / 100 : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ---------------------------------------------------------------------------
   // Feature 5 — Cross-vital correlation view (what changed together).

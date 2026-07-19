@@ -274,6 +274,7 @@ export default function registerAstronomyActions(registerLensAction) {
   // azimuth) AND the panel's short aliases (body/alt/az) so the rendering
   // side resolves whichever it reads.
   registerLensAction("astronomy", "celestialPosition", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     // Observer accepts either {observerLat,observerLng} (panel) or
     // {latitude,longitude} (coordinate path); both default to NYC.
@@ -344,7 +345,8 @@ export default function registerAstronomyActions(registerLensAction) {
         observerLocation: { lat, lon },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("astronomy", "planObservation", (ctx, artifact, _params) => {
     const data = artifact.data || {};

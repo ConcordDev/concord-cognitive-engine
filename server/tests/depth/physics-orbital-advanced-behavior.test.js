@@ -111,12 +111,25 @@ describe("physics — orbitalMechanicsAdvanced (un-shadowed Keplerian/Hohmann en
     const res = r.result;
     near(res.dynamics.periapsis, a * (1 - e), 1e-6);
     near(res.dynamics.apoapsis, a * (1 + e), 1e-6);
+    // Exact-value checks against the handler's own field path (server/domains/physics.js
+    // lines 218-219, 250: `periapsis: r(a*(1-e))`, `apoapsis: r(a*(1+e))`) — for
+    // a=10,000,000 e=0.3 both formula outputs land on exact integers (7,000,000 /
+    // 13,000,000), so the handler's `Math.round(v*1e6)/1e6` rounding is a no-op and
+    // assert.equal (not just a within-epsilon check) is the honest bar here.
+    assert.equal(r.result.dynamics.periapsis, a * (1 - e), "periapsis exactly matches a·(1-e) = 7,000,000 m");
+    assert.equal(r.result.dynamics.apoapsis, a * (1 + e), "apoapsis exactly matches a·(1+e) = 13,000,000 m");
     assert.ok(Array.isArray(res.orbitPoints) && res.orbitPoints.length > 0);
+    // params.points=36 (<=50, so the >50-decimation filter at physics.js:260
+    // does not fire) must produce EXACTLY 36 points — proves `points` genuinely
+    // drives nPoints (physics.js:225 `const nPoints = params.points || 72`)
+    // rather than being ignored.
+    assert.equal(r.result.orbitPoints.length, 36, "points=36 must yield exactly 36 unfiltered orbit points");
     // At true anomaly theta=0, the polar orbit equation r = a(1-e^2)/(1+e*cos(theta))
     // reduces to a(1-e) — periapsis, the closest point to the central body.
     const p0 = res.orbitPoints[0];
     near(p0.radius, a * (1 - e), 1e-3);
     near(p0.theta, 0, 1e-9);
+    assert.equal(r.result.orbitPoints[0].theta, 0, "theta=0 at i=0 exactly (theta = 2*pi*i/nPoints, i=0)");
   });
 
   it("state-vector mode still resolves orbital elements under the new name (same branch orbitalMechanics uses, just additionally reachable here)", async () => {

@@ -160,9 +160,13 @@ describe('WithdrawFlow', () => {
     fireEvent.change(input, { target: { value: '100' } });
 
     await waitFor(() => {
-      // 5% fee on 100 CC = 5 CC fee, net $95
+      // PLATFORM_FEE_PERCENT = 1.46 (matches the TOKEN_PURCHASE_FEE 0.0146
+      // constitutional invariant) on 100 CC = 1.46 CC fee, net $98.54.
+      // "1.46" appears twice (the fee % and the fee amount), so use
+      // getAllByText rather than getByText to avoid a multiple-match throw.
       expect(screen.getByText(/platform fee/i)).toBeDefined();
-      expect(screen.getByText(/5%/)).toBeDefined();
+      expect(screen.getAllByText(/1\.46/).length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText(/98\.54/)).toBeDefined();
     });
   });
 

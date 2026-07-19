@@ -72,7 +72,14 @@ describe("artistry.follow -> notification", () => {
     call("follow", ctxA, { targetUserId: "artist_b" });
     const r2 = call("follow", ctxA, { targetUserId: "artist_b" });
     assert.equal(r2.ok, true);
+    // The idempotent second call must not push a duplicate entry into the
+    // follows list either — followingCount stays at 1, not 2.
+    assert.equal(r2.result.followingCount, 1, "repeat follow must not grow the follows list");
     assert.equal(rawNotifs("artist_b").length, 1, "second idempotent follow call must not add a second notification");
+    // Round-trip through the real notifications-list macro too, so the
+    // no-re-notify claim is verified through the same read path a client uses.
+    const list = call("notifications-list", ctxB, {});
+    assert.equal(list.result.count, 1, "notifications-list must still report exactly one follow notification");
   });
 
   it("self-follow is rejected upstream and never notifies (no notification bucket even created for the actor)", () => {
@@ -109,7 +116,12 @@ describe("artistry.commentAdd -> notification", () => {
   it("commenting on an unknown/nonexistent projectId is a silent no-op for notifications (never throws)", () => {
     const r = call("commentAdd", ctxB, { projectId: "does-not-exist", body: "hi" });
     assert.equal(r.ok, true); // pre-existing behavior: comments aren't validated against project existence
-    // No owner could be resolved, so nobody gets notified — and nothing throws.
+    // The comment is genuinely persisted (commentAdd doesn't validate project
+    // existence) — assert the real result fields, not just ok===true.
+    assert.equal(r.result.commentCount, 1);
+    assert.equal(r.result.comment.projectId, "does-not-exist");
+    // No owner could be resolved (findProjectOwner scans real projects and
+    // finds none), so nobody gets notified — and nothing throws.
     assert.equal(rawNotifs("artist_a").length, 0);
   });
 });
@@ -227,8 +239,14 @@ describe("artistry.notifications-mark-read", () => {
   });
 
   it("rejects an unknown notification id", () => {
+    // Seed a real notification first so this exercises "id doesn't match
+    // anything in an existing bucket" (server/emergent/social-layer.js
+    // #markNotificationRead's `notifs.find(...)` miss) rather than the
+    // separate empty-bucket short-circuit ("No notifications").
+    call("follow", ctxA, { targetUserId: "artist_b" });
     const r = call("notifications-mark-read", ctxB, { id: "nope" });
     assert.equal(r.ok, false);
+    assert.match(r.error, /not found/i);
   });
 
   it("marks all of the caller's notifications read with { all: true }", () => {
@@ -260,10 +278,35 @@ describe("artistry notifications — degrade graceful when STATE is absent", () 
     // getArtState() lazily builds globalThis._concordSTATE.artistryLens, and
     // notifyArtistry() lazily builds STATE._social via createNotification's
     // getSocialState() — both must cope with a bare {} STATE with neither
-    // bucket pre-existing.
+    // bucket pre-existing. Each of the three scenarios below starts from a
+    // fresh {} STATE (so `_social` genuinely doesn't exist yet when
+    // notifyArtistry first fires) and asserts a concrete field of the real
+    // return value, not just that no exception was thrown.
+
+    // follow -> notifyArtistry builds STATE._social from scratch.
     globalThis._concordSTATE = {};
-    const r = call("follow", ctxA, { targetUserId: "artist_b" });
-    assert.equal(r.ok, true);
+    const rf = call("follow", ctxA, { targetUserId: "artist_b" });
+    assert.equal(rf.ok, true);
+    assert.equal(rf.result.followingCount, 1);
     assert.equal(rawNotifs("artist_b").length, 1);
+
+    // commentAdd -> same lazy-init path, via a freshly (re-)created project
+    // so findProjectOwner has someone to resolve and actually notify.
+    globalThis._concordSTATE = {};
+    const proj = call("projectCreate", ctxA, { title: "Fresh Proj" });
+    const projectId = proj.result.project.id;
+    const rc = call("commentAdd", ctxB, { projectId, body: "hello" });
+    assert.equal(rc.ok, true);
+    assert.equal(rc.result.commentCount, 1);
+    assert.equal(rawNotifs("artist_a").length, 1);
+
+    // appreciate -> same lazy-init path, on the toggle-ON transition.
+    globalThis._concordSTATE = {};
+    const proj2 = call("projectCreate", ctxA, { title: "Fresh Proj 2" });
+    const projectId2 = proj2.result.project.id;
+    const ra = call("appreciate", ctxB, { projectId: projectId2 });
+    assert.equal(ra.ok, true);
+    assert.equal(ra.result.appreciated, true);
+    assert.equal(rawNotifs("artist_a").length, 1);
   });
 });

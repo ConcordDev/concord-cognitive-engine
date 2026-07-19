@@ -75,7 +75,17 @@ function spawnServer(port, dataDir, extraEnv, timeoutMs) {
   timeoutMs = timeoutMs || 90000;
   extraEnv = extraEnv || {};
   return new Promise((resolve, reject) => {
-    const env = Object.assign({}, process.env, {
+    // Start from the parent's env but drop DB_PATH: tests/preload/no-egress.mjs
+    // sets it on THIS (outer) test-file process to a per-process random tmp
+    // path (isolation for `node --test`'s many concurrently-run files), but
+    // this test relies on the spawned child resolving its own DB_PATH from
+    // DATA_DIR (server.js:5109 `DB_PATH = process.env.DB_PATH || join(DATA_DIR,
+    // "concord.db")`) so the direct `new Database(join(dataDir, 'concord.db'))`
+    // read below finds the same file the child actually wrote. Inheriting the
+    // parent's DB_PATH here made the child use a DIFFERENT file than dataDir,
+    // so the direct read hit "no such table: users".
+    const { DB_PATH: _parentDbPath, ...parentEnvWithoutDbPath } = process.env;
+    const env = Object.assign({}, parentEnvWithoutDbPath, {
       PORT: String(port),
       NODE_ENV: 'e2e-test',
       CONCORD_NO_LISTEN: 'false',

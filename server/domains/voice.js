@@ -443,6 +443,7 @@ export default function registerVoiceActions(registerLensAction) {
   });
 
   registerLensAction("voice", "live-append", (ctx, _a, params = {}) => {
+  try {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const session = liveList(s, vcActor(ctx)).find((g) => g.id === params.sessionId);
     if (!session) return { ok: false, error: "live session not found" };
@@ -466,7 +467,8 @@ export default function registerVoiceActions(registerLensAction) {
     else session.words.push(word);
     saveVoice();
     return { ok: true, result: { wordCount: session.words.length, accepted: word } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("voice", "live-detail", (ctx, _a, params = {}) => {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -485,6 +487,7 @@ export default function registerVoiceActions(registerLensAction) {
   });
 
   registerLensAction("voice", "live-finalize", (ctx, _a, params = {}) => {
+  try {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = vcActor(ctx);
     const session = liveList(s, userId).find((g) => g.id === params.sessionId);
@@ -538,7 +541,8 @@ export default function registerVoiceActions(registerLensAction) {
     session.recordingId = recording.id;
     saveVoice();
     return { ok: true, result: { recording, sessionId: session.id } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── LLM-written meeting summary (opt-in) ────────────────────────────
   registerLensAction("voice", "recording-summary-llm", async (ctx, _a, params = {}) => {
@@ -679,6 +683,7 @@ Only use information present in the transcript. Do not invent owners or decision
   // Apply identified speakers across a recording's segments by matching
   // each segment's stored acoustic vector against enrolled voice prints.
   registerLensAction("voice", "recording-auto-label-speakers", (ctx, _a, params = {}) => {
+  try {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = vcActor(ctx);
     const rec = vcList(s, userId).find((r) => r.id === params.id);
@@ -723,7 +728,8 @@ Only use information present in the transcript. Do not invent owners or decision
     if (relabeled > 0) rec.summary = null;
     saveVoice();
     return { ok: true, result: { relabeled, unmatched: unmatched.length, totalSegments: rec.segments.length, matches } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Calendar / meeting-bot integration ──────────────────────────────
   // Schedule meetings; a "bot" join records the meeting by attaching a

@@ -147,25 +147,43 @@ describe('world lens page — world_buildings row -> BuildingDTU mapping (Unit 3
   // ── Source pins: prove page.tsx's REAL implementation matches the logic
   // exercised above, so the standalone copy above can't silently drift from
   // the shipped code. ─────────────────────────────────────────────────────
+  //
+  // WorldBuildingRow + mapWorldBuildingToRendererDTU moved out of page.tsx
+  // into lib/world-lens/world-building-dto.ts (the pre-existing canonical
+  // copy standalone preview surfaces already used) because a Next.js page.tsx
+  // file may only export Page fields (default/metadata/generateStaticParams/
+  // …) — re-exporting a plain function/interface from it broke the
+  // production build ("... is not a valid Page export field"). page.tsx now
+  // imports both symbols instead of defining them; the pins below check the
+  // canonical lib source for the definitions and page.tsx's source for the
+  // import + usage sites.
+  const dtoSrc = readFileSync(
+    path.resolve(__dirname, '..', '..', '..', '..', 'lib', 'world-lens', 'world-building-dto.ts'),
+    'utf8'
+  );
 
-  it('declares an exported WorldBuildingRow type with nullable archetype/feature', () => {
-    expect(src).toMatch(/export interface WorldBuildingRow \{/);
-    expect(src).toMatch(/archetype\?:\s*string;/);
-    expect(src).toMatch(/feature\?:\s*string;/);
+  it('page.tsx imports WorldBuildingRow + mapWorldBuildingToRendererDTU from the canonical lib module', () => {
+    expect(src).toMatch(/import \{ mapWorldBuildingToRendererDTU, type WorldBuildingRow \} from '@\/lib\/world-lens\/world-building-dto';/);
+  });
+
+  it('the canonical lib module declares WorldBuildingRow with nullable archetype/feature', () => {
+    expect(dtoSrc).toMatch(/export interface WorldBuildingRow \{/);
+    expect(dtoSrc).toMatch(/archetype\?:\s*string;/);
+    expect(dtoSrc).toMatch(/feature\?:\s*string;/);
   });
 
   it('declares the worldBuildings state using WorldBuildingRow[]', () => {
     expect(src).toMatch(/useState<WorldBuildingRow\[\]>\(\[\]\)/);
   });
 
-  it('extracts mapWorldBuildingToRendererDTU as a standalone exported function', () => {
-    expect(src).toMatch(/export function mapWorldBuildingToRendererDTU\(b: WorldBuildingRow\)/);
+  it('the canonical lib module exports mapWorldBuildingToRendererDTU', () => {
+    expect(dtoSrc).toMatch(/export function mapWorldBuildingToRendererDTU\(b: WorldBuildingRow\)/);
   });
 
-  it('the extracted function conditionally spreads archetype/feature only when the row carries them', () => {
-    const fnStart = src.indexOf('export function mapWorldBuildingToRendererDTU');
+  it('the canonical function conditionally spreads archetype/feature only when the row carries them', () => {
+    const fnStart = dtoSrc.indexOf('export function mapWorldBuildingToRendererDTU');
     expect(fnStart).toBeGreaterThan(-1);
-    const fnBody = src.slice(fnStart, fnStart + 1200);
+    const fnBody = dtoSrc.slice(fnStart, fnStart + 1200);
     expect(fnBody).toMatch(/\.\.\.\(b\.archetype \? \{ archetype: b\.archetype \} : \{\}\)/);
     expect(fnBody).toMatch(/\.\.\.\(b\.feature \? \{ feature: b\.feature \} : \{\}\)/);
     // Every field the pre-Unit-3 mapping produced is still produced.
@@ -173,7 +191,7 @@ describe('world lens page — world_buildings row -> BuildingDTU mapping (Unit 3
     expect(fnBody).toMatch(/material: coerceMaterial\(b\.material\)/);
   });
 
-  it('buildingRendererBuildings (feeding BuildingRenderer3D) uses the extracted mapper', () => {
+  it('buildingRendererBuildings (feeding BuildingRenderer3D) uses the imported mapper', () => {
     const memoStart = src.indexOf('const buildingRendererBuildings = useMemo(');
     expect(memoStart).toBeGreaterThan(-1);
     const memoBody = src.slice(memoStart, memoStart + 200);

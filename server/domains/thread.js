@@ -251,6 +251,7 @@ export default function registerThreadActions(registerLensAction) {
   // a real deep-copy macro following the same per-user CRUD pattern as
   // `thread-draft`/`draft-delete` above.
   registerLensAction("thread", "thread-clone", (ctx, _a, params = {}) => {
+  try {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = trActor(ctx);
     const list = trList(s, userId);
@@ -309,7 +310,8 @@ export default function registerThreadActions(registerLensAction) {
     list.push(clone);
     saveThread();
     return { ok: true, result: { draft: clone } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("thread", "draft-schedule", (ctx, _a, params = {}) => {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };

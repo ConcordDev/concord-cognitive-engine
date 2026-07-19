@@ -465,6 +465,7 @@ export default function registerMessageActions(registerLensAction) {
   // ── Threads ───────────────────────────────────────────────────
 
   registerLensAction("message", "thread-reply", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
@@ -490,7 +491,8 @@ export default function registerMessageActions(registerLensAction) {
     indexMessageEntry(s, userId, { messageId: reply.id, threadId: rootId, body, sender: reply.senderName, ts: reply.ts });
     saveMessageState();
     return { ok: true, result: { reply, threadCount: root.threadCount } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "thread-list", (ctx, _a, params = {}) => {
   try {

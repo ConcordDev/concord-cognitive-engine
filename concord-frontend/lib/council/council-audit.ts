@@ -3,9 +3,9 @@
  * Process Audit panels (Wave 4 gap-closure — see
  * docs/lens-specs/council-capability-map.md).
  *
- * Both `registerLensAction("council", "simulate-budget", …)` and
- * `registerLensAction("council", "audit", …)` (server/server.js ~40272 /
- * ~40301) read ONLY from `artifact.data` — they take no useful `params`, so
+ * Both the server-registered `council` lens actions `simulate-budget` and
+ * `audit` (server/server.js ~40272 / ~40301) read ONLY from `artifact.data`
+ * — they take no useful `params`, so
  * reaching them for real requires the target artifact's stored `.data` to
  * already hold the shape they expect. For a real council Proposal artifact
  * that turned out to be safe for `simulate-budget` (see
@@ -124,7 +124,7 @@ interface MinimalProposalForAudit {
 }
 
 /**
- * Client-side port of `registerLensAction("council", "audit", …)`
+ * Client-side port of the server-registered `council` lens action `audit`
  * (server/server.js:40301-40323). See the module doc comment above for why
  * this doesn't round-trip through the real macro.
  *

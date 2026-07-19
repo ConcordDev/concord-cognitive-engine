@@ -91,6 +91,7 @@ export default function registerCouncilActions(registerLensAction) {
     return { ok: true, result: { tally, total, forPercent, passed: forPercent >= 67, passThreshold: "67% supermajority", quorumMet: total >= quorum } };
   });
   registerLensAction("council", "generateMinutes", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     // Array-guard list inputs (a poisoned non-array string must not reach .map()
     // and throw uncaught) and String()-coerce title/date so the RETURN shape is
@@ -137,7 +138,8 @@ export default function registerCouncilActions(registerLensAction) {
         ...(asProposal ? { derivedFrom: "proposal", note: "Agenda/attendees/decisions derived from this proposal's discussion, sponsors, and amendments — proposals don't track a formal meeting agenda or action items." } : {}),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("council", "conflictResolution", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     // Array-guard parties + String()-coerce issue so poisoned input degrades

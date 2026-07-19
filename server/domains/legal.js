@@ -75,6 +75,7 @@ export default function registerLegalActions(registerLensAction) {
   });
 
   registerLensAction("legal", "caseSummary", (ctx, artifact, _params) => {
+  try {
     const parties = artifact.data?.parties || [];
     const client = artifact.data?.client || '';
     const opposingParty = artifact.data?.opposingParty || '';
@@ -108,7 +109,8 @@ export default function registerLegalActions(registerLensAction) {
         generatedAt: new Date().toISOString(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "complianceAudit", (ctx, artifact, _params) => {
     const requirements = artifact.data?.requirements || [];

@@ -1068,6 +1068,7 @@ Constraints:
   });
 
   registerLensAction("education", "courses-search", (ctx, _a, params = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const query = String(params.query || "").trim().toLowerCase();
@@ -1081,7 +1082,8 @@ Constraints:
       c.institution.toLowerCase().includes(query)
     );
     return { ok: true, result: { matches, total: matches.length, query } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Lessons within a course ───────────────────────────────────
 
@@ -1095,6 +1097,7 @@ Constraints:
   });
 
   registerLensAction("education", "lessons-create", (ctx, _a, params = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const store = courseStore(ctx, s);
@@ -1116,7 +1119,8 @@ Constraints:
     store.put(course);
     saveStateIfAvailable();
     return { ok: true, result: { lesson } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("education", "lessons-complete", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1141,6 +1145,7 @@ Constraints:
   // ── Enrollments + course progress ─────────────────────────────
 
   registerLensAction("education", "enrollments-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const enrollments = ensureEduBucket(s, "enrollments", userId);
@@ -1158,7 +1163,8 @@ Constraints:
       };
     });
     return { ok: true, result: { enrollments: enriched } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("education", "enrollments-enroll", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1582,6 +1588,7 @@ Constraints:
   });
 
   registerLensAction("education", "video-progress-get", (ctx, _a, params = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const lessonId = String(params.lessonId || "");
@@ -1596,9 +1603,11 @@ Constraints:
         watchedPct: rec.durationSec > 0 ? Math.round((rec.watchedSec / rec.durationSec) * 100) : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("education", "video-transcript-save", (ctx, _a, params = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const lessonId = String(params.lessonId || "");
@@ -1615,7 +1624,8 @@ Constraints:
     else transcripts.push({ lessonId, cues, updatedAt: new Date().toISOString() });
     saveStateIfAvailable();
     return { ok: true, result: { lessonId, cueCount: cues.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("education", "video-transcript-get", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1694,6 +1704,7 @@ Constraints:
   // exercises-hint — return the next hint for a step (1-indexed escalation),
   // never the answer.
   registerLensAction("education", "exercises-hint", (ctx, _a, params = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const exerciseId = String(params.exerciseId || "");
@@ -1712,7 +1723,8 @@ Constraints:
         totalHints: step.hints.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // exercises-submit — auto-grade a step answer. Maintains a per-user
   // mastery streak; 3 correct in a row on an exercise → skill mastery

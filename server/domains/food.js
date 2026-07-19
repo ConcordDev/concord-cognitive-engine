@@ -1011,6 +1011,7 @@ export default function registerFoodActions(registerLensAction) {
   });
 
   registerLensAction("food", "grocery-list-build", (ctx, _artifact, params = {}) => {
+  try {
     const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const startDate = String(params.startDate || new Date().toISOString().slice(0, 10));
@@ -1034,7 +1035,8 @@ export default function registerFoodActions(registerLensAction) {
       items: items.slice(0, Math.min(items.length, Math.ceil(meals.length / 2))).map(name => ({ name, qty: 1, unit: "item" })),
     }));
     return { ok: true, result: { byAisle, meals: meals.length, days } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("food", "recipe-import-url", async (ctx, _artifact, params = {}) => {
     const url = String(params.url || "").trim();
@@ -1170,6 +1172,7 @@ export default function registerFoodActions(registerLensAction) {
   });
 
   registerLensAction("food", "biz-search", (ctx, _a, params = {}) => {
+  try {
     const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const q = yclean(params.query, 80).toLowerCase();
     const cuisine = yclean(params.cuisine, 60).toLowerCase();
@@ -1188,7 +1191,8 @@ export default function registerFoodActions(registerLensAction) {
       : sort === "reviews" ? b.reviewCount - a.reviewCount
       : (b.rating - a.rating) || (b.reviewCount - a.reviewCount));
     return { ok: true, result: { businesses: rows, count: rows.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("food", "biz-detail", (ctx, _a, params = {}) => {
     const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };

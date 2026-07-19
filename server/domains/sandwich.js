@@ -99,6 +99,7 @@ export default function registerSandwichMacros(register, deps = {}) {
     "sandwich",
     "run",
     async (ctx, input = {}) => {
+  try {
       const query = String(input.query || "").trim();
       if (!query) return { ok: false, reason: "empty_query" };
 
@@ -154,7 +155,8 @@ export default function registerSandwichMacros(register, deps = {}) {
         plan: routed.plan,
         ruleId: routed.ruleId,
       };
-    },
+      } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+},
     {
       note: "verified semantic sandwich: NL → parse → deterministic macro DAG → verified format",
     },

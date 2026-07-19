@@ -259,6 +259,7 @@ export default function registerSpaceActions(registerLensAction) {
   // precision `iss-passes` actually earns from real telemetry.
 
   registerLensAction("space", "satellite-track", (ctx, _a, params = {}) => {
+  try {
     const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = spClean(params.name, 200);
     if (!name) return { ok: false, error: "satellite name required" };
@@ -286,9 +287,11 @@ export default function registerSpaceActions(registerLensAction) {
     sats.push(satellite);
     saveSpace();
     return { ok: true, result: { satellite, count: sats.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("space", "satellite-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     // periodMinutes/orbitsPerDay/type are derived LIVE on every read (never
     // stored) via the shared orbitalPeriodMinutes helper — same pattern as
@@ -303,7 +306,8 @@ export default function registerSpaceActions(registerLensAction) {
       };
     });
     return { ok: true, result: { satellites, count: satellites.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("space", "satellite-untrack", (ctx, _a, params = {}) => {
     const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -343,6 +347,7 @@ export default function registerSpaceActions(registerLensAction) {
    *      durations.
    */
   registerLensAction("space", "satellite-passes", (ctx, _a, params = {}) => {
+  try {
     const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sats = spSatellites(s, spActor(ctx));
     const sat = sats.find((x) => x.id === params.id);
@@ -387,7 +392,8 @@ export default function registerSpaceActions(registerLensAction) {
         note,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Live satellite catalog (CelesTrak GP data) ──────────────────────
   //

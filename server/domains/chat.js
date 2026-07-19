@@ -1402,6 +1402,7 @@ export default function registerChatActions(registerLensAction) {
   // The user's generation history is kept per-user.
 
   registerLensAction("chat", "image-generate", async (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -1425,7 +1426,8 @@ export default function registerChatActions(registerLensAction) {
     if (arr.length > 200) arr.splice(0, arr.length - 200);
     saveChatState();
     return { ok: true, result: { image } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "image-history", (ctx, _artifact, params = {}) => {
   try {

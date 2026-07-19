@@ -81,22 +81,40 @@ describe("rights-enforcement — plugin tier ladder (unit)", () => {
   it("cumulativity: a 'resale' license implies install + commercial (every lower tier)", () => {
     const db = makeUnitDb();
     grantLicense(db, { dtuId: "plug2", userId: "u2", contentType: "plugin", licenseTier: "resale", txId: "tx2" });
-    assert.equal(checkAccess(db, { userId: "u2", dtuId: "plug2", contentType: "plugin", action: "install" }).allowed, true);
-    assert.equal(checkAccess(db, { userId: "u2", dtuId: "plug2", contentType: "plugin", action: "commercial_use" }).allowed, true);
-    assert.equal(checkAccess(db, { userId: "u2", dtuId: "plug2", contentType: "plugin", action: "resale" }).allowed, true);
-    // Still doesn't imply the tier ABOVE it.
-    assert.equal(checkAccess(db, { userId: "u2", dtuId: "plug2", contentType: "plugin", action: "access_source" }).allowed, false);
+    // Only ONE license was granted (resale) — checkAccess() finds it via
+    // getUserLicenses() and returns which tier actually satisfied the
+    // request (economy/rights-enforcement.js#checkAccess: `{ allowed: true,
+    // reason: "licensed", tier: lic.license_tier }`). Asserting `.tier ===
+    // "resale"` on every lower action is the real proof of cumulativity —
+    // the SAME single grant backs install, commercial_use, AND resale, not
+    // three separate (fabricated) licenses.
+    const install = checkAccess(db, { userId: "u2", dtuId: "plug2", contentType: "plugin", action: "install" });
+    assert.equal(install.allowed, true);
+    assert.equal(install.tier, "resale");
+    const commercial = checkAccess(db, { userId: "u2", dtuId: "plug2", contentType: "plugin", action: "commercial_use" });
+    assert.equal(commercial.allowed, true);
+    assert.equal(commercial.tier, "resale");
+    const resale = checkAccess(db, { userId: "u2", dtuId: "plug2", contentType: "plugin", action: "resale" });
+    assert.equal(resale.allowed, true);
+    assert.equal(resale.tier, "resale");
+    // Still doesn't imply the tier ABOVE it — a clean rejection, not a
+    // silent allow, with the exact tier the caller would need to buy next.
+    const source = checkAccess(db, { userId: "u2", dtuId: "plug2", contentType: "plugin", action: "access_source" });
+    assert.equal(source.allowed, false);
+    assert.equal(source.reason, "insufficient_license");
+    assert.equal(source.requiredTier, "source");
   });
 
   it("cumulativity: 'source' (top tier) implies every capability below it", () => {
     const db = makeUnitDb();
     grantLicense(db, { dtuId: "plug3", userId: "u3", contentType: "plugin", licenseTier: "source", txId: "tx3" });
     for (const action of ["install", "commercial_use", "resale", "access_source"]) {
-      assert.equal(
-        checkAccess(db, { userId: "u3", dtuId: "plug3", contentType: "plugin", action }).allowed,
-        true,
-        `source tier should grant ${action}`,
-      );
+      const access = checkAccess(db, { userId: "u3", dtuId: "plug3", contentType: "plugin", action });
+      assert.equal(access.allowed, true, `source tier should grant ${action}`);
+      // The single top-tier grant is what backs every lower action directly
+      // (not a coincidental "true" from some other path) — pin the exact
+      // license tier checkAccess() attributes each allow to.
+      assert.equal(access.tier, "source", `source tier should back ${action} directly`);
     }
   });
 
@@ -234,8 +252,28 @@ describe("marketplace plugin checkout — real macros (submit/purchase/install)"
     const submitted = await runMacro("marketplace", "submit", {
       name: "Creator's Own Widget", githubUrl: "https://github.com/acme/own-widget", price: 25,
     }, creatorCtx);
+    const creatorId = creatorCtx.actor.userId;
+    // creatorCtx is never funded anywhere in this file (only buyerCtx/
+    // otherBuyerCtx get `creditWallet`) — if `marketplace.install`'s rights
+    // gate mistakenly routed the creator through a real purchase debit
+    // instead of the `checkAccess` creator-bypass (`{allowed:true,
+    // reason:"creator"}` for `creatorId === userId`, server.js:37490's
+    // `creatorId: listing.creatorId` on the checkAccess call), the install
+    // would either fail (insufficient balance) or leave the balance
+    // negative. getBalance sums debits unconditionally (see the ledger-
+    // reconciliation comment below), so this is a trustworthy "no charge
+    // occurred" signal, not just an ok-flag.
+    const creatorBalanceBefore = getBalanceForTest(creatorId);
+
     const installed = await runMacro("marketplace", "install", { pluginId: submitted.listing.id }, creatorCtx);
     assert.equal(installed.ok, true);
+    assert.equal(installed.plugin.id, submitted.listing.id);
+    assert.equal(getBalanceForTest(creatorId), creatorBalanceBefore);
+
+    // Round-trip: the install is genuinely recorded for the creator, not
+    // just a truthy top-level ok.
+    const installedList = await runMacro("marketplace", "installed", {}, creatorCtx);
+    assert.ok(installedList.plugins.some((p) => p.id === submitted.listing.id));
   });
 
   it("a higher purchased tier (resale) implies the base install right end-to-end", async () => {
@@ -243,12 +281,32 @@ describe("marketplace plugin checkout — real macros (submit/purchase/install)"
       name: "Resale-Tier Widget", githubUrl: "https://github.com/acme/resale-widget", price: 15,
     }, creatorCtx);
     const pluginId = submitted.listing.id;
+    const otherBuyerId = otherBuyerCtx.actor.userId;
 
     const purchase = await runMacro("marketplace", "purchasePlugin", { pluginId, tier: "resale" }, otherBuyerCtx);
     assert.equal(purchase.ok, true);
 
+    // purchaseArtifact() mirrors the purchased tier into dtu_licenses via
+    // grantDtuLicense (economy/creative-marketplace.js step 5, licenseTier:
+    // resolvedTier="resale") — check the SAME production checkAccess() that
+    // `marketplace.install`'s rights gate calls, directly against the real
+    // on-disk DB, proving the resale purchase genuinely implies the lower
+    // "install" capability end-to-end (not merely that the install macro
+    // happens to return ok for an unrelated reason).
+    const rightsDb = getRightsDbForTest();
+    const installAccess = checkAccess(rightsDb, {
+      userId: otherBuyerId, dtuId: pluginId, contentType: "plugin", action: "install",
+    });
+    assert.equal(installAccess.allowed, true);
+    assert.equal(installAccess.tier, "resale");
+
     const installed = await runMacro("marketplace", "install", { pluginId }, otherBuyerCtx);
     assert.equal(installed.ok, true);
+
+    // Round-trip: the base right actually shows up as an installed plugin
+    // for this buyer.
+    const installedList = await runMacro("marketplace", "installed", {}, otherBuyerCtx);
+    assert.ok(installedList.plugins.some((p) => p.id === pluginId));
   });
 
   it("purchasing a free listing is rejected — no phantom checkout on a 0-price item", async () => {
@@ -280,6 +338,17 @@ function getLedgerRowForTest(refId) {
   }
   return _reconcileDb.prepare("SELECT * FROM economy_ledger WHERE ref_id = ?").get(refId);
 }
+// Same lazily-opened connection as the two helpers above, exposed directly
+// for callers that need to run a real checkAccess()/rights-enforcement
+// query against the actual on-disk DB the booted server writes to (not a
+// throwaway :memory: db — proves the production dtu_licenses row is really
+// there).
+function getRightsDbForTest() {
+  if (!_reconcileDb) {
+    _reconcileDb = new Database(process.env.DB_PATH);
+  }
+  return _reconcileDb;
+}
 
 after(() => {
   try { _reconcileDb?.close?.(); } catch { /* best-effort */ }
@@ -289,7 +358,32 @@ after(() => {
 // creative-marketplace purchase pays fees into — confirms the plugin
 // purchase path didn't invent a different fee sink.
 describe("plugin purchase fee sink", () => {
-  it("PLATFORM_ACCOUNT_ID is the canonical platform account", () => {
+  it("PLATFORM_ACCOUNT_ID is the canonical platform account", async () => {
     assert.equal(PLATFORM_ACCOUNT_ID, "__PLATFORM__");
+
+    // Round-trip beyond the bare constant: run one more real plugin
+    // purchase and confirm the platform-fee ledger row purchaseArtifact()
+    // actually writes (economy/creative-marketplace.js "2b. Platform fee
+    // credit" entry: `to: PLATFORM_ACCOUNT_ID`, refId `creative_fee:
+    // ${purchaseId}`) is attributed to THIS exact exported id — proving the
+    // plugin-checkout path didn't invent a different/hardcoded fee sink
+    // that happens to share the same string.
+    const rt = await macroRuntime("marketplace-plugin-license-fee-sink");
+    const { creditWallet } = await load();
+    const feeCreatorCtx = await depthCtx(`plugin-fee-creator-${randomUUID()}`);
+    const feeBuyerCtx = await depthCtx(`plugin-fee-buyer-${randomUUID()}`);
+    creditWallet(feeBuyerCtx.actor.userId, 1000, "test_fund");
+
+    const submitted = await rt.runMacro("marketplace", "submit", {
+      name: "Fee Sink Widget", githubUrl: "https://github.com/acme/fee-sink-widget", price: 20,
+    }, feeCreatorCtx);
+    const purchase = await rt.runMacro(
+      "marketplace", "purchasePlugin", { pluginId: submitted.listing.id, tier: "install" }, feeBuyerCtx,
+    );
+    assert.equal(purchase.ok, true);
+
+    const feeRow = getLedgerRowForTest(`creative_fee:${purchase.purchaseId}`);
+    assert.ok(feeRow, "expected a platform-fee ledger row for this purchase");
+    assert.equal(feeRow.to_user_id, PLATFORM_ACCOUNT_ID);
   });
 });

@@ -260,6 +260,7 @@ export default function registerInsuranceActions(register) {
   });
 
   registerLensAction("insurance", "riskScore", (ctx, artifact, params) => {
+  try {
     // Fail-CLOSED: reject a poisoned numeric (NaN/Infinity/1e308/negative)
     // BEFORE the score multiply, rather than emitting a null/Infinity score the
     // panel would render as a blank or "Infinity%" risk card. Probability/impact
@@ -293,7 +294,8 @@ export default function registerInsuranceActions(register) {
         level: score >= 15 ? 'critical' : score >= 10 ? 'high' : score >= 5 ? 'medium' : 'low',
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint macros ──
 
@@ -404,6 +406,7 @@ export default function registerInsuranceActions(register) {
   });
 
   registerLensAction("insurance", "policy-add", (ctx, _artifact, params = {}) => {
+  try {
     const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const carrier = String(params.carrier || "").trim();
@@ -435,7 +438,8 @@ export default function registerInsuranceActions(register) {
     state.policies.get(userId).push(policy);
     saveInsState();
     return { ok: true, result: { policy } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("insurance", "claim-list", (ctx, _artifact, _params = {}) => {
     const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
@@ -449,6 +453,7 @@ export default function registerInsuranceActions(register) {
   });
 
   registerLensAction("insurance", "claim-file", (ctx, _artifact, params = {}) => {
+  try {
     const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const carrier = String(params.carrier || "").trim();
@@ -478,7 +483,8 @@ export default function registerInsuranceActions(register) {
     state.claims.get(userId).push(claim);
     saveInsState();
     return { ok: true, result: { claim } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Insurance premium quotes require live carrier broker APIs (Insurify,
   // The Zebra, Compare.com) which are paid + per-state-licensed. Per the
@@ -765,6 +771,7 @@ export default function registerInsuranceActions(register) {
   }
 
   registerLensAction("insurance", "producer-compliance-add", (ctx, _a, params = {}) => {
+  try {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = insAid(ctx);
     const agentId = insClean(params.agentId, 64);
@@ -825,9 +832,11 @@ export default function registerInsuranceActions(register) {
     insListB(s.producerCompliance, userId).push(record);
     saveInsState();
     return { ok: true, result: { record } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("insurance", "producer-compliance-list", (ctx, _a, params = {}) => {
+  try {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = insAid(ctx);
     const roster = s.agents.get(userId) || [];
@@ -866,7 +875,8 @@ export default function registerInsuranceActions(register) {
     }
 
     return { ok: true, result: { records: enriched, overdueCount, dueSoonCount, byCategory } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("insurance", "producer-compliance-update", (ctx, _a, params = {}) => {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1174,6 +1184,7 @@ export default function registerInsuranceActions(register) {
 
   // ── #1 Write a pact (multi-beneficiary split + recurring premium) ────
   registerLensAction("insurance", "pact-write", (ctx, _a, params = {}) => {
+  try {
     const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pactUid(ctx);
     // Fail-CLOSED: reject poisoned numeric input (NaN/Infinity/1e308/negative)
@@ -1219,7 +1230,8 @@ export default function registerInsuranceActions(register) {
     pactBucket(s.pacts, userId).push(pact);
     saveInsState();
     return { ok: true, result: { pact } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── List pacts (written + beneficiary-of) ───────────────────────────
   registerLensAction("insurance", "pact-list", (ctx, _a, _params = {}) => {
@@ -1900,6 +1912,7 @@ export default function registerInsuranceActions(register) {
 
   // ── #5 Certificate of insurance / ACORD form export ─────────────────
   registerLensAction("insurance", "certificate-issue", (ctx, _a, params = {}) => {
+  try {
     const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ins = getInsState(); if (!ins) return { ok: false, error: "STATE unavailable" };
     const userId = insAid(ctx);
@@ -1939,7 +1952,8 @@ export default function registerInsuranceActions(register) {
     insListB(s.certificates, userId).push(cert);
     saveInsState();
     return { ok: true, result: { certificate: cert } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("insurance", "certificate-list", (ctx, _a, _params = {}) => {
     const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };

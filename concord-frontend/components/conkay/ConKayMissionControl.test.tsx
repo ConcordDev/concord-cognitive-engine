@@ -146,11 +146,11 @@ describe('ConKayMissionControl', () => {
 describe('conkayRunStore pure producers', () => {
   it('toRunStep: a run_lens_action carries domain/action; other tools leave them null', () => {
     const lens = toRunStep(
-      { tool: 'run_lens_action', ok: true, domain: 'music', action: 'search', input: { q: 'jazz' } },
+      { tool: 'run_lens_action', ok: true, domain: 'music', action: 'mb-search-artist', input: { q: 'jazz' } },
       1,
     );
     expect(lens).toMatchObject({
-      seq: 1, tool: 'run_lens_action', domain: 'music', action: 'search', ok: true,
+      seq: 1, tool: 'run_lens_action', domain: 'music', action: 'mb-search-artist', ok: true,
       inputSummary: 'q: jazz', error: null, verify: null,
     });
 

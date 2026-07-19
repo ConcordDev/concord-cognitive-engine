@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { reportFrontendError } from '@/lib/report-frontend-error';
 import { EarthEventsLive } from '@/components/world/EarthEventsLive';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -46,8 +47,8 @@ import {
   type WorldDataSource,
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
-import { coerceMaterial } from '@/lib/world-lens/building-silhouette';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
+import { mapWorldBuildingToRendererDTU, type WorldBuildingRow } from '@/lib/world-lens/world-building-dto';
 import { worldToScene, sceneToWorldAxis } from '@/lib/world-lens/coord-frame';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
@@ -1732,66 +1733,17 @@ const DISTRICT_TOOLS: {
   { key: 'spectator', label: 'Spectator', icon: Clapperboard, group: 'Replay' },
 ];
 
-/**
- * Server-shaped `world_buildings` row as consumed by this page. `archetype`/
- * `feature` (Asset Studio Increment 1, Unit 1 migration — additive, nullable
- * columns) are only present on player-authored buildings; every existing
- * seed/lens/legacy row has neither field.
- */
-export interface WorldBuildingRow {
-  id: string;
-  building_type: string;
-  name: string;
-  x: number;
-  y: number;
-  z: number;
-  width: number;
-  depth: number;
-  height: number;
-  material: string;
-  is_seed: number;
-  archetype?: string;
-  feature?: string;
-}
-
-/**
- * Pure `world_buildings` row -> BuildingRenderer3D DTU mapping (Asset Studio
- * Increment 1, Unit 3 — in-world round-trip). Extracted to a standalone
- * top-level function so it's independently unit-testable without importing
- * this page's full component tree, which is too large to safely render/import
- * in a unit test (see the source-pin convention already used for this file in
- * tests/world-page-wind-direction-threading.test.ts).
- *
- * `archetype`/`feature` are set on the output ONLY when the row actually
- * carries them (truthy) — every existing seed/lens building has neither field
- * and therefore maps BYTE-IDENTICALLY to the pre-Unit-3 shape (no
- * `archetype`/`feature` key at all). BuildingRenderer3D already reads
- * `dtu.archetype` (falls back to a `building_type`-derived silhouette when
- * absent) and `dtu.feature` at its procedural-buildings path.
- */
-export function mapWorldBuildingToRendererDTU(b: WorldBuildingRow) {
-  return {
-    id: b.id,
-    name: b.name || b.building_type,
-    position: { x: b.x, y: b.y ?? 0, z: b.z },
-    dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
-    floors: 1,
-    material: coerceMaterial(b.material),
-    style: 'colonial' as const,
-    // building_type drives the procedural archetype + iconic silhouette.
-    building_type: b.building_type,
-    ...(b.archetype ? { archetype: b.archetype } : {}),
-    ...(b.feature ? { feature: b.feature } : {}),
-    structure: {
-      columns: { count: 0, spacing: 0, radius: 0 },
-      beams: { count: 0, height: 0 },
-      roofType: 'gable' as const,
-      hasBasement: false,
-      windowRows: 1,
-      windowsPerRow: 2,
-    },
-  };
-}
+// `WorldBuildingRow` + `mapWorldBuildingToRendererDTU` (server-shaped
+// `world_buildings` row -> BuildingRenderer3D DTU mapping; `archetype`/
+// `feature` are Asset Studio Increment 1's additive, nullable columns,
+// present only on player-authored buildings) live in
+// lib/world-lens/world-building-dto.ts — the canonical copy standalone
+// preview surfaces (FoundryPreview, FoundryAdapter) also import. A page.tsx
+// file may only export Next.js Page fields (default, metadata,
+// generateStaticParams, …); re-exporting a plain function/interface here
+// breaks the production build ("... is not a valid Page export field").
+// See app/lenses/world/__tests__/building-dtu-mapping.test.tsx for the pinned
+// contract.
 
 // ── Component ───────────────────────────────────────────────────────
 
@@ -2048,6 +2000,11 @@ export default function WorldLensPage() {
   // 3D-first: land in the 3D world by default. Downgraded to the 2D hub on mount
   // only when WebGL is unavailable (see webglAvailable + the effect below).
   const [viewMode, setViewMode] = useState<ViewMode>('explore');
+  // Set when the 3D scene throws and the ErrorBoundary below silently drops
+  // viewMode to 'concordia' — without this, a crash just looks like "the
+  // world lens is a 2D panel app" with no indication anything went wrong or
+  // that 3D is still one click away. See the banner in the 'concordia' branch.
+  const [sceneCrashed, setSceneCrashed] = useState(false);
   const [activeDistrict, setActiveDistrict] = useState<District>(DEMO_DISTRICT);
 
   // Global HUD visibility — the ~15 permanent 2D panels floating over the
@@ -2104,6 +2061,11 @@ export default function WorldLensPage() {
     // drop to the 2D hub instead of leaving the player on a frozen black scene.
     const onContextLost = (e: Event) => {
       try { e.preventDefault(); } catch { /* best-effort */ }
+      reportFrontendError(
+        { message: 'webglcontextlost', name: 'WebGLContextLost' },
+        { lens: 'world:concordia-scene' }
+      );
+      setSceneCrashed(true);
       setViewMode('concordia');
     };
     window.addEventListener('webglcontextlost', onContextLost, true);
@@ -4653,7 +4615,7 @@ export default function WorldLensPage() {
             {/* 3D world is the home — first + default. The 2D hub/district/streams
                 views are menus over it, reachable but secondary. */}
             <button
-              onClick={() => setViewMode('explore')}
+              onClick={() => { setSceneCrashed(false); setViewMode('explore'); }}
               className={`px-3 py-1.5 text-xs ${viewMode === 'explore' ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:text-white'}`}
             >
               <Globe className="w-3.5 h-3.5 inline mr-1" />
@@ -4688,6 +4650,27 @@ export default function WorldLensPage() {
       {/* Main Content */}
       {viewMode === 'concordia' ? (
         <div className="flex-1 overflow-y-auto p-4">
+          {/* Honest-by-construction: a silent viewMode flip from 'explore' to
+              'concordia' (see the ErrorBoundary below) would otherwise look
+              identical to a player just picking the Hub tab — "the world lens
+              is just panels" with zero explanation. Say what happened and
+              offer the way back. */}
+          {sceneCrashed && (
+            <div
+              role="alert"
+              className="mb-4 flex items-center justify-between gap-3 bg-amber-950/80 border border-amber-500/40 rounded-xl px-4 py-2.5 text-xs text-amber-200"
+            >
+              <span>
+                The 3D scene hit an error and was closed to keep the app responsive. Showing the 2D Hub instead — this has been reported.
+              </span>
+              <button
+                onClick={() => { setSceneCrashed(false); setViewMode('explore'); }}
+                className="shrink-0 px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 transition-colors"
+              >
+                Retry 3D
+              </button>
+            </div>
+          )}
           <ConcordiaHub
             onDistrictSelect={handleConcordiaDistrictSelect}
             onNavigateToLens={(lens) => router.push(`/lenses/${lens}`)}
@@ -4775,8 +4758,20 @@ export default function WorldLensPage() {
               driver or headless software-GL) used to propagate and FREEZE the
               whole interaction layer — modals included. Catch it here and fall
               through to the same 2D hub the no-WebGL path uses, so the player
-              (and any overlay) stays interactive. */}
-          <ErrorBoundary fallback={null} onError={() => setViewMode('concordia')}>
+              (and any overlay) stays interactive. This is the ONE boundary
+              that ever intercepts a ConcordiaScene crash before it reaches
+              the layout-level RepairBoundary — so it must self-report via
+              reportFrontendError (RepairBoundary never sees these) and flip
+              sceneCrashed so the Hub view can say what happened instead of
+              silently looking like "the world lens is just panels." */}
+          <ErrorBoundary
+            fallback={null}
+            onError={(error, errorInfo) => {
+              reportFrontendError(error, { componentStack: errorInfo.componentStack, lens: 'world:concordia-scene' });
+              setSceneCrashed(true);
+              setViewMode('concordia');
+            }}
+          >
           <ConcordiaScene
             districtId={activeDistrict.id}
             quality={getStoredQualityPreset()}

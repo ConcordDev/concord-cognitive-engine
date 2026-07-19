@@ -342,11 +342,17 @@ export default function InheritancePage() {
 
   useEffect(() => {
     (async () => {
-      const r = await run('intestacy-states-list');
-      if (r?.ok) {
-        const states: IntestacyStateSummary[] = r.result.statesCovered || [];
-        setIntestacyStates(states);
-        if (states.length > 0) setIntestacySelected(states[0].stateCode);
+      try {
+        const r = await run('intestacy-states-list');
+        if (r?.ok) {
+          const states: IntestacyStateSummary[] = r.result?.statesCovered || [];
+          setIntestacyStates(states);
+          if (states.length > 0) setIntestacySelected(states[0].stateCode);
+        }
+      } catch {
+        // Reference-data tab; a fetch failure here shouldn't crash the
+        // effect or surface as an unhandled rejection — the intestacy
+        // tab simply stays empty until the next successful load.
       }
     })();
   }, []);

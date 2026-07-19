@@ -1335,6 +1335,7 @@ export default function registerFashionActions(registerLensAction) {
   });
 
   registerLensAction("fashion", "moodboard-add-item", (ctx, _a, params = {}) => {
+  try {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fsAid(ctx);
     const board = findMoodboard(s, userId, params.boardId);
@@ -1360,7 +1361,8 @@ export default function registerFashionActions(registerLensAction) {
     board.updatedAt = fsNow();
     saveFashionState();
     return { ok: true, result: { moodboardId: board.id, item: pin, itemCount: board.items.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fashion", "moodboard-remove-item", (ctx, _a, params = {}) => {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
