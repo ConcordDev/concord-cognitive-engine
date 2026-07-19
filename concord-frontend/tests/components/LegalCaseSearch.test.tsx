@@ -193,7 +193,9 @@ describe('LegalCaseSearch', () => {
       runDomain.mockReturnValueOnce(new Promise((res) => { resolveFetch = res; }));
 
       fireEvent.click(screen.getByRole('button', { name: /Citing opinions/i }));
-      await waitFor(() => expect(screen.getByText(/Loading citing opinions/i)).toBeInTheDocument());
+      // "Loading citing opinions" is an aria-label on the skeleton container,
+      // not rendered text — query it via its accessible name.
+      await waitFor(() => expect(screen.getByLabelText(/Loading citing opinions/i)).toBeInTheDocument());
 
       resolveFetch({ data: { ok: true, result: { ok: true, result: {
         opinionId: MOCK_HIT.id, direction: 'citedBy',
@@ -204,7 +206,7 @@ describe('LegalCaseSearch', () => {
         count: 2, totalHits: 2, authenticatedWithToken: false, source: 'courtlistener',
       } } } });
 
-      await waitFor(() => expect(screen.queryByText(/Loading citing opinions/i)).not.toBeInTheDocument());
+      await waitFor(() => expect(screen.queryByLabelText(/Loading citing opinions/i)).not.toBeInTheDocument());
       expect(screen.getByText(/Opinion #10008139/)).toBeInTheDocument();
       expect(screen.getByText(/cited 4×/)).toBeInTheDocument();
       expect(screen.getByText(/Opinion #9000001/)).toBeInTheDocument();
@@ -283,7 +285,13 @@ describe('LegalCaseSearch', () => {
       // Result carries the real semantic-mode badge + per-hit relevance score.
       await waitFor(() => expect(screen.getByText('Brown v. Board of Education')).toBeInTheDocument());
       expect(screen.getByText(/·\s*semantic/)).toBeInTheDocument();
-      expect(screen.getByText('87% match')).toBeInTheDocument();
+      // The score renders in a nested <span> ("87%") with " match" as a
+      // sibling text node in the parent — a plain getByText regex against
+      // the combined string never matches a single text node.
+      expect(screen.getByText((_content, element) =>
+        element?.tagName.toLowerCase() === 'span' &&
+        element.textContent === '87% match'
+      )).toBeInTheDocument();
     });
 
     it('does not render a match-score badge when the backend omits semanticScore (keyword results)', async () => {
@@ -295,7 +303,10 @@ describe('LegalCaseSearch', () => {
       fireEvent.change(screen.getByPlaceholderText(/Brown v\. Board/), { target: { value: 'x' } });
       fireEvent.click(screen.getByRole('button', { name: /^Search$/ }));
       await waitFor(() => expect(screen.getByText('Brown v. Board of Education')).toBeInTheDocument());
-      expect(screen.queryByText(/% match/)).not.toBeInTheDocument();
+      // The score badge's own text is split across elements (see above), so
+      // check for its unique wrapper via title rather than a text query that
+      // could never match a single node either way.
+      expect(screen.queryByTitle('CourtListener semantic relevance score')).not.toBeInTheDocument();
     });
   });
 });

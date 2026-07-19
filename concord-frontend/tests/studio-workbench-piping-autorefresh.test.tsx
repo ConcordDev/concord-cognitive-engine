@@ -36,7 +36,7 @@ vi.mock('@/lib/api/client', () => ({
 
 import { PipingProvider } from '@/components/panel-polish';
 import { StudioActionPanel } from '@/components/studio/StudioActionPanel';
-import { DawWorkbenchSection } from '@/app/lenses/studio/page';
+import { DawWorkbenchSection } from '@/components/studio/DawWorkbenchSection';
 
 const createdProject = { id: 'proj-created-1', name: 'New Song', bpm: 120 };
 

@@ -70,6 +70,8 @@ vi.mock('lucide-react', async () => {
     Loader2: make('Loader2'), Database: make('Database'), X: make('X'),
     Search: make('Search'), FileJson: make('FileJson'), Pencil: make('Pencil'),
     Globe2: make('Globe2'), ChevronRight: make('ChevronRight'), ChevronDown: make('ChevronDown'),
+    BarChart3: make('BarChart3'), AlertTriangle: make('AlertTriangle'),
+    CheckCircle2: make('CheckCircle2'), XCircle: make('XCircle'),
   };
 });
 

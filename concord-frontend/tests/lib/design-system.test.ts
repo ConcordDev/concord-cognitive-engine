@@ -30,10 +30,14 @@ describe('design-system tokens', () => {
       expect(ds.btnBase).toContain('disabled:pointer-events-none');
     });
 
-    it('btnPrimary has gradient blue styling', () => {
-      expect(ds.btnPrimary).toContain('from-neon-blue');
-      expect(ds.btnPrimary).toContain('text-white');
-      expect(ds.btnPrimary).toContain('shadow-lg');
+    it('btnPrimary has flat solid-blue styling', () => {
+      // The neon gradient + glow shadow was deliberately retired (a dated
+      // cyberpunk tell, per docs/PREMIUM_UI_AUDIT.md P1) in favor of a flat,
+      // high-contrast solid accent with a dark label — restrained/Linear-style
+      // and WCAG-compliant contrast that white-on-cyan did not clear.
+      expect(ds.btnPrimary).toContain('bg-neon-blue');
+      expect(ds.btnPrimary).toContain('text-lattice-void');
+      expect(ds.btnPrimary).toContain('hover:bg-neon-blue/90');
     });
 
     it('btnSecondary has elevated styling', () => {
