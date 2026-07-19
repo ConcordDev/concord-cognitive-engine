@@ -14,13 +14,39 @@
 // admin (7b0a52f1); this closes it for `ops`'s substrate-observability
 // domains via the same requireAdminRole() gate already used by the
 // server.js-registered `admin.*` macros.
+//
+// All four domains (attention_alloc, repair_network, physical, explore) are
+// registered by server.js's ghost-fleet loader (initGhostFleet), which is
+// deliberately deferred behind a CONCORD_GHOST_FLEET_DELAY_MS setTimeout
+// (default 20s in production, so a player's very first requests don't
+// contend with boot-critical work) and then loads each of its ~30 modules
+// with a 2s stagger between them. Set the initial delay to a small value
+// BEFORE anything imports server.js (the harness's macroRuntime()
+// dynamic-imports it lazily, so this top-level assignment — which runs at
+// module-eval time, before any before()/it() callback body executes —
+// always wins the race), then poll MACROS until `explore` (the LAST of the
+// four in registration order) is present — by then all four are ready.
+// Same idiom as quest-moral-branch.test.js's waitForQuestDomain().
+process.env.CONCORD_GHOST_FLEET_DELAY_MS = process.env.CONCORD_GHOST_FLEET_DELAY_MS || "10";
+
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { macroRuntime } from "./depth/_harness.js";
+import { macroRuntime, load } from "./depth/_harness.js";
+
+async function waitForOpsSubstrateDomains(timeoutMs = 60000) {
+  const { MACROS } = await load();
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (MACROS.get("explore")?.has("run")) return true;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  throw new Error("timed out waiting for the ops substrate ghost-fleet domains to register");
+}
 
 let runMacro;
 before(async () => {
   ({ runMacro } = await macroRuntime("ops-admin-gate"));
+  await waitForOpsSubstrateDomains();
 });
 
 const ctxViewer = { actor: { userId: "u_viewer", role: "user" }, userId: "u_viewer" };

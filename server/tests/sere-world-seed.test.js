@@ -54,7 +54,7 @@ describe("Sere world seed", () => {
     assert.ok(edges.length >= 6, `>=6 cross-world edges (got ${edges.length})`);
     assert.ok(edges.some((e) => e.to_world_id === "tunya" && e.to_npc_id === "warlord_iyatte_sanguire"),
       "Lysandra -> Tunya warlord (the Sere<->Tunya / ark-homeworld bridge)");
-    assert.ok(edges.some((e) => e.to_world_id === "concordia-hub" && e.to_npc_id === "old_seam"),
+    assert.ok(edges.some((e) => e.to_world_id === "concordia-hub" && e.to_npc_id === "preacher_old_seam"),
       "Esha -> hub Old Seam (mentor of the failed coalition)");
   });
 
