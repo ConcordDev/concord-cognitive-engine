@@ -1,6 +1,7 @@
 'use client';
 
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { reportFrontendError } from '@/lib/report-frontend-error';
 
 interface Props {
   children: ReactNode;
@@ -33,21 +34,10 @@ export class RepairBoundary extends Component<Props, State> {
   }
 
   async reportError(error: Error, errorInfo: ErrorInfo) {
-    try {
-      await fetch('/api/repair/frontend-error', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          error: { message: error.message, stack: error.stack, name: error.name },
-          componentStack: errorInfo.componentStack?.slice(0, 500),
-          lens: this.props.lens || 'unknown',
-          url: typeof window !== 'undefined' ? window.location.pathname : '',
-          timestamp: new Date().toISOString(),
-        }),
-      });
-    } catch {
-      console.error('[RepairBoundary] Failed to report error:', error);
-    }
+    await reportFrontendError(error, {
+      componentStack: errorInfo.componentStack,
+      lens: this.props.lens,
+    });
   }
 
   attemptAutoRecovery(error: Error) {
