@@ -68,21 +68,37 @@ async function postWithRetry(
  *  concord_auth / concord_refresh cookies; the backend's bot timing
  *  check rejects forms submitted in < 2s of "load", so we wait. */
 async function makeTestSession(request: APIRequestContext): Promise<{ cookies: { name: string; value: string; domain: string; path: string }[] }> {
-  // Date.now() alone collides: mode:'parallel' fires every per-world
-  // beforeAll near-simultaneously, so two worlds can stamp the identical
-  // millisecond and register the same username (409 "Username taken").
-  // A random suffix makes each call's username unique regardless of timing.
-  const uniq    = `smoke_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  const email   = `${uniq}@concord-smoke.test`;
   const password = 'PlaywrightSmoke!9912';
-  const loadedAt = Date.now() - 3_500; // satisfy the 2s timing check.
 
-  const registerRes = await postWithRetry(request, `${BACKEND}/api/auth/register`, {
-    data: { username: uniq, email, password, dateOfBirth: '1990-01-01', _t: loadedAt },
-    headers: { 'content-type': 'application/json' },
-  });
-  if (!registerRes.ok()) {
-    throw new Error(`Register failed: status=${registerRes.status()} body=${await registerRes.text()}`);
+  // Register is NOT safe to retry with the same payload: postWithRetry only
+  // retries on a thrown (network/timeout) exception, not on an HTTP-level
+  // response — so a retry only ever fires when the client didn't get a
+  // response, not when it got a real failure. If the first attempt actually
+  // succeeded server-side but the client-side promise timed out (plausible
+  // under CI resource contention), a retry with the SAME username
+  // legitimately 409s ("Username taken") on an account we ourselves just
+  // created — that's not a real failure, it's the retry racing its own
+  // prior success. Regenerating a fresh username+email on every attempt
+  // sidesteps the whole class of problem instead of trying to special-case
+  // "was that 409 actually us."
+  let registerRes: Awaited<ReturnType<typeof postWithRetry>> | null = null;
+  let email = '';
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    // Date.now() alone collides: mode:'parallel' fires every per-world
+    // beforeAll near-simultaneously, so two worlds can stamp the identical
+    // millisecond and register the same username. A random suffix makes
+    // each attempt's username unique regardless of timing.
+    const uniq = `smoke_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    email = `${uniq}@concord-smoke.test`;
+    const loadedAt = Date.now() - 3_500; // satisfy the 2s timing check.
+    registerRes = await postWithRetry(request, `${BACKEND}/api/auth/register`, {
+      data: { username: uniq, email, password, dateOfBirth: '1990-01-01', _t: loadedAt },
+      headers: { 'content-type': 'application/json' },
+    });
+    if (registerRes.ok() || registerRes.status() !== 409) break;
+  }
+  if (!registerRes || !registerRes.ok()) {
+    throw new Error(`Register failed: status=${registerRes?.status()} body=${await registerRes?.text()}`);
   }
   const loginRes = await postWithRetry(request, `${BACKEND}/api/auth/login`, {
     data: { email, password },

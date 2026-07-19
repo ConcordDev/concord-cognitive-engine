@@ -74,7 +74,11 @@ interface LensResult {
 }
 
 async function makeTestSession(request: APIRequestContext) {
-  const uniq    = `lenswalk_${Date.now().toString(36)}`;
+  // Date.now() alone collides across parallel workers stamping the same
+  // millisecond (same class of 409 "Username taken" fixed in
+  // playthrough.spec.ts) — a random suffix makes each call unique
+  // regardless of timing.
+  const uniq    = `lenswalk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const email   = `${uniq}@concord-smoke.test`;
   const password = 'PlaywrightSmoke!9912';
   const loadedAt = Date.now() - 3_500;
