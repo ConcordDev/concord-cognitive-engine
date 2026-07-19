@@ -1,18 +1,17 @@
 // Asset Studio Increment 2-A — canonical `world_buildings` row → renderer DTU
-// mapping for STANDALONE preview surfaces.
+// mapping, used by both the world lens page (app/lenses/world/page.tsx) and
+// STANDALONE preview surfaces (FoundryPreview, FoundryAdapter) that mount
+// <ConcordiaScene> directly and need to feed the headless BuildingRenderer3D
+// the same DTU shape the world lens does.
 //
-// world/page.tsx keeps a sibling copy of this mapper (app/lenses/world/page.tsx,
-// pinned by app/lenses/world/__tests__/building-dtu-mapping.test.tsx); unify in a
-// later cleanup. This is the canonical copy for standalone preview surfaces
-// (FoundryPreview, FoundryAdapter) that mount <ConcordiaScene> directly and need
-// to feed the headless BuildingRenderer3D the same DTU shape the world lens does.
-//
-// The body below is a BYTE-FAITHFUL copy of the page's mapWorldBuildingToRendererDTU
-// — same conditional archetype/feature spread, same defaults, same material
-// coercion (via the SAME canonical `coerceMaterial` the page imports, re-exported
-// here so behaviour can never drift). BuildingRenderer3D reads `dtu.archetype` /
-// `dtu.feature` on its procedural path; a row without them maps byte-identically
-// to the pre-Asset-Studio shape (no archetype/feature key at all).
+// Unified here (this used to be a byte-faithful duplicate the page also
+// defined locally) because a Next.js page.tsx file may only export Page
+// fields (default/metadata/generateStaticParams/…) — a page.tsx re-exporting
+// a plain function/interface breaks the production build. Pinned by
+// app/lenses/world/__tests__/building-dtu-mapping.test.tsx. BuildingRenderer3D
+// reads `dtu.archetype` / `dtu.feature` on its procedural path; a row without
+// them maps byte-identically to the pre-Asset-Studio shape (no
+// archetype/feature key at all).
 
 // Re-export the ONE canonical coerceMaterial (the page imports the same symbol),
 // so the mapper's material coercion is identical here and there — not a copy that

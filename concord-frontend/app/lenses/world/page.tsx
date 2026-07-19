@@ -46,8 +46,8 @@ import {
   type WorldDataSource,
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
-import { coerceMaterial } from '@/lib/world-lens/building-silhouette';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
+import { mapWorldBuildingToRendererDTU, type WorldBuildingRow } from '@/lib/world-lens/world-building-dto';
 import { worldToScene, sceneToWorldAxis } from '@/lib/world-lens/coord-frame';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
@@ -1732,66 +1732,17 @@ const DISTRICT_TOOLS: {
   { key: 'spectator', label: 'Spectator', icon: Clapperboard, group: 'Replay' },
 ];
 
-/**
- * Server-shaped `world_buildings` row as consumed by this page. `archetype`/
- * `feature` (Asset Studio Increment 1, Unit 1 migration — additive, nullable
- * columns) are only present on player-authored buildings; every existing
- * seed/lens/legacy row has neither field.
- */
-export interface WorldBuildingRow {
-  id: string;
-  building_type: string;
-  name: string;
-  x: number;
-  y: number;
-  z: number;
-  width: number;
-  depth: number;
-  height: number;
-  material: string;
-  is_seed: number;
-  archetype?: string;
-  feature?: string;
-}
-
-/**
- * Pure `world_buildings` row -> BuildingRenderer3D DTU mapping (Asset Studio
- * Increment 1, Unit 3 — in-world round-trip). Extracted to a standalone
- * top-level function so it's independently unit-testable without importing
- * this page's full component tree, which is too large to safely render/import
- * in a unit test (see the source-pin convention already used for this file in
- * tests/world-page-wind-direction-threading.test.ts).
- *
- * `archetype`/`feature` are set on the output ONLY when the row actually
- * carries them (truthy) — every existing seed/lens building has neither field
- * and therefore maps BYTE-IDENTICALLY to the pre-Unit-3 shape (no
- * `archetype`/`feature` key at all). BuildingRenderer3D already reads
- * `dtu.archetype` (falls back to a `building_type`-derived silhouette when
- * absent) and `dtu.feature` at its procedural-buildings path.
- */
-export function mapWorldBuildingToRendererDTU(b: WorldBuildingRow) {
-  return {
-    id: b.id,
-    name: b.name || b.building_type,
-    position: { x: b.x, y: b.y ?? 0, z: b.z },
-    dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
-    floors: 1,
-    material: coerceMaterial(b.material),
-    style: 'colonial' as const,
-    // building_type drives the procedural archetype + iconic silhouette.
-    building_type: b.building_type,
-    ...(b.archetype ? { archetype: b.archetype } : {}),
-    ...(b.feature ? { feature: b.feature } : {}),
-    structure: {
-      columns: { count: 0, spacing: 0, radius: 0 },
-      beams: { count: 0, height: 0 },
-      roofType: 'gable' as const,
-      hasBasement: false,
-      windowRows: 1,
-      windowsPerRow: 2,
-    },
-  };
-}
+// `WorldBuildingRow` + `mapWorldBuildingToRendererDTU` (server-shaped
+// `world_buildings` row -> BuildingRenderer3D DTU mapping; `archetype`/
+// `feature` are Asset Studio Increment 1's additive, nullable columns,
+// present only on player-authored buildings) live in
+// lib/world-lens/world-building-dto.ts — the canonical copy standalone
+// preview surfaces (FoundryPreview, FoundryAdapter) also import. A page.tsx
+// file may only export Next.js Page fields (default, metadata,
+// generateStaticParams, …); re-exporting a plain function/interface here
+// breaks the production build ("... is not a valid Page export field").
+// See app/lenses/world/__tests__/building-dtu-mapping.test.tsx for the pinned
+// contract.
 
 // ── Component ───────────────────────────────────────────────────────
 
