@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-18T23:09:51.552Z",
+  "generatedAt": "2026-07-19T05:48:53.489Z",
   "totals": {
     "critical": 0,
     "high": 9,
     "medium": 221,
     "low": 7,
-    "info": 48,
-    "total": 285
+    "info": 199,
+    "total": 436
   },
   "detectorCount": 40,
   "fingerprints": {
@@ -33,7 +33,1215 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "856 macros · 0 dead · 397 single-caller · 2 popular · 352 dispatcher-reach (0 runtime-live, 0 retirement-candidates)"
+      "message": "856 macros · 0 dead · 397 single-caller · 2 popular · 352 dispatcher-reach (151 runtime-live, 201 retirement-candidates)"
+    },
+    "cc85652d203b67a3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:12643",
+      "message": "Macro chicken3.status fired 5 time(s) at runtime — live"
+    },
+    "cfbe438805a0d595": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:12648",
+      "message": "Macro chicken3.session_optin fired 5 time(s) at runtime — live"
+    },
+    "f834b23c14fd4644": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:14062",
+      "message": "Macro hypothesis.status fired 1 time(s) at runtime — live"
+    },
+    "de68f9767a1fce7a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:14083",
+      "message": "Macro hypothesis.design_experiment fired 1 time(s) at runtime — live"
+    },
+    "49fab9596818d7d6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:14090",
+      "message": "Macro hypothesis.record_evidence fired 1 time(s) at runtime — live"
+    },
+    "a9c24ff3c6bda9cb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:24828",
+      "message": "Macro shield.metrics fired 1 time(s) at runtime — live"
+    },
+    "18e1bf295e6af241": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:24832",
+      "message": "Macro shield.prophet fired 1 time(s) at runtime — live"
+    },
+    "b4cd39caf493f032": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:24838",
+      "message": "Macro shield.surgeon fired 1 time(s) at runtime — live"
+    },
+    "6ae35b9ee6ff8342": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:24847",
+      "message": "Macro shield.guardian fired 1 time(s) at runtime — live"
+    },
+    "95b5819662a56bd5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:24946",
+      "message": "Macro mesh.sync fired 1 time(s) at runtime — live"
+    },
+    "41f5f8bad34d8522": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:25037",
+      "message": "Macro foundation.emergency.resolve fired 1 time(s) at runtime — live"
+    },
+    "b5340ca99a7aebcb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:25240",
+      "message": "Macro atlas.metrics fired 5 time(s) at runtime — live"
+    },
+    "72dad197cd522e9d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:25300",
+      "message": "Macro cortex.metrics fired 5 time(s) at runtime — live"
+    },
+    "a5ca16eb8aec25ba": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:26907",
+      "message": "Macro spreadsheet.eval fired 1 time(s) at runtime — live"
+    },
+    "7cd8fc460bceeb60": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:26992",
+      "message": "Macro slides.compile fired 1 time(s) at runtime — live"
+    },
+    "baaf02db823ca9e4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27023",
+      "message": "Macro compile.transpile fired 5 time(s) at runtime — live"
+    },
+    "523b742d01e90394": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27053",
+      "message": "Macro legal.sign fired 1 time(s) at runtime — live"
+    },
+    "d6b0e8748ea774a2": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27859",
+      "message": "Macro dtu.protocol_validate fired 1 time(s) at runtime — live"
+    },
+    "c0a92fdc2acc40d6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27879",
+      "message": "Macro dtu.causal-link fired 1 time(s) at runtime — live"
+    },
+    "59017238a1af148a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27898",
+      "message": "Macro dtu.causal-trace fired 1 time(s) at runtime — live"
+    },
+    "6d3a1b62999a3d18": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:27928",
+      "message": "Macro dtu.confidence fired 1 time(s) at runtime — live"
+    },
+    "8cde56f459d2a7ca": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:29103",
+      "message": "Macro auth.whoami fired 5 time(s) at runtime — live"
+    },
+    "e4d3765a8688b6c7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:29137",
+      "message": "Macro jobs.enqueue fired 1 time(s) at runtime — live"
+    },
+    "e33eb63175f74a8c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:29145",
+      "message": "Macro jobs.get fired 1 time(s) at runtime — live"
+    },
+    "67c802ddec89bcf9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:29255",
+      "message": "Macro agent.list fired 5 time(s) at runtime — live"
+    },
+    "7454f55df509bcda": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:29325",
+      "message": "Macro source.list fired 1 time(s) at runtime — live"
+    },
+    "2f35695e4bd1f644": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:29331",
+      "message": "Macro source.get fired 1 time(s) at runtime — live"
+    },
+    "5e4c208c86741270": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:29970",
+      "message": "Macro lattice.beacon fired 1 time(s) at runtime — live"
+    },
+    "314dc26805781f58": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:32893",
+      "message": "Macro forge.sections fired 1 time(s) at runtime — live"
+    },
+    "ff6921e10802dcd5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:32899",
+      "message": "Macro forge.validate fired 1 time(s) at runtime — live"
+    },
+    "bceeef4a7be67196": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34538",
+      "message": "Macro city.followStream fired 5 time(s) at runtime — live"
+    },
+    "ac985ff20a7fd2f2": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34544",
+      "message": "Macro city.unfollowStream fired 5 time(s) at runtime — live"
+    },
+    "c489a8c0574cd423": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:34555",
+      "message": "Macro city.getStream fired 5 time(s) at runtime — live"
+    },
+    "822667d4b53782d3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36584",
+      "message": "Macro plugin.enable fired 1 time(s) at runtime — live"
+    },
+    "8066b6fd1475f670": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36592",
+      "message": "Macro plugin.disable fired 1 time(s) at runtime — live"
+    },
+    "6196b395b2475fb0": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36772",
+      "message": "Macro personas.get fired 1 time(s) at runtime — live"
+    },
+    "a3a7bde17323c99a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36780",
+      "message": "Macro personas.stats fired 1 time(s) at runtime — live"
+    },
+    "bdf0217f28170515": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36796",
+      "message": "Macro personas.versions fired 1 time(s) at runtime — live"
+    },
+    "5a3f179a0e9e4fbb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36800",
+      "message": "Macro personas.publish fired 1 time(s) at runtime — live"
+    },
+    "1ac67cb75cba9d92": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:36804",
+      "message": "Macro personas.install fired 1 time(s) at runtime — live"
+    },
+    "e9ca285a42d7994c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:48060",
+      "message": "Macro governor.increment fired 1 time(s) at runtime — live"
+    },
+    "3e2eba80832a80e1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:49539",
+      "message": "Macro db.query fired 5 time(s) at runtime — live"
+    },
+    "a02f4ff94f06a3cd": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:49579",
+      "message": "Macro redis.get fired 1 time(s) at runtime — live"
+    },
+    "3bca5899cf23c039": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:49586",
+      "message": "Macro redis.set fired 1 time(s) at runtime — live"
+    },
+    "15e1dafa883793f6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:49593",
+      "message": "Macro redis.del fired 1 time(s) at runtime — live"
+    },
+    "b152a8d247e965c2": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:75590",
+      "message": "Macro autotag.retro fired 5 time(s) at runtime — live"
+    },
+    "82743245987adcfa": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:75594",
+      "message": "Macro autotag.sync_lenses fired 5 time(s) at runtime — live"
+    },
+    "3b22e814b26ea3d6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:75598",
+      "message": "Macro autotag.classify fired 5 time(s) at runtime — live"
+    },
+    "51d515249a9d5f12": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76216",
+      "message": "Macro universe.status fired 1 time(s) at runtime — live"
+    },
+    "72abd4f4359defc9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76230",
+      "message": "Macro universe.create fired 1 time(s) at runtime — live"
+    },
+    "dda2cc9cfb0e9dca": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76237",
+      "message": "Macro universe.addDTU fired 1 time(s) at runtime — live"
+    },
+    "e9dd4be914407e37": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76408",
+      "message": "Macro admin.backup fired 5 time(s) at runtime — live"
+    },
+    "ae73475b15ebdd7b": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76653",
+      "message": "Macro refusal.strength fired 1 time(s) at runtime — live"
+    },
+    "ba60b471438fa231": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76661",
+      "message": "Macro refusal.composition fired 1 time(s) at runtime — live"
+    },
+    "cf019b76a17260b6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76669",
+      "message": "Macro refusal.fields_for_world fired 1 time(s) at runtime — live"
+    },
+    "aa62181e388790a9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76677",
+      "message": "Macro refusal.is_compound fired 1 time(s) at runtime — live"
+    },
+    "b5fb511183884acc": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76718",
+      "message": "Macro npc.schedule fired 1 time(s) at runtime — live"
+    },
+    "757a8f4c45b6394a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76753",
+      "message": "Macro forward_sim.predictions_for_subject fired 1 time(s) at runtime — live"
+    },
+    "0847630e74199a87": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76769",
+      "message": "Macro forward_sim.active fired 1 time(s) at runtime — live"
+    },
+    "75b515e2ce1ab3b6": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76783",
+      "message": "Macro dream.recent_for_player fired 1 time(s) at runtime — live"
+    },
+    "809bbefa6d36e5f8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76801",
+      "message": "Macro dream.list_for_player fired 1 time(s) at runtime — live"
+    },
+    "b8b4659702c04f90": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76821",
+      "message": "Macro lattice.drift_alert fired 1 time(s) at runtime — live"
+    },
+    "85c5a852853b5c83": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76855",
+      "message": "Macro embodied.signals_for_world fired 1 time(s) at runtime — live"
+    },
+    "1872771517c382ea": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76880",
+      "message": "Macro scars.list fired 1 time(s) at runtime — live"
+    },
+    "fe9c82503b725d7c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76894",
+      "message": "Macro scars.record fired 1 time(s) at runtime — live"
+    },
+    "f2926e47d61f2a46": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76914",
+      "message": "Macro mount.bond_event fired 1 time(s) at runtime — live"
+    },
+    "c353c7223e0880ba": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76942",
+      "message": "Macro mount.bond_state fired 1 time(s) at runtime — live"
+    },
+    "b3668704b3ecf348": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76966",
+      "message": "Macro fidelity.drift fired 1 time(s) at runtime — live"
+    },
+    "27ad6f1d366ff1f8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:76997",
+      "message": "Macro fidelity.summary fired 1 time(s) at runtime — live"
+    },
+    "87b67e2abd9fefe2": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77091",
+      "message": "Macro kingdom.publish_decree_recipe fired 1 time(s) at runtime — live"
+    },
+    "7b2e66067ed184c8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77190",
+      "message": "Macro reflex.status fired 1 time(s) at runtime — live"
+    },
+    "0dbe72ef43512186": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77197",
+      "message": "Macro reflex.recent_proposals fired 1 time(s) at runtime — live"
+    },
+    "57caa21bf62cf584": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77225",
+      "message": "Macro semantic.search_thoughts fired 1 time(s) at runtime — live"
+    },
+    "cdaf4859f8e75db4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77254",
+      "message": "Macro agent.persist fired 5 time(s) at runtime — live"
+    },
+    "0f47c125efb3ac7a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77281",
+      "message": "Macro agent.list_persistent fired 5 time(s) at runtime — live"
+    },
+    "5295d1f000ca6224": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77302",
+      "message": "Macro lens.spatial_at fired 1 time(s) at runtime — live"
+    },
+    "763f694da526e3fa": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77330",
+      "message": "Macro lens.set_spatial_anchor fired 1 time(s) at runtime — live"
+    },
+    "6ecb0d1abe594f4e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77391",
+      "message": "Macro federation.commune_join fired 1 time(s) at runtime — live"
+    },
+    "0e8188f9f114124d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77475",
+      "message": "Macro macro_dag.validate fired 1 time(s) at runtime — live"
+    },
+    "7e606c4be479d0d3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77482",
+      "message": "Macro macro_dag.describe fired 1 time(s) at runtime — live"
+    },
+    "58cb6316503258e8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77489",
+      "message": "Macro macro_dag.run fired 1 time(s) at runtime — live"
+    },
+    "f8e277ef187dfda5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77542",
+      "message": "Macro npc.lie_probability fired 1 time(s) at runtime — live"
+    },
+    "4a13fd1867129268": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77584",
+      "message": "Macro deity.compose fired 9 time(s) at runtime — live"
+    },
+    "b036c7a19ca81cd5": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77611",
+      "message": "Macro deity.list fired 9 time(s) at runtime — live"
+    },
+    "6269fd27b481490a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77636",
+      "message": "Macro deity.tone_vector fired 9 time(s) at runtime — live"
+    },
+    "d6bd64db1fef16bc": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77664",
+      "message": "Macro federation.inbox_receive fired 1 time(s) at runtime — live"
+    },
+    "9d632db541de0267": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77793",
+      "message": "Macro reflex.propose_fix fired 1 time(s) at runtime — live"
+    },
+    "f52a3cd37e1b5a81": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77855",
+      "message": "Macro reflex.autofix_queue fired 1 time(s) at runtime — live"
+    },
+    "38c94eab2d873239": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77893",
+      "message": "Macro dream.publish fired 1 time(s) at runtime — live"
+    },
+    "4ef30783d1c0ce3f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77928",
+      "message": "Macro npc_autobiography.compose fired 1 time(s) at runtime — live"
+    },
+    "81d50969cb8f5c90": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77938",
+      "message": "Macro npc_autobiography.list_for_npc fired 1 time(s) at runtime — live"
+    },
+    "b45c365b9f68bd6f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77949",
+      "message": "Macro npc_persona.package fired 1 time(s) at runtime — live"
+    },
+    "a5ac725e7c31efaf": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77961",
+      "message": "Macro npc_persona.install fired 1 time(s) at runtime — live"
+    },
+    "f6e09bda832ce22f": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77973",
+      "message": "Macro npc_persona.list_for_user fired 1 time(s) at runtime — live"
+    },
+    "f35149e10ceb9e1b": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:77988",
+      "message": "Macro inheritance.open_listing fired 1 time(s) at runtime — live"
+    },
+    "c18bc04fb76eb7c8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78011",
+      "message": "Macro inheritance.claim_slot fired 1 time(s) at runtime — live"
+    },
+    "364fd767aca74161": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78031",
+      "message": "Macro inheritance.list_open fired 1 time(s) at runtime — live"
+    },
+    "19f9162918efe400": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78048",
+      "message": "Macro compression_art.shape_for fired 5 time(s) at runtime — live"
+    },
+    "62f3296c893cbc69": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78098",
+      "message": "Macro spectator.heartbeat fired 1 time(s) at runtime — live"
+    },
+    "1453a1d9f1179609": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78121",
+      "message": "Macro replay.recording_for_world fired 1 time(s) at runtime — live"
+    },
+    "f6ea29e85eba62ec": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78165",
+      "message": "Macro world.gatherings fired 1 time(s) at runtime — live"
+    },
+    "cfd4ab5d3dd5bfaa": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78205",
+      "message": "Macro firm.post fired 1 time(s) at runtime — live"
+    },
+    "10f43572a1518bde": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78225",
+      "message": "Macro goddess.compose_now fired 1 time(s) at runtime — live"
+    },
+    "ef0193e4edbae7ca": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78234",
+      "message": "Macro goddess.recent fired 1 time(s) at runtime — live"
+    },
+    "ebced33829e8fcef": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78244",
+      "message": "Macro betting.open_market fired 5 time(s) at runtime — live"
+    },
+    "18d76cf43aa47d91": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78254",
+      "message": "Macro betting.place_bet fired 5 time(s) at runtime — live"
+    },
+    "c4acd94fc0921c5e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78266",
+      "message": "Macro betting.resolve_market fired 5 time(s) at runtime — live"
+    },
+    "647c430789a416fd": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78276",
+      "message": "Macro betting.list_open fired 5 time(s) at runtime — live"
+    },
+    "54812756f5ed3339": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78285",
+      "message": "Macro betting.my_positions fired 5 time(s) at runtime — live"
+    },
+    "9966ded7103192e4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78298",
+      "message": "Macro observer.compose_report fired 1 time(s) at runtime — live"
+    },
+    "dc29bf904ecce9db": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78334",
+      "message": "Macro forecast.compose fired 1 time(s) at runtime — live"
+    },
+    "5ec83a355b0f9a2e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78345",
+      "message": "Macro forecast.recent fired 1 time(s) at runtime — live"
+    },
+    "b3c3e3aa07a1fa4b": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78356",
+      "message": "Macro forecast.multiDay fired 1 time(s) at runtime — live"
+    },
+    "89ea6abe06c8af1e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78366",
+      "message": "Macro forecast.hourly fired 1 time(s) at runtime — live"
+    },
+    "c81e8153e6bc6426": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78376",
+      "message": "Macro forecast.regional fired 1 time(s) at runtime — live"
+    },
+    "9453e6ba2d4c31e3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78386",
+      "message": "Macro forecast.accuracy fired 1 time(s) at runtime — live"
+    },
+    "8cba86092fb19094": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78396",
+      "message": "Macro forecast.archive fired 1 time(s) at runtime — live"
+    },
+    "1fdc4b8937c119ff": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78406",
+      "message": "Macro forecast.subscribeAlert fired 1 time(s) at runtime — live"
+    },
+    "de4505c6e90f4cfc": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78416",
+      "message": "Macro forecast.listAlerts fired 1 time(s) at runtime — live"
+    },
+    "d961454d061ede29": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78427",
+      "message": "Macro forecast.unsubscribeAlert fired 1 time(s) at runtime — live"
+    },
+    "aab1d7f690545574": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78437",
+      "message": "Macro forecast.checkAlerts fired 1 time(s) at runtime — live"
+    },
+    "b3524d4b5f600582": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78466",
+      "message": "Macro walker.request_ride_along fired 1 time(s) at runtime — live"
+    },
+    "979998394cff2157": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78493",
+      "message": "Macro walker.list_open_rides fired 1 time(s) at runtime — live"
+    },
+    "c6015f1a60e0336c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78528",
+      "message": "Macro sponsorship.create fired 1 time(s) at runtime — live"
+    },
+    "90637e7a3cba9ce7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78552",
+      "message": "Macro sponsorship.cancel fired 1 time(s) at runtime — live"
+    },
+    "a41b362f71597400": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78567",
+      "message": "Macro sponsorship.list_for_user fired 1 time(s) at runtime — live"
+    },
+    "9762bfb682fc499e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78587",
+      "message": "Macro staking.stake fired 1 time(s) at runtime — live"
+    },
+    "c4847c6d712381a1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78608",
+      "message": "Macro staking.redeem fired 1 time(s) at runtime — live"
+    },
+    "23c0391bf6df0fa3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78628",
+      "message": "Macro staking.list_for_user fired 1 time(s) at runtime — live"
+    },
+    "188574a487d6873c": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78645",
+      "message": "Macro insurance.write_contract fired 1 time(s) at runtime — live"
+    },
+    "1197b098a2bea483": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78663",
+      "message": "Macro insurance.revoke fired 1 time(s) at runtime — live"
+    },
+    "803db2cf2878eeae": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78678",
+      "message": "Macro insurance.list_for_user fired 1 time(s) at runtime — live"
+    },
+    "9eeee10593d6aab4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78702",
+      "message": "Macro bounty.stake fired 5 time(s) at runtime — live"
+    },
+    "306064e0dd644a4a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78717",
+      "message": "Macro bounty.list_open fired 5 time(s) at runtime — live"
+    },
+    "1b4d2029418fc43e": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78732",
+      "message": "Macro bounty.resolve fired 5 time(s) at runtime — live"
+    },
+    "410915d0674741dc": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78778",
+      "message": "Macro psyops.scan_skill_divergence fired 1 time(s) at runtime — live"
+    },
+    "32469be38051d0bc": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78823",
+      "message": "Macro psyops.list_alerts fired 1 time(s) at runtime — live"
+    },
+    "4f17e194f1433668": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78839",
+      "message": "Macro psyops.quarantine fired 1 time(s) at runtime — live"
+    },
+    "82e4b335de3401ea": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78853",
+      "message": "Macro sandbox.provision fired 1 time(s) at runtime — live"
+    },
+    "bc7ecf2f08bc21f2": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78871",
+      "message": "Macro sandbox.kill fired 1 time(s) at runtime — live"
+    },
+    "5ec0caa21a0eb4b7": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78881",
+      "message": "Macro sandbox.list fired 1 time(s) at runtime — live"
+    },
+    "b37c7b10b07f4c70": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78899",
+      "message": "Macro dtu_sync.register_device fired 1 time(s) at runtime — live"
+    },
+    "9d75c4e6987360fb": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78915",
+      "message": "Macro dtu_sync.list_devices fired 1 time(s) at runtime — live"
+    },
+    "30061d63543daaf4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78929",
+      "message": "Macro dtu_sync.force_sync fired 1 time(s) at runtime — live"
+    },
+    "c8b9e3b59802e4e8": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:78980",
+      "message": "Macro classroom.submit_homework fired 5 time(s) at runtime — live"
+    },
+    "bb215546b1ca981a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:79078",
+      "message": "Macro sub_world.list fired 1 time(s) at runtime — live"
+    },
+    "1c7d5acd741fb0a1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:79091",
+      "message": "Macro therapy.compose_field fired 1 time(s) at runtime — live"
+    },
+    "815000e80b2ca88a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:79114",
+      "message": "Macro therapy.active_fields fired 1 time(s) at runtime — live"
+    },
+    "87c49478f1041fe3": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:79129",
+      "message": "Macro therapy.deactivate fired 1 time(s) at runtime — live"
+    },
+    "127fdcadf96b05b4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:79147",
+      "message": "Macro deity.pilgrimage fired 9 time(s) at runtime — live"
+    },
+    "7b5c65229ec673d9": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:79166",
+      "message": "Macro deity.pilgrim_log fired 9 time(s) at runtime — live"
     },
     "9c6176383f6bf175": {
       "detector": "macro-usage",
@@ -51,12 +1259,12 @@
       "location": null,
       "message": "Scanned 260 lenses · 1 issues found"
     },
-    "cdb330d7380d88cb": {
+    "e6733523ed96728b": {
       "detector": "lens-health",
       "id": "lens_unknown_domain",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/world/page.tsx:5858",
+      "location": "concord-frontend/app/lenses/world/page.tsx:5809",
       "message": "Lens world calls domain \"mainland\" — no dedicated handler registered; runtime routes via utility-brain AI catch-all. Adding a register(\"mainland\", ...) handler would give deterministic behavior."
     },
     "2f600c033f853e95": {
@@ -161,7 +1369,7 @@
       "severity": "info",
       "kind": "predictive",
       "location": null,
-      "message": "10 samples · 14 tables observed · heap 12MB"
+      "message": "23 samples · 14 tables observed · heap 12MB"
     },
     "7d25275889c77630": {
       "detector": "architectural-hub",
@@ -1867,20 +3075,20 @@
       "location": "server/routes/wagers.js:12",
       "message": "createWagersRouter() performs 5 money-table write(s) (0 direct + 5 delegated) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "b5287322d0894ab5": {
+    "fff82c3eb042a9ca": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:72012",
+      "location": "server/server.js:72039",
       "message": "creditWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "12da093bf3f5ef74": {
+    "a486fa192ef1499f": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:72072",
+      "location": "server/server.js:72099",
       "message": "debitWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
     "577671649c5313ca": {
