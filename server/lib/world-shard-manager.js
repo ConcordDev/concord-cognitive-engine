@@ -16,6 +16,7 @@
 
 import { Worker } from "node:worker_threads";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { PARENT_TO_CHILD, CHILD_TO_PARENT, shardingEnabled } from "./world-shard-protocol.js";
 import logger from "../logger.js";
@@ -29,6 +30,16 @@ const SHARD_RESTARTS_PER_MIN = Number(process.env.CONCORD_SHARD_MAX_RESTARTS_PER
 const SHARD_IDLE_TEARDOWN_MS = Number(process.env.CONCORD_SHARD_IDLE_TEARDOWN_MS) || 10 * 60 * 1000;
 const SHARD_IDLE_CHECK_MS    = Number(process.env.CONCORD_SHARD_IDLE_CHECK_MS) || 60_000;
 const SHARD_READY_TIMEOUT_MS = Number(process.env.CONCORD_SHARD_READY_TIMEOUT_MS) || 8_000;
+// GPU/CPU pinning audit (2026-07-20) — this manager had NO ceiling on
+// concurrent shards: every world with an active user gets its own worker
+// thread (~200MB each per this file's own header), uncoordinated with the
+// macro pool / heartbeat pool, which independently size themselves off
+// os.cpus().length. On a fixed-core box (the A40 deploy target: 9 vCPU),
+// unbounded shard growth risks real thread-scheduling contention regardless
+// of memory headroom. Default is a conservative core-scaled heuristic
+// (more shards than ~2x cores starts contending in practice); tune via env
+// once real per-shard memory/CPU cost is observed in production.
+const SHARD_MAX_ACTIVE = Number(process.env.CONCORD_MAX_ACTIVE_SHARDS) || Math.max(4, os.cpus().length * 2);
 
 /** @typedef {{
  *   worldId: string,
@@ -102,6 +113,19 @@ export async function ensureWorldActive(worldId) {
     }
   }
 
+  // GPU/CPU pinning audit — cap concurrent shards (see SHARD_MAX_ACTIVE
+  // above). Only relevant for a genuinely NEW world (entry undefined at
+  // this point — the two branches above already handled an existing one).
+  if (!entry && _shards.size >= SHARD_MAX_ACTIVE) {
+    const evicted = _evictLruIdleShard();
+    if (!evicted) {
+      logger.warn("world-shard-manager", "at_capacity_no_evictable", {
+        worldId, activeShards: _shards.size, maxActive: SHARD_MAX_ACTIVE,
+      });
+      return { ok: false, status: "at_capacity" };
+    }
+  }
+
   entry = _spawnShard(worldId);
   const t0 = Date.now();
   try {
@@ -129,6 +153,38 @@ export function markWorldUserCount(worldId, delta) {
   if (!entry) return;
   entry.userCount = Math.max(0, (entry.userCount || 0) + delta);
   entry.lastActivityAt = Date.now();
+}
+
+/**
+ * GPU/CPU pinning audit — evict the least-recently-active shard with zero
+ * current users to make room for a new one when at SHARD_MAX_ACTIVE
+ * capacity. Never evicts a shard with userCount > 0 (an occupied world
+ * getting torn down out from under its players would be a correctness
+ * regression, not just a perf tradeoff) or one that's mid-spawn/draining.
+ * Returns true if a shard was evicted, false if none was evictable (every
+ * active shard genuinely has users — the caller then fails the new
+ * world's activation with 'at_capacity' rather than spawn past the cap).
+ */
+function _evictLruIdleShard() {
+  let victim = null;
+  for (const entry of _shards.values()) {
+    if (entry.status !== "ready" || entry.userCount > 0) continue;
+    if (!victim || entry.lastActivityAt < victim.lastActivityAt) victim = entry;
+  }
+  if (!victim) return false;
+  victim.status = "draining";
+  try {
+    victim.worker?.postMessage({ type: PARENT_TO_CHILD.SHUTDOWN });
+  } catch { /* worker may already be gone */ }
+  setTimeout(() => {
+    if (victim.worker) {
+      try { victim.worker.terminate(); } catch { /* already gone */ }
+    }
+  }, 5_000);
+  logger.info("world-shard-manager", "evicted_lru_idle_shard", {
+    worldId: victim.worldId, idleForMs: Date.now() - victim.lastActivityAt,
+  });
+  return true;
 }
 
 function _spawnShard(worldId) {

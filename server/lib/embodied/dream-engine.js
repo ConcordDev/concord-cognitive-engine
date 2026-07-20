@@ -381,13 +381,28 @@ export function getRecentDreams(db, userId, limit = 10) {
  * Routes through the subconscious brain (qwen2.5:7b on port 11435).
  */
 async function _composeWithSubconsciousBrain({ fragments, summary, userId: _userId }) {
+  // Brain-wiring audit (2026-07-20) — this used to dynamically import
+  // "../brain-router.js" and call `router.callBrain`, which that module
+  // never exported (only preloadBrains/getBrainPriority/resolveBrain are
+  // real exports there — the real `callBrain` is a private, unexported
+  // function inside server.js). `typeof router.callBrain === "function"`
+  // was always false, so CONCORD_DREAM_LLM=true silently did nothing and
+  // this always fell back to the deterministic composer. Fixed by using
+  // lib/inference/ollama-client.js#ollamaChat directly — a real, standalone,
+  // already-proven Ollama caller (used by expert_mode/translation.batch/BYO
+  // fallback) with no dependency on server.js's private internals.
   let chat;
   try {
-    const router = await import("../brain-router.js");
-    if (typeof router.callBrain === "function") {
-      chat = (sys, user) => router.callBrain('subconscious', { system: sys, prompt: user });
-    }
-  } catch { /* router not available */ }
+    const { ollamaChat } = await import("../inference/ollama-client.js");
+    chat = async (sys, user) => {
+      const r = await ollamaChat("subconscious", [
+        { role: "system", content: sys },
+        { role: "user", content: user },
+      ]);
+      if (!r?.ok) return null;
+      return { text: r.text };
+    };
+  } catch { /* ollama client not available */ }
   if (!chat) return null;
 
   const sys = `You compose dream-fragments. The user has experienced the events listed. Write 2-4 sentences in second person, evocative but grounded — never invent events outside the list. No headers, no lists. Plain prose.`;

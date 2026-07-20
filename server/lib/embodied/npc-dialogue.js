@@ -117,19 +117,52 @@ function _insertConversation(db, { worldId, a, b, opener, composer, seedContext 
   return { id, expiresAt, opener, messages };
 }
 
+// Brain-wiring audit (2026-07-20) — CONCORD_NPC_DIALOGUE_LLM previously
+// only changed the persisted `composer` label string ("llm_or_fallback" vs
+// "deterministic") — no LLM call existed anywhere in this file, so the flag
+// did nothing and the "llm_or_fallback" label was actively misleading (this
+// repo's own "honest by construction" invariant: a label claiming LLM
+// composition when the content is always deterministic is a fabrication).
+// Real LLM path, same shape as dream-engine.js/forward-sim.js's fix: try
+// with a short timeout, fall back to the deterministic opener on any
+// failure, and label the composer with what ACTUALLY happened, not what
+// was merely attempted.
+async function _llmOpener(a, b, ctx) {
+  try {
+    const { ollamaChat } = await import("../inference/ollama-client.js");
+    const sys = `You write a single short opening line of ambient dialogue between two NPCs who are about to talk. One sentence, in the format: ${a}: "..." Grounded in their factions if given; never invent plot facts beyond what's provided. No narration, no quotes around the whole line, just the line itself.`;
+    const userMsg = `${a} (faction: ${ctx.factionA || "none"}) meets ${b} (faction: ${ctx.factionB || "none"}), same faction: ${!!ctx.sameFaction}.`;
+    const timeout = new Promise((_r, reject) => setTimeout(() => reject(new Error("llm_timeout")), 6000));
+    const result = await Promise.race([
+      ollamaChat("subconscious", [
+        { role: "system", content: sys },
+        { role: "user", content: userMsg },
+      ]),
+      timeout,
+    ]);
+    if (!result?.ok || typeof result.text !== "string") return null;
+    const text = result.text.trim();
+    if (text.length < 5 || text.length > 300) return null;
+    return text;
+  } catch {
+    return null;
+  }
+}
+
 // ── Public: try to initiate one conversation in a world ───────────────────
-export function tryInitiateConversation(db, worldId, opts = {}) {
+export async function tryInitiateConversation(db, worldId, opts = {}) {
   if (!db || !worldId) return { ok: false, reason: "missing_db_or_world" };
   const candidates = findConversationCandidates(db, worldId, { limit: 1 });
   if (candidates.length === 0) return { ok: false, reason: "no_candidates" };
   const c = candidates[0];
 
-  const opener = composeDeterministicOpener(c.a, c.b, c);
-  // LLM enhancement opt-in. Stays deterministic by default. The LLM path
-  // would route through the subconscious brain with the seed context as
-  // the only source of fact; we return the deterministic line if anything
-  // goes wrong (timeout, parse error, network).
-  const composer = process.env.CONCORD_NPC_DIALOGUE_LLM === "true" ? "llm_or_fallback" : "deterministic";
+  let opener = null;
+  let composer = "deterministic";
+  if (process.env.CONCORD_NPC_DIALOGUE_LLM === "true") {
+    opener = await _llmOpener(c.a, c.b, c);
+    if (opener) composer = "llm";
+  }
+  if (!opener) opener = composeDeterministicOpener(c.a, c.b, c);
 
   try {
     const inserted = _insertConversation(db, {

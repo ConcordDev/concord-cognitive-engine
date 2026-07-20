@@ -8057,6 +8057,44 @@ export { createBackup, restoreBackup, listBackups };
 // 403 bot_access_denied on the very endpoints meant to report liveness.
 const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health)(\b|\/)/;
 const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
+
+// Track C (rate-limit audit) — this limiter is mounted BEFORE both
+// cookieParserMiddleware and authMiddleware (see middleware/index.js's
+// ordering), so `req.user`/`req.cookies` are never populated when its
+// keyGenerator runs — the `req.user?.id || req.ip` expression was always
+// falling through to IP-only keying for every request, authenticated or
+// not. That matters specifically for the deployment this was audited
+// for (thousands of users through one Cloudflare tunnel hostname): if
+// several distinct users' requests ever resolve to the same apparent
+// origin IP at this middleware's position, they'd share one bucket.
+// Fixed with a cheap, read-only, best-effort JWT decode (verifyToken() —
+// the same algorithm-pinned/revocation-aware verifier authMiddleware
+// itself uses, just without authMiddleware's extra AuthDB.getUser() DB
+// lookup, which would be wasteful to duplicate here on every request
+// purely for rate-limit keying) so an authenticated user gets their own
+// bucket regardless of shared-IP topology. Falls back to req.ip exactly
+// as before for anonymous/unauthenticated requests or a bad/expired
+// token — never throws, never blocks the request on a decode failure.
+function _rateLimitKey(req) {
+  try {
+    const authHeader = String(req.headers?.authorization || "");
+    let token = null;
+    if (authHeader.startsWith("Bearer ")) {
+      token = authHeader.slice(7);
+    } else if (req.headers?.cookie) {
+      // req.cookies isn't populated yet at this point in the middleware
+      // chain — parse the raw header directly rather than depending on
+      // cookieParserMiddleware having already run.
+      token = parseCookies(req.headers.cookie)?.concord_auth || null;
+    }
+    if (token) {
+      const decoded = verifyToken(token);
+      if (decoded?.userId) return `u:${decoded.userId}`;
+    }
+  } catch { /* best-effort — never let key derivation break rate limiting */ }
+  return req.ip;
+}
+
 let rateLimiter = null;
 let authRateLimiter = null;
 if (rateLimit) {
@@ -8066,10 +8104,9 @@ if (rateLimit) {
     message: { ok: false, error: "Too many requests", retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip,
-    // This limiter is mounted globally BEFORE authMiddleware, so it keys
-    // every request by IP. Health probes must never be 429'd, and CI
-    // suites hammer the server from one IP — exempt both.
+    keyGenerator: _rateLimitKey,
+    // Health probes must never be 429'd, and CI suites hammer the server
+    // from one IP — exempt both.
     skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path),
   });
   // Stricter rate limiting for auth endpoints (5 attempts per 15 minutes)
@@ -14947,59 +14984,81 @@ function makeCtx(req=null) {
         ];
         // Local models need more time than cloud — 120s for first call, 90s steady state
         const ollamaTimeout = Math.max(timeoutMs, 120000);
-        const ac = new AbortController();
-        const t = setTimeout(() => ac.abort(), ollamaTimeout);
-        const startMs = Date.now();
-        noteEndpointStart(brainUrl);
-        let _epOk = false;
-        try {
-          const res = await fetch(`${brainUrl}/api/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens } }),
-            signal: ac.signal
-          }).finally(() => clearTimeout(t));
-          const json = await res.json().catch(() => ({}));
-          const elapsed = Date.now() - startMs;
-          BRAIN.conscious.stats.requests++;
-          BRAIN.conscious.stats.totalMs += elapsed;
-          BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
-          if (res.ok && json.message?.content) {
-            const content = json.message.content ?? "";
-            _epOk = true;
-            structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
-            // Real per-call metering — prompt_eval_count/eval_count are
-            // Ollama's own reported token counts for this exact completion.
+
+        // Track A/B/C (event-loop + GPU unblocking audit) — a brain-wiring
+        // audit found ctx.llm.chat() (this function — the primary USER-FACING
+        // chat entry point, used far more than callBrain()) did its own raw
+        // fetch(), completely bypassing the same _llmQueue concurrency cap
+        // callBrain() was fixed to use. On a fixed-VRAM single-GPU box this
+        // was the highest-volume unguarded path to the Ollama endpoints —
+        // exactly the traffic "thousands of concurrent users" produces.
+        // Priority CRITICAL (llm-queue.js's own documented scheme: "0 —
+        // CRITICAL: user-facing chat / ask responses") so live chat jumps
+        // ahead of NORMAL-priority background/heartbeat brain calls under
+        // load, rather than competing with them on equal footing.
+        return await _llmQueue.enqueue(async () => {
+          const ac = new AbortController();
+          const t = setTimeout(() => ac.abort(), ollamaTimeout);
+          const startMs = Date.now();
+          noteEndpointStart(brainUrl);
+          let _epOk = false;
+          try {
+            const res = await fetch(`${brainUrl}/api/chat`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens } }),
+              signal: ac.signal
+            }).finally(() => clearTimeout(t));
+            const json = await res.json().catch(() => ({}));
+            const elapsed = Date.now() - startMs;
+            BRAIN.conscious.stats.requests++;
+            BRAIN.conscious.stats.totalMs += elapsed;
+            BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
+            if (res.ok && json.message?.content) {
+              const content = json.message.content ?? "";
+              _epOk = true;
+              structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
+              // Real per-call metering — prompt_eval_count/eval_count are
+              // Ollama's own reported token counts for this exact completion.
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+                callerId: resolvedActor?.userId, latencyMs: elapsed,
+                tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
+              });
+              return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
+            }
+            BRAIN.conscious.stats.errors++;
+            structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
+            // A real HTTP round-trip happened and came back non-OK — honest
+            // error span, no fabricated token count.
             _meterLlmChat(db, {
               spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
               callerId: resolvedActor?.userId, latencyMs: elapsed,
-              tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
+              error: json?.error || `ollama_error_${res.status}`,
             });
-            return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
+            return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: "conscious", source: "ollama" };
+          } catch (err) {
+            BRAIN.conscious.stats.errors++;
+            const elapsed = Date.now() - startMs;
+            structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
+            _meterLlmChat(db, {
+              spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+              callerId: resolvedActor?.userId, latencyMs: elapsed,
+              error: String(err?.message || err),
+            });
+            return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
+          } finally {
+            noteEndpointFinish(brainUrl, { ok: _epOk });
           }
-          BRAIN.conscious.stats.errors++;
-          structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
-          // A real HTTP round-trip happened and came back non-OK — honest
-          // error span, no fabricated token count.
-          _meterLlmChat(db, {
-            spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
-            callerId: resolvedActor?.userId, latencyMs: elapsed,
-            error: json?.error || `ollama_error_${res.status}`,
-          });
-          return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: "conscious", source: "ollama" };
-        } catch (err) {
-          BRAIN.conscious.stats.errors++;
-          const elapsed = Date.now() - startMs;
-          structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
-          _meterLlmChat(db, {
-            spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
-            callerId: resolvedActor?.userId, latencyMs: elapsed,
-            error: String(err?.message || err),
-          });
-          return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
-        } finally {
-          noteEndpointFinish(brainUrl, { ok: _epOk });
-        }
+        }, _llmQueue.PRIORITY.CRITICAL).catch((err) => {
+          // Queue-level rejection (full/shed) — never let it throw out of
+          // ctx.llm.chat(); every existing caller expects a resolved
+          // { ok, ... } object, matching the resilience contract the BYO
+          // and offline-brain branches above already uphold.
+          const msg = String(err?.message || err);
+          structuredLog("warn", "llm_queue_reject_chat", { error: msg });
+          return { ok: false, error: msg, brain: "conscious", source: "ollama", queueRejected: true };
+        });
       }
     }
   };
@@ -38036,7 +38095,13 @@ app.get("/api/marketplace/browse", asyncHandler(async (req, res) => res.json(awa
 // Legacy alias — some frontend code still calls /api/marketplace/dtu_browse.
 // Route it to the same macro so both URLs work during deprecation.
 app.get("/api/marketplace/dtu_browse", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "browse", { category: req.query.category, search: req.query.search, sort: req.query.sort, page: req.query.page, pageSize: req.query.pageSize }, makeCtx(req)))));
-app.post("/api/marketplace/submit", requireAuth(), async (req, res) => {
+// Track C (rate-limit audit) — this route was the one gap the audit found:
+// rateLimit.js's own comment calls the 'marketplace.submit' bucket (5/hour)
+// "governance, constitutional," but the bucket was never applied here —
+// the route had zero rate limiting of any kind beyond the coarse global
+// blanket limiter (6000/min, not remotely tight enough for a governance-
+// sensitive action).
+app.post("/api/marketplace/submit", requireAuth(), perEndpointRateLimit("marketplace.submit"), async (req, res) => {
   try {
     const userId = req.user?.id;
     const { dtuId, price } = req.body;
