@@ -15,7 +15,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useClientConfig } from '@/hooks/useClientConfig';
 import { api } from '@/lib/api/client';
-import { Activity, Package, Sparkles, X } from 'lucide-react';
+import { Activity, Package, Sparkles } from 'lucide-react';
+import { SummonDrawer } from '@/components/lens/SummonDrawer';
 
 type Mode = 'status' | 'inventory' | 'effects';
 
@@ -64,7 +65,7 @@ export function LinkShell({ worldId = 'concordia-hub', open: openProp }: { world
 
   useEffect(() => { if (enabled && open) refresh(); }, [enabled, open, refresh]);
 
-  if (!enabled || !open) return null;
+  if (!enabled) return null;
 
   const TABS: { id: Mode; label: string; icon: React.ReactNode }[] = [
     { id: 'status', label: 'Status', icon: <Activity className="w-3.5 h-3.5" /> },
@@ -73,11 +74,7 @@ export function LinkShell({ worldId = 'concordia-hub', open: openProp }: { world
   ];
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-80 max-w-[90vw] bg-zinc-950/95 border-l border-cyan-500/30 backdrop-blur p-4 overflow-y-auto" data-testid="link-shell">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-cyan-300">The Link</h2>
-        <button onClick={() => setOpen(false)} aria-label="Close" className="p-1 rounded hover:bg-zinc-800 text-zinc-400"><X className="w-4 h-4" /></button>
-      </div>
+    <SummonDrawer open={open} title="The Link" onClose={() => setOpen(false)} testId="link-shell">
       <div className="flex gap-1 mb-3">
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setMode(t.id)}
@@ -118,7 +115,7 @@ export function LinkShell({ worldId = 'concordia-hub', open: openProp }: { world
           )) : <p className="text-xs text-zinc-500">No active effects.</p>}
         </ul>
       )}
-    </div>
+    </SummonDrawer>
   );
 }
 
