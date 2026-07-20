@@ -259,4 +259,25 @@ describe('world lens page — stable callback/prop identity into child effects',
     expect(slice).not.toMatch(/key:\s*'perception'/);
     expect(slice).not.toMatch(/: 100;/);
   });
+
+  // Plan Phase 1a (docs plan modular-zooming-snowglobe.md): ~15 overlay
+  // mounts were missing the hudHidden gate ~13 other mounts already used,
+  // so pressing H ("hide HUD") left them all on screen. Pins the 6 named
+  // in the plan; the manual escape-hatch layers on top of each element's
+  // own mode/data self-gating, never replaces it.
+  it('gates the NPC nametag overlay loop on hudHidden', () => {
+    const start = src.indexOf('{/* NPC interaction overlays');
+    const slice = src.slice(start, start + 500);
+    expect(slice).toMatch(/\{!hudHidden && rawWorldNPCs\.map\(\(npc\) => \{/);
+  });
+
+  it('gates MaterialAvailability, WalkerArbitrageMap, ZoneBadge, DistrictActivityFeed, and EcosystemMetricsBadge on hudHidden', () => {
+    expect(src).toMatch(/\{!hudHidden && <ConcordiaHUD\.MaterialAvailability \/>\}/);
+    expect(src).toMatch(/\{!hudHidden && <WalkerArbitrageMap worldId=\{currentWorldId\} \/>\}/);
+    expect(src).toMatch(/\{!hudHidden && <ZoneBadge worldId=\{currentWorldId\} \/>\}/);
+    expect(src).toMatch(/\{!hudHidden && <EcosystemMetricsBadge worldId="concordia-hub" \/>\}/);
+    const start = src.indexOf('{/* District activity feed');
+    const slice = src.slice(start, start + 400);
+    expect(slice).toMatch(/\{!hudHidden && \(/);
+  });
 });

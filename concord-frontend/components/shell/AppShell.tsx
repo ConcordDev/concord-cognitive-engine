@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useDiegetic } from '@/hooks/useDiegetic';
+import { useWorldHudHidden } from '@/hooks/useWorldHudHidden';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { useUIStore } from '@/store/ui';
@@ -131,6 +132,9 @@ export function AppShell({ children }: AppShellProps) {
   // Lens-as-Station: a lens opened inside the in-world station frame (?diegetic=1)
   // renders without the global sidebar/topbar chrome.
   const diegetic = useDiegetic();
+  // World Lens's manual "hide HUD" toggle (H key) — see the hook doc
+  // comment. No effect on any lens other than World.
+  const worldHudHidden = useWorldHudHidden();
   const [mounted, setMounted] = useState(false);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const quickCapture = useQuickCapture();
@@ -317,7 +321,7 @@ export function AppShell({ children }: AppShellProps) {
 
       <CommandPalette />
       <Toasts />
-      <SystemStatus />
+      {!worldHudHidden && <SystemStatus />}
       <SystemGuidePanel />
       <FirstWinWizard />
       <HelpButton />

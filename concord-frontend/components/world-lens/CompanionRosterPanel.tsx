@@ -85,6 +85,11 @@ export function CompanionRosterPanel({ worldId }: Props) {
     refresh();
   };
 
+  // A player with no companions gets no HUD pill at all — this used to
+  // render unconditionally, so "Companions 0" sat as permanent bottom-right
+  // chrome for every player who has never tamed anything.
+  if (companions.length === 0) return null;
+
   return (
     <div className="absolute bottom-24 right-4 z-30 w-72">
       <div className="rounded-lg border border-pink-500/30 bg-black/70 backdrop-blur-md shadow-lg">

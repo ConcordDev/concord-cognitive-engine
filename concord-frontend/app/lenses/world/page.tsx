@@ -5170,8 +5170,11 @@ export default function WorldLensPage() {
               </div>
             );
           })}
-          {/* NPC interaction overlays — clickable name tags near each NPC */}
-          {rawWorldNPCs.map((npc) => {
+          {/* NPC interaction overlays — clickable name tags near each NPC.
+              Distance-culled (dist > 20) but was missing the hudHidden gate
+              every other overlay in this file respects, so pressing H
+              ("hide HUD") left every nearby NPC nametag on screen. */}
+          {!hudHidden && rawWorldNPCs.map((npc) => {
             const dx = npc.position.x - playerAvatar.position.x;
             const dy = npc.position.y - playerAvatar.position.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -5465,7 +5468,12 @@ export default function WorldLensPage() {
               a realm_territories edge. Both invisible by default. */}
           <ConcordiaHUD.Ruler />
           <ConcordiaHUD.ConcordantLawBadge />
-          <ConcordiaHUD.MaterialAvailability />
+          {/* MaterialAvailability already self-gates by inputMode (hidden in
+              combat/dialogue/vehicle/photo) via useHUDContext — the
+              hudHidden wrap here is the separate manual "hide everything"
+              escape hatch (H key / Photo Mode), layered on top, not a
+              replacement for its own mode-aware gating. */}
+          {!hudHidden && <ConcordiaHUD.MaterialAvailability />}
           <ConcordiaHUD.MentorshipNotifier />
           {/* Phase F — ambient overlays. (TombMarker uses R3F hooks
               so it lives inside the R3FOverlayLayer Canvas below
@@ -5529,7 +5537,7 @@ export default function WorldLensPage() {
           <CurtainDossier worldId={currentWorldId} />
           <QuestGuidanceHUD />
           <EavesdropBubble worldId={currentWorldId} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
-          <WalkerArbitrageMap worldId={currentWorldId} />
+          {!hudHidden && <WalkerArbitrageMap worldId={currentWorldId} />}
           <GlyphCastHUD worldId={currentWorldId} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <EnterVRButton />
 
@@ -5576,7 +5584,7 @@ export default function WorldLensPage() {
               scene-add API; this is the substrate-bridge surface so
               players see their world's death log. */}
           <TombsOverlay worldId={currentWorldId} />
-          <ZoneBadge worldId={currentWorldId} />
+          {!hudHidden && <ZoneBadge worldId={currentWorldId} />}
 
           {/* Sprint B.5 — procgen settlement NPCs (Phase 11.4 substrate).
               Pulls procgen_settlement_npcs rows for this world via the
@@ -5684,25 +5692,29 @@ export default function WorldLensPage() {
             }))}
           />
 
-          {/* District activity feed — live quests/events/NPC discovery */}
-          <DistrictActivityFeed
-            worldId={currentWorldId}
-            npcs={rawWorldNPCs.map((n) => ({
-              id: n.id,
-              name: n.name,
-              isConscious: n.isConscious,
-              questAvailable: false,
-              faction: n.faction,
-              position: { x: n.position.x, y: n.position.y },
-            }))}
-            playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y }}
-            onTalkToNpc={(npcId) => {
-              const npc = rawWorldNPCs.find((n) => n.id === npcId);
-              if (npc) openNPCDialogue(npc);
-            }}
-            onOpenWorldEvents={() => setShowPanel('eventboard')}
-            onOpenQuestLog={() => setShowPanel('questlog')}
-          />
+          {/* District activity feed — live quests/events/NPC discovery.
+              Already self-gates to nothing when actionCount is 0 and it's
+              not expanded, but was missing the hudHidden manual override. */}
+          {!hudHidden && (
+            <DistrictActivityFeed
+              worldId={currentWorldId}
+              npcs={rawWorldNPCs.map((n) => ({
+                id: n.id,
+                name: n.name,
+                isConscious: n.isConscious,
+                questAvailable: false,
+                faction: n.faction,
+                position: { x: n.position.x, y: n.position.y },
+              }))}
+              playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y }}
+              onTalkToNpc={(npcId) => {
+                const npc = rawWorldNPCs.find((n) => n.id === npcId);
+                if (npc) openNPCDialogue(npc);
+              }}
+              onOpenWorldEvents={() => setShowPanel('eventboard')}
+              onOpenQuestLog={() => setShowPanel('questlog')}
+            />
+          )}
 
           {/* Phase AB — village gossip (NPC↔NPC graph escalations) */}
           {!hudHidden && <VillageGossipFeed worldId={currentWorldId} />}
@@ -6591,7 +6603,7 @@ export default function WorldLensPage() {
           <ActiveEffectsBar />
           <CorpseMarkerOverlay worldId="concordia-hub" toolTier={1} />
           <RefusalFieldBanner worldId="concordia-hub" />
-          <EcosystemMetricsBadge worldId="concordia-hub" />
+          {!hudHidden && <EcosystemMetricsBadge worldId="concordia-hub" />}
           <SovereignManifestationToast />
         </div>
       ) : viewMode === 'streams' ? (
