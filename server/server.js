@@ -1619,6 +1619,7 @@ import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSyste
 import configureMiddleware from "./middleware/index.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
+import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
@@ -7785,6 +7786,32 @@ async function initMetrics() {
       },
     });
 
+    // Track C (event-loop unblocking audit) — the event-loop-pressure
+    // module's current reading, exported so an operator can graph/alert on
+    // the exact signal `lowPriority` heartbeats back off from, not just
+    // infer it after the fact from a log line. Scrape-time collect(),
+    // matching the llmQueue* gauges' pattern above (reads a module-scoped
+    // live value rather than being .set() imperatively).
+    METRICS.gauges.eventLoopLagMs = new prom.Gauge({
+      name: "concord_event_loop_lag_ms",
+      help: "Current max observed event-loop delay (ms) over the last sample window",
+      registers: [METRICS.registry],
+      collect() { try { this.set(getEventLoopLagMs()); } catch { /* scrape best-effort */ } },
+    });
+
+    // Track C — counts a lowPriority heartbeat's tick being SKIPPED (not
+    // delayed) because the event loop was under pressure when it was due.
+    // Sustained skips mean deferrable work (code-substrate-refresh,
+    // detectors-sweep, literary-resonance-cycle) is being starved, which is
+    // itself a symptom worth alerting on separately from the lag gauge
+    // crossing threshold once.
+    METRICS.counters.heartbeatLowPrioritySkipped = new prom.Counter({
+      name: "concord_heartbeat_low_priority_skipped_total",
+      help: "lowPriority heartbeat ticks skipped due to event-loop pressure, by module",
+      labelNames: ["module"],
+      registers: [METRICS.registry],
+    });
+
     // Expose the counters/histograms via globalThis so cross-module
     // observers (heartbeat-registry.js, world-shard-manager.js) can
     // record without circular imports. The registry's own observation
@@ -7798,6 +7825,7 @@ async function initMetrics() {
       heartbeatWorkerPoolSize: METRICS.gauges.heartbeatWorkerPoolSize,
       heartbeatWorkerPoolBusy: METRICS.gauges.heartbeatWorkerPoolBusy,
       heartbeatWorkerPoolQueueLen: METRICS.gauges.heartbeatWorkerPoolQueueLen,
+      heartbeatLowPrioritySkipped: METRICS.counters.heartbeatLowPrioritySkipped,
       worldShardStuck: METRICS.counters.worldShardStuck,
       worldShardSpawnFailed: METRICS.counters.worldShardSpawnFailed,
       worldShardActiveCount: METRICS.gauges.worldShardActiveCount,
@@ -65318,6 +65346,8 @@ try {
   const { startEventLoopPressureMonitor } = await import("./lib/event-loop-pressure.js");
   await startEventLoopPressureMonitor();
 } catch (e) {
+  // Never actually throws internally (see the module's own try/catch), but
+  // kept defensive here to match this file's boot-block convention.
   structuredLog("info", "event_loop_pressure_monitor_unavailable", { error: String(e?.message || e) });
 }
 
