@@ -40,6 +40,7 @@ try { fs.mkdirSync(path.join(DATA_DIR, 'seed'), { recursive: true }); } catch { 
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";
+import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
@@ -2031,12 +2032,37 @@ if (_isProduction && _securityLoadErrors.length > 0) {
 const DOTENV = { loaded: false, path: null, error: null };
 async function tryLoadDotenv() {
   const envPath = process.env.ENV_PATH || process.env.DOTENV_CONFIG_PATH || null;
+  // Stability audit (2026-07-20) — dotenv.config() does NOT override an
+  // already-set process.env var by default. On a pm2-managed bare-metal
+  // deploy (ecosystem.config.cjs), pm2 injects its `env`/`env_runpod` block
+  // into process.env BEFORE node even starts, so any var pm2 also sets
+  // silently wins over whatever the .env file says for that same key — with
+  // zero indication anything was overridden. This is exactly how
+  // CONCORD_SHARD_WORLDS drifted out of sync this session: ecosystem.config.cjs
+  // said 'true', .env.runpod said 'false' (with real, evidenced rationale),
+  // and pm2's 'true' silently won. Snapshot process.env BEFORE loading so we
+  // can name every case where the .env file's value was silently ignored —
+  // loud instead of silent, per this repo's own "kill drift" discipline.
+  const preDotenvSnapshot = { ...process.env };
   try {
     const dotenv = await import("dotenv");
     const result = envPath ? dotenv.config({ path: envPath }) : dotenv.config();
     DOTENV.loaded = !result?.error;
     DOTENV.path = envPath || "(default)";
     DOTENV.error = result?.error ? String(result.error) : null;
+    if (result?.parsed) {
+      for (const [key, fileValue] of Object.entries(result.parsed)) {
+        const preexisting = preDotenvSnapshot[key];
+        if (preexisting !== undefined && preexisting !== fileValue) {
+          console.warn(
+            `[ENV_CONFLICT] ${key}: the .env file says "${fileValue}" but a pre-existing ` +
+            `process.env value ("${preexisting}", likely injected by pm2's ecosystem.config.cjs) ` +
+            `silently won — the .env value was ignored. If this wasn't intentional, fix the ` +
+            `losing side rather than assume the .env file's value is what's actually running.`
+          );
+        }
+      }
+    }
   } catch (e) {
     DOTENV.loaded = false;
     DOTENV.path = envPath || "(default)";
@@ -2751,11 +2777,34 @@ async function gracefulShutdown(signal) {
   process.exit(0);
 }
 
+// Stability audit (2026-07-20) — a crash's memory footprint at the moment
+// it happened is the single fastest way to tell "this is a real OOM
+// approaching the configured heap ceiling" apart from "this is an unrelated
+// logic bug that happened to throw" — without it, both look identical in
+// the log (just an error + stack). Best-effort; must never itself throw
+// inside a crash handler.
+function _crashMemorySnapshot() {
+  try {
+    const mem = process.memoryUsage();
+    const heapLimitMb = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
+    const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024);
+    return {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb,
+      heapLimitMb,
+      heapPctOfLimit: heapLimitMb > 0 ? Math.round((heapUsedMb / heapLimitMb) * 100) : null,
+      externalMb: Math.round(mem.external / 1024 / 1024),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Register shutdown handlers
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("uncaughtException", (err) => {
-  structuredLog("fatal", "uncaught_exception", { error: err.message, stack: err.stack });
+  structuredLog("fatal", "uncaught_exception", { error: err.message, stack: err.stack, memory: _crashMemorySnapshot() });
   // ALWAYS exit. After an uncaught exception the process state is undefined; this is a
   // stateful SQLite economy monolith, so continuing risks silent data corruption. The
   // repair cortex still RECORDS the error (diagnostics for the next clean boot) but never
@@ -2770,7 +2819,7 @@ process.on("uncaughtException", (err) => {
 });
 process.on("unhandledRejection", (reason, _promise) => {
   const errorStr = reason?.message || String(reason);
-  structuredLog("fatal", "unhandled_rejection", { reason: errorStr, stack: String(reason?.stack || "") });
+  structuredLog("fatal", "unhandled_rejection", { reason: errorStr, stack: String(reason?.stack || ""), memory: _crashMemorySnapshot() });
   // Record for diagnostics, but NEVER run an executor that keeps a corrupt process
   // alive. In production, always exit for a clean restart; in dev, log + continue so
   // local rejection bugs surface without killing the dev loop.
@@ -5358,6 +5407,17 @@ function initDatabase() {
     const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 4096;
     const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 1024;
     const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 10000;
+    // Stability audit (2026-07-20) — wal_autocheckpoint sets the checkpoint
+    // CADENCE, but under checkpoint starvation (a long-running reader holding
+    // the WAL open, an export, a stuck analytics query) SQLite can't reclaim
+    // the WAL file even at that cadence, and it grows unbounded until the
+    // disk fills — which then breaks writes for every user, not just the
+    // slow reader. journal_size_limit is the hard backstop: once the WAL
+    // exceeds this size, SQLite forcibly truncates it back down after the
+    // next checkpoint that CAN complete, instead of growing forever. 64MB
+    // default is generous headroom over the ~80MB (10000 pages × 8KB) a
+    // normal checkpoint cycle touches. Override via env on busier boxes.
+    const walSizeLimitMb = Number(process.env.CONCORD_SQLITE_WAL_SIZE_LIMIT_MB) || 64;
     if (READ_REPLICA) {
       // Read-only replica: the writer owns schema + WAL journal mode. Open
       // Open WRITABLE (not readonly). The monolith has many scattered boot-time
@@ -5375,6 +5435,7 @@ function initDatabase() {
       db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
       db.pragma(`cache_size = -${cacheMb * 1024}`);
       db.pragma("busy_timeout = 5000");
+      db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`);
       structuredLog?.("info", "db_readonly_replica", { dbPath: DB_PATH, mode: "writable-until-listen" });
     } else {
       db = new Database(DB_PATH);
@@ -5386,6 +5447,7 @@ function initDatabase() {
       db.pragma("temp_store = MEMORY");       // Temp tables in RAM
       db.pragma("busy_timeout = 10000");      // 10s retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
+      db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
       db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
       db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
     }
@@ -7810,6 +7872,45 @@ async function initMetrics() {
       help: "lowPriority heartbeat ticks skipped due to event-loop pressure, by module",
       labelNames: ["module"],
       registers: [METRICS.registry],
+    });
+
+    // Stability audit (2026-07-20) — Socket.IO connection/room leaks are a
+    // known, recurring bug class (disconnected sockets staying referenced,
+    // empty rooms not getting cleaned up — github.com/socketio/socket.io
+    // issues #2427, #1736, #4067, #1599, among others). Nothing in Concord
+    // proved this is currently happening, but the architecture (heavy
+    // per-user/per-world room fan-out via realtimeEmit, a 100ms
+    // city-presence tick loop) is exactly the shape that's triggered this
+    // for others in production. Rather than guess, make it OBSERVABLE:
+    // io.engine.clientsCount is Engine.IO's own low-level transport count
+    // (authoritative, independent of any of Concord's own bookkeeping
+    // bugs); comparing it against REALTIME.clients.size (Concord's own
+    // tracked registry) surfaces a DIVERGENCE the instant one drifts from
+    // the other — that divergence, sustained and growing over days of
+    // uptime, is the actual leak signal to alert on, not a hunch.
+    METRICS.gauges.wsEngineClients = new prom.Gauge({
+      name: "concord_ws_engine_clients",
+      help: "Engine.IO's own low-level connected-client count (authoritative, independent of app-level bookkeeping)",
+      registers: [METRICS.registry],
+      collect() { try { this.set(REALTIME?.io?.engine?.clientsCount ?? 0); } catch { /* scrape best-effort */ } },
+    });
+    METRICS.gauges.wsRoomCount = new prom.Gauge({
+      name: "concord_ws_room_count",
+      help: "Socket.IO default-namespace room count (includes each socket's own auto-joined self-room by design — watch the TREND, not the absolute number)",
+      registers: [METRICS.registry],
+      collect() { try { this.set(REALTIME?.io?.sockets?.adapter?.rooms?.size ?? 0); } catch { /* scrape best-effort */ } },
+    });
+    METRICS.gauges.wsRegistryDivergence = new prom.Gauge({
+      name: "concord_ws_registry_divergence",
+      help: "abs(REALTIME.clients.size - io.engine.clientsCount) — a sustained nonzero value means Concord's own connection registry has drifted from Engine.IO's real count (the actual leak signal)",
+      registers: [METRICS.registry],
+      collect() {
+        try {
+          const tracked = REALTIME?.clients?.size ?? 0;
+          const real = REALTIME?.io?.engine?.clientsCount ?? 0;
+          this.set(Math.abs(tracked - real));
+        } catch { /* scrape best-effort */ }
+      },
     });
 
     // Expose the counters/histograms via globalThis so cross-module
@@ -65425,6 +65526,47 @@ try {
   // Never actually throws internally (see the module's own try/catch), but
   // kept defensive here to match this file's boot-block convention.
   structuredLog("info", "event_loop_pressure_monitor_unavailable", { error: String(e?.message || e) });
+}
+
+// Stability audit (2026-07-20) — a hand-tuned --max-old-space-size can
+// silently drift out of sync with the real box (resized pod, moved
+// deployment) with no warning until an OOM-kill under load. Check once at
+// boot against the real, currently-enforced V8 ceiling vs real os.totalmem().
+try {
+  const { checkMemoryBudget } = await import("./lib/memory-budget.js");
+  const budget = checkMemoryBudget();
+  if (!budget.ok) {
+    structuredLog("warn", "memory_budget_over_threshold", budget);
+  } else {
+    structuredLog("info", "memory_budget_ok", { heapLimitMb: budget.heapLimitMb, totalMemMb: budget.totalMemMb, fraction: budget.fraction });
+  }
+} catch (e) {
+  structuredLog("info", "memory_budget_check_unavailable", { error: String(e?.message || e) });
+}
+
+// Stability audit (2026-07-20) — RunPod pods are ephemeral by default: all
+// data outside a mounted network volume is wiped on pod restart/reschedule.
+// DATA_DIR already auto-detects /workspace and prefers it (see its
+// declaration near the top of this file), but if that detection silently
+// falls through to the local ./data fallback in production — network
+// volume not mounted, mounted somewhere unexpected, or DATA_DIR/DB_PATH
+// simply never got set — the server boots and runs completely normally
+// with NO indication that a routine restart will erase the entire
+// database. Loud instead of silent: this doesn't block boot (a legitimate
+// non-RunPod deploy may intentionally use local storage), but a production
+// boot with a non-/workspace DATA_DIR should never pass unremarked.
+try {
+  if ((process.env.NODE_ENV || "development") === "production" && !DATA_DIR.startsWith("/workspace")) {
+    structuredLog("warn", "data_dir_not_on_persistent_volume", {
+      dataDir: DATA_DIR,
+      dbPath: DB_PATH,
+      detail: "DATA_DIR does not start with /workspace (RunPod's persistent network-volume mount point). " +
+        "If this is a RunPod deploy, a routine pod restart will WIPE this data unless it's actually on a " +
+        "mounted persistent volume elsewhere. Verify DATA_DIR/DB_PATH before treating this as a stable deploy.",
+    });
+  }
+} catch (e) {
+  structuredLog("info", "data_dir_persistence_check_unavailable", { error: String(e?.message || e) });
 }
 
 // Optional: enable thin realtime mirror (WebSockets) for queues/jobs/panels.

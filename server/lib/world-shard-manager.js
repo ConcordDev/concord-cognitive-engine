@@ -230,6 +230,18 @@ function _spawnShard(worldId) {
     worker = new Worker(SHARD_ENTRY, {
       workerData: { worldId, dbPath: _config?.dbPath ?? null },
       env: { ...process.env, CONCORD_NO_LISTEN: "true", CONCORD_SHARD_CHILD: "true" },
+      // Stability audit (2026-07-20) — without an explicit resourceLimits, a
+      // world shard inherits the FULL main-thread --max-old-space-size
+      // ceiling. A shard hosts an entire active world's per-world sim
+      // (scope:'world' heartbeat modules), genuinely more state than a
+      // single macro or heartbeat tick, so it gets the largest per-worker
+      // allowance — but still a real, finite cap rather than none, since
+      // SHARD_MAX_ACTIVE bounds the COUNT of concurrent shards, not what
+      // any single one can individually grow to. Override via
+      // CONCORD_SHARD_WORKER_HEAP_MB.
+      resourceLimits: {
+        maxOldGenerationSizeMb: Number(process.env.CONCORD_SHARD_WORKER_HEAP_MB) || 2048,
+      },
     });
   } catch (err) {
     logger.warn("world-shard-manager", "worker_construct_failed", { worldId, error: err?.message });

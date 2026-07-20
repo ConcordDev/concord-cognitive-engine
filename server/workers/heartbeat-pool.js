@@ -85,6 +85,20 @@ function _spawnWorker(workerId) {
       workerId,
       dbPath: _mainCtxRef?.dbPath ?? null,
     },
+    // Stability audit (2026-07-20) — without an explicit resourceLimits, a
+    // worker_thread inherits the SAME --max-old-space-size ceiling as the
+    // main thread (they share the process-wide V8 flag unless overridden
+    // per-worker). With CONCORD_HEARTBEAT_POOL_SIZE workers all running
+    // light, bounded per-module tick work off a readonly DB handle, a leak
+    // or runaway allocation in a single heartbeat module could otherwise
+    // grow that one worker toward the SAME ceiling as the entire main
+    // thread — on a real memory-constrained box (see ecosystem.config.cjs's
+    // bare-metal RAM budget comment) that's real headroom one misbehaving
+    // module shouldn't be able to claim. 512MB is generous for this pool's
+    // actual workload; override via CONCORD_HEARTBEAT_WORKER_HEAP_MB.
+    resourceLimits: {
+      maxOldGenerationSizeMb: Number(process.env.CONCORD_HEARTBEAT_WORKER_HEAP_MB) || 512,
+    },
   });
   // Test hygiene: unref under NODE_ENV=test so the pool doesn't keep the
   // node:test process alive after a suite finishes (see macro-pool.js). Prod
