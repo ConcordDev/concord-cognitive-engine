@@ -6861,7 +6861,16 @@ export default function WorldLensPage() {
       <AbilityCooldownHud />
       <TargetNameplate npcs={rawWorldNPCs} />
 
-      {/* World Actions Panel */}
+      {/* World Actions Panel — 2D district-inspection tools (country compare /
+          indicator tracking / trade flow / demographic profile), not 3D-game
+          HUD. Hidden in Explore (3D) mode: as an unconditional flex-column
+          sibling of the 3D view container, this + Lens Features + the Earth
+          events section were together eating ~350px of vertical space,
+          squeezing the `flex-1` 3D canvas down to a ~114px sliver — exactly
+          the "game blocked by hella panels, can see the health bar in the
+          background" symptom reported live. Confirmed by measuring computed
+          layout: the 3D container's actual rendered height, not a guess. */}
+      {viewMode !== 'explore' && (
       <div className="px-4 py-3 border-t border-white/10">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
@@ -7004,8 +7013,12 @@ export default function WorldLensPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* Lens Features (collapsible) */}
+      {/* Lens Features (collapsible) — same reasoning as World Actions above:
+          generic feature-icon scaffold, not 3D-game HUD. Hidden in Explore
+          mode so it stops competing with the 3D canvas for flex height. */}
+      {viewMode !== 'explore' && (
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
@@ -7024,6 +7037,7 @@ export default function WorldLensPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Onboarding Tutorial */}
       {showOnboarding && (
@@ -7035,9 +7049,16 @@ export default function WorldLensPage() {
 
       {/* Post-tutorial hints — rotates contextual tips after first visit */}
       {!showOnboarding && <PostTutorialHints />}
+      {/* Earth events (NASA EONET feed) — a dashboard info widget, not 3D-game
+          HUD, and by far the single biggest space-eater of the four hidden
+          here (measured at ~200px). Same reasoning as World Actions/Lens
+          Features above: hidden in Explore mode so the 3D canvas actually
+          gets the flex height it's entitled to. */}
+      {viewMode !== 'explore' && (
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <EarthEventsLive />
       </section>
+      )}
     </div>
 
       {/* Phase 12 (C4) — mobile mode switcher for World's four core views.
