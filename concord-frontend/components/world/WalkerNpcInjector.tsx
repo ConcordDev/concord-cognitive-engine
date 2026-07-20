@@ -216,6 +216,18 @@ export default function WalkerNpcInjector({ worldId, anchorPositions, onWalkers 
   // Tick: every 100ms, recompute walker NPCData entries and push to parent.
   // Auto-GC any journey past 2× its estimated duration (insurance vs.
   // missed delivered events).
+  //
+  // Skips the push when there's nothing to report and the previous push was
+  // also empty. Without this, `computeNpcs()` allocates + returns a fresh
+  // (possibly zero-length) array on every single tick regardless of whether
+  // any walker journey is actually active, so onWalkers(npcs) — and the
+  // parent's setState it drives — fired at a flat, unconditional 10Hz
+  // forever, even in the common case of zero active walkers. Confirmed via
+  // a live stack-trace capture as one contributor to a page-wide "Maximum
+  // update depth exceeded" cluster that stalled the World Lens's scene-init
+  // sequence. Real, in-flight journeys still update every tick as before —
+  // this only elides the empty-to-empty no-op case.
+  const wasEmptyRef = useRef(true);
   useEffect(() => {
     let mounted = true;
     const tick = () => {
@@ -228,6 +240,8 @@ export default function WalkerNpcInjector({ worldId, anchorPositions, onWalkers 
         }
       }
       const npcs = computeNpcs();
+      if (npcs.length === 0 && wasEmptyRef.current) return;
+      wasEmptyRef.current = npcs.length === 0;
       onWalkers(npcs);
     };
     const interval = window.setInterval(tick, 100);

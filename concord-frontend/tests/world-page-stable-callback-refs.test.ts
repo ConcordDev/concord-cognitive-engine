@@ -64,4 +64,42 @@ describe('world lens page — stable callback/prop identity into child effects',
     expect(slice).toMatch(/lodCenter=\{TERRAIN_LOD_CENTER_ORIGIN\}/);
     expect(slice).not.toMatch(/lodCenter=\{\{/);
   });
+
+  // Bug C — the dominant remaining cause once A and B were fixed: found via
+  // a live stack-trace capture (a "memory access out of bounds" Rapier WASM
+  // crash inside AvatarSystem3D's character-controller registration, plus
+  // the World Lens never leaving "Building the world..."). ConcordiaScene's
+  // own scene-init effect (which builds the renderer, terrain, lighting,
+  // AND the Rapier physics world) depends directly on `onBuildingClick`/
+  // `onTerrainClick`. Both were inline arrow functions in this page's JSX
+  // — a fresh identity every render — so the ENTIRE 3D engine, physics
+  // world included, tore down (destroying the Rapier world) and rebuilt on
+  // every single re-render of this page. AvatarSystem3D's own physics
+  // registration is a separate, stable, mount-once effect — but it was
+  // racing against ConcordiaScene repeatedly destroying and recreating the
+  // physics world out from under it, which is what actually corrupted the
+  // WASM heap. Fixed by lifting both callbacks to page-level useCallbacks
+  // with `[]` deps (reading mutable state through the existing
+  // activeDistrictRef/playerAvatarRef mirrors, same pattern already used
+  // by handleAvatarMove/handleAvatarEmote for worldSocket.emit).
+  it('passes stable useCallback references (not inline arrows) for ConcordiaScene\'s onBuildingClick/onTerrainClick', () => {
+    expect(src).toMatch(/const handleConcordiaBuildingClick = useCallback\(/);
+    expect(src).toMatch(/const handleConcordiaTerrainClick = useCallback\(/);
+    // `<ConcordiaScene` alone also matches an unrelated earlier code comment
+    // mentioning the component by name — anchor on the JSX opening tag's
+    // own newline so this finds the real mount site.
+    const mountIdx = src.indexOf('<ConcordiaScene\n');
+    const slice = src.slice(mountIdx, mountIdx + 2000);
+    expect(slice).toMatch(/onBuildingClick=\{handleConcordiaBuildingClick\}/);
+    expect(slice).toMatch(/onTerrainClick=\{handleConcordiaTerrainClick\}/);
+    expect(slice).not.toMatch(/onBuildingClick=\{\s*\(/);
+    expect(slice).not.toMatch(/onTerrainClick=\{\s*\(/);
+  });
+
+  it('handleConcordiaBuildingClick/handleConcordiaTerrainClick have empty dependency arrays (identity never changes across renders)', () => {
+    const bSlice = src.slice(src.indexOf('const handleConcordiaBuildingClick'), src.indexOf('const handleConcordiaBuildingClick') + 700);
+    expect(bSlice).toMatch(/\}, \[\]\);/);
+    const tSlice = src.slice(src.indexOf('const handleConcordiaTerrainClick'), src.indexOf('const handleConcordiaTerrainClick') + 100);
+    expect(tSlice).toMatch(/useCallback\(\(\) => \{\}, \[\]\)/);
+  });
 });

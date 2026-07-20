@@ -4476,6 +4476,8 @@ export default function WorldLensPage() {
   // self-feeding loop above, and is left as documented follow-up work.
   const activeDistrictIdRef = useRef(activeDistrict.id);
   activeDistrictIdRef.current = activeDistrict.id;
+  const activeDistrictRef = useRef(activeDistrict);
+  activeDistrictRef.current = activeDistrict;
   const isConnectedRef = useRef(worldSocket.isConnected);
   isConnectedRef.current = worldSocket.isConnected;
   const playerAvatarRef = useRef(playerAvatar);
@@ -4614,6 +4616,41 @@ export default function WorldLensPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [worldSocket.emit]
   );
+
+  // ConcordiaScene's own scene-init effect (physics world + renderer +
+  // terrain + lighting — the whole engine) depends directly on
+  // `onBuildingClick`/`onTerrainClick` by reference. These were previously
+  // inline arrow functions in the JSX below, so they got a fresh identity
+  // on every render of THIS page — tearing down and rebuilding the entire
+  // 3D engine, including destroying + recreating the Rapier physics world,
+  // on every single re-render. That's the root cause this session traced
+  // for both the World Lens stalling on "Building the world..." (repeated
+  // full scene teardown never lets the first frame settle) and a live
+  // Rapier WASM crash ("memory access out of bounds" in
+  // createCharacterController/removeCharacter) — AvatarSystem3D's own
+  // physics registration is stable and mounts once, but it was racing
+  // against ConcordiaScene's own physics world being destroyed and
+  // recreated out from under it. Stabilized the same way
+  // handleAvatarMove/handleAvatarEmote already are: reads mutable
+  // page state through the existing ref mirrors instead of depending on
+  // it directly, so identity never changes across renders.
+  const handleConcordiaBuildingClick = useCallback((id: string) => {
+    const district = activeDistrictRef.current;
+    const b = district.buildings.find((b) => b.id === id);
+    if (b) setSelectedBuilding(b);
+    try {
+      window.dispatchEvent(new CustomEvent('concordia:building-interact', {
+        detail: {
+          buildingId: id,
+          worldId: district.id,
+          playerX: playerAvatarRef.current.position.x,
+          playerZ: playerAvatarRef.current.position.y,
+        },
+      }));
+    } catch { /* dispatch best-effort */ }
+  }, []);
+
+  const handleConcordiaTerrainClick = useCallback(() => {}, []);
 
   return (
     <LensShell lensId="world" asMain={false}>
@@ -4811,24 +4848,8 @@ export default function WorldLensPage() {
               z: playerAvatar.position.z,
               yaw: playerAvatar.rotation,
             })}
-            onBuildingClick={(id) => {
-              const b = activeDistrict.buildings.find((b) => b.id === id);
-              if (b) setSelectedBuilding(b);
-              // Phase DA2 — also dispatch a station-interaction event
-              // so the StationInteractionRouter can open the matching
-              // workbench overlay for the building's type.
-              try {
-                window.dispatchEvent(new CustomEvent('concordia:building-interact', {
-                  detail: {
-                    buildingId: id,
-                    worldId: activeDistrict.id,
-                    playerX: playerAvatar.position.x,
-                    playerZ: playerAvatar.position.y,
-                  },
-                }));
-              } catch { /* dispatch best-effort */ }
-            }}
-            onTerrainClick={() => {}}
+            onBuildingClick={handleConcordiaBuildingClick}
+            onTerrainClick={handleConcordiaTerrainClick}
             onWeatherModifiers={(mods) => setWeatherModifiers(mods)}
             onSceneReady={(lookup) => {
               deformLookupRef.current = lookup;

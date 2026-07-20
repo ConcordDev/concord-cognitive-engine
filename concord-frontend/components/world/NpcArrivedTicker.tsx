@@ -46,8 +46,15 @@ export default function NpcArrivedTicker({ worldId }: { worldId: string }) {
       };
       setArrivals((prev) => [arrival, ...prev].slice(0, MAX_ROWS));
     });
+    // `.filter()` always allocates a new array even when nothing actually
+    // expired, or the list was already empty — part of a page-wide
+    // "Maximum update depth exceeded" cluster found on the World Lens.
     const sweep = window.setInterval(() => {
-      setArrivals((prev) => prev.filter((a) => Date.now() - a.ts < TTL_MS));
+      setArrivals((prev) => {
+        if (prev.length === 0) return prev;
+        const next = prev.filter((a) => Date.now() - a.ts < TTL_MS);
+        return next.length === prev.length ? prev : next;
+      });
     }, 30_000);
     return () => {
       off?.();
