@@ -2042,6 +2042,11 @@ export default function WorldLensPage() {
     return () => window.removeEventListener('concordia:hide-hud', onHideHud);
   }, []);
 
+  // World Lens Phase 2 (Activate Existing Rendering) — PhotoMode's real
+  // open/onClose state + P-key binding are declared further down (after
+  // combatState/dialogueNPC exist to gate on), next to the E-key effect —
+  // see the "P key: Photo Mode toggle" block below.
+
   // ── World-data honesty (W4) ────────────────────────────────────────────────
   // The scene boots on DEMO_DISTRICT seed geometry; the player must never
   // mistake that for live world state. Each live world fetch reports its
@@ -2993,6 +2998,39 @@ export default function WorldLensPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [portals, playerAvatar.position, nearbyNPC, dialogueNPC]);
+
+  // World Lens Phase 2 (Activate Existing Rendering) — P key: Photo Mode
+  // toggle. PhotoMode was mounted with a hardcoded `open={false}` and a
+  // no-op onClose; its own doc comment claimed it "listens for window
+  // 'concordia:photo-mode-toggle'" but no such listener actually existed
+  // anywhere in the component, so there was no way to ever open it. Gated
+  // outside combat/dialogue, matching this page's other single-key bindings
+  // (the E-key portal/dialogue effect above). canvasRef is resolved from the
+  // same `__concordiaRenderer` window global ConcordiaScene.tsx already
+  // exposes for WebXR, so PhotoMode's screenshot/save-to-gallery paths get a
+  // real canvas instead of always reporting "No canvas available".
+  const [photoModeOpen, setPhotoModeOpen] = useState(false);
+  const [photoModeCanvas, setPhotoModeCanvas] = useState<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    function handlePhotoModeKey(e: KeyboardEvent) {
+      if (e.key !== 'p' && e.key !== 'P') return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (dialogueNPC || combatState.target) return;
+      setPhotoModeOpen((prev) => {
+        const next = !prev;
+        if (next) {
+          try {
+            const renderer = (window as unknown as { __concordiaRenderer?: { domElement?: HTMLCanvasElement } }).__concordiaRenderer;
+            setPhotoModeCanvas(renderer?.domElement ?? null);
+          } catch { setPhotoModeCanvas(null); }
+        }
+        return next;
+      });
+    }
+    window.addEventListener('keydown', handlePhotoModeKey);
+    return () => window.removeEventListener('keydown', handlePhotoModeKey);
+  }, [dialogueNPC, combatState.target]);
 
   // Shift modifier tracking for Flow Combat. modifierHeldRef is read by
   // CombatInputController each tap to decide whether to flag the action
@@ -5639,9 +5677,10 @@ export default function WorldLensPage() {
               available, falls back gracefully when stems are missing. */}
           <AdaptiveMusicEngine worldId={currentWorldId} />
 
-          {/* Sprint D Z3 — photo mode toggle. Triggered by P key (handled by
-              gamepad/keymap layer in a follow-up). */}
-          <PhotoMode open={false} onClose={() => undefined} />
+          {/* Sprint D Z3 — photo mode. World Lens Phase 2 wired the real P-key
+              toggle (see the keydown effect near the E-key portal effect
+              above) and a real canvasRef so screenshot/save-to-gallery work. */}
+          <PhotoMode open={photoModeOpen} onClose={() => setPhotoModeOpen(false)} canvasRef={photoModeCanvas} />
 
           {/* Companion roster — pet HUD (Phase A). Mounted bottom-right;
               opens on click. Lists owned creatures, deploy/dismiss/rename. */}
