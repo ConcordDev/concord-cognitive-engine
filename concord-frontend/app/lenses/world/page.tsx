@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { reportFrontendError } from '@/lib/report-frontend-error';
@@ -35,7 +34,6 @@ import ComponentCreator from '@/components/world-lens/ComponentCreator';
 import RawDTUEditor from '@/components/world-lens/RawDTUEditor';
 import MarketplacePalette from '@/components/world-lens/MarketplacePalette';
 import ConcordiaHub from '@/components/world-lens/ConcordiaHub';
-import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
@@ -2531,10 +2529,6 @@ export default function WorldLensPage() {
   );
   const [showValidation, setShowValidation] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem('world_lens_visited');
-  });
   const [showFeatures, setShowFeatures] = useState(false);
 
   // Live NPC state — populated from API, refreshed every 10s
@@ -3877,14 +3871,6 @@ export default function WorldLensPage() {
     combatStateRef.current = combatState;
   }, [combatState]);
 
-  // Check first visit
-  useEffect(() => {
-    const visited = localStorage.getItem('world_lens_visited');
-    if (!visited) {
-      setShowOnboarding(true);
-    }
-  }, []);
-
   // Init CombatMusicSystem on first user gesture (AudioContext requires interaction)
   useEffect(() => {
     const initCombatMusic = () => {
@@ -4477,11 +4463,6 @@ export default function WorldLensPage() {
     setViewMode('district');
   }, []);
 
-  const handleOnboardingComplete = useCallback(() => {
-    localStorage.setItem('world_lens_visited', '1');
-    setShowOnboarding(false);
-  }, []);
-
   // ── AvatarSystem3D prop stabilization (runtime-health-capability-map.md #1) ──
   // AvatarSystem3D's ~1,740-line setup effect (mesh/mixer construction, physics
   // character registration, 8 combat/death/knockback listener registrations)
@@ -4689,7 +4670,13 @@ export default function WorldLensPage() {
 
   return (
     <LensShell lensId="world" asMain={false}>
-      <FirstRunTour lensId="world" />
+      {/* FirstRunTour intentionally NOT mounted here (Phase 1b tutorial
+          consolidation) — World Lens has its own purpose-built, richer
+          tutorial system (lib/concordia/onboarding/tutorial.ts's
+          tutorialManager + TutorialOverlay) instead of the generic
+          per-lens 3-step coachmark every other lens uses. The shared
+          FirstRunTour component itself is untouched — it's still real,
+          load-bearing infrastructure for ~200 other lens pages. */}
       <DepthBadge lensId="world" size="sm" className="ml-2" />
     <div data-lens-theme="world" className="flex flex-col h-full min-h-0">
       {/* Header */}
@@ -7097,16 +7084,13 @@ export default function WorldLensPage() {
       </div>
       )}
 
-      {/* Onboarding Tutorial */}
-      {showOnboarding && (
-        <OnboardingTutorial
-          onComplete={handleOnboardingComplete}
-          onDismiss={handleOnboardingComplete}
-        />
-      )}
-
-      {/* Post-tutorial hints — rotates contextual tips after first visit */}
-      {!showOnboarding && <PostTutorialHints />}
+      {/* Onboarding is now tutorialManager/TutorialOverlay (mounted below via
+          TutorialOverlay, Phase 1b tutorial consolidation) — the old
+          9-step fullscreen modal (OnboardingTutorial) is retired.
+          PostTutorialHints self-gates on the same 'world_lens_visited'
+          localStorage key tutorialManager now writes on completion/skip,
+          so it's safe to mount unconditionally. */}
+      <PostTutorialHints />
       {/* Earth events (NASA EONET feed) — a dashboard info widget, not 3D-game
           HUD, and by far the single biggest space-eater of the four hidden
           here (measured at ~200px). Same reasoning as World Actions/Lens

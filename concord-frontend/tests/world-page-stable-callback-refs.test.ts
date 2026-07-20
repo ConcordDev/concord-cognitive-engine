@@ -280,4 +280,31 @@ describe('world lens page — stable callback/prop identity into child effects',
     const slice = src.slice(start, start + 400);
     expect(slice).toMatch(/\{!hudHidden && \(/);
   });
+
+  // Plan Phase 1b (docs plan modular-zooming-snowglobe.md): three
+  // overlapping tutorial systems ran in parallel on this page —
+  // FirstRunTour's "1/3, 2/3, 3/3" coachmark, a 9-step fullscreen
+  // OnboardingTutorial modal, and TutorialHint's tiny-toast TutorialOverlay
+  // (already listening to the same concordia:tutorial-action events as
+  // OnboardingTutorial, running two independent step machines off one
+  // event stream). TutorialOverlay survives; the other two mounts are
+  // removed from this page. FirstRunTour's component FILE is untouched —
+  // confirmed via grep it's shared, load-bearing infrastructure for ~200
+  // other lens pages (manifest-driven, not World-specific) — only its
+  // mount here is gone.
+  it('no longer mounts FirstRunTour or OnboardingTutorial on the World Lens page', () => {
+    expect(src).not.toMatch(/<FirstRunTour lensId="world"/);
+    expect(src).not.toMatch(/<OnboardingTutorial/);
+    expect(src).not.toMatch(/import\s*\{\s*FirstRunTour\s*\}\s*from\s*'@\/components\/lens\/FirstRunTour'/);
+    expect(src).not.toMatch(/import OnboardingTutorial from/);
+    // TutorialOverlay (the survivor) is still mounted.
+    expect(src).toMatch(/\{!hudHidden && <TutorialOverlay \/>\}/);
+  });
+
+  it('removes the showOnboarding state machine and mounts PostTutorialHints unconditionally', () => {
+    expect(src).not.toMatch(/const \[showOnboarding, setShowOnboarding\]/);
+    expect(src).not.toMatch(/handleOnboardingComplete/);
+    expect(src).toMatch(/<PostTutorialHints \/>/);
+    expect(src).not.toMatch(/\{!showOnboarding && <PostTutorialHints/);
+  });
 });

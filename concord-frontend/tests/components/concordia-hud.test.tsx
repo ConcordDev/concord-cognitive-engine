@@ -157,6 +157,46 @@ describe('CommandPalette — open/close + fuzzy', () => {
     act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true })); });
     expect(container.querySelector('[data-testid="hud-command-palette"]')).toBeNull();
   });
+
+  // Phase 1b tutorial consolidation: OnboardingTutorial's "Open the command
+  // palette" step expected a real `palette-opened` action token that
+  // nothing ever dispatched (grep-confirmed), so it could only ever be
+  // skipped. Opening this C-key palette is now the real trigger for
+  // tutorialManager's merged 'command-palette' step.
+  it('dispatches a real concordia:tutorial-action(palette-opened) event when opened', () => {
+    const onAction = vi.fn();
+    window.addEventListener('concordia:tutorial-action', onAction);
+    render(<CommandPalette />);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' })); });
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect((onAction.mock.calls[0][0] as CustomEvent).detail).toEqual({ action: 'palette-opened' });
+    window.removeEventListener('concordia:tutorial-action', onAction);
+  });
+
+  it('does not re-dispatch palette-opened when closing', () => {
+    const onAction = vi.fn();
+    window.addEventListener('concordia:tutorial-action', onAction);
+    render(<CommandPalette />);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' })); }); // open
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' })); }); // close
+    expect(onAction).toHaveBeenCalledTimes(1);
+    window.removeEventListener('concordia:tutorial-action', onAction);
+  });
+
+  // Replaces TutorialOverlay's retired permanent "? Help" pill — help is
+  // now discoverable through this palette instead of always-on chrome.
+  it('includes a "Tutorials & Help" action that dispatches concordia:open-tutorial-help', () => {
+    const onOpenHelp = vi.fn();
+    window.addEventListener('concordia:open-tutorial-help', onOpenHelp);
+    const { container, getByText } = render(<CommandPalette />);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' })); });
+    expect(container.querySelector('[data-cmd-id="tutorial-help"]')).not.toBeNull();
+    act(() => { getByText('Tutorials & Help').click(); });
+    expect(onOpenHelp).toHaveBeenCalledTimes(1);
+    // Selecting the action also closes the palette, same as a panel command.
+    expect(container.querySelector('[data-testid="hud-command-palette"]')).toBeNull();
+    window.removeEventListener('concordia:open-tutorial-help', onOpenHelp);
+  });
 });
 
 describe('ActionWheel — expertise spoke cap', () => {
