@@ -130,6 +130,20 @@ export interface HUDContextState {
   // reads this field, so it can never be faded by it.
   isIdle: boolean;
 
+  // Manual HUD hide (Phase 6b) — the H-key / Photo Mode "clear the view"
+  // toggle. Was page-local React state in world/page.tsx with its own
+  // window-event listener, duplicated a second time in
+  // hooks/useWorldHudHidden.ts for the globally-mounted chrome
+  // (BrainMonitor/SystemStatus) to also react to. Both now read this one
+  // field instead of keeping their own independent copies in sync via
+  // events; the `concordia:hide-hud` window CustomEvent itself is
+  // unchanged (PhotoMode and the H-key handler still dispatch it, and
+  // ConcordiaScene + the toast-router still listen to it directly for
+  // their own concerns) — HUDContextProvider is simply now the ONE place
+  // that also folds it into the shared store, so any component can read
+  // the current value without needing its own event listener.
+  manualHidden: boolean;
+
   // World clock + season — populated by socket subscription. Drives
   // the SkyWeather renderer's timeOfDay + season inputs so the visible
   // sky / sun position / particle bias / star field actually update.
@@ -154,6 +168,7 @@ export interface HUDContextState {
   setCalendar: (monthName: string, monthIndex: number, civic: string, festival: string | null) => void;
   setExpertise: (lvl: ExpertiseLevel) => void;
   setIdle: (b: boolean) => void;
+  setManualHidden: (b: boolean) => void;
   setWorldClock: (phase: number, segment: HUDContextState['worldDaySegment']) => void;
   setWorldSeason: (s: HUDContextState['worldSeason']) => void;
   setRulerState: (snapshot: {
@@ -203,6 +218,7 @@ export const useHUDContext = create<HUDContextState>((set) => ({
 
   expertiseLevel: 'standard',
   isIdle: false,
+  manualHidden: false,
 
   worldPhase: 0.25,            // default to midday so first frame doesn't look like midnight
   worldDaySegment: 'midday',
@@ -224,6 +240,7 @@ export const useHUDContext = create<HUDContextState>((set) => ({
   setCalendar: (monthName, monthIndex, civic, festival) => set({ tunyanMonthName: monthName, tunyanMonthIndex: monthIndex, civicBlockLabel: civic, festivalActive: festival }),
   setExpertise: (lvl) => set({ expertiseLevel: lvl }),
   setIdle: (b) => set({ isIdle: b }),
+  setManualHidden: (b) => set({ manualHidden: b }),
   setWorldClock: (phase, segment) => set({ worldPhase: phase, worldDaySegment: segment }),
   setWorldSeason: (s) => set({ worldSeason: s }),
   setRulerState: (snapshot) => set(snapshot),
@@ -273,6 +290,7 @@ export function HUDContextProvider() {
   const setWorldClock = useHUDContext((s) => s.setWorldClock);
   const setWorldSeason = useHUDContext((s) => s.setWorldSeason);
   const setIdle = useHUDContext((s) => s.setIdle);
+  const setManualHidden = useHUDContext((s) => s.setManualHidden);
   const { effectiveReducedMotion } = useAccessibilitySettings();
   const pollRef = useRef<number | null>(null);
 
@@ -357,6 +375,28 @@ export function HUDContextProvider() {
       window.removeEventListener('refusal:compound-threshold', onRefusal);
     };
   }, [setRefusalStrength]);
+
+  // Manual HUD hide (Phase 6b) — the single place that folds the
+  // `concordia:hide-hud` window CustomEvent (dispatched by world/page.tsx's
+  // H-key handler and by PhotoMode.tsx on open/close) into the shared
+  // store. Replaces two previously-independent listeners that each kept
+  // their own local copy in sync (world/page.tsx's own `useState`, and
+  // hooks/useWorldHudHidden.ts's separate one for globally-mounted
+  // chrome) with one canonical value any component can read directly.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // Reset on mount, matching the old page-local `useState(false)`'s
+    // behavior of always starting fresh on (re)entering the World Lens —
+    // a stale `manualHidden: true` left over from a previous visit
+    // shouldn't silently greet the player with a hidden HUD.
+    setManualHidden(false);
+    function onHideHud(e: Event) {
+      const hide = (e as CustomEvent<{ hide?: boolean }>).detail?.hide;
+      if (typeof hide === 'boolean') setManualHidden(hide);
+    }
+    window.addEventListener('concordia:hide-hud', onHideHud);
+    return () => window.removeEventListener('concordia:hide-hud', onHideHud);
+  }, [setManualHidden]);
 
   // Idle-timer signal (Phase 6a) — the owner's "if not needed in 5 seconds,
   // hide it" rule. Tracks real pointer/keyboard/wheel/touch activity on

@@ -47,6 +47,7 @@ import {
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
+import { hudCornerStyle } from '@/lib/world-lens/hud-corner-registry';
 import { weatherTypeToIcon } from '@/lib/world-lens/weather-icon';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
@@ -2030,18 +2031,18 @@ export default function WorldLensPage() {
   // Global HUD visibility — the ~15 permanent 2D panels floating over the
   // 3D canvas (feeds, trackers, toolbar, resource bars) obstruct movement
   // and the view. One toggle clears all of them at once. Also the real
-  // wiring for PhotoMode's hide-HUD dispatch, which previously had no
-  // listener on this page (PhotoMode fired 'concordia:hide-hud' into the
-  // void — see lib/event-router.ts, which only ever showed a toast).
-  const [hudHidden, setHudHidden] = useState(false);
-  useEffect(() => {
-    const onHideHud = (e: Event) => {
-      const hide = (e as CustomEvent<{ hide?: boolean }>).detail?.hide;
-      if (typeof hide === 'boolean') setHudHidden(hide);
-    };
-    window.addEventListener('concordia:hide-hud', onHideHud);
-    return () => window.removeEventListener('concordia:hide-hud', onHideHud);
-  }, []);
+  // wiring for PhotoMode's hide-HUD dispatch (PhotoMode fires
+  // 'concordia:hide-hud'; see lib/event-router.ts for the toast + this
+  // page's H-key handler further down for the other dispatch site).
+  //
+  // World Lens Phase 6b — this used to be page-local `useState` with its
+  // own window-event listener (a second, independent copy of the same
+  // listener also lived in hooks/useWorldHudHidden.ts for the globally-
+  // mounted chrome). Both now read the one canonical value
+  // HUDContextProvider's own `concordia:hide-hud` bridge effect keeps live
+  // in the shared store — "no component controls itself" applied to the
+  // manual-hide flag itself, not just the ~20 panels that gate on it.
+  const hudHidden = useHUDContext((s) => s.manualHidden);
 
   // World Lens Phase 2 (Activate Existing Rendering) — PhotoMode's real
   // open/onClose state + P-key binding are declared further down (after
@@ -4877,7 +4878,7 @@ export default function WorldLensPage() {
               floats above the canvas in either windowed or fullscreen
               mode. Skyrim-shape immersion: F to toggle full, P to
               capture mouse for FPS-style aim. */}
-          <div className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('fullscreen-toggle')} className={`absolute left-4 z-30 flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <button
               onClick={isFullscreen ? exitFullscreen : enterFullscreen}
               title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen (F)'}
@@ -4963,7 +4964,7 @@ export default function WorldLensPage() {
           />
           </ErrorBoundary>
           {/* Theme picker — 3 swatches + PBR/Toon toggle top-right */}
-          <div className={`absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('theme-picker')} className={`absolute right-4 z-20 flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             {[
               { id: 'neon-punk' as const, swatch: '#6366f1', label: 'Neon Punk' },
               { id: 'classic' as const, swatch: '#e8c97a', label: 'Classic' },
@@ -5317,7 +5318,7 @@ export default function WorldLensPage() {
           })}
 
           {/* Camera mode controls */}
-          <div className={`absolute top-4 right-4 z-20 ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('camera-controls')} className={`absolute right-4 z-20 ${hudHidden ? 'hidden' : ''}`}>
             <CameraControls
               cameraState={{
                 mode: cameraMode,
@@ -5832,7 +5833,7 @@ export default function WorldLensPage() {
           <CommandPalette />
 
           {/* Phase DA4 — Run-mode hotbar group (top-right floating cluster) */}
-          <div className={`pointer-events-auto fixed right-4 top-32 z-20 ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('run-mode-hotbar')} className={`pointer-events-auto fixed right-4 z-20 ${hudHidden ? 'hidden' : ''}`}>
             <GameModesHotbarGroup worldId={currentWorldId} />
           </div>
 
@@ -5925,7 +5926,7 @@ export default function WorldLensPage() {
           )}
 
           {/* Gameplay toolbar */}
-          <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('gameplay-toolbar')} className={`absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             {(
               [
                 { key: 'inventory', label: 'Inventory', icon: Layers },
@@ -6362,7 +6363,7 @@ export default function WorldLensPage() {
               pool for any of the three (no backend field exists yet). Per
               the honesty rubric, only HP/Stamina render since only they're
               backed by real combatState. */}
-          <div className={`absolute top-4 left-4 z-20 pointer-events-none flex flex-col gap-1 min-w-[160px] ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('resource-bars')} className={`absolute left-4 z-20 pointer-events-none flex flex-col gap-1 min-w-[160px] ${hudHidden ? 'hidden' : ''}`}>
             {(
               [
                 { key: 'hp', label: 'HP', color: '#ef4444', icon: '❤' },
@@ -6472,7 +6473,7 @@ export default function WorldLensPage() {
           )}
 
           {/* Quest tracker HUD — bottom right, above HUD bar */}
-          <div className={`absolute bottom-24 right-4 z-25 flex flex-col gap-2 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('quest-tracker')} className={`absolute right-4 z-25 flex flex-col gap-2 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <QuestTracker
               worldId={currentWorldId}
               onClaimReward={(_questId, _rewards) => {
@@ -6657,7 +6658,7 @@ export default function WorldLensPage() {
           )}
 
           <CrisisBanner />
-          <div className={`absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('season-banner')} className={`absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <SeasonBanner onOpenPassPanel={() => setShowPanel('season')} />
           </div>
           <GameModeHUD />
