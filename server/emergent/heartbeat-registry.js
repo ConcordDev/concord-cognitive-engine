@@ -24,8 +24,19 @@
 // process; default `scope: 'world'` modules run inside the world shard
 // when CONCORD_SHARD_WORLDS is enabled (the shard manager owns the
 // per-world dispatch).
+// Track C (event-loop unblocking audit) — modules flagged `lowPriority:
+// true` are genuinely deferrable maintenance/enrichment work (a codebase
+// self-scan, a detector sweep — not anything gameplay- or request-critical)
+// that skips its due tick entirely (not queued, not delayed-then-run) when
+// `isUnderPressure()` reports the event loop already under real load. This
+// is never a permanent loss — the module simply runs on its next due tick
+// once pressure clears, exactly the same "harmless to skip a beat" property
+// every heartbeat module already has by design (CLAUDE.md: "a module crash
+// must never stop the tick" — skipping under pressure is the same
+// tolerance, applied proactively instead of reactively).
 
 import logger from "../logger.js";
+import { isUnderPressure } from "../lib/event-loop-pressure.js";
 // Phase G — per-world flavor lookup. Used by the dispatcher to skip
 // modules that loops.json has disabled for the current world (only
 // meaningful when ctx.worldId is set, i.e. inside a world shard).
@@ -46,6 +57,7 @@ try {
  * @property {boolean} [serial]      Run serially after parallel batch (ordering-sensitive).
  * @property {boolean} [worker]      Route through heartbeat worker pool.
  * @property {'global'|'world'} [scope]  Phase-F sharding scope. Default 'world'.
+ * @property {boolean} [lowPriority]  Track C: skip this tick (not delay it) when the event loop is under pressure.
  */
 
 /** @type {Map<string, RegistryEntry>} */
@@ -74,8 +86,9 @@ export function setHeartbeatPool(pool) { _heartbeatPool = pool; }
  * @param {boolean} [opts.serial] - If true, runs after the parallel batch in registration order.
  * @param {boolean} [opts.worker] - If true, routes through the heartbeat worker pool.
  * @param {'global'|'world'} [opts.scope] - 'global' runs on parent only, 'world' (default) inside world shards.
+ * @param {boolean} [opts.lowPriority] - Track C: genuinely deferrable work (codebase scans, detector sweeps) — skips its due tick under event-loop pressure instead of running.
  */
-export function registerHeartbeat(id, { frequency, handler, neverDisable = false, serial = false, worker = false, scope = "world" }) {
+export function registerHeartbeat(id, { frequency, handler, neverDisable = false, serial = false, worker = false, scope = "world", lowPriority = false }) {
   if (!id || typeof id !== "string") throw new Error("registerHeartbeat: id required");
   if (!Number.isInteger(frequency) || frequency < 1) {
     throw new Error(`registerHeartbeat(${id}): frequency must be a positive integer`);
@@ -84,7 +97,7 @@ export function registerHeartbeat(id, { frequency, handler, neverDisable = false
   if (scope !== "global" && scope !== "world") {
     throw new Error(`registerHeartbeat(${id}): scope must be 'global' or 'world'`);
   }
-  REGISTRY.set(id, { id, frequency, handler, neverDisable, serial, worker, scope });
+  REGISTRY.set(id, { id, frequency, handler, neverDisable, serial, worker, scope, lowPriority });
 }
 
 /**
@@ -127,6 +140,15 @@ export async function tickAllRegistered(ctx) {
     if (filterScope !== "all" && entry.scope !== filterScope) continue;
     // Phase G — per-world enable flag.
     if (worldId && _isLoopEnabledForWorld && !_isLoopEnabledForWorld(worldId, entry.id)) continue;
+    // Track C — genuinely deferrable work backs off under real event-loop
+    // pressure. Checked once per due entry (not once per tick) so a module
+    // that goes lowPriority mid-session picks this up immediately, and so
+    // pressure clearing between two due lowPriority entries in the same
+    // tick lets the later one still run.
+    if (entry.lowPriority && isUnderPressure()) {
+      try { globalThis._concordPromMetrics?.heartbeatLowPrioritySkipped?.inc({ module: entry.id }); } catch { /* prom best-effort */ }
+      continue;
+    }
     (entry.serial ? dueSerial : due).push(entry);
   }
 
@@ -264,6 +286,7 @@ export function listHeartbeatModules() {
     serial: !!e.serial,
     worker: !!e.worker,
     scope: e.scope,
+    lowPriority: !!e.lowPriority,
   }));
 }
 

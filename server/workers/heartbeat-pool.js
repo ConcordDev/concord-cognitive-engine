@@ -276,6 +276,19 @@ function _applySideEffects(sideEffects) {
           error: err?.message,
         });
       }
+    } else if (eff.kind === "db-exec" && db && eff.sql) {
+      // Multi-statement DDL/DML queued via the transparent write-queueing
+      // shim's `.exec()` intercept (heartbeat-executor.js) — rare in handler
+      // code, but supported for completeness since .prepare().run() alone
+      // doesn't cover it.
+      try {
+        db.exec(eff.sql);
+      } catch (err) {
+        logger.warn("heartbeat-pool", "db_exec_replay_failed", {
+          sqlPrefix: String(eff.sql).slice(0, 80),
+          error: err?.message,
+        });
+      }
     } else if (eff.kind === "realtime-emit" && typeof realtimeEmit === "function") {
       try {
         realtimeEmit(eff.event, eff.payload || {});

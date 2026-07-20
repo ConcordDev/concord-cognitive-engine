@@ -164,6 +164,11 @@ import { runWorldMigrationCycle } from "./emergent/world-migration-cycle.js";
 registerHeartbeat("world-migration-cycle", {
   frequency: 20,
   handler: runWorldMigrationCycle,
+  // Track B — bounded per-row compute (up to 8 worlds x 60 NPCs) + a final
+  // small transactional write, no live-STATE dependency, no inline realtime
+  // emit. Routes off the main thread via the (now write-queueing-fixed)
+  // heartbeat worker pool.
+  worker: true,
   // Track A — re-scoped 'world' -> 'global': despite the doc comment above
   // ("Per-world scope so it's shard-safe"), the handler self-discovers up to
   // MAX_WORLDS_PER_PASS active worlds via discoverWorlds(db) and loops over
@@ -185,8 +190,16 @@ registerHeartbeat("signal-propagation-cycle", {
   handler: runSignalPropagationCycle,
   // Phase A: writes embodied_signal_log rows that creature-flock-cycle and
   // env-coupled handlers read on the same tick. Serial to keep the read
-  // path consistent.
+  // path consistent. `worker: true` doesn't break this ordering guarantee —
+  // tickAllRegistered awaits each entry (worker-routed or not) sequentially,
+  // and the worker pool's side-effect replay is itself awaited before the
+  // pool's exec() promise resolves, so a subsequent serial entry still sees
+  // this module's writes. The most-frequent non-worker module found in the
+  // Track B audit (every ~45s); a cellular-automaton grid spread with a DB
+  // query inside a nested per-cell loop. No live-STATE dependency, no
+  // inline realtime emit.
   serial: true,
+  worker: true,
 });
 
 // Living Society Phase 0.6 — load-bearing hydrology. Advance the water flow
@@ -246,6 +259,19 @@ registerHeartbeat("literary-resonance-cycle", {
   frequency: 200,
   scope: "global",
   handler: ({ db } = {}) => runLiteraryResonanceCycle({ db }),
+  // Track C (event-loop unblocking audit) — up to PER_PASS=25 candidate
+  // literary DTUs x SCAN_CAP=5000 candidate rows each = up to 125,000
+  // synchronous cosine-similarity computations in a single tick, growing
+  // with corpus size (SCAN_CAP is a per-call cap, not a total-work cap).
+  // No live-STATE dependency, no inline realtime emit — a clean fit for the
+  // worker pool; moves the heaviest synchronous-CPU indexing pass found in
+  // this audit off the thread serving HTTP/websocket traffic.
+  worker: true,
+  // Also lowPriority: cross-domain resonance enrichment, not gameplay/
+  // request-critical — skip dispatching it entirely (no worker-pool IPC
+  // overhead either) under real pressure rather than adding more work on
+  // top of an already-stressed tick.
+  lowPriority: true,
 });
 
 // LRL Phase 3 — literary license-compliance audit. Flags non-PD/unverified
@@ -752,6 +778,9 @@ registerHeartbeat("reflex-unsafe-expansion", {
 registerHeartbeat("code-substrate-refresh", {
   frequency: 1440,
   scope: "global",
+  // Track C — a codebase self-scan, not gameplay/request-critical; harmless
+  // to skip a ~6h-cadence tick under real load and pick up next time.
+  lowPriority: true,
   handler: async ({ db }) => {
     if (!db) return { ok: false, reason: "no_db" };
     try {
@@ -780,6 +809,9 @@ try {
 registerHeartbeat("detectors-sweep", {
   frequency: 2880,
   scope: "global",
+  // Track C — the code-quality/security detector suite, not gameplay/
+  // request-critical; harmless to skip a ~12h-cadence tick under real load.
+  lowPriority: true,
   handler: async ({ db, state }) => {
     try {
       // Force a telemetry flush before the sweep so the latest in-memory
@@ -949,6 +981,10 @@ import { runNpcRoutineCycle } from "./emergent/npc-routine-cycle.js";
 registerHeartbeat("npc-routine-cycle", {
   frequency: 5,
   handler: runNpcRoutineCycle,
+  // Track B — bounded per-NPC loop (up to 200) with a per-world batched
+  // realtime emit AFTER the loop (not inline mid-loop), no live-STATE
+  // dependency. Routes off the main thread via the worker pool.
+  worker: true,
 });
 
 // Sprint C / Track A4 — npc schemes / plots. Every 30 ticks (~7.5min)
@@ -1093,6 +1129,10 @@ import { runNpcEconomyCycle } from "./emergent/npc-economy-cycle.js";
 registerHeartbeat("npc-economy-cycle", {
   frequency: 8,
   handler: runNpcEconomyCycle,
+  // Track B — bounded per-NPC action loop (up to 200) with a per-world
+  // batched realtime emit after the loop, no live-STATE dependency. Routes
+  // off the main thread via the worker pool.
+  worker: true,
 });
 
 // Phase 4c: Lattice-Born Quests. Every 180 ticks (~45min, staggered well
@@ -1349,6 +1389,13 @@ registerHeartbeat("world-population-cycle", {
   frequency: 60,
   scope: "world",
   handler: runWorldPopulationCycle,
+  // Track B — bounded per-world NPC-generation burst (up to MAX_PER_PASS),
+  // no live-STATE dependency. worker:true only takes effect on the parent
+  // (non-sharded mode, where ctx.worldId is absent and the handler's own
+  // fallback iterates all worlds) — inside a world shard this module is
+  // re-registered directly by workers/world-shard.js, which doesn't read
+  // this flag, so sharded mode is unaffected either way.
+  worker: true,
 });
 
 // Phase 8: Combat polish substrate. Every 2 ticks (~30s) recovers gas
@@ -2880,7 +2927,22 @@ const EFFECTIVE_JWT_SECRET = JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
-const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 300);
+// Track A/B/C (event-loop + scale unblocking audit, 2026-07-20) — this is
+// the GLOBAL blanket limiter mounted ahead of every per-endpoint one in
+// rateLimit.js. Those were deliberately raised (2026-07-18, "take the
+// rate-limiter leashes off": conscious.chat 600/min, utility.call/
+// semantic.search/default 6000/min, read.default 12000/min) but this
+// coarser global gate was left at its old 300/min default — BELOW every
+// one of those tiers — making it the real, accidental binding ceiling on
+// all traffic combined regardless of what the per-endpoint tier allows.
+// Raised to match the already-intentional "default" tier (6000/min) so
+// this stops silently undercutting work already done to size the
+// per-endpoint limits for real usage (a rich lens firing many cheap macro
+// POSTs, an agent-mode session, thousands of concurrent users). This
+// limiter's remaining job is catching genuinely runaway/abusive traffic,
+// not throttling normal use — the granular buckets in rateLimit.js do the
+// fine-grained shaping.
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 6000);
 // LLM_READY: tracks Ollama conscious-brain readiness. The cloud LLM
 // fallbacks were removed (see CLAUDE.md — five-brain Ollama+LLaVA stack).
 let LLM_READY = false;
@@ -16733,24 +16795,24 @@ function setLLMPipelineMode(mode) {
 _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 
 // ── LLM Queue + Circuit Breakers ──────────────────────────────────────────
-// NOTE (wiring audit, 2026-07): `_llmQueue` itself is real and load-bearing
-// for the surfaces that read it directly — `/api/admin/...` metrics route,
-// the Prometheus `concord_llm_queue_*` gauges, the graceful-shutdown
-// `_llmQueue.drain()` call, and the chat-socket queue-pressure/estimated-
-// wait UX all consume `_llmQueue.getMetrics()` / `.queuePressure()` /
-// `.estimatePosition()` live. BUT the only function that ever *enqueued*
-// real work through it — `queuedOllamaCall()` — had zero call sites
-// anywhere in the codebase (verified via `grep -rn queuedOllamaCall server/`)
-// and has been removed. Until something calls `_llmQueue.enqueue(...)` on
-// the real dispatch path (`callBrain` / `ctx.llm.chat`), every one of those
-// metrics/UX surfaces will honestly report near-zero — not because GPU load
-// is low, but because nothing routes through this queue. Wiring `callBrain`
-// through `_llmQueue.enqueue()` was evaluated and deferred: it would stack a
-// second, brain-agnostic concurrency cap (default 32 total) on top of the
-// already-tuned per-brain `maxConcurrent` + circuit-breaker semantics in
-// brain-config.js, changing request ordering/latency under load in a way
-// that needs its own dedicated, verified pass — not bundled into this
-// endpoint-routing wiring fix.
+// Track A/B/C (event-loop + GPU unblocking audit, 2026-07-20) — `callBrain`
+// now routes through `_llmQueue.enqueue()` (see the call site inside
+// `callBrain`, right before the `breaker.call`/`_doBrainCall` dispatch),
+// closing the gap this NOTE used to document: `_llmQueue` was real and
+// load-bearing for its READERS (`/api/admin/...` metrics, the Prometheus
+// `concord_llm_queue_*` gauges, `_llmQueue.drain()` on shutdown, the
+// chat-socket queue-position UX) but had zero real ENQUEUERS, so every one
+// of those surfaces honestly reported near-zero — not because GPU load was
+// low, but because nothing routed through the queue. The prior deferral
+// reasoning ("would stack a second concurrency cap on top of the
+// already-tuned per-brain `maxConcurrent`") was re-verified and found not
+// to hold: `brain.maxConcurrent` in brain-config.js is diagnostic-only,
+// never enforced anywhere — there was no existing cap to stack on top of.
+// On a fixed-VRAM single-GPU box, every heartbeat-driven brain call
+// (autogen, dream synthesis, repair, council, NPC dialogue) previously
+// shared the 5 Ollama endpoints with real user chat traffic under zero
+// application-level concurrency limit — a real self-DoS risk at scale that
+// this queue exists specifically to prevent.
 const _llmQueue = createLLMQueue({
   concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
   maxQueueDepth: 200,
@@ -18574,16 +18636,50 @@ ${_sharedToolRules}` : "";
     return { ok: false, error: `Circuit breaker open for ${brainName}`, source: brainName, circuitOpen: true };
   };
 
-  noteEndpointStart(_dispatchUrl);
+  // Track A/B/C (event-loop + GPU unblocking audit) — every Ollama call
+  // (user chat AND every heartbeat-driven brain call: autogen, dream
+  // synthesis, repair, council, NPC dialogue) previously shared the 5
+  // Ollama endpoints with ZERO application-level concurrency cap —
+  // `brain.maxConcurrent` in brain-config.js is diagnostic-only, never
+  // enforced. `_llmQueue` (above) was built for exactly this and already
+  // powers the admin metrics + chat-socket queue-position UX, but nothing
+  // ever called `.enqueue()` on the real dispatch path (see the "wiring
+  // audit" NOTE at this file's `_llmQueue` construction site — a prior
+  // pass considered this exact wire and deferred it specifically because
+  // it would "stack a second concurrency cap on top of the already-tuned
+  // per-brain maxConcurrent" — re-verified this session: maxConcurrent
+  // isn't actually enforced anywhere, so there is no existing cap to stack
+  // on top of; on a fixed-VRAM single GPU box, unbounded concurrent
+  // requests queue/thrash at the GPU regardless of what Node does, so a
+  // real concurrency ceiling here is a genuine safety property, not a
+  // behavior change competing with an existing one. The circuit breaker
+  // (`breaker.call`) is a different, complementary concern (failure
+  // detection/backoff, not concurrency limiting) and composes cleanly
+  // inside the queued function. `noteEndpointStart`/`Finish` move INSIDE
+  // the queued closure so the endpoint load-balancer's inflight signal
+  // reflects calls actually hitting the endpoint, not calls merely queued
+  // and waiting for a concurrency slot.
+  const _priority = options._priority ?? _llmQueue.PRIORITY.NORMAL;
   try {
-    const result = breaker
-      ? await breaker.call(_doBrainCall, _brainFallback)
-      : await _doBrainCall();
-    noteEndpointFinish(_dispatchUrl, { ok: result?.ok !== false });
+    const result = await _llmQueue.enqueue(async () => {
+      noteEndpointStart(_dispatchUrl);
+      try {
+        const r = breaker
+          ? await breaker.call(_doBrainCall, _brainFallback)
+          : await _doBrainCall();
+        noteEndpointFinish(_dispatchUrl, { ok: r?.ok !== false });
+        return r;
+      } catch (e) {
+        noteEndpointFinish(_dispatchUrl, { ok: false });
+        throw e;
+      }
+    }, _priority);
     return result;
   } catch (e) {
-    noteEndpointFinish(_dispatchUrl, { ok: false });
     brain.stats.errors++;
+    if (String(e?.message) === "llm_queue_full" || String(e?.message) === "llm_queue_shed") {
+      return { ok: false, error: e.message, source: brainName, queueRejected: true };
+    }
     return { ok: false, error: String(e.message || e), source: brainName };
   }
 }
@@ -65209,6 +65305,20 @@ try {
   }, 30_000).unref();
 } catch (e) {
   structuredLog("info", "event_loop_monitor_unavailable", { error: String(e?.message || e) });
+}
+
+// Track C (event-loop unblocking audit) — the log-only monitor above turns
+// into actual backpressure here: a small, independent, more-frequently-
+// sampled histogram whose current reading `lowPriority`-flagged heartbeats
+// check before running (see emergent/heartbeat-registry.js). Deliberately
+// separate from the monitor above (which resets on its own 30s log-window
+// cadence) rather than sharing it, so a caller reading "how bad is it RIGHT
+// NOW" isn't coupled to that unrelated cadence.
+try {
+  const { startEventLoopPressureMonitor } = await import("./lib/event-loop-pressure.js");
+  await startEventLoopPressureMonitor();
+} catch (e) {
+  structuredLog("info", "event_loop_pressure_monitor_unavailable", { error: String(e?.message || e) });
 }
 
 // Optional: enable thin realtime mirror (WebSockets) for queues/jobs/panels.
