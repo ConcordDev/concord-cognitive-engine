@@ -187,4 +187,20 @@ describe('world lens page — stable callback/prop identity into child effects',
     expect(src).toMatch(/worldName=\{currentWorldDisplayName\}/);
     expect(src).not.toMatch(/worldName=\{activeDistrict\.name\}/);
   });
+
+  // HUD-declutter fix: lens-portal building markers (Recording Studio,
+  // Architect's Office, Research Library, ~19 of them in concordia-hub
+  // alone) rendered unconditionally for every portal in the world, all
+  // stacked in the viewport center via the same crude 2D-approximation
+  // math regardless of the player's actual position — live screenshots
+  // showed a dozen overlapping building icons on top of each other. The
+  // NPC overlay just below in the same file already distance-culls
+  // (`if (dist > 20) return null`); the portal loop had no equivalent
+  // check at all.
+  it('distance-culls lens portal markers the same way the NPC overlay below it already does', () => {
+    const start = src.indexOf('{portals.map((portal) => {');
+    const slice = src.slice(start, start + 900);
+    expect(slice).toMatch(/portalDist\s*=\s*Math\.sqrt\(portalDx \* portalDx \+ portalDy \* portalDy\)/);
+    expect(slice).toMatch(/if \(portalDist > 10 && !isNearby\) return null;/);
+  });
 });

@@ -5108,9 +5108,25 @@ export default function WorldLensPage() {
               onEmote={handleAvatarEmote}
             />
           </div>
-          {/* Lens portal markers — rendered as 2D overlays */}
+          {/* Lens portal markers — rendered as 2D overlays. Distance-culled
+              like the NPC overlay below: with ~19-20 building portals in
+              concordia-hub alone, rendering all of them unconditionally
+              stacked every one in the viewport center regardless of the
+              player's actual position — the dominant contributor to "too
+              many things on screen". concordia-hub's registered portals
+              (server/lib/lens-portal-registry.js) sit inside a dense ~20x10
+              unit cluster (2-21.5 units from spawn), so the cutoff has to be
+              tighter than the NPC one (20) to cull anything meaningful —
+              10 leaves a walkable, still-legible starting cluster (~7-8 of
+              19) instead of the whole hub's directory stacked at once.
+              Nearby buildings still surface their icon on approach; the
+              full list stays reachable via Hub / ⌘K. */}
           {portals.map((portal) => {
             const isNearby = nearPortalId === portal.id;
+            const portalDx = portal.x - playerAvatar.position.x;
+            const portalDy = portal.y - playerAvatar.position.y;
+            const portalDist = Math.sqrt(portalDx * portalDx + portalDy * portalDy);
+            if (portalDist > 10 && !isNearby) return null;
             return (
               <div
                 key={portal.id}
