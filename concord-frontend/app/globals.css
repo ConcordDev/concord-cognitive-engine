@@ -828,19 +828,27 @@ body.concord-time-dilated::after {
 .concordia-hud-slide-bottom { animation: concordiaHudSlideBottom 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 .concordia-hud-fade         { animation: concordiaHudFade        220ms ease-out; }
 
-/* ── G3.1 — accessibility DOM hooks (applied by AccessibilityDOMApplier) ──── */
-
-/* Colorblind correction filters (Machado-style SVG matrices live in the
-   #a11y-cb-filters defs injected by the applier mount; data-attr selects). */
-html[data-colorblind="protanopia"]   { filter: url('#cb-protanopia'); }
-html[data-colorblind="deuteranopia"] { filter: url('#cb-deuteranopia'); }
-html[data-colorblind="tritanopia"]   { filter: url('#cb-tritanopia'); }
-
-/* High-contrast — boost text/background separation + outline focus. */
-html.a11y-high-contrast {
-  --tw-contrast-boost: 1;
-  filter: contrast(1.15);
-}
+/* ── World Lens Phase 6c — accessibility DOM hooks (applied by AccessibilityDOMApplier) ────
+   `filter` is intentionally NOT set here for colorblind/high-contrast. The
+   original version of this block had two independent rules each trying to
+   set `html`'s `filter` property (`html[data-colorblind=...] { filter:
+   url(...) }` and `html.a11y-high-contrast { filter: contrast(1.15) }`) —
+   CSS `filter` doesn't stack across separate matching rules, only within
+   ONE rule's space-separated function list, so whichever rule happened to
+   be declared later in the cascade silently won and the other's correction
+   never applied whenever both were active together. Worse, the colorblind
+   rules referenced SVG filter elements (#cb-protanopia etc.) that were
+   never actually injected anywhere in the DOM, so `url(...)` resolved to
+   nothing and colorblind mode was a 100%-inert no-op even on its own —
+   confirmed live by grep, not assumed (`grep -rn "feColorMatrix"` across
+   the whole frontend returned zero matches before this fix). Both are now
+   composed into ONE `root.style.filter` string directly in
+   AccessibilityDOMApplier.tsx's effect, which also renders the real SVG
+   `<filter>` defs (Brettel/Viénot-derived protanopia/deuteranopia/
+   tritanopia matrices, the same values widely used across web
+   colorblindness simulators) those filters reference. Achromatopsia
+   (previously offered in the settings UI with no CSS/JS handling at all)
+   composes in as a plain `grayscale(1)`. */
 html.a11y-high-contrast :focus-visible {
   outline: 3px solid #ffe14a !important;
   outline-offset: 2px;

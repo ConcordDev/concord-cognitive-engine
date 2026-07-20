@@ -13,6 +13,7 @@ import { resolveSceneWorldId } from '@/lib/world-lens/resolve-scene-world-id';
 import { zoomToDistScale, DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
 import { computeShotFraming, applyEasing, type ShotFraming } from '@/lib/world-lens/cinematic-shot-geometry';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
+import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 
 // Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
 // the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
@@ -291,6 +292,17 @@ export default function ConcordiaScene({
   // the camera was never one of them. A Zustand store, so it's importable
   // directly rather than needing to be threaded down as a prop.
   const inputMode = useHUDContext((s) => s.inputMode);
+  // World Lens Phase 6c — the camera-punch hit-stop shake + FOV zoom-kick
+  // below (Sprint 1 juice) had zero reduced-motion gating: a real camera
+  // roll + positional shake + a fast FOV punch are exactly the vestibular
+  // triggers `prefers-reduced-motion` exists for, and this is WebGL camera
+  // transform math, not a DOM animation — so it sits outside what the
+  // app-wide `AccessibilityDOMApplier` (html.a11y-reduce-motion CSS kill,
+  // confirmed already covering all of this page's DOM-level HUD chrome)
+  // can reach. Reused directly rather than the window flag it also sets,
+  // since this component already threads other store values into refs the
+  // same way (inputModeRef right below).
+  const { effectiveReducedMotion } = useAccessibilitySettings();
   // Mirror cameraMode + getPlayerPose into refs so the game loop can read
   // the latest values without re-running the heavy init effect on each
   // mode change. Updated on every render via the small effect below.
@@ -299,11 +311,13 @@ export default function ConcordiaScene({
   const isometricRotationRef = useRef(isometricRotation);
   const inputModeRef = useRef(inputMode);
   const getPlayerPoseRef = useRef(getPlayerPose);
+  const reducedMotionRef = useRef(effectiveReducedMotion);
   useEffect(() => { cameraModeRef.current = cameraMode; }, [cameraMode]);
   useEffect(() => { cameraZoomRef.current = cameraZoom; }, [cameraZoom]);
   useEffect(() => { isometricRotationRef.current = isometricRotation; }, [isometricRotation]);
   useEffect(() => { inputModeRef.current = inputMode; }, [inputMode]);
   useEffect(() => { getPlayerPoseRef.current = getPlayerPose; }, [getPlayerPose]);
+  useEffect(() => { reducedMotionRef.current = effectiveReducedMotion; }, [effectiveReducedMotion]);
   // World Lens Phase 4 — Free camera mode. Unlike follow/first-person/
   // interior (whose transform is DERIVED every frame from the player's
   // pose), free mode has no pose to derive from — it needs its own
@@ -1961,7 +1975,12 @@ export default function ConcordiaScene({
     // Sprint 1 (juice) — camera-punch consumer. Sets a decaying impulse the
     // render loop reads after the base camera transform. Locality is already
     // gated by the dispatcher (local_relevance); we honour it here too.
+    // World Lens Phase 6c — also honour reduced-motion at the single source
+    // that feeds both the positional/rotational shake AND the FOV punch, so
+    // neither vestibular-trigger effect fires at all rather than firing and
+    // being separately suppressed downstream.
     const handleCameraPunch = (e: Event) => {
+      if (reducedMotionRef.current) return;
       const d = (e as CustomEvent).detail as
         { duration_ms?: number; shake?: number; zoom?: number; local_relevance?: boolean } | undefined;
       if (!d || d.local_relevance === false) return;
