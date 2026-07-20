@@ -2014,17 +2014,29 @@ export default function AvatarSystem3D({
           targetRot: number;
         }
       >();
+      const { archetypeForOccupation } = await import('@/lib/concordia/hero-mesh-registry');
 
       for (const npc of npcs.slice(0, MAX_FULLY_ANIMATED)) {
         // Hero NPCs (Three Above All + authored legends) get the enhanced
-        // builder; everyone else stays on the legacy primitive path.
+        // builder via a bespoke GLB; regular NPCs whose free-text occupation
+        // maps to one of the 7 authored archetype meshes (warrior/guard/
+        // scholar/mystic/hunter/trader/legend) also get a real GLB now —
+        // previously `isHero` was only ever true for these 4 hardcoded ids,
+        // so the archetype meshes were unreachable dead code for the rest of
+        // the world's population, which all silently stayed on the
+        // procedural/primitive fallback despite the real assets existing on
+        // disk. archetypeForOccupation returns null (no match) far more
+        // often than it should be wrong, and loadHeroMesh already falls
+        // back to procedural gracefully on any 404, so this only adds
+        // coverage, never removes a working path.
         const HERO_IDS = new Set(['sovereign_first_refusal', 'concord_first_thought', 'concordia_first_breath', 'weaver_of_echoes']);
-        const isHero = HERO_IDS.has(npc.id) || npc.appearance.bodyType === 'legend';
+        const occupationArchetype = archetypeForOccupation((npc as { occupation?: string }).occupation);
+        const isHero = HERO_IDS.has(npc.id) || npc.appearance.bodyType === 'legend' || occupationArchetype !== null;
         const mesh = await createAvatarMeshSmart(npc.id, npc.appearance, THREE, {
           isHero,
           worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
           factionId: (npc as { faction?: string }).faction ?? null,
-          archetype: (npc as { occupation?: string }).occupation ?? null,
+          archetype: occupationArchetype ?? (npc.appearance.bodyType === 'legend' ? 'legend' : null),
         });
         if (disposed) return;
 

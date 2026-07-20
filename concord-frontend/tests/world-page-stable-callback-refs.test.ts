@@ -102,4 +102,53 @@ describe('world lens page — stable callback/prop identity into child effects',
     const tSlice = src.slice(src.indexOf('const handleConcordiaTerrainClick'), src.indexOf('const handleConcordiaTerrainClick') + 100);
     expect(tSlice).toMatch(/useCallback\(\(\) => \{\}, \[\]\)/);
   });
+
+  // Bug D — the same class of bug as Bug A above (WalkerNpcInjector), found
+  // independently while chasing a live "improved character assets never
+  // show up" report: `<ProcgenSettlementNpcs onSettlementNpcs={(npcs) =>
+  // setProcgenNpcs(npcs)} />` wrapped the setter in a fresh arrow function
+  // every render. ProcgenSettlementNpcs' own effect depends on
+  // `onSettlementNpcs` (correctly, from its side) and calls it inside the
+  // effect body — so every page re-render tore the effect down and
+  // immediately re-ran it, which called the (new) `onSettlementNpcs` again,
+  // triggering another parent re-render. Confirmed live via a temporary
+  // diagnostic log: the NPC-mesh-building loop in AvatarSystem3D was
+  // restarting mid-loop roughly every 0.5s (236 restarts logged in 120s),
+  // always dying after the first NPC — which meant NPCs 2+ never got a
+  // chance to load ANY mesh, real or procedural. Fixed the same way as Bug
+  // A: pass the stable `setProcgenNpcs` setter directly.
+  it('passes the setProcgenNpcs setter directly to ProcgenSettlementNpcs, not wrapped in a fresh arrow function', () => {
+    const idx = src.indexOf('<ProcgenSettlementNpcs');
+    expect(idx).toBeGreaterThan(-1);
+    const slice = src.slice(idx, idx + 200);
+    expect(slice).toMatch(/onSettlementNpcs=\{setProcgenNpcs\}/);
+    expect(slice).not.toMatch(/onSettlementNpcs=\{\s*\(/);
+  });
+
+  // Bug E — the root cause blocking NPCs/buildings/nodes/loot-bags/quests/
+  // events from ever showing real data: ten `fetch('/api/worlds/${
+  // activeDistrict.id}/...')` calls used `activeDistrict.id`, which is
+  // initialized to DEMO_DISTRICT ('district-demo-001') and never updated —
+  // no code anywhere reads the `?district=` URL param or otherwise changes
+  // it. Every one of these fetches was hitting a permanently-empty
+  // placeholder world instead of the real `currentWorldId`
+  // ('concordia-hub'). Confirmed live: the client-side NPC count went from
+  // stuck at 0 (forever) to 130+ once fixed. Two existing
+  // `activeDistrict?.id || currentWorldId` / `|| 'concordia-hub'` fallback
+  // patterns elsewhere on this page never actually fall through either —
+  // `activeDistrict.id` is always a non-empty string, so the `||` never
+  // fires — those are separate, pre-existing dead code and out of scope
+  // here; this fix only covers the ten confirmed data-fetch call sites.
+  it('fetches NPCs, buildings, resource nodes, loot bags, quests, and events by currentWorldId, not the permanently-stuck DEMO_DISTRICT activeDistrict.id', () => {
+    const dataFetchPaths = ['npcs', 'buildings', 'nodes', 'loot-bags', 'quests', 'events'];
+    for (const path of dataFetchPaths) {
+      const re = new RegExp('`/api/worlds/\\$\\{currentWorldId\\}/' + path.replace('-', '\\-'));
+      expect(src, `expected a currentWorldId-scoped fetch for /${path}`).toMatch(re);
+    }
+    // The bug pattern must not remain for any of these paths.
+    for (const path of dataFetchPaths) {
+      const re = new RegExp('`/api/worlds/\\$\\{activeDistrict\\.id\\}/' + path.replace('-', '\\-'));
+      expect(src, `did not expect a stale activeDistrict.id fetch for /${path}`).not.toMatch(re);
+    }
+  });
 });

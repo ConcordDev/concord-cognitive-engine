@@ -59,6 +59,38 @@ const ARCHETYPE_FALLBACK_PATH: Record<string, string> = {
   legend:  '/meshes/heroes/_archetype_legend.glb',
 };
 
+// Authored NPC occupations (content/world/*/npcs.json) are free-text —
+// "beat cop", "hedge-mage", "getaway driver" — not the 7 archetype keys
+// above. AvatarSystem3D previously only ever set `isHero: true` for 4
+// hardcoded named goddess NPCs, so the real GLB archetype meshes were
+// effectively dead code for the rest of the world's population, which all
+// stayed on the procedural/primitive fallback. Keyword-matched so most
+// occupations resolve to a real mesh; genuinely ambiguous ones (e.g.
+// "lookout", "analyst") fall through to null, which callers already treat
+// as "no hero mesh — use the procedural path", so this never worsens
+// coverage, only improves it.
+const OCCUPATION_KEYWORDS: [RegExp, string][] = [
+  [/guard|enforc|beat cop|bagman|lookout/i, 'guard'],
+  [/hunt|beast-tamer|tracker/i, 'hunter'],
+  [/mage|mystic|rune|hedge|heal|priest|shaman|witch/i, 'mystic'],
+  [/scholar|archiv|lore|scribe|analy|lab tech|reporter|investigat/i, 'scholar'],
+  [/trad|fence|fix|broker|runner|corpo|pilgrim|farm|merchant|vendor/i, 'trader'],
+  [/sword|sellsword|vigilante|getaway|forg|smith|tinker|netrunner|ripperdoc|drone-tech|informant|forger/i, 'warrior'],
+];
+
+/**
+ * Best-effort map from a free-text NPC occupation string to one of the 7
+ * authored archetype keys. Returns null for no confident match — callers
+ * should treat that as "stay on the procedural path", never force a guess.
+ */
+export function archetypeForOccupation(occupation: string | null | undefined): string | null {
+  if (!occupation) return null;
+  for (const [re, archetype] of OCCUPATION_KEYWORDS) {
+    if (re.test(occupation)) return archetype;
+  }
+  return null;
+}
+
 /**
  * Try to load a hero mesh. Returns null if not available — caller falls
  * back to the procedural BB1 path.

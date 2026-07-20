@@ -2619,7 +2619,7 @@ export default function WorldLensPage() {
 
   useEffect(() => {
     const loadBags = () => {
-      fetch(`/api/worlds/${activeDistrict.id}/loot-bags`, { signal: AbortSignal.timeout(8000) })
+      fetch(`/api/worlds/${currentWorldId}/loot-bags`, { signal: AbortSignal.timeout(8000) })
         .then((r) => {
           if (!r.ok) throw new Error(`loot-bags ${r.status}`);
           return r.json();
@@ -2633,13 +2633,13 @@ export default function WorldLensPage() {
     loadBags();
     const interval = setInterval(loadBags, 8_000);
     return () => clearInterval(interval);
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   const claimLootBag = useCallback(
     async (bagId: string) => {
       setClaimingBag(bagId);
       try {
-        const res = await fetch(`/api/worlds/${activeDistrict.id}/loot-bags/${bagId}/claim`, {
+        const res = await fetch(`/api/worlds/${currentWorldId}/loot-bags/${bagId}/claim`, {
           method: 'POST',
         });
         const data = await res.json();
@@ -2654,7 +2654,7 @@ export default function WorldLensPage() {
         setClaimingBag(null);
       }
     },
-    [activeDistrict.id]
+    [currentWorldId]
   );
 
   // ── Resource nodes + gathering ────────────────────────────────────────────
@@ -2684,7 +2684,7 @@ export default function WorldLensPage() {
 
   // Load all surface nodes for map dots (once per world)
   useEffect(() => {
-    fetch(`/api/worlds/${activeDistrict.id}/nodes`, { signal: AbortSignal.timeout(8000) })
+    fetch(`/api/worlds/${currentWorldId}/nodes`, { signal: AbortSignal.timeout(8000) })
       .then((r) => {
         if (!r.ok) throw new Error(`nodes ${r.status}`);
         return r.json();
@@ -2694,11 +2694,11 @@ export default function WorldLensPage() {
         markWorldFetch('nodes', 'ok');
       })
       .catch(() => markWorldFetch('nodes', 'error'));
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // Load buildings (seed city + player-placed)
   useEffect(() => {
-    fetch(`/api/worlds/${activeDistrict.id}/buildings`, { signal: AbortSignal.timeout(8000) })
+    fetch(`/api/worlds/${currentWorldId}/buildings`, { signal: AbortSignal.timeout(8000) })
       .then((r) => {
         if (!r.ok) throw new Error(`buildings ${r.status}`);
         return r.json();
@@ -2712,7 +2712,7 @@ export default function WorldLensPage() {
         markWorldFetch('buildings', 'ok');
       })
       .catch(() => markWorldFetch('buildings', 'error'));
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // Sync active district to SoundscapeEngine ambient audio via window event
   useEffect(() => {
@@ -2737,7 +2737,7 @@ export default function WorldLensPage() {
       // Player position is in the scene frame; the server stores nodes in the
       // world frame — convert back on the way out so the proximity query matches.
       const { x, z } = playerPos.current;
-      fetch(`/api/worlds/${activeDistrict.id}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
+      fetch(`/api/worlds/${currentWorldId}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (d?.nodes) setNearbyNodes(d.nodes);
@@ -2747,13 +2747,13 @@ export default function WorldLensPage() {
     poll();
     const interval = setInterval(poll, 5_000);
     return () => clearInterval(interval);
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   const gatherFromNode = async (nodeId: string) => {
     setGatheringNode(nodeId);
     try {
       const node = nearbyNodes.find((n) => n.id === nodeId);
-      const res = await fetch(`/api/worlds/${activeDistrict.id}/nodes/${nodeId}/gather`, {
+      const res = await fetch(`/api/worlds/${currentWorldId}/nodes/${nodeId}/gather`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2807,7 +2807,7 @@ export default function WorldLensPage() {
   // Load NPCs from API and keep positions fresh every 10s
   useEffect(() => {
     const loadNPCs = () => {
-      fetch(`/api/worlds/${activeDistrict.id}/npcs`, { signal: AbortSignal.timeout(8000) })
+      fetch(`/api/worlds/${currentWorldId}/npcs`, { signal: AbortSignal.timeout(8000) })
         .then((r) => {
           if (!r.ok) throw new Error(`npcs ${r.status}`);
           return r.json();
@@ -2849,7 +2849,7 @@ export default function WorldLensPage() {
     loadNPCs();
     const interval = setInterval(loadNPCs, 10_000);
     return () => clearInterval(interval);
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // Quest waypoint markers (3D). Poll the player's active quests and turn the
   // ones with a placeable target into QuestMarker3D objectives. This closes a
@@ -3063,7 +3063,7 @@ export default function WorldLensPage() {
   // World quests — fetch for QuestLog panel, refresh every 45s
   useEffect(() => {
     const load = () => {
-      fetch(`/api/worlds/${activeDistrict.id}/quests?limit=30`)
+      fetch(`/api/worlds/${currentWorldId}/quests?limit=30`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (d?.quests) setWorldQuests(d.quests);
@@ -3073,7 +3073,7 @@ export default function WorldLensPage() {
     load();
     const iv = setInterval(load, 45_000);
     return () => clearInterval(iv);
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // ── MMO multiplayer wiring ──────────────────────────────────────────
   // On mount: ask the server for our last-saved position, subscribe
@@ -3087,12 +3087,12 @@ export default function WorldLensPage() {
     worldSocket.emit('player:load');
 
     // Seed starter world event if district has none (fire-and-forget)
-    fetch(`/api/worlds/${activeDistrict.id}/events?status=active&limit=1`)
+    fetch(`/api/worlds/${currentWorldId}/events?status=active&limit=1`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d?.events?.length) {
           // No active events — create a starter gathering event
-          fetch(`/api/worlds/${activeDistrict.id}/events`, {
+          fetch(`/api/worlds/${currentWorldId}/events`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -5535,8 +5535,8 @@ export default function WorldLensPage() {
               renders them with proper body types. Refreshes on
               world:region-spawned events + 5-min poll. */}
           <ProcgenSettlementNpcs
-            worldId={activeDistrict?.id || 'concordia-hub'}
-            onSettlementNpcs={(npcs) => setProcgenNpcs(npcs)}
+            worldId={currentWorldId}
+            onSettlementNpcs={setProcgenNpcs}
           />
 
           {/* Sprint D Wave 1 — visible-substrate overlays. SeasonalEffects

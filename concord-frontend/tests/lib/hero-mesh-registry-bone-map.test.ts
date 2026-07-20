@@ -10,7 +10,7 @@ vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
   },
 }));
 
-const { buildBoneMap, HERO_MESH_CONSTANTS, loadHeroMesh, clearHeroMeshCache, getCachedHeroMesh } = await import(
+const { buildBoneMap, HERO_MESH_CONSTANTS, loadHeroMesh, clearHeroMeshCache, getCachedHeroMesh, archetypeForOccupation } = await import(
   '@/lib/concordia/hero-mesh-registry'
 );
 
@@ -70,6 +70,49 @@ describe('hero-mesh-registry buildBoneMap', () => {
     root.add(stray);
     expect(() => buildBoneMap(root)).not.toThrow();
     expect(buildBoneMap(root).size).toBe(0);
+  });
+});
+
+// Regression coverage for a wiring gap found live: AvatarSystem3D's `isHero`
+// determination for NPCs only ever matched 4 hardcoded named goddess ids,
+// so the 7 real archetype GLBs (warrior/guard/scholar/mystic/hunter/trader/
+// legend) were unreachable dead code for the rest of the world's NPC
+// population — every authored NPC (free-text occupations like "beat cop",
+// "hedge-mage", "getaway driver") silently stayed on the procedural
+// fallback despite real, better-looking assets existing on disk.
+describe('hero-mesh-registry archetypeForOccupation', () => {
+  it('maps direct-match occupations to their identical archetype key', () => {
+    expect(archetypeForOccupation('guard')).toBe('guard');
+    expect(archetypeForOccupation('hunter')).toBe('hunter');
+    expect(archetypeForOccupation('scholar')).toBe('scholar');
+    expect(archetypeForOccupation('trader')).toBe('trader');
+  });
+
+  it('keyword-matches real authored occupations from content/world/*/npcs.json to an archetype', () => {
+    expect(archetypeForOccupation('beat cop')).toBe('guard');
+    expect(archetypeForOccupation('hedge-mage')).toBe('mystic');
+    expect(archetypeForOccupation('beast-tamer')).toBe('hunter');
+    expect(archetypeForOccupation('archivist')).toBe('scholar');
+    expect(archetypeForOccupation('fence')).toBe('trader');
+    expect(archetypeForOccupation('sellsword')).toBe('warrior');
+    expect(archetypeForOccupation('getaway driver')).toBe('warrior');
+  });
+
+  it('returns null (not a guess) for occupations with no confident match, null, or undefined', () => {
+    expect(archetypeForOccupation('some-made-up-job-xyz')).toBeNull();
+    expect(archetypeForOccupation(null)).toBeNull();
+    expect(archetypeForOccupation(undefined)).toBeNull();
+    expect(archetypeForOccupation('')).toBeNull();
+  });
+
+  it('every returned archetype is a real key in the fallback path table (never dangles)', () => {
+    const occupations = ['guard', 'hunter', 'mage', 'scholar', 'trader', 'sellsword', 'legend'];
+    for (const occ of occupations) {
+      const a = archetypeForOccupation(occ);
+      if (a !== null) {
+        expect(HERO_MESH_CONSTANTS.ARCHETYPE_FALLBACK_PATH).toHaveProperty(a);
+      }
+    }
   });
 });
 
