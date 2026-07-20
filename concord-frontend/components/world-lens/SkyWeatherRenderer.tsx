@@ -731,12 +731,54 @@ export default function SkyWeatherRenderer({
           detail: { skyGroup },
         }));
       }
+
+      // ── World Lens Phase 2 (Activate Existing Rendering) ───────────
+      // This group's uniforms, particle systems, and sun/moon lighting were
+      // fully built above but never reached the scene: `sky-weather-ready`
+      // dispatched into a no-op stub (lib/event-router.ts) and nothing ever
+      // called `skyGroup.userData.update()`. Mirror TreeLayer.tsx's real,
+      // working `concordia:scene-ready` pattern to actually attach it, and
+      // drive its per-frame update (sun position, rain/snow motion, cloud
+      // shadow drift) from a local rAF loop — self-contained, same as
+      // TreeLayer's own effect, so it doesn't need to hook the main
+      // ConcordiaScene render loop.
+      let detachScene: (() => void) | null = null;
+      let animId = 0;
+      function onSceneReady(e: Event) {
+        const detail = (e as CustomEvent).detail as { scene?: { add: (g: unknown) => void; remove: (g: unknown) => void } } | undefined;
+        if (!detail?.scene || disposed) return;
+        detail.scene.add(skyGroup);
+        detachScene = () => detail.scene?.remove(skyGroup);
+
+        const start = performance.now();
+        let last = start;
+        const tick = () => {
+          if (disposed) return;
+          const now = performance.now();
+          const delta = Math.min(0.1, (now - last) / 1000);
+          const elapsed = (now - start) / 1000;
+          last = now;
+          skyGroup.userData.update?.(delta, elapsed);
+          animId = requestAnimationFrame(tick);
+        };
+        animId = requestAnimationFrame(tick);
+      }
+      window.addEventListener('concordia:scene-ready', onSceneReady);
+      window.dispatchEvent(new CustomEvent('concordia:scene-request-ready'));
+
+      return () => {
+        window.removeEventListener('concordia:scene-ready', onSceneReady);
+        cancelAnimationFrame(animId);
+        detachScene?.();
+      };
     }
 
-    init();
+    let cleanupSceneAttach: (() => void) | undefined;
+    init().then((cleanup) => { if (!disposed) cleanupSceneAttach = cleanup; });
 
     return () => {
       disposed = true;
+      cleanupSceneAttach?.();
       if (skyGroupRef.current) {
         const group = skyGroupRef.current as {
           traverse: (cb: (obj: unknown) => void) => void;
@@ -758,7 +800,7 @@ export default function SkyWeatherRenderer({
         });
       }
     };
-   
+
   }, [timeOfDay, weather, windDirection, windSpeed, season, quality, themeSkyTop, themeSkyHorizon, sunDisk]);
 
   return (

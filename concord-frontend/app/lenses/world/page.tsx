@@ -4948,10 +4948,18 @@ export default function WorldLensPage() {
             themeSkyHorizon={skyThemeColors.horizon}
             sunDisk={sunDiskForWorld(worldIdForTheme)}
           />
+          {/* World Lens Phase 2 (Activate Existing Rendering) — river/creek
+              geometry now matches the real river-bluff + Fall Kill Creek
+              placement (previously ConcordiaScene.tsx's own hardcoded flat
+              decorative planes at these exact coordinates; WaterRenderer's
+              wave/foam shader now renders that same location instead of a
+              second, differently-sized, disconnected plane at world
+              origin). timeOfDay is threaded from the same live clock driving
+              SkyWeatherRenderer above, not a fixed noon value. */}
           <WaterRenderer
-            riverConfig={{ width: 20, flowDirection: 0, flowSpeed: 1, centerX: 0, length: 100 }}
-            creekPath={[]}
-            timeOfDay={12}
+            riverConfig={{ width: 120, flowDirection: 0, flowSpeed: 1, centerX: -700, length: 600 }}
+            creekPath={[{ x: 150, z: -370 }, { x: 150, z: -150 }]}
+            timeOfDay={worldPhaseForSky * 24}
             quality="medium"
           />
           <ParticleEffectsComponent
