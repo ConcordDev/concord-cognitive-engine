@@ -126,19 +126,14 @@ describe('world lens page — stable callback/prop identity into child effects',
   });
 
   // Bug E — the root cause blocking NPCs/buildings/nodes/loot-bags/quests/
-  // events from ever showing real data: ten `fetch('/api/worlds/${
+  // events from ever showing real data: `fetch('/api/worlds/${
   // activeDistrict.id}/...')` calls used `activeDistrict.id`, which is
   // initialized to DEMO_DISTRICT ('district-demo-001') and never updated —
   // no code anywhere reads the `?district=` URL param or otherwise changes
   // it. Every one of these fetches was hitting a permanently-empty
   // placeholder world instead of the real `currentWorldId`
   // ('concordia-hub'). Confirmed live: the client-side NPC count went from
-  // stuck at 0 (forever) to 130+ once fixed. Two existing
-  // `activeDistrict?.id || currentWorldId` / `|| 'concordia-hub'` fallback
-  // patterns elsewhere on this page never actually fall through either —
-  // `activeDistrict.id` is always a non-empty string, so the `||` never
-  // fires — those are separate, pre-existing dead code and out of scope
-  // here; this fix only covers the ten confirmed data-fetch call sites.
+  // stuck at 0 (forever) to 130+ once fixed.
   it('fetches NPCs, buildings, resource nodes, loot bags, quests, and events by currentWorldId, not the permanently-stuck DEMO_DISTRICT activeDistrict.id', () => {
     const dataFetchPaths = ['npcs', 'buildings', 'nodes', 'loot-bags', 'quests', 'events'];
     for (const path of dataFetchPaths) {
@@ -150,5 +145,46 @@ describe('world lens page — stable callback/prop identity into child effects',
       const re = new RegExp('`/api/worlds/\\$\\{activeDistrict\\.id\\}/' + path.replace('-', '\\-'));
       expect(src, `did not expect a stale activeDistrict.id fetch for /${path}`).not.toMatch(re);
     }
+  });
+
+  // Bug E follow-up (2026-07-20) — Bug E's initial fix only covered the ten
+  // core data-loading effects; a live report ("Concordia is supposed to be
+  // triple A... do the 60+ places too") named dozens of MORE call sites on
+  // this page passing the identical broken `activeDistrict.id` /
+  // `activeDistrict?.id || 'concordia-hub'` / `activeDistrict?.id ||
+  // currentWorldId` pattern as the `worldId`/`cityId`/`districtId` prop into
+  // ~50 different HUD/game components (VillageGossipFeed, FestivalBanner,
+  // ClimbingTracker, QuestPanel, SkillsPanel, ChatSystem, and many more) —
+  // every one of them was silently receiving the permanently-empty demo
+  // placeholder instead of the real world. The two `|| currentWorldId` /
+  // `|| 'concordia-hub'` fallback patterns never actually fell through
+  // either, since `activeDistrict.id` is always a non-empty string. Swept
+  // ALL remaining occurrences (79 at fix time) to `currentWorldId`,
+  // preserving the legitimate, unrelated uses of `activeDistrict` as a
+  // whole object (the 2D district editor's own local/demo building+terrain
+  // model — DistrictViewport, InspectorPanel, `activeDistrict.buildings`,
+  // `activeDistrict.terrain`) which this fix does not touch.
+  it('has swept every activeDistrict.id / activeDistrict?.id worldId-scoping usage to currentWorldId', () => {
+    expect(src).not.toMatch(/activeDistrict\.id/);
+    expect(src).not.toMatch(/activeDistrict\?\.id/);
+  });
+
+  it('still uses activeDistrict as a whole object for the unrelated 2D district editor (buildings/terrain/name) — this fix did not remove that model', () => {
+    expect(src).toMatch(/activeDistrict\.buildings/);
+    expect(src).toMatch(/activeDistrict\.terrain/);
+    expect(src).toMatch(/const \[activeDistrict, setActiveDistrict\] = useState<District>\(DEMO_DISTRICT\);/);
+  });
+
+  // The player-facing world display name (loading overlay, HUD header,
+  // in-world map) was reading `activeDistrict.name` — literally 'Pioneer
+  // Valley', DEMO_DISTRICT's hardcoded seed name — so the game displayed a
+  // fake placeholder name as if it were the real active world's name for
+  // the entire session. Fixed to derive a real label from the theme
+  // registry (CONCORDIA_THEMES[themeId].label) keyed off the same
+  // world-id resolution the sky/lighting theme already uses correctly.
+  it('derives the displayed world name from the theme registry instead of DEMO_DISTRICT\'s hardcoded seed name', () => {
+    expect(src).toMatch(/const currentWorldDisplayName =\s*\n\s*CONCORDIA_THEMES\[concordiaTheme\]\?\.label \|\| activeDistrict\.name;/);
+    expect(src).toMatch(/worldName=\{currentWorldDisplayName\}/);
+    expect(src).not.toMatch(/worldName=\{activeDistrict\.name\}/);
   });
 });
