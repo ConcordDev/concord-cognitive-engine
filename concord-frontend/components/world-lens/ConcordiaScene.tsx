@@ -247,6 +247,21 @@ export default function ConcordiaScene({
   useEffect(() => { cameraModeRef.current = cameraMode; }, [cameraMode]);
   useEffect(() => { cameraZoomRef.current = cameraZoom; }, [cameraZoom]);
   useEffect(() => { getPlayerPoseRef.current = getPlayerPose; }, [getPlayerPose]);
+  // World Lens Phase 4 — Free camera mode. Unlike follow/first-person/
+  // interior (whose transform is DERIVED every frame from the player's
+  // pose), free mode has no pose to derive from — it needs its own
+  // absolute running position. Lazily seeded from wherever the camera
+  // already was the frame free mode is entered (so switching into Free
+  // never teleports), then flown via WASD (relative to the shared
+  // cameraLookState yaw the mouse-look pointer-lock already drives for
+  // first-person/follow) + R/F for vertical, matching the WASD contract
+  // CameraControls.tsx's Free-mode hint panel already advertises to the
+  // player plus the same R/F vertical convention PhotoMode.tsx's freecam
+  // established. Player-avatar WASD is disabled while this mode is active
+  // (AvatarSystem3D.tsx's movement block, gated on the same cameraMode
+  // prop) so the two don't fight over the same keys.
+  const freeCamPosRef = useRef<{ x: number; y: number; z: number } | null>(null);
+  const freeCamKeysRef = useRef<Set<string>>(new Set());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const physicsRef = useRef<{
     step: (dt: number) => void;
@@ -1402,7 +1417,7 @@ export default function ConcordiaScene({
         // forward when it would clip into a wall.
         const mode = cameraModeRef.current;
         const getPose = getPlayerPoseRef.current;
-        if (mode !== 'isometric' && mode !== 'cinematic' && getPose) {
+        if (mode !== 'isometric' && mode !== 'cinematic' && mode !== 'free' && getPose) {
           const pose = getPose();
           if (pose) {
             // In first-person, the camera yaw IS the player yaw — we don't
@@ -1480,6 +1495,50 @@ export default function ConcordiaScene({
               }
             }
           }
+        }
+
+        // ── World Lens Phase 4 — Free camera mode ───────────────────
+        // Unlike follow/first-person/interior above, there's no player pose
+        // to derive a transform from — this mode owns an absolute running
+        // position (freeCamPosRef), lazily seeded from wherever the camera
+        // already was the moment free mode is entered so the switch never
+        // teleports. WASD moves relative to the shared cameraLookState yaw
+        // (the same pointer-lock mouse-look first-person/follow already
+        // use — extended to 'free' above); R/F move straight up/down in
+        // world space, matching the vertical convention PhotoMode.tsx's own
+        // freecam already established.
+        if (mode === 'free') {
+          if (!freeCamPosRef.current) {
+            freeCamPosRef.current = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+          }
+          const fp = freeCamPosRef.current;
+          const keys = freeCamKeysRef.current;
+          const yaw = cameraLookStateRef.yaw;
+          const pitch = cameraLookStateRef.pitch;
+          const boost = keys.has('shift') ? 2.5 : 1;
+          const speed = 12 * boost * delta;
+          let dx = 0, dz = 0;
+          if (keys.has('w')) { dx += Math.sin(yaw); dz += -Math.cos(yaw); }
+          if (keys.has('s')) { dx -= Math.sin(yaw); dz -= -Math.cos(yaw); }
+          if (keys.has('a')) { dx += Math.sin(yaw - Math.PI / 2); dz += -Math.cos(yaw - Math.PI / 2); }
+          if (keys.has('d')) { dx += Math.sin(yaw + Math.PI / 2); dz += -Math.cos(yaw + Math.PI / 2); }
+          const planarLen = Math.hypot(dx, dz);
+          if (planarLen > 0.001) {
+            fp.x += (dx / planarLen) * speed;
+            fp.z += (dz / planarLen) * speed;
+          }
+          if (keys.has('r')) fp.y += speed;
+          if (keys.has('f')) fp.y -= speed;
+          camera.position.set(fp.x, fp.y, fp.z);
+          const lookX = fp.x + Math.sin(yaw) * Math.cos(pitch);
+          const lookY = fp.y + Math.sin(pitch);
+          const lookZ = fp.z + Math.cos(yaw) * Math.cos(pitch);
+          camera.lookAt(lookX, lookY, lookZ);
+        } else if (freeCamPosRef.current) {
+          // Leaving free mode — drop the seeded position so the next entry
+          // re-seeds from the (now-current) follow/first-person camera spot
+          // instead of resuming a stale one from last time.
+          freeCamPosRef.current = null;
         }
 
         // Sprint 1 (juice) — apply the camera-punch impulse on top of the base
@@ -1928,13 +1987,14 @@ export default function ConcordiaScene({
     }
     canvas.addEventListener('contextmenu', handleContextMenu);
 
-    // ── Mouse-look (pointer lock) for follow + first-person ─────
-    // Click the canvas to enter pointer lock when in a player-tracking
-    // mode; mousemove drives yaw + pitch additive offsets that the game
-    // loop applies to the camera. Esc / outside-click releases.
+    // ── Mouse-look (pointer lock) for follow + first-person + free ──
+    // Click the canvas to enter pointer lock when in a player-tracking (or,
+    // Phase 4, free-flying) mode; mousemove drives yaw + pitch additive
+    // offsets that the game loop applies to the camera. Esc / outside-click
+    // releases.
     function maybeRequestPointerLock() {
       const mode = cameraModeRef.current;
-      if (mode !== 'follow' && mode !== 'first-person' && mode !== 'interior') return;
+      if (mode !== 'follow' && mode !== 'first-person' && mode !== 'interior' && mode !== 'free') return;
       try {
         (canvas as HTMLCanvasElement & { requestPointerLock?: () => void }).requestPointerLock?.();
       } catch { /* pointer lock may be unsupported */ }
@@ -1953,6 +2013,23 @@ export default function ConcordiaScene({
     canvas.addEventListener('contextmenu', handleContextMenuPrevent);
     canvas.addEventListener('mousedown', maybeRequestPointerLock);
     document.addEventListener('mousemove', handleMouseMove);
+
+    // ── World Lens Phase 4 — Free camera mode WASD + R/F ───────────
+    // Only tracks keys while cameraModeRef.current === 'free', so this
+    // never fights with any other keybind (including AvatarSystem3D's own
+    // WASD player-movement listener, which is separately gated to ignore
+    // WASD during free mode — see the cameraMode !== 'free' guard there).
+    function handleFreeCamKeyDown(e: KeyboardEvent) {
+      if (cameraModeRef.current !== 'free') return;
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+      freeCamKeysRef.current.add(e.key.toLowerCase());
+    }
+    function handleFreeCamKeyUp(e: KeyboardEvent) {
+      freeCamKeysRef.current.delete(e.key.toLowerCase());
+    }
+    window.addEventListener('keydown', handleFreeCamKeyDown);
+    window.addEventListener('keyup', handleFreeCamKeyUp);
 
     // ── Cleanup ───────────────────────────────────────────────────
     // Capture the stable ref object so the cleanup doesn't read a possibly-changed
@@ -1974,6 +2051,8 @@ export default function ConcordiaScene({
       canvas.removeEventListener('contextmenu', handleContextMenuPrevent);
       canvas.removeEventListener('mousedown', maybeRequestPointerLock);
       document.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('keydown', handleFreeCamKeyDown);
+      window.removeEventListener('keyup', handleFreeCamKeyUp);
       try { document.exitPointerLock?.(); } catch { /* no-op */ }
 
       // Dispose all geometries, materials, and textures in scene

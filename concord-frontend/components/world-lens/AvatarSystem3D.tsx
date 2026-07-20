@@ -2347,10 +2347,19 @@ export default function AvatarSystem3D({
 
         let moveX = 0;
         let moveZ = 0;
-        if (keys.has('w')) moveZ -= 1;
-        if (keys.has('s')) moveZ += 1;
-        if (keys.has('a')) moveX -= 1;
-        if (keys.has('d')) moveX += 1;
+        // World Lens Phase 4 — Free camera mode reuses WASD to fly the
+        // detached camera (ConcordiaScene.tsx), not the player. Without
+        // this guard the player avatar would also walk around underneath
+        // the player while they're trying to scout/photograph with the
+        // free camera. Keys are still tracked (keys.has/etc above) so
+        // switching back out of free mode picks up whatever's currently
+        // held with no edge-case reset needed.
+        if (cameraMode !== 'free') {
+          if (keys.has('w')) moveZ -= 1;
+          if (keys.has('s')) moveZ += 1;
+          if (keys.has('a')) moveX -= 1;
+          if (keys.has('d')) moveX += 1;
+        }
 
         const isMoving = moveX !== 0 || moveZ !== 0;
 

@@ -247,7 +247,11 @@ export default function CameraControls({
         </div>
       )}
 
-      {/* Free camera hint */}
+      {/* Free camera hint. World Lens Phase 4 wired real movement in
+          ConcordiaScene.tsx (WASD + R/F + mouse-look via pointer lock,
+          gated to cameraMode==='free' so it never fights player movement)
+          — R/F/Shift/mouse-look added here to match what's actually wired,
+          not just the original W/S/A/D subset. */}
       {cameraState.mode === 'free' && (
         <div className={`${panel} p-2 text-[10px] text-gray-400`}>
           <div className="flex items-center gap-2 mb-1">
@@ -266,6 +270,18 @@ export default function CameraControls({
             </span>
             <span>
               <kbd className="px-1 py-0.5 rounded bg-white/10 text-gray-400 text-[9px]">D</kbd> Right
+            </span>
+            <span>
+              <kbd className="px-1 py-0.5 rounded bg-white/10 text-gray-400 text-[9px]">R</kbd> Up
+            </span>
+            <span>
+              <kbd className="px-1 py-0.5 rounded bg-white/10 text-gray-400 text-[9px]">F</kbd> Down
+            </span>
+            <span>
+              <kbd className="px-1 py-0.5 rounded bg-white/10 text-gray-400 text-[9px]">Shift</kbd> Speed boost
+            </span>
+            <span>
+              Click canvas + mouse to look
             </span>
           </div>
         </div>
