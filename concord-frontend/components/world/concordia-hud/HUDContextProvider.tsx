@@ -21,6 +21,7 @@
 import { useEffect, useRef } from 'react';
 import { create } from 'zustand';
 import { subscribe } from '@/lib/realtime/socket';
+import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 
 export type InputMode = 'exploration' | 'combat' | 'dialogue' | 'vehicle' | 'photo' | 'creation' | 'spectator' | 'lens_work';
 export type ExpertiseLevel = 'newcomer' | 'standard' | 'detailed' | 'engineering';
@@ -117,6 +118,18 @@ export interface HUDContextState {
   // Adaptation
   expertiseLevel: ExpertiseLevel;
 
+  // Idle — true once no pointer/keyboard/wheel activity has been seen for
+  // HUD_CONTEXT_CONSTANTS.IDLE_TIMEOUT_MS, per the owner's "if not needed
+  // in 5 seconds, hide it" rule (Phase 6a). Never true in combat/dialogue
+  // mode (re-evaluated continuously, not just at the moment it fires) and
+  // never true at all under reduced-motion — idle-fade is itself a motion
+  // effect. This is a raw availability signal only: consumers decide HOW
+  // to react (fade opacity toward zero, never display:none, so animation
+  // frames stay alive and re-appearance on input is instant) and WHETHER
+  // to react at all — Layer-1 minimal HUD (HP/Compass/Quest) simply never
+  // reads this field, so it can never be faded by it.
+  isIdle: boolean;
+
   // World clock + season — populated by socket subscription. Drives
   // the SkyWeather renderer's timeOfDay + season inputs so the visible
   // sky / sun position / particle bias / star field actually update.
@@ -140,6 +153,7 @@ export interface HUDContextState {
   setRealmContext: (realmId: string | null, exiled: boolean, sessionId: string | null) => void;
   setCalendar: (monthName: string, monthIndex: number, civic: string, festival: string | null) => void;
   setExpertise: (lvl: ExpertiseLevel) => void;
+  setIdle: (b: boolean) => void;
   setWorldClock: (phase: number, segment: HUDContextState['worldDaySegment']) => void;
   setWorldSeason: (s: HUDContextState['worldSeason']) => void;
   setRulerState: (snapshot: {
@@ -188,6 +202,7 @@ export const useHUDContext = create<HUDContextState>((set) => ({
   festivalActive: null,
 
   expertiseLevel: 'standard',
+  isIdle: false,
 
   worldPhase: 0.25,            // default to midday so first frame doesn't look like midnight
   worldDaySegment: 'midday',
@@ -208,6 +223,7 @@ export const useHUDContext = create<HUDContextState>((set) => ({
   setRealmContext: (realmId, exiled, sessionId) => set({ currentRealmId: realmId, exiledFromCurrentRealm: exiled, openCouncilSessionId: sessionId }),
   setCalendar: (monthName, monthIndex, civic, festival) => set({ tunyanMonthName: monthName, tunyanMonthIndex: monthIndex, civicBlockLabel: civic, festivalActive: festival }),
   setExpertise: (lvl) => set({ expertiseLevel: lvl }),
+  setIdle: (b) => set({ isIdle: b }),
   setWorldClock: (phase, segment) => set({ worldPhase: phase, worldDaySegment: segment }),
   setWorldSeason: (s) => set({ worldSeason: s }),
   setRulerState: (snapshot) => set(snapshot),
@@ -241,6 +257,9 @@ export async function macroCall(domain: string, name: string, input: Record<stri
 
 const PROXIMITY_RADIUS_M = 4;
 const POLL_INTERVAL_MS = 6000;
+const IDLE_TIMEOUT_MS = 6000;
+const IDLE_CHECK_INTERVAL_MS = 1000;
+const IDLE_ACTIVITY_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
 
 export function HUDContextProvider() {
   const setWorldId = useHUDContext((s) => s.setWorldId);
@@ -253,6 +272,8 @@ export function HUDContextProvider() {
   const setRefusalStrength = useHUDContext((s) => s.setRefusalStrength);
   const setWorldClock = useHUDContext((s) => s.setWorldClock);
   const setWorldSeason = useHUDContext((s) => s.setWorldSeason);
+  const setIdle = useHUDContext((s) => s.setIdle);
+  const { effectiveReducedMotion } = useAccessibilitySettings();
   const pollRef = useRef<number | null>(null);
 
   // World clock — subscribe to server's broadcast (every 30s) via the
@@ -336,6 +357,39 @@ export function HUDContextProvider() {
       window.removeEventListener('refusal:compound-threshold', onRefusal);
     };
   }, [setRefusalStrength]);
+
+  // Idle-timer signal (Phase 6a) — the owner's "if not needed in 5 seconds,
+  // hide it" rule. Tracks real pointer/keyboard/wheel/touch activity on
+  // window and flips `isIdle` true once IDLE_TIMEOUT_MS has elapsed with
+  // none, re-checked on a cheap 1s poll rather than a per-event debounce
+  // timer (matches this file's existing interval-driven style — the world
+  // clock tween and substrate poll below do the same). The mode gate is
+  // re-evaluated every check, not just latched at the moment the timer
+  // fires, so entering combat/dialogue while already idle un-fades within
+  // one check tick instead of staying stuck faded. Reduced-motion users
+  // never receive `isIdle: true` at all — idle-fade is a motion effect,
+  // and this is the one signal-producing site for it, so gating here
+  // covers every consumer without each one re-checking reduced-motion.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (effectiveReducedMotion) {
+      setIdle(false);
+      return;
+    }
+    let lastActivityAt = Date.now();
+    const markActive = () => { lastActivityAt = Date.now(); };
+    IDLE_ACTIVITY_EVENTS.forEach((evt) => window.addEventListener(evt, markActive, { passive: true }));
+    const checkId = window.setInterval(() => {
+      const idleForMs = Date.now() - lastActivityAt;
+      const mode = useHUDContext.getState().inputMode;
+      const modeBlocksFade = mode === 'combat' || mode === 'dialogue';
+      setIdle(!modeBlocksFade && idleForMs >= IDLE_TIMEOUT_MS);
+    }, IDLE_CHECK_INTERVAL_MS);
+    return () => {
+      IDLE_ACTIVITY_EVENTS.forEach((evt) => window.removeEventListener(evt, markActive));
+      window.clearInterval(checkId);
+    };
+  }, [effectiveReducedMotion, setIdle]);
 
   // Periodic poll of substrate macros that aren't socket-pushed yet.
   useEffect(() => {
@@ -430,4 +484,6 @@ export function HUDContextProvider() {
 export const HUD_CONTEXT_CONSTANTS = Object.freeze({
   PROXIMITY_RADIUS_M,
   POLL_INTERVAL_MS,
+  IDLE_TIMEOUT_MS,
+  IDLE_CHECK_INTERVAL_MS,
 });
