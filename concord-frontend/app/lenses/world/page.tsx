@@ -2131,6 +2131,37 @@ export default function WorldLensPage() {
   const [cameraMode, setCameraMode] = useState<
     'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic'
   >('follow');
+  // World Lens Phase 4 — cinematic-director.ts's own doc comment states
+  // "Director takes camera control from CameraControls.tsx for the
+  // sequence duration, restores afterward," but nothing implemented that
+  // handoff: concordia:cinematic-start/-end fire (used by the letterbox
+  // UI) with no listener that ever changed cameraMode, so a director-
+  // triggered sequence (e.g. combat:hero_kill) never actually put the
+  // camera into cinematic mode — ConcordiaScene.tsx's new shot-
+  // interpolation code (see cinematic-shot-geometry.ts) would sit unused.
+  const preCinematicCameraModeRef = useRef<typeof cameraMode | null>(null);
+  useEffect(() => {
+    function onCinematicStart() {
+      // Functional update reads the CURRENT cameraMode (not a stale
+      // closure from this effect's empty dependency array) — the mode
+      // active the instant the sequence starts is what gets restored.
+      setCameraMode((prev) => {
+        preCinematicCameraModeRef.current = prev;
+        return 'cinematic';
+      });
+    }
+    function onCinematicEnd() {
+      const prev = preCinematicCameraModeRef.current;
+      if (prev) setCameraMode(prev);
+      preCinematicCameraModeRef.current = null;
+    }
+    window.addEventListener('concordia:cinematic-start', onCinematicStart);
+    window.addEventListener('concordia:cinematic-end', onCinematicEnd);
+    return () => {
+      window.removeEventListener('concordia:cinematic-start', onCinematicStart);
+      window.removeEventListener('concordia:cinematic-end', onCinematicEnd);
+    };
+  }, []);
   // Camera Mode panel's zoom slider — previously wired to a no-op onZoom
   // handler (CameraControls rendered a live-looking slider that did
   // nothing). Real state now, consumed by ConcordiaScene's cameraZoom prop

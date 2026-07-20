@@ -11,6 +11,7 @@ import { disposeBuildingArchetype } from '@/lib/world-lens/procedural-buildings'
 import { clearProceduralCache } from '@/lib/world-lens/procedural-texture';
 import { resolveSceneWorldId } from '@/lib/world-lens/resolve-scene-world-id';
 import { zoomToDistScale, DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
+import { computeShotFraming, applyEasing, type ShotFraming } from '@/lib/world-lens/cinematic-shot-geometry';
 
 // Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
 // the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
@@ -262,6 +263,24 @@ export default function ConcordiaScene({
   // prop) so the two don't fight over the same keys.
   const freeCamPosRef = useRef<{ x: number; y: number; z: number } | null>(null);
   const freeCamKeysRef = useRef<Set<string>>(new Set());
+  // World Lens Phase 4 — Cinematic camera mode. cinematic-director.ts
+  // sequences real named shot templates (over_shoulder, crane_pull,
+  // dolly_in, whip_pan, dutch_tilt, ...) and dispatches
+  // `concordia:cinematic-shot` per shot, but nothing ever moved the actual
+  // camera through them — confirmed live, the same "director choreographs
+  // time/audio but never touches the camera" gap the plan calls out. The
+  // listener (registered in the init effect) computes each shot's target
+  // framing via cinematic-shot-geometry.ts and stores start→target here;
+  // the render loop interpolates every frame while cameraMode==='cinematic'.
+  const cinematicShotRef = useRef<{
+    startPos: { x: number; y: number; z: number };
+    startLook: { x: number; y: number; z: number };
+    startTilt: number;
+    target: ShotFraming;
+    startTime: number;
+    durationMs: number;
+    easing?: string;
+  } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const physicsRef = useRef<{
     step: (dt: number) => void;
@@ -1541,6 +1560,27 @@ export default function ConcordiaScene({
           freeCamPosRef.current = null;
         }
 
+        // ── World Lens Phase 4 — Cinematic camera mode ───────────────
+        // Interpolates from the shot's start framing (captured the instant
+        // concordia:cinematic-shot fired) to its computed target over the
+        // shot's duration, easing per the shot's `easing` field. Holds the
+        // last-reached framing between shots (no active shot ref) rather
+        // than snapping back anywhere — the director drives the next shot.
+        if (mode === 'cinematic' && cinematicShotRef.current) {
+          const cs = cinematicShotRef.current;
+          const elapsedMs = performance.now() - cs.startTime;
+          const t = applyEasing(cs.easing, elapsedMs / cs.durationMs);
+          const px = cs.startPos.x + (cs.target.position.x - cs.startPos.x) * t;
+          const py = cs.startPos.y + (cs.target.position.y - cs.startPos.y) * t;
+          const pz = cs.startPos.z + (cs.target.position.z - cs.startPos.z) * t;
+          camera.position.set(px, py, pz);
+          const lx = cs.startLook.x + (cs.target.lookAt.x - cs.startLook.x) * t;
+          const ly = cs.startLook.y + (cs.target.lookAt.y - cs.startLook.y) * t;
+          const lz = cs.startLook.z + (cs.target.lookAt.z - cs.startLook.z) * t;
+          camera.lookAt(lx, ly, lz);
+          camera.rotation.z = cs.startTilt + (cs.target.tiltRad - cs.startTilt) * t;
+        }
+
         // Sprint 1 (juice) — apply the camera-punch impulse on top of the base
         // transform. Shake comes from the shared trauma engine (decaying, coherent
         // noise); the brief FOV kick rides the cameraPunchRef window. Read after the
@@ -2031,6 +2071,52 @@ export default function ConcordiaScene({
     window.addEventListener('keydown', handleFreeCamKeyDown);
     window.addEventListener('keyup', handleFreeCamKeyUp);
 
+    // ── World Lens Phase 4 — Cinematic camera mode ──────────────────
+    // cinematic-director.ts dispatches this per shot; resolve the shot's
+    // target framing and stash a start→target interpolation for the
+    // render loop. Only 'player' (or unset — every AUTO_TEMPLATES entry
+    // in cinematic-director.ts today leaves subject/target_npc unset) is
+    // resolvable here: there is no NPC-position lookup reachable from this
+    // component, so an NPC-targeted shot honestly holds the camera's
+    // current framing instead of guessing a position.
+    function handleCinematicShot(e: Event) {
+      const detail = (e as CustomEvent).detail as {
+        camera?: string; subject?: string; target_npc?: string;
+        duration_ms?: number; easing?: string;
+      } | undefined;
+      if (!detail?.camera) return;
+      if (detail.target_npc) return; // honest gap — see comment above
+      const getPose = getPlayerPoseRef.current;
+      const pose = getPose?.();
+      if (!pose) return;
+      const cam = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera> | null;
+      if (!cam) return;
+      const forwardPoint = {
+        x: cam.position.x + Math.sin(cam.rotation.y),
+        y: cam.position.y,
+        z: cam.position.z + Math.cos(cam.rotation.y),
+      };
+      const target = computeShotFraming(
+        detail.camera,
+        { x: pose.x, y: pose.y, z: pose.z, yaw: pose.yaw },
+        { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+      );
+      // match_cut is a hard cut, not a move — interpolate it near-instantly
+      // regardless of the shot's own duration_ms (which still governs how
+      // long the director HOLDS this framing before the next shot).
+      const interpMs = detail.camera === 'match_cut' ? 120 : Math.max(200, detail.duration_ms ?? 1000);
+      cinematicShotRef.current = {
+        startPos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+        startLook: forwardPoint,
+        startTilt: cam.rotation.z,
+        target,
+        startTime: performance.now(),
+        durationMs: interpMs,
+        easing: detail.easing,
+      };
+    }
+    window.addEventListener('concordia:cinematic-shot', handleCinematicShot);
+
     // ── Cleanup ───────────────────────────────────────────────────
     // Capture the stable ref object so the cleanup doesn't read a possibly-changed
     // ref.current (identity is fixed; only its fields mutate).
@@ -2053,6 +2139,7 @@ export default function ConcordiaScene({
       document.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('keydown', handleFreeCamKeyDown);
       window.removeEventListener('keyup', handleFreeCamKeyUp);
+      window.removeEventListener('concordia:cinematic-shot', handleCinematicShot);
       try { document.exitPointerLock?.(); } catch { /* no-op */ }
 
       // Dispose all geometries, materials, and textures in scene
