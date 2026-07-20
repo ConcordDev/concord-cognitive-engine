@@ -295,8 +295,16 @@ export default function ConcordiaScene({
   const ssgiPassRef = useRef<{
     dispose: () => void;
     setSize: (w: number, h: number) => void;
-    render: (t: null) => void;
+    render: (t: import('three').WebGLRenderTarget | null) => void;
   } | null>(null);
+  // Phase 3 fix (Fix Ultra) — SSGIPass is a standalone manager, not a
+  // composer Pass; it was previously used as a full EffectComposer
+  // replacement, which silently discarded the entire post-fx chain
+  // (bloom/vignette/grade/TAA/DoF/volumetric fog) whenever active. It now
+  // renders into this offscreen target, which the composer's pass 0 (a
+  // TexturePass, spliced in at SSGI construction time) reads from — so the
+  // rest of the chain post-processes SSGI's GI-composited image instead.
+  const ssgiOutputTargetRef = useRef<import('three').WebGLRenderTarget | null>(null);
   // Visual-polish Wave 5 — extra post passes layered on the composer.
   // Typed as a loose record because each sub-API has its own signature
   // shape (THREE.Matrix4 vs unknown vs WebGLRenderer); concrete typing
@@ -788,7 +796,36 @@ export default function ConcordiaScene({
               import('three/examples/jsm/postprocessing/ShaderPass.js'),
             ]);
           const composer = new EffectComposer(renderer);
-          composer.addPass(new RenderPass(scene, camera));
+          // ── Phase 3 fix (Fix Ultra): TAA must be pass 0 ────────────
+          // The temporal-AA pass (via SSAARenderPass, its base class)
+          // always does fresh jittered `renderer.render(scene, camera)`
+          // calls and never reads the incoming readBuffer — it
+          // unconditionally overwrites whatever was already in the write
+          // buffer. The original Sprint 7 placement appended it as the
+          // *last* pass (after bloom, vignette, color grade, motion blur,
+          // chromatic aberration, LUT, and DoF), which meant it silently
+          // discarded every one of those passes for every high/ultra-
+          // quality user — "ultra" looked no different from (and sometimes
+          // worse than) "high" because none of that work ever reached the
+          // screen. Fix: build it first and use it as pass 0 in place of
+          // plain RenderPass; only fall back to RenderPass when it's
+          // unavailable or quality doesn't call for it.
+          let taaPassAdded = false;
+          if (quality === 'high' || quality === 'ultra') {
+            try {
+              const { TAARenderPass } = await import('three/examples/jsm/postprocessing/TAARenderPass.js');
+              const taaPass = new TAARenderPass(scene, camera);
+              taaPass.unbiased = false;
+              taaPass.sampleLevel = quality === 'ultra' ? 3 : 2; // 8 / 4 samples
+              composer.addPass(taaPass);
+              taaPassAdded = true;
+            } catch (taaErr) {
+              console.warn('[ConcordiaScene] TAA unavailable:', taaErr);
+            }
+          }
+          if (!taaPassAdded) {
+            composer.addPass(new RenderPass(scene, camera));
+          }
           // Bloom: PBR only — toon shading looks wrong with bloom
           if (renderStyle !== 'toon') {
             const bloom = new UnrealBloomPass(
@@ -959,23 +996,11 @@ export default function ConcordiaScene({
           const dofPass = new ShaderPass(dofShader);
           composer.addPass(dofPass);
 
-          // ── Sprint 7: TAA — temporal anti-aliasing ────────────────
-          // Three.js TAARenderPass accumulates jittered camera samples
-          // across frames. Static scenes converge to 16×MSAA-equivalent
-          // quality after 16 frames at zero per-frame cost. Eliminates
-          // the shimmer on thin geometry at distance that the audit
-          // flagged as a current pain point. Activated at high+ quality.
-          if (quality === 'high' || quality === 'ultra') {
-            try {
-              const { TAARenderPass } = await import('three/examples/jsm/postprocessing/TAARenderPass.js');
-              const taaPass = new TAARenderPass(scene, camera);
-              taaPass.unbiased = false;
-              taaPass.sampleLevel = quality === 'ultra' ? 3 : 2; // 8 / 4 samples
-              composer.addPass(taaPass);
-            } catch (taaErr) {
-              console.warn('[ConcordiaScene] TAA unavailable:', taaErr);
-            }
-          }
+          // Sprint 7's TAA pass now lives at the top of this block (pass 0,
+          // replacing plain RenderPass) — see the Phase 3 fix comment there.
+          // It must never be appended here again: TAARenderPass always
+          // overwrites the write buffer with a fresh render and ignores
+          // whatever passes ran before it.
 
           // ── Sprint 7: Volumetric fog (ultra only) ─────────────────
           // Ray-marched fog in a post-pass — cheap depth-blended density
@@ -1263,6 +1288,32 @@ export default function ConcordiaScene({
             canvas!.clientHeight,
             { intensity: 0.55, numSamples: 12, temporalBlend: 0.08 }
           );
+          // ── Phase 3 fix (Fix Ultra): give SSGI's composited image to
+          // the rest of the post-fx chain instead of replacing it ──────
+          // SSGIPass is a standalone manager (its own G-buffer + full
+          // scene re-render), not an EffectComposer Pass — the render
+          // loop previously called `ssgiPassRef.current.render(null)`
+          // and skipped `composerRef.current` entirely whenever SSGI was
+          // active, so ultra quality silently lost bloom/vignette/color
+          // grade/TAA/DoF/volumetric fog (the exact bug this phase
+          // exists to fix). SSGI and jittered TAA are both "raw scene"
+          // providers for pass 0 and can't coexist — at ultra, SSGI wins:
+          // splice the composer's existing pass 0 (TAA or RenderPass) for
+          // a TexturePass bound to an offscreen target, and have SSGI
+          // render into that target every frame (see the render loop)
+          // instead of straight to the screen.
+          if (composerRef.current) {
+            const { TexturePass } = await import('three/examples/jsm/postprocessing/TexturePass.js');
+            const ssgiTarget = new THREE.WebGLRenderTarget(canvas!.clientWidth, canvas!.clientHeight, {
+              type: THREE.HalfFloatType,
+            });
+            ssgiOutputTargetRef.current = ssgiTarget;
+            const texPass = new TexturePass(ssgiTarget.texture);
+            const passes = (composerRef.current as unknown as { passes: unknown[] }).passes;
+            if (Array.isArray(passes) && passes.length > 0) {
+              passes[0] = texPass;
+            }
+          }
         } catch {
           /* SSGI optional */
         }
@@ -1556,8 +1607,18 @@ export default function ConcordiaScene({
           }
         } catch { /* polish passes optional */ }
 
-        // Render: SSGI > EffectComposer > plain renderer
-        if (ssgiPassRef.current) {
+        // Render: SSGI feeds the composer's spliced pass 0 > EffectComposer
+        // > plain renderer. (Phase 3 fix — see the SSGI construction site
+        // and composer pass-0 comments above.) When SSGI is active alongside
+        // a live composer, render SSGI's GI-composited image into the
+        // offscreen target the composer's TexturePass reads from, then run
+        // the full composer chain on top of it so bloom/vignette/grade/DoF/
+        // volumetric fog still apply. Only bypass the composer entirely if
+        // it genuinely failed to construct (ppErr path).
+        if (ssgiPassRef.current && composerRef.current && ssgiOutputTargetRef.current) {
+          ssgiPassRef.current.render(ssgiOutputTargetRef.current);
+          composerRef.current.render(delta);
+        } else if (ssgiPassRef.current) {
           ssgiPassRef.current.render(null);
         } else if (composerRef.current) {
           composerRef.current.render(delta);
@@ -1688,6 +1749,7 @@ export default function ConcordiaScene({
         r.setSize(w, h);
         composerRef.current?.setSize(w, h);
         ssgiPassRef.current?.setSize(w, h);
+        ssgiOutputTargetRef.current?.setSize(w, h);
         // Keep the edge-outline Sobel kernel sampling at the new resolution.
         polishPassesRef.current?.edgeOutline?.setResolution?.(w, h);
       }
@@ -1957,6 +2019,8 @@ export default function ConcordiaScene({
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;
+      try { ssgiOutputTargetRef.current?.dispose(); } catch { /* idempotent */ }
+      ssgiOutputTargetRef.current = null;
       try {
         polishPassesRef.current?.chromAb?.detach?.();
         polishPassesRef.current?.autoExposure?.dispose();
