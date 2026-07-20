@@ -1203,23 +1203,29 @@ export default function ConcordiaScene({
       scene.fog = new THREE.Fog(activeTheme.fog.color, activeTheme.fog.near, activeTheme.fog.far);
       sceneRef.current = scene;
 
-      // ── Visual-polish Wave 6: procedural sky dome + (optional) clouds.
-      try {
-        const { createSkyDome } = await import('@/lib/world-lens/sky-shader');
-        const sky = createSkyDome(THREE, { radius: 2200, segments: 28 });
-        scene.add(sky.mesh);
-        (scene as unknown as { __concordSky?: unknown }).__concordSky = sky;
-        // Default time-of-day = afternoon
-        sky.setTimeOfDayHour(15);
-        if (quality === 'high' || quality === 'ultra') {
+      // World Lens Phase 7a — the procedural static sky dome that used to
+      // build here (the now-deleted sky-shader module, radius 2200, its
+      // time-of-day set once at construction and never updated again) was
+      // removed: it was a second, redundant sky sphere
+      // coexisting with `SkyWeatherRenderer`'s own live, shader-driven,
+      // clock-synced sky dome (radius 2000, added via the real
+      // `concordia:scene-ready` listener Phase 2 wired) — genuinely frozen
+      // at a fixed afternoon lighting while the real one tracked the world
+      // clock, plus a wasted extra sphere + shader material rendered every
+      // frame. The volumetric raymarched cloud layer below is NOT a
+      // duplicate of anything `SkyWeatherRenderer` does (that component
+      // only darkens the sky shader's own color by a cloud-cover uniform;
+      // it doesn't render actual 3D cloud geometry) — kept as-is.
+      if (quality === 'high' || quality === 'ultra') {
+        try {
           const { createCloudLayer } = await import('@/lib/world-lens/cloud-raymarch');
           const clouds = createCloudLayer(THREE, { radius: 1600 });
           clouds.setWeatherDensity(0.55);
           scene.add(clouds.mesh);
           (scene as unknown as { __concordClouds?: unknown }).__concordClouds = clouds;
+        } catch (cloudErr) {
+          console.warn('[ConcordiaScene] Clouds unavailable:', cloudErr);
         }
-      } catch (skyErr) {
-        console.warn('[ConcordiaScene] Sky / clouds unavailable:', skyErr);
       }
 
       // ── I3: procedural per-world landmarks (stylized canon identity) ──
@@ -2316,9 +2322,7 @@ export default function ConcordiaScene({
       polishPassesRef.current = null;
       polishMat.prev = null;
       try {
-        const sky = (sceneRef.current as unknown as { __concordSky?: { mesh: unknown; dispose: () => void } } | null)?.__concordSky;
         const clouds = (sceneRef.current as unknown as { __concordClouds?: { mesh: unknown; dispose: () => void } } | null)?.__concordClouds;
-        if (sky?.dispose) sky.dispose();
         if (clouds?.dispose) clouds.dispose();
       } catch { /* idempotent */ }
       probeManagerRef.current?.dispose();
