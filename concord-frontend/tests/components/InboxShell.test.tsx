@@ -1,5 +1,24 @@
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+// Virtuoso renders through a windowing engine jsdom can't drive — replace
+// with a plain map so itemContent (the real thread-row markup) still runs.
+// Same shim pattern already used in tests/feed-lens-states.test.tsx.
+vi.mock('react-virtuoso', () => ({
+  Virtuoso: ({
+    data,
+    itemContent,
+  }: {
+    data?: unknown[];
+    itemContent: (index: number, item: unknown) => React.ReactNode;
+  }) =>
+    React.createElement(
+      'div',
+      { 'data-testid': 'virtuoso' },
+      (data || []).map((d, i) => React.createElement('div', { key: i }, itemContent(i, d))),
+    ),
+}));
 
 import { InboxShell, type InboxLabel, type InboxThread } from '@/components/message/InboxShell';
 

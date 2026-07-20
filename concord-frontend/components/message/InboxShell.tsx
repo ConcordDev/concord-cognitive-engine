@@ -13,7 +13,8 @@
  * controls stay caller-owned.
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import {
   Inbox, Send, Star, Archive, Trash2, Tag, Clock,
   Paperclip, Reply, Forward, ChevronDown,
@@ -71,6 +72,63 @@ export function InboxShell({
   children,
   className,
 }: InboxShellProps) {
+  // A heavy DM user can accumulate hundreds of conversations; this list
+  // used to render every <li> unconditionally into the DOM regardless of
+  // scroll position. Virtualized with the same react-virtuoso already
+  // proven for the chat lens's message thread (app/lenses/chat/page.tsx) —
+  // reusing it here instead of adding a second windowing library.
+  const renderThreadRow = useCallback(
+    (_index: number, t: InboxThread) => {
+      const active = t.id === activeThreadId;
+      return (
+        <button
+          type="button"
+          onClick={() => onSelectThread?.(t)}
+          className={cn(
+            'w-full text-left pl-3 pr-4 py-2.5 border-b border-lattice-border/60 border-l-2 transition-colors duration-100',
+            'hover:bg-white/[0.03]',
+            t.unread ? 'border-l-neon-blue' : 'border-l-transparent',
+            active && 'bg-neon-blue/[0.06]',
+          )}
+        >
+          <div className="flex items-baseline gap-2 mb-0.5">
+            <span className={cn(
+              'flex-1 truncate text-sm',
+              t.unread ? 'font-semibold text-white' : 'text-gray-300'
+            )}>
+              {t.from}
+            </span>
+            {t.starred && <Star className="w-3 h-3 text-amber-400 fill-current shrink-0" />}
+            {t.hasAttachment && <Paperclip className="w-3 h-3 text-gray-500 shrink-0" />}
+            <span className="text-[11px] text-gray-500 font-mono tabular-nums whitespace-nowrap">
+              {new Date(t.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </span>
+          </div>
+          <div className={cn(
+            'truncate text-sm',
+            t.unread ? 'font-medium text-gray-100' : 'text-gray-400'
+          )}>
+            {t.subject}
+          </div>
+          <div className="truncate text-xs text-gray-500 mt-0.5">{t.snippet}</div>
+          {t.labels && t.labels.length > 0 && (
+            <div className="mt-1 flex gap-1 flex-wrap">
+              {t.labels.slice(0, 3).map((l) => (
+                <span
+                  key={l}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-elevated border border-lattice-border text-gray-400"
+                >
+                  {l}
+                </span>
+              ))}
+            </div>
+          )}
+        </button>
+      );
+    },
+    [activeThreadId, onSelectThread]
+  );
+
   return (
     <div className={cn('flex h-full bg-lattice-void text-gray-100', className)}>
       {/* Label rail */}
@@ -106,60 +164,14 @@ export function InboxShell({
         </ul>
       </aside>
 
-      {/* Thread list */}
-      <section className="w-96 shrink-0 border-r border-lattice-border overflow-y-auto bg-lattice-surface">
-        <ul>
-          {threads.map((t) => {
-            const active = t.id === activeThreadId;
-            return (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelectThread?.(t)}
-                  className={cn(
-                    'w-full text-left pl-3 pr-4 py-2.5 border-b border-lattice-border/60 border-l-2 transition-colors duration-100',
-                    'hover:bg-white/[0.03]',
-                    t.unread ? 'border-l-neon-blue' : 'border-l-transparent',
-                    active && 'bg-neon-blue/[0.06]',
-                  )}
-                >
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className={cn(
-                      'flex-1 truncate text-sm',
-                      t.unread ? 'font-semibold text-white' : 'text-gray-300'
-                    )}>
-                      {t.from}
-                    </span>
-                    {t.starred && <Star className="w-3 h-3 text-amber-400 fill-current shrink-0" />}
-                    {t.hasAttachment && <Paperclip className="w-3 h-3 text-gray-500 shrink-0" />}
-                    <span className="text-[11px] text-gray-500 font-mono tabular-nums whitespace-nowrap">
-                      {new Date(t.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
-                  </div>
-                  <div className={cn(
-                    'truncate text-sm',
-                    t.unread ? 'font-medium text-gray-100' : 'text-gray-400'
-                  )}>
-                    {t.subject}
-                  </div>
-                  <div className="truncate text-xs text-gray-500 mt-0.5">{t.snippet}</div>
-                  {t.labels && t.labels.length > 0 && (
-                    <div className="mt-1 flex gap-1 flex-wrap">
-                      {t.labels.slice(0, 3).map((l) => (
-                        <span
-                          key={l}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-elevated border border-lattice-border text-gray-400"
-                        >
-                          {l}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+      {/* Thread list — Virtuoso owns its own scroll container, so no
+          overflow-y-auto here (would fight its internal scroller). */}
+      <section className="w-96 shrink-0 border-r border-lattice-border bg-lattice-surface">
+        <Virtuoso
+          data={threads}
+          style={{ height: '100%' }}
+          itemContent={renderThreadRow}
+        />
       </section>
 
       {/* Reading pane */}
