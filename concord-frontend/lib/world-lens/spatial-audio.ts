@@ -152,6 +152,17 @@ export class ReverbZoneManager {
   }
 
   /**
+   * Remove every registered zone. For callers that don't have real
+   * per-room geometry to register as a fixed zones list (e.g. a component
+   * that only knows a boolean "is the player indoors" signal) and instead
+   * maintain a single dynamic zone that gets cleared and re-added as that
+   * signal changes.
+   */
+  clearZones(): void {
+    this.zones.length = 0;
+  }
+
+  /**
    * Connect an audio source so it participates in zone reverb.
    * Call once when creating a new sound emitter.
    */
@@ -226,6 +237,22 @@ export class ReverbZoneManager {
  * Clear LoS:  filter frequency = 20 000 Hz (passthrough)
  * Occluded:   filter frequency = 400 Hz (muffled through wall)
  */
+/**
+ * Map an occlusion value (0 = fully blocked, 1 = open line of sight) to the
+ * lowpass-filter cutoff + gain that expresses it. Pulled out of
+ * OccludedSoundEmitter.setOcclusion so callers that can't use the full class
+ * (e.g. an engine that routes every source through its own shared master
+ * gain rather than straight to ctx.destination) can still apply the exact
+ * same muffling curve instead of inventing a second one.
+ */
+export function occlusionToFilterParams(value: number): { freq: number; gain: number } {
+  const clamp = Math.max(0, Math.min(1, value));
+  // Cutoff: 400 Hz at 0, 20 kHz at 1 (log scale)
+  const freq = 400 * Math.pow(50, clamp); // 400→20000 Hz
+  const gain = 0.2 + clamp * 0.8;         // 0.2 at fully occluded
+  return { freq, gain };
+}
+
 export class OccludedSoundEmitter {
   readonly panner:  PannerNode;
   readonly filter:  BiquadFilterNode;
@@ -256,10 +283,7 @@ export class OccludedSoundEmitter {
    * Smoothly adjusts lowpass cutoff and gain.
    */
   setOcclusion(value: number, ctx: AudioContext): void {
-    const clamp   = Math.max(0, Math.min(1, value));
-    // Cutoff: 400 Hz at 0, 20 kHz at 1 (log scale)
-    const freq    = 400 * Math.pow(50, clamp); // 400→20000 Hz
-    const gain    = 0.2 + clamp * 0.8;         // 0.2 at fully occluded
+    const { freq, gain } = occlusionToFilterParams(value);
     this.filter.frequency.setTargetAtTime(freq, ctx.currentTime, 0.05);
     this.gainNode.gain.setTargetAtTime(gain, ctx.currentTime, 0.05);
   }
