@@ -32032,7 +32032,7 @@ registerHook("before_tool", async (ctx) => {
 
 
 // ---- DTU Endpoints (extracted to routes/dtus.js) ----
-registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, saveStateDebounced, validate });
+registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, saveStateDebounced, validate, requireRole });
 
 // ---- Save status + manual snapshot (extracted to routes/save.js) ----
 registerSaveRoutes(app, { db, asyncHandler, STATE });
@@ -46976,7 +46976,11 @@ app.get("/api/quality/thresholds/:domain", requireAuth(), (req, res) => {
   res.json({ ok: true, thresholds });
 });
 
-app.get("/api/quality/thresholds", requireAuth(), (req, res) => {
+// Stability audit (2026-07-20) — restricted to admin/sovereign. Global,
+// system-wide config (every domain's quality thresholds), not user-scoped;
+// exclusively consumed by the admin lens (verified: no other frontend
+// consumer anywhere in the app).
+app.get("/api/quality/thresholds", requireRole("admin", "sovereign"), (req, res) => {
   const all = {};
   for (const domain of Object.keys(DOMAIN_ACTION_MANIFEST)) {
     all[domain] = getQualityThresholds(domain);
@@ -57388,7 +57392,10 @@ app.get("/api/platform/status", (_req, res) => {
 });
 
 // Loaf status
-app.get("/api/loaf/status", (_req, res) => {
+// Stability audit (2026-07-20) — restricted to admin/sovereign. Global
+// system-internal counts (timelines/branches), not user-scoped; exclusively
+// consumed by command-center (verified: no other frontend consumer).
+app.get("/api/loaf/status", requireRole("admin", "sovereign"), (_req, res) => {
   try {
     res.json({ ok: true, loaf: { enabled: !!STATE.loaf, timelines: STATE.loaf?.timelines?.size || 0, branches: STATE.loaf?.branches?.size || 0 } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }

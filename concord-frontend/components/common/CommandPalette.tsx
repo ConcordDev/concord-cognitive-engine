@@ -133,6 +133,11 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   // Debug/Admin/Ops Telemetry/Repair Telemetry/Foundry/World Creator are
   // hidden from search results below expertiseLevel==='engineering'.
   const expertiseLevel = useHUDContext((s) => s.expertiseLevel);
+  // Real user role (synced in Providers.tsx from /api/auth/me) — gates
+  // sovereign lenses (admin/command-center) out of search results for
+  // non-admin/sovereign users, mirroring Sidebar.tsx's use of the same
+  // store field so Ctrl+K search can't bypass the sidebar's hiding.
+  const userRole = useUIStore((s) => s.userRole);
 
   // All command-palette-eligible lenses. ConKay — Kay, Concord's
   // voice-native AI majordomo — is prepended as a "hidden staple" so it
@@ -260,8 +265,8 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         keywords: ['mode', 'dungeon', 'raid', 'boss', 'instance'],
       },
     ];
-    return [conkay, ...getCommandPaletteLenses(expertiseLevel), ...panelEntries, ...modeEntries];
-  }, [expertiseLevel]);
+    return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries];
+  }, [expertiseLevel, userRole]);
 
   // Filtered + scored results
   const results = useMemo(() => {

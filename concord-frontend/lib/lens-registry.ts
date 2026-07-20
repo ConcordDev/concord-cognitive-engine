@@ -3213,13 +3213,20 @@ export function getSidebarLenses(): LensEntry[] {
  * player can't stumble into developer/admin/world-builder tooling by
  * searching for it. Defaults to `'engineering'` (the most permissive
  * level) so callers that don't pass it reproduce the exact prior
- * behavior.
+ * behavior. `userRole` additionally filters out sovereign lenses
+ * (`admin`/`command-center`) via `isLensVisible` for non-admin/sovereign
+ * viewers — Ctrl+K search must not be a bypass around the sidebar's
+ * `getExtensionsByCategory` hiding the same lenses. Defaults to `'user'`
+ * (least-privileged — fails closed) rather than `'engineering'`'s
+ * permissive default, since an omitted role has no safe permissive
+ * reading the way an omitted expertise level does.
  */
 export function getCommandPaletteLenses(
   viewerExpertise: 'newcomer' | 'standard' | 'detailed' | 'engineering' = 'engineering',
+  userRole: string = 'user',
 ): LensEntry[] {
   return LENS_REGISTRY
-    .filter((l) => l.showInCommandPalette && meetsExpertiseGate(l, viewerExpertise))
+    .filter((l) => l.showInCommandPalette && meetsExpertiseGate(l, viewerExpertise) && isLensVisible(l.id, userRole))
     .sort((a, b) => a.order - b.order);
 }
 
@@ -3246,10 +3253,18 @@ export function getLensesByCategory(): Record<LensCategory, LensEntry[]> {
 
 // ── Sovereign visibility & sidebar category grouping ──────────
 
-/** Lens IDs historically restricted — now open to all authenticated users */
-export const SOVEREIGN_LENSES = [] as const;
+/**
+ * Lens IDs restricted to admin/sovereign roles. Mirrors the `Sovereign`
+ * sidebar category below and the backend's own `requireRole("admin",
+ * "sovereign")` gates on the routes these two lenses call
+ * (`/api/quality/thresholds`, `/api/loaf/status`, `/api/dtus/shadow/pending`,
+ * plus the rest of admin/command-center's already-safe user-scoped or
+ * shared routes) — the frontend hide is defense-in-depth, not the
+ * security boundary; the backend `requireRole` middleware is.
+ */
+export const SOVEREIGN_LENSES = ['admin', 'command-center'] as const;
 
-/** Set for fast lookup (empty — no lenses restricted) */
+/** Set for fast lookup. */
 const SOVEREIGN_LENS_SET = new Set<string>(SOVEREIGN_LENSES);
 
 /**
@@ -3473,10 +3488,15 @@ export function getSidebarCategory(lensId: string): string {
 
 /**
  * Checks if a lens is visible to the given user role.
- * Every lens is visible to all authenticated users. No exceptions.
+ * Every lens is visible to all authenticated users EXCEPT the sovereign
+ * lenses (`SOVEREIGN_LENSES` — currently `admin` + `command-center`),
+ * which require `role === 'admin' || role === 'sovereign'`. An
+ * unrecognized/missing role is treated as the least-privileged case
+ * (fails closed on sovereign lenses, not open).
  */
-export function isLensVisible(_lensId: string, _userRole: string): boolean {
-  return true;
+export function isLensVisible(lensId: string, userRole: string): boolean {
+  if (!SOVEREIGN_LENS_SET.has(lensId)) return true;
+  return userRole === 'admin' || userRole === 'sovereign';
 }
 
 // ── Convenience aliases ─────────────────────────────────────────
@@ -3527,16 +3547,17 @@ export function toLensConfig(entry: LensEntry): LensConfig {
 
 /**
  * Returns extension lenses grouped by sidebar category for display.
- * Filters by user role (hides sovereign lenses for non-sovereign users).
- * World Lens Phase 5 (Sanctum tier) additionally filters by
- * `viewerExpertise` via `meetsExpertiseGate` — kept as a SEPARATE filter
- * from `isLensVisible`'s role check (not folded into that function)
- * because `isLensVisible` is currently a stub that always returns `true`
- * ("Every lens is visible to all authenticated users. No exceptions.") —
- * a real, pre-existing gap unrelated to this phase's expertise gating
- * that isn't this pass's to fix. Defaults to `'engineering'` (the most
- * permissive level) so omitting the argument reproduces the exact prior
- * behavior for any future caller that doesn't pass it.
+ * Filters by user role via `isLensVisible` (hides sovereign lenses —
+ * `admin`/`command-center` — for non-admin/sovereign users). World Lens
+ * Phase 5 (Sanctum tier) additionally filters by `viewerExpertise` via
+ * `meetsExpertiseGate` — kept as a separate filter since it gates a
+ * different axis (developer/world-builder tooling by expertise level,
+ * not admin-only data by role) and callers may want one without the
+ * other. Defaults to `'engineering'` (the most permissive expertise
+ * level) so omitting the argument reproduces prior expertise-gating
+ * behavior for any caller that doesn't pass it; `userRole` has no
+ * equivalent permissive default — callers MUST pass the real role, or
+ * sovereign lenses stay hidden (fail closed).
  * Each category entry contains resolved LensEntry objects.
  */
 export function getExtensionsByCategory(

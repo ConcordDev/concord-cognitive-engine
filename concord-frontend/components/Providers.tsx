@@ -152,15 +152,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // Fetch CSRF token on app init (ensures POSTs work even if login was in a prior session)
     api.get('/api/auth/csrf-token').catch(() => {});
 
-    // Fetch user scopes for PermissionGate
+    // Fetch user scopes for PermissionGate + sync the real role into
+    // useUIStore. The real backend shape (server/routes/auth.js `/me`) is
+    // `{ ok, user: { id, username, email, role, scopes, ... } }` — reading
+    // `res.data?.scopes` (no `.user`) was a stale wrong-path bug that meant
+    // `scopes` always fell through to `res.data?.permissions` (also never
+    // present) and silently resolved to `[]` for every user, every session.
+    // The role sync is new: `useUIStore`'s `userRole` previously had no
+    // real producer anywhere in the app and stayed stuck at its hardcoded
+    // default forever, which — combined with `isLensVisible` — meant
+    // sovereign-gated lenses (admin/command-center) were never actually
+    // hidden from anyone regardless of their real role.
     api.get('/api/auth/me')
       .then((res) => {
         if (cancelled) return;
-        const scopes = res.data?.scopes || res.data?.permissions || [];
+        const user = res.data?.user;
+        const scopes = user?.scopes || res.data?.scopes || res.data?.permissions || [];
         if (Array.isArray(scopes)) setUserScopes(scopes);
+        if (typeof user?.role === 'string' && user.role) {
+          useUIStore.getState().setUserRole(user.role);
+        }
       })
       .catch(() => {
-        // Not authenticated — the 401 interceptor will handle redirect
+        // Not authenticated — the 401 interceptor will handle redirect.
+        // userRole stays at its fail-closed 'user' default.
       });
 
     return () => {

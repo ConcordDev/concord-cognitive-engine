@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { AdminRequiredState } from '@/components/common/EmptyState';
 import { ConcordVitals } from '@/components/command-center/ConcordVitals';
 import { OpsCockpit } from '@/components/command-center/OpsCockpit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1800,12 +1801,28 @@ export default function CommandCenterPage() {
     ],
     { lensId: 'command-center' }
   );
-  // Auth check — any authenticated user can access command center
+  // Auth check — command center is sovereign-gated (admin/sovereign only).
+  // Stability audit (2026-07-20) — this previously read "any authenticated
+  // user can access command center" and only checked *that a session
+  // exists*, not the role. That was a real gap: most of this page's own
+  // backend queries (affect/state, cognitive/status, federation/*,
+  // shield/*) are legitimately shared with other lenses and don't 403 for
+  // a regular user, so there was no reliable 403 signal to gate the page
+  // on the way `admin/page.tsx`'s `AdminRequiredState` gate does. Two of
+  // this page's routes (`/api/loaf/status`, `/api/dtus/shadow/pending`)
+  // are now backend-restricted to admin/sovereign too, but gating the
+  // whole page needs an explicit client-side role check, not a 403 probe.
+  // Hiding this lens from the sidebar/palette (see `lib/lens-registry.ts`
+  // `isLensVisible`) stops casual discovery but not direct URL navigation
+  // — this is that missing defense-in-depth layer. The real security
+  // boundary remains the backend's own `requireRole` gates.
   const { data: me, isLoading: authLoading } = useQuery({
     queryKey: ['cc-auth'],
     queryFn: () => apiHelpers.auth.me().then(r => r.data),
     retry: false,
   });
+  const userRole = useUIStore((s) => s.userRole);
+  const isSovereignRole = userRole === 'admin' || userRole === 'sovereign';
 
   useEffect(() => {
     if (!authLoading && !me) {
@@ -1815,6 +1832,15 @@ export default function CommandCenterPage() {
 
   if (authLoading) return null;
   if (!me) return null;
+  if (!isSovereignRole) {
+    return (
+      <LensShell lensId="command-center" asMain={false}>
+        <div className="flex items-center justify-center h-full p-8">
+          <AdminRequiredState roles={['admin', 'sovereign']} />
+        </div>
+      </LensShell>
+    );
+  }
 
   const renderPanel = () => {
     switch (activeTab) {

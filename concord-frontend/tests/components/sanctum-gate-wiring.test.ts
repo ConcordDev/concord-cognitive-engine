@@ -8,6 +8,14 @@
 // useHUDContext().expertiseLevel value (the same store
 // ConcordiaScene.tsx's context-sensitive FOV reads) rather than silently
 // keeping their old, ungated call.
+//
+// Stability audit (2026-07-20) — CommandPalette.tsx now ALSO threads the
+// real useUIStore userRole through getCommandPaletteLenses, so sovereign
+// lenses (admin/command-center) are hidden from ⌘K search the same way
+// Sidebar.tsx already hides them from getExtensionsByCategory (see
+// lens-registry-sovereign-gate.test.ts for the gating logic's own
+// coverage). The regex pins below were updated to match the two-argument
+// call + widened dependency array.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -52,7 +60,13 @@ describe('CommandPalette.tsx reads the real expertise level and threads it into 
   });
 
   it('passes it into getCommandPaletteLenses and depends on it in the memo', () => {
-    expect(paletteSrc).toMatch(/getCommandPaletteLenses\(expertiseLevel\)/);
-    expect(paletteSrc).toMatch(/\}, \[expertiseLevel\]\);/);
+    expect(paletteSrc).toMatch(/getCommandPaletteLenses\(expertiseLevel, userRole\)/);
+    expect(paletteSrc).toMatch(/\}, \[expertiseLevel, userRole\]\);/);
+  });
+});
+
+describe('CommandPalette.tsx reads the real user role and threads it into the sovereign-lens gate', () => {
+  it('reads userRole from useUIStore', () => {
+    expect(paletteSrc).toMatch(/const userRole = useUIStore\(\(s\) => s\.userRole\);/);
   });
 });

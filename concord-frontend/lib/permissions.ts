@@ -10,17 +10,25 @@
  *  - The frontend never pre-rejects actions — the backend decides.
  */
 
+import { isLensVisible } from './lens-registry';
+
 /** RBAC roles in the system (ascending privilege) */
 export type Role = 'spectator' | 'member' | 'admin' | 'sovereign';
 
 /**
  * Can this user see the lens in navigation / render it?
- * Every lens is usable by default for ALL authenticated users.
- * Only exception: spectators (login page only).
+ * Every lens is usable by default for ALL authenticated users, except
+ * spectators (login page only) and the sovereign lenses
+ * (`lens-registry.ts`'s `SOVEREIGN_LENSES` — admin/command-center),
+ * which require admin/sovereign role. Delegates to `isLensVisible` — the
+ * one real implementation — rather than duplicating the sovereign-lens
+ * check here; this function previously had its own always-`true` stub
+ * that silently contradicted the exact rule stated in this file's own
+ * doc comment above.
  */
-export function canViewLens(_lensId: string, role: string): boolean {
+export function canViewLens(lensId: string, role: string): boolean {
   if (!role || role === 'spectator') return false;
-  return true;
+  return isLensVisible(lensId, role);
 }
 
 /**

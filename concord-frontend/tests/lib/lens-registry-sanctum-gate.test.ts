@@ -3,11 +3,12 @@
 // Editor, admin/ops tooling) a newcomer or standard player never needs
 // and shouldn't stumble into via search.
 //
-// meetsExpertiseGate() is a real, pure, importable function (not a stub —
-// contrast with the pre-existing isLensVisible(), which the code's own
-// comment claims filters by role but is actually hardcoded to always
-// return true; left untouched here since it's a separate, pre-existing
-// gap this phase didn't create and isn't fixing as a side effect).
+// meetsExpertiseGate() is a real, pure, importable function gating by
+// expertise level — a separate axis from isLensVisible()'s role-based
+// sovereign-lens gate (admin/command-center only; see
+// lens-registry-sovereign-gate.test.ts for that gate's own coverage,
+// fixed in the 2026-07-20 stability audit — isLensVisible() previously
+// was a stub hardcoded to always return true).
 //
 // Six entries were individually verified (not inferred from
 // `category: 'system'` alone, which also holds normal account-management
@@ -86,8 +87,14 @@ describe('getCommandPaletteLenses — Sanctum filtering', () => {
     }
   });
 
-  it('includes all 6 Sanctum entries at engineering level', () => {
-    const ids = getCommandPaletteLenses('engineering').map((l) => l.id);
+  it('includes all 6 Sanctum entries at engineering level for an admin/sovereign viewer', () => {
+    // 'admin' is both expertise-gated (Sanctum tier) AND role-gated
+    // (SOVEREIGN_LENSES, see lens-registry-sovereign-gate.test.ts) — pass
+    // an admin role explicitly so this test isolates the expertise-gate
+    // concern from the (separately tested) role-gate concern, rather
+    // than relying on the function's default userRole ('user', fails
+    // closed on sovereign lenses by design).
+    const ids = getCommandPaletteLenses('engineering', 'admin').map((l) => l.id);
     for (const sanctumId of SANCTUM_IDS) {
       expect(ids, `${sanctumId} should appear at engineering level`).toContain(sanctumId);
     }
