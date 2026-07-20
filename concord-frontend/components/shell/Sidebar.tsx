@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { getDestinationsByGroup, isDestination, type DestinationDef } from '@/lib/destinations';
 import { cn } from '@/lib/utils';
+import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 
 /**
  * Static active-highlight classes per core color.
@@ -492,6 +493,9 @@ const DestinationLink = memo(function DestinationLink({ dest, pathname }: { dest
 /**
  * Category-grouped extensions with search filter and collapsible sections.
  * Respects sovereign role gating — sovereign-only lenses hidden from regular users.
+ * World Lens Phase 5 — also respects Sanctum-tier expertise gating
+ * (Debug/Admin/Ops Telemetry/Repair Telemetry/Foundry/World Creator hidden
+ * below expertiseLevel==='engineering').
  * Destinations (promoted to their own section above) are excluded so they don't
  * appear twice.
  */
@@ -510,14 +514,22 @@ const CategoryGroupedExtensions = memo(function CategoryGroupedExtensions({
   expandedCategories: Set<string>;
   onToggleCategory: (category: string) => void;
 }) {
+  // World Lens Phase 5 (Sanctum tier) — the real, already-live expertise
+  // level (newcomer/standard/detailed/engineering), read the same way
+  // ConcordiaScene.tsx now reads it for context-sensitive FOV. Entries with
+  // `minExpertise` set (Debug/Admin/Ops Telemetry/Repair Telemetry/
+  // Foundry/World Creator) only appear once the viewer is at or above that
+  // level — see meetsExpertiseGate() in lib/lens-registry.ts.
+  const expertiseLevel = useHUDContext((s) => s.expertiseLevel);
+
   // Get all extension categories filtered by user role, MINUS the promoted
   // destinations (they have their own section — avoid double-listing).
   const categoryGroups = useMemo(
     () =>
-      getExtensionsByCategory(userRole)
+      getExtensionsByCategory(userRole, expertiseLevel)
         .map((g) => ({ ...g, lenses: g.lenses.filter((l) => !isDestination(l.id)) }))
         .filter((g) => g.lenses.length > 0),
-    [userRole]
+    [userRole, expertiseLevel]
   );
 
   // Filter lenses by search query
