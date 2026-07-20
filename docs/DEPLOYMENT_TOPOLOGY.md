@@ -2,6 +2,15 @@
 
 **Date:** 2026-06-26 · Grounded in a read-only audit of the running stack (file paths inline).
 
+**GPU/CPU pinning audit correction (2026-07-20):** this doc's "Blackwell GPU" framing is stale — the
+real deployed target is now a single **NVIDIA A40 (48GB GDDR6)**, not the RTX PRO 4500 Blackwell
+(32GB) described throughout below (`docker-compose.yml` — search "target: single NVIDIA A40" — has
+already been re-tuned with a real per-instance VRAM/CPU budget; this doc predates that switch and
+hasn't been re-verified against it line-by-line). The architectural recommendation below (client
+renders, GPU is cognition-only) is unaffected by the card swap; only the specific VRAM/model-size
+numbers should be read as historical, not current — see CLAUDE.md's five-brain section for the
+corrected pointer.
+
 This doc answers: *where should the 3D rendering run, and how is the Blackwell GPU best used,* given
 Concord runs on a **single RunPod GPU pod behind Cloudflare**. It is a recommendation + a flagged spec
 for an optional future tier — not a rebuild.
