@@ -23,6 +23,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { SummonDrawer } from '@/components/lens/SummonDrawer';
 
 import DistrictViewport from '@/components/world-lens/DistrictViewport';
 import CreationToolbar from '@/components/world-lens/CreationToolbar';
@@ -5988,19 +5989,11 @@ export default function WorldLensPage() {
               <CharacterSheetPanel worldId={currentWorldId} onClose={() => setShowPanel('none')} />
             </div>
           )}
+          {/* World Lens Phase 5 — standardized onto the shared Summon shell
+              (was hand-rolled header + close-button markup duplicating what
+              SummonDrawer now provides everywhere else). */}
           {showPanel === 'timeline' && (
-            <div className="absolute top-4 left-4 z-20 w-[28rem] max-w-[90vw] max-h-[70vh] overflow-auto pointer-events-auto rounded-lg border border-cyan-500/20 bg-zinc-950/90 backdrop-blur shadow-xl">
-              <div className="flex items-center justify-between border-b border-cyan-500/15 px-3 py-2">
-                <div className="text-xs font-semibold tracking-wide text-cyan-200">District Timeline</div>
-                <button
-                  type="button"
-                  onClick={() => setShowPanel('none')}
-                  className="text-xs text-slate-400 hover:text-white"
-                  aria-label="Close timeline"
-                >
-                  ×
-                </button>
-              </div>
+            <SummonDrawer open title="District Timeline" onClose={() => setShowPanel('none')} widthClassName="w-[28rem]">
               <DistrictTimeline districtId={currentWorldId} />
               {/*
                 EnvironmentalStorytelling — surfaces ambient lore + season
@@ -6013,7 +6006,7 @@ export default function WorldLensPage() {
                 districtId={currentWorldId}
                 worldId={currentWorldId}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'quests' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
@@ -6042,13 +6035,21 @@ export default function WorldLensPage() {
               />
             </div>
           )}
+          {/* World Lens Phase 5 (Panels: Glance/Summon/Sanctum) — Chat and
+              Map are real Summon workspaces (temporary, closeable, world
+              keeps running underneath) but neither ChatSystem nor
+              MapNavigation accepts an onClose prop, so there was no way to
+              close either one short of re-toggling the same toolbar button
+              — a real, missing affordance, not just a shell-consistency
+              nit. SummonDrawer gives both a real close button wired to the
+              same setShowPanel('none') every other panel already uses. */}
           {showPanel === 'chat' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Chat" onClose={() => setShowPanel('none')} widthClassName="w-96">
               <ChatSystem worldId={currentWorldId} districtId={currentWorldId} />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'map' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Map" onClose={() => setShowPanel('none')}>
               <MapNavigation
                 playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.z }}
                 district={currentWorldDisplayName}
@@ -6069,7 +6070,7 @@ export default function WorldLensPage() {
                 onWaypointPlace={() => {}}
                 mapMode="district"
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'crafting' && (
             <div className="space-y-3">
@@ -6124,8 +6125,18 @@ export default function WorldLensPage() {
               />
             </div>
           )}
+          {/* World Lens Phase 5 (Panels) — every panel from here through
+              'voiceassist' below was missing a close affordance entirely:
+              none of PlayerPresence/PlayerProfile/CollaborationTools/
+              LiveCollaboration/SocialProofFeed/NotificationFeed/
+              SmartNotifications/ModerationPanel/OwnershipProfile/
+              FederationPanel/VoiceInterface/VoiceAssistant accept an
+              onClose prop (verified by grep — zero mentions in any of the
+              12 files), so once opened the only way out was re-toggling
+              the same toolbar button. SummonDrawer gives each a real close
+              button without touching the inner components at all. */}
           {showPanel === 'players' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Nearby Players" onClose={() => setShowPanel('none')}>
               <PlayerPresence
                 players={otherPlayers.map((op) => ({
                   id: op.id,
@@ -6188,20 +6199,20 @@ export default function WorldLensPage() {
                   }).catch(() => {});
                 }}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'profile' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Profile" onClose={() => setShowPanel('none')}>
               <PlayerProfile isOwnProfile />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'collaboration' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Collaboration Tools" onClose={() => setShowPanel('none')}>
               <CollaborationTools />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'livecollab' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Live Collaboration" onClose={() => setShowPanel('none')}>
               <LiveCollaboration
                 session={{
                   id: '',
@@ -6216,15 +6227,15 @@ export default function WorldLensPage() {
                 editHistory={[]}
                 conflicts={[]}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'socialproof' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Social Proof" onClose={() => setShowPanel('none')}>
               <SocialProofFeed />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'notifications' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Notifications" onClose={() => setShowPanel('none')}>
               <NotificationFeed
                 notifications={[]}
                 preferences={{
@@ -6242,10 +6253,10 @@ export default function WorldLensPage() {
                 onAction={() => {}}
                 onPreferenceChange={() => {}}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'smartnotify' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Smart Notifications" onClose={() => setShowPanel('none')}>
               <SmartNotifications
                 notifications={[]}
                 profile={{
@@ -6260,10 +6271,10 @@ export default function WorldLensPage() {
                 onDismiss={() => {}}
                 onLearn={() => {}}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'moderation' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Moderation" onClose={() => setShowPanel('none')}>
               <ModerationPanel
                 role="player"
                 reports={[]}
@@ -6272,27 +6283,27 @@ export default function WorldLensPage() {
                 onReport={() => {}}
                 onUndo={() => {}}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'ownership' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Ownership" onClose={() => setShowPanel('none')}>
               <OwnershipProfile />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'federation' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Federation" onClose={() => setShowPanel('none')}>
               <FederationPanel />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'voice' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Voice" onClose={() => setShowPanel('none')}>
               <VoiceInterface />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'voiceassist' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Voice Assistant" onClose={() => setShowPanel('none')}>
               <VoiceAssistant />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'skills' && (
             <div className="absolute top-4 right-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
