@@ -81,11 +81,6 @@ export default function CameraControls({
 }: CameraControlsProps) {
   const [showPresets, setShowPresets] = useState(false);
   const currentZoomLevel = getCurrentZoomLevel(cameraState.zoom);
-  // onRotate is currently unused by this component — rotation controls are
-  // disabled below (no real isometric-orbit implementation exists yet).
-  // Kept in the props contract so a future phase can wire it without an
-  // interface change; referenced here only to avoid an unused-prop lint.
-  void onRotate;
 
   const applyPreset = useCallback(
     (preset: (typeof presets)[number]) => {
@@ -176,42 +171,51 @@ export default function CameraControls({
         <div className="text-center text-[9px] text-gray-400 mt-1">{cameraState.zoom}%</div>
       </div>
 
-      {/* Rotation controls — isometric mode has no orbit implementation yet
-          (ConcordiaScene.tsx excludes 'isometric' from its per-frame camera
-          update entirely, and follow/first-person/interior don't use a
-          rotation angle at all), so these buttons would silently no-op in
-          every mode today. Per the honesty rubric, an inert disabled control
-          beats one that accepts a click and does nothing — disabled here
-          until camera-mode work adds real isometric orbit. */}
-      <div className={`${panel} p-2 opacity-50`} title="Isometric orbit rotation isn't wired yet">
-        <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">
-          Rotation <span className="normal-case text-gray-600">(coming soon)</span>
-        </div>
-        <div className="flex items-center justify-center gap-3">
-          <button disabled className="p-1.5 rounded bg-white/5 cursor-not-allowed" aria-label="Rotate cw">
-            <RotateCw className="w-4 h-4 text-gray-600 -scale-x-100" />
-          </button>
-          <div className="flex gap-1">
-            {rotations.map((angle) => (
-              <button
-                key={angle}
-                disabled
-                className={`px-2 py-1 rounded text-[10px] cursor-not-allowed ${
-                  cameraState.rotation === angle
-                    ? 'bg-cyan-500/10 text-cyan-700 border border-cyan-500/20'
-                    : 'text-gray-600 bg-white/5 border border-transparent'
-                }`}
-              >
-                {angle}
-              </button>
-            ))}
+      {/* Rotation controls. World Lens Phase 4 wired a real isometric orbit
+          in ConcordiaScene.tsx (see isometricAngleRef / ISOMETRIC_ANGLES)
+          eased toward whichever compass angle is selected — only shown in
+          isometric mode since that's the only mode that reads it (follow/
+          first-person/interior derive their camera from the player's pose
+          and have no rotation-angle concept). */}
+      {cameraState.mode === 'isometric' && (
+        <div className={panel + ' p-2'}>
+          <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">
+            Rotation
           </div>
-          <button disabled className="p-1.5 rounded bg-white/5 cursor-not-allowed" aria-label="Rotate cw">
-            <RotateCw className="w-4 h-4 text-gray-600" />
-          </button>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => onRotate(rotations[(rotations.indexOf(cameraState.rotation) + rotations.length - 1) % rotations.length])}
+              className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
+              aria-label="Rotate counter-clockwise"
+            >
+              <RotateCw className="w-4 h-4 text-gray-400 -scale-x-100" />
+            </button>
+            <div className="flex gap-1">
+              {rotations.map((angle) => (
+                <button
+                  key={angle}
+                  onClick={() => onRotate(angle)}
+                  className={`px-2 py-1 rounded text-[10px] transition-colors ${
+                    cameraState.rotation === angle
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                      : 'text-gray-400 bg-white/5 border border-transparent hover:bg-white/10'
+                  }`}
+                >
+                  {angle}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => onRotate(rotations[(rotations.indexOf(cameraState.rotation) + 1) % rotations.length])}
+              className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
+              aria-label="Rotate clockwise"
+            >
+              <RotateCw className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
+          <div className="text-center text-[9px] text-gray-500 mt-1">90° per step</div>
         </div>
-        <div className="text-center text-[9px] text-gray-600 mt-1">90° per step</div>
-      </div>
+      )}
 
       {/* Follow mode target — only 'avatar' has a real camera-target
           implementation (ConcordiaScene.tsx's follow block always reads the

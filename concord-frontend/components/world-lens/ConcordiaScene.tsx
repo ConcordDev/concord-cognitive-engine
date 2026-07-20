@@ -12,6 +12,7 @@ import { clearProceduralCache } from '@/lib/world-lens/procedural-texture';
 import { resolveSceneWorldId } from '@/lib/world-lens/resolve-scene-world-id';
 import { zoomToDistScale, DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
 import { computeShotFraming, applyEasing, type ShotFraming } from '@/lib/world-lens/cinematic-shot-geometry';
+import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 
 // Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
 // the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
@@ -133,6 +134,15 @@ interface ConcordiaSceneProps {
    * omitting this prop reproduces the previous hardcoded distance exactly.
    */
   cameraZoom?: number;
+  /**
+   * World Lens Phase 4 — isometric orbit rotation (Camera Mode panel's
+   * NE/SE/SW/NW compass buttons, CameraControls.tsx). Previously had no
+   * orbit implementation at all (isometric was excluded from the
+   * per-frame camera update entirely, a fixed pose only) despite the UI
+   * implying rotation worked. Defaults to 'NE', which reproduces the
+   * previous hardcoded (200,150,200)-looking-at-origin pose exactly.
+   */
+  isometricRotation?: 'NE' | 'SE' | 'SW' | 'NW';
   /** Per-frame player position + yaw, used for follow + first-person camera. */
   getPlayerPose?: () => { x: number; y: number; z: number; yaw: number } | null;
 }
@@ -207,6 +217,39 @@ const LAYER_NAMES = [
   'particles',
 ] as const;
 
+// World Lens Phase 4 — isometric orbit compass angles. NE = 45° reproduces
+// the original hardcoded (200,150,200)-looking-at-origin pose exactly
+// (sin(45°)*282.84 ≈ 200, cos(45°)*282.84 ≈ 200); the other three compass
+// points are 90° steps clockwise from there.
+const ISOMETRIC_ANGLES: Record<'NE' | 'SE' | 'SW' | 'NW', number> = {
+  NE: Math.PI / 4,
+  SE: (3 * Math.PI) / 4,
+  SW: (5 * Math.PI) / 4,
+  NW: (7 * Math.PI) / 4,
+};
+
+// World Lens Phase 4 — context-sensitive FOV. The neutral baseline the
+// camera-punch hit-stop kick and PhotoMode's freecam zoom already assumed
+// via a hardcoded `55` before this fix (now both read the dynamic
+// per-inputMode base instead of that constant, but the constant itself is
+// still the exploration/default value). Per-mode targets: combat widens
+// for peripheral awareness in a fight; dialogue tightens for an intimate,
+// conversational framing; vehicle widens further for a sense of speed;
+// creation/spectator widen slightly for a better overview; photo and
+// lens_work stay neutral (photo's own freecam zoom overrides FOV directly
+// when active; lens_work means a tool panel has focus, not the 3D view).
+const BASE_FOV = 55;
+const INPUT_MODE_FOV: Record<string, number> = {
+  exploration: BASE_FOV,
+  combat: 62,
+  dialogue: 42,
+  vehicle: 68,
+  photo: BASE_FOV,
+  creation: 58,
+  spectator: 58,
+  lens_work: BASE_FOV,
+};
+
 // ── Context ──────────────────────────────────────────────────────
 
 const ConcordiaSceneContext = createContext<ConcordiaSceneAPI | null>(null);
@@ -237,16 +280,29 @@ export default function ConcordiaScene({
   height = '100%',
   cameraMode = 'isometric',
   cameraZoom = DEFAULT_CAMERA_ZOOM,
+  isometricRotation = 'NE',
   getPlayerPose,
 }: ConcordiaSceneProps) {
+  // World Lens Phase 4 — context-sensitive FOV. HUDContextProvider's real,
+  // already-live `inputMode` (exploration/combat/dialogue/vehicle/photo/
+  // creation/spectator/lens_work — driven by real mode-switch events
+  // elsewhere in the app, not fabricated here) was tracked but had only 2
+  // of ~150 consumers reading it at all (per the plan's Phase 6 audit) —
+  // the camera was never one of them. A Zustand store, so it's importable
+  // directly rather than needing to be threaded down as a prop.
+  const inputMode = useHUDContext((s) => s.inputMode);
   // Mirror cameraMode + getPlayerPose into refs so the game loop can read
   // the latest values without re-running the heavy init effect on each
   // mode change. Updated on every render via the small effect below.
   const cameraModeRef = useRef(cameraMode);
   const cameraZoomRef = useRef(cameraZoom);
+  const isometricRotationRef = useRef(isometricRotation);
+  const inputModeRef = useRef(inputMode);
   const getPlayerPoseRef = useRef(getPlayerPose);
   useEffect(() => { cameraModeRef.current = cameraMode; }, [cameraMode]);
   useEffect(() => { cameraZoomRef.current = cameraZoom; }, [cameraZoom]);
+  useEffect(() => { isometricRotationRef.current = isometricRotation; }, [isometricRotation]);
+  useEffect(() => { inputModeRef.current = inputMode; }, [inputMode]);
   useEffect(() => { getPlayerPoseRef.current = getPlayerPose; }, [getPlayerPose]);
   // World Lens Phase 4 — Free camera mode. Unlike follow/first-person/
   // interior (whose transform is DERIVED every frame from the player's
@@ -263,6 +319,21 @@ export default function ConcordiaScene({
   // prop) so the two don't fight over the same keys.
   const freeCamPosRef = useRef<{ x: number; y: number; z: number } | null>(null);
   const freeCamKeysRef = useRef<Set<string>>(new Set());
+  // World Lens Phase 4 — Isometric orbit rotation. The current SMOOTHED
+  // orbit angle (radians); null until the first isometric frame runs, at
+  // which point it's seeded from isometricRotationRef's initial value so
+  // there's no pop on mount. Eased toward the target angle each frame
+  // (shortest-path, so NW→NE takes the 90° turn, not the 270° one) rather
+  // than snapping, matching the plan's "camera modes should feel smooth"
+  // intent for the other modes' lerped transitions.
+  const isometricAngleRef = useRef<number | null>(null);
+  // World Lens Phase 4 — context-sensitive FOV. Smoothly eases the base
+  // field-of-view toward INPUT_MODE_FOV[inputMode] every frame; the
+  // existing camera-punch hit-stop kick and PhotoMode's freecam zoom (both
+  // below) layer additively/override on top of this base exactly as they
+  // already layer on top of camera.position, and now settle back to this
+  // dynamic base instead of a hardcoded 55.
+  const contextFovRef = useRef(BASE_FOV);
   // World Lens Phase 4 — Cinematic camera mode. cinematic-director.ts
   // sequences real named shot templates (over_shoulder, crane_pull,
   // dolly_in, whip_pan, dutch_tilt, ...) and dispatches
@@ -1436,6 +1507,31 @@ export default function ConcordiaScene({
         // forward when it would clip into a wall.
         const mode = cameraModeRef.current;
         const getPose = getPlayerPoseRef.current;
+
+        // ── World Lens Phase 4 — Isometric orbit rotation ────────────
+        // Previously a fixed pose set once at scene construction and never
+        // revisited (isometric was excluded from every per-frame camera
+        // branch), despite the Camera Mode panel's NE/SE/SW/NW compass
+        // buttons implying rotation worked. Orbits around world origin at
+        // the same distance/height the original hardcoded (200,150,200)
+        // pose used (NE, 45°, reproduces it exactly), eased toward
+        // whichever compass angle is selected via the shortest angular
+        // path so NW→NE turns 90°, not 270°.
+        if (mode === 'isometric') {
+          const targetAngle = ISOMETRIC_ANGLES[isometricRotationRef.current] ?? ISOMETRIC_ANGLES.NE;
+          if (isometricAngleRef.current === null) isometricAngleRef.current = targetAngle;
+          let angleDiff = targetAngle - isometricAngleRef.current;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          const angleLerp = Math.min(1, delta * 3);
+          isometricAngleRef.current += angleDiff * angleLerp;
+          const angle = isometricAngleRef.current;
+          const dist = 282.84; // sqrt(200^2 + 200^2), the original fixed distance
+          const height = 150;  // the original fixed height
+          camera.position.set(Math.sin(angle) * dist, height, Math.cos(angle) * dist);
+          camera.lookAt(0, 0, 0);
+        }
+
         if (mode !== 'isometric' && mode !== 'cinematic' && mode !== 'free' && getPose) {
           const pose = getPose();
           if (pose) {
@@ -1581,6 +1677,22 @@ export default function ConcordiaScene({
           camera.rotation.z = cs.startTilt + (cs.target.tiltRad - cs.startTilt) * t;
         }
 
+        // ── World Lens Phase 4 — context-sensitive FOV ────────────────
+        // Eases the base FOV toward whatever HUDContextProvider's real
+        // inputMode implies (combat wider, dialogue tighter, vehicle
+        // wider still, ...). Runs before the punch/freecam blocks below so
+        // they still layer additively/override on top of this base exactly
+        // as before, just against a dynamic base instead of a hardcoded 55.
+        {
+          const targetFov = INPUT_MODE_FOV[inputModeRef.current] ?? BASE_FOV;
+          const fovLerp = Math.min(1, delta * 2);
+          contextFovRef.current += (targetFov - contextFovRef.current) * fovLerp;
+          if (Math.abs(camera.fov - contextFovRef.current) > 0.01) {
+            camera.fov = contextFovRef.current;
+            camera.updateProjectionMatrix();
+          }
+        }
+
         // Sprint 1 (juice) — apply the camera-punch impulse on top of the base
         // transform. Shake comes from the shared trauma engine (decaying, coherent
         // noise); the brief FOV kick rides the cameraPunchRef window. Read after the
@@ -1598,12 +1710,12 @@ export default function ConcordiaScene({
           if (nowMs < punch.until && punch.fov > 0) {
             const remain = (punch.until - nowMs) / Math.max(1, punch.until - punch.start);
             const k = remain * remain; // ease-out (the trauma² falloff)
-            const baseFov = 55;
+            const baseFov = contextFovRef.current;
             camera.fov = baseFov - punch.fov * baseFov * k; // brief zoom-in
             camera.updateProjectionMatrix();
-          } else if (punch.fov > 0 && Math.abs(camera.fov - 55) > 0.01) {
-            // Settle FOV back to base once the punch ends.
-            camera.fov = 55;
+          } else if (punch.fov > 0 && Math.abs(camera.fov - contextFovRef.current) > 0.01) {
+            // Settle FOV back to the context-driven base once the punch ends.
+            camera.fov = contextFovRef.current;
             camera.updateProjectionMatrix();
           }
         }

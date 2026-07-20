@@ -2167,6 +2167,12 @@ export default function WorldLensPage() {
   // nothing). Real state now, consumed by ConcordiaScene's cameraZoom prop
   // to scale the Follow/Interior camera distance.
   const [cameraZoom, setCameraZoom] = useState(DEFAULT_CAMERA_ZOOM);
+  // World Lens Phase 4 — Camera Mode panel's NE/SE/SW/NW rotation compass.
+  // Previously hardcoded `rotation: 'NE'` in the CameraControls mount below
+  // with a no-op onRotate — the buttons were disabled anyway (no orbit
+  // implementation existed), so this was never actually reachable, but real
+  // state is needed now that ConcordiaScene.tsx has one.
+  const [cameraRotation, setCameraRotation] = useState<'NE' | 'SE' | 'SW' | 'NW'>('NE');
   // Concordia theme — auto-resolves from worldId so each canon world
   // looks distinct (Tunya = sun-baked, Cyber = neon, Fantasy = cool
   // forest, etc.). Player can override via the theme picker; the
@@ -4933,6 +4939,7 @@ export default function WorldLensPage() {
             renderStyle={concordiaRenderStyle}
             cameraMode={cameraMode}
             cameraZoom={cameraZoom}
+            isometricRotation={cameraRotation}
             questObjectives={questObjectives}
             getPlayerPose={() => ({
               x: playerAvatar.position.x,
@@ -5314,7 +5321,7 @@ export default function WorldLensPage() {
               cameraState={{
                 mode: cameraMode,
                 zoom: cameraZoom,
-                rotation: 'NE',
+                rotation: cameraRotation,
                 followTarget: 'avatar',
                 cinematicPlaying: false,
                 cinematicTime: 0,
@@ -5323,7 +5330,7 @@ export default function WorldLensPage() {
               }}
               onModeChange={(mode) => setCameraMode(mode as typeof cameraMode)}
               onZoom={setCameraZoom}
-              onRotate={() => {}}
+              onRotate={setCameraRotation}
               onTransition={() => {}}
             />
           </div>
