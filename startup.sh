@@ -239,11 +239,23 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
         pm2 restart concord-tunnel 2>/dev/null || true
       else
         log "Starting Cloudflare tunnel (supervised by PM2)..."
+        # Stability audit (2026-07-20) — FIXED a real bug: this used to start
+        # with --no-autorestart, then try to "fix" it with a second, malformed
+        # `pm2 start --name concord-tunnel --autorestart ...` call with no
+        # script/positional target — pm2 can't know what to (re)start from
+        # flags alone, so that line silently no-op'd (its error was swallowed
+        # by `2>/dev/null || true`). Net effect: the comment above claimed PM2
+        # supervision, but the ACTUAL running process had autorestart
+        # disabled — if cloudflared died for any reason (network blip, a
+        # Cloudflare-side issue, OOM), the tunnel stayed down and the site
+        # was externally unreachable with no automatic recovery until the
+        # 5-minute health-check cron noticed and force-restarted it. Fixed by
+        # setting --autorestart directly on the one real start command.
         pm2 start cloudflared \
           --name concord-tunnel \
-          --no-autorestart \
+          --autorestart \
+          --max-restarts 20 \
           -- tunnel --no-autoupdate run --token "${CLOUDFLARE_TUNNEL_TOKEN}"
-        pm2 start --name concord-tunnel --autorestart --max-restarts 20 2>/dev/null || true
         pm2 save
       fi
       log "Tunnel status: $(pm2 show concord-tunnel 2>/dev/null | grep status | head -1 || echo 'starting')"
