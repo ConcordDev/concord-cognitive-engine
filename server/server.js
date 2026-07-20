@@ -8753,7 +8753,18 @@ async function tryInitWebSockets(server) {
     // <1KB; a 1MB deeply-nested JSON payload can still burn parse CPU on the
     // single event-loop thread (JSON-bomb DoS). 64KB is generous for any real
     // client message and rejects the bomb at the transport layer before parse.
-    maxHttpBufferSize: Number(process.env.CONCORD_WS_MAX_BUFFER) || 64_000
+    maxHttpBufferSize: Number(process.env.CONCORD_WS_MAX_BUFFER) || 64_000,
+    // Browser-perf audit (2026-07-20) — per-message deflate was left at
+    // Engine.IO's default (on), which carries real per-socket memory
+    // overhead (a persistent zlib deflate/inflate context per connection,
+    // documented in Socket.IO's own performance-tuning guide) for traffic
+    // that's already <1KB per message per the comment above — compression
+    // overhead here is close to pure cost with minimal payload-size benefit.
+    // At "thousands of concurrent connections" on one box, that overhead
+    // adds up materially. Override via CONCORD_WS_PER_MESSAGE_DEFLATE=true
+    // if a future workload profile genuinely has large enough payloads to
+    // benefit (re-measure before flipping, don't assume).
+    perMessageDeflate: process.env.CONCORD_WS_PER_MESSAGE_DEFLATE === "true" ? {} : false,
   });
 
   // Phase 3a — multi-instance fan-out via the Redis adapter. Opt-in: only wired
