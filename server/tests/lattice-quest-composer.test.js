@@ -279,6 +279,27 @@ describe("spawnQuestFromAlert — end-to-end", () => {
     assert.equal(r.ok, false);
     assert.equal(r.reason, "missing_inputs");
   });
+
+  // Brain-wiring audit (2026-07-20) — spawnQuestFromAlert used to call
+  // composeQuestDialogue with only 3 args (quest, npcContext, worldVoice),
+  // so composeQuestDialogue's `if (!opts?.llm) return fallback()` guard
+  // always fired regardless of CONCORD_QUEST_DIALOGUE_LLM — the flag was
+  // dead from this call site. composeQuestDialogue's own LLM-branch logic
+  // is covered thoroughly by tests/quest-dialogue-composer.test.js (mocking
+  // opts.llm directly); what's genuinely only testable here is that THIS
+  // caller actually constructs and passes a 4th {llm} argument — a
+  // source-pin against the exact regression class (someone silently
+  // dropping the 4th argument again), since exercising the real
+  // ollamaChat() network path isn't practical in this unit-test file.
+  it("wires opts.llm to composeQuestDialogue's call site (source pin)", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(new URL("../lib/lattice-quest-composer.js", import.meta.url), "utf8");
+    // The composeQuestDialogue call must pass a 4th argument object whose
+    // `llm` key is threaded through, not omitted.
+    const callSite = src.slice(src.indexOf("await composeQuestDialogue("), src.indexOf("await composeQuestDialogue(") + 400);
+    assert.match(callSite, /\{\s*llm\s*\}/, "composeQuestDialogue call site must pass { llm } as its 4th argument");
+    assert.match(src, /CONCORD_QUEST_DIALOGUE_LLM/, "the flag gate must still exist in this file, not just delegated silently");
+  });
 });
 
 describe("realiseLatticeBornQuest", () => {
