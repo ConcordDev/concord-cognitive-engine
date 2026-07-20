@@ -15,14 +15,19 @@
  */
 
 import { Worker } from "node:worker_threads";
-import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import logger from '../logger.js';
+import { getRealCpuCount } from "../lib/cgroup-cpu.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const POOL_SIZE = Math.min(2, Math.max(1, os.cpus().length - 1)); // Cap at 2 to limit RSS
+// GPU/CPU pinning audit — getRealCpuCount() reads the cgroup-restricted core
+// count (matching scripts/pin-processes.sh's own detection), not the raw
+// os.cpus().length a shared/cgroup-limited host lies about. The Math.min(2, ...)
+// cap already bounded the practical damage of the old lie, but a correct
+// signal is still the right default to compute from.
+const POOL_SIZE = Math.min(2, Math.max(1, getRealCpuCount() - 1)); // Cap at 2 to limit RSS
 
 // Heavy macro domains — these get offloaded to workers
 const HEAVY_DOMAINS = new Set([

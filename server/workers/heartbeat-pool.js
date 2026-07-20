@@ -21,17 +21,25 @@
  */
 
 import { Worker } from "node:worker_threads";
-import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import logger from "../logger.js";
+import { getRealCpuCount } from "../lib/cgroup-cpu.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// GPU/CPU pinning audit — getRealCpuCount() reads the cgroup-restricted core
+// count, not the raw os.cpus().length a shared/cgroup-limited host (e.g. a
+// RunPod pod, where nproc/os.cpus() reports the HOST's real core count, not
+// the pod's slice — see scripts/runpod-cognition.sh's own comment on this)
+// lies about. Uncapped-by-a-tight-ceiling here (only Math.min(..., 8)) meant
+// a lying host could size this pool well past what a small, CPU-constrained
+// deploy (e.g. CONCORD_WORLD_CORE_COUNT=2 on a 9-vCPU box) actually has
+// available for the backend process at all.
 const HEARTBEAT_POOL_SIZE = Math.max(
   1,
   Math.min(
-    Number(process.env.CONCORD_HEARTBEAT_POOL_SIZE) || (os.cpus().length - 2),
+    Number(process.env.CONCORD_HEARTBEAT_POOL_SIZE) || (getRealCpuCount() - 2),
     8
   )
 );

@@ -16,9 +16,9 @@
 
 import { Worker } from "node:worker_threads";
 import path from "node:path";
-import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { PARENT_TO_CHILD, CHILD_TO_PARENT, shardingEnabled } from "./world-shard-protocol.js";
+import { getRealCpuCount } from "./cgroup-cpu.js";
 import logger from "../logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,12 +34,22 @@ const SHARD_READY_TIMEOUT_MS = Number(process.env.CONCORD_SHARD_READY_TIMEOUT_MS
 // concurrent shards: every world with an active user gets its own worker
 // thread (~200MB each per this file's own header), uncoordinated with the
 // macro pool / heartbeat pool, which independently size themselves off
-// os.cpus().length. On a fixed-core box (the A40 deploy target: 9 vCPU),
-// unbounded shard growth risks real thread-scheduling contention regardless
-// of memory headroom. Default is a conservative core-scaled heuristic
-// (more shards than ~2x cores starts contending in practice); tune via env
+// core count. On the real bare-metal deploy target (.env.runpod: a 9-vCPU
+// RunPod pod, CONCORD_WORLD_CORE_COUNT=2 reserved for the backend process —
+// world-sim + shards — with the rest split across 5 Ollama instances +
+// frontend), unbounded shard growth risks real thread-scheduling contention
+// regardless of memory headroom. First preference: CONCORD_WORLD_CORE_COUNT
+// when the deploy has explicitly declared its reserved core budget (the
+// same env var pin-processes.sh/runpod-cognition.sh already use) — a shard
+// count meaningfully past that reserved band contends with itself, not with
+// Ollama or the frontend. Falls back to a core-scaled heuristic off the
+// REAL cgroup-restricted core count (getRealCpuCount(), not the host's
+// raw/lying os.cpus().length — see lib/cgroup-cpu.js) when
+// CONCORD_WORLD_CORE_COUNT isn't set. Tune via CONCORD_MAX_ACTIVE_SHARDS
 // once real per-shard memory/CPU cost is observed in production.
-const SHARD_MAX_ACTIVE = Number(process.env.CONCORD_MAX_ACTIVE_SHARDS) || Math.max(4, os.cpus().length * 2);
+const SHARD_MAX_ACTIVE = Number(process.env.CONCORD_MAX_ACTIVE_SHARDS)
+  || (Number(process.env.CONCORD_WORLD_CORE_COUNT) > 0 ? Number(process.env.CONCORD_WORLD_CORE_COUNT) * 2 : null)
+  || Math.max(4, getRealCpuCount() * 2);
 
 /** @typedef {{
  *   worldId: string,
