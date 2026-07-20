@@ -5495,7 +5495,7 @@ export default function WorldLensPage() {
               feeding AvatarSystem3D above includes them. */}
           <WalkerNpcInjector
             worldId={activeDistrict?.id || 'concordia-hub'}
-            onWalkers={(npcs) => setWalkerNpcs(npcs)}
+            onWalkers={setWalkerNpcs}
           />
 
           {/* Sprint B.5 — tombs overlay: surfaces npc_legacies for the

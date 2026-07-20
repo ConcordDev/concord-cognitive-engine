@@ -81,10 +81,29 @@ export default function LandmarkSpires({ worldId, getCamera, activeQuestWaypoint
     return () => { cancelled = true; };
   }, [worldId]);
 
-  // Drive re-render at 30Hz while camera is moving (cheap; camera read is O(1)).
+  // Drive re-render at 30Hz while camera is moving (cheap; camera read is
+  // O(1)) — actually throttled to 30Hz, not just documented as such: this
+  // ran unthrottled at full display refresh rate (commonly 60Hz+) with no
+  // gate, pushing a React state update every single animation frame
+  // forever. Confirmed via a live stack-trace capture to be one of two
+  // continuously-ticking components (this one + AmbientFeedback's GC
+  // sweep) that, combined with the rest of this page's many other
+  // polling/ticking HUD widgets, was blowing through React's nested-update
+  // safety limit under load — surfacing as a repeated "Maximum update
+  // depth exceeded" console error that starved the actual Three.js render
+  // loop of main-thread time (the reason the World Lens stalled on
+  // "Building the world..." instead of ever finishing scene init).
   useEffect(() => {
     let raf: number;
-    const loop = () => { setTick(t => t + 1); raf = requestAnimationFrame(loop); };
+    let last = 0;
+    const FRAME_MS = 1000 / 30;
+    const loop = (now: number) => {
+      if (now - last >= FRAME_MS) {
+        last = now;
+        setTick(t => t + 1);
+      }
+      raf = requestAnimationFrame(loop);
+    };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, []);
