@@ -98,6 +98,13 @@ async function _loadShardHeartbeatModules() {
     ["../emergent/war-skirmish-cycle.js",         "runWarSkirmishCycle",         { id: "war-skirmish-cycle",       frequency: 2 }],
     ["../emergent/procgen-settlement-cycle.js",   "runProcgenSettlementCycle",   { id: "procgen-settlement-cycle", frequency: 240 }],
     ["../emergent/procedural-npc-spawner.js",     "runProceduralNpcSpawner",     { id: "procedural-npc-spawner",   frequency: 360 }],
+    // Track A (event-loop unblocking audit) — these three were confirmed
+    // genuinely per-world-capable (each requires/uses ctx.worldId rather than
+    // self-discovering every active world) but were missing from this list,
+    // so they silently never ran once CONCORD_SHARD_WORLDS was enabled.
+    ["../emergent/nemesis-cycle.js",              "runNemesisCycle",             { id: "nemesis-cycle",            frequency: 40 }],
+    ["../lib/plague-event.js",                    "plagueWatch",                 { id: "plague-watch",             frequency: 60 }],
+    ["../emergent/festival-trigger-cycle.js",     "runFestivalTriggerCycle",     { id: "festival-trigger-cycle",   frequency: 4 }],
   ];
 
   for (const [modPath, exportName, opts] of moduleImports) {

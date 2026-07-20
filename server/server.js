@@ -106,6 +106,11 @@ import { runFaunaSpawner } from "./lib/ecosystem/fauna-spawner.js";
 registerHeartbeat("fauna-spawner", {
   frequency: 30,
   handler: runFaunaSpawner,
+  // Track A — discovers active worlds itself (SELECT DISTINCT world_id
+  // FROM world_npcs) and loops over ALL of them under one shared
+  // BATCH_LIMIT in a single invocation; not written to accept a single
+  // worldId. Parent-only until it's refactored to take one.
+  scope: "global",
 });
 
 // Theme 2 (game-feel pass): boid steering for spawned fauna so creatures
@@ -127,7 +132,13 @@ import { runAffectTraceCycle } from "./emergent/affect-trace-cycle.js";
 registerHeartbeat("affect-trace-cycle", {
   frequency: 8,
   handler: runAffectTraceCycle,
-  scope: "world",
+  // Track A (event-loop unblocking audit) — re-scoped 'world' -> 'global':
+  // the handler reads `state.creatureMotion` (an in-memory map keyed by
+  // EVERY active world's id) and self-iterates `Object.keys(...)` in one
+  // call — it never reads ctx.worldId to filter to a single world, so the
+  // 'world' label was aspirational, matching the disease-tick-cycle /
+  // realm-control-cycle bug pattern found elsewhere in this same audit.
+  scope: "global",
 });
 
 // Wave 7 / Track C2-C3 — the agent guardrail enforcement points. An autonomous agent
@@ -153,7 +164,14 @@ import { runWorldMigrationCycle } from "./emergent/world-migration-cycle.js";
 registerHeartbeat("world-migration-cycle", {
   frequency: 20,
   handler: runWorldMigrationCycle,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': despite the doc comment above
+  // ("Per-world scope so it's shard-safe"), the handler self-discovers up to
+  // MAX_WORLDS_PER_PASS active worlds via discoverWorlds(db) and loops over
+  // all of them in one invocation — it never reads ctx.worldId. Marking it
+  // 'world' as-is would run the SAME worlds' migration step N times, once
+  // per active shard. Parent-only until discoverWorlds is taught to filter
+  // by a single passed-in worldId.
+  scope: "global",
 });
 
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
@@ -179,6 +197,9 @@ registerHeartbeat("water-flow-cycle", {
   frequency: 4,
   // Inject io so the cycle can emit concordia:water-updated hints (WS-A1).
   handler: ({ db } = {}) => runWaterFlowCycle({ db, io: REALTIME?.io }),
+  // Track A — self-discovers every world with water cells and loops over
+  // all of them in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Maintenance — the Homeostasis heartbeat (autonomic loop 3). Slow cadence
@@ -269,6 +290,10 @@ import { runPayCycle } from "./emergent/pay-cycle.js";
 registerHeartbeat("pay-cycle", {
   frequency: 40,
   handler: runPayCycle,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with employment edges and loops over all of
+  // them in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Living Society Phase 5 — the Movement/Cell keystone. Seed coalitions from
@@ -278,6 +303,10 @@ import { runMovementRecruitmentCycle } from "./emergent/movement-recruitment-cyc
 registerHeartbeat("movement-recruitment-cycle", {
   frequency: 50,
   handler: runMovementRecruitmentCycle,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with live NPCs and loops over all of them in
+  // one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Living Society Phase 7 — the Chronicle weave. Ingest labor/pay/grievance/
@@ -287,6 +316,10 @@ import { runChronicleWeave } from "./emergent/chronicle-weave.js";
 registerHeartbeat("chronicle-weave", {
   frequency: 30,
   handler: runChronicleWeave,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with live NPCs and loops over all of them in
+  // one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Living Society Phase 1.5c — fill settlement role vacancies (every role is
@@ -295,6 +328,10 @@ import { runVacancyRecruitCycle } from "./emergent/vacancy-recruit-cycle.js";
 registerHeartbeat("vacancy-recruit-cycle", {
   frequency: 80,
   handler: runVacancyRecruitCycle,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with open vacancies and loops over all of
+  // them in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Living Society Phase 11 — governance: tribute up the vassalage tree, protection
@@ -303,6 +340,10 @@ import { runGovernanceCycle } from "./emergent/governance-cycle.js";
 registerHeartbeat("governance-cycle", {
   frequency: 60,
   handler: runGovernanceCycle,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with sworn vassalage and loops over all of
+  // them in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
@@ -314,6 +355,10 @@ import { runMountCareCycle } from "./emergent/mount-care-cycle.js";
 registerHeartbeat("mount-care-cycle", {
   frequency: 60,
   handler: runMountCareCycle,
+  // Track A — the eligible-mounts query has no world_id filter; it pulls
+  // the globally-oldest-decayed mounts across every world into one
+  // capped batch. Parent-only.
+  scope: "global",
 });
 
 // EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
@@ -321,6 +366,10 @@ import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from
 registerHeartbeat("eco-expiry-sweep", {
   frequency: 5,
   handler: runEcoExpirySweep,
+  // Track A — sweeps `player_inventory`/`user_active_effects`, both
+  // USER-GLOBAL tables per this file's own invariant (an item/effect
+  // isn't scoped to any one world), with no world_id filter. Parent-only.
+  scope: "global",
 });
 
 // EvoEcosystem W6: prune expired Refusal Field entries every tick so
@@ -358,6 +407,9 @@ registerHeartbeat("corpse-cleanup", {
       return { ok: true, pruned: r.changes };
     } catch { return { ok: false, reason: "table_missing" }; }
   },
+  // Track A — the DELETE has no world_id filter, sweeping every world's
+  // expired corpses in one pass. Parent-only.
+  scope: "global",
 });
 
 // Phase 1 (UX completeness sprint) — lens_drafts GC. Hard-deletes draft
@@ -385,17 +437,24 @@ registerHeartbeat("privacy-retention-sweep", {
   scope: "global",
 });
 
-// Phase W — disease tick cycle (~75s cadence per world). Advances
-// severity of every active infection in the world.
+// Phase W — disease tick cycle (~75s cadence). Advances severity of
+// every active infection. Track A (event-loop unblocking audit) —
+// re-scoped 'world' -> 'global': `player_diseases` (migration 204) has
+// no world_id column at all — a disease is contracted BY a user, not
+// scoped to any one world (matches this file's own "immunity is global
+// per (user, disease)" invariant) — so the old "in this world (or
+// globally if no shard scope)" comment described an aspiration the
+// schema never backed. There's nothing to filter by world; this must
+// run on the parent, once, exactly as it does today.
 registerHeartbeat("disease-tick-cycle", {
   frequency: 5,
-  scope: "world",
+  scope: "global",
   handler: async ({ db: ctxDb, worldId }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     if (process.env.CONCORD_DISEASE_ENGINE === "false") return { ok: false, reason: "disabled" };
     try {
-      // Get every user with an active disease in this world (or globally
-      // if no shard scope). For each, run tickDiseases.
+      // Every user with an active disease, platform-wide (player_diseases
+      // has no world_id column — see the registration comment above).
       const userRows = ctxDb.prepare(`
         SELECT DISTINCT user_id FROM player_diseases
         WHERE recovered_at IS NULL LIMIT 200
@@ -662,28 +721,37 @@ import {
   runUnsafeExpansion,
 } from "./emergent/reflex-cortex.js";
 
+// Track A — all four reflex-cortex heartbeats monitor the CODEBASE itself
+// (architectural drift, scaling pressure, dependency entropy, unsafe
+// expansion), not any game world. Parent-only.
 registerHeartbeat("reflex-architectural-drift", {
   frequency: 360,
   handler: runArchitecturalDrift,
+  scope: "global",
 });
 registerHeartbeat("reflex-scaling-pressure", {
   frequency: 480,
   handler: runScalingPressure,
+  scope: "global",
 });
 registerHeartbeat("reflex-dependency-entropy", {
   frequency: 1440,
   handler: runDependencyEntropy,
+  scope: "global",
 });
 registerHeartbeat("reflex-unsafe-expansion", {
   frequency: 720,
   handler: runUnsafeExpansion,
+  scope: "global",
 });
 
 // Phase 7 / T2 — Code substrate refresh. Every 1440 ticks (~6h) re-emits
 // code-artifact DTUs (idempotent on id). The DTU consolidation pipeline
 // then forms code-MEGAs (economy substrate cluster, persistence cluster, …).
+// Track A — scans the repo itself, not any world. Parent-only.
 registerHeartbeat("code-substrate-refresh", {
   frequency: 1440,
+  scope: "global",
   handler: async ({ db }) => {
     if (!db) return { ok: false, reason: "no_db" };
     try {
@@ -707,8 +775,11 @@ try {
   _macroTelemetry.startTelemetry(path.resolve(_modDir, ".."));
 } catch (_e) { /* telemetry optional */ }
 
+// Track A — runs the code-quality/security detector suite over the repo
+// itself. Parent-only.
 registerHeartbeat("detectors-sweep", {
   frequency: 2880,
+  scope: "global",
   handler: async ({ db, state }) => {
     try {
       // Force a telemetry flush before the sweep so the latest in-memory
@@ -833,6 +904,9 @@ import { runNpcSkillEvolveCycle } from "./emergent/npc-skill-evolve-cycle.js";
 registerHeartbeat("npc-skill-evolve-cycle", {
   frequency: 80,
   handler: runNpcSkillEvolveCycle,
+  // Track A — both its queries (world_npcs by level, skill_evolution_unlocks)
+  // pull a single global-priority batch with no world_id filter. Parent-only.
+  scope: "global",
 });
 
 // Phase 1.5: NPC marketplace participation. Every 240 ticks (~60 min) lists
@@ -843,6 +917,12 @@ import { runNpcMarketplaceCycle } from "./emergent/npc-marketplace-cycle.js";
 registerHeartbeat("npc-marketplace-cycle", {
   frequency: 240,
   handler: runNpcMarketplaceCycle,
+  // Track A (event-loop unblocking audit) — listNpcRecipesPass/
+  // intraNpcPurchasePass query dtus/world_npcs with no world_id filter,
+  // matching sellers/buyers across worlds in one shared pass. Must stay
+  // parent-only: a per-world shard would silently never run it (orphaned
+  // under CONCORD_SHARD_WORLDS otherwise), not duplicate it.
+  scope: "global",
 });
 
 // Phase 3: Personal Beat Scheduler. Every 60 ticks (~15 min) surfaces a
@@ -854,6 +934,10 @@ import { runPersonalBeatScheduler } from "./emergent/personal-beat-scheduler.js"
 registerHeartbeat("personal-beat-scheduler", {
   frequency: 60,
   handler: runPersonalBeatScheduler,
+  // Track A — pulls "online users" via world_visits with no world_id
+  // filter and forward_predictions is keyed purely by user_id, not a
+  // single world. Parent-only.
+  scope: "global",
 });
 
 // Phase 4a: NPC daily routines. Every 5 ticks (~75s) advances NPC
@@ -882,7 +966,11 @@ registerHeartbeat("npc-scheme-cycle", {
 import { runSchemeOverhearCycle } from "./emergent/scheme-overhear-cycle.js";
 registerHeartbeat("scheme-overhear-cycle", {
   frequency: 8,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': despite the doc comment above,
+  // the handler queries every world with live plotting NPCs and loops over
+  // all of them in one invocation (no ctx.worldId filter). Marking it
+  // 'world' as-is would run the SAME worlds N times, once per active shard.
+  scope: "global",
   handler: runSchemeOverhearCycle,
 });
 
@@ -891,7 +979,11 @@ registerHeartbeat("scheme-overhear-cycle", {
 import { runWorldZoneHazardCycle } from "./emergent/world-zone-hazard-cycle.js";
 registerHeartbeat("world-zone-hazard-cycle", {
   frequency: 5,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': the handler queries every
+  // world with hazard zones and loops over all of them in one invocation
+  // (no ctx.worldId filter). Marking it 'world' as-is would run the SAME
+  // worlds N times, once per active shard.
+  scope: "global",
   handler: runWorldZoneHazardCycle,
 });
 
@@ -900,7 +992,11 @@ registerHeartbeat("world-zone-hazard-cycle", {
 import { runHorrorDreadCycle } from "./emergent/horror-dread-cycle.js";
 registerHeartbeat("horror-dread-cycle", {
   frequency: 2,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': the handler queries every
+  // active horror_sessions row across every world with no world_id filter
+  // and loops over all of them in one invocation. Marking it 'world' as-is
+  // would run the SAME sessions N times, once per active shard.
+  scope: "global",
   handler: runHorrorDreadCycle,
 });
 
@@ -915,19 +1011,31 @@ registerHeartbeat("horror-dread-cycle", {
 import { runNpcTravelCycle }       from "./emergent/npc-travel-cycle.js";
 import { runNpcVsNpcCombatCycle }  from "./emergent/npc-vs-npc-combat-cycle.js";
 import { runNpcAmbitionCycle }     from "./emergent/npc-ambition-cycle.js";
-registerHeartbeat("npc-travel-cycle",      { frequency: 60, handler: runNpcTravelCycle });
-registerHeartbeat("npc-vs-npc-combat",     { frequency: 8,  handler: runNpcVsNpcCombatCycle });
-registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbitionCycle });
+// Track A — all three are parent-only (scope 'global'): npc-travel-cycle
+// explicitly moves NPCs BETWEEN worlds in one operation and its candidate
+// query has no world_id filter; npc-vs-npc-combat-cycle discovers and
+// loops over every world_id itself inside one invocation (not designed
+// to be handed a single worldId); npc-ambition-cycle's top-N-ambitious
+// query is a single cross-world budget with no world_id filter — sharding
+// any of the three per-world would either duplicate-process the same
+// rows on every shard or silently never run at all.
+registerHeartbeat("npc-travel-cycle",      { frequency: 60, handler: runNpcTravelCycle, scope: "global" });
+registerHeartbeat("npc-vs-npc-combat",     { frequency: 8,  handler: runNpcVsNpcCombatCycle, scope: "global" });
+registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbitionCycle, scope: "global" });
 
 // Phase U — substrate-driven loose mount behaviour. Picks
 // wandering / fleeing / feeding per loose mount, advances position
 // one step, emits mount:behavior socket events on state change.
 import { runMountBehaviorCycle } from "./emergent/mount-behavior-cycle.js";
-registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle });
+// Track A — the eligible-companions query has no world_id filter, pulling
+// the globally-oldest-updated batch across every world. Parent-only.
+registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle, scope: "global" });
 
 // Temperament P5 — haul active NPC captures + roll escapes (behind CONCORD_TEMPERAMENT).
 import { runCaptureCycle } from "./emergent/capture-cycle.js";
-registerHeartbeat("capture-cycle", { frequency: 20, handler: runCaptureCycle });
+// Track A — the active-captures query has no world_id filter, pulling every
+// in-progress capture across every world in one pass. Parent-only.
+registerHeartbeat("capture-cycle", { frequency: 20, handler: runCaptureCycle, scope: "global" });
 
 // Sere managed parity — the Tessera funds both sides so the war never resolves
 // (CONCORD_TESSERA_PARITY=0 to disable; only ever acts on world_id='sere').
@@ -947,6 +1055,10 @@ import { runKingdomDecreeCycle } from "./emergent/kingdom-decree-cycle.js";
 registerHeartbeat("kingdom-decree-cycle", {
   frequency: 16,
   handler: runKingdomDecreeCycle,
+  // Track A — `SELECT id, ruler_kind, ruler_id, next_decree_at FROM realms`
+  // has no world_id filter, iterating every realm across every world in
+  // one pass. Parent-only.
+  scope: "global",
 });
 
 // Sprint B Phase 9 — NPC visible sentience. Every 8 ticks (~2 minutes)
@@ -1006,6 +1118,10 @@ import { runEcologyQuestCycle } from "./emergent/ecology-quest-cycle.js";
 registerHeartbeat("ecology-quest-cycle", {
   frequency: 240,
   handler: runEcologyQuestCycle,
+  // Track A — the imbalance-log query has no world_id filter, pulling the
+  // oldest-unresolved rows across every world in one bounded pass.
+  // Parent-only.
+  scope: "global",
 });
 
 // War-in-3D skirmish cycle. Advances active campaigns past their
@@ -1051,13 +1167,20 @@ import { runGoddessBroadcastCycle } from "./emergent/goddess-broadcast-cycle.js"
 registerHeartbeat("goddess-broadcast-cycle", {
   frequency: 240,
   handler: runGoddessBroadcastCycle,
+  // Track A — self-discovers every active world and loops over all of them
+  // in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Civic Capital — auto-pause stalled bond drives (kill-switch CONCORD_CIVIC_BONDS).
 import { runCivicBondCycle, CIVIC_BOND_CYCLE_FREQUENCY } from "./emergent/civic-bond-cycle.js";
 registerHeartbeat("civic-bond-cycle", {
   frequency: CIVIC_BOND_CYCLE_FREQUENCY,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': sweepStalledBonds(db, {}) has
+  // no world_id filter or parameter — it sweeps civic_bonds platform-wide
+  // in one call. Marking it 'world' as-is would run the SAME sweep N times,
+  // once per active shard.
+  scope: "global",
   handler: runCivicBondCycle,
 });
 
@@ -1065,16 +1188,29 @@ registerHeartbeat("civic-bond-cycle", {
 import { runViabilityCycle, VIABILITY_CYCLE_FREQUENCY } from "./emergent/viability-cycle.js";
 registerHeartbeat("viability-cycle", {
   frequency: VIABILITY_CYCLE_FREQUENCY,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': the handler self-discovers
+  // every active world and loops over all of them in one call (no
+  // ctx.worldId filter). Marking it 'world' as-is would run the SAME
+  // worlds N times, once per active shard.
+  scope: "global",
   handler: runViabilityCycle,
 });
 
 // Wave 5 #19 — civilization-as-control: PID feedback stabilises realm legitimacy
 // via tax_rate (kill-switch CONCORD_REALM_CONTROL).
+// Track A (event-loop unblocking audit) — re-scoped 'world' -> 'global':
+// the handler's own `SELECT id, legitimacy, tax_rate FROM realms` has no
+// world_id filter (the same cross-world pattern as kingdom-decree-cycle
+// a few hundred lines up), so despite the label this always iterated
+// every realm across every world in one pass. Marking it 'world' and
+// adding it to the per-world shard list as-is would have run the SAME
+// realms N times, once per active world shard. A proper fix would teach
+// the query to filter by worldId; until then, 'global' matches its real,
+// already-correct-for-single-process behavior exactly.
 import { runRealmControlCycle, REALM_CONTROL_FREQUENCY } from "./emergent/realm-control-cycle.js";
 registerHeartbeat("realm-control-cycle", {
   frequency: REALM_CONTROL_FREQUENCY,
-  scope: "world",
+  scope: "global",
   handler: runRealmControlCycle,
 });
 
@@ -1223,6 +1359,11 @@ registerHeartbeat("world-population-cycle", {
 import { runCombatRecoveryCycle } from "./emergent/combat-recovery-cycle.js";
 registerHeartbeat("combat-recovery-cycle", {
   frequency: 2,
+  // Track A — despite the file having a few world_id references (logging/
+  // lookups), its core gas-recovery/combo-decay query has no world_id
+  // filter — it operates over a single global batch of combat-active
+  // actors. Parent-only.
+  scope: "global",
   handler: runCombatRecoveryCycle,
 });
 
@@ -1246,6 +1387,9 @@ import { runFederationOutboxPump } from "./emergent/federation-outbox-pump.js";
 registerHeartbeat("federation-outbox-pump", {
   frequency: 30,
   handler: ({ db } = {}) => runFederationOutboxPump({ db }),
+  // Track A — the federation outbox is a single platform-wide ActivityPub
+  // delivery queue with no world_id column. Parent-only.
+  scope: "global",
 });
 
 // Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
@@ -1258,6 +1402,10 @@ import { runRepairCycle } from "./emergent/repair-cycle.js";
 registerHeartbeat("repair-cycle", {
   frequency: 20,
   handler: runRepairCycle,
+  // Track A — groups pending pain_signals purely by user_id (no world_id
+  // column); XP grants and damage_resist buffs are user-scoped, not
+  // world-scoped. Parent-only.
+  scope: "global",
 });
 
 // Layer 7: embodied environment sensor. Every 5 ticks (~75s) writes a
@@ -1278,6 +1426,10 @@ registerHeartbeat("environment-sensor", {
 // stayed pending forever. Every 4 ticks (~1 minute).
 registerHeartbeat("scheduled-posts", {
   frequency: 4,
+  // Track A — the schedule queue is one platform-wide feed with no world_id
+  // filter (processScheduledPosts walks every pending post regardless of
+  // which world it was authored in). Parent-only.
+  scope: "global",
   handler: async ({ state }) => {
     try {
       const sl = await import("./emergent/social-layer.js").catch(() => null);
@@ -1298,6 +1450,9 @@ registerHeartbeat("scheduled-posts", {
 // even if the heartbeat misses a tick under load.
 registerHeartbeat("brain-daily-refresh", {
   frequency: 60,
+  // Track A — brain in-context training runs against the shared model
+  // corpus, not any single world. Parent-only.
+  scope: "global",
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
@@ -1318,6 +1473,9 @@ registerHeartbeat("brain-daily-refresh", {
 // on, because every interaction starts pending.
 registerHeartbeat("brain-outcome-resolver", {
   frequency: 20,
+  // Track A — walks brain_interactions platform-wide with no world_id
+  // filter. Parent-only.
+  scope: "global",
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
@@ -1337,6 +1495,9 @@ registerHeartbeat("brain-outcome-resolver", {
 // happens. Every 4 ticks (~1 min).
 registerHeartbeat("affect-tick", {
   frequency: 4,
+  // Track A — affect_state is Concord's own existential self-model, not
+  // per-world game state. Parent-only.
+  scope: "global",
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
@@ -1356,6 +1517,9 @@ registerHeartbeat("affect-tick", {
 // burnout, alignment, novelty) starts fresh on every reboot.
 registerHeartbeat("qualia-persist", {
   frequency: 60,
+  // Track A — flushes Concord's own QualiaEngine self-model state, not any
+  // one world's simulation. Parent-only.
+  scope: "global",
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
@@ -1385,6 +1549,11 @@ registerHeartbeat("qualia-persist", {
 // cold-adapted fauna emergently.
 registerHeartbeat("environment-sense", {
   frequency: 5,
+  // Track A — despite the "for each active world" doc comment above, this
+  // handler self-iterates every active world internally in one invocation
+  // (matches the fauna-spawner/npc-vs-npc-combat self-discovery pattern) —
+  // it isn't written to accept a single worldId. Parent-only.
+  scope: "global",
   handler: async (ctx) => {
     if (!ctx?.db) return { ok: false, reason: "no_db" };
     try {
@@ -26377,6 +26546,9 @@ import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
   frequency: 12,
+  // Track A — marathon agent sessions are user chat-agent tasks, not scoped
+  // to any game world. Parent-only.
+  scope: "global",
   handler: () => runAgentMarathonCycle({ db: STATE?.db || globalThis._concordDB }),
 });
 
@@ -26630,6 +26802,9 @@ import { runPlayerSignsCleanup } from "./emergent/player-signs-cleanup.js";
 registerHeartbeat("player-signs-cleanup", {
   frequency: 240,
   handler: runPlayerSignsCleanup,
+  // Track A — the DELETE has no world_id filter, sweeping every world's
+  // expired signs in one pass. Parent-only.
+  scope: "global",
 });
 
 // Concordia Phase 8/10/12/16 heartbeats — aging cycle, ration mint,
@@ -26642,13 +26817,23 @@ import {
   runCouncilSessionCycle,
   runUnderwaterThreatCycle,
 } from "./emergent/concordia-cycles.js";
-registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle });
-registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle });
-registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle });
-registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle });
+// Track A — all four handlers below query their tables (world_npcs by due
+// id, ration eligibility, `SELECT id FROM realms`, player_oxygen) with no
+// world_id filter, each pulling one shared global batch/list in a single
+// invocation. Parent-only.
+registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle, scope: "global" });
+registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle, scope: "global" });
+registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle, scope: "global" });
+registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle, scope: "global" });
 // Foundry (lens #66) — sweep stale live-preview worlds (Phase 5).
 import { runFoundryPreviewCleanup } from "./emergent/foundry-preview-cleanup.js";
-registerHeartbeat("foundry-preview-cleanup", { frequency: 240, handler: runFoundryPreviewCleanup });
+registerHeartbeat("foundry-preview-cleanup", {
+  frequency: 240,
+  handler: runFoundryPreviewCleanup,
+  // Track A — sweeps stale live-preview worlds platform-wide (a Foundry
+  // preview isn't itself a live game-world shard). Parent-only.
+  scope: "global",
+});
 
 // Theme deferred (game-feel pass): hidden quest triggers — substrate
 // for unmarked, environment-gated quest activation. Pure runMacro
@@ -26789,11 +26974,16 @@ registerCommune(register);
 import { runCrossWorldEconomyCycle } from "./emergent/cross-world-economy-cycle.js";
 registerHeartbeat("cross-world-economy-cycle", {
   frequency: 240,  // ~60 min
+  // Track A — cross-world infra by definition (operates across every
+  // world's economy in one pass). Parent-only.
+  scope: "global",
   handler: runCrossWorldEconomyCycle,
 });
 import { runCrossWorldSchemeCycle } from "./emergent/cross-world-scheme-cycle.js";
 registerHeartbeat("cross-world-scheme-cycle", {
   frequency: 60,   // ~15 min
+  // Track A — cross-world infra by definition. Parent-only.
+  scope: "global",
   handler: runCrossWorldSchemeCycle,
 });
 
@@ -26817,6 +27007,9 @@ registerHeartbeat("population-migration-cycle", {
 import { runCorpusIngestCycle, CORPUS_INGEST_FREQUENCY } from "./emergent/corpus-ingest-cycle.js";
 registerHeartbeat("corpus-ingest-cycle", {
   frequency: CORPUS_INGEST_FREQUENCY, // ~60 min default
+  // Track A — pulls into the shared DTU substrate from external sources,
+  // unrelated to any single game world. Parent-only.
+  scope: "global",
   handler: async () => {
     try {
       // The cycle expects a bridgeEvent callback. We build the same one
