@@ -47,6 +47,7 @@ import {
   type WorldDataSource,
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
+import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
 
 // Module-level (not per-render) so TerrainRenderer's `lodCenter` prop keeps a
@@ -2125,6 +2126,11 @@ export default function WorldLensPage() {
   const [cameraMode, setCameraMode] = useState<
     'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic'
   >('follow');
+  // Camera Mode panel's zoom slider — previously wired to a no-op onZoom
+  // handler (CameraControls rendered a live-looking slider that did
+  // nothing). Real state now, consumed by ConcordiaScene's cameraZoom prop
+  // to scale the Follow/Interior camera distance.
+  const [cameraZoom, setCameraZoom] = useState(DEFAULT_CAMERA_ZOOM);
   // Concordia theme — auto-resolves from worldId so each canon world
   // looks distinct (Tunya = sun-baked, Cyber = neon, Fantasy = cool
   // forest, etc.). Player can override via the theme picker; the
@@ -4861,6 +4867,7 @@ export default function WorldLensPage() {
             theme={concordiaTheme}
             renderStyle={concordiaRenderStyle}
             cameraMode={cameraMode}
+            cameraZoom={cameraZoom}
             questObjectives={questObjectives}
             getPlayerPose={() => ({
               x: playerAvatar.position.x,
@@ -5230,7 +5237,7 @@ export default function WorldLensPage() {
             <CameraControls
               cameraState={{
                 mode: cameraMode,
-                zoom: 15,
+                zoom: cameraZoom,
                 rotation: 'NE',
                 followTarget: 'avatar',
                 cinematicPlaying: false,
@@ -5239,7 +5246,7 @@ export default function WorldLensPage() {
                 transitioning: false,
               }}
               onModeChange={(mode) => setCameraMode(mode as typeof cameraMode)}
-              onZoom={() => {}}
+              onZoom={setCameraZoom}
               onRotate={() => {}}
               onTransition={() => {}}
             />

@@ -203,4 +203,27 @@ describe('world lens page — stable callback/prop identity into child effects',
     expect(slice).toMatch(/portalDist\s*=\s*Math\.sqrt\(portalDx \* portalDx \+ portalDy \* portalDy\)/);
     expect(slice).toMatch(/if \(portalDist > 10 && !isNearby\) return null;/);
   });
+
+  // Plan Phase 1d (docs plan modular-zooming-snowglobe.md): the Camera Mode
+  // panel's zoom slider rendered as fully live — draggable, with a moving %
+  // readout — but was wired to a real no-op (`onZoom={() => {}}`), so
+  // dragging it never actually changed the camera. Fixed by real cameraZoom
+  // state threaded into ConcordiaScene's dist/height calc via
+  // lib/world-lens/camera-zoom.ts#zoomToDistScale (unit-tested separately in
+  // tests/lib/camera-zoom.test.ts — this file only pins the wiring, since
+  // ConcordiaScene's render loop can't be unit-rendered here).
+  it('wires the Camera Mode zoom slider to real state instead of a no-op handler', () => {
+    const start = src.indexOf('{/* Camera mode controls */}');
+    const slice = src.slice(start, start + 700);
+    expect(slice).toMatch(/zoom:\s*cameraZoom,/);
+    expect(slice).toMatch(/onZoom=\{setCameraZoom\}/);
+    expect(slice).not.toMatch(/onZoom=\{\(\)\s*=>\s*\{\}\}/);
+  });
+
+  it('declares cameraZoom state seeded from DEFAULT_CAMERA_ZOOM and passes it into ConcordiaScene', () => {
+    expect(src).toMatch(/const \[cameraZoom, setCameraZoom\] = useState\(DEFAULT_CAMERA_ZOOM\);/);
+    const start = src.indexOf('<ConcordiaScene\n');
+    const slice = src.slice(start, start + 400);
+    expect(slice).toMatch(/cameraZoom=\{cameraZoom\}/);
+  });
 });

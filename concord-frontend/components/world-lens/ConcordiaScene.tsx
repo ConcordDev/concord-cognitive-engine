@@ -10,6 +10,7 @@ import { createTraumaShake, type TraumaShake } from '@/lib/concordia/screen-trau
 import { disposeBuildingArchetype } from '@/lib/world-lens/procedural-buildings';
 import { clearProceduralCache } from '@/lib/world-lens/procedural-texture';
 import { resolveSceneWorldId } from '@/lib/world-lens/resolve-scene-world-id';
+import { zoomToDistScale, DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
 
 // Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
 // the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
@@ -124,6 +125,13 @@ interface ConcordiaSceneProps {
    * 'isometric' (the previous hardcoded behavior) when not supplied.
    */
   cameraMode?: 'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic';
+  /**
+   * Camera Mode panel's 0-100 zoom slider value (CameraControls.tsx).
+   * Scales the Follow/Interior camera's dist/height via zoomToDistScale —
+   * see lib/world-lens/camera-zoom.ts. Defaults to DEFAULT_CAMERA_ZOOM so
+   * omitting this prop reproduces the previous hardcoded distance exactly.
+   */
+  cameraZoom?: number;
   /** Per-frame player position + yaw, used for follow + first-person camera. */
   getPlayerPose?: () => { x: number; y: number; z: number; yaw: number } | null;
 }
@@ -227,14 +235,17 @@ export default function ConcordiaScene({
   width = '100%',
   height = '100%',
   cameraMode = 'isometric',
+  cameraZoom = DEFAULT_CAMERA_ZOOM,
   getPlayerPose,
 }: ConcordiaSceneProps) {
   // Mirror cameraMode + getPlayerPose into refs so the game loop can read
   // the latest values without re-running the heavy init effect on each
   // mode change. Updated on every render via the small effect below.
   const cameraModeRef = useRef(cameraMode);
+  const cameraZoomRef = useRef(cameraZoom);
   const getPlayerPoseRef = useRef(getPlayerPose);
   useEffect(() => { cameraModeRef.current = cameraMode; }, [cameraMode]);
+  useEffect(() => { cameraZoomRef.current = cameraZoom; }, [cameraZoom]);
   useEffect(() => { getPlayerPoseRef.current = getPlayerPose; }, [getPlayerPose]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const physicsRef = useRef<{
@@ -1367,8 +1378,9 @@ export default function ConcordiaScene({
               const lookZ = pose.z + Math.cos(yaw) * Math.cos(pitch);
               camera.lookAt(lookX, lookY, lookZ);
             } else if (mode === 'follow' || mode === 'interior') {
-              const dist = mode === 'interior' ? 3 : 6;
-              const height = mode === 'interior' ? 1.6 : 3.2;
+              const zoomScale = zoomToDistScale(cameraZoomRef.current);
+              const dist = (mode === 'interior' ? 3 : 6) * zoomScale;
+              const height = (mode === 'interior' ? 1.6 : 3.2) * zoomScale;
               let cx = pose.x - Math.sin(yaw) * dist * Math.cos(pitch);
               let cy = pose.y + height + Math.sin(-pitch) * dist;
               let cz = pose.z - Math.cos(yaw) * dist * Math.cos(pitch);

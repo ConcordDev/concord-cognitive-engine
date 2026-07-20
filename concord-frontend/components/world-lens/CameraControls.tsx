@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   Camera, RotateCw, ZoomIn, ZoomOut, Maximize2, User, Eye,
-  Play, Pause, SkipBack, SkipForward, Monitor, ChevronDown,
+  Play, SkipBack, SkipForward, Monitor, ChevronDown,
 } from 'lucide-react';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
@@ -81,16 +81,11 @@ export default function CameraControls({
 }: CameraControlsProps) {
   const [showPresets, setShowPresets] = useState(false);
   const currentZoomLevel = getCurrentZoomLevel(cameraState.zoom);
-
-  const rotateLeft = useCallback(() => {
-    const idx = rotations.indexOf(cameraState.rotation);
-    onRotate(rotations[(idx - 1 + rotations.length) % rotations.length]);
-  }, [cameraState.rotation, onRotate]);
-
-  const rotateRight = useCallback(() => {
-    const idx = rotations.indexOf(cameraState.rotation);
-    onRotate(rotations[(idx + 1) % rotations.length]);
-  }, [cameraState.rotation, onRotate]);
+  // onRotate is currently unused by this component — rotation controls are
+  // disabled below (no real isometric-orbit implementation exists yet).
+  // Kept in the props contract so a future phase can wire it without an
+  // interface change; referenced here only to avoid an unused-prop lint.
+  void onRotate;
 
   const applyPreset = useCallback(
     (preset: (typeof presets)[number]) => {
@@ -181,61 +176,73 @@ export default function CameraControls({
         <div className="text-center text-[9px] text-gray-400 mt-1">{cameraState.zoom}%</div>
       </div>
 
-      {/* Rotation controls */}
-      <div className={`${panel} p-2`}>
-        <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">Rotation</div>
+      {/* Rotation controls — isometric mode has no orbit implementation yet
+          (ConcordiaScene.tsx excludes 'isometric' from its per-frame camera
+          update entirely, and follow/first-person/interior don't use a
+          rotation angle at all), so these buttons would silently no-op in
+          every mode today. Per the honesty rubric, an inert disabled control
+          beats one that accepts a click and does nothing — disabled here
+          until camera-mode work adds real isometric orbit. */}
+      <div className={`${panel} p-2 opacity-50`} title="Isometric orbit rotation isn't wired yet">
+        <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">
+          Rotation <span className="normal-case text-gray-600">(coming soon)</span>
+        </div>
         <div className="flex items-center justify-center gap-3">
-          <button
-            onClick={rotateLeft}
-            className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
-          aria-label="Rotate cw">
-            <RotateCw className="w-4 h-4 text-gray-400 -scale-x-100" />
+          <button disabled className="p-1.5 rounded bg-white/5 cursor-not-allowed" aria-label="Rotate cw">
+            <RotateCw className="w-4 h-4 text-gray-600 -scale-x-100" />
           </button>
           <div className="flex gap-1">
             {rotations.map((angle) => (
               <button
                 key={angle}
-                onClick={() => onRotate(angle)}
-                className={`px-2 py-1 rounded text-[10px] transition-colors ${
+                disabled
+                className={`px-2 py-1 rounded text-[10px] cursor-not-allowed ${
                   cameraState.rotation === angle
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                    : 'text-gray-400 hover:text-gray-300 bg-white/5 border border-transparent'
+                    ? 'bg-cyan-500/10 text-cyan-700 border border-cyan-500/20'
+                    : 'text-gray-600 bg-white/5 border border-transparent'
                 }`}
               >
                 {angle}
               </button>
             ))}
           </div>
-          <button
-            onClick={rotateRight}
-            className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
-          aria-label="Rotate cw">
-            <RotateCw className="w-4 h-4 text-gray-400" />
+          <button disabled className="p-1.5 rounded bg-white/5 cursor-not-allowed" aria-label="Rotate cw">
+            <RotateCw className="w-4 h-4 text-gray-600" />
           </button>
         </div>
-        <div className="text-center text-[9px] text-gray-400 mt-1">90° per step</div>
+        <div className="text-center text-[9px] text-gray-600 mt-1">90° per step</div>
       </div>
 
-      {/* Follow mode target */}
+      {/* Follow mode target — only 'avatar' has a real camera-target
+          implementation (ConcordiaScene.tsx's follow block always reads the
+          player's own pose; there's no NPC/event target plumbing yet), so
+          the other two options are disabled rather than fake-wired. */}
       {cameraState.mode === 'follow' && (
         <div className={`${panel} p-2`}>
           <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">
             Follow Target
           </div>
           <div className="flex gap-1">
-            {(['avatar', 'npc', 'event'] as FollowTarget[]).map((target) => (
-              <button
-                key={target}
-                onClick={() => onTransition({ followTarget: target })}
-                className={`flex-1 px-2 py-1.5 rounded text-[10px] capitalize transition-colors ${
-                  cameraState.followTarget === target
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                    : 'text-gray-400 hover:text-gray-300 bg-white/5 border border-transparent'
-                }`}
-              >
-                {target === 'avatar' ? 'Your Avatar' : target === 'npc' ? 'NPC' : 'Event'}
-              </button>
-            ))}
+            {(['avatar', 'npc', 'event'] as FollowTarget[]).map((target) => {
+              const implemented = target === 'avatar';
+              return (
+                <button
+                  key={target}
+                  disabled={!implemented}
+                  onClick={() => implemented && onTransition({ followTarget: target })}
+                  title={implemented ? undefined : 'Not wired yet — only the player avatar can be followed today'}
+                  className={`flex-1 px-2 py-1.5 rounded text-[10px] capitalize transition-colors ${
+                    !implemented
+                      ? 'text-gray-600 bg-white/5 border border-transparent cursor-not-allowed'
+                      : cameraState.followTarget === target
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                        : 'text-gray-400 hover:text-gray-300 bg-white/5 border border-transparent'
+                  }`}
+                >
+                  {target === 'avatar' ? 'Your Avatar' : target === 'npc' ? 'NPC' : 'Event'}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -264,35 +271,27 @@ export default function CameraControls({
         </div>
       )}
 
-      {/* Cinematic timeline */}
+      {/* Cinematic timeline — cinematic-director.ts sequences time-scale +
+          audio for named camera shots but nothing yet moves the actual
+          THREE.js camera through them (see the plan's Phase 4). Until that
+          lands, this transport is inert-by-construction rather than
+          fake-wired: buttons are disabled, not silently no-op. */}
       {cameraState.mode === 'cinematic' && (
-        <div className={`${panel} p-2`}>
+        <div className={`${panel} p-2 opacity-50`} title="Cinematic camera movement isn't wired yet">
           <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">
-            Cinematic Timeline
+            Cinematic Timeline <span className="normal-case text-gray-600">(coming soon)</span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => onTransition({ cinematicTime: 0 })}
-              className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
-            aria-label="Previous track">
-              <SkipBack className="w-3.5 h-3.5 text-gray-400" />
+            <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed" aria-label="Previous track">
+              <SkipBack className="w-3.5 h-3.5 text-gray-600" />
             </button>
-            <button
-              onClick={() =>
-                onTransition({ cinematicPlaying: !cameraState.cinematicPlaying })
-              }
-              className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              {cameraState.cinematicPlaying ? (
-                <Pause className="w-3.5 h-3.5 text-cyan-400" />
-              ) : (
-                <Play className="w-3.5 h-3.5 text-gray-400" />
-              )}
+            <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed">
+              <Play className="w-3.5 h-3.5 text-gray-600" />
             </button>
             <div className="flex-1 relative">
               <div className="h-1 rounded-full bg-white/10 overflow-hidden">
                 <div
-                  className="h-full bg-cyan-400 rounded-full transition-all"
+                  className="h-full bg-cyan-700 rounded-full"
                   style={{
                     width: `${
                       cameraState.cinematicDuration > 0
@@ -303,16 +302,11 @@ export default function CameraControls({
                 />
               </div>
             </div>
-            <button
-              onClick={() =>
-                onTransition({ cinematicTime: cameraState.cinematicDuration })
-              }
-              className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
-            aria-label="Next track">
-              <SkipForward className="w-3.5 h-3.5 text-gray-400" />
+            <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed" aria-label="Next track">
+              <SkipForward className="w-3.5 h-3.5 text-gray-600" />
             </button>
           </div>
-          <div className="flex justify-between text-[9px] text-gray-400 mt-1">
+          <div className="flex justify-between text-[9px] text-gray-600 mt-1">
             <span>{formatTime(cameraState.cinematicTime)}</span>
             <span>{formatTime(cameraState.cinematicDuration)}</span>
           </div>
