@@ -337,9 +337,20 @@ export function formatToolResults(results) {
  * @param {Map} args.lensActions             injected LENS_ACTIONS
  * @param {Array<{role,content}>} [args.history]
  * @param {object} [args.opts]
+ * @param {(type: string, payload: object) => void} [args.onEvent] - optional
+ *   real-time progress callback, fired as each turn/tool call actually
+ *   completes (not batched/replayed afterward). Event types: 'turn_start',
+ *   'tool_call' (one per real tool result, in the order they actually
+ *   finished), 'turn_end'. Never throws the loop if the callback does —
+ *   caller (e.g. an SSE route) is responsible for its own error handling,
+ *   but a bad callback must never abort the agent's actual work.
  * @returns {Promise<{ok, answer, toolCalls, artifacts, turns, provider, model, error?}>}
  */
-export async function runAgentLoop({ db, userId, message, runMacro, lensActions, history = [], opts = {} }) {
+export async function runAgentLoop({ db, userId, message, runMacro, lensActions, history = [], opts = {}, onEvent = null }) {
+  const emit = (type, payload) => {
+    if (typeof onEvent !== "function") return;
+    try { onEvent(type, payload); } catch { /* a bad listener must never break the agent loop */ }
+  };
   if (!message) return { ok: false, error: "missing_message" };
   const maxTurns = opts.maxTurns || AGENT_MAX_TURNS;
 
@@ -393,6 +404,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
   for (let turn = 0; turn < maxTurns; turn++) {
     turnsTaken++;
+    emit("turn_start", { turn: turnsTaken });
     const _turnStart = Date.now();
     const r = await brain({
       db, userId,
@@ -423,6 +435,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
     const calls = parseToolCalls(r.text);
     const visibleAnswer = stripToolCalls(r.text);
+    emit("turn_end", { turn: turnsTaken, text: visibleAnswer, willCallTools: calls.length > 0 });
 
     if (calls.length === 0) {
       // No more tool calls — this is the final answer.
@@ -437,6 +450,11 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       const result = await executeToolCall(ctx, runMacro, lensActions, call);
       results.push(result);
       allToolCalls.push(result);
+      // Real-time — fired the instant THIS tool call actually finishes, not
+      // batched after the whole loop completes. This is what turns
+      // /api/chat-agent/stream from "block until everything's done, then
+      // fake-replay with setTimeout" into genuine incremental disclosure.
+      emit("tool_call", result);
       if (result.artifact) allArtifacts.push(result.artifact);
       // Item 2 — record into long-term memory (fire-and-forget; never blocks).
       if (db && userId) {
