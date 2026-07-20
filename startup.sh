@@ -160,6 +160,26 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     npm install -g pm2
   fi
 
+  # ── Log rotation (Vector 9 — unbounded log growth) ──────────────────────
+  # Stability audit (2026-07-20) — FIXED a real gap: nothing rotated pm2's
+  # per-app logs (logs/backend-out.log, backend-error.log, frontend-*.log,
+  # cloudflared-*.log). Over weeks of uninterrupted uptime — the whole point
+  # of everything else fixed in this audit — these grow completely
+  # unbounded until disk fills, which then breaks writes for everything
+  # (see the SQLite WAL journal_size_limit fix from earlier the same
+  # audit — this is the same failure class). pm2-logrotate is the standard,
+  # correct fix: it's itself a pm2-managed module, so it's supervised the
+  # same way as every other process here. Idempotent — `pm2 install` is a
+  # no-op if already installed; `pm2 set` always applies the same config.
+  if ! pm2 list 2>/dev/null | grep -q "pm2-logrotate"; then
+    log "Installing pm2-logrotate (log rotation for pm2-managed logs)..."
+    pm2 install pm2-logrotate 2>&1 | tail -5 || log "WARNING: pm2-logrotate install failed — pm2 logs will grow unbounded until fixed manually."
+  fi
+  pm2 set pm2-logrotate:max_size 50M >/dev/null 2>&1 || true
+  pm2 set pm2-logrotate:retain 14 >/dev/null 2>&1 || true
+  pm2 set pm2-logrotate:compress true >/dev/null 2>&1 || true
+  pm2 set pm2-logrotate:rotateInterval "0 0 * * *" >/dev/null 2>&1 || true
+
   # Check Ollama installed
   if ! command -v ollama &>/dev/null; then
     log "ERROR: Ollama not found. Install from https://ollama.com/download"

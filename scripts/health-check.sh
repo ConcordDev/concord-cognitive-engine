@@ -33,6 +33,43 @@ check_endpoint() {
   fi
 }
 
+# ── Log rotation for logs pm2-logrotate doesn't cover ────────────────────────
+# Stability audit (2026-07-20) — pm2-logrotate (installed by startup.sh)
+# covers logs/backend-*.log, frontend-*.log, cloudflared-*.log — every
+# pm2-managed process. It does NOT cover: (a) this script's OWN output
+# (logs/health.log, appended forever by the cron redirect), or (b) the 5
+# Ollama brain logs (scripts/runpod-cognition.sh's respawn loop appends to
+# them, by design, so a crash's full context survives the respawn — but
+# "append forever" needs a backstop). Truncating a file that's currently
+# open for O_APPEND writes (cron's `>>` redirect for health.log, and the
+# respawn loop's own `>>` for brain logs) is safe and standard — POSIX
+# guarantees an O_APPEND fd always seeks to the current end-of-file before
+# each write, so subsequent writes correctly continue from the new
+# (post-truncation) end rather than leaving a sparse hole. This is the same
+# principle logrotate's own `copytruncate` mode relies on.
+CONCORD_LOG_ROTATE_MAX_BYTES="${CONCORD_LOG_ROTATE_MAX_BYTES:-20971520}"  # 20MB
+rotate_if_large() {
+  local f="$1" size
+  [ -f "$f" ] || return 0
+  size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo 0)
+  if [ "${size:-0}" -gt "$CONCORD_LOG_ROTATE_MAX_BYTES" ]; then
+    if command -v gzip &>/dev/null; then
+      cp "$f" "${f}.1" 2>/dev/null && gzip -f "${f}.1" 2>/dev/null && : > "$f" \
+        && echo "[$TIMESTAMP] INFO: rotated $f (was ${size} bytes) -> ${f}.1.gz"
+    else
+      : > "$f" && echo "[$TIMESTAMP] INFO: rotated $f (was ${size} bytes) — truncated (gzip unavailable)"
+    fi
+  fi
+}
+rotate_if_large "$SCRIPT_DIR/logs/health.log"
+BRAIN_LOG_DIR="${LOG_DIR:-/tmp/concord-brains}"
+if [ -d "$BRAIN_LOG_DIR" ]; then
+  for bf in "$BRAIN_LOG_DIR"/brain-*.log; do
+    [ -f "$bf" ] || continue
+    rotate_if_large "$bf"
+  done
+fi
+
 pm2_restart_if_stopped() {
   local name="$1"
   if command -v pm2 &>/dev/null; then
