@@ -213,6 +213,29 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     echo "${NEXT_PUBLIC_API_URL:-}" > "$BUILD_STAMP"
   fi
 
+  # ── Ollama brains (Vector 8 — the real 5-process architecture) ────────────
+  # Stability audit (2026-07-20) — FIXED a real gap: this script never called
+  # scripts/runpod-cognition.sh, so a plain `./startup.sh` run only ever got
+  # the OLD single-instance "ollama" pm2 app (now removed from
+  # ecosystem.config.cjs) — a single Ollama process on port 11434 with only
+  # 2 models resident at once, never the real 5-separate-process/per-role/
+  # CPU-pinned setup every other doc in this repo (.env.runpod,
+  # pin-processes.sh, CLAUDE.md's brain table) actually describes.
+  # runpod-cognition.sh is safely idempotent to re-run (its own cleanup
+  # stops any prior wrapper loops + pkills stale ollama processes before
+  # relaunching fresh), so this runs on every startup.sh invocation, not
+  # just first boot. Non-fatal — a box without a GPU or without
+  # runpod-cognition.sh present still starts (the script itself handles the
+  # no-GPU case with a CPU-fallback warning; the check below just guards a
+  # box where the file genuinely isn't there, e.g. a non-RunPod bare-metal
+  # target using --runpod for pm2 alone).
+  if [ -f "$SCRIPT_DIR/scripts/runpod-cognition.sh" ]; then
+    log "Launching the 5 Ollama brains (scripts/runpod-cognition.sh)..."
+    bash "$SCRIPT_DIR/scripts/runpod-cognition.sh" || log "WARNING: runpod-cognition.sh exited non-zero — check its output above; brains may be partially up."
+  else
+    log "WARNING: scripts/runpod-cognition.sh not found — brains must be started separately (or Ollama managed some other way)."
+  fi
+
   # Start or restart with RunPod env
   if pm2 list | grep -q "concord-backend"; then
     log "Restarting existing pm2 processes..."

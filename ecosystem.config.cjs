@@ -239,44 +239,22 @@ module.exports = {
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     },
-    {
-      // Ollama process manager entry — skip if Ollama is already running as a system service
-      name: 'ollama',
-      script: 'ollama',
-      args: 'serve',
-      instances: 1,
-      exec_mode: 'fork',
-      watch: false,
-      max_memory_restart: '8G',
-      autorestart: true,
-      env: {
-        OLLAMA_HOST: '0.0.0.0:11434',
-        // RTX PRO 4500 Blackwell (32GB GDDR7, 28 vCPU). The 5-brain model set
-        // (concord-conscious + qwen2.5:7b + qwen2.5:3b + qwen2.5:0.5b + llava:13b)
-        // is much lighter than the old 32b+14b setup — total loaded weight stays
-        // well under 32GB even with 2 models hot, so we keep MAX_LOADED_MODELS=2
-        // for low-latency rotation between conscious and subconscious.
-        // Phase D — bumped 8 → 16 for the single-Ollama RunPod deploy.
-        // 16 concurrent inference streams across all loaded models. Higher
-        // risks KV-cache thrash with 2 loaded models at q8_0.
-        OLLAMA_NUM_PARALLEL: '16',
-        OLLAMA_MAX_LOADED_MODELS: '2',   // keep conscious+subconscious in VRAM
-        OLLAMA_NUM_THREAD: '14',         // half of 28 vCPU for Ollama CPU work
-        // Blackwell tensor-core / VRAM optimizations — matches docker-compose.yml.
-        // Previously these were docker-only, so the PM2 path on a real RunPod
-        // pod was running Ollama without flash-attn or q8 KV cache. That meant:
-        //  - no 5th-gen tensor-core acceleration (slower inference)
-        //  - 2× VRAM usage for KV cache (evicted hot models faster than expected)
-        // Aligning with docker-compose closes the gap.
-        OLLAMA_FLASH_ATTENTION: '1',
-        OLLAMA_KV_CACHE_TYPE: 'q8_0',
-        OLLAMA_KEEP_ALIVE: '24h',
-      },
-      error_file: 'logs/ollama-error.log',
-      out_file: 'logs/ollama-out.log',
-      merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    },
+    // Stability audit (2026-07-20) — REMOVED the legacy single-instance
+    // "ollama" app that used to live here (name: 'ollama', script: 'ollama',
+    // args: 'serve', OLLAMA_HOST: '0.0.0.0:11434', a stale RTX-4500/28-vCPU
+    // assumption). It was a genuine, live collision risk: `pm2 start
+    // ecosystem.config.cjs --env runpod` starts every app in this array with
+    // no scoping, so this legacy single-port entry and
+    // scripts/runpod-cognition.sh's real 5-separate-process/per-role setup
+    // (the one every other doc in this repo — .env.runpod, pin-processes.sh,
+    // CLAUDE.md's brain table — actually describes) would both try to bind
+    // port 11434. Worse: startup.sh never called runpod-cognition.sh at all,
+    // so a plain `./startup.sh` run was ONLY ever getting this legacy single-
+    // model-rotation app, with the other 4 brain ports (11435-11438) never
+    // listening — silently stranding subconscious/utility/repair/vision.
+    // Fixed at the root: startup.sh now calls runpod-cognition.sh itself
+    // (see its own comment), so there is exactly ONE real path, and this
+    // app's removal closes the port-11434 collision for good.
     {
       // ── Cloudflare Tunnel (Vector 6 — eliminate tunnel SPOF) ─────────────
       // PM2 supervises cloudflared so it auto-restarts on crash or hang.
