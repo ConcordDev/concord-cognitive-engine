@@ -660,10 +660,6 @@ const FishingMinigameOverlay = dynamic(
     })),
   { ssr: false }
 );
-const EmoteWheelLegacy = dynamic(
-  () => import('@/components/world/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
-  { ssr: false }
-);
 const PlayerPresence = dynamic(() => import('@/components/world-lens/PlayerPresence'), {
   ssr: false,
 });
@@ -972,10 +968,6 @@ const LensWorkspace = dynamic(
     import('@/components/concordia/lens/LensWorkspaceInWorld').then((m) => ({
       default: m.LensWorkspaceInWorld,
     })),
-  { ssr: false }
-);
-const EmoteWheel = dynamic(
-  () => import('@/components/concordia/social/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
   { ssr: false }
 );
 const QuickMessageBar = dynamic(
@@ -2629,8 +2621,6 @@ export default function WorldLensPage() {
     maxHp?: number;
   } | null>(null);
 
-  // Emote wheel toggle
-  const [showEmoteWheel, setShowEmoteWheel] = useState(false);
   // Tame attempt overlay — opens when player presses KeyJ near a tameable
   // creature (nearbyNPC of `creature` archetype). The bond + threshold
   // are passed in so the overlay can show progress + gate the attempt.
@@ -3098,17 +3088,6 @@ export default function WorldLensPage() {
     else if (aerial) setCombatContext('aerial');
     else setCombatContext('ground');
   }, [playerAvatar.position.y, playerAvatar.currentAnimation, inputMode]);
-
-  // G key: toggle emote wheel in explore mode
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'g' && e.key !== 'G') return;
-      if (inputMode !== 'exploration' && inputMode !== 'social') return;
-      setShowEmoteWheel((v) => !v);
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [inputMode]);
 
   // F key: open fishing minigame in exploration mode. v1 doesn't gate
   // by water-tile presence (any spot is fishable for the demo); v1.1
@@ -4710,6 +4689,26 @@ export default function WorldLensPage() {
     [worldSocket.emit]
   );
 
+  // World Lens Phase 6d — the folded-in ActionWheel 'emote' variant (and
+  // any future emote source) rides `concordia:emote-play` since a wheel
+  // spoke's action has no way to reach this page's state directly. Reuses
+  // `handleAvatarEmote` (already the single "apply + broadcast an emote"
+  // path AvatarSystem3D's own onEmote prop calls) rather than duplicating
+  // its body a third time — the two deleted EmoteWheel components each
+  // used to inline a near-identical copy of this exact logic.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    function onEmotePlay(e: Event) {
+      const emoteId = (e as CustomEvent<{ emoteId?: string }>).detail?.emoteId;
+      if (emoteId) {
+        handleAvatarEmote(emoteId);
+        window.dispatchEvent(new CustomEvent('concordia:tutorial-action', { detail: { action: 'sent-quick-message' } }));
+      }
+    }
+    window.addEventListener('concordia:emote-play', onEmotePlay);
+    return () => window.removeEventListener('concordia:emote-play', onEmotePlay);
+  }, [handleAvatarEmote]);
+
   // ConcordiaScene's own scene-init effect (physics world + renderer +
   // terrain + lighting — the whole engine) depends directly on
   // `onBuildingClick`/`onTerrainClick` by reference. These were previously
@@ -5443,33 +5442,16 @@ export default function WorldLensPage() {
               }}
             />
           )}
+          {/* World Lens Phase 6d — the emote wheel that used to mount here
+              unconditionally (no open/close state of its own) is now the
+              ActionWheel 'emote' variant (Z-hold, near the other 3 wheel
+              mounts below) instead of a permanently-visible radial. */}
           {(inputMode === 'social' || inputMode === 'exploration') && (
-            <>
-              <EmoteWheelLegacy
-                onEmote={(emoteId) => {
-                  setPlayerAvatar((prev) => ({ ...prev, currentAnimation: 'wave' }));
-                  if (worldSocket.isConnected) {
-                    worldSocket.emit('player:move', {
-                      cityId: currentWorldId,
-                      districtId: currentWorldId,
-                      x: playerAvatar.position.x,
-                      y: playerAvatar.position.y,
-                      z: playerAvatar.position.z,
-                      rotation: playerAvatar.rotation,
-                      direction: playerAvatar.rotation,
-                      action: emoteId,
-                      currentAnimation: emoteId,
-                    });
-                  }
-                }}
-                onClose={() => { /* legacy wheel auto-dismisses on emote */ }}
-              />
-              <QuickMessageBar
-                onSend={(msg) => {
-                  if (worldSocket.isConnected) worldSocket.emit('chat:message', { text: msg });
-                }}
-              />
-            </>
+            <QuickMessageBar
+              onSend={(msg) => {
+                if (worldSocket.isConnected) worldSocket.emit('chat:message', { text: msg });
+              }}
+            />
           )}
           {inputMode === 'spectator' && (
             <SpectatorControls
@@ -5533,6 +5515,11 @@ export default function WorldLensPage() {
               fires the canonical concordia:spell-cast — flick-to-cast). */}
           <ConcordiaHUD.SkillWheel />
           <ConcordiaHUD.ActionWheel variant="tool" />
+          {/* World Lens Phase 6d — folded-in emote wheel (Z-hold). Replaces
+              the two bespoke, independently-built EmoteWheel components
+              that used to mount elsewhere on this page (one of which had
+              no open/close state at all and was permanently visible). */}
+          <ConcordiaHUD.ActionWheel variant="emote" />
           <ConcordiaHUD.PanelHost />
           <ConcordiaHUD.InteractionSink />
           <ConcordiaHUD.AmbientFeedback />
@@ -5893,37 +5880,6 @@ export default function WorldLensPage() {
           <ForwardPredictionsPanel />
           <NPCSchemeOverhearTip />
           <SchemeOverhearBargeIn />
-
-          {/* Emote wheel — G key in exploration/social mode */}
-          {showEmoteWheel && (
-            <EmoteWheel
-              onEmote={(emoteId) => {
-                setPlayerAvatar((prev) => ({
-                  ...prev,
-                  currentAnimation: emoteId as typeof playerAvatar.currentAnimation,
-                }));
-                if (worldSocket.isConnected) {
-                  worldSocket.emit('player:move', {
-                    cityId: currentWorldId,
-                    districtId: currentWorldId,
-                    x: playerAvatar.position.x,
-                    y: playerAvatar.position.y,
-                    z: playerAvatar.position.z,
-                    rotation: playerAvatar.rotation,
-                    direction: playerAvatar.rotation,
-                    action: emoteId,
-                    currentAnimation: emoteId,
-                  });
-                }
-                window.dispatchEvent(
-                  new CustomEvent('concordia:tutorial-action', {
-                    detail: { action: 'sent-quick-message' },
-                  })
-                );
-              }}
-              onClose={() => setShowEmoteWheel(false)}
-            />
-          )}
 
           {/* Gameplay toolbar */}
           <div style={hudCornerStyle('gameplay-toolbar')} className={`absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
