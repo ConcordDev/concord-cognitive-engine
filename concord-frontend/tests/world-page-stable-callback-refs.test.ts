@@ -226,4 +226,37 @@ describe('world lens page — stable callback/prop identity into child effects',
     const slice = src.slice(start, start + 400);
     expect(slice).toMatch(/cameraZoom=\{cameraZoom\}/);
   });
+
+  // Plan Phase 1c (docs plan modular-zooming-snowglobe.md): HUDOverlay's
+  // bottom bar hardcoded currency={concordCoin:0}, reputationLevel=1,
+  // timeOfDay="day", weather="clear" — all rendered as if live regardless
+  // of real player/world state. Fixed by wiring real sources already
+  // available on this page (useHUDContext's socket-driven worldDaySegment,
+  // the page's own real weatherData from the `weather:update` socket
+  // event, and the new shared useWalletBalance hook) or, where no real
+  // signal exists (reputationLevel/professionBadge), omitting the props
+  // entirely so HUDOverlay hides that sub-block rather than fabricate it.
+  it('wires HUDOverlay time/weather/currency to real sources instead of hardcoded literals', () => {
+    const start = src.indexOf('<HUDOverlay\n');
+    const slice = src.slice(start, start + 500);
+    expect(slice).toMatch(/timeOfDay=\{worldDaySegmentForHud\.charAt\(0\)\.toUpperCase\(\)/);
+    expect(slice).toMatch(/weather=\{weatherTypeToIcon\(weatherData\?\.type\)\}/);
+    expect(slice).toMatch(/currency=\{\{ concordCoin: walletBalanceForHud, pendingRoyalties: 0 \}\}/);
+    expect(slice).not.toMatch(/timeOfDay="day"/);
+    expect(slice).not.toMatch(/weather="clear"/);
+    expect(slice).not.toMatch(/concordCoin:\s*0[,}]/);
+    expect(slice).not.toMatch(/professionBadge=""/);
+    expect(slice).not.toMatch(/reputationLevel=\{1\}/);
+  });
+
+  it('hides the three unbacked resource bars (Mana/Bio Power/Perception), keeping only real HP/Stamina', () => {
+    const start = src.indexOf('{/* Resource Bars HUD');
+    const slice = src.slice(start, start + 900);
+    expect(slice).toMatch(/key:\s*'hp'/);
+    expect(slice).toMatch(/key:\s*'stamina'/);
+    expect(slice).not.toMatch(/key:\s*'mana'/);
+    expect(slice).not.toMatch(/key:\s*'bio_power'/);
+    expect(slice).not.toMatch(/key:\s*'perception'/);
+    expect(slice).not.toMatch(/: 100;/);
+  });
 });

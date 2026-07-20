@@ -44,8 +44,16 @@ interface HUDOverlayProps {
   weather: WeatherIcon;
   playerCount: number;
   currency: CurrencyInfo;
-  professionBadge: string;
-  reputationLevel: number;
+  /**
+   * Both optional and undefined by default: no World Lens page currently
+   * fetches a real per-player profession/reputation signal (a real
+   * faction-reputation backend exists — server/lib/faction-reputation.js
+   * per CLAUDE.md — it's just not wired to this HUD yet). Per the honesty
+   * rubric, an unwireable element stays unrendered rather than showing a
+   * plausible-looking fake "Lv.1".
+   */
+  professionBadge?: string;
+  reputationLevel?: number;
   notifications: HUDNotification[];
   unreadCount: number;
   tools: ToolSlot[];
@@ -323,17 +331,22 @@ export default function HUDOverlay({
             )}
           </div>
 
-          {/* Profession + Reputation */}
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-xs">
-              <Award className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-gray-300">{professionBadge}</span>
-            </span>
-            <span className="flex items-center gap-1 text-xs">
-              <Star className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-amber-300">Lv.{reputationLevel}</span>
-            </span>
-          </div>
+          {/* Profession + Reputation — hidden entirely when no real signal
+              is supplied (see the honesty note on the prop declarations). */}
+          {reputationLevel != null && (
+            <div className="flex items-center gap-3">
+              {professionBadge && (
+                <span className="flex items-center gap-1.5 text-xs">
+                  <Award className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-gray-300">{professionBadge}</span>
+                </span>
+              )}
+              <span className="flex items-center gap-1 text-xs">
+                <Star className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-amber-300">Lv.{reputationLevel}</span>
+              </span>
+            </div>
+          )}
 
           {/* Keybind hints */}
           <div className="flex items-center gap-2 text-[10px] text-gray-400">

@@ -48,6 +48,8 @@ import {
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
+import { weatherTypeToIcon } from '@/lib/world-lens/weather-icon';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
 
 // Module-level (not per-render) so TerrainRenderer's `lodCenter` prop keeps a
@@ -2151,6 +2153,13 @@ export default function WorldLensPage() {
   // 30s; tweened locally between ticks) and the season substrate.
   const worldPhaseForSky = useHUDContext((s) => s.worldPhase);
   const worldSeasonForSky = useHUDContext((s) => s.worldSeason);
+  // Same real worldDaySegment used to drive the sky, reused for the HUD's
+  // time-of-day text — this used to be a hardcoded "day" literal.
+  const worldDaySegmentForHud = useHUDContext((s) => s.worldDaySegment);
+  // Real wallet balance for HUDOverlay's bottom-bar currency readout — this
+  // used to be a hardcoded `{ concordCoin: 0 }` regardless of the player's
+  // actual CC. Same source CurrencyHUD (top-center) already displays.
+  const walletBalanceForHud = useWalletBalance();
   // Phase A4 — pull sky top + horizon colors from the canon theme so
   // each world's sky shader matches the world palette.
   const skyThemeColors = (() => {
@@ -5256,12 +5265,10 @@ export default function WorldLensPage() {
             <HUDOverlay
               mode={(MODE_TO_HUD[inputMode] ?? 'explore') as HUDMode}
               district={currentWorldDisplayName}
-              timeOfDay="day"
-              weather="clear"
+              timeOfDay={worldDaySegmentForHud.charAt(0).toUpperCase() + worldDaySegmentForHud.slice(1)}
+              weather={weatherTypeToIcon(weatherData?.type)}
               playerCount={1}
-              currency={{ concordCoin: 0, pendingRoyalties: 0 }}
-              professionBadge=""
-              reputationLevel={1}
+              currency={{ concordCoin: walletBalanceForHud, pendingRoyalties: 0 }}
               notifications={[]}
               unreadCount={0}
               tools={[]}
@@ -6254,25 +6261,21 @@ export default function WorldLensPage() {
             </div>
           )}
 
-          {/* Resource Bars HUD (top-left, below minimap) */}
+          {/* Resource Bars HUD (top-left, below minimap). Mana/Bio Power/
+              Perception used to render here too, permanently pinned at
+              100/100 — no page in the World Lens fetches a real resource
+              pool for any of the three (no backend field exists yet). Per
+              the honesty rubric, only HP/Stamina render since only they're
+              backed by real combatState. */}
           <div className={`absolute top-4 left-4 z-20 pointer-events-none flex flex-col gap-1 min-w-[160px] ${hudHidden ? 'hidden' : ''}`}>
             {(
               [
                 { key: 'hp', label: 'HP', color: '#ef4444', icon: '❤' },
-                { key: 'mana', label: 'Mana', color: '#818cf8', icon: '✦' },
                 { key: 'stamina', label: 'Stamina', color: '#f59e0b', icon: '⚡' },
-                { key: 'bio_power', label: 'Bio Power', color: '#10b981', icon: '☿' },
-                { key: 'perception', label: 'Perception', color: '#06b6d4', icon: '◎' },
               ] as const
             ).map(({ key, color, icon }) => {
-              const val =
-                key === 'hp' ? combatState.health : key === 'stamina' ? combatState.stamina : 100;
-              const maxVal =
-                key === 'hp'
-                  ? combatState.maxHealth
-                  : key === 'stamina'
-                    ? combatState.maxStamina
-                    : 100;
+              const val = key === 'hp' ? combatState.health : combatState.stamina;
+              const maxVal = key === 'hp' ? combatState.maxHealth : combatState.maxStamina;
               const pct = Math.max(0, Math.min(100, (val / maxVal) * 100));
               return (
                 <div key={key} className="flex items-center gap-1.5">
