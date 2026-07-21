@@ -174,6 +174,8 @@ export default function BuildingRenderer3D({
         const { silhouetteForBuildingType } = await import('@/lib/world-lens/building-silhouette');
         const sil = silhouetteForBuildingType(buildingType);
         const dtuArch: ProcArch = hasExplicit ? (explicitArch as ProcArch) : sil.archetype;
+        const feature = (dtu as { feature?: import('@/lib/world-lens/procedural-buildings').IconicFeature }).feature ?? sil.feature;
+        const factionVisual = (dtu as { faction_visual?: { primary_color?: string; secondary_color?: string; accent_color?: string } }).faction_visual;
 
         // Real-asset-first: try a real GLB keyed by archetype (CC0-sourced,
         // dropped at /public/models/building/{archetype}.glb) before falling
@@ -193,6 +195,40 @@ export default function BuildingRenderer3D({
             cloned.userData = { buildingId: dtu.id, dtuName: dtu.name, realAsset: true };
             const box = new THREE.Box3().setFromObject(cloned);
             const size = box.getSize(new THREE.Vector3());
+            // A real GLB is the SAME asset for every building of this
+            // archetype — previously the ONLY differentiation was a uniform
+            // per-axis rescale to the DTU's declared dimensions, so every
+            // player-authored tavern/archive/market looked identical
+            // regardless of the iconic feature (dome/spire/colonnade/belfry)
+            // they actually chose when publishing it. Composite the same
+            // addIconicFeature() geometry the procedural fallback already
+            // uses. addIconicFeature's own geometry (dome radius, spire
+            // height, etc.) AND its roofline position are both derived from
+            // its single `scale` param on the assumption that the base
+            // archetype is ~8 units tall at scale=1 (see BuildingRenderer3D's
+            // own procedural-path rescale a few lines down: height/8) — so
+            // passing `scale=1` here would size the feature for an 8-unit
+            // building while sitting it on this GLB's real roofline,
+            // producing a toy-sized dome on a much taller real building.
+            // Deriving scale from the GLB's own measured height keeps both
+            // proportion AND position consistent, and this all happens
+            // BEFORE the group-wide rescale below carries the feature along
+            // with the rest of the mesh — mirrors createBuilding's own
+            // build-at-base-scale-then-rescale pipeline exactly.
+            if (feature && size.y > 0) {
+              try {
+                const { addIconicFeature } = await import('@/lib/world-lens/procedural-buildings');
+                const roofMat = new THREE.MeshStandardMaterial({
+                  color: factionVisual?.secondary_color ?? '#8a7a68', roughness: 0.8,
+                });
+                const trimMat = new THREE.MeshStandardMaterial({
+                  color: factionVisual?.accent_color ?? '#5c5044', roughness: 0.7, metalness: 0.1,
+                });
+                addIconicFeature(THREE, cloned, feature, size.y / 8, roofMat, trimMat);
+              } catch (featErr) {
+                if (typeof console !== 'undefined') console.warn('[BuildingRenderer3D] iconic-feature compositing failed, real asset still renders', featErr);
+              }
+            }
             if (size.x > 0 && size.y > 0 && size.z > 0) {
               cloned.scale.set(dtu.dimensions.width / size.x, dtu.dimensions.height / size.y, dtu.dimensions.depth / size.z);
             }
@@ -201,9 +237,6 @@ export default function BuildingRenderer3D({
         } catch (err) {
           if (typeof console !== 'undefined') console.warn('[BuildingRenderer3D] real-asset lookup failed, falling back to procedural', err);
         }
-
-        const feature = (dtu as { feature?: import('@/lib/world-lens/procedural-buildings').IconicFeature }).feature ?? sil.feature;
-        const factionVisual = (dtu as { faction_visual?: { primary_color?: string; secondary_color?: string; accent_color?: string } }).faction_visual;
         const archStyleByArch: Record<ProcArch, 'fortified' | 'gracile' | 'crystalline' | 'organic' | 'industrial'> = {
           tavern: 'organic', archive: 'gracile', forge: 'fortified',
           market: 'gracile', tower: 'fortified',

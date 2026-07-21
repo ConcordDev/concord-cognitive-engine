@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface Spell {
   id: number;
@@ -126,8 +127,18 @@ export default function GlyphCastHUD({ worldId = 'concordia-hub', playerPos }: {
     }).catch(() => null);
     const raw = r ? await r.json().catch(() => null) : null;
     const data = raw?.result ?? raw;
-    if (data?.ok) setCastStatus(`Cast ${data.element || ''} (${data.feedbackApplied || 0} channels)`);
-    else setCastStatus(`Failed: ${data?.error || data?.reason || 'unknown'}`);
+    if (data?.ok) {
+      setCastStatus(`Cast ${data.element || ''} (${data.feedbackApplied || 0} channels)`);
+      // A successful glyph_spells.cast previously produced NO visual result
+      // at all — it's a real world-effect macro (embodied signal deltas at
+      // the cast cell), but nothing in the 3D scene reacted, so casting
+      // looked broken rather than environmental. Reuses the same
+      // cast_channel archetype + element-keyed VFX (skill-motion.ts) that
+      // GlyphSpellComposer's mint already uses.
+      playActionAtPlayer('cast', { element: data.element });
+    } else {
+      setCastStatus(`Failed: ${data?.error || data?.reason || 'unknown'}`);
+    }
     window.setTimeout(() => setCastStatus(null), 3000);
   };
 
