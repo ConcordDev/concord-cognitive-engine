@@ -43,7 +43,8 @@ it; delete a file to fall back to the existing procedural generator
 | File | Source name | Used for |
 |---|---|---|
 | `vegetation/tree_01.glb`..`tree_04.glb` | Tree_01_Art..Tree_04_Art (MomusPark) | `TreeLayer.tsx` — picked per-tree by a seeded hash for variety |
-| `vegetation/bush_01.glb`, `flower_01.glb` | Bush_01_Art, Flower_01_a (MomusPark) | sourced, not yet wired to a consumer — vegetation-kind bonus content for a future pass |
+| `vegetation/bush_01.glb` | Bush_01_Art (MomusPark) | `resource-node-renderer.ts` — real GLB for `herb` resource nodes (2026-07-21), real-asset-first ahead of the procedural icosahedron fallback |
+| `vegetation/flower_01.glb` | Flower_01_a (MomusPark) | sourced, not yet wired to a consumer — vegetation-kind bonus content for a future pass |
 | `building/tavern.glb` | Shelter_Art (MomusPark) | `BuildingRenderer3D.tsx` `tavern` archetype |
 | `building/market.glb` | Booth_Food01 (medieval-fair) | `BuildingRenderer3D.tsx` `market` archetype |
 | `building/archive.glb` | Str_Amphitheater_01_Art (MomusPark) | `BuildingRenderer3D.tsx` `archive` archetype |
@@ -320,6 +321,45 @@ NPCs get it right, but the broader quirk (also affecting
 retroactively recoloring armor) is a pre-existing characteristic of this
 function's design, not something this session's scope covered fixing
 everywhere it appears.
+
+### Resource nodes are real, real-asset-first, and clickable (2026-07-21, later same session)
+
+`lib/world-lens/resource-node-renderer.ts` (real per-node meshes polling
+`GET /api/worlds/:worldId/nodes`, already wired into `ConcordiaScene.tsx`
+via `attach-world-renderers.ts`) previously built every node kind from
+flat-color procedural primitives only — no real asset was ever attempted,
+and nothing on the mesh was clickable (the only gather UI was a
+disconnected 2D "Nearby resources" HUD list). Two fixes:
+
+- **Real GLB first for `tree`/`herb` node kinds.** Reuses the exact
+  `loadAsset`/`instanceFromCache`/`resolveAssetReference` pipeline
+  `TreeLayer.tsx` already uses (same real CC0 `tree_01-04.glb` variants),
+  plus finally wires `bush_01.glb` (previously sourced but unused — see
+  the vegetation table above) for `herb` nodes. `ore_vein`/`stone`/
+  `crystal`/`spring` node kinds have no real asset available and keep
+  their existing distinct procedural shapes (rock/crystal/water) — an
+  honest gap, not silently hidden.
+- **Click-to-gather.** Every built node object (real GLB or procedural)
+  is tagged `userData.isResourceNode` + `nodeId` (recursively, via
+  `traverse`, so a hit on any sub-mesh of a multi-mesh real GLB still
+  resolves). `ConcordiaScene.tsx`'s existing canvas-click raycaster
+  (already checks avatars → now resource nodes → buildings → terrain, in
+  that priority order) dispatches `concordia:node-click`; `world/page.tsx`
+  listens and calls the SAME `gatherFromNode()` the 2D HUD list's Gather
+  button already used — one real gather call path, not two — with the
+  same tool-swing + dust-particle feedback the freeform right-click
+  gather path already had. A depleted node (rendered as a stump) shows an
+  honest "depleted" message instead of a silent no-op.
+
+A real concurrency bug was caught and fixed during development, not
+shipped: making `reconcile()` async (real-asset lookups need to
+`await`) meant two overlapping calls — the renderer's own construction-
+time auto-refresh racing an explicit `refresh()` — could each pass the
+"not yet tracked" check for the same node before either wrote back,
+building and adding two objects for one node. Confirmed via a real
+headless-Chromium render during development (5 server nodes rendered as
+10 scene objects) before being serialized with a chained-promise guard
+(`reconcileChain`) and re-verified (5 nodes → 5 objects).
 
 ## Known limitations (honest, not hidden)
 

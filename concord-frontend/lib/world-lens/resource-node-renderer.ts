@@ -25,6 +25,7 @@
  */
 import * as THREE from 'three';
 import { worldToSceneAxis, sampleGroundY } from './coord-frame';
+import { loadAsset, instanceFromCache, resolveAssetReference } from './asset-loader';
 
 // ── Wire types ──────────────────────────────────────────────────────────────
 
@@ -147,14 +148,62 @@ interface TrackedNode {
   swayPhase: number;
 }
 
-/** Build the mesh for a node given its visual descriptor. */
-function buildNodeObject(visual: NodeVisual): {
+/**
+ * Real-asset-first: try a real GLB for kinds that have one (tree, bush)
+ * before falling back to the procedural primitive shape. `realAssetUrls`
+ * is pre-warmed once at renderer creation (see `warmRealAssets` below) —
+ * this stays synchronous-shaped (returns a Promise but never blocks a
+ * caller that doesn't await it) so `reconcile`'s existing structure only
+ * needs `await` added, not a rewrite. `variantSeed` picks deterministically
+ * among multiple real variants (tree_01..04) so nodes of the same kind
+ * aren't visually identical clones.
+ */
+async function tryRealAsset(
+  urls: string[],
+  variantSeed: string,
+  targetHeight: number,
+): Promise<THREE.Object3D | null> {
+  if (urls.length === 0) return null;
+  const url = urls[Math.floor(hashU(variantSeed + ':variant') * urls.length)];
+  try {
+    const inst = await instanceFromCache(url, THREE);
+    if (!inst) return null;
+    const cloned = inst as THREE.Object3D;
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = box.getSize(new THREE.Vector3());
+    if (size.y > 0.001) cloned.scale.multiplyScalar(targetHeight / size.y);
+    cloned.rotation.y = hashU(variantSeed + ':yaw') * Math.PI * 2;
+    return cloned;
+  } catch {
+    return null; // fall through to procedural
+  }
+}
+
+/** Build the mesh for a node given its visual descriptor. Tries a real
+ *  asset first for kinds that have one (see `realAssets` param); the
+ *  procedural shape below is the honest fallback when no real asset is
+ *  available for this kind, not a placeholder that's meant to be removed. */
+async function buildNodeObject(
+  visual: NodeVisual,
+  nodeId: string,
+  realAssets: { tree: string[]; bush: string[] },
+): Promise<{
   object: THREE.Object3D;
   geometries: THREE.BufferGeometry[];
   materials: THREE.Material[];
-} {
+}> {
   const geometries: THREE.BufferGeometry[] = [];
   const materials: THREE.Material[] = [];
+
+  if (!visual.depleted) {
+    if (visual.kind === 'tree') {
+      const real = await tryRealAsset(realAssets.tree, nodeId, 3.5 + hashU(nodeId + ':height') * 2.5);
+      if (real) return { object: real, geometries, materials };
+    } else if (visual.kind === 'bush') {
+      const real = await tryRealAsset(realAssets.bush, nodeId, 0.9 + hashU(nodeId + ':height') * 0.4);
+      if (real) return { object: real, geometries, materials };
+    }
+  }
 
   if (visual.depleted) {
     // Depleted → a short stump / hollow marker so the spot reads as "spent".
@@ -310,8 +359,51 @@ export function createResourceNodeRenderer(
   let disposed = false;
   let intervalId: ReturnType<typeof setInterval> | null = null;
 
-  function reconcile(nodes: ResourceNode[]): void {
+  // Real-asset-first: pre-warm the CC0 tree/bush GLBs once at creation
+  // (mirrors TreeLayer.tsx's exact pattern) so buildNodeObject's per-node
+  // real-asset attempt is a cache hit, not a fresh network fetch, in the
+  // common case. loadAsset never throws — a missing variant just leaves
+  // that slot out of the array and the node falls back to the existing
+  // procedural cone/icosahedron shape (never a fake or blocked node).
+  const realAssets: { tree: string[]; bush: string[] } = { tree: [], bush: [] };
+  const realAssetsReady = (async () => {
+    for (const id of ['tree_01', 'tree_02', 'tree_03', 'tree_04']) {
+      try {
+        const loaded = await loadAsset({ kind: 'vegetation', id }, THREE);
+        if (loaded) {
+          const assetUrl = await resolveAssetReference({ kind: 'vegetation', id });
+          if (assetUrl) realAssets.tree.push(assetUrl);
+        }
+      } catch { /* variant unavailable — skip it */ }
+    }
+    try {
+      const loaded = await loadAsset({ kind: 'vegetation', id: 'bush_01' }, THREE);
+      if (loaded) {
+        const assetUrl = await resolveAssetReference({ kind: 'vegetation', id: 'bush_01' });
+        if (assetUrl) realAssets.bush.push(assetUrl);
+      }
+    } catch { /* unavailable — skip it */ }
+  })();
+
+  // reconcile is async (real-asset lookups await network/cache work) —
+  // unlike the old fully-synchronous version, two calls CAN now overlap
+  // (the construction-time auto-refresh racing an explicit refresh() or
+  // poll tick under slow network). Without serialization, two concurrent
+  // calls can both pass the "not yet in `tracked`" check for the same
+  // node before either writes back, each building + adding its own
+  // object — a real duplicate-mesh bug, not a hypothetical one (caught
+  // via a real headless-browser render during development: 5 nodes
+  // rendered as 10 objects). `reconcileChain` makes every call wait for
+  // the previous one to fully finish before it starts.
+  let reconcileChain: Promise<void> = Promise.resolve();
+  function reconcile(nodes: ResourceNode[]): Promise<void> {
+    reconcileChain = reconcileChain.then(() => reconcileOnce(nodes));
+    return reconcileChain;
+  }
+
+  async function reconcileOnce(nodes: ResourceNode[]): Promise<void> {
     if (disposed) return;
+    await realAssetsReady;
 
     const seen = new Set<string>();
 
@@ -339,11 +431,21 @@ export function createResourceNodeRenderer(
       }
 
       if (existing) disposeTracked(existing, parentGroup);
+      if (disposed) return; // renderer disposed while an await above was in flight
 
-      const built = buildNodeObject(visual);
+      const built = await buildNodeObject(visual, node.id, realAssets);
+      if (disposed) return;
       built.object.position.set(sx, ny, sz);
       const initialScale = existing ? existing.object.scale.x : visual.scale;
       built.object.scale.setScalar(initialScale);
+      // Tag every mesh in the (possibly multi-mesh real GLB) object with
+      // the node id + a resource-node marker so ConcordiaScene's
+      // click-to-gather raycast can resolve a hit back to this node
+      // regardless of which sub-mesh the ray actually intersects.
+      built.object.userData = { ...built.object.userData, isResourceNode: true, nodeId: node.id, nodeType: node.node_type, depleted: visual.depleted };
+      built.object.traverse((child) => {
+        child.userData = { ...child.userData, isResourceNode: true, nodeId: node.id, nodeType: node.node_type, depleted: visual.depleted };
+      });
       parentGroup.add(built.object);
 
       tracked.set(node.id, {
@@ -378,7 +480,7 @@ export function createResourceNodeRenderer(
       if (!res.ok) return; // honest: render nothing on a bad response
       const data = (await res.json()) as NodesResponse;
       if (!data || !Array.isArray(data.nodes)) return;
-      reconcile(data.nodes);
+      await reconcile(data.nodes);
     } catch {
       // Network/parse failure → render nothing new (no fake nodes).
     }
@@ -434,4 +536,15 @@ function hashPhase(id: string): number {
     h = (h * 31 + id.charCodeAt(i)) | 0;
   }
   return ((h >>> 0) % 1000) / 1000 * Math.PI * 2;
+}
+
+/** Stable [0, 1) float from a seed string — same FNV-1a technique as
+ *  TreeLayer.tsx's own `hashU`, used here to pick a real-asset variant
+ *  and jitter its height/yaw deterministically per node id. */
+function hashU(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h ^ s.charCodeAt(i)) * 16777619) >>> 0;
+  }
+  return h / 0xffffffff;
 }

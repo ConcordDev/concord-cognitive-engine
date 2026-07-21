@@ -2168,6 +2168,39 @@ export default function ConcordiaScene({
         }
       }
 
+      // Check resource nodes (trees/ore/crystal/herbs/springs) next —
+      // resource-node-renderer.ts tags every mesh in a node's object
+      // (real GLB or procedural fallback) with userData.isResourceNode +
+      // .nodeId so a hit resolves back to the node regardless of which
+      // sub-mesh the ray actually intersects. A depleted node (stump) is
+      // still clickable — the server honestly rejects the gather with a
+      // real reason rather than the client silently blocking the click.
+      const infrastructureGroup = layersRef.current['infrastructure'] as InstanceType<
+        typeof import('three').Group
+      > | undefined;
+      if (infrastructureGroup) {
+        const hits = rc.intersectObjects(infrastructureGroup.children, true);
+        const nodeHit = hits.find((h) => (h.object.userData as { isResourceNode?: boolean })?.isResourceNode);
+        if (nodeHit) {
+          const ud = nodeHit.object.userData as { nodeId?: string; nodeType?: string; depleted?: boolean };
+          if (ud.nodeId) {
+            try {
+              window.dispatchEvent(new CustomEvent('concordia:node-click', {
+                detail: {
+                  nodeId:   ud.nodeId,
+                  nodeType: ud.nodeType ?? null,
+                  depleted: !!ud.depleted,
+                  point:    { x: nodeHit.point.x, y: nodeHit.point.y, z: nodeHit.point.z },
+                  screenX:  e.clientX,
+                  screenY:  e.clientY,
+                },
+              }));
+            } catch { /* dispatch best-effort */ }
+            return;
+          }
+        }
+      }
+
       // Check buildings layer next
       const buildingsGroup = layersRef.current['buildings'] as InstanceType<
         typeof import('three').Group
