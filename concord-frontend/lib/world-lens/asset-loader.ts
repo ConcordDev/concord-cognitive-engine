@@ -126,6 +126,20 @@ export async function loadGLTF(url: string, _THREE: typeof import("three")): Pro
 }
 
 /**
+ * Synchronous accessor into the scene cache — returns the cached parsed
+ * scene root as-is (NOT cloned; callers that need an independent instance
+ * must clone it themselves, e.g. `(scene as THREE.Object3D).clone(true)`).
+ * Returns null if the URL isn't (yet) cached — callers in a synchronous
+ * code path (e.g. `weapon-archetypes.ts#createWeapon`, which can't await
+ * `loadGLTF`/`instanceFromCache`) use this to opportunistically pick up an
+ * already-resolved real asset, falling back to a procedural build when it
+ * returns null rather than blocking on the load.
+ */
+export function getCachedSceneSync(url: string): unknown | null {
+  return sceneCache.get(url)?.scene ?? null;
+}
+
+/**
  * Cheap clone of a cached GLTF scene. Use this when you need N instances of
  * the same model — avoids re-parsing the file. The clone shares geometry and
  * materials; per-instance transforms must be set on the returned group.

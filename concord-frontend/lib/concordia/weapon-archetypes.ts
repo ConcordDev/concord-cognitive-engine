@@ -9,13 +9,82 @@
  *
  * TextureForge metal recipe is wired for blade albedo/normal/roughness;
  * caller passes a faction.visual.accent_color to tint metallic accents.
+ *
+ * Stability audit (2026-07-21) — added 4 real-asset-first archetypes
+ * (`firearm_pistol`, `firearm_rifle`, `staff`, `wand`; CC0-sourced GLBs at
+ * `/public/models/weapon/{id}.glb` — see `public/models/CREDITS.md`),
+ * same real-asset-first / graceful-procedural-fallback pattern
+ * `creature-renderer.ts` uses. `createWeapon()` stays fully synchronous
+ * (its 2 existing call sites in `enhanced-avatar-builder.ts` build the
+ * avatar mesh inline, not inside a React effect) — real assets are warmed
+ * into a module-level cache by a lazily-triggered, memoized, fire-and-
+ * forget `warmRealWeaponAssets()`, and `createWeapon()` clones from that
+ * cache when it's already resolved by the time it's called, falling back
+ * to the procedural builder (which every archetype still has, including
+ * the 4 new ones) otherwise. First avatar built after a fresh page load
+ * gets the procedural silhouette; subsequent avatars (and re-renders) get
+ * the real mesh once warming resolves — same eventual-consistency
+ * tradeoff already accepted for creatures/buildings/trees.
  */
 
 import * as THREE from 'three';
+import { loadAsset, resolveAssetReference, getCachedSceneSync } from '@/lib/world-lens/asset-loader';
 
 export type WeaponArchetype =
   | 'shortsword' | 'longsword' | 'axe' | 'mace' | 'dagger' | 'club'
-  | 'scimitar' | 'greatsword' | 'halberd' | 'spear' | 'bow' | 'crossbow';
+  | 'scimitar' | 'greatsword' | 'halberd' | 'spear' | 'bow' | 'crossbow'
+  | 'firearm_pistol' | 'firearm_rifle' | 'staff' | 'wand';
+
+/** Archetypes with a real CC0-sourced GLB at /public/models/weapon/{id}.glb. */
+const REAL_ASSET_ARCHETYPES: WeaponArchetype[] = ['firearm_pistol', 'firearm_rifle', 'staff', 'wand'];
+
+const realWeaponCache = new Map<WeaponArchetype, string>(); // archetype -> resolved URL, ready to instanceFromCache
+let warmed = false;
+let warmingPromise: Promise<void> | null = null;
+
+/** Idempotent, memoized, fire-and-forget. Populates realWeaponCache with
+ *  resolved URLs for every archetype whose GLB actually loads; archetypes
+ *  with no real asset (or a load failure) are silently left for the
+ *  procedural builder — loadAsset() never throws. */
+export function warmRealWeaponAssets(): Promise<void> {
+  if (warmed) return Promise.resolve();
+  if (warmingPromise) return warmingPromise;
+  warmingPromise = (async () => {
+    for (const id of REAL_ASSET_ARCHETYPES) {
+      try {
+        const loaded = await loadAsset({ kind: 'weapon', id }, THREE);
+        if (loaded) {
+          const url = await resolveAssetReference({ kind: 'weapon', id });
+          if (url) realWeaponCache.set(id, url);
+        }
+      } catch { /* this archetype's real asset unavailable — procedural fallback covers it */ }
+    }
+    warmed = true;
+  })();
+  return warmingPromise;
+}
+
+/** Best-effort synchronous clone of an already-warmed real asset. Returns
+ *  null (never throws) if warming hasn't resolved yet or this archetype
+ *  has no real asset — caller falls back to the procedural builder. Also
+ *  kicks off warming for next time if it hasn't started yet (idempotent).
+ *  `getCachedSceneSync` is a synchronous accessor into asset-loader's
+ *  scene cache — by the time a URL is in realWeaponCache, `loadGLTF`
+ *  already ran (inside warmRealWeaponAssets's `loadAsset()` call), so the
+ *  parsed scene is guaranteed already resident; no network/parse work
+ *  happens here, only a Map lookup + a synchronous `Object3D.clone()`. */
+function tryRealWeaponMesh(archetype: WeaponArchetype): THREE.Group | null {
+  void warmRealWeaponAssets(); // idempotent — starts warming on first call, no-op after
+  const url = realWeaponCache.get(archetype);
+  if (!url) return null;
+  const scene = getCachedSceneSync(url);
+  if (!scene) return null;
+  const inst = (scene as { clone: (recursive: boolean) => THREE.Object3D }).clone(true);
+  const group = new THREE.Group();
+  group.name = `weapon_${archetype}`;
+  group.add(inst as THREE.Object3D);
+  return group;
+}
 
 export interface WeaponAppearance {
   archetype:    WeaponArchetype;
@@ -62,11 +131,71 @@ function hashSeed(s: string): number {
   return h >>> 0;
 }
 
+/** Target longest-dimension (metres) + pivot convention each real-asset
+ *  archetype is normalized to. The source GLBs come in whatever native
+ *  scale/pivot their creator authored them at, not this codebase's own
+ *  convention — `'bottom'` matches the procedural grip-at-one-end tools
+ *  (`buildStaff`: shaft pivots at its base, tip extends away from the
+ *  hand), `'center'` approximates a fist-gripped tool held near its
+ *  center of mass (`buildFirearm`'s body roughly straddles its origin). */
+const REAL_ASSET_NORMALIZATION: Partial<Record<WeaponArchetype, { size: number; pivot: 'bottom' | 'center' }>> = {
+  firearm_pistol: { size: 0.28, pivot: 'center' },
+  firearm_rifle:  { size: 0.75, pivot: 'center' },
+  staff:          { size: 1.3,  pivot: 'bottom' },
+  wand:           { size: 0.35, pivot: 'bottom' },
+};
+
+/** Uniformly rescales `obj` so its longest bounding-box dimension equals
+ *  `targetLongestDim`, then re-centers its local origin per `pivot`. Real
+ *  assets have no guaranteed native scale or pivot; this makes any
+ *  sourced GLB behave like the procedural weapon it stands in for
+ *  (holdable at a sensible point, sized consistently). */
+export function normalizeRealAssetScale(obj: THREE.Object3D, targetLongestDim: number, pivot: 'bottom' | 'center'): void {
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const longest = Math.max(size.x, size.y, size.z) || 1;
+  obj.scale.setScalar(targetLongestDim / longest);
+  const scaledBox = new THREE.Box3().setFromObject(obj);
+  const center = new THREE.Vector3();
+  scaledBox.getCenter(center);
+  if (pivot === 'center') {
+    obj.position.sub(center);
+  } else {
+    // 'bottom' — keep x/z centered, drop the origin to the lowest y so the
+    // object extends from y=0 upward, matching buildStaff's shaft/tip layout.
+    obj.position.x -= center.x;
+    obj.position.z -= center.z;
+    obj.position.y -= scaledBox.min.y;
+  }
+}
+
 /**
  * Build a weapon mesh. Returns a THREE.Group; caller adds to
  * character's right-hand bone.
  */
 export function createWeapon(appearance: WeaponAppearance): THREE.Group {
+  if (REAL_ASSET_ARCHETYPES.includes(appearance.archetype)) {
+    const real = tryRealWeaponMesh(appearance.archetype);
+    if (real) {
+      const norm = REAL_ASSET_NORMALIZATION[appearance.archetype];
+      if (norm) normalizeRealAssetScale(real.children[0], norm.size, norm.pivot);
+      const tier = Math.max(1, Math.min(5, appearance.tier ?? 1));
+      real.userData = {
+        isWeapon: true,
+        archetype: appearance.archetype,
+        tier,
+        seed: appearance.seed,
+        enchantment: appearance.enchantment ?? null,
+        realAsset: true,
+      };
+      return real;
+    }
+    // Falls through to the procedural builder below when the real asset
+    // hasn't warmed yet (or has no source for this archetype) — every
+    // real-asset archetype also has a procedural case in the switch.
+  }
+
   const group = new THREE.Group();
   group.name = `weapon_${appearance.archetype}`;
   const tier = Math.max(1, Math.min(5, appearance.tier ?? 1));
@@ -102,6 +231,13 @@ export function createWeapon(appearance: WeaponAppearance): THREE.Group {
     case 'spear':      buildSpear(group, bladeMat, accentMat, gripMat, { tipLen: 0.35, shaftLen: 1.85, tier }); break;
     case 'bow':        buildBow(group, gripMat, accentMat, { armLen: 0.95, tier }); break;
     case 'crossbow':   buildCrossbow(group, gripMat, accentMat, bladeMat, { armSpan: 0.85, stockLen: 0.50, tier }); break;
+    case 'firearm_pistol': buildFirearm(group, bladeMat, gripMat, { bodyLen: 0.16, barrelLen: 0.10, gripLen: 0.11, tier }); break;
+    case 'firearm_rifle':  buildFirearm(group, bladeMat, gripMat, { bodyLen: 0.28, barrelLen: 0.32, gripLen: 0.13, hasStock: true, tier }); break;
+    // Tip uses bladeMat (not accentMat) so enchantment glow — baked into
+    // bladeMat's emissive, same as every bladed archetype above — actually
+    // shows on the tip, matching a glowing staff/wand crystal.
+    case 'staff':      buildStaff(group, gripMat, bladeMat, { shaftLen: 1.1, tipSize: 0.05, tier }); break;
+    case 'wand':        buildStaff(group, gripMat, bladeMat, { shaftLen: 0.30, tipSize: 0.025, tier }); break;
   }
 
   group.userData = {
@@ -261,6 +397,55 @@ function buildCrossbow(
     trigger.position.set(stockLen * 0.4, -0.03, 0);
     g.add(trigger);
   }
+}
+
+/** Procedural fallback for firearm_pistol/firearm_rifle — used only while
+ *  the real GLB (public/models/weapon/firearm_{pistol,rifle}.glb) hasn't
+ *  warmed yet. Simple boxy silhouette: grip + body + barrel, optional
+ *  shoulder stock for the rifle variant. */
+function buildFirearm(
+  g: THREE.Group, bodyMat: THREE.Material, gripMat: THREE.Material,
+  opts: { bodyLen: number; barrelLen: number; gripLen: number; hasStock?: boolean; tier: number },
+): void {
+  const { bodyLen, barrelLen, gripLen, hasStock, tier } = opts;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(bodyLen, 0.045, 0.03), bodyMat);
+  body.position.x = bodyLen / 2;
+  g.add(body);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.010, barrelLen, 8), bodyMat);
+  barrel.rotation.z = Math.PI / 2;
+  barrel.position.x = bodyLen + barrelLen / 2;
+  g.add(barrel);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.030, gripLen, 0.025), gripMat);
+  grip.position.set(bodyLen * 0.15, -gripLen / 2, 0);
+  grip.rotation.z = 0.25;
+  g.add(grip);
+  if (hasStock) {
+    const stock = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.04, 0.025), gripMat);
+    stock.position.x = -0.10;
+    g.add(stock);
+  }
+  if (tier >= 4) {
+    const sight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.015), gripMat);
+    sight.position.set(bodyLen * 0.6, 0.03, 0);
+    g.add(sight);
+  }
+}
+
+/** Procedural fallback for staff/wand — used only while the real GLB
+ *  (public/models/weapon/{staff,wand}.glb) hasn't warmed yet. A shaft +
+ *  spherical tip, with tier-scaled tip size and an optional enchantment
+ *  glow already applied via accentMat's emissive (set by the caller). */
+function buildStaff(
+  g: THREE.Group, shaftMat: THREE.Material, tipMat: THREE.Material,
+  opts: { shaftLen: number; tipSize: number; tier: number },
+): void {
+  const { shaftLen, tipSize, tier } = opts;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(shaftLen * 0.02, shaftLen * 0.022, shaftLen, 8), shaftMat);
+  shaft.position.y = shaftLen / 2;
+  g.add(shaft);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(tipSize + tier * 0.004, 10, 8), tipMat);
+  tip.position.y = shaftLen;
+  g.add(tip);
 }
 
 export const WEAPON_CONSTANTS = Object.freeze({
