@@ -615,5 +615,62 @@ export default function CombatInputController({
     return () => window.removeEventListener('contextmenu', onContextMenu);
   }, [inputMode]);
 
+  // Ranged combat — Mouse0 fire. Only live when the resolved hand's
+  // equipped weaponClass is a firearm ('pistol'/'rifle', inferred from
+  // inventory item names by server/lib/combat/loadout.js and mirrored onto
+  // the loadout prop); otherwise a left-click does nothing here and falls
+  // through to ConcordiaScene's ordinary interact-click. The client
+  // cooldown below is soft feel-tuning only — the server's own per-class
+  // cooldown (attack-cooldown.js's 'fire' class) is the real rate gate, and
+  // combat-limits.js#clampAttackRange caps the range server-side too.
+  const lastRangedFireAtRef = useRef<number>(0);
+  const dispatchFire = useCallback(() => {
+    const hand = resolveHand();
+    const weaponClass = hand === 'left' ? loadout?.leftHand?.weaponClass : loadout?.rightHand?.weaponClass;
+    if (weaponClass !== 'pistol' && weaponClass !== 'rifle') return;
+    const now = performance.now();
+    if (now - lastRangedFireAtRef.current < 220) return; // soft client floor; server is authoritative
+    lastRangedFireAtRef.current = now;
+
+    // Client-predicted swing anim — the SAME event melee attacks dispatch,
+    // so the existing discharge-flash + weapon-trail + tracer wiring in
+    // AvatarSystem3D fires for free. Damage/hit stays server-authoritative.
+    if (playerId && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: playerId, animation: 'attack-light', predicted: true },
+      }));
+    }
+    sfx('combat-gunshot');
+
+    if (!worldSocket?.isConnected) return;
+    // aimHitEntityId is ConcordiaScene's crosshair raycast result (published
+    // on the shared cameraLookState bridge — see camera-look-state.ts);
+    // falls back to the soft/hard lock-on target, then to the server
+    // picking nearest-in-range when neither is set.
+    worldSocket.emit('combat:attack', {
+      targetId: cameraLookState.aimHitEntityId ?? _lockedTargetId(),
+      baseDamage: weaponClass === 'rifle' ? 16 : 11,
+      range: 45,
+      armorPierce: 1,
+      heavy: false,
+      style: 'fire',
+      actionOverride: 'ranged',
+      modifier: !!modifierHeld,
+      hand,
+    });
+  }, [resolveHand, loadout, playerId, worldSocket, modifierHeld]);
+
+  useEffect(() => {
+    if (!COMBAT_MODES.has(inputMode)) return;
+    function onMouseDown(e: MouseEvent) {
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('button, [role="button"], input, textarea, [data-keep-context-menu]')) return;
+      dispatchFire();
+    }
+    window.addEventListener('mousedown', onMouseDown);
+    return () => window.removeEventListener('mousedown', onMouseDown);
+  }, [inputMode, dispatchFire]);
+
   return null;
 }

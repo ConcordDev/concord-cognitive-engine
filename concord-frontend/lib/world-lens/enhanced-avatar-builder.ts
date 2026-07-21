@@ -309,6 +309,102 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
     group.add(rifle);
   }
 
+  // Non-weapon carry gear — satchel/tome/tool-belt/pouch previously had no
+  // branch here at all (unlike every weapon `carry` value above), despite
+  // being real `carryDefault` kit on several archetype presets
+  // (scholar/scavenger/mechanic/etc. — character-schema.ts). Simple
+  // procedural props, same leather/cotton PBR reference the boots above
+  // already use — not routed through weapon-archetypes.ts, since these
+  // aren't combat weapons and don't need a tip/discharge point.
+  const beltColor = new THREE.Color(rich.clothing.belt?.color ?? '#5c3a21');
+  const beltMat = new THREE.MeshStandardMaterial({
+    color: beltColor,
+    roughness: PBR_REFERENCE.leather.roughness,
+    metalness: 0,
+  });
+  if (rich.accessories.carry?.includes('satchel')) {
+    const satchel = new THREE.Mesh(
+      new THREE.BoxGeometry(p.headWidth * 0.7, p.headWidth * 0.9, p.headWidth * 0.4),
+      beltMat.clone(),
+    );
+    // Hangs at the right hip, opposite the pistol holster.
+    satchel.position.set(p.hipWidth * 0.6, p.legLength * 0.55, p.headDepth * 0.15);
+    satchel.rotation.z = 0.08;
+    satchel.castShadow = true;
+    satchel.name = 'carry_satchel';
+    group.add(satchel);
+  }
+  if (rich.accessories.carry?.includes('pouch')) {
+    const pouch = new THREE.Mesh(
+      new THREE.BoxGeometry(p.headWidth * 0.4, p.headWidth * 0.45, p.headWidth * 0.3),
+      beltMat.clone(),
+    );
+    // Small, front-center on the belt line — distinct from the larger satchel.
+    pouch.position.set(0, p.legLength * 0.55, p.headDepth * 0.4);
+    pouch.castShadow = true;
+    pouch.name = 'carry_pouch';
+    group.add(pouch);
+  }
+  if (rich.accessories.carry?.includes('tool-belt')) {
+    const beltBand = new THREE.Mesh(
+      new THREE.TorusGeometry(p.hipWidth * 0.62, p.headWidth * 0.1, 6, 16),
+      beltMat.clone(),
+    );
+    beltBand.rotation.x = Math.PI / 2;
+    beltBand.position.set(0, p.legLength * 0.58, 0);
+    beltBand.castShadow = true;
+    beltBand.name = 'carry_tool_belt';
+    group.add(beltBand);
+    // A few small tool cylinders around the band so it reads as equipped
+    // gear, not just a plain ring — deterministic angles, not random, so
+    // the mesh is stable across re-renders of the same character.
+    const toolMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#8a8a8a'),
+      roughness: PBR_REFERENCE.iron.roughness,
+      metalness: PBR_REFERENCE.iron.metalness,
+    });
+    const toolAngles = [0.4, 1.6, -1.2];
+    for (const angle of toolAngles) {
+      const tool = new THREE.Mesh(
+        new THREE.CylinderGeometry(p.headWidth * 0.06, p.headWidth * 0.06, p.headWidth * 0.35, 6),
+        toolMat,
+      );
+      tool.position.set(
+        Math.sin(angle) * p.hipWidth * 0.62,
+        p.legLength * 0.5,
+        Math.cos(angle) * p.hipWidth * 0.62,
+      );
+      tool.rotation.x = Math.PI / 2;
+      tool.castShadow = true;
+      group.add(tool);
+    }
+  }
+  if (rich.accessories.carry?.includes('tome')) {
+    const tomeGroup = new THREE.Group();
+    tomeGroup.name = 'carry_tome';
+    const cover = new THREE.Mesh(
+      new THREE.BoxGeometry(p.headWidth * 0.55, p.headWidth * 0.7, p.headWidth * 0.18),
+      beltMat.clone(),
+    );
+    tomeGroup.add(cover);
+    // A lighter "pages" sliver on the spine edge so it reads as a book,
+    // not a plain box — same two-tone trick real book props use.
+    const pages = new THREE.Mesh(
+      new THREE.BoxGeometry(p.headWidth * 0.55, p.headWidth * 0.62, p.headWidth * 0.05),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color('#e8dcc0'),
+        roughness: PBR_REFERENCE.cotton.roughness,
+        metalness: 0,
+      }),
+    );
+    pages.position.z = p.headWidth * 0.1;
+    tomeGroup.add(pages);
+    // Strapped to the lower back, opposite the satchel.
+    tomeGroup.position.set(-p.hipWidth * 0.3, p.legLength + p.torsoLength * 0.25, -p.headDepth * 0.4);
+    tomeGroup.rotation.y = Math.PI;
+    group.add(tomeGroup);
+  }
+
   /* ── Augments (cyber/superhero — chrome arm, etc.) ──────────── */
   for (const aug of rich.accessories.augments ?? []) {
     const augColor = aug.material === 'chrome' ? 0xc8c8d0 :

@@ -9455,7 +9455,7 @@ async function tryInitWebSockets(server) {
       if (!globalThis._concordCombatLimits) {
         globalThis._concordCombatLimits = import("./lib/combat-limits.js");
       }
-      const { clampBaseDamage, resolvedDamageCap } = await globalThis._concordCombatLimits;
+      const { clampBaseDamage, resolvedDamageCap, clampAttackRange } = await globalThis._concordCombatLimits;
 
       // Wave 4 (Gap A/C) — this is the LIVE, socket-driven basic-attack path
       // (system-affordances.ts dispatches combat:attack for both PvP and
@@ -9484,7 +9484,12 @@ async function tryInitWebSockets(server) {
         attackerId: userId,
         targetId: _ffTargetId,
         baseDamage: clampBaseDamage(data.baseDamage),
-        range: Number(data.range) || 3,
+        // Ranged combat wiring — this previously fed the client-supplied
+        // range straight through with NO upper bound at all, so a modified
+        // client could claim an arbitrary range and "hit" a target anywhere
+        // on the map. clampAttackRange bounds it to the same
+        // COMBAT_MAX_REACH_M ceiling the HTTP NPC route already enforced.
+        range: clampAttackRange(data.range),
         armorPierce: Number(data.armorPierce) || 0,
         contextModifiers: _contextModifiers,
         maxDamage: resolvedDamageCap(),

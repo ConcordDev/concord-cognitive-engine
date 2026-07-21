@@ -107,3 +107,96 @@ describe('buildEnhancedAvatar — carry items render a real weapon mesh', () => 
     expect(pistolGroup.position.y).not.toBeCloseTo(rifleGroup.position.y, 2);
   });
 });
+
+// Non-weapon carry gear — satchel/tome/tool-belt/pouch had NO branch at
+// all in enhanced-avatar-builder.ts (unlike every weapon carry value
+// above), despite being real carryDefault kit on several archetype
+// presets (scholar/scavenger/mechanic/etc — see character-schema.ts).
+// These are simple procedural props, not routed through
+// weapon-archetypes.ts (they aren't combat weapons).
+describe('buildEnhancedAvatar — non-weapon carry gear renders real props', () => {
+  it("carry: ['satchel'] renders a carry_satchel mesh at the hip", () => {
+    const rich = appearanceWithCarry(['satchel']);
+    const { group } = buildEnhancedAvatar(rich);
+    const satchel = findMeshByName(group, 'carry_satchel');
+    expect(satchel).toBeDefined();
+    expect(satchel!.parent).toBe(group);
+  });
+
+  it("carry: ['pouch'] renders a carry_pouch mesh, smaller and front-center vs. the satchel", () => {
+    const satchelRich = appearanceWithCarry(['satchel']);
+    const pouchRich = appearanceWithCarry(['pouch']);
+    const satchel = findMeshByName(buildEnhancedAvatar(satchelRich).group, 'carry_satchel') as THREE.Mesh;
+    const pouch = findMeshByName(buildEnhancedAvatar(pouchRich).group, 'carry_pouch') as THREE.Mesh;
+    expect(pouch).toBeDefined();
+    const satchelGeom = satchel.geometry as THREE.BoxGeometry;
+    const pouchGeom = pouch.geometry as THREE.BoxGeometry;
+    expect(pouchGeom.parameters.width).toBeLessThan(satchelGeom.parameters.width);
+    // Different z placement (front-center vs. hip) — not stacked identically.
+    expect(pouch.position.x).toBeCloseTo(0, 5);
+    expect(satchel.position.x).not.toBeCloseTo(0, 2);
+  });
+
+  it("carry: ['tool-belt'] renders a carry_tool_belt band plus tool cylinders around the waist", () => {
+    const rich = appearanceWithCarry(['tool-belt']);
+    const { group } = buildEnhancedAvatar(rich);
+    const band = findMeshByName(group, 'carry_tool_belt');
+    expect(band).toBeDefined();
+    expect(band).toBeInstanceOf(THREE.Mesh);
+    expect((band as THREE.Mesh).geometry).toBeInstanceOf(THREE.TorusGeometry);
+    let cylinderCount = 0;
+    group.traverse((o) => {
+      if (o instanceof THREE.Mesh && o.geometry instanceof THREE.CylinderGeometry) cylinderCount++;
+    });
+    expect(cylinderCount).toBeGreaterThanOrEqual(3); // the 3 deterministic tool angles
+  });
+
+  it("carry: ['tome'] renders a carry_tome group with a cover + a lighter pages sliver", () => {
+    const rich = appearanceWithCarry(['tome']);
+    const { group } = buildEnhancedAvatar(rich);
+    const tome = findMeshByName(group, 'carry_tome') as THREE.Group;
+    expect(tome).toBeDefined();
+    expect(tome).toBeInstanceOf(THREE.Group);
+    expect(tome.children.length).toBe(2); // cover + pages
+    const [cover, pages] = tome.children as THREE.Mesh[];
+    const coverColor = (cover.material as THREE.MeshStandardMaterial).color.getHexString();
+    const pagesColor = (pages.material as THREE.MeshStandardMaterial).color.getHexString();
+    expect(pagesColor).not.toBe(coverColor); // two-tone, reads as a book not a plain box
+  });
+
+  it('satchel + tome + tool-belt + pouch all together render all four, no cross-clobbering', () => {
+    const rich = appearanceWithCarry(['satchel', 'tome', 'tool-belt', 'pouch']);
+    const { group } = buildEnhancedAvatar(rich);
+    expect(findMeshByName(group, 'carry_satchel')).toBeDefined();
+    expect(findMeshByName(group, 'carry_tome')).toBeDefined();
+    expect(findMeshByName(group, 'carry_tool_belt')).toBeDefined();
+    expect(findMeshByName(group, 'carry_pouch')).toBeDefined();
+  });
+
+  it('a bare-hands appearance with no carry items renders none of the four props', () => {
+    const rich = appearanceWithCarry([]);
+    const { group } = buildEnhancedAvatar(rich);
+    expect(findMeshByName(group, 'carry_satchel')).toBeUndefined();
+    expect(findMeshByName(group, 'carry_tome')).toBeUndefined();
+    expect(findMeshByName(group, 'carry_tool_belt')).toBeUndefined();
+    expect(findMeshByName(group, 'carry_pouch')).toBeUndefined();
+  });
+
+  it('respects clothing.belt.color when set, falling back to a leather-brown default otherwise', () => {
+    const withBelt = generateAppearance({
+      id: 'test-npc-belt', worldId: 'test-world', themeId: 'classic',
+      override: {
+        accessories: { jewelry: [], markings: [], carry: ['satchel'], augments: [] },
+        clothing: {
+          top: { color: '#333333', kind: 'shirt' },
+          bottom: { color: '#333333', kind: 'pants' },
+          belt: { color: '#123456' },
+        },
+      },
+    });
+    const { group } = buildEnhancedAvatar(withBelt);
+    const satchel = findMeshByName(group, 'carry_satchel') as THREE.Mesh;
+    const mat = satchel.material as THREE.MeshStandardMaterial;
+    expect(mat.color.getHexString()).toBe('123456');
+  });
+});

@@ -64,7 +64,7 @@ describe('AvatarSystem3D.tsx — discharge flash wiring', () => {
   it('is wrapped in try/catch so a discharge-flash failure can never block the real combat animation it sits next to', () => {
     const idx = src.indexOf('Discharge flash — the visual companion');
     expect(idx).toBeGreaterThan(-1);
-    const nearby = src.slice(idx, idx + 3000);
+    const nearby = src.slice(idx, idx + 4500); // widened for the ranged-combat tracer block added inline
     expect(nearby).toMatch(/try \{/);
     expect(nearby).toMatch(/catch \{ \/\* discharge flash is best-effort cosmetic, never block combat anim \*\/ \}/);
   });

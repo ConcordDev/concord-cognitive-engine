@@ -109,33 +109,101 @@ real non-degenerate geometry, 340–2,100 vertices each).
   found reachable through this environment's egress allowlist — kenney.nl,
   itch.io, poly.pizza, and quaternius.com are all org-policy-blocked for
   this session, see `/root/.ccr/README.md`) doesn't include those 5
-  shapes. They keep the existing procedural silhouette. So does every
-  `Accessories.carry` value with no `weapon-archetypes.ts` archetype at
-  all (`'satchel' | 'tome' | 'tool-belt' | 'pouch'`).
-- **Discharge flash exists and is real, but it's a visual companion to
-  attacking, not a ranged-combat system.** `AvatarSystem3D.tsx`'s
+  shapes. They keep the existing procedural silhouette.
+  **Re-attempted 2026-07-21 (same session as the ranged-combat work
+  below) — still blocked, not a retry-able failure.** Searched for
+  additional CC0 GitHub-hosted sources beyond KayKit:
+  `M3-org/retro3d-assets` and `Miziziziz/Retro3DGraphicsCollection` were
+  found and `git clone --sparse`'d to inspect, but both are **link-list
+  repos only** — their READMEs point at itch.io/opengameart.org for the
+  actual model files, and `curl` to opengameart.org from this environment
+  returns a hard proxy `403`/`CONNECT tunnel failed`, matching the other 4
+  blocked domains. No model files are hosted on GitHub itself for either
+  repo. Temp clones were removed after inspection. This is a genuine
+  environmental egress constraint, not something more searching within
+  this session can close — a different session/network could retry.
+- **`satchel`/`tome`/`tool-belt`/`pouch` now render real procedural
+  props** (2026-07-21, same pass as ranged combat) — previously these 4
+  `Accessories.carry` values had no branch in
+  `enhanced-avatar-builder.ts` at all and rendered nothing, unlike every
+  weapon carry value. Not routed through `weapon-archetypes.ts` (they
+  aren't combat weapons, no tip/discharge point needed): a leather satchel
+  box at the hip, a smaller front-center pouch, a torus tool-belt band
+  with 3 tool cylinders around the waist, and a two-tone (cover + lighter
+  "pages" sliver) tome strapped to the lower back — all using the same
+  leather/cotton `PBR_REFERENCE` values the existing boots/cape props
+  already use, colored from `clothing.belt.color` (a real, previously
+  unused `ClothingKit` field) with a leather-brown fallback. Pinned by 7
+  new tests in `tests/lib/enhanced-avatar-builder-carry-weapons.test.ts`.
+- **Discharge flash exists and is real** — see below, it's now one part of
+  a real ranged-combat path, not a standalone cosmetic. `AvatarSystem3D.tsx`'s
   `handleCombatAnim` — the same client-predicted trigger that already
   lights up the (separately pre-existing, unrelated) weapon-swing trail —
-  now also checks whether the local player's equipped weapon is one of
-  the 4 discharge-capable archetypes (`firearm_pistol`/`firearm_rifle`/
-  `staff`/`wand`) and, if so, spawns a real particle burst
+  checks whether the local player's equipped weapon is one of the 4
+  discharge-capable archetypes (`firearm_pistol`/`firearm_rifle`/`staff`/
+  `wand`) and, if so, spawns a real particle burst
   (`concordia:particle-effect` → `world-vfx-bridge.ts`, already mounted,
   not a new pipeline) at that weapon's actual muzzle/tip world position
-  via `weapon-archetypes.ts#getDischargeWorldPosition`. What this
-  deliberately does NOT do: there is no ranged-attack input, no
-  projectile, and no server-side ranged hit resolution anywhere in this
-  codebase — the canonical combat model (see `CLAUDE.md`'s own "Skyrim-
-  style action, NOT RTwP" invariant) is melee-reach-based, and this flash
-  fires on the *existing* melee attack trigger regardless of which
-  weapon archetype is equipped. Building real ranged combat (a `fire`
-  input binding, a travelling projectile, server-authoritative ranged hit
-  resolution) is a materially larger, separate feature — the
-  `firearm_pistol`/`firearm_rifle` `ControlScheme`s in
-  `lib/concordia/combat/control-schemes.ts` already describe the intended
-  key bindings for it (`fire`/`aim`/`reload`/`scope` etc.) but are
-  currently only rendered as a HUD legend reference
-  (`ControlLegend`/`BARE_HANDS` in `app/lenses/world/page.tsx`), not
-  wired to real input dispatch.
+  via `weapon-archetypes.ts#getDischargeWorldPosition`.
+- **RANGED COMBAT IS NOW REAL (2026-07-21, same session as the
+  weapon-trail fix above).** The prior version of this note said "there is
+  no ranged-attack input, no projectile, and no server-side ranged hit
+  resolution anywhere in this codebase" — that gap is closed:
+  - **Fire input**: `CombatInputController.tsx` binds Mouse0 to
+    `dispatchFire()`, gated on the resolved hand's `loadout.weaponClass`
+    (already inferred from inventory item names by
+    `server/lib/combat/loadout.js`) being `'pistol'`/`'rifle'`. A
+    non-firearm loadout leaves left-click doing nothing here (falls
+    through to `ConcordiaScene`'s ordinary interact-click), so melee
+    players see no behavior change.
+  - **Aim resolution**: `ConcordiaScene.tsx` runs a throttled (~20Hz)
+    screen-center raycast against the avatars/buildings/terrain layers
+    each frame while in a player-tracking camera mode, and publishes the
+    result on the shared `cameraLookState.aimHitPoint`/`aimHitEntityId`
+    bridge (`lib/world-lens/camera-look-state.ts`) — the same
+    cross-component pattern already used for yaw/pitch/lock-on, since
+    `CombatInputController` has no scene access of its own.
+  - **Projectile visual**: a new pooled hit-scan tracer system
+    (`lib/world-lens/projectile-tracer.ts`) draws a fading streak from the
+    weapon's real muzzle point (`getDischargeWorldPosition`, unchanged) to
+    `cameraLookState.aimHitPoint`, fired from the same discharge-flash
+    block above. It draws the full-length line **instantly**, not a
+    slow-traveling mesh — the server resolves ranged hits as an instant
+    distance check (see below), so an animated travel-time projectile
+    would misrepresent the actual mechanic; this matches how hit-scan
+    weapons read in most action games.
+  - **Server-side hit resolution**: `dispatchFire()` emits the same
+    `combat:attack` socket event melee attacks already use, with
+    `style: 'fire'`, and it resolves through the exact same
+    `cityPresence.applyAttack()` distance-gated damage path as every
+    other attack — no separate/parallel ranged-combat code path was
+    built. Two real, independently-fixed bugs surfaced while wiring this:
+    (1) the socket handler's `range` field had **no upper bound at all**
+    (`Number(data.range) || 3`) even before this session touched it — a
+    modified client could claim any range and "hit" a target anywhere on
+    the map; now clamped via a new `combat-limits.js#clampAttackRange`
+    to the same `COMBAT_MAX_REACH_M` (80m) ceiling the HTTP NPC route
+    already enforced. (2) ranged fire needed its own cooldown class
+    (`attack-cooldown.js`'s new `fire` track, 200ms) so it doesn't share
+    a track with melee light attacks. Both are pinned by real behavioral
+    `node:test` coverage (`server/tests/socket-combat-range-cap.test.js`,
+    `server/tests/combat-cooldown-per-action.test.js`), and the client
+    wiring is pinned by `tests/world-lens-ranged-combat-wiring.test.ts` +
+    `tests/lib/projectile-tracer.test.ts`.
+  - **Still honest gaps, not silently glossed over**: the
+    `firearm_pistol`/`firearm_rifle` `ControlScheme`s in
+    `lib/concordia/combat/control-schemes.ts` describe `aim`/`reload`/
+    `scope` bindings beyond plain `fire` — those are NOT wired (no ADS
+    zoom, no magazine/reload state, no scope overlay); only `fire` is
+    real. Damage numbers (11 pistol / 16 rifle base) are a first-pass
+    balance guess, not a playtested value — same caveat this file's other
+    untuned constants carry. `armorPierce: 1` is a flat default, not
+    per-weapon. The crosshair raycast reuses `ConcordiaScene`'s existing
+    avatars/buildings/terrain layers verbatim; it does not account for
+    partial occlusion nuance beyond "first raycast hit," so a shot that
+    should clip a thin prop edge may resolve slightly differently than a
+    player's eye reads it — an acceptable approximation, not a
+    correctness bug.
 - **The firearm muzzle direction is a well-supported inference, not a
   verified one.** `REAL_ASSET_NORMALIZATION`'s `'center'` pivot for
   `firearm_pistol`/`firearm_rifle` assumes local +Z is "forward" (the

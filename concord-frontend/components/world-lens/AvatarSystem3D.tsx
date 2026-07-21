@@ -316,6 +316,10 @@ export default function AvatarSystem3D({
   // I2 — player weapon-trail ribbon (lazily created in the frame loop) +
   // reusable tip vector to avoid per-frame allocation.
   const weaponTrailRef = useRef<import('@/lib/world-lens/weapon-trail').WeaponTrailAPI | null>(null);
+  // Ranged combat — hit-scan tracer streak fired from a discharging firearm's
+  // muzzle to the crosshair aim point (see the discharge-flash block in
+  // handleCombatAnim). Lazily constructed like weaponTrailRef.
+  const projectileTracerRef = useRef<import('@/lib/world-lens/projectile-tracer').ProjectileTracerAPI | null>(null);
   const weaponTipVecRef = useRef<unknown>(null);
   // Phase A1 sidecars for enhanced-avatar-builder. Re-using the
   // existing facialControllersRef declared further down (line ~324).
@@ -1192,6 +1196,11 @@ export default function AvatarSystem3D({
       // create the ribbon without an await.
       const { createWeaponTrail: _createWeaponTrail } = await import('@/lib/world-lens/weapon-trail');
       if (disposed) return;
+      // Ranged combat — preload the projectile-tracer factory the same way,
+      // so handleCombatAnim's discharge-flash block can fire a tracer
+      // synchronously on the same predicted-attack event it already reacts to.
+      const { createProjectileTracerSystem: _createProjectileTracer } = await import('@/lib/world-lens/projectile-tracer');
+      if (disposed) return;
 
       const avatarGroup = new THREE.Group();
       avatarGroup.name = 'avatar_system';
@@ -1422,11 +1431,14 @@ export default function AvatarSystem3D({
         // those) and, if so, spawn a real particle burst at its muzzle/tip
         // world position via the world-vfx-bridge.ts pipeline (already
         // mounted — see lib/world-lens/attach-world-renderers.ts) rather
-        // than inventing a new one. This does NOT model actual gunfire
-        // (no projectile, no server-side ranged hit resolution exists —
-        // see public/models/CREDITS.md's "known limitations") — it's
-        // scoped to "the weapon visibly reacts when its wielder attacks",
-        // same as the trail is scoped to blade swings.
+        // than inventing a new one. Firearms additionally fire a hit-scan
+        // projectile tracer toward the crosshair aim point (ConcordiaScene's
+        // per-frame raycast, published on cameraLookState.aimHitPoint) — the
+        // real fire-input binding lives in CombatInputController, and the
+        // real server-side hit resolution is cityPresence.applyAttack() via
+        // the same combat:attack path melee already uses (range-capped by
+        // combat-limits.js#clampAttackRange); this is scoped to the visual
+        // side, same as the trail is scoped to blade swings.
         if (detail.entityId === playerAvatar.id && detail.animation.startsWith('attack') && playerMeshRef.current) {
           try {
             const playerGroup = playerMeshRef.current as InstanceType<typeof import('three').Group>;
@@ -1452,6 +1464,23 @@ export default function AvatarSystem3D({
                 window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
                   detail: { type: vfxType, position: { x: pos.x, y: pos.y, z: pos.z }, intensity: 1 },
                 }));
+                if (isFirearm) {
+                  const sceneRoot = playerGroup.parent;
+                  if (sceneRoot) {
+                    if (!projectileTracerRef.current) {
+                      projectileTracerRef.current = _createProjectileTracer(
+                        THREE as typeof import('three'),
+                        sceneRoot as import('three').Object3D,
+                      );
+                    }
+                    // aimHitPoint is null only before ConcordiaScene's first
+                    // raycast tick; fall back to straight along the muzzle's
+                    // own forward-ish direction so a very first shot still
+                    // draws a visible streak instead of a zero-length line.
+                    const target = cameraLookState.aimHitPoint ?? { x: pos.x, y: pos.y, z: pos.z - 40 };
+                    projectileTracerRef.current.fire({ x: pos.x, y: pos.y, z: pos.z }, target);
+                  }
+                }
               }
             }
           } catch { /* discharge flash is best-effort cosmetic, never block combat anim */ }
@@ -2378,6 +2407,7 @@ export default function AvatarSystem3D({
             trail?.tick(now / 1000);
           }
         } catch { /* trail best-effort — never throw out of the frame loop */ }
+        try { projectileTracerRef.current?.tick(now / 1000); } catch { /* tracer best-effort */ }
 
         // Phase A1: per-frame eye tick for enhanced avatars (wetness
         // sheen + iris animation). Bounded by tickerCount ≤ N players +
@@ -3004,6 +3034,8 @@ export default function AvatarSystem3D({
         knockbackTimers.clear();
         try { weaponTrailRef.current?.dispose(); } catch { /* ok */ }
         weaponTrailRef.current = null;
+        try { projectileTracerRef.current?.dispose(); } catch { /* ok */ }
+        projectileTracerRef.current = null;
         physicsWorld.removeCharacter('player');
         // Wave 4 finding #8 — stop broadcasting position once this avatar
         // system unmounts, so a stale pointer doesn't leak into a lens

@@ -14,6 +14,17 @@
  * player). When set, the combat input controller defaults to it instead
  * of letting the server pick nearest-in-range, and the camera frames
  * it. Set to null to release the lock.
+ *
+ * `aimHitPoint`/`aimHitEntityId` — World Lens ranged-combat wiring.
+ * ConcordiaScene owns the THREE.js camera + scene graph, so it's the only
+ * component that can raycast from screen-center through the avatars/
+ * buildings/terrain layers; it writes the resolved crosshair hit here on a
+ * throttled per-frame cadence while a player-tracking camera mode is
+ * active. CombatInputController (which has no scene access) reads
+ * `aimHitEntityId` as the ranged-attack target override, and
+ * AvatarSystem3D's discharge-flash block reads `aimHitPoint` as the
+ * projectile tracer's endpoint — same cross-component bridge pattern this
+ * module already established for yaw/pitch/lock-on.
  */
 
 export const cameraLookState: {
@@ -24,6 +35,12 @@ export const cameraLookState: {
   lockedTargetId: string | null;
   lockedTargetPos: { x: number; y: number; z: number } | null;
   lockMode: 'soft' | 'hard' | null;
+  /** Current crosshair (screen-center) raycast hit point in world space, or
+   *  a far point along the aim ray when nothing was hit within range. Null
+   *  before ConcordiaScene has run its first aim raycast. */
+  aimHitPoint: { x: number; y: number; z: number } | null;
+  /** avatarId of the NPC/other-player currently under the crosshair, if any. */
+  aimHitEntityId: string | null;
 } = {
   yaw: 0,
   pitch: 0,
@@ -31,6 +48,8 @@ export const cameraLookState: {
   lockedTargetId: null,
   lockedTargetPos: null,
   lockMode: null,
+  aimHitPoint: null,
+  aimHitEntityId: null,
 };
 
 export function resetCameraLook(): void {

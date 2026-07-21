@@ -407,6 +407,9 @@ export default function ConcordiaScene({
   const frameIdRef = useRef<number>(0);
   const clockRef = useRef<unknown>(null);
   const raycasterRef = useRef<unknown>(null);
+  // World Lens — ranged combat: throttle clock for the crosshair aim
+  // raycast (see the gameLoop block that writes cameraLookState.aimHit*).
+  const aimRaycastLastRef = useRef<number>(0);
   const buildingMapRef = useRef<Map<string, unknown>>(new Map());
   const weatherSysRef = useRef<
     import('@/lib/world-lens/world-deformation').WeatherTransitionSystem | null
@@ -1780,6 +1783,65 @@ export default function ConcordiaScene({
         // Sprint 7 — drive volumetric fog time uniform if present.
         const volFogAnim = (composerRef.current as unknown as { _volFogAnimate?: () => void } | null)?._volFogAnimate;
         if (volFogAnim) volFogAnim();
+
+        // ── World Lens — ranged combat: crosshair aim raycast (~20Hz) ──
+        // ConcordiaScene is the only component holding the live camera +
+        // avatars/buildings/terrain layers, so it resolves what's under the
+        // screen-center crosshair each throttled tick and publishes it via
+        // the shared cameraLookState bridge (same cross-component pattern
+        // already used for yaw/pitch/lock-on) — CombatInputController reads
+        // aimHitEntityId as the ranged-attack target override, and
+        // AvatarSystem3D's discharge-flash block reads aimHitPoint as the
+        // projectile tracer's endpoint. Only runs in player-tracking modes;
+        // isometric/cinematic/free have no meaningful "crosshair".
+        if (THREE && (mode === 'follow' || mode === 'first-person' || mode === 'interior')) {
+          const _nowAim = globalThis.performance.now();
+          if (_nowAim - aimRaycastLastRef.current > 50) {
+            aimRaycastLastRef.current = _nowAim;
+            const rc = raycasterRef.current as InstanceType<typeof import('three').Raycaster> | null;
+            if (rc) {
+              rc.setFromCamera(new THREE.Vector2(0, 0), camera as InstanceType<typeof import('three').PerspectiveCamera>);
+              const AIM_MAX_RANGE_M = 80; // mirrors server COMBAT_MAX_REACH_M
+              let hitPoint: { x: number; y: number; z: number } | null = null;
+              let hitEntityId: string | null = null;
+              const avatarsGroup = layersRef.current['avatars'] as InstanceType<typeof import('three').Group> | undefined;
+              if (avatarsGroup) {
+                const hits = rc.intersectObjects(avatarsGroup.children, true);
+                const first = hits.find((h) => h.distance <= AIM_MAX_RANGE_M);
+                if (first) {
+                  let obj = first.object as InstanceType<typeof import('three').Object3D>;
+                  while (
+                    obj.parent && obj.parent !== avatarsGroup &&
+                    !(obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean })?.isNPC &&
+                    !(obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean })?.isOtherPlayer
+                  ) {
+                    obj = obj.parent as typeof obj;
+                  }
+                  const ud = obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean; avatarId?: string } | undefined;
+                  if ((ud?.isNPC || ud?.isOtherPlayer) && ud.avatarId) {
+                    hitEntityId = ud.avatarId;
+                    hitPoint = { x: first.point.x, y: first.point.y, z: first.point.z };
+                  }
+                }
+              }
+              if (!hitPoint) {
+                const solidGroups = [layersRef.current['buildings'], layersRef.current['terrain']]
+                  .filter(Boolean) as InstanceType<typeof import('three').Group>[];
+                for (const g of solidGroups) {
+                  const hits = rc.intersectObjects(g.children, true);
+                  const first = hits.find((h) => h.distance <= AIM_MAX_RANGE_M);
+                  if (first) { hitPoint = { x: first.point.x, y: first.point.y, z: first.point.z }; break; }
+                }
+              }
+              if (!hitPoint) {
+                const far = rc.ray.origin.clone().add(rc.ray.direction.clone().multiplyScalar(AIM_MAX_RANGE_M));
+                hitPoint = { x: far.x, y: far.y, z: far.z };
+              }
+              cameraLookState.aimHitPoint = hitPoint;
+              cameraLookState.aimHitEntityId = hitEntityId;
+            }
+          }
+        }
 
         // Phase O — broadcast camera state so R3FOverlayLayer can mirror it.
         // Throttled to ~10 Hz to keep dispatch cheap; overlay's per-frame
