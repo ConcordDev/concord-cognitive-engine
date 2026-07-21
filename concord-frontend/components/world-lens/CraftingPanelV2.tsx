@@ -12,6 +12,21 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
+
+// Recipe.category → the labor verb that plays on the avatar. Chosen per
+// output type so a weapon/tool craft looks like real forge-work (hammer_tap
+// loop, sparks, forge_ring sfx) while a consumable craft looks like cooking
+// (sizzle/steam) — see action-biomechanics.ts's ACTION_DESCRIPTORS table for
+// the full per-verb sfx/vfx profile each of these resolves to.
+const CATEGORY_TO_VERB: Record<string, string> = {
+  weapon: 'forge',
+  tool: 'forge',
+  armor: 'craft',
+  consumable: 'cook',
+  structure: 'build',
+  material: 'mill',
+};
 
 interface Recipe {
   id: string;
@@ -74,6 +89,7 @@ export default function CraftingPanelV2({ worldId: _worldId, onClose }: Crafting
       if (data?.ok) {
         showToast('ok', `Crafted ${recipe.output.name}.`);
         refresh();
+        playActionAtPlayer(CATEGORY_TO_VERB[recipe.category ?? recipe.output.type ?? ''] ?? 'craft');
         try {
           window.dispatchEvent(new CustomEvent('concordia:game-juice', {
             detail: { trigger: 'craft-complete', opts: { value: recipe.output.name } },

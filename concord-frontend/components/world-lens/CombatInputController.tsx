@@ -45,6 +45,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createInputBuffer, cancelState } from '@/lib/concordia/combat-input-buffer';
 import { sfx } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 import {
   type KeyAction,
   loadActiveProfile,
@@ -616,31 +617,46 @@ export default function CombatInputController({
   }, [inputMode]);
 
   // Ranged combat — Mouse0 fire. Only live when the resolved hand's
-  // equipped weaponClass is a firearm ('pistol'/'rifle', inferred from
-  // inventory item names by server/lib/combat/loadout.js and mirrored onto
-  // the loadout prop); otherwise a left-click does nothing here and falls
-  // through to ConcordiaScene's ordinary interact-click. The client
-  // cooldown below is soft feel-tuning only — the server's own per-class
-  // cooldown (attack-cooldown.js's 'fire' class) is the real rate gate, and
+  // equipped weaponClass is a firearm ('pistol'/'rifle') or the spell-caster
+  // class ('staff', which item names like "wand"/"rod" also infer to —
+  // inferred from inventory item names by server/lib/combat/loadout.js and
+  // mirrored onto the loadout prop); otherwise a left-click does nothing
+  // here and falls through to ConcordiaScene's ordinary interact-click. The
+  // client cooldown below is soft feel-tuning only — the server's own
+  // per-class cooldown (attack-cooldown.js, falls back to the 'attack-light'
+  // class for the 'magic' style tag since staves don't have a bespoke
+  // cooldown entry yet) is the real rate gate, and
   // combat-limits.js#clampAttackRange caps the range server-side too.
   const lastRangedFireAtRef = useRef<number>(0);
   const dispatchFire = useCallback(() => {
     const hand = resolveHand();
     const weaponClass = hand === 'left' ? loadout?.leftHand?.weaponClass : loadout?.rightHand?.weaponClass;
-    if (weaponClass !== 'pistol' && weaponClass !== 'rifle') return;
+    const isStaff = weaponClass === 'staff';
+    if (weaponClass !== 'pistol' && weaponClass !== 'rifle' && !isStaff) return;
     const now = performance.now();
     if (now - lastRangedFireAtRef.current < 220) return; // soft client floor; server is authoritative
     lastRangedFireAtRef.current = now;
 
-    // Client-predicted swing anim — the SAME event melee attacks dispatch,
-    // so the existing discharge-flash + weapon-trail + tracer wiring in
-    // AvatarSystem3D fires for free. Damage/hit stays server-authoritative.
     if (playerId && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
-        detail: { entityId: playerId, animation: 'attack-light', predicted: true },
-      }));
+      if (isStaff) {
+        // A staff/wand equip is the spell-caster class — play the real
+        // cast_channel archetype (arms sweep up/out, hold, release; own
+        // spell_cast sfx + arcane vfx via the descriptor) instead of
+        // reusing the melee attack-light swing. Previously EVERY equipped
+        // weapon (including staves) fell through to attack-light here, so
+        // casting looked identical to a normal attack.
+        playActionAtPlayer('cast');
+      } else {
+        // Client-predicted swing anim — the SAME event melee attacks
+        // dispatch, so the existing discharge-flash + weapon-trail +
+        // tracer wiring in AvatarSystem3D fires for free. Damage/hit
+        // stays server-authoritative.
+        window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+          detail: { entityId: playerId, animation: 'attack-light', predicted: true },
+        }));
+        sfx('combat-gunshot');
+      }
     }
-    sfx('combat-gunshot');
 
     if (!worldSocket?.isConnected) return;
     // aimHitEntityId is ConcordiaScene's crosshair raycast result (published
@@ -649,11 +665,11 @@ export default function CombatInputController({
     // picking nearest-in-range when neither is set.
     worldSocket.emit('combat:attack', {
       targetId: cameraLookState.aimHitEntityId ?? _lockedTargetId(),
-      baseDamage: weaponClass === 'rifle' ? 16 : 11,
+      baseDamage: weaponClass === 'rifle' ? 16 : isStaff ? 14 : 11,
       range: 45,
       armorPierce: 1,
       heavy: false,
-      style: 'fire',
+      style: isStaff ? 'magic' : 'fire',
       actionOverride: 'ranged',
       modifier: !!modifierHeld,
       hand,

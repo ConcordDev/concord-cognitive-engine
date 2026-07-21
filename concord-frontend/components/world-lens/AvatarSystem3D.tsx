@@ -326,6 +326,14 @@ export default function AvatarSystem3D({
   // These two are new — per-frame eye tickers and enhanced-disposers.
   const eyeTickersRef = useRef<Map<string, (dt: number) => void>>(new Map());
   const enhancedDisposeRef = useRef<Map<string, () => void>>(new Map());
+  // Set once the player's active mount spawns (see the mount-spawn block
+  // below). The movement loop's terrain-elevation clamp reads this to
+  // skip clamping Y to ground height while mounted — rider-ik's astride
+  // seat lift owns Y in that case instead. Without this gate, the two
+  // systems fight every frame (rider-ik sets the seat height, then the
+  // terrain clamp immediately stomps it back to ground level), which is
+  // exactly why the seat lift shipped default-off until this fix.
+  const isMountedRiderRef = useRef(false);
 
   // Phase AA2 — Web Worker for gait synthesis. The hook spawns one
   // worker for the lifetime of this component; per-frame requestGait
@@ -1989,11 +1997,13 @@ export default function AvatarSystem3D({
           // (not a hardcoded 'Steed'), seat-offset-aware, and FOLLOW the player
           // instead of freezing at a static +1.2m. The mount tracks the rider's
           // position + heading each frame and ticks its gait by actual speed.
-          // NOTE (chair-verified follow-on): the rider astride-seat pose —
-          // lifting the player onto the saddle via rider-ik.computeRiderIkTargets
-          // + rein-hand FABRIK — interacts with the locomotion ground-clamp and
-          // is tuned visually in the next slice; this slice makes the mount
-          // appear, correct, and attached (today it never spawned at all).
+          // The rider astride-seat pose — lifting the player onto the saddle
+          // via rider-ik.computeRiderIkTargets + rein-hand FABRIK — used to
+          // fight the locomotion ground-clamp (the movement loop's terrain
+          // elevation clamp ran after this ticker and stomped the seat Y back
+          // to ground height every frame). Now gated by isMountedRiderRef,
+          // which the movement loop's clamp skips while set, so the seat lift
+          // is the default: real astride riding, not just a following mount.
           const sp = active.species || { size_class: 'medium' as const, display_name: 'Steed' };
           const seat = active.seatOffset || { x: 0, y: 1.4, z: 0, yaw: 0 };
           const { createMountGroup } = await import('@/components/concordia/mounts/MountAvatar3D');
@@ -2001,17 +2011,15 @@ export default function AvatarSystem3D({
           m.group.position.copy(playerMesh.position);
           m.setRotation(playerMesh.rotation.y);
           avatarGroup.add(m.group);
+          isMountedRiderRef.current = true;
           // Follow the rider: seat the mount horizontally under the rider via the
           // species seat offset (inverse of computeSaddleAnchor), yaw-aligned,
           // gait ticked by movement speed. Registered in the frame-loop ticker.
-          // Wave 7a #3 — rider astride-seat via rider-ik. computeRiderIkTargets
-          // gives the pelvis target (saddle anchor + seat offset + per-gait
-          // bounce). Applying the vertical seat fights the locomotion ground-clamp,
-          // so it's behind a default-OFF flag (chair-tunable): when enabled, the
-          // rider lifts onto the saddle with gait bounce; default leaves the mount
-          // following under the rider (already a clear win over the old 1.2m offset).
-          const seatOn = typeof window !== 'undefined'
-            && (window as unknown as { __concordMountRiderSeat?: boolean }).__concordMountRiderSeat === true;
+          // Escape hatch for QA/rollback: set window.__concordMountRiderSeat =
+          // false to fall back to the old following-only behavior without a
+          // code change.
+          const seatOn = typeof window === 'undefined'
+            || (window as unknown as { __concordMountRiderSeat?: boolean }).__concordMountRiderSeat !== false;
           const prev = playerMesh.position.clone();
           let riderIk: typeof import('@/lib/concordia/mounts/rider-ik') | null = null;
           if (seatOn) { import('@/lib/concordia/mounts/rider-ik').then((mod) => { riderIk = mod; }).catch(() => {}); }
@@ -2630,7 +2638,15 @@ export default function AvatarSystem3D({
           // Terrain elevation — clamp Y to ground (only when grounded).
           if (!isAirborne && !isSwimming) {
             const elevation = elevationRef.current?.(pos.x, pos.z) ?? pos.y;
-            pos.y = elevation;
+            // While mounted, playerPositionRef stays an approximate saddle
+            // height (ground + a fixed seat offset) — good enough for
+            // network/far-field consumers of playerPositionRef (water check,
+            // onMove sync). The precise per-frame seat bounce is applied
+            // directly to playerMesh.position by the rider-ik eyeTicker
+            // (`mount:*` in eyeTickersRef, runs earlier this frame); the
+            // pm.position.set below must not overwrite that with this
+            // approximation or the two fight every frame.
+            pos.y = isMountedRiderRef.current ? elevation + 1.3 : elevation;
           }
 
           // Auto-face movement direction with smooth rotation.
@@ -2651,7 +2667,14 @@ export default function AvatarSystem3D({
 
           const pm = playerMeshRef.current as InstanceType<typeof import('three').Group>;
           if (pm) {
-            pm.position.set(pos.x, pos.y, pos.z);
+            if (isMountedRiderRef.current) {
+              // Y stays whatever the rider-ik eyeTicker set this frame —
+              // see the terrain-elevation comment above for why.
+              pm.position.x = pos.x;
+              pm.position.z = pos.z;
+            } else {
+              pm.position.set(pos.x, pos.y, pos.z);
+            }
             pm.rotation.y = playerRotationRef.current;
 
             // ── Procedural gait synthesis ──────────────────
@@ -3109,6 +3132,7 @@ export default function AvatarSystem3D({
       enhancedDisposals.clear();
       facialControllers.clear();
       eyeTickers.clear();
+      isMountedRiderRef.current = false;
 
       if (avatarGroupRef.current) {
         const group = avatarGroupRef.current as {

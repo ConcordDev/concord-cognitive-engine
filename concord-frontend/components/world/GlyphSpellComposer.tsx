@@ -10,6 +10,7 @@ import { X, Wand2, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { milestoneJuice, sfx } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface Component {
   id: string;
@@ -89,6 +90,10 @@ export function GlyphSpellComposer({ building, onClose, worldId }: OverlayProps)
       const j = await r.json();
       if (j?.ok) {
         milestoneJuice('ui_glyph_mint');
+        // cast_channel archetype (arms sweep up/out, hold, release) — the
+        // player visibly channels the glyph they just composed instead of
+        // the mint being a pure UI action with a static avatar.
+        playActionAtPlayer('compose_spell', { element: preview?.element });
         setMinted(j.spellId || j.dtuId || 'minted');
         setChain([]); setSpellName(''); setPreview(null);
       } else {

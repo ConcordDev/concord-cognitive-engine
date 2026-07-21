@@ -106,11 +106,12 @@ describe('AvatarSystem3D.tsx — firearm discharge fires a projectile tracer', (
 });
 
 describe('CombatInputController.tsx — Mouse0 fire binding', () => {
-  it('gates fire on the resolved hand actually holding a pistol/rifle', () => {
+  it('gates fire on the resolved hand holding a pistol/rifle/staff (staff = spell-caster class, added when staff-equip casting was wired up)', () => {
     const idx = combatInput.indexOf('const dispatchFire');
     expect(idx).toBeGreaterThan(-1);
     const block = combatInput.slice(idx, idx + 1500);
-    expect(block).toMatch(/if \(weaponClass !== 'pistol' && weaponClass !== 'rifle'\) return;/);
+    expect(block).toMatch(/const isStaff = weaponClass === 'staff';/);
+    expect(block).toMatch(/if \(weaponClass !== 'pistol' && weaponClass !== 'rifle' && !isStaff\) return;/);
   });
 
   it('enforces a soft client-side cooldown floor distinct from the melee per-key cooldown map', () => {
@@ -120,17 +121,19 @@ describe('CombatInputController.tsx — Mouse0 fire binding', () => {
     expect(block).toMatch(/now - lastRangedFireAtRef\.current < 220/);
   });
 
-  it('dispatches the same predicted concordia:combat-anim event melee attacks use, so discharge-flash/trail/tracer wiring fires for free', () => {
+  it('dispatches the predicted concordia:combat-anim event for firearms (attack-light, so discharge-flash/trail/tracer wiring fires for free), but a real cast_channel playAction for a staff — casting no longer looks identical to a normal attack', () => {
     const idx = combatInput.indexOf('const dispatchFire');
-    const block = combatInput.slice(idx, idx + 1500);
+    const block = combatInput.slice(idx, idx + 1800);
+    expect(block).toMatch(/if \(isStaff\) \{/);
+    expect(block).toMatch(/playActionAtPlayer\('cast'\);/);
     expect(block).toMatch(/animation: 'attack-light', predicted: true/);
   });
 
-  it('emits combat:attack with style "fire", targeting the crosshair hit or lock-on, range-capped under the server ceiling', () => {
+  it('emits combat:attack with style "fire" for firearms / "magic" for a staff, targeting the crosshair hit or lock-on, range-capped under the server ceiling', () => {
     const idx = combatInput.indexOf('const dispatchFire');
-    const block = combatInput.slice(idx, idx + 1500);
+    const block = combatInput.slice(idx, idx + 2400);
     expect(block).toMatch(/targetId: cameraLookState\.aimHitEntityId \?\? _lockedTargetId\(\),/);
-    expect(block).toMatch(/style: 'fire',/);
+    expect(block).toMatch(/style: isStaff \? 'magic' : 'fire',/);
     expect(block).toMatch(/actionOverride: 'ranged',/);
     expect(block).toMatch(/range: 45,/);
   });
