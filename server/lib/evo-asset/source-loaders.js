@@ -305,6 +305,65 @@ export function bootstrapLocalSeed(db, dir = SEED_DIR) {
   return stats;
 }
 
+// content/evo-seed/world-lens-manifest.json — real, licensed 3D/texture
+// assets sourced directly from GitHub repos for the World Lens (weapons,
+// terrain photos, buildings, vegetation, creatures, hero character
+// meshes), distinct from manifest.json's CC0 primitive placeholder floor.
+// Override with EVO_WORLD_LENS_SEED_DIR.
+const WORLD_LENS_SEED_DIR = process.env.EVO_WORLD_LENS_SEED_DIR
+  || path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../content/evo-seed");
+
+/**
+ * Registers the real, licensed World Lens assets sourced this session
+ * (weapons/terrain/buildings/vegetation/creatures/hero archetypes — see
+ * concord-frontend/public/models/CREDITS.md +
+ * concord-frontend/public/meshes/heroes/CREDITS.md for full per-file
+ * provenance) into the evo-asset registry, so the interaction-tracking +
+ * refinement-pass scheduler (server/lib/evo-asset/scheduler.js) has real
+ * reference material to track and evolve instead of only the 3 CC0
+ * primitive placeholder meshes bootstrapLocalSeed provides.
+ *
+ * `source: 'github'` (migration 373) is the honest tag — these files did
+ * not come from Kenney/PolyHaven/ambientCG/OS3A/Sketchfab as platforms,
+ * they were downloaded directly from their origin GitHub repos.
+ * `sourceId` is `world-lens:<relative-path>` so re-runs dedupe cleanly.
+ *
+ * Deliberately registers only the 7 universal hero-archetype slots, not
+ * all ~46 per-world variant files — those are the same underlying asset
+ * reused for cross-world visual identity (see hero-mesh-registry.ts),
+ * not distinct assets worth separate evolution tracking.
+ */
+export function bootstrapWorldLensAssets(db, dir = WORLD_LENS_SEED_DIR) {
+  const stats = { found: 0, registered: 0 };
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(path.join(dir, "world-lens-manifest.json"), "utf8"));
+  } catch {
+    return stats; // no world-lens seed manifest present
+  }
+  const publicDir = path.resolve(dir, "..", "..", manifest.publicDir || "concord-frontend/public");
+  for (const entry of (manifest.assets || [])) {
+    const file = entry?.file;
+    if (!file) continue;
+    const localPath = path.join(publicDir, file);
+    if (!fs.existsSync(localPath)) continue;
+    stats.found += 1;
+    try {
+      const r = registerAsset(db, {
+        kind: entry.kind || "mesh",
+        source: "github",
+        sourceId: `world-lens:${file}`,
+        localPath,
+        category: entry.category ?? null,
+        tags: entry.tags ?? [],
+        qualityLevel: entry.qualityLevel ?? 4,
+      });
+      if (r?.created) stats.registered += 1;
+    } catch { /* registration best-effort */ }
+  }
+  return stats;
+}
+
 /**
  * Run all available bootstrappers. Caller controls ordering + limits.
  * Designed to be invoked once at server boot (best-effort, behind try/catch).
@@ -317,6 +376,7 @@ export function bootstrapLocalSeed(db, dir = SEED_DIR) {
 export async function bootstrapAllSources(db, opts = {}) {
   const out = {};
   try { out.localSeed = bootstrapLocalSeed(db, opts.seedDir ?? SEED_DIR); } catch { out.localSeed = { error: true }; }
+  try { out.worldLensAssets = bootstrapWorldLensAssets(db, opts.worldLensSeedDir ?? WORLD_LENS_SEED_DIR); } catch { out.worldLensAssets = { error: true }; }
   try { out.polyhaven = await bootstrapPolyHaven(db, opts.polyhaven ?? {}); } catch { out.polyhaven = { error: true }; }
   try { out.ambientcg = await bootstrapAmbientCG(db, opts.ambientcg ?? {}); } catch { out.ambientcg = { error: true }; }
   try { out.os3a      = await bootstrapOS3A(db, opts.os3a ?? {}); } catch { out.os3a = { error: true }; }

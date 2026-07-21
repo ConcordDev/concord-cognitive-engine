@@ -1,0 +1,54 @@
+{
+  "spec": "concord-evo-seed/world-lens/v1",
+  "note": "Real, licensed 3D/texture assets sourced directly from GitHub repos this session for the World Lens (weapons, terrain photos, buildings, vegetation, creatures, hero character meshes) — see concord-frontend/public/models/CREDITS.md and concord-frontend/public/meshes/heroes/CREDITS.md for full per-file provenance/license detail. Registered at a real production-quality level (4-6, not the '1' used for the primitive placeholder seed in manifest.json) so the evo-asset engine's interaction-tracking + refinement-pass scheduler has genuine reference material to track and evolve, not just CC0 placeholder cubes.",
+  "publicDir": "concord-frontend/public",
+  "assets": [
+    { "file": "models/terrain/grass.jpg", "kind": "texture", "category": "terrain", "tags": ["terrain", "ground", "grass", "cc-by-4.0", "roblox-creator-docs"], "qualityLevel": 5 },
+    { "file": "models/terrain/dirt.jpg", "kind": "texture", "category": "terrain", "tags": ["terrain", "ground", "dirt", "cc-by-4.0", "roblox-creator-docs"], "qualityLevel": 5 },
+    { "file": "models/terrain/cobblestone.jpg", "kind": "texture", "category": "terrain", "tags": ["terrain", "ground", "cobblestone", "cc-by-4.0", "roblox-creator-docs"], "qualityLevel": 5 },
+    { "file": "models/terrain/sand.jpg", "kind": "texture", "category": "terrain", "tags": ["terrain", "ground", "sand", "cc-by-4.0", "roblox-creator-docs"], "qualityLevel": 5 },
+    { "file": "models/terrain/asphalt.jpg", "kind": "texture", "category": "terrain", "tags": ["terrain", "ground", "asphalt", "cc-by-4.0", "roblox-creator-docs"], "qualityLevel": 5 },
+    { "file": "models/terrain/brick.jpg", "kind": "texture", "category": "terrain", "tags": ["terrain", "ground", "brick", "cc-by-4.0", "roblox-creator-docs"], "qualityLevel": 5 },
+    { "file": "models/terrain/gravel.jpg", "kind": "texture", "category": "terrain", "tags": ["terrain", "ground", "gravel", "substitute-for-ground", "cc-by-4.0", "roblox-creator-docs"], "qualityLevel": 4 },
+
+    { "file": "models/weapon/mace.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "mace", "cc0", "speed-dungeon", "opengameart-19-low-poly-fantasy-weapons"], "qualityLevel": 5 },
+    { "file": "models/weapon/club.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "club", "cc-by-3.0", "attribution-required", "mastahcez", "speed-dungeon"], "qualityLevel": 5 },
+    { "file": "models/weapon/spear.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "spear", "cc0", "speed-dungeon", "opengameart-19-low-poly-fantasy-weapons"], "qualityLevel": 5 },
+    { "file": "models/weapon/bow.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "bow", "ranged", "cc0", "speed-dungeon", "opengameart-19-low-poly-fantasy-weapons"], "qualityLevel": 5 },
+    { "file": "models/weapon/firearm_pistol.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "firearm", "pistol", "ranged", "cc0", "kenney-starter-kit-fps"], "qualityLevel": 5 },
+    { "file": "models/weapon/firearm_rifle.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "firearm", "rifle", "ranged", "cc0", "kenney-starter-kit-fps"], "qualityLevel": 5 },
+    { "file": "models/weapon/staff.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "staff", "cc0", "kaykit-adventurers"], "qualityLevel": 5 },
+    { "file": "models/weapon/wand.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "wand", "cc0", "kaykit-adventurers"], "qualityLevel": 5 },
+    { "file": "models/weapon/dagger.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "dagger", "cc0", "kaykit-adventurers"], "qualityLevel": 5 },
+    { "file": "models/weapon/shortsword.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "shortsword", "sword", "cc0", "kaykit-adventurers"], "qualityLevel": 5 },
+    { "file": "models/weapon/longsword.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "longsword", "sword", "cc0", "kaykit-adventurers"], "qualityLevel": 5 },
+    { "file": "models/weapon/greatsword.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "greatsword", "sword", "two-handed", "cc0", "kaykit-adventurers"], "qualityLevel": 5 },
+    { "file": "models/weapon/axe.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "axe", "cc0", "kaykit-adventurers"], "qualityLevel": 5 },
+    { "file": "models/weapon/halberd.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "halberd", "polearm", "cc0", "kaykit-adventurers"], "qualityLevel": 4 },
+    { "file": "models/weapon/crossbow.glb", "kind": "mesh", "category": "weapon", "tags": ["weapon", "crossbow", "ranged", "cc0", "kaykit-adventurers"], "qualityLevel": 5 },
+
+    { "file": "models/building/tavern.glb", "kind": "mesh", "category": "building", "tags": ["building", "tavern", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/building/market.glb", "kind": "mesh", "category": "building", "tags": ["building", "market", "cc0", "polygonal-mind", "medieval-fair"], "qualityLevel": 5 },
+    { "file": "models/building/archive.glb", "kind": "mesh", "category": "building", "tags": ["building", "archive", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+
+    { "file": "models/vegetation/tree_01.glb", "kind": "mesh", "category": "vegetation", "tags": ["vegetation", "tree", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/vegetation/tree_02.glb", "kind": "mesh", "category": "vegetation", "tags": ["vegetation", "tree", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/vegetation/tree_03.glb", "kind": "mesh", "category": "vegetation", "tags": ["vegetation", "tree", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/vegetation/tree_04.glb", "kind": "mesh", "category": "vegetation", "tags": ["vegetation", "tree", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/vegetation/bush_01.glb", "kind": "mesh", "category": "vegetation", "tags": ["vegetation", "bush", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/vegetation/flower_01.glb", "kind": "mesh", "category": "vegetation", "tags": ["vegetation", "flower", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+
+    { "file": "models/creature/quadruped_01.glb", "kind": "creature", "category": "creature", "tags": ["creature", "quadruped", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/creature/quadruped_02.glb", "kind": "creature", "category": "creature", "tags": ["creature", "quadruped", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/creature/quadruped_03.glb", "kind": "creature", "category": "creature", "tags": ["creature", "quadruped", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/creature/winged_biped_01.glb", "kind": "creature", "category": "creature", "tags": ["creature", "winged_biped", "owl", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+
+    { "file": "meshes/heroes/_archetype_warrior.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "warrior", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
+    { "file": "meshes/heroes/_archetype_guard.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "guard", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
+    { "file": "meshes/heroes/_archetype_hunter.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "hunter", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
+    { "file": "meshes/heroes/_archetype_scholar.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "scholar", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
+    { "file": "meshes/heroes/_archetype_mystic.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "mystic", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
+    { "file": "meshes/heroes/_archetype_trader.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "trader", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
+    { "file": "meshes/heroes/_archetype_legend.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "legend", "mixamo"], "qualityLevel": 5 }
+  ]
+}

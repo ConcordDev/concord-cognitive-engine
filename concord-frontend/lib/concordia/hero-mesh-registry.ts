@@ -75,7 +75,15 @@ const OCCUPATION_KEYWORDS: [RegExp, string][] = [
   [/mage|mystic|rune|hedge|heal|priest|shaman|witch/i, 'mystic'],
   [/scholar|archiv|lore|scribe|analy|lab tech|reporter|investigat/i, 'scholar'],
   [/trad|fence|fix|broker|runner|corpo|pilgrim|farm|merchant|vendor/i, 'trader'],
-  [/sword|sellsword|vigilante|getaway|forg|smith|tinker|netrunner|ripperdoc|drone-tech|informant|forger/i, 'warrior'],
+  // 'warrior' itself must be in this list: routes/worlds.js's occupation
+  // field falls back to the raw archetype column (`state.occupation ||
+  // r.archetype`) when no live routine occupation is set, so an
+  // authored NPC's archetype string ("warrior") is frequently the
+  // occupation text verbatim — every other archetype's own name already
+  // self-matched its keyword list (guard/hunt.../mystic/scholar/trad...);
+  // warrior's list was the one gap, silently stranding every
+  // warrior-archetype NPC on the procedural fallback.
+  [/warrior|sword|sellsword|vigilante|getaway|forg|smith|tinker|netrunner|ripperdoc|drone-tech|informant|forger/i, 'warrior'],
 ];
 
 /**
