@@ -1,4 +1,4 @@
-# World-asset credits (trees / buildings / creatures / weapons)
+# World-asset credits (trees / buildings / creatures / weapons / terrain)
 
 All files under `vegetation/`, `building/`, and `creature/` are sourced
 from the **MomusPark** and **medieval-fair** collections by **Polygonal
@@ -136,6 +136,58 @@ no attribution/license at all — too risky), `ToxSam/open-source-3D-assets`
 (real CC0 registry, but zero weapon items in its catalog). **`scimitar`
 was not found in any of the 11 repos checked** and remains procedural —
 see the Known Limitations section below.
+
+## Terrain ground textures (2026-07-21, same session)
+
+`TerrainRenderer.tsx` previously had **zero texture images** — every
+zone (`grass`/`dirt`/`cobblestone`/`sand`/`asphalt`/`brick`/`gravel`/
+`wild_grass`) rendered as a flat hardcoded per-vertex hex color on
+Simplex-noise-displaced geometry. Loaded via a new
+`lib/world-lens/terrain-textures.ts` (same real-asset-first,
+graceful-fallback pattern as everything else in this file), tiled every
+4m across each 250m terrain chunk, and multiplied against the *existing*
+per-vertex AO/biome-blend/natural-variation color tint (that system is
+unchanged — the real texture layers on top of it, doesn't replace it).
+
+Sourced from **[Roblox/creator-docs](https://github.com/Roblox/creator-docs)**
+(`content/en-us/assets/modeling/terrain/Material-*.jpg`), the official
+Roblox developer-documentation repo's own terrain-material reference
+images — real Git-LFS-tracked JPEGs (640×640), fetched via
+`media.githubusercontent.com/media/...` (the LFS-resolving raw endpoint;
+plain `raw.githubusercontent.com` only serves the LFS pointer text for
+these), each visually inspected before use (real photographic/rendered
+ground surfaces, not placeholders). **License: CC-BY 4.0**, per the
+repo's own root `LICENSE` file and `README.md`'s "Licenses" section
+("For prose, this project uses the Creative Commons Attribution 4.0
+International Public License... Code samples are available under the
+MIT License" — these images aren't code samples, so the general CC-BY-4.0
+grant governs them). **This attribution line satisfies that requirement:**
+ground textures by Roblox, from
+[github.com/Roblox/creator-docs](https://github.com/Roblox/creator-docs),
+used under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+| File | Source name | Used for |
+|---|---|---|
+| `terrain/grass.jpg` | `Material-Grass.jpg` | `grass` **and** `wild_grass` zones — no separate wild-grass photo was sourced; the existing per-vertex zone-color tint still differentiates them |
+| `terrain/dirt.jpg` | `Material-Mud.jpg` | `dirt` zone (Paths) |
+| `terrain/cobblestone.jpg` | `Material-Cobblestone.jpg` | `cobblestone` zone (Docks district) |
+| `terrain/sand.jpg` | `Material-Sand.jpg` | `sand` zone (River banks) |
+| `terrain/asphalt.jpg` | `Material-Asphalt.jpg` | `asphalt` zone (Roads) — slightly blue-tinted in the source photo; the existing per-vertex tint pulls it back toward the zone's authored grey |
+| `terrain/brick.jpg` | `Material-Brick.jpg` | `brick` zone (Exchange district) — Roblox's own terrain/ground material set, not a wall texture, so it's genuinely a ground-level brick surface |
+| `terrain/gravel.jpg` | `Material-Ground.jpg` | `gravel` zone (Forge district) — **honest substitute, not a dedicated match.** Roblox's terrain material set has no separate "Gravel" entry; `Material-Ground.jpg` (a pebbly rocky-dirt surface, visually checked) was the closest available. A truer gravel photo would need a further targeted search — not done in this pass. |
+
+Other sources checked and rejected: `mrdoob/three.js`'s own
+`examples/textures/terrain/grasslight-big.jpg` (a real, independently
+CC-BY-3.0-licensed grass texture per that folder's own `readme.txt` —
+not used here since the Roblox set gave a matching style across all 7
+zones, but a legitimate second option if this one ever needs replacing)
+and `examples/textures/brick_diffuse.jpg` (real file, but no license
+readme exists for it specifically, unlike the terrain folder — licensing
+ambiguous, not used). Several GitHub hits for personal Unity/Unreal
+game-dev repos had plausibly-sourced ambientCG/Poly Haven-style ground
+textures but zero per-repo license or credit file — not used, per this
+file's own standing rule of not trusting an asset's provenance without a
+verifiable license signal.
 
 ## Known limitations (honest, not hidden)
 
