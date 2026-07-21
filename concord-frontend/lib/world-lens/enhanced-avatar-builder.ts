@@ -46,6 +46,19 @@ import { FacialController } from '@/lib/concordia/facial-blend-shapes';
 import type { RichAppearanceConfig, HairStyle as RichHairStyle } from '@/lib/world-lens/character-schema';
 import { PBR_REFERENCE } from '@/lib/world-lens/character-schema';
 import { createWeapon } from '@/lib/concordia/weapon-archetypes';
+import { createArmorSet } from '@/lib/concordia/armor-system';
+
+/** armor-system.ts's parametric geometry (chestplate 0.50m, leg length
+ *  0.65m, etc) is dimensioned for the 'average' body archetype's 1.75m
+ *  reference height (character-schema.ts's heightBand table). Scaling
+ *  uniformly by totalHeight/REFERENCE keeps armor proportionate on
+ *  every archetype (petite through legend) without needing armor-
+ *  system.ts itself to take per-limb proportions as an input — an
+ *  approximation (it doesn't correct for width/depth ratio differences
+ *  between archetypes), but a close one, and far simpler than threading
+ *  BodyProportions through the armor builder's own geometry.
+ */
+const ARMOR_REFERENCE_HEIGHT_M = 1.75;
 
 export interface EnhancedAvatarResult {
   group:    THREE.Group;
@@ -196,6 +209,31 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
     foot.position.set(sign * (p.hipWidth / 4), p.headWidth * 0.1, p.footLength * 0.3);
     foot.castShadow = true;
     group.add(foot);
+  }
+
+  /* ── Armor (real-material-detail, deterministic per-character) ──
+   * See character-schema.ts's generateAppearance armor block — every
+   * character gets a unique (silhouette, tier, wear, dye, seed)
+   * combination, so no two NPCs read as recolored clones. Anchor
+   * points below match armor-system.ts's own internal coordinate
+   * convention for each slot (verified against buildHelm/buildTorso/
+   * buildArms/buildLegs's own internal offsets): head centers on the
+   * head mesh; torso + legs share the waist line (chest offsets up
+   * from it, robes/legs hang down from it); arms anchor the shoulder
+   * line. */
+  const armorScale = p.totalHeight / ARMOR_REFERENCE_HEIGHT_M;
+  const armorSet = createArmorSet(rich.armor);
+  const waistY = p.legLength;
+  const shoulderY = p.legLength + p.torsoLength;
+  const headY = p.legLength + p.torsoLength + p.neckLength + p.headHeight / 2;
+  const armorAnchorY: Record<'head' | 'torso' | 'arms' | 'legs', number> = {
+    head: headY, torso: waistY, arms: shoulderY, legs: waistY,
+  };
+  for (const [slot, piece] of armorSet) {
+    piece.scale.setScalar(armorScale);
+    piece.position.y = armorAnchorY[slot];
+    piece.traverse((obj) => { (obj as THREE.Mesh).castShadow = true; });
+    group.add(piece);
   }
 
   /* ── Cape (if present — secondary-physics will animate it later) ── */

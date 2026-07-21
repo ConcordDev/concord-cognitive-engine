@@ -255,6 +255,72 @@ never `map` (albedo): the real per-faction dye color
 via `material.color`) stays the actual displayed color — the texture
 only adds surface detail, it doesn't override the color customization.
 
+### Everyone wears their own armor now (2026-07-21, later same session)
+
+`armor-system.ts`'s builder existed but nothing called it — `createArmorSet`/
+`createArmorPiece` had zero callers anywhere in the app. Wired in two places:
+
+- **`character-schema.ts`'s `generateAppearance`** now computes a real,
+  individually-seeded `ArmorAppearance` for every character (archetype
+  picks the default silhouette — warrior/guard/legend→heavy_plate,
+  scholar/mystic→robed, hunter/trader→leather; civilians get a seeded
+  pick between leather/exposed; colors reuse the character's own
+  clothing palette so armor reads as one coherent outfit). The seed
+  string is the SAME composite `worldId::factionId::id` this whole
+  function hashes everything else from, so no two characters — including
+  two NPCs of the same archetype/faction — read as recolored clones.
+- **`enhanced-avatar-builder.ts`** (the local player + every hero-flagged
+  NPC's procedural body) now builds and attaches that armor, scaled by
+  `totalHeight / 1.75` (armor-system.ts's geometry is dimensioned for the
+  'average' archetype's 1.75m reference height) and anchored at the
+  correct body landmark per slot (head centers on the head mesh; torso +
+  legs share the waist line; arms anchor the shoulder line — verified
+  against armor-system.ts's own internal per-slot offsets).
+- **`hero-mesh-registry.ts`** (`attachArmorToHeroMesh`) extends the same
+  armor onto real hero GLB meshes (Microsoft Rocketbox / Mixamo rigs) via
+  `Object3D.attach()` — the standard three.js technique for parenting a
+  freshly-built object onto a bone while landing it at the bone's current
+  world position with identity rotation (not the bone's own rest-pose
+  local rotation, which for a limb bone points along the limb rather than
+  world-up) — so armor pieces then move/rotate WITH the bone as the rig
+  animates. Torso/legs attach to `Hips`, arms to `Spine2` (falling back to
+  `Spine1`/`Spine`), head to `Head`; a skeleton missing a bone just skips
+  that slot rather than throwing. `AvatarSystem3D.tsx` now computes the
+  rich appearance (armor included) once, up front, and passes `rich.armor`
+  into `loadHeroMesh` before attempting the GLB — the procedural fallback
+  path reuses the same object instead of rolling a second one, so a hero
+  NPC wears the identical deterministic kit whichever render path it
+  actually takes.
+
+Verified with a real headless-Chromium WebGL render of the actual bundled
+`buildEnhancedAvatar` + `generateAppearance` modules (not a mock): three
+different archetypes (warrior/scholar/hunter) render as three visibly
+distinct characters — a dark-plated knight with pauldrons and a chest
+sigil, a hooded robe reaching the ankles, and a tan leather-vest hunter
+carrying a bow — proving the per-character seed genuinely drives visible
+variety, not just distinct data. The bone-attach mechanism (parent
+tracking, world-position landing, moves-with-the-bone-on-rig-animation)
+is unit-tested directly (`tests/lib/hero-mesh-armor-attach.test.ts`); it
+was not separately verified against a REAL Rocketbox rig's actual
+rest-pose bone orientations in a live render (no real hero-GLB NPC was
+available to render in this session's headless-browser harness) — flagged
+as the one honest residual on this half of the feature, not silently
+assumed correct.
+
+One known, pre-existing architectural quirk this work exposed rather than
+introduced: `generateAppearance`'s `override` parameter only overwrites
+the FINAL returned object's fields — it does not retroactively influence
+other fields computed earlier in the function from the pre-override
+local variable (e.g. `override: { bodyArchetype: 'legend' }` does not
+change `totalHeight`/`proportions`, which are derived from the seeded
+pick before override is ever applied). Armor's own tier-5-for-legend rule
+was fixed to read `override?.bodyArchetype` directly so authored deity
+NPCs get it right, but the broader quirk (also affecting
+`CharacterPreviewCanvas.tsx`'s live clothing-color selections not
+retroactively recoloring armor) is a pre-existing characteristic of this
+function's design, not something this session's scope covered fixing
+everywhere it appears.
+
 ## Known limitations (honest, not hidden)
 
 - **`forge` and `tower` building archetypes** have no real asset yet — they

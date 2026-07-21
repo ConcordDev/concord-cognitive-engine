@@ -55,6 +55,7 @@
 
 import type { ConcordiaThemeId } from './concordia-theme';
 import { parseAuthoredAppearance } from './appearance-parse';
+import type { ArmorAppearance, ArmorSilhouette } from '@/lib/concordia/armor-system';
 
 /* ── Body proportions ─────────────────────────────────────────────── */
 
@@ -287,6 +288,13 @@ export interface RichAppearanceConfig {
 
   /* Accessories + markings */
   accessories:     Accessories;
+
+  /* Worn armor — deterministic per-character (see generateAppearance's
+   * armor block), so every individual reads as their own person rather
+   * than a recolored clone of their archetype/faction. Rendered via
+   * armor-system.ts's createArmorSet(), grounded in real material
+   * reference data (procedural-texture.ts). */
+  armor:           ArmorAppearance;
 
   /* Provenance — which world/faction did this character get authored for? */
   worldId:         string;
@@ -798,6 +806,22 @@ function _seededFloat(seed: number, salt: number): number {
   return (((seed + salt * 2654435761) >>> 0) / 0xffffffff);
 }
 
+/* ── Armor silhouette ─────────────────────────────────────────────── */
+
+/** Archetype -> the armor-system.ts silhouette that reads as that
+ *  archetype's default kit. Matches the same 7-archetype vocabulary
+ *  hero-mesh-registry.ts's archetypeForOccupation resolves to, so a
+ *  warrior NPC's armor silhouette and their real hero-GLB pick agree. */
+const ARCHETYPE_SILHOUETTE: Record<string, ArmorSilhouette> = {
+  warrior: 'heavy_plate',
+  guard:   'heavy_plate',
+  legend:  'heavy_plate',
+  scholar: 'robed',
+  mystic:  'robed',
+  hunter:  'leather',
+  trader:  'leather',
+};
+
 /* ── Deterministic appearance generator ───────────────────────────── */
 
 /**
@@ -980,6 +1004,33 @@ export function generateAppearance(opts: {
 
   const accessories: Accessories = { jewelry, markings, carry, augments };
 
+  /* Armor — every character gets a deterministic kit so no two NPCs read
+   * as recolored clones. Archetype picks the default silhouette; civilians/
+   * unrecognized archetypes get a seeded pick between the two lighter
+   * kits (leather straps or exposed harness) instead of defaulting to
+   * nothing. Colors reuse the character's own clothing palette so armor
+   * reads as part of one coherent outfit, not a mismatched overlay.
+   * `legend` bodies always get the top tier (matches their glyph-pattern
+   * cape treatment above). The seed string is the SAME composite id this
+   * whole function hashes from, so armor uniqueness tracks character
+   * identity 1:1 with every other generated trait. */
+  // An authored override's bodyArchetype (applied via `...override` at
+  // the very end of this function) should also drive tier — otherwise a
+  // hand-authored `override: { bodyArchetype: 'legend' }` deity NPC
+  // would keep a random 1-4 armor tier because this block only ever saw
+  // the pre-override seeded local. `authored wins` is this function's
+  // existing convention (see the `authored.x ?? seeded` pattern above).
+  const effectiveBodyArchetype = override?.bodyArchetype ?? bodyArchetype;
+  const armor: ArmorAppearance = {
+    silhouette: ARCHETYPE_SILHOUETTE[archetype ?? ''] ?? _seededPick(['leather', 'exposed'] as const, seed, 50),
+    primaryColor: clothing.top.color,
+    secondaryColor: clothing.bottom.color,
+    accentColor: clothing.hat?.color ?? clothing.cape?.color ?? clothing.boots?.color ?? clothing.top.color,
+    tier: effectiveBodyArchetype === 'legend' ? 5 : _seededPick([1, 2, 3, 4, 5] as const, seed, 51),
+    wear: _seededFloat(seed, 52),
+    seed: `${worldId}::${factionId ?? '_'}::${id}`,
+  };
+
   return {
     bodyArchetype,
     totalHeight,
@@ -994,6 +1045,7 @@ export function generateAppearance(opts: {
     facial,
     clothing,
     accessories,
+    armor,
     worldId,
     factionId,
     cultureTags: [styleId, ...(factionId ? [factionId] : [])],

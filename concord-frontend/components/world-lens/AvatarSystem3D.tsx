@@ -842,6 +842,27 @@ export default function AvatarSystem3D({
       const wantEnhanced =
         opts.isLocalPlayer || opts.isHero || appearance.bodyType === 'legend';
       if (wantEnhanced) {
+        // Phase L — pull hydrated hints from the world-load cache. Read
+        // once up-front (was previously read a second time, identically,
+        // inside the procedural-fallback try-block below).
+        const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
+        const hint = cache?.get(avatarId) as {
+          factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
+          appearanceText?: string;
+          heroMesh?: boolean;
+          factionId?: string;
+          archetype?: string;
+          homeWorldId?: string;
+        } | undefined;
+
+        // Everyone-unique — the rich appearance (armor included) is now
+        // computed once up front and reused by whichever path actually
+        // renders, so a hero-GLB NPC's real mesh wears the SAME
+        // deterministic armor kit a procedural-fallback build of them
+        // would have gotten, not a second independently-rolled one.
+        let rich: import('@/lib/world-lens/character-schema').RichAppearanceConfig | null = null;
+        const schemaModPromise = import('@/lib/world-lens/character-schema');
+
         // Phase S — try the baked GLB path first for hero NPCs. The
         // home-world archetype carries an NPC's visual identity
         // across cross-world travel (Phase T): a courier from
@@ -849,12 +870,24 @@ export default function AvatarSystem3D({
         // courier when visiting concordia-hub.
         if (opts.isHero && !opts.isLocalPlayer) {
           try {
-            const heroMod = await import('@/lib/concordia/hero-mesh-registry');
-            const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
-            const heroHint = cache?.get(avatarId) as { homeWorldId?: string; archetype?: string } | undefined;
-            const archetype = opts.archetype ?? heroHint?.archetype ?? 'warrior';
-            const homeWorld = heroHint?.homeWorldId ?? opts.worldId;
-            const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld);
+            const [heroMod, schemaMod] = await Promise.all([import('@/lib/concordia/hero-mesh-registry'), schemaModPromise]);
+            const archetype = opts.archetype ?? hint?.archetype ?? 'warrior';
+            const homeWorld = hint?.homeWorldId ?? opts.worldId;
+            rich = schemaMod.generateAppearance({
+              id: avatarId,
+              worldId: opts.worldId || 'concordia-hub',
+              factionId: opts.factionId ?? hint?.factionId ?? null,
+              archetype: opts.archetype ?? hint?.archetype ?? null,
+              themeId: 'concordia-hub',
+              heroMesh: true,
+              factionVisual: hint?.factionVisual ?? null,
+              npcAppearanceText: hint?.appearanceText ?? null,
+              override: {
+                skinColor: appearance.skinColor,
+                hairColor: appearance.hairColor,
+              },
+            });
+            const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld, rich.armor);
             if (loaded?.group) {
               return loaded.group as InstanceType<typeof import('three').Group>;
             }
@@ -867,18 +900,9 @@ export default function AvatarSystem3D({
         try {
           const [{ buildEnhancedAvatar }, schemaMod] = await Promise.all([
             import('@/lib/world-lens/enhanced-avatar-builder'),
-            import('@/lib/world-lens/character-schema'),
+            schemaModPromise,
           ]);
-          // Phase L — pull hydrated hints from the world-load cache.
-          const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
-          const hint = cache?.get(avatarId) as {
-            factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
-            appearanceText?: string;
-            heroMesh?: boolean;
-            factionId?: string;
-            archetype?: string;
-          } | undefined;
-          const rich = schemaMod.generateAppearance({
+          rich ??= schemaMod.generateAppearance({
             id: avatarId,
             worldId: opts.worldId || 'concordia-hub',
             factionId: opts.factionId ?? hint?.factionId ?? null,
