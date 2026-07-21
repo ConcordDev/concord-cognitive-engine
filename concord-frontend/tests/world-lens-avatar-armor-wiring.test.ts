@@ -36,3 +36,23 @@ describe('AvatarSystem3D — hero-GLB armor wiring', () => {
     expect(src).toContain('homeWorldId?: string;');
   });
 });
+
+// 2026-07-21 (later same session) — quality floor: every avatar that gets
+// a mesh at all (already budget-capped at MAX_FULLY_ANIMATED, unchanged)
+// now gets the enhanced builder (hair-cards, skin-SSS, real armor)
+// instead of a large fraction silently falling to the flat-color box/
+// cylinder/sphere legacy tier. Regression guard against silently
+// reverting to the old tiered gate.
+describe('AvatarSystem3D — quality floor (no more flat-primitive default)', () => {
+  it('wantEnhanced is unconditionally true, not gated on isLocalPlayer/isHero/legend', () => {
+    expect(src).toContain('const wantEnhanced = true;');
+    // The old gated expression must be gone, not just shadowed.
+    expect(src).not.toContain("opts.isLocalPlayer || opts.isHero || appearance.bodyType === 'legend';");
+  });
+
+  it('the legacy primitive builder (createAvatarMesh) is still reachable as the exception-safety fallback, not deleted out from under error handling', () => {
+    const wantEnhancedIdx = src.indexOf('const wantEnhanced = true;');
+    const fallbackCallIdx = src.indexOf('return await createAvatarMesh(appearance, THREE);', wantEnhancedIdx);
+    expect(fallbackCallIdx).toBeGreaterThan(wantEnhancedIdx);
+  });
+});

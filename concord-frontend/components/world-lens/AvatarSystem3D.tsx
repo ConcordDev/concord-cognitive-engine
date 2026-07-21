@@ -802,10 +802,27 @@ export default function AvatarSystem3D({
     []
   );
 
-  // Phase A1: smart wrapper — enhanced builder for local player + hero
-  // NPCs, legacy primitive path for crowd. Stores FacialController +
-  // tickEyes + dispose in sidecar refs so the per-frame loop + dispose
-  // path can find them by avatar id.
+  // Phase A1 (2026-07-21 quality-floor pass): enhanced builder (hair-
+  // cards, skin-SSS, eye-parallax, real per-character armor) for EVERY
+  // avatar that gets a mesh at all — not just hero/legend/local-player.
+  // The flat-primitive legacy path below stays wired only as the
+  // exception-safety fallback (buildEnhancedAvatar throws -> falls
+  // through to it), never the default.
+  //
+  // This is safe on the existing render budget, not a new one:
+  // MAX_FULLY_ANIMATED (50) already hard-caps how many players+NPCs get
+  // ANY full mesh built per world — everyone beyond that cap gets no
+  // mesh at all, regardless of tier (see the two `.slice(0,
+  // MAX_FULLY_ANIMATED)` call sites below). Before this change, a large
+  // fraction of that already-bounded-50 population was silently using
+  // the cheaper flat-color box/cylinder/sphere tier anyway (only NPCs
+  // whose archetype matched hero-mesh-registry's keyword list, or whose
+  // bodyArchetype was 'legend', got the real one) — the population size
+  // this decision applies to doesn't change, only the per-avatar fidelity
+  // within it. Not independently profiled against real frame-time
+  // budgets in this session — flagged honestly, not assumed free.
+  // Stores FacialController + tickEyes + dispose in sidecar refs so the
+  // per-frame loop + dispose path can find them by avatar id.
   const createAvatarMeshSmart = useCallback(
     async (
       avatarId: string,
@@ -839,8 +856,14 @@ export default function AvatarSystem3D({
         }
       }
 
-      const wantEnhanced =
-        opts.isLocalPlayer || opts.isHero || appearance.bodyType === 'legend';
+      // Always true now — see this function's own doc comment above for
+      // why (every avatar that reaches this call already passed the
+      // MAX_FULLY_ANIMATED budget gate; only which BUILDER they get was
+      // ever conditional). `opts` is no longer read here, but stays a
+      // real parameter — isHero still selects the hero-GLB attempt below,
+      // and isLocalPlayer still controls the enhanced builder's own
+      // local-player-specific behavior.
+      const wantEnhanced = true;
       if (wantEnhanced) {
         // Phase L — pull hydrated hints from the world-load cache. Read
         // once up-front (was previously read a second time, identically,
