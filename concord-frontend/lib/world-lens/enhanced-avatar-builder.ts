@@ -346,6 +346,24 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
     rifle.rotation.y = Math.PI / 2;
     group.add(rifle);
   }
+  if (rich.accessories.carry?.includes('axe')) {
+    // Gathering axe — reuses the real 'axe' weapon archetype (real GLB,
+    // see weapon-archetypes.ts/CREDITS.md) rather than a second axe
+    // asset; a lumberjack's axe and a combat axe are the same object in
+    // this world. Holstered at the hip (matching the pistol treatment)
+    // rather than held mid-air — this is carried gear, not a drawn
+    // weapon, and it's what the click-to-gather swing animation reaches
+    // for on a tree node.
+    const axe = createWeapon({
+      archetype: 'axe',
+      tier: 2,
+      accentColor: rich.clothing.top.color,
+      seed: rich.worldId + ':axe:' + (rich.factionId ?? ''),
+    });
+    axe.position.set(p.hipWidth * 0.6, p.legLength * 0.6, -p.headDepth * 0.25);
+    axe.rotation.z = Math.PI / 2.6;
+    group.add(axe);
+  }
 
   // Non-weapon carry gear — satchel/tome/tool-belt/pouch previously had no
   // branch here at all (unlike every weapon `carry` value above), despite
@@ -441,6 +459,73 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
     tomeGroup.position.set(-p.hipWidth * 0.3, p.legLength + p.torsoLength * 0.25, -p.headDepth * 0.4);
     tomeGroup.rotation.y = Math.PI;
     group.add(tomeGroup);
+  }
+
+  // Gathering tools (pickaxe/hoe/sickle) — no real GLB exists for these
+  // (only 'axe' has one, handled above via weapon-archetypes.ts), so
+  // they're simple, honest procedural props: a wooden shaft + a metal
+  // head shaped for the tool, in the same style already established for
+  // tool-belt's cylinders and the tome's cover+pages. Strapped
+  // diagonally across the back, matching the rifle/bow shoulder-carry
+  // treatment, so it reads as equipped kit rather than mid-swing.
+  const toolHandleMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color('#6b4a2b'),
+    roughness: PBR_REFERENCE.wood.roughness,
+    metalness: 0,
+  });
+  const toolHeadMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color('#9a9a9a'),
+    roughness: PBR_REFERENCE.iron.roughness,
+    metalness: PBR_REFERENCE.iron.metalness,
+  });
+  if (rich.accessories.carry?.includes('pickaxe')) {
+    const toolGroup = new THREE.Group();
+    toolGroup.name = 'carry_pickaxe';
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.7, 6), toolHandleMat);
+    toolGroup.add(shaft);
+    // Two angled head-spikes meeting at the shaft top, reading as a pick.
+    for (const sign of [-1, 1] as const) {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.32, 5), toolHeadMat);
+      spike.position.set(sign * 0.15, 0.35, 0);
+      spike.rotation.z = sign * (Math.PI / 2.3);
+      toolGroup.add(spike);
+    }
+    toolGroup.position.set(-p.shoulderWidth * 0.5, p.legLength + p.torsoLength * 0.55, -p.headDepth * 0.35);
+    toolGroup.rotation.z = Math.PI / 2.4;
+    toolGroup.rotation.y = Math.PI / 2;
+    group.add(toolGroup);
+  }
+  if (rich.accessories.carry?.includes('hoe')) {
+    const toolGroup = new THREE.Group();
+    toolGroup.name = 'carry_hoe';
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.75, 6), toolHandleMat);
+    toolGroup.add(shaft);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.02), toolHeadMat);
+    blade.position.y = 0.37;
+    blade.rotation.z = Math.PI / 2;
+    toolGroup.add(blade);
+    toolGroup.position.set(-p.shoulderWidth * 0.5, p.legLength + p.torsoLength * 0.55, -p.headDepth * 0.35);
+    toolGroup.rotation.z = Math.PI / 2.4;
+    toolGroup.rotation.y = Math.PI / 2;
+    group.add(toolGroup);
+  }
+  if (rich.accessories.carry?.includes('sickle')) {
+    const toolGroup = new THREE.Group();
+    toolGroup.name = 'carry_sickle';
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.35, 6), toolHandleMat);
+    toolGroup.add(shaft);
+    // A curved blade — a partial torus arc reads as a sickle's hook far
+    // better than a flat box (same technique the tool-belt band above
+    // already uses for a full ring, just a shorter arc).
+    const blade = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.015, 6, 12, Math.PI * 1.1), toolHeadMat);
+    blade.position.y = 0.2;
+    blade.rotation.y = Math.PI / 2;
+    toolGroup.add(blade);
+    // Strapped lower on the back than the pick/hoe (a shorter tool),
+    // opposite the tome's placement.
+    toolGroup.position.set(p.hipWidth * 0.55, p.legLength * 0.6, -p.headDepth * 0.2);
+    toolGroup.rotation.z = Math.PI / 2.6;
+    group.add(toolGroup);
   }
 
   /* ── Augments (cyber/superhero — chrome arm, etc.) ──────────── */

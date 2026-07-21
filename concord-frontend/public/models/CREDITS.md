@@ -361,6 +361,33 @@ headless-Chromium render during development (5 server nodes rendered as
 10 scene objects) before being serialized with a chained-promise guard
 (`reconcileChain`) and re-verified (5 nodes → 5 objects).
 
+### Gathering tools + NPC gather visibility (2026-07-21, later same session)
+
+Two closing pieces for "AI NPCs will be cutting down trees... it's hard
+to do that with no tool":
+
+- **`axe`/`pickaxe`/`hoe`/`sickle` are now real `Accessories['carry']`
+  values.** `axe` reuses the real `axe.glb` weapon archetype directly
+  (`weapon-archetypes.ts`, `createWeapon({archetype:'axe',...})`) —
+  holstered at the hip, not drawn — since a lumberjack's axe and a combat
+  axe are the same object in this world; no second asset needed.
+  `pickaxe`/`hoe`/`sickle` have no real GLB, so they're honest procedural
+  props (wood-shaft cylinder + shaped metal head — a bent-cone pick, a
+  flat-blade hoe, a curved-torus-arc sickle) in the same style already
+  established for `tool-belt`/`tome`. `character-schema.ts`'s
+  `generateAppearance` gives civilian (unmatched-archetype) characters a
+  seeded 35% chance to carry one — "regular townsfolk" now read as
+  people who actually chop/mine/farm, not generic idle extras.
+- **NPC gathering is no longer silent.** `server/lib/npc-simulator.js`'s
+  `gather_resource` action wrote only to the DB (`activity_resources` +
+  `world_resource_nodes`) with zero broadcast. A new `_emitGather`
+  (mirroring the file's own existing `_emitBark` pattern exactly) sends
+  `world:npc-gather` with the real node's position/type/resource —
+  `world/page.tsx`'s `handleNpcGather` bridges it into the SAME
+  tool-swing + dust-particle feedback the player's own click-to-gather
+  gets, targeted at the NPC's own entity id. An NPC gathering resources
+  is now a real, watchable action.
+
 ## Known limitations (honest, not hidden)
 
 - **`forge` and `tower` building archetypes** have no real asset yet — they

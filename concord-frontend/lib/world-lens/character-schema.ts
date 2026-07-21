@@ -257,8 +257,11 @@ export interface Accessories {
   jewelry: Array<'earrings' | 'necklace' | 'arm-bands' | 'rings' | 'nose-ring' | 'lip-ring' | 'circlet'>;
   /** Tattoos / scarification / glyph markings — drives a decal pass over skin. */
   markings: Array<{ kind: 'tattoo' | 'scar-pattern' | 'paint' | 'glyph'; region: 'face' | 'arms' | 'torso' | 'back'; color: string }>;
-  /** Visible carried gear at the hip / shoulder. Drives a prop layer on the mesh. */
-  carry?: Array<'sword' | 'staff' | 'wand' | 'pistol' | 'rifle' | 'bow' | 'satchel' | 'tome' | 'tool-belt' | 'pouch'>;
+  /** Visible carried gear at the hip / shoulder. Drives a prop layer on the mesh.
+   *  axe/pickaxe/hoe/sickle (2026-07-21) are gathering tools, not weapons —
+   *  a character carrying one reads as someone who actually gathers
+   *  resources in this world, not an NPC running an invisible macro. */
+  carry?: Array<'sword' | 'staff' | 'wand' | 'pistol' | 'rifle' | 'bow' | 'satchel' | 'tome' | 'tool-belt' | 'pouch' | 'axe' | 'pickaxe' | 'hoe' | 'sickle'>;
   /** Cybernetic augments (chrome arm, eye implant) — visible chrome materials on the mesh. */
   augments?: Array<{ region: 'left-arm' | 'right-arm' | 'eye' | 'face' | 'chest'; material: 'chrome' | 'matte-black' | 'gold' }>;
 }
@@ -981,6 +984,17 @@ export function generateAppearance(opts: {
   if (archetype === 'guard'   && !carry.includes('sword')) carry.unshift('sword');
   if (archetype === 'hunter'  && !carry.includes('bow'))   carry.unshift('bow');
   if (archetype === 'scholar' && !carry.includes('tome'))  carry.unshift('tome');
+  // Civilians (no matched combat/scholar archetype) — a seeded chance to
+  // carry a real gathering tool, so "regular townsfolk" read as people who
+  // actually chop/mine/farm in this world rather than generic idle
+  // extras. Ties directly to the resource-node substrate (server/lib/
+  // world-gathering.js's tool-compatibility table: axe->tree, pickaxe->
+  // ore/stone/crystal/fuel, sickle->herb/soil, hoe reads as the farming-
+  // adjacent visual pairing for soil/herb work alongside sickle).
+  if (!archetype && _seededFloat(seed, 60) < 0.35) {
+    const tool = _seededPick(['axe', 'pickaxe', 'hoe', 'sickle'] as const, seed, 61);
+    if (!carry.includes(tool)) carry.unshift(tool);
+  }
 
   const augments: Accessories['augments'] = [];
   if (style.augmentChance > 0 && _seededFloat(seed, 40) < style.augmentChance) {
