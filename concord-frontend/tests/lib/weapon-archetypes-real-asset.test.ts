@@ -386,3 +386,111 @@ describe('getDischargeWorldPosition — real-asset path (warmed cache)', () => {
     expect(pos.y).toBeCloseTo(1.3, 4); // staff's REAL_ASSET_NORMALIZATION target size
   });
 });
+
+// Stability audit (2026-07-21) — getWeaponTipWorldPosition, the general
+// "business end" concept (widened from dischargeLocal, which only ever
+// covered the 4 firearm/staff/wand archetypes) that the weapon-swing
+// trail in AvatarSystem3D.tsx anchors to. Unlike getDischargeWorldPosition,
+// this must resolve for ALL 16 archetypes, not just the discharge-capable 4.
+describe('getWeaponTipWorldPosition — every archetype, procedural path', () => {
+  let createWeapon: typeof WeaponArchetypesModule.createWeapon;
+  let getWeaponTipWorldPosition: typeof WeaponArchetypesModule.getWeaponTipWorldPosition;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockLoadAsset.mockResolvedValue(null);
+    mockResolveAssetReference.mockResolvedValue(null);
+    mockGetCachedSceneSync.mockReturnValue(null);
+    ({ createWeapon, getWeaponTipWorldPosition } = await freshModule());
+  });
+
+  it('resolves a non-null tip for all 16 archetypes (melee weapons now included, not just the 4 discharge-capable ones)', () => {
+    for (const archetype of ALL_ARCHETYPES) {
+      const group = createWeapon({ archetype, tier: 1 });
+      const tip = getWeaponTipWorldPosition(group);
+      expect(tip, `${archetype} should have a tip point`).not.toBeNull();
+    }
+  });
+
+  it('a blade weapon\'s tip sits at the blade length above the grip', () => {
+    const group = createWeapon({ archetype: 'dagger', tier: 1 });
+    const tip = getWeaponTipWorldPosition(group)!;
+    // dagger bladeLen is randomized (0.30 + rng()*0.05) — bounded, not exact.
+    expect(tip.y).toBeGreaterThanOrEqual(0.30 - 1e-6);
+    expect(tip.y).toBeLessThanOrEqual(0.35 + 1e-6);
+  });
+
+  it('greatsword\'s tip is farther than shortsword\'s (longer blade)', () => {
+    const shortTip = getWeaponTipWorldPosition(createWeapon({ archetype: 'shortsword', tier: 1 }))!;
+    const greatTip = getWeaponTipWorldPosition(createWeapon({ archetype: 'greatsword', tier: 1 }))!;
+    expect(greatTip.y).toBeGreaterThan(shortTip.y);
+  });
+
+  it('for the 4 discharge-capable archetypes, tip and discharge points are identical (same physical point, two names)', async () => {
+    const { getDischargeWorldPosition } = await freshModule();
+    // freshModule() reset the mocks too — reapply them for this second import.
+    mockLoadAsset.mockResolvedValue(null);
+    mockResolveAssetReference.mockResolvedValue(null);
+    mockGetCachedSceneSync.mockReturnValue(null);
+    const { createWeapon: cw2, getWeaponTipWorldPosition: tipFn2 } = await freshModule();
+    for (const archetype of DISCHARGE_ARCHETYPES) {
+      const group = cw2({ archetype, tier: 1 });
+      const tip = tipFn2(group)!;
+      const discharge = getDischargeWorldPosition(group)!;
+      expect(tip.x).toBeCloseTo(discharge.x, 6);
+      expect(tip.y).toBeCloseTo(discharge.y, 6);
+      expect(tip.z).toBeCloseTo(discharge.z, 6);
+    }
+  });
+
+  it('non-discharge archetypes have a tip but no discharge point (asymmetric by design)', () => {
+    const group = createWeapon({ archetype: 'axe', tier: 1 });
+    expect(getWeaponTipWorldPosition(group)).not.toBeNull();
+    expect((group.userData as { dischargeLocal?: unknown }).dischargeLocal).toBeUndefined();
+  });
+});
+
+describe('getWeaponTipWorldPosition — real-asset path (warmed cache)', () => {
+  let createWeapon: typeof WeaponArchetypesModule.createWeapon;
+  let warmRealWeaponAssets: typeof WeaponArchetypesModule.warmRealWeaponAssets;
+  let getWeaponTipWorldPosition: typeof WeaponArchetypesModule.getWeaponTipWorldPosition;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockLoadAsset.mockResolvedValue({ fakeScene: true });
+    mockResolveAssetReference.mockImplementation(async ({ id }: { id: string }) => `/models/weapon/${id}.glb`);
+    mockGetCachedSceneSync.mockImplementation((url: string) => {
+      const g = new THREE.Group();
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1, 0.2), new THREE.MeshStandardMaterial());
+      mesh.position.set(0.3, 0.5, 0.1);
+      g.add(mesh);
+      g.name = `source_${url}`;
+      return g;
+    });
+    ({ createWeapon, warmRealWeaponAssets, getWeaponTipWorldPosition } = await freshModule());
+  });
+
+  it('every real-asset archetype (all 11) resolves a non-null tip once warmed', async () => {
+    await warmRealWeaponAssets();
+    for (const archetype of REAL_ASSET_ARCHETYPES) {
+      const group = createWeapon({ archetype, tier: 1 });
+      expect(group.userData.realAsset).toBe(true);
+      const tip = getWeaponTipWorldPosition(group);
+      expect(tip, `${archetype} should have a real-asset tip`).not.toBeNull();
+    }
+  });
+
+  it("a 'bottom'-pivoted real-asset archetype (longsword) has its tip exactly at its normalized target size", async () => {
+    await warmRealWeaponAssets();
+    const group = createWeapon({ archetype: 'longsword', tier: 1 });
+    const tip = getWeaponTipWorldPosition(group)!;
+    expect(tip.y).toBeCloseTo(1.05, 4); // longsword's REAL_ASSET_NORMALIZATION target size
+  });
+
+  it("a 'center'-pivoted real-asset archetype (crossbow) still resolves a tip via the bounding-box fallback", async () => {
+    await warmRealWeaponAssets();
+    const group = createWeapon({ archetype: 'crossbow', tier: 1 });
+    const tip = getWeaponTipWorldPosition(group);
+    expect(tip).not.toBeNull();
+  });
+});

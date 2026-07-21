@@ -55,7 +55,19 @@ import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
 import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
 import { getTimeScale, getPlayerTimeScale } from '@/lib/concordia/use-time-scale';
-import { getDischargeWorldPosition, type WeaponArchetype } from '@/lib/concordia/weapon-archetypes';
+import { getDischargeWorldPosition, getWeaponTipWorldPosition, DISCHARGE_ARCHETYPES, type WeaponArchetype } from '@/lib/concordia/weapon-archetypes';
+
+/** Every archetype `weapon-archetypes.ts#createWeapon()` can build — used
+ *  by the weapon-swing trail below to find whichever weapon the player
+ *  has equipped (not just the 4 discharge-capable ones the muzzle-flash
+ *  block cares about). Kept here (not exported from weapon-archetypes.ts)
+ *  since it's purely a lookup convenience for this file's
+ *  getObjectByName scan, not part of that module's own public surface. */
+const ALL_WEAPON_ARCHETYPES: WeaponArchetype[] = [
+  'shortsword', 'longsword', 'axe', 'mace', 'dagger', 'club',
+  'scimitar', 'greatsword', 'halberd', 'spear', 'bow', 'crossbow',
+  'firearm_pistol', 'firearm_rifle', 'staff', 'wand',
+];
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -1419,7 +1431,6 @@ export default function AvatarSystem3D({
           try {
             const playerGroup = playerMeshRef.current as InstanceType<typeof import('three').Group>;
             let dischargeWeapon: InstanceType<typeof import('three').Object3D> | null = null;
-            const DISCHARGE_ARCHETYPES: WeaponArchetype[] = ['firearm_pistol', 'firearm_rifle', 'staff', 'wand'];
             for (const archetype of DISCHARGE_ARCHETYPES) {
               const found = (playerGroup as unknown as { getObjectByName?: (n: string) => InstanceType<typeof import('three').Object3D> | undefined })
                 .getObjectByName?.(`weapon_${archetype}`);
@@ -2299,12 +2310,40 @@ export default function AvatarSystem3D({
         // copy from rigid-body transforms each frame.
         ragdollTickRef.current?.();
 
-        // I2 — weapon trail: sample the player's right-hand (weapon-tip) bone
-        // each frame and tick the ribbon. Created lazily once the player mesh
-        // exists; attached to the scene (player mesh's parent).
+        // I2 — weapon trail: sample the equipped weapon's real tip position
+        // each frame and tick the ribbon. Created lazily once the player
+        // mesh exists; attached to the scene (player mesh's parent).
+        //
+        // Stability audit (2026-07-21) — this previously read a
+        // `userData.boneMap.get('rightHand')` bone that only the LEGACY
+        // procedural avatar builder (`createAvatarMesh`) sets.
+        // `createAvatarMeshSmart`'s `wantEnhanced` is unconditionally true
+        // whenever `opts.isLocalPlayer` is set (see that function, a few
+        // hundred lines up), and the real local player is always created
+        // with `isLocalPlayer: true` — so in ordinary (non-error)
+        // operation the actual player avatar always comes from
+        // `buildEnhancedAvatar`, which never sets `userData.boneMap`. The
+        // `.sample()` call site itself was real and did run every frame —
+        // but `tipBone` silently resolved to `undefined` for the one
+        // avatar this block actually cares about, so `samples` never
+        // grew past 0 and the trail's `rebuildGeometry()` guard
+        // (`samples.length >= minSamples`) never passed. Net effect was
+        // the same as a missing sample call — an invisible trail — just
+        // via a different, more specific mechanism than originally
+        // (incorrectly) reported in `public/models/CREDITS.md`; corrected
+        // there in the same commit as this fix.
+        //
+        // Fixed by preferring the equipped weapon's own real tip position
+        // (`weapon-archetypes.ts#getWeaponTipWorldPosition`, exact for
+        // every archetype including procedural ones — see that module),
+        // found by name among ALL_WEAPON_ARCHETYPES rather than the
+        // narrower discharge-only list. The old bone lookup is kept as a
+        // fallback for the (currently theoretical, given the above)
+        // legacy-avatar case, so this stays a pure improvement rather
+        // than a narrowing.
         try {
           const pMesh = playerMeshRef.current as
-            | { parent?: unknown; userData?: { boneMap?: Map<string, unknown> } }
+            | ({ parent?: unknown; userData?: { boneMap?: Map<string, unknown> } } & InstanceType<typeof import('three').Object3D>)
             | null;
           const sceneRoot = pMesh?.parent;
           if (pMesh && sceneRoot) {
@@ -2316,12 +2355,25 @@ export default function AvatarSystem3D({
               weaponTipVecRef.current = new THREE.Vector3();
             }
             const trail = weaponTrailRef.current;
-            const tipBone = pMesh.userData?.boneMap?.get('rightHand') as
-              | { getWorldPosition: (v: unknown) => { x: number; y: number; z: number } }
-              | undefined;
-            if (trail && tipBone && weaponTipVecRef.current) {
-              const wp = tipBone.getWorldPosition(weaponTipVecRef.current);
-              trail.sample({ x: wp.x, y: wp.y, z: wp.z }, now / 1000);
+            let tipWorldPos: { x: number; y: number; z: number } | null = null;
+            for (const archetype of ALL_WEAPON_ARCHETYPES) {
+              const found = (pMesh as unknown as { getObjectByName?: (n: string) => InstanceType<typeof import('three').Object3D> | undefined })
+                .getObjectByName?.(`weapon_${archetype}`);
+              if (found) {
+                tipWorldPos = getWeaponTipWorldPosition(found as unknown as Parameters<typeof getWeaponTipWorldPosition>[0]);
+                break;
+              }
+            }
+            if (!tipWorldPos) {
+              const tipBone = pMesh.userData?.boneMap?.get('rightHand') as
+                | { getWorldPosition: (v: unknown) => { x: number; y: number; z: number } }
+                | undefined;
+              if (tipBone && weaponTipVecRef.current) {
+                tipWorldPos = tipBone.getWorldPosition(weaponTipVecRef.current);
+              }
+            }
+            if (trail && tipWorldPos) {
+              trail.sample({ x: tipWorldPos.x, y: tipWorldPos.y, z: tipWorldPos.z }, now / 1000);
             }
             trail?.tick(now / 1000);
           }

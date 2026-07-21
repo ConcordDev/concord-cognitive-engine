@@ -203,26 +203,25 @@ export function normalizeRealAssetScale(obj: THREE.Object3D, targetLongestDim: n
 /**
  * Archetypes that can "discharge" (fire a shot / release a cast) — the
  * ones a muzzle-flash / spell-spark VFX should anchor to. Every other
- * archetype (blades, axes, bows, etc.) swings instead; they don't get a
- * discharge point.
+ * archetype (blades, axes, bows, etc.) swings instead — they still get a
+ * `tipLocal` (see below, used by the weapon-swing trail), just no
+ * `dischargeLocal`. Exported so AvatarSystem3D.tsx's discharge-flash
+ * trigger reads this list instead of hardcoding a second copy.
  */
-const DISCHARGE_AXIS: Partial<Record<WeaponArchetype, 'x' | 'y' | 'z'>> = {
-  firearm_pistol: 'z',
-  firearm_rifle:  'z',
-  staff:          'y',
-  wand:           'y',
-};
+export const DISCHARGE_ARCHETYPES: WeaponArchetype[] = ['firearm_pistol', 'firearm_rifle', 'staff', 'wand'];
 
 /** Local-space point on `obj`'s bounding box surface along `axis`'s max
  *  extent (the other two axes centered) — used post-normalization, so it
  *  reflects the group's final held-in-hand geometry. This is a best-
- *  effort approximation for the real-asset firearms specifically (their
- *  native forward axis was inferred from bounding-box asymmetry — see
- *  `REAL_ASSET_NORMALIZATION`'s comment — not confirmed by a visual
+ *  effort approximation for the real-asset firearms/crossbow specifically
+ *  (their native forward axis was inferred from bounding-box asymmetry —
+ *  see `REAL_ASSET_NORMALIZATION`'s comment — not confirmed by a visual
  *  render, since this environment can't do one headlessly); it's exact
- *  for staff/wand (bottom-pivot normalization already guarantees the tip
- *  sits at local (0, targetSize, 0)). */
-function computeDischargeLocal(obj: THREE.Object3D, axis: 'x' | 'y' | 'z'): { x: number; y: number; z: number } {
+ *  for every 'bottom'-pivoted archetype (bottom-pivot normalization
+ *  already guarantees the tip sits at local (0, targetSize, 0), computed
+ *  directly from `norm.size` rather than a bbox query — see
+ *  `realAssetTipLocal` below). */
+function computeBboxTipLocal(obj: THREE.Object3D, axis: 'x' | 'y' | 'z'): { x: number; y: number; z: number } {
   const box = new THREE.Box3().setFromObject(obj);
   const center = new THREE.Vector3();
   box.getCenter(center);
@@ -231,21 +230,51 @@ function computeDischargeLocal(obj: THREE.Object3D, axis: 'x' | 'y' | 'z'): { x:
   return { x: point.x, y: point.y, z: point.z };
 }
 
+/** The "business end" of a normalized real-asset weapon — 'bottom' pivot
+ *  (every blade/haft archetype + staff/wand) has an exact closed-form
+ *  answer; 'center' pivot (firearms + crossbow) falls back to a
+ *  bounding-box read along the inferred forward axis (+Z — see
+ *  `REAL_ASSET_NORMALIZATION`'s comment). */
+function realAssetTipLocal(obj: THREE.Object3D, norm: { size: number; pivot: 'bottom' | 'center' }): { x: number; y: number; z: number } {
+  return norm.pivot === 'bottom' ? { x: 0, y: norm.size, z: 0 } : computeBboxTipLocal(obj, 'z');
+}
+
 /**
- * Reads the discharge point (world-space) a muzzle-flash / spell-spark
- * VFX should spawn at, for a weapon group `createWeapon()` returned.
- * Returns null for archetypes that don't discharge (swords, bows, etc.)
- * or a group with no `dischargeLocal` set. Caller supplies the group as
- * it currently sits in the live scene graph (already parented under the
- * avatar) so the world-matrix transform reflects any in-progress swing/
- * cast animation, not just the weapon's rest pose.
+ * Reads a named local-space point (`field` — 'tipLocal' or
+ * 'dischargeLocal') from a weapon group's userData and transforms it to
+ * world space. Returns null when the group has no such point (e.g.
+ * `dischargeLocal` on a non-discharging archetype). Caller supplies the
+ * group as it currently sits in the live scene graph (already parented
+ * under the avatar) so the world-matrix transform reflects any
+ * in-progress swing/cast animation, not just the weapon's rest pose.
  */
-export function getDischargeWorldPosition(weaponGroup: THREE.Object3D): THREE.Vector3 | null {
-  const local = weaponGroup.userData?.dischargeLocal as { x: number; y: number; z: number } | undefined;
+function getWeaponPointWorldPosition(weaponGroup: THREE.Object3D, field: 'tipLocal' | 'dischargeLocal'): THREE.Vector3 | null {
+  const local = weaponGroup.userData?.[field] as { x: number; y: number; z: number } | undefined;
   if (!local) return null;
   const v = new THREE.Vector3(local.x, local.y, local.z);
   weaponGroup.updateWorldMatrix(true, false);
   return weaponGroup.localToWorld(v);
+}
+
+/**
+ * Reads the discharge point (world-space) a muzzle-flash / spell-spark
+ * VFX should spawn at, for a weapon group `createWeapon()` returned.
+ * Returns null for archetypes that don't discharge (swords, bows, etc.).
+ */
+export function getDischargeWorldPosition(weaponGroup: THREE.Object3D): THREE.Vector3 | null {
+  return getWeaponPointWorldPosition(weaponGroup, 'dischargeLocal');
+}
+
+/**
+ * Reads the "tip" point (world-space) — the blade tip / axe head / bow
+ * limb / muzzle / staff crystal, whichever applies — for ANY weapon
+ * archetype `createWeapon()` returned, discharge-capable or not. This is
+ * what the weapon-swing trail (`weapon-trail.ts`, sampled per-frame in
+ * `AvatarSystem3D.tsx`) anchors to; unlike `getDischargeWorldPosition`
+ * this is set for all 16 archetypes, real-asset and procedural alike.
+ */
+export function getWeaponTipWorldPosition(weaponGroup: THREE.Object3D): THREE.Vector3 | null {
+  return getWeaponPointWorldPosition(weaponGroup, 'tipLocal');
 }
 
 /**
@@ -258,14 +287,8 @@ export function createWeapon(appearance: WeaponAppearance): THREE.Group {
     if (real) {
       const norm = REAL_ASSET_NORMALIZATION[appearance.archetype];
       if (norm) normalizeRealAssetScale(real.children[0], norm.size, norm.pivot);
-      const dischargeAxis = DISCHARGE_AXIS[appearance.archetype];
-      const dischargeLocal = dischargeAxis
-        ? (appearance.archetype === 'staff' || appearance.archetype === 'wand')
-          // Exact for bottom-pivoted staff/wand — normalizeRealAssetScale
-          // already guarantees the tip sits at local (0, targetSize, 0).
-          ? { x: 0, y: norm?.size ?? 0, z: 0 }
-          : computeDischargeLocal(real.children[0], dischargeAxis)
-        : undefined;
+      const tipLocal = norm ? realAssetTipLocal(real.children[0], norm) : undefined;
+      const dischargeLocal = DISCHARGE_ARCHETYPES.includes(appearance.archetype) ? tipLocal : undefined;
       const tier = Math.max(1, Math.min(5, appearance.tier ?? 1));
       real.userData = {
         isWeapon: true,
@@ -274,6 +297,7 @@ export function createWeapon(appearance: WeaponAppearance): THREE.Group {
         seed: appearance.seed,
         enchantment: appearance.enchantment ?? null,
         realAsset: true,
+        tipLocal,
         dischargeLocal,
       };
       return real;
@@ -305,35 +329,106 @@ export function createWeapon(appearance: WeaponAppearance): THREE.Group {
     color: gripColor, roughness: 0.85, metalness: 0.0,
   });
 
-  // Set only by the firearm/staff/wand cases below — the exact local
-  // "business end" point for the procedural geometry those builders lay
-  // out, mirroring what computeDischargeLocal() derives (less precisely,
-  // via bounding-box inference) for the real-asset path.
-  let dischargeLocal: { x: number; y: number; z: number } | undefined;
+  // Every case below sets tipLocal — the exact local "business end" point
+  // for the procedural geometry that builder lays out (blade tip / axe
+  // head / bow limb / muzzle / staff crystal), read by
+  // getWeaponTipWorldPosition() for the weapon-swing trail. Stability
+  // audit (2026-07-21) — this used to be set only for firearm/staff/wand
+  // (as `dischargeLocal`, muzzle-flash-only); widened to every archetype
+  // so the trail (which anchors to WHATEVER weapon is equipped, not just
+  // the 4 discharge-capable ones) has a real point to sample instead of
+  // relying on `AvatarSystem3D.tsx`'s bone-map lookup, which silently
+  // never resolves for the enhanced-avatar path real players use (see
+  // that file's own comment on the trail-sampling block for the full
+  // story — a genuine, now-fixed bug, not the fabricated one this file
+  // originally, incorrectly, reported here).
+  let tipLocal: { x: number; y: number; z: number };
 
   switch (appearance.archetype) {
-    case 'shortsword': buildBladeWeapon(group, bladeMat, accentMat, gripMat, { bladeLen: 0.55 + rng() * 0.1, bladeWidth: 0.06, hiltLen: 0.12, tier }); break;
-    case 'longsword':  buildBladeWeapon(group, bladeMat, accentMat, gripMat, { bladeLen: 0.85 + rng() * 0.1, bladeWidth: 0.07, hiltLen: 0.18, tier }); break;
-    case 'greatsword': buildBladeWeapon(group, bladeMat, accentMat, gripMat, { bladeLen: 1.20 + rng() * 0.15, bladeWidth: 0.10, hiltLen: 0.30, tier }); break;
-    case 'dagger':     buildBladeWeapon(group, bladeMat, accentMat, gripMat, { bladeLen: 0.30 + rng() * 0.05, bladeWidth: 0.05, hiltLen: 0.10, tier }); break;
-    case 'scimitar':   buildBladeWeapon(group, bladeMat, accentMat, gripMat, { bladeLen: 0.75 + rng() * 0.08, bladeWidth: 0.07, hiltLen: 0.14, tier, curvature: 0.4 }); break;
-    case 'axe':        buildAxe(group, bladeMat, accentMat, gripMat, { headSize: 0.18, shaftLen: 0.65, tier }); break;
-    case 'mace':       buildMace(group, bladeMat, accentMat, gripMat, { headSize: 0.10, shaftLen: 0.55, tier }); break;
-    case 'club':       buildClub(group, gripMat, { headSize: 0.09, shaftLen: 0.50, tier }); break;
-    case 'halberd':    buildAxe(group, bladeMat, accentMat, gripMat, { headSize: 0.20, shaftLen: 1.65, tier, hasBlade: true }); break;
-    case 'spear':      buildSpear(group, bladeMat, accentMat, gripMat, { tipLen: 0.35, shaftLen: 1.85, tier }); break;
-    case 'bow':        buildBow(group, gripMat, accentMat, { armLen: 0.95, tier }); break;
-    case 'crossbow':   buildCrossbow(group, gripMat, accentMat, bladeMat, { armSpan: 0.85, stockLen: 0.50, tier }); break;
+    case 'shortsword': {
+      const opts = { bladeLen: 0.55 + rng() * 0.1, bladeWidth: 0.06, hiltLen: 0.12, tier };
+      buildBladeWeapon(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.bladeLen, z: 0 };
+      break;
+    }
+    case 'longsword': {
+      const opts = { bladeLen: 0.85 + rng() * 0.1, bladeWidth: 0.07, hiltLen: 0.18, tier };
+      buildBladeWeapon(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.bladeLen, z: 0 };
+      break;
+    }
+    case 'greatsword': {
+      const opts = { bladeLen: 1.20 + rng() * 0.15, bladeWidth: 0.10, hiltLen: 0.30, tier };
+      buildBladeWeapon(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.bladeLen, z: 0 };
+      break;
+    }
+    case 'dagger': {
+      const opts = { bladeLen: 0.30 + rng() * 0.05, bladeWidth: 0.05, hiltLen: 0.10, tier };
+      buildBladeWeapon(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.bladeLen, z: 0 };
+      break;
+    }
+    case 'scimitar': {
+      const opts = { bladeLen: 0.75 + rng() * 0.08, bladeWidth: 0.07, hiltLen: 0.14, tier, curvature: 0.4 };
+      buildBladeWeapon(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.bladeLen, z: 0 };
+      break;
+    }
+    case 'axe': {
+      const opts = { headSize: 0.18, shaftLen: 0.65, tier };
+      buildAxe(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.shaftLen, z: 0 };
+      break;
+    }
+    case 'mace': {
+      const opts = { headSize: 0.10, shaftLen: 0.55, tier };
+      buildMace(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.shaftLen + opts.headSize * 0.6, z: 0 };
+      break;
+    }
+    case 'club': {
+      const opts = { headSize: 0.09, shaftLen: 0.50, tier };
+      buildClub(group, gripMat, opts);
+      tipLocal = { x: 0, y: opts.shaftLen, z: 0 };
+      break;
+    }
+    case 'halberd': {
+      const opts = { headSize: 0.20, shaftLen: 1.65, tier, hasBlade: true };
+      buildAxe(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.hasBlade ? opts.shaftLen + 0.18 + 0.4 : opts.shaftLen, z: 0 };
+      break;
+    }
+    case 'spear': {
+      const opts = { tipLen: 0.35, shaftLen: 1.85, tier };
+      buildSpear(group, bladeMat, accentMat, gripMat, opts);
+      tipLocal = { x: 0, y: opts.shaftLen + opts.tipLen, z: 0 };
+      break;
+    }
+    case 'bow': {
+      const opts = { armLen: 0.95, tier };
+      buildBow(group, gripMat, accentMat, opts);
+      // The bow's limb spans +/- armLen/2 around the grip — "tip" here is
+      // one limb end, a reasonable single anchor for a trail/flash.
+      tipLocal = { x: 0, y: opts.armLen / 2, z: 0 };
+      break;
+    }
+    case 'crossbow': {
+      const opts = { armSpan: 0.85, stockLen: 0.50, tier };
+      buildCrossbow(group, gripMat, accentMat, bladeMat, opts);
+      tipLocal = { x: opts.stockLen, y: 0, z: 0 };
+      break;
+    }
     case 'firearm_pistol': {
       const opts = { bodyLen: 0.16, barrelLen: 0.10, gripLen: 0.11, tier };
       buildFirearm(group, bladeMat, gripMat, opts);
-      dischargeLocal = { x: opts.bodyLen + opts.barrelLen, y: 0, z: 0 };
+      tipLocal = { x: opts.bodyLen + opts.barrelLen, y: 0, z: 0 };
       break;
     }
     case 'firearm_rifle': {
       const opts = { bodyLen: 0.28, barrelLen: 0.32, gripLen: 0.13, hasStock: true, tier };
       buildFirearm(group, bladeMat, gripMat, opts);
-      dischargeLocal = { x: opts.bodyLen + opts.barrelLen, y: 0, z: 0 };
+      tipLocal = { x: opts.bodyLen + opts.barrelLen, y: 0, z: 0 };
       break;
     }
     // Tip uses bladeMat (not accentMat) so enchantment glow — baked into
@@ -342,16 +437,18 @@ export function createWeapon(appearance: WeaponAppearance): THREE.Group {
     case 'staff': {
       const opts = { shaftLen: 1.1, tipSize: 0.05, tier };
       buildStaff(group, gripMat, bladeMat, opts);
-      dischargeLocal = { x: 0, y: opts.shaftLen, z: 0 };
+      tipLocal = { x: 0, y: opts.shaftLen, z: 0 };
       break;
     }
     case 'wand': {
       const opts = { shaftLen: 0.30, tipSize: 0.025, tier };
       buildStaff(group, gripMat, bladeMat, opts);
-      dischargeLocal = { x: 0, y: opts.shaftLen, z: 0 };
+      tipLocal = { x: 0, y: opts.shaftLen, z: 0 };
       break;
     }
   }
+
+  const dischargeLocal = DISCHARGE_ARCHETYPES.includes(appearance.archetype) ? tipLocal : undefined;
 
   group.userData = {
     isWeapon: true,
@@ -359,6 +456,7 @@ export function createWeapon(appearance: WeaponAppearance): THREE.Group {
     tier,
     seed: appearance.seed,
     enchantment: appearance.enchantment ?? null,
+    tipLocal,
     dischargeLocal,
   };
   return group;

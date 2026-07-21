@@ -146,15 +146,29 @@ real non-degenerate geometry, 340–2,100 vertices each).
   heuristic, but this environment has no headless WebGL renderer to
   visually confirm it. If the flash ever visibly comes out the back of
   the gun instead of the barrel, that's the thing to revisit.
-- **Real melee-weapon assets have no swing-trail hookup either way.**
-  While auditing the trail block this pass touched, found
-  `weaponTrailRef.current.setActive(true)` fires on every attack, but
-  the trail's `.sample(position, nowSec)` — the call that actually feeds
-  it a moving weapon-tip position each frame — is never invoked anywhere
-  in the file. The trail mesh is added to the scene but its geometry
-  buffer never receives a real sample, so `rebuildGeometry()`'s
-  `samples.length >= minSamples` guard never passes and `mat.opacity`
-  stays 0 forever — the weapon-swing trail effect has been fully inert
-  since before this pass (predates it; not a regression from this work,
-  and out of scope for what this pass set out to fix). Flagged here per
-  this repo's incidental-bug-report policy.
+- **CORRECTION (2026-07-21, later same session) — the weapon-trail claim
+  directly above was wrong about the mechanism and has been fixed, not
+  just flagged.** The original audit claimed `.sample()` was "never
+  invoked anywhere in the file" — false; a real per-frame `trail.sample(...)`
+  call site existed. The actual bug was one level deeper: that call fed
+  it a position read from `pMesh.userData?.boneMap?.get('rightHand')`, a
+  bone map ONLY `AvatarSystem3D.tsx`'s legacy procedural avatar builder
+  (`createAvatarMesh`) sets — and `createAvatarMeshSmart`'s `wantEnhanced`
+  flag is unconditionally `true` whenever `opts.isLocalPlayer` is set, so
+  the real local player's avatar always comes from `buildEnhancedAvatar`
+  instead, which never sets `userData.boneMap`. Net visible effect was
+  identical (an always-empty trail, `mat.opacity` stuck at 0) but the
+  cause was "the bone this specific avatar never has," not "the sample
+  call doesn't exist." Fixed by having the per-frame block look up the
+  player's actually-equipped weapon by name
+  (`weapon_<archetype>`, `getObjectByName`) and read its real tip via
+  `weapon-archetypes.ts#getWeaponTipWorldPosition` — a new, general
+  "business end" point now computed for **every** archetype (widened
+  from `dischargeLocal`, which only ever covered the 4 firearm/staff/wand
+  archetypes the muzzle-flash needs) — falling back to the old boneMap
+  lookup only if no equipped weapon is found (kept as a strict addition,
+  not a narrowing, in case a future legacy-avatar caller relies on it).
+  This is the exact "runtime-truth over source-guessing" mistake
+  `CLAUDE.md` itself warns about, made and then caught within this same
+  multi-session arc — recorded here rather than silently rewritten, per
+  this repo's own "docs are a build artifact" discipline.
