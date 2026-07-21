@@ -125,3 +125,60 @@ describe('terrain-reference-palettes grounding', () => {
     }
   });
 });
+
+// 2026-07-21 (same session, later) — cloth/metal/leather grounded in
+// material-reference-palettes.ts (Roblox SurfaceAppearance material-
+// preview renders — a distinct provenance tier from the terrain photos,
+// see that file's own doc comment). paletteFor() now checks both maps.
+describe('material-reference-palettes grounding', () => {
+  it('MATERIAL_REFERENCE_PALETTES has all 3 material kinds, each a real (non-placeholder) RGB triple', async () => {
+    const { MATERIAL_REFERENCE_PALETTES } = await import('@/lib/world-lens/material-reference-palettes');
+    const lum = ([r, g, b]: readonly [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    for (const kind of ['leather', 'metal', 'cloth']) {
+      const pal = MATERIAL_REFERENCE_PALETTES[kind];
+      expect(pal, `${kind} should have a palette`).toBeDefined();
+      for (const tone of ['avg', 'dark', 'light'] as const) {
+        for (const channel of pal[tone]) {
+          expect(channel).toBeGreaterThanOrEqual(0);
+          expect(channel).toBeLessThanOrEqual(255);
+        }
+      }
+      expect(lum(pal.dark)).toBeLessThan(lum(pal.light));
+    }
+  });
+
+  it('the terrain-photo kinds have no entry in MATERIAL_REFERENCE_PALETTES (distinct maps, no overlap)', async () => {
+    const { MATERIAL_REFERENCE_PALETTES } = await import('@/lib/world-lens/material-reference-palettes');
+    for (const kind of ['dirt', 'brick', 'grass', 'sand', 'cobblestone', 'gravel', 'asphalt']) {
+      expect(MATERIAL_REFERENCE_PALETTES[kind]).toBeUndefined();
+    }
+  });
+
+  it('stone/wood/thatch have no entry in either real-reference map', async () => {
+    const { TERRAIN_REFERENCE_PALETTES } = await import('@/lib/world-lens/terrain-reference-palettes');
+    const { MATERIAL_REFERENCE_PALETTES } = await import('@/lib/world-lens/material-reference-palettes');
+    for (const kind of ['stone', 'wood', 'thatch']) {
+      expect(TERRAIN_REFERENCE_PALETTES[kind]).toBeUndefined();
+      expect(MATERIAL_REFERENCE_PALETTES[kind]).toBeUndefined();
+    }
+  });
+
+  it('cloth/metal/leather each produce a distinct cache entry and never throw', () => {
+    const kinds = ['cloth', 'metal', 'leather'] as const;
+    const sets = kinds.map((k) => makePBR(THREE, { kind: k, size: 32, seed: 11 }));
+    for (let i = 0; i < sets.length; i++) {
+      expect(() => makePBR(THREE, { kind: kinds[i], size: 16, seed: 5 })).not.toThrow();
+      for (let j = i + 1; j < sets.length; j++) {
+        expect(sets[i].albedo).not.toBe(sets[j].albedo);
+      }
+    }
+  });
+
+  it('cloth/metal/leather still respect the (kind, seed, size) cache key', () => {
+    const a = makePBR(THREE, { kind: 'leather', size: 64, seed: 3 });
+    const b = makePBR(THREE, { kind: 'leather', size: 64, seed: 3 });
+    const c = makePBR(THREE, { kind: 'leather', size: 64, seed: 4 });
+    expect(a.albedo).toBe(b.albedo);
+    expect(a.albedo).not.toBe(c.albedo);
+  });
+});

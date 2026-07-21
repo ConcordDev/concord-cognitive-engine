@@ -15,17 +15,20 @@
  * on better-than-this; this module is the catalog floor that never has
  * to be authored.
  *
- * 2026-07-21 — 7 of the 13 kinds (dirt, brick, grass, sand, cobblestone,
- * gravel, asphalt) are grounded in real photographed color data
- * (terrain-reference-palettes.ts, sampled from the CC-BY-4.0 terrain
- * textures at public/models/terrain/*.jpg — see CREDITS.md) instead of
- * hand-picked hex constants: `paletteFor()` returns each kind's real
- * average/shadow/highlight tones, and the pattern generators below mix
- * between them per-pixel. The (kind, seed) space was already infinite;
- * this just anchors every combination's base colors to something a
- * camera actually saw, rather than an eyeballed guess. Kinds with no
- * terrain photo counterpart (stone, wood, cloth, metal, leather, thatch)
- * keep their original hardcoded palette unchanged.
+ * 2026-07-21 — 10 of the 13 kinds are grounded in real reference color
+ * data instead of hand-picked hex constants: `paletteFor()` returns each
+ * kind's real average/shadow/highlight tones, and the pattern generators
+ * below mix between them per-pixel. Two provenance tiers:
+ *   - dirt, brick, grass, sand, cobblestone, gravel, asphalt (7) —
+ *     terrain-reference-palettes.ts, sampled from the CC-BY-4.0
+ *     photographed terrain textures at public/models/terrain/*.jpg.
+ *   - cloth, metal, leather (3) — material-reference-palettes.ts,
+ *     sampled from Roblox's CC-BY-4.0 SurfaceAppearance material-preview
+ *     renders (see that file's own doc comment for why these are a
+ *     distinct provenance tier from the terrain photos).
+ * The (kind, seed) space was already infinite; this anchors every
+ * combination's base colors to something real rather than an eyeballed
+ * guess. Only stone/wood/thatch (3) keep their original hardcoded palette.
  *
  * Performance: textures are cached per (kind, seed, size); 512×512
  * default, drops to 256 on low quality.
@@ -35,6 +38,7 @@
 
 import type * as THREE_NS from 'three';
 import { TERRAIN_REFERENCE_PALETTES, type ReferencePalette } from './terrain-reference-palettes';
+import { MATERIAL_REFERENCE_PALETTES } from './material-reference-palettes';
 
 export type ProceduralKind =
   | 'stone'
@@ -51,10 +55,12 @@ export type ProceduralKind =
   | 'gravel'
   | 'asphalt';
 
-/** Real-photo palette for kinds that have one; undefined for the 6
- *  original kinds with no terrain-photo counterpart. */
+/** Real-reference palette for kinds that have one — either a photographed
+ *  terrain ground tone or a rendered-material-preview tone (see
+ *  material-reference-palettes.ts for the provenance distinction).
+ *  Undefined for the 3 original kinds with neither (stone, wood, thatch). */
 function paletteFor(kind: ProceduralKind): ReferencePalette | undefined {
-  return TERRAIN_REFERENCE_PALETTES[kind];
+  return TERRAIN_REFERENCE_PALETTES[kind] ?? MATERIAL_REFERENCE_PALETTES[kind];
 }
 
 function rgbStr([r, g, b]: readonly [number, number, number], a = 1): string {
@@ -212,10 +218,15 @@ function makeAlbedoCanvas(kind: ProceduralKind, seed: number, size: number): HTM
       break;
     }
     case 'cloth': {
-      // Linen / cotton weave
-      ctx.fillStyle = '#c9c2b3';
+      // Real-reference-grounded (Roblox SurfaceAppearance "Cotton Canvas
+      // Denim" preview — see material-reference-palettes.ts). Base fill +
+      // weave threads + fleck modulation all mix toward the real avg/dark/
+      // light tones instead of an eyeballed off-white.
+      const palC = paletteFor('cloth');
+      ctx.fillStyle = palC ? rgbStr(palC.avg) : '#c9c2b3';
       ctx.fillRect(0, 0, size, size);
-      ctx.strokeStyle = 'rgba(80, 70, 55, 0.18)';
+      const threadC = palC ? lerpTone(palC, 0.1) : [80, 70, 55];
+      ctx.strokeStyle = `rgba(${threadC[0]}, ${threadC[1]}, ${threadC[2]}, 0.18)`;
       ctx.lineWidth = 1;
       for (let i = 0; i < size; i += 4) {
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(size, i); ctx.stroke();
@@ -224,16 +235,28 @@ function makeAlbedoCanvas(kind: ProceduralKind, seed: number, size: number): HTM
       // Slight colour modulation
       for (let i = 0; i < 200; i++) {
         const x = rng() * size, y = rng() * size;
-        ctx.fillStyle = `rgba(${130 + Math.floor(rng() * 30)}, ${120 + Math.floor(rng() * 30)}, ${110 + Math.floor(rng() * 25)}, 0.4)`;
+        if (palC) {
+          const c = lerpTone(palC, 0.4 + rng() * 0.5);
+          ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.4)`;
+        } else {
+          ctx.fillStyle = `rgba(${130 + Math.floor(rng() * 30)}, ${120 + Math.floor(rng() * 30)}, ${110 + Math.floor(rng() * 25)}, 0.4)`;
+        }
         ctx.fillRect(x, y, 2, 2);
       }
       break;
     }
     case 'metal': {
-      ctx.fillStyle = '#8b8e94';
+      // Real-reference-grounded (Roblox SurfaceAppearance "Worn Metals"
+      // preview — see material-reference-palettes.ts). Base fill uses the
+      // real average tone; brushed lines mix toward the real dark tone
+      // (the specular-highlight "light" tone is deliberately NOT used for
+      // the brushed-line darkening — that's a lighting artifact of the
+      // rendered reference sphere, not a material color).
+      const palM = paletteFor('metal');
+      ctx.fillStyle = palM ? rgbStr(palM.avg) : '#8b8e94';
       ctx.fillRect(0, 0, size, size);
-      // Brushed lines
-      ctx.strokeStyle = 'rgba(60, 65, 72, 0.25)';
+      const brushM = palM ? lerpTone(palM, 0.15) : [60, 65, 72];
+      ctx.strokeStyle = `rgba(${brushM[0]}, ${brushM[1]}, ${brushM[2]}, 0.25)`;
       ctx.lineWidth = 1;
       for (let y = 0; y < size; y += 2) {
         ctx.beginPath();
@@ -241,7 +264,7 @@ function makeAlbedoCanvas(kind: ProceduralKind, seed: number, size: number): HTM
         ctx.lineTo(size, y + (rng() - 0.5) * 4);
         ctx.stroke();
       }
-      // Speckle scratches
+      // Speckle scratches — genuinely near-white highlight glints, kept as-is
       for (let i = 0; i < 80; i++) {
         const x = rng() * size, y = rng() * size;
         const dx = (rng() - 0.5) * 20, dy = (rng() - 0.5) * 10;
@@ -251,14 +274,24 @@ function makeAlbedoCanvas(kind: ProceduralKind, seed: number, size: number): HTM
       break;
     }
     case 'leather': {
-      ctx.fillStyle = '#5a3a26';
+      // Real-reference-grounded (Roblox SurfaceAppearance "Worn Leather"
+      // preview — see material-reference-palettes.ts). Base fill + crinkle
+      // cells mix toward the real avg/dark tones instead of an eyeballed
+      // brown.
+      const palL = paletteFor('leather');
+      ctx.fillStyle = palL ? rgbStr(palL.avg) : '#5a3a26';
       ctx.fillRect(0, 0, size, size);
       // Crinkle pattern via overlapping radial cells
       for (let i = 0; i < 600; i++) {
         const x = rng() * size, y = rng() * size;
         const r = 3 + rng() * 6;
-        const dark = Math.floor(rng() * 25);
-        ctx.fillStyle = `rgba(${70 - dark}, ${50 - dark}, ${30 - dark}, 0.4)`;
+        if (palL) {
+          const c = lerpTone(palL, rng() * 0.5);
+          ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.4)`;
+        } else {
+          const dark = Math.floor(rng() * 25);
+          ctx.fillStyle = `rgba(${70 - dark}, ${50 - dark}, ${30 - dark}, 0.4)`;
+        }
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       }
       break;

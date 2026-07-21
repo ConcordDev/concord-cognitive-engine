@@ -217,6 +217,44 @@ against `terrain-reference-palettes.ts`'s real sampled values outside any
 renderer to rule out a browser color-management artifact skewing the
 visual check.
 
+### `cloth`/`metal`/`leather` also grounded, from a different real source (2026-07-21, later same session)
+
+The remaining 3 of the 6 previously-hardcoded procedural kinds
+(`cloth`, `metal`, `leather` — `stone`/`wood`/`thatch` still have no real
+reference and are unchanged) are now grounded too, via
+`lib/world-lens/material-reference-palettes.ts`. Source: the same
+`Roblox/creator-docs` repo (CC-BY-4.0, same license as the 7 terrain
+photos), but a different asset type —
+`content/en-us/assets/modeling/surface-appearance/{013_WornLeather,
+023_WornMetals,07_CottonCanvasDenim}.png`, Roblox's own rendered
+material-preview spheres for their SurfaceAppearance material catalog
+documentation. **This is a genuinely different provenance tier from the
+terrain photos and is documented as such in
+`material-reference-palettes.ts`'s own doc comment** — these are rendered
+PBR-material preview renders (a sphere lit against a white page
+background), not flat photographed material swatches. Sampling used a
+45%-center-crop (stays inside the sphere, away from the white background)
+and an 8th/92nd luminance-percentile pick for dark/light instead of a
+literal min/max (a literal min/max would have picked up the sphere's
+specular hotspot and silhouette ambient-occlusion shadow — lighting
+artifacts of the render, not material color). Unlike the terrain photos,
+these preview images are not shipped in the repo or displayed anywhere —
+only the extracted avg/dark/light statistics are used, so there are no
+new files under `public/models/` for this entry.
+
+`lib/concordia/armor-system.ts` (the 4-slot parametric armor-piece
+builder — head/torso/arms/legs × heavy_plate/robed/leather/exposed
+silhouettes) previously built every material as a flat solid-color
+`MeshStandardMaterial` with zero texture detail. It now calls
+`makePBR()` for a `normalMap`/`roughnessMap` pair keyed off silhouette
+(heavy_plate→metal, robed→cloth, leather & exposed→leather) — real
+material surface detail (brushed-metal streaks, leather crinkle, cloth
+weave) layered on top. Deliberately `normalMap`/`roughnessMap` only,
+never `map` (albedo): the real per-faction dye color
+(`appearance.primaryColor`/`secondaryColor`/`accentColor`, still applied
+via `material.color`) stays the actual displayed color — the texture
+only adds surface detail, it doesn't override the color customization.
+
 ## Known limitations (honest, not hidden)
 
 - **`forge` and `tower` building archetypes** have no real asset yet — they
