@@ -8,37 +8,34 @@
  * delta. Click → opens the wallet panel.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Coins, TrendingUp, Award } from 'lucide-react';
 import { subscribe } from '@/lib/realtime/socket';
-
-interface BalanceResponse { ok: boolean; balance?: number; concordCoins?: number }
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 interface CurrencyHUDProps {
   onClick?: () => void;
 }
 
 export default function CurrencyHUD({ onClick }: CurrencyHUDProps) {
-  const [balance, setBalance] = useState<number>(0);
+  const balance = useWalletBalance();
   const [delta, setDelta] = useState<number | null>(null);
   const [skillCount, setSkillCount] = useState<number>(0);
   const [badges, setBadges] = useState<number>(0);
 
-  const refreshBalance = useCallback(async () => {
-    try {
-      const r = await fetch('/api/economy/balance', { credentials: 'include' });
-      if (!r.ok) return;
-      const data = (await r.json()) as BalanceResponse;
-      const b = data.balance ?? data.concordCoins ?? 0;
-      setBalance((prev) => {
-        if (prev !== 0 && b !== prev) {
-          setDelta(b - prev);
-          setTimeout(() => setDelta(null), 2500);
-        }
-        return b;
-      });
-    } catch { /* network silent */ }
-  }, []);
+  // Surface the balance delta as a brief +/- pulse, same UX as before the
+  // fetch loop moved into the shared useWalletBalance hook.
+  const prevBalanceRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prev = prevBalanceRef.current;
+    if (prev !== null && prev !== 0 && balance !== prev) {
+      setDelta(balance - prev);
+      const t = setTimeout(() => setDelta(null), 2500);
+      prevBalanceRef.current = balance;
+      return () => clearTimeout(t);
+    }
+    prevBalanceRef.current = balance;
+  }, [balance]);
 
   const refreshSummary = useCallback(async () => {
     try {
@@ -56,22 +53,18 @@ export default function CurrencyHUD({ onClick }: CurrencyHUDProps) {
   }, []);
 
   useEffect(() => {
-    refreshBalance();
     refreshSummary();
-    const id = window.setInterval(() => {
-      refreshBalance();
-      refreshSummary();
-    }, 30_000);
+    const id = window.setInterval(refreshSummary, 30_000);
     return () => window.clearInterval(id);
-  }, [refreshBalance, refreshSummary]);
+  }, [refreshSummary]);
 
-  // Bump on marketplace events.
+  // Balance itself refreshes via useWalletBalance (poll + marketplace:*
+  // socket bump); this component only needs to bump the skill/badge
+  // summary on its own event.
   useEffect(() => {
-    const offPurchase = subscribe<{ price: number }>('marketplace:purchase', () => refreshBalance());
-    const offSale = subscribe<{ earnings: number }>('marketplace:sale', () => refreshBalance());
     const offBadge = subscribe<unknown>('reputation:badge-earned', () => refreshSummary());
-    return () => { offPurchase(); offSale(); offBadge(); };
-  }, [refreshBalance, refreshSummary]);
+    return () => { offBadge(); };
+  }, [refreshSummary]);
 
   return (
     <button

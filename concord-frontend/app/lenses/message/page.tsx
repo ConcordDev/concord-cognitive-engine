@@ -16,6 +16,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -197,6 +198,27 @@ export default function MessageLensPage() {
     }
   }, [activeConversationId, conversations, replyBody, recordSent, loadMessages, refreshConversations]);
 
+  // The DM history fetch (loadMessages, above) has no limit param — an
+  // active long-running thread can realistically reach thousands of
+  // messages. Extracted so it can be handed to Virtuoso's itemContent
+  // below instead of an unbounded inline .map().
+  const renderMessageItem = useCallback((_index: number, m: Message) => (
+    <div
+      key={m.id}
+      className="border border-lattice-border rounded-lg p-3 sm:p-5 bg-lattice-surface mb-2"
+    >
+      <div className="text-xs font-mono text-gray-500 mb-1">{m.fromUserId}</div>
+      <div className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</div>
+      {m.createdAt && (
+        <div className="text-[10px] font-mono tabular-nums text-gray-500 mt-1">
+          {typeof m.createdAt === 'number'
+            ? new Date(m.createdAt).toLocaleString()
+            : new Date(m.createdAt).toLocaleString()}
+        </div>
+      )}
+    </div>
+  ), []);
+
   useLensCommand(
     [
       { id: 'goto-inbox',   keys: 'g i', description: 'Inbox',   category: 'navigation', action: () => setActiveLabelId('inbox') },
@@ -315,23 +337,18 @@ export default function MessageLensPage() {
               {messages.length === 0 ? (
                 <p className="text-gray-300">{activeThread.snippet}</p>
               ) : (
-                <div className="space-y-2 not-prose">
-                  {messages.map((m) => (
-                    <div
-                      key={m.id}
-                      className="border border-lattice-border rounded-lg p-3 sm:p-5 bg-lattice-surface"
-                    >
-                      <div className="text-xs font-mono text-gray-500 mb-1">{m.fromUserId}</div>
-                      <div className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</div>
-                      {m.createdAt && (
-                        <div className="text-[10px] font-mono tabular-nums text-gray-500 mt-1">
-                          {typeof m.createdAt === 'number'
-                            ? new Date(m.createdAt).toLocaleString()
-                            : new Date(m.createdAt).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                // Own bounded-height scroll pane (Slack/Discord idiom — a
+                // fixed-height thread view above a fixed compose box) so
+                // Virtuoso can virtualize independently of the surrounding
+                // page scroll (header + reply composer below stay put).
+                <div className="not-prose">
+                  <Virtuoso
+                    data={messages}
+                    style={{ height: 'min(60vh, 640px)' }}
+                    followOutput="smooth"
+                    initialTopMostItemIndex={messages.length - 1}
+                    itemContent={renderMessageItem}
+                  />
                 </div>
               )}
 

@@ -155,6 +155,15 @@ export function TutorialOverlay() {
     return () => tutorialManager.onHint(() => undefined);
   }, []);
 
+  // Help is now discoverable via the World HUD command palette's
+  // "Tutorials & Help" entry (C key) instead of a permanent bottom-left
+  // pill — see the removed early-return + "Help" button below.
+  useEffect(() => {
+    const onOpenHelp = () => setHelpOpen(true);
+    window.addEventListener('concordia:open-tutorial-help', onOpenHelp);
+    return () => window.removeEventListener('concordia:open-tutorial-help', onOpenHelp);
+  }, []);
+
   // Listen for tutorial action events dispatched from anywhere in the world
   useEffect(() => {
     const handler = (e: Event) => {
@@ -193,16 +202,12 @@ export function TutorialOverlay() {
     setShowDropHintsOffer(false);
   }, []);
 
-  // Keep overlay mounted if hints are enabled (even after tutorial done)
+  // No permanent chrome once the tutorial is done and nothing is actively
+  // showing — help used to render as an always-visible "? Help" pill here;
+  // it's reachable from the World HUD command palette (C key → "Tutorials
+  // & Help") instead now, per the zero-permanent-windows principle.
   if (tutorialManager.isDone && !hintsEnabled && !helpOpen && !showDropHintsOffer)
-    return (
-      <button
-        onClick={() => setHelpOpen(true)}
-        className="absolute bottom-4 left-4 text-xs text-white/30 hover:text-white/60 font-mono bg-black/40 px-2 py-1 rounded-lg border border-white/5"
-      >
-        ? Help
-      </button>
-    );
+    return null;
 
   return (
     <>
@@ -218,10 +223,11 @@ export function TutorialOverlay() {
         </div>
       )}
 
-      {/* Bottom-left controls */}
-      <div className="absolute bottom-4 left-4 z-40 pointer-events-auto flex items-center gap-2">
-        {/* Drop Hints pill — visible once tutorial is done */}
-        {tutorialManager.isDone && (
+      {/* Drop Hints pill — a live, actionable state toggle (like a mute
+          button), not a help affordance, so it stays visible once the
+          tutorial is done. */}
+      {tutorialManager.isDone && (
+        <div className="absolute bottom-4 left-4 z-40 pointer-events-auto">
           <button
             onClick={handleToggleHints}
             title={hintsEnabled ? 'Hints ON — click to turn off' : 'Hints OFF — click to turn on'}
@@ -233,16 +239,8 @@ export function TutorialOverlay() {
           >
             💡 {hintsEnabled ? 'Hints ON' : 'Hints'}
           </button>
-        )}
-
-        {/* Help button — always visible */}
-        <button
-          onClick={() => setHelpOpen(true)}
-          className="text-xs text-white/30 hover:text-white/60 font-mono bg-black/40 px-2 py-1 rounded-lg border border-white/5"
-        >
-          ? Help
-        </button>
-      </div>
+        </div>
+      )}
 
       {helpOpen && (
         <HelpMenu

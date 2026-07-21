@@ -15,14 +15,29 @@
  */
 
 import { Worker } from "node:worker_threads";
-import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import logger from '../logger.js';
+import { getRealCpuCount } from "../lib/cgroup-cpu.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const POOL_SIZE = Math.min(2, Math.max(1, os.cpus().length - 1)); // Cap at 2 to limit RSS
+// GPU/CPU pinning audit — getRealCpuCount() reads the cgroup-restricted core
+// count (matching scripts/pin-processes.sh's own detection), not the raw
+// os.cpus().length a shared/cgroup-limited host lies about. The Math.min(2, ...)
+// cap already bounded the practical damage of the old lie, but a correct
+// signal is still the right default to compute from.
+const POOL_SIZE = Math.min(2, Math.max(1, getRealCpuCount() - 1)); // Cap at 2 to limit RSS
+
+// Stability audit (2026-07-20) — without an explicit resourceLimits, a
+// worker_thread inherits the FULL main-thread --max-old-space-size ceiling
+// (they share the process-wide V8 flag unless overridden per-worker). Macro
+// execution can be heavier than a heartbeat tick (CAS engine, FEA solver,
+// etc.), so this gets a larger allowance than the heartbeat pool's 512MB.
+// Override via CONCORD_MACRO_WORKER_HEAP_MB.
+const MACRO_WORKER_RESOURCE_LIMITS = {
+  maxOldGenerationSizeMb: Number(process.env.CONCORD_MACRO_WORKER_HEAP_MB) || 1024,
+};
 
 // Heavy macro domains — these get offloaded to workers
 const HEAVY_DOMAINS = new Set([
@@ -70,7 +85,10 @@ const _metrics = {
 export function initPool() {
   for (let i = 0; i < POOL_SIZE; i++) {
     const workerPath = path.join(__dirname, "macro-executor.js");
-    const w = new Worker(workerPath, { workerData: { workerId: i } });
+    const w = new Worker(workerPath, {
+      workerData: { workerId: i },
+      resourceLimits: MACRO_WORKER_RESOURCE_LIMITS,
+    });
     // Test hygiene: unref pooled workers under NODE_ENV=test so they don't keep
     // the node:test process alive after a suite finishes (they still process
     // dispatched tasks while the loop is alive). Lets the runner exit WITHOUT
@@ -288,7 +306,10 @@ function handleWorkerExit(worker, code) {
     const idx = workers.indexOf(worker);
     if (idx >= 0) {
       const workerPath = path.join(__dirname, "macro-executor.js");
-      const newWorker = new Worker(workerPath, { workerData: { workerId: worker._id } });
+      const newWorker = new Worker(workerPath, {
+        workerData: { workerId: worker._id },
+        resourceLimits: MACRO_WORKER_RESOURCE_LIMITS,
+      });
       if (String(process.env.NODE_ENV).toLowerCase() === "test") newWorker.unref();
       newWorker._id = worker._id;
       newWorker._busy = false;

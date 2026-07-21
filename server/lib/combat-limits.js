@@ -40,3 +40,25 @@ export function resolvedDamageCap(skillMax = 0) {
     ? Number(skillMax) * COMBAT_DAMAGE_CRIT_MULT
     : COMBAT_DAMAGE_HARD_CAP;
 }
+
+/**
+ * Bound a (possibly client-supplied) attack range to the shared ranged
+ * ceiling before it reaches applyAttack's distance check. The HTTP NPC route
+ * (routes/worlds.js#_validateCombatReach) already capped its own range input
+ * at COMBAT_MAX_REACH_M; the socket combat:attack path (server.js) fed
+ * `Number(data.range) || 3` straight into applyAttack with NO upper bound at
+ * all — a client could claim range:999999 and land a hit from anywhere on
+ * the map. A flat 80m ceiling is generous enough for every legitimate style
+ * in use today (melee sends 3, existing spell-cast sends 12, the new
+ * ranged-firearm 'fire' style sends 45) while closing the unbounded-reach gap.
+ * Non-finite / non-positive inputs fall back to melee range, matching the
+ * pre-existing `|| 3` default this replaces.
+ *
+ * @param {number} requested client-declared range (meters)
+ * @returns {number} a finite range in [COMBAT_MELEE_REACH_M, COMBAT_MAX_REACH_M]
+ */
+export function clampAttackRange(requested) {
+  const r = Number(requested);
+  if (!Number.isFinite(r) || r <= 0) return COMBAT_MELEE_REACH_M;
+  return Math.min(r, COMBAT_MAX_REACH_M);
+}

@@ -55,6 +55,19 @@ import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
 import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
 import { getTimeScale, getPlayerTimeScale } from '@/lib/concordia/use-time-scale';
+import { getDischargeWorldPosition, getWeaponTipWorldPosition, DISCHARGE_ARCHETYPES, type WeaponArchetype } from '@/lib/concordia/weapon-archetypes';
+
+/** Every archetype `weapon-archetypes.ts#createWeapon()` can build — used
+ *  by the weapon-swing trail below to find whichever weapon the player
+ *  has equipped (not just the 4 discharge-capable ones the muzzle-flash
+ *  block cares about). Kept here (not exported from weapon-archetypes.ts)
+ *  since it's purely a lookup convenience for this file's
+ *  getObjectByName scan, not part of that module's own public surface. */
+const ALL_WEAPON_ARCHETYPES: WeaponArchetype[] = [
+  'shortsword', 'longsword', 'axe', 'mace', 'dagger', 'club',
+  'scimitar', 'greatsword', 'halberd', 'spear', 'bow', 'crossbow',
+  'firearm_pistol', 'firearm_rifle', 'staff', 'wand',
+];
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -303,6 +316,10 @@ export default function AvatarSystem3D({
   // I2 — player weapon-trail ribbon (lazily created in the frame loop) +
   // reusable tip vector to avoid per-frame allocation.
   const weaponTrailRef = useRef<import('@/lib/world-lens/weapon-trail').WeaponTrailAPI | null>(null);
+  // Ranged combat — hit-scan tracer streak fired from a discharging firearm's
+  // muzzle to the crosshair aim point (see the discharge-flash block in
+  // handleCombatAnim). Lazily constructed like weaponTrailRef.
+  const projectileTracerRef = useRef<import('@/lib/world-lens/projectile-tracer').ProjectileTracerAPI | null>(null);
   const weaponTipVecRef = useRef<unknown>(null);
   // Phase A1 sidecars for enhanced-avatar-builder. Re-using the
   // existing facialControllersRef declared further down (line ~324).
@@ -1179,6 +1196,11 @@ export default function AvatarSystem3D({
       // create the ribbon without an await.
       const { createWeaponTrail: _createWeaponTrail } = await import('@/lib/world-lens/weapon-trail');
       if (disposed) return;
+      // Ranged combat — preload the projectile-tracer factory the same way,
+      // so handleCombatAnim's discharge-flash block can fire a tracer
+      // synchronously on the same predicted-attack event it already reacts to.
+      const { createProjectileTracerSystem: _createProjectileTracer } = await import('@/lib/world-lens/projectile-tracer');
+      if (disposed) return;
 
       const avatarGroup = new THREE.Group();
       avatarGroup.name = 'avatar_system';
@@ -1400,6 +1422,68 @@ export default function AvatarSystem3D({
         if (detail.entityId === playerAvatar.id && weaponTrailRef.current &&
             (detail.animation.startsWith('attack') || detail.animation === 'kick')) {
           weaponTrailRef.current.setActive(true);
+        }
+        // Discharge flash — the visual companion to "the gun/staff/wand is
+        // now actually visible": on the SAME predicted attack trigger the
+        // weapon-trail block above reacts to, check whether the local
+        // player's equipped weapon is one of the 4 discharge-capable
+        // archetypes (createWeapon() only sets userData.dischargeLocal for
+        // those) and, if so, spawn a real particle burst at its muzzle/tip
+        // world position via the world-vfx-bridge.ts pipeline (already
+        // mounted — see lib/world-lens/attach-world-renderers.ts) rather
+        // than inventing a new one. Firearms additionally fire a hit-scan
+        // projectile tracer toward the crosshair aim point (ConcordiaScene's
+        // per-frame raycast, published on cameraLookState.aimHitPoint) — the
+        // real fire-input binding lives in CombatInputController, and the
+        // real server-side hit resolution is cityPresence.applyAttack() via
+        // the same combat:attack path melee already uses (range-capped by
+        // combat-limits.js#clampAttackRange); this is scoped to the visual
+        // side, same as the trail is scoped to blade swings.
+        if (detail.entityId === playerAvatar.id && detail.animation.startsWith('attack') && playerMeshRef.current) {
+          try {
+            const playerGroup = playerMeshRef.current as InstanceType<typeof import('three').Group>;
+            let dischargeWeapon: InstanceType<typeof import('three').Object3D> | null = null;
+            for (const archetype of DISCHARGE_ARCHETYPES) {
+              const found = (playerGroup as unknown as { getObjectByName?: (n: string) => InstanceType<typeof import('three').Object3D> | undefined })
+                .getObjectByName?.(`weapon_${archetype}`);
+              if (found) { dischargeWeapon = found; break; }
+            }
+            if (dischargeWeapon) {
+              const pos = getDischargeWorldPosition(dischargeWeapon as unknown as Parameters<typeof getDischargeWorldPosition>[0]);
+              if (pos && typeof window !== 'undefined') {
+                const archetype = dischargeWeapon.userData?.archetype as WeaponArchetype | undefined;
+                const isFirearm = archetype === 'firearm_pistol' || archetype === 'firearm_rifle';
+                const enchantment = dischargeWeapon.userData?.enchantment as string | null | undefined;
+                const vfxType = isFirearm
+                  ? 'flash'
+                  : enchantment === 'fire' ? 'flame'
+                  : enchantment === 'frost' ? 'frost'
+                  : enchantment === 'lightning' ? 'spark'
+                  : enchantment === 'arcane' ? 'arcane'
+                  : 'cast';
+                window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+                  detail: { type: vfxType, position: { x: pos.x, y: pos.y, z: pos.z }, intensity: 1 },
+                }));
+                if (isFirearm) {
+                  const sceneRoot = playerGroup.parent;
+                  if (sceneRoot) {
+                    if (!projectileTracerRef.current) {
+                      projectileTracerRef.current = _createProjectileTracer(
+                        THREE as typeof import('three'),
+                        sceneRoot as import('three').Object3D,
+                      );
+                    }
+                    // aimHitPoint is null only before ConcordiaScene's first
+                    // raycast tick; fall back to straight along the muzzle's
+                    // own forward-ish direction so a very first shot still
+                    // draws a visible streak instead of a zero-length line.
+                    const target = cameraLookState.aimHitPoint ?? { x: pos.x, y: pos.y, z: pos.z - 40 };
+                    projectileTracerRef.current.fire({ x: pos.x, y: pos.y, z: pos.z }, target);
+                  }
+                }
+              }
+            }
+          } catch { /* discharge flash is best-effort cosmetic, never block combat anim */ }
         }
         const mixer = mixersRef.current.get(detail.entityId) as MixerType | undefined;
         if (!mixer) return;
@@ -2014,17 +2098,29 @@ export default function AvatarSystem3D({
           targetRot: number;
         }
       >();
+      const { archetypeForOccupation } = await import('@/lib/concordia/hero-mesh-registry');
 
       for (const npc of npcs.slice(0, MAX_FULLY_ANIMATED)) {
         // Hero NPCs (Three Above All + authored legends) get the enhanced
-        // builder; everyone else stays on the legacy primitive path.
+        // builder via a bespoke GLB; regular NPCs whose free-text occupation
+        // maps to one of the 7 authored archetype meshes (warrior/guard/
+        // scholar/mystic/hunter/trader/legend) also get a real GLB now —
+        // previously `isHero` was only ever true for these 4 hardcoded ids,
+        // so the archetype meshes were unreachable dead code for the rest of
+        // the world's population, which all silently stayed on the
+        // procedural/primitive fallback despite the real assets existing on
+        // disk. archetypeForOccupation returns null (no match) far more
+        // often than it should be wrong, and loadHeroMesh already falls
+        // back to procedural gracefully on any 404, so this only adds
+        // coverage, never removes a working path.
         const HERO_IDS = new Set(['sovereign_first_refusal', 'concord_first_thought', 'concordia_first_breath', 'weaver_of_echoes']);
-        const isHero = HERO_IDS.has(npc.id) || npc.appearance.bodyType === 'legend';
+        const occupationArchetype = archetypeForOccupation((npc as { occupation?: string }).occupation);
+        const isHero = HERO_IDS.has(npc.id) || npc.appearance.bodyType === 'legend' || occupationArchetype !== null;
         const mesh = await createAvatarMeshSmart(npc.id, npc.appearance, THREE, {
           isHero,
           worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
           factionId: (npc as { faction?: string }).faction ?? null,
-          archetype: (npc as { occupation?: string }).occupation ?? null,
+          archetype: occupationArchetype ?? (npc.appearance.bodyType === 'legend' ? 'legend' : null),
         });
         if (disposed) return;
 
@@ -2243,12 +2339,40 @@ export default function AvatarSystem3D({
         // copy from rigid-body transforms each frame.
         ragdollTickRef.current?.();
 
-        // I2 — weapon trail: sample the player's right-hand (weapon-tip) bone
-        // each frame and tick the ribbon. Created lazily once the player mesh
-        // exists; attached to the scene (player mesh's parent).
+        // I2 — weapon trail: sample the equipped weapon's real tip position
+        // each frame and tick the ribbon. Created lazily once the player
+        // mesh exists; attached to the scene (player mesh's parent).
+        //
+        // Stability audit (2026-07-21) — this previously read a
+        // `userData.boneMap.get('rightHand')` bone that only the LEGACY
+        // procedural avatar builder (`createAvatarMesh`) sets.
+        // `createAvatarMeshSmart`'s `wantEnhanced` is unconditionally true
+        // whenever `opts.isLocalPlayer` is set (see that function, a few
+        // hundred lines up), and the real local player is always created
+        // with `isLocalPlayer: true` — so in ordinary (non-error)
+        // operation the actual player avatar always comes from
+        // `buildEnhancedAvatar`, which never sets `userData.boneMap`. The
+        // `.sample()` call site itself was real and did run every frame —
+        // but `tipBone` silently resolved to `undefined` for the one
+        // avatar this block actually cares about, so `samples` never
+        // grew past 0 and the trail's `rebuildGeometry()` guard
+        // (`samples.length >= minSamples`) never passed. Net effect was
+        // the same as a missing sample call — an invisible trail — just
+        // via a different, more specific mechanism than originally
+        // (incorrectly) reported in `public/models/CREDITS.md`; corrected
+        // there in the same commit as this fix.
+        //
+        // Fixed by preferring the equipped weapon's own real tip position
+        // (`weapon-archetypes.ts#getWeaponTipWorldPosition`, exact for
+        // every archetype including procedural ones — see that module),
+        // found by name among ALL_WEAPON_ARCHETYPES rather than the
+        // narrower discharge-only list. The old bone lookup is kept as a
+        // fallback for the (currently theoretical, given the above)
+        // legacy-avatar case, so this stays a pure improvement rather
+        // than a narrowing.
         try {
           const pMesh = playerMeshRef.current as
-            | { parent?: unknown; userData?: { boneMap?: Map<string, unknown> } }
+            | ({ parent?: unknown; userData?: { boneMap?: Map<string, unknown> } } & InstanceType<typeof import('three').Object3D>)
             | null;
           const sceneRoot = pMesh?.parent;
           if (pMesh && sceneRoot) {
@@ -2260,16 +2384,30 @@ export default function AvatarSystem3D({
               weaponTipVecRef.current = new THREE.Vector3();
             }
             const trail = weaponTrailRef.current;
-            const tipBone = pMesh.userData?.boneMap?.get('rightHand') as
-              | { getWorldPosition: (v: unknown) => { x: number; y: number; z: number } }
-              | undefined;
-            if (trail && tipBone && weaponTipVecRef.current) {
-              const wp = tipBone.getWorldPosition(weaponTipVecRef.current);
-              trail.sample({ x: wp.x, y: wp.y, z: wp.z }, now / 1000);
+            let tipWorldPos: { x: number; y: number; z: number } | null = null;
+            for (const archetype of ALL_WEAPON_ARCHETYPES) {
+              const found = (pMesh as unknown as { getObjectByName?: (n: string) => InstanceType<typeof import('three').Object3D> | undefined })
+                .getObjectByName?.(`weapon_${archetype}`);
+              if (found) {
+                tipWorldPos = getWeaponTipWorldPosition(found as unknown as Parameters<typeof getWeaponTipWorldPosition>[0]);
+                break;
+              }
+            }
+            if (!tipWorldPos) {
+              const tipBone = pMesh.userData?.boneMap?.get('rightHand') as
+                | { getWorldPosition: (v: unknown) => { x: number; y: number; z: number } }
+                | undefined;
+              if (tipBone && weaponTipVecRef.current) {
+                tipWorldPos = tipBone.getWorldPosition(weaponTipVecRef.current);
+              }
+            }
+            if (trail && tipWorldPos) {
+              trail.sample({ x: tipWorldPos.x, y: tipWorldPos.y, z: tipWorldPos.z }, now / 1000);
             }
             trail?.tick(now / 1000);
           }
         } catch { /* trail best-effort — never throw out of the frame loop */ }
+        try { projectileTracerRef.current?.tick(now / 1000); } catch { /* tracer best-effort */ }
 
         // Phase A1: per-frame eye tick for enhanced avatars (wetness
         // sheen + iris animation). Bounded by tickerCount ≤ N players +
@@ -2335,10 +2473,19 @@ export default function AvatarSystem3D({
 
         let moveX = 0;
         let moveZ = 0;
-        if (keys.has('w')) moveZ -= 1;
-        if (keys.has('s')) moveZ += 1;
-        if (keys.has('a')) moveX -= 1;
-        if (keys.has('d')) moveX += 1;
+        // World Lens Phase 4 — Free camera mode reuses WASD to fly the
+        // detached camera (ConcordiaScene.tsx), not the player. Without
+        // this guard the player avatar would also walk around underneath
+        // the player while they're trying to scout/photograph with the
+        // free camera. Keys are still tracked (keys.has/etc above) so
+        // switching back out of free mode picks up whatever's currently
+        // held with no edge-case reset needed.
+        if (cameraMode !== 'free') {
+          if (keys.has('w')) moveZ -= 1;
+          if (keys.has('s')) moveZ += 1;
+          if (keys.has('a')) moveX -= 1;
+          if (keys.has('d')) moveX += 1;
+        }
 
         const isMoving = moveX !== 0 || moveZ !== 0;
 
@@ -2887,6 +3034,8 @@ export default function AvatarSystem3D({
         knockbackTimers.clear();
         try { weaponTrailRef.current?.dispose(); } catch { /* ok */ }
         weaponTrailRef.current = null;
+        try { projectileTracerRef.current?.dispose(); } catch { /* ok */ }
+        projectileTracerRef.current = null;
         physicsWorld.removeCharacter('player');
         // Wave 4 finding #8 — stop broadcasting position once this avatar
         // system unmounts, so a stale pointer doesn't leak into a lens

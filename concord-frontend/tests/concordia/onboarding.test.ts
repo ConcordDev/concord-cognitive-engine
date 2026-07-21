@@ -55,16 +55,28 @@ describe('TutorialManager', () => {
   });
 
   it('progresses through all steps', () => {
+    // World Lens Phase 1b (tutorial consolidation) merged OnboardingTutorial's
+    // unique steps (gather-materials/craft-item/command-palette/
+    // npc-context-menu/workbench-interact/game-mode-launch) into this same
+    // step machine — this sequence now covers the full merged order, matching
+    // tests/lib/tutorial-merge.test.ts's MERGED_ACTION_SEQUENCE (the
+    // authoritative source for the merged step content).
     const actions = [
       'moved-significant-distance',
       'rotated-camera',
       'sprinted',
       'near-npc',
       'completed-dialogue',
+      'gathered',
+      'crafted',
       'placed-object',
       'entered-combat',
       'used-hotbar-skill',
+      'palette-opened',
+      'npc-menu-opened',
+      'workbench-interact',
       'entered-lens-portal',
+      'mode-started',
       'sent-quick-message',
     ] as const;
     for (const action of actions) {

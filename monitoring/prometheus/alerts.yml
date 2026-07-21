@@ -94,6 +94,23 @@ groups:
           summary: "Concord heartbeat has stopped"
           description: "No heartbeat ticks in the last 5 minutes — server may be hung. Every emergent system is silently frozen."
 
+      # Track C (event-loop unblocking audit) — the log-only event_loop_lag_spike
+      # message existed before this alert but had no exported metric, so nothing
+      # could page on it; this is the live signal `lowPriority` heartbeats back
+      # off from. Sustained >300ms is the same "genuinely stressed, not just a
+      # single GC pause" threshold the backpressure mechanism itself uses
+      # (CONCORD_EVENT_LOOP_PRESSURE_MS default). This is the earliest warning
+      # in the "system losing connection to itself" chain — it should fire
+      # BEFORE ConcordNoHeartbeat or a user-visible "Connection lost" banner.
+      - alert: ConcordEventLoopUnderPressure
+        expr: concord_event_loop_lag_ms > 300
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Concord event loop under sustained pressure ({{ $value }}ms lag)"
+          description: "concord_event_loop_lag_ms > 300 for 2+ minutes — synchronous work (a heavy SQLite query, a non-worker-pooled heartbeat, a large batch loop) is blocking the single event-loop thread long enough to degrade request latency for every concurrent user. lowPriority heartbeats are already backing off; investigate via /api/admin/heartbeat-stats for the offending module."
+
       - alert: ConcordHeartbeatModuleErrors
         expr: rate(concord_heartbeat_module_errors_total[5m]) > 0.1
         for: 5m

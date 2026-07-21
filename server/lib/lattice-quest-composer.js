@@ -415,12 +415,41 @@ export async function spawnQuestFromAlert(db, alert, worldId) {
 
   // Phase AE — compose 3-part dialogue and persist alongside the quest.
   // Opt-in via env; deterministic fallback always produces something.
+  //
+  // Brain-wiring audit (2026-07-20) — composeQuestDialogue's own signature
+  // is `(quest, npcContext, worldVoice, opts)` and only attempts an LLM
+  // call when `opts.llm` is provided (checked via `if (!opts?.llm) return
+  // fallback()`), but this, its only production caller, never passed a
+  // 4th argument at all — CONCORD_QUEST_DIALOGUE_LLM=true was dead from
+  // this call site, always silently falling back to deterministic. Fixed
+  // by constructing a `{chat}`-shaped adapter over
+  // lib/inference/ollama-client.js#ollamaChat (the same real, standalone
+  // Ollama caller used to fix the identical dead-flag pattern in
+  // dream-engine.js/forward-sim.js/npc-dialogue.js this session) — built
+  // lazily, only when the flag is actually on, so the common (flag-off)
+  // path pays no import cost.
   try {
     const { composeQuestDialogue, persistDialogue } = await import("./quest-dialogue-composer.js");
+    let llm;
+    if (process.env.CONCORD_QUEST_DIALOGUE_LLM === "true") {
+      const { ollamaChat } = await import("./inference/ollama-client.js");
+      llm = {
+        // ollamaChat's per-call opts don't include a maxTokens/num_predict
+        // override (it reads BRAIN_CONFIG's fixed subconscious default) —
+        // `maxTokens` from the caller is accepted for interface
+        // compatibility with ctx.llm.chat() but intentionally unused here.
+        chat: async ({ messages }) => {
+          const r = await ollamaChat("subconscious", messages);
+          if (!r?.ok) throw new Error(r?.error || "ollama_chat_failed");
+          return { content: r.text };
+        },
+      };
+    }
     const dialogue = await composeQuestDialogue(
       { id: questId, title: composed.title, summary: composed.steps?.[0]?.prompt },
       { preoccupation: host?.preoccupation, desire: host?.desire },
       { tone: composed.worldVoice || "neutral" },
+      { llm },
     );
     persistDialogue(db, questId, dialogue);
   } catch { /* dialogue compose best-effort */ }

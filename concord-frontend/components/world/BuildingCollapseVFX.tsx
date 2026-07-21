@@ -73,12 +73,26 @@ export default function BuildingCollapseVFX({ worldId, getCamera }: Props) {
     return () => window.removeEventListener('concordia:building-state', handle as EventListener);
   }, [handle]);
 
-  // Drive re-render to animate.
+  // Drive re-render to animate — throttled to 30Hz. See LandmarkSpires.tsx
+  // for the full story: this exact unthrottled-rAF-state-tick shape,
+  // copy-pasted across several world-lens/HUD components, was confirmed via
+  // a live stack-trace capture to be part of a cluster of continuously-
+  // ticking components that together blew through React's nested-update
+  // safety limit under load ("Maximum update depth exceeded"), starving the
+  // Three.js render loop and stalling the World Lens on "Building the
+  // world...". This one is gated on `items.length` (idle when nothing is
+  // animating) so it's lower-risk than LandmarkSpires, but throttled the
+  // same way for consistency and defense in depth.
   const [, setTick] = useState(0);
   useEffect(() => {
     if (items.length === 0) return;
     let raf: number;
-    const loop = () => { setTick(t => t + 1); raf = requestAnimationFrame(loop); };
+    let last = 0;
+    const FRAME_MS = 1000 / 30;
+    const loop = (now: number) => {
+      if (now - last >= FRAME_MS) { last = now; setTick(t => t + 1); }
+      raf = requestAnimationFrame(loop);
+    };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [items.length]);

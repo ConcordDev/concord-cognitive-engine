@@ -46,10 +46,17 @@ export function StealthDetectedOverlay() {
     return off;
   }, []);
 
+  // `.filter()` always allocates a new array even when nothing actually
+  // expired, or the list was already empty — part of a page-wide "Maximum
+  // update depth exceeded" cluster found on the World Lens.
   useEffect(() => {
     const id = setInterval(() => {
       const now = Date.now();
-      setEntries((prev) => prev.filter((e) => now - e.bornAt < ENTRY_TTL_MS));
+      setEntries((prev) => {
+        if (prev.length === 0) return prev;
+        const next = prev.filter((e) => now - e.bornAt < ENTRY_TTL_MS);
+        return next.length === prev.length ? prev : next;
+      });
     }, 250);
     return () => clearInterval(id);
   }, []);

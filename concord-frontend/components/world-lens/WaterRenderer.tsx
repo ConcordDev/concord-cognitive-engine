@@ -493,12 +493,52 @@ export default function WaterRenderer({
           detail: { waterGroup },
         }));
       }
+
+      // ── World Lens Phase 2 (Activate Existing Rendering) ───────────
+      // Same gap as SkyWeatherRenderer.tsx: `water-ready` dispatched into a
+      // no-op stub and the group was never added to the scene, so the wave/
+      // foam shader work above never reached the screen and the server-
+      // hydrology-driven river/creek geometry it wraps had no visible
+      // surface. Mirror TreeLayer.tsx's real `concordia:scene-ready`
+      // pattern; drive `waterGroup.userData.update()` (wave time + foam
+      // drift) from a local rAF loop, same as SkyWeatherRenderer.
+      let detachScene: (() => void) | null = null;
+      let animId = 0;
+      function onSceneReady(e: Event) {
+        const detail = (e as CustomEvent).detail as { scene?: { add: (g: unknown) => void; remove: (g: unknown) => void } } | undefined;
+        if (!detail?.scene || disposed) return;
+        detail.scene.add(waterGroup);
+        detachScene = () => detail.scene?.remove(waterGroup);
+
+        const start = performance.now();
+        let last = start;
+        const tick = () => {
+          if (disposed) return;
+          const now = performance.now();
+          const delta = Math.min(0.1, (now - last) / 1000);
+          const elapsed = (now - start) / 1000;
+          last = now;
+          waterGroup.userData.update?.(delta, elapsed);
+          animId = requestAnimationFrame(tick);
+        };
+        animId = requestAnimationFrame(tick);
+      }
+      window.addEventListener('concordia:scene-ready', onSceneReady);
+      window.dispatchEvent(new CustomEvent('concordia:scene-request-ready'));
+
+      return () => {
+        window.removeEventListener('concordia:scene-ready', onSceneReady);
+        cancelAnimationFrame(animId);
+        detachScene?.();
+      };
     }
 
-    buildWater();
+    let cleanupSceneAttach: (() => void) | undefined;
+    buildWater().then((cleanup) => { if (!disposed) cleanupSceneAttach = cleanup; });
 
     return () => {
       disposed = true;
+      cleanupSceneAttach?.();
       if (waterGroupRef.current) {
         const group = waterGroupRef.current as {
           traverse: (cb: (obj: unknown) => void) => void;

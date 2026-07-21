@@ -7,6 +7,7 @@
  *   - 'quick_panel'  (Tab hold)   — 8 most-used panels
  *   - 'skill'        (Q hold)     — bloodline-aware skill picks
  *   - 'tool'         (T hold)     — context tool actions
+ *   - 'emote'        (Z hold)     — social emotes
  *
  * Hold-to-open, mouse-over-spoke to preview, release to select.
  * Honors expertise level via useHUDContext — newcomers see 4 spokes,
@@ -14,6 +15,19 @@
  *
  * Mode-aware: skill wheel still available in combat (the only one);
  * others hidden in combat/dialogue/vehicle/photo.
+ *
+ * World Lens Phase 6d — 'emote' folds in what used to be two separate,
+ * independently-built radial-menu components (`components/world/
+ * EmoteWheel.tsx`, 6 emotes, and `components/concordia/social/
+ * EmoteWheel.tsx`, 8 emotes with an `animation` field) — both deleted.
+ * The 6-emote one had a real, currently-shipping bug this fold-in also
+ * fixes: it was mounted unconditionally whenever `inputMode` was
+ * 'exploration' or 'social' with no open/close state of its own at
+ * all — a full radial menu permanently floating on screen for most of
+ * normal play, not hold-to-open like every other wheel. The 8-emote
+ * catalog was kept as the canonical set (richer, and the world page's
+ * remote-animation alias table was already built and tested against
+ * exactly these ids) and now drives this variant's default spokes.
  */
 
 import { useEffect, useState } from 'react';
@@ -28,8 +42,8 @@ export interface WheelSpoke {
 }
 
 interface ActionWheelProps {
-  variant: 'quick_panel' | 'skill' | 'tool';
-  /** Override hold key. Defaults: Tab / q / t */
+  variant: 'quick_panel' | 'skill' | 'tool' | 'emote';
+  /** Override hold key. Defaults: Tab / q / t / z */
   holdKey?: string;
   /** Externally-supplied spokes; if absent, defaults derived per variant. */
   spokes?: WheelSpoke[];
@@ -39,7 +53,37 @@ const DEFAULT_KEY: Record<ActionWheelProps['variant'], string> = {
   quick_panel: 'Tab',
   skill: 'q',
   tool: 't',
+  emote: 'z',
 };
+
+/**
+ * The canonical emote catalog (moved from the deleted `components/
+ * concordia/social/EmoteWheel.tsx`). `animation` is the id the world
+ * page's remote-player alias table (`app/lenses/world/page.tsx`, near
+ * the `validClips` set) maps onto a real supported renderer clip —
+ * kept here so the id set stays the single source of truth that table
+ * was already built and tested against.
+ */
+export const EMOTES = {
+  wave:    { label: 'Wave',       icon: '👋', animation: 'wave' },
+  bow:     { label: 'Bow',        icon: '🙇', animation: 'bow' },
+  cheer:   { label: 'Cheer',      icon: '🙌', animation: 'cheer' },
+  point:   { label: 'Point',      icon: '👉', animation: 'point' },
+  laugh:   { label: 'Laugh',      icon: '😂', animation: 'laugh' },
+  dance:   { label: 'Dance',      icon: '🕺', animation: 'dance' },
+  shrug:   { label: 'Shrug',      icon: '🤷', animation: 'shrug' },
+  thumbup: { label: 'Thumbs Up',  icon: '👍', animation: 'thumbup' },
+} as const;
+
+export type EmoteId = keyof typeof EMOTES;
+
+/** Rides a dedicated channel (not concordia:spell-cast/panel-open) since
+ *  applying an emote needs page-level state (player position/rotation,
+ *  the multiplayer socket) an ActionWheel spoke action can't reach —
+ *  `app/lenses/world/page.tsx` owns the one listener that applies it. */
+function dispatchEmote(id: string) {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('concordia:emote-play', { detail: { emoteId: id } }));
+}
 
 function dispatchPanelOpen(panelId: string) {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('concordia:panel-open', { detail: { panelId } }));
@@ -70,15 +114,23 @@ function defaultSpokes(variant: ActionWheelProps['variant']): WheelSpoke[] {
       { id: 'bio',          label: 'Bio',       glyph: '☣', action: () => dispatch('skill', 'bio_poison') },
     ];
   }
-  // tool
-  return [
-    { id: 'mount',     label: 'Mount',     glyph: '◍', action: () => dispatch('tool', 'mount') },
-    { id: 'dismount',  label: 'Dismount',  glyph: '◎', action: () => dispatch('tool', 'dismount') },
-    { id: 'equip',     label: 'Equip',     glyph: '⚔', action: () => dispatch('tool', 'equip') },
-    { id: 'unequip',   label: 'Unequip',   glyph: '⚒', action: () => dispatch('tool', 'unequip') },
-    { id: 'torch',     label: 'Torch',     glyph: '✸', action: () => dispatch('tool', 'torch') },
-    { id: 'ration',    label: 'Eat ration', glyph: '◌', action: () => dispatch('tool', 'ration') },
-  ];
+  if (variant === 'tool') {
+    return [
+      { id: 'mount',     label: 'Mount',     glyph: '◍', action: () => dispatch('tool', 'mount') },
+      { id: 'dismount',  label: 'Dismount',  glyph: '◎', action: () => dispatch('tool', 'dismount') },
+      { id: 'equip',     label: 'Equip',     glyph: '⚔', action: () => dispatch('tool', 'equip') },
+      { id: 'unequip',   label: 'Unequip',   glyph: '⚒', action: () => dispatch('tool', 'unequip') },
+      { id: 'torch',     label: 'Torch',     glyph: '✸', action: () => dispatch('tool', 'torch') },
+      { id: 'ration',    label: 'Eat ration', glyph: '◌', action: () => dispatch('tool', 'ration') },
+    ];
+  }
+  // emote
+  return (Object.keys(EMOTES) as EmoteId[]).map((id) => ({
+    id,
+    label: EMOTES[id].label,
+    glyph: EMOTES[id].icon,
+    action: () => dispatchEmote(id),
+  }));
 }
 
 // Tool spoke id → the HUD panel that actually performs it. The default tool

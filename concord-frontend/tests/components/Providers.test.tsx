@@ -56,6 +56,7 @@ vi.mock('@/components/media/GlobalMediaController', () => ({
 // returned a flat { addToast }, so useAccessibilityWatcher's
 // `useUIStore((s) => s.setOsReducedMotion)` got the whole object → "not a
 // function". Apply the selector against a complete-enough state.
+const mockSetUserRole = vi.fn();
 const mockUiState = {
   addToast: vi.fn(),
   accessibility: { reducedMotion: false },
@@ -64,6 +65,8 @@ const mockUiState = {
   setAccessibility: vi.fn(),
   setAllAccessibility: vi.fn(),
   resetAccessibility: vi.fn(),
+  userRole: 'user',
+  setUserRole: mockSetUserRole,
 };
 vi.mock('@/store/ui', () => ({
   useUIStore: Object.assign(
@@ -151,6 +154,63 @@ describe('Providers', () => {
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/api/auth/me');
     });
+  });
+
+  // Stability audit (2026-07-20) — "make sure no one sees the sovereign
+  // lenses" fix. The real `/api/auth/me` response shape
+  // (server/routes/auth.js) is `{ ok, user: { id, role, scopes, ... } }`.
+  // Reading `res.data?.scopes` (no `.user`) was a stale wrong-path bug
+  // that always fell through to `[]`; separately, `useUIStore`'s
+  // `userRole` had no real producer anywhere in the app. Both are fixed
+  // in the same effect: real `scopes` now resolve from `user.scopes`, and
+  // `setUserRole` is called with the real role for the first time.
+  it('syncs the real role from /api/auth/me\'s user.role into useUIStore', async () => {
+    (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue('true');
+    mockApiGet.mockResolvedValue({
+      data: { ok: true, user: { id: 'u1', username: 'alice', role: 'admin', scopes: ['read'] } },
+    });
+
+    render(
+      <Providers>
+        <div>Content</div>
+      </Providers>
+    );
+
+    await waitFor(() => {
+      expect(mockSetUserRole).toHaveBeenCalledWith('admin');
+    });
+  });
+
+  it('does not call setUserRole when auth/me has no user (unauthenticated shape)', async () => {
+    (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue('true');
+    mockApiGet.mockResolvedValue({ data: { scopes: ['read', 'write'] } });
+
+    render(
+      <Providers>
+        <div>Content</div>
+      </Providers>
+    );
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/api/auth/me');
+    });
+    expect(mockSetUserRole).not.toHaveBeenCalled();
+  });
+
+  it('does not call setUserRole when the auth/me request fails', async () => {
+    (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue('true');
+    mockApiGet.mockRejectedValue(new Error('Unauthorized'));
+
+    render(
+      <Providers>
+        <div>Content</div>
+      </Providers>
+    );
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/api/auth/me');
+    });
+    expect(mockSetUserRole).not.toHaveBeenCalled();
   });
 
   it('disconnects socket on unmount', async () => {

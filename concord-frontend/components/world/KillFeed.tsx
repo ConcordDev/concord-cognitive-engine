@@ -89,12 +89,18 @@ export function KillFeed({ worldId }: { worldId: string }) {
     };
   }, [enabled, worldId]);
 
-  // Fade-out: prune entries older than 8s.
+  // Fade-out: prune entries older than 8s. `.filter()` always allocates a
+  // new array even when nothing actually expired — part of a page-wide
+  // "Maximum update depth exceeded" cluster found on the World Lens; skip
+  // the setState when the filtered result is the same length as the input.
   useEffect(() => {
     if (events.length === 0) return;
     const t = setInterval(() => {
       const cutoff = Date.now() - 8_000;
-      setEvents((prev) => prev.filter((e) => e.ts > cutoff));
+      setEvents((prev) => {
+        const next = prev.filter((e) => e.ts > cutoff);
+        return next.length === prev.length ? prev : next;
+      });
     }, 1_000);
     return () => clearInterval(t);
   }, [events]);

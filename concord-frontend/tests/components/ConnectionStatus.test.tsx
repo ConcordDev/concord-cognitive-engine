@@ -5,7 +5,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 // (shell-diet: server-tunable poll interval, /api/config/client). Mocked to
 // the hook's own baked defaults per the tests/link-shell.test.tsx precedent
 // so the single `global.fetch` mock below stays scoped to the component's
-// own /api/brain/health check instead of also answering the config fetch.
+// own /health check instead of also answering the config fetch.
 vi.mock('@/hooks/useClientConfig', () => ({
   useClientConfig: () => ({ poll: { systemStatusMs: 30000, connectionStatusMs: 20000 } }),
 }));

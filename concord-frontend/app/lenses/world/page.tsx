@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { reportFrontendError } from '@/lib/report-frontend-error';
@@ -24,6 +23,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { SummonDrawer } from '@/components/lens/SummonDrawer';
 
 import DistrictViewport from '@/components/world-lens/DistrictViewport';
 import CreationToolbar from '@/components/world-lens/CreationToolbar';
@@ -35,7 +35,6 @@ import ComponentCreator from '@/components/world-lens/ComponentCreator';
 import RawDTUEditor from '@/components/world-lens/RawDTUEditor';
 import MarketplacePalette from '@/components/world-lens/MarketplacePalette';
 import ConcordiaHub from '@/components/world-lens/ConcordiaHub';
-import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
@@ -47,7 +46,19 @@ import {
   type WorldDataSource,
 } from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
+import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
+import { hudCornerStyle } from '@/lib/world-lens/hud-corner-registry';
+import { weatherTypeToIcon } from '@/lib/world-lens/weather-icon';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
+
+// Module-level (not per-render) so TerrainRenderer's `lodCenter` prop keeps a
+// stable identity forever — an inline `{ x: 0, z: 0 }` literal in JSX is a
+// fresh object every render, which re-fires TerrainRenderer's terrain-build
+// effect (and the physics heightfield collider registration it drives) on
+// every re-render of this page. See `terrainDistricts` below for the same
+// fix applied to the `districts` prop.
+const TERRAIN_LOD_CENTER_ORIGIN = { x: 0, z: 0 };
 import { mapWorldBuildingToRendererDTU, type WorldBuildingRow } from '@/lib/world-lens/world-building-dto';
 import { worldToScene, sceneToWorldAxis } from '@/lib/world-lens/coord-frame';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
@@ -649,10 +660,6 @@ const FishingMinigameOverlay = dynamic(
     })),
   { ssr: false }
 );
-const EmoteWheelLegacy = dynamic(
-  () => import('@/components/world/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
-  { ssr: false }
-);
 const PlayerPresence = dynamic(() => import('@/components/world-lens/PlayerPresence'), {
   ssr: false,
 });
@@ -961,10 +968,6 @@ const LensWorkspace = dynamic(
     import('@/components/concordia/lens/LensWorkspaceInWorld').then((m) => ({
       default: m.LensWorkspaceInWorld,
     })),
-  { ssr: false }
-);
-const EmoteWheel = dynamic(
-  () => import('@/components/concordia/social/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
   { ssr: false }
 );
 const QuickMessageBar = dynamic(
@@ -2006,22 +2009,37 @@ export default function WorldLensPage() {
   // that 3D is still one click away. See the banner in the 'concordia' branch.
   const [sceneCrashed, setSceneCrashed] = useState(false);
   const [activeDistrict, setActiveDistrict] = useState<District>(DEMO_DISTRICT);
+  // The real, live-data world id — distinct from `activeDistrict`, which is
+  // 2D-district-editor state that boots on DEMO_DISTRICT seed geometry and
+  // (by design — see the W4 honesty-overlay comment below) is never swapped
+  // for real world data. activeDistrict's `id` field was being misused as a
+  // stand-in for "which world's data should I fetch" in ~90 places on this page —
+  // every one of them was silently hitting the permanently-empty demo
+  // placeholder ('district-demo-001') instead of the real world. Declared
+  // early (not at its original call site further down) so effects earlier
+  // in the component can reference it too.
+  const [currentWorldId] = useState<string>('concordia-hub');
 
   // Global HUD visibility — the ~15 permanent 2D panels floating over the
   // 3D canvas (feeds, trackers, toolbar, resource bars) obstruct movement
   // and the view. One toggle clears all of them at once. Also the real
-  // wiring for PhotoMode's hide-HUD dispatch, which previously had no
-  // listener on this page (PhotoMode fired 'concordia:hide-hud' into the
-  // void — see lib/event-router.ts, which only ever showed a toast).
-  const [hudHidden, setHudHidden] = useState(false);
-  useEffect(() => {
-    const onHideHud = (e: Event) => {
-      const hide = (e as CustomEvent<{ hide?: boolean }>).detail?.hide;
-      if (typeof hide === 'boolean') setHudHidden(hide);
-    };
-    window.addEventListener('concordia:hide-hud', onHideHud);
-    return () => window.removeEventListener('concordia:hide-hud', onHideHud);
-  }, []);
+  // wiring for PhotoMode's hide-HUD dispatch (PhotoMode fires
+  // 'concordia:hide-hud'; see lib/event-router.ts for the toast + this
+  // page's H-key handler further down for the other dispatch site).
+  //
+  // World Lens Phase 6b — this used to be page-local `useState` with its
+  // own window-event listener (a second, independent copy of the same
+  // listener also lived in hooks/useWorldHudHidden.ts for the globally-
+  // mounted chrome). Both now read the one canonical value
+  // HUDContextProvider's own `concordia:hide-hud` bridge effect keeps live
+  // in the shared store — "no component controls itself" applied to the
+  // manual-hide flag itself, not just the ~20 panels that gate on it.
+  const hudHidden = useHUDContext((s) => s.manualHidden);
+
+  // World Lens Phase 2 (Activate Existing Rendering) — PhotoMode's real
+  // open/onClose state + P-key binding are declared further down (after
+  // combatState/dialogueNPC exist to gate on), next to the E-key effect —
+  // see the "P key: Photo Mode toggle" block below.
 
   // ── World-data honesty (W4) ────────────────────────────────────────────────
   // The scene boots on DEMO_DISTRICT seed geometry; the player must never
@@ -2043,7 +2061,7 @@ export default function WorldLensPage() {
   // re-reports loading for the new world's fetches.
   useEffect(() => {
     setWorldFetchOutcomes(initialWorldFetchOutcomes());
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
   const worldDataState = deriveWorldDataState(worldFetchOutcomes);
   const [creationMode, setCreationMode] = useState<CreationMode | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -2098,7 +2116,6 @@ export default function WorldLensPage() {
   const [questLogOpen, setQuestLogOpen] = useState(false);
   const [marketplacePanelOpen, setMarketplacePanelOpen] = useState(false);
   const [adventureKitOpen, setAdventureKitOpen] = useState(false);
-  const [currentWorldId] = useState<string>('concordia-hub');
 
   // District tools state
   const [activeTool, setActiveTool] = useState<DistrictTool>(null);
@@ -2108,6 +2125,48 @@ export default function WorldLensPage() {
   const [cameraMode, setCameraMode] = useState<
     'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic'
   >('follow');
+  // World Lens Phase 4 — cinematic-director.ts's own doc comment states
+  // "Director takes camera control from CameraControls.tsx for the
+  // sequence duration, restores afterward," but nothing implemented that
+  // handoff: concordia:cinematic-start/-end fire (used by the letterbox
+  // UI) with no listener that ever changed cameraMode, so a director-
+  // triggered sequence (e.g. combat:hero_kill) never actually put the
+  // camera into cinematic mode — ConcordiaScene.tsx's new shot-
+  // interpolation code (see cinematic-shot-geometry.ts) would sit unused.
+  const preCinematicCameraModeRef = useRef<typeof cameraMode | null>(null);
+  useEffect(() => {
+    function onCinematicStart() {
+      // Functional update reads the CURRENT cameraMode (not a stale
+      // closure from this effect's empty dependency array) — the mode
+      // active the instant the sequence starts is what gets restored.
+      setCameraMode((prev) => {
+        preCinematicCameraModeRef.current = prev;
+        return 'cinematic';
+      });
+    }
+    function onCinematicEnd() {
+      const prev = preCinematicCameraModeRef.current;
+      if (prev) setCameraMode(prev);
+      preCinematicCameraModeRef.current = null;
+    }
+    window.addEventListener('concordia:cinematic-start', onCinematicStart);
+    window.addEventListener('concordia:cinematic-end', onCinematicEnd);
+    return () => {
+      window.removeEventListener('concordia:cinematic-start', onCinematicStart);
+      window.removeEventListener('concordia:cinematic-end', onCinematicEnd);
+    };
+  }, []);
+  // Camera Mode panel's zoom slider — previously wired to a no-op onZoom
+  // handler (CameraControls rendered a live-looking slider that did
+  // nothing). Real state now, consumed by ConcordiaScene's cameraZoom prop
+  // to scale the Follow/Interior camera distance.
+  const [cameraZoom, setCameraZoom] = useState(DEFAULT_CAMERA_ZOOM);
+  // World Lens Phase 4 — Camera Mode panel's NE/SE/SW/NW rotation compass.
+  // Previously hardcoded `rotation: 'NE'` in the CameraControls mount below
+  // with a no-op onRotate — the buttons were disabled anyway (no orbit
+  // implementation existed), so this was never actually reachable, but real
+  // state is needed now that ConcordiaScene.tsx has one.
+  const [cameraRotation, setCameraRotation] = useState<'NE' | 'SE' | 'SW' | 'NW'>('NE');
   // Concordia theme — auto-resolves from worldId so each canon world
   // looks distinct (Tunya = sun-baked, Cyber = neon, Fantasy = cool
   // forest, etc.). Player can override via the theme picker; the
@@ -2128,12 +2187,30 @@ export default function WorldLensPage() {
   // 30s; tweened locally between ticks) and the season substrate.
   const worldPhaseForSky = useHUDContext((s) => s.worldPhase);
   const worldSeasonForSky = useHUDContext((s) => s.worldSeason);
+  // Same real worldDaySegment used to drive the sky, reused for the HUD's
+  // time-of-day text — this used to be a hardcoded "day" literal.
+  const worldDaySegmentForHud = useHUDContext((s) => s.worldDaySegment);
+  // Real wallet balance for HUDOverlay's bottom-bar currency readout — this
+  // used to be a hardcoded `{ concordCoin: 0 }` regardless of the player's
+  // actual CC. Same source CurrencyHUD (top-center) already displays.
+  const walletBalanceForHud = useWalletBalance();
   // Phase A4 — pull sky top + horizon colors from the canon theme so
   // each world's sky shader matches the world palette.
   const skyThemeColors = (() => {
     const t = CONCORDIA_THEMES[concordiaTheme] || CONCORDIA_THEMES['neon-punk'];
     return { top: t.skyTop, horizon: t.skyHorizon };
   })();
+  // The player-facing world name (loading overlay, header, chat) was reading
+  // `activeDistrict.name` — which is 'Pioneer Valley', DEMO_DISTRICT's
+  // hardcoded seed name (district-seed.ts). Since activeDistrict never
+  // updates away from the demo seed (see the currentWorldId comment
+  // above), the game was displaying a fake placeholder name as if it were
+  // the real active world's name for the entire session. The theme
+  // registry already carries a human-readable label per world
+  // (CONCORDIA_THEMES[themeId].label, e.g. 'Concordia' for
+  // 'concordia-hub') — reuse it here instead.
+  const currentWorldDisplayName =
+    CONCORDIA_THEMES[concordiaTheme]?.label || activeDistrict.name;
   const [concordiaRenderStyle, setConcordiaRenderStyle] = useState<'pbr' | 'toon'>('pbr');
   const [showPanel, setShowPanel] = useState<
     | 'none'
@@ -2488,10 +2565,6 @@ export default function WorldLensPage() {
   );
   const [showValidation, setShowValidation] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem('world_lens_visited');
-  });
   const [showFeatures, setShowFeatures] = useState(false);
 
   // Live NPC state — populated from API, refreshed every 10s
@@ -2548,8 +2621,6 @@ export default function WorldLensPage() {
     maxHp?: number;
   } | null>(null);
 
-  // Emote wheel toggle
-  const [showEmoteWheel, setShowEmoteWheel] = useState(false);
   // Tame attempt overlay — opens when player presses KeyJ near a tameable
   // creature (nearbyNPC of `creature` archetype). The bond + threshold
   // are passed in so the overlay can show progress + gate the attempt.
@@ -2611,7 +2682,7 @@ export default function WorldLensPage() {
 
   useEffect(() => {
     const loadBags = () => {
-      fetch(`/api/worlds/${activeDistrict.id}/loot-bags`, { signal: AbortSignal.timeout(8000) })
+      fetch(`/api/worlds/${currentWorldId}/loot-bags`, { signal: AbortSignal.timeout(8000) })
         .then((r) => {
           if (!r.ok) throw new Error(`loot-bags ${r.status}`);
           return r.json();
@@ -2625,13 +2696,13 @@ export default function WorldLensPage() {
     loadBags();
     const interval = setInterval(loadBags, 8_000);
     return () => clearInterval(interval);
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   const claimLootBag = useCallback(
     async (bagId: string) => {
       setClaimingBag(bagId);
       try {
-        const res = await fetch(`/api/worlds/${activeDistrict.id}/loot-bags/${bagId}/claim`, {
+        const res = await fetch(`/api/worlds/${currentWorldId}/loot-bags/${bagId}/claim`, {
           method: 'POST',
         });
         const data = await res.json();
@@ -2646,7 +2717,7 @@ export default function WorldLensPage() {
         setClaimingBag(null);
       }
     },
-    [activeDistrict.id]
+    [currentWorldId]
   );
 
   // ── Resource nodes + gathering ────────────────────────────────────────────
@@ -2676,7 +2747,7 @@ export default function WorldLensPage() {
 
   // Load all surface nodes for map dots (once per world)
   useEffect(() => {
-    fetch(`/api/worlds/${activeDistrict.id}/nodes`, { signal: AbortSignal.timeout(8000) })
+    fetch(`/api/worlds/${currentWorldId}/nodes`, { signal: AbortSignal.timeout(8000) })
       .then((r) => {
         if (!r.ok) throw new Error(`nodes ${r.status}`);
         return r.json();
@@ -2686,11 +2757,11 @@ export default function WorldLensPage() {
         markWorldFetch('nodes', 'ok');
       })
       .catch(() => markWorldFetch('nodes', 'error'));
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // Load buildings (seed city + player-placed)
   useEffect(() => {
-    fetch(`/api/worlds/${activeDistrict.id}/buildings`, { signal: AbortSignal.timeout(8000) })
+    fetch(`/api/worlds/${currentWorldId}/buildings`, { signal: AbortSignal.timeout(8000) })
       .then((r) => {
         if (!r.ok) throw new Error(`buildings ${r.status}`);
         return r.json();
@@ -2704,13 +2775,13 @@ export default function WorldLensPage() {
         markWorldFetch('buildings', 'ok');
       })
       .catch(() => markWorldFetch('buildings', 'error'));
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // Sync active district to SoundscapeEngine ambient audio via window event
   useEffect(() => {
     window.dispatchEvent(
       new CustomEvent('concordia:soundscape-command', {
-        detail: { action: 'setDistrict', district: activeDistrict.id },
+        detail: { action: 'setDistrict', district: currentWorldId },
       })
     );
     // Polish-pass: also crossfade the procedural ambient music to the
@@ -2718,10 +2789,10 @@ export default function WorldLensPage() {
     // pad, docks=lonely fifths, etc.).
     window.dispatchEvent(
       new CustomEvent('concordia:soundscape-command', {
-        detail: { action: 'setMusicDistrict', district: activeDistrict.id },
+        detail: { action: 'setMusicDistrict', district: currentWorldId },
       })
     );
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // Poll for nearby nodes every 5s based on player position
   useEffect(() => {
@@ -2729,7 +2800,7 @@ export default function WorldLensPage() {
       // Player position is in the scene frame; the server stores nodes in the
       // world frame — convert back on the way out so the proximity query matches.
       const { x, z } = playerPos.current;
-      fetch(`/api/worlds/${activeDistrict.id}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
+      fetch(`/api/worlds/${currentWorldId}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (d?.nodes) setNearbyNodes(d.nodes);
@@ -2739,13 +2810,13 @@ export default function WorldLensPage() {
     poll();
     const interval = setInterval(poll, 5_000);
     return () => clearInterval(interval);
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   const gatherFromNode = async (nodeId: string) => {
     setGatheringNode(nodeId);
     try {
       const node = nearbyNodes.find((n) => n.id === nodeId);
-      const res = await fetch(`/api/worlds/${activeDistrict.id}/nodes/${nodeId}/gather`, {
+      const res = await fetch(`/api/worlds/${currentWorldId}/nodes/${nodeId}/gather`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2799,7 +2870,7 @@ export default function WorldLensPage() {
   // Load NPCs from API and keep positions fresh every 10s
   useEffect(() => {
     const loadNPCs = () => {
-      fetch(`/api/worlds/${activeDistrict.id}/npcs`, { signal: AbortSignal.timeout(8000) })
+      fetch(`/api/worlds/${currentWorldId}/npcs`, { signal: AbortSignal.timeout(8000) })
         .then((r) => {
           if (!r.ok) throw new Error(`npcs ${r.status}`);
           return r.json();
@@ -2841,7 +2912,7 @@ export default function WorldLensPage() {
     loadNPCs();
     const interval = setInterval(loadNPCs, 10_000);
     return () => clearInterval(interval);
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // Quest waypoint markers (3D). Poll the player's active quests and turn the
   // ones with a placeable target into QuestMarker3D objectives. This closes a
@@ -2862,7 +2933,7 @@ export default function WorldLensPage() {
     };
     const loadQuestMarkers = async () => {
       try {
-        const r = await fetch(`/api/worlds/${encodeURIComponent(activeDistrict.id)}/quests/active`, { credentials: 'include' });
+        const r = await fetch(`/api/worlds/${encodeURIComponent(currentWorldId)}/quests/active`, { credentials: 'include' });
         if (!r.ok) return;
         const j = await r.json();
         if (cancelled || !Array.isArray(j?.quests)) return;
@@ -2890,7 +2961,7 @@ export default function WorldLensPage() {
     loadQuestMarkers();
     const iv = setInterval(loadQuestMarkers, 15_000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [activeDistrict.id, rawWorldNPCs]);
+  }, [currentWorldId, rawWorldNPCs]);
 
   // Proximity check: update nearPortalId and nearbyNPC whenever the player moves
   useEffect(() => {
@@ -2957,6 +3028,39 @@ export default function WorldLensPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [portals, playerAvatar.position, nearbyNPC, dialogueNPC]);
 
+  // World Lens Phase 2 (Activate Existing Rendering) — P key: Photo Mode
+  // toggle. PhotoMode was mounted with a hardcoded `open={false}` and a
+  // no-op onClose; its own doc comment claimed it "listens for window
+  // 'concordia:photo-mode-toggle'" but no such listener actually existed
+  // anywhere in the component, so there was no way to ever open it. Gated
+  // outside combat/dialogue, matching this page's other single-key bindings
+  // (the E-key portal/dialogue effect above). canvasRef is resolved from the
+  // same `__concordiaRenderer` window global ConcordiaScene.tsx already
+  // exposes for WebXR, so PhotoMode's screenshot/save-to-gallery paths get a
+  // real canvas instead of always reporting "No canvas available".
+  const [photoModeOpen, setPhotoModeOpen] = useState(false);
+  const [photoModeCanvas, setPhotoModeCanvas] = useState<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    function handlePhotoModeKey(e: KeyboardEvent) {
+      if (e.key !== 'p' && e.key !== 'P') return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (dialogueNPC || combatState.target) return;
+      setPhotoModeOpen((prev) => {
+        const next = !prev;
+        if (next) {
+          try {
+            const renderer = (window as unknown as { __concordiaRenderer?: { domElement?: HTMLCanvasElement } }).__concordiaRenderer;
+            setPhotoModeCanvas(renderer?.domElement ?? null);
+          } catch { setPhotoModeCanvas(null); }
+        }
+        return next;
+      });
+    }
+    window.addEventListener('keydown', handlePhotoModeKey);
+    return () => window.removeEventListener('keydown', handlePhotoModeKey);
+  }, [dialogueNPC, combatState.target]);
+
   // Shift modifier tracking for Flow Combat. modifierHeldRef is read by
   // CombatInputController each tap to decide whether to flag the action
   // as evolved-variant.
@@ -2984,17 +3088,6 @@ export default function WorldLensPage() {
     else if (aerial) setCombatContext('aerial');
     else setCombatContext('ground');
   }, [playerAvatar.position.y, playerAvatar.currentAnimation, inputMode]);
-
-  // G key: toggle emote wheel in explore mode
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'g' && e.key !== 'G') return;
-      if (inputMode !== 'exploration' && inputMode !== 'social') return;
-      setShowEmoteWheel((v) => !v);
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [inputMode]);
 
   // F key: open fishing minigame in exploration mode. v1 doesn't gate
   // by water-tile presence (any spot is fishable for the demo); v1.1
@@ -3034,7 +3127,7 @@ export default function WorldLensPage() {
         setTameTarget({
           id: nearbyNPC.id,
           name: nearbyNPC.name,
-          worldId: activeDistrict?.id || 'concordia-hub',
+          worldId: currentWorldId,
           bond: j?.bond ?? 0,
           threshold: j?.threshold ?? 100,
         });
@@ -3042,7 +3135,7 @@ export default function WorldLensPage() {
         setTameTarget({
           id: nearbyNPC.id,
           name: nearbyNPC.name,
-          worldId: activeDistrict?.id || 'concordia-hub',
+          worldId: currentWorldId,
           bond: 0,
           threshold: 100,
         });
@@ -3050,12 +3143,12 @@ export default function WorldLensPage() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [inputMode, nearbyNPC, activeDistrict]);
+  }, [inputMode, nearbyNPC, currentWorldId]);
 
   // World quests — fetch for QuestLog panel, refresh every 45s
   useEffect(() => {
     const load = () => {
-      fetch(`/api/worlds/${activeDistrict.id}/quests?limit=30`)
+      fetch(`/api/worlds/${currentWorldId}/quests?limit=30`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (d?.quests) setWorldQuests(d.quests);
@@ -3065,7 +3158,7 @@ export default function WorldLensPage() {
     load();
     const iv = setInterval(load, 45_000);
     return () => clearInterval(iv);
-  }, [activeDistrict.id]);
+  }, [currentWorldId]);
 
   // ── MMO multiplayer wiring ──────────────────────────────────────────
   // On mount: ask the server for our last-saved position, subscribe
@@ -3079,12 +3172,12 @@ export default function WorldLensPage() {
     worldSocket.emit('player:load');
 
     // Seed starter world event if district has none (fire-and-forget)
-    fetch(`/api/worlds/${activeDistrict.id}/events?status=active&limit=1`)
+    fetch(`/api/worlds/${currentWorldId}/events?status=active&limit=1`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d?.events?.length) {
           // No active events — create a starter gathering event
-          fetch(`/api/worlds/${activeDistrict.id}/events`, {
+          fetch(`/api/worlds/${currentWorldId}/events`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3234,7 +3327,7 @@ export default function WorldLensPage() {
       // Short-circuit: if the ack includes nearby players we apply
       // them immediately without waiting for the next broadcast tick.
       handleCityPositions({
-        cityId: activeDistrict.id,
+        cityId: currentWorldId,
         users: data.nearby.map((n) => ({ ...n, rotation: n.direction })),
       });
     };
@@ -3826,21 +3919,13 @@ export default function WorldLensPage() {
       for (const [kind, h] of srBridges) worldSocket.off(kind, h);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [worldSocket.isConnected, activeDistrict.id]);
+  }, [worldSocket.isConnected, currentWorldId]);
 
   // Keep the live combat-state mirror fresh so socket handlers can
   // read the latest target / stamina / etc. without re-registering.
   useEffect(() => {
     combatStateRef.current = combatState;
   }, [combatState]);
-
-  // Check first visit
-  useEffect(() => {
-    const visited = localStorage.getItem('world_lens_visited');
-    if (!visited) {
-      setShowOnboarding(true);
-    }
-  }, []);
 
   // Init CombatMusicSystem on first user gesture (AudioContext requires interaction)
   useEffect(() => {
@@ -4003,10 +4088,10 @@ export default function WorldLensPage() {
         detail: { type: 'dust', position: detail, count: 16 },
       }));
 
-      const biome = activeDistrict.id?.includes('frontier') ? 'frontier'
-        : activeDistrict.id?.includes('exchange') ? 'grassland'
-        : activeDistrict.id?.includes('docks') ? 'water'
-        : activeDistrict.id?.includes('forge') ? 'rocky'
+      const biome = currentWorldId?.includes('frontier') ? 'frontier'
+        : currentWorldId?.includes('exchange') ? 'grassland'
+        : currentWorldId?.includes('docks') ? 'water'
+        : currentWorldId?.includes('forge') ? 'rocky'
         : 'forest';
       try {
         const r = await fetch('/api/world/gather', {
@@ -4046,7 +4131,7 @@ export default function WorldLensPage() {
     };
     window.addEventListener('concordia:gather-request', handler);
     return () => window.removeEventListener('concordia:gather-request', handler);
-  }, [activeDistrict.id, pushCombatLog, playerAvatar.id]);
+  }, [currentWorldId, pushCombatLog, playerAvatar.id]);
 
   // Phase F fix 2: ConcordiaScene's canvas raycaster dispatches
   // `concordia:open-dialogue` when the player clicks an NPC mesh. Look up
@@ -4187,8 +4272,8 @@ export default function WorldLensPage() {
       // Broadcast
       if (worldSocket.isConnected) {
         worldSocket.emit('player:move', {
-          cityId: activeDistrict.id,
-          districtId: activeDistrict.id,
+          cityId: currentWorldId,
+          districtId: currentWorldId,
           x: playerAvatar.position.x,
           y: playerAvatar.position.y,
           z: playerAvatar.position.z,
@@ -4207,7 +4292,7 @@ export default function WorldLensPage() {
     };
     window.addEventListener('concordia:emote', handler);
     return () => window.removeEventListener('concordia:emote', handler);
-  }, [activeDistrict.id, playerAvatar.position, playerAvatar.rotation, worldSocket]);
+  }, [currentWorldId, playerAvatar.position, playerAvatar.rotation, worldSocket]);
 
   const handleSelectCombatTarget = useCallback(
     (p: { id: string; name: string; type: 'enemy' | 'player' }) => {
@@ -4287,12 +4372,12 @@ export default function WorldLensPage() {
   const handleRespawn = useCallback(() => {
     if (!worldSocket.isConnected) return;
     worldSocket.emit('player:respawn', {
-      cityId: activeDistrict.id,
+      cityId: currentWorldId,
       x: 0,
       y: 0,
       z: 0,
     });
-  }, [worldSocket, activeDistrict.id]);
+  }, [worldSocket, currentWorldId]);
 
   const handleBuildingClick = useCallback((building: PlacedBuildingDTU) => {
     setSelectedBuilding(building);
@@ -4434,11 +4519,6 @@ export default function WorldLensPage() {
     setViewMode('district');
   }, []);
 
-  const handleOnboardingComplete = useCallback(() => {
-    localStorage.setItem('world_lens_visited', '1');
-    setShowOnboarding(false);
-  }, []);
-
   // ── AvatarSystem3D prop stabilization (runtime-health-capability-map.md #1) ──
   // AvatarSystem3D's ~1,740-line setup effect (mesh/mixer construction, physics
   // character registration, 8 combat/death/knockback listener registrations)
@@ -4466,8 +4546,10 @@ export default function WorldLensPage() {
   // eviction that keeps disconnected players from lingering as ghosts. It's a
   // real, bounded (~10Hz) socket-broadcast-cadence churn, not part of the
   // self-feeding loop above, and is left as documented follow-up work.
-  const activeDistrictIdRef = useRef(activeDistrict.id);
-  activeDistrictIdRef.current = activeDistrict.id;
+  const activeDistrictIdRef = useRef(currentWorldId);
+  activeDistrictIdRef.current = currentWorldId;
+  const activeDistrictRef = useRef(activeDistrict);
+  activeDistrictRef.current = activeDistrict;
   const isConnectedRef = useRef(worldSocket.isConnected);
   isConnectedRef.current = worldSocket.isConnected;
   const playerAvatarRef = useRef(playerAvatar);
@@ -4493,6 +4575,24 @@ export default function WorldLensPage() {
   // far more often than necessary.
   const buildingRendererBuildings = useMemo(
     () => worldBuildings.map(mapWorldBuildingToRendererDTU),
+    [worldBuildings]
+  );
+
+  // TerrainRenderer's terrain-build effect depends on `districts` by
+  // reference — same unstable-prop class as `buildingRendererBuildings`
+  // above, but worse: it re-ran `buildTerrain()` (heavy: regenerates the
+  // heightmap, rebuilds the mesh, AND re-registers the Rapier physics
+  // heightfield collider) on every render of this page, not only when
+  // `worldBuildings` actually changed. `deriveTerrainZones(worldBuildings)`
+  // was previously called inline in JSX, allocating a fresh array every
+  // render. Physics compounded the churn: `createHeightfieldCollider` never
+  // removed the PRIOR collider before creating a new one (unlike its sibling
+  // `rebuildHeightfieldWithDeltas`), so this thrash piled up duplicate
+  // heightfield colliders in the same Rapier world — the actual root cause
+  // of the "memory access out of bounds" → cascading "recursive use of an
+  // object" WASM crash that made the World Lens unreliable.
+  const terrainDistricts = useMemo(
+    () => deriveTerrainZones(worldBuildings),
     [worldBuildings]
   );
 
@@ -4589,9 +4689,70 @@ export default function WorldLensPage() {
     [worldSocket.emit]
   );
 
+  // World Lens Phase 6d — the folded-in ActionWheel 'emote' variant (and
+  // any future emote source) rides `concordia:emote-play` since a wheel
+  // spoke's action has no way to reach this page's state directly. Reuses
+  // `handleAvatarEmote` (already the single "apply + broadcast an emote"
+  // path AvatarSystem3D's own onEmote prop calls) rather than duplicating
+  // its body a third time — the two deleted EmoteWheel components each
+  // used to inline a near-identical copy of this exact logic.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    function onEmotePlay(e: Event) {
+      const emoteId = (e as CustomEvent<{ emoteId?: string }>).detail?.emoteId;
+      if (emoteId) {
+        handleAvatarEmote(emoteId);
+        window.dispatchEvent(new CustomEvent('concordia:tutorial-action', { detail: { action: 'sent-quick-message' } }));
+      }
+    }
+    window.addEventListener('concordia:emote-play', onEmotePlay);
+    return () => window.removeEventListener('concordia:emote-play', onEmotePlay);
+  }, [handleAvatarEmote]);
+
+  // ConcordiaScene's own scene-init effect (physics world + renderer +
+  // terrain + lighting — the whole engine) depends directly on
+  // `onBuildingClick`/`onTerrainClick` by reference. These were previously
+  // inline arrow functions in the JSX below, so they got a fresh identity
+  // on every render of THIS page — tearing down and rebuilding the entire
+  // 3D engine, including destroying + recreating the Rapier physics world,
+  // on every single re-render. That's the root cause this session traced
+  // for both the World Lens stalling on "Building the world..." (repeated
+  // full scene teardown never lets the first frame settle) and a live
+  // Rapier WASM crash ("memory access out of bounds" in
+  // createCharacterController/removeCharacter) — AvatarSystem3D's own
+  // physics registration is stable and mounts once, but it was racing
+  // against ConcordiaScene's own physics world being destroyed and
+  // recreated out from under it. Stabilized the same way
+  // handleAvatarMove/handleAvatarEmote already are: reads mutable
+  // page state through the existing ref mirrors instead of depending on
+  // it directly, so identity never changes across renders.
+  const handleConcordiaBuildingClick = useCallback((id: string) => {
+    const district = activeDistrictRef.current;
+    const b = district.buildings.find((b) => b.id === id);
+    if (b) setSelectedBuilding(b);
+    try {
+      window.dispatchEvent(new CustomEvent('concordia:building-interact', {
+        detail: {
+          buildingId: id,
+          worldId: district.id,
+          playerX: playerAvatarRef.current.position.x,
+          playerZ: playerAvatarRef.current.position.y,
+        },
+      }));
+    } catch { /* dispatch best-effort */ }
+  }, []);
+
+  const handleConcordiaTerrainClick = useCallback(() => {}, []);
+
   return (
     <LensShell lensId="world" asMain={false}>
-      <FirstRunTour lensId="world" />
+      {/* FirstRunTour intentionally NOT mounted here (Phase 1b tutorial
+          consolidation) — World Lens has its own purpose-built, richer
+          tutorial system (lib/concordia/onboarding/tutorial.ts's
+          tutorialManager + TutorialOverlay) instead of the generic
+          per-lens 3-step coachmark every other lens uses. The shared
+          FirstRunTour component itself is untouched — it's still real,
+          load-bearing infrastructure for ~200 other lens pages. */}
       <DepthBadge lensId="world" size="sm" className="ml-2" />
     <div data-lens-theme="world" className="flex flex-col h-full min-h-0">
       {/* Header */}
@@ -4716,7 +4877,7 @@ export default function WorldLensPage() {
               floats above the canvas in either windowed or fullscreen
               mode. Skyrim-shape immersion: F to toggle full, P to
               capture mouse for FPS-style aim. */}
-          <div className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('fullscreen-toggle')} className={`absolute left-4 z-30 flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <button
               onClick={isFullscreen ? exitFullscreen : enterFullscreen}
               title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen (F)'}
@@ -4773,11 +4934,13 @@ export default function WorldLensPage() {
             }}
           >
           <ConcordiaScene
-            districtId={activeDistrict.id}
+            districtId={currentWorldId}
             quality={getStoredQualityPreset()}
             theme={concordiaTheme}
             renderStyle={concordiaRenderStyle}
             cameraMode={cameraMode}
+            cameraZoom={cameraZoom}
+            isometricRotation={cameraRotation}
             questObjectives={questObjectives}
             getPlayerPose={() => ({
               x: playerAvatar.position.x,
@@ -4785,24 +4948,8 @@ export default function WorldLensPage() {
               z: playerAvatar.position.z,
               yaw: playerAvatar.rotation,
             })}
-            onBuildingClick={(id) => {
-              const b = activeDistrict.buildings.find((b) => b.id === id);
-              if (b) setSelectedBuilding(b);
-              // Phase DA2 — also dispatch a station-interaction event
-              // so the StationInteractionRouter can open the matching
-              // workbench overlay for the building's type.
-              try {
-                window.dispatchEvent(new CustomEvent('concordia:building-interact', {
-                  detail: {
-                    buildingId: id,
-                    worldId: activeDistrict.id,
-                    playerX: playerAvatar.position.x,
-                    playerZ: playerAvatar.position.y,
-                  },
-                }));
-              } catch { /* dispatch best-effort */ }
-            }}
-            onTerrainClick={() => {}}
+            onBuildingClick={handleConcordiaBuildingClick}
+            onTerrainClick={handleConcordiaTerrainClick}
             onWeatherModifiers={(mods) => setWeatherModifiers(mods)}
             onSceneReady={(lookup) => {
               deformLookupRef.current = lookup;
@@ -4816,7 +4963,7 @@ export default function WorldLensPage() {
           />
           </ErrorBoundary>
           {/* Theme picker — 3 swatches + PBR/Toon toggle top-right */}
-          <div className={`absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('theme-picker')} className={`absolute right-4 z-20 flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             {[
               { id: 'neon-punk' as const, swatch: '#6366f1', label: 'Neon Punk' },
               { id: 'classic' as const, swatch: '#e8c97a', label: 'Classic' },
@@ -4847,8 +4994,8 @@ export default function WorldLensPage() {
               origin-centred scene frame (transformed at the fetch boundary via
               worldToScene), so it's consumed raw here. */}
           <TerrainRenderer
-            districts={deriveTerrainZones(worldBuildings)}
-            lodCenter={{ x: 0, z: 0 }}
+            districts={terrainDistricts}
+            lodCenter={TERRAIN_LOD_CENTER_ORIGIN}
             quality="medium"
           />
           <BuildingRenderer3D
@@ -4878,10 +5025,18 @@ export default function WorldLensPage() {
             themeSkyHorizon={skyThemeColors.horizon}
             sunDisk={sunDiskForWorld(worldIdForTheme)}
           />
+          {/* World Lens Phase 2 (Activate Existing Rendering) — river/creek
+              geometry now matches the real river-bluff + Fall Kill Creek
+              placement (previously ConcordiaScene.tsx's own hardcoded flat
+              decorative planes at these exact coordinates; WaterRenderer's
+              wave/foam shader now renders that same location instead of a
+              second, differently-sized, disconnected plane at world
+              origin). timeOfDay is threaded from the same live clock driving
+              SkyWeatherRenderer above, not a fixed noon value. */}
           <WaterRenderer
-            riverConfig={{ width: 20, flowDirection: 0, flowSpeed: 1, centerX: 0, length: 100 }}
-            creekPath={[]}
-            timeOfDay={12}
+            riverConfig={{ width: 120, flowDirection: 0, flowSpeed: 1, centerX: -700, length: 600 }}
+            creekPath={[{ x: 150, z: -370 }, { x: 150, z: -150 }]}
+            timeOfDay={worldPhaseForSky * 24}
             quality="medium"
           />
           <ParticleEffectsComponent
@@ -4892,7 +5047,7 @@ export default function WorldLensPage() {
             active={false}
           />
           <SoundscapeEngine
-            initialDistrict={activeDistrict.id}
+            initialDistrict={currentWorldId}
             playerPosition={{
               x: playerAvatar.position.x,
               y: playerAvatar.position.y,
@@ -4904,7 +5059,7 @@ export default function WorldLensPage() {
           />
           <WorldSFXHooks
             playerPos={playerAvatar.position}
-            districtId={activeDistrict.id}
+            districtId={currentWorldId}
             moving={playerAvatar.currentAnimation === 'walk' || playerAvatar.currentAnimation === 'run'}
           />
           <LowHpVignette
@@ -4999,13 +5154,13 @@ export default function WorldLensPage() {
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
           <NemesisGlyphLayer
-            worldId={activeDistrict.id}
+            worldId={currentWorldId}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
           <DamageBillboard />
           <WorldMarkers />
           <WorldSigns
-            worldId={activeDistrict.id}
+            worldId={currentWorldId}
             playerPosition={{ x: playerAvatar.position.x, y: 0, z: playerAvatar.position.z }}
           />
           {!hudHidden && <CurrencyHUD onClick={() => setShowPanel('profile')} />}
@@ -5023,7 +5178,7 @@ export default function WorldLensPage() {
               first painted frame. Replaces a dead permanently-mounted
               LoadingTransitions that was stuck at progress={0}. */}
           <WorldEntryOverlay
-            worldName={activeDistrict.name}
+            worldName={currentWorldDisplayName}
             engineReady={engineChunkReady}
             dataState={worldDataState}
             sceneReady={sceneReady}
@@ -5041,9 +5196,25 @@ export default function WorldLensPage() {
               onEmote={handleAvatarEmote}
             />
           </div>
-          {/* Lens portal markers — rendered as 2D overlays */}
+          {/* Lens portal markers — rendered as 2D overlays. Distance-culled
+              like the NPC overlay below: with ~19-20 building portals in
+              concordia-hub alone, rendering all of them unconditionally
+              stacked every one in the viewport center regardless of the
+              player's actual position — the dominant contributor to "too
+              many things on screen". concordia-hub's registered portals
+              (server/lib/lens-portal-registry.js) sit inside a dense ~20x10
+              unit cluster (2-21.5 units from spawn), so the cutoff has to be
+              tighter than the NPC one (20) to cull anything meaningful —
+              10 leaves a walkable, still-legible starting cluster (~7-8 of
+              19) instead of the whole hub's directory stacked at once.
+              Nearby buildings still surface their icon on approach; the
+              full list stays reachable via Hub / ⌘K. */}
           {portals.map((portal) => {
             const isNearby = nearPortalId === portal.id;
+            const portalDx = portal.x - playerAvatar.position.x;
+            const portalDy = portal.y - playerAvatar.position.y;
+            const portalDist = Math.sqrt(portalDx * portalDx + portalDy * portalDy);
+            if (portalDist > 10 && !isNearby) return null;
             return (
               <div
                 key={portal.id}
@@ -5071,8 +5242,11 @@ export default function WorldLensPage() {
               </div>
             );
           })}
-          {/* NPC interaction overlays — clickable name tags near each NPC */}
-          {rawWorldNPCs.map((npc) => {
+          {/* NPC interaction overlays — clickable name tags near each NPC.
+              Distance-culled (dist > 20) but was missing the hudHidden gate
+              every other overlay in this file respects, so pressing H
+              ("hide HUD") left every nearby NPC nametag on screen. */}
+          {!hudHidden && rawWorldNPCs.map((npc) => {
             const dx = npc.position.x - playerAvatar.position.x;
             const dy = npc.position.y - playerAvatar.position.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -5143,12 +5317,12 @@ export default function WorldLensPage() {
           })}
 
           {/* Camera mode controls */}
-          <div className={`absolute top-4 right-4 z-20 ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('camera-controls')} className={`absolute right-4 z-20 ${hudHidden ? 'hidden' : ''}`}>
             <CameraControls
               cameraState={{
                 mode: cameraMode,
-                zoom: 15,
-                rotation: 'NE',
+                zoom: cameraZoom,
+                rotation: cameraRotation,
                 followTarget: 'avatar',
                 cinematicPlaying: false,
                 cinematicTime: 0,
@@ -5156,8 +5330,8 @@ export default function WorldLensPage() {
                 transitioning: false,
               }}
               onModeChange={(mode) => setCameraMode(mode as typeof cameraMode)}
-              onZoom={() => {}}
-              onRotate={() => {}}
+              onZoom={setCameraZoom}
+              onRotate={setCameraRotation}
               onTransition={() => {}}
             />
           </div>
@@ -5165,13 +5339,11 @@ export default function WorldLensPage() {
           {!hudHidden && (
             <HUDOverlay
               mode={(MODE_TO_HUD[inputMode] ?? 'explore') as HUDMode}
-              district={activeDistrict.name}
-              timeOfDay="day"
-              weather="clear"
+              district={currentWorldDisplayName}
+              timeOfDay={worldDaySegmentForHud.charAt(0).toUpperCase() + worldDaySegmentForHud.slice(1)}
+              weather={weatherTypeToIcon(weatherData?.type)}
               playerCount={1}
-              currency={{ concordCoin: 0, pendingRoyalties: 0 }}
-              professionBadge=""
-              reputationLevel={1}
+              currency={{ concordCoin: walletBalanceForHud, pendingRoyalties: 0 }}
               notifications={[]}
               unreadCount={0}
               tools={[]}
@@ -5270,33 +5442,16 @@ export default function WorldLensPage() {
               }}
             />
           )}
+          {/* World Lens Phase 6d — the emote wheel that used to mount here
+              unconditionally (no open/close state of its own) is now the
+              ActionWheel 'emote' variant (Z-hold, near the other 3 wheel
+              mounts below) instead of a permanently-visible radial. */}
           {(inputMode === 'social' || inputMode === 'exploration') && (
-            <>
-              <EmoteWheelLegacy
-                onEmote={(emoteId) => {
-                  setPlayerAvatar((prev) => ({ ...prev, currentAnimation: 'wave' }));
-                  if (worldSocket.isConnected) {
-                    worldSocket.emit('player:move', {
-                      cityId: activeDistrict.id,
-                      districtId: activeDistrict.id,
-                      x: playerAvatar.position.x,
-                      y: playerAvatar.position.y,
-                      z: playerAvatar.position.z,
-                      rotation: playerAvatar.rotation,
-                      direction: playerAvatar.rotation,
-                      action: emoteId,
-                      currentAnimation: emoteId,
-                    });
-                  }
-                }}
-                onClose={() => { /* legacy wheel auto-dismisses on emote */ }}
-              />
-              <QuickMessageBar
-                onSend={(msg) => {
-                  if (worldSocket.isConnected) worldSocket.emit('chat:message', { text: msg });
-                }}
-              />
-            </>
+            <QuickMessageBar
+              onSend={(msg) => {
+                if (worldSocket.isConnected) worldSocket.emit('chat:message', { text: msg });
+              }}
+            />
           )}
           {inputMode === 'spectator' && (
             <SpectatorControls
@@ -5360,6 +5515,11 @@ export default function WorldLensPage() {
               fires the canonical concordia:spell-cast — flick-to-cast). */}
           <ConcordiaHUD.SkillWheel />
           <ConcordiaHUD.ActionWheel variant="tool" />
+          {/* World Lens Phase 6d — folded-in emote wheel (Z-hold). Replaces
+              the two bespoke, independently-built EmoteWheel components
+              that used to mount elsewhere on this page (one of which had
+              no open/close state at all and was permanently visible). */}
+          <ConcordiaHUD.ActionWheel variant="emote" />
           <ConcordiaHUD.PanelHost />
           <ConcordiaHUD.InteractionSink />
           <ConcordiaHUD.AmbientFeedback />
@@ -5368,7 +5528,12 @@ export default function WorldLensPage() {
               a realm_territories edge. Both invisible by default. */}
           <ConcordiaHUD.Ruler />
           <ConcordiaHUD.ConcordantLawBadge />
-          <ConcordiaHUD.MaterialAvailability />
+          {/* MaterialAvailability already self-gates by inputMode (hidden in
+              combat/dialogue/vehicle/photo) via useHUDContext — the
+              hudHidden wrap here is the separate manual "hide everything"
+              escape hatch (H key / Photo Mode), layered on top, not a
+              replacement for its own mode-aware gating. */}
+          {!hudHidden && <ConcordiaHUD.MaterialAvailability />}
           <ConcordiaHUD.MentorshipNotifier />
           {/* Phase F — ambient overlays. (TombMarker uses R3F hooks
               so it lives inside the R3FOverlayLayer Canvas below
@@ -5391,19 +5556,19 @@ export default function WorldLensPage() {
               ?r3f=1 while R3F v8 was incompatible with Next-15's
               bundled React 19; now native via R3F v9. */}
           <R3FOverlayLayer>
-            <WalkerOnHorizon worldId={activeDistrict?.id || 'concordia-hub'} />
-            <ConcordiaHUD.TombMarker worldId={activeDistrict?.id || 'concordia-hub'} />
+            <WalkerOnHorizon worldId={currentWorldId} />
+            <ConcordiaHUD.TombMarker worldId={currentWorldId} />
           </R3FOverlayLayer>
           <LandmarkSpires
-            worldId={activeDistrict?.id || 'concordia-hub'}
+            worldId={currentWorldId}
             getCamera={() => null}
           />
-          <NpcArrivedTicker worldId={activeDistrict?.id || 'concordia-hub'} />
+          <NpcArrivedTicker worldId={currentWorldId} />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing
               to surface; cheap to mount. */}
-          <RefusalFieldHUD worldId={activeDistrict?.id || 'concordia-hub'} />
+          <RefusalFieldHUD worldId={currentWorldId} />
           <PremonitionOverlay />
           <DriftMoodboard />
           <EmbodiedHUD />
@@ -5416,24 +5581,24 @@ export default function WorldLensPage() {
           <QuestWaypointBeacon />
           {/* Diegetic 3D: "what's happening now" as in-world beacons you can see
               + walk toward (augments the 2D DistrictActivityFeed). */}
-          <WorldEventBeacons worldId={activeDistrict.id} />
+          <WorldEventBeacons worldId={currentWorldId} />
           {/* SR4/Crackdown data-cluster loop: floating power-orbs you walk into,
               upgrading traversal/combat powers by exploring the 3D world. */}
-          <PowerClusterLayer worldId={activeDistrict.id} />
+          <PowerClusterLayer worldId={currentWorldId} />
           {/* Link-scan: on-demand (V) Glance-tier scanner revealing the Layer-7
               embodied-signal substrate the player stands in. */}
-          <LinkScanOverlay worldId={activeDistrict.id} />
+          <LinkScanOverlay worldId={currentWorldId} />
           {/* Consumer for concordia:world-tint (was a dead wire) — renders the
               time-loop expiry red wash as a DOM overlay. */}
           <WorldTintOverlay />
           {/* One-time satire/fiction framing for fiction worlds (Sere). */}
-          <SereFrameBanner worldId={activeDistrict.id} />
+          <SereFrameBanner worldId={currentWorldId} />
           {/* The Curtain dossier — secrets redacted until the player declassifies them (K). */}
-          <CurtainDossier worldId={activeDistrict.id} />
+          <CurtainDossier worldId={currentWorldId} />
           <QuestGuidanceHUD />
-          <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
-          <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />
-          <GlyphCastHUD worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
+          <EavesdropBubble worldId={currentWorldId} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
+          {!hudHidden && <WalkerArbitrageMap worldId={currentWorldId} />}
+          <GlyphCastHUD worldId={currentWorldId} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <EnterVRButton />
 
           {/* Phase 8 — combat polish HUD + animation/audio/camera/VFX bridges */}
@@ -5468,8 +5633,8 @@ export default function WorldLensPage() {
               pipeline with proper body types. The merged npcs prop
               feeding AvatarSystem3D above includes them. */}
           <WalkerNpcInjector
-            worldId={activeDistrict?.id || 'concordia-hub'}
-            onWalkers={(npcs) => setWalkerNpcs(npcs)}
+            worldId={currentWorldId}
+            onWalkers={setWalkerNpcs}
           />
 
           {/* Sprint B.5 — tombs overlay: surfaces npc_legacies for the
@@ -5478,8 +5643,8 @@ export default function WorldLensPage() {
               land when the imperative ConcordiaScene gets a tomb
               scene-add API; this is the substrate-bridge surface so
               players see their world's death log. */}
-          <TombsOverlay worldId={activeDistrict?.id || 'concordia-hub'} />
-          <ZoneBadge worldId={activeDistrict?.id || 'concordia-hub'} />
+          <TombsOverlay worldId={currentWorldId} />
+          {!hudHidden && <ZoneBadge worldId={currentWorldId} />}
 
           {/* Sprint B.5 — procgen settlement NPCs (Phase 11.4 substrate).
               Pulls procgen_settlement_npcs rows for this world via the
@@ -5488,8 +5653,8 @@ export default function WorldLensPage() {
               renders them with proper body types. Refreshes on
               world:region-spawned events + 5-min poll. */}
           <ProcgenSettlementNpcs
-            worldId={activeDistrict?.id || 'concordia-hub'}
-            onSettlementNpcs={(npcs) => setProcgenNpcs(npcs)}
+            worldId={currentWorldId}
+            onSettlementNpcs={setProcgenNpcs}
           />
 
           {/* Sprint D Wave 1 — visible-substrate overlays. SeasonalEffects
@@ -5499,17 +5664,17 @@ export default function WorldLensPage() {
               fills the immediate ground tile around the player;
               BuildingCollapseVFX projects phased-collapse particles when
               applyStructuralStress flips a building to `collapsed`. */}
-          <SeasonalEffects worldId={activeDistrict?.id || 'concordia-hub'} />
-          <UnderwaterPostFX worldId={activeDistrict?.id || 'concordia-hub'} />
+          <SeasonalEffects worldId={currentWorldId} />
+          <UnderwaterPostFX worldId={currentWorldId} />
           <BuildingCollapseVFX
-            worldId={activeDistrict?.id || 'concordia-hub'}
+            worldId={currentWorldId}
             getCamera={() => null}
           />
           {/* Track 3 (legibility) — persistent diegetic building wear: keeps a
               crack/char scar at each damaged/collapsed building (via the
               concordia:projector-ready projector) until it's repaired, so a
               fought-over world *stays* scarred instead of snapping pristine. */}
-          <BuildingWearLayer worldId={activeDistrict?.id || 'concordia-hub'} />
+          <BuildingWearLayer worldId={currentWorldId} />
           {/* Sprint D V2 — heraldic banners at faction-controlled anchors.
               Reads faction visual data from V1's `factions.visual` macro;
               renders SVG sigils on cloth banners with windDirection sway.
@@ -5518,7 +5683,7 @@ export default function WorldLensPage() {
               once that wiring lands; until then the component renders
               nothing (defensive — avoids drawing arbitrary banners). */}
           <FactionBanners
-            worldId={activeDistrict?.id || 'concordia-hub'}
+            worldId={currentWorldId}
             bannerAnchors={[]}
             getCamera={() => null}
             windDirection={windDirection}
@@ -5537,15 +5702,16 @@ export default function WorldLensPage() {
           {/* Sprint D EE3 — adaptive music stem engine layered on top of
               SoundscapeEngine. Loads /music/stems/<track>/{layer}.ogg if
               available, falls back gracefully when stems are missing. */}
-          <AdaptiveMusicEngine worldId={activeDistrict?.id || 'concordia-hub'} />
+          <AdaptiveMusicEngine worldId={currentWorldId} />
 
-          {/* Sprint D Z3 — photo mode toggle. Triggered by P key (handled by
-              gamepad/keymap layer in a follow-up). */}
-          <PhotoMode open={false} onClose={() => undefined} />
+          {/* Sprint D Z3 — photo mode. World Lens Phase 2 wired the real P-key
+              toggle (see the keydown effect near the E-key portal effect
+              above) and a real canvasRef so screenshot/save-to-gallery work. */}
+          <PhotoMode open={photoModeOpen} onClose={() => setPhotoModeOpen(false)} canvasRef={photoModeCanvas} />
 
           {/* Companion roster — pet HUD (Phase A). Mounted bottom-right;
               opens on click. Lists owned creatures, deploy/dismiss/rename. */}
-          {!hudHidden && <CompanionRosterPanel worldId={activeDistrict?.id || 'concordia-hub'} />}
+          {!hudHidden && <CompanionRosterPanel worldId={currentWorldId} />}
 
           {/* Tame attempt overlay — opens on KeyJ press near a creature.
               Shows current bond progress vs threshold + lure selector. */}
@@ -5562,14 +5728,14 @@ export default function WorldLensPage() {
           {/* Kingdom border overlay — shows banner when player crosses
               a kingdom border with active decrees listed. */}
           <KingdomBorderOverlay
-            worldId={activeDistrict?.id || 'concordia-hub'}
+            worldId={currentWorldId}
             playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y, z: playerAvatar.position.z }}
           />
 
           {/* Fishing minigame — KeyF opens. Cast → bite → reel. */}
           <FishingMinigameOverlay
             open={fishingOpen}
-            worldId={activeDistrict?.id || 'concordia-hub'}
+            worldId={currentWorldId}
             position={{ x: playerAvatar.position.x, z: playerAvatar.position.y }}
             onClose={() => setFishingOpen(false)}
           />
@@ -5587,40 +5753,44 @@ export default function WorldLensPage() {
             }))}
           />
 
-          {/* District activity feed — live quests/events/NPC discovery */}
-          <DistrictActivityFeed
-            worldId={activeDistrict.id}
-            npcs={rawWorldNPCs.map((n) => ({
-              id: n.id,
-              name: n.name,
-              isConscious: n.isConscious,
-              questAvailable: false,
-              faction: n.faction,
-              position: { x: n.position.x, y: n.position.y },
-            }))}
-            playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y }}
-            onTalkToNpc={(npcId) => {
-              const npc = rawWorldNPCs.find((n) => n.id === npcId);
-              if (npc) openNPCDialogue(npc);
-            }}
-            onOpenWorldEvents={() => setShowPanel('eventboard')}
-            onOpenQuestLog={() => setShowPanel('questlog')}
-          />
+          {/* District activity feed — live quests/events/NPC discovery.
+              Already self-gates to nothing when actionCount is 0 and it's
+              not expanded, but was missing the hudHidden manual override. */}
+          {!hudHidden && (
+            <DistrictActivityFeed
+              worldId={currentWorldId}
+              npcs={rawWorldNPCs.map((n) => ({
+                id: n.id,
+                name: n.name,
+                isConscious: n.isConscious,
+                questAvailable: false,
+                faction: n.faction,
+                position: { x: n.position.x, y: n.position.y },
+              }))}
+              playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y }}
+              onTalkToNpc={(npcId) => {
+                const npc = rawWorldNPCs.find((n) => n.id === npcId);
+                if (npc) openNPCDialogue(npc);
+              }}
+              onOpenWorldEvents={() => setShowPanel('eventboard')}
+              onOpenQuestLog={() => setShowPanel('questlog')}
+            />
+          )}
 
           {/* Phase AB — village gossip (NPC↔NPC graph escalations) */}
-          {!hudHidden && <VillageGossipFeed worldId={activeDistrict.id} />}
+          {!hudHidden && <VillageGossipFeed worldId={currentWorldId} />}
 
           {/* Phase AG — district ambient chat (co-presence) */}
           {!hudHidden && (
             <AmbientChatPanel
-              worldId={activeDistrict.id}
-              districtId={activeDistrict.id}
+              worldId={currentWorldId}
+              districtId={currentWorldId}
               currentUserId={playerAvatar.id}
             />
           )}
 
           {/* Phase BB1 — active festival banner */}
-          <FestivalBanner worldId={activeDistrict.id} />
+          <FestivalBanner worldId={currentWorldId} />
           {/* E0#3 — boss HP/phase HUD (subscribes to server boss:state) */}
           <BossHealthBar />
 
@@ -5632,7 +5802,7 @@ export default function WorldLensPage() {
 
           {/* Phase CA6 — Soulslike player corpse marker */}
           <PlayerCorpseMarker
-            worldId={activeDistrict.id}
+            worldId={currentWorldId}
             playerX={playerAvatar.position.x}
             playerZ={playerAvatar.position.y}
           />
@@ -5650,13 +5820,13 @@ export default function WorldLensPage() {
           <CommandPalette />
 
           {/* Phase DA4 — Run-mode hotbar group (top-right floating cluster) */}
-          <div className={`pointer-events-auto fixed right-4 top-32 z-20 ${hudHidden ? 'hidden' : ''}`}>
-            <GameModesHotbarGroup worldId={activeDistrict.id} />
+          <div style={hudCornerStyle('run-mode-hotbar')} className={`pointer-events-auto fixed right-4 z-20 ${hudHidden ? 'hidden' : ''}`}>
+            <GameModesHotbarGroup worldId={currentWorldId} />
           </div>
 
           {/* Phase DB1 — Climbing tracker (top-left widget cluster) */}
           <div className="pointer-events-auto fixed left-4 top-32 z-20 w-44">
-            <ClimbingTracker worldId={activeDistrict.id} playerY={playerAvatar.position.y} />
+            <ClimbingTracker worldId={currentWorldId} playerY={playerAvatar.position.y} />
           </div>
 
           {/* Phase DB2 — Brawl invite toast + active brawl HUD */}
@@ -5711,39 +5881,8 @@ export default function WorldLensPage() {
           <NPCSchemeOverhearTip />
           <SchemeOverhearBargeIn />
 
-          {/* Emote wheel — G key in exploration/social mode */}
-          {showEmoteWheel && (
-            <EmoteWheel
-              onEmote={(emoteId) => {
-                setPlayerAvatar((prev) => ({
-                  ...prev,
-                  currentAnimation: emoteId as typeof playerAvatar.currentAnimation,
-                }));
-                if (worldSocket.isConnected) {
-                  worldSocket.emit('player:move', {
-                    cityId: activeDistrict.id,
-                    districtId: activeDistrict.id,
-                    x: playerAvatar.position.x,
-                    y: playerAvatar.position.y,
-                    z: playerAvatar.position.z,
-                    rotation: playerAvatar.rotation,
-                    direction: playerAvatar.rotation,
-                    action: emoteId,
-                    currentAnimation: emoteId,
-                  });
-                }
-                window.dispatchEvent(
-                  new CustomEvent('concordia:tutorial-action', {
-                    detail: { action: 'sent-quick-message' },
-                  })
-                );
-              }}
-              onClose={() => setShowEmoteWheel(false)}
-            />
-          )}
-
           {/* Gameplay toolbar */}
-          <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('gameplay-toolbar')} className={`absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             {(
               [
                 { key: 'inventory', label: 'Inventory', icon: Layers },
@@ -5804,23 +5943,15 @@ export default function WorldLensPage() {
           )}
           {showPanel === 'character' && (
             <div className="absolute top-4 left-4 z-20 w-96 max-w-[92vw] max-h-[80vh] overflow-auto pointer-events-auto">
-              <CharacterSheetPanel worldId={activeDistrict.id} onClose={() => setShowPanel('none')} />
+              <CharacterSheetPanel worldId={currentWorldId} onClose={() => setShowPanel('none')} />
             </div>
           )}
+          {/* World Lens Phase 5 — standardized onto the shared Summon shell
+              (was hand-rolled header + close-button markup duplicating what
+              SummonDrawer now provides everywhere else). */}
           {showPanel === 'timeline' && (
-            <div className="absolute top-4 left-4 z-20 w-[28rem] max-w-[90vw] max-h-[70vh] overflow-auto pointer-events-auto rounded-lg border border-cyan-500/20 bg-zinc-950/90 backdrop-blur shadow-xl">
-              <div className="flex items-center justify-between border-b border-cyan-500/15 px-3 py-2">
-                <div className="text-xs font-semibold tracking-wide text-cyan-200">District Timeline</div>
-                <button
-                  type="button"
-                  onClick={() => setShowPanel('none')}
-                  className="text-xs text-slate-400 hover:text-white"
-                  aria-label="Close timeline"
-                >
-                  ×
-                </button>
-              </div>
-              <DistrictTimeline districtId={activeDistrict.id} />
+            <SummonDrawer open title="District Timeline" onClose={() => setShowPanel('none')} widthClassName="w-[28rem]">
+              <DistrictTimeline districtId={currentWorldId} />
               {/*
                 EnvironmentalStorytelling — surfaces ambient lore + season
                 + drift hints in narrative voice for the active district.
@@ -5829,14 +5960,14 @@ export default function WorldLensPage() {
                 feels like right now" ambient voice.
               */}
               <EnvironmentalStorytelling
-                districtId={activeDistrict.id}
-                worldId={(activeDistrict as { world_id?: string }).world_id || 'concordia-hub'}
+                districtId={currentWorldId}
+                worldId={currentWorldId}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'quests' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
-              <QuestPanel worldId={activeDistrict.id} onClose={() => setShowPanel('none')} />
+              <QuestPanel worldId={currentWorldId} onClose={() => setShowPanel('none')} />
             </div>
           )}
           {showPanel === 'questlog' && (
@@ -5856,21 +5987,29 @@ export default function WorldLensPage() {
                   objectives: [],
                   reward: { cc: 0, xp: 0, karmaBonus: 0 },
                 }))}
-                worldId={activeDistrict.id}
+                worldId={currentWorldId}
                 onClose={() => setShowPanel('none')}
               />
             </div>
           )}
+          {/* World Lens Phase 5 (Panels: Glance/Summon/Sanctum) — Chat and
+              Map are real Summon workspaces (temporary, closeable, world
+              keeps running underneath) but neither ChatSystem nor
+              MapNavigation accepts an onClose prop, so there was no way to
+              close either one short of re-toggling the same toolbar button
+              — a real, missing affordance, not just a shell-consistency
+              nit. SummonDrawer gives both a real close button wired to the
+              same setShowPanel('none') every other panel already uses. */}
           {showPanel === 'chat' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
-              <ChatSystem worldId={activeDistrict?.id || 'concordia-hub'} districtId={activeDistrict?.id || 'plaza'} />
-            </div>
+            <SummonDrawer open title="Chat" onClose={() => setShowPanel('none')} widthClassName="w-96">
+              <ChatSystem worldId={currentWorldId} districtId={currentWorldId} />
+            </SummonDrawer>
           )}
           {showPanel === 'map' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Map" onClose={() => setShowPanel('none')}>
               <MapNavigation
                 playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.z }}
-                district={activeDistrict.name}
+                district={currentWorldDisplayName}
                 buildings={worldBuildings.map((b) => ({
                   id: b.id,
                   label: b.name || b.building_type,
@@ -5888,7 +6027,7 @@ export default function WorldLensPage() {
                 onWaypointPlace={() => {}}
                 mapMode="district"
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'crafting' && (
             <div className="space-y-3">
@@ -5914,13 +6053,13 @@ export default function WorldLensPage() {
           )}
           {showPanel === 'eventboard' && (
             <WorldEventBoard
-              worldId={activeDistrict?.id || currentWorldId}
+              worldId={currentWorldId}
               onClose={() => setShowPanel('none')}
             />
           )}
           {showPanel === 'auctions' && (
             <AuctionBrowsePanel
-              worldId={activeDistrict?.id || currentWorldId}
+              worldId={currentWorldId}
               onClose={() => setShowPanel('none')}
             />
           )}
@@ -5943,8 +6082,18 @@ export default function WorldLensPage() {
               />
             </div>
           )}
+          {/* World Lens Phase 5 (Panels) — every panel from here through
+              'voiceassist' below was missing a close affordance entirely:
+              none of PlayerPresence/PlayerProfile/CollaborationTools/
+              LiveCollaboration/SocialProofFeed/NotificationFeed/
+              SmartNotifications/ModerationPanel/OwnershipProfile/
+              FederationPanel/VoiceInterface/VoiceAssistant accept an
+              onClose prop (verified by grep — zero mentions in any of the
+              12 files), so once opened the only way out was re-toggling
+              the same toolbar button. SummonDrawer gives each a real close
+              button without touching the inner components at all. */}
           {showPanel === 'players' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Nearby Players" onClose={() => setShowPanel('none')}>
               <PlayerPresence
                 players={otherPlayers.map((op) => ({
                   id: op.id,
@@ -6007,20 +6156,20 @@ export default function WorldLensPage() {
                   }).catch(() => {});
                 }}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'profile' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Profile" onClose={() => setShowPanel('none')}>
               <PlayerProfile isOwnProfile />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'collaboration' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Collaboration Tools" onClose={() => setShowPanel('none')}>
               <CollaborationTools />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'livecollab' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Live Collaboration" onClose={() => setShowPanel('none')}>
               <LiveCollaboration
                 session={{
                   id: '',
@@ -6035,15 +6184,15 @@ export default function WorldLensPage() {
                 editHistory={[]}
                 conflicts={[]}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'socialproof' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Social Proof" onClose={() => setShowPanel('none')}>
               <SocialProofFeed />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'notifications' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Notifications" onClose={() => setShowPanel('none')}>
               <NotificationFeed
                 notifications={[]}
                 preferences={{
@@ -6061,10 +6210,10 @@ export default function WorldLensPage() {
                 onAction={() => {}}
                 onPreferenceChange={() => {}}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'smartnotify' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Smart Notifications" onClose={() => setShowPanel('none')}>
               <SmartNotifications
                 notifications={[]}
                 profile={{
@@ -6079,10 +6228,10 @@ export default function WorldLensPage() {
                 onDismiss={() => {}}
                 onLearn={() => {}}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'moderation' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Moderation" onClose={() => setShowPanel('none')}>
               <ModerationPanel
                 role="player"
                 reports={[]}
@@ -6091,31 +6240,31 @@ export default function WorldLensPage() {
                 onReport={() => {}}
                 onUndo={() => {}}
               />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'ownership' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Ownership" onClose={() => setShowPanel('none')}>
               <OwnershipProfile />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'federation' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Federation" onClose={() => setShowPanel('none')}>
               <FederationPanel />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'voice' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Voice" onClose={() => setShowPanel('none')}>
               <VoiceInterface />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'voiceassist' && (
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
+            <SummonDrawer open title="Voice Assistant" onClose={() => setShowPanel('none')}>
               <VoiceAssistant />
-            </div>
+            </SummonDrawer>
           )}
           {showPanel === 'skills' && (
             <div className="absolute top-4 right-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
-              <SkillsPanel worldId={activeDistrict.id} onClose={() => setShowPanel('none')} />
+              <SkillsPanel worldId={currentWorldId} onClose={() => setShowPanel('none')} />
             </div>
           )}
           <XPToast />
@@ -6164,25 +6313,21 @@ export default function WorldLensPage() {
             </div>
           )}
 
-          {/* Resource Bars HUD (top-left, below minimap) */}
-          <div className={`absolute top-4 left-4 z-20 pointer-events-none flex flex-col gap-1 min-w-[160px] ${hudHidden ? 'hidden' : ''}`}>
+          {/* Resource Bars HUD (top-left, below minimap). Mana/Bio Power/
+              Perception used to render here too, permanently pinned at
+              100/100 — no page in the World Lens fetches a real resource
+              pool for any of the three (no backend field exists yet). Per
+              the honesty rubric, only HP/Stamina render since only they're
+              backed by real combatState. */}
+          <div style={hudCornerStyle('resource-bars')} className={`absolute left-4 z-20 pointer-events-none flex flex-col gap-1 min-w-[160px] ${hudHidden ? 'hidden' : ''}`}>
             {(
               [
                 { key: 'hp', label: 'HP', color: '#ef4444', icon: '❤' },
-                { key: 'mana', label: 'Mana', color: '#818cf8', icon: '✦' },
                 { key: 'stamina', label: 'Stamina', color: '#f59e0b', icon: '⚡' },
-                { key: 'bio_power', label: 'Bio Power', color: '#10b981', icon: '☿' },
-                { key: 'perception', label: 'Perception', color: '#06b6d4', icon: '◎' },
               ] as const
             ).map(({ key, color, icon }) => {
-              const val =
-                key === 'hp' ? combatState.health : key === 'stamina' ? combatState.stamina : 100;
-              const maxVal =
-                key === 'hp'
-                  ? combatState.maxHealth
-                  : key === 'stamina'
-                    ? combatState.maxStamina
-                    : 100;
+              const val = key === 'hp' ? combatState.health : combatState.stamina;
+              const maxVal = key === 'hp' ? combatState.maxHealth : combatState.maxStamina;
               const pct = Math.max(0, Math.min(100, (val / maxVal) * 100));
               return (
                 <div key={key} className="flex items-center gap-1.5">
@@ -6284,9 +6429,9 @@ export default function WorldLensPage() {
           )}
 
           {/* Quest tracker HUD — bottom right, above HUD bar */}
-          <div className={`absolute bottom-24 right-4 z-25 flex flex-col gap-2 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('quest-tracker')} className={`absolute right-4 z-25 flex flex-col gap-2 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <QuestTracker
-              worldId={activeDistrict.id}
+              worldId={currentWorldId}
               onClaimReward={(_questId, _rewards) => {
                 setGatherResult('Quest complete! Rewards granted.');
                 setTimeout(() => setGatherResult(null), 3500);
@@ -6321,7 +6466,7 @@ export default function WorldLensPage() {
           {/* Design HUD — full-screen skill/recipe design studio */}
           {showDesignHUD && (
             <DesignHUD
-              worldId={activeDistrict.id}
+              worldId={currentWorldId}
               worldType="standard"
               onClose={() => setShowDesignHUD(false)}
             />
@@ -6331,7 +6476,7 @@ export default function WorldLensPage() {
           {dialogueNPC && (
             <NPCDialogue
               npc={dialogueNPC}
-              worldId={activeDistrict.id}
+              worldId={currentWorldId}
               onClose={() => setDialogueNPC(null)}
               onQuestAccepted={(questId) => {
                 setDialogueNPC(null);
@@ -6362,7 +6507,7 @@ export default function WorldLensPage() {
             <BuildingInterior
               buildingId={interiorBuilding.id}
               buildingName={interiorBuilding.name}
-              worldId={activeDistrict.id}
+              worldId={currentWorldId}
               onClose={() => setInteriorBuilding(null)}
               onNPCClick={(npc) => {
                 setInteriorBuilding(null);
@@ -6438,7 +6583,7 @@ export default function WorldLensPage() {
                           const r = await fetch('/api/crafting/upgrade-bar', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ worldId: activeDistrict.id, barType: key }),
+                            body: JSON.stringify({ worldId: currentWorldId, barType: key }),
                           });
                           const d = await r.json();
                           if (d.ok) {
@@ -6469,7 +6614,7 @@ export default function WorldLensPage() {
           )}
 
           <CrisisBanner />
-          <div className={`absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
+          <div style={hudCornerStyle('season-banner')} className={`absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <SeasonBanner onOpenPassPanel={() => setShowPanel('season')} />
           </div>
           <GameModeHUD />
@@ -6498,7 +6643,7 @@ export default function WorldLensPage() {
           <ActiveEffectsBar />
           <CorpseMarkerOverlay worldId="concordia-hub" toolTier={1} />
           <RefusalFieldBanner worldId="concordia-hub" />
-          <EcosystemMetricsBadge worldId="concordia-hub" />
+          {!hudHidden && <EcosystemMetricsBadge worldId="concordia-hub" />}
           <SovereignManifestationToast />
         </div>
       ) : viewMode === 'streams' ? (
@@ -6652,7 +6797,7 @@ export default function WorldLensPage() {
                   {activeTool === 'notarization' && <NotarizationPanel />}
                   {activeTool === 'stresstest' && (
                     <StressTestPanel
-                      districtId={activeDistrict.id}
+                      districtId={currentWorldId}
                       buildingCount={activeDistrict.buildings.length}
                     />
                   )}
@@ -6814,7 +6959,16 @@ export default function WorldLensPage() {
       <AbilityCooldownHud />
       <TargetNameplate npcs={rawWorldNPCs} />
 
-      {/* World Actions Panel */}
+      {/* World Actions Panel — 2D district-inspection tools (country compare /
+          indicator tracking / trade flow / demographic profile), not 3D-game
+          HUD. Hidden in Explore (3D) mode: as an unconditional flex-column
+          sibling of the 3D view container, this + Lens Features + the Earth
+          events section were together eating ~350px of vertical space,
+          squeezing the `flex-1` 3D canvas down to a ~114px sliver — exactly
+          the "game blocked by hella panels, can see the health bar in the
+          background" symptom reported live. Confirmed by measuring computed
+          layout: the 3D container's actual rendered height, not a guess. */}
+      {viewMode !== 'explore' && (
       <div className="px-4 py-3 border-t border-white/10">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
@@ -6957,8 +7111,12 @@ export default function WorldLensPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* Lens Features (collapsible) */}
+      {/* Lens Features (collapsible) — same reasoning as World Actions above:
+          generic feature-icon scaffold, not 3D-game HUD. Hidden in Explore
+          mode so it stops competing with the 3D canvas for flex height. */}
+      {viewMode !== 'explore' && (
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
@@ -6977,20 +7135,25 @@ export default function WorldLensPage() {
           </div>
         )}
       </div>
-
-      {/* Onboarding Tutorial */}
-      {showOnboarding && (
-        <OnboardingTutorial
-          onComplete={handleOnboardingComplete}
-          onDismiss={handleOnboardingComplete}
-        />
       )}
 
-      {/* Post-tutorial hints — rotates contextual tips after first visit */}
-      {!showOnboarding && <PostTutorialHints />}
+      {/* Onboarding is now tutorialManager/TutorialOverlay (mounted below via
+          TutorialOverlay, Phase 1b tutorial consolidation) — the old
+          9-step fullscreen modal (OnboardingTutorial) is retired.
+          PostTutorialHints self-gates on the same 'world_lens_visited'
+          localStorage key tutorialManager now writes on completion/skip,
+          so it's safe to mount unconditionally. */}
+      <PostTutorialHints />
+      {/* Earth events (NASA EONET feed) — a dashboard info widget, not 3D-game
+          HUD, and by far the single biggest space-eater of the four hidden
+          here (measured at ~200px). Same reasoning as World Actions/Lens
+          Features above: hidden in Explore mode so the 3D canvas actually
+          gets the flex height it's entitled to. */}
+      {viewMode !== 'explore' && (
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <EarthEventsLive />
       </section>
+      )}
     </div>
 
       {/* Phase 12 (C4) — mobile mode switcher for World's four core views.

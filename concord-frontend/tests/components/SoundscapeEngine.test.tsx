@@ -79,6 +79,16 @@ class FakeBiquadFilterNode {
   connect = vi.fn();
 }
 
+// World Lens Phase 2 — ReverbZoneManager (now instantiated by
+// SoundscapeEngine's initAudio) pre-generates a ConvolverNode per zone type
+// in its constructor.
+class FakeConvolverNode {
+  buffer: unknown = null;
+  normalize = false;
+  connect = vi.fn();
+  disconnect = vi.fn();
+}
+
 class FakeAudioBuffer {
   constructor(private channels: number, private length: number) {}
   getChannelData() {
@@ -97,6 +107,7 @@ class FakeAudioContext {
   createBufferSource() { return new FakeAudioBufferSourceNode(); }
   createBiquadFilter() { return new FakeBiquadFilterNode(); }
   createBuffer(channels: number, length: number) { return new FakeAudioBuffer(channels, length); }
+  createConvolver() { return new FakeConvolverNode(); }
   createPanner() {
     return { positionX: new FakeAudioParam(), positionY: new FakeAudioParam(), positionZ: new FakeAudioParam(), connect: vi.fn(), panningModel: '', distanceModel: '', maxDistance: 0, refDistance: 0, rolloffFactor: 0 };
   }

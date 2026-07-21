@@ -21,17 +21,25 @@
  */
 
 import { Worker } from "node:worker_threads";
-import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import logger from "../logger.js";
+import { getRealCpuCount } from "../lib/cgroup-cpu.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// GPU/CPU pinning audit — getRealCpuCount() reads the cgroup-restricted core
+// count, not the raw os.cpus().length a shared/cgroup-limited host (e.g. a
+// RunPod pod, where nproc/os.cpus() reports the HOST's real core count, not
+// the pod's slice — see scripts/runpod-cognition.sh's own comment on this)
+// lies about. Uncapped-by-a-tight-ceiling here (only Math.min(..., 8)) meant
+// a lying host could size this pool well past what a small, CPU-constrained
+// deploy (e.g. CONCORD_WORLD_CORE_COUNT=2 on a 9-vCPU box) actually has
+// available for the backend process at all.
 const HEARTBEAT_POOL_SIZE = Math.max(
   1,
   Math.min(
-    Number(process.env.CONCORD_HEARTBEAT_POOL_SIZE) || (os.cpus().length - 2),
+    Number(process.env.CONCORD_HEARTBEAT_POOL_SIZE) || (getRealCpuCount() - 2),
     8
   )
 );
@@ -76,6 +84,20 @@ function _spawnWorker(workerId) {
     workerData: {
       workerId,
       dbPath: _mainCtxRef?.dbPath ?? null,
+    },
+    // Stability audit (2026-07-20) — without an explicit resourceLimits, a
+    // worker_thread inherits the SAME --max-old-space-size ceiling as the
+    // main thread (they share the process-wide V8 flag unless overridden
+    // per-worker). With CONCORD_HEARTBEAT_POOL_SIZE workers all running
+    // light, bounded per-module tick work off a readonly DB handle, a leak
+    // or runaway allocation in a single heartbeat module could otherwise
+    // grow that one worker toward the SAME ceiling as the entire main
+    // thread — on a real memory-constrained box (see ecosystem.config.cjs's
+    // bare-metal RAM budget comment) that's real headroom one misbehaving
+    // module shouldn't be able to claim. 512MB is generous for this pool's
+    // actual workload; override via CONCORD_HEARTBEAT_WORKER_HEAP_MB.
+    resourceLimits: {
+      maxOldGenerationSizeMb: Number(process.env.CONCORD_HEARTBEAT_WORKER_HEAP_MB) || 512,
     },
   });
   // Test hygiene: unref under NODE_ENV=test so the pool doesn't keep the
@@ -272,6 +294,19 @@ function _applySideEffects(sideEffects) {
         db.prepare(eff.sql).run(...(eff.params || []));
       } catch (err) {
         logger.warn("heartbeat-pool", "db_write_replay_failed", {
+          sqlPrefix: String(eff.sql).slice(0, 80),
+          error: err?.message,
+        });
+      }
+    } else if (eff.kind === "db-exec" && db && eff.sql) {
+      // Multi-statement DDL/DML queued via the transparent write-queueing
+      // shim's `.exec()` intercept (heartbeat-executor.js) — rare in handler
+      // code, but supported for completeness since .prepare().run() alone
+      // doesn't cover it.
+      try {
+        db.exec(eff.sql);
+      } catch (err) {
+        logger.warn("heartbeat-pool", "db_exec_replay_failed", {
           sqlPrefix: String(eff.sql).slice(0, 80),
           error: err?.message,
         });

@@ -3,14 +3,13 @@
 /**
  * PhotoMode — Sprint D / Z3
  *
- * Free-camera + filters + screenshot. Activates with `P` (or HUD toggle).
+ * Free-camera + filters + screenshot. Activated with `P` (a keydown effect
+ * in app/lenses/world/page.tsx toggles the `open` prop directly — gated
+ * outside combat/dialogue).
  *   - Pauses game tick via setTimeScale(0).
  *   - Reveals a full-screen UI for camera positioning + LUT picker
  *     (per-biome LUT auto-generated from time-of-day color tables).
  *   - Save to clipboard / download as PNG via canvas.toDataURL().
- *
- * Listens for window 'concordia:photo-mode-toggle' to allow keyboard
- * binding outside this component.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';

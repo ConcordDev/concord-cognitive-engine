@@ -71,24 +71,42 @@ describe('Sprint 7 — visual polish wire-up', () => {
     expect(SCENE_SRC).toMatch(/quality === 'ultra' \? 3 : 2/);
   });
 
-  test('Post-process chain order: render → bloom → vignette → grade → dof → taa → volfog', () => {
+  test('Post-process chain order: taa (pass 0) → bloom → vignette → grade → dof → volfog', () => {
+    // World Lens plan Phase 3 ("Fix Ultra") moved TAA from the *last* pass
+    // to pass 0 — TAARenderPass (via SSAARenderPass) always performs a
+    // fresh jittered scene render and never reads the incoming readBuffer,
+    // so appending it after bloom/vignette/grade/dof silently discarded
+    // all of them for every high/ultra-quality user. It must now construct
+    // (and, when eligible, be added) before every other pass — RenderPass
+    // is only used as the pass-0 fallback when TAA is unavailable.
+    //
     // Search for actual `new X(...)` instantiation patterns rather than
     // bare class names — the latter also match import-destructuring lines.
     const indices = {
+      TAA:        SCENE_SRC.indexOf('new TAARenderPass('),
       RenderPass: SCENE_SRC.indexOf('new RenderPass(scene, camera)'),
       Bloom:      SCENE_SRC.indexOf('new UnrealBloomPass('),
       Vignette:   SCENE_SRC.indexOf('new ShaderPass(vignetteShader)'),
       Grade:      SCENE_SRC.indexOf('new ShaderPass(colorGradeShader)'),
       DoF:        SCENE_SRC.indexOf('new ShaderPass(dofShader)'),
-      TAA:        SCENE_SRC.indexOf('new TAARenderPass('),
       VolFog:     SCENE_SRC.indexOf('new ShaderPass(volumetricFogShader)'),
     };
-    expect(indices.RenderPass).toBeGreaterThan(0);
+    expect(indices.TAA).toBeGreaterThan(0);
+    expect(indices.RenderPass).toBeGreaterThan(indices.TAA);
     expect(indices.Bloom).toBeGreaterThan(indices.RenderPass);
     expect(indices.Vignette).toBeGreaterThan(indices.Bloom);
     expect(indices.Grade).toBeGreaterThan(indices.Vignette);
     expect(indices.DoF).toBeGreaterThan(indices.Grade);
-    expect(indices.TAA).toBeGreaterThan(indices.DoF);
-    expect(indices.VolFog).toBeGreaterThan(indices.TAA);
+    expect(indices.VolFog).toBeGreaterThan(indices.DoF);
+  });
+
+  test('TAA is never re-added after DoF (regression guard against the original late-pass bug)', () => {
+    const dofAddIdx = SCENE_SRC.indexOf('composer.addPass(dofPass);');
+    const volFogSectionIdx = SCENE_SRC.indexOf('Sprint 7: Volumetric fog (ultra only)');
+    expect(dofAddIdx).toBeGreaterThan(0);
+    expect(volFogSectionIdx).toBeGreaterThan(dofAddIdx);
+    const between = SCENE_SRC.slice(dofAddIdx, volFogSectionIdx);
+    expect(between).not.toMatch(/new TAARenderPass/);
+    expect(between).not.toMatch(/composer\.addPass\(taaPass\)/);
   });
 });

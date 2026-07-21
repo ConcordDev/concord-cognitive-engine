@@ -6,8 +6,9 @@ Concord is **infrastructure you own**. This is what it takes to run your own ins
 
 ## Hardware (recommended)
 
-- **GPU**: NVIDIA RTX PRO 4500 Blackwell (32GB GDDR7, 5th-gen tensor cores). Concord's 5-brain default models target this card. You can run on smaller cards with smaller models — see the brain table in `CLAUDE.md`.
-- **RAM**: 64GB+ (32GB for Node heap, 32GB headroom for OS + Ollama + DB).
+- **GPU**: NVIDIA A40 (48GB GDDR6, Ampere) — the current real deployment target (`docker-compose.yml`, "target: single NVIDIA A40"), which runs 7 Ollama service instances (Phase D scale-out) with a documented VRAM budget of ~40.3GB committed / ~7.7GB headroom. Concord's code-level fallback models (`server/lib/brain-config.js`) were originally sized for a smaller NVIDIA RTX PRO 4500 Blackwell (32GB) — you can still run on that card or smaller with smaller models, see the brain table in `CLAUDE.md`. The A40 deployment overrides the conscious brain to a larger 32B-q4_K_M model via `BRAIN_CONSCIOUS_MODEL`.
+- **CPU**: 9 vCPU minimum for the A40 target above (the box's real constraint is CPU, not VRAM — 7 Ollama containers plus backend/frontend/nginx/redis/qdrant/prometheus/grafana share those cores). No `cpuset` pinning is configured anywhere in `docker-compose.yml` — only soft `cpus:` cgroup limits, which sum to roughly 2x the box's real core count across all services (burst headroom, not a hard guarantee); Node's own worker pools (`server/workers/macro-pool.js`, `server/workers/heartbeat-pool.js`) size themselves off `os.cpus()` (the host's visible core count), not the backend container's own `cpus:` quota, so they can size up past their actual allotment on a host with more visible cores than the container's limit.
+- **RAM**: 64GB+ (32GB for Node heap, 32GB headroom for OS + Ollama + DB). The A40 target's own box budget is ~50GB RAM total (see `docker-compose.yml`).
 - **Storage**: 200GB+ NVMe. Models are ~70GB; DTU corpus growth is modest (~50KB/DTU average).
 - **Network**: Static IP if federating. Bandwidth: federation polling is light (~1MB/hour), DTU exports/imports can spike to 100MB/min during user migration.
 

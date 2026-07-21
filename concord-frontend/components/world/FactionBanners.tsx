@@ -87,10 +87,21 @@ export default function FactionBanners({ worldId, bannerAnchors = FALLBACK_BANNE
     return () => { cancelled = true; };
   }, [factionIdsKey, factionIds.length, worldId]);
 
-  // Animation tick at 30Hz for sway.
+  // Animation tick at 30Hz for sway — actually throttled, not just
+  // documented as such. See LandmarkSpires.tsx for the full story: this
+  // exact unthrottled-rAF-state-tick shape, copy-pasted across several
+  // world-lens/HUD components, was confirmed via a live stack-trace capture
+  // to be part of a cluster of continuously-ticking components that
+  // together blew through React's nested-update safety limit under load
+  // ("Maximum update depth exceeded"), starving the Three.js render loop.
   useEffect(() => {
     let raf: number;
-    const loop = () => { setTick(t => t + 1); raf = requestAnimationFrame(loop); };
+    let last = 0;
+    const FRAME_MS = 1000 / 30;
+    const loop = (now: number) => {
+      if (now - last >= FRAME_MS) { last = now; setTick(t => t + 1); }
+      raf = requestAnimationFrame(loop);
+    };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, []);

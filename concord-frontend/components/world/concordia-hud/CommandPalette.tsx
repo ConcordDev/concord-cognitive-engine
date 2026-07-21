@@ -45,6 +45,24 @@ const PANEL_COMMANDS: Array<{ id: string; label: string; keywords: string; short
   { id: 'hud-settings', label: 'HUD Settings', keywords: 'hide minimal expert opt-out config' },
 ];
 
+// Non-panel actions — distinct from PANEL_COMMANDS because they don't
+// dispatch concordia:panel-open for PanelHost. "Tutorials & Help" replaces
+// the permanent bottom-left "? Help" pill TutorialOverlay used to render
+// unconditionally (Phase 1b tutorial consolidation) — help is now
+// discoverable here instead of being always-on screen chrome.
+const ACTION_COMMANDS: Array<{ id: string; label: string; keywords: string; run: () => void }> = [
+  {
+    id: 'tutorial-help',
+    label: 'Tutorials & Help',
+    keywords: 'help tutorial replay hint guide onboarding tips',
+    run: () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('concordia:open-tutorial-help'));
+      }
+    },
+  },
+];
+
 function fuzzyScore(query: string, target: string): number {
   if (!query) return 0.5;
   const q = query.toLowerCase();
@@ -88,7 +106,18 @@ export function CommandPalette() {
       const t = ev.target as HTMLElement | null;
       const inField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as HTMLElement).isContentEditable);
       if (ev.key === 'c' && !ev.metaKey && !ev.ctrlKey && !ev.altKey && !inField) {
-        setOpen((o) => !o);
+        setOpen((o) => {
+          const next = !o;
+          // Real dispatch for the tutorial system's 'command-palette' step
+          // (lib/concordia/onboarding/tutorial.ts) — the retired
+          // OnboardingTutorial modal's equivalent step expected this exact
+          // action token but nothing ever sent it, so it could only ever
+          // be skipped, never actually completed.
+          if (next && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('concordia:tutorial-action', { detail: { action: 'palette-opened' } }));
+          }
+          return next;
+        });
       } else if (ev.key === 'Escape' && open) {
         setOpen(false);
         setQuery('');
@@ -104,11 +133,18 @@ export function CommandPalette() {
     if (!open) { setQuery(''); setHover(0); }
   }, [open]);
 
-  const commands: CommandItem[] = useMemo(() => PANEL_COMMANDS.map((p) => ({
-    ...p,
-    group: p.id === 'hud-settings' ? 'setting' : 'panel',
-    action: () => { openPanel(p.id); setOpen(false); },
-  })), []);
+  const commands: CommandItem[] = useMemo(() => [
+    ...PANEL_COMMANDS.map((p): CommandItem => ({
+      ...p,
+      group: p.id === 'hud-settings' ? 'setting' : 'panel',
+      action: () => { openPanel(p.id); setOpen(false); },
+    })),
+    ...ACTION_COMMANDS.map((a): CommandItem => ({
+      ...a,
+      group: 'action',
+      action: () => { a.run(); setOpen(false); },
+    })),
+  ], []);
 
   const ranked: CommandItem[] = useMemo(() => {
     if (!query) return commands;

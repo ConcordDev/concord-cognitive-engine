@@ -25,7 +25,8 @@ export type AssetKind =
   | "vehicle"
   | "prop"
   | "weapon"
-  | "vegetation";
+  | "vegetation"
+  | "creature";
 
 export interface AssetReference {
   kind: AssetKind;
@@ -122,6 +123,20 @@ export async function loadGLTF(url: string, _THREE: typeof import("three")): Pro
 
   inflight.set(url, promise);
   return promise;
+}
+
+/**
+ * Synchronous accessor into the scene cache — returns the cached parsed
+ * scene root as-is (NOT cloned; callers that need an independent instance
+ * must clone it themselves, e.g. `(scene as THREE.Object3D).clone(true)`).
+ * Returns null if the URL isn't (yet) cached — callers in a synchronous
+ * code path (e.g. `weapon-archetypes.ts#createWeapon`, which can't await
+ * `loadGLTF`/`instanceFromCache`) use this to opportunistically pick up an
+ * already-resolved real asset, falling back to a procedural build when it
+ * returns null rather than blocking on the load.
+ */
+export function getCachedSceneSync(url: string): unknown | null {
+  return sceneCache.get(url)?.scene ?? null;
 }
 
 /**

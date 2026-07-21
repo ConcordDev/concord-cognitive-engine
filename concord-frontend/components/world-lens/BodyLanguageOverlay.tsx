@@ -81,11 +81,21 @@ export function BodyLanguageOverlay() {
     return off;
   }, []);
 
-  // Sweep expired entries
+  // Sweep expired entries. `.filter()` always allocates a new array — even
+  // when nothing was actually expired, or `prev` was already empty — so an
+  // unguarded call here re-renders every 200ms forever regardless of
+  // whether there's anything to sweep. Confirmed via a live stack-trace
+  // capture as one contributor to a page-wide "Maximum update depth
+  // exceeded" cluster on the World Lens. Skip the setState when the
+  // filtered result is the same length as the input.
   useEffect(() => {
     const id = setInterval(() => {
       const now = Date.now();
-      setStrip((prev) => prev.filter((e) => e.expiresAt > now));
+      setStrip((prev) => {
+        if (prev.length === 0) return prev;
+        const next = prev.filter((e) => e.expiresAt > now);
+        return next.length === prev.length ? prev : next;
+      });
     }, 200);
     return () => clearInterval(id);
   }, []);

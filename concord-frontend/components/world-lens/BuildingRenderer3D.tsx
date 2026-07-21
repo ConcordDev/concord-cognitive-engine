@@ -174,6 +174,34 @@ export default function BuildingRenderer3D({
         const { silhouetteForBuildingType } = await import('@/lib/world-lens/building-silhouette');
         const sil = silhouetteForBuildingType(buildingType);
         const dtuArch: ProcArch = hasExplicit ? (explicitArch as ProcArch) : sil.archetype;
+
+        // Real-asset-first: try a real GLB keyed by archetype (CC0-sourced,
+        // dropped at /public/models/building/{archetype}.glb) before falling
+        // through to the procedural generator below. Same fallback-chain
+        // shape as hero-mesh-registry.ts for characters — loadAsset()
+        // resolves via the evo-asset registry first, then the filesystem
+        // convention, and returns null (never throws) when nothing is
+        // available, so a missing archetype silently keeps the existing
+        // procedural building exactly as it rendered before this change.
+        try {
+          const { loadAsset } = await import('@/lib/world-lens/asset-loader');
+          const real = await loadAsset({ kind: 'building', id: dtuArch }, THREE);
+          if (real) {
+            const group = real as InstanceType<typeof THREE.Group>;
+            const cloned = group.clone(true) as InstanceType<typeof THREE.Group>;
+            cloned.name = `building_${dtu.id}`;
+            cloned.userData = { buildingId: dtu.id, dtuName: dtu.name, realAsset: true };
+            const box = new THREE.Box3().setFromObject(cloned);
+            const size = box.getSize(new THREE.Vector3());
+            if (size.x > 0 && size.y > 0 && size.z > 0) {
+              cloned.scale.set(dtu.dimensions.width / size.x, dtu.dimensions.height / size.y, dtu.dimensions.depth / size.z);
+            }
+            return cloned;
+          }
+        } catch (err) {
+          if (typeof console !== 'undefined') console.warn('[BuildingRenderer3D] real-asset lookup failed, falling back to procedural', err);
+        }
+
         const feature = (dtu as { feature?: import('@/lib/world-lens/procedural-buildings').IconicFeature }).feature ?? sil.feature;
         const factionVisual = (dtu as { faction_visual?: { primary_color?: string; secondary_color?: string; accent_color?: string } }).faction_visual;
         const archStyleByArch: Record<ProcArch, 'fortified' | 'gracile' | 'crystalline' | 'organic' | 'industrial'> = {

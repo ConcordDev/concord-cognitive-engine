@@ -14,8 +14,9 @@ The hero-mesh-registry tries these paths in order:
 
 ## Archetype slot list
 
-Drop these to enable archetype-tier fallbacks (any unshipped slot
-falls through to the procedural humanoid):
+All 7 archetype-tier slots (and their per-world variants) are populated
+with real Mixamo-sourced character meshes — see `CREDITS.md` for
+provenance/license and which source mesh backs which archetype:
 
 - `_archetype_warrior.glb`
 - `_archetype_guard.glb`
@@ -24,6 +25,9 @@ falls through to the procedural humanoid):
 - `_archetype_hunter.glb`
 - `_archetype_trader.glb`
 - `_archetype_legend.glb`
+
+Drop a differently-named file in any slot to replace it — any archetype
+you don't ship falls back to the procedural humanoid, same as before.
 
 ## Bone hierarchy
 
@@ -43,10 +47,11 @@ to make the renderer attempt the GLB path. The Three Above All
 (sovereign_first_refusal / concord_first_thought /
 concordia_first_breath / weaver_of_echoes) are auto-flagged.
 
-## Why no GLBs shipped
+## Asset pipeline
 
-The asset pipeline is fully wired (`lib/world-lens/asset-loader.ts`
-+ `lib/concordia/hero-mesh-registry.ts`) but ship-quality character
-art is out of scope for an engineering pass. The skin-SSS + hair-
-cards + eye-parallax procedural path produces a defensible character
-look without any GLB on disk.
+Fully wired: `lib/world-lens/asset-loader.ts` + `lib/concordia/hero-mesh-registry.ts`.
+The skin-SSS + hair-cards + eye-parallax procedural path (used by the
+character CREATOR, which needs to react live to skin/hair/clothing
+choices — a real baked GLB can't do that) remains the fallback for
+anything not covered by a GLB here, and is what's used for the local
+player and any NPC/archetype slot without a shipped mesh.

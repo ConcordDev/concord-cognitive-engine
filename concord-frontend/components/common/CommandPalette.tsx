@@ -25,6 +25,7 @@ import {
   type LensEntry,
   type LensCategory,
 } from '@/lib/lens-registry';
+import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import { allPanels } from '@/lib/panel-registry';
 import { openPanel } from '@/lib/panel-dispatcher';
 import { cn } from '@/lib/utils';
@@ -128,8 +129,18 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // All command-palette-eligible lenses (stable between renders). ConKay — Kay,
-  // Concord's voice-native AI majordomo — is prepended as a "hidden staple" so it
+  // World Lens Phase 5 (Sanctum tier) — real, already-live expertise level;
+  // Debug/Admin/Ops Telemetry/Repair Telemetry/Foundry/World Creator are
+  // hidden from search results below expertiseLevel==='engineering'.
+  const expertiseLevel = useHUDContext((s) => s.expertiseLevel);
+  // Real user role (synced in Providers.tsx from /api/auth/me) — gates
+  // sovereign lenses (admin/command-center) out of search results for
+  // non-admin/sovereign users, mirroring Sidebar.tsx's use of the same
+  // store field so Ctrl+K search can't bypass the sidebar's hiding.
+  const userRole = useUIStore((s) => s.userRole);
+
+  // All command-palette-eligible lenses. ConKay — Kay, Concord's
+  // voice-native AI majordomo — is prepended as a "hidden staple" so it
   // can be summoned from anywhere; selecting it drops into ConKay chat mode.
   const allLenses = useMemo(() => {
     const conkay: LensEntry = {
@@ -254,8 +265,8 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         keywords: ['mode', 'dungeon', 'raid', 'boss', 'instance'],
       },
     ];
-    return [conkay, ...getCommandPaletteLenses(), ...panelEntries, ...modeEntries];
-  }, []);
+    return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries];
+  }, [expertiseLevel, userRole]);
 
   // Filtered + scored results
   const results = useMemo(() => {

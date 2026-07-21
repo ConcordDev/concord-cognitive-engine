@@ -10,6 +10,10 @@ import { createTraumaShake, type TraumaShake } from '@/lib/concordia/screen-trau
 import { disposeBuildingArchetype } from '@/lib/world-lens/procedural-buildings';
 import { clearProceduralCache } from '@/lib/world-lens/procedural-texture';
 import { resolveSceneWorldId } from '@/lib/world-lens/resolve-scene-world-id';
+import { zoomToDistScale, DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
+import { computeShotFraming, applyEasing, type ShotFraming } from '@/lib/world-lens/cinematic-shot-geometry';
+import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
+import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 
 // Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
 // the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
@@ -124,6 +128,22 @@ interface ConcordiaSceneProps {
    * 'isometric' (the previous hardcoded behavior) when not supplied.
    */
   cameraMode?: 'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic';
+  /**
+   * Camera Mode panel's 0-100 zoom slider value (CameraControls.tsx).
+   * Scales the Follow/Interior camera's dist/height via zoomToDistScale —
+   * see lib/world-lens/camera-zoom.ts. Defaults to DEFAULT_CAMERA_ZOOM so
+   * omitting this prop reproduces the previous hardcoded distance exactly.
+   */
+  cameraZoom?: number;
+  /**
+   * World Lens Phase 4 — isometric orbit rotation (Camera Mode panel's
+   * NE/SE/SW/NW compass buttons, CameraControls.tsx). Previously had no
+   * orbit implementation at all (isometric was excluded from the
+   * per-frame camera update entirely, a fixed pose only) despite the UI
+   * implying rotation worked. Defaults to 'NE', which reproduces the
+   * previous hardcoded (200,150,200)-looking-at-origin pose exactly.
+   */
+  isometricRotation?: 'NE' | 'SE' | 'SW' | 'NW';
   /** Per-frame player position + yaw, used for follow + first-person camera. */
   getPlayerPose?: () => { x: number; y: number; z: number; yaw: number } | null;
 }
@@ -198,6 +218,39 @@ const LAYER_NAMES = [
   'particles',
 ] as const;
 
+// World Lens Phase 4 — isometric orbit compass angles. NE = 45° reproduces
+// the original hardcoded (200,150,200)-looking-at-origin pose exactly
+// (sin(45°)*282.84 ≈ 200, cos(45°)*282.84 ≈ 200); the other three compass
+// points are 90° steps clockwise from there.
+const ISOMETRIC_ANGLES: Record<'NE' | 'SE' | 'SW' | 'NW', number> = {
+  NE: Math.PI / 4,
+  SE: (3 * Math.PI) / 4,
+  SW: (5 * Math.PI) / 4,
+  NW: (7 * Math.PI) / 4,
+};
+
+// World Lens Phase 4 — context-sensitive FOV. The neutral baseline the
+// camera-punch hit-stop kick and PhotoMode's freecam zoom already assumed
+// via a hardcoded `55` before this fix (now both read the dynamic
+// per-inputMode base instead of that constant, but the constant itself is
+// still the exploration/default value). Per-mode targets: combat widens
+// for peripheral awareness in a fight; dialogue tightens for an intimate,
+// conversational framing; vehicle widens further for a sense of speed;
+// creation/spectator widen slightly for a better overview; photo and
+// lens_work stay neutral (photo's own freecam zoom overrides FOV directly
+// when active; lens_work means a tool panel has focus, not the 3D view).
+const BASE_FOV = 55;
+const INPUT_MODE_FOV: Record<string, number> = {
+  exploration: BASE_FOV,
+  combat: 62,
+  dialogue: 42,
+  vehicle: 68,
+  photo: BASE_FOV,
+  creation: 58,
+  spectator: 58,
+  lens_work: BASE_FOV,
+};
+
 // ── Context ──────────────────────────────────────────────────────
 
 const ConcordiaSceneContext = createContext<ConcordiaSceneAPI | null>(null);
@@ -227,15 +280,92 @@ export default function ConcordiaScene({
   width = '100%',
   height = '100%',
   cameraMode = 'isometric',
+  cameraZoom = DEFAULT_CAMERA_ZOOM,
+  isometricRotation = 'NE',
   getPlayerPose,
 }: ConcordiaSceneProps) {
+  // World Lens Phase 4 — context-sensitive FOV. HUDContextProvider's real,
+  // already-live `inputMode` (exploration/combat/dialogue/vehicle/photo/
+  // creation/spectator/lens_work — driven by real mode-switch events
+  // elsewhere in the app, not fabricated here) was tracked but had only 2
+  // of ~150 consumers reading it at all (per the plan's Phase 6 audit) —
+  // the camera was never one of them. A Zustand store, so it's importable
+  // directly rather than needing to be threaded down as a prop.
+  const inputMode = useHUDContext((s) => s.inputMode);
+  // World Lens Phase 6c — the camera-punch hit-stop shake + FOV zoom-kick
+  // below (Sprint 1 juice) had zero reduced-motion gating: a real camera
+  // roll + positional shake + a fast FOV punch are exactly the vestibular
+  // triggers `prefers-reduced-motion` exists for, and this is WebGL camera
+  // transform math, not a DOM animation — so it sits outside what the
+  // app-wide `AccessibilityDOMApplier` (html.a11y-reduce-motion CSS kill,
+  // confirmed already covering all of this page's DOM-level HUD chrome)
+  // can reach. Reused directly rather than the window flag it also sets,
+  // since this component already threads other store values into refs the
+  // same way (inputModeRef right below).
+  const { effectiveReducedMotion } = useAccessibilitySettings();
   // Mirror cameraMode + getPlayerPose into refs so the game loop can read
   // the latest values without re-running the heavy init effect on each
   // mode change. Updated on every render via the small effect below.
   const cameraModeRef = useRef(cameraMode);
+  const cameraZoomRef = useRef(cameraZoom);
+  const isometricRotationRef = useRef(isometricRotation);
+  const inputModeRef = useRef(inputMode);
   const getPlayerPoseRef = useRef(getPlayerPose);
+  const reducedMotionRef = useRef(effectiveReducedMotion);
   useEffect(() => { cameraModeRef.current = cameraMode; }, [cameraMode]);
+  useEffect(() => { cameraZoomRef.current = cameraZoom; }, [cameraZoom]);
+  useEffect(() => { isometricRotationRef.current = isometricRotation; }, [isometricRotation]);
+  useEffect(() => { inputModeRef.current = inputMode; }, [inputMode]);
   useEffect(() => { getPlayerPoseRef.current = getPlayerPose; }, [getPlayerPose]);
+  useEffect(() => { reducedMotionRef.current = effectiveReducedMotion; }, [effectiveReducedMotion]);
+  // World Lens Phase 4 — Free camera mode. Unlike follow/first-person/
+  // interior (whose transform is DERIVED every frame from the player's
+  // pose), free mode has no pose to derive from — it needs its own
+  // absolute running position. Lazily seeded from wherever the camera
+  // already was the frame free mode is entered (so switching into Free
+  // never teleports), then flown via WASD (relative to the shared
+  // cameraLookState yaw the mouse-look pointer-lock already drives for
+  // first-person/follow) + R/F for vertical, matching the WASD contract
+  // CameraControls.tsx's Free-mode hint panel already advertises to the
+  // player plus the same R/F vertical convention PhotoMode.tsx's freecam
+  // established. Player-avatar WASD is disabled while this mode is active
+  // (AvatarSystem3D.tsx's movement block, gated on the same cameraMode
+  // prop) so the two don't fight over the same keys.
+  const freeCamPosRef = useRef<{ x: number; y: number; z: number } | null>(null);
+  const freeCamKeysRef = useRef<Set<string>>(new Set());
+  // World Lens Phase 4 — Isometric orbit rotation. The current SMOOTHED
+  // orbit angle (radians); null until the first isometric frame runs, at
+  // which point it's seeded from isometricRotationRef's initial value so
+  // there's no pop on mount. Eased toward the target angle each frame
+  // (shortest-path, so NW→NE takes the 90° turn, not the 270° one) rather
+  // than snapping, matching the plan's "camera modes should feel smooth"
+  // intent for the other modes' lerped transitions.
+  const isometricAngleRef = useRef<number | null>(null);
+  // World Lens Phase 4 — context-sensitive FOV. Smoothly eases the base
+  // field-of-view toward INPUT_MODE_FOV[inputMode] every frame; the
+  // existing camera-punch hit-stop kick and PhotoMode's freecam zoom (both
+  // below) layer additively/override on top of this base exactly as they
+  // already layer on top of camera.position, and now settle back to this
+  // dynamic base instead of a hardcoded 55.
+  const contextFovRef = useRef(BASE_FOV);
+  // World Lens Phase 4 — Cinematic camera mode. cinematic-director.ts
+  // sequences real named shot templates (over_shoulder, crane_pull,
+  // dolly_in, whip_pan, dutch_tilt, ...) and dispatches
+  // `concordia:cinematic-shot` per shot, but nothing ever moved the actual
+  // camera through them — confirmed live, the same "director choreographs
+  // time/audio but never touches the camera" gap the plan calls out. The
+  // listener (registered in the init effect) computes each shot's target
+  // framing via cinematic-shot-geometry.ts and stores start→target here;
+  // the render loop interpolates every frame while cameraMode==='cinematic'.
+  const cinematicShotRef = useRef<{
+    startPos: { x: number; y: number; z: number };
+    startLook: { x: number; y: number; z: number };
+    startTilt: number;
+    target: ShotFraming;
+    startTime: number;
+    durationMs: number;
+    easing?: string;
+  } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const physicsRef = useRef<{
     step: (dt: number) => void;
@@ -277,6 +407,9 @@ export default function ConcordiaScene({
   const frameIdRef = useRef<number>(0);
   const clockRef = useRef<unknown>(null);
   const raycasterRef = useRef<unknown>(null);
+  // World Lens — ranged combat: throttle clock for the crosshair aim
+  // raycast (see the gameLoop block that writes cameraLookState.aimHit*).
+  const aimRaycastLastRef = useRef<number>(0);
   const buildingMapRef = useRef<Map<string, unknown>>(new Map());
   const weatherSysRef = useRef<
     import('@/lib/world-lens/world-deformation').WeatherTransitionSystem | null
@@ -284,8 +417,16 @@ export default function ConcordiaScene({
   const ssgiPassRef = useRef<{
     dispose: () => void;
     setSize: (w: number, h: number) => void;
-    render: (t: null) => void;
+    render: (t: import('three').WebGLRenderTarget | null) => void;
   } | null>(null);
+  // Phase 3 fix (Fix Ultra) — SSGIPass is a standalone manager, not a
+  // composer Pass; it was previously used as a full EffectComposer
+  // replacement, which silently discarded the entire post-fx chain
+  // (bloom/vignette/grade/TAA/DoF/volumetric fog) whenever active. It now
+  // renders into this offscreen target, which the composer's pass 0 (a
+  // TexturePass, spliced in at SSGI construction time) reads from — so the
+  // rest of the chain post-processes SSGI's GI-composited image instead.
+  const ssgiOutputTargetRef = useRef<import('three').WebGLRenderTarget | null>(null);
   // Visual-polish Wave 5 — extra post passes layered on the composer.
   // Typed as a loose record because each sub-API has its own signature
   // shape (THREE.Matrix4 vs unknown vs WebGLRenderer); concrete typing
@@ -641,37 +782,28 @@ export default function ConcordiaScene({
       onSceneRequestListener = onSceneRequest;
       window.addEventListener('concordia:scene-request-ready', onSceneRequest);
 
-      // Theme 6 deferred follow-up (game-feel pass): water plane + swim
-      // registration. Adds a translucent blue plane at y=2 that covers
-      // the river-bluff valley west of origin, plus a Fall Kill Creek
-      // strip slightly south. Registers the water-Y so AvatarSystem3D's
-      // swim-mode toggle activates when the player walks below.
+      // Theme 6 deferred follow-up (game-feel pass): swim-plane registration.
+      // Registers the water-Y so AvatarSystem3D's swim-mode toggle activates
+      // when the player walks below it, covering the river-bluff valley west
+      // of origin plus the Fall Kill Creek strip slightly south.
+      //
+      // World Lens Phase 2 (Activate Existing Rendering) fix: this block
+      // used to ALSO build its own flat, static translucent plane mesh at
+      // these exact coordinates ('water:river' / 'water:creek') as a
+      // decorative stand-in. Now that WaterRenderer.tsx's real wave/foam
+      // shader system is wired to scene.add() (see
+      // concordia:scene-ready in WaterRenderer.tsx) with matching
+      // river/creek geometry (app/lenses/world/page.tsx), that stand-in
+      // would double-render a second, cruder water plane at the same
+      // location — removed here, not duplicated. The real server-hydrology
+      // grid (waterGridRef / water-grid-renderer.ts, driven by
+      // world_water_cells) is a separate, unaffected system.
       try {
         // S2-a — prop-driven world binding (see resolveSceneWorldId).
         const worldId = resolveSceneWorldId(districtId, ambientActiveWorldId());
         const waterY = 2.0;
         physicsWorld.registerWaterPlane?.(worldId, waterY);
-        const waterMat = new THREE.MeshStandardMaterial({
-          color: 0x2c6ea1,
-          transparent: true,
-          opacity: 0.55,
-          metalness: 0.1,
-          roughness: 0.35,
-          side: THREE.DoubleSide,
-        });
-        // River bluff: large strip west of origin, ~120m × 600m
-        const river = new THREE.Mesh(new THREE.PlaneGeometry(120, 600, 1, 1), waterMat);
-        river.rotation.x = -Math.PI / 2;
-        river.position.set(-700, waterY, 0);
-        river.name = 'water:river';
-        scene.add(river);
-        // Fall Kill Creek: small strip south of origin, 50m × 220m
-        const creek = new THREE.Mesh(new THREE.PlaneGeometry(50, 220, 1, 1), waterMat);
-        creek.rotation.x = -Math.PI / 2;
-        creek.position.set(150, waterY, -260);
-        creek.name = 'water:creek';
-        scene.add(creek);
-      } catch { /* water plane is cosmetic; never block scene init */ }
+      } catch { /* swim-plane registration is progressive enhancement */ }
 
       const settings = QUALITY_SETTINGS[quality];
 
@@ -777,7 +909,36 @@ export default function ConcordiaScene({
               import('three/examples/jsm/postprocessing/ShaderPass.js'),
             ]);
           const composer = new EffectComposer(renderer);
-          composer.addPass(new RenderPass(scene, camera));
+          // ── Phase 3 fix (Fix Ultra): TAA must be pass 0 ────────────
+          // The temporal-AA pass (via SSAARenderPass, its base class)
+          // always does fresh jittered `renderer.render(scene, camera)`
+          // calls and never reads the incoming readBuffer — it
+          // unconditionally overwrites whatever was already in the write
+          // buffer. The original Sprint 7 placement appended it as the
+          // *last* pass (after bloom, vignette, color grade, motion blur,
+          // chromatic aberration, LUT, and DoF), which meant it silently
+          // discarded every one of those passes for every high/ultra-
+          // quality user — "ultra" looked no different from (and sometimes
+          // worse than) "high" because none of that work ever reached the
+          // screen. Fix: build it first and use it as pass 0 in place of
+          // plain RenderPass; only fall back to RenderPass when it's
+          // unavailable or quality doesn't call for it.
+          let taaPassAdded = false;
+          if (quality === 'high' || quality === 'ultra') {
+            try {
+              const { TAARenderPass } = await import('three/examples/jsm/postprocessing/TAARenderPass.js');
+              const taaPass = new TAARenderPass(scene, camera);
+              taaPass.unbiased = false;
+              taaPass.sampleLevel = quality === 'ultra' ? 3 : 2; // 8 / 4 samples
+              composer.addPass(taaPass);
+              taaPassAdded = true;
+            } catch (taaErr) {
+              console.warn('[ConcordiaScene] TAA unavailable:', taaErr);
+            }
+          }
+          if (!taaPassAdded) {
+            composer.addPass(new RenderPass(scene, camera));
+          }
           // Bloom: PBR only — toon shading looks wrong with bloom
           if (renderStyle !== 'toon') {
             const bloom = new UnrealBloomPass(
@@ -948,23 +1109,11 @@ export default function ConcordiaScene({
           const dofPass = new ShaderPass(dofShader);
           composer.addPass(dofPass);
 
-          // ── Sprint 7: TAA — temporal anti-aliasing ────────────────
-          // Three.js TAARenderPass accumulates jittered camera samples
-          // across frames. Static scenes converge to 16×MSAA-equivalent
-          // quality after 16 frames at zero per-frame cost. Eliminates
-          // the shimmer on thin geometry at distance that the audit
-          // flagged as a current pain point. Activated at high+ quality.
-          if (quality === 'high' || quality === 'ultra') {
-            try {
-              const { TAARenderPass } = await import('three/examples/jsm/postprocessing/TAARenderPass.js');
-              const taaPass = new TAARenderPass(scene, camera);
-              taaPass.unbiased = false;
-              taaPass.sampleLevel = quality === 'ultra' ? 3 : 2; // 8 / 4 samples
-              composer.addPass(taaPass);
-            } catch (taaErr) {
-              console.warn('[ConcordiaScene] TAA unavailable:', taaErr);
-            }
-          }
+          // Sprint 7's TAA pass now lives at the top of this block (pass 0,
+          // replacing plain RenderPass) — see the Phase 3 fix comment there.
+          // It must never be appended here again: TAARenderPass always
+          // overwrites the write buffer with a fresh render and ignores
+          // whatever passes ran before it.
 
           // ── Sprint 7: Volumetric fog (ultra only) ─────────────────
           // Ray-marched fog in a post-pass — cheap depth-blended density
@@ -1057,23 +1206,29 @@ export default function ConcordiaScene({
       scene.fog = new THREE.Fog(activeTheme.fog.color, activeTheme.fog.near, activeTheme.fog.far);
       sceneRef.current = scene;
 
-      // ── Visual-polish Wave 6: procedural sky dome + (optional) clouds.
-      try {
-        const { createSkyDome } = await import('@/lib/world-lens/sky-shader');
-        const sky = createSkyDome(THREE, { radius: 2200, segments: 28 });
-        scene.add(sky.mesh);
-        (scene as unknown as { __concordSky?: unknown }).__concordSky = sky;
-        // Default time-of-day = afternoon
-        sky.setTimeOfDayHour(15);
-        if (quality === 'high' || quality === 'ultra') {
+      // World Lens Phase 7a — the procedural static sky dome that used to
+      // build here (the now-deleted sky-shader module, radius 2200, its
+      // time-of-day set once at construction and never updated again) was
+      // removed: it was a second, redundant sky sphere
+      // coexisting with `SkyWeatherRenderer`'s own live, shader-driven,
+      // clock-synced sky dome (radius 2000, added via the real
+      // `concordia:scene-ready` listener Phase 2 wired) — genuinely frozen
+      // at a fixed afternoon lighting while the real one tracked the world
+      // clock, plus a wasted extra sphere + shader material rendered every
+      // frame. The volumetric raymarched cloud layer below is NOT a
+      // duplicate of anything `SkyWeatherRenderer` does (that component
+      // only darkens the sky shader's own color by a cloud-cover uniform;
+      // it doesn't render actual 3D cloud geometry) — kept as-is.
+      if (quality === 'high' || quality === 'ultra') {
+        try {
           const { createCloudLayer } = await import('@/lib/world-lens/cloud-raymarch');
           const clouds = createCloudLayer(THREE, { radius: 1600 });
           clouds.setWeatherDensity(0.55);
           scene.add(clouds.mesh);
           (scene as unknown as { __concordClouds?: unknown }).__concordClouds = clouds;
+        } catch (cloudErr) {
+          console.warn('[ConcordiaScene] Clouds unavailable:', cloudErr);
         }
-      } catch (skyErr) {
-        console.warn('[ConcordiaScene] Sky / clouds unavailable:', skyErr);
       }
 
       // ── I3: procedural per-world landmarks (stylized canon identity) ──
@@ -1252,6 +1407,32 @@ export default function ConcordiaScene({
             canvas!.clientHeight,
             { intensity: 0.55, numSamples: 12, temporalBlend: 0.08 }
           );
+          // ── Phase 3 fix (Fix Ultra): give SSGI's composited image to
+          // the rest of the post-fx chain instead of replacing it ──────
+          // SSGIPass is a standalone manager (its own G-buffer + full
+          // scene re-render), not an EffectComposer Pass — the render
+          // loop previously called `ssgiPassRef.current.render(null)`
+          // and skipped `composerRef.current` entirely whenever SSGI was
+          // active, so ultra quality silently lost bloom/vignette/color
+          // grade/TAA/DoF/volumetric fog (the exact bug this phase
+          // exists to fix). SSGI and jittered TAA are both "raw scene"
+          // providers for pass 0 and can't coexist — at ultra, SSGI wins:
+          // splice the composer's existing pass 0 (TAA or RenderPass) for
+          // a TexturePass bound to an offscreen target, and have SSGI
+          // render into that target every frame (see the render loop)
+          // instead of straight to the screen.
+          if (composerRef.current) {
+            const { TexturePass } = await import('three/examples/jsm/postprocessing/TexturePass.js');
+            const ssgiTarget = new THREE.WebGLRenderTarget(canvas!.clientWidth, canvas!.clientHeight, {
+              type: THREE.HalfFloatType,
+            });
+            ssgiOutputTargetRef.current = ssgiTarget;
+            const texPass = new TexturePass(ssgiTarget.texture);
+            const passes = (composerRef.current as unknown as { passes: unknown[] }).passes;
+            if (Array.isArray(passes) && passes.length > 0) {
+              passes[0] = texPass;
+            }
+          }
         } catch {
           /* SSGI optional */
         }
@@ -1349,7 +1530,32 @@ export default function ConcordiaScene({
         // forward when it would clip into a wall.
         const mode = cameraModeRef.current;
         const getPose = getPlayerPoseRef.current;
-        if (mode !== 'isometric' && mode !== 'cinematic' && getPose) {
+
+        // ── World Lens Phase 4 — Isometric orbit rotation ────────────
+        // Previously a fixed pose set once at scene construction and never
+        // revisited (isometric was excluded from every per-frame camera
+        // branch), despite the Camera Mode panel's NE/SE/SW/NW compass
+        // buttons implying rotation worked. Orbits around world origin at
+        // the same distance/height the original hardcoded (200,150,200)
+        // pose used (NE, 45°, reproduces it exactly), eased toward
+        // whichever compass angle is selected via the shortest angular
+        // path so NW→NE turns 90°, not 270°.
+        if (mode === 'isometric') {
+          const targetAngle = ISOMETRIC_ANGLES[isometricRotationRef.current] ?? ISOMETRIC_ANGLES.NE;
+          if (isometricAngleRef.current === null) isometricAngleRef.current = targetAngle;
+          let angleDiff = targetAngle - isometricAngleRef.current;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          const angleLerp = Math.min(1, delta * 3);
+          isometricAngleRef.current += angleDiff * angleLerp;
+          const angle = isometricAngleRef.current;
+          const dist = 282.84; // sqrt(200^2 + 200^2), the original fixed distance
+          const height = 150;  // the original fixed height
+          camera.position.set(Math.sin(angle) * dist, height, Math.cos(angle) * dist);
+          camera.lookAt(0, 0, 0);
+        }
+
+        if (mode !== 'isometric' && mode !== 'cinematic' && mode !== 'free' && getPose) {
           const pose = getPose();
           if (pose) {
             // In first-person, the camera yaw IS the player yaw — we don't
@@ -1367,8 +1573,9 @@ export default function ConcordiaScene({
               const lookZ = pose.z + Math.cos(yaw) * Math.cos(pitch);
               camera.lookAt(lookX, lookY, lookZ);
             } else if (mode === 'follow' || mode === 'interior') {
-              const dist = mode === 'interior' ? 3 : 6;
-              const height = mode === 'interior' ? 1.6 : 3.2;
+              const zoomScale = zoomToDistScale(cameraZoomRef.current);
+              const dist = (mode === 'interior' ? 3 : 6) * zoomScale;
+              const height = (mode === 'interior' ? 1.6 : 3.2) * zoomScale;
               let cx = pose.x - Math.sin(yaw) * dist * Math.cos(pitch);
               let cy = pose.y + height + Math.sin(-pitch) * dist;
               let cz = pose.z - Math.cos(yaw) * dist * Math.cos(pitch);
@@ -1428,6 +1635,87 @@ export default function ConcordiaScene({
           }
         }
 
+        // ── World Lens Phase 4 — Free camera mode ───────────────────
+        // Unlike follow/first-person/interior above, there's no player pose
+        // to derive a transform from — this mode owns an absolute running
+        // position (freeCamPosRef), lazily seeded from wherever the camera
+        // already was the moment free mode is entered so the switch never
+        // teleports. WASD moves relative to the shared cameraLookState yaw
+        // (the same pointer-lock mouse-look first-person/follow already
+        // use — extended to 'free' above); R/F move straight up/down in
+        // world space, matching the vertical convention PhotoMode.tsx's own
+        // freecam already established.
+        if (mode === 'free') {
+          if (!freeCamPosRef.current) {
+            freeCamPosRef.current = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+          }
+          const fp = freeCamPosRef.current;
+          const keys = freeCamKeysRef.current;
+          const yaw = cameraLookStateRef.yaw;
+          const pitch = cameraLookStateRef.pitch;
+          const boost = keys.has('shift') ? 2.5 : 1;
+          const speed = 12 * boost * delta;
+          let dx = 0, dz = 0;
+          if (keys.has('w')) { dx += Math.sin(yaw); dz += -Math.cos(yaw); }
+          if (keys.has('s')) { dx -= Math.sin(yaw); dz -= -Math.cos(yaw); }
+          if (keys.has('a')) { dx += Math.sin(yaw - Math.PI / 2); dz += -Math.cos(yaw - Math.PI / 2); }
+          if (keys.has('d')) { dx += Math.sin(yaw + Math.PI / 2); dz += -Math.cos(yaw + Math.PI / 2); }
+          const planarLen = Math.hypot(dx, dz);
+          if (planarLen > 0.001) {
+            fp.x += (dx / planarLen) * speed;
+            fp.z += (dz / planarLen) * speed;
+          }
+          if (keys.has('r')) fp.y += speed;
+          if (keys.has('f')) fp.y -= speed;
+          camera.position.set(fp.x, fp.y, fp.z);
+          const lookX = fp.x + Math.sin(yaw) * Math.cos(pitch);
+          const lookY = fp.y + Math.sin(pitch);
+          const lookZ = fp.z + Math.cos(yaw) * Math.cos(pitch);
+          camera.lookAt(lookX, lookY, lookZ);
+        } else if (freeCamPosRef.current) {
+          // Leaving free mode — drop the seeded position so the next entry
+          // re-seeds from the (now-current) follow/first-person camera spot
+          // instead of resuming a stale one from last time.
+          freeCamPosRef.current = null;
+        }
+
+        // ── World Lens Phase 4 — Cinematic camera mode ───────────────
+        // Interpolates from the shot's start framing (captured the instant
+        // concordia:cinematic-shot fired) to its computed target over the
+        // shot's duration, easing per the shot's `easing` field. Holds the
+        // last-reached framing between shots (no active shot ref) rather
+        // than snapping back anywhere — the director drives the next shot.
+        if (mode === 'cinematic' && cinematicShotRef.current) {
+          const cs = cinematicShotRef.current;
+          const elapsedMs = performance.now() - cs.startTime;
+          const t = applyEasing(cs.easing, elapsedMs / cs.durationMs);
+          const px = cs.startPos.x + (cs.target.position.x - cs.startPos.x) * t;
+          const py = cs.startPos.y + (cs.target.position.y - cs.startPos.y) * t;
+          const pz = cs.startPos.z + (cs.target.position.z - cs.startPos.z) * t;
+          camera.position.set(px, py, pz);
+          const lx = cs.startLook.x + (cs.target.lookAt.x - cs.startLook.x) * t;
+          const ly = cs.startLook.y + (cs.target.lookAt.y - cs.startLook.y) * t;
+          const lz = cs.startLook.z + (cs.target.lookAt.z - cs.startLook.z) * t;
+          camera.lookAt(lx, ly, lz);
+          camera.rotation.z = cs.startTilt + (cs.target.tiltRad - cs.startTilt) * t;
+        }
+
+        // ── World Lens Phase 4 — context-sensitive FOV ────────────────
+        // Eases the base FOV toward whatever HUDContextProvider's real
+        // inputMode implies (combat wider, dialogue tighter, vehicle
+        // wider still, ...). Runs before the punch/freecam blocks below so
+        // they still layer additively/override on top of this base exactly
+        // as before, just against a dynamic base instead of a hardcoded 55.
+        {
+          const targetFov = INPUT_MODE_FOV[inputModeRef.current] ?? BASE_FOV;
+          const fovLerp = Math.min(1, delta * 2);
+          contextFovRef.current += (targetFov - contextFovRef.current) * fovLerp;
+          if (Math.abs(camera.fov - contextFovRef.current) > 0.01) {
+            camera.fov = contextFovRef.current;
+            camera.updateProjectionMatrix();
+          }
+        }
+
         // Sprint 1 (juice) — apply the camera-punch impulse on top of the base
         // transform. Shake comes from the shared trauma engine (decaying, coherent
         // noise); the brief FOV kick rides the cameraPunchRef window. Read after the
@@ -1445,12 +1733,12 @@ export default function ConcordiaScene({
           if (nowMs < punch.until && punch.fov > 0) {
             const remain = (punch.until - nowMs) / Math.max(1, punch.until - punch.start);
             const k = remain * remain; // ease-out (the trauma² falloff)
-            const baseFov = 55;
+            const baseFov = contextFovRef.current;
             camera.fov = baseFov - punch.fov * baseFov * k; // brief zoom-in
             camera.updateProjectionMatrix();
-          } else if (punch.fov > 0 && Math.abs(camera.fov - 55) > 0.01) {
-            // Settle FOV back to base once the punch ends.
-            camera.fov = 55;
+          } else if (punch.fov > 0 && Math.abs(camera.fov - contextFovRef.current) > 0.01) {
+            // Settle FOV back to the context-driven base once the punch ends.
+            camera.fov = contextFovRef.current;
             camera.updateProjectionMatrix();
           }
         }
@@ -1495,6 +1783,65 @@ export default function ConcordiaScene({
         // Sprint 7 — drive volumetric fog time uniform if present.
         const volFogAnim = (composerRef.current as unknown as { _volFogAnimate?: () => void } | null)?._volFogAnimate;
         if (volFogAnim) volFogAnim();
+
+        // ── World Lens — ranged combat: crosshair aim raycast (~20Hz) ──
+        // ConcordiaScene is the only component holding the live camera +
+        // avatars/buildings/terrain layers, so it resolves what's under the
+        // screen-center crosshair each throttled tick and publishes it via
+        // the shared cameraLookState bridge (same cross-component pattern
+        // already used for yaw/pitch/lock-on) — CombatInputController reads
+        // aimHitEntityId as the ranged-attack target override, and
+        // AvatarSystem3D's discharge-flash block reads aimHitPoint as the
+        // projectile tracer's endpoint. Only runs in player-tracking modes;
+        // isometric/cinematic/free have no meaningful "crosshair".
+        if (THREE && (mode === 'follow' || mode === 'first-person' || mode === 'interior')) {
+          const _nowAim = globalThis.performance.now();
+          if (_nowAim - aimRaycastLastRef.current > 50) {
+            aimRaycastLastRef.current = _nowAim;
+            const rc = raycasterRef.current as InstanceType<typeof import('three').Raycaster> | null;
+            if (rc) {
+              rc.setFromCamera(new THREE.Vector2(0, 0), camera as InstanceType<typeof import('three').PerspectiveCamera>);
+              const AIM_MAX_RANGE_M = 80; // mirrors server COMBAT_MAX_REACH_M
+              let hitPoint: { x: number; y: number; z: number } | null = null;
+              let hitEntityId: string | null = null;
+              const avatarsGroup = layersRef.current['avatars'] as InstanceType<typeof import('three').Group> | undefined;
+              if (avatarsGroup) {
+                const hits = rc.intersectObjects(avatarsGroup.children, true);
+                const first = hits.find((h) => h.distance <= AIM_MAX_RANGE_M);
+                if (first) {
+                  let obj = first.object as InstanceType<typeof import('three').Object3D>;
+                  while (
+                    obj.parent && obj.parent !== avatarsGroup &&
+                    !(obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean })?.isNPC &&
+                    !(obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean })?.isOtherPlayer
+                  ) {
+                    obj = obj.parent as typeof obj;
+                  }
+                  const ud = obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean; avatarId?: string } | undefined;
+                  if ((ud?.isNPC || ud?.isOtherPlayer) && ud.avatarId) {
+                    hitEntityId = ud.avatarId;
+                    hitPoint = { x: first.point.x, y: first.point.y, z: first.point.z };
+                  }
+                }
+              }
+              if (!hitPoint) {
+                const solidGroups = [layersRef.current['buildings'], layersRef.current['terrain']]
+                  .filter(Boolean) as InstanceType<typeof import('three').Group>[];
+                for (const g of solidGroups) {
+                  const hits = rc.intersectObjects(g.children, true);
+                  const first = hits.find((h) => h.distance <= AIM_MAX_RANGE_M);
+                  if (first) { hitPoint = { x: first.point.x, y: first.point.y, z: first.point.z }; break; }
+                }
+              }
+              if (!hitPoint) {
+                const far = rc.ray.origin.clone().add(rc.ray.direction.clone().multiplyScalar(AIM_MAX_RANGE_M));
+                hitPoint = { x: far.x, y: far.y, z: far.z };
+              }
+              cameraLookState.aimHitPoint = hitPoint;
+              cameraLookState.aimHitEntityId = hitEntityId;
+            }
+          }
+        }
 
         // Phase O — broadcast camera state so R3FOverlayLayer can mirror it.
         // Throttled to ~10 Hz to keep dispatch cheap; overlay's per-frame
@@ -1544,8 +1891,18 @@ export default function ConcordiaScene({
           }
         } catch { /* polish passes optional */ }
 
-        // Render: SSGI > EffectComposer > plain renderer
-        if (ssgiPassRef.current) {
+        // Render: SSGI feeds the composer's spliced pass 0 > EffectComposer
+        // > plain renderer. (Phase 3 fix — see the SSGI construction site
+        // and composer pass-0 comments above.) When SSGI is active alongside
+        // a live composer, render SSGI's GI-composited image into the
+        // offscreen target the composer's TexturePass reads from, then run
+        // the full composer chain on top of it so bloom/vignette/grade/DoF/
+        // volumetric fog still apply. Only bypass the composer entirely if
+        // it genuinely failed to construct (ppErr path).
+        if (ssgiPassRef.current && composerRef.current && ssgiOutputTargetRef.current) {
+          ssgiPassRef.current.render(ssgiOutputTargetRef.current);
+          composerRef.current.render(delta);
+        } else if (ssgiPassRef.current) {
           ssgiPassRef.current.render(null);
         } else if (composerRef.current) {
           composerRef.current.render(delta);
@@ -1676,6 +2033,7 @@ export default function ConcordiaScene({
         r.setSize(w, h);
         composerRef.current?.setSize(w, h);
         ssgiPassRef.current?.setSize(w, h);
+        ssgiOutputTargetRef.current?.setSize(w, h);
         // Keep the edge-outline Sobel kernel sampling at the new resolution.
         polishPassesRef.current?.edgeOutline?.setResolution?.(w, h);
       }
@@ -1685,7 +2043,12 @@ export default function ConcordiaScene({
     // Sprint 1 (juice) — camera-punch consumer. Sets a decaying impulse the
     // render loop reads after the base camera transform. Locality is already
     // gated by the dispatcher (local_relevance); we honour it here too.
+    // World Lens Phase 6c — also honour reduced-motion at the single source
+    // that feeds both the positional/rotational shake AND the FOV punch, so
+    // neither vestibular-trigger effect fires at all rather than firing and
+    // being separately suppressed downstream.
     const handleCameraPunch = (e: Event) => {
+      if (reducedMotionRef.current) return;
       const d = (e as CustomEvent).detail as
         { duration_ms?: number; shake?: number; zoom?: number; local_relevance?: boolean } | undefined;
       if (!d || d.local_relevance === false) return;
@@ -1863,13 +2226,14 @@ export default function ConcordiaScene({
     }
     canvas.addEventListener('contextmenu', handleContextMenu);
 
-    // ── Mouse-look (pointer lock) for follow + first-person ─────
-    // Click the canvas to enter pointer lock when in a player-tracking
-    // mode; mousemove drives yaw + pitch additive offsets that the game
-    // loop applies to the camera. Esc / outside-click releases.
+    // ── Mouse-look (pointer lock) for follow + first-person + free ──
+    // Click the canvas to enter pointer lock when in a player-tracking (or,
+    // Phase 4, free-flying) mode; mousemove drives yaw + pitch additive
+    // offsets that the game loop applies to the camera. Esc / outside-click
+    // releases.
     function maybeRequestPointerLock() {
       const mode = cameraModeRef.current;
-      if (mode !== 'follow' && mode !== 'first-person' && mode !== 'interior') return;
+      if (mode !== 'follow' && mode !== 'first-person' && mode !== 'interior' && mode !== 'free') return;
       try {
         (canvas as HTMLCanvasElement & { requestPointerLock?: () => void }).requestPointerLock?.();
       } catch { /* pointer lock may be unsupported */ }
@@ -1888,6 +2252,69 @@ export default function ConcordiaScene({
     canvas.addEventListener('contextmenu', handleContextMenuPrevent);
     canvas.addEventListener('mousedown', maybeRequestPointerLock);
     document.addEventListener('mousemove', handleMouseMove);
+
+    // ── World Lens Phase 4 — Free camera mode WASD + R/F ───────────
+    // Only tracks keys while cameraModeRef.current === 'free', so this
+    // never fights with any other keybind (including AvatarSystem3D's own
+    // WASD player-movement listener, which is separately gated to ignore
+    // WASD during free mode — see the cameraMode !== 'free' guard there).
+    function handleFreeCamKeyDown(e: KeyboardEvent) {
+      if (cameraModeRef.current !== 'free') return;
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+      freeCamKeysRef.current.add(e.key.toLowerCase());
+    }
+    function handleFreeCamKeyUp(e: KeyboardEvent) {
+      freeCamKeysRef.current.delete(e.key.toLowerCase());
+    }
+    window.addEventListener('keydown', handleFreeCamKeyDown);
+    window.addEventListener('keyup', handleFreeCamKeyUp);
+
+    // ── World Lens Phase 4 — Cinematic camera mode ──────────────────
+    // cinematic-director.ts dispatches this per shot; resolve the shot's
+    // target framing and stash a start→target interpolation for the
+    // render loop. Only 'player' (or unset — every AUTO_TEMPLATES entry
+    // in cinematic-director.ts today leaves subject/target_npc unset) is
+    // resolvable here: there is no NPC-position lookup reachable from this
+    // component, so an NPC-targeted shot honestly holds the camera's
+    // current framing instead of guessing a position.
+    function handleCinematicShot(e: Event) {
+      const detail = (e as CustomEvent).detail as {
+        camera?: string; subject?: string; target_npc?: string;
+        duration_ms?: number; easing?: string;
+      } | undefined;
+      if (!detail?.camera) return;
+      if (detail.target_npc) return; // honest gap — see comment above
+      const getPose = getPlayerPoseRef.current;
+      const pose = getPose?.();
+      if (!pose) return;
+      const cam = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera> | null;
+      if (!cam) return;
+      const forwardPoint = {
+        x: cam.position.x + Math.sin(cam.rotation.y),
+        y: cam.position.y,
+        z: cam.position.z + Math.cos(cam.rotation.y),
+      };
+      const target = computeShotFraming(
+        detail.camera,
+        { x: pose.x, y: pose.y, z: pose.z, yaw: pose.yaw },
+        { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+      );
+      // match_cut is a hard cut, not a move — interpolate it near-instantly
+      // regardless of the shot's own duration_ms (which still governs how
+      // long the director HOLDS this framing before the next shot).
+      const interpMs = detail.camera === 'match_cut' ? 120 : Math.max(200, detail.duration_ms ?? 1000);
+      cinematicShotRef.current = {
+        startPos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+        startLook: forwardPoint,
+        startTilt: cam.rotation.z,
+        target,
+        startTime: performance.now(),
+        durationMs: interpMs,
+        easing: detail.easing,
+      };
+    }
+    window.addEventListener('concordia:cinematic-shot', handleCinematicShot);
 
     // ── Cleanup ───────────────────────────────────────────────────
     // Capture the stable ref object so the cleanup doesn't read a possibly-changed
@@ -1909,6 +2336,9 @@ export default function ConcordiaScene({
       canvas.removeEventListener('contextmenu', handleContextMenuPrevent);
       canvas.removeEventListener('mousedown', maybeRequestPointerLock);
       document.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('keydown', handleFreeCamKeyDown);
+      window.removeEventListener('keyup', handleFreeCamKeyUp);
+      window.removeEventListener('concordia:cinematic-shot', handleCinematicShot);
       try { document.exitPointerLock?.(); } catch { /* no-op */ }
 
       // Dispose all geometries, materials, and textures in scene
@@ -1945,6 +2375,8 @@ export default function ConcordiaScene({
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;
+      try { ssgiOutputTargetRef.current?.dispose(); } catch { /* idempotent */ }
+      ssgiOutputTargetRef.current = null;
       try {
         polishPassesRef.current?.chromAb?.detach?.();
         polishPassesRef.current?.autoExposure?.dispose();
@@ -1952,9 +2384,7 @@ export default function ConcordiaScene({
       polishPassesRef.current = null;
       polishMat.prev = null;
       try {
-        const sky = (sceneRef.current as unknown as { __concordSky?: { mesh: unknown; dispose: () => void } } | null)?.__concordSky;
         const clouds = (sceneRef.current as unknown as { __concordClouds?: { mesh: unknown; dispose: () => void } } | null)?.__concordClouds;
-        if (sky?.dispose) sky.dispose();
         if (clouds?.dispose) clouds.dispose();
       } catch { /* idempotent */ }
       probeManagerRef.current?.dispose();

@@ -23,6 +23,12 @@ export const ATTACK_COOLDOWN_MS = Object.freeze({
   "attack-heavy": num(process.env.CONCORD_COMBAT_CD_HEAVY, 420),
   kick: num(process.env.CONCORD_COMBAT_CD_KICK, 300),
   grab: num(process.env.CONCORD_COMBAT_CD_GRAB, 320),
+  // Ranged combat (firearm 'fire' style) — its own independent track so
+  // switching between a melee swing and a gunshot doesn't share cooldown
+  // with either, matching the kick/grab precedent. Semi-automatic pacing:
+  // faster than a light swing (firearms are meant to feel rapid) but still
+  // bounded server-side regardless of client input rate.
+  fire: num(process.env.CONCORD_COMBAT_CD_FIRE, 200),
 });
 // Absolute floor between ANY two attacks regardless of class (anti-spam).
 export const ATTACK_GLOBAL_FLOOR_MS = num(process.env.CONCORD_COMBAT_CD_FLOOR, 120);
@@ -38,6 +44,7 @@ export function attackClassFor(style) {
   if (s.includes("heavy") || s.includes("dive") || s.includes("ram")) return "attack-heavy";
   if (s.includes("kick") || s.includes("dismount")) return "kick";
   if (s.includes("grab") || s.includes("breach")) return "grab";
+  if (s === "fire") return "fire";
   return "attack-light";
 }
 

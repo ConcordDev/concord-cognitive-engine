@@ -17,7 +17,31 @@ test("attackClassFor maps styles to classes", () => {
   assert.equal(attackClassFor("dismount-kick"), "kick");
   assert.equal(attackClassFor("grab"), "grab");
   assert.equal(attackClassFor("hack-breach"), "grab");
+  assert.equal(attackClassFor("fire"), "fire");
   assert.equal(attackClassFor(undefined), "attack-light");
+});
+
+test("ranged fire has its own independent cooldown track from melee", () => {
+  const s = newCooldownState();
+  let now = 2000;
+  assert.equal(checkAttackCooldown(s, now, "attack-light").allowed, true, "light fires");
+  // Past the global floor, light cooldown not elapsed — a 'fire' shot right
+  // after should still land because it's a distinct class, same guarantee
+  // T2.9 already gives kick/grab.
+  now += 150;
+  const shot = checkAttackCooldown(s, now, "fire");
+  assert.equal(shot.allowed, true, "fire after light lands — independent track");
+  assert.equal(shot.cls, "fire");
+});
+
+test("spamming fire is still gated by its own cooldown", () => {
+  const s = newCooldownState();
+  let now = 6000;
+  assert.equal(checkAttackCooldown(s, now, "fire").allowed, true);
+  now += ATTACK_COOLDOWN_MS.fire - 30;
+  assert.equal(checkAttackCooldown(s, now, "fire").allowed, false, "second shot gated before cooldown elapses");
+  now += 40;
+  assert.equal(checkAttackCooldown(s, now, "fire").allowed, true, "shot fires once cooldown elapses");
 });
 
 test("a kick chained after a light LANDS (independent class tracks)", () => {

@@ -71,7 +71,10 @@ describe('Part 1 — static pins on the production fix (source-text, matches thi
   });
 
   it('handleAvatarMove/handleAvatarEmote read volatile values through refs, not through reactive closures, so their identity stays stable', () => {
-    expect(pageSrc).toMatch(/const activeDistrictIdRef = useRef\(activeDistrict\.id\);/);
+    // activeDistrictIdRef mirrors currentWorldId (not activeDistrict.id) —
+    // a separate activeDistrictRef mirrors the activeDistrict object itself
+    // for callers that need more than just the id.
+    expect(pageSrc).toMatch(/const activeDistrictIdRef = useRef\(currentWorldId\);/);
     expect(pageSrc).toMatch(/const isConnectedRef = useRef\(worldSocket\.isConnected\);/);
     expect(pageSrc).toMatch(/const playerAvatarRef = useRef\(playerAvatar\);/);
   });

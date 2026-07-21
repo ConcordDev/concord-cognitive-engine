@@ -147,10 +147,39 @@ export OLLAMA_GPU_OVERHEAD=$(( CONCORD_WORLD_VRAM_MB * 1024 * 1024 ))
 export CONCORD_WORLD_GPU="${CONCORD_WORLD_GPU:-0}"
 LOG_DIR="${LOG_DIR:-/tmp/concord-brains}"; mkdir -p "$LOG_DIR"
 
+# Stability audit (2026-07-20) — FIXED a severe gap: the 5 brains were
+# launched as plain backgrounded `&` jobs with NO supervision whatsoever —
+# not pm2, not systemd, nothing. If any one crashed (GPU OOM, a driver Xid
+# fault, any unhandled error inside `ollama serve`), it stayed dead
+# permanently until a human noticed and manually re-ran this script.
+# scripts/health-check.sh's Ollama-restart logic only recognizes a pm2
+# process literally named "ollama" (singular) — which never exists in this
+# 5-separate-process topology — so that safety net was dead code here too,
+# and it only even CHECKED one of the five URLs (BRAIN_CONSCIOUS_URL), so a
+# crashed subconscious/utility/repair/vision brain wouldn't even be logged.
+# Fixed with a real respawn loop per brain: if `ollama serve` exits for any
+# reason, it's relaunched after a short delay, capped at
+# MAX_RESTARTS_PER_BRAIN attempts (mirrors ecosystem.config.cjs's pm2
+# max_restarts crash-loop protection) so a genuinely broken model/config
+# doesn't spin forever — it logs clearly and gives up instead. Each
+# wrapper's own PID is tracked in a pidfile so a subsequent run of this
+# script can cleanly stop the LOOP (not just the ollama process it's about
+# to relaunch) before doing its own fresh pkill + launch — without this,
+# `pkill -f "ollama serve"` below would kill the running instance but the
+# still-alive wrapper loop would just respawn a new one 5s later, racing
+# with this script's own fresh launches and doubling up processes.
+MAX_RESTARTS_PER_BRAIN="${CONCORD_BRAIN_MAX_RESTARTS:-10}"
+log "Stopping any existing supervised brain wrapper loops..."
+for wf in "${LOG_DIR}"/wrapper-*.pid; do
+  [ -f "$wf" ] || continue
+  wpid="$(cat "$wf" 2>/dev/null || true)"
+  if [ -n "$wpid" ] && kill -0 "$wpid" 2>/dev/null; then kill "$wpid" 2>/dev/null || true; fi
+  rm -f "$wf"
+done
 log "Stopping any existing Ollama instances..."; pkill -f "ollama serve" 2>/dev/null || true; sleep 2
 log "Cores: allowed=${NCORES} (cgroup set [$(IFS=,; echo "${ALLOWED[*]}" | cut -c1-40)…])  taskset=$HAVE_TASKSET  gpu=$HAVE_GPU  model-store=$OLLAMA_MODELS"
 
-# ── launch each brain pinned to its cores + GPU ──────────────────────────────
+# ── launch each brain pinned to its cores + GPU, self-healing on crash ───────
 for role in "${ROLES[@]}"; do
   p=${PORT[$role]}; c=${CORES[$role]}; gid=${GPU[$role]}
   pin=""; [ "$HAVE_TASKSET" = 1 ] && [ -n "$c" ] && pin="taskset -c $c"
@@ -159,9 +188,23 @@ for role in "${ROLES[@]}"; do
   fa="${FLASHATTN[$role]:-$OLLAMA_FLASH_ATTENTION}"     # per-role flash attn; vision defaults off
   kv="$OLLAMA_KV_CACHE_TYPE"; [ "$fa" = "0" ] && kv="f16"   # q8_0 KV needs FA — drop to f16 when FA off
   log "Brain ${role}: port ${p}  cores ${c:-<unpinned>}  gpu ${gid}  keep-alive ${ka}  flash-attn ${fa}  kv ${kv}  model ${MODEL[$role]}"
-  env $gpuenv OLLAMA_HOST="127.0.0.1:${p}" OLLAMA_KEEP_ALIVE="$ka" OLLAMA_FLASH_ATTENTION="$fa" \
-      OLLAMA_KV_CACHE_TYPE="$kv" OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_NUM_PARALLEL="$OLLAMA_NUM_PARALLEL" \
-      $pin ollama serve > "${LOG_DIR}/brain-${role}.log" 2>&1 &
+  (
+    restarts=0
+    while true; do
+      env $gpuenv OLLAMA_HOST="127.0.0.1:${p}" OLLAMA_KEEP_ALIVE="$ka" OLLAMA_FLASH_ATTENTION="$fa" \
+          OLLAMA_KV_CACHE_TYPE="$kv" OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_NUM_PARALLEL="$OLLAMA_NUM_PARALLEL" \
+          $pin ollama serve >> "${LOG_DIR}/brain-${role}.log" 2>&1
+      code=$?
+      restarts=$((restarts + 1))
+      if [ "$restarts" -ge "$MAX_RESTARTS_PER_BRAIN" ]; then
+        log "FATAL: brain ${role} (:${p}) crashed ${restarts} times — giving up auto-restart. Check ${LOG_DIR}/brain-${role}.log and re-run this script once fixed."
+        break
+      fi
+      log "WARN: brain ${role} (:${p}) exited (code ${code}, restart ${restarts}/${MAX_RESTARTS_PER_BRAIN}) — respawning in 5s"
+      sleep 5
+    done
+  ) &
+  echo $! > "${LOG_DIR}/wrapper-${role}.pid"
 done
 
 # ── health-check + pull each role's model on its own instance ────────────────

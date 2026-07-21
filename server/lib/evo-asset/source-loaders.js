@@ -152,44 +152,74 @@ export async function bootstrapAmbientCG(db, { limit = 30 } = {}) {
 }
 
 // ─── OS3A (Open Source 3D Assets) ───────────────────────────────────────
+//
+// Two-tier manifest (verified against the live repo — the previous
+// `list.json` URL 404s; it never existed at that path, so this loader has
+// been silently a no-op since it was written):
+//   1. data/projects.json — one entry per collection, each with an
+//      `asset_data_file` pointing at tier 2.
+//   2. data/<asset_data_file> — one entry per model, with a directly
+//      downloadable `model_file_url` (raw.githubusercontent.com) and a
+//      `metadata.attributes` array of {trait_type, value} pairs (Category/
+//      Type/Setting/...) — the closest thing to a taxonomy this source
+//      offers. Folded into `tags` best-effort; no reliable per-asset
+//      building/vegetation/creature split exists upstream, so category
+//      stays the raw OS3A value rather than a guessed evo-asset kind.
 
-const OS3A_MANIFEST_URL = "https://raw.githubusercontent.com/toxsam/open-source-3D-assets/main/list.json";
+const OS3A_PROJECTS_URL = "https://raw.githubusercontent.com/ToxSam/open-source-3D-assets/main/data/projects.json";
+const OS3A_ASSET_DATA_BASE = "https://raw.githubusercontent.com/ToxSam/open-source-3D-assets/main/data/";
 
-export async function bootstrapOS3A(db, { limit = 50 } = {}) {
+export async function bootstrapOS3A(db, { limit = 50, projectLimit = 10 } = {}) {
   const dir = ensureCacheDir("os3a");
   const stats = { fetched: 0, registered: 0, skipped: 0 };
 
-  const res = await safeFetch(OS3A_MANIFEST_URL);
-  if (!res) return stats;
-  let list;
-  try { list = await res.json(); } catch { return stats; }
-  if (!Array.isArray(list)) return stats;
+  const projectsRes = await safeFetch(OS3A_PROJECTS_URL);
+  if (!projectsRes) return stats;
+  let projects;
+  try { projects = await projectsRes.json(); } catch { return stats; }
+  if (!Array.isArray(projects)) return stats;
 
-  for (const item of list.slice(0, limit)) {
-    stats.fetched += 1;
-    const id = item?.id ?? item?.name;
-    const url = item?.url ?? item?.download;
-    if (!id || !url) continue;
+  for (const project of projects.slice(0, projectLimit)) {
+    if (stats.registered >= limit) break;
+    const assetDataFile = project?.asset_data_file;
+    if (!assetDataFile) continue;
 
-    const existing = db.prepare(`SELECT id FROM evo_assets WHERE source = 'os3a' AND source_id = ?`).get(id);
-    if (existing) { stats.skipped += 1; continue; }
+    const assetsRes = await safeFetch(`${OS3A_ASSET_DATA_BASE}${assetDataFile}`);
+    if (!assetsRes) continue;
+    let items;
+    try { items = await assetsRes.json(); } catch { continue; }
+    if (!Array.isArray(items)) continue;
 
-    const destPath = path.join(dir, `${id}.glb`);
-    if (!fs.existsSync(destPath)) {
-      const ok = await downloadTo(url, destPath);
-      if (!ok) continue;
+    for (const item of items) {
+      if (stats.registered >= limit) break;
+      stats.fetched += 1;
+      const id = item?.id;
+      const url = item?.model_file_url;
+      if (!id || !url) continue;
+
+      const existing = db.prepare(`SELECT id FROM evo_assets WHERE source = 'os3a' AND source_id = ?`).get(id);
+      if (existing) { stats.skipped += 1; continue; }
+
+      const destPath = path.join(dir, `${id}.glb`);
+      if (!fs.existsSync(destPath)) {
+        const ok = await downloadTo(url, destPath);
+        if (!ok) continue;
+      }
+
+      const attrs = item?.metadata?.attributes ?? [];
+      const tags = attrs.map((a) => a?.value).filter(Boolean);
+
+      registerAsset(db, {
+        kind: "mesh",
+        source: "os3a",
+        sourceId: id,
+        localPath: destPath,
+        category: project.name ?? project.id ?? null,
+        tags,
+        qualityLevel: 0, // start at base
+      });
+      stats.registered += 1;
     }
-
-    registerAsset(db, {
-      kind: "mesh",
-      source: "os3a",
-      sourceId: id,
-      localPath: destPath,
-      category: item.category ?? null,
-      tags: item.tags ?? [],
-      qualityLevel: 0, // start at base
-    });
-    stats.registered += 1;
   }
   return stats;
 }

@@ -9,7 +9,7 @@ import logger from '../logger.js';
 import { packDTUContainer, verifyContainerIntegrity } from "../lib/dtu-container.js";
 import { validateRecipeByType, PERSONAL_DEFAULT_RECIPE_TYPES } from "../lib/dtu-validators/recipe-validators.js";
 
-export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate }) {
+export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate, requireRole }) {
 
   /** Parse limit/offset query params with sensible defaults and bounds. */
   function parsePagination(query, defaultLimit = 50, maxLimit = 200) {
@@ -63,7 +63,15 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   });
 
   // ── Shadow DTU Pending ───────────────────────────────────────────────
-  app.get("/api/dtus/shadow/pending", (req, res) => {
+  // Stability audit (2026-07-20) — restricted to admin/sovereign. Global,
+  // system-internal data (all shadow DTUs above a momentum/richness
+  // threshold — not user-scoped), and previously had NO auth middleware at
+  // all (genuinely public, unauthenticated). Exclusively consumed by
+  // command-center (verified: no other frontend consumer anywhere in the
+  // app). Falls back to a no-op passthrough if requireRole wasn't injected
+  // (defensive — matches this file's existing dependency-injection style).
+  const _requireSovereign = requireRole ? requireRole("admin", "sovereign") : (_req, _res, next) => next();
+  app.get("/api/dtus/shadow/pending", _requireSovereign, (req, res) => {
     try {
       const shadows = STATE.shadowDtus ? Array.from(STATE.shadowDtus.values()) : [];
       // Candidates: shadow DTUs with enough momentum/richness to potentially promote

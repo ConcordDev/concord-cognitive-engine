@@ -73,6 +73,10 @@ class MockAudioContext {
     return { getChannelData: () => new Float32Array(length) };
   }
   createMediaElementSource() { return new MockNode(); }
+  // World Lens Phase 2 — ReverbZoneManager (now instantiated by
+  // SoundscapeEngine's initAudio) pre-generates a ConvolverNode per zone
+  // type in its constructor.
+  createConvolver() { return new MockNode(); }
 
   addEventListener(evt: string, cb: () => void) {
     (this.listeners[evt] ??= []).push(cb);

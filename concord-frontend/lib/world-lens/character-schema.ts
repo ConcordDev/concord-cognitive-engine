@@ -257,7 +257,7 @@ export interface Accessories {
   /** Tattoos / scarification / glyph markings — drives a decal pass over skin. */
   markings: Array<{ kind: 'tattoo' | 'scar-pattern' | 'paint' | 'glyph'; region: 'face' | 'arms' | 'torso' | 'back'; color: string }>;
   /** Visible carried gear at the hip / shoulder. Drives a prop layer on the mesh. */
-  carry?: Array<'sword' | 'staff' | 'pistol' | 'rifle' | 'bow' | 'satchel' | 'tome' | 'tool-belt' | 'pouch'>;
+  carry?: Array<'sword' | 'staff' | 'wand' | 'pistol' | 'rifle' | 'bow' | 'satchel' | 'tome' | 'tool-belt' | 'pouch'>;
   /** Cybernetic augments (chrome arm, eye implant) — visible chrome materials on the mesh. */
   augments?: Array<{ region: 'left-arm' | 'right-arm' | 'eye' | 'face' | 'chest'; material: 'chrome' | 'matte-black' | 'gold' }>;
 }

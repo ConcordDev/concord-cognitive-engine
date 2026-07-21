@@ -91,19 +91,30 @@ export function backfillLensIds(db, { limit = 5000 } = {}) {
 
   const byLens = {};
   let stamped = 0;
-  for (const r of rows) {
-    let meta = {};
-    let tags = [];
-    try {
-      const parsed = r.data ? JSON.parse(r.data) : {};
-      meta = parsed && typeof parsed === "object" ? parsed : {};
-      tags = Array.isArray(meta.tags) ? meta.tags : (Array.isArray(parsed.tags) ? parsed.tags : []);
-    } catch { /* malformed data → resolve on type alone */ }
-    const lensId = resolveLensId({ type: r.type, tags, meta });
-    if (!lensId) continue;
-    try { update.run(lensId, r.id); stamped++; byLens[lensId] = (byLens[lensId] || 0) + 1; }
-    catch { /* per-row best-effort */ }
-  }
+  // Track C (event-loop unblocking audit) — batch the per-row UPDATEs into a
+  // single transaction instead of up to `limit` (default 1000 from the
+  // heartbeat call site) separate autocommit statements. better-sqlite3 is
+  // synchronous, so each autocommit write is its own lock/WAL-append cycle
+  // on the single event-loop thread; one transaction turns that into a
+  // single cycle. The inner try/catch still isolates a single row's failure
+  // from aborting the whole batch (db.transaction rolls back on an
+  // uncaught throw, which per-row isolation here deliberately avoids).
+  const applyBatch = db.transaction((batch) => {
+    for (const r of batch) {
+      let meta = {};
+      let tags = [];
+      try {
+        const parsed = r.data ? JSON.parse(r.data) : {};
+        meta = parsed && typeof parsed === "object" ? parsed : {};
+        tags = Array.isArray(meta.tags) ? meta.tags : (Array.isArray(parsed.tags) ? parsed.tags : []);
+      } catch { /* malformed data → resolve on type alone */ }
+      const lensId = resolveLensId({ type: r.type, tags, meta });
+      if (!lensId) continue;
+      try { update.run(lensId, r.id); stamped++; byLens[lensId] = (byLens[lensId] || 0) + 1; }
+      catch { /* per-row best-effort */ }
+    }
+  });
+  try { applyBatch(rows); } catch { /* batch-level failure — stamped reflects whatever committed before the throw */ }
   return { ok: true, scanned: rows.length, stamped, byLens };
 }
 

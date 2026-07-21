@@ -18,6 +18,7 @@ import { Worker } from "node:worker_threads";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PARENT_TO_CHILD, CHILD_TO_PARENT, shardingEnabled } from "./world-shard-protocol.js";
+import { getRealCpuCount } from "./cgroup-cpu.js";
 import logger from "../logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,26 @@ const SHARD_RESTARTS_PER_MIN = Number(process.env.CONCORD_SHARD_MAX_RESTARTS_PER
 const SHARD_IDLE_TEARDOWN_MS = Number(process.env.CONCORD_SHARD_IDLE_TEARDOWN_MS) || 10 * 60 * 1000;
 const SHARD_IDLE_CHECK_MS    = Number(process.env.CONCORD_SHARD_IDLE_CHECK_MS) || 60_000;
 const SHARD_READY_TIMEOUT_MS = Number(process.env.CONCORD_SHARD_READY_TIMEOUT_MS) || 8_000;
+// GPU/CPU pinning audit (2026-07-20) — this manager had NO ceiling on
+// concurrent shards: every world with an active user gets its own worker
+// thread (~200MB each per this file's own header), uncoordinated with the
+// macro pool / heartbeat pool, which independently size themselves off
+// core count. On the real bare-metal deploy target (.env.runpod: a 9-vCPU
+// RunPod pod, CONCORD_WORLD_CORE_COUNT=2 reserved for the backend process —
+// world-sim + shards — with the rest split across 5 Ollama instances +
+// frontend), unbounded shard growth risks real thread-scheduling contention
+// regardless of memory headroom. First preference: CONCORD_WORLD_CORE_COUNT
+// when the deploy has explicitly declared its reserved core budget (the
+// same env var pin-processes.sh/runpod-cognition.sh already use) — a shard
+// count meaningfully past that reserved band contends with itself, not with
+// Ollama or the frontend. Falls back to a core-scaled heuristic off the
+// REAL cgroup-restricted core count (getRealCpuCount(), not the host's
+// raw/lying os.cpus().length — see lib/cgroup-cpu.js) when
+// CONCORD_WORLD_CORE_COUNT isn't set. Tune via CONCORD_MAX_ACTIVE_SHARDS
+// once real per-shard memory/CPU cost is observed in production.
+const SHARD_MAX_ACTIVE = Number(process.env.CONCORD_MAX_ACTIVE_SHARDS)
+  || (Number(process.env.CONCORD_WORLD_CORE_COUNT) > 0 ? Number(process.env.CONCORD_WORLD_CORE_COUNT) * 2 : null)
+  || Math.max(4, getRealCpuCount() * 2);
 
 /** @typedef {{
  *   worldId: string,
@@ -102,6 +123,19 @@ export async function ensureWorldActive(worldId) {
     }
   }
 
+  // GPU/CPU pinning audit — cap concurrent shards (see SHARD_MAX_ACTIVE
+  // above). Only relevant for a genuinely NEW world (entry undefined at
+  // this point — the two branches above already handled an existing one).
+  if (!entry && _shards.size >= SHARD_MAX_ACTIVE) {
+    const evicted = _evictLruIdleShard();
+    if (!evicted) {
+      logger.warn("world-shard-manager", "at_capacity_no_evictable", {
+        worldId, activeShards: _shards.size, maxActive: SHARD_MAX_ACTIVE,
+      });
+      return { ok: false, status: "at_capacity" };
+    }
+  }
+
   entry = _spawnShard(worldId);
   const t0 = Date.now();
   try {
@@ -129,6 +163,38 @@ export function markWorldUserCount(worldId, delta) {
   if (!entry) return;
   entry.userCount = Math.max(0, (entry.userCount || 0) + delta);
   entry.lastActivityAt = Date.now();
+}
+
+/**
+ * GPU/CPU pinning audit — evict the least-recently-active shard with zero
+ * current users to make room for a new one when at SHARD_MAX_ACTIVE
+ * capacity. Never evicts a shard with userCount > 0 (an occupied world
+ * getting torn down out from under its players would be a correctness
+ * regression, not just a perf tradeoff) or one that's mid-spawn/draining.
+ * Returns true if a shard was evicted, false if none was evictable (every
+ * active shard genuinely has users — the caller then fails the new
+ * world's activation with 'at_capacity' rather than spawn past the cap).
+ */
+function _evictLruIdleShard() {
+  let victim = null;
+  for (const entry of _shards.values()) {
+    if (entry.status !== "ready" || entry.userCount > 0) continue;
+    if (!victim || entry.lastActivityAt < victim.lastActivityAt) victim = entry;
+  }
+  if (!victim) return false;
+  victim.status = "draining";
+  try {
+    victim.worker?.postMessage({ type: PARENT_TO_CHILD.SHUTDOWN });
+  } catch { /* worker may already be gone */ }
+  setTimeout(() => {
+    if (victim.worker) {
+      try { victim.worker.terminate(); } catch { /* already gone */ }
+    }
+  }, 5_000);
+  logger.info("world-shard-manager", "evicted_lru_idle_shard", {
+    worldId: victim.worldId, idleForMs: Date.now() - victim.lastActivityAt,
+  });
+  return true;
 }
 
 function _spawnShard(worldId) {
@@ -164,6 +230,18 @@ function _spawnShard(worldId) {
     worker = new Worker(SHARD_ENTRY, {
       workerData: { worldId, dbPath: _config?.dbPath ?? null },
       env: { ...process.env, CONCORD_NO_LISTEN: "true", CONCORD_SHARD_CHILD: "true" },
+      // Stability audit (2026-07-20) — without an explicit resourceLimits, a
+      // world shard inherits the FULL main-thread --max-old-space-size
+      // ceiling. A shard hosts an entire active world's per-world sim
+      // (scope:'world' heartbeat modules), genuinely more state than a
+      // single macro or heartbeat tick, so it gets the largest per-worker
+      // allowance — but still a real, finite cap rather than none, since
+      // SHARD_MAX_ACTIVE bounds the COUNT of concurrent shards, not what
+      // any single one can individually grow to. Override via
+      // CONCORD_SHARD_WORKER_HEAP_MB.
+      resourceLimits: {
+        maxOldGenerationSizeMb: Number(process.env.CONCORD_SHARD_WORKER_HEAP_MB) || 2048,
+      },
     });
   } catch (err) {
     logger.warn("world-shard-manager", "worker_construct_failed", { worldId, error: err?.message });

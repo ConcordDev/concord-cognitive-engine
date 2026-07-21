@@ -27,7 +27,7 @@ export async function runNpcConversationInitiator({ db, io } = {}) {
     for (const { world_id: worldId } of worlds) {
       for (let i = 0; i < _internal.MAX_PER_PASS; i++) {
         attempted++;
-        const result = tryInitiateConversation(db, worldId);
+        const result = await tryInitiateConversation(db, worldId);
         if (!result.ok) break; // no more candidates this pass; move on
         opened++;
         // Emit socket event if io is available (mirrors the routes/worlds

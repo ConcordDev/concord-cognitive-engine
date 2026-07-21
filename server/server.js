@@ -40,6 +40,7 @@ try { fs.mkdirSync(path.join(DATA_DIR, 'seed'), { recursive: true }); } catch { 
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";
+import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
@@ -106,6 +107,11 @@ import { runFaunaSpawner } from "./lib/ecosystem/fauna-spawner.js";
 registerHeartbeat("fauna-spawner", {
   frequency: 30,
   handler: runFaunaSpawner,
+  // Track A — discovers active worlds itself (SELECT DISTINCT world_id
+  // FROM world_npcs) and loops over ALL of them under one shared
+  // BATCH_LIMIT in a single invocation; not written to accept a single
+  // worldId. Parent-only until it's refactored to take one.
+  scope: "global",
 });
 
 // Theme 2 (game-feel pass): boid steering for spawned fauna so creatures
@@ -127,7 +133,13 @@ import { runAffectTraceCycle } from "./emergent/affect-trace-cycle.js";
 registerHeartbeat("affect-trace-cycle", {
   frequency: 8,
   handler: runAffectTraceCycle,
-  scope: "world",
+  // Track A (event-loop unblocking audit) — re-scoped 'world' -> 'global':
+  // the handler reads `state.creatureMotion` (an in-memory map keyed by
+  // EVERY active world's id) and self-iterates `Object.keys(...)` in one
+  // call — it never reads ctx.worldId to filter to a single world, so the
+  // 'world' label was aspirational, matching the disease-tick-cycle /
+  // realm-control-cycle bug pattern found elsewhere in this same audit.
+  scope: "global",
 });
 
 // Wave 7 / Track C2-C3 — the agent guardrail enforcement points. An autonomous agent
@@ -153,7 +165,19 @@ import { runWorldMigrationCycle } from "./emergent/world-migration-cycle.js";
 registerHeartbeat("world-migration-cycle", {
   frequency: 20,
   handler: runWorldMigrationCycle,
-  scope: "world",
+  // Track B — bounded per-row compute (up to 8 worlds x 60 NPCs) + a final
+  // small transactional write, no live-STATE dependency, no inline realtime
+  // emit. Routes off the main thread via the (now write-queueing-fixed)
+  // heartbeat worker pool.
+  worker: true,
+  // Track A — re-scoped 'world' -> 'global': despite the doc comment above
+  // ("Per-world scope so it's shard-safe"), the handler self-discovers up to
+  // MAX_WORLDS_PER_PASS active worlds via discoverWorlds(db) and loops over
+  // all of them in one invocation — it never reads ctx.worldId. Marking it
+  // 'world' as-is would run the SAME worlds' migration step N times, once
+  // per active shard. Parent-only until discoverWorlds is taught to filter
+  // by a single passed-in worldId.
+  scope: "global",
 });
 
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
@@ -167,8 +191,16 @@ registerHeartbeat("signal-propagation-cycle", {
   handler: runSignalPropagationCycle,
   // Phase A: writes embodied_signal_log rows that creature-flock-cycle and
   // env-coupled handlers read on the same tick. Serial to keep the read
-  // path consistent.
+  // path consistent. `worker: true` doesn't break this ordering guarantee —
+  // tickAllRegistered awaits each entry (worker-routed or not) sequentially,
+  // and the worker pool's side-effect replay is itself awaited before the
+  // pool's exec() promise resolves, so a subsequent serial entry still sees
+  // this module's writes. The most-frequent non-worker module found in the
+  // Track B audit (every ~45s); a cellular-automaton grid spread with a DB
+  // query inside a nested per-cell loop. No live-STATE dependency, no
+  // inline realtime emit.
   serial: true,
+  worker: true,
 });
 
 // Living Society Phase 0.6 — load-bearing hydrology. Advance the water flow
@@ -179,6 +211,9 @@ registerHeartbeat("water-flow-cycle", {
   frequency: 4,
   // Inject io so the cycle can emit concordia:water-updated hints (WS-A1).
   handler: ({ db } = {}) => runWaterFlowCycle({ db, io: REALTIME?.io }),
+  // Track A — self-discovers every world with water cells and loops over
+  // all of them in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Maintenance — the Homeostasis heartbeat (autonomic loop 3). Slow cadence
@@ -225,6 +260,19 @@ registerHeartbeat("literary-resonance-cycle", {
   frequency: 200,
   scope: "global",
   handler: ({ db } = {}) => runLiteraryResonanceCycle({ db }),
+  // Track C (event-loop unblocking audit) — up to PER_PASS=25 candidate
+  // literary DTUs x SCAN_CAP=5000 candidate rows each = up to 125,000
+  // synchronous cosine-similarity computations in a single tick, growing
+  // with corpus size (SCAN_CAP is a per-call cap, not a total-work cap).
+  // No live-STATE dependency, no inline realtime emit — a clean fit for the
+  // worker pool; moves the heaviest synchronous-CPU indexing pass found in
+  // this audit off the thread serving HTTP/websocket traffic.
+  worker: true,
+  // Also lowPriority: cross-domain resonance enrichment, not gameplay/
+  // request-critical — skip dispatching it entirely (no worker-pool IPC
+  // overhead either) under real pressure rather than adding more work on
+  // top of an already-stressed tick.
+  lowPriority: true,
 });
 
 // LRL Phase 3 — literary license-compliance audit. Flags non-PD/unverified
@@ -269,6 +317,10 @@ import { runPayCycle } from "./emergent/pay-cycle.js";
 registerHeartbeat("pay-cycle", {
   frequency: 40,
   handler: runPayCycle,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with employment edges and loops over all of
+  // them in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Living Society Phase 5 — the Movement/Cell keystone. Seed coalitions from
@@ -278,6 +330,10 @@ import { runMovementRecruitmentCycle } from "./emergent/movement-recruitment-cyc
 registerHeartbeat("movement-recruitment-cycle", {
   frequency: 50,
   handler: runMovementRecruitmentCycle,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with live NPCs and loops over all of them in
+  // one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Living Society Phase 7 — the Chronicle weave. Ingest labor/pay/grievance/
@@ -287,6 +343,10 @@ import { runChronicleWeave } from "./emergent/chronicle-weave.js";
 registerHeartbeat("chronicle-weave", {
   frequency: 30,
   handler: runChronicleWeave,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with live NPCs and loops over all of them in
+  // one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Living Society Phase 1.5c — fill settlement role vacancies (every role is
@@ -295,6 +355,10 @@ import { runVacancyRecruitCycle } from "./emergent/vacancy-recruit-cycle.js";
 registerHeartbeat("vacancy-recruit-cycle", {
   frequency: 80,
   handler: runVacancyRecruitCycle,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with open vacancies and loops over all of
+  // them in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Living Society Phase 11 — governance: tribute up the vassalage tree, protection
@@ -303,6 +367,10 @@ import { runGovernanceCycle } from "./emergent/governance-cycle.js";
 registerHeartbeat("governance-cycle", {
   frequency: 60,
   handler: runGovernanceCycle,
+  // Track A — despite the doc comment's "scope:'world'" claim, the handler
+  // self-discovers every world with sworn vassalage and loops over all of
+  // them in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
@@ -314,6 +382,10 @@ import { runMountCareCycle } from "./emergent/mount-care-cycle.js";
 registerHeartbeat("mount-care-cycle", {
   frequency: 60,
   handler: runMountCareCycle,
+  // Track A — the eligible-mounts query has no world_id filter; it pulls
+  // the globally-oldest-decayed mounts across every world into one
+  // capped batch. Parent-only.
+  scope: "global",
 });
 
 // EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
@@ -321,6 +393,10 @@ import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from
 registerHeartbeat("eco-expiry-sweep", {
   frequency: 5,
   handler: runEcoExpirySweep,
+  // Track A — sweeps `player_inventory`/`user_active_effects`, both
+  // USER-GLOBAL tables per this file's own invariant (an item/effect
+  // isn't scoped to any one world), with no world_id filter. Parent-only.
+  scope: "global",
 });
 
 // EvoEcosystem W6: prune expired Refusal Field entries every tick so
@@ -358,6 +434,9 @@ registerHeartbeat("corpse-cleanup", {
       return { ok: true, pruned: r.changes };
     } catch { return { ok: false, reason: "table_missing" }; }
   },
+  // Track A — the DELETE has no world_id filter, sweeping every world's
+  // expired corpses in one pass. Parent-only.
+  scope: "global",
 });
 
 // Phase 1 (UX completeness sprint) — lens_drafts GC. Hard-deletes draft
@@ -385,17 +464,24 @@ registerHeartbeat("privacy-retention-sweep", {
   scope: "global",
 });
 
-// Phase W — disease tick cycle (~75s cadence per world). Advances
-// severity of every active infection in the world.
+// Phase W — disease tick cycle (~75s cadence). Advances severity of
+// every active infection. Track A (event-loop unblocking audit) —
+// re-scoped 'world' -> 'global': `player_diseases` (migration 204) has
+// no world_id column at all — a disease is contracted BY a user, not
+// scoped to any one world (matches this file's own "immunity is global
+// per (user, disease)" invariant) — so the old "in this world (or
+// globally if no shard scope)" comment described an aspiration the
+// schema never backed. There's nothing to filter by world; this must
+// run on the parent, once, exactly as it does today.
 registerHeartbeat("disease-tick-cycle", {
   frequency: 5,
-  scope: "world",
+  scope: "global",
   handler: async ({ db: ctxDb, worldId }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     if (process.env.CONCORD_DISEASE_ENGINE === "false") return { ok: false, reason: "disabled" };
     try {
-      // Get every user with an active disease in this world (or globally
-      // if no shard scope). For each, run tickDiseases.
+      // Every user with an active disease, platform-wide (player_diseases
+      // has no world_id column — see the registration comment above).
       const userRows = ctxDb.prepare(`
         SELECT DISTINCT user_id FROM player_diseases
         WHERE recovered_at IS NULL LIMIT 200
@@ -662,28 +748,40 @@ import {
   runUnsafeExpansion,
 } from "./emergent/reflex-cortex.js";
 
+// Track A — all four reflex-cortex heartbeats monitor the CODEBASE itself
+// (architectural drift, scaling pressure, dependency entropy, unsafe
+// expansion), not any game world. Parent-only.
 registerHeartbeat("reflex-architectural-drift", {
   frequency: 360,
   handler: runArchitecturalDrift,
+  scope: "global",
 });
 registerHeartbeat("reflex-scaling-pressure", {
   frequency: 480,
   handler: runScalingPressure,
+  scope: "global",
 });
 registerHeartbeat("reflex-dependency-entropy", {
   frequency: 1440,
   handler: runDependencyEntropy,
+  scope: "global",
 });
 registerHeartbeat("reflex-unsafe-expansion", {
   frequency: 720,
   handler: runUnsafeExpansion,
+  scope: "global",
 });
 
 // Phase 7 / T2 — Code substrate refresh. Every 1440 ticks (~6h) re-emits
 // code-artifact DTUs (idempotent on id). The DTU consolidation pipeline
 // then forms code-MEGAs (economy substrate cluster, persistence cluster, …).
+// Track A — scans the repo itself, not any world. Parent-only.
 registerHeartbeat("code-substrate-refresh", {
   frequency: 1440,
+  scope: "global",
+  // Track C — a codebase self-scan, not gameplay/request-critical; harmless
+  // to skip a ~6h-cadence tick under real load and pick up next time.
+  lowPriority: true,
   handler: async ({ db }) => {
     if (!db) return { ok: false, reason: "no_db" };
     try {
@@ -707,8 +805,14 @@ try {
   _macroTelemetry.startTelemetry(path.resolve(_modDir, ".."));
 } catch (_e) { /* telemetry optional */ }
 
+// Track A — runs the code-quality/security detector suite over the repo
+// itself. Parent-only.
 registerHeartbeat("detectors-sweep", {
   frequency: 2880,
+  scope: "global",
+  // Track C — the code-quality/security detector suite, not gameplay/
+  // request-critical; harmless to skip a ~12h-cadence tick under real load.
+  lowPriority: true,
   handler: async ({ db, state }) => {
     try {
       // Force a telemetry flush before the sweep so the latest in-memory
@@ -833,6 +937,9 @@ import { runNpcSkillEvolveCycle } from "./emergent/npc-skill-evolve-cycle.js";
 registerHeartbeat("npc-skill-evolve-cycle", {
   frequency: 80,
   handler: runNpcSkillEvolveCycle,
+  // Track A — both its queries (world_npcs by level, skill_evolution_unlocks)
+  // pull a single global-priority batch with no world_id filter. Parent-only.
+  scope: "global",
 });
 
 // Phase 1.5: NPC marketplace participation. Every 240 ticks (~60 min) lists
@@ -843,6 +950,12 @@ import { runNpcMarketplaceCycle } from "./emergent/npc-marketplace-cycle.js";
 registerHeartbeat("npc-marketplace-cycle", {
   frequency: 240,
   handler: runNpcMarketplaceCycle,
+  // Track A (event-loop unblocking audit) — listNpcRecipesPass/
+  // intraNpcPurchasePass query dtus/world_npcs with no world_id filter,
+  // matching sellers/buyers across worlds in one shared pass. Must stay
+  // parent-only: a per-world shard would silently never run it (orphaned
+  // under CONCORD_SHARD_WORLDS otherwise), not duplicate it.
+  scope: "global",
 });
 
 // Phase 3: Personal Beat Scheduler. Every 60 ticks (~15 min) surfaces a
@@ -854,6 +967,10 @@ import { runPersonalBeatScheduler } from "./emergent/personal-beat-scheduler.js"
 registerHeartbeat("personal-beat-scheduler", {
   frequency: 60,
   handler: runPersonalBeatScheduler,
+  // Track A — pulls "online users" via world_visits with no world_id
+  // filter and forward_predictions is keyed purely by user_id, not a
+  // single world. Parent-only.
+  scope: "global",
 });
 
 // Phase 4a: NPC daily routines. Every 5 ticks (~75s) advances NPC
@@ -865,6 +982,10 @@ import { runNpcRoutineCycle } from "./emergent/npc-routine-cycle.js";
 registerHeartbeat("npc-routine-cycle", {
   frequency: 5,
   handler: runNpcRoutineCycle,
+  // Track B — bounded per-NPC loop (up to 200) with a per-world batched
+  // realtime emit AFTER the loop (not inline mid-loop), no live-STATE
+  // dependency. Routes off the main thread via the worker pool.
+  worker: true,
 });
 
 // Sprint C / Track A4 — npc schemes / plots. Every 30 ticks (~7.5min)
@@ -882,7 +1003,11 @@ registerHeartbeat("npc-scheme-cycle", {
 import { runSchemeOverhearCycle } from "./emergent/scheme-overhear-cycle.js";
 registerHeartbeat("scheme-overhear-cycle", {
   frequency: 8,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': despite the doc comment above,
+  // the handler queries every world with live plotting NPCs and loops over
+  // all of them in one invocation (no ctx.worldId filter). Marking it
+  // 'world' as-is would run the SAME worlds N times, once per active shard.
+  scope: "global",
   handler: runSchemeOverhearCycle,
 });
 
@@ -891,7 +1016,11 @@ registerHeartbeat("scheme-overhear-cycle", {
 import { runWorldZoneHazardCycle } from "./emergent/world-zone-hazard-cycle.js";
 registerHeartbeat("world-zone-hazard-cycle", {
   frequency: 5,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': the handler queries every
+  // world with hazard zones and loops over all of them in one invocation
+  // (no ctx.worldId filter). Marking it 'world' as-is would run the SAME
+  // worlds N times, once per active shard.
+  scope: "global",
   handler: runWorldZoneHazardCycle,
 });
 
@@ -900,7 +1029,11 @@ registerHeartbeat("world-zone-hazard-cycle", {
 import { runHorrorDreadCycle } from "./emergent/horror-dread-cycle.js";
 registerHeartbeat("horror-dread-cycle", {
   frequency: 2,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': the handler queries every
+  // active horror_sessions row across every world with no world_id filter
+  // and loops over all of them in one invocation. Marking it 'world' as-is
+  // would run the SAME sessions N times, once per active shard.
+  scope: "global",
   handler: runHorrorDreadCycle,
 });
 
@@ -915,19 +1048,31 @@ registerHeartbeat("horror-dread-cycle", {
 import { runNpcTravelCycle }       from "./emergent/npc-travel-cycle.js";
 import { runNpcVsNpcCombatCycle }  from "./emergent/npc-vs-npc-combat-cycle.js";
 import { runNpcAmbitionCycle }     from "./emergent/npc-ambition-cycle.js";
-registerHeartbeat("npc-travel-cycle",      { frequency: 60, handler: runNpcTravelCycle });
-registerHeartbeat("npc-vs-npc-combat",     { frequency: 8,  handler: runNpcVsNpcCombatCycle });
-registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbitionCycle });
+// Track A — all three are parent-only (scope 'global'): npc-travel-cycle
+// explicitly moves NPCs BETWEEN worlds in one operation and its candidate
+// query has no world_id filter; npc-vs-npc-combat-cycle discovers and
+// loops over every world_id itself inside one invocation (not designed
+// to be handed a single worldId); npc-ambition-cycle's top-N-ambitious
+// query is a single cross-world budget with no world_id filter — sharding
+// any of the three per-world would either duplicate-process the same
+// rows on every shard or silently never run at all.
+registerHeartbeat("npc-travel-cycle",      { frequency: 60, handler: runNpcTravelCycle, scope: "global" });
+registerHeartbeat("npc-vs-npc-combat",     { frequency: 8,  handler: runNpcVsNpcCombatCycle, scope: "global" });
+registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbitionCycle, scope: "global" });
 
 // Phase U — substrate-driven loose mount behaviour. Picks
 // wandering / fleeing / feeding per loose mount, advances position
 // one step, emits mount:behavior socket events on state change.
 import { runMountBehaviorCycle } from "./emergent/mount-behavior-cycle.js";
-registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle });
+// Track A — the eligible-companions query has no world_id filter, pulling
+// the globally-oldest-updated batch across every world. Parent-only.
+registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle, scope: "global" });
 
 // Temperament P5 — haul active NPC captures + roll escapes (behind CONCORD_TEMPERAMENT).
 import { runCaptureCycle } from "./emergent/capture-cycle.js";
-registerHeartbeat("capture-cycle", { frequency: 20, handler: runCaptureCycle });
+// Track A — the active-captures query has no world_id filter, pulling every
+// in-progress capture across every world in one pass. Parent-only.
+registerHeartbeat("capture-cycle", { frequency: 20, handler: runCaptureCycle, scope: "global" });
 
 // Sere managed parity — the Tessera funds both sides so the war never resolves
 // (CONCORD_TESSERA_PARITY=0 to disable; only ever acts on world_id='sere').
@@ -947,6 +1092,10 @@ import { runKingdomDecreeCycle } from "./emergent/kingdom-decree-cycle.js";
 registerHeartbeat("kingdom-decree-cycle", {
   frequency: 16,
   handler: runKingdomDecreeCycle,
+  // Track A — `SELECT id, ruler_kind, ruler_id, next_decree_at FROM realms`
+  // has no world_id filter, iterating every realm across every world in
+  // one pass. Parent-only.
+  scope: "global",
 });
 
 // Sprint B Phase 9 — NPC visible sentience. Every 8 ticks (~2 minutes)
@@ -981,6 +1130,10 @@ import { runNpcEconomyCycle } from "./emergent/npc-economy-cycle.js";
 registerHeartbeat("npc-economy-cycle", {
   frequency: 8,
   handler: runNpcEconomyCycle,
+  // Track B — bounded per-NPC action loop (up to 200) with a per-world
+  // batched realtime emit after the loop, no live-STATE dependency. Routes
+  // off the main thread via the worker pool.
+  worker: true,
 });
 
 // Phase 4c: Lattice-Born Quests. Every 180 ticks (~45min, staggered well
@@ -1006,6 +1159,10 @@ import { runEcologyQuestCycle } from "./emergent/ecology-quest-cycle.js";
 registerHeartbeat("ecology-quest-cycle", {
   frequency: 240,
   handler: runEcologyQuestCycle,
+  // Track A — the imbalance-log query has no world_id filter, pulling the
+  // oldest-unresolved rows across every world in one bounded pass.
+  // Parent-only.
+  scope: "global",
 });
 
 // War-in-3D skirmish cycle. Advances active campaigns past their
@@ -1051,13 +1208,20 @@ import { runGoddessBroadcastCycle } from "./emergent/goddess-broadcast-cycle.js"
 registerHeartbeat("goddess-broadcast-cycle", {
   frequency: 240,
   handler: runGoddessBroadcastCycle,
+  // Track A — self-discovers every active world and loops over all of them
+  // in one call (no ctx.worldId filter). Parent-only.
+  scope: "global",
 });
 
 // Civic Capital — auto-pause stalled bond drives (kill-switch CONCORD_CIVIC_BONDS).
 import { runCivicBondCycle, CIVIC_BOND_CYCLE_FREQUENCY } from "./emergent/civic-bond-cycle.js";
 registerHeartbeat("civic-bond-cycle", {
   frequency: CIVIC_BOND_CYCLE_FREQUENCY,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': sweepStalledBonds(db, {}) has
+  // no world_id filter or parameter — it sweeps civic_bonds platform-wide
+  // in one call. Marking it 'world' as-is would run the SAME sweep N times,
+  // once per active shard.
+  scope: "global",
   handler: runCivicBondCycle,
 });
 
@@ -1065,16 +1229,29 @@ registerHeartbeat("civic-bond-cycle", {
 import { runViabilityCycle, VIABILITY_CYCLE_FREQUENCY } from "./emergent/viability-cycle.js";
 registerHeartbeat("viability-cycle", {
   frequency: VIABILITY_CYCLE_FREQUENCY,
-  scope: "world",
+  // Track A — re-scoped 'world' -> 'global': the handler self-discovers
+  // every active world and loops over all of them in one call (no
+  // ctx.worldId filter). Marking it 'world' as-is would run the SAME
+  // worlds N times, once per active shard.
+  scope: "global",
   handler: runViabilityCycle,
 });
 
 // Wave 5 #19 — civilization-as-control: PID feedback stabilises realm legitimacy
 // via tax_rate (kill-switch CONCORD_REALM_CONTROL).
+// Track A (event-loop unblocking audit) — re-scoped 'world' -> 'global':
+// the handler's own `SELECT id, legitimacy, tax_rate FROM realms` has no
+// world_id filter (the same cross-world pattern as kingdom-decree-cycle
+// a few hundred lines up), so despite the label this always iterated
+// every realm across every world in one pass. Marking it 'world' and
+// adding it to the per-world shard list as-is would have run the SAME
+// realms N times, once per active world shard. A proper fix would teach
+// the query to filter by worldId; until then, 'global' matches its real,
+// already-correct-for-single-process behavior exactly.
 import { runRealmControlCycle, REALM_CONTROL_FREQUENCY } from "./emergent/realm-control-cycle.js";
 registerHeartbeat("realm-control-cycle", {
   frequency: REALM_CONTROL_FREQUENCY,
-  scope: "world",
+  scope: "global",
   handler: runRealmControlCycle,
 });
 
@@ -1213,6 +1390,13 @@ registerHeartbeat("world-population-cycle", {
   frequency: 60,
   scope: "world",
   handler: runWorldPopulationCycle,
+  // Track B — bounded per-world NPC-generation burst (up to MAX_PER_PASS),
+  // no live-STATE dependency. worker:true only takes effect on the parent
+  // (non-sharded mode, where ctx.worldId is absent and the handler's own
+  // fallback iterates all worlds) — inside a world shard this module is
+  // re-registered directly by workers/world-shard.js, which doesn't read
+  // this flag, so sharded mode is unaffected either way.
+  worker: true,
 });
 
 // Phase 8: Combat polish substrate. Every 2 ticks (~30s) recovers gas
@@ -1223,6 +1407,11 @@ registerHeartbeat("world-population-cycle", {
 import { runCombatRecoveryCycle } from "./emergent/combat-recovery-cycle.js";
 registerHeartbeat("combat-recovery-cycle", {
   frequency: 2,
+  // Track A — despite the file having a few world_id references (logging/
+  // lookups), its core gas-recovery/combo-decay query has no world_id
+  // filter — it operates over a single global batch of combat-active
+  // actors. Parent-only.
+  scope: "global",
   handler: runCombatRecoveryCycle,
 });
 
@@ -1246,6 +1435,9 @@ import { runFederationOutboxPump } from "./emergent/federation-outbox-pump.js";
 registerHeartbeat("federation-outbox-pump", {
   frequency: 30,
   handler: ({ db } = {}) => runFederationOutboxPump({ db }),
+  // Track A — the federation outbox is a single platform-wide ActivityPub
+  // delivery queue with no world_id column. Parent-only.
+  scope: "global",
 });
 
 // Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
@@ -1258,6 +1450,10 @@ import { runRepairCycle } from "./emergent/repair-cycle.js";
 registerHeartbeat("repair-cycle", {
   frequency: 20,
   handler: runRepairCycle,
+  // Track A — groups pending pain_signals purely by user_id (no world_id
+  // column); XP grants and damage_resist buffs are user-scoped, not
+  // world-scoped. Parent-only.
+  scope: "global",
 });
 
 // Layer 7: embodied environment sensor. Every 5 ticks (~75s) writes a
@@ -1278,6 +1474,10 @@ registerHeartbeat("environment-sensor", {
 // stayed pending forever. Every 4 ticks (~1 minute).
 registerHeartbeat("scheduled-posts", {
   frequency: 4,
+  // Track A — the schedule queue is one platform-wide feed with no world_id
+  // filter (processScheduledPosts walks every pending post regardless of
+  // which world it was authored in). Parent-only.
+  scope: "global",
   handler: async ({ state }) => {
     try {
       const sl = await import("./emergent/social-layer.js").catch(() => null);
@@ -1298,6 +1498,9 @@ registerHeartbeat("scheduled-posts", {
 // even if the heartbeat misses a tick under load.
 registerHeartbeat("brain-daily-refresh", {
   frequency: 60,
+  // Track A — brain in-context training runs against the shared model
+  // corpus, not any single world. Parent-only.
+  scope: "global",
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
@@ -1318,6 +1521,9 @@ registerHeartbeat("brain-daily-refresh", {
 // on, because every interaction starts pending.
 registerHeartbeat("brain-outcome-resolver", {
   frequency: 20,
+  // Track A — walks brain_interactions platform-wide with no world_id
+  // filter. Parent-only.
+  scope: "global",
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
@@ -1337,6 +1543,9 @@ registerHeartbeat("brain-outcome-resolver", {
 // happens. Every 4 ticks (~1 min).
 registerHeartbeat("affect-tick", {
   frequency: 4,
+  // Track A — affect_state is Concord's own existential self-model, not
+  // per-world game state. Parent-only.
+  scope: "global",
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
@@ -1356,6 +1565,9 @@ registerHeartbeat("affect-tick", {
 // burnout, alignment, novelty) starts fresh on every reboot.
 registerHeartbeat("qualia-persist", {
   frequency: 60,
+  // Track A — flushes Concord's own QualiaEngine self-model state, not any
+  // one world's simulation. Parent-only.
+  scope: "global",
   handler: async ({ db: ctxDb }) => {
     if (!ctxDb) return { ok: false, reason: "no_db" };
     try {
@@ -1385,6 +1597,11 @@ registerHeartbeat("qualia-persist", {
 // cold-adapted fauna emergently.
 registerHeartbeat("environment-sense", {
   frequency: 5,
+  // Track A — despite the "for each active world" doc comment above, this
+  // handler self-iterates every active world internally in one invocation
+  // (matches the fauna-spawner/npc-vs-npc-combat self-discovery pattern) —
+  // it isn't written to accept a single worldId. Parent-only.
+  scope: "global",
   handler: async (ctx) => {
     if (!ctx?.db) return { ok: false, reason: "no_db" };
     try {
@@ -1403,6 +1620,7 @@ import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSyste
 import configureMiddleware from "./middleware/index.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
+import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
@@ -1814,12 +2032,37 @@ if (_isProduction && _securityLoadErrors.length > 0) {
 const DOTENV = { loaded: false, path: null, error: null };
 async function tryLoadDotenv() {
   const envPath = process.env.ENV_PATH || process.env.DOTENV_CONFIG_PATH || null;
+  // Stability audit (2026-07-20) — dotenv.config() does NOT override an
+  // already-set process.env var by default. On a pm2-managed bare-metal
+  // deploy (ecosystem.config.cjs), pm2 injects its `env`/`env_runpod` block
+  // into process.env BEFORE node even starts, so any var pm2 also sets
+  // silently wins over whatever the .env file says for that same key — with
+  // zero indication anything was overridden. This is exactly how
+  // CONCORD_SHARD_WORLDS drifted out of sync this session: ecosystem.config.cjs
+  // said 'true', .env.runpod said 'false' (with real, evidenced rationale),
+  // and pm2's 'true' silently won. Snapshot process.env BEFORE loading so we
+  // can name every case where the .env file's value was silently ignored —
+  // loud instead of silent, per this repo's own "kill drift" discipline.
+  const preDotenvSnapshot = { ...process.env };
   try {
     const dotenv = await import("dotenv");
     const result = envPath ? dotenv.config({ path: envPath }) : dotenv.config();
     DOTENV.loaded = !result?.error;
     DOTENV.path = envPath || "(default)";
     DOTENV.error = result?.error ? String(result.error) : null;
+    if (result?.parsed) {
+      for (const [key, fileValue] of Object.entries(result.parsed)) {
+        const preexisting = preDotenvSnapshot[key];
+        if (preexisting !== undefined && preexisting !== fileValue) {
+          console.warn(
+            `[ENV_CONFLICT] ${key}: the .env file says "${fileValue}" but a pre-existing ` +
+            `process.env value ("${preexisting}", likely injected by pm2's ecosystem.config.cjs) ` +
+            `silently won — the .env value was ignored. If this wasn't intentional, fix the ` +
+            `losing side rather than assume the .env file's value is what's actually running.`
+          );
+        }
+      }
+    }
   } catch (e) {
     DOTENV.loaded = false;
     DOTENV.path = envPath || "(default)";
@@ -2534,11 +2777,34 @@ async function gracefulShutdown(signal) {
   process.exit(0);
 }
 
+// Stability audit (2026-07-20) — a crash's memory footprint at the moment
+// it happened is the single fastest way to tell "this is a real OOM
+// approaching the configured heap ceiling" apart from "this is an unrelated
+// logic bug that happened to throw" — without it, both look identical in
+// the log (just an error + stack). Best-effort; must never itself throw
+// inside a crash handler.
+function _crashMemorySnapshot() {
+  try {
+    const mem = process.memoryUsage();
+    const heapLimitMb = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
+    const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024);
+    return {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb,
+      heapLimitMb,
+      heapPctOfLimit: heapLimitMb > 0 ? Math.round((heapUsedMb / heapLimitMb) * 100) : null,
+      externalMb: Math.round(mem.external / 1024 / 1024),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Register shutdown handlers
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("uncaughtException", (err) => {
-  structuredLog("fatal", "uncaught_exception", { error: err.message, stack: err.stack });
+  structuredLog("fatal", "uncaught_exception", { error: err.message, stack: err.stack, memory: _crashMemorySnapshot() });
   // ALWAYS exit. After an uncaught exception the process state is undefined; this is a
   // stateful SQLite economy monolith, so continuing risks silent data corruption. The
   // repair cortex still RECORDS the error (diagnostics for the next clean boot) but never
@@ -2553,7 +2819,7 @@ process.on("uncaughtException", (err) => {
 });
 process.on("unhandledRejection", (reason, _promise) => {
   const errorStr = reason?.message || String(reason);
-  structuredLog("fatal", "unhandled_rejection", { reason: errorStr, stack: String(reason?.stack || "") });
+  structuredLog("fatal", "unhandled_rejection", { reason: errorStr, stack: String(reason?.stack || ""), memory: _crashMemorySnapshot() });
   // Record for diagnostics, but NEVER run an executor that keeps a corrupt process
   // alive. In production, always exit for a clean restart; in dev, log + continue so
   // local rejection bugs surface without killing the dev loop.
@@ -2711,7 +2977,22 @@ const EFFECTIVE_JWT_SECRET = JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
-const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 300);
+// Track A/B/C (event-loop + scale unblocking audit, 2026-07-20) — this is
+// the GLOBAL blanket limiter mounted ahead of every per-endpoint one in
+// rateLimit.js. Those were deliberately raised (2026-07-18, "take the
+// rate-limiter leashes off": conscious.chat 600/min, utility.call/
+// semantic.search/default 6000/min, read.default 12000/min) but this
+// coarser global gate was left at its old 300/min default — BELOW every
+// one of those tiers — making it the real, accidental binding ceiling on
+// all traffic combined regardless of what the per-endpoint tier allows.
+// Raised to match the already-intentional "default" tier (6000/min) so
+// this stops silently undercutting work already done to size the
+// per-endpoint limits for real usage (a rich lens firing many cheap macro
+// POSTs, an agent-mode session, thousands of concurrent users). This
+// limiter's remaining job is catching genuinely runaway/abusive traffic,
+// not throttling normal use — the granular buckets in rateLimit.js do the
+// fine-grained shaping.
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 6000);
 // LLM_READY: tracks Ollama conscious-brain readiness. The cloud LLM
 // fallbacks were removed (see CLAUDE.md — five-brain Ollama+LLaVA stack).
 let LLM_READY = false;
@@ -5126,6 +5407,17 @@ function initDatabase() {
     const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 4096;
     const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 1024;
     const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 10000;
+    // Stability audit (2026-07-20) — wal_autocheckpoint sets the checkpoint
+    // CADENCE, but under checkpoint starvation (a long-running reader holding
+    // the WAL open, an export, a stuck analytics query) SQLite can't reclaim
+    // the WAL file even at that cadence, and it grows unbounded until the
+    // disk fills — which then breaks writes for every user, not just the
+    // slow reader. journal_size_limit is the hard backstop: once the WAL
+    // exceeds this size, SQLite forcibly truncates it back down after the
+    // next checkpoint that CAN complete, instead of growing forever. 64MB
+    // default is generous headroom over the ~80MB (10000 pages × 8KB) a
+    // normal checkpoint cycle touches. Override via env on busier boxes.
+    const walSizeLimitMb = Number(process.env.CONCORD_SQLITE_WAL_SIZE_LIMIT_MB) || 64;
     if (READ_REPLICA) {
       // Read-only replica: the writer owns schema + WAL journal mode. Open
       // Open WRITABLE (not readonly). The monolith has many scattered boot-time
@@ -5143,6 +5435,7 @@ function initDatabase() {
       db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
       db.pragma(`cache_size = -${cacheMb * 1024}`);
       db.pragma("busy_timeout = 5000");
+      db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`);
       structuredLog?.("info", "db_readonly_replica", { dbPath: DB_PATH, mode: "writable-until-listen" });
     } else {
       db = new Database(DB_PATH);
@@ -5154,6 +5447,7 @@ function initDatabase() {
       db.pragma("temp_store = MEMORY");       // Temp tables in RAM
       db.pragma("busy_timeout = 10000");      // 10s retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
+      db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
       db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
       db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
     }
@@ -7554,6 +7848,71 @@ async function initMetrics() {
       },
     });
 
+    // Track C (event-loop unblocking audit) — the event-loop-pressure
+    // module's current reading, exported so an operator can graph/alert on
+    // the exact signal `lowPriority` heartbeats back off from, not just
+    // infer it after the fact from a log line. Scrape-time collect(),
+    // matching the llmQueue* gauges' pattern above (reads a module-scoped
+    // live value rather than being .set() imperatively).
+    METRICS.gauges.eventLoopLagMs = new prom.Gauge({
+      name: "concord_event_loop_lag_ms",
+      help: "Current max observed event-loop delay (ms) over the last sample window",
+      registers: [METRICS.registry],
+      collect() { try { this.set(getEventLoopLagMs()); } catch { /* scrape best-effort */ } },
+    });
+
+    // Track C — counts a lowPriority heartbeat's tick being SKIPPED (not
+    // delayed) because the event loop was under pressure when it was due.
+    // Sustained skips mean deferrable work (code-substrate-refresh,
+    // detectors-sweep, literary-resonance-cycle) is being starved, which is
+    // itself a symptom worth alerting on separately from the lag gauge
+    // crossing threshold once.
+    METRICS.counters.heartbeatLowPrioritySkipped = new prom.Counter({
+      name: "concord_heartbeat_low_priority_skipped_total",
+      help: "lowPriority heartbeat ticks skipped due to event-loop pressure, by module",
+      labelNames: ["module"],
+      registers: [METRICS.registry],
+    });
+
+    // Stability audit (2026-07-20) — Socket.IO connection/room leaks are a
+    // known, recurring bug class (disconnected sockets staying referenced,
+    // empty rooms not getting cleaned up — github.com/socketio/socket.io
+    // issues #2427, #1736, #4067, #1599, among others). Nothing in Concord
+    // proved this is currently happening, but the architecture (heavy
+    // per-user/per-world room fan-out via realtimeEmit, a 100ms
+    // city-presence tick loop) is exactly the shape that's triggered this
+    // for others in production. Rather than guess, make it OBSERVABLE:
+    // io.engine.clientsCount is Engine.IO's own low-level transport count
+    // (authoritative, independent of any of Concord's own bookkeeping
+    // bugs); comparing it against REALTIME.clients.size (Concord's own
+    // tracked registry) surfaces a DIVERGENCE the instant one drifts from
+    // the other — that divergence, sustained and growing over days of
+    // uptime, is the actual leak signal to alert on, not a hunch.
+    METRICS.gauges.wsEngineClients = new prom.Gauge({
+      name: "concord_ws_engine_clients",
+      help: "Engine.IO's own low-level connected-client count (authoritative, independent of app-level bookkeeping)",
+      registers: [METRICS.registry],
+      collect() { try { this.set(REALTIME?.io?.engine?.clientsCount ?? 0); } catch { /* scrape best-effort */ } },
+    });
+    METRICS.gauges.wsRoomCount = new prom.Gauge({
+      name: "concord_ws_room_count",
+      help: "Socket.IO default-namespace room count (includes each socket's own auto-joined self-room by design — watch the TREND, not the absolute number)",
+      registers: [METRICS.registry],
+      collect() { try { this.set(REALTIME?.io?.sockets?.adapter?.rooms?.size ?? 0); } catch { /* scrape best-effort */ } },
+    });
+    METRICS.gauges.wsRegistryDivergence = new prom.Gauge({
+      name: "concord_ws_registry_divergence",
+      help: "abs(REALTIME.clients.size - io.engine.clientsCount) — a sustained nonzero value means Concord's own connection registry has drifted from Engine.IO's real count (the actual leak signal)",
+      registers: [METRICS.registry],
+      collect() {
+        try {
+          const tracked = REALTIME?.clients?.size ?? 0;
+          const real = REALTIME?.io?.engine?.clientsCount ?? 0;
+          this.set(Math.abs(tracked - real));
+        } catch { /* scrape best-effort */ }
+      },
+    });
+
     // Expose the counters/histograms via globalThis so cross-module
     // observers (heartbeat-registry.js, world-shard-manager.js) can
     // record without circular imports. The registry's own observation
@@ -7567,6 +7926,7 @@ async function initMetrics() {
       heartbeatWorkerPoolSize: METRICS.gauges.heartbeatWorkerPoolSize,
       heartbeatWorkerPoolBusy: METRICS.gauges.heartbeatWorkerPoolBusy,
       heartbeatWorkerPoolQueueLen: METRICS.gauges.heartbeatWorkerPoolQueueLen,
+      heartbeatLowPrioritySkipped: METRICS.counters.heartbeatLowPrioritySkipped,
       worldShardStuck: METRICS.counters.worldShardStuck,
       worldShardSpawnFailed: METRICS.counters.worldShardSpawnFailed,
       worldShardActiveCount: METRICS.gauges.worldShardActiveCount,
@@ -7798,6 +8158,44 @@ export { createBackup, restoreBackup, listBackups };
 // 403 bot_access_denied on the very endpoints meant to report liveness.
 const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health)(\b|\/)/;
 const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
+
+// Track C (rate-limit audit) — this limiter is mounted BEFORE both
+// cookieParserMiddleware and authMiddleware (see middleware/index.js's
+// ordering), so `req.user`/`req.cookies` are never populated when its
+// keyGenerator runs — the `req.user?.id || req.ip` expression was always
+// falling through to IP-only keying for every request, authenticated or
+// not. That matters specifically for the deployment this was audited
+// for (thousands of users through one Cloudflare tunnel hostname): if
+// several distinct users' requests ever resolve to the same apparent
+// origin IP at this middleware's position, they'd share one bucket.
+// Fixed with a cheap, read-only, best-effort JWT decode (verifyToken() —
+// the same algorithm-pinned/revocation-aware verifier authMiddleware
+// itself uses, just without authMiddleware's extra AuthDB.getUser() DB
+// lookup, which would be wasteful to duplicate here on every request
+// purely for rate-limit keying) so an authenticated user gets their own
+// bucket regardless of shared-IP topology. Falls back to req.ip exactly
+// as before for anonymous/unauthenticated requests or a bad/expired
+// token — never throws, never blocks the request on a decode failure.
+function _rateLimitKey(req) {
+  try {
+    const authHeader = String(req.headers?.authorization || "");
+    let token = null;
+    if (authHeader.startsWith("Bearer ")) {
+      token = authHeader.slice(7);
+    } else if (req.headers?.cookie) {
+      // req.cookies isn't populated yet at this point in the middleware
+      // chain — parse the raw header directly rather than depending on
+      // cookieParserMiddleware having already run.
+      token = parseCookies(req.headers.cookie)?.concord_auth || null;
+    }
+    if (token) {
+      const decoded = verifyToken(token);
+      if (decoded?.userId) return `u:${decoded.userId}`;
+    }
+  } catch { /* best-effort — never let key derivation break rate limiting */ }
+  return req.ip;
+}
+
 let rateLimiter = null;
 let authRateLimiter = null;
 if (rateLimit) {
@@ -7807,10 +8205,9 @@ if (rateLimit) {
     message: { ok: false, error: "Too many requests", retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip,
-    // This limiter is mounted globally BEFORE authMiddleware, so it keys
-    // every request by IP. Health probes must never be 429'd, and CI
-    // suites hammer the server from one IP — exempt both.
+    keyGenerator: _rateLimitKey,
+    // Health probes must never be 429'd, and CI suites hammer the server
+    // from one IP — exempt both.
     skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path),
   });
   // Stricter rate limiting for auth endpoints (5 attempts per 15 minutes)
@@ -8457,7 +8854,18 @@ async function tryInitWebSockets(server) {
     // <1KB; a 1MB deeply-nested JSON payload can still burn parse CPU on the
     // single event-loop thread (JSON-bomb DoS). 64KB is generous for any real
     // client message and rejects the bomb at the transport layer before parse.
-    maxHttpBufferSize: Number(process.env.CONCORD_WS_MAX_BUFFER) || 64_000
+    maxHttpBufferSize: Number(process.env.CONCORD_WS_MAX_BUFFER) || 64_000,
+    // Browser-perf audit (2026-07-20) — per-message deflate was left at
+    // Engine.IO's default (on), which carries real per-socket memory
+    // overhead (a persistent zlib deflate/inflate context per connection,
+    // documented in Socket.IO's own performance-tuning guide) for traffic
+    // that's already <1KB per message per the comment above — compression
+    // overhead here is close to pure cost with minimal payload-size benefit.
+    // At "thousands of concurrent connections" on one box, that overhead
+    // adds up materially. Override via CONCORD_WS_PER_MESSAGE_DEFLATE=true
+    // if a future workload profile genuinely has large enough payloads to
+    // benefit (re-measure before flipping, don't assume).
+    perMessageDeflate: process.env.CONCORD_WS_PER_MESSAGE_DEFLATE === "true" ? {} : false,
   });
 
   // Phase 3a — multi-instance fan-out via the Redis adapter. Opt-in: only wired
@@ -9047,7 +9455,7 @@ async function tryInitWebSockets(server) {
       if (!globalThis._concordCombatLimits) {
         globalThis._concordCombatLimits = import("./lib/combat-limits.js");
       }
-      const { clampBaseDamage, resolvedDamageCap } = await globalThis._concordCombatLimits;
+      const { clampBaseDamage, resolvedDamageCap, clampAttackRange } = await globalThis._concordCombatLimits;
 
       // Wave 4 (Gap A/C) — this is the LIVE, socket-driven basic-attack path
       // (system-affordances.ts dispatches combat:attack for both PvP and
@@ -9076,7 +9484,12 @@ async function tryInitWebSockets(server) {
         attackerId: userId,
         targetId: _ffTargetId,
         baseDamage: clampBaseDamage(data.baseDamage),
-        range: Number(data.range) || 3,
+        // Ranged combat wiring — this previously fed the client-supplied
+        // range straight through with NO upper bound at all, so a modified
+        // client could claim an arbitrary range and "hit" a target anywhere
+        // on the map. clampAttackRange bounds it to the same
+        // COMBAT_MAX_REACH_M ceiling the HTTP NPC route already enforced.
+        range: clampAttackRange(data.range),
         armorPierce: Number(data.armorPierce) || 0,
         contextModifiers: _contextModifiers,
         maxDamage: resolvedDamageCap(),
@@ -14688,59 +15101,81 @@ function makeCtx(req=null) {
         ];
         // Local models need more time than cloud — 120s for first call, 90s steady state
         const ollamaTimeout = Math.max(timeoutMs, 120000);
-        const ac = new AbortController();
-        const t = setTimeout(() => ac.abort(), ollamaTimeout);
-        const startMs = Date.now();
-        noteEndpointStart(brainUrl);
-        let _epOk = false;
-        try {
-          const res = await fetch(`${brainUrl}/api/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens } }),
-            signal: ac.signal
-          }).finally(() => clearTimeout(t));
-          const json = await res.json().catch(() => ({}));
-          const elapsed = Date.now() - startMs;
-          BRAIN.conscious.stats.requests++;
-          BRAIN.conscious.stats.totalMs += elapsed;
-          BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
-          if (res.ok && json.message?.content) {
-            const content = json.message.content ?? "";
-            _epOk = true;
-            structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
-            // Real per-call metering — prompt_eval_count/eval_count are
-            // Ollama's own reported token counts for this exact completion.
+
+        // Track A/B/C (event-loop + GPU unblocking audit) — a brain-wiring
+        // audit found ctx.llm.chat() (this function — the primary USER-FACING
+        // chat entry point, used far more than callBrain()) did its own raw
+        // fetch(), completely bypassing the same _llmQueue concurrency cap
+        // callBrain() was fixed to use. On a fixed-VRAM single-GPU box this
+        // was the highest-volume unguarded path to the Ollama endpoints —
+        // exactly the traffic "thousands of concurrent users" produces.
+        // Priority CRITICAL (llm-queue.js's own documented scheme: "0 —
+        // CRITICAL: user-facing chat / ask responses") so live chat jumps
+        // ahead of NORMAL-priority background/heartbeat brain calls under
+        // load, rather than competing with them on equal footing.
+        return await _llmQueue.enqueue(async () => {
+          const ac = new AbortController();
+          const t = setTimeout(() => ac.abort(), ollamaTimeout);
+          const startMs = Date.now();
+          noteEndpointStart(brainUrl);
+          let _epOk = false;
+          try {
+            const res = await fetch(`${brainUrl}/api/chat`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens } }),
+              signal: ac.signal
+            }).finally(() => clearTimeout(t));
+            const json = await res.json().catch(() => ({}));
+            const elapsed = Date.now() - startMs;
+            BRAIN.conscious.stats.requests++;
+            BRAIN.conscious.stats.totalMs += elapsed;
+            BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
+            if (res.ok && json.message?.content) {
+              const content = json.message.content ?? "";
+              _epOk = true;
+              structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
+              // Real per-call metering — prompt_eval_count/eval_count are
+              // Ollama's own reported token counts for this exact completion.
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+                callerId: resolvedActor?.userId, latencyMs: elapsed,
+                tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
+              });
+              return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
+            }
+            BRAIN.conscious.stats.errors++;
+            structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
+            // A real HTTP round-trip happened and came back non-OK — honest
+            // error span, no fabricated token count.
             _meterLlmChat(db, {
               spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
               callerId: resolvedActor?.userId, latencyMs: elapsed,
-              tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
+              error: json?.error || `ollama_error_${res.status}`,
             });
-            return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
+            return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: "conscious", source: "ollama" };
+          } catch (err) {
+            BRAIN.conscious.stats.errors++;
+            const elapsed = Date.now() - startMs;
+            structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
+            _meterLlmChat(db, {
+              spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+              callerId: resolvedActor?.userId, latencyMs: elapsed,
+              error: String(err?.message || err),
+            });
+            return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
+          } finally {
+            noteEndpointFinish(brainUrl, { ok: _epOk });
           }
-          BRAIN.conscious.stats.errors++;
-          structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
-          // A real HTTP round-trip happened and came back non-OK — honest
-          // error span, no fabricated token count.
-          _meterLlmChat(db, {
-            spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
-            callerId: resolvedActor?.userId, latencyMs: elapsed,
-            error: json?.error || `ollama_error_${res.status}`,
-          });
-          return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: "conscious", source: "ollama" };
-        } catch (err) {
-          BRAIN.conscious.stats.errors++;
-          const elapsed = Date.now() - startMs;
-          structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
-          _meterLlmChat(db, {
-            spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
-            callerId: resolvedActor?.userId, latencyMs: elapsed,
-            error: String(err?.message || err),
-          });
-          return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
-        } finally {
-          noteEndpointFinish(brainUrl, { ok: _epOk });
-        }
+        }, _llmQueue.PRIORITY.CRITICAL).catch((err) => {
+          // Queue-level rejection (full/shed) — never let it throw out of
+          // ctx.llm.chat(); every existing caller expects a resolved
+          // { ok, ... } object, matching the resilience contract the BYO
+          // and offline-brain branches above already uphold.
+          const msg = String(err?.message || err);
+          structuredLog("warn", "llm_queue_reject_chat", { error: msg });
+          return { ok: false, error: msg, brain: "conscious", source: "ollama", queueRejected: true };
+        });
       }
     }
   };
@@ -16564,24 +16999,24 @@ function setLLMPipelineMode(mode) {
 _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 
 // ── LLM Queue + Circuit Breakers ──────────────────────────────────────────
-// NOTE (wiring audit, 2026-07): `_llmQueue` itself is real and load-bearing
-// for the surfaces that read it directly — `/api/admin/...` metrics route,
-// the Prometheus `concord_llm_queue_*` gauges, the graceful-shutdown
-// `_llmQueue.drain()` call, and the chat-socket queue-pressure/estimated-
-// wait UX all consume `_llmQueue.getMetrics()` / `.queuePressure()` /
-// `.estimatePosition()` live. BUT the only function that ever *enqueued*
-// real work through it — `queuedOllamaCall()` — had zero call sites
-// anywhere in the codebase (verified via `grep -rn queuedOllamaCall server/`)
-// and has been removed. Until something calls `_llmQueue.enqueue(...)` on
-// the real dispatch path (`callBrain` / `ctx.llm.chat`), every one of those
-// metrics/UX surfaces will honestly report near-zero — not because GPU load
-// is low, but because nothing routes through this queue. Wiring `callBrain`
-// through `_llmQueue.enqueue()` was evaluated and deferred: it would stack a
-// second, brain-agnostic concurrency cap (default 32 total) on top of the
-// already-tuned per-brain `maxConcurrent` + circuit-breaker semantics in
-// brain-config.js, changing request ordering/latency under load in a way
-// that needs its own dedicated, verified pass — not bundled into this
-// endpoint-routing wiring fix.
+// Track A/B/C (event-loop + GPU unblocking audit, 2026-07-20) — `callBrain`
+// now routes through `_llmQueue.enqueue()` (see the call site inside
+// `callBrain`, right before the `breaker.call`/`_doBrainCall` dispatch),
+// closing the gap this NOTE used to document: `_llmQueue` was real and
+// load-bearing for its READERS (`/api/admin/...` metrics, the Prometheus
+// `concord_llm_queue_*` gauges, `_llmQueue.drain()` on shutdown, the
+// chat-socket queue-position UX) but had zero real ENQUEUERS, so every one
+// of those surfaces honestly reported near-zero — not because GPU load was
+// low, but because nothing routed through the queue. The prior deferral
+// reasoning ("would stack a second concurrency cap on top of the
+// already-tuned per-brain `maxConcurrent`") was re-verified and found not
+// to hold: `brain.maxConcurrent` in brain-config.js is diagnostic-only,
+// never enforced anywhere — there was no existing cap to stack on top of.
+// On a fixed-VRAM single-GPU box, every heartbeat-driven brain call
+// (autogen, dream synthesis, repair, council, NPC dialogue) previously
+// shared the 5 Ollama endpoints with real user chat traffic under zero
+// application-level concurrency limit — a real self-DoS risk at scale that
+// this queue exists specifically to prevent.
 const _llmQueue = createLLMQueue({
   concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
   maxQueueDepth: 200,
@@ -18405,16 +18840,50 @@ ${_sharedToolRules}` : "";
     return { ok: false, error: `Circuit breaker open for ${brainName}`, source: brainName, circuitOpen: true };
   };
 
-  noteEndpointStart(_dispatchUrl);
+  // Track A/B/C (event-loop + GPU unblocking audit) — every Ollama call
+  // (user chat AND every heartbeat-driven brain call: autogen, dream
+  // synthesis, repair, council, NPC dialogue) previously shared the 5
+  // Ollama endpoints with ZERO application-level concurrency cap —
+  // `brain.maxConcurrent` in brain-config.js is diagnostic-only, never
+  // enforced. `_llmQueue` (above) was built for exactly this and already
+  // powers the admin metrics + chat-socket queue-position UX, but nothing
+  // ever called `.enqueue()` on the real dispatch path (see the "wiring
+  // audit" NOTE at this file's `_llmQueue` construction site — a prior
+  // pass considered this exact wire and deferred it specifically because
+  // it would "stack a second concurrency cap on top of the already-tuned
+  // per-brain maxConcurrent" — re-verified this session: maxConcurrent
+  // isn't actually enforced anywhere, so there is no existing cap to stack
+  // on top of; on a fixed-VRAM single GPU box, unbounded concurrent
+  // requests queue/thrash at the GPU regardless of what Node does, so a
+  // real concurrency ceiling here is a genuine safety property, not a
+  // behavior change competing with an existing one. The circuit breaker
+  // (`breaker.call`) is a different, complementary concern (failure
+  // detection/backoff, not concurrency limiting) and composes cleanly
+  // inside the queued function. `noteEndpointStart`/`Finish` move INSIDE
+  // the queued closure so the endpoint load-balancer's inflight signal
+  // reflects calls actually hitting the endpoint, not calls merely queued
+  // and waiting for a concurrency slot.
+  const _priority = options._priority ?? _llmQueue.PRIORITY.NORMAL;
   try {
-    const result = breaker
-      ? await breaker.call(_doBrainCall, _brainFallback)
-      : await _doBrainCall();
-    noteEndpointFinish(_dispatchUrl, { ok: result?.ok !== false });
+    const result = await _llmQueue.enqueue(async () => {
+      noteEndpointStart(_dispatchUrl);
+      try {
+        const r = breaker
+          ? await breaker.call(_doBrainCall, _brainFallback)
+          : await _doBrainCall();
+        noteEndpointFinish(_dispatchUrl, { ok: r?.ok !== false });
+        return r;
+      } catch (e) {
+        noteEndpointFinish(_dispatchUrl, { ok: false });
+        throw e;
+      }
+    }, _priority);
     return result;
   } catch (e) {
-    noteEndpointFinish(_dispatchUrl, { ok: false });
     brain.stats.errors++;
+    if (String(e?.message) === "llm_queue_full" || String(e?.message) === "llm_queue_shed") {
+      return { ok: false, error: e.message, source: brainName, queueRejected: true };
+    }
     return { ok: false, error: String(e.message || e), source: brainName };
   }
 }
@@ -26377,6 +26846,9 @@ import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
   frequency: 12,
+  // Track A — marathon agent sessions are user chat-agent tasks, not scoped
+  // to any game world. Parent-only.
+  scope: "global",
   handler: () => runAgentMarathonCycle({ db: STATE?.db || globalThis._concordDB }),
 });
 
@@ -26630,6 +27102,9 @@ import { runPlayerSignsCleanup } from "./emergent/player-signs-cleanup.js";
 registerHeartbeat("player-signs-cleanup", {
   frequency: 240,
   handler: runPlayerSignsCleanup,
+  // Track A — the DELETE has no world_id filter, sweeping every world's
+  // expired signs in one pass. Parent-only.
+  scope: "global",
 });
 
 // Concordia Phase 8/10/12/16 heartbeats — aging cycle, ration mint,
@@ -26642,13 +27117,23 @@ import {
   runCouncilSessionCycle,
   runUnderwaterThreatCycle,
 } from "./emergent/concordia-cycles.js";
-registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle });
-registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle });
-registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle });
-registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle });
+// Track A — all four handlers below query their tables (world_npcs by due
+// id, ration eligibility, `SELECT id FROM realms`, player_oxygen) with no
+// world_id filter, each pulling one shared global batch/list in a single
+// invocation. Parent-only.
+registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle, scope: "global" });
+registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle, scope: "global" });
+registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle, scope: "global" });
+registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle, scope: "global" });
 // Foundry (lens #66) — sweep stale live-preview worlds (Phase 5).
 import { runFoundryPreviewCleanup } from "./emergent/foundry-preview-cleanup.js";
-registerHeartbeat("foundry-preview-cleanup", { frequency: 240, handler: runFoundryPreviewCleanup });
+registerHeartbeat("foundry-preview-cleanup", {
+  frequency: 240,
+  handler: runFoundryPreviewCleanup,
+  // Track A — sweeps stale live-preview worlds platform-wide (a Foundry
+  // preview isn't itself a live game-world shard). Parent-only.
+  scope: "global",
+});
 
 // Theme deferred (game-feel pass): hidden quest triggers — substrate
 // for unmarked, environment-gated quest activation. Pure runMacro
@@ -26789,11 +27274,16 @@ registerCommune(register);
 import { runCrossWorldEconomyCycle } from "./emergent/cross-world-economy-cycle.js";
 registerHeartbeat("cross-world-economy-cycle", {
   frequency: 240,  // ~60 min
+  // Track A — cross-world infra by definition (operates across every
+  // world's economy in one pass). Parent-only.
+  scope: "global",
   handler: runCrossWorldEconomyCycle,
 });
 import { runCrossWorldSchemeCycle } from "./emergent/cross-world-scheme-cycle.js";
 registerHeartbeat("cross-world-scheme-cycle", {
   frequency: 60,   // ~15 min
+  // Track A — cross-world infra by definition. Parent-only.
+  scope: "global",
   handler: runCrossWorldSchemeCycle,
 });
 
@@ -26817,6 +27307,9 @@ registerHeartbeat("population-migration-cycle", {
 import { runCorpusIngestCycle, CORPUS_INGEST_FREQUENCY } from "./emergent/corpus-ingest-cycle.js";
 registerHeartbeat("corpus-ingest-cycle", {
   frequency: CORPUS_INGEST_FREQUENCY, // ~60 min default
+  // Track A — pulls into the shared DTU substrate from external sources,
+  // unrelated to any single game world. Parent-only.
+  scope: "global",
   handler: async () => {
     try {
       // The cycle expects a bridgeEvent callback. We build the same one
@@ -31544,7 +32037,7 @@ registerHook("before_tool", async (ctx) => {
 
 
 // ---- DTU Endpoints (extracted to routes/dtus.js) ----
-registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, saveStateDebounced, validate });
+registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, saveStateDebounced, validate, requireRole });
 
 // ---- Save status + manual snapshot (extracted to routes/save.js) ----
 registerSaveRoutes(app, { db, asyncHandler, STATE });
@@ -37719,7 +38212,13 @@ app.get("/api/marketplace/browse", asyncHandler(async (req, res) => res.json(awa
 // Legacy alias — some frontend code still calls /api/marketplace/dtu_browse.
 // Route it to the same macro so both URLs work during deprecation.
 app.get("/api/marketplace/dtu_browse", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "browse", { category: req.query.category, search: req.query.search, sort: req.query.sort, page: req.query.page, pageSize: req.query.pageSize }, makeCtx(req)))));
-app.post("/api/marketplace/submit", requireAuth(), async (req, res) => {
+// Track C (rate-limit audit) — this route was the one gap the audit found:
+// rateLimit.js's own comment calls the 'marketplace.submit' bucket (5/hour)
+// "governance, constitutional," but the bucket was never applied here —
+// the route had zero rate limiting of any kind beyond the coarse global
+// blanket limiter (6000/min, not remotely tight enough for a governance-
+// sensitive action).
+app.post("/api/marketplace/submit", requireAuth(), perEndpointRateLimit("marketplace.submit"), async (req, res) => {
   try {
     const userId = req.user?.id;
     const { dtuId, price } = req.body;
@@ -46482,7 +46981,11 @@ app.get("/api/quality/thresholds/:domain", requireAuth(), (req, res) => {
   res.json({ ok: true, thresholds });
 });
 
-app.get("/api/quality/thresholds", requireAuth(), (req, res) => {
+// Stability audit (2026-07-20) — restricted to admin/sovereign. Global,
+// system-wide config (every domain's quality thresholds), not user-scoped;
+// exclusively consumed by the admin lens (verified: no other frontend
+// consumer anywhere in the app).
+app.get("/api/quality/thresholds", requireRole("admin", "sovereign"), (req, res) => {
   const all = {};
   for (const domain of Object.keys(DOMAIN_ACTION_MANIFEST)) {
     all[domain] = getQualityThresholds(domain);
@@ -56894,7 +57397,10 @@ app.get("/api/platform/status", (_req, res) => {
 });
 
 // Loaf status
-app.get("/api/loaf/status", (_req, res) => {
+// Stability audit (2026-07-20) — restricted to admin/sovereign. Global
+// system-internal counts (timelines/branches), not user-scoped; exclusively
+// consumed by command-center (verified: no other frontend consumer).
+app.get("/api/loaf/status", requireRole("admin", "sovereign"), (_req, res) => {
   try {
     res.json({ ok: true, loaf: { enabled: !!STATE.loaf, timelines: STATE.loaf?.timelines?.size || 0, branches: STATE.loaf?.branches?.size || 0 } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -65016,6 +65522,63 @@ try {
   }, 30_000).unref();
 } catch (e) {
   structuredLog("info", "event_loop_monitor_unavailable", { error: String(e?.message || e) });
+}
+
+// Track C (event-loop unblocking audit) — the log-only monitor above turns
+// into actual backpressure here: a small, independent, more-frequently-
+// sampled histogram whose current reading `lowPriority`-flagged heartbeats
+// check before running (see emergent/heartbeat-registry.js). Deliberately
+// separate from the monitor above (which resets on its own 30s log-window
+// cadence) rather than sharing it, so a caller reading "how bad is it RIGHT
+// NOW" isn't coupled to that unrelated cadence.
+try {
+  const { startEventLoopPressureMonitor } = await import("./lib/event-loop-pressure.js");
+  await startEventLoopPressureMonitor();
+} catch (e) {
+  // Never actually throws internally (see the module's own try/catch), but
+  // kept defensive here to match this file's boot-block convention.
+  structuredLog("info", "event_loop_pressure_monitor_unavailable", { error: String(e?.message || e) });
+}
+
+// Stability audit (2026-07-20) — a hand-tuned --max-old-space-size can
+// silently drift out of sync with the real box (resized pod, moved
+// deployment) with no warning until an OOM-kill under load. Check once at
+// boot against the real, currently-enforced V8 ceiling vs real os.totalmem().
+try {
+  const { checkMemoryBudget } = await import("./lib/memory-budget.js");
+  const budget = checkMemoryBudget();
+  if (!budget.ok) {
+    structuredLog("warn", "memory_budget_over_threshold", budget);
+  } else {
+    structuredLog("info", "memory_budget_ok", { heapLimitMb: budget.heapLimitMb, totalMemMb: budget.totalMemMb, fraction: budget.fraction });
+  }
+} catch (e) {
+  structuredLog("info", "memory_budget_check_unavailable", { error: String(e?.message || e) });
+}
+
+// Stability audit (2026-07-20) — RunPod pods are ephemeral by default: all
+// data outside a mounted network volume is wiped on pod restart/reschedule.
+// DATA_DIR already auto-detects /workspace and prefers it (see its
+// declaration near the top of this file), but if that detection silently
+// falls through to the local ./data fallback in production — network
+// volume not mounted, mounted somewhere unexpected, or DATA_DIR/DB_PATH
+// simply never got set — the server boots and runs completely normally
+// with NO indication that a routine restart will erase the entire
+// database. Loud instead of silent: this doesn't block boot (a legitimate
+// non-RunPod deploy may intentionally use local storage), but a production
+// boot with a non-/workspace DATA_DIR should never pass unremarked.
+try {
+  if ((process.env.NODE_ENV || "development") === "production" && !DATA_DIR.startsWith("/workspace")) {
+    structuredLog("warn", "data_dir_not_on_persistent_volume", {
+      dataDir: DATA_DIR,
+      dbPath: DB_PATH,
+      detail: "DATA_DIR does not start with /workspace (RunPod's persistent network-volume mount point). " +
+        "If this is a RunPod deploy, a routine pod restart will WIPE this data unless it's actually on a " +
+        "mounted persistent volume elsewhere. Verify DATA_DIR/DB_PATH before treating this as a stable deploy.",
+    });
+  }
+} catch (e) {
+  structuredLog("info", "data_dir_persistence_check_unavailable", { error: String(e?.message || e) });
 }
 
 // Optional: enable thin realtime mirror (WebSockets) for queues/jobs/panels.

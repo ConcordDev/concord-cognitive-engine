@@ -6,6 +6,7 @@ import { resumeAudioContext } from '../../lib/audio/unlock';
 import { api as apiClient } from '../../lib/api/client';
 import { tensionStemParams, ghostStepParams, ghostStepWorldPos, type TensionBand } from '../../lib/audio/horror-tension';
 import { recolorChord, modeForIntensity, type MusicMode } from '../../lib/concordia/music-mode';
+import { ReverbZoneManager, occlusionToFilterParams, type ReverbZoneType } from '../../lib/world-lens/spatial-audio';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -92,6 +93,22 @@ const DISTRICT_AUDIO: Record<DistrictName, DistrictAudio> = {
   silent:      { freq: 0,    type: 'sine',     noise: 0,    volume: 0   },
 };
 
+// World Lens Phase 2 (Activate Existing Rendering) — reverb-zone character
+// per district, used only while state.isInterior is true (see the
+// reverb-zone effect below). Big worked/industrial spaces and echoey civic
+// halls get the long, bright large_hall response; tighter commercial/market
+// interiors get small_room; the grid/arena's hard surfaces read as tunnel-
+// like flutter echo; everything else defaults to small_room, the safest
+// "generic indoor room" character.
+const DISTRICT_REVERB_ZONE: Record<DistrictName, ReverbZoneType> = {
+  forge: 'large_hall', industrial: 'large_hall',
+  academy: 'large_hall', observatory: 'large_hall', civic: 'large_hall',
+  grid: 'tunnel', arena: 'tunnel',
+  docks: 'small_room', commons: 'small_room', exchange: 'small_room',
+  market: 'small_room', tech: 'small_room', nexus: 'small_room',
+  frontier: 'small_room', arts: 'small_room', silent: 'small_room',
+};
+
 /* ── SFX synthesizer config ───────────────────────────────────── */
 
 interface SFXDef { freq: number; type: OscillatorType; duration: number; attack: number; decay: number; semitones?: number[] }
@@ -128,6 +145,10 @@ const SFX_MAP: Record<string, SFXDef> = {
   // missed attack is audible. Light is a quick airy whoosh; heavy is lower + longer.
   'combat-swing':      { freq: 520,  type: 'sawtooth', duration: 0.13, attack: 0.001, decay: 0.12, semitones: [0, -7] },
   'combat-swing-heavy':{ freq: 300,  type: 'sawtooth', duration: 0.22, attack: 0.002, decay: 0.20, semitones: [0, -9] },
+  // Ranged combat — firearm discharge. Short, sharp, high-frequency square
+  // crack, deliberately distinct in timbre from the melee swoosh voices so
+  // gunfire reads as gunfire rather than another sword swing.
+  'combat-gunshot':    { freq: 2200, type: 'square',   duration: 0.06, attack: 0.001, decay: 0.05 },
   // combat layer atoms — high transient tick + body thump + bone crack used by hit-confirm
   'hit-transient':     { freq: 1800, type: 'triangle', duration: 0.04, attack: 0.001, decay: 0.035 },
   'hit-thump-deep':    { freq: 38,   type: 'sawtooth', duration: 0.22, attack: 0.001, decay: 0.20 },
@@ -300,6 +321,16 @@ function playToneSpatial(
   masterGain: GainNode,
   worldPos: { x: number; y: number; z: number },
   pitchMul = 1,
+  // World Lens Phase 2 — occlusion in [0,1] (1 = open line of sight, the
+  // default/back-compat behavior). This engine has no real per-source
+  // raycast signal yet, so the one real caller-supplied value today is
+  // "the listener is indoors" (see the setInterior-driven call site),
+  // which honestly muffles ALL spatial SFX while indoors rather than
+  // fabricating a per-source line-of-sight result. Uses the same
+  // occlusionToFilterParams curve OccludedSoundEmitter applies, so a real
+  // per-source raycast can replace the caller's heuristic later without
+  // touching this function.
+  occlusion = 1,
 ): void {
   const panner = ctx.createPanner();
   panner.panningModel  = 'HRTF';
@@ -310,7 +341,25 @@ function playToneSpatial(
   panner.positionX.value = worldPos.x;
   panner.positionY.value = worldPos.y;
   panner.positionZ.value = worldPos.z;
-  panner.connect(masterGain);
+
+  // Tones always connect INTO the panner below; only what the panner
+  // connects to next differs (straight to masterGain, or through a
+  // lowpass filter + gain stage first when occluded).
+  if (occlusion < 1) {
+    const { freq, gain: occGain } = occlusionToFilterParams(occlusion);
+    const occFilter = ctx.createBiquadFilter();
+    occFilter.type = 'lowpass';
+    occFilter.frequency.value = freq;
+    occFilter.Q.value = 0.5;
+    const occGainNode = ctx.createGain();
+    occGainNode.gain.value = occGain;
+    panner.connect(occFilter);
+    occFilter.connect(occGainNode);
+    occGainNode.connect(masterGain);
+    setTimeout(() => { try { occFilter.disconnect(); occGainNode.disconnect(); } catch { /* ok */ } }, def.duration * 1000 + 300);
+  } else {
+    panner.connect(masterGain);
+  }
 
   const baseFreqs = def.semitones
     ? def.semitones.map(s => def.freq * Math.pow(2, s / 12))
@@ -520,6 +569,16 @@ export default function SoundscapeEngine({
   const crossfadeTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioCtxRef     = useRef<AudioContext | null>(null);
   const masterGainRef   = useRef<GainNode | null>(null);
+  // World Lens Phase 2 (Activate Existing Rendering) — reverb zones + spatial
+  // SFX occlusion. reverbManagerRef is created once alongside masterGainRef
+  // (see initAudio) and masterGain is routed through it instead of straight
+  // to ctx.destination. interiorRef mirrors state.isInterior so the
+  // playToneSpatial call sites (some inside setTimeout callbacks, none of
+  // them re-subscribed on every interior change) can read the current value
+  // without a stale closure.
+  const reverbManagerRef = useRef<ReverbZoneManager | null>(null);
+  const interiorRef      = useRef(false);
+  const reverbLastTickRef = useRef<number | null>(null);
   const droneOscRef     = useRef<OscillatorNode | null>(null);
   const droneGainRef    = useRef<GainNode | null>(null);
   const noiseSourceRef  = useRef<AudioBufferSourceNode | null>(null);
@@ -549,7 +608,7 @@ export default function SoundscapeEngine({
       if (now - entry.queuedAt > 2000) continue;
       const def = SFX_MAP[entry.sfxId];
       if (!def) continue;
-      if (entry.spatial) playToneSpatial(ctx, def, masterGainRef.current, entry.spatial);
+      if (entry.spatial) playToneSpatial(ctx, def, masterGainRef.current, entry.spatial, 1, interiorRef.current ? 0.55 : 1);
       else playToneSequence(ctx, def, masterGainRef.current);
     }
   }, []);
@@ -566,7 +625,17 @@ export default function SoundscapeEngine({
     if (!masterGainRef.current) {
       masterGainRef.current = ctx.createGain();
       masterGainRef.current.gain.setValueAtTime(0.6, ctx.currentTime);
-      masterGainRef.current.connect(ctx.destination);
+      // World Lens Phase 2 — route the master gain through the reverb-zone
+      // manager instead of straight to ctx.destination, so every sound this
+      // engine plays (drone, SFX, weather, music-stems) gets the district's
+      // real reverb character while state.isInterior is true. connectSource
+      // wires BOTH the dry path (unchanged passthrough) and the wet/convolver
+      // send; when no zone is active the wet mix is 0, so exterior audio is
+      // unaffected.
+      if (!reverbManagerRef.current) {
+        reverbManagerRef.current = new ReverbZoneManager(ctx);
+      }
+      reverbManagerRef.current.connectSource(masterGainRef.current);
     }
     return ctx;
   }, [flushPendingSfx]);
@@ -680,6 +749,44 @@ export default function SoundscapeEngine({
       ctx.listener.upY.setValueAtTime(1, ctx.currentTime);
       ctx.listener.upZ.setValueAtTime(0, ctx.currentTime);
     } catch { /* older Safari may not support AudioParam on listener */ }
+  }, [playerPosition]);
+
+  // World Lens Phase 2 (Activate Existing Rendering) — reverb zone follows
+  // the player. ReverbZoneManager.update() sweeps a registered-zones list
+  // against a world position and picks the innermost containing zone; this
+  // component has no real per-building geometry to register as zones, so it
+  // maintains ONE zone that re-centers on the player and is only present
+  // while state.isInterior is true (the one real "am I indoors" signal this
+  // engine already tracks) — its type comes from DISTRICT_REVERB_ZONE for
+  // the current district, its radius is large enough to always contain the
+  // player wherever they are within that room. Exterior clears the zone
+  // list entirely, which makes update() naturally settle wet=0 (dry/outdoor)
+  // without needing a real 'outdoor' zone circle we can't back with real
+  // room bounds either.
+  useEffect(() => { interiorRef.current = state.isInterior; }, [state.isInterior]);
+
+  useEffect(() => {
+    const mgr = reverbManagerRef.current;
+    if (!mgr || !playerPosition) return;
+    mgr.clearZones();
+    if (state.isInterior) {
+      mgr.addZone({
+        type: DISTRICT_REVERB_ZONE[state.currentDistrict] ?? 'small_room',
+        center: { x: playerPosition.x, y: playerPosition.y, z: playerPosition.z },
+        radius: 500,
+        wetGain: 0.55,
+      });
+    }
+  }, [state.isInterior, state.currentDistrict, playerPosition]);
+
+  useEffect(() => {
+    const mgr = reverbManagerRef.current;
+    if (!mgr || !playerPosition) return;
+    const now = performance.now();
+    const last = reverbLastTickRef.current;
+    const delta = last != null ? Math.min(0.25, (now - last) / 1000) : 1 / 60;
+    reverbLastTickRef.current = now;
+    mgr.update(playerPosition.x, playerPosition.z, delta);
   }, [playerPosition]);
 
   // ── v2.0 Community music tracks layer ────────────────────────────
@@ -886,6 +993,8 @@ export default function SoundscapeEngine({
       try { weatherSrcRef.current?.stop(); } catch { /* ok */ }
       try { weatherRumbleRef.current?.stop(); } catch { /* ok */ }
       musicElRef.current?.pause();
+      try { reverbManagerRef.current?.dispose(); } catch { /* ok */ }
+      reverbManagerRef.current = null;
       // Close the AudioContext itself. This is the actual fix for the
       // stacking-context leak: the individual .stop() calls above only
       // silence the source nodes THIS effect knows about — close() is
@@ -987,9 +1096,10 @@ export default function SoundscapeEngine({
       for (const step of layers) {
         const def = SFX_MAP[step.sfx];
         if (!def) continue;
-        if (step.delayMs <= 0) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit);
+        const occ = interiorRef.current ? 0.55 : 1;
+        if (step.delayMs <= 0) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit, occ);
         else setTimeout(() => {
-          if (masterGainRef.current) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit);
+          if (masterGainRef.current) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit, interiorRef.current ? 0.55 : 1);
         }, step.delayMs);
       }
       return;
@@ -1001,7 +1111,7 @@ export default function SoundscapeEngine({
       enqueueSfx(sfxId, worldPos);
       return;
     }
-    playToneSpatial(ctx, def, masterGainRef.current, worldPos, pitchJitter());
+    playToneSpatial(ctx, def, masterGainRef.current, worldPos, pitchJitter(), interiorRef.current ? 0.55 : 1);
   }, [initAudio, enqueueSfx]);
 
   const playMusicTrack = useCallback((url: string) => {

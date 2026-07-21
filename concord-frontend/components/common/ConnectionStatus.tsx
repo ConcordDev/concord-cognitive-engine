@@ -2,9 +2,22 @@
 
 /**
  * ConnectionStatus — Shows banner when backend is offline or serving stale data.
- * Checks /api/brain/health every `poll.connectionStatusMs` (default 20s,
- * server-tunable via /api/config/client — see hooks/useClientConfig.ts) and
- * shows a top banner if offline.
+ * Checks /health every `poll.connectionStatusMs` (default 20s, server-tunable
+ * via /api/config/client — see hooks/useClientConfig.ts) and shows a top
+ * banner if offline.
+ *
+ * Was checking /api/brain/health, which is the wrong signal: that endpoint's
+ * whole job is live-probing all 5 Ollama brain URLs (up to 8s each, capped by
+ * Promise.all so worst case ~8s) — its own code comment already documents
+ * this exact failure mode biting a DIFFERENT pair of callers ("concurrent
+ * callers... filling the request-timeout window and triggering ECONNRESET").
+ * Every page, for every user, polling that same expensive endpoint every 20s
+ * with only a 5s client-side abort raced a legitimate multi-brain probe and
+ * lost often — a slow/unreachable LLM brain (an expected, handled-elsewhere
+ * degraded state; see CONCORD_DISABLE_BRAINS) got misreported as "Connection
+ * lost. Working offline," which is only true of the app server itself. /health
+ * is a cheap in-memory liveness probe (no external round-trips; ~a few ms
+ * even under load) — the correct thing to gate "is my backend reachable" on.
  */
 
 import { useState, useEffect } from 'react';
@@ -46,7 +59,7 @@ export function ConnectionStatus() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch('/api/brain/health', {
+        const res = await fetch('/health', {
           signal: AbortSignal.timeout(5000),
         });
         setOnline(res.ok);

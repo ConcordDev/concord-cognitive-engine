@@ -160,6 +160,26 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     npm install -g pm2
   fi
 
+  # ── Log rotation (Vector 9 — unbounded log growth) ──────────────────────
+  # Stability audit (2026-07-20) — FIXED a real gap: nothing rotated pm2's
+  # per-app logs (logs/backend-out.log, backend-error.log, frontend-*.log,
+  # cloudflared-*.log). Over weeks of uninterrupted uptime — the whole point
+  # of everything else fixed in this audit — these grow completely
+  # unbounded until disk fills, which then breaks writes for everything
+  # (see the SQLite WAL journal_size_limit fix from earlier the same
+  # audit — this is the same failure class). pm2-logrotate is the standard,
+  # correct fix: it's itself a pm2-managed module, so it's supervised the
+  # same way as every other process here. Idempotent — `pm2 install` is a
+  # no-op if already installed; `pm2 set` always applies the same config.
+  if ! pm2 list 2>/dev/null | grep -q "pm2-logrotate"; then
+    log "Installing pm2-logrotate (log rotation for pm2-managed logs)..."
+    pm2 install pm2-logrotate 2>&1 | tail -5 || log "WARNING: pm2-logrotate install failed — pm2 logs will grow unbounded until fixed manually."
+  fi
+  pm2 set pm2-logrotate:max_size 50M >/dev/null 2>&1 || true
+  pm2 set pm2-logrotate:retain 14 >/dev/null 2>&1 || true
+  pm2 set pm2-logrotate:compress true >/dev/null 2>&1 || true
+  pm2 set pm2-logrotate:rotateInterval "0 0 * * *" >/dev/null 2>&1 || true
+
   # Check Ollama installed
   if ! command -v ollama &>/dev/null; then
     log "ERROR: Ollama not found. Install from https://ollama.com/download"
@@ -213,6 +233,29 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     echo "${NEXT_PUBLIC_API_URL:-}" > "$BUILD_STAMP"
   fi
 
+  # ── Ollama brains (Vector 8 — the real 5-process architecture) ────────────
+  # Stability audit (2026-07-20) — FIXED a real gap: this script never called
+  # scripts/runpod-cognition.sh, so a plain `./startup.sh` run only ever got
+  # the OLD single-instance "ollama" pm2 app (now removed from
+  # ecosystem.config.cjs) — a single Ollama process on port 11434 with only
+  # 2 models resident at once, never the real 5-separate-process/per-role/
+  # CPU-pinned setup every other doc in this repo (.env.runpod,
+  # pin-processes.sh, CLAUDE.md's brain table) actually describes.
+  # runpod-cognition.sh is safely idempotent to re-run (its own cleanup
+  # stops any prior wrapper loops + pkills stale ollama processes before
+  # relaunching fresh), so this runs on every startup.sh invocation, not
+  # just first boot. Non-fatal — a box without a GPU or without
+  # runpod-cognition.sh present still starts (the script itself handles the
+  # no-GPU case with a CPU-fallback warning; the check below just guards a
+  # box where the file genuinely isn't there, e.g. a non-RunPod bare-metal
+  # target using --runpod for pm2 alone).
+  if [ -f "$SCRIPT_DIR/scripts/runpod-cognition.sh" ]; then
+    log "Launching the 5 Ollama brains (scripts/runpod-cognition.sh)..."
+    bash "$SCRIPT_DIR/scripts/runpod-cognition.sh" || log "WARNING: runpod-cognition.sh exited non-zero — check its output above; brains may be partially up."
+  else
+    log "WARNING: scripts/runpod-cognition.sh not found — brains must be started separately (or Ollama managed some other way)."
+  fi
+
   # Start or restart with RunPod env
   if pm2 list | grep -q "concord-backend"; then
     log "Restarting existing pm2 processes..."
@@ -239,11 +282,23 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
         pm2 restart concord-tunnel 2>/dev/null || true
       else
         log "Starting Cloudflare tunnel (supervised by PM2)..."
+        # Stability audit (2026-07-20) — FIXED a real bug: this used to start
+        # with --no-autorestart, then try to "fix" it with a second, malformed
+        # `pm2 start --name concord-tunnel --autorestart ...` call with no
+        # script/positional target — pm2 can't know what to (re)start from
+        # flags alone, so that line silently no-op'd (its error was swallowed
+        # by `2>/dev/null || true`). Net effect: the comment above claimed PM2
+        # supervision, but the ACTUAL running process had autorestart
+        # disabled — if cloudflared died for any reason (network blip, a
+        # Cloudflare-side issue, OOM), the tunnel stayed down and the site
+        # was externally unreachable with no automatic recovery until the
+        # 5-minute health-check cron noticed and force-restarted it. Fixed by
+        # setting --autorestart directly on the one real start command.
         pm2 start cloudflared \
           --name concord-tunnel \
-          --no-autorestart \
+          --autorestart \
+          --max-restarts 20 \
           -- tunnel --no-autoupdate run --token "${CLOUDFLARE_TUNNEL_TOKEN}"
-        pm2 start --name concord-tunnel --autorestart --max-restarts 20 2>/dev/null || true
         pm2 save
       fi
       log "Tunnel status: $(pm2 show concord-tunnel 2>/dev/null | grep status | head -1 || echo 'starting')"

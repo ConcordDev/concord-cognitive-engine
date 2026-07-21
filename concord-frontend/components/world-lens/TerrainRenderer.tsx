@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import { getDeltaAt as getTerrainDeltaAt } from '@/lib/world-lens/terrain-deform-store';
+import { warmTerrainTextures, getTerrainTextureSync } from '@/lib/world-lens/terrain-textures';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -57,6 +58,15 @@ const LOD_LEVELS: LODLevel[] = [
 
 const TERRAIN_SIZE = 2000; // 2km x 2km world
 const CHUNK_SIZE = 250;    // Each chunk is 250m x 250m
+
+// Real ground textures repeat every ~4m so a person-scale walk across a
+// chunk sees several tiles, not one giant stretched image. Applied as a
+// tiled multiplier on top of the existing per-vertex zone-color blend
+// below (which still does the AO + biome-border smoothing + natural
+// variation) — TextureLoader alone doesn't know CHUNK_SIZE, so the tile
+// scale lives here, not in terrain-textures.ts.
+const TERRAIN_TEXTURE_TILE_METERS = 4;
+const TERRAIN_TEXTURE_REPEAT = CHUNK_SIZE / TERRAIN_TEXTURE_TILE_METERS;
 
 /** Zone material configuration for texture splatting */
 const ZONE_MATERIALS: Record<TerrainZone, {
@@ -270,6 +280,14 @@ export default function TerrainRenderer({
       const THREE = await import('three');
       if (disposed) return;
 
+      // Real ground textures — kick off warming now (fire-and-forget, not
+      // awaited) so the FIRST build already benefits if a previous mount
+      // already warmed the cache; the .then() below retroactively applies
+      // textures to already-built chunks once loading resolves (matching
+      // the eventual-consistency tradeoff every other real-asset consumer
+      // in this codebase accepts — see weapon-archetypes.ts's own comment).
+      const terrainTexturesReady = warmTerrainTextures(THREE);
+
       // Determine heightmap resolution based on quality
       const resolutionMap = { low: 128, medium: 256, high: 512, ultra: 1024 };
       const resolution = resolutionMap[quality];
@@ -365,6 +383,18 @@ export default function TerrainRenderer({
             metalness: matConfig.metalness,
             flatShading: segments < 32,
           });
+
+          // Real ground texture, if already warmed (e.g. a prior mount
+          // already loaded it) — synchronous best-effort, same pattern as
+          // weapon-archetypes.ts's tryRealWeaponMesh. Combines with the
+          // vertex-color blend below via standard multiply (map × vertex
+          // color), so AO/biome-blend/natural-variation still apply on
+          // top of the real texture instead of being replaced by it.
+          const zoneTex = getTerrainTextureSync(zone);
+          if (zoneTex) {
+            zoneTex.repeat.set(TERRAIN_TEXTURE_REPEAT, TERRAIN_TEXTURE_REPEAT);
+            material.map = zoneTex;
+          }
 
           // Vertex color splatting + AO baking (valleys dark, hilltops bright — Skyrim style)
           const colors = new Float32Array(posAttr.count * 3);
@@ -496,6 +526,27 @@ export default function TerrainRenderer({
       collisionMeshRef.current = collisionMesh;
 
       terrainGroupRef.current = terrainGroup;
+
+      // Real ground textures — retroactive apply. Every chunk above was
+      // already built (synchronously, in one big loop) by the time texture
+      // loading can realistically resolve, so the common case is: chunks
+      // exist with vertex-color-only materials, THEN textures land and get
+      // applied here. Skips the collision mesh (no `zone` in its userData).
+      terrainTexturesReady.then(() => {
+        if (disposed) return;
+        for (const child of terrainGroup.children as InstanceType<typeof import('three').Mesh>[]) {
+          const ud = child.userData as { isTerrainChunk?: boolean; zone?: string } | undefined;
+          if (!ud?.isTerrainChunk || !ud.zone) continue;
+          const tex = getTerrainTextureSync(ud.zone);
+          if (!tex) continue;
+          tex.repeat.set(TERRAIN_TEXTURE_REPEAT, TERRAIN_TEXTURE_REPEAT);
+          const mat = child.material as InstanceType<typeof import('three').MeshStandardMaterial> | undefined;
+          if (mat && !mat.map) {
+            mat.map = tex;
+            mat.needsUpdate = true;
+          }
+        }
+      });
 
       // Dispatch custom event so parent scene can pick up the terrain group
       if (typeof window !== 'undefined') {

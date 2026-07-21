@@ -22,6 +22,7 @@ import { ContentPublisher } from '@/components/lens/ContentPublisher';
 import { LensStateProvider } from '@/components/lens/LensStateProvider';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useDiegetic } from '@/hooks/useDiegetic';
+import { useWorldHudHidden } from '@/hooks/useWorldHudHidden';
 import {
   isCoreLens,
   getParentCoreLens,
@@ -88,6 +89,11 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
 
   // Apply per-lens visual identity (CSS variables)
   useLensIdentity(slug);
+  // World Lens's manual "hide HUD" toggle (H key) used to leave this
+  // globally-mounted debug/status chrome on screen regardless — it's now
+  // one of the ~15 elements that respect it, without affecting any other
+  // lens (see the hook doc comment).
+  const worldHudHidden = useWorldHudHidden();
 
   if (!slug) return <>{children}</>;
 
@@ -139,9 +145,11 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Brain status monitor (top-left floating) */}
-      <div className="fixed top-20 left-4 z-40">
-        <BrainMonitor />
-      </div>
+      {!worldHudHidden && (
+        <div className="fixed top-20 left-4 z-40">
+          <BrainMonitor />
+        </div>
+      )}
     </div>
   );
 }

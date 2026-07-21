@@ -219,6 +219,45 @@ export interface LensEntry {
    * from domain names to scoped `domain:verb` form).
    */
   version?: number;
+
+  /**
+   * World Lens plan Phase 5 (Panels: Glance → Summon → Sanctum). The
+   * "Sanctum" tier — a full immersive-takeover surface (Builder, World
+   * Editor, admin/ops tooling) that a newcomer or standard player never
+   * needs and shouldn't stumble into via search. When set, the Sidebar and
+   * CommandPalette hide this entry unless the viewer's
+   * `useHUDContext().expertiseLevel` (types.ts's ExpertiseLevel:
+   * 'newcomer' | 'standard' | 'detailed' | 'engineering') is at or above
+   * this value, per `meetsExpertiseGate()` below. Absent means no gate —
+   * the overwhelming majority of the ~260 entries are player-facing and
+   * must stay reachable regardless of expertise level; only set this on
+   * entries whose OWN description is unambiguously developer/admin/
+   * world-building tooling (verified individually, not inferred from
+   * `category: 'system'` alone — that bucket also holds normal
+   * account-management entries like Sessions/Sync/API-Keys that must stay
+   * reachable by every player).
+   */
+  minExpertise?: 'newcomer' | 'standard' | 'detailed' | 'engineering';
+}
+
+const EXPERTISE_RANK: Record<'newcomer' | 'standard' | 'detailed' | 'engineering', number> = {
+  newcomer: 0,
+  standard: 1,
+  detailed: 2,
+  engineering: 3,
+};
+
+/**
+ * True when `viewerLevel` satisfies `entry.minExpertise` (or the entry has
+ * no gate at all). The Sidebar and CommandPalette both filter through this
+ * single function so the gate can't drift between the two surfaces.
+ */
+export function meetsExpertiseGate(
+  entry: Pick<LensEntry, 'minExpertise'>,
+  viewerLevel: 'newcomer' | 'standard' | 'detailed' | 'engineering',
+): boolean {
+  if (!entry.minExpertise) return true;
+  return EXPERTISE_RANK[viewerLevel] >= EXPERTISE_RANK[entry.minExpertise];
 }
 
 // ── Core Lens Consolidation ──────────────────────────────────────
@@ -730,6 +769,11 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['console', 'logs', 'troubleshoot'],
     coreLens: 'code',
     tabLabel: 'Debug',
+    // World Lens Phase 5 (Sanctum tier) — this hides it from top-level
+    // Sidebar/CommandPalette discovery for non-engineering viewers; the
+    // Code core lens's own internal sub-tab switcher isn't gated by this
+    // (out of this pass's scope — a separate, smaller follow-up).
+    minExpertise: 'engineering',
   },
   {
     id: 'database',
@@ -934,6 +978,7 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/admin',
     order: 104,
     keywords: ['settings', 'configuration', 'manage'],
+    minExpertise: 'engineering', // World Lens Phase 5 (Sanctum tier)
   },
   {
     id: 'audit',
@@ -2728,6 +2773,7 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/ops-telemetry',
     order: 91,
     keywords: ['ops', 'telemetry', 'heartbeat', 'worker', 'brain', 'concurrency', 'shard'],
+    minExpertise: 'engineering', // World Lens Phase 5 (Sanctum tier)
   },
   {
     id: 'quests',
@@ -2983,6 +3029,7 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/repair-telemetry',
     order: 364,
     keywords: ['repair', 'telemetry', 'health', 'autonomic', 'escalation', 'maintenance', 'ops', 'homeostasis'],
+    minExpertise: 'engineering', // World Lens Phase 5 (Sanctum tier)
   },
   {
     id: 'move-builder',
@@ -3067,7 +3114,7 @@ export const LENS_REGISTRY: LensEntry[] = [
   { id: 'forecast', name: 'Forecast', icon: TrendingUp, description: 'Predictions and forward-sim', category: 'knowledge', showInSidebar: false, showInCommandPalette: true, path: '/lenses/forecast', order: 90, keywords: ['forecast', 'predict', 'forward', 'sim'] },
   { id: 'forge', name: 'Forge', icon: Hammer, description: 'Single-file app generator', category: 'ai', showInSidebar: false, showInCommandPalette: true, path: '/lenses/forge', order: 90, keywords: ['forge', 'app', 'generate', 'build', 'template'] },
   { id: 'ledger', name: 'The Ledger', icon: Scale, description: 'The flows the Curtain hides — managed parity + extraction liens (Sere)', category: 'governance', showInSidebar: false, showInCommandPalette: true, path: '/lenses/ledger', order: 91, keywords: ['ledger', 'sere', 'corruption', 'flows', 'parity', 'lien', 'tessera', 'mercy fund', 'satire'] },
-  { id: 'foundry', name: 'Foundry', icon: Factory, description: 'World-builder substrate', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/foundry', order: 90, keywords: ['foundry', 'world', 'build', 'create'] },
+  { id: 'foundry', name: 'Foundry', icon: Factory, description: 'World-builder substrate', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/foundry', order: 90, keywords: ['foundry', 'world', 'build', 'create'], minExpertise: 'engineering' /* World Lens Phase 5 (Sanctum tier) */ },
   { id: 'gallery', name: 'Gallery', icon: Landmark, description: 'Multi-museum art browsing, deep-zoom, curated exhibits & virtual rooms', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/gallery', order: 90, keywords: ['gallery', 'art', 'museum', 'painting', 'artwork', 'exhibit', 'image'] },
   { id: 'ghost-tracker', name: 'Ghost Tracker', icon: Eye, description: 'Track ghosts in horror mode', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/ghost-tracker', order: 90, keywords: ['ghost', 'tracker', 'horror', 'haunt'] },
   { id: 'goddess', name: 'Goddess', icon: Sparkles, description: 'Commune with Concordia', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/goddess', order: 90, keywords: ['goddess', 'concordia', 'commune', 'divine'] },
@@ -3098,7 +3145,7 @@ export const LENS_REGISTRY: LensEntry[] = [
   { id: 'tools', name: 'Tools', icon: Wrench, description: 'Utility tools', category: 'system', showInSidebar: false, showInCommandPalette: true, path: '/lenses/tools', order: 90, keywords: ['tools', 'utility', 'helper'] },
   { id: 'tournaments', name: 'Tournaments', icon: Trophy, description: 'Competitive tournaments', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/tournaments', order: 90, keywords: ['tournament', 'compete', 'bracket', 'match'] },
   { id: 'wellness', name: 'Wellness', icon: Heart, description: 'Health and wellness', category: 'progression', showInSidebar: false, showInCommandPalette: true, path: '/lenses/wellness', order: 90, keywords: ['wellness', 'health', 'fitness', 'care'] },
-  { id: 'world-creator', name: 'World Creator', icon: Globe, description: 'Create a new world', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/world-creator', order: 90, keywords: ['world', 'create', 'builder', 'new'] },
+  { id: 'world-creator', name: 'World Creator', icon: Globe, description: 'Create a new world', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/world-creator', order: 90, keywords: ['world', 'create', 'builder', 'new'], minExpertise: 'engineering' /* World Lens Phase 5 (Sanctum tier) */ },
   { id: 'worldmodel', name: 'World Model', icon: Network, description: 'The world model', category: 'ai', showInSidebar: false, showInCommandPalette: true, path: '/lenses/worldmodel', order: 90, keywords: ['world', 'model', 'sim', 'state'] },
 ];
 
@@ -3158,9 +3205,29 @@ export function getSidebarLenses(): LensEntry[] {
   return LENS_REGISTRY.filter((l) => l.showInSidebar).sort((a, b) => a.order - b.order);
 }
 
-/** Lenses available in the command palette, ordered. */
-export function getCommandPaletteLenses(): LensEntry[] {
-  return LENS_REGISTRY.filter((l) => l.showInCommandPalette).sort((a, b) => a.order - b.order);
+/**
+ * Lenses available in the command palette, ordered. World Lens Phase 5
+ * (Sanctum tier) — `viewerExpertise` additionally filters out entries
+ * whose `minExpertise` the viewer doesn't meet (Debug/Admin/Ops Telemetry/
+ * Repair Telemetry/Foundry/World Creator), so a newcomer or standard
+ * player can't stumble into developer/admin/world-builder tooling by
+ * searching for it. Defaults to `'engineering'` (the most permissive
+ * level) so callers that don't pass it reproduce the exact prior
+ * behavior. `userRole` additionally filters out sovereign lenses
+ * (`admin`/`command-center`) via `isLensVisible` for non-admin/sovereign
+ * viewers — Ctrl+K search must not be a bypass around the sidebar's
+ * `getExtensionsByCategory` hiding the same lenses. Defaults to `'user'`
+ * (least-privileged — fails closed) rather than `'engineering'`'s
+ * permissive default, since an omitted role has no safe permissive
+ * reading the way an omitted expertise level does.
+ */
+export function getCommandPaletteLenses(
+  viewerExpertise: 'newcomer' | 'standard' | 'detailed' | 'engineering' = 'engineering',
+  userRole: string = 'user',
+): LensEntry[] {
+  return LENS_REGISTRY
+    .filter((l) => l.showInCommandPalette && meetsExpertiseGate(l, viewerExpertise) && isLensVisible(l.id, userRole))
+    .sort((a, b) => a.order - b.order);
 }
 
 /** All lens IDs — used for build-time route validation. */
@@ -3186,10 +3253,18 @@ export function getLensesByCategory(): Record<LensCategory, LensEntry[]> {
 
 // ── Sovereign visibility & sidebar category grouping ──────────
 
-/** Lens IDs historically restricted — now open to all authenticated users */
-export const SOVEREIGN_LENSES = [] as const;
+/**
+ * Lens IDs restricted to admin/sovereign roles. Mirrors the `Sovereign`
+ * sidebar category below and the backend's own `requireRole("admin",
+ * "sovereign")` gates on the routes these two lenses call
+ * (`/api/quality/thresholds`, `/api/loaf/status`, `/api/dtus/shadow/pending`,
+ * plus the rest of admin/command-center's already-safe user-scoped or
+ * shared routes) — the frontend hide is defense-in-depth, not the
+ * security boundary; the backend `requireRole` middleware is.
+ */
+export const SOVEREIGN_LENSES = ['admin', 'command-center'] as const;
 
-/** Set for fast lookup (empty — no lenses restricted) */
+/** Set for fast lookup. */
 const SOVEREIGN_LENS_SET = new Set<string>(SOVEREIGN_LENSES);
 
 /**
@@ -3413,10 +3488,15 @@ export function getSidebarCategory(lensId: string): string {
 
 /**
  * Checks if a lens is visible to the given user role.
- * Every lens is visible to all authenticated users. No exceptions.
+ * Every lens is visible to all authenticated users EXCEPT the sovereign
+ * lenses (`SOVEREIGN_LENSES` — currently `admin` + `command-center`),
+ * which require `role === 'admin' || role === 'sovereign'`. An
+ * unrecognized/missing role is treated as the least-privileged case
+ * (fails closed on sovereign lenses, not open).
  */
-export function isLensVisible(_lensId: string, _userRole: string): boolean {
-  return true;
+export function isLensVisible(lensId: string, userRole: string): boolean {
+  if (!SOVEREIGN_LENS_SET.has(lensId)) return true;
+  return userRole === 'admin' || userRole === 'sovereign';
 }
 
 // ── Convenience aliases ─────────────────────────────────────────
@@ -3467,11 +3547,22 @@ export function toLensConfig(entry: LensEntry): LensConfig {
 
 /**
  * Returns extension lenses grouped by sidebar category for display.
- * Filters by user role (hides sovereign lenses for non-sovereign users).
+ * Filters by user role via `isLensVisible` (hides sovereign lenses —
+ * `admin`/`command-center` — for non-admin/sovereign users). World Lens
+ * Phase 5 (Sanctum tier) additionally filters by `viewerExpertise` via
+ * `meetsExpertiseGate` — kept as a separate filter since it gates a
+ * different axis (developer/world-builder tooling by expertise level,
+ * not admin-only data by role) and callers may want one without the
+ * other. Defaults to `'engineering'` (the most permissive expertise
+ * level) so omitting the argument reproduces prior expertise-gating
+ * behavior for any caller that doesn't pass it; `userRole` has no
+ * equivalent permissive default — callers MUST pass the real role, or
+ * sovereign lenses stay hidden (fail closed).
  * Each category entry contains resolved LensEntry objects.
  */
 export function getExtensionsByCategory(
-  userRole: string = 'user'
+  userRole: string = 'user',
+  viewerExpertise: 'newcomer' | 'standard' | 'detailed' | 'engineering' = 'engineering',
 ): { category: string; color: string; lenses: LensEntry[] }[] {
   const extensions = getExtensionLenses();
   const visibleCategories = getVisibleSidebarCategories(userRole);
@@ -3497,7 +3588,7 @@ export function getExtensionsByCategory(
   for (const [category, lensIds] of Object.entries(visibleCategories)) {
     const idSet = new Set(lensIds);
     const lenses = extensions.filter((l) => {
-      if (idSet.has(l.id) && isLensVisible(l.id, userRole)) {
+      if (idSet.has(l.id) && isLensVisible(l.id, userRole) && meetsExpertiseGate(l, viewerExpertise)) {
         categorized.add(l.id);
         return true;
       }
@@ -3510,7 +3601,7 @@ export function getExtensionsByCategory(
 
   // Collect uncategorized extensions into "Other"
   const uncategorized = extensions.filter(
-    (l) => !categorized.has(l.id) && isLensVisible(l.id, userRole)
+    (l) => !categorized.has(l.id) && isLensVisible(l.id, userRole) && meetsExpertiseGate(l, viewerExpertise)
   );
   if (uncategorized.length > 0) {
     result.push({ category: 'Other', color: categoryColors['Other'], lenses: uncategorized });

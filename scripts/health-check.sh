@@ -33,6 +33,43 @@ check_endpoint() {
   fi
 }
 
+# ── Log rotation for logs pm2-logrotate doesn't cover ────────────────────────
+# Stability audit (2026-07-20) — pm2-logrotate (installed by startup.sh)
+# covers logs/backend-*.log, frontend-*.log, cloudflared-*.log — every
+# pm2-managed process. It does NOT cover: (a) this script's OWN output
+# (logs/health.log, appended forever by the cron redirect), or (b) the 5
+# Ollama brain logs (scripts/runpod-cognition.sh's respawn loop appends to
+# them, by design, so a crash's full context survives the respawn — but
+# "append forever" needs a backstop). Truncating a file that's currently
+# open for O_APPEND writes (cron's `>>` redirect for health.log, and the
+# respawn loop's own `>>` for brain logs) is safe and standard — POSIX
+# guarantees an O_APPEND fd always seeks to the current end-of-file before
+# each write, so subsequent writes correctly continue from the new
+# (post-truncation) end rather than leaving a sparse hole. This is the same
+# principle logrotate's own `copytruncate` mode relies on.
+CONCORD_LOG_ROTATE_MAX_BYTES="${CONCORD_LOG_ROTATE_MAX_BYTES:-20971520}"  # 20MB
+rotate_if_large() {
+  local f="$1" size
+  [ -f "$f" ] || return 0
+  size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo 0)
+  if [ "${size:-0}" -gt "$CONCORD_LOG_ROTATE_MAX_BYTES" ]; then
+    if command -v gzip &>/dev/null; then
+      cp "$f" "${f}.1" 2>/dev/null && gzip -f "${f}.1" 2>/dev/null && : > "$f" \
+        && echo "[$TIMESTAMP] INFO: rotated $f (was ${size} bytes) -> ${f}.1.gz"
+    else
+      : > "$f" && echo "[$TIMESTAMP] INFO: rotated $f (was ${size} bytes) — truncated (gzip unavailable)"
+    fi
+  fi
+}
+rotate_if_large "$SCRIPT_DIR/logs/health.log"
+BRAIN_LOG_DIR="${LOG_DIR:-/tmp/concord-brains}"
+if [ -d "$BRAIN_LOG_DIR" ]; then
+  for bf in "$BRAIN_LOG_DIR"/brain-*.log; do
+    [ -f "$bf" ] || continue
+    rotate_if_large "$bf"
+  done
+fi
+
 pm2_restart_if_stopped() {
   local name="$1"
   if command -v pm2 &>/dev/null; then
@@ -95,17 +132,43 @@ print(match[0]['pm2_env']['status'] if match else 'not_found')
   fi
 fi
 
-# ── Ollama brain health ──────────────────────────────────────────────────────
-OLLAMA_URL="${BRAIN_CONSCIOUS_URL:-http://localhost:11434}"
-OLLAMA_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 3 --max-time 5 "$OLLAMA_URL/api/tags" 2>/dev/null || echo "000")
-if [ "$OLLAMA_CODE" = "200" ]; then
-  echo "[$TIMESTAMP] OK: Ollama responding ($OLLAMA_URL)"
-else
-  echo "[$TIMESTAMP] WARN: Ollama not responding at $OLLAMA_URL (HTTP $OLLAMA_CODE)"
-  # Restart PM2-managed Ollama only if running in single-Ollama PM2 mode
-  if command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep -q "^│ ollama "; then
-    pm2_restart_if_stopped "ollama" || true
+# ── Ollama brain health (all 5, not just conscious) ──────────────────────────
+# Stability audit (2026-07-20) — FIXED: this only ever checked
+# BRAIN_CONSCIOUS_URL, so a crashed subconscious/utility/repair/vision brain
+# was completely invisible to this script — no WARN, no alert, nothing. The
+# restart attempt also only matched a pm2 process literally named "ollama"
+# (singular), which never exists in the real bare-metal topology (5 separate
+# processes on fixed ports 11434-11438, launched by
+# scripts/runpod-cognition.sh — not pm2-managed). Real recovery now lives in
+# that script's own per-brain respawn loop (same audit); this check's job is
+# now VISIBILITY — catching the case where a brain has exhausted its
+# respawn-loop restart cap and given up (logged as FATAL there), which has
+# no other alerting path. Checks all 5 real fixed ports, defaulting to
+# BRAIN_*_URL env vars when set (so this still works if ports are ever
+# reconfigured), and increments FAILURES (triggering the webhook alert
+# below) per brain that's down.
+declare -A OLLAMA_BRAIN_URLS=(
+  [conscious]="${BRAIN_CONSCIOUS_URL:-http://localhost:11434}"
+  [subconscious]="${BRAIN_SUBCONSCIOUS_URL:-http://localhost:11435}"
+  [utility]="${BRAIN_UTILITY_URL:-http://localhost:11436}"
+  [repair]="${BRAIN_REPAIR_URL:-http://localhost:11437}"
+  [vision]="${BRAIN_VISION_URL:-http://localhost:11438}"
+)
+for role in conscious subconscious utility repair vision; do
+  url="${OLLAMA_BRAIN_URLS[$role]}"
+  code=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 3 --max-time 5 "$url/api/tags" 2>/dev/null || echo "000")
+  if [ "$code" = "200" ]; then
+    echo "[$TIMESTAMP] OK: Ollama brain '$role' responding ($url)"
+  else
+    echo "[$TIMESTAMP] WARN: Ollama brain '$role' not responding at $url (HTTP $code) — check its respawn loop's own restart count in the brain-${role}.log; if it's exhausted CONCORD_BRAIN_MAX_RESTARTS, it needs a manual re-run of scripts/runpod-cognition.sh"
+    ((FAILURES++)) || true
   fi
+done
+# Legacy fallback: restart PM2-managed Ollama only if running in the older
+# single-Ollama PM2 mode (a process literally named "ollama") — harmless
+# no-op on the real 5-process bare-metal topology, kept for back-compat.
+if command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep -q "^│ ollama "; then
+  pm2_restart_if_stopped "ollama" || true
 fi
 
 # ── Disk space (warn if >85%, fail if >95%) ──────────────────────────────────

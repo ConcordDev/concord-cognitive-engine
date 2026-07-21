@@ -45,6 +45,7 @@ import { createSkinSSS } from '@/lib/world-lens/skin-sss-shader';
 import { FacialController } from '@/lib/concordia/facial-blend-shapes';
 import type { RichAppearanceConfig, HairStyle as RichHairStyle } from '@/lib/world-lens/character-schema';
 import { PBR_REFERENCE } from '@/lib/world-lens/character-schema';
+import { createWeapon } from '@/lib/concordia/weapon-archetypes';
 
 export interface EnhancedAvatarResult {
   group:    THREE.Group;
@@ -218,45 +219,190 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
   // Phase C3: pull weapon meshes from lib/concordia/weapon-archetypes
   // instead of inline procedural primitives. Faction-tinted, tier-3,
   // optional enchantment glow.
+  //
+  // Stability audit (2026-07-21) — the previous per-branch dynamic
+  // `require('@/lib/concordia/weapon-archetypes')` was silently swallowed
+  // by its own `try/catch` in any environment whose module loader doesn't
+  // resolve `@/...` path aliases through a raw runtime `require()` call
+  // (confirmed broken under plain Node and under this repo's own Vitest
+  // suite — `require()` only worked for Next.js's webpack build, which
+  // rewrites literal-string `require()` calls the same as `import`; there
+  // was no test coverage on this file to have ever caught it failing
+  // elsewhere). Replaced with a plain static top-level `import` — no
+  // circular-dependency risk (`weapon-archetypes.ts` and its own import,
+  // `asset-loader.ts`, don't import this file, directly or transitively)
+  // — which also means the per-branch try/catch was pure defensive
+  // clutter around a call that can't throw for any of these archetypes;
+  // removed along with it. Also added 2 new carry values this pass:
+  // `pistol`/`rifle` were already declared in `Accessories['carry']`
+  // (used as `carryDefault` by 5 real body-archetype presets — cyber /
+  // crime NPCs) but had no branch here at all, so those NPCs' equipped
+  // firearms rendered nothing.
   if (rich.accessories.carry?.includes('sword')) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const wa = require('@/lib/concordia/weapon-archetypes') as typeof import('@/lib/concordia/weapon-archetypes');
-      const sword = wa.createWeapon({
-        archetype: rich.bodyArchetype === 'legend' ? 'greatsword' : 'longsword',
-        tier: 3,
-        accentColor: rich.clothing.cape?.color ?? rich.clothing.top.color,
-        seed: rich.worldId + ':' + (rich.factionId ?? ''),
-      });
-      sword.position.set(p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.3, -p.headDepth * 0.2);
-      sword.rotation.z = 0.15;
-      group.add(sword);
-    } catch { /* fall back silently */ }
+    const sword = createWeapon({
+      archetype: rich.bodyArchetype === 'legend' ? 'greatsword' : 'longsword',
+      tier: 3,
+      accentColor: rich.clothing.cape?.color ?? rich.clothing.top.color,
+      seed: rich.worldId + ':' + (rich.factionId ?? ''),
+    });
+    sword.position.set(p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.3, -p.headDepth * 0.2);
+    sword.rotation.z = 0.15;
+    group.add(sword);
   }
   if (rich.accessories.carry?.includes('staff')) {
-    // Staff is bespoke (no weapon-archetypes equivalent yet) — keep
-    // procedural primitive.
-    const staffGeom = new THREE.CylinderGeometry(p.headWidth * 0.04, p.headWidth * 0.04, p.totalHeight * 0.9, 8);
-    const staffMat = new THREE.MeshStandardMaterial({
-      color: 0x6a4828, roughness: PBR_REFERENCE.wood.roughness, metalness: 0,
+    const staff = createWeapon({
+      archetype: 'staff',
+      tier: 3,
+      accentColor: rich.clothing.cape?.color ?? rich.clothing.top.color,
+      seed: rich.worldId + ':staff:' + (rich.factionId ?? ''),
     });
-    const staff = new THREE.Mesh(staffGeom, staffMat);
-    staff.position.set(p.shoulderWidth * 0.6, p.totalHeight * 0.45, 0);
+    // Grip-at-base pivot (both the real asset and the procedural
+    // fallback normalize/build to this convention) — position at hand
+    // height so the shaft/tip extend upward from the grip.
+    staff.position.set(p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.3, 0);
     group.add(staff);
   }
+  if (rich.accessories.carry?.includes('wand')) {
+    const wand = createWeapon({
+      archetype: 'wand',
+      tier: 3,
+      accentColor: rich.clothing.top.color,
+      seed: rich.worldId + ':wand:' + (rich.factionId ?? ''),
+    });
+    wand.position.set(p.shoulderWidth * 0.55, p.legLength + p.torsoLength * 0.35, -p.headDepth * 0.15);
+    group.add(wand);
+  }
   if (rich.accessories.carry?.includes('bow')) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const wa = require('@/lib/concordia/weapon-archetypes') as typeof import('@/lib/concordia/weapon-archetypes');
-      const bow = wa.createWeapon({
-        archetype: 'bow',
-        tier: 3,
-        accentColor: rich.clothing.top.color,
-        seed: rich.worldId + ':bow:' + (rich.factionId ?? ''),
-      });
-      bow.position.set(-p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.4, -p.headDepth * 0.2);
-      group.add(bow);
-    } catch { /* fall back silently */ }
+    const bow = createWeapon({
+      archetype: 'bow',
+      tier: 3,
+      accentColor: rich.clothing.top.color,
+      seed: rich.worldId + ':bow:' + (rich.factionId ?? ''),
+    });
+    bow.position.set(-p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.4, -p.headDepth * 0.2);
+    group.add(bow);
+  }
+  if (rich.accessories.carry?.includes('pistol')) {
+    const pistol = createWeapon({
+      archetype: 'firearm_pistol',
+      tier: 3,
+      accentColor: rich.clothing.top.color,
+      seed: rich.worldId + ':pistol:' + (rich.factionId ?? ''),
+    });
+    // Holstered at the hip, not held mid-air — pistols read as carried
+    // gear rather than a permanently-drawn weapon.
+    pistol.position.set(-p.hipWidth * 0.55, p.legLength * 0.55, p.headDepth * 0.3);
+    pistol.rotation.z = -Math.PI / 2;
+    group.add(pistol);
+  }
+  if (rich.accessories.carry?.includes('rifle')) {
+    const rifle = createWeapon({
+      archetype: 'firearm_rifle',
+      tier: 3,
+      accentColor: rich.clothing.top.color,
+      seed: rich.worldId + ':rifle:' + (rich.factionId ?? ''),
+    });
+    // Slung across the back, matching the bow's shoulder placement.
+    rifle.position.set(-p.shoulderWidth * 0.5, p.legLength + p.torsoLength * 0.55, -p.headDepth * 0.35);
+    rifle.rotation.z = Math.PI / 2.4;
+    rifle.rotation.y = Math.PI / 2;
+    group.add(rifle);
+  }
+
+  // Non-weapon carry gear — satchel/tome/tool-belt/pouch previously had no
+  // branch here at all (unlike every weapon `carry` value above), despite
+  // being real `carryDefault` kit on several archetype presets
+  // (scholar/scavenger/mechanic/etc. — character-schema.ts). Simple
+  // procedural props, same leather/cotton PBR reference the boots above
+  // already use — not routed through weapon-archetypes.ts, since these
+  // aren't combat weapons and don't need a tip/discharge point.
+  const beltColor = new THREE.Color(rich.clothing.belt?.color ?? '#5c3a21');
+  const beltMat = new THREE.MeshStandardMaterial({
+    color: beltColor,
+    roughness: PBR_REFERENCE.leather.roughness,
+    metalness: 0,
+  });
+  if (rich.accessories.carry?.includes('satchel')) {
+    const satchel = new THREE.Mesh(
+      new THREE.BoxGeometry(p.headWidth * 0.7, p.headWidth * 0.9, p.headWidth * 0.4),
+      beltMat.clone(),
+    );
+    // Hangs at the right hip, opposite the pistol holster.
+    satchel.position.set(p.hipWidth * 0.6, p.legLength * 0.55, p.headDepth * 0.15);
+    satchel.rotation.z = 0.08;
+    satchel.castShadow = true;
+    satchel.name = 'carry_satchel';
+    group.add(satchel);
+  }
+  if (rich.accessories.carry?.includes('pouch')) {
+    const pouch = new THREE.Mesh(
+      new THREE.BoxGeometry(p.headWidth * 0.4, p.headWidth * 0.45, p.headWidth * 0.3),
+      beltMat.clone(),
+    );
+    // Small, front-center on the belt line — distinct from the larger satchel.
+    pouch.position.set(0, p.legLength * 0.55, p.headDepth * 0.4);
+    pouch.castShadow = true;
+    pouch.name = 'carry_pouch';
+    group.add(pouch);
+  }
+  if (rich.accessories.carry?.includes('tool-belt')) {
+    const beltBand = new THREE.Mesh(
+      new THREE.TorusGeometry(p.hipWidth * 0.62, p.headWidth * 0.1, 6, 16),
+      beltMat.clone(),
+    );
+    beltBand.rotation.x = Math.PI / 2;
+    beltBand.position.set(0, p.legLength * 0.58, 0);
+    beltBand.castShadow = true;
+    beltBand.name = 'carry_tool_belt';
+    group.add(beltBand);
+    // A few small tool cylinders around the band so it reads as equipped
+    // gear, not just a plain ring — deterministic angles, not random, so
+    // the mesh is stable across re-renders of the same character.
+    const toolMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#8a8a8a'),
+      roughness: PBR_REFERENCE.iron.roughness,
+      metalness: PBR_REFERENCE.iron.metalness,
+    });
+    const toolAngles = [0.4, 1.6, -1.2];
+    for (const angle of toolAngles) {
+      const tool = new THREE.Mesh(
+        new THREE.CylinderGeometry(p.headWidth * 0.06, p.headWidth * 0.06, p.headWidth * 0.35, 6),
+        toolMat,
+      );
+      tool.position.set(
+        Math.sin(angle) * p.hipWidth * 0.62,
+        p.legLength * 0.5,
+        Math.cos(angle) * p.hipWidth * 0.62,
+      );
+      tool.rotation.x = Math.PI / 2;
+      tool.castShadow = true;
+      group.add(tool);
+    }
+  }
+  if (rich.accessories.carry?.includes('tome')) {
+    const tomeGroup = new THREE.Group();
+    tomeGroup.name = 'carry_tome';
+    const cover = new THREE.Mesh(
+      new THREE.BoxGeometry(p.headWidth * 0.55, p.headWidth * 0.7, p.headWidth * 0.18),
+      beltMat.clone(),
+    );
+    tomeGroup.add(cover);
+    // A lighter "pages" sliver on the spine edge so it reads as a book,
+    // not a plain box — same two-tone trick real book props use.
+    const pages = new THREE.Mesh(
+      new THREE.BoxGeometry(p.headWidth * 0.55, p.headWidth * 0.62, p.headWidth * 0.05),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color('#e8dcc0'),
+        roughness: PBR_REFERENCE.cotton.roughness,
+        metalness: 0,
+      }),
+    );
+    pages.position.z = p.headWidth * 0.1;
+    tomeGroup.add(pages);
+    // Strapped to the lower back, opposite the satchel.
+    tomeGroup.position.set(-p.hipWidth * 0.3, p.legLength + p.torsoLength * 0.25, -p.headDepth * 0.4);
+    tomeGroup.rotation.y = Math.PI;
+    group.add(tomeGroup);
   }
 
   /* ── Augments (cyber/superhero — chrome arm, etc.) ──────────── */

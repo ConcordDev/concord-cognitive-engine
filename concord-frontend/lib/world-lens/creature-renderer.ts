@@ -10,6 +10,72 @@
 import * as THREE from 'three';
 import { createCreatureMesh, type CreatureTopology, type CreatureMeshResult } from './creature-mesh-builder';
 import { sampleGroundY } from './coord-frame';
+import { loadAsset, instanceFromCache, resolveAssetReference } from './asset-loader';
+
+// Real-asset-first (CC0-sourced GLBs at /public/models/creature/{topology}_NN.glb),
+// falling back to the procedural silhouette from creature-mesh-builder for any
+// topology without a real variant — same fallback-chain shape used for hero
+// meshes and buildings. Warmed once per renderer instance; population is
+// fire-and-forget so the first poll's creatures render immediately on the
+// (always-available) procedural path and later polls pick up real assets
+// once warming resolves.
+const REAL_ASSET_TOPOLOGIES: Partial<Record<CreatureTopology, string[]>> = {
+  quadruped: ['quadruped_01', 'quadruped_02', 'quadruped_03'],
+  winged_biped: ['winged_biped_01'],
+};
+
+async function warmRealCreatureAssets(): Promise<Map<CreatureTopology, string[]>> {
+  const urls = new Map<CreatureTopology, string[]>();
+  for (const [topology, ids] of Object.entries(REAL_ASSET_TOPOLOGIES) as [CreatureTopology, string[]][]) {
+    const resolved: string[] = [];
+    for (const id of ids) {
+      try {
+        const loaded = await loadAsset({ kind: 'creature', id }, THREE);
+        if (loaded) {
+          const url = await resolveAssetReference({ kind: 'creature', id });
+          if (url) resolved.push(url);
+        }
+      } catch { /* this variant unavailable — skip it */ }
+    }
+    if (resolved.length > 0) urls.set(topology, resolved);
+  }
+  return urls;
+}
+
+function hashU(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h ^ s.charCodeAt(i)) * 16777619) >>> 0;
+  }
+  return h / 0xffffffff;
+}
+
+/** Wraps a cloned real-asset scene in the same {group, tick, dispose} shape
+ *  createCreatureMesh returns, so callers never need to know which path a
+ *  given creature took. tick() is a light idle bob — real assets in this
+ *  pass have no baked gait animation, so this is honest (no fake walk-cycle)
+ *  rather than silently doing nothing. */
+function wrapRealCreatureMesh(scene: THREE.Object3D, scale: number): CreatureMeshResult {
+  const group = new THREE.Group();
+  const inst = scene as THREE.Group;
+  inst.scale.setScalar(scale);
+  group.add(inst);
+  let t = 0;
+  return {
+    group,
+    tick: (dt: number, speed = 0) => {
+      t += dt * (1 + Math.min(speed, 3));
+      inst.position.y = Math.sin(t * 2) * 0.03 * scale;
+    },
+    dispose: () => {
+      inst.traverse((o) => {
+        const mesh = o as unknown as { geometry?: { dispose?: () => void }; material?: { dispose?: () => void } };
+        mesh.geometry?.dispose?.();
+        mesh.material?.dispose?.();
+      });
+    },
+  };
+}
 
 interface CreatureRow {
   id: string;
@@ -60,6 +126,8 @@ export function createCreatureRenderer(
   let disposed = false;
   let lastPoll = 0;
   let polling = false;
+  let realAssetUrls = new Map<CreatureTopology, string[]>();
+  void warmRealCreatureAssets().then((urls) => { if (!disposed) realAssetUrls = urls; });
 
   async function refresh(): Promise<void> {
     if (disposed || polling) return;
@@ -77,7 +145,7 @@ export function createCreatureRenderer(
       const json = await res.json();
       const rows: CreatureRow[] = json?.result?.creatures ?? [];
       if (disposed) return;
-      reconcile(rows);
+      await reconcile(rows);
     } catch {
       // honest-empty: a failed poll keeps the existing meshes; never throws.
     } finally {
@@ -85,18 +153,31 @@ export function createCreatureRenderer(
     }
   }
 
-  function reconcile(rows: CreatureRow[]): void {
+  async function reconcile(rows: CreatureRow[]): Promise<void> {
     const seen = new Set<string>();
     for (const row of rows) {
       seen.add(row.id);
       let entry = entries.get(row.id);
       if (!entry) {
-        const mesh = createCreatureMesh(THREE, {
-          topology: row.topology || 'quadruped',
-          coatColor: row.coatColor,
-          variant: row.variant,
-          scale: SIZE_BY_CLADE[row.clade || 'mammal'] ?? 1,
-        });
+        const topology = row.topology || 'quadruped';
+        const scale = SIZE_BY_CLADE[row.clade || 'mammal'] ?? 1;
+        let mesh: CreatureMeshResult | null = null;
+        const variants = realAssetUrls.get(topology);
+        if (variants && variants.length > 0) {
+          const pick = variants[Math.floor(hashU(row.id + ':variant') * variants.length)];
+          try {
+            const inst = await instanceFromCache(pick, THREE);
+            if (inst) mesh = wrapRealCreatureMesh(inst as THREE.Object3D, scale);
+          } catch { /* fall through to procedural for this one creature */ }
+        }
+        if (!mesh) {
+          mesh = createCreatureMesh(THREE, {
+            topology,
+            coatColor: row.coatColor,
+            variant: row.variant,
+            scale,
+          });
+        }
         mesh.group.position.set(row.x, row.y ?? 0, row.z);
         group.add(mesh.group);
         entry = { mesh, target: new THREE.Vector3(row.x, row.y ?? 0, row.z), lastSpeed: 0 };

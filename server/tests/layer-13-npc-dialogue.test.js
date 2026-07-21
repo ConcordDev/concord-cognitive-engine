@@ -81,9 +81,9 @@ test("composeDeterministicOpener is stable within a 30-min bucket", () => {
   assert.strictEqual(a, b, "same args + same bucket must produce same opener");
 });
 
-test("tryInitiateConversation inserts a row and returns id", () => {
+test("tryInitiateConversation inserts a row and returns id", async () => {
   seedNpcs("w-init", 3);
-  const r = tryInitiateConversation(db, "w-init");
+  const r = await tryInitiateConversation(db, "w-init");
   assert.strictEqual(r.ok, true, `expected ok, got: ${JSON.stringify(r)}`);
   assert.match(r.conversationId, /^conv_/);
   const rows = getActiveConversations(db, "w-init");
@@ -92,18 +92,18 @@ test("tryInitiateConversation inserts a row and returns id", () => {
   assert.match(rows[0].messages[0].text, /\w+/);
 });
 
-test("tryInitiateConversation honours pair cooldown", () => {
+test("tryInitiateConversation honours pair cooldown", async () => {
   seedNpcs("w-cd", 2); // exactly one pair
-  const r1 = tryInitiateConversation(db, "w-cd");
+  const r1 = await tryInitiateConversation(db, "w-cd");
   assert.strictEqual(r1.ok, true);
-  const r2 = tryInitiateConversation(db, "w-cd");
+  const r2 = await tryInitiateConversation(db, "w-cd");
   assert.strictEqual(r2.ok, false, "second initiation within cooldown must fail");
   assert.match(r2.reason, /no_candidates/);
 });
 
-test("sweepExpiredConversations closes expired rows", () => {
+test("sweepExpiredConversations closes expired rows", async () => {
   seedNpcs("w-exp", 2);
-  tryInitiateConversation(db, "w-exp");
+  await tryInitiateConversation(db, "w-exp");
   // Backdate expires_at past now
   db.prepare(`UPDATE npc_conversations SET expires_at = unixepoch() - 60 WHERE world_id = 'w-exp'`).run();
   const before = db.prepare(`SELECT status FROM npc_conversations WHERE world_id = 'w-exp'`).get();

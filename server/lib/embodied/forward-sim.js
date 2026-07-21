@@ -262,13 +262,22 @@ export function composeDeterministicPrediction(subject) {
 }
 
 async function _llmPrediction(subject) {
+  // Brain-wiring audit (2026-07-20) — see the matching fix + explanation in
+  // lib/embodied/dream-engine.js#_composeWithSubconsciousBrain:
+  // "../brain-router.js" never exported `callBrain`, so
+  // CONCORD_FORWARD_SIM_LLM=true silently always fell back to deterministic.
   let chat;
   try {
-    const router = await import("../brain-router.js");
-    if (typeof router.callBrain === "function") {
-      chat = (sys, user) => router.callBrain('subconscious', { system: sys, prompt: user });
-    }
-  } catch { /* router unavailable */ }
+    const { ollamaChat } = await import("../inference/ollama-client.js");
+    chat = async (sys, user) => {
+      const r = await ollamaChat("subconscious", [
+        { role: "system", content: sys },
+        { role: "user", content: user },
+      ]);
+      if (!r?.ok) return null;
+      return { text: r.text };
+    };
+  } catch { /* ollama client not available */ }
   if (!chat) return null;
 
   const sys = `You compose forward-sim predictions for a player who is offline. ` +

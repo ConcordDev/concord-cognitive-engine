@@ -71,13 +71,27 @@ export function AmbientFeedback() {
     };
   }, []);
 
-  // GC expired toasts + sparkles.
+  // GC expired toasts + sparkles. `.filter()` always allocates a new array
+  // — even when nothing expired, or the list was already empty — so an
+  // unguarded call here re-renders every 200ms forever regardless of
+  // whether there's anything to sweep. Confirmed via a live stack-trace
+  // capture as one contributor to a page-wide "Maximum update depth
+  // exceeded" cluster on the World Lens. Skip the setState when the
+  // filtered result is the same length as the input.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const id = window.setInterval(() => {
       const now = Date.now();
-      setToasts((cur) => cur.filter((t) => now - t.bornAt < t.ttl_ms));
-      setSparkles((cur) => cur.filter((s) => now - s.bornAt < SPARKLE_TTL_MS));
+      setToasts((cur) => {
+        if (cur.length === 0) return cur;
+        const next = cur.filter((t) => now - t.bornAt < t.ttl_ms);
+        return next.length === cur.length ? cur : next;
+      });
+      setSparkles((cur) => {
+        if (cur.length === 0) return cur;
+        const next = cur.filter((s) => now - s.bornAt < SPARKLE_TTL_MS);
+        return next.length === cur.length ? cur : next;
+      });
     }, 200);
     return () => window.clearInterval(id);
   }, []);

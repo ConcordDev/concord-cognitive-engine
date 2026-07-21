@@ -8,10 +8,16 @@ export type TutorialStep =
   | 'sprint'
   | 'first-npc'
   | 'first-dialogue'
+  | 'gather-materials'
+  | 'craft-item'
   | 'first-creation'
   | 'first-combat-intro'
   | 'first-combat-hotbar'
+  | 'command-palette'
+  | 'npc-context-menu'
+  | 'workbench-interact'
   | 'lens-portal-intro'
+  | 'game-mode-launch'
   | 'social-intro'
   | 'done';
 
@@ -21,11 +27,17 @@ export type PlayerAction =
   | 'sprinted'
   | 'near-npc'
   | 'completed-dialogue'
+  | 'gathered'
+  | 'crafted'
   | 'opened-creation'
   | 'placed-object'
   | 'entered-combat'
   | 'used-hotbar-skill'
+  | 'palette-opened'
+  | 'npc-menu-opened'
+  | 'workbench-interact'
   | 'entered-lens-portal'
+  | 'mode-started'
   | 'sent-quick-message';
 
 export interface TutorialHint {
@@ -43,17 +55,31 @@ export interface TutorialState {
   hintsEnabled: boolean;
 }
 
-// Step → required player action to advance
+// Step → required player action to advance. gather-materials/craft-item/
+// command-palette/npc-context-menu/workbench-interact/game-mode-launch were
+// merged in from the retired OnboardingTutorial modal (Phase 1b) — each
+// PlayerAction value here is the exact string a real call site already
+// dispatches (grep `concordia:tutorial-action` across the frontend), not
+// invented; 'palette-opened' is the one exception, newly wired at its
+// dispatch site (components/world/concordia-hud/CommandPalette.tsx) as
+// part of this same merge, since OnboardingTutorial's equivalent step had
+// no real dispatcher and could only ever be skipped, never auto-advanced.
 const ADVANCE_ON: Record<TutorialStep, PlayerAction | null> = {
   'movement-basic': 'moved-significant-distance',
   'camera-control': 'rotated-camera',
   sprint: 'sprinted',
   'first-npc': 'near-npc',
   'first-dialogue': 'completed-dialogue',
+  'gather-materials': 'gathered',
+  'craft-item': 'crafted',
   'first-creation': 'placed-object',
   'first-combat-intro': 'entered-combat',
   'first-combat-hotbar': 'used-hotbar-skill',
+  'command-palette': 'palette-opened',
+  'npc-context-menu': 'npc-menu-opened',
+  'workbench-interact': 'workbench-interact',
   'lens-portal-intro': 'entered-lens-portal',
+  'game-mode-launch': 'mode-started',
   'social-intro': 'sent-quick-message',
   done: null,
 };
@@ -64,10 +90,16 @@ const STEP_ORDER: TutorialStep[] = [
   'sprint',
   'first-npc',
   'first-dialogue',
+  'gather-materials',
+  'craft-item',
   'first-creation',
   'first-combat-intro',
   'first-combat-hotbar',
+  'command-palette',
+  'npc-context-menu',
+  'workbench-interact',
   'lens-portal-intro',
+  'game-mode-launch',
   'social-intro',
   'done',
 ];
@@ -104,6 +136,17 @@ const STEP_HINTS: Record<TutorialStep, TutorialHint | null> = {
     position: 'bottom-center',
     controls: ['Enter', '🎤'],
   },
+  'gather-materials': {
+    message: 'Right-click terrain — grass, stone, water — to harvest materials.',
+    duration: 8000,
+    position: 'bottom-center',
+    controls: ['RClick'],
+  },
+  'craft-item': {
+    message: 'Open the Craft panel from the toolbar to turn materials into gear.',
+    duration: 8000,
+    position: 'bottom-center',
+  },
   'first-creation': {
     message: 'Find a creation terminal to build something. Press E to open it.',
     duration: 10000,
@@ -122,11 +165,32 @@ const STEP_HINTS: Record<TutorialStep, TutorialHint | null> = {
     position: 'bottom-center',
     controls: ['1', '2', '3'],
   },
+  'command-palette': {
+    message: 'Press C to open the command palette — every panel and quick action lives there.',
+    duration: 8000,
+    position: 'bottom-center',
+    controls: ['C'],
+  },
+  'npc-context-menu': {
+    message: 'Click an NPC to open their menu — Talk, Trade, Mentor, and more depending on who they are.',
+    duration: 8000,
+    position: 'bottom-center',
+  },
+  'workbench-interact': {
+    message: 'Walk near a workbench — a farm plot, hacking terminal, karaoke booth — and it opens automatically.',
+    duration: 8000,
+    position: 'bottom-center',
+  },
   'lens-portal-intro': {
     message: 'Lens portals connect Concordia to the knowledge substrate. Press E to enter.',
     duration: 10000,
     position: 'bottom-center',
     controls: ['E'],
+  },
+  'game-mode-launch': {
+    message: 'The hotbar lets you start run-based modes — roguelite, horde, extraction, and more.',
+    duration: 8000,
+    position: 'bottom-center',
   },
   'social-intro': {
     message: 'Other players are nearby. Use the quick message bar or hold Z for emotes.',
@@ -171,6 +235,7 @@ export class TutorialManager {
   skip(withHints = false) {
     this._state = { ...this._state, skipped: true, hintsEnabled: withHints };
     this._save();
+    this._markVisited();
     this._hintCallback?.(null);
   }
 
@@ -204,6 +269,7 @@ export class TutorialManager {
       stepsCompleted: [...this._state.stepsCompleted, this._state.step],
     };
     this._save();
+    if (nextStep === 'done') this._markVisited();
     this._showHint(nextStep);
   }
 
@@ -237,6 +303,22 @@ export class TutorialManager {
     }
   }
 
+  // Legacy key the retired OnboardingTutorial modal used to set on
+  // completion (Phase 1b tutorial consolidation) — components/world-lens/
+  // PostTutorialHints.tsx still reads it as its own "has onboarding
+  // finished" gate. Rather than migrate that component's storage key too,
+  // tutorialManager (the new single source of truth for tutorial state)
+  // just keeps writing it, so PostTutorialHints' existing contract is
+  // untouched.
+  private _markVisited() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('world_lens_visited', '1');
+    } catch {
+      /* ignore */
+    }
+  }
+
   private _defaultState(): TutorialState {
     return {
       step: 'movement-basic',
@@ -257,10 +339,16 @@ export const TUTORIAL_TOPICS: Record<TutorialStep, string> = {
   sprint: 'Sprinting',
   'first-npc': 'Talking to NPCs',
   'first-dialogue': 'Dialogue System',
+  'gather-materials': 'Gathering Materials',
+  'craft-item': 'Crafting',
   'first-creation': 'Creating Objects',
   'first-combat-intro': 'Combat Basics',
   'first-combat-hotbar': 'Combat Hotbar',
+  'command-palette': 'Command Palette',
+  'npc-context-menu': 'NPC Menu',
+  'workbench-interact': 'Workbenches',
   'lens-portal-intro': 'Lens Portals',
+  'game-mode-launch': 'Game Modes',
   'social-intro': 'Multiplayer',
   done: '',
 };

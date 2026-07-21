@@ -79,11 +79,20 @@ export function BrawlInviteToast() {
     return () => window.removeEventListener('concordia:brawl-invited', onInvite);
   }, []);
 
-  // Periodically prune expired invites.
+  // Periodically prune expired invites. `.filter()` always allocates a new
+  // array — even when nothing expired, or the list was already empty — so
+  // an unguarded call here re-renders every 5s forever regardless of
+  // whether there's anything to prune. Part of a page-wide "Maximum update
+  // depth exceeded" cluster found on the World Lens; skip the setState
+  // when the filtered result is the same length as the input.
   useEffect(() => {
     const t = setInterval(() => {
       const now = Date.now();
-      setInvites((prev) => prev.filter((x) => now - x.receivedAt < INVITE_TTL_MS));
+      setInvites((prev) => {
+        if (prev.length === 0) return prev;
+        const next = prev.filter((x) => now - x.receivedAt < INVITE_TTL_MS);
+        return next.length === prev.length ? prev : next;
+      });
     }, 5000);
     return () => clearInterval(t);
   }, []);
