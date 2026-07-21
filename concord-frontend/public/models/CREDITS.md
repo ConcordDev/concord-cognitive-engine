@@ -189,6 +189,34 @@ textures but zero per-repo license or credit file — not used, per this
 file's own standing rule of not trusting an asset's provenance without a
 verifiable license signal.
 
+### These 7 photos also feed the procedural PBR generator (same session)
+
+`lib/world-lens/procedural-texture.ts` — the canvas-based synthetic PBR
+generator used as the substrate fallback (tier 3) for building/interior
+materials (`lib/world-lens/pbr-loader.ts`'s 3-tier resolution,
+`procedural-buildings.ts`/`interior-decor.ts`) — previously synthesized
+every material kind's colors from hand-picked hex constants (e.g.
+`dirt: '#6b5230'`, `brick: '#3a2520'`). `lib/world-lens/
+terrain-reference-palettes.ts` now carries real average/shadow/highlight
+color statistics sampled directly from the 7 photos above (average color,
+darkest sampled tone, lightest sampled tone — a ~102k-pixel stride sample
+of each 640×640 photo via a headless-Chromium canvas read, real numbers,
+not estimated). `procedural-texture.ts`'s generator mixes between those
+real tones instead of arbitrary hex for every overlapping/new kind (dirt,
+brick, plus 5 newly-added kinds with no prior procedural equivalent:
+`grass`, `sand`, `cobblestone`, `gravel`, `asphalt`) — the existing
+(kind, seed) space was already infinite via the generator's RNG-driven
+speckle/pattern placement; this only changes what colors that infinite
+space draws from, anchoring every generated variant to something a camera
+actually saw. The 6 kinds with no terrain-photo counterpart (`stone`,
+`wood`, `cloth`, `metal`, `leather`, `thatch`) are unchanged. Verified with
+a real headless-Chromium WebGL render of the actual bundled module (not a
+mock) during development — every kind produces a visually distinct,
+recognizable material; the underlying RGB math was independently checked
+against `terrain-reference-palettes.ts`'s real sampled values outside any
+renderer to rule out a browser color-management artifact skewing the
+visual check.
+
 ## Known limitations (honest, not hidden)
 
 - **`forge` and `tower` building archetypes** have no real asset yet — they
