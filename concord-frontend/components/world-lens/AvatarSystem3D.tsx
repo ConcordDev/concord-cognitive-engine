@@ -55,6 +55,7 @@ import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
 import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
 import { getTimeScale, getPlayerTimeScale } from '@/lib/concordia/use-time-scale';
+import { getDischargeWorldPosition, type WeaponArchetype } from '@/lib/concordia/weapon-archetypes';
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -1400,6 +1401,49 @@ export default function AvatarSystem3D({
         if (detail.entityId === playerAvatar.id && weaponTrailRef.current &&
             (detail.animation.startsWith('attack') || detail.animation === 'kick')) {
           weaponTrailRef.current.setActive(true);
+        }
+        // Discharge flash — the visual companion to "the gun/staff/wand is
+        // now actually visible": on the SAME predicted attack trigger the
+        // weapon-trail block above reacts to, check whether the local
+        // player's equipped weapon is one of the 4 discharge-capable
+        // archetypes (createWeapon() only sets userData.dischargeLocal for
+        // those) and, if so, spawn a real particle burst at its muzzle/tip
+        // world position via the world-vfx-bridge.ts pipeline (already
+        // mounted — see lib/world-lens/attach-world-renderers.ts) rather
+        // than inventing a new one. This does NOT model actual gunfire
+        // (no projectile, no server-side ranged hit resolution exists —
+        // see public/models/CREDITS.md's "known limitations") — it's
+        // scoped to "the weapon visibly reacts when its wielder attacks",
+        // same as the trail is scoped to blade swings.
+        if (detail.entityId === playerAvatar.id && detail.animation.startsWith('attack') && playerMeshRef.current) {
+          try {
+            const playerGroup = playerMeshRef.current as InstanceType<typeof import('three').Group>;
+            let dischargeWeapon: InstanceType<typeof import('three').Object3D> | null = null;
+            const DISCHARGE_ARCHETYPES: WeaponArchetype[] = ['firearm_pistol', 'firearm_rifle', 'staff', 'wand'];
+            for (const archetype of DISCHARGE_ARCHETYPES) {
+              const found = (playerGroup as unknown as { getObjectByName?: (n: string) => InstanceType<typeof import('three').Object3D> | undefined })
+                .getObjectByName?.(`weapon_${archetype}`);
+              if (found) { dischargeWeapon = found; break; }
+            }
+            if (dischargeWeapon) {
+              const pos = getDischargeWorldPosition(dischargeWeapon as unknown as Parameters<typeof getDischargeWorldPosition>[0]);
+              if (pos && typeof window !== 'undefined') {
+                const archetype = dischargeWeapon.userData?.archetype as WeaponArchetype | undefined;
+                const isFirearm = archetype === 'firearm_pistol' || archetype === 'firearm_rifle';
+                const enchantment = dischargeWeapon.userData?.enchantment as string | null | undefined;
+                const vfxType = isFirearm
+                  ? 'flash'
+                  : enchantment === 'fire' ? 'flame'
+                  : enchantment === 'frost' ? 'frost'
+                  : enchantment === 'lightning' ? 'spark'
+                  : enchantment === 'arcane' ? 'arcane'
+                  : 'cast';
+                window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+                  detail: { type: vfxType, position: { x: pos.x, y: pos.y, z: pos.z }, intensity: 1 },
+                }));
+              }
+            }
+          } catch { /* discharge flash is best-effort cosmetic, never block combat anim */ }
         }
         const mixer = mixersRef.current.get(detail.entityId) as MixerType | undefined;
         if (!mixer) return;

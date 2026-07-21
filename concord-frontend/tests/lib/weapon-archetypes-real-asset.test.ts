@@ -36,7 +36,16 @@ const ALL_ARCHETYPES: WeaponArchetype[] = [
   'scimitar', 'greatsword', 'halberd', 'spear', 'bow', 'crossbow',
   'firearm_pistol', 'firearm_rifle', 'staff', 'wand',
 ];
-const REAL_ASSET_ARCHETYPES: WeaponArchetype[] = ['firearm_pistol', 'firearm_rifle', 'staff', 'wand'];
+const REAL_ASSET_ARCHETYPES: WeaponArchetype[] = [
+  'firearm_pistol', 'firearm_rifle', 'staff', 'wand',
+  'shortsword', 'longsword', 'greatsword', 'axe', 'halberd', 'crossbow', 'dagger',
+];
+// The archetypes that get a discharge point (muzzle-flash / spell-spark
+// anchor) — a strict subset of REAL_ASSET_ARCHETYPES; melee real-asset
+// weapons swing, they don't discharge.
+const DISCHARGE_ARCHETYPES: WeaponArchetype[] = ['firearm_pistol', 'firearm_rifle', 'staff', 'wand'];
+// Still procedural-only — no sourced GLB for these yet (see CREDITS.md).
+const STILL_PROCEDURAL_ONLY: WeaponArchetype[] = ['mace', 'club', 'scimitar', 'spear', 'bow'];
 
 function countMeshes(obj: THREE.Object3D): number {
   let n = 0;
@@ -174,10 +183,20 @@ describe('createWeapon — real-asset path (warmed cache)', () => {
     }
   });
 
-  it("non-real-asset archetypes (e.g. 'longsword') still take the procedural path even after warming", async () => {
+  it('non-real-asset archetypes (mace/club/scimitar/spear/bow — no sourced GLB yet) still take the procedural path even after warming', async () => {
     await warmRealWeaponAssets();
-    const group = createWeapon({ archetype: 'longsword', tier: 1 });
-    expect(group.userData.realAsset).toBeFalsy();
+    for (const archetype of STILL_PROCEDURAL_ONLY) {
+      const group = createWeapon({ archetype, tier: 1 });
+      expect(group.userData.realAsset, `${archetype} should still be procedural`).toBeFalsy();
+    }
+  });
+
+  it('all 11 real-asset archetypes (4 discharge-capable + 7 melee) resolve to a real-asset group once warmed', async () => {
+    await warmRealWeaponAssets();
+    for (const archetype of REAL_ASSET_ARCHETYPES) {
+      const group = createWeapon({ archetype, tier: 1 });
+      expect(group.userData.realAsset, `${archetype} should be real-asset`).toBe(true);
+    }
   });
 
   it('createWeapon() itself kicks off warming even without an explicit warmRealWeaponAssets() call (fire-and-forget)', async () => {
@@ -250,5 +269,120 @@ describe('WEAPON_CONSTANTS — unchanged by this pass', () => {
     const { WEAPON_CONSTANTS } = await freshModule();
     expect(WEAPON_CONSTANTS.ENCHANTMENT_GLOW.fire).toBeDefined();
     expect(WEAPON_CONSTANTS.DEFAULT_BASE_COLOR).toBeDefined();
+  });
+});
+
+// Discharge point (muzzle-flash / spell-spark anchor) — the "the gun/staff
+// now visibly reacts when it fires" follow-up. getDischargeWorldPosition()
+// reads userData.dischargeLocal (set on every DISCHARGE_ARCHETYPES group,
+// both procedural and real-asset paths) and transforms it to world space.
+describe('getDischargeWorldPosition — procedural path (no real asset)', () => {
+  let createWeapon: typeof WeaponArchetypesModule.createWeapon;
+  let getDischargeWorldPosition: typeof WeaponArchetypesModule.getDischargeWorldPosition;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockLoadAsset.mockResolvedValue(null);
+    mockResolveAssetReference.mockResolvedValue(null);
+    mockGetCachedSceneSync.mockReturnValue(null);
+    ({ createWeapon, getDischargeWorldPosition } = await freshModule());
+  });
+
+  it('discharge-capable archetypes (firearms + staff/wand) return a non-null world position', () => {
+    for (const archetype of DISCHARGE_ARCHETYPES) {
+      const group = createWeapon({ archetype, tier: 1 });
+      const pos = getDischargeWorldPosition(group);
+      expect(pos, `${archetype} should have a discharge point`).not.toBeNull();
+    }
+  });
+
+  it('non-discharging archetypes (e.g. longsword) return null — nothing to anchor a flash to', () => {
+    const group = createWeapon({ archetype: 'longsword', tier: 1 });
+    expect(getDischargeWorldPosition(group)).toBeNull();
+  });
+
+  it("staff's discharge point sits at the shaft length, straight up from the grip", () => {
+    const group = createWeapon({ archetype: 'staff', tier: 1 });
+    const pos = getDischargeWorldPosition(group)!;
+    expect(pos.y).toBeCloseTo(1.1, 5); // buildStaff's shaftLen for 'staff'
+    expect(pos.x).toBeCloseTo(0, 5);
+    expect(pos.z).toBeCloseTo(0, 5);
+  });
+
+  it("wand's discharge point is shorter than staff's (matches its shorter procedural shaft)", () => {
+    const staffPos = getDischargeWorldPosition(createWeapon({ archetype: 'staff', tier: 1 }))!;
+    const wandPos = getDischargeWorldPosition(createWeapon({ archetype: 'wand', tier: 1 }))!;
+    expect(wandPos.y).toBeLessThan(staffPos.y);
+  });
+
+  it("firearm_rifle's discharge point (muzzle) is farther out than firearm_pistol's", () => {
+    const pistolPos = getDischargeWorldPosition(createWeapon({ archetype: 'firearm_pistol', tier: 1 }))!;
+    const riflePos = getDischargeWorldPosition(createWeapon({ archetype: 'firearm_rifle', tier: 1 }))!;
+    expect(riflePos.x).toBeGreaterThan(pistolPos.x);
+  });
+
+  it('the discharge point tracks the group when parented under a moved ancestor (world-space, not local)', () => {
+    const parent = new THREE.Group();
+    parent.position.set(5, 2, -3);
+    const wand = createWeapon({ archetype: 'wand', tier: 1 });
+    parent.add(wand);
+    const pos = getDischargeWorldPosition(wand)!;
+    // Local discharge point is (0, 0.30, 0) — world position must be the
+    // parent's translation applied on top, not the raw local value.
+    expect(pos.x).toBeCloseTo(5, 5);
+    expect(pos.y).toBeCloseTo(2.30, 5);
+    expect(pos.z).toBeCloseTo(-3, 5);
+  });
+
+  it('the discharge point also reflects an ancestor rotation, for an off-axis local point (firearm muzzle)', () => {
+    const parent = new THREE.Group();
+    parent.rotation.y = Math.PI / 2; // 90° — swaps +X and +Z
+    const pistol = createWeapon({ archetype: 'firearm_pistol', tier: 1 });
+    parent.add(pistol);
+    const pos = getDischargeWorldPosition(pistol)!;
+    // Local discharge point is (bodyLen+barrelLen, 0, 0) — a 90° Y rotation
+    // should swing that onto the Z axis, not leave it on X.
+    expect(Math.abs(pos.x)).toBeLessThan(1e-5);
+    expect(Math.abs(pos.z)).toBeGreaterThan(0.01);
+  });
+});
+
+describe('getDischargeWorldPosition — real-asset path (warmed cache)', () => {
+  let createWeapon: typeof WeaponArchetypesModule.createWeapon;
+  let warmRealWeaponAssets: typeof WeaponArchetypesModule.warmRealWeaponAssets;
+  let getDischargeWorldPosition: typeof WeaponArchetypesModule.getDischargeWorldPosition;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockLoadAsset.mockResolvedValue({ fakeScene: true });
+    mockResolveAssetReference.mockImplementation(async ({ id }: { id: string }) => `/models/weapon/${id}.glb`);
+    mockGetCachedSceneSync.mockImplementation((url: string) => {
+      const g = new THREE.Group();
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1, 0.2), new THREE.MeshStandardMaterial());
+      // Off-center on purpose (like a real sourced asset would be) so the
+      // pivot/discharge math is genuinely exercised, not trivially at origin.
+      mesh.position.set(0.3, 0.5, 0.1);
+      g.add(mesh);
+      g.name = `source_${url}`;
+      return g;
+    });
+    ({ createWeapon, warmRealWeaponAssets, getDischargeWorldPosition } = await freshModule());
+  });
+
+  it('real-asset discharge-capable archetypes still resolve a non-null discharge point', async () => {
+    await warmRealWeaponAssets();
+    for (const archetype of DISCHARGE_ARCHETYPES) {
+      const group = createWeapon({ archetype, tier: 1 });
+      expect(group.userData.realAsset).toBe(true);
+      const pos = getDischargeWorldPosition(group);
+      expect(pos, `${archetype} should have a discharge point on the real-asset path`).not.toBeNull();
+    }
+  });
+
+  it("real-asset staff's discharge point is exactly at its normalized target size (bottom-pivot guarantee)", async () => {
+    await warmRealWeaponAssets();
+    const group = createWeapon({ archetype: 'staff', tier: 1 });
+    const pos = getDischargeWorldPosition(group)!;
+    expect(pos.y).toBeCloseTo(1.3, 4); // staff's REAL_ASSET_NORMALIZATION target size
   });
 });
