@@ -39,13 +39,15 @@ const ALL_ARCHETYPES: WeaponArchetype[] = [
 const REAL_ASSET_ARCHETYPES: WeaponArchetype[] = [
   'firearm_pistol', 'firearm_rifle', 'staff', 'wand',
   'shortsword', 'longsword', 'greatsword', 'axe', 'halberd', 'crossbow', 'dagger',
+  'mace', 'club', 'spear', 'bow',
 ];
 // The archetypes that get a discharge point (muzzle-flash / spell-spark
 // anchor) — a strict subset of REAL_ASSET_ARCHETYPES; melee real-asset
 // weapons swing, they don't discharge.
 const DISCHARGE_ARCHETYPES: WeaponArchetype[] = ['firearm_pistol', 'firearm_rifle', 'staff', 'wand'];
-// Still procedural-only — no sourced GLB for these yet (see CREDITS.md).
-const STILL_PROCEDURAL_ONLY: WeaponArchetype[] = ['mace', 'club', 'scimitar', 'spear', 'bow'];
+// Still procedural-only — no sourced GLB found after a genuinely broad
+// GitHub search (11 repos checked, see CREDITS.md).
+const STILL_PROCEDURAL_ONLY: WeaponArchetype[] = ['scimitar'];
 
 function countMeshes(obj: THREE.Object3D): number {
   let n = 0;
@@ -179,11 +181,15 @@ describe('createWeapon — real-asset path (warmed cache)', () => {
       box.getSize(size);
       const longest = Math.max(size.x, size.y, size.z);
       expect(longest).toBeGreaterThan(0);
-      expect(longest).toBeLessThan(2); // sanity: no archetype's target exceeds 2m
+      // sanity ceiling: spear's real target size is 2.2m (a genuine
+      // two-handed polearm length, matching its procedural fallback's own
+      // shaftLen+tipLen) — the ceiling widened from 2 to 2.5 to admit it
+      // rather than shrinking spear's real value to fit a stale assumption.
+      expect(longest).toBeLessThan(2.5);
     }
   });
 
-  it('non-real-asset archetypes (mace/club/scimitar/spear/bow — no sourced GLB yet) still take the procedural path even after warming', async () => {
+  it('non-real-asset archetypes (scimitar — no sourced GLB found) still take the procedural path even after warming', async () => {
     await warmRealWeaponAssets();
     for (const archetype of STILL_PROCEDURAL_ONLY) {
       const group = createWeapon({ archetype, tier: 1 });
@@ -191,7 +197,7 @@ describe('createWeapon — real-asset path (warmed cache)', () => {
     }
   });
 
-  it('all 11 real-asset archetypes (4 discharge-capable + 7 melee) resolve to a real-asset group once warmed', async () => {
+  it('all 15 real-asset archetypes (4 discharge-capable + 11 melee/ranged) resolve to a real-asset group once warmed', async () => {
     await warmRealWeaponAssets();
     for (const archetype of REAL_ASSET_ARCHETYPES) {
       const group = createWeapon({ archetype, tier: 1 });
@@ -470,7 +476,7 @@ describe('getWeaponTipWorldPosition — real-asset path (warmed cache)', () => {
     ({ createWeapon, warmRealWeaponAssets, getWeaponTipWorldPosition } = await freshModule());
   });
 
-  it('every real-asset archetype (all 11) resolves a non-null tip once warmed', async () => {
+  it('every real-asset archetype (all 15) resolves a non-null tip once warmed', async () => {
     await warmRealWeaponAssets();
     for (const archetype of REAL_ASSET_ARCHETYPES) {
       const group = createWeapon({ archetype, tier: 1 });
@@ -487,10 +493,31 @@ describe('getWeaponTipWorldPosition — real-asset path (warmed cache)', () => {
     expect(tip.y).toBeCloseTo(1.05, 4); // longsword's REAL_ASSET_NORMALIZATION target size
   });
 
+  it("mace/club/spear ('bottom' pivot, same convention as longsword) have their tip exactly at their normalized target size", async () => {
+    await warmRealWeaponAssets();
+    const cases: Array<[WeaponArchetype, number]> = [['mace', 0.6], ['club', 0.5], ['spear', 2.2]];
+    for (const [archetype, expectedY] of cases) {
+      const tip = getWeaponTipWorldPosition(createWeapon({ archetype, tier: 1 }))!;
+      expect(tip.y, `${archetype} tip.y`).toBeCloseTo(expectedY, 4);
+    }
+  });
+
   it("a 'center'-pivoted real-asset archetype (crossbow) still resolves a tip via the bounding-box fallback", async () => {
     await warmRealWeaponAssets();
     const group = createWeapon({ archetype: 'crossbow', tier: 1 });
     const tip = getWeaponTipWorldPosition(group);
     expect(tip).not.toBeNull();
+  });
+
+  it("bow ('center' pivot with a Y-axis override, unlike crossbow/firearms' default Z) resolves its tip along Y, not Z", async () => {
+    await warmRealWeaponAssets();
+    const group = createWeapon({ archetype: 'bow', tier: 1 });
+    const tip = getWeaponTipWorldPosition(group)!;
+    // The shared mock source mesh is BoxGeometry(0.2, 1, 0.2) offset to
+    // (0.3, 0.5, 0.1) — after 'center' pivot normalization (re-centers on
+    // the scaled bbox) the Y extent dominates, so a correct Y-axis read
+    // must land near the scaled half-height, not near zero the way a
+    // stale Z-axis read would (Z's raw extent is only 0.2, dwarfed by Y's 1).
+    expect(Math.abs(tip.y)).toBeGreaterThan(0.1);
   });
 });

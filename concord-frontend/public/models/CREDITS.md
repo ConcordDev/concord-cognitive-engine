@@ -71,6 +71,72 @@ re-packed the same way with `gltf-transform copy`, and validated the same
 way (`gltf-transform validate`, zero errors; `gltf-transform inspect`,
 real non-degenerate geometry, 340–2,100 vertices each).
 
+### `mace`/`club`/`spear`/`bow` (2026-07-21, later same session)
+
+A prior pass in this same session searched only 2 additional GitHub repos
+beyond KayKit before concluding these 5 shapes were unavailable — too
+narrow a search, not a real dead end (the domain-allowlist constraint
+that blocks kenney.nl/itch.io/poly.pizza/quaternius.com/opengameart.org
+is about which *file hosts* are reachable, not which *country* a creator
+is in — GitHub itself is reachable regardless of who committed to it). A
+broader search (11 repos checked) found real, committed `.glb` binaries —
+not link-list READMEs — in
+[SnowdenWintermute/speed-dungeon](https://github.com/SnowdenWintermute/speed-dungeon),
+a dungeon-crawler game repo that bundles third-party OpenGameArt/Quaternius
+weapon models with an explicit per-file artist-attribution table in its
+own source (`packages/game-world-view/src/scene-entities/items/
+equipment-base-item-to-asset-id.ts` + `../artists.ts`) — the repo's own
+top-level `LICENSE.md` (PolyForm Noncommercial) covers its *code*, not
+these bundled third-party assets, which retain their original OpenGameArt
+licenses per that same attribution table (how the author was able to
+legally bundle them in the first place). Sourced via `git sparse-checkout`
+of the exact `packages/frontend/public/3d-assets/equipment/holdables/`
+paths (not `curl`+guessed paths), re-packed with `gltf-transform copy`,
+and validated with `gltf-transform validate` (zero errors for all 4;
+`club.glb` had 4 harmless `UNUSED_OBJECT` hints — unused UV channels — for
+severity-2 pre-repack, cleaned by the repack itself) and `gltf-transform
+inspect` (real bounding-box + vertex-count data, cross-checked against
+the source repo's own filenames before wiring — not assumed).
+
+| File | Source name | License / artist | Used for |
+|---|---|---|---|
+| `weapon/mace.glb` | `mace.glb` (speed-dungeon, from OpenGameArt "19 Low Poly Fantasy Weapons") | **CC0** — Ryan Hetchler ([opengameart.org/users/ralchire](https://opengameart.org/users/ralchire)) | `weapon-archetypes.ts` `mace` archetype |
+| `weapon/club.glb` | `club.glb` (speed-dungeon, from OpenGameArt "Stylised Fantasy Weapons") | **CC-BY 3.0 — attribution required.** mastahcez ([opengameart.org/users/mastahcez](https://opengameart.org/users/mastahcez)) | `weapon-archetypes.ts` `club` archetype |
+| `weapon/spear.glb` | `spear.glb` (speed-dungeon, from OpenGameArt "19 Low Poly Fantasy Weapons") | **CC0** — Ryan Hetchler | `weapon-archetypes.ts` `spear` archetype |
+| `weapon/bow.glb` | `recurve-bow.glb` (speed-dungeon, from OpenGameArt "19 Low Poly Fantasy Weapons") | **CC0** — Ryan Hetchler | `weapon-archetypes.ts` `bow` archetype |
+
+**`club.glb` is CC-BY 3.0, the one non-CC0 asset in this whole
+directory — this line IS the required attribution.** Per CC-BY 3.0 terms:
+"Club" 3D model by **mastahcez** (OpenGameArt.org, "Stylised Fantasy
+Weapons" pack), used under
+[CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/), no modifications
+to the model itself beyond re-scaling/re-pivoting for in-engine use (see
+`weapon-archetypes.ts#normalizeRealAssetScale`). The license claim itself
+comes from the speed-dungeon repo's own in-source comment
+(`// https://opengameart.org/content/stylised-fantasy-weapons`) and
+public per-file license metadata OpenGameArt.org displays for
+CC-BY-licensed uploads, cross-referenced via web search — this
+environment could not fetch opengameart.org directly (same
+domain-allowlist constraint as everywhere else in this file) to
+re-verify the live page, so treat this as sourced-but-not-independently-
+re-confirmed, same honesty standard as the muzzle-direction inference
+below. If this is ever wrong, it needs correcting, not silently trusting.
+
+Other repos checked and rejected in this pass (real files existed for
+some but licensing was unverifiable or absent, or the repo was another
+link-list): `BoQsc/cc0-melee-weapons-pack-glb`,
+`M3-org/base-meshes` (a real CC0 hit for `mace` too — redundant with the
+speed-dungeon copy, not used, kept as a fallback source note),
+`nanos-world/nanos-world-quaternius` (Unreal `.uasset` format, not
+glTF-compatible), `KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0`,
+`KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0`,
+`SummerEngine/template-3d-voxel-sandbox` (had mace/scimitar files but no
+verifiable license grant), `MolochDaGod/ObjectStore` (large asset dump,
+no attribution/license at all — too risky), `ToxSam/open-source-3D-assets`
+(real CC0 registry, but zero weapon items in its catalog). **`scimitar`
+was not found in any of the 11 repos checked** and remains procedural —
+see the Known Limitations section below.
+
 ## Known limitations (honest, not hidden)
 
 - **`forge` and `tower` building archetypes** have no real asset yet — they
@@ -104,24 +170,22 @@ real non-degenerate geometry, 340–2,100 vertices each).
   weapon-sourcing work happened in a later session without that harness
   re-run; `gltf-transform inspect`'s geometry/material verification is
   the floor that was done for all of them.
-- **`mace`/`club`/`scimitar`/`spear`/`bow`** have no sourced real asset —
-  the KayKit Adventurers pack (the only weapon-bearing CC0 GitHub repo
-  found reachable through this environment's egress allowlist — kenney.nl,
-  itch.io, poly.pizza, and quaternius.com are all org-policy-blocked for
-  this session, see `/root/.ccr/README.md`) doesn't include those 5
-  shapes. They keep the existing procedural silhouette.
-  **Re-attempted 2026-07-21 (same session as the ranged-combat work
-  below) — still blocked, not a retry-able failure.** Searched for
-  additional CC0 GitHub-hosted sources beyond KayKit:
-  `M3-org/retro3d-assets` and `Miziziziz/Retro3DGraphicsCollection` were
-  found and `git clone --sparse`'d to inspect, but both are **link-list
-  repos only** — their READMEs point at itch.io/opengameart.org for the
-  actual model files, and `curl` to opengameart.org from this environment
-  returns a hard proxy `403`/`CONNECT tunnel failed`, matching the other 4
-  blocked domains. No model files are hosted on GitHub itself for either
-  repo. Temp clones were removed after inspection. This is a genuine
-  environmental egress constraint, not something more searching within
-  this session can close — a different session/network could retry.
+- **RESOLVED (2026-07-21, later same session) — `mace`/`club`/`spear`/`bow`
+  now have real sourced meshes; only `scimitar` remains procedural.** The
+  original version of this bullet claimed all 5 shapes were unavailable
+  after checking the KayKit pack + 2 additional link-list repos — that
+  was a genuinely too-narrow search, not a real dead end. The
+  domain-allowlist constraint (kenney.nl/itch.io/poly.pizza/
+  quaternius.com/opengameart.org blocked, `/root/.ccr/README.md`) is
+  about which *file hosts* this session can reach, not which *country* a
+  creator or repo is from — a broader GitHub search (11 repos, any
+  creator/region) found real committed binaries for 4 of the 5 missing
+  shapes. Full sourcing detail + per-file license (including the one
+  CC-BY 3.0 asset, `club.glb`, which requires attribution) is in the
+  `mace`/`club`/`spear`/`bow` section above, not repeated here.
+  `scimitar` genuinely was not found in any of the 11 repos checked and
+  stays on the procedural builder — that part of the original claim
+  held up.
 - **`satchel`/`tome`/`tool-belt`/`pouch` now render real procedural
   props** (2026-07-21, same pass as ranged combat) — previously these 4
   `Accessories.carry` values had no branch in

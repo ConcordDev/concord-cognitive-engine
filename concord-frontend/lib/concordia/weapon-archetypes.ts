@@ -42,12 +42,25 @@ export type WeaponArchetype =
  * target sizes — the pack has one one-handed sword model, not two, and
  * scaling one asset for a "short" vs. "long" sub-tier is the same
  * technique real game art pipelines use rather than a shortcut; see
- * `public/models/CREDITS.md`. `mace`/`club`/`scimitar`/`spear`/`bow`
- * have no sourced real asset yet and stay on the procedural builder.
+ * `public/models/CREDITS.md`.
+ *
+ * `mace`/`club`/`spear`/`bow` (2026-07-21, later same session) sourced
+ * from `SnowdenWintermute/speed-dungeon` (a GitHub-hosted game repo that
+ * bundles real, per-file-attributed CC0/CC-BY weapon GLBs from
+ * OpenGameArt/Quaternius artists — found by searching GitHub broadly
+ * rather than only the 2 link-list repos an earlier pass in this same
+ * session had settled for). `club` is CC-BY 3.0 (mastahcez, OpenGameArt
+ * "Stylised Fantasy Weapons") — the one non-CC0 asset in this file;
+ * required attribution is in `public/models/CREDITS.md`. The rest of
+ * this batch (mace/spear/bow) is CC0 (Ryan Hetchler, OpenGameArt "19 Low
+ * Poly Fantasy Weapons"). `scimitar` still has no sourced real asset
+ * after a genuinely broader search (11 repos checked) and stays on the
+ * procedural builder.
  */
 const REAL_ASSET_ARCHETYPES: WeaponArchetype[] = [
   'firearm_pistol', 'firearm_rifle', 'staff', 'wand',
   'shortsword', 'longsword', 'greatsword', 'axe', 'halberd', 'crossbow', 'dagger',
+  'mace', 'club', 'spear', 'bow',
 ];
 
 const realWeaponCache = new Map<WeaponArchetype, string>(); // archetype -> resolved URL, ready to instanceFromCache
@@ -150,7 +163,7 @@ function hashSeed(s: string): number {
  *  (`buildStaff`: shaft pivots at its base, tip extends away from the
  *  hand), `'center'` approximates a fist-gripped tool held near its
  *  center of mass (`buildFirearm`'s body roughly straddles its origin). */
-const REAL_ASSET_NORMALIZATION: Partial<Record<WeaponArchetype, { size: number; pivot: 'bottom' | 'center' }>> = {
+const REAL_ASSET_NORMALIZATION: Partial<Record<WeaponArchetype, { size: number; pivot: 'bottom' | 'center'; axis?: 'x' | 'y' | 'z' }>> = {
   firearm_pistol: { size: 0.28, pivot: 'center' },
   firearm_rifle:  { size: 0.75, pivot: 'center' },
   staff:          { size: 1.3,  pivot: 'bottom' },
@@ -173,6 +186,27 @@ const REAL_ASSET_NORMALIZATION: Partial<Record<WeaponArchetype, { size: number; 
   halberd:        { size: 1.85, pivot: 'bottom' },
   crossbow:       { size: 0.85, pivot: 'center' },
   dagger:         { size: 0.42, pivot: 'bottom' },
+  // mace/club/spear (2026-07-21) — same Y-dominant, grip-near-origin shape
+  // as the blade weapons above (confirmed via gltf-transform inspect:
+  // e.g. mace bboxMin.y=-0.170/bboxMax.y=0.569 — grip slightly below the
+  // origin, head well above it), so 'bottom' pivot applies unchanged; the
+  // normalization's own min.y subtraction handles the small negative
+  // offset correctly regardless of where the source file's exact origin
+  // sat. Target sizes mirror the procedural fallback's own tipLocal.
+  mace:           { size: 0.6,  pivot: 'bottom' },
+  club:           { size: 0.5,  pivot: 'bottom' },
+  spear:          { size: 2.2,  pivot: 'bottom' },
+  // bow (2026-07-21) is different from crossbow/firearms: its source file
+  // is Y-dominant, not Z (bboxMin.y=-0.770/bboxMax.y=0.770 — a vertical
+  // bow silhouette with the grip at the vertical center, limbs extending
+  // symmetrically up and down), matching the procedural buildBow's own
+  // vertical-limb layout (`armLen/2` above and below the grip) — hence
+  // 'center' pivot (not 'bottom', which would put the grip at one limb
+  // tip instead of the center) with an explicit Y axis override, since
+  // every other 'center'-pivoted archetype so far (firearms, crossbow) is
+  // genuinely Z-dominant and `computeBboxTipLocal`'s default axis
+  // reflects that.
+  bow:            { size: 0.95, pivot: 'center', axis: 'y' },
 };
 
 /** Uniformly rescales `obj` so its longest bounding-box dimension equals
@@ -232,11 +266,13 @@ function computeBboxTipLocal(obj: THREE.Object3D, axis: 'x' | 'y' | 'z'): { x: n
 
 /** The "business end" of a normalized real-asset weapon — 'bottom' pivot
  *  (every blade/haft archetype + staff/wand) has an exact closed-form
- *  answer; 'center' pivot (firearms + crossbow) falls back to a
- *  bounding-box read along the inferred forward axis (+Z — see
- *  `REAL_ASSET_NORMALIZATION`'s comment). */
-function realAssetTipLocal(obj: THREE.Object3D, norm: { size: number; pivot: 'bottom' | 'center' }): { x: number; y: number; z: number } {
-  return norm.pivot === 'bottom' ? { x: 0, y: norm.size, z: 0 } : computeBboxTipLocal(obj, 'z');
+ *  answer; 'center' pivot (firearms + crossbow + bow) falls back to a
+ *  bounding-box read along the archetype's own dominant axis — Z for the
+ *  held-forward firearms/crossbow, `axis` override (Y) for bow, whose
+ *  source geometry is vertical, not forward-pointing — see
+ *  `REAL_ASSET_NORMALIZATION`'s comment. */
+function realAssetTipLocal(obj: THREE.Object3D, norm: { size: number; pivot: 'bottom' | 'center'; axis?: 'x' | 'y' | 'z' }): { x: number; y: number; z: number } {
+  return norm.pivot === 'bottom' ? { x: 0, y: norm.size, z: 0 } : computeBboxTipLocal(obj, norm.axis ?? 'z');
 }
 
 /**
