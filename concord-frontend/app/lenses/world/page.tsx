@@ -3858,6 +3858,25 @@ export default function WorldLensPage() {
       if (sign) window.dispatchEvent(new CustomEvent('concordia:sign-placed', { detail: sign }));
     };
     worldSocket.on('world:sign-placed', handleSignPlaced);
+    // NPC resource gathering (server/lib/npc-simulator.js's _emitGather) —
+    // previously a completely silent DB write with no world-lens signal at
+    // all. Same combat-anim + dust-particle bridge the player's own click-
+    // to-gather (concordia:node-click handler, above) already fires, just
+    // targeted at the NPC's entityId and the real node's position instead
+    // of the player's.
+    const handleNpcGather = (...args: unknown[]) => {
+      const data = args[0] as { npcId?: string; x?: number; y?: number; z?: number } | undefined;
+      if (!data?.npcId) return;
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: data.npcId, animation: 'attack-light' },
+      }));
+      if (typeof data.x === 'number' && typeof data.z === 'number') {
+        window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+          detail: { type: 'dust', position: { x: data.x, y: data.y ?? 0, z: data.z }, count: 16 },
+        }));
+      }
+    };
+    worldSocket.on('world:npc-gather', handleNpcGather);
     // E2 — horror tension → window event for SoundscapeEngine's dissonant stem
     // + spatial ghost footstep. Server emits per-investigator from the
     // horror-dread-cycle heartbeat.
@@ -3915,6 +3934,7 @@ export default function WorldLensPage() {
       worldSocket.off('concordia:terrain-deformed', handleWorldDeformation);
       worldSocket.off('world:sonic-pulse', handleSonicPulse);
       worldSocket.off('world:sign-placed', handleSignPlaced);
+      worldSocket.off('world:npc-gather', handleNpcGather);
       worldSocket.off('horror:tension', handleHorrorTension);
       for (const [kind, h] of srBridges) worldSocket.off(kind, h);
     };

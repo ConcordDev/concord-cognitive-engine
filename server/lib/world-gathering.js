@@ -271,7 +271,13 @@ export function npcGatherFromNode(db, worldId, npcX, npcZ, npcLevel = 1, preferr
     WHERE id = ?
   `).run(newQty, depleted ? 1 : 0, depleted ? 1 : 0, now, `npc:${npcLevel}`, now, target.id);
 
-  return { resourceId: target.resource_id, resourceName: target.resource_name, amount, nodeId: target.id };
+  return {
+    resourceId: target.resource_id, resourceName: target.resource_name, amount, nodeId: target.id,
+    // Node kind + position so the caller (npc-simulator.js) can broadcast a
+    // real socket event for the world lens to show the NPC's tool-swing at
+    // the actual node, not just an approximate "somewhere near the NPC" spot.
+    nodeType: target.node_type, x: target.x, y: target.y, z: target.z,
+  };
 }
 
 // ── Respawn tick ─────────────────────────────────────────────────────────────
