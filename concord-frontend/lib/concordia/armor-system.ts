@@ -11,9 +11,23 @@
  */
 
 import * as THREE from 'three';
+import { makePBR, type ProceduralKind } from '@/lib/world-lens/procedural-texture';
 
 export type ArmorSlot = 'head' | 'torso' | 'arms' | 'legs';
 export type ArmorSilhouette = 'heavy_plate' | 'robed' | 'leather' | 'exposed';
+
+/**
+ * Silhouette → the procedural material kind whose real-reference-grounded
+ * normal/roughness detail (see procedural-texture.ts + material-reference-
+ * palettes.ts) dresses that silhouette's surface. 'exposed' (light/minimal
+ * armor over bare skin — straps and wraps, not plate) reads as leather.
+ */
+const SILHOUETTE_KIND: Record<ArmorSilhouette, ProceduralKind> = {
+  heavy_plate: 'metal',
+  robed: 'cloth',
+  leather: 'leather',
+  exposed: 'leather',
+};
 
 export interface ArmorAppearance {
   silhouette:    ArmorSilhouette;
@@ -57,22 +71,46 @@ function darken(hex: string, amount: number): string {
   return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Real-reference-grounded surface detail (see procedural-texture.ts +
+ * material-reference-palettes.ts) for this silhouette, keyed so every
+ * armor piece sharing a seed gets the same micro-detail rather than a
+ * fresh canvas per material slot. `normalMap`/`roughnessMap` only — never
+ * `map` (albedo) — so the real per-faction dye color (`appearance.
+ * primaryColor` etc, applied via `material.color`) stays the actual
+ * displayed color; the texture only contributes real material surface
+ * detail (brushed-metal streaks, leather crinkle, cloth weave) on top.
+ */
+function proceduralDetail(appearance: ArmorAppearance): { normalMap: THREE.Texture; roughnessMap: THREE.Texture } {
+  const kind = SILHOUETTE_KIND[appearance.silhouette];
+  const seed = hashSeed(appearance.seed ?? appearance.silhouette);
+  const set = makePBR(THREE, { kind, seed, size: 128 });
+  return { normalMap: set.normal, roughnessMap: set.roughness };
+}
+
 function buildMaterials(appearance: ArmorAppearance): { primary: THREE.MeshStandardMaterial; secondary: THREE.MeshStandardMaterial; accent: THREE.MeshStandardMaterial } {
   const wear = appearance.wear ?? 0;
   const wearAmount = wear * 0.25;
   const isMetal = appearance.silhouette === 'heavy_plate';
+  const detail = proceduralDetail(appearance);
   const primary = new THREE.MeshStandardMaterial({
     color: darken(appearance.primaryColor, wearAmount),
     roughness: isMetal ? 0.35 + wear * 0.4 : 0.85,
     metalness: isMetal ? 0.7 : 0.05,
+    normalMap: detail.normalMap,
+    roughnessMap: detail.roughnessMap,
   });
   const secondary = new THREE.MeshStandardMaterial({
     color: darken(appearance.secondaryColor, wearAmount * 0.5),
     roughness: 0.7, metalness: isMetal ? 0.4 : 0.05,
+    normalMap: detail.normalMap,
+    roughnessMap: detail.roughnessMap,
   });
   const accent = new THREE.MeshStandardMaterial({
     color: appearance.accentColor,
     roughness: 0.4, metalness: isMetal ? 0.85 : 0.2,
+    normalMap: detail.normalMap,
+    roughnessMap: detail.roughnessMap,
   });
   return { primary, secondary, accent };
 }

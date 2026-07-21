@@ -2812,7 +2812,7 @@ export default function WorldLensPage() {
     return () => clearInterval(interval);
   }, [currentWorldId]);
 
-  const gatherFromNode = async (nodeId: string) => {
+  const gatherFromNode = useCallback(async (nodeId: string) => {
     setGatheringNode(nodeId);
     try {
       const node = nearbyNodes.find((n) => n.id === nodeId);
@@ -2865,7 +2865,7 @@ export default function WorldLensPage() {
     } finally {
       setGatheringNode(null);
     }
-  };
+  }, [currentWorldId, nearbyNodes]);
 
   // Load NPCs from API and keep positions fresh every 10s
   useEffect(() => {
@@ -3858,6 +3858,25 @@ export default function WorldLensPage() {
       if (sign) window.dispatchEvent(new CustomEvent('concordia:sign-placed', { detail: sign }));
     };
     worldSocket.on('world:sign-placed', handleSignPlaced);
+    // NPC resource gathering (server/lib/npc-simulator.js's _emitGather) —
+    // previously a completely silent DB write with no world-lens signal at
+    // all. Same combat-anim + dust-particle bridge the player's own click-
+    // to-gather (concordia:node-click handler, above) already fires, just
+    // targeted at the NPC's entityId and the real node's position instead
+    // of the player's.
+    const handleNpcGather = (...args: unknown[]) => {
+      const data = args[0] as { npcId?: string; x?: number; y?: number; z?: number } | undefined;
+      if (!data?.npcId) return;
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: data.npcId, animation: 'attack-light' },
+      }));
+      if (typeof data.x === 'number' && typeof data.z === 'number') {
+        window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+          detail: { type: 'dust', position: { x: data.x, y: data.y ?? 0, z: data.z }, count: 16 },
+        }));
+      }
+    };
+    worldSocket.on('world:npc-gather', handleNpcGather);
     // E2 — horror tension → window event for SoundscapeEngine's dissonant stem
     // + spatial ghost footstep. Server emits per-investigator from the
     // horror-dread-cycle heartbeat.
@@ -3915,6 +3934,7 @@ export default function WorldLensPage() {
       worldSocket.off('concordia:terrain-deformed', handleWorldDeformation);
       worldSocket.off('world:sonic-pulse', handleSonicPulse);
       worldSocket.off('world:sign-placed', handleSignPlaced);
+      worldSocket.off('world:npc-gather', handleNpcGather);
       worldSocket.off('horror:tension', handleHorrorTension);
       for (const [kind, h] of srBridges) worldSocket.off(kind, h);
     };
@@ -4132,6 +4152,35 @@ export default function WorldLensPage() {
     window.addEventListener('concordia:gather-request', handler);
     return () => window.removeEventListener('concordia:gather-request', handler);
   }, [currentWorldId, pushCombatLog, playerAvatar.id]);
+
+  // Click-to-gather: ConcordiaScene's canvas raycaster dispatches
+  // concordia:node-click when the player clicks a real resource-node mesh
+  // (tree/ore/crystal/herb/spring — resource-node-renderer.ts). Reuses the
+  // SAME tool-swing + dust-particle feedback as the freeform right-click
+  // path above, then calls the existing gatherFromNode (the same function
+  // the 2D "Nearby resources" HUD list's Gather button already used) so
+  // there's one real gather call path, not two. A depleted node (stump)
+  // skips the swing and shows an honest inline message instead of a
+  // silent no-op — the server is the source of truth either way.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { nodeId: string; nodeType: string | null; depleted: boolean; point: { x: number; y: number; z: number } } | undefined;
+      if (!detail?.nodeId) return;
+      if (detail.depleted) {
+        pushCombatLog('That resource is depleted — wait for it to respawn.', 'info');
+        return;
+      }
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: playerAvatar.id, animation: 'attack-light' },
+      }));
+      window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+        detail: { type: 'dust', position: detail.point, count: 16 },
+      }));
+      void gatherFromNode(detail.nodeId);
+    };
+    window.addEventListener('concordia:node-click', handler);
+    return () => window.removeEventListener('concordia:node-click', handler);
+  }, [gatherFromNode, pushCombatLog, playerAvatar.id]);
 
   // Phase F fix 2: ConcordiaScene's canvas raycaster dispatches
   // `concordia:open-dialogue` when the player clicks an NPC mesh. Look up

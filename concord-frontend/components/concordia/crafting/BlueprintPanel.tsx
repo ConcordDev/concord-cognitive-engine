@@ -3,6 +3,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api/client';
 import { CraftingMinigame } from './CraftingMinigame';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
+
+// dtu.type → labor verb, mirrors CraftingPanelV2's mapping (see
+// action-biomechanics.ts's ACTION_DESCRIPTORS for the per-verb sfx/vfx).
+const TYPE_TO_VERB: Record<string, string> = {
+  weapon: 'forge',
+  tool: 'forge',
+  armor: 'craft',
+  consumable: 'cook',
+  structure: 'build',
+  material: 'mill',
+};
 
 interface Material { id: string; quantity: number; }
 interface InventoryItem { item_id: string; quantity: number; }
@@ -70,6 +82,7 @@ export function BlueprintPanel({ playerId: _playerId, toolTier, skillLevel, onCl
         setResult(`✓ Crafted ${data.dtu?.name ?? selected.designTitle ?? selected.title} at ×${multiplier} quality.`);
         // Refresh inventory so the materials-checklist updates immediately
         api.get('/api/world/inventory').then((ir) => setInventory(ir.data?.items ?? [])).catch(() => {});
+        playActionAtPlayer(TYPE_TO_VERB[data.dtu?.type ?? ''] ?? 'craft');
         // Surface to the polish-pass toast + craft-ding via existing event channels
         if (typeof window !== 'undefined') {
           const ratedRarity = multiplier >= 1.4 ? 'epic'

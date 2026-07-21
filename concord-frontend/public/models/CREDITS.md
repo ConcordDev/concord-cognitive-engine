@@ -43,7 +43,8 @@ it; delete a file to fall back to the existing procedural generator
 | File | Source name | Used for |
 |---|---|---|
 | `vegetation/tree_01.glb`..`tree_04.glb` | Tree_01_Art..Tree_04_Art (MomusPark) | `TreeLayer.tsx` — picked per-tree by a seeded hash for variety |
-| `vegetation/bush_01.glb`, `flower_01.glb` | Bush_01_Art, Flower_01_a (MomusPark) | sourced, not yet wired to a consumer — vegetation-kind bonus content for a future pass |
+| `vegetation/bush_01.glb` | Bush_01_Art (MomusPark) | `resource-node-renderer.ts` — real GLB for `herb` resource nodes (2026-07-21), real-asset-first ahead of the procedural icosahedron fallback |
+| `vegetation/flower_01.glb` | Flower_01_a (MomusPark) | sourced, not yet wired to a consumer — vegetation-kind bonus content for a future pass |
 | `building/tavern.glb` | Shelter_Art (MomusPark) | `BuildingRenderer3D.tsx` `tavern` archetype |
 | `building/market.glb` | Booth_Food01 (medieval-fair) | `BuildingRenderer3D.tsx` `market` archetype |
 | `building/archive.glb` | Str_Amphitheater_01_Art (MomusPark) | `BuildingRenderer3D.tsx` `archive` archetype |
@@ -216,6 +217,176 @@ recognizable material; the underlying RGB math was independently checked
 against `terrain-reference-palettes.ts`'s real sampled values outside any
 renderer to rule out a browser color-management artifact skewing the
 visual check.
+
+### `cloth`/`metal`/`leather` also grounded, from a different real source (2026-07-21, later same session)
+
+The remaining 3 of the 6 previously-hardcoded procedural kinds
+(`cloth`, `metal`, `leather` — `stone`/`wood`/`thatch` still have no real
+reference and are unchanged) are now grounded too, via
+`lib/world-lens/material-reference-palettes.ts`. Source: the same
+`Roblox/creator-docs` repo (CC-BY-4.0, same license as the 7 terrain
+photos), but a different asset type —
+`content/en-us/assets/modeling/surface-appearance/{013_WornLeather,
+023_WornMetals,07_CottonCanvasDenim}.png`, Roblox's own rendered
+material-preview spheres for their SurfaceAppearance material catalog
+documentation. **This is a genuinely different provenance tier from the
+terrain photos and is documented as such in
+`material-reference-palettes.ts`'s own doc comment** — these are rendered
+PBR-material preview renders (a sphere lit against a white page
+background), not flat photographed material swatches. Sampling used a
+45%-center-crop (stays inside the sphere, away from the white background)
+and an 8th/92nd luminance-percentile pick for dark/light instead of a
+literal min/max (a literal min/max would have picked up the sphere's
+specular hotspot and silhouette ambient-occlusion shadow — lighting
+artifacts of the render, not material color). Unlike the terrain photos,
+these preview images are not shipped in the repo or displayed anywhere —
+only the extracted avg/dark/light statistics are used, so there are no
+new files under `public/models/` for this entry.
+
+`lib/concordia/armor-system.ts` (the 4-slot parametric armor-piece
+builder — head/torso/arms/legs × heavy_plate/robed/leather/exposed
+silhouettes) previously built every material as a flat solid-color
+`MeshStandardMaterial` with zero texture detail. It now calls
+`makePBR()` for a `normalMap`/`roughnessMap` pair keyed off silhouette
+(heavy_plate→metal, robed→cloth, leather & exposed→leather) — real
+material surface detail (brushed-metal streaks, leather crinkle, cloth
+weave) layered on top. Deliberately `normalMap`/`roughnessMap` only,
+never `map` (albedo): the real per-faction dye color
+(`appearance.primaryColor`/`secondaryColor`/`accentColor`, still applied
+via `material.color`) stays the actual displayed color — the texture
+only adds surface detail, it doesn't override the color customization.
+
+### Everyone wears their own armor now (2026-07-21, later same session)
+
+`armor-system.ts`'s builder existed but nothing called it — `createArmorSet`/
+`createArmorPiece` had zero callers anywhere in the app. Wired in two places:
+
+- **`character-schema.ts`'s `generateAppearance`** now computes a real,
+  individually-seeded `ArmorAppearance` for every character (archetype
+  picks the default silhouette — warrior/guard/legend→heavy_plate,
+  scholar/mystic→robed, hunter/trader→leather; civilians get a seeded
+  pick between leather/exposed; colors reuse the character's own
+  clothing palette so armor reads as one coherent outfit). The seed
+  string is the SAME composite `worldId::factionId::id` this whole
+  function hashes everything else from, so no two characters — including
+  two NPCs of the same archetype/faction — read as recolored clones.
+- **`enhanced-avatar-builder.ts`** (the local player + every hero-flagged
+  NPC's procedural body) now builds and attaches that armor, scaled by
+  `totalHeight / 1.75` (armor-system.ts's geometry is dimensioned for the
+  'average' archetype's 1.75m reference height) and anchored at the
+  correct body landmark per slot (head centers on the head mesh; torso +
+  legs share the waist line; arms anchor the shoulder line — verified
+  against armor-system.ts's own internal per-slot offsets).
+- **`hero-mesh-registry.ts`** (`attachArmorToHeroMesh`) extends the same
+  armor onto real hero GLB meshes (Microsoft Rocketbox / Mixamo rigs) via
+  `Object3D.attach()` — the standard three.js technique for parenting a
+  freshly-built object onto a bone while landing it at the bone's current
+  world position with identity rotation (not the bone's own rest-pose
+  local rotation, which for a limb bone points along the limb rather than
+  world-up) — so armor pieces then move/rotate WITH the bone as the rig
+  animates. Torso/legs attach to `Hips`, arms to `Spine2` (falling back to
+  `Spine1`/`Spine`), head to `Head`; a skeleton missing a bone just skips
+  that slot rather than throwing. `AvatarSystem3D.tsx` now computes the
+  rich appearance (armor included) once, up front, and passes `rich.armor`
+  into `loadHeroMesh` before attempting the GLB — the procedural fallback
+  path reuses the same object instead of rolling a second one, so a hero
+  NPC wears the identical deterministic kit whichever render path it
+  actually takes.
+
+Verified with a real headless-Chromium WebGL render of the actual bundled
+`buildEnhancedAvatar` + `generateAppearance` modules (not a mock): three
+different archetypes (warrior/scholar/hunter) render as three visibly
+distinct characters — a dark-plated knight with pauldrons and a chest
+sigil, a hooded robe reaching the ankles, and a tan leather-vest hunter
+carrying a bow — proving the per-character seed genuinely drives visible
+variety, not just distinct data. The bone-attach mechanism (parent
+tracking, world-position landing, moves-with-the-bone-on-rig-animation)
+is unit-tested directly (`tests/lib/hero-mesh-armor-attach.test.ts`); it
+was not separately verified against a REAL Rocketbox rig's actual
+rest-pose bone orientations in a live render (no real hero-GLB NPC was
+available to render in this session's headless-browser harness) — flagged
+as the one honest residual on this half of the feature, not silently
+assumed correct.
+
+One known, pre-existing architectural quirk this work exposed rather than
+introduced: `generateAppearance`'s `override` parameter only overwrites
+the FINAL returned object's fields — it does not retroactively influence
+other fields computed earlier in the function from the pre-override
+local variable (e.g. `override: { bodyArchetype: 'legend' }` does not
+change `totalHeight`/`proportions`, which are derived from the seeded
+pick before override is ever applied). Armor's own tier-5-for-legend rule
+was fixed to read `override?.bodyArchetype` directly so authored deity
+NPCs get it right, but the broader quirk (also affecting
+`CharacterPreviewCanvas.tsx`'s live clothing-color selections not
+retroactively recoloring armor) is a pre-existing characteristic of this
+function's design, not something this session's scope covered fixing
+everywhere it appears.
+
+### Resource nodes are real, real-asset-first, and clickable (2026-07-21, later same session)
+
+`lib/world-lens/resource-node-renderer.ts` (real per-node meshes polling
+`GET /api/worlds/:worldId/nodes`, already wired into `ConcordiaScene.tsx`
+via `attach-world-renderers.ts`) previously built every node kind from
+flat-color procedural primitives only — no real asset was ever attempted,
+and nothing on the mesh was clickable (the only gather UI was a
+disconnected 2D "Nearby resources" HUD list). Two fixes:
+
+- **Real GLB first for `tree`/`herb` node kinds.** Reuses the exact
+  `loadAsset`/`instanceFromCache`/`resolveAssetReference` pipeline
+  `TreeLayer.tsx` already uses (same real CC0 `tree_01-04.glb` variants),
+  plus finally wires `bush_01.glb` (previously sourced but unused — see
+  the vegetation table above) for `herb` nodes. `ore_vein`/`stone`/
+  `crystal`/`spring` node kinds have no real asset available and keep
+  their existing distinct procedural shapes (rock/crystal/water) — an
+  honest gap, not silently hidden.
+- **Click-to-gather.** Every built node object (real GLB or procedural)
+  is tagged `userData.isResourceNode` + `nodeId` (recursively, via
+  `traverse`, so a hit on any sub-mesh of a multi-mesh real GLB still
+  resolves). `ConcordiaScene.tsx`'s existing canvas-click raycaster
+  (already checks avatars → now resource nodes → buildings → terrain, in
+  that priority order) dispatches `concordia:node-click`; `world/page.tsx`
+  listens and calls the SAME `gatherFromNode()` the 2D HUD list's Gather
+  button already used — one real gather call path, not two — with the
+  same tool-swing + dust-particle feedback the freeform right-click
+  gather path already had. A depleted node (rendered as a stump) shows an
+  honest "depleted" message instead of a silent no-op.
+
+A real concurrency bug was caught and fixed during development, not
+shipped: making `reconcile()` async (real-asset lookups need to
+`await`) meant two overlapping calls — the renderer's own construction-
+time auto-refresh racing an explicit `refresh()` — could each pass the
+"not yet tracked" check for the same node before either wrote back,
+building and adding two objects for one node. Confirmed via a real
+headless-Chromium render during development (5 server nodes rendered as
+10 scene objects) before being serialized with a chained-promise guard
+(`reconcileChain`) and re-verified (5 nodes → 5 objects).
+
+### Gathering tools + NPC gather visibility (2026-07-21, later same session)
+
+Two closing pieces for "AI NPCs will be cutting down trees... it's hard
+to do that with no tool":
+
+- **`axe`/`pickaxe`/`hoe`/`sickle` are now real `Accessories['carry']`
+  values.** `axe` reuses the real `axe.glb` weapon archetype directly
+  (`weapon-archetypes.ts`, `createWeapon({archetype:'axe',...})`) —
+  holstered at the hip, not drawn — since a lumberjack's axe and a combat
+  axe are the same object in this world; no second asset needed.
+  `pickaxe`/`hoe`/`sickle` have no real GLB, so they're honest procedural
+  props (wood-shaft cylinder + shaped metal head — a bent-cone pick, a
+  flat-blade hoe, a curved-torus-arc sickle) in the same style already
+  established for `tool-belt`/`tome`. `character-schema.ts`'s
+  `generateAppearance` gives civilian (unmatched-archetype) characters a
+  seeded 35% chance to carry one — "regular townsfolk" now read as
+  people who actually chop/mine/farm, not generic idle extras.
+- **NPC gathering is no longer silent.** `server/lib/npc-simulator.js`'s
+  `gather_resource` action wrote only to the DB (`activity_resources` +
+  `world_resource_nodes`) with zero broadcast. A new `_emitGather`
+  (mirroring the file's own existing `_emitBark` pattern exactly) sends
+  `world:npc-gather` with the real node's position/type/resource —
+  `world/page.tsx`'s `handleNpcGather` bridges it into the SAME
+  tool-swing + dust-particle feedback the player's own click-to-gather
+  gets, targeted at the NPC's own entity id. An NPC gathering resources
+  is now a real, watchable action.
 
 ## Known limitations (honest, not hidden)
 

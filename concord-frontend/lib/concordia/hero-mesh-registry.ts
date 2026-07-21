@@ -17,6 +17,7 @@
  */
 
 import * as THREE from 'three';
+import { createArmorSet, type ArmorAppearance, type ArmorSlot } from '@/lib/concordia/armor-system';
 
 export interface HeroMeshLoadResult {
   group:         THREE.Group;
@@ -75,7 +76,15 @@ const OCCUPATION_KEYWORDS: [RegExp, string][] = [
   [/mage|mystic|rune|hedge|heal|priest|shaman|witch/i, 'mystic'],
   [/scholar|archiv|lore|scribe|analy|lab tech|reporter|investigat/i, 'scholar'],
   [/trad|fence|fix|broker|runner|corpo|pilgrim|farm|merchant|vendor/i, 'trader'],
-  [/sword|sellsword|vigilante|getaway|forg|smith|tinker|netrunner|ripperdoc|drone-tech|informant|forger/i, 'warrior'],
+  // 'warrior' itself must be in this list: routes/worlds.js's occupation
+  // field falls back to the raw archetype column (`state.occupation ||
+  // r.archetype`) when no live routine occupation is set, so an
+  // authored NPC's archetype string ("warrior") is frequently the
+  // occupation text verbatim — every other archetype's own name already
+  // self-matched its keyword list (guard/hunt.../mystic/scholar/trad...);
+  // warrior's list was the one gap, silently stranding every
+  // warrior-archetype NPC on the procedural fallback.
+  [/warrior|sword|sellsword|vigilante|getaway|forg|smith|tinker|netrunner|ripperdoc|drone-tech|informant|forger/i, 'warrior'],
 ];
 
 /**
@@ -105,6 +114,7 @@ export async function loadHeroMesh(
   npcId: string,
   archetype: string,
   homeWorldId?: string,
+  armor?: ArmorAppearance,
 ): Promise<HeroMeshLoadResult | null> {
   const cacheKey = `${npcId}::${homeWorldId ?? ''}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey)!;
@@ -129,6 +139,7 @@ export async function loadHeroMesh(
       const loader = await getLoader();
       const gltf = await loader.load(candidate.url);
       const boneMap = buildBoneMap(gltf.scene);
+      if (armor) attachArmorToHeroMesh(gltf.scene, boneMap, armor);
       const result: HeroMeshLoadResult = {
         group: gltf.scene,
         source: candidate.source,
@@ -143,6 +154,57 @@ export async function loadHeroMesh(
     }
   }
   return null;
+}
+
+// Slot -> which bone(s) to try, in priority order. Real skinned rigs
+// (Mixamo / 3ds Max Biped, both normalized into CANONICAL_BONES by
+// buildBoneMap) always carry Hips/Head; Spine2 is present on most but
+// not universally, hence the Spine1/Spine fallback chain for 'arms'.
+const ARMOR_SLOT_BONES: Record<ArmorSlot, readonly string[]> = {
+  head:  ['Head'],
+  torso: ['Hips'],
+  arms:  ['Spine2', 'Spine1', 'Spine'],
+  legs:  ['Hips'],
+};
+
+/**
+ * Attaches a real per-character armor set (armor-system.ts, grounded in
+ * real material reference data — see material-reference-palettes.ts) onto
+ * a loaded hero GLB's skeleton, so hero NPCs wear their armor too, not
+ * just the procedural-body population (enhanced-avatar-builder.ts).
+ *
+ * Uses `Object3D.attach()` — the standard three.js technique for parenting
+ * a freshly-built object onto a bone while landing it at the bone's
+ * current WORLD position with identity world-rotation (not the bone's own
+ * local rest-pose rotation, which for a limb bone typically points along
+ * the limb rather than world-up and would otherwise leave the armor
+ * piece sideways). `attach()` recomputes the local transform under the
+ * new parent to preserve whatever world transform the object had at
+ * attach time — the piece then moves/rotates WITH the bone as the rig
+ * animates, correct equipped-item behavior.
+ *
+ * `root.updateMatrixWorld(true)` first forces the (never-yet-rendered)
+ * skeleton's rest-pose world matrices to compute — otherwise every
+ * bone's matrixWorld is still the uninitialized identity default and
+ * every piece would land at the mesh's local origin.
+ *
+ * A slot with no matching bone on this particular skeleton is skipped,
+ * never thrown — a partial armor kit beats a crashed avatar.
+ */
+export function attachArmorToHeroMesh(root: THREE.Group, boneMap: Map<string, THREE.Bone>, armor: ArmorAppearance): void {
+  root.updateMatrixWorld(true);
+  const armorSet = createArmorSet(armor);
+  const worldPos = new THREE.Vector3();
+  for (const [slot, piece] of armorSet) {
+    const bone = ARMOR_SLOT_BONES[slot].map((n) => boneMap.get(n)).find((b): b is THREE.Bone => !!b);
+    if (!bone) continue;
+    bone.getWorldPosition(worldPos);
+    piece.position.copy(worldPos);
+    piece.quaternion.identity();
+    piece.scale.setScalar(1);
+    piece.traverse((obj) => { (obj as THREE.Mesh).castShadow = true; });
+    bone.attach(piece);
+  }
 }
 
 async function checkExists(url: string): Promise<boolean> {

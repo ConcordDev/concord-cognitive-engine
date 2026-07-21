@@ -86,6 +86,17 @@ describe('hero-mesh-registry archetypeForOccupation', () => {
     expect(archetypeForOccupation('hunter')).toBe('hunter');
     expect(archetypeForOccupation('scholar')).toBe('scholar');
     expect(archetypeForOccupation('trader')).toBe('trader');
+    expect(archetypeForOccupation('mystic')).toBe('mystic');
+    // Regression: routes/worlds.js's live NPC `occupation` field falls back
+    // to the raw authored `archetype` DB column (`state.occupation ||
+    // r.archetype`) when no routine occupation is set — so an NPC's
+    // archetype string is frequently the occupation text verbatim. Every
+    // other archetype already self-matched its own keyword list; 'warrior'
+    // was the one gap (its regex only matched sword/sellsword/forge/smith/
+    // etc, never the literal word "warrior"), silently stranding every one
+    // of the 14 warrior-archetype authored NPCs on the procedural fallback
+    // even though a real archetype GLB exists for them.
+    expect(archetypeForOccupation('warrior')).toBe('warrior');
   });
 
   it('keyword-matches real authored occupations from content/world/*/npcs.json to an archetype', () => {

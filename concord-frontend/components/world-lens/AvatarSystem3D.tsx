@@ -326,6 +326,14 @@ export default function AvatarSystem3D({
   // These two are new — per-frame eye tickers and enhanced-disposers.
   const eyeTickersRef = useRef<Map<string, (dt: number) => void>>(new Map());
   const enhancedDisposeRef = useRef<Map<string, () => void>>(new Map());
+  // Set once the player's active mount spawns (see the mount-spawn block
+  // below). The movement loop's terrain-elevation clamp reads this to
+  // skip clamping Y to ground height while mounted — rider-ik's astride
+  // seat lift owns Y in that case instead. Without this gate, the two
+  // systems fight every frame (rider-ik sets the seat height, then the
+  // terrain clamp immediately stomps it back to ground level), which is
+  // exactly why the seat lift shipped default-off until this fix.
+  const isMountedRiderRef = useRef(false);
 
   // Phase AA2 — Web Worker for gait synthesis. The hook spawns one
   // worker for the lifetime of this component; per-frame requestGait
@@ -802,10 +810,27 @@ export default function AvatarSystem3D({
     []
   );
 
-  // Phase A1: smart wrapper — enhanced builder for local player + hero
-  // NPCs, legacy primitive path for crowd. Stores FacialController +
-  // tickEyes + dispose in sidecar refs so the per-frame loop + dispose
-  // path can find them by avatar id.
+  // Phase A1 (2026-07-21 quality-floor pass): enhanced builder (hair-
+  // cards, skin-SSS, eye-parallax, real per-character armor) for EVERY
+  // avatar that gets a mesh at all — not just hero/legend/local-player.
+  // The flat-primitive legacy path below stays wired only as the
+  // exception-safety fallback (buildEnhancedAvatar throws -> falls
+  // through to it), never the default.
+  //
+  // This is safe on the existing render budget, not a new one:
+  // MAX_FULLY_ANIMATED (50) already hard-caps how many players+NPCs get
+  // ANY full mesh built per world — everyone beyond that cap gets no
+  // mesh at all, regardless of tier (see the two `.slice(0,
+  // MAX_FULLY_ANIMATED)` call sites below). Before this change, a large
+  // fraction of that already-bounded-50 population was silently using
+  // the cheaper flat-color box/cylinder/sphere tier anyway (only NPCs
+  // whose archetype matched hero-mesh-registry's keyword list, or whose
+  // bodyArchetype was 'legend', got the real one) — the population size
+  // this decision applies to doesn't change, only the per-avatar fidelity
+  // within it. Not independently profiled against real frame-time
+  // budgets in this session — flagged honestly, not assumed free.
+  // Stores FacialController + tickEyes + dispose in sidecar refs so the
+  // per-frame loop + dispose path can find them by avatar id.
   const createAvatarMeshSmart = useCallback(
     async (
       avatarId: string,
@@ -839,9 +864,36 @@ export default function AvatarSystem3D({
         }
       }
 
-      const wantEnhanced =
-        opts.isLocalPlayer || opts.isHero || appearance.bodyType === 'legend';
+      // Always true now — see this function's own doc comment above for
+      // why (every avatar that reaches this call already passed the
+      // MAX_FULLY_ANIMATED budget gate; only which BUILDER they get was
+      // ever conditional). `opts` is no longer read here, but stays a
+      // real parameter — isHero still selects the hero-GLB attempt below,
+      // and isLocalPlayer still controls the enhanced builder's own
+      // local-player-specific behavior.
+      const wantEnhanced = true;
       if (wantEnhanced) {
+        // Phase L — pull hydrated hints from the world-load cache. Read
+        // once up-front (was previously read a second time, identically,
+        // inside the procedural-fallback try-block below).
+        const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
+        const hint = cache?.get(avatarId) as {
+          factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
+          appearanceText?: string;
+          heroMesh?: boolean;
+          factionId?: string;
+          archetype?: string;
+          homeWorldId?: string;
+        } | undefined;
+
+        // Everyone-unique — the rich appearance (armor included) is now
+        // computed once up front and reused by whichever path actually
+        // renders, so a hero-GLB NPC's real mesh wears the SAME
+        // deterministic armor kit a procedural-fallback build of them
+        // would have gotten, not a second independently-rolled one.
+        let rich: import('@/lib/world-lens/character-schema').RichAppearanceConfig | null = null;
+        const schemaModPromise = import('@/lib/world-lens/character-schema');
+
         // Phase S — try the baked GLB path first for hero NPCs. The
         // home-world archetype carries an NPC's visual identity
         // across cross-world travel (Phase T): a courier from
@@ -849,12 +901,24 @@ export default function AvatarSystem3D({
         // courier when visiting concordia-hub.
         if (opts.isHero && !opts.isLocalPlayer) {
           try {
-            const heroMod = await import('@/lib/concordia/hero-mesh-registry');
-            const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
-            const heroHint = cache?.get(avatarId) as { homeWorldId?: string; archetype?: string } | undefined;
-            const archetype = opts.archetype ?? heroHint?.archetype ?? 'warrior';
-            const homeWorld = heroHint?.homeWorldId ?? opts.worldId;
-            const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld);
+            const [heroMod, schemaMod] = await Promise.all([import('@/lib/concordia/hero-mesh-registry'), schemaModPromise]);
+            const archetype = opts.archetype ?? hint?.archetype ?? 'warrior';
+            const homeWorld = hint?.homeWorldId ?? opts.worldId;
+            rich = schemaMod.generateAppearance({
+              id: avatarId,
+              worldId: opts.worldId || 'concordia-hub',
+              factionId: opts.factionId ?? hint?.factionId ?? null,
+              archetype: opts.archetype ?? hint?.archetype ?? null,
+              themeId: 'concordia-hub',
+              heroMesh: true,
+              factionVisual: hint?.factionVisual ?? null,
+              npcAppearanceText: hint?.appearanceText ?? null,
+              override: {
+                skinColor: appearance.skinColor,
+                hairColor: appearance.hairColor,
+              },
+            });
+            const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld, rich.armor);
             if (loaded?.group) {
               return loaded.group as InstanceType<typeof import('three').Group>;
             }
@@ -867,18 +931,9 @@ export default function AvatarSystem3D({
         try {
           const [{ buildEnhancedAvatar }, schemaMod] = await Promise.all([
             import('@/lib/world-lens/enhanced-avatar-builder'),
-            import('@/lib/world-lens/character-schema'),
+            schemaModPromise,
           ]);
-          // Phase L — pull hydrated hints from the world-load cache.
-          const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
-          const hint = cache?.get(avatarId) as {
-            factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
-            appearanceText?: string;
-            heroMesh?: boolean;
-            factionId?: string;
-            archetype?: string;
-          } | undefined;
-          const rich = schemaMod.generateAppearance({
+          rich ??= schemaMod.generateAppearance({
             id: avatarId,
             worldId: opts.worldId || 'concordia-hub',
             factionId: opts.factionId ?? hint?.factionId ?? null,
@@ -1942,11 +1997,13 @@ export default function AvatarSystem3D({
           // (not a hardcoded 'Steed'), seat-offset-aware, and FOLLOW the player
           // instead of freezing at a static +1.2m. The mount tracks the rider's
           // position + heading each frame and ticks its gait by actual speed.
-          // NOTE (chair-verified follow-on): the rider astride-seat pose —
-          // lifting the player onto the saddle via rider-ik.computeRiderIkTargets
-          // + rein-hand FABRIK — interacts with the locomotion ground-clamp and
-          // is tuned visually in the next slice; this slice makes the mount
-          // appear, correct, and attached (today it never spawned at all).
+          // The rider astride-seat pose — lifting the player onto the saddle
+          // via rider-ik.computeRiderIkTargets + rein-hand FABRIK — used to
+          // fight the locomotion ground-clamp (the movement loop's terrain
+          // elevation clamp ran after this ticker and stomped the seat Y back
+          // to ground height every frame). Now gated by isMountedRiderRef,
+          // which the movement loop's clamp skips while set, so the seat lift
+          // is the default: real astride riding, not just a following mount.
           const sp = active.species || { size_class: 'medium' as const, display_name: 'Steed' };
           const seat = active.seatOffset || { x: 0, y: 1.4, z: 0, yaw: 0 };
           const { createMountGroup } = await import('@/components/concordia/mounts/MountAvatar3D');
@@ -1954,17 +2011,15 @@ export default function AvatarSystem3D({
           m.group.position.copy(playerMesh.position);
           m.setRotation(playerMesh.rotation.y);
           avatarGroup.add(m.group);
+          isMountedRiderRef.current = true;
           // Follow the rider: seat the mount horizontally under the rider via the
           // species seat offset (inverse of computeSaddleAnchor), yaw-aligned,
           // gait ticked by movement speed. Registered in the frame-loop ticker.
-          // Wave 7a #3 — rider astride-seat via rider-ik. computeRiderIkTargets
-          // gives the pelvis target (saddle anchor + seat offset + per-gait
-          // bounce). Applying the vertical seat fights the locomotion ground-clamp,
-          // so it's behind a default-OFF flag (chair-tunable): when enabled, the
-          // rider lifts onto the saddle with gait bounce; default leaves the mount
-          // following under the rider (already a clear win over the old 1.2m offset).
-          const seatOn = typeof window !== 'undefined'
-            && (window as unknown as { __concordMountRiderSeat?: boolean }).__concordMountRiderSeat === true;
+          // Escape hatch for QA/rollback: set window.__concordMountRiderSeat =
+          // false to fall back to the old following-only behavior without a
+          // code change.
+          const seatOn = typeof window === 'undefined'
+            || (window as unknown as { __concordMountRiderSeat?: boolean }).__concordMountRiderSeat !== false;
           const prev = playerMesh.position.clone();
           let riderIk: typeof import('@/lib/concordia/mounts/rider-ik') | null = null;
           if (seatOn) { import('@/lib/concordia/mounts/rider-ik').then((mod) => { riderIk = mod; }).catch(() => {}); }
@@ -2583,7 +2638,15 @@ export default function AvatarSystem3D({
           // Terrain elevation — clamp Y to ground (only when grounded).
           if (!isAirborne && !isSwimming) {
             const elevation = elevationRef.current?.(pos.x, pos.z) ?? pos.y;
-            pos.y = elevation;
+            // While mounted, playerPositionRef stays an approximate saddle
+            // height (ground + a fixed seat offset) — good enough for
+            // network/far-field consumers of playerPositionRef (water check,
+            // onMove sync). The precise per-frame seat bounce is applied
+            // directly to playerMesh.position by the rider-ik eyeTicker
+            // (`mount:*` in eyeTickersRef, runs earlier this frame); the
+            // pm.position.set below must not overwrite that with this
+            // approximation or the two fight every frame.
+            pos.y = isMountedRiderRef.current ? elevation + 1.3 : elevation;
           }
 
           // Auto-face movement direction with smooth rotation.
@@ -2604,7 +2667,14 @@ export default function AvatarSystem3D({
 
           const pm = playerMeshRef.current as InstanceType<typeof import('three').Group>;
           if (pm) {
-            pm.position.set(pos.x, pos.y, pos.z);
+            if (isMountedRiderRef.current) {
+              // Y stays whatever the rider-ik eyeTicker set this frame —
+              // see the terrain-elevation comment above for why.
+              pm.position.x = pos.x;
+              pm.position.z = pos.z;
+            } else {
+              pm.position.set(pos.x, pos.y, pos.z);
+            }
             pm.rotation.y = playerRotationRef.current;
 
             // ── Procedural gait synthesis ──────────────────
@@ -3062,6 +3132,7 @@ export default function AvatarSystem3D({
       enhancedDisposals.clear();
       facialControllers.clear();
       eyeTickers.clear();
+      isMountedRiderRef.current = false;
 
       if (avatarGroupRef.current) {
         const group = avatarGroupRef.current as {

@@ -334,6 +334,38 @@ function _emitBark(npc, worldId, rung, text, arrest = null) {
 }
 
 /**
+ * Emit world:npc-gather socket event — the World Lens's only signal that
+ * an NPC gathering was previously a silent DB write (activity_resources +
+ * world_resource_nodes updated, nothing else). Mirrors `_emitBark`'s
+ * pattern exactly. `nodeType` drives which tool-swing reads correctly
+ * (axe for tree, pickaxe for ore/stone/crystal/fuel, sickle/hoe for
+ * herb/soil — same table `world-gathering.js`'s TOOL_COMPAT already
+ * encodes for the player-facing yield-estimate path).
+ */
+function _emitGather(npc, worldId, gathered) {
+  if (!gathered) return;
+  try {
+    const io = globalThis._concordREALTIME?.io;
+    io?.to(`world:${worldId}`).emit('world:npc-gather', {
+      worldId,
+      npcId:        npc.id,
+      // Node position, NOT npc.location — the tool-swing/particle burst
+      // should land at the resource node the NPC is actually gathering
+      // from, which can be up to 30m away (getNearbyNodes' search radius),
+      // not "wherever the NPC happens to be standing" per npc.location.
+      x:            gathered.x,
+      y:            gathered.y,
+      z:            gathered.z,
+      nodeId:       gathered.nodeId,
+      nodeType:     gathered.nodeType ?? null,
+      resourceId:   gathered.resourceId,
+      resourceName: gathered.resourceName,
+      amount:       gathered.amount,
+    });
+  } catch { /* non-fatal */ }
+}
+
+/**
  * Emit world:npc-alert socket event and mark nearby NPCs as alerted.
  */
 function _callForHelp(npc, worldId, db) {
@@ -845,6 +877,11 @@ Choose one action for this NPC. Return JSON only:
           resources[resourceId] = Math.min(50, (resources[resourceId] || 0) + amount);
           this._db.prepare('UPDATE world_npcs SET activity_resources = ? WHERE id = ?')
             .run(JSON.stringify(resources), this.id);
+
+          // Only a real node hit (not the always-succeeds abstract fallback
+          // above) is worth broadcasting — the frontend swing/particle
+          // reads against a real node position.
+          if (gathered) _emitGather(this, this.worldId, gathered);
         } catch { /* non-fatal */ }
         break;
       }
