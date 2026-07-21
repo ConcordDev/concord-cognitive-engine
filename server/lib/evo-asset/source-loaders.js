@@ -332,6 +332,20 @@ const WORLD_LENS_SEED_DIR = process.env.EVO_WORLD_LENS_SEED_DIR
  * all ~46 per-world variant files — those are the same underlying asset
  * reused for cross-world visual identity (see hero-mesh-registry.ts),
  * not distinct assets worth separate evolution tracking.
+ *
+ * ALSO registers a second `source: 'concordia'` alias row per asset, keyed
+ * by the bare filename (no extension, e.g. `tavern` for
+ * `models/building/tavern.glb`) — the exact `(source, sourceId)` pair
+ * `concord-frontend/lib/world-lens/asset-loader.ts#resolveAssetReference`
+ * actually queries (every real call site — BuildingRenderer3D,
+ * creature-renderer, resource-node-renderer, weapon-archetypes — omits
+ * `source`, which defaults to `"concordia"`, and passes `id` as this bare
+ * filename). Without this alias, `resolveCurrentBest` never matched
+ * anything registered under the `github`/`world-lens:` key, so a promoted
+ * evo-asset refinement of a world-lens GLB could never reach the renderer
+ * — the two halves of the pipeline were keyed in different namespaces.
+ * The `github`-sourced row is left untouched (still the honest provenance
+ * record); this alias is purely a resolution-key bridge to the same file.
  */
 export function bootstrapWorldLensAssets(db, dir = WORLD_LENS_SEED_DIR) {
   const stats = { found: 0, registered: 0 };
@@ -360,6 +374,18 @@ export function bootstrapWorldLensAssets(db, dir = WORLD_LENS_SEED_DIR) {
       });
       if (r?.created) stats.registered += 1;
     } catch { /* registration best-effort */ }
+    try {
+      const bareId = path.basename(file, path.extname(file));
+      registerAsset(db, {
+        kind: entry.kind || "mesh",
+        source: "concordia",
+        sourceId: bareId,
+        localPath,
+        category: entry.category ?? null,
+        tags: entry.tags ?? [],
+        qualityLevel: entry.qualityLevel ?? 4,
+      });
+    } catch { /* alias registration best-effort — the github row above is the real record */ }
   }
   return stats;
 }

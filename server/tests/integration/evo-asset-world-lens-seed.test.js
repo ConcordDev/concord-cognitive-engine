@@ -20,7 +20,7 @@ import { up as up202 } from "../../migrations/202_evo_assets_blueprint_kind.js";
 import { up as up373 } from "../../migrations/373_evo_assets_github_source.js";
 
 import { bootstrapWorldLensAssets, bootstrapAllSources } from "../../lib/evo-asset/source-loaders.js";
-import { selectEvolutionCandidates } from "../../lib/evo-asset/registry.js";
+import { selectEvolutionCandidates, resolveCurrentBest } from "../../lib/evo-asset/registry.js";
 
 function setupDb() {
   const db = new Database(":memory:");
@@ -68,7 +68,12 @@ describe("evo-asset world-lens seed", () => {
   it("registers only the 7 universal hero-archetype slots, not the ~46 per-world variants", () => {
     const db = setupDb();
     bootstrapWorldLensAssets(db);
-    const heroRows = db.prepare(`SELECT * FROM evo_assets WHERE category = 'hero-archetype'`).all();
+    // Scoped to source='github' — the primary provenance registration this
+    // test is about. The concordia-alias row (see the "resolution alias"
+    // describe block below) also carries category='hero-archetype', so an
+    // unscoped count would double to 14 and this assertion would be testing
+    // the alias mechanism by accident instead of the hero-slot dedup logic.
+    const heroRows = db.prepare(`SELECT * FROM evo_assets WHERE category = 'hero-archetype' AND source = 'github'`).all();
     assert.equal(heroRows.length, 7, "exactly the 7 universal archetype slots");
     for (const row of heroRows) {
       assert.ok(!row.source_id.includes("__"), "per-world variant files (double-underscore suffix) must not be registered");
@@ -94,5 +99,77 @@ describe("evo-asset world-lens seed", () => {
     bootstrapWorldLensAssets(db);
     const candidates = selectEvolutionCandidates(db, 50);
     assert.ok(candidates.length >= 40, "the scheduler should see the real assets as candidates");
+  });
+});
+
+describe("evo-asset world-lens seed — frontend resolution alias (source/sourceId key mismatch fix)", () => {
+  // Every real renderer call site (BuildingRenderer3D.tsx, creature-renderer.ts,
+  // resource-node-renderer.ts, weapon-archetypes.ts) calls loadAsset() without
+  // a `source` override, so concord-frontend/lib/world-lens/asset-loader.ts
+  // defaults to source='concordia' and passes the bare filename (no
+  // extension) as sourceId — e.g. {kind:'building', id:'tavern'} for
+  // models/building/tavern.glb. The registration above only ever wrote
+  // source='github', sourceId='world-lens:models/building/tavern.glb', a
+  // completely different (source, sourceId) pair. resolveCurrentBest's exact
+  // match meant a promoted evo-asset refinement of a world-lens GLB could
+  // NEVER reach the renderer — the two halves of the pipeline were keyed in
+  // different namespaces and never intersected. These tests pin the fix: a
+  // second alias row under the exact key the frontend actually queries.
+
+  it("registers a concordia-sourced alias row per asset, keyed by the bare filename (no extension)", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    const alias = db.prepare(`SELECT * FROM evo_assets WHERE source = 'concordia' AND source_id = 'tavern'`).get();
+    assert.ok(alias, "a concordia/tavern alias row should exist for models/building/tavern.glb");
+    assert.ok(alias.local_path.endsWith("models/building/tavern.glb"));
+    assert.equal(alias.category, "building");
+  });
+
+  it("resolveCurrentBest now finds a match using the EXACT (source, sourceId) the frontend asset-loader queries — this is the observable fix", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    // Mirrors asset-loader.ts#resolveAssetReference's real call:
+    // resolveAssetUrl({ source: ref.source ?? "concordia", sourceId: ref.id })
+    // with ref = { kind: 'building', id: 'tavern' } — before this fix,
+    // resolveCurrentBest(db, {source:'concordia', sourceId:'tavern'}) always
+    // returned null (not_registered), so the frontend silently fell through
+    // to the static /models/building/tavern.glb path — byte-identical output
+    // today, but with zero path for a future promoted refinement to surface.
+    const resolved = resolveCurrentBest(db, { source: "concordia", sourceId: "tavern" });
+    assert.ok(resolved, "resolveCurrentBest should find the concordia alias row");
+    assert.ok(resolved.canonicalPath.endsWith("models/building/tavern.glb"));
+    assert.ok(resolved.qualityLevel >= 4);
+  });
+
+  it("does not disturb the existing github-sourced provenance row — both rows coexist, pointing at the same file", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    const githubRow = db.prepare(`SELECT * FROM evo_assets WHERE source = 'github' AND source_id = 'world-lens:models/building/tavern.glb'`).get();
+    const aliasRow = db.prepare(`SELECT * FROM evo_assets WHERE source = 'concordia' AND source_id = 'tavern'`).get();
+    assert.ok(githubRow, "the original github provenance row must still exist, unchanged");
+    assert.ok(aliasRow);
+    assert.notEqual(githubRow.id, aliasRow.id, "two distinct rows, not a mutation of the same row");
+    assert.equal(githubRow.local_path, aliasRow.local_path, "both point at the same file on disk");
+  });
+
+  it("re-seeding is idempotent for the alias rows too — no duplicates on a second run", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    const before = db.prepare(`SELECT COUNT(*) AS n FROM evo_assets WHERE source = 'concordia'`).get().n;
+    bootstrapWorldLensAssets(db);
+    const after = db.prepare(`SELECT COUNT(*) AS n FROM evo_assets WHERE source = 'concordia'`).get().n;
+    assert.equal(before, after);
+    assert.ok(before >= 40, "one alias row per found asset");
+  });
+
+  it("aliases resolve correctly for the other asset kinds real renderers actually query (weapon, vegetation, creature)", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    // weapon-archetypes.ts calls loadAsset({kind:'weapon', id}) for e.g. 'mace'
+    assert.ok(resolveCurrentBest(db, { source: "concordia", sourceId: "mace" }), "weapon/mace.glb should resolve");
+    // resource-node-renderer.ts calls loadAsset({kind:'vegetation', id:'bush_01'})
+    assert.ok(resolveCurrentBest(db, { source: "concordia", sourceId: "bush_01" }), "vegetation/bush_01.glb should resolve");
+    // creature-renderer.ts calls loadAsset({kind:'creature', id})
+    assert.ok(resolveCurrentBest(db, { source: "concordia", sourceId: "quadruped_01" }), "creature/quadruped_01.glb should resolve");
   });
 });

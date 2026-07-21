@@ -1,7 +1,18 @@
 // server/lib/evo-asset/scheduler.js
 // Heartbeat-driven evolution scheduler.
 //
-// Every ~5 minutes (every 100th heartbeat tick) the scheduler:
+// Every 100th governorTick() call the scheduler fires. governorTick()'s own
+// interval defaults to 60s (server.js's _startGovernorHeartbeat,
+// clamp(heartbeatMs ?? 60000, 15s, 10min)), so this is ~100 minutes between
+// evolution ticks by default, not the "~5 minutes" this comment used to
+// claim — that figure assumed a faster per-entity tick loop elsewhere in
+// the codebase, not the actual governor interval this gate reads from
+// (STATE.__bgTickCounter, incremented once per governorTick() call). The
+// scheduler does run and IS live at boot (verified against
+// _startGovernorHeartbeat's setTimeout(..., 50_000) boot wiring) — the
+// interval was simply mis-documented.
+//
+// On each fire the scheduler:
 //   1. Recomputes evolution_score for the top N most-active assets
 //   2. Selects up to 3 candidates with highest score
 //   3. Picks the next refinement pass for each based on current quality_level
@@ -58,6 +69,26 @@ export async function runEvolutionTick(STATE, db, deps = {}) {
 
       const passKind = nextPassFor(asset.quality_level);
       if (!passKind) continue;
+
+      // KNOWN GAP (2026-07-21, verified by direct investigation, not fixed
+      // here): subdivision/procedural_wear/higher_lod all read local_path
+      // via fs.readFile + JSON.parse, expecting the {positions, indices}
+      // mesh-JSON format content/evo-seed/*.mesh.json seed primitives use.
+      // The real world-lens assets (bootstrapWorldLensAssets — building/
+      // tree/creature/weapon GLBs, terrain JPGs) fail JSON.parse on binary
+      // GLB data and are swallowed by each pass's own try/catch, returning
+      // null (a silent no-op, not a crash — see the `if (!result) continue`
+      // a few lines down). material_upgrade is the one pass that survives
+      // (it never reads sourcePath), but produces no file/version a
+      // consumer reads. detail_maps needs callImageGen, wired to an
+      // async()=>null stub in this build. So candidate SELECTION genuinely
+      // reaches real assets (this file, confirmed) and the frontend CAN
+      // resolve a promoted version once one exists (asset-loader.ts, fixed
+      // this pass — see bootstrapWorldLensAssets' concordia-alias rows),
+      // but no pass can currently PRODUCE one for a GLB/texture asset.
+      // Closing this needs a GLB-aware pass (or a pre-extraction step from
+      // GLB → {positions,indices}), which is new engineering, not a wiring
+      // fix — out of scope here.
 
       // Compute interaction density for the wear pass.
       const interactionDensity = (() => {
