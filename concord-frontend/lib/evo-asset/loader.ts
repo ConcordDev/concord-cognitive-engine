@@ -92,7 +92,57 @@ export function recordAssetInteraction(
   } catch { /* fire-and-forget */ }
 }
 
+/**
+ * PBR material-upgrade spec produced by the evo-asset `material_upgrade`
+ * refinement pass. All fields optional — the renderer applies only the ones
+ * the underlying Three.js material class can actually express.
+ */
+export interface EvoMaterialUpgrade {
+  shadingModel?: string;
+  roughness?: number;
+  metalness?: number;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
+  sheen?: number;
+  iridescence?: number;
+  [k: string]: unknown;
+}
+
+const materialCache = new Map<string, EvoMaterialUpgrade | null>();
+
+/**
+ * Resolve a promoted material_upgrade spec for an asset, or null if none
+ * exists / the request fails. Same session-cache shape as resolveAssetUrl.
+ * Never fabricates — a miss returns null and the caller leaves the material
+ * exactly as the loaded GLB shipped it.
+ *
+ * Consumed by BuildingRenderer3D. Named follow-ups (same call shape):
+ * creature-renderer, resource-node-renderer, weapon-archetypes.
+ */
+export async function resolveMaterialUpgrade(
+  source: string,
+  sourceId: string,
+): Promise<EvoMaterialUpgrade | null> {
+  const key = cacheKey(source, sourceId);
+  if (materialCache.has(key)) return materialCache.get(key) ?? null;
+  try {
+    const res = await fetch(
+      `/api/evo-asset/material?source=${encodeURIComponent(source)}&sourceId=${encodeURIComponent(sourceId)}`,
+    );
+    if (!res.ok) { materialCache.set(key, null); return null; }
+    const json = await res.json();
+    if (!json?.ok || !json.material) { materialCache.set(key, null); return null; }
+    const material = json.material as EvoMaterialUpgrade;
+    materialCache.set(key, material);
+    return material;
+  } catch {
+    materialCache.set(key, null);
+    return null;
+  }
+}
+
 /** Clear the in-memory resolution cache (e.g. on world change). */
 export function clearAssetCache(): void {
   cache.clear();
+  materialCache.clear();
 }

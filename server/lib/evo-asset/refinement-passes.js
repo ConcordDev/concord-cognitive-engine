@@ -19,10 +19,23 @@
 //
 // All passes are best-effort — failure returns null and the asset stays
 // at its current quality level. Promotion is gated downstream.
+//
+// Passes 1 (subdivision), 4 (procedural_wear), and 5 (higher_lod) handle
+// BOTH the {positions, indices} mesh-JSON seed format AND single-primitive
+// binary GLBs: a GLB source is routed through glb-bridge.js (extract vertex
+// data → same pure transform → pack a real .glb out). Multi-mesh /
+// multi-primitive GLBs throw a named error in extractMeshData and the pass's
+// own try/catch turns that into a clean no-op (null), never a crash.
 
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import {
+  isGlbSource,
+  extractMeshData,
+  packGLB,
+  computeVertexNormals,
+} from "./glb-bridge.js";
 
 const EVO_DIR = process.env.EVO_ASSET_DIR
   || path.join(process.env.DATA_DIR || "./data", "evo-assets");
@@ -104,6 +117,28 @@ export function subdivideGeometry(mesh) {
  */
 export async function runSubdivisionPass(assetId, sourcePath) {
   try {
+    if (isGlbSource(sourcePath)) {
+      // GLB branch: extract → same pure transform → pack a real .glb out.
+      // Multi-mesh / >1500-tri throw inside here and land in the catch → null.
+      const ext = await extractMeshData(sourcePath);
+      const out = subdivideGeometry({
+        positions: Array.from(ext.positions),
+        indices: Array.from(ext.indices),
+      });
+      if (!out) return null;
+      const dest = evoVariantPath(assetId, "subdivision", ".glb");
+      await packGLB({
+        positions: out.positions,
+        indices: out.indices,
+        normals: computeVertexNormals(out.positions, out.indices),
+        material: ext.material,
+      }, dest);
+      return {
+        passKind: "subdivision",
+        localPath: dest,
+        diffSummary: `subdivision(glb) ${out.stats.inTris}→${out.stats.outTris} tris (+${out.stats.newVerts} verts)`,
+      };
+    }
     const raw = await fs.promises.readFile(sourcePath, "utf8");
     const mesh = JSON.parse(raw);
     const out = subdivideGeometry(mesh);
@@ -169,6 +204,31 @@ export function applyProceduralWear(mesh, { ageDays = 0, interactionDensity = 0 
 
 export async function runWearPass(assetId, sourcePath, { ageDays, interactionDensity }) {
   try {
+    if (isGlbSource(sourcePath)) {
+      // GLB branch: extract (reusing any existing COLOR_0 as base colors) →
+      // same pure wear transform → pack a real .glb carrying COLOR_0.
+      const ext = await extractMeshData(sourcePath);
+      const meshIn = {
+        positions: Array.from(ext.positions),
+        indices: Array.from(ext.indices),
+      };
+      if (ext.colors) meshIn.colors = Array.from(ext.colors);
+      const out = applyProceduralWear(meshIn, { ageDays, interactionDensity });
+      if (!out) return null;
+      const dest = evoVariantPath(assetId, "procedural_wear", ".glb");
+      await packGLB({
+        positions: out.positions,
+        indices: out.indices,
+        normals: ext.normals ? Array.from(ext.normals) : computeVertexNormals(out.positions, out.indices),
+        colors: out.colors,
+        material: ext.material,
+      }, dest);
+      return {
+        passKind: "procedural_wear",
+        localPath: dest,
+        diffSummary: `wear(glb) mix=${out.stats.wearMix.toFixed(2)} (age=${ageDays}d, use=${interactionDensity})`,
+      };
+    }
     const raw = await fs.promises.readFile(sourcePath, "utf8");
     const mesh = JSON.parse(raw);
     const out = applyProceduralWear(mesh, { ageDays, interactionDensity });
@@ -272,6 +332,28 @@ export function runMaterialUpgradePass(assetId, sourcePath, currentMeta = {}) {
  */
 export async function runHigherLodPass(assetId, sourcePath) {
   try {
+    if (isGlbSource(sourcePath)) {
+      const ext = await extractMeshData(sourcePath);
+      const once = subdivideGeometry({
+        positions: Array.from(ext.positions),
+        indices: Array.from(ext.indices),
+      });
+      if (!once) return null;
+      const twice = subdivideGeometry(once);
+      if (!twice) return null;
+      const dest = evoVariantPath(assetId, "higher_lod", ".glb");
+      await packGLB({
+        positions: twice.positions,
+        indices: twice.indices,
+        normals: computeVertexNormals(twice.positions, twice.indices),
+        material: ext.material,
+      }, dest);
+      return {
+        passKind: "higher_lod",
+        localPath: dest,
+        diffSummary: `2x subdivision(glb) → ${twice.stats.outTris} tris`,
+      };
+    }
     const raw = await fs.promises.readFile(sourcePath, "utf8");
     const mesh = JSON.parse(raw);
     const once = subdivideGeometry(mesh);

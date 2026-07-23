@@ -232,6 +232,35 @@ export default function BuildingRenderer3D({
             if (size.x > 0 && size.y > 0 && size.z > 0) {
               cloned.scale.set(dtu.dimensions.width / size.x, dtu.dimensions.height / size.y, dtu.dimensions.depth / size.z);
             }
+            // Evo-asset material_upgrade: if the asset has a promoted PBR spec,
+            // upgrade the loaded GLB's materials in place. Honest floor —
+            // roughness/metalness apply to any Standard/Physical material, but
+            // clearcoat/sheen apply ONLY when the material instance can express
+            // them (MeshPhysicalMaterial), never faked onto a class that can't.
+            try {
+              const { resolveMaterialUpgrade } = await import('@/lib/evo-asset/loader');
+              const matUpgrade = await resolveMaterialUpgrade('concordia', dtuArch);
+              if (matUpgrade) {
+                cloned.traverse((child: InstanceType<typeof THREE.Object3D>) => {
+                  const asMesh = child as InstanceType<typeof THREE.Mesh>;
+                  if (!asMesh.isMesh || !asMesh.material) return;
+                  const mats = Array.isArray(asMesh.material) ? asMesh.material : [asMesh.material];
+                  for (const mat of mats) {
+                    const m = mat as InstanceType<typeof THREE.MeshStandardMaterial> & Record<string, unknown>;
+                    if (typeof matUpgrade.roughness === 'number' && 'roughness' in m) m.roughness = matUpgrade.roughness;
+                    if (typeof matUpgrade.metalness === 'number' && 'metalness' in m) m.metalness = matUpgrade.metalness;
+                    // clearcoat/sheen only on MeshPhysicalMaterial instances.
+                    if (typeof matUpgrade.clearcoat === 'number' && 'clearcoat' in m) m.clearcoat = matUpgrade.clearcoat;
+                    if (typeof matUpgrade.clearcoatRoughness === 'number' && 'clearcoatRoughness' in m) m.clearcoatRoughness = matUpgrade.clearcoatRoughness;
+                    if (typeof matUpgrade.sheen === 'number' && 'sheen' in m) m.sheen = matUpgrade.sheen;
+                    (m as { needsUpdate?: boolean }).needsUpdate = true;
+                  }
+                });
+                cloned.userData.evoMaterialUpgrade = true;
+              }
+            } catch (matErr) {
+              if (typeof console !== 'undefined') console.warn('[BuildingRenderer3D] material_upgrade skipped, real asset still renders', matErr);
+            }
             return cloned;
           }
         } catch (err) {

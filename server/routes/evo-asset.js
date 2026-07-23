@@ -46,17 +46,53 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
     }
   });
 
+  // GET /api/evo-asset/material — public read. Returns the promoted
+  // material_upgrade PBR spec for an asset (roughness/metalness/clearcoat/
+  // sheen …) so the renderer can upgrade the material of an already-loaded
+  // GLB without the metadata JSON ever masquerading as the geometry file.
+  router.get("/material", (req, res) => {
+    try {
+      const source = String(req.query.source || "");
+      const sourceId = String(req.query.sourceId || "");
+      if (!source || !sourceId) {
+        return res.status(400).json({ ok: false, error: "source and sourceId required" });
+      }
+      const asset = db.prepare(`
+        SELECT id FROM evo_assets WHERE source = ? AND source_id = ? AND archived_at IS NULL
+      `).get(source, sourceId);
+      if (!asset) return res.json({ ok: false, error: "not_registered" });
+      const version = db.prepare(`
+        SELECT local_path FROM evo_asset_versions
+         WHERE asset_id = ? AND promoted = 1 AND pass_kind = 'material_upgrade'
+         ORDER BY version_number DESC
+         LIMIT 1
+      `).get(asset.id);
+      if (!version?.local_path) return res.json({ ok: false, error: "no_material_upgrade" });
+      let material;
+      try {
+        material = JSON.parse(fs.readFileSync(version.local_path, "utf8"));
+      } catch {
+        return res.json({ ok: false, error: "material_read_failed" });
+      }
+      res.json({ ok: true, material });
+    } catch {
+      res.status(500).json({ ok: false, error: "An unexpected error occurred" });
+    }
+  });
+
   // GET /api/evo-asset/file/:id — serves the canonical file content. Public
   // because asset binaries aren't user-private. Streams from disk; no
   // path-traversal possible since we look the path up from the registry.
   router.get("/file/:id", async (req, res) => {
     try {
       const id = req.params.id;
+      // Exclude material_upgrade from the geometry channel — it's a
+      // metadata-only JSON (served via /material), never the canonical mesh.
       const row = db.prepare(`
         SELECT a.id, a.local_path, a.cdn_url, v.local_path AS version_path, v.cdn_url AS version_cdn_url
           FROM evo_assets a
      LEFT JOIN evo_asset_versions v
-            ON v.asset_id = a.id AND v.promoted = 1
+            ON v.asset_id = a.id AND v.promoted = 1 AND v.pass_kind != 'material_upgrade'
          WHERE a.id = ? AND a.archived_at IS NULL
          ORDER BY v.version_number DESC NULLS LAST
          LIMIT 1

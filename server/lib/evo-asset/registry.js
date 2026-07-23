@@ -144,6 +144,10 @@ export function selectEvolutionCandidates(db, limit = 5) {
  * has no promoted version yet (caller falls back to the base local_path).
  */
 export function resolveCurrentBest(db, { source, sourceId }) {
+  // material_upgrade is a metadata-only JSON (PBR params), NOT geometry —
+  // it must never become the canonical file served to the mesh loader, or
+  // GLTFLoader gets a material spec where it expects a mesh. It flows to the
+  // renderer through GET /api/evo-asset/material instead.
   const row = db.prepare(`
     SELECT a.*,
            v.local_path AS version_path,
@@ -151,7 +155,7 @@ export function resolveCurrentBest(db, { source, sourceId }) {
            v.pass_kind
       FROM evo_assets a
  LEFT JOIN evo_asset_versions v
-        ON v.asset_id = a.id AND v.promoted = 1
+        ON v.asset_id = a.id AND v.promoted = 1 AND v.pass_kind != 'material_upgrade'
      WHERE a.source = ? AND a.source_id = ? AND a.archived_at IS NULL
      ORDER BY v.version_number DESC NULLS LAST
      LIMIT 1
