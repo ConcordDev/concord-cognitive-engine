@@ -807,80 +807,116 @@ try {
 
 // Track A — runs the code-quality/security detector suite over the repo
 // itself. Parent-only.
+//
+// OP1 note: this body used to live inline in the heartbeat's `handler`.
+// Extracted to a named function so the Repair Cortex console's manual
+// "run sweep now" route (below, `POST /api/admin/repair/detections/run`)
+// can call the SAME real logic directly — not proxied through
+// `runHeartbeatModuleNow`, which races the work against the heartbeat
+// dispatcher's `CONCORD_HEARTBEAT_MODULE_TIMEOUT_MS` (default 30s, sized
+// for "never stall the tick loop"). At Concord's real repo scale the full
+// detector suite genuinely exceeds 30s, so the periodic heartbeat's
+// internal safety net was silently truncating every scheduled sweep before
+// it ever wrote `globalThis.__CONCORD_DETECTORS__.latestReport` — the
+// stash a fresh console session reads from was live-verified to stay
+// permanently `available:false` in this repo. The scheduled heartbeat MUST
+// keep its 30s ceiling (a tick-loop safety invariant, not a bug to route
+// around); an operator-initiated manual refresh is a foreground admin
+// action and is allowed to take as long as the real sweep needs, exactly
+// like the existing "Force Repair Cycle" button already does for
+// `forceRepairCycle()`.
+async function runDetectorSweepAndStash({ db, state }) {
+  try {
+    // Force a telemetry flush before the sweep so the latest in-memory
+    // counts are visible to MacroUsageDetector.
+    await _macroTelemetry.flush().catch(() => {});
+
+    const mod = await import("./lib/detectors/index.js");
+    const baseline = await import("./lib/detectors/baseline.js");
+    // OP1 fix: `lib/detectors/heartbeat-monitor.js`'s runtime findings
+    // (`heartbeat_failing`, `heartbeat_stale_run` — the two findings the
+    // new Repair Cortex governed-remediation flow acts on) read from
+    // `state.heartbeatStats`, a field NOTHING in this codebase ever
+    // populated — so those findings could never actually fire, no matter
+    // how unhealthy a module really was. `getHeartbeatTimingStats()`
+    // (imported above) already tracks the real per-module totalErrors +
+    // lastAt this shape needs; derive it here instead of leaving the
+    // detector permanently dead. Passed via a shallow-spread `state` so
+    // the live STATE object itself is never mutated.
+    let heartbeatStats = {};
+    try {
+      for (const m of getHeartbeatTimingStats()) {
+        heartbeatStats[m.id] = { failures: m.totalErrors || 0, lastRunMs: m.lastAt || null };
+      }
+    } catch (_e) { /* best-effort — an empty object still degrades honestly */ }
+    const report = await mod.runAllDetectors({ db, state: { ...state, heartbeatStats } });
+
+    // Compute delta vs baseline for the history record.
+    let delta = null;
+    try {
+      const url = await import("node:url");
+      const here = path.dirname(url.fileURLToPath(import.meta.url));
+      const root = path.resolve(here, "..");
+      const base = await baseline.loadBaseline(root);
+      if (base?.fingerprints) delta = baseline.diffAgainstBaseline(report, base);
+      await baseline.appendHistory(root, report, { delta });
+    } catch (_e) { /* history append is best-effort */ }
+
+    // Stash latest report for HUD consumers — read-only snapshot.
+    globalThis.__CONCORD_DETECTORS__ = Object.assign(
+      globalThis.__CONCORD_DETECTORS__ || {},
+      { latestReport: report, latestRunAt: Date.now(), latestDelta: delta },
+    );
+
+    // Phase 5 hook: feed delta into repair-cortex bridge if available.
+    try {
+      const bridge = await import("./emergent/repair-cortex/detector-bridge.js").catch(() => null);
+      if (bridge?.ingestDetectorDelta) {
+        await bridge.ingestDetectorDelta(report, delta);
+      }
+    } catch (_e) { /* bridge optional */ }
+
+    // Phase 3 hook: emit world:invariant-warning for critical invariant
+    // findings so EmergentEventFeed and the goddess can surface them.
+    try {
+      const criticals = (report.reports || [])
+        .filter(r => r.id === "invariant-guardian")
+        .flatMap(r => (r.findings || []).filter(f => f.severity === "critical").map(x => ({ ...x, detector: r.id })));
+      if (criticals.length > 0 && process.env.CONCORD_WORLD_WARNINGS !== "0") {
+        if (typeof realtimeEmit === "function") {
+          for (const f of criticals) {
+            realtimeEmit("world:invariant-warning", {
+              id: f.id,
+              message: f.message,
+              location: f.location,
+              severity: f.severity,
+              generatedAt: report.generatedAt,
+            });
+          }
+        }
+        // Phase 3.3 — auto-proposal for critical invariant violations.
+        if (process.env.CONCORD_AUTO_GOVERNANCE !== "0") {
+          try {
+            const ap = await import("./lib/governance/auto-proposal.js");
+            ap.bulkPostFromFindings(db, criticals);
+          } catch (_e) { /* auto-proposal optional */ }
+        }
+      }
+    } catch (_e) { /* warning emit best-effort */ }
+
+    return { ok: true, totals: report.totals, detectorCount: report.detectorCount };
+  } catch (err) {
+    return { ok: false, reason: "detector_sweep_failed", error: err?.message };
+  }
+}
+
 registerHeartbeat("detectors-sweep", {
   frequency: 2880,
   scope: "global",
   // Track C — the code-quality/security detector suite, not gameplay/
   // request-critical; harmless to skip a ~12h-cadence tick under real load.
   lowPriority: true,
-  handler: async ({ db, state }) => {
-    try {
-      // Force a telemetry flush before the sweep so the latest in-memory
-      // counts are visible to MacroUsageDetector.
-      await _macroTelemetry.flush().catch(() => {});
-
-      const mod = await import("./lib/detectors/index.js");
-      const baseline = await import("./lib/detectors/baseline.js");
-      const report = await mod.runAllDetectors({ db, state });
-
-      // Compute delta vs baseline for the history record.
-      let delta = null;
-      try {
-        const url = await import("node:url");
-        const here = path.dirname(url.fileURLToPath(import.meta.url));
-        const root = path.resolve(here, "..");
-        const base = await baseline.loadBaseline(root);
-        if (base?.fingerprints) delta = baseline.diffAgainstBaseline(report, base);
-        await baseline.appendHistory(root, report, { delta });
-      } catch (_e) { /* history append is best-effort */ }
-
-      // Stash latest report for HUD consumers — read-only snapshot.
-      globalThis.__CONCORD_DETECTORS__ = Object.assign(
-        globalThis.__CONCORD_DETECTORS__ || {},
-        { latestReport: report, latestRunAt: Date.now(), latestDelta: delta },
-      );
-
-      // Phase 5 hook: feed delta into repair-cortex bridge if available.
-      try {
-        const bridge = await import("./emergent/repair-cortex/detector-bridge.js").catch(() => null);
-        if (bridge?.ingestDetectorDelta) {
-          await bridge.ingestDetectorDelta(report, delta);
-        }
-      } catch (_e) { /* bridge optional */ }
-
-      // Phase 3 hook: emit world:invariant-warning for critical invariant
-      // findings so EmergentEventFeed and the goddess can surface them.
-      try {
-        const criticals = (report.reports || [])
-          .filter(r => r.id === "invariant-guardian")
-          .flatMap(r => (r.findings || []).filter(f => f.severity === "critical").map(x => ({ ...x, detector: r.id })));
-        if (criticals.length > 0 && process.env.CONCORD_WORLD_WARNINGS !== "0") {
-          if (typeof realtimeEmit === "function") {
-            for (const f of criticals) {
-              realtimeEmit("world:invariant-warning", {
-                id: f.id,
-                message: f.message,
-                location: f.location,
-                severity: f.severity,
-                generatedAt: report.generatedAt,
-              });
-            }
-          }
-          // Phase 3.3 — auto-proposal for critical invariant violations.
-          if (process.env.CONCORD_AUTO_GOVERNANCE !== "0") {
-            try {
-              const ap = await import("./lib/governance/auto-proposal.js");
-              ap.bulkPostFromFindings(db, criticals);
-            } catch (_e) { /* auto-proposal optional */ }
-          }
-        }
-      } catch (_e) { /* warning emit best-effort */ }
-
-      return { ok: true, totals: report.totals, detectorCount: report.detectorCount };
-    } catch (err) {
-      return { ok: false, reason: "detector_sweep_failed", error: err?.message };
-    }
-  },
+  handler: runDetectorSweepAndStash,
 });
 
 // Layer 11: faction emergent strategy. Every 200 ticks (~50 min) advances
@@ -60195,6 +60231,127 @@ app.get("/api/admin/repair/network-status", requireAuth(), requireRole("owner"),
   try { const m = await import("./emergent/repair-network.js"); res.json(m.getStatus()); }
   catch (e) { res.json({ ok: false, error: e.message }); }
 });
+
+// ── Repair Cortex operator console (OP1, R7 self-host proof) ────────────────
+// Deepens the Repair Cortex from a status-only readout into a real
+// detections + drift/health + governed-remediation surface. Role gate
+// matches the newer admin-telemetry convention (`/api/admin/heartbeat-stats`,
+// `/api/admin/worker-stats`, `/api/admin/world-shards`,
+// `/api/admin/brain-endpoints`) rather than the older repair-only
+// `requireRole("owner")` used just above — this also lines up the backend
+// gate with `RepairPanel.tsx`'s existing frontend admin check
+// (`role === 'admin' || 'sovereign'`), which the older owner-only repair
+// routes never actually matched.
+
+// Real detector findings, grouped — reads the SAME stash the
+// `detectors-sweep` heartbeat (server.js, registered above) already
+// populates. Reports honestly when no sweep has run yet instead of
+// fabricating a report.
+app.get("/api/admin/repair/detections", requireRole("owner", "admin", "sovereign", "founder"), async (_req, res) => {
+  try {
+    const stash = globalThis.__CONCORD_DETECTORS__;
+    const report = stash?.latestReport;
+    if (!report) {
+      return res.json({ ok: true, available: false, reason: "no_sweep_yet", sweepInFlight: _repairConsoleSweepInFlight, generatedAt: new Date().toISOString() });
+    }
+    const { getDetector } = await import("./lib/detectors/index.js");
+    const { SEVERITY_ORDER } = await import("./lib/detectors/_framework.js");
+    const bySeverity = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+    const byConsumer = {};
+    const findings = [];
+    for (const r of report.reports || []) {
+      const consumers = getDetector(r.id)?.consumers || ["code-quality"];
+      for (const f of (r.findings || [])) {
+        const sev = f.severity || "info";
+        bySeverity[sev] = (bySeverity[sev] || 0) + 1;
+        for (const c of consumers) byConsumer[c] = (byConsumer[c] || 0) + 1;
+        if (sev !== "info") {
+          findings.push({
+            detectorId: r.id,
+            id: f.id,
+            severity: sev,
+            message: f.message || "",
+            location: f.location || null,
+            subject: f.subject || null,
+            fixHint: f.fixHint || null,
+          });
+        }
+      }
+    }
+    findings.sort((a, b) => (SEVERITY_ORDER[b.severity] ?? 0) - (SEVERITY_ORDER[a.severity] ?? 0));
+    res.json({
+      ok: true,
+      available: true,
+      sweepInFlight: _repairConsoleSweepInFlight,
+      generatedAt: report.generatedAt || null,
+      latestRunAt: stash.latestRunAt || null,
+      totals: report.totals || bySeverity,
+      bySeverity,
+      byConsumer,
+      detectorCount: report.detectorCount || (report.reports || []).length,
+      findingCount: findings.length,
+      findings: findings.slice(0, 200),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Manual on-demand sweep — kicks off the SAME `runDetectorSweepAndStash`
+// logic the scheduled `detectors-sweep` heartbeat runs, but AS A BACKGROUND
+// JOB rather than blocking the HTTP response. Two real constraints rule out
+// a synchronous "await it and respond" design here: (1) the global
+// `requestTimeoutMiddleware` 503s any request past `REQUEST_TIMEOUT_MS`
+// (60s default) — live-verified against this repo's real size, a full
+// detector sweep routinely runs well past that; (2) even without that
+// middleware, holding an HTTP connection open for minutes isn't a
+// reasonable contract for a browser-driven admin console. So this route
+// starts the sweep, returns immediately with `started:true`, and the
+// console is expected to poll `GET /api/admin/repair/detections` (which
+// now also reports `sweepInFlight`) until `latestRunAt` advances — an
+// honest "in progress" state, never a fabricated "done" the instant the
+// button is clicked.
+let _repairConsoleSweepInFlight = false;
+app.post("/api/admin/repair/detections/run", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (_req, res) => {
+  if (_repairConsoleSweepInFlight) {
+    return res.json({ ok: true, started: false, alreadyRunning: true });
+  }
+  _repairConsoleSweepInFlight = true;
+  const startedAt = new Date().toISOString();
+  runDetectorSweepAndStash({ state: STATE, db: STATE.db })
+    .catch((err) => { try { logger.warn("repair-console", "manual_sweep_failed", { error: err?.message }); } catch { /* logging best-effort */ } })
+    .finally(() => { _repairConsoleSweepInFlight = false; });
+  res.json({ ok: true, started: true, startedAt });
+}));
+
+// Governed remediation queue — propose (real detector finding) → approve
+// (admin) → apply (real, already-existing `runHeartbeatModuleNow`). See
+// `lib/repair-remediation.js` for the honesty discipline: only ONE
+// well-scoped finding type (a heartbeat module a detector tagged
+// `fixHint:"restart_heartbeat_module"`) ever produces a queue entry — no
+// fabricated "apply" action for anything else.
+app.get("/api/admin/repair/remediations", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (_req, res) => {
+  const rr = await import("./lib/repair-remediation.js");
+  res.json({ ok: true, queue: rr.syncAndListQueue(), generatedAt: new Date().toISOString() });
+}));
+
+app.post("/api/admin/repair/remediations/:id/approve", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const rr = await import("./lib/repair-remediation.js");
+  const r = rr.approve(req.params.id, req.user?.id || req.user?.username || null);
+  res.status(r.ok ? 200 : (r.error === "not_found" ? 404 : 409)).json(r);
+}));
+
+app.post("/api/admin/repair/remediations/:id/reject", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const rr = await import("./lib/repair-remediation.js");
+  const r = rr.reject(req.params.id, req.user?.id || req.user?.username || null, req.body?.reason);
+  res.status(r.ok ? 200 : (r.error === "not_found" ? 404 : 409)).json(r);
+}));
+
+app.post("/api/admin/repair/remediations/:id/apply", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const rr = await import("./lib/repair-remediation.js");
+  const r = await rr.apply(req.params.id, { state: STATE, db: STATE.db });
+  res.status(r.ok ? 200 : (r.error === "not_found" ? 404 : 409)).json(r);
+}));
 
 // ── System Infrastructure Status Endpoints ──────────────────────────────────
 

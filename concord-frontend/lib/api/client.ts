@@ -2212,6 +2212,17 @@ export const apiHelpers = {
     execute: (executor: string, context?: Record<string, unknown>) =>
       api.post(`/api/admin/repair/execute/${executor}`, { context }),
     networkStatus: () => api.get('/api/admin/repair/network-status'),
+    /** OP1 — Repair Cortex operator console deepening. */
+    heartbeatStats: () => api.get('/api/admin/heartbeat-stats'),
+    detections: () => api.get('/api/admin/repair/detections'),
+    runDetectorSweep: () => api.post('/api/admin/repair/detections/run', {}),
+    remediations: {
+      list: () => api.get('/api/admin/repair/remediations'),
+      approve: (id: string) => api.post(`/api/admin/repair/remediations/${id}/approve`, {}),
+      apply: (id: string) => api.post(`/api/admin/repair/remediations/${id}/apply`, {}),
+      reject: (id: string, reason?: string) =>
+        api.post(`/api/admin/repair/remediations/${id}/reject`, { reason }),
+    },
   },
 
   /** Promotion Pipeline */

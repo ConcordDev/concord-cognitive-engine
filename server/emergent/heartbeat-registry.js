@@ -198,6 +198,7 @@ async function _runOne(entry, moduleCtx) {
     } else {
       try { globalThis._concordPromMetrics?.heartbeatModuleErrors?.inc({ module: entry.id }); } catch { /* prom best-effort */ }
     }
+    try { _recordError(entry.id); } catch { /* timing best-effort */ }
   } finally {
     if (timeoutHandle) clearTimeout(timeoutHandle);
     const elapsedMs = Number(process.hrtime.bigint() - startNs) / 1e6;
@@ -228,6 +229,18 @@ function _recordTiming(moduleId, ms) {
   meta.totalRuns += 1;
 }
 
+// OP1 (Repair Cortex operator console) — `totalErrors` existed on the meta
+// shape but was never incremented anywhere, so `/api/admin/heartbeat-stats`
+// silently reported 0 errors for every module regardless of real failures.
+// `_runOne`'s catch block (both the thrown-handler and timed-out paths) now
+// calls this so the drift/health strip can show a real per-module error
+// count instead of a field that always read zero.
+function _recordError(moduleId) {
+  let meta = _timingMeta.get(moduleId);
+  if (!meta) { meta = { lastMs: 0, lastAt: 0, totalRuns: 0, totalErrors: 0 }; _timingMeta.set(moduleId, meta); }
+  meta.totalErrors += 1;
+}
+
 /** Sorted-array quantile helper (q in [0,1]). */
 function _quantile(sortedArr, q) {
   if (!sortedArr.length) return 0;
@@ -255,6 +268,7 @@ export function getHeartbeatTimingStats() {
       lastMs: meta.lastMs,
       lastAt: meta.lastAt,
       totalRuns: meta.totalRuns,
+      totalErrors: meta.totalErrors || 0,
     });
   }
   out.sort((a, b) => b.p99 - a.p99);
