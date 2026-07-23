@@ -3088,6 +3088,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
   // POST /api/worlds/:worldId/combat/npc-attack — NPC attacks a player
   // body: { npcId }
+  // NOTE (2026-07-23 audit): server-tested (concordant-law, npc-kill-loot) — no confirmed live frontend caller of this HTTP route; autonomous NPC damage flows via npc-simulator.js#_performNPCAttack.
   router.post("/:worldId/combat/npc-attack", requireAuth, async (req, res) => {
     try {
       const { worldId } = req.params;
