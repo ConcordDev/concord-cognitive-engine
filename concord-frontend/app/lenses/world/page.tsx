@@ -1206,6 +1206,7 @@ import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 // Wave 1 deferral 5: reads the player's stored quality preset (set via /lenses/settings)
 import { getStoredQualityPreset } from '@/lib/world-lens/quality-preset';
+import { dispatchBuildingInteractEvent } from '@/lib/world-lens/building-interact-dispatch';
 import WorldEntryOverlay from '@/components/world-lens/WorldEntryOverlay';
 import { emitHitNumber, emitScreenShake, emitHitStop } from '@/components/world/ImpactFeedback';
 import type { LimbState, LimbArmorState } from '@/components/concordia/hud/CombatHUD';
@@ -4814,16 +4815,12 @@ export default function WorldLensPage() {
     const district = activeDistrictRef.current;
     const b = district.buildings.find((b) => b.id === id);
     if (b) setSelectedBuilding(b);
-    try {
-      window.dispatchEvent(new CustomEvent('concordia:building-interact', {
-        detail: {
-          buildingId: id,
-          worldId: district.id,
-          playerX: playerAvatarRef.current.position.x,
-          playerZ: playerAvatarRef.current.position.y,
-        },
-      }));
-    } catch { /* dispatch best-effort */ }
+    dispatchBuildingInteractEvent({
+      buildingId: id,
+      worldId: district.id,
+      playerX: playerAvatarRef.current.position.x,
+      playerZ: playerAvatarRef.current.position.y,
+    });
   }, []);
 
   const handleConcordiaTerrainClick = useCallback(() => {}, []);

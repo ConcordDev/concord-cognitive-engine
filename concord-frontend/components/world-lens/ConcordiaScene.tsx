@@ -94,6 +94,28 @@ export interface PerformanceBudget {
   frameTime: number;
 }
 
+// NPC-context-menu dispatch — pulled out of the raycaster click handler
+// below as a small, real, exported testability seam. The raycaster hit
+// test itself (deciding WHEN this fires) needs a live THREE.js scene graph
+// jsdom can't provide; this function is the actual runtime call the hit
+// test invokes once it decides an NPC was clicked, so a test can drive the
+// real dispatch path (CustomEvent name + detail shape, including
+// screenX/screenY) without needing WebGL. No behavior changed — this is
+// the exact same try/dispatch that used to be written inline.
+export interface NpcContextMenuDetail {
+  npcId: string;
+  npcName: string;
+  occupation: string | null;
+  screenX: number;
+  screenY: number;
+}
+
+export function dispatchNpcContextMenuEvent(detail: NpcContextMenuDetail): void {
+  try {
+    window.dispatchEvent(new CustomEvent('concordia:npc-context-menu', { detail }));
+  } catch { /* dispatch best-effort */ }
+}
+
 export interface ConcordiaSceneAPI {
   scene: unknown; // THREE.Scene
   camera: unknown; // THREE.PerspectiveCamera
@@ -2136,17 +2158,13 @@ export default function ConcordiaScene({
             // the cursor; the menu's "Talk" action forwards to dialogue.
             // Backward compat: legacy listeners on concordia:open-dialogue
             // still work via the menu's onTalk callback.
-            try {
-              window.dispatchEvent(new CustomEvent('concordia:npc-context-menu', {
-                detail: {
-                  npcId:      ud.avatarId,
-                  npcName:    ud.name ?? ud.avatarId,
-                  occupation: ud.occupation ?? null,
-                  screenX:    e.clientX,
-                  screenY:    e.clientY,
-                },
-              }));
-            } catch { /* dispatch best-effort */ }
+            dispatchNpcContextMenuEvent({
+              npcId:      ud.avatarId,
+              npcName:    ud.name ?? ud.avatarId,
+              occupation: ud.occupation ?? null,
+              screenX:    e.clientX,
+              screenY:    e.clientY,
+            });
             return;
           }
           // Other-player click → contextual action menu (Wave / Trade /
