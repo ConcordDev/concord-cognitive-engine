@@ -8577,6 +8577,13 @@ const REALTIME = {
   clients: new Map(), // socketId -> { socket, sessionId, orgId, userId, createdAt }
 };
 
+// Godot Integration Phase 2 — set once the gateway is mounted (~line 65605,
+// after the real http.Server exists). `let`, not `const`: realtimeEmit/
+// emitToWorld below reference it by closure and are only ever CALLED at
+// runtime, well after the mount assignment has run — never at module-eval
+// time — so this is not a TDZ hazard despite the forward reference.
+let _godotGatewayEmitter = null;
+
 // Per-user emit helper — uses the user:${userId} room joined on socket auth
 // (see io.on("connection") handler). Established in Phase 3 of polish-to-ten;
 // reused by trade, party, and any emergent system that needs to push to one
@@ -8698,6 +8705,10 @@ function emitToWorld(worldId, event, payload) {
       _evt: event,
     };
     REALTIME.io.to(`world:${worldId}`).emit(event, enriched);
+    // Godot gateway mirror — fan the same world-room event to any connected
+    // Godot clients. Best-effort: a gateway hiccup must never affect the
+    // socket.io emit above, which is why this is its own try/catch.
+    try { _godotGatewayEmitter?.emitToRoom(`world:${worldId}`, event, enriched); } catch { /* survive */ }
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: String(e?.message || e) };
@@ -8767,12 +8778,21 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
       // user only sees the lifecycle of THEIR own in-flight macro runs —
       // never a global broadcast of every lens action platform-wide.
       REALTIME.io.to(`user:${userId}`).emit(event, enrichedPayload);
+      // Godot gateway mirror — same room grammar (user:<id>) the gateway
+      // supports. Best-effort; never affects the socket.io transport above.
+      try { _godotGatewayEmitter?.emitToRoom(`user:${userId}`, event, enrichedPayload); } catch { /* survive */ }
     } else if (sessionId) {
       REALTIME.io.to(`session:${sessionId}`).emit(event, enrichedPayload);
+      // No gateway mirror: the gateway's room grammar is world:*/user:* only
+      // (docs/GODOT_INTEGRATION.md) — there is no session:* room to fan into,
+      // and fabricating one would be dishonest. Honest no-op.
     } else if (orgId) {
       REALTIME.io.to(`org:${orgId}`).emit(event, enrichedPayload);
+      // Same honest no-op as sessionId above — no org:* room in the gateway.
     } else {
       REALTIME.io.emit(event, enrichedPayload);
+      // Godot gateway mirror — global broadcast to every authenticated client.
+      try { _godotGatewayEmitter?.broadcast(event, enrichedPayload); } catch { /* survive */ }
     }
     return { ok: true, seq: enrichedPayload._seq, transport: "socketio" };
   }
@@ -26860,6 +26880,14 @@ registerVideoGenMacros(register);
 // status as they happen, so the AgentModePanel renders progressively.
 import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
 // Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
+
+// Godot Integration Phase 1→2 — raw-WebSocket gateway for the native Godot 4
+// world client (docs/GODOT_INTEGRATION.md). `mountGodotGateway` needs the real
+// http.Server instance, which doesn't exist yet at this point in the file (it's
+// created later via `app.listen()`); the mount call itself is deferred to right
+// after that `server` binding + `tryInitWebSockets(server)` — see ~line 65605.
+import { mountGodotGateway, createGatewayEmitter } from "./lib/godot-gateway.js";
+import { exportScene } from "./lib/scene-export.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
   frequency: 12,
@@ -65603,6 +65631,32 @@ try { await tryInitWebSockets(server); } catch (e) {
   structuredLog("error", "websocket_init_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
 }
 
+// Godot Integration Phase 2 — mount the raw-WebSocket gateway for the native
+// Godot 4 world client (docs/GODOT_INTEGRATION.md). This is the TDZ-safe spot:
+// `server` (the actual http.Server) only exists once SHOULD_LISTEN created it
+// above, and `LENS_ACTIONS`/`app` were both long-since declared (~27554 /
+// ~36537). Gated on `server` being truthy — a CONCORD_NO_LISTEN=true or
+// NODE_ENV=test boot has no http.Server to attach an `upgrade` listener to,
+// so it stays unmounted there (honest: no listener means no gateway, never a
+// fabricated one). The gateway's `noServer` WSS only claims `/godot-ws`
+// upgrades (see its own `onUpgrade` path filter), so it coexists with
+// socket.io's engine.io upgrade handling attached above by `tryInitWebSockets`.
+if (server) {
+  try {
+    const godotGatewayHandle = mountGodotGateway(server, {
+      verifyToken,
+      getUser: AuthDB.getUser,
+      exportScene,
+      db: STATE?.db || db,
+    });
+    _godotGatewayEmitter = createGatewayEmitter(godotGatewayHandle);
+    globalThis._concordGodotGateway = godotGatewayHandle;
+    structuredLog("info", "godot_gateway_mounted", { path: "/godot-ws" });
+  } catch (e) {
+    structuredLog("warn", "godot_gateway_mount_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
+  }
+}
+
 // ── Optional extension modules (CDN, feeds, security, DTU system, etc.) ──
 try { await initExtensions(app, db, STATE, REALTIME.io ?? null); } catch (e) {
   structuredLog("error", "startup_extensions_failed", { error: String(e?.message || e) });
@@ -79814,6 +79868,7 @@ export const __TEST__ = Object.freeze({
   ensureQueues,
   enqueueNotification,
   realtimeEmit,
+  emitToWorld,
   inLatticeReality,
   overlap_verifier,
   _defaultOrganState,
