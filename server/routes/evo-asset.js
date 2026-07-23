@@ -50,7 +50,7 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
   // material_upgrade PBR spec for an asset (roughness/metalness/clearcoat/
   // sheen …) so the renderer can upgrade the material of an already-loaded
   // GLB without the metadata JSON ever masquerading as the geometry file.
-  router.get("/material", (req, res) => {
+  router.get("/material", async (req, res) => {
     try {
       const source = String(req.query.source || "");
       const sourceId = String(req.query.sourceId || "");
@@ -70,7 +70,7 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
       if (!version?.local_path) return res.json({ ok: false, error: "no_material_upgrade" });
       let material;
       try {
-        material = JSON.parse(fs.readFileSync(version.local_path, "utf8"));
+        material = JSON.parse(await fs.promises.readFile(version.local_path, "utf8"));
       } catch {
         return res.json({ ok: false, error: "material_read_failed" });
       }
