@@ -6,10 +6,26 @@
 // full channel strips (fader + mute/solo/arm + insert preview). Click
 // the chevron or press M to toggle.
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronUp, ChevronDown, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePerfBudget, type PerfTier } from '@/hooks/usePerfBudget';
 import type { DAWTrack } from '@/lib/daw/types';
+
+// Honest degradation for the VU-meter ticker, keyed off usePerfBudget's REAL
+// measured tier for THIS strip's own rAF loop (never fabricated — see
+// hooks/usePerfBudget.ts). The ticker re-renders every mounted channel strip's
+// meters on every tick, so throttling the tick cadence is a real cost cut, not
+// decoration. Returns the minimum real-ms gap between ticks: 0 = every frame
+// (full, ~60fps), a finite gap = throttled (reduced, ~12fps), Infinity = the
+// ticker freezes entirely (minimal) — meters hold their last real value
+// instead of animating. Exported so the tier→cadence mapping is
+// unit-testable without a live rAF loop.
+export function meterTickIntervalMs(tier: PerfTier): number {
+  if (tier === 'minimal') return Infinity;
+  if (tier === 'reduced') return 80;
+  return 0;
+}
 
 interface MixerPeekStripProps {
   tracks: DAWTrack[];
@@ -65,18 +81,33 @@ export default function MixerPeekStrip({
   expanded = false,
   onToggleExpanded,
 }: MixerPeekStripProps) {
-  // 60fps-ish ticker so the meters animate. Cheap — single setState
-  // per frame, no per-track work outside the render.
-  const [, setTick] = useState(0);
+  // 60fps-ish ticker so the meters animate. Re-renders every mounted channel
+  // strip on every tick — real, measurable cost once track counts grow, so
+  // it's the thing usePerfBudget's real, measured tier throttles below.
+  const [tick, setTick] = useState(0);
+  // Real, measured (never fabricated) frame-cost budget for THIS ticker loop —
+  // fed from the loop's own rAF timestamps (autoMeasure: false), per
+  // CLAUDE.md's honest-by-construction rule.
+  const { budget: perfBudget, reportFrame: reportTickFrame } = usePerfBudget({ autoMeasure: false });
+  const lastTickAtRef = useRef(0);
   useEffect(() => {
     let raf = 0;
-    const loop = () => {
-      setTick(t => t + 1);
+    const interval = meterTickIntervalMs(perfBudget.tier);
+    const loop = (now: number) => {
+      reportTickFrame(now);
+      // interval===0 → tick every frame (full). Otherwise only tick once at
+      // least `interval` real ms have passed since the last one; Infinity
+      // (minimal) never re-triggers, so the meters genuinely freeze instead
+      // of merely rendering less-often-but-still-continuously.
+      if (interval === 0 || now - lastTickAtRef.current >= interval) {
+        lastTickAtRef.current = now;
+        setTick(t => t + 1);
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [perfBudget.tier, reportTickFrame]);
 
   return (
     <footer className={cn('bg-zinc-950/80 backdrop-blur-sm border-t border-white/10 overflow-hidden', className)}>
@@ -92,6 +123,22 @@ export default function MixerPeekStrip({
           >
             · sim levels
           </span>
+          {/* Hidden test probe reflecting real internal tick count — not
+              rendered data, purely instrumentation for asserting the ticker's
+              real cadence responds to the measured tier. */}
+          <span data-testid="mixer-tick" className="sr-only">{tick}</span>
+          {/* Honest, visible degradation indicator — only appears when
+              usePerfBudget's REAL measured tier for this ticker is actually
+              degraded (overBudget), never as decoration. */}
+          {perfBudget.overBudget && (
+            <span
+              data-testid="mixer-perf-badge"
+              className="text-amber-400 lowercase tracking-normal not-italic"
+              title={`Meter ticker throttled — measured ~${Math.round(perfBudget.fps)}fps, below budget`}
+            >
+              · {perfBudget.tier === 'minimal' ? 'meters frozen (low fps)' : 'reduced fx (low fps)'}
+            </span>
+          )}
         </div>
         {onToggleExpanded && (
           <button

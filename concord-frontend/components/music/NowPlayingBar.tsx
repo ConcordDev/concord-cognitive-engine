@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
+import { usePerfBudget, type PerfTier } from '@/hooks/usePerfBudget';
 import type { RepeatMode, MusicTrack } from '@/lib/music/types';
 
 function formatTime(seconds: number): string {
@@ -16,6 +17,24 @@ function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// Honest degradation for the mini spectrum visualizer, keyed off usePerfBudget's
+// REAL measured tier (never fabricated — see hooks/usePerfBudget.ts). `full`
+// draws every bar every frame; `reduced` halves both the bar count and the
+// draw cadence; `minimal` drops the visualizer entirely (the canvas isn't
+// even mounted) — a real per-frame cost (getFrequencyData + N canvas fills)
+// is what's being cut, not decoration. Exported so the tier→config mapping
+// is unit-testable without needing a live rAF loop.
+export function visualizerConfigForTier(tier: PerfTier): {
+  enabled: boolean;
+  barCount: number;
+  /** Draw work only runs every Nth measured frame (1 = every frame). */
+  frameSkip: number;
+} {
+  if (tier === 'minimal') return { enabled: false, barCount: 0, frameSkip: 1 };
+  if (tier === 'reduced') return { enabled: true, barCount: 10, frameSkip: 2 };
+  return { enabled: true, barCount: 24, frameSkip: 1 };
 }
 
 export function NowPlayingBar() {
@@ -45,9 +64,16 @@ export function NowPlayingBar() {
   const frequencyRef = useRef<Uint8Array | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number | null>(null);
+  const vizFrameCountRef = useRef(0);
   // True once the pre-end crossfade has been kicked off for the current track,
   // so the timeupdate watcher fires it exactly once. Reset on each track change.
   const crossfadeArmedRef = useRef(false);
+
+  // Real, measured (never fabricated) frame-cost budget for this component's
+  // own visualizer render loop — fed from that loop's actual rAF timestamps
+  // below (autoMeasure: false), per CLAUDE.md's honest-by-construction rule.
+  const { budget: perfBudget, reportFrame: reportVizFrame } = usePerfBudget({ autoMeasure: false });
+  const vizCfg = useMemo(() => visualizerConfigForTier(perfBudget.tier), [perfBudget.tier]);
 
   const { track, playbackState, currentTime, duration, volume, muted, repeat, shuffle } = nowPlaying;
 
@@ -116,10 +142,16 @@ export function NowPlayingBar() {
     }
   }, [track?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- Mini Spectrum Visualizer ----
+  // ---- Mini Spectrum Visualizer (honestly perf-budgeted) ----
+  //
+  // The rAF loop always keeps measuring (reportVizFrame) so the tier can
+  // recover the moment real frame cost improves — but the expensive part
+  // (getFrequencyData + N canvas fills) only runs when `vizCfg.enabled` is
+  // true, at a cadence throttled by `vizCfg.frameSkip`. At `minimal` the
+  // canvas isn't even mounted (see JSX below), so this effect is a no-op.
 
   useEffect(() => {
-    if (playbackState !== 'playing' || !canvasRef.current) {
+    if (playbackState !== 'playing' || !canvasRef.current || !vizCfg.enabled) {
       if (animRef.current) cancelAnimationFrame(animRef.current);
       return;
     }
@@ -128,38 +160,45 @@ export function NowPlayingBar() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const draw = () => {
-      const player = getPlayer();
-      frequencyRef.current = player.getFrequencyData();
-      const data = frequencyRef.current;
+    vizFrameCountRef.current = 0;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const draw = (now: number) => {
+      reportVizFrame(now);
+      vizFrameCountRef.current += 1;
 
-      if (data) {
-        const barCount = 24;
-        const barWidth = canvas.width / barCount;
-        const step = Math.floor(data.length / barCount);
+      if (vizFrameCountRef.current % vizCfg.frameSkip === 0) {
+        const player = getPlayer();
+        frequencyRef.current = player.getFrequencyData();
+        const data = frequencyRef.current;
 
-        for (let i = 0; i < barCount; i++) {
-          const val = data[i * step] / 255;
-          const barHeight = val * canvas.height;
-          const hue = 180 + i * 3; // cyan-to-purple gradient
-          ctx.fillStyle = `hsla(${hue}, 100%, 65%, 0.7)`;
-          ctx.fillRect(
-            i * barWidth + 1,
-            canvas.height - barHeight,
-            barWidth - 2,
-            barHeight,
-          );
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (data) {
+          const barCount = vizCfg.barCount;
+          const barWidth = canvas.width / barCount;
+          const step = Math.floor(data.length / barCount);
+
+          for (let i = 0; i < barCount; i++) {
+            const val = data[i * step] / 255;
+            const barHeight = val * canvas.height;
+            const hue = 180 + i * 3; // cyan-to-purple gradient
+            ctx.fillStyle = `hsla(${hue}, 100%, 65%, 0.7)`;
+            ctx.fillRect(
+              i * barWidth + 1,
+              canvas.height - barHeight,
+              barWidth - 2,
+              barHeight,
+            );
+          }
         }
       }
 
       animRef.current = requestAnimationFrame(draw);
     };
 
-    draw();
+    animRef.current = requestAnimationFrame(draw);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [playbackState]);
+  }, [playbackState, vizCfg, reportVizFrame]);
 
   // ---- Playback Controls ----
 
@@ -268,14 +307,27 @@ export function NowPlayingBar() {
                   <ListMusic className="w-5 h-5" />
                 </div>
               )}
-              {/* Mini visualizer overlay */}
-              {isPlaying && (
+              {/* Mini visualizer overlay — dropped entirely at the 'minimal'
+                  tier (see visualizerConfigForTier), not just hidden via CSS. */}
+              {isPlaying && vizCfg.enabled && (
                 <canvas
                   ref={canvasRef}
                   width={48}
                   height={48}
                   className="absolute inset-0 opacity-40"
                 />
+              )}
+              {/* Honest, visible degradation indicator — only appears when
+                  usePerfBudget's REAL measured tier is actually degraded
+                  (overBudget), never as decoration. */}
+              {isPlaying && perfBudget.overBudget && (
+                <span
+                  data-testid="now-playing-perf-badge"
+                  title={`Visualizer ${vizCfg.enabled ? 'reduced' : 'off'} — measured ~${Math.round(perfBudget.fps)}fps, below budget`}
+                  className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 text-[7px] font-semibold leading-none px-1 py-0.5 rounded bg-amber-500/90 text-black"
+                >
+                  {vizCfg.enabled ? 'fx↓' : 'fx off'}
+                </span>
               )}
             </div>
             <div className="min-w-0 flex-1">
