@@ -16,6 +16,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
+import { useYjsAwareness } from '@/hooks/useYjsAwareness';
+import { useAuth } from '@/hooks/useAuth';
 import * as Y from 'yjs';
 import {
   Sparkles, Bug, Github, MessageSquare, Puzzle, Columns, Users,
@@ -25,6 +27,15 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { useCodeProject } from './CodeProjectContext';
+
+/** Character offset (Yjs awareness cursor field) → 1-based line/column,
+ *  computed from the REAL current text — never a fabricated position. */
+function offsetToLineCol(text: string, offset: number): { line: number; col: number } {
+  const clamped = Math.max(0, Math.min(offset, text.length));
+  const upTo = text.slice(0, clamped);
+  const lines = upTo.split('\n');
+  return { line: lines.length, col: lines[lines.length - 1].length + 1 };
+}
 
 type AdvTab = 'intellisense' | 'debugger' | 'remote' | 'chat' | 'extensions' | 'layout' | 'liveshare';
 
@@ -794,6 +805,24 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
     docId: session?.code ?? null,
     enabled: !!session,
   });
+
+  // MU1 — live cursors + presence, riding the same (scope, docId) as
+  // the CRDT doc above via Yjs's own Awareness protocol. Only enabled
+  // once we know a real signed-in userId — never publish or render a
+  // fabricated identity.
+  const { user } = useAuth();
+  const { collaborators, setCursor } = useYjsAwareness({
+    scope: 'code:liveshare',
+    docId: session?.code ?? null,
+    doc: yDoc,
+    userId: user?.id || '',
+    displayName: user?.username || 'Anonymous',
+    enabled: !!session && !!user?.id,
+  });
+  const onEditSelect = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const t = e.currentTarget;
+    setCursor({ path: editPath || undefined, anchor: t.selectionStart, head: t.selectionEnd });
+  }, [editPath, setCursor]);
   const yTextRef = useRef<Y.Text | null>(null);
   const applyingRemoteRef = useRef(false);
   useEffect(() => {
@@ -975,6 +1004,23 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
             code <span className="font-mono text-cyan-300">{session.code}</span> · {session.participantCount} participant{session.participantCount === 1 ? '' : 's'} · {session.status}
           </p>
         </div>
+        {/* MU1 — live presence strip. Only ever real Awareness peers;
+            renders nothing when collaborators is empty (nobody else
+            connected yet). */}
+        {collaborators.length > 0 && (
+          <div className="flex items-center -space-x-1.5" title={`${collaborators.length} collaborator${collaborators.length === 1 ? '' : 's'} online`}>
+            {collaborators.map((c) => (
+              <div
+                key={c.userId}
+                title={c.displayName}
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white ring-2 ring-[#161b22]"
+                style={{ backgroundColor: c.color }}
+              >
+                {c.displayName.slice(0, 1).toUpperCase()}
+              </div>
+            ))}
+          </div>
+        )}
         <button onClick={() => void poll(session.code)} className="p-1.5 rounded text-gray-400 hover:bg-white/5" title="Refresh">
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
@@ -990,7 +1036,8 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
           <option value="">— select file —</option>
           {files.map((f) => <option key={f.path} value={f.path}>{f.path}</option>)}
         </select>
-        <textarea value={editContent} onChange={(e) => onEditContentChange(e.target.value)} rows={3}
+        <textarea value={editContent} onChange={(e) => onEditContentChange(e.target.value)}
+          onSelect={onEditSelect} onKeyUp={onEditSelect} onClick={onEditSelect} rows={3}
           placeholder="File content to broadcast to participants"
           className="w-full bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200 font-mono resize-y" />
         <div className="flex items-center justify-between gap-2">
@@ -1005,6 +1052,31 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
             <Send className="w-3.5 h-3.5" /> Snapshot to op-log
           </button>
         </div>
+        {/* MU1 — live cursors. Real Awareness peers only; each line/col
+            is computed from the actual current editContent + the
+            peer's real cursor offset, never a fabricated position. */}
+        {collaborators.length > 0 && (
+          <div className="space-y-1 pt-1 border-t border-white/5">
+            <p className="text-[10px] uppercase text-gray-400">Live cursors</p>
+            {collaborators.map((c) => {
+              const samefile = c.cursor?.path === editPath || (!c.cursor?.path && !!editPath);
+              const pos = c.cursor && samefile ? offsetToLineCol(editContent, c.cursor.head) : null;
+              return (
+                <div key={c.userId} className="flex items-center gap-1.5 text-[11px] text-gray-300">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                  <span className="font-medium">{c.displayName}</span>
+                  {c.cursor && c.cursor.path && !samefile ? (
+                    <span className="text-gray-500 font-mono truncate">editing {c.cursor.path}</span>
+                  ) : pos ? (
+                    <span className="text-gray-500 font-mono">line {pos.line}, col {pos.col}</span>
+                  ) : (
+                    <span className="text-gray-500">viewing</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
       {/* Shared awareness — breakpoints from peers + shared terminal. */}
       <SharedDebugTerminalTile code={session.code} />
