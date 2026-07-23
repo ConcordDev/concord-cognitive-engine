@@ -35,22 +35,23 @@
 //      elsewhere in concordia-city.ts are keyed to this same elevation
 //      model). `terrainSpec()` no longer sources from this path.
 //
-//   3. A THIRD, independent formula lives in
-//      `server/lib/terrain-deformation.js#baseElevation` — the base
+//   3. `server/lib/terrain-deformation.js#baseElevation` — the base
 //      curve the persisted dig/crater deformation deltas and the
 //      water-flow substrate (`terrain-water.js`) are computed against.
-//      It is a sine-APPROXIMATION of formula #1's shape (documented
-//      there as needing to "match the client Simplex... shape") — a
-//      structural approximation, not the same numeric function, and NOT
-//      touched or reimplemented by this module.
+//      As of the T1 reconciliation it NO LONGER approximates: it now
+//      delegates exactly to `renderedElevationAt` (this module's canonical
+//      formula #1), so server-side formulas #1 and #3 are the same numeric
+//      function. (Previously it was an independent sine-APPROXIMATION.)
 //
-//   Reconciling all three into one single canonical elevation truth
-//   (render + deformation + this spec) is an explicitly out-of-scope
-//   follow-up. The `/terrain-spec` route folds in the existing
-//   deformation deltas + water grid because they are the only persisted
-//   terrain-mutation state that exists, but — honestly — those deltas
-//   were computed against formula #3's `baseElevation`, not against the
-//   formula #1 profile this module returns. A future consumer combining
+//   The remaining divergence is the Three.js CLIENT's own copy of the
+//   formula in `TerrainRenderer.tsx` (can't import server ESM) — it must
+//   still be hand-kept-in-sync; reconciling THAT cross-language duplication
+//   is the residual out-of-scope follow-up. The `/terrain-spec` route folds
+//   in the existing deformation deltas + water grid; NOTE a world with
+//   deltas persisted BEFORE the T1 reconciliation had them computed against
+//   the old sine `baseElevation`, so its absolute baseline steps to the
+//   canonical value on first run (relative dig/mound depth is unaffected).
+//   A future consumer combining
 //   both must not assume they share a coordinate-space elevation
 //   baseline.
 //
