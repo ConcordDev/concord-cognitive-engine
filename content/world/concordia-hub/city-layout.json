@@ -984,5 +984,35 @@
         "z": -146
       }
     }
+  ],
+  "_landingPadsComment": "C11/C12 (master-spec 'Aircraft/hover + landing pads') — real touch-down markers for flight-capable mounts and future aircraft, kept as a STANDALONE array (not a `buildings` entry) because a landing pad has no walk-in interior, no lens, and no world_buildings row backing it — jamming it into `buildings` would either fabricate a fake lens/purpose to satisfy assertNoDeadFacades' dead-facade contract (designed for real interactive shells) or require weakening that contract, neither of which is honest. Positions are chosen clear of every authored building's coordinates (max abs value elsewhere in this file is 236) so a pad never overlaps a building footprint.",
+  "landingPads": [
+    {
+      "id": "landing-pad-plaza-north",
+      "district_id": "concordia-hub:plaza",
+      "name": "Plaza Skydock",
+      "purpose": "Open-air touch-down platform north of the plaza for mounted flyers and future aircraft arriving at the city's civic heart.",
+      "position": { "x": 0, "z": 280 },
+      "radius_m": 14,
+      "elevation_m": 0
+    },
+    {
+      "id": "landing-pad-riverside",
+      "district_id": "concordia-hub:riverside",
+      "name": "Riverside Skydock",
+      "purpose": "A cleared touch-down strip past the riverside docks, sharing the district's transit role for arrivals by air instead of by water.",
+      "position": { "x": 0, "z": -300 },
+      "radius_m": 14,
+      "elevation_m": 0
+    },
+    {
+      "id": "landing-pad-industrial",
+      "district_id": "concordia-hub:industrial",
+      "name": "Industrial Skydock",
+      "purpose": "A reinforced pad past the workshops for hauling freight in and out of the industrial district by air.",
+      "position": { "x": 300, "z": -190 },
+      "radius_m": 16,
+      "elevation_m": 0
+    }
   ]
 }

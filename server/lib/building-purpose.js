@@ -64,7 +64,7 @@ function _load() {
     raw = readFileSync(CITY_LAYOUT_PATH, "utf8");
   } catch (err) {
     logger.warn("building-purpose", "city_layout_read_failed", { err: err?.message });
-    _cache = { worldId: CITY_LAYOUT_WORLD_ID, buildings: [], conceptsByDistrict: {} };
+    _cache = { worldId: CITY_LAYOUT_WORLD_ID, buildings: [], conceptsByDistrict: {}, landingPads: [] };
     return _cache;
   }
   let parsed;
@@ -72,13 +72,17 @@ function _load() {
     parsed = JSON.parse(raw);
   } catch (err) {
     logger.warn("building-purpose", "city_layout_parse_failed", { err: err?.message });
-    _cache = { worldId: CITY_LAYOUT_WORLD_ID, buildings: [], conceptsByDistrict: {} };
+    _cache = { worldId: CITY_LAYOUT_WORLD_ID, buildings: [], conceptsByDistrict: {}, landingPads: [] };
     return _cache;
   }
   parsed.buildings = Array.isArray(parsed.buildings) ? parsed.buildings : [];
   parsed.conceptsByDistrict = parsed.conceptsByDistrict && typeof parsed.conceptsByDistrict === "object"
     ? parsed.conceptsByDistrict
     : {};
+  // C11/C12 — real landing-pad markers (standalone, not `buildings` entries;
+  // see the JSON file's own `_landingPadsComment` for why). Malformed/missing
+  // input degrades to an honest empty array, never fabricated pads.
+  parsed.landingPads = Array.isArray(parsed.landingPads) ? parsed.landingPads : [];
   _cache = parsed;
   return _cache;
 }
@@ -170,6 +174,21 @@ export function buildingPurposeForType(buildingType, worldId) {
   return { purpose: b.purpose, district_id: b.district_id, lens: b.lens ?? null, levels: b.levels || {}, name: b.name };
 }
 
+/**
+ * C11/C12 — real landing-pad markers (`content/world/concordia-hub/
+ * city-layout.json`'s standalone `landingPads` array; see that file's own
+ * `_landingPadsComment` and this module's header for why they are kept
+ * separate from `buildings`). Scoped to the authored world exactly like
+ * `buildingPurposeForType` — any other `worldId` gets an honest empty array,
+ * never a fabricated pad list.
+ * @param {string} worldId
+ * @returns {Array<object>}
+ */
+export function landingPadsForWorld(worldId) {
+  if (worldId !== CITY_LAYOUT_WORLD_ID) return [];
+  return _load().landingPads.slice();
+}
+
 function _isRealPurpose(purpose) {
   if (typeof purpose !== "string") return false;
   const trimmed = purpose.trim();
@@ -256,6 +275,7 @@ export default {
   buildingsForDistrict,
   lensForBuilding,
   buildingPurposeForType,
+  landingPadsForWorld,
   assertNoDeadFacades,
   seedCityLayout,
   _resetCacheForTest,

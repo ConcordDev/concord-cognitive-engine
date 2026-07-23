@@ -22,9 +22,19 @@
 // has an authored layout today; any other world — or any building_type the
 // layout doesn't know about — keeps the pre-existing `extras` shape
 // unchanged (no fabricated purpose, ever).
+//
+// Additive (master-spec C11/C12 — aerial mounts + aircraft/hover landing
+// pads): `exportScene`'s result also carries a `landingPads` array — the
+// real, standalone touch-down markers authored in city-layout.json's
+// `landingPads` array (server/lib/building-purpose.js#landingPadsForWorld),
+// so a Godot/Three.js client can render real pad locations for flight-
+// capable mounts (and any future aircraft) to land at. Same honesty
+// contract as `plaza` below: a world with no authored pads (every world
+// other than concordia-hub today) gets an honest empty array, never
+// fabricated geometry.
 
 import { listDistricts } from "./districts.js";
-import { buildingPurposeForType } from "./building-purpose.js";
+import { buildingPurposeForType, landingPadsForWorld } from "./building-purpose.js";
 
 export const SCENE_FORMAT = "concord-scene/v1";
 
@@ -122,7 +132,17 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
     plaza = null;
   }
 
-  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length, districts, plaza };
+  // Additive field — real landing-pad markers for this world, or [] if none
+  // are authored. Never fails the scene export: a lookup error degrades to
+  // [], same pattern as `districts`/`plaza` above.
+  let landingPads = [];
+  try {
+    landingPads = landingPadsForWorld(worldId);
+  } catch {
+    landingPads = [];
+  }
+
+  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length, districts, plaza, landingPads };
 }
 
 /** Cheap stats without building the whole node list. */

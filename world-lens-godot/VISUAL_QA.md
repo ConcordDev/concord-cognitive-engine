@@ -319,5 +319,80 @@ of it feels or looks in Godot's own physics/renderer has been observed:
 
 ---
 
+### Aerial mounts (C11 — `avatar/aerial_mount_controller.gd`)
+
+Composes `MountController.step_mount` (ground leg) and
+`FlightController.step_flight` (airborne leg) via direct static calls — the
+composition itself is proven only by `tests/test_aerial_mount_controller.gd`
+calling the same static functions and by code inspection of
+`_physics_process_ground`/`_physics_process_airborne`, never by an actual
+engine running both in sequence on one `CharacterBody3D`:
+
+- [ ] Take-off/landing (`set_airborne`) reads as a legible transition — the
+      controller flips `altitude_mode` and reseeds `_flight_state` instantly,
+      with no windup/liftoff animation or ground-clearance check of its own
+      (unlike `player/character_controller.gd`'s jump, there is no coyote-
+      time or buffered-input equivalent here) — whether an instant switch
+      from arc-turn ground kinematics to the aero state machine feels like a
+      real takeoff versus a jarring pop has never been seen.
+- [ ] The velocity clamp (`clamp_velocity_to_species_cap`, rescaling the
+      FULL 3D flight-step vector down to the mount's real `base_speed_mps`
+      instead of `FlightController`'s own 45 m/s ceiling — see that
+      function's own header note on why) has never been felt in motion —
+      whether capping a hippogriff/gryphon/wyvern's flight envelope at
+      10.5-12.0 m/s (versus the 45 m/s a "superhero flight" player
+      experiences) reads as "appropriately mount-paced" or "sluggish" is
+      unverified; the number is a real, cited server-side constraint
+      (`applyPlayerMode`'s `"mount:"` branch derives its speed cap from
+      `species.baseSpeedMps` regardless of altitude), not a felt-right
+      guess, but "correct per the anti-cheat contract" and "feels good to
+      fly" are different claims and only the first is checked here.
+- [ ] No mounted-rider-in-flight visual exists (no wing-flap animation cue,
+      no banked-flight rider pose, no mount mesh at all) — same gap the
+      ground `MountController` already flags, now also true for the
+      airborne leg.
+- [ ] `report_flight_xp`'s `POST /api/lens/run` call (real `mounts.gain_xp`
+      macro, `kind:"flight"`) has never reached a live server from this
+      file — only the pure `build_flight_xp_request_body` shape and the
+      HTTPRequest wiring pattern (copied from the already-real
+      `world/dtu_prop_interaction.gd`) are proven; whether
+      `FLIGHT_XP_REPORT_INTERVAL_S = 10.0`'s batching cadence is a
+      reasonable client-side choice (versus flushing more/less often) is an
+      untested judgment call, not a cited number.
+- [ ] The "no new player:mode submode" design (aerial and grounded riding
+      both send the same `"mount:<speciesId>"` mode — see the file's own
+      header) has never been checked against a live `applyPlayerMode` for
+      whether the server-side anti-cheat's 3D Euclidean distance check
+      (`city-presence.js`'s `updateUserPosition`) actually tolerates a
+      believable climb-rate + horizontal-speed combination without nacking
+      a legitimate ascent — this is asserted from reading the cited code,
+      never observed against a real flight.
+
+### Landing pads (C12 data — `content/world/concordia-hub/city-layout.json`'s
+`landingPads` array + `server/lib/scene-export.js`'s additive `landingPads`
+field)
+
+- [ ] The 3 authored pad positions (Plaza Skydock, Riverside Skydock,
+      Industrial Skydock) have never been seen rendered in a real 3D scene —
+      whether they read as sensible touch-down zones relative to the
+      city's actual built geometry (versus floating in an awkward or
+      inaccessible spot) is unverified; positions were chosen only by
+      numeric clearance from existing building coordinates (see
+      `tests/landing-pads.test.js`'s coordinate-overlap assertion), not by
+      eye against the real skyline.
+- [ ] `radius_m`/`elevation_m` are DATA fields only — no client-side pad
+      geometry (a mesh, a marker beacon, a glow ring) exists yet to consume
+      them; this unit is the data + scene-export protocol only, per its own
+      scope (a full visual pad-interaction system is explicitly a further
+      follow-up, not built here).
+- [ ] No landing/take-off GAMEPLAY gate exists yet (e.g. "you may only
+      report flight XP for landing while within `radius_m` of a real pad")
+      — `AerialMountController.set_airborne`/`report_flight_xp` work
+      anywhere in the world today; whether pads should eventually become a
+      required or merely a suggested touch-down zone is an open design
+      question, not decided by this unit.
+
+---
+
 Until every box above is checked on a real machine, treat the Godot client as
 **structurally complete but visually unproven.**
