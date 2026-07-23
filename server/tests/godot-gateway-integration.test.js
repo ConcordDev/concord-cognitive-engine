@@ -333,6 +333,158 @@ test("an event with no inbound dispatch gets an honest unsupported_evt, not a fa
   } finally { ws.close(); }
 });
 
+// ── design_command (Phase 4 / D17 first slice) ────────────────────────────────
+// Proves `design_command` frames sent BY the Godot client dispatch through the
+// SAME LENS_ACTIONS/MACROS resolution `/api/lens/run` uses, reaching the real
+// `server/domains/gamedesign.js` macros — not a parallel/invented data model —
+// and that the effect is genuinely visible afterward: in-memory STATE for the
+// Map-backed 2D game-project macros, and a real SQLite row for
+// `building-publish` (the one action with a live-world DB effect).
+
+test("design_command game-create/level-create/entity-add round-trip through the real gamedesign macros (STATE-visible)", async () => {
+  const { token, userId } = await registerUser(`godotit_${TS}_j`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "design_command", { action: "game-create", params: { title: "Godot IT Test Game", genre: "arcade" } });
+    const gameFrame = await nextFrame(ws);
+    assert.equal(gameFrame.evt, "design_command:result");
+    assert.equal(gameFrame.data.action, "game-create");
+    assert.equal(gameFrame.data.ok, true, `game-create should succeed: ${JSON.stringify(gameFrame.data)}`);
+    const gameId = gameFrame.data.result?.game?.id;
+    assert.ok(gameId, "game-create result should carry the new game's id");
+
+    // Real effect, visible from OUTSIDE the gateway dispatch path: the exact
+    // in-memory Map gamedesign.js's own getGdState()/game-get macro reads.
+    const gdState = __TEST__.STATE.gameDesignLens;
+    assert.ok(gdState, "STATE.gameDesignLens should exist after a design_command dispatch");
+    const storedGame = (gdState.games.get(userId) || []).find((g) => g.id === gameId);
+    assert.ok(storedGame, "the created game should be a real row in STATE.gameDesignLens.games, not just an echoed response");
+    assert.equal(storedGame.title, "Godot IT Test Game");
+
+    sendMsg(ws, "design_command", { action: "level-create", params: { gameId, name: "Level One", cols: 12, rows: 8 } });
+    const levelFrame = await nextFrame(ws);
+    assert.equal(levelFrame.data.action, "level-create");
+    assert.equal(levelFrame.data.ok, true, `level-create should succeed: ${JSON.stringify(levelFrame.data)}`);
+    const levelId = levelFrame.data.result?.level?.id;
+    assert.ok(levelId, "level-create result should carry the new level's id");
+    const storedLevel = (gdState.levels.get(userId) || []).find((l) => l.id === levelId);
+    assert.ok(storedLevel, "the created level should be a real row in STATE.gameDesignLens.levels");
+    assert.equal(storedLevel.cols, 12);
+    assert.equal(storedLevel.rows, 8);
+    // level-create's own default layers prove this hit the real handler body
+    // (a fabricated success could echo params but wouldn't derive this).
+    assert.equal(storedLevel.layers.length, 2);
+
+    sendMsg(ws, "design_command", { action: "entity-add", params: { gameId, name: "Slime", kind: "enemy", health: 10 } });
+    const entityFrame = await nextFrame(ws);
+    assert.equal(entityFrame.data.action, "entity-add");
+    assert.equal(entityFrame.data.ok, true, `entity-add should succeed: ${JSON.stringify(entityFrame.data)}`);
+    const entityId = entityFrame.data.result?.entity?.id;
+    assert.ok(entityId, "entity-add result should carry the new entity's id");
+    const storedEntity = (gdState.entities.get(userId) || []).find((e) => e.id === entityId);
+    assert.ok(storedEntity, "the created entity should be a real row in STATE.gameDesignLens.entities");
+    assert.equal(storedEntity.name, "Slime");
+    assert.equal(storedEntity.kind, "enemy");
+  } finally { ws.close(); }
+});
+
+test("design_command building-publish spawns a REAL world_buildings row (SQLite-visible, not just STATE)", async () => {
+  const { token, userId } = await registerUser(`godotit_${TS}_k`);
+  const ws = await connect(WS_URL);
+  const worldId = `godot-it-design-world-${TS}`;
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "design_command", {
+      action: "building-publish",
+      params: {
+        archetype: "tavern",
+        name: "Godot IT Tavern",
+        dimensions: { width: 8, height: 6, depth: 8 },
+        worldId,
+        position: { x: 111, y: 0, z: 222 },
+      },
+    });
+    const frame = await nextFrame(ws);
+    assert.equal(frame.evt, "design_command:result");
+    assert.equal(frame.data.action, "building-publish");
+    assert.equal(frame.data.ok, true, `building-publish should succeed: ${JSON.stringify(frame.data)}`);
+    assert.equal(frame.data.spawned, true);
+    const { buildingId, dtuId } = frame.data;
+    assert.ok(buildingId, "building-publish result should carry the new world_buildings row id");
+    assert.ok(dtuId, "building-publish result should carry the new blueprint DTU id");
+
+    // The real, independently-queryable DB effect — this is NOT in-memory
+    // STATE, it's a genuine SQLite row a live world's scene-export/exportScene
+    // read path would also see.
+    const db = __TEST__.STATE.db;
+    const row = db.prepare(
+      "SELECT id, world_id, archetype, name, x, y, z, blueprint_dtu_id, owner_id FROM world_buildings WHERE id = ?"
+    ).get(buildingId);
+    assert.ok(row, "building-publish must leave a real, queryable world_buildings row");
+    assert.equal(row.world_id, worldId);
+    assert.equal(row.archetype, "tavern");
+    assert.equal(row.name, "Godot IT Tavern");
+    assert.equal(row.x, 111);
+    assert.equal(row.z, 222);
+    assert.equal(row.blueprint_dtu_id, dtuId);
+    assert.equal(row.owner_id, userId);
+
+    const dtuRow = db.prepare("SELECT id, owner_user_id, title FROM dtus WHERE id = ?").get(dtuId);
+    assert.ok(dtuRow, "building-publish must also mint a real dtus row for the blueprint");
+    assert.equal(dtuRow.owner_user_id, userId);
+    assert.equal(dtuRow.title, "Godot IT Tavern");
+  } finally { ws.close(); }
+});
+
+test("design_command rejects an unsupported action honestly (no fabricated success)", async () => {
+  const { token } = await registerUser(`godotit_${TS}_l`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    // "game-delete" is a real gamedesign.js macro, but NOT in the curated
+    // design_command allow-list yet — proves the allow-list actually
+    // constrains dispatch instead of forwarding any (domain, action) pair.
+    sendMsg(ws, "design_command", { action: "game-delete", params: { id: "does-not-exist" } });
+    const frame = await nextFrame(ws);
+    assert.equal(frame.evt, "design_command:result");
+    assert.equal(frame.data.ok, false);
+    assert.equal(frame.data.error, "unsupported_action");
+    assert.equal(frame.data.action, "game-delete");
+
+    // A genuinely nonexistent macro name gets the same honest treatment.
+    sendMsg(ws, "design_command", { action: "totally-made-up-macro", params: {} });
+    const frame2 = await nextFrame(ws);
+    assert.equal(frame2.data.ok, false);
+    assert.equal(frame2.data.error, "unsupported_action");
+  } finally { ws.close(); }
+});
+
+test("design_command surfaces a real handler-level rejection (level-create with an unknown gameId)", async () => {
+  const { token } = await registerUser(`godotit_${TS}_m`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "design_command", { action: "level-create", params: { gameId: "no-such-game-id" } });
+    const frame = await nextFrame(ws);
+    assert.equal(frame.evt, "design_command:result");
+    assert.equal(frame.data.action, "level-create");
+    // This is the REAL gamedesign.js `level-create` handler's own honest
+    // rejection ("game not found") — not the gateway's allow-list check —
+    // proving the dispatch reaches genuine handler logic, not a stub.
+    assert.equal(frame.data.ok, false);
+    assert.equal(frame.data.error, "game not found");
+  } finally { ws.close(); }
+});
+
 // ── API-key auth ─────────────────────────────────────────────────────────────
 
 test("godot-ws auth handshake succeeds with a real apiKey (not just a bearer token)", async () => {

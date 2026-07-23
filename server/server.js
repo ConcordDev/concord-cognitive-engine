@@ -66181,6 +66181,56 @@ function _godotGatewaySend(client, evt, payload = {}) {
   } catch { /* per-socket, survive */ }
 }
 
+// Godot Integration Phase 4 (D17 — first slice, 2026-07-23) — `design_command`
+// allow-list. docs/GODOT_PROTOCOL.md §11 named this channel PLANNED, citing
+// the real target macros in server/domains/gamedesign.js as the thing a
+// future unit would wire — this IS that unit's first slice. Deliberately a
+// curated allow-list (not "any game-design macro reachable"): every entry
+// below is a real `registerLensAction("game-design", <name>, ...)` handler
+// (see server/domains/gamedesign.js, cited per-action in the case block),
+// covering the minimal authoring round-trip a Godot design client needs —
+// create a game project, add an entity to its roster, create a level, and
+// (the one with a REAL SQLite-visible effect, not just in-memory Map state)
+// publish/spawn a building into a live 3D world's `world_buildings` table.
+// An action NOT in this set gets an honest `unsupported_action` result,
+// never silently forwarded to an arbitrary macro.
+const DESIGN_COMMAND_ACTIONS = new Set([
+  "game-create",       // gamedesign.js:148 — creates a game project
+  "entity-add",        // gamedesign.js:296 — adds a roster entity (place-entity intent)
+  "level-create",      // gamedesign.js:346 — creates a level (tile grid + default layers)
+  "building-publish",  // gamedesign.js:1905 — mints a blueprint DTU + spawns a REAL world_buildings row
+]);
+
+// Shared resolver — the SAME two-step lookup `/api/lens/run` uses
+// (LENS_ACTIONS first, then MACROS via runMacro), reused here instead of
+// invented afresh so a Godot design_command and an HTTP /api/lens/run call
+// for the identical (domain, action) run through identical dispatch. Never
+// falls through to the freeform-AI catchall the HTTP route has — an
+// unregistered macro is always an honest `unknown_macro`, never a brain
+// guess standing in for a real authoring action.
+//
+// Deliberately returns the handler's RAW envelope (`{ok:true, result:...}`
+// or `{ok:false, error:...}`), NOT `_unwrapLensEnvelope`'d — that helper
+// strips the top-level `ok` field on success because the HTTP route relies
+// on its own outer `res.json({ok:true, result})` to signal success instead.
+// There is no outer HTTP wrapper on the gateway path, so unwrapping here
+// would silently turn every real success into a frame with no `ok` field —
+// exactly the kind of ambiguous-looks-like-failure shape the honest-by-
+// construction rule exists to prevent. Same raw-passthrough contract as
+// `_dispatchLensRunForTest` (used by the invariant-engine test harness) for
+// the identical reason.
+async function _dispatchDesignCommand(domain, action, params, ctx) {
+  const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
+  if (lensHandler) {
+    const virtualArtifact = { id: null, domain, type: "domain_action", data: params, meta: {} };
+    return await lensHandler(ctx, virtualArtifact, params);
+  }
+  if (MACROS.get(domain)?.get(action)) {
+    return await runMacro(domain, action, params, ctx);
+  }
+  return { ok: false, error: "unknown_macro", domain, action };
+}
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
   switch (evt) {
@@ -66203,6 +66253,49 @@ function _onGodotClientMessage(client, evt, data) {
       if (result.drop) return;
       if (result.nack) { _godotGatewaySend(client, "player:mode:nack", result.nack); return; }
       if (result.ack) _godotGatewaySend(client, "player:mode:ack", result.ack);
+      return;
+    }
+    case "design_command": {
+      // Phase 4 (D17) first slice — see DESIGN_COMMAND_ACTIONS above.
+      const action = typeof data?.action === "string" ? data.action : "";
+      const params = data?.params && typeof data.params === "object" ? data.params : {};
+      if (!action) {
+        _godotGatewaySend(client, "design_command:result", { ok: false, error: "invalid_action", action });
+        return;
+      }
+      if (!DESIGN_COMMAND_ACTIONS.has(action)) {
+        _godotGatewaySend(client, "design_command:result", { ok: false, error: "unsupported_action", action });
+        return;
+      }
+      // makeCtx(null) would resolve an anonymous actor; a Godot client only
+      // reaches this switch post-auth (godot-gateway.js rejects pre-auth
+      // frames itself), so client.userId is always a real authenticated
+      // user. makeCtx's `reqMeta` block calls `req.get(...)` unconditionally
+      // whenever `req` is truthy, so a bare `{user:{id}}` stub would throw —
+      // this fake req carries every field makeCtx dereferences (get/ip/
+      // method/path/query/headers) so the REAL actor-resolution branch
+      // (`req.user.id` present) runs untouched and produces the identical
+      // member-role actor shape an authenticated HTTP request would get.
+      const _godotFakeReq = {
+        user: { id: userId },
+        headers: {},
+        query: {},
+        method: "WS",
+        path: "/godot-ws",
+        originalUrl: "/godot-ws",
+        ip: "godot-gateway",
+        get: () => undefined,
+      };
+      const ctx = makeCtx(_godotFakeReq);
+      _dispatchDesignCommand("game-design", action, params, ctx)
+        .then((result) => {
+          _godotGatewaySend(client, "design_command:result", { action, ...result });
+        })
+        .catch((e) => {
+          _godotGatewaySend(client, "design_command:result", {
+            ok: false, error: "handler_error", action, message: String(e?.message || e),
+          });
+        });
       return;
     }
     default:

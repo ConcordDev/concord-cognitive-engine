@@ -141,6 +141,25 @@ Nothing below has been asserted anywhere else in the repo.
 
 ---
 
+### Game Design Lens — `design_command` first slice (D17 — `design/design_command_client.gd`)
+
+- [ ] `DesignCommandClient.send_command(...)` actually reaches a live
+      `/godot-ws` connection and a real `design_command:result` frame comes
+      back — proven server-side end-to-end
+      (`server/tests/godot-gateway-integration.test.js`, real ws client +
+      real booted server + real SQLite/STATE assertions), but this GDScript
+      file itself has never sent a frame to a live server or run inside a
+      real Godot process; only `gdparse`/`gdlint` confirm it loads.
+- [ ] `command_result`/`command_failed` signals actually reach a UI listener
+      in a real scene tree (this unit ships no UI — D18's visual
+      placement/authoring surface is the thing that would consume these
+      signals; today nothing in the project connects to them).
+- [ ] Extending `DESIGN_COMMAND_ACTIONS` (server-side) to the remaining ~36
+      `gamedesign.js` macros, and building the actual click-to-place
+      authoring UI in the 3D viewport, is unstarted — D18 scope.
+
+---
+
 ### Avatar rig + locomotion (Migration M1 — `avatar/avatar_rig.gd` /
 `avatar/animation_state_machine.gd` / `avatar/avatar_manager.gd`)
 

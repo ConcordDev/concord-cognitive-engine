@@ -23,6 +23,7 @@ const TestGaitSolver := preload("res://tests/test_gait_solver.gd")
 const TestFlightController := preload("res://tests/test_flight_controller.gd")
 const TestGroundVehicleController := preload("res://tests/test_ground_vehicle_controller.gd")
 const TestMountController := preload("res://tests/test_mount_controller.gd")
+const TestDesignCommandClient := preload("res://tests/test_design_command_client.gd")
 
 
 func _init() -> void:
@@ -38,6 +39,7 @@ func _init() -> void:
 		"FlightController": TestFlightController.run(),
 		"GroundVehicleController": TestGroundVehicleController.run(),
 		"MountController": TestMountController.run(),
+		"DesignCommandClient": TestDesignCommandClient.run(),
 	}
 
 	var all_ok := true

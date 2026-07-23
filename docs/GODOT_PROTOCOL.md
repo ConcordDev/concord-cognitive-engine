@@ -51,7 +51,7 @@ this doc is about *what the payloads mean*, not how they're framed.
 | `query_state` | client→server | PARTIAL | only `scene:request` exists; no general state-query verb |
 | `event` (generic) | server→client | IMPLEMENTED (this IS the envelope) | every frame is already `{evt, data}` — see `docs/GODOT_INTEGRATION.md` |
 | `load_district` | client→server / server→client | PARTIAL | district geometry exists and is exportable (`scenebridge.map`, `exportScene`'s `districts`/`plaza` fields) but there is no streaming *control* verb yet |
-| `design_command` | client→server | PLANNED | real target macros exist (`server/domains/gamedesign.js`, ~40 `level-*`/`entity-*` macros) but no Godot channel routes to them |
+| `design_command` | client→server | PARTIAL (first slice landed 2026-07-23) | `_onGodotClientMessage`'s `"design_command"` case (`server/server.js`, case added ~line 66234) routes a curated 4-action allow-list — `game-create`/`entity-add`/`level-create`/`building-publish` — through the SAME `LENS_ACTIONS`/`MACROS` resolution `/api/lens/run` uses, into real `server/domains/gamedesign.js` handlers. The other ~36 macros in that file (`level-object-*`, `level-paint*`, `gdd-*`, `loop-*`, `narrative-*`, `asset-*`, `behavior-*`, `collab-*`, etc.) are still unreached — see §11 below for exactly what changed and what D18 still needs. |
 
 ---
 
@@ -306,37 +306,78 @@ server replies with a **districted subset** of `exportScene`'s nodes (filter
 the A3/A4 purposeful-building wiring) — a small, well-scoped follow-on, not
 built here.
 
-## 11. `design_command` (Game Design Lens authoring channel) — PLANNED
+## 11. `design_command` (Game Design Lens authoring channel) — PARTIAL (first slice landed)
 
-This is explicitly Phase 4 scope (D17-D21 in the master-spec backlog) and
-was not built in this unit. What's real and ready to be a target: the
-`game-design` domain (`server/domains/gamedesign.js`) already registers ~40
-authoring macros over a real level/entity/mechanic data model —
-`level-object-add`, `level-object-update`, `level-object-delete`,
-`level-paint`, `level-paint-batch`, `entity-add`, `entity-update`,
-`entity-delete`, `mechanic-add`, `level-layer-add`, `level-export`, and more
-(`registerLensAction("game-design", ...)` call sites throughout that file).
-These are the real CRUD surface a `design_command` channel would proxy into
-— the same "wrap real macros, don't invent a second data model" pattern the
-`scenebridge.map` macro follows in this unit. **The gap:** none of this is
-reachable from the Godot gateway today; there is no `design_command` case in
-`godot-gateway.js`'s `handleMessage` switch, and no live-preview subscription
-wiring a design-mode Godot client to the same realtime events a running
-world uses. Building it is real, scoped, future work — not a vocabulary
-question (the target macros already exist and are real), but a wiring
-question (Phase 4, after mobility/hub work per the priority order in the
-plan).
+This is explicitly Phase 4 scope (D17-D21 in the master-spec backlog). A
+**first slice** landed 2026-07-23 — the wiring question this section used to
+call PLANNED is now real, but bounded: `game-design` (`server/domains/
+gamedesign.js`) registers ~40 authoring macros over a real level/entity/
+mechanic data model, and this slice reaches exactly **4** of them through a
+curated allow-list, not the whole surface.
+
+**What's wired:** `_onGodotClientMessage` (`server/server.js`, case
+`"design_command"`, added ~line 66234) reads `{action, params}` off the
+incoming frame, checks `action` against `DESIGN_COMMAND_ACTIONS` (a `Set` —
+`game-create`, `entity-add`, `level-create`, `building-publish`), and on a
+match calls the SAME two-step resolution `/api/lens/run` uses — prefer
+`LENS_ACTIONS.get("game-design.<action>")`, fall back to `MACROS.get
+("game-design")?.get(action)` via `runMacro` — through a new shared helper,
+`_dispatchDesignCommand`. The result comes back to the client as a
+`design_command:result` frame carrying the handler's RAW `{ok, result}` /
+`{ok:false, error}` envelope (deliberately NOT `_unwrapLensEnvelope`'d — that
+helper strips the top-level `ok` on success because the HTTP route relies on
+its own outer `res.json({ok:true,...})` instead; there is no such outer
+wrapper on the gateway path, so unwrapping would turn every real success
+into a frame with no `ok` field). An action outside the allow-list, or a
+malformed frame with no `action` string, gets an honest `unsupported_action`
+/ `invalid_action` result — never forwarded to an arbitrary macro. A
+handler-level rejection (e.g. `level-create` given an unknown `gameId`)
+passes through verbatim as the real handler's own `{ok:false, error:"game
+not found"}` — the gateway adds nothing on top.
+
+Round-trip proof: `server/tests/godot-gateway-integration.test.js` sends
+real `design_command` frames over a real `/godot-ws` connection against a
+fully-booted server and asserts genuine, independently-queryable effects —
+`game-create`/`level-create`/`entity-add` land real rows in
+`STATE.gameDesignLens`'s Maps (read back via `__TEST__.STATE`, not just the
+echoed response), and `building-publish` leaves a real `world_buildings` row
+AND a real `dtus` row in SQLite (read back via `db.prepare(...).get(...)`,
+the same tables `exportScene`/`scene:request` would see).
+
+**Client side:** `world-lens-godot/design/design_command_client.gd` is a
+minimal `Node` wrapping an existing `GatewayClient` — `send_command(action,
+params)` builds and sends the envelope, and it listens for
+`design_command:result` frames, re-emitting `command_result`/
+`command_failed` signals (never treating a missing `ok:true` as success).
+This is the protocol round-trip only — no visual placement UI.
+
+**The remaining gap (D18 scope, not built here):** the other ~36
+`level-object-*`/`level-paint*`/`gdd-*`/`loop-*`/`narrative-*`/`asset-*`/
+`behavior-*`/`collab-*`/etc. macros in `gamedesign.js` are still unreached
+from the gateway — extending `DESIGN_COMMAND_ACTIONS` to cover them is
+mechanical (same allow-list + dispatch, more entries), not a new pattern.
+What's genuinely still missing: an actual visual placement/authoring UI in
+Godot (D18's real scope — clicking to place an entity/spawn/trigger in the
+3D viewport and having it call `send_command` with real coordinates), a
+live-preview subscription wiring a design-mode Godot client to the same
+realtime events a running world uses (D19), and DTU-backed scene save/load
++ a design↔play toggle (D20/D21).
 
 ---
 
 ## What this doc does NOT claim
 
-- It does not claim any of the PARTIAL/PLANNED gaps are closed by this unit.
-  Only `docs/GODOT_PROTOCOL.md` itself (this file) and the A1 Central Plaza
-  macro/scene-export field (`server/domains/scenebridge.js`'s new `map`
-  macro, `server/lib/scene-export.js`'s new `plaza` field) were built
-  alongside this doc — everything else here is a read of real, pre-existing
-  code, cited so a future unit can act on the gaps without re-auditing.
+- Original A1 Central Plaza unit (2026-07-23): this doc did not claim any of
+  the PARTIAL/PLANNED gaps were closed by that unit. Only the doc itself and
+  the A1 macro/scene-export field (`server/domains/scenebridge.js`'s `map`
+  macro, `server/lib/scene-export.js`'s `plaza` field) were built alongside
+  it — everything else was a read of real, pre-existing code.
+- **This revision (D17 first slice, same day):** `design_command` moved from
+  PLANNED to PARTIAL — but only for the 4 curated actions in §11 above. It
+  does NOT claim the other ~36 `gamedesign.js` macros are reachable, does
+  NOT claim a visual authoring UI exists (D18), and does NOT claim
+  live-preview or scene save/load (D19/D20) were touched. Every other
+  PLANNED/PARTIAL row in the summary table is unchanged by this revision.
 - The 3 PARTIAL rows (`play_effect`, `apply_force`'s NPC-path half,
   `load_district`) share one root cause worth naming once: several combat/
   world emit sites call `io.to(room).emit(...)` directly instead of going
@@ -351,11 +392,20 @@ plan).
 ## Reproduction / verification
 
 ```bash
-# Gateway contract tests (envelope, auth, rooms, scene:request, player:move/mode dispatch):
+# Gateway contract tests (envelope, auth, rooms, scene:request, player:move/mode,
+# and design_command dispatch — all 5 new design_command cases live in the
+# integration file, alongside the pre-existing coverage):
 cd server && node --test tests/godot-gateway.test.js tests/godot-gateway-integration.test.js
 
 # Central Plaza macro/scene-export field this unit added:
 cd server && node --test tests/central-plaza-map.test.js
+
+# The design_command allow-list + shared dispatch helper this revision added:
+grep -n "DESIGN_COMMAND_ACTIONS\|_dispatchDesignCommand" server/server.js
+
+# GDScript client + its pure-logic test (parse/lint only — see VISUAL_QA.md):
+gdlint world-lens-godot/design/design_command_client.gd
+gdlint world-lens-godot/tests/test_design_command_client.gd
 
 # Grep the two mirror call sites cited above (realtimeEmit/emitToWorld → Godot):
 grep -n "_godotGatewayEmitter" server/server.js
