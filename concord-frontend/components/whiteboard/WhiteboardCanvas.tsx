@@ -9,10 +9,17 @@
  * freehand strokes — enough to read as a whiteboard immediately. The
  * point isn't to replace tldraw; it's to give the lens the unmistakable
  * silhouette so the user understands what kind of space they're in.
+ *
+ * Pan (R1-2 wave 3 fix): the "Reset view" button has always reset `pan`
+ * to {0,0}, but nothing could ever change it away from {0,0} — there was
+ * no drag-to-pan or wheel-to-pan gesture anywhere, so the reset button
+ * reset a value that could never move. Figma/Miro/FigJam idiom restored:
+ * hold Space + drag (or middle-mouse drag) to pan, or scroll/trackpad-pan
+ * directly; Ctrl/Cmd+wheel zooms toward the cursor instead of the origin.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Square, StickyNote, Pencil, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Trash2 } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Square, StickyNote, Pencil, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Trash2, Hand } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type Tool = 'select' | 'rect' | 'sticky' | 'pen';
@@ -106,7 +113,46 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
   peerCursorsRef.current = peerCursors;
   const voteCountsRef = useRef(voteCounts);
   voteCountsRef.current = voteCounts;
+  const onVoteElementRef = useRef(onVoteElement);
+  onVoteElementRef.current = onVoteElement;
   const [hoveredVotableId, setHoveredVotableId] = useState<string | null>(null);
+  const hoveredVotableIdRef = useRef<string | null>(null);
+  hoveredVotableIdRef.current = hoveredVotableId;
+
+  // Pan gesture state. `isSpaceDown` mirrors the Figma/Miro idiom (hold
+  // Space, drag to pan); `panningRef` tracks an in-flight drag so mouseup
+  // ends it regardless of where the pointer lands.
+  const [isSpaceDown, setIsSpaceDown] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const panningRef = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+
+  // Inline sticky-note text editor. Replaces the old `window.prompt` (a
+  // jarring native dialog no reference whiteboard app uses) with an
+  // in-canvas textarea positioned over the shape, matching Figma/FigJam's
+  // double-click-or-type-immediately idiom.
+  const [editingSticky, setEditingSticky] = useState<{ id: string; x: number; y: number; w: number; h: number; text: string; originalText: string } | null>(null);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      // `e.target` isn't always an Element — with no focused element some
+      // browsers target `document` itself, which has no `.closest`. Guard
+      // for that instead of assuming a DOM Element shape.
+      const target = e.target;
+      const isTypingField = target instanceof Element && !!target.closest('textarea, input');
+      if (e.code === 'Space' && !e.repeat && !isTypingField) {
+        setIsSpaceDown(true);
+      }
+    }
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.code === 'Space') setIsSpaceDown(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
 
   useEffect(() => {
     onChange?.(shapes);
@@ -247,6 +293,20 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
           ctx.fillText(String(voteN), bx, by + 3 / zoom);
           ctx.textAlign = 'start';
         }
+        // Click-to-vote hover feedback — `hoveredVotableId` already existed
+        // as state (drove the CSS cursor) but was never actually rendered,
+        // so the only feedback for "this is votable" was the cursor
+        // changing shape, easy to miss. A highlight ring makes the
+        // affordance visible on the shape itself, matching the badge above.
+        if (onVoteElementRef.current && s.id === hoveredVotableIdRef.current) {
+          const b = shapeBounds(s);
+          ctx.save();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2 / zoom;
+          ctx.setLineDash([4 / zoom, 3 / zoom]);
+          ctx.strokeRect(b.x - 3 / zoom, b.y - 3 / zoom, b.w + 6 / zoom, b.h + 6 / zoom);
+          ctx.restore();
+        }
       }
       // Multi-cursor presence overlay (peer cursors are in world coords).
       const cursors = peerCursorsRef.current || [];
@@ -284,7 +344,39 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
     return { x: (screenX - pan.x) / zoom, y: (screenY - pan.y) / zoom };
   }
 
+  // Open the inline text editor for a sticky note — used both right after
+  // creating one and when double-clicking an existing one to re-edit it.
+  const openStickyEditor = useCallback((s: Shape) => {
+    setEditingSticky({ id: s.id, x: s.x, y: s.y, w: s.w || 120, h: s.h || 80, text: s.text || '', originalText: s.text || '' });
+  }, []);
+
+  /** save=true (blur / Cmd+Enter) writes the current draft back to the
+   * shape, dropping it entirely if left blank (an empty sticky is
+   * clutter, not content). save=false (Escape) discards the draft and
+   * restores whatever text the shape had before this edit session — for
+   * a brand-new note that's still "", so it gets dropped the same way. */
+  const commitStickyEdit = useCallback((save: boolean) => {
+    setEditingSticky((current) => {
+      if (!current) return null;
+      const finalText = (save ? current.text : current.originalText).trim();
+      setShapes((prev) => {
+        if (finalText === '') return prev.filter((sh) => sh.id !== current.id);
+        return prev.map((sh) => (sh.id === current.id ? { ...sh, text: finalText } : sh));
+      });
+      return null;
+    });
+  }, []);
+
   function onMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
+    // Space+drag (any tool) or middle-mouse-drag starts a pan, Figma/Miro
+    // style — this is the gesture the "Reset view" button always implied
+    // existed but, until this fix, never actually did.
+    if (isSpaceDown || e.button === 1) {
+      e.preventDefault();
+      panningRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y };
+      setIsPanning(true);
+      return;
+    }
     if (tool === 'select') {
       if (onVoteElement) {
         const p = worldFromMouse(e);
@@ -297,22 +389,28 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
     if (tool === 'rect') {
       drawingRef.current = { id: uid(), kind: 'rect', x: p.x, y: p.y, w: 0, h: 0 };
     } else if (tool === 'sticky') {
-      const text = window.prompt('Sticky note text', '');
-      if (text === null) return;
       const color = STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)];
-      const s: Shape = { id: uid(), kind: 'sticky', x: p.x - 60, y: p.y - 40, w: 120, h: 80, text, color };
+      const s: Shape = { id: uid(), kind: 'sticky', x: p.x - 60, y: p.y - 40, w: 120, h: 80, text: '', color };
       setShapes((prev) => [...prev, s]);
+      openStickyEditor(s);
+      setTool('select');
     } else if (tool === 'pen') {
       drawingRef.current = { id: uid(), kind: 'stroke', x: 0, y: 0, points: [p] };
     }
   }
 
   function onMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (panningRef.current) {
+      const { startX, startY, panX, panY } = panningRef.current;
+      setPan({ x: panX + (e.clientX - startX), y: panY + (e.clientY - startY) });
+      return;
+    }
     if (onCursorMove) { const wp = worldFromMouse(e); onCursorMove(wp.x, wp.y); }
     if (onVoteElement && tool === 'select') {
       const wp = worldFromMouse(e);
       const hit = hitTestVotable(shapes, wp.x, wp.y);
-      setHoveredVotableId(hit ? hit.id : null);
+      const hitId = hit ? hit.id : null;
+      if (hitId !== hoveredVotableIdRef.current) setHoveredVotableId(hitId);
     }
     if (!drawingRef.current) return;
     const p = worldFromMouse(e);
@@ -325,9 +423,43 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
   }
 
   function onMouseUp() {
+    if (panningRef.current) {
+      panningRef.current = null;
+      setIsPanning(false);
+      return;
+    }
     if (!drawingRef.current) return;
     setShapes((prev) => [...prev, drawingRef.current!]);
     drawingRef.current = null;
+  }
+
+  function onDoubleClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (tool !== 'select') return;
+    const p = worldFromMouse(e);
+    const hit = hitTestVotable(shapes, p.x, p.y);
+    if (hit && hit.kind === 'sticky') openStickyEditor(hit);
+  }
+
+  /** Ctrl/Cmd+wheel zooms toward the cursor (the point under the pointer
+   * stays fixed); a plain wheel/trackpad scroll pans — the two gestures
+   * every reference canvas tool (Figma, Miro, FigJam, tldraw) supports. */
+  function onWheel(e: React.WheelEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    const c = canvasRef.current;
+    if (!c) return;
+    if (e.ctrlKey || e.metaKey) {
+      const rect = c.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const factor = Math.exp(-e.deltaY * 0.01);
+      const nextZoom = Math.min(4, Math.max(0.25, zoom * factor));
+      const worldX = (mx - pan.x) / zoom;
+      const worldY = (my - pan.y) / zoom;
+      setZoom(nextZoom);
+      setPan({ x: mx - worldX * nextZoom, y: my - worldY * nextZoom });
+    } else {
+      setPan((p) => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
+    }
   }
 
   return (
@@ -336,13 +468,40 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
         ref={canvasRef}
         className={cn(
           'absolute inset-0 w-full h-full',
-          onVoteElement && tool === 'select' && hoveredVotableId ? 'cursor-pointer' : 'cursor-crosshair',
+          isPanning ? 'cursor-grabbing'
+            : isSpaceDown ? 'cursor-grab'
+            : onVoteElement && tool === 'select' && hoveredVotableId ? 'cursor-pointer'
+            : tool === 'select' ? 'cursor-default'
+            : 'cursor-crosshair',
         )}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={() => { onMouseUp(); setHoveredVotableId(null); }}
+        onDoubleClick={onDoubleClick}
+        onWheel={onWheel}
       />
+      {editingSticky && (
+        <textarea
+          autoFocus
+          value={editingSticky.text}
+          onChange={(e) => setEditingSticky({ ...editingSticky, text: e.target.value })}
+          onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') { e.preventDefault(); commitStickyEdit(false); }
+            else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commitStickyEdit(true); }
+          }}
+          onBlur={() => commitStickyEdit(true)}
+          className="absolute z-10 resize-none rounded-sm border-2 border-amber-500 bg-[#fef08a] px-2 py-1.5 text-sm text-[#1a1a1a] font-sans shadow-lg outline-none"
+          style={{
+            left: editingSticky.x * zoom + pan.x,
+            top: editingSticky.y * zoom + pan.y,
+            width: editingSticky.w * zoom,
+            height: editingSticky.h * zoom,
+          }}
+          placeholder="Type a note…"
+        />
+      )}
       {/* Tool palette — the tldraw island bottom-center */}
       <div className="absolute left-1/2 -translate-x-1/2 bottom-4 flex items-center gap-1 bg-black/70 backdrop-blur border border-white/10 rounded-full p-1 shadow-lg">
         {[
@@ -397,9 +556,13 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
           🗳️ Click a shape to vote
         </div>
       )}
-      {/* Zoom indicator */}
-      <div className="absolute bottom-4 right-4 text-[10px] text-gray-400 font-mono tabular-nums">
-        {Math.round(zoom * 100)}%
+      {/* Zoom indicator + discoverable pan hint */}
+      <div className="absolute bottom-4 right-4 flex items-center gap-2 text-[10px] text-gray-400">
+        <span className="inline-flex items-center gap-1">
+          <Hand className="w-3 h-3" />
+          <kbd className="font-mono px-1 py-0.5 rounded bg-white/10 border border-white/15">Space</kbd>+drag to pan
+        </span>
+        <span className="font-mono tabular-nums">{Math.round(zoom * 100)}%</span>
       </div>
     </div>
   );

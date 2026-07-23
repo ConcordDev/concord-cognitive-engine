@@ -13,6 +13,10 @@
  * Canvas-rendered for perf on graphs of a few hundred nodes; SVG
  * would handle the click/hover surface but doesn't reach a thousand
  * nodes the way most Obsidian vaults end up doing.
+ *
+ * Click-to-focus (Obsidian's "local graph" idiom): selecting a node
+ * dims everything not directly connected to it and keeps the
+ * selection + its neighbors at full brightness. Escape clears it.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -63,6 +67,7 @@ const SPRING_LEN = 80;        // ideal edge length
 const DAMPING = 0.85;         // velocity decay each frame
 const CENTER_PULL = 0.0015;   // pull toward viewport center
 const MIN_DISTANCE = 8;       // softening for repulsion at zero distance
+const DIM_ALPHA = 0.12;       // alpha applied to non-connected nodes/edges when something is selected
 
 const GROUP_COLORS = [
   '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b',
@@ -76,9 +81,34 @@ function colorForGroup(group: string | undefined, fallback: string): string {
   return GROUP_COLORS[hash % GROUP_COLORS.length];
 }
 
+/** Radius used both for drawing and for hit-testing — kept in one place so
+ * clicks/hover match exactly what's on screen. */
+function nodeRadius(n: GraphNode): number {
+  return 4 + (n.weight ?? 0.5) * 5;
+}
+
+/** Topmost node under a world-space point, or null. Iterates back-to-front
+ * so a node drawn later (and thus visually on top) wins ties. */
+function hitTestNode(nodes: SimNode[], x: number, y: number): SimNode | null {
+  for (let i = nodes.length - 1; i >= 0; i -= 1) {
+    const n = nodes[i];
+    const r = nodeRadius(n) + 4; // a little slop makes small nodes easier to hit
+    const dx = n.x - x;
+    const dy = n.y - y;
+    if (dx * dx + dy * dy <= r * r) return n;
+  }
+  return null;
+}
+
 export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: GraphViewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const hoveredRef = useRef<string | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
+  const neighborIdsRef = useRef<Set<string> | null>(null);
+  const mousePos = useRef({ x: -1, y: -1 });
+  selectedIdRef.current = selectedId;
 
   // Build the simulation state. Restart whenever the node list changes
   // identity; edges alone don't reseed because we keep positions.
@@ -100,7 +130,43 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes.length, edges.length]);
 
-  // rAF loop: integrate forces + redraw.
+  // Clear the selection whenever the graph is swapped for a different one
+  // (a stale selectedId pointing at a node that no longer exists would
+  // otherwise silently dim the entire new graph).
+  useEffect(() => {
+    setSelectedId(null);
+  }, [sim]);
+
+  // Neighbor set for the current selection — recomputed only when the
+  // selection or the graph itself changes, not every animation frame.
+  const neighborIds = useMemo(() => {
+    if (!selectedId) return null;
+    const s = new Set<string>([selectedId]);
+    for (const e of sim.edges) {
+      if (e.source === selectedId) s.add(e.target);
+      else if (e.target === selectedId) s.add(e.source);
+    }
+    return s;
+  }, [selectedId, sim]);
+  neighborIdsRef.current = neighborIds;
+
+  // Escape clears the local-graph focus.
+  useEffect(() => {
+    if (!selectedId) return;
+    function onKey(ev: KeyboardEvent) {
+      if (ev.key === 'Escape') setSelectedId(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedId]);
+
+  // rAF loop: integrate forces + redraw. Deliberately does NOT depend on
+  // `hovered` — that used to tear down and rebuild the whole listener set
+  // (including resetting the tracked mouse position to -1,-1) on every
+  // single hover transition, causing the hover label to flicker off for a
+  // frame each time it appeared. Mouse position and hover id now live in
+  // refs the loop reads directly, so the effect only restarts when the
+  // graph itself, the focused id, or the click callback actually changes.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -110,8 +176,6 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
     const ctx: CanvasRenderingContext2D = ctx2d;
 
     let raf = 0;
-    let mouseX = -1;
-    let mouseY = -1;
 
     function step() {
       const W = canvas?.clientWidth ?? 640;
@@ -176,6 +240,9 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
         n.y += n.vy;
       }
 
+      const selId = selectedIdRef.current;
+      const neighbors = selId ? neighborIdsRef.current : null;
+
       // Draw.
       ctx.clearRect(0, 0, W, H);
       // Edges first (back layer).
@@ -183,6 +250,7 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
         const a = indexById.get(e.source);
         const b = indexById.get(e.target);
         if (!a || !b) continue;
+        const dimmed = !!neighbors && !(neighbors.has(e.source) && neighbors.has(e.target));
         // Flagged (e.g. fabricated-citation) edges render red + bold — this
         // overrides the usual citation/plain styling and is never hidden.
         ctx.lineWidth = e.flagged ? 2 : 0.6;
@@ -191,42 +259,49 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
           : e.kind === 'citation'
             ? 'rgba(245, 158, 11, 0.35)'
             : 'rgba(255, 255, 255, 0.12)';
+        ctx.globalAlpha = dimmed ? DIM_ALPHA : 1;
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
       // Nodes.
-      let hover: SimNode | null = null;
+      const hoverId = hitTestNode(ns, mousePos.current.x, mousePos.current.y)?.id ?? null;
+      if (hoverId !== hoveredRef.current) {
+        hoveredRef.current = hoverId;
+        setHovered(hoverId);
+      }
       for (const n of ns) {
-        const r = 4 + (n.weight ?? 0.5) * 5;
-        const dx = n.x - mouseX;
-        const dy = n.y - mouseY;
-        const isHover = dx * dx + dy * dy < (r + 4) * (r + 4);
-        if (isHover) hover = n;
+        const r = nodeRadius(n);
+        const isHover = n.id === hoverId;
         const isFocused = focusedId === n.id;
+        const isSelected = n.id === selId;
+        const dimmed = !!neighbors && !neighbors.has(n.id);
         // Flagged nodes render red, overriding group tinting — prominent and
         // never hidden (e.g. a fabricated-citation verdict).
         const fill = n.flagged ? '#f43f5e' : colorForGroup(n.group, '#7dd3fc');
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r + (isFocused ? 4 : 0) + (isHover ? 2 : 0) + (n.flagged ? 2 : 0), 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, r + (isFocused || isSelected ? 4 : 0) + (isHover ? 2 : 0) + (n.flagged ? 2 : 0), 0, Math.PI * 2);
         ctx.fillStyle = fill;
-        ctx.globalAlpha = isFocused ? 1 : isHover ? 0.95 : 0.85;
+        ctx.globalAlpha = dimmed ? DIM_ALPHA : isFocused || isSelected ? 1 : isHover ? 0.95 : 0.85;
         ctx.fill();
-        if (isFocused || n.flagged) {
+        if (isFocused || isSelected || n.flagged) {
           ctx.lineWidth = 2;
-          ctx.strokeStyle = n.flagged ? '#fecdd3' : '#fff';
+          ctx.strokeStyle = n.flagged ? '#fecdd3' : isSelected ? '#38bdf8' : '#fff';
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
       }
-      if (hover) {
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px ui-monospace, monospace';
-        ctx.textAlign = 'left';
-        ctx.fillText(hover.label || hover.id.slice(0, 16), hover.x + 10, hover.y + 4);
+      if (hoverId) {
+        const hoverNode = indexById.get(hoverId);
+        if (hoverNode) {
+          ctx.fillStyle = '#fff';
+          ctx.font = '12px ui-monospace, monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(hoverNode.label || hoverNode.id.slice(0, 16), hoverNode.x + 10, hoverNode.y + 4);
+        }
       }
-      setHovered(hover?.id ?? null);
 
       raf = requestAnimationFrame(step);
     }
@@ -234,18 +309,16 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
     raf = requestAnimationFrame(step);
     const onMouse = (ev: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      mouseX = ev.clientX - rect.left;
-      mouseY = ev.clientY - rect.top;
+      mousePos.current = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
     };
     const onLeave = () => {
-      mouseX = -1;
-      mouseY = -1;
+      mousePos.current = { x: -1, y: -1 };
     };
     const onClick = () => {
-      if (hovered) {
-        const node = sim.nodes.find((n) => n.id === hovered);
-        if (node) onNodeClick?.(node);
-      }
+      const hit = hitTestNode(sim.nodes, mousePos.current.x, mousePos.current.y);
+      if (!hit) return;
+      onNodeClick?.(hit);
+      setSelectedId((prev) => (prev === hit.id ? null : hit.id));
     };
     canvas.addEventListener('mousemove', onMouse);
     canvas.addEventListener('mouseleave', onLeave);
@@ -256,18 +329,64 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
       canvas.removeEventListener('mouseleave', onLeave);
       canvas.removeEventListener('click', onClick);
     };
-  }, [sim, hovered, focusedId, onNodeClick]);
+  }, [sim, focusedId, onNodeClick]);
+
+  const selectedNode = selectedId ? sim.nodes.find((n) => n.id === selectedId) ?? null : null;
+  const connectionCount = neighborIds ? neighborIds.size - 1 : 0;
+
+  // Legend — real, derived from the actual node groups in this graph (never
+  // a fixed/decorative palette key). Ordered by frequency, ties broken
+  // alphabetically for a stable render.
+  const legend = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const n of nodes) {
+      const g = n.group || '(ungrouped)';
+      counts.set(g, (counts.get(g) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([group, count]) => ({ group, count, color: colorForGroup(group === '(ungrouped)' ? undefined : group, '#7dd3fc') }));
+  }, [nodes]);
 
   return (
-    <div className={cn('relative w-full h-[480px] rounded-lg border border-white/10 bg-[#0a0a0d] overflow-hidden', className)}>
-      <canvas
-        ref={canvasRef}
-        className={cn('absolute inset-0 w-full h-full', hovered ? 'cursor-pointer' : 'cursor-default')}
-        aria-label="Knowledge graph"
-      />
-      <div className="absolute top-2 right-2 text-[10px] text-white/40 font-mono uppercase tracking-wider">
-        {nodes.length} nodes · {edges.length} links
+    <div className={cn('space-y-2', className)}>
+      <div className="relative w-full h-[480px] rounded-lg border border-white/10 bg-[#0a0a0d] overflow-hidden">
+        <canvas
+          ref={canvasRef}
+          className={cn('absolute inset-0 w-full h-full', hovered ? 'cursor-pointer' : 'cursor-default')}
+          aria-label="Knowledge graph"
+        />
+        <div className="absolute top-2 right-2 text-[10px] text-white/40 font-mono uppercase tracking-wider">
+          {nodes.length} nodes · {edges.length} links
+        </div>
+        {selectedNode && (
+          <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded-md bg-black/70 backdrop-blur border border-sky-500/30 px-2.5 py-1.5 text-[11px] text-sky-200">
+            <span className="font-medium text-white">{selectedNode.label || selectedNode.id}</span>
+            <span className="text-sky-300/70">
+              {connectionCount} connection{connectionCount === 1 ? '' : 's'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="ml-1 text-sky-300/70 hover:text-white"
+              aria-label="Clear selection"
+              title="Clear selection (Esc)"
+            >
+              ×
+            </button>
+          </div>
+        )}
       </div>
+      {legend.length > 1 && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-400">
+          {legend.map(({ group, count, color }) => (
+            <span key={group} className="inline-flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+              {group} <span className="text-gray-600">· {count}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
