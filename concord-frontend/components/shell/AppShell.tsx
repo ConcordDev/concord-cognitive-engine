@@ -74,6 +74,15 @@ const LegalFooter = dynamic(
   () => import('@/components/legal/LegalFooter').then((m) => ({ default: m.LegalFooter })),
   { ssr: false }
 );
+// ConKay widget shell (V1.1 unit CK1) — ambient, always-present, dismissible
+// ConKay presence above lens content. Unconditionally mounted like the five
+// above (its own internal hidden-state check, not this gate, governs
+// visibility) but code-split the same way so it doesn't cost anything on
+// pages nobody ever interacts with it from.
+const ConKayWidgetLayer = dynamic(
+  () => import('@/components/conkay/widget/ConKayWidgetLayer').then((m) => ({ default: m.ConKayWidgetLayer })),
+  { ssr: false }
+);
 
 // These four are additionally GATED — not just code-split but never even
 // mounted — until the state that governs their visibility first goes true
@@ -325,6 +334,11 @@ export function AppShell({ children }: AppShellProps) {
       <SystemGuidePanel />
       <FirstWinWizard />
       <HelpButton />
+      {/* CK1 — ambient ConKay widget, top-right (the one corner not already
+          claimed by SystemStatus/FirstWinWizard/CookieConsent bottom-left or
+          HelpButton/SyncIndicator/InstallPrompt/ConKayOverlay's own summon
+          button bottom-right — see ConKayWidgetLayer.tsx's position note). */}
+      <ConKayWidgetLayer />
       {onboardingEverNeeded && (
         <OnboardingWizard
           // Don't hijack the world lens with the abstract platform tour — a new
