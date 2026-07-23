@@ -72,9 +72,142 @@ export function getMaxSpeedForVehicle(vehicleType) {
   return VEHICLE_MAX_SPEED_MPS[vehicleType] ?? VEHICLE_MAX_SPEED_MPS.walk;
 }
 
-/** Single-frame teleport ceiling, scaled by vehicle type. */
-function getMaxFrameDistance(vehicleType) {
-  return getMaxSpeedForVehicle(vehicleType) * FRAME_DISTANCE_RATIO;
+// ── Godot Phase 3a — movement-mode substrate ────────────────────────────────
+// Generalizes the vehicle-only speed relaxation above into a per-user
+// "current movement mode" so a player can legitimately be walking, sprinting,
+// flying, riding a mount, or driving a vehicle — each with its own
+// server-authoritative speed envelope. The mode itself is NEVER trusted from
+// a raw client claim: callers (the player:mode socket handler in server.js,
+// or any future HTTP route) MUST validate real capability/ownership BEFORE
+// calling setUserMovementMode — exactly the same trust boundary setUserVehicle
+// already establishes for vehicles (see its doc comment). This module only
+// enforces the speed math once a mode has been legitimately set.
+export const MOVE_MODES = Object.freeze({
+  WALK: "walk",
+  SPRINT: "sprint",
+  FLY: "fly",
+});
+
+// Sprint is a distinct, faster-than-walk mode a player can request without
+// any ownership check (unlike mounts/vehicles, "run faster on your own two
+// feet" needs no external capability — matches the pre-existing design where
+// the single walk cap already covered casual movement + running). Kept as a
+// named factor so a future stamina-gated sprint can retune it without
+// touching the anti-cheat math.
+const SPRINT_SPEED_FACTOR = 1.5;             // sprint cap = walk cap * factor (16 * 1.5 = 24)
+// Named flight cap — between car (40) and glider (60). Flight legitimacy is
+// NOT yet gated (see the player:mode handler's TODO in server.js); this is
+// just the speed ceiling once a player is tracked as flying.
+const FLY_MAX_SPEED_MPS = 45;
+// Fallback mount speed when a mount mode is set but no valid per-species
+// speed was supplied (defensive — callers should always pass mountSpeedMps
+// from mount_species.base_speed_mps, which is DB-CHECK-constrained to
+// (0, 30]). Falls back to the walk ceiling, never to something faster.
+const DEFAULT_MOUNT_SPEED_MPS = MAX_SPRINT_SPEED_MPS;
+
+/**
+ * Pure, testable speed-cap lookup for a movement mode.
+ *
+ * @param {string} mode - "walk" | "sprint" | "fly" | "mount:<speciesId>" | "vehicle:<type>"
+ * @param {{ mountSpeedMps?: number }} [context] - mode-specific extra data.
+ *        For "mount:*" this MUST be the ridden species' base_speed_mps
+ *        (server-validated by the caller — never a client-supplied value).
+ * @returns {number} max horizontal speed in m/s for this mode.
+ */
+export function modeSpeedCap(mode, context = {}) {
+  const m = String(mode || MOVE_MODES.WALK);
+  if (m === MOVE_MODES.WALK) return MAX_SPRINT_SPEED_MPS; // byte-identical to the pre-Phase-3a single cap
+  if (m === MOVE_MODES.SPRINT) return MAX_SPRINT_SPEED_MPS * SPRINT_SPEED_FACTOR;
+  if (m === MOVE_MODES.FLY) return FLY_MAX_SPEED_MPS;
+  if (m.startsWith("mount:")) {
+    const cap = Number(context?.mountSpeedMps);
+    return Number.isFinite(cap) && cap > 0 ? cap : DEFAULT_MOUNT_SPEED_MPS;
+  }
+  if (m.startsWith("vehicle:")) {
+    return getMaxSpeedForVehicle(m.slice("vehicle:".length));
+  }
+  // Unrecognized mode string — never trust it; fall back to the most
+  // conservative (walking) cap rather than defaulting open.
+  return MAX_SPRINT_SPEED_MPS;
+}
+
+/** Resolve the effective mode for a presence entry, with back-compat for
+ *  entries that only ever went through the legacy setUserVehicle() path
+ *  (which sets vehicleType but, on very old in-memory entries, may not
+ *  have movementMode set explicitly). */
+function currentModeFor(entry) {
+  if (!entry) return MOVE_MODES.WALK;
+  if (entry.movementMode) return entry.movementMode;
+  if (entry.vehicleType) return `vehicle:${entry.vehicleType}`;
+  return MOVE_MODES.WALK;
+}
+
+/**
+ * Authoritative movement-mode switch. Callers MUST validate legitimacy
+ * (mount ownership, vehicle ownership, etc.) BEFORE calling this — the
+ * presence layer trusts whatever mode string it is given, exactly like
+ * setUserVehicle's existing contract. Creates a stub presence entry (walking
+ * default) if the user has no presence yet, same as setUserVehicle.
+ *
+ * @param {string} userId
+ * @param {string} mode - "walk" | "sprint" | "fly" | "mount:<speciesId>" | "vehicle:<type>"
+ * @param {{ mountSpeedMps?: number|null }} [context]
+ * @returns {boolean} true if applied.
+ */
+export function setUserMovementMode(userId, mode, { mountSpeedMps = null } = {}) {
+  if (!userId || !mode) return false;
+  const entry = _userPositions.get(userId);
+  const vehicleType = mode.startsWith("vehicle:") ? mode.slice("vehicle:".length) : null;
+  if (!entry) {
+    _userPositions.set(userId, {
+      cityId: "concordia-central",
+      districtId: null,
+      x: 0, y: 0, z: 0,
+      direction: 0, rotation: 0,
+      action: "idle", currentAnimation: "idle",
+      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
+      clientState: {},
+      vehicleId: null,
+      vehicleType,
+      movementMode: mode,
+      mountSpeedMps: Number.isFinite(mountSpeedMps) ? mountSpeedMps : null,
+      flightActive: mode === MOVE_MODES.FLY,
+      lastUpdate: Date.now(), createdAt: Date.now(),
+      dirty: true, avatar: null,
+    });
+    return true;
+  }
+  entry.movementMode = mode;
+  entry.mountSpeedMps = Number.isFinite(mountSpeedMps) ? mountSpeedMps : null;
+  entry.flightActive = mode === MOVE_MODES.FLY;
+  if (vehicleType) {
+    entry.vehicleType = vehicleType;
+    // vehicleId is intentionally left untouched here — the caller (the
+    // player:mode handler) only re-asserts a mode for a vehicle the player
+    // is already validated-mounted in via setUserVehicle, which already set
+    // vehicleId. A bare setUserMovementMode() call can't forge a vehicleId.
+  } else if (mode === MOVE_MODES.WALK || mode === MOVE_MODES.SPRINT || mode === MOVE_MODES.FLY) {
+    entry.vehicleType = null;
+    entry.vehicleId = null;
+  }
+  entry.dirty = true;
+  return true;
+}
+
+/** Read the effective movement mode for a user ("walk" if no presence yet). */
+export function getUserMovementMode(userId) {
+  return currentModeFor(_userPositions.get(userId));
+}
+
+/**
+ * Minimal server-side flight-active flag (Godot Phase 3a). True only while
+ * the user's tracked movementMode is "fly" — set/cleared exclusively by
+ * setUserMovementMode, never by the raw position-update path. This is just
+ * enough state for anti-cheat / other systems to know "this user is
+ * legitimately tracked as airborne right now" without a dedicated table.
+ */
+export function isUserFlying(userId) {
+  return !!_userPositions.get(userId)?.flightActive;
 }
 
 // ── NPC state ──────────────────────────────────────────────────────────────
@@ -329,28 +462,33 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       const dy = y - prev.y;
       const dz = z - prev.z;
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      // Vehicle-aware speed ceiling. The vehicle type was validated against
-      // the vehicles table at mount time and stored on the entry; we trust
-      // the server-side entry, NEVER a client-supplied vehicle hint.
-      const vehicleType = prev?.vehicleType || "walk";
+      // Mode-aware speed ceiling (Godot Phase 3a). The mode was validated by
+      // the caller (setUserVehicle at vehicle-mount time, or
+      // setUserMovementMode via the player:mode handler for mount/fly/sprint)
+      // and stored on the entry; we trust the server-side entry, NEVER a
+      // client-supplied mode/vehicle hint on the position packet itself.
+      const mode = currentModeFor(prev);
+      const vehicleType = prev?.vehicleType || "walk"; // kept for nack payload back-compat
       // Speedster S1 — on-foot, the anti-cheat ceiling rises with the player's
       // agility (movement.sprint level) instead of the static walk:16 table, so a
       // legitimately-fast runner isn't false-flagged as a speed-hacker. Derived
       // server-side from the stored skill (can't be forged). Off
       // (CONCORD_EARNED_SPEED unset) → the legacy static cap, byte-identical.
-      const _onFoot = !vehicleType || vehicleType === "walk";
+      // Only applies to plain "walk" mode — sprint/fly/mount/vehicle each have
+      // their own explicit modeSpeedCap ceiling instead.
+      const _onFoot = mode === MOVE_MODES.WALK;
       let maxSpeed, maxFrameDistance;
       if (_onFoot && process.env.CONCORD_EARNED_SPEED !== "0") {
         maxSpeed = maxFootSpeedFor(agilityLevelFor(_db, userId));
         maxFrameDistance = maxSpeed * FRAME_DISTANCE_RATIO;
       } else {
-        maxSpeed = getMaxSpeedForVehicle(vehicleType);
-        maxFrameDistance = getMaxFrameDistance(vehicleType);
+        maxSpeed = modeSpeedCap(mode, { mountSpeedMps: prev?.mountSpeedMps });
+        maxFrameDistance = maxSpeed * FRAME_DISTANCE_RATIO;
       }
 
       // Hard ceiling regardless of dt — real players can't teleport
       if (distance > maxFrameDistance) {
-        logger.debug?.("city-presence", `rejected teleport by ${userId}: ${distance.toFixed(1)}m in ${dt}ms (${vehicleType})`);
+        logger.debug?.("city-presence", `rejected teleport by ${userId}: ${distance.toFixed(1)}m in ${dt}ms (${mode})`);
         return {
           ok: false,
           reason: "teleport_detected",
@@ -359,15 +497,16 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
           chunkCrossed: false,
         };
       }
-      // Speed check: distance / dt must be under the vehicle's max
+      // Speed check: distance / dt must be under the mode's max
       const speedMps = distance / (dt / 1000);
       if (speedMps > maxSpeed) {
-        logger.debug?.("city-presence", `rejected speed hack by ${userId}: ${speedMps.toFixed(1)}m/s (${vehicleType} max ${maxSpeed})`);
+        logger.debug?.("city-presence", `rejected speed hack by ${userId}: ${speedMps.toFixed(1)}m/s (${mode} max ${maxSpeed})`);
         return {
           ok: false,
           reason: "speed_hack_detected",
           observedSpeed: speedMps,
           maxSpeed,
+          mode,
           vehicleType,
           prev: { x: prev.x, y: prev.y, z: prev.z },
           nearby: getNearbyUsers(userId),
@@ -431,6 +570,13 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     // what makes vehicle anti-cheat authoritative.
     vehicleId:   prev?.vehicleId   ?? null,
     vehicleType: prev?.vehicleType ?? null,
+    // Godot Phase 3a — movement-mode state, carried over from previous entry.
+    // Only setUserMovementMode / setUserVehicle can flip these, never the
+    // position update path — same authoritative-separation contract as
+    // vehicleId/vehicleType above.
+    movementMode:  prev?.movementMode  ?? MOVE_MODES.WALK,
+    mountSpeedMps: prev?.mountSpeedMps ?? null,
+    flightActive:  prev?.flightActive  ?? false,
     lastUpdate: now,
     createdAt: prev?.createdAt ?? now,
     dirty: true, // mark for next flush
@@ -497,33 +643,27 @@ export function restorePlayerBars(userId) {
  * presence layer trusts whatever it is given, by design. Callers pass
  * vehicleType=null to dismount.
  *
+ * Godot Phase 3a — this is now a thin wrapper over setUserMovementMode
+ * (vehicleType=null → "walk", otherwise → "vehicle:<type>") kept for
+ * back-compat with every existing caller (routes/vehicles.js). Behavior is
+ * unchanged: same speed cap (modeSpeedCap("vehicle:<type>", ...) delegates to
+ * the same getMaxSpeedForVehicle table getMaxSpeedForVehicle always used),
+ * same vehicleId/vehicleType read shape via getUserVehicle.
+ *
  * @param {string} userId
  * @param {{ vehicleId: string|null, vehicleType: string|null }} args
  * @returns {boolean} true if the entry was updated, false if user has no
  *                   active presence to flip yet (mount before first move).
  */
 export function setUserVehicle(userId, { vehicleId = null, vehicleType = null } = {}) {
+  const mode = vehicleType ? `vehicle:${vehicleType}` : MOVE_MODES.WALK;
+  setUserMovementMode(userId, mode, {});
   const entry = _userPositions.get(userId);
-  if (!entry) {
-    // No presence yet — stash a stub so the next position update inherits
-    // the vehicle state. Walking is the implicit default.
-    _userPositions.set(userId, {
-      cityId: "concordia-central",
-      districtId: null,
-      x: 0, y: 0, z: 0,
-      direction: 0, rotation: 0,
-      action: "idle", currentAnimation: "idle",
-      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
-      clientState: {},
-      vehicleId, vehicleType,
-      lastUpdate: Date.now(), createdAt: Date.now(),
-      dirty: true, avatar: null,
-    });
-    return true;
+  if (entry) {
+    entry.vehicleId = vehicleId;
+    entry.vehicleType = vehicleType;
+    entry.dirty = true;
   }
-  entry.vehicleId   = vehicleId;
-  entry.vehicleType = vehicleType;
-  entry.dirty       = true;
   return true;
 }
 
@@ -808,6 +948,10 @@ export function broadcastPositions(cityId, realtimeEmit) {
         avatar: p.avatar,
         vehicleId:   p.vehicleId   ?? null,
         vehicleType: p.vehicleType ?? null,
+        // Godot Phase 3a — additive field. Existing consumers that don't
+        // read `mode` are unaffected; new (Godot) clients can render
+        // ride/fly/drive animations off it without a separate round-trip.
+        mode: currentModeFor(p),
         displayName: uid, // caller may enrich later
       });
     }

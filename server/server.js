@@ -1670,6 +1670,10 @@ import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 import { validateParamSchema } from "./lib/macro-param-schema.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
+// Godot Phase 3a — mount legitimacy check for the player:mode handler
+// (validates a claimed "mount:<speciesId>" mode against a real active
+// mounted_instances row before it's allowed to relax the anti-cheat speed cap).
+import { getActiveMountPayload } from "./lib/companions-mount.js";
 import * as worldMechanics from "./lib/world-mechanics.js";
 import { getDistrictByLens as _worldGetDistrictByLens, placeWorldObject as _worldPlaceObject } from "./lib/world-engine.js";
 import {
@@ -9329,6 +9333,118 @@ async function tryInitWebSockets(server) {
         socket.emit("player:load:ack", { ok: true, state });
       } catch (err) {
         socket.emit("player:load:ack", { ok: false, error: err?.message });
+      }
+    });
+
+    // ── World Lens / Godot Phase 3a: movement-mode switch ──────────
+    // Client claims a movement mode ("walk" | "sprint" | "fly" |
+    // "mount:<speciesId>" | "vehicle:<type>"). This handler is the
+    // legitimacy gate: updateUserPosition's per-mode speed cap
+    // (city-presence.js#modeSpeedCap) only stays honest if a mode is never
+    // set on the strength of the client's say-so alone. "walk"/"sprint"
+    // need no external check (running on your own two feet isn't a
+    // capability); "mount:*" requires an active mounted_instances row for
+    // THAT species; "vehicle:*" requires the player already be validated-
+    // mounted in a vehicle of that type via POST /api/vehicles/:id/mount
+    // (which itself calls validateOwnership before flipping presence).
+    //
+    // TODO(Phase 3b): "fly" has no real capability gate yet — it is
+    // tracked (so anti-cheat can tell "legitimately airborne" apart from
+    // "walking, claiming flight speed") but any authenticated user can
+    // currently request it. Wire this to a real flight-capable-mount /
+    // glider-suit check once that substrate exists; see the honest caveat
+    // in this unit's report.
+    //
+    // Godot gateway note: docs/GODOT_INTEGRATION.md claims the raw-WebSocket
+    // gateway (server/lib/godot-gateway.js) is unmounted Phase-1 dead code —
+    // that claim is STALE. It IS mounted (`mountGodotGateway(server, ...)`,
+    // guarded on `if (server)`, later in this file) and DOES forward
+    // arbitrary {evt,data} frames — but only to an `onClientMessage(client,
+    // evt, data)` fallback for events it doesn't recognize natively (ping/
+    // auth/room:*/scene:request), and that mount call does NOT pass an
+    // `onClientMessage`. So a `player:mode` (or `player:move`) frame sent
+    // over `/godot-ws` today gets `error {reason:"unknown_evt"}` from the
+    // gateway itself — this handler is reachable only over the socket.io
+    // transport. Wiring `onClientMessage` to dispatch into this same
+    // mode/move logic (or a mirrored handler) is a TODO for whoever mounts
+    // the Godot client's movement — out of scope here since godot-gateway.js
+    // and its mount call are excluded from this unit.
+    socket.on("player:mode", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return; // Unauthenticated — silently drop, same as player:move
+      if (!data || typeof data !== "object") return;
+      const requested = typeof data.mode === "string" ? data.mode.trim().slice(0, 64) : "";
+      if (!requested) {
+        socket.emit("player:mode:nack", { reason: "missing_mode" });
+        return;
+      }
+      try {
+        if (requested === "walk" || requested === "sprint") {
+          // Always legitimate: never raises the speed envelope beyond what
+          // an on-foot player is already entitled to (modeSpeedCap caps
+          // sprint at a fixed factor over walk — no ownership needed).
+          cityPresence.setUserMovementMode(userId, requested, {});
+          socket.emit("player:mode:ack", { ok: true, mode: requested });
+          return;
+        }
+
+        if (requested === "fly") {
+          // Unchecked today — see the TODO above. Tracked so
+          // cityPresence.isUserFlying() reflects reality-as-claimed, not
+          // reality-as-verified, until Phase 3b closes this gap.
+          cityPresence.setUserMovementMode(userId, "fly", {});
+          socket.emit("player:mode:ack", { ok: true, mode: "fly" });
+          return;
+        }
+
+        if (requested.startsWith("mount:")) {
+          const speciesId = requested.slice("mount:".length);
+          if (!speciesId) {
+            socket.emit("player:mode:nack", { reason: "missing_species", requested });
+            return;
+          }
+          const presenceEntry = cityPresence.getUserPosition(userId);
+          const worldId = presenceEntry?.worldId || presenceEntry?.cityId || "concordia-hub";
+          const payload = getActiveMountPayload(db, userId, worldId);
+          // Reject unless the player has a real, currently-open
+          // mounted_instances row for exactly this species — never trust
+          // the claim alone.
+          if (!payload || !payload.speciesId || payload.speciesId !== speciesId) {
+            socket.emit("player:mode:nack", { reason: "not_mounted", requested });
+            return;
+          }
+          const rawSpeed = Number(payload.species?.baseSpeedMps);
+          const mountSpeedMps = Number.isFinite(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
+          cityPresence.setUserMovementMode(userId, requested, { mountSpeedMps });
+          socket.emit("player:mode:ack", { ok: true, mode: requested, mountSpeedMps });
+          return;
+        }
+
+        if (requested.startsWith("vehicle:")) {
+          const vehicleType = requested.slice("vehicle:".length);
+          if (!vehicleType) {
+            socket.emit("player:mode:nack", { reason: "missing_vehicle_type", requested });
+            return;
+          }
+          // The player must already be server-flipped into this vehicle
+          // type via the ownership-validated /api/vehicles/:id/mount route
+          // (setUserVehicle only runs after validateOwnership there) —
+          // this handler re-asserts the mode string, it never grants the
+          // vehicle itself.
+          const current = cityPresence.getUserVehicle(userId);
+          if (!current.vehicleId || current.vehicleType !== vehicleType) {
+            socket.emit("player:mode:nack", { reason: "not_in_vehicle", requested });
+            return;
+          }
+          cityPresence.setUserMovementMode(userId, requested, {});
+          socket.emit("player:mode:ack", { ok: true, mode: requested });
+          return;
+        }
+
+        socket.emit("player:mode:nack", { reason: "unknown_mode", requested });
+      } catch (err) {
+        logger.debug?.("server", "player_mode_failed", { error: err?.message });
+        socket.emit("player:mode:nack", { reason: "error" });
       }
     });
 
