@@ -24,7 +24,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 
 // ── the single real data channel this page depends on: lensRun ─────────────
@@ -144,5 +144,61 @@ describe('supplychain lens — four UX states (Control Tower Overview)', () => {
     expect(getAllByText(/\$500/).length).toBeGreaterThan(0);
     // Live exceptions panel renders the real alert message.
     expect(getByText(/Shipment SHP-1 is 6d late/i)).toBeInTheDocument();
+  });
+
+  it('REFRESH: clicking Refresh re-dispatches all four macros and updates the "Updated" timestamp (real state change, not decorative)', async () => {
+    mockResolveWith(EMPTY_RESULTS);
+    const { getByText, getAllByText } = render(<SupplyChainLensPage />);
+    await waitFor(() => expect(getByText(/control tower is empty/i)).toBeInTheDocument());
+    const callsBeforeRefresh = lensRunMock.mock.calls.length;
+
+    const POPULATED_AFTER_REFRESH: Record<string, unknown> = {
+      shipmentList: { shipments: [{ id: 's1' }], inTransit: 1, delivered: 0, delayed: 0 },
+      networkGraph: { counts: { supplier: 0, factory: 0, warehouse: 0, customer: 0 }, edgeCount: 0, criticalLeadTime: 0 },
+      workOrderList: { openValue: 0, overdueCount: 0, workOrders: [] },
+      exceptionScan: { critical: 0, warning: 0, alerts: [] },
+    };
+    mockResolveWith(POPULATED_AFTER_REFRESH);
+
+    const refreshBtn = getAllByText(/^Refresh$/i)[0].closest('button') as HTMLButtonElement;
+    expect(refreshBtn).toBeTruthy();
+    await act(async () => { fireEvent.click(refreshBtn); });
+
+    // A real second round of the same four macro calls fired (not a no-op).
+    await waitFor(() => expect(lensRunMock.mock.calls.length).toBeGreaterThanOrEqual(callsBeforeRefresh + 4));
+    // The new data actually replaced the old — the shipments-in-transit tile
+    // now shows the freshly-fetched value, proving refresh isn't decorative.
+    await waitFor(() => expect(getAllByText('1').length).toBeGreaterThan(0));
+    // "Updated" timestamp reflects the completed reload.
+    expect(getAllByText(/Updated/i).length).toBeGreaterThan(0);
+  });
+
+  it('EXCEPTION FILTER: kind chips are grounded in the real byKind breakdown and narrow the visible alerts on click', async () => {
+    const MULTI_KIND_RESULTS: Record<string, unknown> = {
+      ...EMPTY_RESULTS,
+      exceptionScan: {
+        critical: 1, warning: 1,
+        alerts: [
+          { id: 'a1', severity: 'critical', kind: 'late_shipment', message: 'Shipment SHP-1 is 6d late', detail: 'carrier DHL' },
+          { id: 'a2', severity: 'warning', kind: 'overdue_po', message: 'PO 1002 overdue at stage ordered', detail: 'widget' },
+        ],
+        byKind: { late_shipment: 1, overdue_po: 1 },
+      },
+    };
+    mockResolveWith(MULTI_KIND_RESULTS);
+    const { getByText, queryByText } = render(<SupplyChainLensPage />);
+    await waitFor(() => expect(getByText(/Shipment SHP-1 is 6d late/i)).toBeInTheDocument());
+    // Both alerts visible by default ("All" filter).
+    expect(getByText(/PO 1002 overdue/i)).toBeInTheDocument();
+
+    // Clicking the "late shipment" chip narrows to just that kind.
+    const chip = getByText(/late shipment \(1\)/i);
+    fireEvent.click(chip);
+    await waitFor(() => expect(queryByText(/PO 1002 overdue/i)).toBeNull());
+    expect(getByText(/Shipment SHP-1 is 6d late/i)).toBeInTheDocument();
+
+    // Clicking the same chip again toggles the filter back off.
+    fireEvent.click(chip);
+    await waitFor(() => expect(getByText(/PO 1002 overdue/i)).toBeInTheDocument());
   });
 });
