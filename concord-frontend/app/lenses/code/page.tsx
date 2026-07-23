@@ -36,6 +36,7 @@ import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
 import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
 import { GitHubConnectPanel } from '@/components/code/GitHubConnectPanel';
+import { BrainStatusBadge } from '@/components/code/BrainStatusBadge';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Files as MTabFiles, Search as MTabSearch, GitBranch as MTabSC,
@@ -2517,6 +2518,7 @@ export default function CodeLensPage() {
               <X className="w-4 h-4" />
             </button>
           </header>
+          <BrainStatusBadge />
           <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {aiChatHistory.length === 0 && (
               <div className="text-center py-8 text-xs text-gray-400 space-y-2">
