@@ -12,10 +12,26 @@
 // success.
 
 import { validateSafeFetchUrl, fetchWithPinnedIp } from "./ssrf-guard.js";
-import { getValidAccessToken, refreshGoogleToken } from "./connector-tokens.js";
+import { getValidAccessToken, refreshConnectorToken } from "./connector-tokens.js";
 
 /**
  * Authenticated, SSRF-guarded fetch on behalf of a user's connector.
+ *
+ * Honest structured-failure shape (R1-3 hardening) — never a fabricated
+ * success and never a raw unhandled exception:
+ *   - `reauth_required` — refresh was attempted and the provider terminally
+ *     rejected the refresh token (revoked/expired/password-changed); the dead
+ *     token has already been dropped, so the next connector-status read will
+ *     honestly show "not connected" until the user re-authorizes.
+ *   - `auth_expired`     — the request came back 401 and either there was no
+ *     way to refresh (no refresh_token / provider not configured) or a
+ *     refreshed token STILL got 401'd. Distinct from reauth_required: retrying
+ *     later (e.g. after an operator fixes client secrets) may succeed.
+ *   - `service_unavailable` — the provider responded with a 5xx (their
+ *     outage, not an auth problem).
+ *   - `provider_error`   — any other non-2xx provider response (4xx business
+ *     logic, e.g. 404/422/403).
+ *   - `request_failed`   — the network call itself threw (DNS/timeout/reset).
  * @returns {Promise<{ok:true, status:number, data:any} | {ok:false, reason:string, ...}>}
  */
 export async function connectorFetch(db, userId, connectorId, url, init = {}, opts = {}) {
@@ -53,20 +69,38 @@ export async function connectorFetch(db, userId, connectorId, url, init = {}, op
     return { ok: false, reason: "request_failed", detail: String(e?.message || e) };
   }
 
-  // One forced-refresh retry on auth failure (token revoked / clock skew).
+  // One forced-refresh retry on auth failure (token revoked / clock skew) —
+  // never more than one: a refreshed token that still 401s is reported
+  // honestly rather than looped on.
   if (res.status === 401) {
-    const refreshed = await refreshGoogleToken(db, userId, connectorId, opts);
-    if (refreshed.ok) {
-      try {
-        res = await doFetch(refreshed.token.access_token);
-      } catch (e) {
-        return { ok: false, reason: "request_failed", detail: String(e?.message || e) };
-      }
+    const refreshed = await refreshConnectorToken(db, userId, connectorId, opts);
+    if (!refreshed.ok) {
+      // Don't fall through to the stale 401 response below labeled as a
+      // generic provider_error — surface the SPECIFIC, actionable reason the
+      // refresh attempt returned.
+      return {
+        ok: false,
+        reason: refreshed.reason === "reauth_required" ? "reauth_required" : "auth_expired",
+        detail: refreshed.detail || refreshed.reason,
+      };
+    }
+    try {
+      res = await doFetch(refreshed.token.access_token);
+    } catch (e) {
+      return { ok: false, reason: "request_failed", detail: String(e?.message || e) };
+    }
+    if (res.status === 401) {
+      // Refreshed successfully but the provider still rejects the new token —
+      // an honest, distinct state from "never had a working token at all".
+      return { ok: false, reason: "auth_expired", status: 401, detail: "still unauthorized after token refresh" };
     }
   }
 
   const data = await safeJson(res);
-  if (!res.ok) return { ok: false, reason: "provider_error", status: res.status, data };
+  if (!res.ok) {
+    const reason = res.status >= 500 ? "service_unavailable" : "provider_error";
+    return { ok: false, reason, status: res.status, data };
+  }
   return { ok: true, status: res.status, data };
 }
 

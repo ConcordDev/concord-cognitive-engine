@@ -402,6 +402,20 @@ export default function registerIntegrationsActions(registerLensAction) {
     return m;
   }
 
+  // Maps this catalog's connector id -> the connector_oauth_tokens.connector_id
+  // key the REAL marquee OAuth flow (routes/connector-oauth.js's
+  // CONNECTOR_TOKEN_KEY) actually persists tokens under. Most ids already
+  // match 1:1 (slack/github/notion/google_sheets); "gmail" is the one
+  // exception — its real token key is "google_gmail". Without this mapping,
+  // the gmail row here would check for a token under connector_id="gmail",
+  // which the real OAuth callback never writes, so a genuinely-connected
+  // Gmail would read as permanently disconnected here. Keep in sync with
+  // CONNECTOR_TOKEN_KEY if either side changes.
+  const CATALOG_ID_TO_TOKEN_KEY = { gmail: "google_gmail" };
+  function tokenKeyForCatalogId(catalogId) {
+    return CATALOG_ID_TO_TOKEN_KEY[catalogId] || catalogId;
+  }
+
   // ── Connector catalog (App connector catalog with OAuth) ──
   // A static catalog of SaaS apps each with pre-built triggers + actions.
   // Connecting one mints a stored connection record (mock-OAuth token).
@@ -474,7 +488,7 @@ export default function registerIntegrationsActions(registerLensAction) {
       if (ctx?.db && connector.authType === "oauth2") {
         const row = ctx.db
           .prepare("SELECT 1 FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ? LIMIT 1")
-          .get(userId, connector.id);
+          .get(userId, tokenKeyForCatalogId(connector.id));
         credentialStored = !!row;
       }
     } catch { /* table may not exist on minimal builds — credentialStored stays false */ }
@@ -502,9 +516,30 @@ export default function registerIntegrationsActions(registerLensAction) {
   registerLensAction("integrations", "connectionList", (ctx, _artifact, _params = {}) => {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const m = s.connections.get(intActor(ctx));
+    const userId = intActor(ctx);
+    const m = s.connections.get(userId);
     const connections = m ? Array.from(m.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)) : [];
-    return { ok: true, result: { connections, count: connections.length } };
+    // Recompute credentialStored LIVE from connector_oauth_tokens rather than
+    // trusting the snapshot captured once at connectApp time. A token can be
+    // revoked or fail refresh after the connection was first made (see
+    // connector-tokens.js#refreshConnectorToken's reauth_required path, which
+    // deletes the dead row on terminal failure) — reporting the original
+    // snapshot forever would keep showing "Connected" for a connector the
+    // real egress path has already honestly stopped trusting.
+    const refreshed = connections.map((c) => {
+      if (c.authType !== "oauth2") return c; // non-oauth connectors (internal/api_key) unaffected
+      let credentialStored = c.credentialStored;
+      try {
+        if (ctx?.db) {
+          const row = ctx.db
+            .prepare("SELECT 1 FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ? LIMIT 1")
+            .get(userId, tokenKeyForCatalogId(c.connectorId));
+          credentialStored = !!row;
+        }
+      } catch { /* table unavailable on minimal builds — fall back to the stored snapshot */ }
+      return credentialStored === c.credentialStored ? c : { ...c, credentialStored, needsOauth: !credentialStored };
+    });
+    return { ok: true, result: { connections: refreshed, count: refreshed.length } };
   });
 
   registerLensAction("integrations", "disconnectApp", (ctx, _artifact, params = {}) => {
