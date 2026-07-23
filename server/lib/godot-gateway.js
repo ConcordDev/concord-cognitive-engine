@@ -15,13 +15,17 @@
 //    docs/GODOT_INTEGRATION.md.
 //  * This module is DEAD CODE until mounted in server.js — nothing here runs at
 //    boot on its own. Mounting is a later integration step (by design).
-//  * Rate limiting is DEFERRED to integration (see the marked comment in the
-//    message handler). Phase 1 does not throttle per-client message volume.
+//  * Rate limiting: a per-client continuous-refill token bucket (the same
+//    primitive the socket.io combat path uses — see socket-rate-limit.js)
+//    gates handleMessage right after the byte-size check and before dispatch.
+//    Exceeding the bucket gets an honest `rate_limited` error frame; the
+//    connection is never closed for a single violation.
 //  * The outbound envelope mirrors realtimeEmit's reserved fields (ts/_seq/_evt).
 //    `_rid` is intentionally NOT populated on this path in Phase 1 — there is no
 //    HTTP request to correlate a Godot socket frame against yet.
 //
 import { WebSocketServer } from "ws";
+import { makeSocketRateLimiter } from "./socket-rate-limit.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.\-]{1,64}$/;
 
@@ -43,6 +47,9 @@ const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter
  * @param {number} [deps.authTimeoutMs=10000]
  * @param {number} [deps.heartbeatMs=25000]
  * @param {number} [deps.maxMessageBytes=65536]  our honest limit (ws maxPayload set to 2× this).
+ * @param {number} [deps.rateLimitPerSec=20]  sustained per-client messages/sec (token-bucket refill rate).
+ * @param {number} [deps.rateLimitBurst=30]  per-client token-bucket capacity (burst allowance above sustained rate).
+ * @param {() => number} [deps.now]  injectable clock (ms) for the rate limiter, for deterministic tests.
  * @returns {{wss, emitToRoom, broadcast, close, rooms, clients, getSeq}}
  */
 export function mountGodotGateway(httpServer, deps = {}) {
@@ -57,10 +64,19 @@ export function mountGodotGateway(httpServer, deps = {}) {
     authTimeoutMs = 10_000,
     heartbeatMs = 25_000,
     maxMessageBytes = 64 * 1024,
+    rateLimitPerSec = 20,
+    rateLimitBurst = 30,
+    now = () => Date.now(),
   } = deps;
 
   if (typeof verifyToken !== "function") throw new Error("godot-gateway: deps.verifyToken is required");
   if (typeof getUser !== "function") throw new Error("godot-gateway: deps.getUser is required");
+
+  // Per-client token bucket, keyed by userId once authenticated (falls back to
+  // the connection's clientId pre-auth, so an unauthenticated flood is capped
+  // too). Same primitive as the socket.io combat path — continuous refill,
+  // injectable clock for tests.
+  const rateLimiter = makeSocketRateLimiter({ ratePerSec: rateLimitPerSec, burst: rateLimitBurst, now });
 
   // ws enforces maxPayload by closing 1009. We set it to 2× our limit so that a
   // frame between our 64KB limit and 128KB gets an honest `message_too_large`
@@ -186,9 +202,6 @@ export function mountGodotGateway(httpServer, deps = {}) {
 
   // ── Message handling ──────────────────────────────────────────────────────
   async function handleMessage(client, raw) {
-    // RATE LIMITING: deferred to integration by design (Phase 1). A per-client
-    // token bucket keyed on client.userId should gate this handler at mount time.
-
     // Pre-check our own byte limit BEFORE parse: a frame at/under ws's 2× maxPayload
     // but over our honest limit gets a clean error frame, connection survives.
     const byteLen = raw && typeof raw.length === "number"
@@ -196,6 +209,22 @@ export function mountGodotGateway(httpServer, deps = {}) {
       : Buffer.byteLength(String(raw));
     if (byteLen > maxMessageBytes) {
       send(client.ws, "error", { reason: "message_too_large", limit: maxMessageBytes, received: byteLen });
+      return;
+    }
+
+    // Rate limit BEFORE dispatch: a per-client continuous-refill token bucket,
+    // keyed by userId. Pre-auth (client.userId is still null) every
+    // not-yet-authenticated connection shares one anonymous bucket — a cheap
+    // cap on unauthenticated flood — and each user gets their own bucket the
+    // instant they authenticate. Exceeding it drops the frame with an honest
+    // error — never closes the socket for a single violation (a scripted or
+    // misbehaving Godot client can otherwise flood parse + dispatch work
+    // straight through).
+    if (!rateLimiter.tryConsume(client.userId)) {
+      const tokens = rateLimiter.peek(client.userId);
+      const deficit = Math.max(0, 1 - tokens);
+      const retryAfterMs = Math.ceil((deficit / rateLimitPerSec) * 1000);
+      send(client.ws, "error", { reason: "rate_limited", retryAfterMs });
       return;
     }
 

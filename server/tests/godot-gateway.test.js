@@ -285,6 +285,121 @@ test("11. broadcast reaches all authed clients", async () => {
   } finally { await h.stop(); }
 });
 
+test("13. rate limit: N+1th rapid message gets rate_limited, first N are processed", async () => {
+  // Fake clock held still — no wall-clock refill during the burst. The "auth"
+  // message consumes from the shared pre-auth (userId=null) bucket, so the
+  // authenticated user's own bucket starts fresh at full burst capacity.
+  let clock = 1_000_000;
+  const h = await startGateway({ rateLimitPerSec: 5, rateLimitBurst: 5, now: () => clock });
+  try {
+    const { ws } = await authAs(h.url);
+    // Burst is 5 — 5 pings should go through before exhaustion.
+    for (let i = 0; i < 5; i++) {
+      sendMsg(ws, "ping", {});
+      const f = await nextFrame(ws);
+      assert.equal(f.evt, "pong", `expected pong on iteration ${i}`);
+    }
+    // The 6th (N+1th) rapid message is rejected — bucket exhausted, clock frozen.
+    sendMsg(ws, "ping", {});
+    const limited = await nextFrame(ws);
+    assert.equal(limited.evt, "error");
+    assert.equal(limited.data.reason, "rate_limited");
+    assert.ok(typeof limited.data.retryAfterMs === "number" && limited.data.retryAfterMs >= 0);
+    // Connection must survive a single violation — no close.
+    let stillOpen = true;
+    ws.once("close", () => { stillOpen = false; });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    assert.equal(stillOpen, true, "socket must not be closed on a single rate-limit violation");
+    ws.close();
+  } finally { await h.stop(); }
+});
+
+test("14. rate limit bucket refills over time (fake clock advanced)", async () => {
+  let clock = 2_000_000;
+  const h = await startGateway({ rateLimitPerSec: 5, rateLimitBurst: 5, now: () => clock });
+  try {
+    const { ws } = await authAs(h.url);
+    for (let i = 0; i < 5; i++) {
+      sendMsg(ws, "ping", {});
+      const f = await nextFrame(ws);
+      assert.equal(f.evt, "pong");
+    }
+    // Exhausted now. Confirm the next ping is rejected.
+    sendMsg(ws, "ping", {});
+    const limited = await nextFrame(ws);
+    assert.equal(limited.evt, "error");
+    assert.equal(limited.data.reason, "rate_limited");
+
+    // Advance the fake clock by 1s → 5 tokens/sec refill rate means the bucket
+    // should have refilled enough for another message to go through.
+    clock += 1000;
+    sendMsg(ws, "ping", {});
+    const f2 = await nextFrame(ws);
+    assert.equal(f2.evt, "pong", "expected the bucket to have refilled after 1s of fake-clock time");
+    ws.close();
+  } finally { await h.stop(); }
+});
+
+test("15. two different users get independent rate-limit buckets (keyed by userId)", async () => {
+  let clock = 3_000_000;
+  const h = await startGateway({
+    rateLimitPerSec: 3,
+    rateLimitBurst: 3,
+    now: () => clock,
+    verifyToken: (token) => (token === "good-token" ? { userId: "u1" } : token === "other-token" ? { userId: "u2" } : null),
+  });
+  try {
+    const a = await authAs(h.url, "good-token"); // u1, own bucket starts fresh at 3
+    const b = await authAs(h.url, "other-token"); // u2, independent bucket, also fresh at 3
+
+    // Exhaust a's (u1) bucket: 3 pings allowed, 4th rejected.
+    for (let i = 0; i < 3; i++) {
+      sendMsg(a.ws, "ping", {});
+      const f = await nextFrame(a.ws);
+      assert.equal(f.evt, "pong");
+    }
+    sendMsg(a.ws, "ping", {});
+    const limitedA = await nextFrame(a.ws);
+    assert.equal(limitedA.data.reason, "rate_limited");
+
+    // b (u2) has its own bucket — untouched by a's exhaustion, still has budget.
+    sendMsg(b.ws, "ping", {});
+    const okB = await nextFrame(b.ws);
+    assert.equal(okB.evt, "pong", "u2's bucket must be independent of u1's exhausted bucket");
+    a.ws.close(); b.ws.close();
+  } finally { await h.stop(); }
+});
+
+test("16. pre-auth flood shares one anonymous bucket keyed by null userId", async () => {
+  let clock = 4_000_000;
+  const h = await startGateway({ rateLimitPerSec: 2, rateLimitBurst: 2, now: () => clock });
+  try {
+    const ws1 = await connect(h.url);
+    // Non-auth pre-auth messages are rejected with auth_required + close BEFORE
+    // reaching the rate limiter in the current code path, so drive the shared
+    // anonymous bucket via repeated (intentionally bad) auth attempts instead —
+    // each still runs through the rate-limit gate ahead of tryAuth.
+    sendMsg(ws1, "auth", { token: "nope" }); // consumes 1 of 2 from the null bucket
+    const f1 = await nextFrame(ws1);
+    assert.equal(f1.evt, "auth:error"); // bad token, but rate limit let it through
+    ws1.close();
+
+    // A second, separate connection is still pre-auth and shares the SAME
+    // anonymous (userId=null) bucket — only 1 token left.
+    const ws2 = await connect(h.url);
+    sendMsg(ws2, "auth", { token: "nope" }); // consumes the last token (2 of 2)
+    const f2 = await nextFrame(ws2);
+    assert.equal(f2.evt, "auth:error");
+
+    const ws3 = await connect(h.url);
+    sendMsg(ws3, "auth", { token: "good-token" }); // bucket now exhausted, even for a good token
+    const f3 = await nextFrame(ws3);
+    assert.equal(f3.evt, "error");
+    assert.equal(f3.data.reason, "rate_limited");
+    ws3.close();
+  } finally { await h.stop(); }
+});
+
 test("12. foreign user:<other> join rejected as forbidden_room", async () => {
   const h = await startGateway();
   try {
