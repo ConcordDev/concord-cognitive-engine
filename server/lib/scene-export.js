@@ -6,6 +6,16 @@
 // glTF-flavoured node list with translation / Y-rotation / scale + extras. This
 // module only PRODUCES the data from real rows; the engine-side import is the
 // documented adapter boundary — nothing here fakes an engine.
+//
+// Additive: `exportScene`'s result also carries a `districts` array (real
+// rows from the migration-374 `districts` table, via server/lib/districts.js)
+// so a consumer (Godot Phase 2 in particular) can render district regions
+// for visual legibility alongside the building nodes. This is a pure
+// addition — `nodes`/`bounds`/`format`/`count` are unchanged, and a world
+// with no recorded districts gets an honest empty array, never fabricated
+// geometry.
+
+import { listDistricts } from "./districts.js";
 
 export const SCENE_FORMAT = "concord-scene/v1";
 
@@ -53,7 +63,18 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
   const bounds = nodes.length
     ? { min: [round(minX), 0, round(minZ)], max: [round(maxX), round(maxY), round(maxZ)] }
     : null;
-  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length };
+
+  // Additive field — real district rows (boundary polygon + palette +
+  // lighting identity) for this world, or [] if none are recorded. Never
+  // fails the scene export: a districts-lookup error degrades to [].
+  let districts = [];
+  try {
+    districts = listDistricts(db, worldId);
+  } catch {
+    districts = [];
+  }
+
+  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length, districts };
 }
 
 /** Cheap stats without building the whole node list. */

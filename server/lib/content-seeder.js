@@ -1179,6 +1179,19 @@ export async function seedContent({ db = null } = {}) {
       logger.warn("content_seeder", "material_profiles_seed_failed", { err: err?.message });
     }
 
+    // Godot Phase 2 prep — districts as real 2D geometric regions (boundary
+    // polygon + palette + lighting identity; migration 374). Idempotent on
+    // district id (worldId:key), so a re-run inserts nothing new. Only
+    // concordia-hub has an authored layout today; other worlds are an
+    // honest no-op (seedDefaultDistricts never fabricates geometry).
+    try {
+      const { seedDefaultDistricts } = await import("./districts.js");
+      const r = seedDefaultDistricts(db, "concordia-hub");
+      results.districts = r?.seeded ?? 0;
+    } catch (err) {
+      logger.warn("content_seeder", "districts_seed_failed", { err: err?.message });
+    }
+
     try {
       const hpJson = readJSON("hacking-puzzles.json");
       if (Array.isArray(hpJson) && hpJson.length > 0) {
