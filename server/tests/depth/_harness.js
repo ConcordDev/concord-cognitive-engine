@@ -133,11 +133,24 @@ export async function load() {
     // pre-seeds the per-user lens stores (e.g. STATE.accountingLens) and the
     // fixed-label depthCtx users collide with that data, so behavioral round-trips
     // read DOUBLED/accumulated values. Point STATE_PATH at a throwaway file unless
-    // the caller already pinned one. (DB_PATH is already isolated by the runner.)
+    // the caller already pinned one.
     if (!process.env.STATE_PATH) {
       const os = await import("node:os");
       const path = await import("node:path");
       process.env.STATE_PATH = path.join(os.tmpdir(), `concord-depth-state-${process.pid}-${Date.now()}.json`);
+    }
+    // Isolate DB_PATH the same way. The no-egress.mjs preload DOES set a
+    // per-process DB_PATH — but only when NODE_ENV==="test" AT PRELOAD TIME,
+    // which is BEFORE this harness sets NODE_ENV=test above. So for depth files
+    // that boot through this harness, the runner's guard is skipped and server.js
+    // would otherwise hydrate the shared on-disk data/concord.db (cross-file +
+    // cross-run row accumulation → intermittent count-assertion failures, e.g.
+    // education courses/cohorts). Pin a throwaway DB unless the caller already
+    // did (e.g. test:depth:raw deliberately shares one).
+    if (!process.env.DB_PATH) {
+      const os = await import("node:os");
+      const path = await import("node:path");
+      process.env.DB_PATH = path.join(os.tmpdir(), `concord-depth-db-${process.pid}-${Date.now()}.db`);
     }
     _t = (await import("../../server.js")).__TEST__;
   }
