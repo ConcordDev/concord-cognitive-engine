@@ -68,6 +68,161 @@ const ALL_WEAPON_ARCHETYPES: WeaponArchetype[] = [
   'scimitar', 'greatsword', 'halberd', 'spear', 'bow', 'crossbow',
   'firearm_pistol', 'firearm_rifle', 'staff', 'wand',
 ];
+
+/** Discharge VFX preset + the real world-space muzzle/tip position it
+ *  should spawn at, plus the weapon group it was resolved from (so the
+ *  caller can branch on archetype for the firearm hit-scan tracer without
+ *  re-deriving it). */
+export interface ResolvedDischargeVfx {
+  type: 'flash' | 'flame' | 'frost' | 'spark' | 'arcane' | 'cast';
+  position: { x: number; y: number; z: number };
+  weapon: import('three').Object3D;
+}
+
+/**
+ * Extracted from `handleCombatAnim`'s discharge-flash block so the
+ * weapon-lookup (by real `weapon_<archetype>` group name, `DISCHARGE_ARCHETYPES`
+ * imported from weapon-archetypes.ts, not a local shadow copy) + the
+ * firearm/enchantment → VFX-preset mapping can be exercised directly in a
+ * unit test without mounting the full Three.js avatar scene. Returns null
+ * when the group carries none of the 4 discharge-capable archetypes, or
+ * the found weapon has no resolvable discharge point.
+ */
+export function resolveDischargeVfx(
+  playerGroup: import('three').Object3D | null | undefined,
+): ResolvedDischargeVfx | null {
+  if (!playerGroup) return null;
+  let dischargeWeapon: import('three').Object3D | null = null;
+  for (const archetype of DISCHARGE_ARCHETYPES) {
+    const found = playerGroup.getObjectByName?.(`weapon_${archetype}`);
+    if (found) { dischargeWeapon = found; break; }
+  }
+  if (!dischargeWeapon) return null;
+  const pos = getDischargeWorldPosition(dischargeWeapon);
+  if (!pos) return null;
+  const archetype = dischargeWeapon.userData?.archetype as WeaponArchetype | undefined;
+  const isFirearm = archetype === 'firearm_pistol' || archetype === 'firearm_rifle';
+  const enchantment = dischargeWeapon.userData?.enchantment as string | null | undefined;
+  const type: ResolvedDischargeVfx['type'] = isFirearm
+    ? 'flash'
+    : enchantment === 'fire' ? 'flame'
+    : enchantment === 'frost' ? 'frost'
+    : enchantment === 'lightning' ? 'spark'
+    : enchantment === 'arcane' ? 'arcane'
+    : 'cast';
+  return { type, position: { x: pos.x, y: pos.y, z: pos.z }, weapon: dischargeWeapon };
+}
+
+/**
+ * Resolves + dispatches the discharge VFX as a real `concordia:particle-effect`
+ * CustomEvent — the already-mounted world-vfx-bridge.ts channel, not a new
+ * ad-hoc one. Split from `resolveDischargeVfx` so the dispatch itself is
+ * directly testable via a real `window.addEventListener` spy rather than a
+ * source-text pin.
+ */
+export function emitDischargeVfx(
+  playerGroup: import('three').Object3D | null | undefined,
+): ResolvedDischargeVfx | null {
+  const vfx = resolveDischargeVfx(playerGroup);
+  if (vfx && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+      detail: { type: vfx.type, position: vfx.position, intensity: 1 },
+    }));
+  }
+  return vfx;
+}
+
+/**
+ * Gate for the discharge-flash block: local player only, and only on an
+ * attack-prefixed animation trigger — matching the existing weapon-trail
+ * trigger scope this block sits next to (the trail block additionally
+ * allows 'kick'; discharge does not).
+ */
+export function shouldEmitDischargeVfx(
+  detail: { entityId?: string; animation?: string },
+  playerAvatarId: string,
+  hasPlayerMesh: boolean,
+): boolean {
+  return detail.entityId === playerAvatarId && !!detail.animation?.startsWith('attack') && hasPlayerMesh;
+}
+
+/** The world-load appearance-cache hint shape read for a given avatar id. */
+export interface AvatarAppearanceHint {
+  factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
+  appearanceText?: string;
+  heroMesh?: boolean;
+  factionId?: string;
+  archetype?: string;
+  homeWorldId?: string;
+}
+
+/**
+ * Phase L — reads the world-load appearance-cache hint for `avatarId`.
+ * Centralized here so `createAvatarMeshSmart`'s hero-GLB path and its
+ * procedural-fallback path share ONE read of `window.__CONCORD_NPC_APPEARANCE_CACHE__`
+ * instead of each independently calling `cache.get(avatarId)` (the prior
+ * bug this Phase L comment refers to).
+ */
+export function readAvatarAppearanceHint(avatarId: string): AvatarAppearanceHint | undefined {
+  const cache = typeof window !== 'undefined'
+    ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__
+    : null;
+  return cache?.get(avatarId) as AvatarAppearanceHint | undefined;
+}
+
+/**
+ * Attempts the baked hero-GLB path for a hero NPC (Phase S): computes the
+ * SAME rich appearance (armor included) a procedural-fallback build of
+ * this NPC would have gotten, then threads its `.armor` through to
+ * `loadHeroMesh` as the 4th argument so the baked mesh wears the
+ * deterministic kit instead of a second, independently-rolled one.
+ * Returns `{ group: null, rich }` when the GLB itself didn't load (caller
+ * falls through to the enhanced-avatar builder, reusing `rich` via
+ * `rich ??= ...` rather than re-rolling it) — and `{ group: null, rich: null }`
+ * when this NPC isn't hero-eligible at all, or the attempt threw before a
+ * `rich` was ever computed.
+ */
+export async function tryLoadHeroMesh(
+  avatarId: string,
+  appearance: AppearanceConfig,
+  opts: { isHero?: boolean; isLocalPlayer?: boolean; worldId?: string; factionId?: string | null; archetype?: string | null },
+  hint: AvatarAppearanceHint | undefined,
+): Promise<{ group: unknown | null; rich: import('@/lib/world-lens/character-schema').RichAppearanceConfig | null }> {
+  if (!opts.isHero || opts.isLocalPlayer) return { group: null, rich: null };
+  try {
+    const [heroMod, schemaMod] = await Promise.all([
+      import('@/lib/concordia/hero-mesh-registry'),
+      import('@/lib/world-lens/character-schema'),
+    ]);
+    const archetype = opts.archetype ?? hint?.archetype ?? 'warrior';
+    const homeWorld = hint?.homeWorldId ?? opts.worldId;
+    const rich = schemaMod.generateAppearance({
+      id: avatarId,
+      worldId: opts.worldId || 'concordia-hub',
+      factionId: opts.factionId ?? hint?.factionId ?? null,
+      archetype: opts.archetype ?? hint?.archetype ?? null,
+      themeId: 'concordia-hub',
+      heroMesh: true,
+      factionVisual: hint?.factionVisual ?? null,
+      npcAppearanceText: hint?.appearanceText ?? null,
+      override: {
+        skinColor: appearance.skinColor,
+        hairColor: appearance.hairColor,
+      },
+    });
+    const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld, rich.armor);
+    if (loaded?.group) {
+      return { group: loaded.group, rich };
+    }
+    return { group: null, rich };
+  } catch (err) {
+    if (typeof console !== 'undefined') {
+      console.warn('[AvatarSystem3D] hero GLB load failed, falling back to procedural', err);
+    }
+    return { group: null, rich: null };
+  }
+}
+
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -874,17 +1029,10 @@ export default function AvatarSystem3D({
       const wantEnhanced = true;
       if (wantEnhanced) {
         // Phase L — pull hydrated hints from the world-load cache. Read
-        // once up-front (was previously read a second time, identically,
-        // inside the procedural-fallback try-block below).
-        const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
-        const hint = cache?.get(avatarId) as {
-          factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
-          appearanceText?: string;
-          heroMesh?: boolean;
-          factionId?: string;
-          archetype?: string;
-          homeWorldId?: string;
-        } | undefined;
+        // once up-front via readAvatarAppearanceHint (was previously read
+        // a second time, identically, inside the procedural-fallback
+        // try-block below).
+        const hint = readAvatarAppearanceHint(avatarId);
 
         // Everyone-unique — the rich appearance (armor included) is now
         // computed once up front and reused by whichever path actually
@@ -894,38 +1042,17 @@ export default function AvatarSystem3D({
         let rich: import('@/lib/world-lens/character-schema').RichAppearanceConfig | null = null;
         const schemaModPromise = import('@/lib/world-lens/character-schema');
 
-        // Phase S — try the baked GLB path first for hero NPCs. The
-        // home-world archetype carries an NPC's visual identity
-        // across cross-world travel (Phase T): a courier from
-        // concord-link-frontier still looks like a concord-link
-        // courier when visiting concordia-hub.
+        // Phase S — try the baked GLB path first for hero NPCs (via
+        // tryLoadHeroMesh, which threads the computed rich.armor through
+        // to loadHeroMesh's 4th argument). The home-world archetype
+        // carries an NPC's visual identity across cross-world travel
+        // (Phase T): a courier from concord-link-frontier still looks
+        // like a concord-link courier when visiting concordia-hub.
         if (opts.isHero && !opts.isLocalPlayer) {
-          try {
-            const [heroMod, schemaMod] = await Promise.all([import('@/lib/concordia/hero-mesh-registry'), schemaModPromise]);
-            const archetype = opts.archetype ?? hint?.archetype ?? 'warrior';
-            const homeWorld = hint?.homeWorldId ?? opts.worldId;
-            rich = schemaMod.generateAppearance({
-              id: avatarId,
-              worldId: opts.worldId || 'concordia-hub',
-              factionId: opts.factionId ?? hint?.factionId ?? null,
-              archetype: opts.archetype ?? hint?.archetype ?? null,
-              themeId: 'concordia-hub',
-              heroMesh: true,
-              factionVisual: hint?.factionVisual ?? null,
-              npcAppearanceText: hint?.appearanceText ?? null,
-              override: {
-                skinColor: appearance.skinColor,
-                hairColor: appearance.hairColor,
-              },
-            });
-            const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld, rich.armor);
-            if (loaded?.group) {
-              return loaded.group as InstanceType<typeof import('three').Group>;
-            }
-          } catch (err) {
-            if (typeof console !== 'undefined') {
-              console.warn('[AvatarSystem3D] hero GLB load failed, falling back to procedural', err);
-            }
+          const heroResult = await tryLoadHeroMesh(avatarId, appearance, opts, hint);
+          rich = heroResult.rich;
+          if (heroResult.group) {
+            return heroResult.group as InstanceType<typeof import('three').Group>;
           }
         }
         try {
@@ -1494,48 +1621,25 @@ export default function AvatarSystem3D({
         // the same combat:attack path melee already uses (range-capped by
         // combat-limits.js#clampAttackRange); this is scoped to the visual
         // side, same as the trail is scoped to blade swings.
-        if (detail.entityId === playerAvatar.id && detail.animation.startsWith('attack') && playerMeshRef.current) {
+        if (shouldEmitDischargeVfx(detail, playerAvatar.id, !!playerMeshRef.current)) {
           try {
             const playerGroup = playerMeshRef.current as InstanceType<typeof import('three').Group>;
-            let dischargeWeapon: InstanceType<typeof import('three').Object3D> | null = null;
-            for (const archetype of DISCHARGE_ARCHETYPES) {
-              const found = (playerGroup as unknown as { getObjectByName?: (n: string) => InstanceType<typeof import('three').Object3D> | undefined })
-                .getObjectByName?.(`weapon_${archetype}`);
-              if (found) { dischargeWeapon = found; break; }
-            }
-            if (dischargeWeapon) {
-              const pos = getDischargeWorldPosition(dischargeWeapon as unknown as Parameters<typeof getDischargeWorldPosition>[0]);
-              if (pos && typeof window !== 'undefined') {
-                const archetype = dischargeWeapon.userData?.archetype as WeaponArchetype | undefined;
-                const isFirearm = archetype === 'firearm_pistol' || archetype === 'firearm_rifle';
-                const enchantment = dischargeWeapon.userData?.enchantment as string | null | undefined;
-                const vfxType = isFirearm
-                  ? 'flash'
-                  : enchantment === 'fire' ? 'flame'
-                  : enchantment === 'frost' ? 'frost'
-                  : enchantment === 'lightning' ? 'spark'
-                  : enchantment === 'arcane' ? 'arcane'
-                  : 'cast';
-                window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
-                  detail: { type: vfxType, position: { x: pos.x, y: pos.y, z: pos.z }, intensity: 1 },
-                }));
-                if (isFirearm) {
-                  const sceneRoot = playerGroup.parent;
-                  if (sceneRoot) {
-                    if (!projectileTracerRef.current) {
-                      projectileTracerRef.current = _createProjectileTracer(
-                        THREE as typeof import('three'),
-                        sceneRoot as import('three').Object3D,
-                      );
-                    }
-                    // aimHitPoint is null only before ConcordiaScene's first
-                    // raycast tick; fall back to straight along the muzzle's
-                    // own forward-ish direction so a very first shot still
-                    // draws a visible streak instead of a zero-length line.
-                    const target = cameraLookState.aimHitPoint ?? { x: pos.x, y: pos.y, z: pos.z - 40 };
-                    projectileTracerRef.current.fire({ x: pos.x, y: pos.y, z: pos.z }, target);
-                  }
+            const vfx = emitDischargeVfx(playerGroup as unknown as import('three').Object3D);
+            if (vfx && vfx.type === 'flash') {
+              const sceneRoot = playerGroup.parent;
+              if (sceneRoot) {
+                if (!projectileTracerRef.current) {
+                  projectileTracerRef.current = _createProjectileTracer(
+                    THREE as typeof import('three'),
+                    sceneRoot as import('three').Object3D,
+                  );
                 }
+                // aimHitPoint is null only before ConcordiaScene's first
+                // raycast tick; fall back to straight along the muzzle's
+                // own forward-ish direction so a very first shot still
+                // draws a visible streak instead of a zero-length line.
+                const target = cameraLookState.aimHitPoint ?? { x: vfx.position.x, y: vfx.position.y, z: vfx.position.z - 40 };
+                projectileTracerRef.current.fire({ x: vfx.position.x, y: vfx.position.y, z: vfx.position.z }, target);
               }
             }
           } catch { /* discharge flash is best-effort cosmetic, never block combat anim */ }

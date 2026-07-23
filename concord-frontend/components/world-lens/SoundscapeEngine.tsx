@@ -315,7 +315,18 @@ const CROSSFADE_MS = 400;
 
 /* ── Spatial SFX helper ─────────────────────────────────────────── */
 
-function playToneSpatial(
+/**
+ * The occlusion value the 4 real playToneSpatial call sites below derive
+ * from the engine's one real "am I indoors" signal (state.isInterior).
+ * Centralized so every call site shares ONE real, testable derivation
+ * instead of repeating the same ternary literal at each site (and risking
+ * one silently drifting from the others).
+ */
+export function interiorOcclusion(isInterior: boolean): number {
+  return isInterior ? 0.55 : 1;
+}
+
+export function playToneSpatial(
   ctx: AudioContext,
   def: SFXDef,
   masterGain: GainNode,
@@ -608,7 +619,7 @@ export default function SoundscapeEngine({
       if (now - entry.queuedAt > 2000) continue;
       const def = SFX_MAP[entry.sfxId];
       if (!def) continue;
-      if (entry.spatial) playToneSpatial(ctx, def, masterGainRef.current, entry.spatial, 1, interiorRef.current ? 0.55 : 1);
+      if (entry.spatial) playToneSpatial(ctx, def, masterGainRef.current, entry.spatial, 1, interiorOcclusion(interiorRef.current));
       else playToneSequence(ctx, def, masterGainRef.current);
     }
   }, []);
@@ -1096,10 +1107,10 @@ export default function SoundscapeEngine({
       for (const step of layers) {
         const def = SFX_MAP[step.sfx];
         if (!def) continue;
-        const occ = interiorRef.current ? 0.55 : 1;
+        const occ = interiorOcclusion(interiorRef.current);
         if (step.delayMs <= 0) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit, occ);
         else setTimeout(() => {
-          if (masterGainRef.current) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit, interiorRef.current ? 0.55 : 1);
+          if (masterGainRef.current) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit, interiorOcclusion(interiorRef.current));
         }, step.delayMs);
       }
       return;
@@ -1111,7 +1122,7 @@ export default function SoundscapeEngine({
       enqueueSfx(sfxId, worldPos);
       return;
     }
-    playToneSpatial(ctx, def, masterGainRef.current, worldPos, pitchJitter(), interiorRef.current ? 0.55 : 1);
+    playToneSpatial(ctx, def, masterGainRef.current, worldPos, pitchJitter(), interiorOcclusion(interiorRef.current));
   }, [initAudio, enqueueSfx]);
 
   const playMusicTrack = useCallback((url: string) => {

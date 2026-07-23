@@ -10,12 +10,22 @@
  *
  * Source-pinning per this session's established pattern — ConcordiaScene
  * is a heavy imperative Three.js file well beyond what jsdom can mount.
+ *
+ * The cloud-raymarch volumetric layer's mount (the eligibility gate +
+ * createCloudLayer() call + scene.add/__concordClouds wiring) has since
+ * been extracted out of the async init() into a standalone exported
+ * function, `mountCloudLayerIfEligible`, specifically so this file can
+ * drive the REAL production logic (a real THREE.Scene, the real
+ * createCloudLayer from lib/world-lens/cloud-raymarch.ts — not mocked)
+ * instead of only regex-matching source text.
  */
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as THREE from 'three';
+import { mountCloudLayerIfEligible } from '@/components/world-lens/ConcordiaScene';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sceneSrc = readFileSync(
@@ -38,18 +48,39 @@ describe('ConcordiaScene — frozen sky dome removed (Phase 7a)', () => {
   it('no longer sets __concordSky on the scene', () => {
     expect(sceneSrc).not.toMatch(/__concordSky/);
   });
+});
 
-  it('the cloud-raymarch volumetric layer is still real and still wired (a distinct effect, not removed)', () => {
-    expect(sceneSrc).toMatch(/await import\('@\/lib\/world-lens\/cloud-raymarch'\)/);
-    expect(sceneSrc).toMatch(/createCloudLayer\(THREE, \{ radius: 1600 \}\)/);
-    expect(sceneSrc).toMatch(/__concordClouds/);
+describe('ConcordiaScene — cloud-raymarch volumetric layer: still real and still wired (mountCloudLayerIfEligible)', () => {
+  it('mounts a REAL cloud layer (the actual lib/world-lens/cloud-raymarch.ts createCloudLayer, not a stub) onto the scene at high/ultra quality', async () => {
+    const added: unknown[] = [];
+    const scene = { add: (o: unknown) => { added.push(o); } };
+
+    const clouds = await mountCloudLayerIfEligible(THREE, scene, 'ultra');
+
+    expect(clouds).not.toBeNull();
+    // Real THREE.Mesh built by the real createCloudLayer — proves this is
+    // the genuine volumetric effect, not a removed/dead stub standing in
+    // for it.
+    expect(clouds!.mesh).toBeInstanceOf(THREE.Mesh);
+    expect(added).toContain(clouds!.mesh);
+    expect((scene as unknown as { __concordClouds?: unknown }).__concordClouds).toBe(clouds);
+    // Real tick/setWeatherDensity/dispose behavior, not a distinct effect
+    // that was silently dropped along with the frozen sky dome.
+    expect(typeof clouds!.dispose).toBe('function');
+    expect(typeof clouds!.setWeatherDensity).toBe('function');
   });
 
-  it('the cloud layer is still gated to high/ultra quality only', () => {
-    const idx = sceneSrc.indexOf("await import('@/lib/world-lens/cloud-raymarch')");
-    expect(idx).toBeGreaterThan(-1);
-    const before = sceneSrc.slice(Math.max(0, idx - 300), idx);
-    expect(before).toMatch(/quality === 'high' \|\| quality === 'ultra'/);
+  it('is still gated to high/ultra quality only — medium/low mount nothing', async () => {
+    const scene = { add: () => { throw new Error('scene.add must not be called at non-eligible quality'); } };
+
+    expect(await mountCloudLayerIfEligible(THREE, scene, 'medium')).toBeNull();
+    expect(await mountCloudLayerIfEligible(THREE, scene, 'low')).toBeNull();
+  });
+
+  it('is a distinct effect from the removed sky dome — mounting it never touches __concordSky', async () => {
+    const scene = { add: () => {} } as unknown as { add: (o: unknown) => void } & { __concordSky?: unknown };
+    await mountCloudLayerIfEligible(THREE, scene, 'high');
+    expect(scene.__concordSky).toBeUndefined();
   });
 
   it('the dispose block still cleans up clouds but no longer references sky', () => {

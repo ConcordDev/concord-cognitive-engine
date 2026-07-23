@@ -36,19 +36,34 @@
 // and dozens of world-lens libraries that aren't mountable in a jsdom test
 // environment — the codebase's own existing tests for this file use static
 // source-text pins for exactly this reason (see
-// tests/concordia-scene-resource-leak-fix.test.tsx). This file follows the
-// same established pattern.
+// tests/concordia-scene-resource-leak-fix.test.tsx).
+//
+// The per-frame render-path SELECTION (which of SSGI+composer / SSGI-only /
+// composer-only / plain-renderer actually runs) has since been extracted
+// out of the animate() closure into a standalone exported function,
+// `renderSceneFrame`, specifically so this file can drive the REAL branch
+// logic with fake ref-shaped render()/setSize() spies instead of only
+// regex-matching source text.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderSceneFrame } from '@/components/world-lens/ConcordiaScene';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(
   path.resolve(__dirname, '..', 'components/world-lens/ConcordiaScene.tsx'),
   'utf8'
 );
+
+function makeRefs() {
+  return {
+    ssgiPassRef: { current: null as { render: (t: unknown) => void } | null },
+    composerRef: { current: null as { render: (delta: number) => void } | null },
+    ssgiOutputTargetRef: { current: null as unknown | null },
+  };
+}
 
 describe('Phase 3 fix — TAA repositioned to pass 0', () => {
   it('constructs TAARenderPass immediately after the EffectComposer, before bloom/vignette', () => {
@@ -111,22 +126,78 @@ describe('Phase 3 fix — SSGI feeds the composer instead of replacing it', () =
     expect(src).toMatch(/new THREE\.WebGLRenderTarget\(canvas!\.clientWidth, canvas!\.clientHeight, \{\s*\n\s*type: THREE\.HalfFloatType,\s*\n\s*\}\);/);
   });
 
-  it('the render loop drives SSGI into the offscreen target AND still runs the composer chain when both are live', () => {
-    const region = src.match(
-      /if \(ssgiPassRef\.current && composerRef\.current && ssgiOutputTargetRef\.current\) \{\s*\n\s*ssgiPassRef\.current\.render\(ssgiOutputTargetRef\.current\);\s*\n\s*composerRef\.current\.render\(delta\);\s*\n\s*\} else if \(ssgiPassRef\.current\) \{\s*\n\s*ssgiPassRef\.current\.render\(null\);\s*\n\s*\} else if \(composerRef\.current\) \{\s*\n\s*composerRef\.current\.render\(delta\);\s*\n\s*\} else \{\s*\n\s*renderer\.render\(scene, camera\);\s*\n\s*\}/
-    );
-    expect(region).toBeTruthy();
+  it('drives SSGI into the offscreen target AND still runs the composer chain when both are live (real call assertions, not source text)', () => {
+    const refs = makeRefs();
+    const ssgiRender = vi.fn();
+    const composerRender = vi.fn();
+    const renderer = { render: vi.fn() };
+    const target = { id: 'ssgi-target' };
+    refs.ssgiPassRef.current = { render: ssgiRender };
+    refs.composerRef.current = { render: composerRender };
+    refs.ssgiOutputTargetRef.current = target;
+
+    renderSceneFrame(refs, renderer, 'scene', 'camera', 0.016);
+
+    expect(ssgiRender).toHaveBeenCalledWith(target);
+    expect(composerRender).toHaveBeenCalledWith(0.016);
+    expect(renderer.render).not.toHaveBeenCalled();
+  });
+
+  it('renders SSGI alone (into null) when the composer/output-target are not both live — the exclusive fallback branch', () => {
+    const refs = makeRefs();
+    const ssgiRender = vi.fn();
+    const renderer = { render: vi.fn() };
+    refs.ssgiPassRef.current = { render: ssgiRender };
+    // composerRef + ssgiOutputTargetRef both left null.
+
+    renderSceneFrame(refs, renderer, 'scene', 'camera', 0.016);
+
+    expect(ssgiRender).toHaveBeenCalledWith(null);
+    expect(renderer.render).not.toHaveBeenCalled();
+  });
+
+  it('runs the composer alone when SSGI is not constructed', () => {
+    const refs = makeRefs();
+    const composerRender = vi.fn();
+    const renderer = { render: vi.fn() };
+    refs.composerRef.current = { render: composerRender };
+
+    renderSceneFrame(refs, renderer, 'scene', 'camera', 0.02);
+
+    expect(composerRender).toHaveBeenCalledWith(0.02);
+    expect(renderer.render).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the plain renderer when neither SSGI nor the composer are live', () => {
+    const refs = makeRefs();
+    const renderer = { render: vi.fn() };
+    const scene = { id: 'scene' };
+    const camera = { id: 'camera' };
+
+    renderSceneFrame(refs, renderer, scene, camera, 0.02);
+
+    expect(renderer.render).toHaveBeenCalledWith(scene, camera);
   });
 
   it('the old exclusive-or comment ("SSGI > EffectComposer > plain renderer") is gone — SSGI and the composer now compose, not exclude', () => {
     expect(src).not.toMatch(/\/\/ Render: SSGI > EffectComposer > plain renderer/);
   });
 
-  it('the three-way check is the FIRST branch, not preceded by a bare ssgi-only branch (the old exclusive-or order)', () => {
-    const renderCallSite = src.indexOf('if (ssgiPassRef.current && composerRef.current && ssgiOutputTargetRef.current)');
-    const bareSsgiOnlyIdx = src.indexOf('} else if (ssgiPassRef.current) {\n          ssgiPassRef.current.render(null);');
-    expect(renderCallSite).toBeGreaterThan(-1);
-    expect(bareSsgiOnlyIdx).toBeGreaterThan(renderCallSite);
+  it('the three-way branch is checked FIRST — real behavior: when all three refs are live, both SSGI and composer fire, the bare ssgi-only branch never does', () => {
+    const refs = makeRefs();
+    const ssgiRender = vi.fn();
+    const composerRender = vi.fn();
+    refs.ssgiPassRef.current = { render: ssgiRender };
+    refs.composerRef.current = { render: composerRender };
+    refs.ssgiOutputTargetRef.current = { id: 'target' };
+
+    renderSceneFrame(refs, { render: vi.fn() }, 'scene', 'camera', 0.016);
+
+    // Bare ssgi-only branch calls render(null); the three-way branch calls
+    // render(target) — asserting the target-shaped call proves the
+    // three-way branch, not the bare fallback, actually fired.
+    expect(ssgiRender).toHaveBeenCalledWith({ id: 'target' });
+    expect(ssgiRender).not.toHaveBeenCalledWith(null);
   });
 });
 

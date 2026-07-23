@@ -8,29 +8,29 @@
 // (tests/avatar-system-effect-stability.test.tsx, tests/combat-prediction-
 // camera-punch.test.ts, tests/sprint-7-visual-polish.test.ts,
 // tests/feel-consolidation.test.ts) all use static source-text pins for
-// exactly this reason. This file follows the same established pattern.
+// exactly this reason.
 //
-// What each pin proves:
-//  1. The 4 scene-lifecycle listeners (terrain/buildings/avatars/scene-
-//     request-ready) are no longer marked @resource-leak-ok — the premise
-//     of that suppression (effect only tears down on full unmount) was
-//     false, since the setup effect's own dependency array lets it re-fire
-//     without a page unmount.
-//  2. Each of those 4 listeners is actually removed in the cleanup
-//     function, by reference (hoisted via an outer-scope variable since the
-//     handlers are declared inside the nested async init()).
-//  3. The EffectComposer's stashed _dofCleanup hook is invoked in cleanup.
-//  4. composerRef.current.dispose() is called in cleanup and the ref is
-//     nulled — the composer's WebGL render targets no longer leak.
-//  5. The ragdoll-bridge detach() function is stored into a ref (mirroring
-//     the existing domeCleanupRef pattern) and invoked+nulled in cleanup,
-//     with a disposed-race guard so a slow dynamic import resolving after
-//     teardown doesn't still attach a live listener.
+// The teardown logic itself (composer/renderer/physics disposal, the
+// dome+ragdoll-bridge cleanup pair, and the disposed-flag race guard the
+// ragdoll bridge's async attach goes through) has since been extracted out
+// of the mount effect's cleanup closure into three standalone exported
+// functions — `disposeComposerAndRendererResources`,
+// `disposeDomeAndRagdollBridge`, `commitRagdollBridgeDetach` — specifically
+// so this file can drive the REAL production logic with fake ref-shaped
+// objects carrying `vi.fn()` dispose/destroy spies, instead of only
+// regex-matching source text. The remaining structural pins (listener
+// stash/removal, ref type declarations) stay as source-text checks since
+// they don't claim runtime behavior in their own titles.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  disposeComposerAndRendererResources,
+  disposeDomeAndRagdollBridge,
+  commitRagdollBridgeDetach,
+} from '@/components/world-lens/ConcordiaScene';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(
@@ -69,51 +69,141 @@ describe('Finding #4 — scene-lifecycle window listeners no longer leak', () =>
   });
 });
 
-describe('Finding #4 — EffectComposer no longer leaks (_dofCleanup + dispose)', () => {
+describe('Finding #4 — EffectComposer no longer leaks (disposeComposerAndRendererResources)', () => {
   it('composerRef type declares an optional dispose method', () => {
     expect(src).toMatch(/const composerRef = useRef<\{\s*\n\s*render: \(delta: number\) => void;\s*\n\s*setSize: \(w: number, h: number\) => void;\s*\n\s*dispose\?: \(\) => void;\s*\n\s*\} \| null>\(null\);/);
   });
 
-  it('cleanup invokes the stashed _dofCleanup hook before disposing the composer', () => {
-    const dofIdx = src.indexOf('_dofCleanup?.();');
-    const disposeIdx = src.indexOf('composerRef.current?.dispose?.();');
-    expect(dofIdx).toBeGreaterThan(-1);
-    expect(disposeIdx).toBeGreaterThan(-1);
-    expect(dofIdx).toBeLessThan(disposeIdx);
+  it('invokes the stashed _dofCleanup hook before disposing the composer, and nulls the ref', () => {
+    const dofCleanup = vi.fn();
+    const dispose = vi.fn();
+    const composerRef = { current: { _dofCleanup: dofCleanup, dispose } as unknown as { dispose?: () => void } & { _dofCleanup?: () => void } };
+    const rendererRef = { current: null as { dispose: () => void } | null };
+    const physicsRef = { current: null as { destroy: () => void } | null };
+
+    disposeComposerAndRendererResources(composerRef, rendererRef, physicsRef);
+
+    expect(dofCleanup).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(dofCleanup.mock.invocationCallOrder[0]).toBeLessThan(dispose.mock.invocationCallOrder[0]);
+    expect(composerRef.current).toBeNull();
   });
 
-  it('cleanup calls composerRef.current.dispose() and nulls the ref', () => {
-    expect(src).toMatch(/composerRef\.current\?\.dispose\?\.\(\);\s*\n\s*\} catch \{ \/\* idempotent \*\/ \}\s*\n\s*composerRef\.current = null;/);
+  it('calls composerRef.current.dispose() and nulls the ref even when composer has no _dofCleanup hook', () => {
+    const dispose = vi.fn();
+    const composerRef = { current: { dispose } as { dispose?: () => void } & { _dofCleanup?: () => void } };
+    const rendererRef = { current: null as { dispose: () => void } | null };
+    const physicsRef = { current: null as { destroy: () => void } | null };
+
+    disposeComposerAndRendererResources(composerRef, rendererRef, physicsRef);
+
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(composerRef.current).toBeNull();
   });
 
-  it('composer disposal sits in the same cleanup block as the renderer.dispose()/physics.destroy() calls', () => {
-    const region = src.match(
-      /composerRef\.current = null;\s*\n\s*\n\s*if \(rendererRef\.current\) \{\s*\n\s*\(rendererRef\.current as \{ dispose: \(\) => void \}\)\.dispose\(\);\s*\n\s*\}\s*\n\s*physicsRef\.current\?\.destroy\(\);/
-    );
-    expect(region).toBeTruthy();
+  it('composer disposal happens in the SAME call as the renderer.dispose()/physics.destroy() calls — one function, all three teardowns', () => {
+    const dofCleanup = vi.fn();
+    const composerDispose = vi.fn();
+    const rendererDispose = vi.fn();
+    const physicsDestroy = vi.fn();
+    const composerRef = { current: { _dofCleanup: dofCleanup, dispose: composerDispose } as { dispose?: () => void } & { _dofCleanup?: () => void } };
+    const rendererRef = { current: { dispose: rendererDispose } };
+    const physicsRef = { current: { destroy: physicsDestroy } };
+
+    disposeComposerAndRendererResources(composerRef, rendererRef, physicsRef);
+
+    // All four real calls happened from the one function call — proves the
+    // composer teardown is not isolated from the rest of the scene teardown.
+    expect(dofCleanup).toHaveBeenCalledTimes(1);
+    expect(composerDispose).toHaveBeenCalledTimes(1);
+    expect(rendererDispose).toHaveBeenCalledTimes(1);
+    expect(physicsDestroy).toHaveBeenCalledTimes(1);
+    expect(composerRef.current).toBeNull();
+    expect(physicsRef.current).toBeNull();
+  });
+
+  it('swallows a throwing composer dispose (idempotent teardown) and still proceeds to renderer/physics', () => {
+    const rendererDispose = vi.fn();
+    const physicsDestroy = vi.fn();
+    const composerRef = {
+      current: {
+        dispose: () => { throw new Error('already disposed'); },
+      } as { dispose?: () => void } & { _dofCleanup?: () => void },
+    };
+    const rendererRef = { current: { dispose: rendererDispose } };
+    const physicsRef = { current: { destroy: physicsDestroy } };
+
+    expect(() => disposeComposerAndRendererResources(composerRef, rendererRef, physicsRef)).not.toThrow();
+    expect(rendererDispose).toHaveBeenCalledTimes(1);
+    expect(physicsDestroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles a null renderer/physics ref without throwing (no renderer mounted yet)', () => {
+    const composerRef = { current: null as ({ dispose?: () => void } & { _dofCleanup?: () => void }) | null };
+    const rendererRef = { current: null as { dispose: () => void } | null };
+    const physicsRef = { current: null as { destroy: () => void } | null };
+
+    expect(() => disposeComposerAndRendererResources(composerRef, rendererRef, physicsRef)).not.toThrow();
   });
 });
 
+// Two purely-structural guards used to live here — "declares a
+// ragdollBridgeCleanupRef mirroring the existing domeCleanupRef pattern"
+// and "the old dead __detachRagdoll stash is gone" — both regex-only, no
+// runtime indicator. DELETED as redundant: the real behavior they gestured
+// at (ragdollBridgeCleanupRef actually following the same
+// commit-then-dispose-and-null lifecycle domeCleanupRef does, replacing
+// the old dead stash) is now fully exercised for real by the three tests
+// immediately below (`commits detach() into the ref...`, `detaches
+// immediately...`, `cleanup invokes and nulls ragdollBridgeCleanupRef...`),
+// which call the actual exported `commitRagdollBridgeDetach` /
+// `disposeDomeAndRagdollBridge` functions with spies rather than reading
+// source text.
 describe('Finding #6 (ConcordiaScene.tsx portion) — ragdoll-bridge detach wired into teardown', () => {
-  it('declares a ragdollBridgeCleanupRef mirroring the existing domeCleanupRef pattern', () => {
-    expect(src).toMatch(/const domeCleanupRef = useRef<\(\(\) => void\) \| null>\(null\);/);
-    expect(src).toMatch(/const ragdollBridgeCleanupRef = useRef<\(\(\) => void\) \| null>\(null\);/);
+  it('commits detach() into the ref when the effect has not yet been disposed', () => {
+    const detach = vi.fn();
+    const ragdollBridgeCleanupRef = { current: null as (() => void) | null };
+
+    commitRagdollBridgeDetach(detach, false, ragdollBridgeCleanupRef);
+
+    expect(detach).not.toHaveBeenCalled();
+    expect(ragdollBridgeCleanupRef.current).toBe(detach);
   });
 
-  it('the old dead __detachRagdoll stash (never read anywhere) is gone', () => {
-    expect(src).not.toMatch(/__detachRagdoll/);
+  it('detaches immediately (guarding the disposed-flag race) instead of stashing a handle nothing will ever call', () => {
+    const detach = vi.fn();
+    const ragdollBridgeCleanupRef = { current: null as (() => void) | null };
+
+    commitRagdollBridgeDetach(detach, true, ragdollBridgeCleanupRef);
+
+    expect(detach).toHaveBeenCalledTimes(1);
+    expect(ragdollBridgeCleanupRef.current).toBeNull();
   });
 
-  it('stores the ragdoll bridge detach() into the ref, guarded by the disposed flag race', () => {
-    const attachBlock = src.match(
-      /const detach = attachRagdollBridge\([\s\S]*?\);\s*\n[\s\S]*?if \(disposed\) \{\s*\n\s*detach\(\);\s*\n\s*\} else \{\s*\n\s*ragdollBridgeCleanupRef\.current = detach;\s*\n\s*\}/
-    );
-    expect(attachBlock).toBeTruthy();
+  it('cleanup invokes and nulls ragdollBridgeCleanupRef alongside domeCleanupRef, in one real call', () => {
+    const domeDetach = vi.fn();
+    const ragdollDetach = vi.fn();
+    const domeCleanupRef = { current: domeDetach as (() => void) | null };
+    const ragdollBridgeCleanupRef = { current: ragdollDetach as (() => void) | null };
+
+    disposeDomeAndRagdollBridge(domeCleanupRef, ragdollBridgeCleanupRef);
+
+    expect(domeDetach).toHaveBeenCalledTimes(1);
+    expect(ragdollDetach).toHaveBeenCalledTimes(1);
+    expect(domeCleanupRef.current).toBeNull();
+    expect(ragdollBridgeCleanupRef.current).toBeNull();
   });
 
-  it('cleanup invokes and nulls ragdollBridgeCleanupRef alongside domeCleanupRef', () => {
-    expect(src).toMatch(
-      /try \{ domeCleanupRef\.current\?\.\(\); \} catch \{ \/\* ignore \*\/ \}\s*\n\s*domeCleanupRef\.current = null;\s*\n\s*try \{ ragdollBridgeCleanupRef\.current\?\.\(\); \} catch \{ \/\* ignore \*\/ \}\s*\n\s*ragdollBridgeCleanupRef\.current = null;/
-    );
+  it('swallows a throwing dome/ragdoll detach (idempotent) rather than letting one bad detach block the other', () => {
+    const ragdollDetach = vi.fn();
+    const domeCleanupRef = {
+      current: (() => { throw new Error('dome detach failed'); }) as (() => void) | null,
+    };
+    const ragdollBridgeCleanupRef = { current: ragdollDetach as (() => void) | null };
+
+    expect(() => disposeDomeAndRagdollBridge(domeCleanupRef, ragdollBridgeCleanupRef)).not.toThrow();
+    expect(ragdollDetach).toHaveBeenCalledTimes(1);
+    expect(domeCleanupRef.current).toBeNull();
+    expect(ragdollBridgeCleanupRef.current).toBeNull();
   });
 });
