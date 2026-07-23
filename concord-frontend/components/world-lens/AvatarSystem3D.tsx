@@ -1544,13 +1544,28 @@ export default function AvatarSystem3D({
         if (!mixer) return;
         try {
           const root = (mixer as unknown as { getRoot?: () => unknown }).getRoot?.();
-          const skeleton = (root as { skeleton?: import('three').Skeleton } | undefined)?.skeleton;
+          // Skeleton resolution: hero-GLB rigs expose `.skeleton` on the mixer
+          // root directly; the procedural avatar stores it at
+          // `group.userData.skeleton` (which the player mesh's userData reset can
+          // wipe), so fall back to a traverse for the first SkinnedMesh's
+          // skeleton. Without this the tiered clips silently no-op on the
+          // default rig.
+          let skeleton = (root as { skeleton?: import('three').Skeleton } | undefined)?.skeleton
+            ?? (root as { userData?: { skeleton?: import('three').Skeleton } } | undefined)?.userData?.skeleton;
+          if (!skeleton && root && typeof (root as { traverse?: unknown }).traverse === 'function') {
+            (root as unknown as import('three').Object3D).traverse((o) => {
+              if (!skeleton && (o as unknown as { skeleton?: import('three').Skeleton }).skeleton) {
+                skeleton = (o as unknown as { skeleton?: import('three').Skeleton }).skeleton;
+              }
+            });
+          }
           if (!skeleton) return;
 
           // Tier-scaled biomechanics path. attack-light / heavy / kick /
-          // grapple all support 5 mastery tiers. block / parry / dodge /
-          // hit-flinch / death don't (they're reactive, not mastered).
-          const TIERED_ACTIONS = new Set(['attack-light', 'attack-heavy', 'kick', 'grapple']);
+          // grapple support 5 mastery tiers; the combo-step tokens spell /
+          // ranged / throw ride reused action-biomechanics archetypes. block /
+          // parry / dodge / hit-flinch / death don't (reactive, not mastered).
+          const TIERED_ACTIONS = new Set(['attack-light', 'attack-heavy', 'kick', 'grapple', 'spell', 'ranged', 'throw']);
           if (typeof detail.tier === 'number' && TIERED_ACTIONS.has(detail.animation)) {
             const tier = Math.max(1, Math.min(5, Math.floor(detail.tier)));
             let bMap = biomechClipMaps.get(skeleton as unknown as object);
@@ -1559,7 +1574,7 @@ export default function AvatarSystem3D({
               bMap = bmod.buildBiomechClipMap(
                 skeleton,
                 detail.body ?? 'average',
-                ['attack-light', 'attack-heavy', 'kick', 'grapple'],
+                ['attack-light', 'attack-heavy', 'kick', 'grapple', 'spell', 'ranged', 'throw'],
                 [1, 2, 3, 4, 5],
               );
               biomechClipMaps.set(skeleton as unknown as object, bMap);

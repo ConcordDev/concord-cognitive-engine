@@ -9457,6 +9457,23 @@ async function tryInitWebSockets(server) {
       }
       const { clampBaseDamage, resolvedDamageCap, clampAttackRange } = await globalThis._concordCombatLimits;
 
+      // Glyph-spell damage authority — when this attack names a MINTED glyph
+      // spell the caller OWNS, its stored `max_damage` becomes the ceiling for
+      // BOTH the input clamp and the resolved cap, so a modified client can't
+      // inflate a fireball past what was actually minted. Owner-scoped lookup;
+      // unknown id / missing table degrades to 0 → the shared hard cap (i.e.
+      // pre-existing behavior). Best-effort, never blocks the attack.
+      let _spellMaxDamage = 0;
+      try {
+        if (data.skillId) {
+          if (!globalThis._concordGlyphSpellCap) {
+            globalThis._concordGlyphSpellCap = import("./lib/combat/glyph-spell-cap.js");
+          }
+          const { lookupGlyphSpellMaxDamage } = await globalThis._concordGlyphSpellCap;
+          _spellMaxDamage = lookupGlyphSpellMaxDamage(db, userId, String(data.skillId));
+        }
+      } catch { /* glyph-spell cap optional — neutral pass-through to hard cap */ }
+
       // Wave 4 (Gap A/C) — this is the LIVE, socket-driven basic-attack path
       // (system-affordances.ts dispatches combat:attack for both PvP and
       // "Fight <hostile NPC>"), distinct from the DB-backed skill-cast REST
@@ -9483,7 +9500,7 @@ async function tryInitWebSockets(server) {
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: _ffTargetId,
-        baseDamage: clampBaseDamage(data.baseDamage),
+        baseDamage: clampBaseDamage(data.baseDamage, _spellMaxDamage),
         // Ranged combat wiring — this previously fed the client-supplied
         // range straight through with NO upper bound at all, so a modified
         // client could claim an arbitrary range and "hit" a target anywhere
@@ -9492,7 +9509,7 @@ async function tryInitWebSockets(server) {
         range: clampAttackRange(data.range),
         armorPierce: Number(data.armorPierce) || 0,
         contextModifiers: _contextModifiers,
-        maxDamage: resolvedDamageCap(),
+        maxDamage: resolvedDamageCap(_spellMaxDamage),
         critChanceBonus: _critChanceBonus,
       });
 

@@ -51,6 +51,9 @@ interface SpellDTU {
   element: string | null;
   contexts: string[];
   costs: Record<string, number>;
+  /** real minted glyph-spell damage / range (player_glyph_spells), null when unknown. */
+  maxDamage?: number | null;
+  rangeM?: number | null;
 }
 
 interface FighterCombo {
@@ -235,6 +238,7 @@ export default function CombatFlowHotbar({
         detail: {
           spellId: slot.spell.id, spellName: slot.spell.name,
           element: slot.spell.element, costs: slot.spell.costs,
+          maxDamage: slot.spell.maxDamage, rangeM: slot.spell.rangeM,
         },
       }));
     }

@@ -4204,11 +4204,18 @@ export default function WorldLensPage() {
   // emit a series of combat:attack events along the combo's step plan
   // with a shared chainId so the flow recorder groups them as one chain.
   useEffect(() => {
+    // Pending step timers for the CURRENT combo — a new trigger cancels the
+    // previous combo's un-fired steps, and effect teardown clears them.
+    let pendingTimers: ReturnType<typeof setTimeout>[] = [];
+    const clearPending = () => {
+      for (const id of pendingTimers) clearTimeout(id);
+      pendingTimers = [];
+    };
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         comboId?: string;
         comboName?: string;
-        steps?: Array<{ action: string }>;
+        steps?: Array<{ action: string; action_meta?: Record<string, unknown>; timing_ms?: number }>;
         tier?: number;
         vfxSeed?: string;
       } | undefined;
@@ -4222,37 +4229,49 @@ export default function WorldLensPage() {
           comboName: detail.comboName,
         });
       }).catch(() => { /* fallback: no special VFX */ });
-      // Tier-scaled biomechanics animation. Pick the action token from the
-      // first step of the combo (attack-light / heavy / kick / grapple)
-      // and dispatch concordia:combat-anim with tier so AvatarSystem3D
-      // plays the matching tier-N clip rather than the baseline clip.
-      const firstAction = detail.steps[0]?.action ?? 'attack-light';
-      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
-        detail: { entityId: playerAvatar.id, animation: firstAction, tier },
-      }));
-      // Emit a single combat:attack stamped with the combo id + chain.
-      // The flow-recorder records each step as it lands; the suggestion
-      // engine then knows to advance the chain.
-      const target = combatStateRef.current.target;
-      if (target && worldSocket.isConnected) {
+
+      // Sequential combo playback (Residual 1). Build a time-stamped plan from
+      // the FULL persisted steps_json and walk it: at each step's cumulative
+      // offset play its tier-scaled animation, and — for OFFENSIVE steps, when a
+      // target is engaged — fire ONE combat:attack carrying the true per-step
+      // action (actionOverride) + stepIndex under a shared chainId. Defensive
+      // steps (parry/block/dodge) animate only. Timers are driven entirely by
+      // the real persisted `timing_ms` values — no fake progress.
+      clearPending();
+      import('@/lib/combat/combo-player').then((cp) => {
+        const plan = cp.buildComboStepPlan(detail.steps);
+        if (!plan.length) return;
         const chainId = `combo:${detail.comboId}:${Date.now()}`;
-        // Fire just the first attack — the player still has to follow up
-        // manually for the remaining steps. The hotbar surfaces what comes
-        // next via the suggestion pill.
-        worldSocket.emit('combat:attack', {
-          targetId: target.id,
-          baseDamage: (combatStateRef.current.weapon?.damage ?? 10) * (1 + tier * 0.05),
-          range: 3,
-          armorPierce: tier - 1,
-          chainId,
-          stepIndex: 0,
-          heavy: detail.steps[0]?.action === 'attack-heavy',
-          style: 'evolved-combo',
-        });
-      }
+        for (const step of plan) {
+          const fire = () => {
+            window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+              detail: { entityId: playerAvatar.id, animation: step.animation, tier },
+            }));
+            const target = combatStateRef.current.target;
+            if (step.offensive && target && worldSocket.isConnected) {
+              worldSocket.emit('combat:attack', {
+                targetId: target.id,
+                baseDamage: (combatStateRef.current.weapon?.damage ?? 10) * (1 + tier * 0.05),
+                range: 3,
+                armorPierce: tier - 1,
+                chainId,
+                stepIndex: step.stepIndex,
+                heavy: step.heavy,
+                style: 'evolved-combo',
+                actionOverride: step.action,
+              });
+            }
+          };
+          if (step.atMs <= 0) fire();
+          else pendingTimers.push(setTimeout(fire, step.atMs));
+        }
+      }).catch(() => { /* combo-player optional — no sequenced playback */ });
     };
     window.addEventListener('concordia:combo-trigger', handler);
-    return () => window.removeEventListener('concordia:combo-trigger', handler);
+    return () => {
+      window.removeEventListener('concordia:combo-trigger', handler);
+      clearPending();
+    };
   }, [worldSocket, playerAvatar.id]);
 
   // SkillWheelMount + CombatFlowHotbar dispatch concordia:spell-cast when the
@@ -4273,25 +4292,41 @@ export default function WorldLensPage() {
         element?: string | null;
         tier?: number;
         costs?: unknown;
+        maxDamage?: number | null;
+        rangeM?: number | null;
       } | undefined;
       if (!detail?.spellId) return;
       const element = String(detail.element || '').toLowerCase() || 'energy';
       const tier = Math.max(1, Math.min(5, Number(detail.tier) || 2));
       // Committed cast pose (rides the tiered biomechanics clip path).
       window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
-        detail: { entityId: playerAvatar.id, animation: 'attack-heavy', tier },
+        detail: { entityId: playerAvatar.id, animation: 'spell', tier },
       }));
       // Tier-scaled cast VFX (particles + flash), keyed by the spell name.
       import('@/lib/combat/combo-vfx').then((m) => {
         m.dispatchComboVfx({ tier, comboName: detail.spellName });
       }).catch(() => { /* fallback: no special VFX */ });
-      // Land the spell on the engaged target, if any.
+      // Land the spell on the engaged target, if any. Residual 2: when the
+      // minted glyph spell carries a real max_damage / range_m (surfaced by
+      // /api/combat-flow/spells from player_glyph_spells), use them as the
+      // authoritative baseDamage / range; the server independently re-caps
+      // baseDamage at the stored max_damage, so this can only ever request
+      // ≤ what was actually minted. The weapon-derived number is a defensive
+      // fallback only when no real spell damage is known.
+      const realMax = Number(detail.maxDamage);
+      const baseDamage = Number.isFinite(realMax) && realMax > 0
+        ? realMax
+        : (combatStateRef.current.weapon?.damage ?? 12) * (1 + tier * 0.08);
+      const realRange = Number(detail.rangeM);
+      const range = Number.isFinite(realRange) && realRange > 0
+        ? Math.min(realRange, 80)
+        : 12; // ranged magic reaches further than a fist
       const target = combatStateRef.current.target;
       if (target && worldSocket.isConnected) {
         worldSocket.emit('combat:attack', {
           targetId: target.id,
-          baseDamage: (combatStateRef.current.weapon?.damage ?? 12) * (1 + tier * 0.08),
-          range: 12, // ranged magic reaches further than a fist
+          baseDamage,
+          range,
           armorPierce: tier - 1,
           element,
           skillId: detail.spellId,

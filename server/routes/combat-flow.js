@@ -142,11 +142,33 @@ export default function createCombatFlowRouter({ db, requireAuth }) {
       const rows = db.prepare(`
         SELECT id, title AS name, type, data, skill_level, created_at
         FROM dtus
-        WHERE creator_id = ? AND type IN ('spell', 'ability')
+        WHERE creator_id = ? AND type IN ('spell', 'ability', 'spell_recipe')
         ORDER BY created_at DESC LIMIT 50
       `).all(userId);
+
+      // Minted glyph spells (glyph-spells.js#mintSpell) carry the REAL, server-
+      // authoritative max_damage / range_m / element in player_glyph_spells —
+      // and that's exactly what the socket combat path re-caps against. Prefer
+      // those numbers over anything parsed from the DTU `data` blob. Key by
+      // recipe_dtu_id so they merge onto the matching spell_recipe DTU.
+      const pgsByRecipe = new Map();
+      try {
+        const pgsRows = db.prepare(`
+          SELECT id, recipe_dtu_id, element, max_damage, range_m
+          FROM player_glyph_spells WHERE user_id = ?
+          ORDER BY composed_at DESC LIMIT 50
+        `).all(userId);
+        for (const p of pgsRows) if (!pgsByRecipe.has(p.recipe_dtu_id)) pgsByRecipe.set(p.recipe_dtu_id, p);
+      } catch { /* player_glyph_spells optional (minimal build) */ }
+
+      const numOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
       const spells = rows.map((r) => {
         let data = {}; try { data = JSON.parse(r.data); } catch { data = {}; }
+        const pgs = pgsByRecipe.get(r.id);
+        // pgs is authoritative when present; else fall back to the DTU meta
+        // blob (no fabricated numbers — null when genuinely unknown).
+        const maxDamage = pgs ? numOrNull(pgs.max_damage) : numOrNull(data?.spec?.max_damage ?? data?.max_damage);
+        const rangeM    = pgs ? numOrNull(pgs.range_m)    : numOrNull(data?.spec?.range_m ?? data?.range_m);
         return {
           id: r.id,
           name: r.name,
@@ -154,12 +176,36 @@ export default function createCombatFlowRouter({ db, requireAuth }) {
           skillLevel: r.skill_level,
           createdAt: r.created_at,
           // Surface a few fields the hotbar wants up front
-          element:    data?.spec?.element ?? data?.element ?? null,
+          element:    pgs?.element ?? data?.spec?.element ?? data?.element ?? null,
           contexts:   data?.spec?.contexts ?? data?.contexts ?? [],
           costs:      data?.spec?.costs ?? data?.costs ?? {},
           effects:    data?.spec?.effects ?? data?.effects ?? [],
+          maxDamage,
+          rangeM,
         };
       });
+
+      // Glyph spells whose recipe DTU didn't persist (mintSpell treats the DTU
+      // insert as optional) still exist in player_glyph_spells — surface them
+      // keyed by recipe_dtu_id so the cast can still name a real max_damage.
+      const seen = new Set(rows.map((r) => r.id));
+      for (const [recipeId, p] of pgsByRecipe) {
+        if (seen.has(recipeId)) continue;
+        spells.push({
+          id: recipeId,
+          name: `glyph_spell_${p.id}`,
+          type: 'spell_recipe',
+          skillLevel: 1,
+          createdAt: null,
+          element: p.element ?? null,
+          contexts: [],
+          costs: {},
+          effects: [],
+          maxDamage: numOrNull(p.max_damage),
+          rangeM: numOrNull(p.range_m),
+        });
+      }
+
       res.json({ ok: true, spells, count: spells.length });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
