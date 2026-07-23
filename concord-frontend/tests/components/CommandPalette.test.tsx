@@ -215,13 +215,15 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // Eleven items: ConKay staple + two mock lenses + the 7 hardcoded
+    // Seventeen items: ConKay staple + two mock lenses + the 7 hardcoded
     // `mode:*` run-mode entries (Fix 7 + Wave 4's `mode:dungeon`) + the
-    // `system:repair-cortex` deep-link entry — all baked into the
-    // component itself regardless of the mocked lens-registry. Indices
-    // 0-10. ArrowDown wraps via (prev < length - 1 ? prev + 1 : 0); 13
-    // presses from index 0 land at index 2 (13 mod 11 = 2) → Marketplace.
-    for (let i = 0; i < 13; i++) {
+    // `system:repair-cortex` deep-link entry + the 6 `hud:*` entries
+    // (DET-C batch 2) — all baked into the component itself regardless of
+    // the mocked lens-registry. Indices 0-16. ArrowDown wraps via
+    // (prev < length - 1 ? prev + 1 : 0); 19 presses from index 0 land at
+    // index 2 (19 mod 17 = 2) → Marketplace, demonstrating it wrapped
+    // (19 > 17).
+    for (let i = 0; i < 19; i++) {
       fireEvent.keyDown(input, { key: 'ArrowDown' });
     }
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -232,10 +234,10 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // 11 total items (see above). ArrowUp wraps via
-    // (prev > 0 ? prev - 1 : length - 1); starting at index 0, 10 ArrowUps
-    // land back at index 1 (Resonance) — (11 - 10) mod 11 = 1.
-    for (let i = 0; i < 10; i++) {
+    // 17 total items (see above). ArrowUp wraps via
+    // (prev > 0 ? prev - 1 : length - 1); starting at index 0, 16 ArrowUps
+    // land back at index 1 (Resonance) — (17 - 16) mod 17 = 1.
+    for (let i = 0; i < 16; i++) {
       fireEvent.keyDown(input, { key: 'ArrowUp' });
     }
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -255,16 +257,60 @@ describe('CommandPalette', () => {
     render(<CommandPalette {...defaultProps} />);
     const options = screen.getAllByRole('option');
     // ConKay summon staple + two mock lenses + 7 hardcoded run-mode entries
-    // (Fix 7 + Wave 4's `mode:dungeon` — see above) + the `system:repair-cortex`
-    // deep-link entry (attention lens' Repair Cortex anchor).
-    expect(options).toHaveLength(11);
+    // (Fix 7 + Wave 4's `mode:dungeon` — see above) + the 6 `hud:*` entries
+    // (DET-C batch 2 — dead-event-listener fix for StatusWindowHUD/
+    // SizeScalingHUD/SkillAffinityPanel/RogueliteUnlockShop/LinkScanOverlay/
+    // CurtainDossier, each of which already listened for a
+    // `concordia:open-*`/`*-toggle` window event with no palette-side
+    // dispatcher) + the `system:repair-cortex` deep-link entry (attention
+    // lens' Repair Cortex anchor).
+    //
+    // Grouping is by first-category-seen order, not array position: `mode:*`
+    // and `hud:*` both use category 'world', which is first seen at
+    // `mode:roguelite` (before `systemEntries`'s 'system' category is ever
+    // seen) — so the `hud:*` entries land in the SAME group right after the
+    // 7 modes, and `system:repair-cortex` (a whole separate, later-seen
+    // category) sorts after the entire 'world' group, last overall.
+    expect(options).toHaveLength(17);
     expect(options[0]).toHaveAttribute('id', 'palette-item-conkay');
     expect(options[1]).toHaveAttribute('id', 'palette-item-resonance');
     expect(options[2]).toHaveAttribute('id', 'palette-item-marketplace');
     expect(options[3]).toHaveAttribute('id', 'palette-item-mode:roguelite');
     expect(options[8]).toHaveAttribute('id', 'palette-item-mode:brawl');
     expect(options[9]).toHaveAttribute('id', 'palette-item-mode:dungeon');
-    expect(options[10]).toHaveAttribute('id', 'palette-item-system:repair-cortex');
+    expect(options[10]).toHaveAttribute('id', 'palette-item-hud:roguelite-shop');
+    expect(options[11]).toHaveAttribute('id', 'palette-item-hud:status-window');
+    expect(options[12]).toHaveAttribute('id', 'palette-item-hud:size-scaling');
+    expect(options[13]).toHaveAttribute('id', 'palette-item-hud:skill-affinity');
+    expect(options[14]).toHaveAttribute('id', 'palette-item-hud:link-scan');
+    expect(options[15]).toHaveAttribute('id', 'palette-item-hud:curtain');
+    expect(options[16]).toHaveAttribute('id', 'palette-item-system:repair-cortex');
+  });
+
+  it('hud:* entries dispatch their matching concordia:open-*/toggle window event instead of navigating (DET-C batch 2)', () => {
+    const onClose = vi.fn();
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    render(<CommandPalette isOpen={true} onClose={onClose} />);
+    const input = screen.getByRole('combobox');
+
+    const cases: Array<[string, string]> = [
+      ['roguelite shop', 'concordia:open-roguelite-shop'],
+      ['status window', 'concordia:open-status-window'],
+      ['size scaling', 'concordia:open-size-scaling'],
+      ['skill affinity', 'concordia:open-skill-affinity'],
+      ['concord link scan', 'concordia:link-scan-toggle'],
+      ['curtain dossier', 'concordia:open-curtain'],
+    ];
+    for (const [query, expectedEvent] of cases) {
+      dispatchSpy.mockClear();
+      fireEvent.change(input, { target: { value: query } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      const dispatched = dispatchSpy.mock.calls.map((c) => (c[0] as Event).type);
+      expect(dispatched).toContain(expectedEvent);
+      // A hud: entry never navigates.
+      expect(mockPush).not.toHaveBeenCalled();
+    }
+    dispatchSpy.mockRestore();
   });
 
   it('surfaces the "Repair Cortex" entry on a matching query', () => {

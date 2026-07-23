@@ -206,9 +206,19 @@ export default function AuctionLensPage() {
     const handler = () => refresh();
     const offBid = subscribe('auction:bid-placed', handler);
     const offSettled = subscribe('auction:settled', handler);
+    // DET-C batch 2 — the open-buy-orders board previously only refreshed
+    // on the current user's own place/fill/cancel actions + the 5s poll
+    // below; another player placing or filling a buy order left it stale
+    // until the next poll tick. The server already broadcasts both events
+    // (POST /api/auctions/buy-orders and .../:id/fill) — just add the
+    // matching subscriptions, same handler shape as bid/settled above.
+    const offBuyOrderPlaced = subscribe('auction:buy-order-placed', handler);
+    const offBuyOrderFilled = subscribe('auction:buy-order-filled', handler);
     return () => {
       offBid?.();
       offSettled?.();
+      offBuyOrderPlaced?.();
+      offBuyOrderFilled?.();
     };
   }, [refresh]);
 

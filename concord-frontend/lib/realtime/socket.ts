@@ -678,7 +678,17 @@ export type SocketEvent =
   | 'wager:proposed'
   | 'wager:accepted'
   | 'wager:declined'
-  | 'wager:resolved';
+  | 'wager:resolved'
+  // Dead-event-listener fix (DET-C batch 2) — server/server.js's EVE-style
+  // buy-order routes (POST /api/auctions/buy-orders and .../fill) already
+  // realtimeEmit these; the auction lens's open-buy-orders board only
+  // refreshed on the bidder's own actions + a 5s poll, never live off
+  // another player's order. Same unscoped-broadcast shape as the sibling
+  // auction:bid-placed/auction:settled events above (a market ticker, not
+  // a bare-id-as-options-object bug — verified via server/lib/detectors/
+  // realtime-emit-signature-detector.js: 0 flagged instances repo-wide).
+  | 'auction:buy-order-placed'
+  | 'auction:buy-order-filled';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

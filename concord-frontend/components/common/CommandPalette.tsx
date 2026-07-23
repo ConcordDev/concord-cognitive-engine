@@ -17,6 +17,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles, LayoutPanelLeft,
   Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, Skull, Wrench,
+  ScrollText, Ruler, Layers, Radar, Coins, Eye,
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import {
@@ -283,7 +284,94 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         keywords: ['repair', 'cortex', 'self-healing', 'prophet-check', 'fix', 'attention'],
       },
     ];
-    return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries, ...systemEntries];
+    // Wave-continuation dead-event-listener fix (DET-C batch 2) — these six
+    // world HUDs each already listen for a `concordia:open-*` / `*-toggle`
+    // window event (StatusWindowHUD's own header comment says so
+    // explicitly: "Discoverable via the command palette, matching the
+    // concordia:open-* dispatch idiom other palette-launched HUDs (e.g.
+    // DungeonHUD) use") but the palette-side half of that idiom was never
+    // added for any of them — verified via the runtime dead-event-listener
+    // detector (dead_event_listener findings), not grep. RogueliteUnlockShop
+    // had ZERO other way to open it (no button, no keybind) — a fully
+    // unreachable feature; the other five already have a fallback (a
+    // visible button, or a keybind: V for link-scan, K for the curtain) so
+    // this closes the discoverability gap the code comments promised for
+    // all of them, following `mode:dungeon`'s exact dispatch shape.
+    const hudEntries: LensEntry[] = [
+      {
+        id: 'hud:roguelite-shop',
+        name: 'Roguelite Shop — spend meta-currency',
+        icon: Coins,
+        description: 'Permanent unlocks bought with banked roguelite_meta_currency gems.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 930,
+        keywords: ['roguelite', 'shop', 'unlock', 'meta-currency', 'gems'],
+      },
+      {
+        id: 'hud:status-window',
+        name: 'Status Window',
+        icon: ScrollText,
+        description: 'Isekai-style stat/skill/title panel (worlds with the Foundry system enabled).',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 931,
+        keywords: ['status', 'window', 'stats', 'titles', 'foundry'],
+      },
+      {
+        id: 'hud:size-scaling',
+        name: 'Size Scaling',
+        icon: Ruler,
+        description: 'Ant-Man/Giant-style size systems (worlds with the Foundry system enabled).',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 932,
+        keywords: ['size', 'scaling', 'giant', 'shrink', 'foundry'],
+      },
+      {
+        id: 'hud:skill-affinity',
+        name: 'Skill Affinity',
+        icon: Layers,
+        description: 'Per-player skill affinity panel (worlds with the Foundry system enabled).',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 933,
+        keywords: ['skill', 'affinity', 'foundry'],
+      },
+      {
+        id: 'hud:link-scan',
+        name: 'Concord Link — scan surroundings',
+        icon: Radar,
+        description: 'Reveal the embodied-signal substrate at your position (temp/humidity/light/noise). Keybind: V.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 934,
+        keywords: ['link', 'scan', 'environment', 'signals'],
+      },
+      {
+        id: 'hud:curtain',
+        name: 'The Curtain — declassified secrets dossier',
+        icon: Eye,
+        description: 'The world’s secret catalog, redacted until investigated. Keybind: K.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 935,
+        keywords: ['curtain', 'secrets', 'dossier', 'declassify'],
+      },
+    ];
+    return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries, ...systemEntries, ...hudEntries];
   }, [expertiseLevel, userRole]);
 
   // Filtered + scored results
@@ -395,6 +483,23 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
       // going through the DA4 hotbar's single-`start()` shape.
       if (lens.id === 'mode:dungeon' && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('concordia:open-dungeon-hud'));
+        return;
+      }
+      // `hud:<id>` entries (DET-C batch 2) each dispatch the exact window
+      // event that HUD's own useEffect already listens for — same shape as
+      // `mode:dungeon` above, just table-driven since there's no per-entry
+      // special casing needed (every one is a bare toggle/open, none take
+      // a detail payload).
+      const HUD_DISPATCH_EVENTS: Record<string, string> = {
+        'hud:roguelite-shop': 'concordia:open-roguelite-shop',
+        'hud:status-window': 'concordia:open-status-window',
+        'hud:size-scaling': 'concordia:open-size-scaling',
+        'hud:skill-affinity': 'concordia:open-skill-affinity',
+        'hud:link-scan': 'concordia:link-scan-toggle',
+        'hud:curtain': 'concordia:open-curtain',
+      };
+      if (HUD_DISPATCH_EVENTS[lens.id] && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(HUD_DISPATCH_EVENTS[lens.id]));
         return;
       }
       // A `mode:<id>` entry (DA4 run modes) dispatches the same

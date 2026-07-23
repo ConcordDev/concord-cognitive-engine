@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { sfx, juice } from '@/lib/concordia/juice';
 import {
-  MessageCircle, Crown, Swords, Heart, Eye, ShoppingBag, Briefcase, X,
+  MessageCircle, Crown, Swords, Heart, Eye, ShoppingBag, Briefcase, X, Network,
 } from 'lucide-react';
 import type { LucideIcon } from "lucide-react";
 
@@ -146,6 +146,20 @@ export function NPCActionMenu() {
     setMenu(null);
   }, [menu]);
 
+  // DET-C batch 2 — BloodlineTreeViewer.tsx has listened for this event
+  // since it was written (Phase DC13); nothing anywhere ever dispatched
+  // it, so the 3-generation ancestry viewer was a fully built, fully
+  // unreachable feature (verified via the runtime dead-event-listener
+  // detector — no other trigger, no button, no keybind exists for it).
+  // This is its natural home, right alongside the sibling Inspect action.
+  const onBloodline = useCallback(() => {
+    if (!menu) return;
+    window.dispatchEvent(new CustomEvent('concordia:open-bloodline-tree', {
+      detail: { npcId: menu.npcId },
+    }));
+    setMenu(null);
+  }, [menu]);
+
   // Trade + Hire have no backend yet (no npc-trade / npc-hire route exists), so
   // they dispatched events nothing consumed — the buttons silently did nothing.
   // Give honest in-menu feedback via the existing flash affordance instead of a
@@ -207,6 +221,7 @@ export function NPCActionMenu() {
           <MenuItem icon={Heart} label="Court" onClick={onCourt} accent="pink" />
         )}
         <MenuItem icon={Eye} label="Inspect traits" onClick={onInspect} />
+        <MenuItem icon={Network} label="View bloodline" onClick={onBloodline} />
         {menu.isVendor && (
           <MenuItem icon={ShoppingBag} label="Trade" onClick={onTrade} accent="emerald" />
         )}

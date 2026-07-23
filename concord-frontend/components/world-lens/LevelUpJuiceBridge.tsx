@@ -31,6 +31,16 @@ export function LevelUpJuiceBridge() {
             new CustomEvent('concordia:game-juice', { detail: { trigger: 'milestone' } }),
           );
         } catch { /* juice is best-effort */ }
+        // DET-C batch 2 — WorldVisualHooks.tsx has listened for
+        // 'concordia:level-up' since it was written (to fire its particle-
+        // column visual on top of this bridge's toast + game-juice sound),
+        // but nothing ever dispatched that exact name — this bridge only
+        // fired the generic 'concordia:game-juice' event. Real dead-event,
+        // not a redesign: the level-up already happened server-side, this
+        // just also names it for the visual layer.
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:level-up', { detail: msg }));
+        } catch { /* visual juice is best-effort */ }
       },
     );
 
