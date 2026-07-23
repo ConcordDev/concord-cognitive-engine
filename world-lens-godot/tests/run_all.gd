@@ -20,6 +20,9 @@ const TestDtuPropRenderer := preload("res://tests/test_dtu_prop_renderer.gd")
 const TestDtuPropInteraction := preload("res://tests/test_dtu_prop_interaction.gd")
 const TestAnimationStateMachine := preload("res://tests/test_animation_state_machine.gd")
 const TestGaitSolver := preload("res://tests/test_gait_solver.gd")
+const TestFlightController := preload("res://tests/test_flight_controller.gd")
+const TestGroundVehicleController := preload("res://tests/test_ground_vehicle_controller.gd")
+const TestMountController := preload("res://tests/test_mount_controller.gd")
 
 
 func _init() -> void:
@@ -32,6 +35,9 @@ func _init() -> void:
 		"DtuPropInteraction": TestDtuPropInteraction.run(),
 		"AnimationStateMachine": TestAnimationStateMachine.run(),
 		"GaitSolver": TestGaitSolver.run(),
+		"FlightController": TestFlightController.run(),
+		"GroundVehicleController": TestGroundVehicleController.run(),
+		"MountController": TestMountController.run(),
 	}
 
 	var all_ok := true

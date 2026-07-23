@@ -239,5 +239,66 @@ actual skeleton has been seen:
 
 ---
 
+---
+
+### Mobility controllers (C10/C13 — `avatar/flight_controller.gd` /
+`avatar/ground_vehicle_controller.gd` / `avatar/mount_controller.gd`)
+
+All three ported physics cores were independently cross-checked against a
+standalone Node.js re-implementation of the same formulas before being
+committed (same discipline M2 used with an equivalent Python re-check for
+`two_bone_ik.gd`) — the MATH is numerically verified. Nothing about how any
+of it feels or looks in Godot's own physics/renderer has been observed:
+
+- [ ] `FlightController` — does powered flight (bank → yaw drift, dive-gain
+      airspeed, stall + nose-down recovery) feel like the intended
+      "superhero flight" read, or too floaty/twitchy, at real framerate with
+      real input latency? The numbers are ported byte-for-byte from
+      `flight-physics.ts` (which itself only ever drove a HUD, never a
+      real 3D body) — "same numbers" has never been checked against a real
+      `CharacterBody3D.move_and_slide()` composition.
+- [ ] `FlightController`'s raw-keycode roll/pitch mapping (A/D roll, W/S
+      pitch) has never been flown — whether this control scheme reads as
+      intuitive for a keyboard-only tester, or wants a different axis
+      mapping / mouse-look, is unknown.
+- [ ] `FlightController`'s honest-zero wind sample (see its own header note)
+      means flight will feel perfectly still-air smooth even over a world
+      that server-side `wind-currents.js` would report as gusty — that gap
+      itself needs eyes to confirm it reads as "obviously calm" rather than
+      "broken," until a future unit wires the real sample.
+- [ ] `GroundVehicleController` driving a "car" — does throttle/steer/brake
+      feel responsive against Godot's own collision response
+      (`move_and_slide()`), or does the CharacterBody3D fight the hand-
+      integrated velocity in a way the pure kinematics never modeled (the
+      pure math has no notion of Godot's collision impulses)?
+- [ ] `GroundVehicleController`'s pure core also covers "glider"/"plane" for
+      a future C12 unit to reuse directly — neither has ever been driven in
+      Godot; whether the lift/pitch/gravity composition reads as flight-like
+      once a real body is doing the moving (vs. this unit's math-only
+      verification) is unproven.
+- [ ] `MountController`'s arc-turn kinematics (`yaw_rate = steer * speed /
+      turn_radius_m`) are a REASONED ADDITION with no TS/JS source to
+      compare against (see the file's own header) — whether a warhorse
+      (turn_radius_m=4.0) actually reads as "harder to turn than" a dire
+      wolf (turn_radius_m=3.0) at real framerate, or whether the effect is
+      too subtle/too strong to notice while riding, is completely unverified.
+- [ ] `MountController`'s ground-clamp gravity integration (a simple
+      `is_on_floor()` check + `GRAVITY` fall, with no jump/glide/swim
+      states unlike `player/character_controller.gd`) has never been ridden
+      over real terrain — slopes, stairs, or uneven ground could expose
+      awkward vertical popping that the flat pure math can't predict.
+- [ ] All three controllers' `player:mode`/`player:move` gateway traffic has
+      never reached a live server — the `set_flight_active`/
+      `set_driving_active`/`set_riding_active` request→ack/nack round-trip
+      is only unit-tested against hand-constructed nack payloads (mirroring
+      `CharacterController.snapback_position`'s own existing test gap), never
+      a real `player:mode:nack` from `applyPlayerMode`.
+- [ ] None of the three controllers have any VISUAL representation wired
+      (no mesh, no mounted-rider pose, no vehicle chassis model) — this unit
+      is movement math + netcode only; a rider/vehicle/flying-avatar body is
+      a separate, still-queued presentation unit.
+
+---
+
 Until every box above is checked on a real machine, treat the Godot client as
 **structurally complete but visually unproven.**
