@@ -89,6 +89,27 @@ export function eruptUprising(db, movement) {
     `).run(movement.id, movement.world_id, movement.target_kind, movement.target_id, memberCount, strategyLogId, worldEventId);
   } catch { /* table absent */ }
 
+  // 4. DET-C dead-event fix — CinematicTriggerBridge.tsx has subscribed to
+  // 'rebellion:fired' since it was written (it routes into
+  // cinematic-director.playSequence('rebellion_fired', ...)), but this
+  // function — the one real place a movement actually erupts into a
+  // rebellion — never broadcast anything. Same global-broadcast-with-
+  // world_id-in-payload convention as scheme:cross_world
+  // (emergent/cross-world-scheme-cycle.js) since this heartbeat-driven
+  // cycle has no per-request room context. Best-effort; never blocks the
+  // real eruption above (all three DB writes already happened).
+  try {
+    const emit = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+    emit?.("rebellion:fired", {
+      movementId: movement.id,
+      worldId: movement.world_id,
+      targetKind: movement.target_kind,
+      targetId: movement.target_id,
+      members: memberCount,
+      worldEventId,
+    });
+  } catch { /* realtime best-effort */ }
+
   return { ok: true, strategyLogId, worldEventId, members: memberCount };
 }
 

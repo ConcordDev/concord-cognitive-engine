@@ -55,7 +55,25 @@ export default function registerHiddenQuestsMacros(register) {
     const userId = ctx?.actor?.userId || null;
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "auth_required" };
-    return fireTrigger(db, input.triggerId, userId);
+    const result = fireTrigger(db, input.triggerId, userId);
+    // DET-C dead-event fix — this module's own header comment ("Caller
+    // decides what to do... emit a socket event, etc.") always intended
+    // this, but no caller ever did: AdaptiveMusicBridge.tsx has subscribed
+    // to 'quest:triggered' since it was written and it never fired (a
+    // real dead subscriber, not a false positive — verified via the
+    // runtime detector, not grep). Scoped to the firing user only (this
+    // is a personal quest-progress beat, not a world broadcast).
+    if (result?.ok) {
+      try {
+        const emit = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+        emit?.("quest:triggered", {
+          triggerId: input.triggerId,
+          targetQuestId: result.targetQuestId,
+          firedCount: result.firedCount,
+        }, { userId });
+      } catch { /* realtime best-effort — never block the fire */ }
+    }
+    return result;
   }, { note: "consume a trigger and start its target quest" });
 
   register("hiddenQuests", "kinds", async () => {

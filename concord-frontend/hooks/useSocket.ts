@@ -215,6 +215,14 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   // (server/lib/social-pings.js) had no bridge at all; see the rename
   // branch below, WorldMarkers.tsx listens on the namespaced name.
   'social:ping' as SocketEvent,
+  // Dead-event-listener fix (DET-C pass) — server/routes/wagers.js emits
+  // these (now correctly user-scoped, see the fix in that file) but
+  // nothing forwarded them at all. WagerInviteToast listens on the
+  // dash-namespaced window event; see the rename branch below.
+  'wager:proposed' as SocketEvent,
+  'wager:accepted' as SocketEvent,
+  'wager:declined' as SocketEvent,
+  'wager:resolved' as SocketEvent,
 ];
 
 interface UseSocketOptions {
@@ -339,6 +347,17 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
               // which nothing listened to — the rename must swap the last
               // ':' for '-', not just prefix the namespace.
               window.dispatchEvent(new CustomEvent('concordia:social-ping', { detail: data }));
+            } else if (
+              event === ('wager:proposed' as SocketEvent) ||
+              event === ('wager:accepted' as SocketEvent) ||
+              event === ('wager:declined' as SocketEvent) ||
+              event === ('wager:resolved' as SocketEvent)
+            ) {
+              // Dead-event-listener fix (DET-C pass) — WagerInviteToast
+              // listens on the dash-namespaced window event
+              // ('concordia:wager-proposed', etc), same colon-to-dash
+              // rename convention as social:ping above.
+              window.dispatchEvent(new CustomEvent(`concordia:${event.replace(':', '-')}`, { detail: data }));
             }
           }
         });

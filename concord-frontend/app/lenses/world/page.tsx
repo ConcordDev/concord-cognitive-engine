@@ -247,6 +247,13 @@ const BrawlActiveHUD = dynamic(
     })),
   { ssr: false }
 );
+const WagerInviteToast = dynamic(
+  () =>
+    import('@/components/world/WagerInviteToast').then((m) => ({
+      default: m.WagerInviteToast,
+    })),
+  { ssr: false }
+);
 const RogueliteRunHUD = dynamic(
   () =>
     import('@/components/world/RogueliteRunHUD').then((m) => ({
@@ -5913,6 +5920,11 @@ export default function WorldLensPage() {
           {/* Phase DB2 — Brawl invite toast + active brawl HUD */}
           <BrawlInviteToast />
           <BrawlActiveHUD />
+
+          {/* DET-C dead-event fix — wager invite toast (incoming challenge +
+              accept/decline/resolved outcome), previously built but never
+              mounted anywhere */}
+          <WagerInviteToast />
 
           {/* Phase DB3 — Roguelite run HUD + unlock shop */}
           <RogueliteRunHUD />

@@ -670,7 +670,15 @@ export type SocketEvent =
   // had bypassed the shared typed socket entirely and opened its own raw
   // `socket.io-client` connection just to hear it. Now routed through the
   // singleton like everything else.
-  | 'world:clock';
+  | 'world:clock'
+  // Dead-event-listener fix (DET-C pass) — server/routes/wagers.js
+  // real-money-affecting realtimeEmit calls with zero frontend consumer;
+  // WagerInviteToast now subscribes (via the concordia:wager-* window
+  // bridge below) to actually show the incoming challenge / outcome.
+  | 'wager:proposed'
+  | 'wager:accepted'
+  | 'wager:declined'
+  | 'wager:resolved';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

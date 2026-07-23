@@ -69,11 +69,18 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       const expiresAt = now + ACCEPT_WINDOW_S;
       _executeProposal(db, { id, proposerId, opponentId, amount, currency, balanceCol, duelType, worldId, now, expiresAt });
 
-      // Notify opponent via socket
+      // Notify opponent via socket. Signature is realtimeEmit(event, payload,
+      // {userId}) — the 3rd arg is an OPTIONS OBJECT, not a bare user id (see
+      // routes/arena.js's own comment documenting this). Passing a bare string
+      // here previously destructured to userId="" (a string has no `.userId`
+      // property), which fell through realtimeEmit's targeting chain straight
+      // to the unscoped `REALTIME.io.emit(...)` global-broadcast branch —
+      // every connected client received every wager proposal, not just the
+      // intended opponent. Fixed to actually scope to `user:${opponentId}`.
       realtimeEmit?.("wager:proposed", {
         wagerId: id, proposerId, amount, currency, duelType,
         expiresAt: expiresAt * 1000,
-      }, opponentId);
+      }, { userId: opponentId });
 
       res.status(201).json({ ok: true, wagerId: id });
     } catch (err) {
@@ -106,7 +113,8 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
 
       _executeAcceptance(db, { wagerId: wager.id, userId, balanceCol, amount: wager.amount, now });
 
-      realtimeEmit?.("wager:accepted", { wagerId: wager.id }, wager.proposer_id);
+      // Same 3rd-arg-must-be-an-options-object fix as /propose above.
+      realtimeEmit?.("wager:accepted", { wagerId: wager.id }, { userId: wager.proposer_id });
       res.json({ ok: true, wagerId: wager.id });
     } catch (err) {
       res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
@@ -123,7 +131,8 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       if (wager.status !== "pending") return res.status(400).json({ ok: false, error: "wager_not_pending" });
 
       _cancelAndRefund(db, wager);
-      realtimeEmit?.("wager:declined", { wagerId: wager.id }, wager.proposer_id);
+      // Same 3rd-arg-must-be-an-options-object fix as /propose above.
+      realtimeEmit?.("wager:declined", { wagerId: wager.id }, { userId: wager.proposer_id });
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
@@ -152,7 +161,13 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       const now = Math.floor(Date.now() / 1000);
       _executeResolution(db, { wagerId: wager.id, winnerId, balanceCol, payout, now });
 
-      realtimeEmit?.("wager:resolved", { wagerId: wager.id, winnerId, payout, currency: wager.currency });
+      // Private to the two participants, not a global broadcast — the
+      // outcome (winner + payout) is nobody else's business. Emit once per
+      // participant's `user:${id}` room (realtimeEmit has no multi-user
+      // targeting in one call).
+      const resolvedPayload = { wagerId: wager.id, winnerId, payout, currency: wager.currency };
+      realtimeEmit?.("wager:resolved", resolvedPayload, { userId: wager.proposer_id });
+      realtimeEmit?.("wager:resolved", resolvedPayload, { userId: wager.opponent_id });
       res.json({ ok: true, winnerId, payout, currency: wager.currency });
     } catch (err) {
       res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
