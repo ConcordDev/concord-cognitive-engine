@@ -1,0 +1,36 @@
+extends SceneTree
+## run_all — headless test aggregator. Runs every pure-logic test suite and
+## exits non-zero if any suite has a failing check.
+##
+## ENGINE-GATED: this has never actually been executed against a real Godot
+## binary (the agent proxy blocks the headless engine download — see
+## docs/GODOT_INTEGRATION.md). `gdparse`/`gdlint` confirm this is
+## syntactically valid, loadable GDScript. Nothing more — see
+## world-lens-godot/VISUAL_QA.md.
+##
+## Intended usage once a real engine is available:
+##   godot --headless --path world-lens-godot --script res://tests/run_all.gd
+
+const TestUtils := preload("res://tests/test_utils.gd")
+const TestChunkManager := preload("res://tests/test_chunk_manager.gd")
+const TestLodPolicy := preload("res://tests/test_lod_policy.gd")
+const TestPropInstancer := preload("res://tests/test_prop_instancer.gd")
+const TestCharacterController := preload("res://tests/test_character_controller.gd")
+
+
+func _init() -> void:
+	var suites: Dictionary = {
+		"ChunkManager": TestChunkManager.run(),
+		"LodPolicy": TestLodPolicy.run(),
+		"PropInstancer": TestPropInstancer.run(),
+		"CharacterController": TestCharacterController.run(),
+	}
+
+	var all_ok := true
+	for suite_name in suites.keys():
+		var result: TestUtils = suites[suite_name]
+		print(result.summary(suite_name))
+		if not result.ok():
+			all_ok = false
+
+	quit(0 if all_ok else 1)

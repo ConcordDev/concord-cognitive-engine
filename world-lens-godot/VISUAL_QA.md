@@ -56,6 +56,62 @@ live only here, unverified, until checked off below.**
 - [ ] Framerate / draw-call budget acceptable for the target world size.
 - [ ] Reconnect UX (visible state, no frozen frame) is acceptable.
 
+### Phase 2 — Chunk streaming, LOD, and movement (added this pass; see `PHASE2_CLIENT.md`)
+
+All of these are structurally complete (parse+lint clean, pure functions
+covered by `tests/`) but **have never run inside a real Godot process.**
+Nothing below has been asserted anywhere else in the repo.
+
+- [ ] `ChunkManager.update()` actually issues `ResourceLoader.load_threaded_request`
+      calls that resolve, and `poll()` correctly drains them into `chunk_ready`.
+- [ ] Chunk load/unload as the player crosses a 100m boundary produces no
+      visible pop-in/pop-out flash, hitch, or double-load race.
+- [ ] `chunk_manager.gd`'s placeholder `scene_path_template` — `res://world/chunks/chunk_%d_%d.tscn` —
+      doesn't exist as real content yet; this needs a real chunk-scene asset
+      pipeline before streaming can be observed at all, not just tuned.
+- [ ] `LodPolicy.apply_to_instance` actually changes `GeometryInstance3D.visibility_range_begin/end`
+      the way Godot's renderer expects (fade margins, `VISIBILITY_RANGE_FADE_SELF` /
+      `_DEPENDENCIES` interaction — the pure funcs only compute begin/end, they
+      don't touch fade-mode, which this pass left at the engine default).
+- [ ] LOD band transitions (50m/200m/500m/600m) read as smooth banding, not a
+      jarring mesh pop, at real framerate and real asset complexity.
+- [ ] `PropInstancer.build_multimesh` renders the expected number of visible
+      instances at the expected transforms — this pass never rendered a
+      single MultiMesh.
+- [ ] `CharacterController` movement FEEL: does jumping with `COYOTE_MS=120`
+      / `JUMP_BUFFER_MS=130` actually feel forgiving-not-floaty at 60fps input,
+      matching how the Three.js/Rapier client feels for a human tester (the
+      numbers are copied exactly from `physics-world.ts`/`jump-forgiveness.ts`,
+      but "same numbers" is not the same claim as "same felt experience" until
+      a person plays both back to back).
+- [ ] Glide (`GLIDE_DESCENT_CAP=-1.5`, `GLIDE_HORIZ_BOOST=0.08`) and swim
+      (`SWIM_BUOYANCY=4.5`, `SWIM_GRAVITY=1.2`) integration reads correctly
+      against Godot's own gravity/physics-tick semantics — this pass
+      hand-integrates vertical velocity exactly like `physics-world.ts` does,
+      but Godot's `CharacterBody3D.move_and_slide()` collision resolution is a
+      different code path than Rapier's `computeColliderMovement`, so the
+      *composition* of "hand-integrated velocity + engine collision response"
+      has never been observed, only each half separately.
+- [ ] Raw-keycode WASD polling (`Input.is_key_pressed(KEY_W/A/S/D)`) actually
+      drives visible movement — this intentionally bypasses Godot's InputMap
+      action system (no bindings exist in `project.godot` yet; see the
+      code comment in `player/character_controller.gd` for why), so remapping
+      / gamepad support does not exist until a real input-adapter layer is
+      built and verified on a real machine.
+- [ ] `player:move` frames sent through `GatewayClient.send_event` actually
+      reach a live `/godot-ws` gateway and produce a real `player:move:nack`
+      to test the snap-back path against — **the server-side gateway is not
+      mounted yet** (see `docs/GODOT_INTEGRATION.md`'s Integration TODO), so
+      this entire path is unreachable end-to-end until that mount happens.
+      The pure `snapback_position` logic is unit-tested against a
+      hand-constructed nack payload only, never a real one.
+- [ ] `tests/run_all.gd` and every `tests/test_*.gd` file actually execute
+      and pass under `godot --headless --path world-lens-godot --script res://tests/run_all.gd`
+      — they have only ever been `gdparse`d, never run. It is possible (if
+      unlikely, given how mechanical the mirrored math is) that a real engine
+      surfaces a runtime error (typed-array coercion, `String.join` signature
+      mismatch, etc.) that static parsing cannot catch.
+
 ---
 
 Until every box above is checked on a real machine, treat the Godot client as
