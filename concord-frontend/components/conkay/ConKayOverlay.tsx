@@ -10,8 +10,11 @@
 // skills available everywhere, voice, and the world-tree presence.
 //
 // Summon: Cmd/Ctrl+J anywhere, or dispatch `window` event 'conkay:summon'. Esc to
-// dismiss. Self-contained (no store coupling) so it can mount once in the lens
-// shell and ride over whatever lens you're on.
+// dismiss. Otherwise self-contained (mounts once in the lens shell and rides
+// over whatever lens you're on) — CK2's one deliberate exception is a thin
+// attention-bridge (`conkayAttentionStore.ts`) that mirrors this component's
+// own open/running/voice booleans out to the ambient ConKayWidget mounted
+// separately in AppShell; see the "CK2 attention bridge" effects below.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -23,6 +26,7 @@ import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
 import { useConkayHudStore, feaResultFromRun } from './conkayHudStore';
 import { useConkayRunStore, type RawToolCall } from './conkayRunStore';
+import { useConkayAttentionStore } from './conkayAttentionStore';
 import { detectArtifact } from '@/lib/conkay/artifact-kinds';
 import { isMutatingMacro } from '@/lib/conkay/mutating-macros';
 import { ConKayActionConfirm } from './ConKayActionConfirm';
@@ -233,6 +237,25 @@ export function ConKayOverlay() {
   useEffect(() => {
     if (open) requestAnimationFrame(() => inputRef.current?.focus());
   }, [open]);
+
+  // ── CK2 attention bridge (open + busy) ───────────────────────────────
+  // Mirror this overlay's own `open`/`running` state into the attention
+  // store so the ambient widget (mounted separately in AppShell — see
+  // ConKayWidgetLayer.tsx) can render a REAL "thinking" state instead of
+  // inventing one. `running` here is the EXACT SAME boolean that already
+  // drives this component's own "working…" header label and
+  // <ConKayWorkStatus active={running}> below — no second busy-detector.
+  // The unmount cleanup resets to all-idle defaults: if this overlay
+  // instance goes away (e.g. the user navigated off every /lenses/* route,
+  // per app/lenses/layout.tsx only mounting it there) nothing should be left
+  // behind claiming ConKay is still open/busy/listening/speaking.
+  useEffect(() => {
+    useConkayAttentionStore.getState().setOpen(open);
+  }, [open]);
+  useEffect(() => {
+    useConkayAttentionStore.getState().setBusy(running);
+  }, [running]);
+  useEffect(() => () => { useConkayAttentionStore.getState().reset(); }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -446,6 +469,18 @@ export function ConKayOverlay() {
     muted,
     onFinalTranscript: (t) => submit(t),
   });
+
+  // ── CK2 attention bridge (voice) ──────────────────────────────────────
+  // Mirror the REAL STT/TTS booleans `useConKayVoice` already tracks (see
+  // that hook's own honesty note on `speaking`/`ttsAmplitudeRef`) into the
+  // same attention store the open/busy mirror above writes to — never a
+  // re-derivation, just the two extra real fields the widget needs.
+  useEffect(() => {
+    useConkayAttentionStore.getState().setVoiceListening(voice.listening);
+  }, [voice.listening]);
+  useEffect(() => {
+    useConkayAttentionStore.getState().setVoiceSpeaking(voice.speaking);
+  }, [voice.speaking]);
 
   // Speak each new assistant reply once (fence stripped so no JSON read aloud).
   useEffect(() => {

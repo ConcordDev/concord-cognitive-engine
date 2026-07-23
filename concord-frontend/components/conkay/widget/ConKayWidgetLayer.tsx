@@ -35,16 +35,22 @@
 // internals, per the CK1 unit's non-negotiable ("do NOT touch ConKayOverlay
 // internals — only add a hook point").
 //
+// CK2: `state` now defaults to a REAL derived value read from
+// `conkayAttentionStore.ts` (`useConKayWidgetState()`) instead of a
+// hardcoded 'idle' — that store's ONLY writer is ConKayOverlay's own
+// open/busy/voice lifecycle effects, mirroring booleans it already tracks
+// for itself (see that store's header for the exact honesty contract). A
+// caller may still pass an explicit `state` prop to override (e.g. a test,
+// or a future unit with a different real source) — the store-derived value
+// is only the default.
+//
 // Later units attach here, not inside ConKayWidget:
-//   - CK2 will replace the hardcoded `state="idle"` default below with one
-//     derived from a real macro/brain-lifecycle subscription (mirroring
-//     `conkayHudStore.ts`'s single-writer pattern), and may layer
-//     turn-toward-user behavior into `onActivate`.
 //   - CK3 will replace the static `top-16 right-4` position below with a
 //     safe-region-solver-driven walk target.
 
 import { useCallback, useEffect, useState } from 'react';
 import { ConKayWidget, type ConKayWidgetState } from './ConKayWidget';
+import { useConKayWidgetState } from '../conkayAttentionStore';
 import { Z_INDEX } from '@/lib/ui/z-index';
 
 /** localStorage key for the user's "hide the ConKay widget" preference. */
@@ -53,8 +59,9 @@ export const CONKAY_WIDGET_HIDDEN_KEY = 'concord:conkay-widget-hidden';
 export interface ConKayWidgetLayerProps {
   /**
    * Real system state to render (see ConKayWidget's honesty contract).
-   * Defaults to 'idle' — CK1 ships no state-producing wiring yet; that's
-   * CK2's job.
+   * Omit to use the REAL state derived from `conkayAttentionStore.ts` (the
+   * default, and what every real mount should do) — pass an explicit value
+   * only to override it (tests, or a future alternate real source).
    */
   state?: ConKayWidgetState;
   /**
@@ -75,7 +82,14 @@ function readHidden(): boolean {
   }
 }
 
-export function ConKayWidgetLayer({ state = 'idle', onActivate }: ConKayWidgetLayerProps) {
+export function ConKayWidgetLayer({ state, onActivate }: ConKayWidgetLayerProps) {
+  // The real, store-derived state (see conkayAttentionStore.ts) — used
+  // whenever the caller doesn't explicitly override `state`. Reading the
+  // hook unconditionally keeps the hook-call order stable regardless of
+  // whether a caller passes `state`.
+  const derivedState = useConKayWidgetState();
+  const effectiveState = state ?? derivedState;
+
   // Start visible during SSR/first client render (matches ConKayWidget's
   // server-rendered markup with no localStorage access), then reconcile the
   // real persisted preference in an effect — the same hydration-safe shape
@@ -108,7 +122,7 @@ export function ConKayWidgetLayer({ state = 'idle', onActivate }: ConKayWidgetLa
 
   return (
     <div style={{ zIndex: Z_INDEX.STATUS }} className="fixed top-16 right-4 md:top-20 md:right-6">
-      <ConKayWidget state={state} onActivate={activate} onDismiss={dismiss} />
+      <ConKayWidget state={effectiveState} onActivate={activate} onDismiss={dismiss} />
     </div>
   );
 }
