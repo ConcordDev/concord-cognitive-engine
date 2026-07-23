@@ -27052,6 +27052,9 @@ registerDtuPortabilityMacros(register);
 // lenses with one query.
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
+// dtu_props — DTUs as tangible interactive world props (list/interact).
+import registerDtuPropsMacros from "./domains/dtu-props.js";
+registerDtuPropsMacros(register);
 // reason.verify — claim verification (citation-resolution floor + council judge).
 import registerReasonMacros from "./domains/reason.js";
 registerReasonMacros(register);

@@ -16,6 +16,8 @@ const TestChunkManager := preload("res://tests/test_chunk_manager.gd")
 const TestLodPolicy := preload("res://tests/test_lod_policy.gd")
 const TestPropInstancer := preload("res://tests/test_prop_instancer.gd")
 const TestCharacterController := preload("res://tests/test_character_controller.gd")
+const TestDtuPropRenderer := preload("res://tests/test_dtu_prop_renderer.gd")
+const TestDtuPropInteraction := preload("res://tests/test_dtu_prop_interaction.gd")
 
 
 func _init() -> void:
@@ -24,6 +26,8 @@ func _init() -> void:
 		"LodPolicy": TestLodPolicy.run(),
 		"PropInstancer": TestPropInstancer.run(),
 		"CharacterController": TestCharacterController.run(),
+		"DtuPropRenderer": TestDtuPropRenderer.run(),
+		"DtuPropInteraction": TestDtuPropInteraction.run(),
 	}
 
 	var all_ok := true

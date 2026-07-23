@@ -112,6 +112,33 @@ Nothing below has been asserted anywhere else in the repo.
       surfaces a runtime error (typed-array coercion, `String.join` signature
       mismatch, etc.) that static parsing cannot catch.
 
+### DTU props (master-spec §3.3, units B6-B9 — `world/dtu_prop_renderer.gd` / `world/dtu_prop_interaction.gd`)
+
+- [ ] `DtuPropRenderer.fetch_placements()` actually reaches a live
+      `POST /api/lens/run` `{domain:"dtu_props", name:"list"}` and spawns one
+      node per placement — **the `dtu_props` macro domain is built
+      (`server/lib/dtu-props.js` + `server/domains/dtu-props.js`, both
+      contract-tested server-side) but NOT wired into `server.js`'s
+      `register()` call table** (see the STATUS note atop
+      `server/domains/dtu-props.js`), so this path is unreachable end-to-end
+      until that two-line wiring lands. Only the pure request-shape/transform
+      helpers are unit-tested (`gdparse`-only) today.
+- [ ] Placeholder box tint/size actually reads as visually distinct
+      shelf-vs-counter-vs-window-vs-rooftop-vs-plaza at a glance, not just in
+      the `Color`/`Vector3` values asserted by the pure tests.
+- [ ] A resolved `.glb` (when `AssetResolver`/`GlbLoader` succeed) actually
+      replaces the placeholder box in the live scene tree without a visible
+      pop/flash, and the placeholder is correctly freed.
+- [ ] `DtuPropInteraction.handle_click`'s physics raycast actually selects
+      the intended prop in a populated 3D scene (untested past the pure
+      `find_prop_ancestor` ancestor-walk, which only exercises plain `Node`
+      trees, never a real `PhysicsRayQueryParameters3D` hit against a
+      `CollisionShape3D`-bearing prop).
+- [ ] Interact round-trip (`take`/`leave`/`arrange`) against a real running
+      server: honest rejection reasons (`citation_consent_not_granted`,
+      `not_owner`, `not_holding`) surface legibly to a human player, not just
+      as a raw string in `interact_failed`.
+
 ---
 
 Until every box above is checked on a real machine, treat the Godot client as
