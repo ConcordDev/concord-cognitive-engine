@@ -61,6 +61,8 @@ import { runRealtimeEmitSignatureDetector } from "./realtime-emit-signature-dete
 import { runStaleLyingTestDetector } from "./stale-lying-test-detector.js";
 import { runDeadMacroCallDetector } from "./dead-macro-call-detector.js";
 import { runHardcodedLiteralDataPropDetector } from "./hardcoded-literal-data-prop-detector.js";
+import { runDomainReachabilityDetector } from "./domain-reachability-detector.js";
+import { runLensManifestCapabilityDetector } from "./lens-manifest-capability-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -576,6 +578,37 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "A component is mounted with a hardcoded empty/off literal (0, false, null, [], '') passed to a prop whose name implies live/computed data — silently making a feature permanently inert.",
   run: runHardcodedLiteralDataPropDetector,
+});
+
+// OP4 (2026-07-23) — generalized, permanent version of the manual wiring
+// audit that found 5 fully-coded domain files whose registrar was never
+// imported by server.js or domains/index.js (commit 61a29cc0). Distinct from
+// `stale-code`'s "ghost module" rule, which explicitly treats every file
+// under server/domains/ as wired-by-convention and skips it — domains/ was a
+// deliberate blind spot there, closed here.
+registerDetector({
+  id: "domain-reachability",
+  label: "DomainReachabilityDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Cross-references every server/domains/*.js file against the real loader graph (server.js import+call, domains/index.js array) and flags a registrar with zero reachability path — caller-with-no-receiver dead code.",
+  run: runDomainReachabilityDetector,
+});
+
+// OP4 (2026-07-23) — the manifest half of the same "static truth drifted from
+// runtime truth" class: concord-frontend/lib/lenses/manifest.ts declares a
+// literal "domain.name" macro string per capability, but nothing previously
+// verified those strings against the real MACROS/LENS_ACTIONS registry (the
+// manifest's own `sentinel` entry documents a past MANUAL catch of exactly
+// this drift — "Phantom `lens.sentinel.*` refs replaced with the REAL
+// registered macros" — this detector is the permanent, automated version).
+registerDetector({
+  id: "lens-manifest-capability",
+  label: "LensManifestCapabilityDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Cross-references concord-frontend/lib/lenses/manifest.ts's declared macros:{...} capability claims against the real register()/registerLensAction() registry and flags any claim with no real backing macro.",
+  run: runLensManifestCapabilityDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same
