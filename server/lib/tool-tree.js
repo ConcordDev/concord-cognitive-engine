@@ -6,6 +6,8 @@
 
 import crypto from "crypto";
 import { resolveCraft } from "./craft-resolve.js";
+import { recordTransaction as recordWorldMarketTxn } from "./world-economy.js";
+import { getPlayerSkillLevel } from "./skills/skill-engine.js";
 
 // Hard-coded tool recipe tree seeded once at startup.
 export const TOOL_RECIPES = [
@@ -68,6 +70,21 @@ export const TOOL_RECIPES = [
     materials_json: JSON.stringify([{ id: "clay", quantity: 5 }]),
     output_quality: 25,
   },
+  {
+    // Bio-side Tier 1 — every other T1 tool is stone/clay; a tanning rack lets
+    // the survival path work hide → leather without waiting on ore.
+    id: "recipe_tanning_rack",
+    name: "Tanning Rack",
+    description: "A frame of lashed wood and stretched hide. Cures skins into workable leather.",
+    tier: 1,
+    required_tool_tier: 0,
+    required_skill_level: 0,
+    materials_json: JSON.stringify([
+      { id: "wood", quantity: 4 },
+      { id: "hide", quantity: 3 },
+    ]),
+    output_quality: 28,
+  },
 
   // ── Tier 2 — crafted tools (requires Tier 1 + ore + skill ≥ 25) ─────────
   {
@@ -111,6 +128,37 @@ export const TOOL_RECIPES = [
     ]),
     output_quality: 60,
   },
+  {
+    // Fills the mid-T2 skill band and gives smelting a dedicated station.
+    id: "recipe_smelters_crucible",
+    name: "Smelter's Crucible",
+    description: "A clay-lined crucible that renders ore to ingot. The first real forge step.",
+    tier: 2,
+    required_tool_tier: 1,
+    required_skill_level: 35,
+    materials_json: JSON.stringify([
+      { id: "clay", quantity: 8 },
+      { id: "iron_ore", quantity: 4 },
+      { id: "coal", quantity: 3 },
+    ]),
+    output_quality: 58,
+  },
+  {
+    // Bridges the 30 → 100 skill cliff: a serious anvil that wants refined
+    // ingots, sitting between the kiln and the power-tool tier.
+    id: "recipe_masterwork_anvil",
+    name: "Masterwork Anvil",
+    description: "A steel-faced anvil for precise metalwork. The bench a real smith grows into.",
+    tier: 2,
+    required_tool_tier: 1,
+    required_skill_level: 60,
+    materials_json: JSON.stringify([
+      { id: "iron_ingot", quantity: 6 },
+      { id: "steel_ingot", quantity: 2 },
+      { id: "stone", quantity: 8 },
+    ]),
+    output_quality: 62,
+  },
 
   // ── Tier 3 — advanced tools (requires Tier 2 + rare materials + skill ≥ 100) ─
   {
@@ -141,6 +189,39 @@ export const TOOL_RECIPES = [
     ]),
     output_quality: 85,
   },
+  {
+    // Magic-side Tier 3 — both existing T3 tools are tech; an enchanter's burin
+    // opens the arcane craft path at the low end of the T3 band.
+    id: "recipe_enchanters_burin",
+    name: "Enchanter's Burin",
+    description: "A gold-tipped graver for scribing glyph-work into a blank. The enchanter's first real instrument.",
+    tier: 3,
+    required_tool_tier: 2,
+    required_skill_level: 140,
+    materials_json: JSON.stringify([
+      { id: "gold", quantity: 2 },
+      { id: "gemstone", quantity: 2 },
+      { id: "mana_crystal", quantity: 1 },
+    ]),
+    output_quality: 82,
+  },
+  {
+    // Bridges the 120 → 500 skill cliff: a high-T3 station wanting exotic ore +
+    // the new hushvein silver, the last bench before a legendary forge.
+    id: "recipe_arcane_lathe",
+    name: "Arcane Lathe",
+    description: "A resonance-tuned lathe that shapes crystal and orichalcum without shattering it.",
+    tier: 3,
+    required_tool_tier: 2,
+    required_skill_level: 250,
+    materials_json: JSON.stringify([
+      { id: "orichalcum", quantity: 4 },
+      { id: "crystal", quantity: 3 },
+      { id: "steel_ingot", quantity: 6 },
+      { id: "hushvein_silver", quantity: 2 },
+    ]),
+    output_quality: 88,
+  },
 
   // ── Tier 4 — legendary (requires Tier 3 + Legendary skill ≥ 500) ────────
   {
@@ -154,6 +235,24 @@ export const TOOL_RECIPES = [
       { id: "mythril_ore", quantity: 10 },
       { id: "dragon_stone", quantity: 3 },
       { id: "steel", quantity: 20 },
+    ]),
+    output_quality: 100,
+  },
+  {
+    // A second legendary path — the physical/lore-anchored counterpart to the
+    // Legendary Forge, drawn from Refusal Keep iron + the once-a-year founder's
+    // quench. Gated behind the same Legendary skill ≥ 500 and a grand soul gem.
+    id: "recipe_refusal_edgeworks",
+    name: "Refusal Edgeworks",
+    description: "The Keep's oath-forge. Every blade it draws refuses to bend — the Watch's masterwork bench.",
+    tier: 4,
+    required_tool_tier: 3,
+    required_skill_level: 500,
+    materials_json: JSON.stringify([
+      { id: "refusal_iron", quantity: 8 },
+      { id: "founders_quench", quantity: 2 },
+      { id: "adamantite", quantity: 6 },
+      { id: "grand_soul_gem", quantity: 1 },
     ]),
     output_quality: 100,
   },
@@ -271,6 +370,16 @@ export function craftTool(db, userId, recipeId, worldId = "concordia-hub") {
       `).run(mat.quantity, userId, mat.id);
       db.prepare(`DELETE FROM player_inventory WHERE user_id = ? AND item_id = ? AND quantity <= 0`).run(userId, mat.id);
     }
+
+    // Regional economy — a tool craft consumes materials, so record a 'craft'
+    // transaction per material (supply −qty, demand +qty). Same non-fatal shape
+    // as the gather/craft call sites elsewhere: an absent world_market table or
+    // a market hiccup must never break the tool craft.
+    try {
+      for (const mat of materials) {
+        recordWorldMarketTxn(db, worldId, mat.id, mat.quantity, "craft");
+      }
+    } catch { /* non-fatal — world_market may be absent on a minimal build */ }
   }
 
   // Living Society P0 — derive the tool's quality from the consumed materials'
@@ -283,7 +392,16 @@ export function craftTool(db, userId, recipeId, worldId = "concordia-hub") {
   let resolved = null;
   if (process.env.CONCORD_CRAFT_RESOLVE !== "0" && materials.length > 0) {
     try {
-      const playerSkill = Math.min(100, getPlayerToolTier(db, userId) * 20);
+      // Real crafting skill from player_skill_levels (the same 'crafting'
+      // skill_type the craft-engine path uses), FLOORED at the legacy tool-tier
+      // proxy so a player with no skill rows — or a minimal build without the
+      // table — never crafts worse than before. Capped 0–100 (resolveCraft's
+      // expected skill domain).
+      const tierProxy = Math.min(100, getPlayerToolTier(db, userId) * 20);
+      let craftingSkill = 0;
+      try { craftingSkill = getPlayerSkillLevel(db, userId, "crafting") || 0; }
+      catch { /* player_skill_levels absent — fall back to the proxy */ }
+      const playerSkill = Math.min(100, Math.max(tierProxy, craftingSkill));
       resolved = resolveCraft({
         inputs: materials.map((m) => ({ itemId: m.id, qty: Math.max(1, Number(m.quantity) || 1) })),
         playerSkill,
