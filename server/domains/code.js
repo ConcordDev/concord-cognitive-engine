@@ -15,6 +15,10 @@ import tsLang from "../lib/ts-language-service.js";
 import { runBuildLoop } from "../lib/build-loop.js";
 // Item 6 — CaMeL: file content fed to the LLM is untrusted data, never instructions.
 import { scanForInjection } from "../lib/provenance-guard.js";
+// GH-3a — real ranked code retrieval (replaces naive @-mention-or-recency
+// selection in codebase-chat; also the file-manifest source for multi-file-plan
+// when the caller opts into useRetrieval instead of supplying an explicit list).
+import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTree } from "../lib/code-retrieval.js";
 
 const SNIPPET_KIND = "code_snippet";
 const SNAPSHOT_KIND = "code_snapshot_bundle";
@@ -533,15 +537,69 @@ export default function registerCodeActions(registerLensAction) {
    * params: { prompt, files: [{ id, name, language, content }], maxEdits? }
    * Returns: { edits: [{ filename, scriptId, language, before, after, reason }] }
    *
+   * GH-3a retrieval path: params: { useRetrieval: true, taskQuery?, projectId? |
+   * repo?, ref?, retrievalLimit? } — when `useRetrieval` is true and the caller
+   * did NOT supply an explicit `files` array, the manifest is built automatically
+   * by `code-retrieval.js`'s ranked retrieval instead of trusting "whatever the
+   * caller happened to pass": `projectId` sources from Concord's own virtual
+   * project (`ensureFiles`), `repo` (+ optional `ref`) sources from a connected
+   * GitHub repo via GH-1's `github.repo-tree`/`github.file-get` macros. An
+   * explicit `files` array always wins outright — retrieval only fills the gap.
+   *
    * Strict contract: the LLM is constrained to output a JSON object matching
    * the schema; we parse, validate, and round-trip before returning. On any
    * parse failure, returns ok:false with the raw output so the caller can
    * retry with a stricter prompt.
    */
   registerLensAction("code", "multi-file-plan", async (ctx, _artifact, params = {}) => {
-    const prompt = String(params.prompt || "").trim();
-    const files = Array.isArray(params.files) ? params.files : [];
+    const promptParam = String(params.prompt || "").trim();
+    const taskQuery = String(params.taskQuery || promptParam || "").trim();
+    let files = Array.isArray(params.files) ? params.files : [];
     const maxEdits = Math.min(Math.max(Number(params.maxEdits) || 6, 1), 12);
+    let prompt = promptParam;
+    let retrievalInfo = null;
+
+    if (params.useRetrieval === true && files.length === 0) {
+      if (!taskQuery) return { ok: false, error: "taskQuery (or prompt) required for useRetrieval" };
+      const retrievalLimit = Math.min(Math.max(Number(params.retrievalLimit) || 8, 1), 20);
+      let candidates = [];
+      let source = null;
+      if (params.projectId) {
+        const s = getWorkspaceState();
+        if (!s) return { ok: false, error: "STATE unavailable" };
+        const projectFiles = ensureFiles(s, aidC(ctx), String(params.projectId));
+        candidates = candidatesFromLocalFiles(projectFiles);
+        source = "local-project";
+      } else if (params.repo) {
+        const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+        if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable for github retrieval" };
+        const treeRes = await runMacro("github", "repo-tree", { repo: params.repo, ref: params.ref }, ctx);
+        if (!treeRes?.ok) return { ok: false, error: "github repo-tree failed", detail: treeRes };
+        const tree = treeRes.result?.tree || [];
+        const fetchFile = async (path) => {
+          const fileRes = await runMacro("github", "file-get", { repo: params.repo, path, ref: params.ref }, ctx);
+          return fileRes?.ok ? (fileRes.result?.content || "") : "";
+        };
+        candidates = candidatesFromGitHubTree(tree, fetchFile);
+        source = "github";
+      } else {
+        return { ok: false, error: "useRetrieval requires projectId (local project) or repo (GitHub)" };
+      }
+      const retrieval = await retrieveRelevantFiles({
+        query: taskQuery,
+        candidates,
+        limit: retrievalLimit,
+        maxCharsPerFile: 8000,
+      });
+      files = retrieval.selected.map(f => ({ name: f.path, content: f.content, language: langFromPath(f.path) }));
+      retrievalInfo = {
+        source,
+        rankingMethod: retrieval.rankingMethod,
+        matches: retrieval.selected.map(f => ({ path: f.path, score: f.score, matchedBy: f.matchedBy, reason: f.reason })),
+        candidatesConsidered: retrieval.candidatesConsidered,
+      };
+      if (!prompt) prompt = taskQuery;
+    }
 
     if (!prompt) return { ok: false, error: "prompt required" };
     if (files.length === 0) return { ok: false, error: "no files provided as context" };
@@ -624,7 +682,14 @@ Rules:
       if (validatedEdits.length >= maxEdits) break;
     }
 
-    return { ok: true, result: { edits: validatedEdits, prompt, totalFiles: files.length, planned: parsed.edits.length, accepted: validatedEdits.length } };
+    return {
+      ok: true,
+      result: {
+        edits: validatedEdits, prompt, totalFiles: files.length,
+        planned: parsed.edits.length, accepted: validatedEdits.length,
+        retrieval: retrievalInfo,
+      },
+    };
   });
 
   /**
@@ -2133,6 +2198,14 @@ Rules:
   // ── Codebase-wide AI chat with @-file context ─────────────────
   // Cursor's killer feature: an AI chat where the user references
   // files with @path and the macro injects their real content.
+  //
+  // GH-3a context selection: an explicit @-mention (or an explicit
+  // `mentionedFiles` param) is a STRONGER signal than any ranking guess, so it
+  // is always honored first and exclusively — no ranked files get mixed in
+  // alongside an explicit reference. Only when the message carries NO
+  // resolvable mention does this fall back to `code-retrieval.js`'s real
+  // TF-IDF ranking against the message text, replacing the old
+  // most-recently-modified-3-files default (recency is not relevance).
   registerLensAction("code", "codebase-chat", async (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
@@ -2151,18 +2224,38 @@ Rules:
       const hit = files.has(w) ? w : Array.from(files.keys()).find(k => k.endsWith("/" + w) || k === w);
       if (hit) resolved.push(hit); else missing.push(w);
     }
-    // If no @-files referenced, attach the most-recently-modified files.
-    let contextPaths = resolved;
-    if (contextPaths.length === 0) {
-      contextPaths = Array.from(files.entries())
-        .sort((a, b) => String(b[1].modifiedAt || "").localeCompare(String(a[1].modifiedAt || "")))
-        .slice(0, 3)
-        .map(([p]) => p);
+
+    let contextPaths;
+    let ctxBlocks;
+    let retrievalInfo = null;
+    if (resolved.length > 0) {
+      // Explicit mention override — honored verbatim, no ranking involved.
+      contextPaths = resolved.slice(0, 8);
+      ctxBlocks = contextPaths.map(p => {
+        const content = files.get(p)?.content || "";
+        return `## ${p} (${langFromPath(p)})\n\`\`\`\n${content.slice(0, 6000)}\n\`\`\``;
+      }).join("\n\n");
+    } else {
+      // No explicit mention — fall back to real ranked retrieval over the
+      // whole project against the question text.
+      const candidates = candidatesFromLocalFiles(files);
+      const retrieval = await retrieveRelevantFiles({
+        query: message,
+        candidates,
+        limit: 8,
+        maxCharsPerFile: 6000,
+      });
+      contextPaths = retrieval.selected.map(f => f.path);
+      ctxBlocks = retrieval.selected.map(f =>
+        `## ${f.path} (${langFromPath(f.path)})\n\`\`\`\n${f.content}\n\`\`\``,
+      ).join("\n\n");
+      retrievalInfo = {
+        rankingMethod: retrieval.rankingMethod,
+        matches: retrieval.selected.map(f => ({ path: f.path, score: f.score, matchedBy: f.matchedBy, reason: f.reason })),
+        candidatesConsidered: retrieval.candidatesConsidered,
+      };
     }
-    const ctxBlocks = contextPaths.slice(0, 8).map(p => {
-      const content = files.get(p)?.content || "";
-      return `## ${p} (${langFromPath(p)})\n\`\`\`\n${content.slice(0, 6000)}\n\`\`\``;
-    }).join("\n\n");
+
     const history = Array.isArray(params.history)
       ? params.history.filter(m => m && (m.role === "user" || m.role === "assistant"))
           .slice(-8)
@@ -2195,6 +2288,8 @@ Rules:
         contextFiles: contextPaths,
         missingFiles: missing,
         filesIndexed: files.size,
+        usedExplicitMentions: resolved.length > 0,
+        retrieval: retrievalInfo,
       },
     };
   });
