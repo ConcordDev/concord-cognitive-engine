@@ -1473,6 +1473,22 @@ registerHeartbeat("npc-conversation-initiator", {
   handler: ({ db } = {}) => runNpcConversationInitiator({ db, io: REALTIME?.io }),
 });
 
+// Sovereign Mass Raid: periodically draft a real fused-power manifestation
+// from the already-real, already-tested Refusal Archive (draftSovereign
+// Manifestation, previously reachable only via the manual admin/preview
+// route) while a raid is open, and broadcast it so the frontend's
+// SovereignManifestationToast (listening for 'world:sovereign-manifest'
+// since it was written, never triggered until now) has a real server-side
+// event to react to. Does NOT invent raid combat/damage logic — raid-
+// event.js's own header explicitly scopes that out for a later drop; this
+// only schedules the existing draft capability and broadcasts its real
+// output. Frequency 20 (~5 min) matches the module's own internal cooldown.
+import { runSovereignManifestationCycle } from "./emergent/sovereign-manifestation-cycle.js";
+registerHeartbeat("sovereign-manifestation-cycle", {
+  frequency: 20,
+  handler: ({ state } = {}) => runSovereignManifestationCycle({ state, io: REALTIME?.io }),
+});
+
 // Phase 11 (Item 12) — federation outbox pump. Drains pending
 // outbound ActivityPub activities. Opt-in via CONCORD_ACTIVITYPUB=true
 // so local-first installs don't make outbound HTTP fanouts they

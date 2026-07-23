@@ -85,6 +85,15 @@ export function NPCActionMenu() {
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
     setTimeout(() => setFlash(null), 2500);
+    // DET-C batch 7 — this toast was visual-only (2.5s and gone), so a
+    // screen-reader user got no feedback at all for mentor/brawl/court/
+    // inspect actions. ScreenReaderAnnouncer.tsx already ships a generic
+    // `concordia:announce` escape hatch for exactly this shape of
+    // message; it had zero real callers anywhere in the app. Real text,
+    // no fabrication — msg is the same string already shown on screen.
+    window.dispatchEvent(new CustomEvent('concordia:announce', {
+      detail: { text: msg, priority: 'polite' },
+    }));
   }, []);
 
   const onTalk = useCallback(() => {
@@ -140,6 +149,17 @@ export function NPCActionMenu() {
 
   const onInspect = useCallback(() => {
     if (!menu) return;
+    // DET-C batch 7 — NPCTraitInspector.tsx listens for BOTH names (its
+    // own header comment calls 'concordia:open-trait-inspector' the
+    // canonical one, with 'concordia:inspect-npc-traits' kept only for
+    // back-compat) but this call site — the only real trigger for the
+    // inspector in the codebase — had only ever dispatched the alias, so
+    // the "canonical" name was genuinely unfired anywhere. Dispatching
+    // both here makes that documented intent literally true rather than
+    // aspirational.
+    window.dispatchEvent(new CustomEvent('concordia:open-trait-inspector', {
+      detail: { npcId: menu.npcId, npcName: menu.npcName },
+    }));
     window.dispatchEvent(new CustomEvent('concordia:inspect-npc-traits', {
       detail: { npcId: menu.npcId, npcName: menu.npcName },
     }));

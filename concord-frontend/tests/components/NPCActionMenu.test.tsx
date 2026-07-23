@@ -83,4 +83,55 @@ describe('NPCActionMenu', () => {
 
     window.removeEventListener('concordia:inspect-npc-traits', handler);
   });
+
+  // DET-C batch 7 — NPCTraitInspector.tsx listens for BOTH
+  // 'concordia:open-trait-inspector' (its own header comment calls this
+  // the canonical name) and 'concordia:inspect-npc-traits' (documented as
+  // back-compat only), but this was the only real trigger anywhere in the
+  // app and it had only ever dispatched the alias — the "canonical" name
+  // was genuinely unfired. This pins that clicking "Inspect traits" now
+  // fires both, with identical payloads.
+  it('clicking "Inspect traits" ALSO dispatches the canonical concordia:open-trait-inspector with the same payload', () => {
+    render(<NPCActionMenu />);
+    openMenu('npc_canon_1', 'Kiren');
+
+    const handler = vi.fn();
+    window.addEventListener('concordia:open-trait-inspector', handler);
+
+    fireEvent.click(screen.getByText('Inspect traits'));
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const event = handler.mock.calls[0][0] as CustomEvent<{ npcId: string; npcName: string }>;
+    expect(event.detail).toEqual({ npcId: 'npc_canon_1', npcName: 'Kiren' });
+
+    window.removeEventListener('concordia:open-trait-inspector', handler);
+  });
+
+  // DET-C batch 7 — ScreenReaderAnnouncer.tsx ships a generic
+  // 'concordia:announce' a11y escape hatch that had zero real callers
+  // anywhere in the app; NPCActionMenu's showFlash toast (mentor/brawl/
+  // court/inspect feedback) was visual-only. This pins that the exact
+  // same message text shown on screen is also announced for a11y.
+  it('showFlash also dispatches concordia:announce with the same message text (a11y)', async () => {
+    render(<NPCActionMenu />);
+    openMenu('npc_brawl_1', 'Asbir');
+
+    const handler = vi.fn();
+    window.addEventListener('concordia:announce', handler);
+
+    fireEvent.click(screen.getByText('Brawl invite'));
+
+    // onCourt awaits a fetch before calling showFlash; the stubbed fetch
+    // resolves immediately but still needs a microtask flush.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(handler).toHaveBeenCalled();
+    const event = handler.mock.calls[0][0] as CustomEvent<{ text: string; priority: string }>;
+    expect(typeof event.detail.text).toBe('string');
+    expect(event.detail.text.length).toBeGreaterThan(0);
+    expect(event.detail.priority).toBe('polite');
+
+    window.removeEventListener('concordia:announce', handler);
+  });
 });
