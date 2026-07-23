@@ -286,7 +286,7 @@ Direct-grep counts **re-verified 2026-06-02** (via `npm run check-doc-claims`, w
 | Unique `(domain, macro)` pairs | **9,623** | `grep -rhoE "\\b(register\|registerLensAction)\\(['\"][a-zA-Z0-9_.\\-]+['\"]\\s*,\\s*['\"][a-zA-Z0-9_.\\-]+['\"]" server/ \| sed ... \| sort -u \| wc -l` |
 | Distinct CREATE TABLE statements | **674** | see Database section |
 | Unique heartbeats | **127** | `grep -rohE "registerHeartbeat\\(['\"][a-z0-9-]+['\"]" server/ \| sort -u \| wc -l` |
-| Authored source LOC | **~2.16M** (3.01M incl. content) | `npm run count-loc` |
+| Authored source LOC | **~2.50M** (3.68M incl. content) | `npm run count-loc` |
 
 **Keeping this table honest:** `npm run check-doc-claims` extracts every `(bold number, reproduction command)` pair in this file, re-runs the command, and reports drift (`--ci` to fail the build). The 2026-06-02 refresh above was driven by it. Re-run it before trusting any count here; the `docs/AUDIT_INVENTORY.md` file is older still and is superseded by these.
 
