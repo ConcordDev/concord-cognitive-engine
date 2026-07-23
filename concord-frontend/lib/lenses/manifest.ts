@@ -4002,7 +4002,21 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['paper', 'dataset', 'experiment', 'citation', 'review'],
     macros: { list: 'lens.research.list', get: 'lens.research.get', create: 'lens.research.create', update: 'lens.research.update', delete: 'lens.research.delete', run: 'lens.research.run', export: 'lens.research.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
+    // Deliberately empty (R1-2 wave 6 audit, 2026-07): 'analyze'/
+    // 'validate'/'export'/'summarize' matched nothing in LENS_ACTIONS for
+    // the "research" domain — 4 of 5 <ManifestActionBar> clicks 404'd as
+    // unknown_macro. The 5th, 'generate', IS a real macro
+    // (research.generate) but requires a `hypothesis` string param the
+    // bar can never supply (fires with `{}`), so it always returned
+    // "hypothesis required" too — 0 of 5 buttons were ever usable.
+    // Removed the bar from app/lenses/research/page.tsx: the real
+    // research.generate flow already has a proper designed form (the
+    // Hypothesis Generator section on the same page), and the other 50
+    // research macros each have a bespoke home across the Zotero-shape
+    // library, the Obsidian-shape workbench, and the literature-review
+    // panel — a blind zero-parameter quick-trigger bar would only
+    // duplicate them with a worse, entirely-broken surface.
+    actions: [],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
     emptyState: {
@@ -5126,7 +5140,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['post', 'story', 'reaction', 'notification', 'follow', 'profile'],
     macros: { list: 'lens.social.list', get: 'lens.social.get', create: 'lens.social.create', update: 'lens.social.update', delete: 'lens.social.delete', run: 'lens.social.run', export: 'lens.social.export' },
     exports: ['json'],
-    actions: ['follow', 'unfollow', 'react', 'comment', 'share', 'post', 'story_create', 'discover', 'notifications', 'trending'],
+    // Deliberately empty (R1-2 wave 6 audit, 2026-07): 'follow'/'unfollow'/
+    // 'comment'/'share'/'post'/'story_create'/'discover'/'notifications'/
+    // 'trending' matched nothing in LENS_ACTIONS for the "social" domain
+    // (real macros are createPost/addReply/repost/hashtagFeed/
+    // trendingHashtags/etc. — only 'react' happened to line up) — every
+    // <ManifestActionBar> click but one 404'd as unknown_macro. Removed
+    // the bar from app/lenses/social/page.tsx entirely: all 26 social
+    // macros already have a real, bespoke, designed home (FeedView,
+    // PostCard, NotificationCenter, ModerationPanel, DMInbox, LiveStreams,
+    // …), so a blind zero-parameter quick-trigger bar would only ever
+    // duplicate them with a worse, mostly-broken surface.
+    actions: [],
     category: 'social',
     dataTier: 'REAL_LIVE',
     emptyState: {

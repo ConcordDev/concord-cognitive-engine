@@ -12,7 +12,6 @@ import { ResearchLibrarySection } from '@/components/research/ResearchLibrarySec
 import { ResearchArxiv } from '@/components/research/ResearchArxiv';
 import { CrossRefPanel } from '@/components/research/CrossRefPanel';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -169,7 +168,11 @@ export default function ResearchLensPage() {
   const [tierFilter, setTierFilter] = useState('');
   const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'tier'>('date');
   const [selectedDtu, setSelectedDtu] = useState<DTUResult | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
+  // Collapsed by default: this is a generic feature-spec browser, not a
+  // primary work surface — expanding it under the real Zotero/Obsidian
+  // panels above just adds noise ahead of anything a user actually
+  // wants to click (rubric §0: remove whitespace/generic content first).
+  const [showFeatures, setShowFeatures] = useState(false);
   const queryInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
@@ -179,6 +182,7 @@ export default function ResearchLensPage() {
       { id: 'sort-date',    keys: '2', description: 'Sort by date',         category: 'view', action: () => setSortBy('date') },
       { id: 'sort-tier',    keys: '3', description: 'Sort by tier',         category: 'view', action: () => setSortBy('tier') },
       { id: 'close',        keys: 'esc', description: 'Close selected DTU', category: 'navigation', action: () => setSelectedDtu(null) },
+      { id: 'open-workbench', keys: 'n', description: 'Open Research Workbench (notes)', category: 'actions', action: () => setWorkbenchOpen(true) },
     ],
     { lensId: 'research' }
   );
@@ -393,7 +397,12 @@ export default function ResearchLensPage() {
   return (
     <LensShell lensId="research" asMain={false}>
       <FirstRunTour lensId="research" />
-      <ManifestActionBar />
+      {/* <ManifestActionBar/> removed (R1-2 wave 6): 4 of its 5 manifest
+          actions matched no research macro at all, and the 5th
+          ('generate') always failed with "hypothesis required" since the
+          bar can only fire with `{}` — see lib/lenses/manifest.ts for the
+          full audit. The real Hypothesis Generator form below already
+          gives `generate` a proper designed home. */}
       <DepthBadge lensId="research" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
         <ResearchLibrarySection />
