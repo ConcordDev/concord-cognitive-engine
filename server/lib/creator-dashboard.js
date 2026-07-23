@@ -19,6 +19,7 @@
 
 import { CREDIT_ROW_PREDICATE } from "../economy/balances.js";
 import { earnedWithdrawableBalance } from "../economy/withdrawals.js";
+import { getAncestorChain } from "../economy/royalty-cascade.js";
 
 const TRENDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -442,6 +443,151 @@ export function computeCascadeTree(rootDtuId, STATE, opts = {}) {
     generations,
     totalDownstream,
     maxObservedDepth: generations.length,
+  };
+}
+
+/**
+ * Royalty flow card (EC2) — the real-money counterpart to `computeCascadeTree`
+ * above.
+ *
+ * `computeCascadeTree` is explicit that its numbers are an *estimate*
+ * ("projected", "not a transactional ledger sum") derived from downstream
+ * citation counts. This function is the honest complement: the ACTUAL
+ * historical `ROYALTY_PAYOUT` rows that have already landed in the ledger,
+ * so a creator can see WHERE their royalty income really came from —
+ * lineage → earner → CC — instead of only a lump `totalEarnings` figure.
+ *
+ * Composes two REAL sources; nothing here is fabricated and nothing here
+ * reimplements money math that already exists elsewhere:
+ *   1. `economy_ledger` rows of type ROYALTY_PAYOUT, filtered through the
+ *      canonical `CREDIT_ROW_PREDICATE` (economy/balances.js) — the SAME
+ *      predicate `getBalance()` and `computeWithdrawalEligibility()` (above,
+ *      this file) use, so this card's totals can never silently diverge from
+ *      the user's real wallet math. (ROYALTY_PAYOUT rows are always
+ *      single-sided credits — not the two-row TRANSFER/MARKETPLACE_PURCHASE
+ *      debit-half pattern the predicate exists to exclude — so applying it
+ *      here is a no-op today, but it keeps this query byte-for-byte pinned
+ *      to the documented ledger-conservation invariant instead of silently
+ *      assuming that shape can never change.)
+ *   2. `getAncestorChain()` (economy/royalty-cascade.js) — the SAME function
+ *      the real payout path (`distributeRoyalties`) and the EC1 DTU Lineage
+ *      tab (`dtu.lineage` macro, server.js) call — for the structural
+ *      generation/rate context around one DTU, so a DTU with real ancestors
+ *      but zero sales yet still renders an honest "lineage exists, no
+ *      royalties earned yet" card instead of a blank one.
+ *
+ * @param {object} db
+ * @param {object} STATE
+ * @param {{ userId?: string, dtuId?: string, limit?: number }} opts
+ * @returns {{
+ *   ok: boolean,
+ *   userId: string|null,
+ *   dtuId: string|null,
+ *   totalCC: number,
+ *   hopCount: number,
+ *   byGeneration: Record<string, number>,
+ *   hops: Array<{
+ *     ledgerId: string, contentId: string|null, contentTitle: string|null,
+ *     generation: number|null, royaltyRate: number|null, royaltyPercent: string|null,
+ *     amount: number, fromUserId: string|null, toUserId: string|null,
+ *     sourceTxId: string|null, crossWorldHop: boolean, createdAt: string,
+ *   }>,
+ *   lineage: Array<{ contentId: string, contentTitle: string|null, generation: number, royaltyRate: number, royaltyPercent: string }>,
+ * }}
+ */
+export function computeRoyaltyFlow(db, STATE, { userId, dtuId, limit = 100 } = {}) {
+  if (!db) return { ok: false, error: "no_db" };
+  if (!userId && !dtuId) return { ok: false, error: "user_or_dtu_required" };
+  const cappedLimit = Math.min(200, Math.max(1, Number(limit) || 100));
+
+  // Real historical royalty credits. Every ROYALTY_PAYOUT row is written by
+  // `distributeRoyalties` (economy/royalty-cascade.js) inside one atomic
+  // db.transaction alongside the matching `royalty_payouts` record — this
+  // reads the ledger directly (not the derived royalty_payouts side-table)
+  // so the card's numbers are pinned to the same source getBalance() sums.
+  const where = ["type = 'ROYALTY_PAYOUT'", "status = 'complete'", CREDIT_ROW_PREDICATE];
+  const params = [];
+  if (userId) { where.push("to_user_id = ?"); params.push(userId); }
+
+  let rows = [];
+  try {
+    rows = db.prepare(`
+      SELECT id, from_user_id AS fromUserId, to_user_id AS toUserId, net,
+             metadata_json AS metadataJson, created_at AS createdAt
+      FROM economy_ledger
+      WHERE ${where.join(" AND ")}
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(...params, cappedLimit);
+  } catch (e) {
+    // Honest failure — no economy_ledger table on a minimal/legacy DB, or a
+    // real query error. Never fabricate rows to fill the card.
+    return { ok: false, error: String(e?.message || e) };
+  }
+
+  const titleFor = (id) => {
+    if (!id) return null;
+    const d = STATE?.dtus?.get?.(id);
+    return d?.title || d?.human?.summary || null;
+  };
+
+  let hops = rows.map((r) => {
+    let meta = {};
+    try { meta = JSON.parse(r.metadataJson || "{}"); } catch { /* honest: malformed metadata renders no generation/rate rather than guessing one */ }
+    const contentId = meta.contentId || null;
+    return {
+      ledgerId: r.id,
+      contentId,
+      contentTitle: titleFor(contentId),
+      generation: typeof meta.generation === "number" ? meta.generation : null,
+      royaltyRate: typeof meta.rate === "number" ? meta.rate : null,
+      royaltyPercent: typeof meta.rate === "number" ? `${(meta.rate * 100).toFixed(2)}%` : null,
+      amount: Math.round((Number(r.net) || 0) * 100) / 100,
+      fromUserId: r.fromUserId,
+      toUserId: r.toUserId,
+      sourceTxId: meta.sourceTxId || null,
+      crossWorldHop: !!meta.crossWorldHop,
+      createdAt: r.createdAt,
+    };
+  });
+
+  // Scoping to a specific DTU means "royalty income this DTU's citation
+  // earned its creator" — filter to rows whose ledger metadata.contentId
+  // (the ancestor DTU that earned the payout) is this DTU.
+  if (dtuId) hops = hops.filter((h) => h.contentId === dtuId);
+
+  // Structural context for a specific DTU: its full real ancestor chain
+  // (generation + the rate that WOULD apply), via the same getAncestorChain
+  // the payout math itself uses — never a duplicated/hand-rolled traversal.
+  let lineage = [];
+  if (dtuId) {
+    try {
+      lineage = getAncestorChain(db, dtuId).map((a) => ({
+        contentId: a.contentId,
+        contentTitle: titleFor(a.contentId),
+        generation: a.generation,
+        royaltyRate: a.rate,
+        royaltyPercent: `${(a.rate * 100).toFixed(2)}%`,
+      }));
+    } catch { /* honest: royalty_lineage table absent on a minimal/legacy DB */ }
+  }
+
+  const totalCC = Math.round(hops.reduce((s, h) => s + h.amount, 0) * 100) / 100;
+  const byGeneration = {};
+  for (const h of hops) {
+    const g = h.generation == null ? "unknown" : String(h.generation);
+    byGeneration[g] = Math.round(((byGeneration[g] || 0) + h.amount) * 100) / 100;
+  }
+
+  return {
+    ok: true,
+    userId: userId || null,
+    dtuId: dtuId || null,
+    totalCC,
+    hopCount: hops.length,
+    byGeneration,
+    hops,
+    lineage,
   };
 }
 

@@ -12,6 +12,8 @@
 //   /api/creator/dashboard, /api/creator/leaderboard,
 //   /api/creator/trending-citations, /api/creator/influence-drift,
 //   /api/creator/withdrawal-status, /api/creator/cascade/:dtuId,
+//   /api/creator/royalty-flow (EC2 — real ledger counterpart to /cascade,
+//   which is a projection; royalty-flow reads actual ROYALTY_PAYOUT rows),
 //   /api/social/profile, /api/social/followers/:id, /api/social/following/:id,
 //   /api/lens/creator (useArtifacts), lensRun('dtu', 'list', { mine: true }),
 //   lensRun('marketplace', 'myListings') — the caller's own dtu.marketplace
@@ -31,6 +33,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CreatorStudioSection } from '@/components/creator/CreatorStudioSection';
 import { CreatorLeaderboard } from '@/components/creator/CreatorLeaderboard';
+import { RoyaltyFlowCard } from '@/components/creator/RoyaltyFlowCard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import KnowledgeEntrepreneurBadge from '@/components/creator/KnowledgeEntrepreneurBadge';
@@ -244,7 +247,12 @@ export default function CreatorDashboardPage() {
         {tab === 'listings'  && <ListingsTab listings={myListings} onChanged={() => { refreshListings(); refreshDashboard(); refreshWithdrawal(); }} />}
         {tab === 'profile'   && <ProfileTab profile={profile} onSaved={refreshDashboard} />}
         {tab === 'followers' && <FollowersTab profile={profile} />}
-        {tab === 'cascade'   && <CascadePanel topCited={me?.topCitedDTUs ?? []} />}
+        {tab === 'cascade'   && (
+          <div className="space-y-4">
+            <RoyaltyFlowCard topCited={me?.topCitedDTUs ?? []} />
+            <CascadePanel topCited={me?.topCitedDTUs ?? []} />
+          </div>
+        )}
         <CrossLensRecentsPanel lensId="creator" sinceDays={7} limit={6} hideWhenEmpty className="mt-6" />
       </div>
       <LensAgentFab
