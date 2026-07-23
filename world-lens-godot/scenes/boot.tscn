@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cboot0godot001"]
+
+[ext_resource type="Script" path="res://world/boot.gd" id="1_boot"]
+
+[node name="Boot" type="Node3D"]
+script = ExtResource("1_boot")

@@ -1,0 +1,22 @@
+; Engine configuration file for the Concord World Lens (Godot 4 native client).
+; Phase 1 skeleton — has never been opened in a real editor. See VISUAL_QA.md.
+;
+; Format documented at https://docs.godotengine.org/en/stable/
+
+config_version=5
+
+[application]
+
+config/name="Concord World Lens"
+config/description="Native Godot 4 client for the Concord world simulation (Phase 1 skeleton)."
+run/main_scene="res://scenes/boot.tscn"
+config/features=PackedStringArray("4.4", "Forward Plus")
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+
+[network]
+
+; The gateway base URL is a runtime setting, not baked here. gateway_client.gd
+; accepts it from the environment / a config file at connect time.
