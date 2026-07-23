@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Github, Loader2, Folder, FolderOpen, File as FileIcon, ChevronLeft,
   GitCommit, GitBranch, CheckCircle2, XCircle, ExternalLink, RefreshCw,
+  FilePlus, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -90,6 +91,60 @@ function sortedChildren(node: TreeNode): TreeNode[] {
     if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
+}
+
+interface DiffLine {
+  type: 'context' | 'add' | 'remove';
+  text: string;
+}
+
+/**
+ * A real line-level diff between two real strings — no library dependency
+ * (none is installed in this repo; grepped package.json + node_modules
+ * before writing this). Standard LCS-based line alignment so a line moved by
+ * an unrelated insertion/deletion elsewhere doesn't get misreported as
+ * "changed" the way a naive positional (index-by-index) comparison would.
+ * Falls back to a coarser positional diff only past a quadratic-blowup guard
+ * (n*m > 4,000,000, i.e. roughly 2000x2000 lines) so a huge file can't hang
+ * the tab — still a real comparison of the real content, just less precise
+ * at that size.
+ */
+function computeLineDiff(originalText: string, editedText: string): DiffLine[] {
+  const a = originalText.split('\n');
+  const b = editedText.split('\n');
+  const n = a.length;
+  const m = b.length;
+
+  if (n * m > 4_000_000) {
+    const max = Math.max(n, m);
+    const lines: DiffLine[] = [];
+    for (let i = 0; i < max; i++) {
+      const oldLine = a[i];
+      const newLine = b[i];
+      if (oldLine === newLine) lines.push({ type: 'context', text: oldLine ?? '' });
+      else {
+        if (oldLine !== undefined) lines.push({ type: 'remove', text: oldLine });
+        if (newLine !== undefined) lines.push({ type: 'add', text: newLine });
+      }
+    }
+    return lines;
+  }
+
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const lines: DiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { lines.push({ type: 'context', text: a[i] }); i++; j++; } else if (dp[i + 1][j] >= dp[i][j + 1]) { lines.push({ type: 'remove', text: a[i] }); i++; } else { lines.push({ type: 'add', text: b[j] }); j++; }
+  }
+  while (i < n) { lines.push({ type: 'remove', text: a[i] }); i++; }
+  while (j < m) { lines.push({ type: 'add', text: b[j] }); j++; }
+  return lines;
 }
 
 function TreeBrowser({
@@ -181,6 +236,16 @@ export function GitHubConnectPanel() {
   const [branchCreating, setBranchCreating] = useState(false);
   const [branchResult, setBranchResult] = useState<{ ok: true; ref: string } | { ok: false; error: string } | null>(null);
 
+  // ── new-file flow (create-vs-update per GH-1: sha present = update, sha
+  // absent entirely = create) ─────────────────────────────────────────────
+  const [showNewFileForm, setShowNewFileForm] = useState(false);
+  const [newFilePath, setNewFilePath] = useState('');
+  const [newFileError, setNewFileError] = useState<string | null>(null);
+  const [isNewFile, setIsNewFile] = useState(false);
+
+  // ── diff-before-commit preview ──────────────────────────────────────────
+  const [diffExpanded, setDiffExpanded] = useState(false);
+
   const loadRepos = useCallback(async () => {
     setReposLoading(true);
     setReposError(null);
@@ -251,6 +316,11 @@ export function GitHubConnectPanel() {
     setTargetBranch(null);
     setBranchResult(null);
     setShowBranchForm(false);
+    setIsNewFile(false);
+    setShowNewFileForm(false);
+    setNewFilePath('');
+    setNewFileError(null);
+    setDiffExpanded(false);
     void loadTree(fullName);
   }, [loadTree]);
 
@@ -285,6 +355,8 @@ export function GitHubConnectPanel() {
     setSelectedPath(path);
     setCommitMessage('');
     setCommitResult(null);
+    setIsNewFile(false);
+    setDiffExpanded(false);
     if (selectedRepo) void loadFile(selectedRepo, path, treeRef);
   }, [selectedRepo, treeRef, loadFile]);
 
@@ -296,32 +368,88 @@ export function GitHubConnectPanel() {
     });
   }, []);
 
+  // Real paths already in the loaded tree (files AND folders — a new file
+  // can't collide with either) — the actual collision check, not a guess.
+  const existingTreePaths = useMemo(() => new Set(tree.map((e) => e.path)), [tree]);
+
+  const startNewFile = useCallback(() => {
+    const path = newFilePath.trim();
+    if (!path) {
+      setNewFileError('Enter a file path.');
+      return;
+    }
+    if (existingTreePaths.has(path)) {
+      setNewFileError(`"${path}" already exists in this repo — pick a different path or open it from the tree to edit it.`);
+      return;
+    }
+    setNewFileError(null);
+    setShowNewFileForm(false);
+    setNewFilePath('');
+    setSelectedPath(path);
+    setIsNewFile(true);
+    setFileSha(null);
+    setOriginalContent('');
+    setEditedContent('');
+    setFileError(null);
+    setFileHtmlUrl(null);
+    setCommitMessage('');
+    setCommitResult(null);
+    setDiffExpanded(false);
+  }, [newFilePath, existingTreePaths]);
+
   const dirty = editedContent !== originalContent;
+
+  // Real LCS-based diff between the cached original (from file-get, or '' for
+  // a brand-new file) and the live textarea content — recomputed only when
+  // either side actually changes. No fabricated diff: this IS the string
+  // comparison, rendered.
+  const diffLines = useMemo(() => computeLineDiff(originalContent, editedContent), [originalContent, editedContent]);
+  const diffStats = useMemo(() => {
+    let added = 0;
+    let removed = 0;
+    for (const line of diffLines) {
+      if (line.type === 'add') added++;
+      else if (line.type === 'remove') removed++;
+    }
+    return { added, removed };
+  }, [diffLines]);
+  const hasDiff = diffStats.added > 0 || diffStats.removed > 0;
 
   const commit = useCallback(async () => {
     if (!selectedRepo || !selectedPath || !commitMessage.trim()) return;
     setCommitting(true);
     setCommitResult(null);
     try {
-      // `sha` is caller-declared intent per GH-1: this file was loaded via
-      // file-get above, so it genuinely exists — the sha MUST be threaded
-      // through here or the write risks clobbering a concurrent change.
-      const r = await lensRun('github', 'file-commit', {
+      const params: Record<string, unknown> = {
         repo: selectedRepo,
         path: selectedPath,
         content: editedContent,
         message: commitMessage.trim(),
-        sha: fileSha ?? undefined,
         branch: targetBranch ?? undefined,
-      });
+      };
+      // `sha` is caller-declared intent per GH-1: present = update an
+      // existing file (the value MUST be the real sha from file-get above,
+      // threaded through so the write can't clobber a concurrent change);
+      // absent = create a brand-new file. A new-file commit must NEVER
+      // include the key at all — not even as `undefined` — or GH-1 could
+      // read it as an update against a file that doesn't exist yet.
+      if (!isNewFile) {
+        params.sha = fileSha ?? undefined;
+      }
+      const r = await lensRun('github', 'file-commit', params);
       if (r.data?.ok) {
         const res = r.data.result as { commitSha: string | null; fileSha: string | null; htmlUrl: string | null } | null;
         setCommitResult({ ok: true, commitSha: res?.commitSha ?? null, fileSha: res?.fileSha ?? null, htmlUrl: res?.htmlUrl ?? null });
         // The file now lives at the new sha — thread it through so the NEXT
-        // commit (if the user keeps editing) is still conflict-safe.
+        // commit (if the user keeps editing) is still conflict-safe. This
+        // also flips a freshly-created file over to the update path.
         if (res?.fileSha) setFileSha(res.fileSha);
+        setIsNewFile(false);
         setOriginalContent(editedContent);
         setCommitMessage('');
+        setTree((prev) => (prev.some((e) => e.path === selectedPath)
+          ? prev
+          : [...prev, { path: selectedPath, type: 'blob', sha: res?.fileSha ?? '', size: editedContent.length, mode: '100644' }]));
       } else {
         const reason = r.data?.error || 'file_commit_failed';
         if (NOT_CONNECTED.has(reason)) setNotConnected(true);
@@ -332,7 +460,7 @@ export function GitHubConnectPanel() {
     } finally {
       setCommitting(false);
     }
-  }, [selectedRepo, selectedPath, commitMessage, editedContent, fileSha, targetBranch]);
+  }, [selectedRepo, selectedPath, commitMessage, editedContent, fileSha, targetBranch, isNewFile]);
 
   const createBranch = useCallback(async () => {
     if (!selectedRepo || !newBranchName.trim() || !treeRef) return;
@@ -450,6 +578,53 @@ export function GitHubConnectPanel() {
 
           {!selectedPath && (
             <div data-testid="github-panel-file-tree" className="flex-1 overflow-y-auto py-1">
+              {/* Only offered once a real tree has loaded — validating a new
+                  path against a stale/empty/errored tree would be dishonest
+                  (a "no collision" result could just mean we never fetched
+                  the real list yet). */}
+              {!treeLoading && !treeError && (
+              <div className="px-2 pb-1.5 mb-1 border-b border-white/10">
+                {!showNewFileForm ? (
+                  <button
+                    type="button"
+                    data-testid="github-panel-new-file-btn"
+                    onClick={() => { setShowNewFileForm(true); setNewFileError(null); }}
+                    className="flex items-center gap-1 text-[10px] text-cyan-400 hover:underline"
+                  >
+                    <FilePlus className="w-3 h-3" /> New file
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      autoFocus
+                      data-testid="github-panel-new-file-path"
+                      value={newFilePath}
+                      onChange={(e) => { setNewFilePath(e.target.value); setNewFileError(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') startNewFile(); }}
+                      placeholder="path/to/new-file.ts"
+                      className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1 text-[11px] text-gray-200"
+                    />
+                    <button
+                      type="button"
+                      data-testid="github-panel-new-file-create-btn"
+                      onClick={startNewFile}
+                      className="px-2 py-1 rounded bg-white/10 hover:bg-white/15 text-gray-200"
+                    >
+                      Create
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="github-panel-new-file-cancel-btn"
+                      onClick={() => { setShowNewFileForm(false); setNewFilePath(''); setNewFileError(null); }}
+                      className="px-2 py-1 text-gray-500 hover:text-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                {newFileError && <p data-testid="github-panel-new-file-error" className="mt-1 text-rose-400">{newFileError}</p>}
+              </div>
+              )}
               {treeLoading ? (
                 <div data-testid="github-panel-tree-loading" className="p-3 flex items-center gap-2 text-gray-400">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading file tree…
@@ -475,6 +650,9 @@ export function GitHubConnectPanel() {
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
                 <span className="text-gray-200 truncate">{selectedPath}</span>
+                {isNewFile && (
+                  <span data-testid="github-panel-new-file-badge" className="text-[9px] px-1 rounded bg-cyan-500/15 text-cyan-300 shrink-0">new file</span>
+                )}
                 {fileHtmlUrl && (
                   <a href={fileHtmlUrl} target="_blank" rel="noreferrer" className="text-gray-500 hover:text-cyan-400">
                     <ExternalLink className="w-3 h-3" />
@@ -497,6 +675,45 @@ export function GitHubConnectPanel() {
                     spellCheck={false}
                     className="flex-1 min-h-[160px] w-full bg-[#0d1117] border border-white/10 rounded p-2 font-mono text-[11px] text-gray-200 resize-y"
                   />
+
+                  {/* Real diff-before-commit preview — computed from the
+                      genuine cached original (file-get's content, or '' for
+                      a brand-new file) vs. the live textarea. Never rendered
+                      from a fabricated placeholder. */}
+                  <div data-testid="github-panel-diff-section" className="border border-white/10 rounded overflow-hidden">
+                    <button
+                      type="button"
+                      data-testid="github-panel-diff-toggle"
+                      onClick={() => setDiffExpanded((v) => !v)}
+                      disabled={!hasDiff}
+                      className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-gray-300 hover:bg-white/5 disabled:hover:bg-transparent disabled:text-gray-500"
+                    >
+                      {hasDiff ? (diffExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />) : null}
+                      {hasDiff
+                        ? `${diffExpanded ? 'Hide' : 'Review'} changes (+${diffStats.added} / -${diffStats.removed})`
+                        : 'No changes to commit'}
+                    </button>
+                    {hasDiff && diffExpanded && (
+                      <div data-testid="github-panel-diff-lines" className="max-h-48 overflow-y-auto font-mono text-[10px] border-t border-white/10 bg-[#0d1117]">
+                        {diffLines.map((line, idx) => (
+                          <div
+                            // Diff lines have no stable identity of their own (no library, no ids) —
+                            // order never reshuffles within one computed diff, so the index is safe.
+                            key={idx}
+                            data-testid={`github-panel-diff-line-${line.type}`}
+                            className={cn(
+                              'px-2 whitespace-pre-wrap leading-4',
+                              line.type === 'add' && 'bg-green-500/10 text-green-300',
+                              line.type === 'remove' && 'bg-rose-500/10 text-rose-300',
+                              line.type === 'context' && 'text-gray-500',
+                            )}
+                          >
+                            {line.type === 'add' ? '+ ' : line.type === 'remove' ? '- ' : '  '}{line.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   {!showBranchForm ? (
                     <button

@@ -241,4 +241,159 @@ describe('GitHubConnectPanel', () => {
     expect(screen.getByTestId('github-panel-branch-error')).toHaveTextContent('provider_error');
     expect(screen.queryByTestId('github-panel-branch-success')).toBeNull();
   });
+
+  describe('diff-before-commit preview', () => {
+    /** Loads a real multi-line file so the diff can show a genuine mix of
+     * context / removed / added lines, not just a single-line replace. */
+    async function navigateToMultiLineFile() {
+      lensRunMock.mockResolvedValueOnce(okEnvelope({ repos: [REPO_A] }));
+      render(<GitHubConnectPanel />);
+      await waitFor(() => expect(screen.getByTestId(`github-repo-${REPO_A.fullName}`)).toBeInTheDocument());
+
+      lensRunMock.mockResolvedValueOnce(okEnvelope(TREE));
+      fireEvent.click(screen.getByTestId(`github-repo-${REPO_A.fullName}`));
+      await waitFor(() => expect(screen.getByTestId('github-tree-file-README.md')).toBeInTheDocument());
+
+      lensRunMock.mockResolvedValueOnce(okEnvelope({
+        ...FILE,
+        path: 'README.md',
+        sha: 'blob-readme',
+        content: 'line1\nline2\nline3',
+      }));
+      fireEvent.click(screen.getByTestId('github-tree-file-README.md'));
+      await waitFor(() => expect(screen.getByTestId('github-panel-editor')).toBeInTheDocument());
+    }
+
+    it('shows no diff / an honest "no changes" state before any edit, and after a no-op edit', async () => {
+      await navigateToMultiLineFile();
+
+      // Untouched: no diff yet.
+      expect(screen.getByTestId('github-panel-diff-toggle')).toHaveTextContent('No changes to commit');
+      expect(screen.getByTestId('github-panel-diff-toggle')).toBeDisabled();
+      expect(screen.queryByTestId('github-panel-diff-lines')).toBeNull();
+
+      // Edit, then revert back to the exact original content (no-op edit).
+      fireEvent.change(screen.getByTestId('github-panel-editor'), { target: { value: 'line1\nline2 TEMP\nline3' } });
+      expect(screen.getByTestId('github-panel-diff-toggle')).not.toBeDisabled();
+      fireEvent.change(screen.getByTestId('github-panel-editor'), { target: { value: 'line1\nline2\nline3' } });
+
+      expect(screen.getByTestId('github-panel-diff-toggle')).toHaveTextContent('No changes to commit');
+      expect(screen.getByTestId('github-panel-diff-toggle')).toBeDisabled();
+      expect(screen.queryByTestId('github-panel-diff-lines')).toBeNull();
+      // The commit button independently gates on the same no-op state.
+      expect(screen.getByTestId('github-panel-commit-btn')).toBeDisabled();
+    });
+
+    it('shows real added/removed/context lines for a real edit, only once expanded', async () => {
+      await navigateToMultiLineFile();
+
+      fireEvent.change(screen.getByTestId('github-panel-editor'), {
+        target: { value: 'line1\nline2 changed\nline3\nline4' },
+      });
+
+      const toggle = screen.getByTestId('github-panel-diff-toggle');
+      expect(toggle).toHaveTextContent('+2 / -1');
+      expect(toggle).not.toBeDisabled();
+      // Collapsed by default — no fabricated always-open state.
+      expect(screen.queryByTestId('github-panel-diff-lines')).toBeNull();
+
+      fireEvent.click(toggle);
+      expect(screen.getByTestId('github-panel-diff-lines')).toBeInTheDocument();
+
+      const removed = screen.getAllByTestId('github-panel-diff-line-remove');
+      const added = screen.getAllByTestId('github-panel-diff-line-add');
+      const context = screen.getAllByTestId('github-panel-diff-line-context');
+
+      expect(removed).toHaveLength(1);
+      expect(removed[0]).toHaveTextContent('line2');
+      expect(added).toHaveLength(2);
+      expect(added.map((el) => el.textContent)).toEqual([
+        expect.stringContaining('line2 changed'),
+        expect.stringContaining('line4'),
+      ]);
+      expect(context.map((el) => el.textContent)).toEqual([
+        expect.stringContaining('line1'),
+        expect.stringContaining('line3'),
+      ]);
+
+      fireEvent.click(toggle);
+      expect(screen.queryByTestId('github-panel-diff-lines')).toBeNull();
+    });
+  });
+
+  describe('create-new-file flow', () => {
+    async function navigateToTree() {
+      lensRunMock.mockResolvedValueOnce(okEnvelope({ repos: [REPO_A] }));
+      render(<GitHubConnectPanel />);
+      await waitFor(() => expect(screen.getByTestId(`github-repo-${REPO_A.fullName}`)).toBeInTheDocument());
+
+      lensRunMock.mockResolvedValueOnce(okEnvelope(TREE));
+      fireEvent.click(screen.getByTestId(`github-repo-${REPO_A.fullName}`));
+      await waitFor(() => expect(screen.getByTestId('github-panel-new-file-btn')).toBeInTheDocument());
+    }
+
+    it('rejects a new-file path that collides with an existing tree entry (file or folder)', async () => {
+      await navigateToTree();
+
+      fireEvent.click(screen.getByTestId('github-panel-new-file-btn'));
+      fireEvent.change(screen.getByTestId('github-panel-new-file-path'), { target: { value: 'README.md' } });
+      fireEvent.click(screen.getByTestId('github-panel-new-file-create-btn'));
+
+      expect(screen.getByTestId('github-panel-new-file-error')).toHaveTextContent('README.md');
+      // Never transitions into the editor on a rejected path.
+      expect(screen.queryByTestId('github-panel-editor')).toBeNull();
+      expect(lensRunMock).not.toHaveBeenCalledWith('github', 'file-get', expect.anything());
+
+      // Colliding with an existing FOLDER path is rejected too.
+      fireEvent.change(screen.getByTestId('github-panel-new-file-path'), { target: { value: 'src' } });
+      fireEvent.click(screen.getByTestId('github-panel-new-file-create-btn'));
+      expect(screen.getByTestId('github-panel-new-file-error')).toHaveTextContent('src');
+    });
+
+    it('a non-colliding path opens a real empty editor with no network file-get call', async () => {
+      await navigateToTree();
+
+      fireEvent.click(screen.getByTestId('github-panel-new-file-btn'));
+      fireEvent.change(screen.getByTestId('github-panel-new-file-path'), { target: { value: 'docs/NEW.md' } });
+      lensRunMock.mockClear();
+      fireEvent.click(screen.getByTestId('github-panel-new-file-create-btn'));
+
+      expect(screen.getByTestId('github-panel-editor')).toHaveValue('');
+      expect(screen.getByTestId('github-panel-new-file-badge')).toBeInTheDocument();
+      expect(lensRunMock).not.toHaveBeenCalled(); // no file-get for a brand-new path
+    });
+
+    it('committing a new file calls file-commit with the `sha` key entirely absent from the params object', async () => {
+      await navigateToTree();
+
+      fireEvent.click(screen.getByTestId('github-panel-new-file-btn'));
+      fireEvent.change(screen.getByTestId('github-panel-new-file-path'), { target: { value: 'docs/NEW.md' } });
+      fireEvent.click(screen.getByTestId('github-panel-new-file-create-btn'));
+
+      fireEvent.change(screen.getByTestId('github-panel-editor'), { target: { value: '# New doc\n' } });
+      fireEvent.change(screen.getByTestId('github-panel-commit-message'), { target: { value: 'docs: add new page' } });
+
+      lensRunMock.mockResolvedValueOnce(okEnvelope({
+        commitSha: 'commit-sha-new', fileSha: 'blob-new-1', path: 'docs/NEW.md', htmlUrl: null,
+      }));
+      fireEvent.click(screen.getByTestId('github-panel-commit-btn'));
+
+      await waitFor(() => expect(screen.getByTestId('github-panel-commit-success')).toBeInTheDocument());
+
+      const call = lensRunMock.mock.calls.find(([domain, name]) => domain === 'github' && name === 'file-commit');
+      expect(call).toBeDefined();
+      const params = call?.[2] as Record<string, unknown>;
+      expect(params).toMatchObject({
+        repo: 'octocat/hello-world',
+        path: 'docs/NEW.md',
+        content: '# New doc\n',
+        message: 'docs: add new page',
+      });
+      // The load-bearing assertion: `sha` must be a genuinely ABSENT key,
+      // not merely a falsy/undefined value — this is what tells GH-1 to
+      // create rather than update.
+      expect(params).not.toHaveProperty('sha');
+      expect(Object.keys(params)).not.toContain('sha');
+    });
+  });
 });
