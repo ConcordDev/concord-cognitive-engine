@@ -144,6 +144,46 @@ export function estimateYield(node, toolType = 'hands', toolTier = 1, skillLevel
   return { amount: capped, partial };
 }
 
+// Rich-strike base chance by node quality; skill adds up to +0.10 on top.
+const RICH_STRIKE_CHANCE = { common: 0.05, uncommon: 0.10, rare: 0.15, legendary: 0.25 };
+
+/**
+ * Roll the actual gathered quantity for one gather action.
+ *
+ * `estimateYield` gives the deterministic EXPECTED VALUE; this layers a
+ * symmetric ±25% quantity variance on top (multiplier `0.75 + u·0.5` is
+ * centred on 1.0, so the long-run mean is preserved) plus an occasional
+ * quality/skill-scaled "rich strike" that adds ~50% bonus units on a lucky
+ * hit. Style-matched to `_rolledQuality`: stateless, single `rng()` draws
+ * (variance first, then the rich-strike roll — order is stable so an injected
+ * deterministic rng makes the result exactly predictable).
+ *
+ * @param {number} baseAmount            the estimateYield baseline (>=1)
+ * @param {object} [opts]
+ * @param {string} [opts.nodeQuality]    'common'|'uncommon'|'rare'|'legendary'
+ * @param {number} [opts.skillLevel]     0–100 player/NPC skill
+ * @param {() => number} [opts.rng]      injectable RNG (default Math.random)
+ * @returns {{ amount: number, richStrike: boolean }}
+ */
+export function rollYield(baseAmount, { nodeQuality = 'common', skillLevel = 1, rng = Math.random } = {}) {
+  const base = Math.max(1, Number(baseAmount) || 1);
+
+  // Symmetric quantity variance — EV of (0.75 + u·0.5) is 1.0.
+  const variance = 0.75 + rng() * 0.5;
+  let amount = Math.max(1, Math.round(base * variance));
+
+  // Rich strike — rarity bonus. Chance climbs with node quality; skill adds
+  // up to +0.10 (skillLevel/1000, clamped).
+  const chance = (RICH_STRIKE_CHANCE[nodeQuality] ?? RICH_STRIKE_CHANCE.common)
+    + Math.min(0.10, Math.max(0, Number(skillLevel) || 0) / 1000);
+  const richStrike = rng() < chance;
+  if (richStrike) {
+    amount += Math.max(1, Math.round(base * 0.5));
+  }
+
+  return { amount, richStrike };
+}
+
 // ── Main gather action ────────────────────────────────────────────────────────
 
 /**
@@ -175,7 +215,14 @@ export function gatherFromNode(db, nodeId, gatheredBy, opts = {}) {
     }
   }
 
-  const { amount } = estimateYield(node, toolType, toolTier, skillLevel);
+  // Baseline (expected value) from the deterministic formula, then apply a
+  // symmetric ±25% quantity roll + quality/skill-scaled "rich strike" bonus.
+  // The rolled `amount` feeds the SAME atomic decrement below — depletion,
+  // respawn, and conservation (extracted capped at remaining stock) are all
+  // untouched. `opts.rng` is injectable for deterministic tests.
+  const rng = typeof opts.rng === 'function' ? opts.rng : Math.random;
+  const { amount: baseAmount } = estimateYield(node, toolType, toolTier, skillLevel);
+  const { amount, richStrike } = rollYield(baseAmount, { nodeQuality: node.quality, skillLevel, rng });
   const now = Math.floor(Date.now() / 1000);
 
   // G4 — TOCTOU-safe decrement. The old code SET an absolute quantity computed
@@ -210,6 +257,9 @@ export function gatherFromNode(db, nodeId, gatheredBy, opts = {}) {
     quantity:     extracted,
     quality:      droppedQuality,
     fromNodeType: node.node_type,
+    // Honest observable signal — present only on a lucky roll (the primary
+    // yield already carries the bonus units baked into `extracted`).
+    ...(richStrike ? { richStrike: true } : {}),
   }];
 
   // Trees also drop a small amount of resin/branches
@@ -246,7 +296,7 @@ export function gatherFromNode(db, nodeId, gatheredBy, opts = {}) {
  * NPC gathers from a node (simpler — no tool type, skill is NPC level).
  * Returns the resource_id and amount extracted, or null if no node available.
  */
-export function npcGatherFromNode(db, worldId, npcX, npcZ, npcLevel = 1, preferredResources = []) {
+export function npcGatherFromNode(db, worldId, npcX, npcZ, npcLevel = 1, preferredResources = [], opts = {}) {
   const nearby = getNearbyNodes(db, worldId, npcX, npcZ, 30);
   if (!nearby.length) return null;
 
@@ -256,7 +306,14 @@ export function npcGatherFromNode(db, worldId, npcX, npcZ, npcLevel = 1, preferr
     : nearby;
   const target = preferred[0] || nearby[0];
 
-  const { amount } = estimateYield(target, 'hands', Math.min(3, Math.ceil(npcLevel / 3)), npcLevel * 10);
+  // Same baseline formula + same yield roll as the player path, for parity.
+  // The NPC caller (npc-simulator.js) consumes a single-resource shape, so the
+  // player-only secondary bonus drops (flint/gem/branches) are intentionally
+  // not surfaced here — adding unconsumed fields would be scaffold.
+  const rng = typeof opts.rng === 'function' ? opts.rng : Math.random;
+  const npcSkill = npcLevel * 10;
+  const { amount: baseAmount } = estimateYield(target, 'hands', Math.min(3, Math.ceil(npcLevel / 3)), npcSkill);
+  const { amount } = rollYield(baseAmount, { nodeQuality: target.quality, skillLevel: npcSkill, rng });
   const newQty = Math.max(0, target.quantity_remaining - amount);
   const depleted = newQty === 0;
   const now = Math.floor(Date.now() / 1000);
