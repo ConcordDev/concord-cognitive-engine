@@ -35,9 +35,21 @@ extends Node3D
 ## Bone naming mirrors the Three.js client's gait-pose target list exactly —
 ## concord-frontend/lib/concordia/gait-synthesis.ts:54-71 (`GaitPose` fields)
 ## and concord-frontend/components/world-lens/AvatarSystem3D.tsx:199-219
-## (`BONE_HIERARCHY`) — so a future Godot port of gait synthesis (out of
-## scope for this migration unit) can address the same names without a
-## renaming pass. This unit does not port gait synthesis itself.
+## (`BONE_HIERARCHY`) — this is what lets Migration M2's `apply_gait()`
+## (below) address leg sockets/bones by the same names with no renaming pass.
+##
+## ── Migration M2 — procedural gait + foot IK ─────────────────────────────────
+## `apply_gait(state, speed, delta)` drives the two leg joints per frame: it
+## advances a per-rig gait phase from real distance travelled
+## (gait_solver.gd#gait_phase), derives a per-foot effector target
+## (gait_solver.gd#foot_targets), solves hip/knee angles analytically
+## (two_bone_ik.gd#solve_two_bone), and applies them to whatever REAL leg
+## geometry exists right now — a matching Skeleton3D bone (once a GLB has
+## resolved) or the primitive placeholder's flat Node3D socket, via
+## `_apply_bone_angle()`. All gait/IK MATH is pure and lives in the two
+## sibling files; this class only does the engine-gated lookup + apply, and
+## — like everything else in this file — that application has never been
+## seen on a real skeleton (see VISUAL_QA.md).
 
 signal rig_ready(source: String)  # "glb" or "primitive"
 signal glb_load_failed(reason: String)
@@ -55,6 +67,15 @@ var _current_state: String = "idle"
 var _current_blend: Dictionary = {}
 var _resolver: Node = null
 var _loader: Node = null
+
+## Cumulative horizontal distance (metres) fed into gait_solver.gd's
+## distance-driven phase advance. Reset is never needed — gait_phase() wraps
+## via fposmod, so an ever-growing accumulator is harmless (matches
+## advanceGaitPhase's own phase-only wraparound in the TS source; this rig
+## just accumulates distance instead of phase directly, which is equivalent
+## and lets gait_phase() stay a pure function of total distance rather than
+## needing a running phase argument threaded through every call).
+var _gait_distance: float = 0.0
 
 
 func _ready() -> void:
@@ -101,6 +122,74 @@ func get_bone_node(bone_name: String) -> Node3D:
 	if _primitive_root == null:
 		return null
 	return _primitive_root.get_node_or_null(NodePath(bone_name)) as Node3D
+
+
+## Advance procedural leg gait for this frame and apply it to whatever real
+## leg geometry currently exists. `state` is an animation_state_machine.gd
+## locomotion/override label; `speed` is horizontal m/s; `delta` is the
+## frame time in seconds.
+##
+## Idle plants both feet — no phase advance, no swing, no lift (the neutral
+## standing pose from bone_specs() is used as the effector target directly).
+## Any other state (walk/run/jump/fall/land, or a one-shot override action)
+## advances the SAME ground-gait cycle; this unit does not author distinct
+## airborne leg poses for jump/fall — an honest simplification, not a claim
+## that a jumping avatar's legs look correct, see VISUAL_QA.md.
+func apply_gait(state: String, speed: float, delta: float) -> void:
+	var left_offset := Vector3.ZERO
+	var right_offset := Vector3.ZERO
+
+	if state != "idle":
+		var gait_solver := load("res://avatar/gait_solver.gd")
+		_gait_distance += speed * delta
+		var phase: float = gait_solver.gait_phase(_gait_distance, speed)
+		var stride_len: float = gait_solver.stride_length_for_speed(speed)
+		var targets: Dictionary = gait_solver.foot_targets(phase, speed, stride_len)
+		left_offset = targets["left"]
+		right_offset = targets["right"]
+
+	_solve_and_apply_leg("leftUpperLeg", "leftLowerLeg", "leftFoot", left_offset)
+	_solve_and_apply_leg("rightUpperLeg", "rightLowerLeg", "rightFoot", right_offset)
+
+
+## Solve one leg's hip/knee angles via two_bone_ik.gd and apply them.
+## Segment lengths are DERIVED from bone_specs()'s own offsets (never
+## hardcoded separately) so they can never drift out of sync with the
+## placeholder's actual joint spacing.
+func _solve_and_apply_leg(
+		hip_name: String, knee_name: String, foot_name: String, foot_offset: Vector3) -> void:
+	var two_bone_ik := load("res://avatar/two_bone_ik.gd")
+	var specs := AvatarRig.bone_specs()
+
+	var hip_pos: Vector3 = AvatarRig.bone_world_offset(specs, hip_name)
+	var knee_pos: Vector3 = AvatarRig.bone_world_offset(specs, knee_name)
+	var neutral_foot_pos: Vector3 = AvatarRig.bone_world_offset(specs, foot_name)
+
+	var upper_len: float = (knee_pos - hip_pos).length()
+	var lower_len: float = (neutral_foot_pos - knee_pos).length()
+	var target: Vector3 = neutral_foot_pos + foot_offset
+
+	var solved: Dictionary = two_bone_ik.solve_two_bone(hip_pos, upper_len, lower_len, target)
+
+	_apply_bone_angle(hip_name, float(solved["hip_angle"]))
+	_apply_bone_angle(knee_name, float(solved["knee_angle"]))
+
+
+## Set a bone/socket's local sagittal-plane (X-axis) rotation to `angle`
+## radians. Prefers a real named Skeleton3D bone (once a GLB has resolved
+## and repointed `_skeleton` — see `_on_glb_loaded`); falls back to the
+## primitive placeholder's flat Node3D socket (`get_bone_node`) so the
+## immediately-visible capsule rig moves too. No-op if neither exists yet
+## (e.g. mid-resolve) — never fabricates a bone that isn't really there.
+func _apply_bone_angle(bone_name: String, angle: float) -> void:
+	if _skeleton != null:
+		var idx := _skeleton.find_bone(bone_name)
+		if idx >= 0:
+			_skeleton.set_bone_pose_rotation(idx, Quaternion(Vector3.RIGHT, angle))
+			return
+	var socket := get_bone_node(bone_name)
+	if socket != null:
+		socket.rotation.x = angle
 
 
 func _build_primitive() -> void:

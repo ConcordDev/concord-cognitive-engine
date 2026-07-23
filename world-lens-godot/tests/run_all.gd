@@ -19,6 +19,7 @@ const TestCharacterController := preload("res://tests/test_character_controller.
 const TestDtuPropRenderer := preload("res://tests/test_dtu_prop_renderer.gd")
 const TestDtuPropInteraction := preload("res://tests/test_dtu_prop_interaction.gd")
 const TestAnimationStateMachine := preload("res://tests/test_animation_state_machine.gd")
+const TestGaitSolver := preload("res://tests/test_gait_solver.gd")
 
 
 func _init() -> void:
@@ -30,6 +31,7 @@ func _init() -> void:
 		"DtuPropRenderer": TestDtuPropRenderer.run(),
 		"DtuPropInteraction": TestDtuPropInteraction.run(),
 		"AnimationStateMachine": TestAnimationStateMachine.run(),
+		"GaitSolver": TestGaitSolver.run(),
 	}
 
 	var all_ok := true

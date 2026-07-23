@@ -189,5 +189,55 @@ Nothing below has been asserted anywhere else in the repo.
 
 ---
 
+### Procedural gait + foot IK (Migration M2 — `avatar/gait_solver.gd` /
+`avatar/two_bone_ik.gd` / `avatar_rig.gd#apply_gait`)
+
+The phase/foot-target/IK-angle MATH is pure and numerically cross-checked
+(the two_bone_ik round-trip and edge-case-clamp claims were independently
+verified with an equivalent standalone Python re-implementation of the same
+formulas before being committed to GDScript, precisely because the real
+engine can't run these tests here) — but nothing about how it *looks* on an
+actual skeleton has been seen:
+
+- [ ] `apply_gait()`'s per-frame walk/run leg motion, applied to the
+      primitive placeholder's flat Node3D sockets via `_apply_bone_angle`,
+      has never been rendered — whether the hip/knee angles this produces
+      read as a believable walk cadence (vs. too stiff, too bouncy, or
+      obviously not touching the ground on contact) is completely unproven.
+      The pure math is unit-tested (`tests/test_gait_solver.gd`); nothing
+      about how it looks in motion is.
+- [ ] `LIFT_HEIGHT_M = 0.12` (`gait_solver.gd`) — the swing-phase foot
+      clearance height, which has NO Three.js source to mirror (see that
+      file's own header note) — is an unverified reasoned guess; whether it
+      reads as a natural step versus a stomp or a shuffle is unknown.
+- [ ] `PHASE_STRIDE_LEN_M = 0.75`, ported byte-for-byte from
+      gait-synthesis.ts's `BODY_STRIDE_LENGTHS.average`, governed a
+      TOTALLY DIFFERENT rendering pipeline there (FK bone rotation, not an
+      IK effector target) — whether the same number still "reads right" once
+      it's driving foot-target IK on a physically different rig (this
+      port's primitive capsule sockets, not the Three.js client's actual
+      skinned mesh) has never been checked side by side.
+- [ ] Skeleton3D bone-name lookup in `_apply_bone_angle` (the branch that
+      fires once a real GLB has resolved and repointed `_skeleton`) has
+      never run against an actual named `Skeleton3D` — whether a real
+      imported humanoid GLB's bone names line up with `bone_specs()`'s
+      naming (`leftUpperLeg`/`leftLowerLeg`/`leftFoot`/etc.) at all is
+      unknown; a mismatch would silently fall through to the primitive-
+      socket branch with no error (by design — see the function's own
+      "never fabricates a bone that isn't really there" comment — but that
+      also means a real name mismatch would be silent, not a loud failure,
+      until someone watches it).
+- [ ] `two_bone_ik.gd`'s sagittal-plane simplification (X always ignored)
+      has never been checked against a GLB rig that might expect real
+      3-axis hip rotation (abduction/adduction, axial rotation) for a
+      convincing walk from side-on camera angles, vs. the head-on/45-degree
+      angles this simplification was reasoned against.
+- [ ] `apply_gait`'s "idle plants both feet, everything else runs the same
+      ground-gait cycle" simplification (no distinct jump/fall/land leg
+      pose) has never been watched during an actual jump — whether the legs
+      visibly keep walking mid-air (which would look wrong) is unverified.
+
+---
+
 Until every box above is checked on a real machine, treat the Godot client as
 **structurally complete but visually unproven.**
