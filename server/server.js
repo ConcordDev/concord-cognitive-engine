@@ -8781,7 +8781,7 @@ function emitToWorld(worldId, event, payload) {
 // client — see docs/GODOT_PROTOCOL.md §4 "play_effect").
 globalThis._concordEmitToWorld = emitToWorld;
 
-function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "" } = {}) {
+function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "", worldId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
     ...payload,
@@ -8855,6 +8855,21 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
     } else if (orgId) {
       REALTIME.io.to(`org:${orgId}`).emit(event, enrichedPayload);
       // Same honest no-op as sessionId above — no org:* room in the gateway.
+    } else if (worldId) {
+      // DET-C batch 6 — the missing world-scoping tier. Room-per-world
+      // events (combat:hit et al) previously fell through to the global
+      // `else` branch below and broadcast to EVERY connected socket
+      // regardless of world — a real privacy/scale bug on the single
+      // highest-traffic PvP event. This tier mirrors `emitToWorld`'s room
+      // grammar (`world:<id>`) and Godot-mirror behavior exactly, but keeps
+      // routing through `realtimeEmit` so callers keep every other side
+      // effect the plain global path already had — achievement-bridge
+      // dispatch (`achievement-bridge.js` listens for `combat:hit`),
+      // timeline persistence, and dev-mode shape validation. Using the
+      // standalone `emitToWorld` helper instead would have silently
+      // dropped all three.
+      REALTIME.io.to(`world:${worldId}`).emit(event, enrichedPayload);
+      try { _godotGatewayEmitter?.emitToRoom(`world:${worldId}`, event, enrichedPayload); } catch { /* survive */ }
     } else {
       REALTIME.io.emit(event, enrichedPayload);
       // Godot gateway mirror — global broadcast to every authenticated client.
@@ -9894,6 +9909,20 @@ async function tryInitWebSockets(server) {
         // that instead. Best-effort — never blocks the hit broadcast.
         let _hitWorldId = "concordia-hub";
         try { _hitWorldId = cityPresence.getUserPosition?.(userId)?.worldId ?? "concordia-hub"; } catch { /* world lookup best-effort */ }
+        // DET-C batch 6 — this payload has carried a `worldId` field since
+        // Wave 4 (comment above), but the emit itself was still routed
+        // through realtimeEmit's global `else` branch (no sessionId/orgId/
+        // userId means every socket, in every world, received every PvP
+        // hit). `worldId` in the payload told a client which world a hit
+        // came from; it did nothing to stop the leak to clients in OTHER
+        // worlds. Passing `{ worldId: _hitWorldId }` here routes the emit
+        // through realtimeEmit's new world-room tier (`world:<id>`), which
+        // is scoped exactly like the sibling `combat:impact` emit below and
+        // the HTTP-route combat:impact in routes/worlds.js — while still
+        // preserving the achievement-bridge dispatch, timeline persistence,
+        // and dev-mode shape validation that a bare `emitToWorld` call would
+        // have silently dropped (combat:hit is in achievement-bridge.js's
+        // RELEVANT_EVENTS set).
         realtimeEmit("combat:hit", {
           attackerId: userId,
           targetId: data.targetId,
@@ -9916,7 +9945,7 @@ async function tryInitWebSockets(server) {
           style: data.style || null,
           // T3.1 — canonical catalog key for the client per-skill descriptor.
           skillKey: skillKeyForSkill({ element: data.element, weapon: data.weapon, kind: data.weapon, name: data.skillId }),
-        });
+        }, { worldId: _hitWorldId });
 
         // PvP combat FEEL — parity with the NPC HTTP route's T1.4b
         // `combat:impact` (closes POLISH_AUDIT "PvP combat has no
@@ -9934,6 +9963,10 @@ async function tryInitWebSockets(server) {
               await import("./lib/combat/impact-feel.js");
             const _heavy = data.heavy === true || data.style === "attack-heavy";
             const _world = _hitWorldId;
+            // DET-C batch 6 — same leak as combat:hit above: this carried
+            // `worldId: _world` in the payload but was never actually
+            // scoped to the world room, so it broadcast to every connected
+            // socket. Route through the same new realtimeEmit worldId tier.
             realtimeEmit("combat:impact", buildImpactPayload({
               worldId: _world,
               attackerId: userId,
@@ -9946,7 +9979,7 @@ async function tryInitWebSockets(server) {
               isKill: _kill,
               targetPosition: _hitTargetPos,
               attackerPosition: _hitAttackerPos,
-            }));
+            }), { worldId: _world });
           }
         } catch { /* combat:impact feel emit best-effort — never blocks combat */ }
 

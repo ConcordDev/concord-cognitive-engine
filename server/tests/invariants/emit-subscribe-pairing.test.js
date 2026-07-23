@@ -56,17 +56,29 @@ const SERVER_ONLY_ALLOWLIST = new Set([
 // line below. To add an entry: add a same-PR fix or wire a subscriber
 // instead — the baseline isn't a hide-yet-ship pattern, it's a debt list.
 const KNOWN_DEAD_BASELINE = new Set([
-  "app:created",                    // apps lens — author flow has no realtime preview yet
   "chat:update",                    // chat composer typing indicator — UI uses presence pulse
   "city:npcs",                      // city-presence sync — frontend pulls via REST, not socket
   "emergent:activity",              // emergent-engine summary — replaced by activity:new
-  "graph:update",                   // knowledge graph diff — graph view pulls on-demand
-  "pain:avoidance_created",         // pain cortex internal — used for cross-module triggers
-  "qualia:policy",                  // qualia engine — internal substrate event, no UI surface
-  "timeline:post",                  // public timeline — frontend uses fast-path REST refresh
-  "world:action",                   // generic world event — superseded by typed channels
+  // DET-C batch 4 (2026-07-23) found these two as PHANTOM shapes — event-shapes.js
+  // documents each with ZERO real realtimeEmit() call sites AND zero frontend
+  // subscribers (a documented-but-never-built contract, not a live broadcast that
+  // lost its listener). See server/lib/event-shapes.js's "npc:dialogue" / "gameJuice:
+  // fanfare" entries for the full ENGINEERING-triage rationale (real feature, real
+  // gap, flagged for a human to decide build-vs-remove) — added here by DET-C batch 6
+  // so this invariant reflects that decision instead of failing on it.
+  "gameJuice:fanfare",               // documented-but-unbuilt broadcast-fanfare-to-nearby-players shape
+  "npc:dialogue",                    // documented-but-unbuilt broadcast-dialogue-tree-open shape
+  "graph:update",                    // knowledge graph diff — graph view pulls on-demand
+  "qualia:policy",                   // qualia engine — internal substrate event, no UI surface
+  "world:action",                    // generic world event — superseded by typed channels
   // "world:broadcast" + "world:loot-node" removed 2026-06-26: debt cleared — both now have real
   // frontend subscribers (wired into EmergentEventFeed during the orphan-emit wiring pass).
+  // "app:created" + "pain:avoidance_created" removed (DET-C batch 6, 2026-07-23): debt cleared
+  // — both are wired via EmergentEventFeed.tsx's channel-array indirection (verified: `grep -n
+  // "'app:created'\|'pain:avoidance_created'" concord-frontend/components/world/
+  // EmergentEventFeed.tsx`).
+  // "timeline:post" removed (DET-C batch 6, 2026-07-23): debt cleared — genuinely wired via a
+  // direct `subscribe('timeline:post', ...)` call in concord-frontend/app/lenses/feed/page.tsx:380.
   "world:notification",             // generic world toast — replaced by per-domain toasts
 ]);
 
