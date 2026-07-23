@@ -23,6 +23,19 @@
 //                          built for it. See server/domains/law.js
 //                          (contract-redline-init/-link) and
 //                          concord-frontend/components/law/ContractRedline.tsx.
+//   - 'workspace:room'  — MU2 (V1.1 R6) Shared Workspace Room: a small
+//                          co-worked list of DTU references, keyed by room
+//                          id. The doc holds a single `Y.Array` (key
+//                          "dtuRefs") of plain DTU-reference objects;
+//                          members push/delete entries with real CRDT ops.
+//                          No new sync mechanism was needed — `attachYjsSync`
+//                          below is schema-agnostic (it relays opaque
+//                          Y.Doc update bytes, whatever shared type they
+//                          encode), so a Y.Array converges through the
+//                          exact same yjs:sync-request/yjs:update relay a
+//                          Y.Text document does. Presence reuses the MU1
+//                          Awareness layer unchanged. See
+//                          concord-frontend/components/workspace/SharedWorkspaceRoom.tsx.
 //
 // Persistence is in-process (`Y.Doc` lives in a Map). When the server
 // restarts the doc state is lost — for now this matches the existing
@@ -57,6 +70,7 @@ export const KNOWN_SCOPES = Object.freeze({
   CODE_LIVESHARE: "code:liveshare",
   COLLAB_DOC: "collab:doc",
   LAW_CONTRACT: "law:contract",
+  SHARED_WORKSPACE: "workspace:room",
 });
 
 // scope → Map<docId, Y.Doc>
