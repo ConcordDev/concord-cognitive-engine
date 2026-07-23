@@ -3872,8 +3872,28 @@ export default function WorldLensPage() {
         detail: { entityId: data.userId, animation: data.active ? 'block' : 'idle' },
       }));
     };
+    // Server-authoritative "you dodged that" feedback — routes/worlds.js's
+    // NPC-attack path emits this when the target's i-frames absorbed the
+    // hit (world-room broadcast; every nearby client receives it). Only
+    // the evading player themselves gets the billboard — DamageBillboard's
+    // 'dodge' kind existed already but nothing dispatched it until now.
+    const handleNpcAttackEvaded = (msg: unknown) => {
+      const data = msg as { userId?: string } | undefined;
+      if (!data?.userId || data.userId !== playerAvatar.id) return;
+      const pos = (window as unknown as { __concordiaPlayerPos?: { x: number; y: number; z: number } }).__concordiaPlayerPos;
+      if (!pos) return;
+      window.dispatchEvent(new CustomEvent('concordia:damage-billboard', {
+        detail: {
+          position: { x: pos.x, y: (pos.y ?? 0) + 1.6, z: pos.z },
+          value: 'DODGE',
+          kind: 'dodge',
+          ttlMs: 1000,
+        },
+      }));
+    };
     worldSocket.on('combat:attack:ack', handleCombatAck);
     worldSocket.on('combat:hit', handleCombatHit);
+    worldSocket.on('combat:npc-attack-evaded', handleNpcAttackEvaded);
     worldSocket.on('combat:dodge:ack', handleCombatDodgeAck);
     worldSocket.on('combat:block:ack', handleCombatBlockAck);
     worldSocket.on('combat:kill', handleCombatKill);
@@ -3980,6 +4000,7 @@ export default function WorldLensPage() {
       worldSocket.off('player:move:nack', handleMoveNack);
       worldSocket.off('combat:attack:ack', handleCombatAck);
       worldSocket.off('combat:hit', handleCombatHit);
+      worldSocket.off('combat:npc-attack-evaded', handleNpcAttackEvaded);
       worldSocket.off('combat:dodge:ack', handleCombatDodgeAck);
       worldSocket.off('combat:block:ack', handleCombatBlockAck);
       worldSocket.off('combat:kill', handleCombatKill);

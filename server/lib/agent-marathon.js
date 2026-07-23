@@ -97,6 +97,29 @@ export function getMarathon(db, sessionId) {
  * @param {object} [args.opts]
  * @returns {Promise<{ok, status, newTurns, totalTurns, error?}>}
  */
+// Extracted so it's directly unit-testable (tickMarathon's real path runs
+// through runAgentLoop, which needs live brain infra to reach this point).
+// Scoped to the session owner's own `user:<id>` room via the 3rd realtimeEmit
+// options argument — a bare 2-arg call silently falls through to a GLOBAL
+// broadcast in server.js#realtimeEmit, leaking every user's marathon
+// session_id/title to every connected socket. Best-effort; never throws.
+export function emitMarathonStatus(session, sessionId, nextStatus, totalTurns) {
+  try {
+    const re = globalThis._concordRealtimeEmit;
+    if (typeof re === "function") {
+      re("marathon:status", {
+        actor_kind: "marathon",
+        actor_id: sessionId,
+        session_id: sessionId,
+        user_id: session.user_id,
+        status: nextStatus,
+        total_turns: totalTurns,
+        title: session.title,
+      }, { userId: session.user_id });
+    }
+  } catch { /* never block on telemetry */ }
+}
+
 export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }) {
   if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
   const session = db.prepare(`SELECT * FROM agent_marathon_sessions WHERE id = ?`).get(sessionId);
@@ -212,19 +235,8 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   // Best-effort; the marathon itself succeeds whether or not the
   // initiative engine is wired.
   if (nextStatus === "completed" || nextStatus === "paused") {
+    emitMarathonStatus(session, sessionId, nextStatus, totalTurns);
     try {
-      const re = globalThis._concordRealtimeEmit;
-      if (typeof re === "function") {
-        re("marathon:status", {
-          actor_kind: "marathon",
-          actor_id: sessionId,
-          session_id: sessionId,
-          user_id: session.user_id,
-          status: nextStatus,
-          total_turns: totalTurns,
-          title: session.title,
-        });
-      }
       // Direct insert into initiative engine table if present — the
       // bell polls /api/initiative/pending which reads from there.
       const trigger = nextStatus === "completed" ? "pending_work" : "reflective_followup";

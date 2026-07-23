@@ -13,11 +13,12 @@
  * wiring so the bell lights up on completion.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Hammer, Play, Pause, X, ChevronRight, CheckCircle2, AlertTriangle, Loader2,
   Plus,
 } from 'lucide-react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface Session {
   id: string;
@@ -111,6 +112,24 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
     const id = setInterval(() => loadDetail(selectedId), 10_000);
     return () => clearInterval(id);
   }, [selectedId, loadDetail]);
+
+  // Real 'marathon:status' consumer — server.js#realtimeEmit now scopes
+  // this to the session owner's own room (agent-marathon.js's completion/
+  // pause hook passes { userId } as of DET-C batch 5; it previously
+  // fell through to a global broadcast with no subscriber at all). Reacts
+  // instantly to a marathon completing/pausing instead of waiting up to
+  // the 15s list poll / 10s detail poll above.
+  const selectedIdRef = useRef<string | null>(null);
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
+  useEffect(() => {
+    const off = subscribe<{ session_id?: string }>('marathon:status', (msg) => {
+      refresh();
+      if (msg?.session_id && msg.session_id === selectedIdRef.current) {
+        loadDetail(msg.session_id);
+      }
+    });
+    return off;
+  }, [refresh, loadDetail]);
 
   const startMarathon = async () => {
     if (!newGoal.trim() || busy) return;

@@ -69,3 +69,25 @@ describe('faction war banner — listener waited on a CustomEvent bridged from a
     expect(world).not.toMatch(/['"]faction-war:declared['"]/);
   });
 });
+
+describe('combat:npc-attack-evaded — DET-C batch 5: real server broadcast (routes/worlds.js i-frame path), zero frontend consumer', () => {
+  const world = read('app', 'lenses', 'world', 'page.tsx');
+
+  it('the world lens now LISTENS for combat:npc-attack-evaded (the missing consumer)', () => {
+    expect(world).toMatch(/worldSocket\.on\(\s*['"]combat:npc-attack-evaded['"]/);
+    expect(world).toMatch(/worldSocket\.off\(\s*['"]combat:npc-attack-evaded['"]/);
+  });
+
+  it('only reacts when the evading userId is the local player (world-room broadcast reaches everyone)', () => {
+    const idx = world.indexOf('handleNpcAttackEvaded');
+    const region = world.slice(idx, idx + 700);
+    expect(region).toMatch(/data\.userId\s*!==\s*playerAvatar\.id/);
+  });
+
+  it('feeds the pre-existing but previously-unused DamageBillboard "dodge" kind', () => {
+    const idx = world.indexOf('handleNpcAttackEvaded');
+    const region = world.slice(idx, idx + 700);
+    expect(region).toMatch(/concordia:damage-billboard/);
+    expect(region).toMatch(/kind:\s*['"]dodge['"]/);
+  });
+});

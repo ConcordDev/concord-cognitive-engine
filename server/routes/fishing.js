@@ -26,7 +26,12 @@ export default function createFishingRouter({ requireAuth, db, realtimeEmit }) {
         biome: biome ? String(biome).slice(0, 32) : "water",
       });
       if (result.ok && realtimeEmit) {
-        try { realtimeEmit("fishing:cast", { userId: req.user.id, sessionId: result.sessionId, biteAtEpochMs: result.biteAtEpochMs }); }
+        // Scoped to the casting user's own `user:<id>` room — a bare call
+        // (no third opts arg) silently defaults to a GLOBAL broadcast
+        // (server.js#realtimeEmit's `else` branch), leaking every player's
+        // sessionId to every other connected socket. Same signature-bug
+        // shape found and fixed elsewhere this session.
+        try { realtimeEmit("fishing:cast", { userId: req.user.id, sessionId: result.sessionId, biteAtEpochMs: result.biteAtEpochMs }, { userId: req.user.id }); }
         catch { /* ok */ }
         // Schedule the bite emit. Fire-and-forget: realtimeEmit
         // shouldn't throw, but we wrap in try/catch in case the io
@@ -36,7 +41,7 @@ export default function createFishingRouter({ requireAuth, db, realtimeEmit }) {
           try {
             const s = getSession(result.sessionId);
             if (s && !s.resolved) {
-              realtimeEmit("fishing:bite", { userId: req.user.id, sessionId: result.sessionId });
+              realtimeEmit("fishing:bite", { userId: req.user.id, sessionId: result.sessionId }, { userId: req.user.id });
             }
           } catch { /* ok */ }
         }, wait);

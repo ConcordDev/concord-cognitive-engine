@@ -25,6 +25,8 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { cn } from '@/lib/utils';
+import { subscribe } from '@/lib/realtime/socket';
+import { showToast } from '@/components/common/Toasts';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -219,6 +221,21 @@ export function PortfolioWorkbench() {
     loadSyncs();
     loadDeliveries();
   }, [loadHoldings, loadStaking, loadSyncs, loadDeliveries]);
+
+  // Real 'crypto:alert' consumer — server.js#realtimeEmit scopes this to
+  // the triggering user's own room (crypto.js#alert-deliver already passes
+  // { userId }, so this was never a privacy-scoping bug, just a missing
+  // frontend subscriber). Surfaces a toast + refreshes the delivered-alerts
+  // list live, so a crossing alert doesn't require the manual "Check &
+  // deliver" click to become visible if it's already been triggered
+  // elsewhere (e.g. a future background alert-check pass).
+  useEffect(() => {
+    const off = subscribe<{ message?: string; symbol?: string }>('crypto:alert', (note) => {
+      showToast('info', note?.message || `${note?.symbol || 'Alert'} threshold crossed.`);
+      loadDeliveries();
+    });
+    return off;
+  }, [loadDeliveries]);
 
   // Live price stream — polls price-stream every 30s while enabled.
   useEffect(() => {

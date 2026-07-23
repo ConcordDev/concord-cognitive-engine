@@ -555,6 +555,10 @@ export default function AvatarSystem3D({
   const stridePhaseRef = useRef(0);
   // Terrain elevation sampler — set when concordia:terrain-ready fires
   const elevationRef = useRef<((x: number, z: number) => number) | null>(null);
+  // Throttle for the concordia:exertion broadcast (EmbodiedParticlesBridge's
+  // cold-breath consumer) — real sprint/stamina state, dispatched at ~2Hz
+  // rather than every frame.
+  const lastExertionDispatchRef = useRef(0);
 
   // Secondary physics + facial controllers
   const secondaryPhysicsRef = useRef<SecondaryPhysicsManager | null>(null);
@@ -2644,6 +2648,17 @@ export default function AvatarSystem3D({
           recoverStamina(physics, delta, false, false);
         }
         onStaminaChange?.(physics.currentStamina, physics.maxStamina);
+
+        // Real exertion signal for EmbodiedParticlesBridge's cold-breath —
+        // derived from the same sprint/stamina state computed above, never
+        // a fabricated number. Throttled to ~2Hz (window events are cheap
+        // but the frame loop runs at display refresh rate).
+        if (now - lastExertionDispatchRef.current > 500) {
+          lastExertionDispatchRef.current = now;
+          const staminaRatio = physics.maxStamina > 0 ? physics.currentStamina / physics.maxStamina : 1;
+          const exertionLevel = Math.min(3, 1 + (isRunning ? 1.2 : 0) + (1 - staminaRatio) * 0.8);
+          window.dispatchEvent(new CustomEvent('concordia:exertion', { detail: { level: exertionLevel } }));
+        }
 
         let moveX = 0;
         let moveZ = 0;
