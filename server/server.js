@@ -988,6 +988,17 @@ registerHeartbeat("npc-routine-cycle", {
   worker: true,
 });
 
+// BD#16 — living-hub presence. Every 10 ticks (~2.5min) each NPC's current
+// routine block picks a purpose-tagged building to inhabit and (when present)
+// a matching DTU-prop to use, so the authored hub reads as lived-in rather
+// than a static facade. Bounded per-world, honest no-op when no city-layout /
+// buildings are seeded. Kill-switch: CONCORD_NPC_BUILDING_AFFINITY=0.
+import { runNpcBuildingAffinityCycle } from "./emergent/npc-building-affinity-cycle.js";
+registerHeartbeat("npc-building-affinity-cycle", {
+  frequency: 10,
+  handler: runNpcBuildingAffinityCycle,
+});
+
 // Sprint C / Track A4 — npc schemes / plots. Every 30 ticks (~7.5min)
 // advances scheme phases AND proposes new schemes for high-stress NPCs.
 // Kill-switch: CONCORD_NPC_SCHEMES=0.
