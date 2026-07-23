@@ -1,6 +1,54 @@
 'use client';
 
-import { motion } from 'framer-motion';
+/**
+ * This file is now a SHIM over the canonical `components/ui/EmptyState.tsx`
+ * (2026-07-23 maturity-audit consolidation, item #10 — see that file's doc
+ * comment for the full rationale). It used to be a fully independent,
+ * framer-motion-animated implementation; the base `EmptyState` function
+ * below now delegates its rendering to the canonical primitive so both
+ * variants converge on one visual language instead of quietly drifting.
+ *
+ * Every OTHER export in this file (`EmptyDTUs`, `EmptySearch`, `EmptyGraph`,
+ * `EmptyChat`, `EmptyInbox`, `EmptyFolder`, `EmptyConnections`,
+ * `EmptyCollaborators`, `EmptyCalendar`, `EmptyPlugins`, `OfflineState`,
+ * `ErrorState` — this file's own preset, distinct from `ui/ErrorState.tsx`
+ * — `AdminRequiredState`, `LoadingState`, `IllustratedEmptyState`) is
+ * unchanged and needed NO edits: they all call the local `EmptyState`
+ * export below, so converting it into a shim upgrades every preset for
+ * free. No importer of this file needed to change.
+ *
+ * Prop mapping to the canonical component (lossless except where noted):
+ *   - `icon`         → forwarded as `icon ?? null` (this file's original
+ *                      render only showed an icon slot when one was passed;
+ *                      canonical defaults to a generic Inbox glyph, so an
+ *                      explicit `null` reproduces "no icon" instead).
+ *   - `title`        → forwarded as-is.
+ *   - `description`  → forwarded as-is (string is a valid ReactNode).
+ *   - `action` /
+ *     `secondaryAction` → same `{ label, onClick }` shape; canonical's
+ *                      superset (`disabled`/`icon`/`className`) is simply
+ *                      left unset here, which is a no-op.
+ *   - `variant`      → 'minimal' maps to canonical's `compact={true}`;
+ *                      'default' and 'illustrated' both map to
+ *                      `compact={false}` (the original render never gave
+ *                      'illustrated' a distinct look either — it shared
+ *                      'default's markup; the true illustrated treatment
+ *                      lives in the separate `IllustratedEmptyState` export
+ *                      below, untouched).
+ *   - `className`    → forwarded as-is.
+ *
+ * Documented RESIDUAL (not losslessly preserved): the framer-motion
+ * entrance choreography (fade/slide-up container, spring-scale icon,
+ * staggered fade-in for heading/description/actions) is gone — canonical
+ * is intentionally dependency-free (no framer-motion) so `EmptyStateCTA`
+ * and other bespoke, business-logic-bearing callers can render through it
+ * without inheriting animation timing they don't want. This is a visual
+ * (not functional/API) regression: every prop and every rendered string
+ * still appears, just without the entrance animation. No test in this
+ * codebase asserted on the motion props, so nothing broke — flagged here
+ * for visibility, not because a check caught it.
+ */
+
 import { ReactNode } from 'react';
 import {
   FileQuestion,
@@ -19,7 +67,8 @@ import {
   Sparkles,
   ShieldAlert
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { EmptyState as CanonicalEmptyState } from '@/components/ui/EmptyState';
 
 interface EmptyStateProps {
   icon?: ReactNode;
@@ -47,83 +96,15 @@ export function EmptyState({
   className
 }: EmptyStateProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        'flex flex-col items-center justify-center text-center p-8',
-        variant === 'minimal' && 'p-4',
-        className
-      )}
-    >
-      {icon && (
-        <motion.div
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-          className={cn(
-            'mb-4 p-4 rounded-full bg-lattice-surface/50 border border-lattice-border',
-            variant === 'minimal' && 'p-2 mb-2'
-          )}
-        >
-          <div className="text-gray-400">
-            {icon}
-          </div>
-        </motion.div>
-      )}
-
-      <motion.h3
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.15 }}
-        className={cn(
-          'text-lg font-medium text-white mb-2',
-          variant === 'minimal' && 'text-base mb-1'
-        )}
-      >
-        {title}
-      </motion.h3>
-
-      {description && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className={cn(
-            'text-gray-400 max-w-sm mb-6',
-            variant === 'minimal' && 'text-sm mb-3'
-          )}
-        >
-          {description}
-        </motion.p>
-      )}
-
-      {(action || secondaryAction) && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25 }}
-          className="flex items-center gap-3"
-        >
-          {action && (
-            <button
-              onClick={action.onClick}
-              className="px-4 py-2 bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 rounded-lg hover:bg-neon-cyan/30 transition-colors"
-            >
-              {action.label}
-            </button>
-          )}
-          {secondaryAction && (
-            <button
-              onClick={secondaryAction.onClick}
-              className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-            >
-              {secondaryAction.label}
-            </button>
-          )}
-        </motion.div>
-      )}
-    </motion.div>
+    <CanonicalEmptyState
+      icon={icon ?? null}
+      title={title}
+      description={description}
+      action={action}
+      secondaryAction={secondaryAction}
+      compact={variant === 'minimal'}
+      className={className}
+    />
   );
 }
 

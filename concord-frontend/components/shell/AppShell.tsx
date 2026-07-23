@@ -15,7 +15,7 @@ import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { CookieConsent } from '@/components/common/CookieConsent';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
-import { OfflineFallback } from '@/components/pwa/OfflineFallback';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import SyncIndicator from '@/components/pwa/SyncIndicator';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
 import { MobileNav } from '@/components/shell/MobileNav';
@@ -347,7 +347,7 @@ export function AppShell({ children }: AppShellProps) {
           }}
         />
       )}
-      <OfflineFallback />
+      <OfflineBanner />
       <InstallPrompt />
       <SyncIndicator />
       <CookieConsent />
