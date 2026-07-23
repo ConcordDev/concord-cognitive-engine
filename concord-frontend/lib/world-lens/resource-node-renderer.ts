@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import { worldToSceneAxis, sampleGroundY } from './coord-frame';
 import { loadAsset, instanceFromCache, resolveAssetReference } from './asset-loader';
+import { resolveMaterialUpgrade } from '@/lib/evo-asset/loader';
 
 // ── Wire types ──────────────────────────────────────────────────────────────
 
@@ -148,6 +149,13 @@ interface TrackedNode {
   swayPhase: number;
 }
 
+/** A real-asset candidate: its evo-asset id (used both to resolve the URL
+ *  and to look up a promoted material_upgrade) plus the resolved URL. */
+interface RealAssetVariant {
+  id: string;
+  url: string;
+}
+
 /**
  * Real-asset-first: try a real GLB for kinds that have one (tree, bush)
  * before falling back to the procedural primitive shape. `realAssetUrls`
@@ -159,20 +167,47 @@ interface TrackedNode {
  * aren't visually identical clones.
  */
 async function tryRealAsset(
-  urls: string[],
+  variants: RealAssetVariant[],
   variantSeed: string,
   targetHeight: number,
 ): Promise<THREE.Object3D | null> {
-  if (urls.length === 0) return null;
-  const url = urls[Math.floor(hashU(variantSeed + ':variant') * urls.length)];
+  if (variants.length === 0) return null;
+  const variant = variants[Math.floor(hashU(variantSeed + ':variant') * variants.length)];
   try {
-    const inst = await instanceFromCache(url, THREE);
+    const inst = await instanceFromCache(variant.url, THREE);
     if (!inst) return null;
     const cloned = inst as THREE.Object3D;
     const box = new THREE.Box3().setFromObject(cloned);
     const size = box.getSize(new THREE.Vector3());
     if (size.y > 0.001) cloned.scale.multiplyScalar(targetHeight / size.y);
     cloned.rotation.y = hashU(variantSeed + ':yaw') * Math.PI * 2;
+    // Evo-asset material_upgrade: same idiom as BuildingRenderer3D.tsx — if
+    // this vegetation asset has a promoted PBR spec, upgrade the loaded
+    // GLB's materials in place. Honest-null when no upgrade was ever
+    // promoted — a no-op, not a fabricated material.
+    try {
+      const matUpgrade = await resolveMaterialUpgrade('concordia', variant.id);
+      if (matUpgrade) {
+        cloned.traverse((child) => {
+          const asMesh = child as InstanceType<typeof THREE.Mesh>;
+          if (!asMesh.isMesh || !asMesh.material) return;
+          const mats = Array.isArray(asMesh.material) ? asMesh.material : [asMesh.material];
+          for (const mat of mats) {
+            const m = mat as InstanceType<typeof THREE.MeshStandardMaterial> & Record<string, unknown>;
+            if (typeof matUpgrade.roughness === 'number' && 'roughness' in m) m.roughness = matUpgrade.roughness;
+            if (typeof matUpgrade.metalness === 'number' && 'metalness' in m) m.metalness = matUpgrade.metalness;
+            // clearcoat/sheen only on MeshPhysicalMaterial instances.
+            if (typeof matUpgrade.clearcoat === 'number' && 'clearcoat' in m) m.clearcoat = matUpgrade.clearcoat;
+            if (typeof matUpgrade.clearcoatRoughness === 'number' && 'clearcoatRoughness' in m) m.clearcoatRoughness = matUpgrade.clearcoatRoughness;
+            if (typeof matUpgrade.sheen === 'number' && 'sheen' in m) m.sheen = matUpgrade.sheen;
+            (m as { needsUpdate?: boolean }).needsUpdate = true;
+          }
+        });
+        cloned.userData.evoMaterialUpgrade = true;
+      }
+    } catch (matErr) {
+      if (typeof console !== 'undefined') console.warn('[resource-node-renderer] material_upgrade skipped, real asset still renders', matErr);
+    }
     return cloned;
   } catch {
     return null; // fall through to procedural
@@ -186,7 +221,7 @@ async function tryRealAsset(
 async function buildNodeObject(
   visual: NodeVisual,
   nodeId: string,
-  realAssets: { tree: string[]; bush: string[] },
+  realAssets: { tree: RealAssetVariant[]; bush: RealAssetVariant[] },
 ): Promise<{
   object: THREE.Object3D;
   geometries: THREE.BufferGeometry[];
@@ -365,14 +400,14 @@ export function createResourceNodeRenderer(
   // common case. loadAsset never throws — a missing variant just leaves
   // that slot out of the array and the node falls back to the existing
   // procedural cone/icosahedron shape (never a fake or blocked node).
-  const realAssets: { tree: string[]; bush: string[] } = { tree: [], bush: [] };
+  const realAssets: { tree: RealAssetVariant[]; bush: RealAssetVariant[] } = { tree: [], bush: [] };
   const realAssetsReady = (async () => {
     for (const id of ['tree_01', 'tree_02', 'tree_03', 'tree_04']) {
       try {
         const loaded = await loadAsset({ kind: 'vegetation', id }, THREE);
         if (loaded) {
           const assetUrl = await resolveAssetReference({ kind: 'vegetation', id });
-          if (assetUrl) realAssets.tree.push(assetUrl);
+          if (assetUrl) realAssets.tree.push({ id, url: assetUrl });
         }
       } catch { /* variant unavailable — skip it */ }
     }
@@ -380,7 +415,7 @@ export function createResourceNodeRenderer(
       const loaded = await loadAsset({ kind: 'vegetation', id: 'bush_01' }, THREE);
       if (loaded) {
         const assetUrl = await resolveAssetReference({ kind: 'vegetation', id: 'bush_01' });
-        if (assetUrl) realAssets.bush.push(assetUrl);
+        if (assetUrl) realAssets.bush.push({ id: 'bush_01', url: assetUrl });
       }
     } catch { /* unavailable — skip it */ }
   })();

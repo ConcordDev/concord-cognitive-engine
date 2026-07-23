@@ -24,11 +24,18 @@ import type { WeaponArchetype } from '@/lib/concordia/weapon-archetypes';
 const mockLoadAsset = vi.fn();
 const mockResolveAssetReference = vi.fn();
 const mockGetCachedSceneSync = vi.fn();
+const mockResolveMaterialUpgrade = vi.fn();
 
 vi.mock('@/lib/world-lens/asset-loader', () => ({
   loadAsset: (...args: unknown[]) => mockLoadAsset(...args),
   resolveAssetReference: (...args: unknown[]) => mockResolveAssetReference(...args),
   getCachedSceneSync: (...args: unknown[]) => mockGetCachedSceneSync(...args),
+}));
+// weapon-archetypes.ts resolves this via a dynamic `await import(...)` inside
+// warmRealWeaponAssets() (createWeapon() itself must stay fully synchronous),
+// but vi.mock intercepts the module regardless of static vs. dynamic import.
+vi.mock('@/lib/evo-asset/loader', () => ({
+  resolveMaterialUpgrade: (...args: unknown[]) => mockResolveMaterialUpgrade(...args),
 }));
 
 const ALL_ARCHETYPES: WeaponArchetype[] = [
@@ -154,6 +161,7 @@ describe('createWeapon — real-asset path (warmed cache)', () => {
       g.name = `source_${url}`;
       return g;
     });
+    mockResolveMaterialUpgrade.mockResolvedValue(null); // honest default — no promoted upgrade
     ({ createWeapon, warmRealWeaponAssets } = await freshModule());
   });
 
@@ -215,6 +223,47 @@ describe('createWeapon — real-asset path (warmed cache)', () => {
     await warmRealWeaponAssets();
     const second = createWeapon({ archetype: 'wand', tier: 1 });
     expect(second.userData.realAsset).toBe(true);
+  });
+
+  // Evo-asset material_upgrade — mirrors BuildingRenderer3D.tsx's pattern.
+  // createWeapon() must stay synchronous, so warmRealWeaponAssets() resolves
+  // any promoted upgrade eagerly (alongside the asset URL) into a
+  // module-level cache that tryRealWeaponMesh() then reads synchronously.
+  it("applies a promoted material_upgrade's PBR params onto a real-asset weapon's material", async () => {
+    mockResolveMaterialUpgrade.mockResolvedValue({ roughness: 0.15, metalness: 0.95 });
+    await warmRealWeaponAssets();
+    const group = createWeapon({ archetype: 'staff', tier: 2 });
+    expect(group.userData.realAsset).toBe(true);
+    expect(group.userData.evoMaterialUpgrade).toBe(true);
+    let foundMesh: THREE.Mesh | null = null;
+    group.traverse((o) => { if ((o as THREE.Mesh).isMesh) foundMesh = o as THREE.Mesh; });
+    expect(foundMesh).toBeTruthy();
+    const mat = foundMesh!.material as THREE.MeshStandardMaterial;
+    expect(mat.roughness).toBeCloseTo(0.15, 5);
+    expect(mat.metalness).toBeCloseTo(0.95, 5);
+  });
+
+  it('is a clean no-op (real asset still renders, material left as shipped) when no promoted upgrade exists', async () => {
+    mockResolveMaterialUpgrade.mockResolvedValue(null);
+    await warmRealWeaponAssets();
+    const group = createWeapon({ archetype: 'staff', tier: 2 });
+    expect(group.userData.realAsset).toBe(true);
+    expect(group.userData.evoMaterialUpgrade).toBeUndefined();
+    let foundMesh: THREE.Mesh | null = null;
+    group.traverse((o) => { if ((o as THREE.Mesh).isMesh) foundMesh = o as THREE.Mesh; });
+    expect(foundMesh).toBeTruthy();
+    const mat = foundMesh!.material as THREE.MeshStandardMaterial;
+    // THREE.MeshStandardMaterial's own untouched default.
+    expect(mat.roughness).toBe(1);
+    expect(mat.metalness).toBe(0);
+  });
+
+  it('does not throw when resolveMaterialUpgrade rejects (network failure) — real asset still renders', async () => {
+    mockResolveMaterialUpgrade.mockRejectedValue(new Error('network down'));
+    await expect(warmRealWeaponAssets()).resolves.not.toThrow();
+    const group = createWeapon({ archetype: 'staff', tier: 2 });
+    expect(group.userData.realAsset).toBe(true);
+    expect(group.userData.evoMaterialUpgrade).toBeUndefined();
   });
 });
 
