@@ -47,6 +47,12 @@ import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { TierBadge, TierBadgeDetail, TierPromotionTimeline } from './TierBadge';
 import { ScopeBadge } from '@/components/platform/ScopeControls';
 import { PromoteDialog } from '@/components/scope/PromoteDialog';
+// Cross-lens Workspace Bus — "send to bus" action next to Share/Download
+// so the full detail view (opened from chat, dtus, bridge, profile,
+// whiteboard, and the Connective Tissue Bar search results) can push
+// this DTU onto the cross-lens clipboard.
+import { WorkspaceBusCopyButton } from '@/components/workspace-bus/WorkspaceBusCopyButton';
+import { toWorkspaceBusDTU } from '@/components/workspace-bus/WorkspaceBusProvider';
 
 interface DTUDetailViewProps {
   dtuId: string;
@@ -357,6 +363,12 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
             </div>
           )}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {dtu && (
+              <WorkspaceBusCopyButton
+                dtu={toWorkspaceBusDTU(dtu)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-400/10 text-amber-300 border-transparent hover:bg-amber-400/20 hover:text-amber-300 hover:border-transparent transition-colors"
+              />
+            )}
             <button
               onClick={handleShareUrl}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20 transition-colors"
