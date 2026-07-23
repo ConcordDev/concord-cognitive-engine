@@ -1752,6 +1752,12 @@ import { checkSpontaneousContent } from "./prompts/spontaneous.js";
 
 // ── Chat Router + Forge Pipeline ─────────────────────────────────────────
 import { routeMessage as chatRouterRoute, buildLensChain, emitResonanceSignal, shouldOfferForge, detectEmergentRoute, recordRouteMetric, getRouterMetrics, detectOracleIntent, routeThroughOracle, ACTION_TYPES as CHAT_ACTION_TYPES } from "./lib/chat-router.js";
+// RQ3 — standalone, deterministic (no-LLM-call) intent classifier. Used as
+// an additive pre-check in chat.respond's compute-preflight block below;
+// see server/lib/chat/intent-router.js for the full policy. Aliased on
+// import — server.js already has an unrelated local `classifyIntent`
+// (greeting/identity/status/command/question classifier, ~line 3413).
+import { classifyIntent as classifyChatEngineIntent } from "./lib/chat/intent-router.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
@@ -24667,6 +24673,39 @@ Rules for tool use:
         ctx,
       });
     } catch (_e) { /* never block chat on a compute failure */ }
+
+    // RQ3 — deterministic-engine intent routing (compute-don't-guess), additive
+    // only: fires ONLY when the keyword-scored preflight above found nothing,
+    // and only ever ADDS a ground-truth block — it never skips or replaces the
+    // brain call, so a misclassification degrades to "no extra context" rather
+    // than a broken reply. classifyIntent() is pure pattern matching (no LLM
+    // call, no network) — see server/lib/chat/intent-router.js.
+    if (!_computeGroundTruth) {
+      try {
+        const _intentResult = classifyChatEngineIntent(prompt);
+        if (_intentResult.intent === "deterministic-engine" && _intentResult.engineHint === "math") {
+          // math.naturalQuery is registered via registerLensAction (LENS_ACTIONS),
+          // not the plain register()/MACROS path runMacro() dispatches through —
+          // calling runMacro("math","naturalQuery",...) here would always throw
+          // "macro not found" and silently no-op under .catch(() => null). Dispatch
+          // it the same way /api/lens/run does for a LENS_ACTIONS entry: look it
+          // up directly and call it with a virtual (unpersisted) artifact.
+          const _mathHandler = LENS_ACTIONS.get("math.naturalQuery");
+          const _mathResult = _mathHandler
+            ? await Promise.resolve(
+                _mathHandler(ctx, { id: null, domain: "math", type: "domain_action", data: { query: prompt }, meta: {} }, { query: prompt })
+              ).catch(() => null)
+            : null;
+          if (_mathResult?.ok && _mathResult.result) {
+            _computeGroundTruth = {
+              groundTruthBlock: `[GROUND TRUTH from real compute engine (math CAS) — this value is authoritative, never contradict it]\n- math.naturalQuery: ${JSON.stringify(_mathResult.result).slice(0, 280)}`,
+              capabilities: [{ key: "math.naturalQuery", score: _intentResult.confidence, description: "CAS natural-language math query" }],
+              results: [_mathResult],
+            };
+          }
+        }
+      } catch (_e) { /* never block chat on an intent-routing failure */ }
+    }
 
     // Build the full conscious prompt with identity, personality, memory, and context
     const _consciousParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
