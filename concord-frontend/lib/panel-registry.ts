@@ -262,6 +262,16 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'Your own connector status — Connected vs Needs auth, per app',
     load: lazyNamed(() => import('@/components/conkay/panels/ConnectorStatusPanel'), 'ConnectorStatusPanel'),
   },
+  // Beyond-Denial unit #2 — persistent cross-session memory. Lists/pins/
+  // forgets the real conversation_memory / conversation_memory_hyper DTUs
+  // the rolling-window compressor (server/lib/conversation-memory.js) already
+  // writes, via the conkay.memory_list/pin/forget macros.
+  'conkay.memory': {
+    id: 'conkay.memory', label: 'Memory', scope: 'global',
+    keywords: ['conkay', 'memory', 'conversation', 'recall', 'cross-session', 'dtu'],
+    description: 'Your real cross-session conversation memory — pin or forget any of it',
+    load: lazyNamed(() => import('@/components/conkay/ConKayMemoryPanel'), 'ConKayMemoryPanel'),
+  },
 
   // The ConKay cockpit panels (F1/F4/F5/F7/F9/A4/A3) are now registered.
   // ConKayCockpit's panel slots treat an unregistered id as "render nothing"
