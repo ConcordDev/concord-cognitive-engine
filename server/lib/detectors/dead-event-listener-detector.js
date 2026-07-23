@@ -306,6 +306,44 @@ function collectArrayIndirection(content) {
   return names;
 }
 
+// `useRealtimeRefresh(['a:b', 'c:d'], refresh, opts)` (hooks/
+// useRealtimeRefresh.ts) is a fourth real indirection pattern, distinct
+// from the "bridge array" shape above: the array is passed INLINE as a
+// call argument (not assigned to a named constant iterated in a loop
+// elsewhere), and — critically — it is frequently a SINGLE-item array
+// (`useRealtimeRefresh(['climbing:route-completed'], ...)`), so the
+// bridge-array heuristic's "2+ names" threshold (needed there to avoid
+// false-matching an unrelated array) would silently miss it. The hook's
+// own contract makes a single name just as real evidence of a live
+// subscription as two: `useRealtimeRefresh` unconditionally calls
+// `subscribe(evt, ...)` for every entry (see the hook source) — there is
+// no other array shape this call takes. Verified false positive this
+// pattern was hiding: `climbing:route-completed`
+// (concord-frontend/components/world/ClimbingTracker.tsx) previously
+// reported as a dead `dead_socket_emit`.
+const USE_REALTIME_REFRESH_RE = /\buseRealtimeRefresh\s*\(\s*\[([^[\]]{0,4000})]/g;
+
+/**
+ * Given a file's content, collect every namespaced literal passed inside
+ * a `useRealtimeRefresh([...])` call's event-list argument. No minimum
+ * count — see the note above USE_REALTIME_REFRESH_RE for why 1 is enough
+ * evidence here (unlike the generic bridge-array heuristic).
+ */
+function collectRealtimeRefreshIndirection(content) {
+  const names = [];
+  const callRe = new RegExp(USE_REALTIME_REFRESH_RE.source, "g");
+  let cm;
+  while ((cm = callRe.exec(content)) != null) {
+    const body = cm[1];
+    const strRe = new RegExp(ARRAY_STRLIT_RE.source, "g");
+    let sm;
+    while ((sm = strRe.exec(body)) != null) {
+      if (isFullEventName(sm[1])) names.push(sm[1]);
+    }
+  }
+  return names;
+}
+
 /**
  * Given a file's content, collect namespaced names referenced in an
  * `event === 'name'` (or `=== ('name' as SocketEvent)`) equality chain,
@@ -545,6 +583,12 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
       arraySuppressionNames.add(n);
     }
     for (const n of collectEqChainIndirection(content)) dispatchedIndirect.add(n);
+    // useRealtimeRefresh(['a:b', ...], refresh, opts) — see the note above
+    // USE_REALTIME_REFRESH_RE. Feeds the same Pass-4 (dead_socket_emit)
+    // suppression pool the bridge-array heuristic does; unlike that one,
+    // a single name is sufficient evidence (the hook's own contract, not
+    // an incidental array shape).
+    for (const n of collectRealtimeRefreshIndirection(content)) arraySuppressionNames.add(n);
 
     // Listener sites (window.addEventListener / useEventListener), namespaced
     // only. Also NOT gated on isInsideComment() — empirically, this

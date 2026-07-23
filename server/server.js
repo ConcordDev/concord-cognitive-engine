@@ -8736,6 +8736,15 @@ function emitToWorld(worldId, event, payload) {
   }
 }
 
+// Expose globally so lib modules that can't import server.js directly
+// (circular-import risk) can still route a world-scoped broadcast through
+// the Godot gateway mirror — same "expose so lib modules can route without
+// a circular import" pattern already used for `_concordRealtimeEmit` below.
+// Consumer: server/lib/combat-polish.js's `combat:polish` emit (previously
+// a direct `io.to(...).emit(...)` that never reached a connected Godot
+// client — see docs/GODOT_PROTOCOL.md §4 "play_effect").
+globalThis._concordEmitToWorld = emitToWorld;
+
 function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
@@ -9333,7 +9342,16 @@ async function tryInitWebSockets(server) {
     socket.on("room:leave", ({ room }) => {
       if (room) {
         socket.leave(room);
-        socket.emit("room:left", { room, ts: nowISO() });
+        // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): the
+        // `room:left` ack this used to fire had zero consumers — verified
+        // via a full-tree grep across concord-frontend/, concord-mobile/,
+        // and world-lens-godot/ (the room:joined counterpart genuinely IS
+        // consumed, but only by world-lens-godot/world/boot.gd, and that
+        // file has no room-leave flow to trigger this one at all yet).
+        // socket.leave(room) above is the real, load-bearing behavior;
+        // this was a pure notification nobody was listening for. Retired
+        // rather than wired, since there's no leave-flow anywhere yet to
+        // wire a listener to.
       }
     });
 
@@ -10383,9 +10401,21 @@ async function tryInitWebSockets(server) {
       socket.join(room);
       // Tell existing peers a new one arrived
       socket.to(room).emit("voice:peer-joined", { peerId: socket.id });
-      // Tell the joining peer who's already here
-      const peers = [...(io.sockets.adapter.rooms.get(room) || [])].filter((id) => id !== socket.id);
-      socket.emit("voice:room-state", { peers });
+      // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): this used to
+      // also compute the existing-peer roster and emit it back to the
+      // joiner as `voice:room-state`. Verified via a full read of
+      // concord-frontend/components/concordia/social/ProximityVoiceChat.ts
+      // that peer discovery is NOT roster-driven at all — it's driven by
+      // spatial proximity (`updateProximity()`, fed from the world-lens's
+      // nearby-player tracking), which independently detects a new nearby
+      // player and calls `_initiateConnection(peerId)` to send a WebRTC
+      // offer directly. The file's own header comment lists
+      // `voice:peer-joined`/`voice:room-state` as consumed "in" events, but
+      // `_bindSocketEvents` only ever wires `voice:offer`/`voice:answer`/
+      // `voice:ice-candidate`/`voice:peer-left` — the comment was
+      // aspirational and never implemented. Retired the room-state emit
+      // (and its now-unused peer-roster computation) rather than wiring a
+      // consumer for a roster mechanism the real design bypassed.
     });
     socket.on("voice:offer", ({ to, sdp }) => {
       if (to && sdp) io.to(to).emit("voice:offer", { from: socket.id, sdp });
@@ -28770,6 +28800,32 @@ register("dtu", "lineage", (ctx, input = {}) => {
   }
 }, { description: "Real DTU ancestor/descendant chain for the frontend Lineage tab — one-hop parent/child edges plus the royalty_lineage citation graph. Never fabricates a chain; empty arrays for a DTU with no real lineage." });
 
+// ── Royalty flow card (EC2 — "where did my royalty income come from") ─────
+// Thin macro wrapper over computeRoyaltyFlow (server/lib/creator-dashboard.js),
+// which composes the real economy_ledger ROYALTY_PAYOUT rows (via the
+// canonical CREDIT_ROW_PREDICATE from economy/balances.js) with the SAME
+// getAncestorChain() the dtu.lineage macro (EC1, above) and the actual
+// payout path (distributeRoyalties) use. See that function's doc comment
+// for the full composition. No math is duplicated here or there.
+register("economy", "royaltyFlow", async (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || STATE?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const dtuId = input.dtuId || input.id || null;
+    // Default userId to the caller ONLY for the "my own dashboard" shape
+    // (no dtuId given). A DTU-scoped call (the Lineage-tab view of a
+    // specific DTU) must show every real earner tied to that DTU, not
+    // silently narrow to the current caller's own cut of it — those are
+    // two different, both legitimate, views and must not collapse into one.
+    const userId = input.userId || input.creatorId || (!dtuId ? ctx?.actor?.userId : null) || null;
+    const limit = input.limit;
+    const cd = await import("./lib/creator-dashboard.js");
+    return cd.computeRoyaltyFlow(db, STATE, { userId, dtuId, limit });
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Real royalty-flow card for a creator or a DTU: actual historical ROYALTY_PAYOUT ledger rows (lineage -> earner -> CC) plus the real ancestor chain for structural context. Never fabricates a number; honest empty state when there's no royalty history." });
+
 // ── Unified Context Engine ─────────────────────────────────────────────────
 // Every lens, entity, and chat interaction uses this to retrieve knowledge
 // across all tiers with diversity guarantees.
@@ -33692,7 +33748,12 @@ import { startPatternDetection } from "./lib/substrate-diffusion.js";
 import { startAtrophyCycle } from "./lib/skill-atrophy.js";
 import { startCrisisWatch } from "./lib/world-crisis.js";
 import { processDisrepairTick, DISREPAIR_TICK_INTERVAL } from "./lib/npc-consequences.js";
-app.use("/api/worlds", createWorldsRouter({ requireAuth, db }));
+// emitToWorld is injected so the combat:impact NPC-route emit (below the
+// module boundary, in routes/worlds.js) can route through the same
+// room-broadcast + Godot-gateway-mirror path emitToWorld already gives every
+// in-file (server.js) emit site — see docs/GODOT_PROTOCOL.md §7 "apply_force"
+// PARTIAL gap. Same DI pattern already used for createConcordLinkRouter.
+app.use("/api/worlds", createWorldsRouter({ requireAuth, db, emitToWorld }));
 
 import createCityAssetsRouter from "./routes/city-assets.js";
 app.use("/api/city-assets", createCityAssetsRouter({ requireAuth }));
@@ -50017,6 +50078,16 @@ app.get("/api/creator/cascade/:dtuId", requireAuth(), asyncHandler(async (req, r
   const maxDepth = Math.min(50, Math.max(1, Number(req.query.maxDepth) || 6));
   res.json(cd.computeCascadeTree(req.params.dtuId, STATE, { maxDepth }));
 }));
+// EC2 — royalty flow card. The real-money counterpart to /cascade above:
+// actual historical ROYALTY_PAYOUT ledger rows (lineage -> earner -> CC),
+// not a projection. Defaults to the caller's own earnings; ?dtuId=... scopes
+// to what a specific DTU has earned + its real ancestor chain.
+app.get("/api/creator/royalty-flow", requireAuth(), asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  const dtuId = typeof req.query.dtuId === "string" && req.query.dtuId ? req.query.dtuId : null;
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+  res.json(cd.computeRoyaltyFlow(db, STATE, { userId: req.user?.id, dtuId, limit }));
+}));
 
 // Federation: peer list, trust graph visualization, cross-instance search.
 // All read-only for now — peering itself goes through the existing
@@ -52842,9 +52913,16 @@ app.post("/api/wardrobe/:outfitId/equip", requireAuth(), asyncHandler(async (req
   const { equipOutfit } = await import("./lib/wardrobe.js");
   const userId = req.user?.id || req.user?.userId;
   const r = equipOutfit(db, req.params.outfitId, userId);
-  if (r.ok) {
-    try { realtimeEmit?.("wardrobe:outfit-equipped", { userId, outfitId: req.params.outfitId, slots: r.slots }); } catch { /* best-effort */ }
-  }
+  // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): this used to
+  // also fire a `wardrobe:outfit-equipped` realtime broadcast. Verified via
+  // a full-tree grep that `equipOutfit` (server/lib/wardrobe.js) has ZERO
+  // frontend callers anywhere — the whole wardrobe-equip feature is
+  // backend-complete (real DB persistence, this real HTTP route) but has
+  // no UI yet, so there was nothing anywhere that could subscribe to a
+  // "someone equipped an outfit" broadcast. The caller of this route
+  // already gets the equip result synchronously in `r` below; retired the
+  // broadcast rather than building a wardrobe UI to consume it (out of
+  // scope for a dead-event cleanup).
   res.status(r.ok ? 200 : 400).json(r);
 }));
 

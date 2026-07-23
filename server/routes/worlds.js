@@ -110,7 +110,31 @@ function _validateDamageCap(damageResult, skillData, opts = {}) {
   return { ok: true };
 }
 
-export default function createWorldsRouter({ requireAuth, db }) {
+/**
+ * Choose the emit mechanism for a world-room broadcast that also needs to
+ * reach the Godot gateway mirror. Prefers the DI'd `emitToWorld` (server.js's
+ * `emitToWorld`, which room-broadcasts via socket.io AND fans the same event
+ * into `_godotGatewayEmitter` — docs/GODOT_PROTOCOL.md §7 "apply_force").
+ * Falls back to a bare `io.to(world:<id>).emit(...)` when `emitToWorld`
+ * isn't injected, so any caller still supplying `req.app.locals.io` directly
+ * keeps working exactly as before (defensive; also lets legacy tests that
+ * construct the router without `emitToWorld` keep passing unchanged).
+ * Exported so the routing decision is testable without booting the full
+ * combat pipeline.
+ */
+export function emitWorldEvent({ io, emitToWorld: emitFn, worldId, event, payload }) {
+  if (typeof emitFn === "function") {
+    emitFn(worldId, event, payload);
+    return "gateway";
+  }
+  if (io) {
+    io.to(`world:${worldId}`).emit(event, payload);
+    return "io";
+  }
+  return "none";
+}
+
+export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
   const router = express.Router();
 
   // GET /api/worlds — list all active worlds (paginated)
@@ -2775,7 +2799,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         const landed = (damageResult.finalDamage || 0) > 0;
         // Emit on any landed hit so the client can render mastery-scaled VFX;
         // the feel block is zero-feel for severity "none" (client no-ops it).
-        if (io && (landed || severity !== "none" || kill)) {
+        if ((io || typeof emitToWorld === "function") && (landed || severity !== "none" || kill)) {
           const { buildImpactPayload } = await import("../lib/combat/impact-feel.js");
           const { skillVfxDescriptor } = await import("../lib/skills/skill-mastery.js");
           const { skillKeyForSkill } = await import("../lib/skills/skill-key.js");
@@ -2792,7 +2816,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
             kind: skillData.kind || skillData.weapon_kind || null,
             level: skillRow?.level || skillData.skill_level || 0,
           });
-          io.to(`world:${worldId}`).emit("combat:impact", {
+          const impactPayload = {
             ...buildImpactPayload({
               worldId,
               attackerId: userId,
@@ -2808,7 +2832,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
             }),
             vfx,
             skillKey,
-          });
+          };
+          // Route through the injected emitToWorld (server.js#emitToWorld,
+          // DI'd into createWorldsRouter — same pattern as
+          // createConcordLinkRouter's emitToWorld dep) so this ALSO reaches
+          // the Godot gateway mirror (docs/GODOT_PROTOCOL.md §7
+          // "apply_force"). Previously this called
+          // `io.to(world:${worldId}).emit(...)` directly, which never
+          // passed through `_godotGatewayEmitter` — a connected Godot
+          // client received nothing on this NPC-route `combat:impact`,
+          // unlike the PvP socket path's `combat:impact`, which already
+          // goes through `realtimeEmit` and IS mirrored. `emitWorldEvent`
+          // falls back to the bare io emit when emitToWorld isn't injected
+          // (defensive; keeps any caller that still supplies
+          // req.app.locals.io directly working unchanged).
+          emitWorldEvent({ io, emitToWorld, worldId, event: "combat:impact", payload: impactPayload });
         }
       } catch { /* combat:impact feel emit best-effort — never blocks combat */ }
 
