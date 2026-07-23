@@ -134,4 +134,22 @@ describe('RfEntryDetailModal', () => {
     fireEvent.click(screen.getByRole('dialog'));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('closes on Escape — the keyboard equivalent of the backdrop click', async () => {
+    lensRun.mockResolvedValue({ data: { ok: true, result: { entry: baseEntry }, error: null } });
+    const onClose = vi.fn();
+    render(<RfEntryDetailModal entryId="ent_1" onClose={onClose} onChange={vi.fn()} />);
+    await screen.findByDisplayValue('Good day');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('clicking inside the panel does not close the modal (stopPropagation preserved)', async () => {
+    lensRun.mockResolvedValue({ data: { ok: true, result: { entry: baseEntry }, error: null } });
+    const onClose = vi.fn();
+    render(<RfEntryDetailModal entryId="ent_1" onClose={onClose} onChange={vi.fn()} />);
+    const titleInput = await screen.findByDisplayValue('Good day');
+    fireEvent.click(titleInput);
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
