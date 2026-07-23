@@ -460,3 +460,22 @@ progressive CC holding tax IF in-world inflation shows up. Nothing here is a Fri
 release blocker; this section is the reference a balance pass starts from instead of
 guessing. Restaurant tips remain the one dial with a first-party sim (G3.1) — and the
 external tip-timing literature corroborates a fast/ok split near 0.20/0.15.
+
+## Progression Matrix (reviewed 2026-07-23)
+
+The two XP curves + the progression-adjacent constants were previously undocumented
+in the balance-review sense — neither confirmed tuned nor flagged as playtest
+fodder. This section closes that: each is now a **reviewed** dial. Full design
+context (the two intentionally-separate leveling axes, what feeds what) lives in
+`docs/PROGRESSION_MATRIX.md`.
+
+| Dial | File | Value | Env override | Status |
+|---|---|---|---|---|
+| System A XP-to-level | `server/lib/skills/skill-engine.js:263` | `xp_to_next = 100 × level` (linear-in-level; cumulative L1→LN = `50·N·(N−1)`; hard cap 100) | none (hardcoded) | Reviewed & kept. Pinned by `tests/skill-engine-xp-curve.test.js`. |
+| System B XP-to-level | `server/lib/skill-progression.js:51-54` | `level = 1 + sqrt(exp / C)`, `C = 2` | `CONCORD_XP_CURVE_C` | Reviewed & kept — the D3 retune that replaced the unreachable log curve (see file header `:34-47`). Pinned by `tests/skill-progression.test.js`. |
+| `ASCENSION_XP_PER_LEVEL` | `server/lib/ascension.js:12` | `500` (flat per paragon level; consumes System-A cap overflow) | none (hardcoded) | Reviewed & kept. Pinned by `tests/integration/ascension-endgame.test.js`. |
+| `REGION_XP_PER_PAIN_UNIT` | `server/emergent/repair-cycle.js:34` | `35` (pain intensity → stat-skill XP) | none (hardcoded) | Reviewed & kept. Pinned by `tests/embodied-pain-repair.test.js`. |
+
+Hardcoded-reviewed means: deliberately not env-exposed (changing a leveling curve
+mid-deployment would strand existing players' progress relative to new players);
+a future retune is a migration-grade decision, not a dial twist.
