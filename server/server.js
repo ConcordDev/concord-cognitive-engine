@@ -8820,6 +8820,120 @@ function enqueueNotification(item, { sessionId = "", orgId = "" } = {}) {
   return item;
 }
 
+// ── Shared movement/mode core — Godot gateway bidirectionality (2026-07-23) ──
+// The socket.io `player:move` / `player:mode` handlers (inside
+// tryInitWebSockets → io.on("connection")) and the Godot raw-WebSocket
+// gateway's onClientMessage dispatch (mounted later in this file via
+// mountGodotGateway) must run through the IDENTICAL server-authoritative
+// logic — same cityPresence anti-cheat nack/snapback, same mount/vehicle
+// legitimacy gates — so a Godot client can't get a laxer path than a browser
+// client. These two functions are the single shared core; each transport
+// wrapper only translates the plain descriptor they return into its own
+// emit/disconnect calls. Never duplicate this logic at either call site.
+//
+// Descriptor contract (both functions):
+//   { drop: true }                      — silently ignore (matches original
+//                                          silent-return behavior for
+//                                          unauthenticated/malformed frames
+//                                          and rate-limited moves)
+//   { nack: {...}, shouldDisconnect? }  — emit a `*:nack` (and, for move,
+//                                          honor shouldDisconnect same as the
+//                                          original anti-cheat auto-drop)
+//   { ack: {...} }                      — emit a `*:ack`
+function applyPlayerMove(userId, data) {
+  if (!userId) return { drop: true };
+  if (!data || typeof data !== "object") return { drop: true };
+  try {
+    const pos = cityPresence.updateUserPosition(userId, {
+      cityId: String(data.cityId || "concordia-central"),
+      x: Number(data.x) || 0,
+      y: Number(data.y) || 0,
+      z: Number(data.z) || 0,
+      direction: Number(data.direction) || 0,
+      rotation: Number(data.rotation) || 0,
+      action: typeof data.action === "string" ? data.action.slice(0, 32) : "idle",
+      currentAnimation: typeof data.currentAnimation === "string" ? data.currentAnimation.slice(0, 32) : "idle",
+      districtId: typeof data.districtId === "string" ? data.districtId.slice(0, 64) : null,
+    });
+    if (pos && pos.ok === false) {
+      if (pos.reason === "rate_limited") return { drop: true };
+      // H3+ anti-cheat telemetry + sustained-offender auto-drop, mirrored
+      // byte-for-byte from the original socket.io handler.
+      let shouldDisconnect = false;
+      try {
+        METRICS?.counters?.antiCheatRejected?.inc({ reason: String(pos.reason || "unknown") });
+        const verdict = _noteAntiCheatRejection(userId);
+        shouldDisconnect = !!verdict?.shouldDisconnect;
+        if (shouldDisconnect) {
+          logger.warn?.("anti-cheat", "user_dropped", { userId, reason: pos.reason, hits: verdict.threshold });
+        }
+      } catch { /* telemetry/drop best-effort */ }
+      return {
+        nack: {
+          reason: pos.reason,
+          prev: pos.prev || null,
+          observedSpeed: pos.observedSpeed,
+          maxSpeed: pos.maxSpeed,
+        },
+        shouldDisconnect,
+      };
+    }
+    return { ack: { ok: true, nearby: pos.nearby || [], chunkCrossed: !!pos.chunkCrossed } };
+  } catch (err) {
+    logger.debug?.("server", "player_move_failed", { error: err?.message });
+    return { drop: true };
+  }
+}
+
+function applyPlayerMode(userId, data) {
+  if (!userId) return { drop: true };
+  if (!data || typeof data !== "object") return { drop: true };
+  const requested = typeof data.mode === "string" ? data.mode.trim().slice(0, 64) : "";
+  if (!requested) return { nack: { reason: "missing_mode" } };
+  try {
+    if (requested === "walk" || requested === "sprint") {
+      cityPresence.setUserMovementMode(userId, requested, {});
+      return { ack: { ok: true, mode: requested } };
+    }
+
+    if (requested === "fly") {
+      cityPresence.setUserMovementMode(userId, "fly", {});
+      return { ack: { ok: true, mode: "fly" } };
+    }
+
+    if (requested.startsWith("mount:")) {
+      const speciesId = requested.slice("mount:".length);
+      if (!speciesId) return { nack: { reason: "missing_species", requested } };
+      const presenceEntry = cityPresence.getUserPosition(userId);
+      const worldId = presenceEntry?.worldId || presenceEntry?.cityId || "concordia-hub";
+      const payload = getActiveMountPayload(db, userId, worldId);
+      if (!payload || !payload.speciesId || payload.speciesId !== speciesId) {
+        return { nack: { reason: "not_mounted", requested } };
+      }
+      const rawSpeed = Number(payload.species?.baseSpeedMps);
+      const mountSpeedMps = Number.isFinite(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
+      cityPresence.setUserMovementMode(userId, requested, { mountSpeedMps });
+      return { ack: { ok: true, mode: requested, mountSpeedMps } };
+    }
+
+    if (requested.startsWith("vehicle:")) {
+      const vehicleType = requested.slice("vehicle:".length);
+      if (!vehicleType) return { nack: { reason: "missing_vehicle_type", requested } };
+      const current = cityPresence.getUserVehicle(userId);
+      if (!current.vehicleId || current.vehicleType !== vehicleType) {
+        return { nack: { reason: "not_in_vehicle", requested } };
+      }
+      cityPresence.setUserMovementMode(userId, requested, {});
+      return { ack: { ok: true, mode: requested } };
+    }
+
+    return { nack: { reason: "unknown_mode", requested } };
+  } catch (err) {
+    logger.debug?.("server", "player_mode_failed", { error: err?.message });
+    return { nack: { reason: "error" } };
+  }
+}
+
 async function tryInitWebSockets(server) {
   // Socket.IO: only enabled if socket.io dependency exists AND CONCORD_WS_ENABLED != "false"
   if (String(process.env.CONCORD_WS_ENABLED || "").toLowerCase() === "false") return { ok: false, reason: "disabled" };
@@ -9269,58 +9383,31 @@ async function tryInitWebSockets(server) {
       const now = Date.now();
       if (now - _moveRateState.last < 33) return; // ~30Hz cap
       _moveRateState.last = now;
-      try {
-        const pos = cityPresence.updateUserPosition(userId, {
-          cityId: String(data.cityId || "concordia-central"),
-          x: Number(data.x) || 0,
-          y: Number(data.y) || 0,
-          z: Number(data.z) || 0,
-          direction: Number(data.direction) || 0,
-          rotation: Number(data.rotation) || 0,
-          action: typeof data.action === "string" ? data.action.slice(0, 32) : "idle",
-          currentAnimation: typeof data.currentAnimation === "string" ? data.currentAnimation.slice(0, 32) : "idle",
-          districtId: typeof data.districtId === "string" ? data.districtId.slice(0, 64) : null,
-        });
-        // Anti-cheat rejection: updateUserPosition returns ok:false
-        // with { reason, prev } for rate-limit / speed-hack / teleport
-        // detections. Nack back to the client so it can snap the
-        // avatar to the last good position. Rate-limit rejections are
-        // silent to avoid reflecting every dropped flood-packet.
-        if (pos && pos.ok === false) {
-          if (pos.reason !== "rate_limited") {
-            socket.emit("player:move:nack", {
-              reason: pos.reason,
-              prev: pos.prev || null,
-              observedSpeed: pos.observedSpeed,
-              maxSpeed: pos.maxSpeed,
-            });
-            // H3+ — treat a real movement rejection (speed-hack / teleport) as
-            // an anomaly data point: count it, and drop a sustained offender's
-            // socket so a live exploitation tool can't keep hammering. Telemetry
-            // + auto-drop are both best-effort and never block the move path.
-            try {
-              METRICS?.counters?.antiCheatRejected?.inc({ reason: String(pos.reason || "unknown") });
-              const verdict = _noteAntiCheatRejection(userId);
-              if (verdict.shouldDisconnect) {
-                logger.warn?.("anti-cheat", "user_dropped", { userId, reason: pos.reason, hits: verdict.threshold });
-                socket.emit("anti-cheat:dropped", { reason: "too_many_violations" });
-                socket.disconnect(true);
-              }
-            } catch { /* telemetry/drop best-effort */ }
-          }
-          return;
+      // Shared core (also used by the Godot gateway's onClientMessage —
+      // see applyPlayerMove above tryInitWebSockets). Anti-cheat rejection:
+      // updateUserPosition returns ok:false with { reason, prev } for
+      // rate-limit / speed-hack / teleport detections. Nack back to the
+      // client so it can snap the avatar to the last good position.
+      // Rate-limit rejections are silent (applyPlayerMove returns
+      // { drop: true }) to avoid reflecting every dropped flood-packet.
+      const result = applyPlayerMove(userId, data);
+      if (result.drop) return;
+      if (result.nack) {
+        socket.emit("player:move:nack", result.nack);
+        // H3+ — treat a real movement rejection (speed-hack / teleport) as
+        // an anomaly data point: count it, and drop a sustained offender's
+        // socket so a live exploitation tool can't keep hammering. Telemetry
+        // + auto-drop are both best-effort and never block the move path.
+        if (result.shouldDisconnect) {
+          socket.emit("anti-cheat:dropped", { reason: "too_many_violations" });
+          socket.disconnect(true);
         }
-        // Ack back with the nearby-users payload so the client can
-        // render remote avatars even if the broadcast tick hasn't
-        // fired yet.
-        socket.emit("player:move:ack", {
-          ok: true,
-          nearby: pos.nearby || [],
-          chunkCrossed: !!pos.chunkCrossed,
-        });
-      } catch (err) {
-        logger.debug?.("server", "player_move_failed", { error: err?.message });
+        return;
       }
+      // Ack back with the nearby-users payload so the client can
+      // render remote avatars even if the broadcast tick hasn't
+      // fired yet.
+      if (result.ack) socket.emit("player:move:ack", result.ack);
     });
 
     // Load saved state when a client asks — lets the frontend
@@ -9355,97 +9442,23 @@ async function tryInitWebSockets(server) {
     // glider-suit check once that substrate exists; see the honest caveat
     // in this unit's report.
     //
-    // Godot gateway note: docs/GODOT_INTEGRATION.md claims the raw-WebSocket
-    // gateway (server/lib/godot-gateway.js) is unmounted Phase-1 dead code —
-    // that claim is STALE. It IS mounted (`mountGodotGateway(server, ...)`,
-    // guarded on `if (server)`, later in this file) and DOES forward
-    // arbitrary {evt,data} frames — but only to an `onClientMessage(client,
-    // evt, data)` fallback for events it doesn't recognize natively (ping/
-    // auth/room:*/scene:request), and that mount call does NOT pass an
-    // `onClientMessage`. So a `player:mode` (or `player:move`) frame sent
-    // over `/godot-ws` today gets `error {reason:"unknown_evt"}` from the
-    // gateway itself — this handler is reachable only over the socket.io
-    // transport. Wiring `onClientMessage` to dispatch into this same
-    // mode/move logic (or a mirrored handler) is a TODO for whoever mounts
-    // the Godot client's movement — out of scope here since godot-gateway.js
-    // and its mount call are excluded from this unit.
+    // Godot gateway note (2026-07-23 — resolved, was a TODO): the raw-WebSocket
+    // gateway (server/lib/godot-gateway.js, mounted later in this file via
+    // `mountGodotGateway(server, ...)`) now passes an `onClientMessage` that
+    // dispatches `player:move` / `player:mode` through the SAME shared core
+    // (`applyPlayerMove` / `applyPlayerMode`, declared above
+    // `tryInitWebSockets`) this handler calls below — so a Godot client and a
+    // browser socket.io client get byte-identical anti-cheat + legitimacy
+    // gating. See the gateway mount site + docs/GODOT_INTEGRATION.md.
     socket.on("player:mode", (data) => {
       const userId = socket.data?.userId;
-      if (!userId) return; // Unauthenticated — silently drop, same as player:move
-      if (!data || typeof data !== "object") return;
-      const requested = typeof data.mode === "string" ? data.mode.trim().slice(0, 64) : "";
-      if (!requested) {
-        socket.emit("player:mode:nack", { reason: "missing_mode" });
-        return;
-      }
-      try {
-        if (requested === "walk" || requested === "sprint") {
-          // Always legitimate: never raises the speed envelope beyond what
-          // an on-foot player is already entitled to (modeSpeedCap caps
-          // sprint at a fixed factor over walk — no ownership needed).
-          cityPresence.setUserMovementMode(userId, requested, {});
-          socket.emit("player:mode:ack", { ok: true, mode: requested });
-          return;
-        }
-
-        if (requested === "fly") {
-          // Unchecked today — see the TODO above. Tracked so
-          // cityPresence.isUserFlying() reflects reality-as-claimed, not
-          // reality-as-verified, until Phase 3b closes this gap.
-          cityPresence.setUserMovementMode(userId, "fly", {});
-          socket.emit("player:mode:ack", { ok: true, mode: "fly" });
-          return;
-        }
-
-        if (requested.startsWith("mount:")) {
-          const speciesId = requested.slice("mount:".length);
-          if (!speciesId) {
-            socket.emit("player:mode:nack", { reason: "missing_species", requested });
-            return;
-          }
-          const presenceEntry = cityPresence.getUserPosition(userId);
-          const worldId = presenceEntry?.worldId || presenceEntry?.cityId || "concordia-hub";
-          const payload = getActiveMountPayload(db, userId, worldId);
-          // Reject unless the player has a real, currently-open
-          // mounted_instances row for exactly this species — never trust
-          // the claim alone.
-          if (!payload || !payload.speciesId || payload.speciesId !== speciesId) {
-            socket.emit("player:mode:nack", { reason: "not_mounted", requested });
-            return;
-          }
-          const rawSpeed = Number(payload.species?.baseSpeedMps);
-          const mountSpeedMps = Number.isFinite(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
-          cityPresence.setUserMovementMode(userId, requested, { mountSpeedMps });
-          socket.emit("player:mode:ack", { ok: true, mode: requested, mountSpeedMps });
-          return;
-        }
-
-        if (requested.startsWith("vehicle:")) {
-          const vehicleType = requested.slice("vehicle:".length);
-          if (!vehicleType) {
-            socket.emit("player:mode:nack", { reason: "missing_vehicle_type", requested });
-            return;
-          }
-          // The player must already be server-flipped into this vehicle
-          // type via the ownership-validated /api/vehicles/:id/mount route
-          // (setUserVehicle only runs after validateOwnership there) —
-          // this handler re-asserts the mode string, it never grants the
-          // vehicle itself.
-          const current = cityPresence.getUserVehicle(userId);
-          if (!current.vehicleId || current.vehicleType !== vehicleType) {
-            socket.emit("player:mode:nack", { reason: "not_in_vehicle", requested });
-            return;
-          }
-          cityPresence.setUserMovementMode(userId, requested, {});
-          socket.emit("player:mode:ack", { ok: true, mode: requested });
-          return;
-        }
-
-        socket.emit("player:mode:nack", { reason: "unknown_mode", requested });
-      } catch (err) {
-        logger.debug?.("server", "player_mode_failed", { error: err?.message });
-        socket.emit("player:mode:nack", { reason: "error" });
-      }
+      // Shared core — see applyPlayerMode above tryInitWebSockets. Behavior
+      // here is unchanged from before extraction: same checks, same order,
+      // same emitted reasons.
+      const result = applyPlayerMode(userId, data);
+      if (result.drop) return;
+      if (result.nack) { socket.emit("player:mode:nack", result.nack); return; }
+      if (result.ack) socket.emit("player:mode:ack", result.ack);
     });
 
     // ── Combat: attack another entity (player or NPC) ──────────────
@@ -65750,6 +65763,75 @@ try { await tryInitWebSockets(server); } catch (e) {
   structuredLog("error", "websocket_init_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
 }
 
+// Godot gateway inbound dispatch (2026-07-23 — Phase 3 bidirectionality).
+// Routes client→server frames the gateway doesn't natively recognize
+// (room:join/leave, scene:request, ping, auth ARE handled inside
+// godot-gateway.js itself and never reach this fallback) through the SAME
+// shared core the socket.io player:move/player:mode handlers use
+// (applyPlayerMove / applyPlayerMode, declared above tryInitWebSockets) — so
+// a Godot client is bound by the identical server-authoritative anti-cheat,
+// never a laxer path. `client` is the gateway's internal per-connection state
+// ({ id, ws, authenticated, userId, username, rooms }); there is no exported
+// per-client `send` on the gateway handle, so this mirrors its envelope
+// shape ({ evt, data: { ...payload, ts, _evt } }) directly — `_seq` is the
+// gateway's own private monotonic counter and is intentionally omitted here.
+function _godotGatewaySend(client, evt, payload = {}) {
+  try {
+    if (client?.ws && client.ws.readyState === client.ws.OPEN) {
+      client.ws.send(JSON.stringify({ evt, data: { ...payload, ts: new Date().toISOString(), _evt: evt } }));
+    }
+  } catch { /* per-socket, survive */ }
+}
+
+function _onGodotClientMessage(client, evt, data) {
+  const userId = client?.userId || null;
+  switch (evt) {
+    case "player:move": {
+      const result = applyPlayerMove(userId, data);
+      if (result.drop) return;
+      if (result.nack) {
+        _godotGatewaySend(client, "player:move:nack", result.nack);
+        if (result.shouldDisconnect) {
+          _godotGatewaySend(client, "anti-cheat:dropped", { reason: "too_many_violations" });
+          try { client.ws.close(4403, "too_many_violations"); } catch { /* survive */ }
+        }
+        return;
+      }
+      if (result.ack) _godotGatewaySend(client, "player:move:ack", result.ack);
+      return;
+    }
+    case "player:mode": {
+      const result = applyPlayerMode(userId, data);
+      if (result.drop) return;
+      if (result.nack) { _godotGatewaySend(client, "player:mode:nack", result.nack); return; }
+      if (result.ack) _godotGatewaySend(client, "player:mode:ack", result.ack);
+      return;
+    }
+    default:
+      // Honest, specific fallback — NOT the gateway's own blanket
+      // "unknown_evt". Names the exact gap (e.g. `combat:attack` has no
+      // gateway-side dispatch yet — see docs/GODOT_INTEGRATION.md) instead of
+      // implying every unrecognized frame is equally unsupported.
+      _godotGatewaySend(client, "error", { reason: "unsupported_evt", evt });
+  }
+}
+
+// Mirrors the socket.io auth middleware's API-key branch (~line 9074) exactly:
+// iterate AuthDB.getAllApiKeys(), verify the hash via the same verifyApiKey
+// helper. Returns {userId} (godot-gateway.js's tryAuth then resolves the user
+// itself via deps.getUser) or null on any failure — never fabricates a
+// session.
+async function _godotVerifyApiKeyPair(apiKey) {
+  try {
+    for (const keyData of AuthDB.getAllApiKeys()) {
+      if (keyData.keyHash && verifyApiKey(apiKey, keyData.keyHash)) {
+        return { userId: keyData.userId };
+      }
+    }
+  } catch { /* survive — an honest invalid_api_key beats a thrown auth path */ }
+  return null;
+}
+
 // Godot Integration Phase 2 — mount the raw-WebSocket gateway for the native
 // Godot 4 world client (docs/GODOT_INTEGRATION.md). This is the TDZ-safe spot:
 // `server` (the actual http.Server) only exists once SHOULD_LISTEN created it
@@ -65767,6 +65849,8 @@ if (server) {
       getUser: AuthDB.getUser,
       exportScene,
       db: STATE?.db || db,
+      onClientMessage: _onGodotClientMessage,
+      verifyApiKeyPair: _godotVerifyApiKeyPair,
     });
     _godotGatewayEmitter = createGatewayEmitter(godotGatewayHandle);
     globalThis._concordGodotGateway = godotGatewayHandle;
@@ -80030,6 +80114,26 @@ export const __TEST__ = Object.freeze({
   // doc comments above. Call from a test file's after() hook.
   terminateAllWorkersForTest: __terminateAllWorkersForTest,
   clearActiveTimersForTest: __clearActiveTimersForTest,
+  // Godot gateway apiKey-auth integration test surface (2026-07-23). Mints a
+  // real `api_keys` row via the same AuthDB.createApiKey the (owner/admin-
+  // gated) POST /api-keys route uses, so an integration test can exercise the
+  // gateway's apiKey auth path without needing to first grant a fresh test
+  // user owner/admin role — that authz gate is a separate, correct, already-
+  // tested concern (routes/auth.js) this test isn't about.
+  mintApiKeyForTest: (userId) => {
+    const rawKey = generateApiKey();
+    AuthDB.createApiKey({
+      id: uid("apikey"),
+      userId,
+      name: "godot-gateway-test-key",
+      keyHash: hashApiKey(rawKey),
+      keyPrefix: rawKey.slice(0, 8),
+      scopes: ["read"],
+      createdAt: new Date().toISOString(),
+      lastUsedAt: null,
+    });
+    return rawKey;
+  },
   // Goal-heartbeat real-signal test surface (2026-07-16 — closing
   // docs/WAVE4_INVENTORY.md "goals" row). processGoalHeartbeat has no HTTP
   // route or macro of its own (it's called inline from governorTick every

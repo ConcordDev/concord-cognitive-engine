@@ -236,3 +236,125 @@ test("scene:request round-trips through the real exportScene + real db", async (
     assert.deepEqual(frame.data.nodes, []);
   } finally { ws.close(); }
 });
+
+// ── Inbound dispatch (bidirectionality) ─────────────────────────────────────
+// Proves player:move frames sent BY the Godot client are actually dispatched
+// server-side through the shared core (applyPlayerMove in server.js) that
+// also backs the socket.io handler — including cityPresence's real
+// anti-cheat, not a gateway-side stub or a blanket unknown_evt.
+
+test("player:move round-trips through real cityPresence anti-cheat over /godot-ws", async () => {
+  const { token } = await registerUser(`godotit_${TS}_f`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    // room:join is handled natively inside godot-gateway.js itself (not the
+    // onClientMessage fallback this unit adds) — exercised here anyway to
+    // confirm the client can occupy a world room before moving in it, the
+    // shape a real Godot client would follow.
+    sendMsg(ws, "room:join", { room: "world:godot-it-move-world" });
+    const joined = await nextFrame(ws);
+    assert.equal(joined.evt, "room:joined");
+
+    // First move establishes the baseline position (no `prev`, so
+    // cityPresence.updateUserPosition can't run the speed/teleport checks
+    // yet — this MUST ack, proving the frame reached the real handler and
+    // not the gateway's old blanket `error {reason:"unknown_evt"}`).
+    sendMsg(ws, "player:move", { cityId: "godot-it-move-world", x: 1, y: 0, z: 1, direction: 0 });
+    const ack = await nextFrame(ws);
+    assert.equal(ack.evt, "player:move:ack");
+    assert.equal(ack.data.ok, true);
+    assert.equal(ack.data.chunkCrossed, true); // first-ever position for this user
+
+    // Wait out cityPresence's 500ms post-login grace period (city-presence.js
+    // GRACE_PERIOD_MS) so the next move is actually speed/teleport-checked
+    // instead of being waved through as "just logged in".
+    await new Promise((r) => { setTimeout(r, 650); });
+
+    // A ~1,271m jump in well under a second is an unmissable teleport by any
+    // mode's speed cap (900,900 stays inside math-safety.js's ±1000 world
+    // envelope — a bigger jump would get silently clamped back to the
+    // {0,0,0} respawn position by clampToWorldBounds BEFORE the anti-cheat
+    // distance check even runs, which would defeat this test by making the
+    // "teleport" land implausibly close to the last good position). Proves
+    // the SAME server-authoritative cityPresence.updateUserPosition
+    // anti-cheat that guards the socket.io path also guards the Godot path,
+    // not a laxer/duplicate copy.
+    sendMsg(ws, "player:move", { cityId: "godot-it-move-world", x: 900, y: 0, z: 900, direction: 0 });
+    const nack = await nextFrame(ws);
+    assert.equal(nack.evt, "player:move:nack");
+    assert.ok(["teleport_detected", "speed_hack_detected"].includes(nack.data.reason), `unexpected reason: ${nack.data.reason}`);
+    // The rejected move must not have overwritten server state — prev is the
+    // last GOOD (accepted) position, proving the update was actually
+    // dropped server-side rather than silently applied.
+    assert.equal(nack.data.prev.x, 1);
+    assert.equal(nack.data.prev.z, 1);
+  } finally { ws.close(); }
+});
+
+test("player:mode round-trips through the shared core over /godot-ws", async () => {
+  const { token } = await registerUser(`godotit_${TS}_g`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    // "sprint" needs no external capability check (see applyPlayerMode) —
+    // exercises the always-legitimate ack branch end-to-end.
+    sendMsg(ws, "player:mode", { mode: "sprint" });
+    const ack = await nextFrame(ws);
+    assert.equal(ack.evt, "player:mode:ack");
+    assert.equal(ack.data.ok, true);
+    assert.equal(ack.data.mode, "sprint");
+
+    // An unowned mount claim must be rejected server-side, not granted on
+    // the client's say-so — same legitimacy gate as the socket.io path.
+    sendMsg(ws, "player:mode", { mode: "mount:nonexistent-species" });
+    const nack = await nextFrame(ws);
+    assert.equal(nack.evt, "player:mode:nack");
+    assert.equal(nack.data.reason, "not_mounted");
+  } finally { ws.close(); }
+});
+
+test("an event with no inbound dispatch gets an honest unsupported_evt, not a fabricated success", async () => {
+  const { token } = await registerUser(`godotit_${TS}_h`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "combat:attack", { targetId: "nope" });
+    const frame = await nextFrame(ws);
+    assert.equal(frame.evt, "error");
+    assert.equal(frame.data.reason, "unsupported_evt");
+    assert.equal(frame.data.evt, "combat:attack");
+  } finally { ws.close(); }
+});
+
+// ── API-key auth ─────────────────────────────────────────────────────────────
+
+test("godot-ws auth handshake succeeds with a real apiKey (not just a bearer token)", async () => {
+  const { userId } = await registerUser(`godotit_${TS}_i`);
+  const rawApiKey = __TEST__.mintApiKeyForTest(userId);
+
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { apiKey: rawApiKey });
+    const hello = await nextFrame(ws);
+    assert.equal(hello.evt, "hello");
+    assert.equal(hello.data.authenticated, true);
+    assert.equal(hello.data.userId, userId);
+  } finally { ws.close(); }
+});
+
+test("apiKey auth rejects a bogus key honestly (invalid_api_key, no fabricated session)", async () => {
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { apiKey: "not-a-real-key-at-all" });
+    const err = await nextFrame(ws);
+    assert.equal(err.evt, "auth:error");
+    assert.equal(err.data.reason, "invalid_api_key");
+  } finally { ws.close(); }
+});

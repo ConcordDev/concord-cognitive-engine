@@ -1,11 +1,13 @@
 # Godot World-Lens Integration
 
-**Status: Phase 1 — Foundation (built, NOT mounted).** The gateway module, its
-contract tests, and the Godot 4 client skeleton exist and are validated at the
-levels stated below. Nothing is wired into `server/server.js` yet — the gateway
-is dead code until the orchestrator performs the integration steps in the
-[Integration TODO](#integration-todo). This is by design (honest-by-construction:
-no half-mounted surface pretending to be live).
+**Status: Phase 3 — bidirectional, mounted, auth-complete.** The gateway is
+mounted in `server/server.js` (`mountGodotGateway(server, ...)`, gated on
+`if (server)`, right after `tryInitWebSockets`), mirrors `realtimeEmit` /
+`emitToWorld` outbound into Godot rooms, dispatches inbound `player:move` /
+`player:mode` frames through the same server-authoritative logic the
+socket.io path uses, and accepts both bearer-token and real API-key auth. See
+[Integration TODO](#integration-todo) for what's done vs. still open (rate
+limiting per-client tuning, `combat:attack` dispatch).
 
 ---
 
@@ -71,9 +73,18 @@ mirror `realtimeEmit` / `event-shapes.js`:
 
 ### API-key auth
 
-The apiKey path is only active if the integration injects `verifyApiKeyPair`.
-Without it, an apiKey attempt returns an honest
-`auth:error {reason:"api_key_auth_unavailable"}` — it never fabricates a session.
+**DONE (2026-07-23).** The mount call in `server.js` injects `verifyApiKeyPair`
+— a closure over `AuthDB.getAllApiKeys()` + the same `verifyApiKey` hash
+comparison the socket.io auth middleware uses (`server.js` ~line 9074-9088).
+The two paths are call-for-call identical: iterate every active key hash,
+`verifyApiKey(apiKey, keyData.keyHash)`, resolve `keyData.userId`. A real
+`api_keys`-table key now authenticates a `/godot-ws` client exactly like it
+authenticates a socket.io one. Covered end-to-end (mint a real key, connect,
+`auth {apiKey}`, expect `hello`) by
+`server/tests/godot-gateway-integration.test.js`. Without the injected
+verifier (e.g. a bare standalone mount in the contract tests), an apiKey
+attempt still returns an honest `auth:error {reason:"api_key_auth_unavailable"}`
+— that fallback in `godot-gateway.js` itself is unchanged.
 
 ### Rooms
 
@@ -102,12 +113,53 @@ The gateway pings each socket every `heartbeatMs` (default 25s, matching
 socket.io's default). A socket that has not `pong`ed since the last ping is
 `terminate()`d. The interval is `.unref()`ed so it never keeps the process alive.
 
-### Phase-2 (planned, NOT built)
+### Inbound dispatch (client → server)
 
-- `player:move` at ≤30Hz with server ack/nack and snap-back on rejection.
-- Server → client `city:positions` snapshots (~100Hz aggregate, ~100ms cadence)
-  consumed by `snapshot_buffer.gd`.
-- Per-client rate limiting (deferred — see below).
+**DONE (2026-07-23).** The mount call injects an `onClientMessage(client, evt,
+data)` that routes recognized client→server frames through the SAME shared
+core the socket.io `player:move`/`player:mode` handlers call
+(`applyPlayerMove`/`applyPlayerMode`, declared at module scope in `server.js`
+just above `tryInitWebSockets`) — not a separate or laxer copy of the logic.
+Wired today:
+
+- `player:move` → `cityPresence.updateUserPosition` (same reach/speed/
+  teleport anti-cheat as the browser path) → `player:move:ack` /
+  `player:move:nack` (with `shouldDisconnect` honored via `client.ws.close()`
+  the same way the socket.io path calls `socket.disconnect(true)`).
+- `player:mode` → the same walk/sprint/fly/mount/vehicle legitimacy gate
+  (mount ownership via `getActiveMountPayload`, vehicle via
+  `cityPresence.getUserVehicle`) → `player:mode:ack` / `player:mode:nack`.
+- `room:join` / `room:leave` were already handled natively inside
+  `godot-gateway.js`'s own `handleMessage` switch (world:*/user:* room grammar)
+  and never reach `onClientMessage` at all.
+- Anything else (notably **`combat:attack` — not wired**; see Honest caveats)
+  gets an honest `error {reason:"unsupported_evt", evt}` — a more specific
+  signal than the gateway's own generic `unknown_evt`, naming exactly what's
+  missing instead of implying uniform non-support.
+
+Covered end-to-end by `server/tests/godot-gateway-integration.test.js`: a real
+ws client authenticates, sends `player:move` twice (first establishes a
+baseline position and must ack; the second is an implausible ~1,271m jump
+inside the world envelope and must nack with `teleport_detected` or
+`speed_hack_detected`, with `prev` reflecting the last GOOD position — proof
+cityPresence's real anti-cheat ran, not a stub), and a `player:mode` round
+trip (legitimate `sprint` acks; an unowned `mount:*` claim nacks
+`not_mounted`).
+
+Server → client `city:positions` snapshots (~100Hz aggregate, ~100ms cadence)
+consumed by `snapshot_buffer.gd` remain **NOT built** — the gateway mirrors
+individual `realtimeEmit`/`emitToWorld` events, not a dedicated aggregate
+snapshot stream.
+
+### Per-client rate limiting
+
+Built in Phase 1 as a generic per-client token bucket (`rateLimitPerSec`/
+`rateLimitBurst`, keyed by `userId` once authenticated) gating `handleMessage`
+for every event including `player:move`/`player:mode` — this is coarser than
+the socket.io path's dedicated ~30Hz (33ms) `player:move`-specific gate, which
+is a real (small) behavior difference: a Godot client's move-frame cadence is
+capped by the generic 20/sec-sustained bucket rather than a move-specific
+30Hz one. See Honest caveats.
 
 ## Files
 
@@ -143,51 +195,73 @@ socket.io's default). A socket that has not `pong`ed since the last ping is
 
 ## Integration TODO
 
-The orchestrator must perform these steps to make the gateway live. None of them
-are done in Phase 1.
-
-1. **Declare `ws` in `server/package.json` dependencies.** It is currently present
-   at `server/node_modules/ws` (v8.21.0) only as a **transitive** dependency (via
-   engine.io). The gateway imports it directly; a future `npm prune`/dedupe could
-   remove it. Add `"ws": "^8.21.0"` explicitly. (Noted in a code comment at the
-   top of `godot-gateway.js`.)
-2. **Mount in `server.js`** after the TDZ-safe point (`app` at ~27554, HTTP server
-   creation, and after `LENS_ACTIONS`):
-   ```js
-   import { mountGodotGateway } from "./lib/godot-gateway.js";
-   const godotGateway = mountGodotGateway(httpServer, {
-     verifyToken,                 // existing token verifier
-     getUser: AuthDB.getUser,     // existing user lookup
-     exportScene,                 // from ./lib/scene-export.js
-     db: STATE.db,
-   });
-   ```
-   The upgrade handler only claims `/godot-ws`, so it coexists with socket.io.
-3. **Mirror `realtimeEmit` into Godot rooms** via `createGatewayEmitter(godotGateway)`
-   — fan the existing `world:*` / `user:*` room emits into the gateway so Godot
-   clients see the same world events the Three.js client does.
-4. **Per-client rate limiting** (deferred from Phase 1 by design). A token bucket
-   keyed on `client.userId` should gate the message handler at mount time. Marked
-   with a comment in `handleMessage`.
-5. **API-key auth path wiring** — inject `verifyApiKeyPair` built from
-   `AuthDB.getAllApiKeys` + `verifyApiKey`, matching the socket.io auth mirror.
-6. **Cookie auth is intentionally NOT wired** — the Godot client is a native
+1. **Declare `ws` in `server/package.json` dependencies.** — **still open.** It is
+   currently present at `server/node_modules/ws` (v8.21.0) only as a
+   **transitive** dependency (via engine.io). The gateway imports it directly; a
+   future `npm prune`/dedupe could remove it. Add `"ws": "^8.21.0"` explicitly.
+   (Noted in a code comment at the top of `godot-gateway.js`.) Not touched by
+   this unit — out of scope, flagged again so it doesn't get lost.
+2. **Mount in `server.js`** — **DONE.** Mounted after the TDZ-safe point (`server`
+   itself created, `app` ~27554, `LENS_ACTIONS` ~36537 both long since declared),
+   right after `tryInitWebSockets(server)`. Gated on `if (server)` — a
+   `CONCORD_NO_LISTEN=true` / test-mode boot with no bound `http.Server` stays
+   unmounted (honest: no listener, no gateway, never fabricated).
+3. **Mirror `realtimeEmit` into Godot rooms** — **DONE**, via
+   `createGatewayEmitter(godotGatewayHandle)` assigned to `_godotGatewayEmitter`
+   at the mount site.
+4. **Per-client rate limiting** — **DONE** (generic token bucket, built in Phase
+   1 and live now that the gateway is mounted). **Not yet tuned** to mirror the
+   socket.io path's move-specific ~30Hz gate — see the rate-limiting section
+   above and Honest caveats.
+5. **API-key auth path wiring** — **DONE.** `_godotVerifyApiKeyPair` (defined in
+   `server.js` just above the mount block) is injected as `verifyApiKeyPair`;
+   see the API-key auth section above.
+6. **Inbound dispatch wiring** (this unit, 2026-07-23) — **DONE for
+   `player:move`/`player:mode`.** `_onGodotClientMessage` is injected as
+   `onClientMessage`; see the Inbound dispatch section above.
+   **`combat:attack` is NOT wired** — see Honest caveats.
+7. **Cookie auth is intentionally NOT wired** — the Godot client is a native
    process, not a browser; it authenticates with a bearer token or API key.
+   Unchanged, by design.
 
 ## Honest caveats
 
-- `ws` is transitive-only until step 1 above.
-- Rate limiting is not implemented in Phase 1.
-- `_rid` is reserved but never populated on this path in Phase 1.
+- `ws` is still transitive-only (package.json declaration, item 1 above, is
+  still open).
+- `_rid` is reserved but never populated on this path.
 - The Godot project has never been opened in a real editor or renderer — validation
   is parse-and-lint-only. See `world-lens-godot/VISUAL_QA.md`.
-- The gateway is dead code until mounted (steps 1–2).
+- **`combat:attack` has no gateway-side dispatch.** A Godot client sending it
+  gets an honest `error {reason:"unsupported_evt", evt:"combat:attack"}` — never
+  a fabricated hit result. The socket.io `combat:attack` handler
+  (`server.js`, the `_attackCd`/`_newAttackCooldownState` region) was left
+  untouched by this unit (a separate unit's committed code, out of scope here);
+  wiring it would follow the exact same shared-core-extraction pattern used for
+  `player:move`/`player:mode` in a future unit.
+- **Godot-path rate limiting is coarser than the socket.io path's.** The
+  socket.io handler gates `player:move` specifically at ~30Hz (33ms) per
+  socket; the gateway's generic per-client token bucket (default 20/sec
+  sustained, burst 30) covers ALL inbound events for a client, not a
+  `player:move`-specific cadence. Functionally safe (still can't flood), but
+  not byte-identical throughput tuning — a future pass could special-case
+  `player:move` inside `_onGodotClientMessage` with its own 33ms gate to match
+  exactly.
+- The two shared-core functions (`applyPlayerMove`/`applyPlayerMode` in
+  `server.js`) re-validate `userId`/`data` internally even though the socket.io
+  wrapper already validated them before calling — intentional defense-in-depth
+  so the functions are also safe to call directly from the gateway path, which
+  has no equivalent pre-check.
 
 ## Reproduction commands
 
 ```bash
 # Gateway contract tests (standalone, no boot):
 cd server && node --test tests/godot-gateway.test.js
+
+# Real-server integration tests (boots server.js for real, real ws client,
+# real auth, real cityPresence anti-cheat — the mount + inbound-dispatch +
+# apiKey-auth proof):
+cd server && node --test tests/godot-gateway-integration.test.js
 
 # GDScript parse + lint (requires: pip install gdtoolkit):
 cd world-lens-godot && for f in $(find . -name '*.gd'); do gdparse "$f"; done && gdlint .
