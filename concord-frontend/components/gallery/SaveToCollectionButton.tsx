@@ -12,7 +12,7 @@
  * recommendations).
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FolderHeart, FolderCheck, Loader2, Plus, X, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -44,6 +44,20 @@ export function SaveToCollectionButton({
   const [newName, setNewName] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Real modal a11y: Escape closes it, and focus moves into the dialog
+  // on open so keyboard/screen-reader users land somewhere sensible
+  // instead of on whatever was focused behind it.
+  useEffect(() => {
+    if (!open) return;
+    dialogRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
 
   const openPicker = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -124,12 +138,14 @@ export function SaveToCollectionButton({
       {open && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setOpen(false)}
+          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
           role="presentation"
         >
           <div
-            className="w-full max-w-sm rounded-xl border border-rose-500/30 bg-zinc-950 p-4 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+            ref={dialogRef}
+            tabIndex={-1}
+            className="w-full max-w-sm rounded-xl border border-rose-500/30 bg-zinc-950 p-4 shadow-xl outline-none"
             role="dialog"
             aria-modal="true"
             aria-label="Save to collection"

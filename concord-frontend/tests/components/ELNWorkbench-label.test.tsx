@@ -184,4 +184,38 @@ describe('ELNWorkbench — label printing', () => {
     expect(screen.queryByRole('button', { name: /^Print$/i })).not.toBeInTheDocument();
     expect(lensRun.mock.calls.length).toBe(callsAfterOpen);
   });
+
+  // 2026-07-23 UX-polish audit fix: the modal previously had no keyboard
+  // dismissal path at all — only a mouse click on the backdrop or the X
+  // button worked. Pins the real Escape-to-close behavior + that focus
+  // actually lands inside the dialog on open.
+  it('pressing Escape closes the label modal', async () => {
+    lensRun.mockImplementation((domain: string, name: string) => {
+      if (name === 'inventory-list') {
+        return Promise.resolve(okResponse({
+          items: [reagentItem], total: 1, alerts: [], expiredCount: 0, expiringSoonCount: 0, lowStockCount: 0,
+        }));
+      }
+      if (name === 'label-generate') {
+        return Promise.resolve(okResponse({
+          label: {
+            id: 'lbl_1', recordType: 'reagent', recordId: 'rgt_1', payload: 'LAB:REAGENT:rgt_1:L2024-09',
+            name: 'Taq polymerase', lot: 'L2024-09', generatedAt: '2026-07-16T00:00:00.000Z', generatedBy: 'u1',
+          },
+        }));
+      }
+      return Promise.resolve(okResponse({}));
+    });
+
+    render(<ELNWorkbench />);
+    fireEvent.click(screen.getByRole('button', { name: /Inventory/i }));
+    await screen.findByText('Taq polymerase', { exact: false });
+    fireEvent.click(screen.getByRole('button', { name: /Print label/i }));
+    const dialog = await screen.findByRole('dialog', { name: /Print Label/i });
+    expect(dialog).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
 });

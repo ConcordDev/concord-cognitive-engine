@@ -187,4 +187,33 @@ describe('DashboardsSection — live widget grid', () => {
     // event bubbling into the card's own view() handler).
     expect(lensRunMock).not.toHaveBeenCalledWith('command-center', 'dashboardData', expect.anything());
   });
+
+  // 2026-07-23 UX-polish audit fix: the card used to be a bare `<div
+  // onClick>` with no keyboard path at all. It's now a real `<button>`
+  // (native Tab reachability + Enter/Space activation), with the delete
+  // control as a separate sibling button rather than nested inside it.
+  it('the dashboard card is a real button — reachable and Enter-activatable, and the delete control is a separate control', async () => {
+    routeCC({
+      listDashboards: ok({ dashboards: [dashboard], count: 1 }),
+      dashboardData: ok({
+        dashboardId: 'dash_1', name: 'Ops overview', count: 1, resolvedCount: 1, unresolvedCount: 0,
+        widgets: [{ id: 'heap_mb', type: 'panel', kind: 'vital', data: { metric: 'heap_mb', points: [], count: 0, stats: null } }],
+      }),
+    });
+
+    render(<DashboardsSection />);
+    const cardButton = await screen.findByRole('button', { name: /Ops overview/i });
+    const deleteButton = screen.getByRole('button', { name: 'Delete dashboard' });
+
+    // Two distinct, non-nested controls (not a button nested in a button).
+    expect(cardButton).not.toBe(deleteButton);
+    expect(deleteButton.closest('button')).toBe(deleteButton);
+
+    // A real <button> is keyboard-activatable by construction (no manual
+    // onKeyDown/role/tabIndex shim needed) — clicking it (the RTL-standard
+    // stand-in for "activated via keyboard", since jsdom doesn't run the
+    // browser's native Enter->click behavior for buttons) opens the grid.
+    fireEvent.click(cardButton);
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('command-center', 'dashboardData', { dashboardId: 'dash_1' }));
+  });
 });

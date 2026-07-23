@@ -1224,9 +1224,17 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'lab',
     label: 'Lab',
     artifacts: ['experiment_notebook', 'protocol', 'run', 'result', 'reagent', 'equipment_log'],
-    macros: { list: 'lens.lab.list', get: 'lens.lab.get', create: 'lens.lab.create', update: 'lens.lab.update', delete: 'lens.lab.delete', run: 'lens.lab.run', export: 'lens.lab.export' },
+    // These were phantom `lens.lab.*` placeholder ids and an `actions` list
+    // (run_protocol/record_result/compare_runs/statistical_analysis/
+    // equipment_calibrate/generate_report) that matched zero registered
+    // `lab` macros — every ManifestActionBar quick-action on this lens
+    // called an unknown macro and errored on click. Retargeted at the real,
+    // zero-arg-safe `lab.*` macros ELNWorkbench's own tabs use (see
+    // server/domains/lab.js), so both the manifest metadata and the quick
+    // actions actually resolve (2026-07-23 UX-polish audit fix).
+    macros: { list: 'lab.notebook-list', get: 'lab.notebook-list', create: 'lab.notebook-create', update: 'lab.notebook-update', delete: 'lab.inventory-remove', run: 'lab.protocol-run', export: 'lab.label-generate' },
     exports: ['json', 'csv', 'pdf', 'xlsx'],
-    actions: ['run_protocol', 'record_result', 'compare_runs', 'statistical_analysis', 'equipment_calibrate', 'generate_report'],
+    actions: ['notebook-list', 'inventory-list', 'protocol-list', 'plate-list', 'run-list', 'construct-list'],
     category: 'knowledge',
     dataTier: 'SIM_GRADE_A',
     emptyState: {

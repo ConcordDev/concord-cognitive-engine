@@ -1081,20 +1081,32 @@ export function DashboardsSection({ orgId, readOnly }: { orgId?: string | null; 
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {dashboards.map((d) => (
-            <div key={d.id} className={`bg-[#0a0f18] rounded-lg border p-2.5 cursor-pointer ${selectedId === d.id ? 'border-cyan-500/50' : 'border-cyan-900/25 hover:border-cyan-700/40'}`} onClick={() => view(d.id)}>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-cyan-50 font-medium flex-1 truncate">{d.name}</span>
-                {!readOnly && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); remove(d.id); }}
-                    className="text-cyan-700/60 hover:text-red-400"
-                    aria-label="Delete dashboard"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <p className="text-[11px] text-cyan-600/60 mt-1">{d.widgets.length} panel{d.widgets.length !== 1 ? 's' : ''}</p>
+            <div key={d.id} className={`relative bg-[#0a0f18] rounded-lg border p-2.5 ${selectedId === d.id ? 'border-cyan-500/50' : 'border-cyan-900/25 hover:border-cyan-700/40'}`}>
+              {/* Whole card is a real <button> (not a `<div onClick>`) so it's
+                  reachable by Tab and activatable with Enter/Space natively —
+                  no `role="button"` + manual onKeyDown shim needed. The
+                  delete control is a sibling <button>, absolutely positioned
+                  over it, so we never nest one interactive element inside
+                  another. */}
+              <button
+                type="button"
+                onClick={() => view(d.id)}
+                aria-pressed={selectedId === d.id}
+                className={`block w-full text-left ${!readOnly ? 'pr-7' : ''}`}
+              >
+                <span className="text-sm text-cyan-50 font-medium truncate block">{d.name}</span>
+                <p className="text-[11px] text-cyan-600/60 mt-1">{d.widgets.length} panel{d.widgets.length !== 1 ? 's' : ''}</p>
+              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => remove(d.id)}
+                  className="absolute top-2.5 right-2.5 text-cyan-700/60 hover:text-red-400"
+                  aria-label="Delete dashboard"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
