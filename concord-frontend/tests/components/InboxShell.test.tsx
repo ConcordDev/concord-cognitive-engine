@@ -96,4 +96,49 @@ describe('InboxShell', () => {
     );
     expect(screen.getByTestId('reading-pane')).toBeInTheDocument();
   });
+
+  // Regression coverage for a real bug fix: Reply/Forward/Archive used to
+  // render unconditionally with no onClick at all (pure dead-click
+  // scaffolding). Now they're opt-in — only render, and only fire, when
+  // the caller supplies a real handler.
+  describe('reading-pane header actions (opt-in, real bug fix)', () => {
+    it('renders no header action row at all when no handlers are supplied', () => {
+      render(
+        <InboxShell labels={labels} threads={threads} activeLabelId="inbox" activeThreadId="t1">
+          <div />
+        </InboxShell>
+      );
+      expect(screen.queryByText('Reply')).not.toBeInTheDocument();
+      expect(screen.queryByText('Forward')).not.toBeInTheDocument();
+      expect(screen.queryByText('Archive')).not.toBeInTheDocument();
+    });
+
+    it('renders only the buttons whose handler was supplied, and calls them with the real active thread', () => {
+      const onReply = vi.fn();
+      const onForward = vi.fn();
+      render(
+        <InboxShell labels={labels} threads={threads} activeLabelId="inbox" activeThreadId="t1" onReply={onReply} onForward={onForward}>
+          <div />
+        </InboxShell>
+      );
+      expect(screen.queryByTestId('inbox-header-archive')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('inbox-header-reply'));
+      expect(onReply).toHaveBeenCalledWith(expect.objectContaining({ id: 't1', from: 'Aria' }));
+
+      fireEvent.click(screen.getByTestId('inbox-header-forward'));
+      expect(onForward).toHaveBeenCalledWith(expect.objectContaining({ id: 't1', subject: 'Royalty cascade' }));
+    });
+
+    it('renders Archive when a real handler is supplied for it', () => {
+      const onArchive = vi.fn();
+      render(
+        <InboxShell labels={labels} threads={threads} activeLabelId="inbox" activeThreadId="t2" onArchive={onArchive}>
+          <div />
+        </InboxShell>
+      );
+      fireEvent.click(screen.getByTestId('inbox-header-archive'));
+      expect(onArchive).toHaveBeenCalledWith(expect.objectContaining({ id: 't2', from: 'Mira' }));
+    });
+  });
 });

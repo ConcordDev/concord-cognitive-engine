@@ -4775,7 +4775,21 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['conversation', 'message', 'thread', 'attachment'],
     macros: { list: 'lens.message.list', get: 'lens.message.get', create: 'lens.message.create', update: 'lens.message.update', delete: 'lens.message.delete', run: 'lens.message.run', export: 'lens.message.export' },
     exports: ['json', 'md'],
-    actions: ['send_dm', 'list_threads', 'mark_read', 'archive', 'search_messages'],
+    // Deliberately empty (found + fixed in a UX-polish audit pass,
+    // 2026-07-23 — same defect class as the engineering/eco lenses'
+    // manifests, see those comments): 'send_dm'/'list_threads'/'mark_read'/
+    // 'archive'/'search_messages' matched nothing in LENS_ACTIONS or
+    // MACROS for this domain (the real macros are hyphenated —
+    // `search-messages`, `channels-archive`, `messages-mark-read` — and
+    // DM send/list isn't a macro at all, it's the `/api/social/dm/*` REST
+    // route this lens's page already calls directly). Every
+    // <ManifestActionBar> click here 404'd as unknown_macro, rendered
+    // unconditionally at the very top of the page. The real capabilities
+    // already have designed homes (InboxShell compose/reply, SlackSection,
+    // GmailSection, MessageWorkbench's search/voice/reactions,
+    // LabelManagerPanel, ThreadLabelBar) — left empty rather than
+    // duplicating them behind a broken generic bar.
+    actions: [],
     category: 'social',
     dataTier: 'REAL_LIVE',
     emptyState: {

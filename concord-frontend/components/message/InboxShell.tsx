@@ -1,7 +1,4 @@
 'use client';
-// @ghost-click-ok: silhouette/scaffolding component — Reply/Forward/Archive
-// buttons are visual placeholders for the inbox shape; caller wires real
-// handlers via children.
 
 /**
  * InboxShell — Gmail / Front 3-pane inbox silhouette.
@@ -11,13 +8,29 @@
  * just like every email client; the caller renders the actual
  * reading pane via children so message body / quote chain / forward
  * controls stay caller-owned.
+ *
+ * The reading-pane header's Reply/Forward/Archive row used to be pure
+ * scaffolding — three buttons with no onClick at all (the file used to
+ * carry an explicit `@ghost-click-ok` opt-out for the dead-click
+ * detector). Found during a UX-polish audit: `message/page.tsx` never
+ * wired them, and one of the three (Archive) has no real backend
+ * capability for DM conversations to wire to at all
+ * (`/api/social/dm/*` only has send/list/get/delete-message/mark-read —
+ * verified by reading `server.js`, no archive route exists). Fixed by
+ * making all three **opt-in**: each only renders if the caller supplies
+ * a real handler, so a lens with a genuine capability gets a genuine
+ * button and a lens without one doesn't render a dead one. `message`
+ * wires real Reply (focuses the existing inline reply composer) and
+ * Forward (pre-fills the real compose flow with a quoted excerpt);
+ * Archive is intentionally omitted there until a real backend flag
+ * exists — an honest gap, not a fabricated button.
  */
 
 import React, { useCallback } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import {
   Inbox, Send, Star, Archive, Trash2, Tag, Clock,
-  Paperclip, Reply, Forward, ChevronDown,
+  Paperclip, Reply, Forward,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +60,11 @@ export interface InboxShellProps {
   activeThreadId?: string;
   onSelectLabel?: (label: InboxLabel) => void;
   onSelectThread?: (thread: InboxThread) => void;
+  /** Reading-pane header actions — opt-in. Omit any of these and that
+   *  button doesn't render, rather than rendering a dead click target. */
+  onReply?: (thread: InboxThread) => void;
+  onForward?: (thread: InboxThread) => void;
+  onArchive?: (thread: InboxThread) => void;
   /** Reading pane content for the selected thread. */
   children: React.ReactNode;
   className?: string;
@@ -69,9 +87,13 @@ export function InboxShell({
   activeThreadId,
   onSelectLabel,
   onSelectThread,
+  onReply,
+  onForward,
+  onArchive,
   children,
   className,
 }: InboxShellProps) {
+  const activeThread = threads.find((t) => t.id === activeThreadId);
   // A heavy DM user can accumulate hundreds of conversations; this list
   // used to render every <li> unconditionally into the DOM regardless of
   // scroll position. Virtualized with the same react-virtuoso already
@@ -178,20 +200,40 @@ export function InboxShell({
       <main className="flex-1 overflow-y-auto bg-lattice-void">
         {activeThreadId ? (
           <div className="max-w-4xl mx-auto px-8 py-6">
-            <div className="flex items-center gap-2 mb-6 border-b border-lattice-border pb-3">
-              <button type="button" className="inline-flex items-center gap-1 text-sm text-gray-300 px-3 py-1.5 rounded hover:bg-white/5 hover:text-white transition-colors duration-100">
-                <Reply className="w-3.5 h-3.5" /> Reply
-              </button>
-              <button type="button" className="inline-flex items-center gap-1 text-sm text-gray-300 px-3 py-1.5 rounded hover:bg-white/5 hover:text-white transition-colors duration-100">
-                <Forward className="w-3.5 h-3.5" /> Forward
-              </button>
-              <button type="button" className="inline-flex items-center gap-1 text-sm text-gray-300 px-3 py-1.5 rounded hover:bg-white/5 hover:text-white transition-colors duration-100">
-                <Archive className="w-3.5 h-3.5" /> Archive
-              </button>
-              <button type="button" className="ml-auto inline-flex items-center gap-1 text-sm text-gray-500 px-3 py-1.5 rounded hover:bg-white/5 hover:text-gray-300 transition-colors duration-100" aria-label="Expand">
-                <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {(onReply || onForward || onArchive) && (
+              <div className="flex items-center gap-2 mb-6 border-b border-lattice-border pb-3">
+                {onReply && (
+                  <button
+                    type="button"
+                    data-testid="inbox-header-reply"
+                    onClick={() => activeThread && onReply(activeThread)}
+                    className="inline-flex items-center gap-1 text-sm text-gray-300 px-3 py-1.5 rounded hover:bg-white/5 hover:text-white transition-colors duration-100"
+                  >
+                    <Reply className="w-3.5 h-3.5" /> Reply
+                  </button>
+                )}
+                {onForward && (
+                  <button
+                    type="button"
+                    data-testid="inbox-header-forward"
+                    onClick={() => activeThread && onForward(activeThread)}
+                    className="inline-flex items-center gap-1 text-sm text-gray-300 px-3 py-1.5 rounded hover:bg-white/5 hover:text-white transition-colors duration-100"
+                  >
+                    <Forward className="w-3.5 h-3.5" /> Forward
+                  </button>
+                )}
+                {onArchive && (
+                  <button
+                    type="button"
+                    data-testid="inbox-header-archive"
+                    onClick={() => activeThread && onArchive(activeThread)}
+                    className="inline-flex items-center gap-1 text-sm text-gray-300 px-3 py-1.5 rounded hover:bg-white/5 hover:text-white transition-colors duration-100"
+                  >
+                    <Archive className="w-3.5 h-3.5" /> Archive
+                  </button>
+                )}
+              </div>
+            )}
             {children}
           </div>
         ) : (

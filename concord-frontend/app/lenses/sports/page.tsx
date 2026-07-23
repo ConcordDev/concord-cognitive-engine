@@ -47,8 +47,9 @@ import { PipingProvider } from '@/components/panel-polish';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LiveScoreboard } from '@/components/sports/LiveScoreboard';
 import { SportsSpectatorHub } from '@/components/sports/SportsSpectatorHub';
-import { LeagueStandings } from '@/components/sports/LeagueStandings';
+import { LeagueStandings, type ActiveLeague } from '@/components/sports/LeagueStandings';
 import { MatchSimulator } from '@/components/sports/MatchSimulator';
+import { useRecentLeagues } from '@/components/sports/use-recent-leagues';
 
 type Tab = 'games' | 'stats' | 'training' | 'leagues';
 
@@ -88,26 +89,58 @@ const INTENSITY_COLORS: Record<string, string> = {
   intense: 'text-red-400 bg-red-400/10',
 };
 
+// Real bug fixed here (found auditing the "Leagues (live)" tab for this
+// UX pass): <LeagueStandings> used to manage its created leagueId in
+// fully-local state with no way to surface it to this parent — the ONLY
+// documented path into <MatchSimulator> was pasting a raw UUID into a
+// bare text input, and the id was never displayed anywhere but a
+// truncated 12-char slice in the standings header. A user who created a
+// league through the actual UI had no way to ever reach the match
+// simulator. Fixed by lifting selection via `onLeagueChange` + a real
+// "Copy id" affordance in LeagueStandings, and replacing the paste box
+// with a recent-leagues row backed by `useRecentLeagues` (real ids the
+// user actually created, remembered client-side since the backend has
+// no "list my leagues" route to browse from).
 function LeagueWire() {
-  const [activeLeagueId, setActiveLeagueId] = useState<string | null>(null);
+  const [active, setActive] = useState<ActiveLeague | null>(null);
+  const { leagues, remember } = useRecentLeagues();
+
+  const onLeagueChange = useCallback((league: ActiveLeague) => {
+    setActive(league);
+    remember(league);
+  }, [remember]);
+
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <LeagueStandings leagueId={activeLeagueId ?? undefined} />
-      {activeLeagueId ? (
-        <MatchSimulator leagueId={activeLeagueId} />
-      ) : (
-        <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 p-4 text-center text-xs text-zinc-500">
-          Create a league first to schedule matches.
+    <div className="space-y-3">
+      {leagues.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Recent (this browser)</span>
+          {leagues.map((l) => (
+            <button
+              key={l.id}
+              onClick={() => setActive(l)}
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-[11px] transition-colors',
+                active?.id === l.id
+                  ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
+                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+              )}
+            >
+              {l.name} <span className="text-zinc-500">· {l.sportKind}</span>
+            </button>
+          ))}
         </div>
       )}
-      <div className="md:col-span-2">
-        <input
-          type="text"
-          value={activeLeagueId ?? ''}
-          onChange={(e) => setActiveLeagueId(e.target.value || null)}
-          placeholder="Paste an existing leagueId to focus the match simulator"
-          className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
-        />
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <LeagueStandings leagueId={active?.id} onLeagueChange={onLeagueChange} />
+        {active ? (
+          <MatchSimulator leagueId={active.id} />
+        ) : (
+          <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 p-4 text-center text-xs text-zinc-500">
+            Create a league on the left to unlock match scheduling.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -219,14 +219,33 @@ export default function MessageLensPage() {
     </div>
   ), []);
 
+  // Shared by the `r` keyboard shortcut AND InboxShell's real "Reply"
+  // header button (real bug fix — that button used to have no onClick at
+  // all; see InboxShell's header comment).
+  const focusReply = useCallback(() => {
+    if (!activeConversationId) return;
+    requestAnimationFrame(() => (document.getElementById('msg-reply-textarea') as HTMLTextAreaElement | null)?.focus());
+  }, [activeConversationId]);
+
+  // Real "Forward" — pre-fills the actual compose flow with a quoted
+  // excerpt (Gmail/Outlook convention), routed through the same real
+  // `/api/social/dm` send path as any other compose. Also a fix for the
+  // same previously-dead InboxShell button.
+  const forwardThread = useCallback((thread: InboxThread) => {
+    setComposeTo('');
+    setComposeBody(
+      `\n\n---------- Forwarded message ----------\nFrom: ${thread.from}\nSubject: ${thread.subject}\n\n${thread.snippet}`
+    );
+    setComposing(true);
+  }, []);
+
   useLensCommand(
     [
       { id: 'goto-inbox',   keys: 'g i', description: 'Inbox',   category: 'navigation', action: () => setActiveLabelId('inbox') },
       { id: 'goto-starred', keys: 'g s', description: 'Starred', category: 'navigation', action: () => setActiveLabelId('starred') },
       { id: 'goto-sent',    keys: 'g t', description: 'Sent',    category: 'navigation', action: () => setActiveLabelId('sent') },
       { id: 'compose',      keys: 'c',   description: 'Compose', category: 'actions',    action: () => setComposing(true) },
-      { id: 'reply',        keys: 'r',   description: 'Reply to thread', category: 'actions',
-        action: () => { if (activeConversationId) requestAnimationFrame(() => (document.getElementById('msg-reply-textarea') as HTMLTextAreaElement | null)?.focus()); } },
+      { id: 'reply',        keys: 'r',   description: 'Reply to thread', category: 'actions', action: focusReply },
     ],
     { lensId: 'message' }
   );
@@ -286,6 +305,8 @@ export default function MessageLensPage() {
           activeThreadId={activeConversationId ?? undefined}
           onSelectLabel={(label) => setActiveLabelId(label.id)}
           onSelectThread={(t) => setActiveConversationId(t.id)}
+          onReply={focusReply}
+          onForward={forwardThread}
         >
           {composing ? (
             <article className="space-y-3">

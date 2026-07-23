@@ -4,9 +4,16 @@
 // Calls /api/sports/league/:leagueId/teams for live team standings
 // (power_score, wins/losses). Lets the user create a league + add a
 // team inline via /api/sports/league + /api/sports/league/:id/team.
+//
+// `onLeagueChange` lifts the created/active league id+name up to the
+// parent (the sports lens's "Leagues (live)" tab) — before this existed
+// the id lived only in this component's local state, truncated to 12
+// chars in the header with no way to copy the full id, so a freshly
+// created league had no path into <MatchSimulator> short of a user
+// manually reading the network tab. Real bug, fixed this pass.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Trophy, Plus, Loader2 } from 'lucide-react';
+import { Trophy, Plus, Loader2, Copy, Check } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -17,13 +24,38 @@ interface Team {
   losses?: number;
 }
 
-export function LeagueStandings({ leagueId: initialLeagueId }: { leagueId?: string }) {
+export interface ActiveLeague { id: string; name: string; sportKind: string }
+
+export function LeagueStandings({
+  leagueId: initialLeagueId,
+  onLeagueChange,
+}: {
+  leagueId?: string;
+  onLeagueChange?: (league: ActiveLeague) => void;
+}) {
   const [leagueId, setLeagueId] = useState<string | null>(initialLeagueId || null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [pending, setPending] = useState(false);
   const [newLeagueName, setNewLeagueName] = useState('');
   const [newSportKind, setNewSportKind] = useState('soccer');
   const [newTeamName, setNewTeamName] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Stay in sync when the parent switches the active league (e.g. picking
+  // a different entry from the recent-leagues row) — previously this only
+  // ever read `initialLeagueId` once, at mount.
+  useEffect(() => {
+    if (initialLeagueId && initialLeagueId !== leagueId) setLeagueId(initialLeagueId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLeagueId]);
+
+  const copyId = useCallback(() => {
+    if (!leagueId) return;
+    navigator.clipboard?.writeText(leagueId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {});
+  }, [leagueId]);
 
   const refresh = useCallback(async () => {
     if (!leagueId) return;
@@ -47,10 +79,11 @@ export function LeagueStandings({ leagueId: initialLeagueId }: { leagueId?: stri
       const j = await r.json();
       if (j?.ok && j.leagueId) {
         setLeagueId(j.leagueId);
+        onLeagueChange?.({ id: j.leagueId, name: newLeagueName, sportKind: newSportKind });
         setNewLeagueName('');
       }
     } finally { setPending(false); }
-  }, [newLeagueName, newSportKind]);
+  }, [newLeagueName, newSportKind, onLeagueChange]);
 
   const addTeam = useCallback(async () => {
     if (!leagueId || !newTeamName.trim()) return;
@@ -103,11 +136,22 @@ export function LeagueStandings({ leagueId: initialLeagueId }: { leagueId?: stri
 
   return (
     <div className="rounded-lg border border-neon-cyan/30 bg-zinc-900/50 p-4">
-      <header className="mb-2 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-neon-cyan">
-          <Trophy size={14} /> Standings · {leagueId.slice(0, 12)}
+      <header className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-neon-cyan">
+          <Trophy size={14} className="shrink-0" /> <span className="truncate">Standings</span>
         </h3>
-        <button onClick={refresh} className="text-[10px] text-neon-cyan/70 hover:text-neon-cyan">refresh</button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={copyId}
+            title={leagueId}
+            aria-label="Copy league id"
+            className="flex items-center gap-1 rounded border border-neon-cyan/20 px-1.5 py-0.5 font-mono text-[10px] text-neon-cyan/70 hover:border-neon-cyan/50 hover:text-neon-cyan"
+          >
+            {copied ? <Check size={10} className="text-emerald-300" /> : <Copy size={10} />}
+            {copied ? 'copied' : `${leagueId.slice(0, 8)}…`}
+          </button>
+          <button onClick={refresh} className="text-[10px] text-neon-cyan/70 hover:text-neon-cyan">refresh</button>
+        </div>
       </header>
 
       <div className="mb-3 space-y-1">
