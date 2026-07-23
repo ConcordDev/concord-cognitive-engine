@@ -9461,6 +9461,23 @@ async function tryInitWebSockets(server) {
       if (result.ack) socket.emit("player:mode:ack", result.ack);
     });
 
+    // ── Player visibility (ghost / appear-offline) ─────────────────
+    // BD#27: a "hidden" user vanishes from others' city:positions +
+    // getNearbyUsers, but still sees everyone (and their own local avatar
+    // renders from client-authoritative state). Ephemeral in-memory (resets
+    // to "visible" on reconnect), same pattern as movementMode.
+    socket.on("player:visibility", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const mode = data?.mode;
+      if (mode !== "visible" && mode !== "hidden") {
+        socket.emit("player:visibility:nack", { reason: "invalid_mode" });
+        return;
+      }
+      cityPresence.setUserVisibility(userId, mode);
+      socket.emit("player:visibility:ack", { mode });
+    });
+
     // ── Combat: attack another entity (player or NPC) ──────────────
     // Client emits combat:attack → server runs the damage math via
     // cityPresence.applyAttack() and broadcasts combat:hit to

@@ -199,6 +199,82 @@ export function getUserMovementMode(userId) {
   return currentModeFor(_userPositions.get(userId));
 }
 
+// ── Presence privacy (ghost / appear-offline mode) ──────────────────────────
+// Audit item #27: the nearby-user + broadcast paths had zero visibility
+// controls. This adds a lightweight, ephemeral (in-memory only — no
+// migration, matches the rest of this file's per-entry state like
+// movementMode) `visibility` field on the presence entry: "visible" (default,
+// back-compat) or "hidden" (appear-offline / ghost mode). A hidden user is
+// excluded from what OTHER users see them as (getNearbyUsers/getPlayersNear/
+// getPlayersInCell results returned to others, and the shared city:positions
+// broadcast payload) but their own queries and their own client experience
+// are completely unaffected — hidden only changes how you're seen, never
+// what you see.
+export const PRESENCE_VISIBILITY = Object.freeze({
+  VISIBLE: "visible",
+  HIDDEN: "hidden",
+});
+
+/**
+ * Set a user's presence visibility. Mirrors setUserMovementMode's contract:
+ * creates a stub presence entry (walking default, visible-unaffected) if the
+ * user has no presence yet, so a client can toggle ghost mode before their
+ * first position update lands.
+ *
+ * @param {string} userId
+ * @param {string} mode - "visible" | "hidden". Anything else is rejected.
+ * @returns {boolean} true if applied.
+ */
+export function setUserVisibility(userId, mode) {
+  if (!userId) return false;
+  const normalized = mode === PRESENCE_VISIBILITY.HIDDEN
+    ? PRESENCE_VISIBILITY.HIDDEN
+    : mode === PRESENCE_VISIBILITY.VISIBLE
+      ? PRESENCE_VISIBILITY.VISIBLE
+      : null;
+  if (!normalized) return false;
+  const entry = _userPositions.get(userId);
+  if (!entry) {
+    _userPositions.set(userId, {
+      cityId: "concordia-central",
+      districtId: null,
+      x: 0, y: 0, z: 0,
+      direction: 0, rotation: 0,
+      action: "idle", currentAnimation: "idle",
+      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
+      clientState: {},
+      vehicleId: null,
+      vehicleType: null,
+      movementMode: MOVE_MODES.WALK,
+      mountSpeedMps: null,
+      flightActive: false,
+      visibility: normalized,
+      lastUpdate: Date.now(), createdAt: Date.now(),
+      dirty: true, avatar: null,
+    });
+    return true;
+  }
+  entry.visibility = normalized;
+  entry.dirty = true;
+  return true;
+}
+
+/** Read a user's presence visibility ("visible" if no presence yet, or the
+ *  entry predates this field). Never throws on a missing user. */
+export function getUserVisibility(userId) {
+  const entry = _userPositions.get(userId);
+  return entry?.visibility === PRESENCE_VISIBILITY.HIDDEN
+    ? PRESENCE_VISIBILITY.HIDDEN
+    : PRESENCE_VISIBILITY.VISIBLE;
+}
+
+/** True only if the entry is explicitly hidden. Missing/undefined = visible
+ *  (back-compat — every pre-existing in-memory entry has no `visibility`
+ *  field at all). */
+function _isHidden(entry) {
+  return entry?.visibility === PRESENCE_VISIBILITY.HIDDEN;
+}
+
 /**
  * Minimal server-side flight-active flag (Godot Phase 3a). True only while
  * the user's tracked movementMode is "fly" — set/cleared exclusively by
@@ -577,6 +653,9 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     movementMode:  prev?.movementMode  ?? MOVE_MODES.WALK,
     mountSpeedMps: prev?.mountSpeedMps ?? null,
     flightActive:  prev?.flightActive  ?? false,
+    // Presence privacy — carried over from previous entry, never reset by a
+    // plain position update. Only setUserVisibility can flip it.
+    visibility: prev?.visibility ?? PRESENCE_VISIBILITY.VISIBLE,
     lastUpdate: now,
     createdAt: prev?.createdAt ?? now,
     dirty: true, // mark for next flush
@@ -708,6 +787,11 @@ export function getNearbyUsers(userId, radius = 500) {
         if (uid === userId) continue;
         const other = _userPositions.get(uid);
         if (!other || other.cityId !== pos.cityId) continue;
+        // Presence privacy — a hidden user is invisible to everyone ELSE's
+        // nearby-query, but their own self-query (uid === userId above)
+        // still returns everyone else unfiltered. "Others don't see me,"
+        // not "I don't see others."
+        if (_isHidden(other)) continue;
         if (distanceSq(pos, other) <= radiusSq) {
           results.push({
             userId: uid,
@@ -794,6 +878,12 @@ export function getPlayersInCell(worldId, cellX, cellZ, cellSize = 50) {
   if (!worldId) return out;
   for (const [userId, pos] of _userPositions) {
     if (pos.worldId !== worldId) continue;
+    // Presence privacy — see getNearbyUsers. getPlayersInCell has no concept
+    // of a "requesting user" (it's called by cell-scoped fan-out, not a
+    // per-user query), so a hidden user is excluded unconditionally — this
+    // helper is only ever used to decide who OTHERS' events reach, never to
+    // resolve a hidden user's own view of themselves.
+    if (_isHidden(pos)) continue;
     const px = Math.floor((Number(pos.x) || 0) / cellSize);
     const pz = Math.floor((Number(pos.z) || 0) / cellSize);
     if (px === cellX && pz === cellZ) out.push(userId);
@@ -849,6 +939,11 @@ export function getPlayersNear(worldId, x, z, { cellSize = 50, radiusCells = 1 }
     // See spontaneousGatherings: match worldId OR cityId so the movement-path
     // cityId fallback doesn't strand co-located players in proximity chat.
     if (pos.worldId !== worldId && pos.cityId !== worldId) continue;
+    // Presence privacy — see getPlayersInCell. This is a point-based query
+    // with no "requesting user" concept, so a hidden user is excluded
+    // unconditionally (it's used to resolve who proximity-chat reaches, i.e.
+    // who else can perceive this location, never a hidden user's own view).
+    if (_isHidden(pos)) continue;
     const px = Math.floor((Number(pos.x) || 0) / cellSize);
     const pz = Math.floor((Number(pos.z) || 0) / cellSize);
     if (Math.abs(px - ccx) <= radiusCells && Math.abs(pz - ccz) <= radiusCells) out.push(userId);
@@ -938,6 +1033,15 @@ export function broadcastPositions(cityId, realtimeEmit) {
     for (const uid of userSet) {
       const p = _userPositions.get(uid);
       if (!p) continue;
+      // Presence privacy — a hidden user vanishes from the SHARED payload
+      // array every occupant of this chunk receives (this broadcast is one
+      // payload fanned out to everyone in the chunk, not per-recipient, so
+      // there is no per-recipient filtering point here). The hidden user's
+      // own client still renders their own avatar from local client state
+      // (their own movement input / optimistic position), same as any other
+      // client-authoritative local render — they just never appear inside
+      // anyone else's copy of this event.
+      if (_isHidden(p)) continue;
       users.push({
         userId: uid,
         x: p.x,
