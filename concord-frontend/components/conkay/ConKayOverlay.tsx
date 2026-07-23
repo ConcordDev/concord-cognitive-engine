@@ -30,6 +30,7 @@ import { ConKayCockpit } from './ConKayCockpit';
 import { CONKAY_SIGNATURE_GREETING, type ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
+import type { CapabilityVerdict } from '@/components/common/CapabilityBadge';
 import { subscribe, connectSocket, onConnectionLost, onReconnected } from '@/lib/realtime/socket';
 import MessageRenderer from '@/components/chat/MessageRenderer';
 
@@ -49,6 +50,64 @@ const PROVABLE_RE = /[<>]=?|≤|≥|≠|\bfor all\b|\bfor every\b|\bthere exists
 function looksProvable(claim: string): boolean {
   const t = String(claim || '');
   return t.length >= 3 && t.length <= 2000 && PROVABLE_RE.test(t);
+}
+
+// ── Grounded research mode (V1.1 R3) — reason.evaluate_answer adapter ──────
+// The `reason.evaluate_answer` macro (server/domains/reason.js) returns the
+// raw `evaluateAnswer()` shape (server/lib/research/answer-eval.js), NOT the
+// CapabilityBadge-ready shape — that adapter (`toCapabilityVerdict`) lives
+// server-side and itself imports `reason-verify.js`, which pulls in
+// server-only modules; importing it here would drag server code into the
+// frontend bundle. This is a small, deliberate client-side MIRROR of that
+// exact function (same verdict vocabulary, same mapping table) so the two
+// stay obviously in sync at a glance — not a re-derivation, a port. If
+// answer-eval.js's `VERDICT_TO_CAPABILITY` table ever changes, update this
+// one too.
+interface EvalAnswerCitation {
+  citationsTotal?: number;
+  citationsResolved?: number;
+  allResolved?: boolean;
+  unresolvedIds?: string[];
+  confidence?: number | null;
+  supported?: boolean | null;
+}
+interface EvalAnswerResult {
+  ok?: boolean;
+  verdict?: string;
+  mode?: string;
+  faithfulness?: number | null;
+  citation?: EvalAnswerCitation | null;
+  question?: string | null;
+  answer?: string | null;
+}
+const EVAL_VERDICT_TO_CAPABILITY: Record<string, string> = {
+  grounded: 'grounded',
+  fabricated_citation: 'fabricated_citation',
+  contradicted: 'refuted',
+  partially_grounded: 'unsupported',
+  unverified: 'unverified',
+};
+function toCapabilityVerdictClient(evalResult: EvalAnswerResult | undefined): CapabilityVerdict {
+  // Honest floor, mirroring answer-eval.js's toCapabilityVerdict exactly: a
+  // failed/absent/malformed result returns `{ ok: false }` — NOT a fabricated
+  // "grounded" — so CapabilityBadge's own contract (`capabilityTierFor`
+  // treats any non-`ok:true` verdict as "unverified") renders the honest
+  // "Unverified" tier for every attempted-but-unusable check, exactly the
+  // same as a check that never ran at all.
+  if (!evalResult || evalResult.ok !== true || !evalResult.verdict) return { ok: false };
+  const citation = evalResult.citation || null;
+  return {
+    ok: true,
+    verdict: EVAL_VERDICT_TO_CAPABILITY[evalResult.verdict] || 'unverified',
+    mode: evalResult.mode === 'llm-enhanced' ? 'council' : 'deterministic',
+    confidence: typeof evalResult.faithfulness === 'number' ? evalResult.faithfulness : (citation?.confidence ?? null),
+    claim: evalResult.question || evalResult.answer || null,
+    citationsTotal: citation?.citationsTotal ?? 0,
+    citationsResolved: citation?.citationsResolved ?? 0,
+    allResolved: citation ? citation.allResolved : undefined,
+    unresolvedIds: citation?.unresolvedIds ?? [],
+    supported: evalResult.verdict === 'grounded' ? true : evalResult.verdict === 'contradicted' ? false : (citation?.supported ?? null),
+  };
 }
 
 // The world-tree field is WebGL — load client-only so SSR never touches it.
@@ -299,6 +358,11 @@ export function ConKayOverlay() {
     // never a re-derivation. Optional: callers that only have bare ids (none
     // currently do) still get a working verdict, just an empty refs mirror.
     dtuRefs: Array<{ id: string; title: string | null; tier: string | null }> = [],
+    // The user's original question that prompted this reply — passed through
+    // to reason.evaluate_answer's answer-relevancy axis. Optional/null: an
+    // absent question still lets faithfulness/context-precision run, just
+    // without a relevancy score (evaluateAnswer degrades that axis honestly).
+    question: string | null = null,
   ) => {
     // Run when there are citations to check OR when the claim is proof-amenable
     // (so the Z3 gate can fire and earn "Proven ✓" even for an uncited theorem).
@@ -321,6 +385,36 @@ export function ConKayOverlay() {
       // still the single legitimate producer of a verify result, not a new site.
       useConkayHudStore.getState().setLastVerify({ verdict, mode: mode ?? null, confidence });
       useConkayHudStore.getState().setRunDtuRefs(dtuRefs);
+
+      // ── Grounded research mode (V1.1 R3) ────────────────────────────────
+      // Alongside (never replacing) the citation-only check above, run the
+      // reply's OWN ANSWER TEXT through the RAGAS-shaped reason.evaluate_answer
+      // harness — a real, independent backend call gets its own run id so the
+      // HUD's macro:started/completed telemetry tags it as its own step. Its
+      // own try/catch: a failure here must never blank out the verifyVerdict
+      // badge that already landed above, and must never synthesize a fake
+      // verdict — on any error/timeout `capabilityVerdict` simply stays
+      // unset, so CapabilityBadge renders its own honest "Unverified" tier.
+      try {
+        const evalRid = newRunId();
+        liveRunRef.current = evalRid;
+        const { data: evalData } = await lensRun('reason', 'evaluate_answer', {
+          answer: claim,
+          question: question || null,
+          retrievedDtus: dtuRefs,
+          citations: citationIds,
+        }, evalRid);
+        const evalResult = evalData?.result as EvalAnswerResult | undefined;
+        const capabilityVerdict = toCapabilityVerdictClient(evalResult);
+        setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, capabilityVerdict } : m)));
+      } catch {
+        // evaluate_answer unavailable → the verifyVerdict badge set above is
+        // untouched; capabilityVerdict gets the same honest `{ ok: false }`
+        // sentinel toCapabilityVerdictClient would have produced from a
+        // failed result, so CapabilityBadge renders "Unverified" rather than
+        // being silently skipped — a check WAS attempted, this says so.
+        setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, capabilityVerdict: { ok: false } } : m)));
+      }
     } catch {
       // verification unavailable → drop the pending state, fall back to the heuristic badge
       setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: undefined } : m)));
@@ -418,7 +512,7 @@ export function ConKayOverlay() {
       setStep('render', 'done', 'Done');
       // Phase 1: verify the cited DTUs through the real reason.verify macro.
       const citeIds = (result.dtuRefs || []).map((d) => d.id).filter(Boolean);
-      if (citeIds.length || looksProvable(result.spoken)) verifyMessage(aid, result.spoken, citeIds, result.dtuRefs || []);
+      if (citeIds.length || looksProvable(result.spoken)) verifyMessage(aid, result.spoken, citeIds, result.dtuRefs || [], text);
       persistArtifact(`Skill: ${match.skill.label}`, { task: text, skill: match.skill.id, spoken: result.spoken, viz: result.viz ?? null });
       if (result.navigate) { const dest = result.navigate; setTimeout(() => { window.location.href = dest; }, 900); }
     } catch {
@@ -709,7 +803,11 @@ export function ConKayOverlay() {
           : `I hit a snag reasoning through that${finalErr ? ` (${finalErr})` : ''}.`;
         syncMessage();
       } else if (looksProvable(liveText)) {
-        verifyMessage(aid, liveText, [], []);
+        // liveDtuRefs is whatever real DTU context this reply actually
+        // gathered via tool calls (create_dtu / run_lens_action results) —
+        // pass it through as-is so reason.evaluate_answer's retrievedDtus
+        // reflects genuine context, never a re-derivation or a guess.
+        verifyMessage(aid, liveText, [], liveDtuRefs, text);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

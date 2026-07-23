@@ -60,9 +60,16 @@ vi.mock('@/lib/realtime/socket', () => ({
   onReconnected: vi.fn(() => () => {}),
 }));
 
-const lensRunMock = vi.fn(async (_domain: string, _macro: string, _input: Record<string, unknown>, _runId?: string) => ({
+// Loosely-typed result shape so per-test `mockImplementation` overrides (which
+// return differently-shaped `result` payloads per domain/macro branch) don't
+// fight a return type inferred narrowly from the default implementation.
+type LensRunTestResult = { data: { ok: boolean; result: unknown; error: string | null } };
+const defaultLensRunImpl = async (
+  _domain: string, _macro: string, _input: Record<string, unknown>, _runId?: string,
+): Promise<LensRunTestResult> => ({
   data: { ok: true, result: { done: true }, error: null },
-}));
+});
+const lensRunMock = vi.fn(defaultLensRunImpl);
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: Parameters<typeof lensRunMock>) => lensRunMock(...args),
 }));
@@ -148,5 +155,107 @@ describe('ConKayOverlay — Unit A2 pre-execution confirm (client-initiated macr
     // The transcript honestly reports the cancellation instead of pretending
     // nothing happened.
     expect(await screen.findByText(/Cancelled — I didn't run creatures\.create/)).toBeInTheDocument();
+  });
+});
+
+// ── Grounded research mode (V1.1 R3) ────────────────────────────────────────
+// A reply's own answer text — not just its citations — now also runs through
+// the real `reason.evaluate_answer` macro (verifyMessage in ConKayOverlay.tsx),
+// alongside (never replacing) the existing citation-only `reason.verify` call.
+// Uses the "math" ConKay skill (a deterministic path that doesn't need the
+// chat-agent SSE stream mocked) to reach a reply whose text is proof-amenable,
+// which is what triggers verifyMessage in the first place.
+//
+// Note: `reason.verify`'s verdict ("Grounded" / "Citations resolve") also gets
+// mirrored into the ConKayCockpit's lazy-loaded ProvenancePanel (K3), which
+// renders the SAME label text as its own headline — a real, pre-existing
+// second surface, not a duplicate render bug. Assertions on THOSE two labels
+// filter it out so they target the message's own TrustBadge specifically;
+// "Proven ✓"/"Unverified" (CapabilityBadge, this unit's new surface) aren't
+// mirrored anywhere else, so those stay plain queries.
+function messageBadgeMatches(pattern: RegExp) {
+  return screen.getAllByText(pattern).filter((el) => !el.closest('[data-testid="ck-provenance-panel"]'));
+}
+
+describe('ConKayOverlay — grounded research mode (reason.evaluate_answer)', () => {
+  beforeEach(() => {
+    lensRunMock.mockClear();
+  });
+  afterEach(() => {
+    cleanup();
+    lensRunMock.mockImplementation(defaultLensRunImpl);
+  });
+
+  it('a verified reply also calls reason.evaluate_answer with the real answer/question/context, and renders CapabilityBadge from a genuine verdict', async () => {
+    lensRunMock.mockImplementation(async (domain: string, macro: string, input: Record<string, unknown>): Promise<LensRunTestResult> => {
+      if (domain === 'math' && macro === 'naturalQuery') {
+        return { data: { ok: true, result: { kind: 'evaluate', answer: 4 }, error: null } };
+      }
+      if (domain === 'reason' && macro === 'verify') {
+        return { data: { ok: true, result: { verdict: 'grounded', mode: 'deterministic', confidence: null }, error: null } };
+      }
+      if (domain === 'reason' && macro === 'evaluate_answer') {
+        return {
+          data: {
+            ok: true,
+            result: {
+              ok: true,
+              verdict: 'grounded',
+              mode: 'deterministic',
+              faithfulness: 0.95,
+              citation: null,
+              question: input.question,
+              answer: input.answer,
+            },
+            error: null,
+          },
+        };
+      }
+      return defaultLensRunImpl(domain, macro, input);
+    });
+
+    await openConKay();
+    typeAndSubmit('calculate 2+2');
+
+    // The real macro call — the exact answer text and the user's original
+    // question, not a paraphrase or a placeholder.
+    await waitFor(() => expect(callsFor('reason', 'evaluate_answer')).toHaveLength(1));
+    const [, , evalInput] = callsFor('reason', 'evaluate_answer')[0];
+    expect(evalInput).toMatchObject({ answer: '2+2 = 4', question: 'calculate 2+2', retrievedDtus: [], citations: [] });
+
+    // Both badges render: the existing TrustBadge (citation-only reason.verify)
+    // is untouched, and the new CapabilityBadge appears alongside it, driven
+    // by the real evaluate_answer verdict — dual-render, not a swap.
+    await waitFor(() => expect(messageBadgeMatches(/Grounded/).length).toBeGreaterThan(0));
+    expect(await screen.findByText(/Proven ✓/)).toBeInTheDocument();
+  });
+
+  it('a failed/unreachable reason.evaluate_answer renders the honest "Unverified" tier — never a fabricated grounded state', async () => {
+    lensRunMock.mockImplementation(async (domain: string, macro: string, input: Record<string, unknown>): Promise<LensRunTestResult> => {
+      if (domain === 'math' && macro === 'naturalQuery') {
+        return { data: { ok: true, result: { kind: 'evaluate', answer: 4 }, error: null } };
+      }
+      if (domain === 'reason' && macro === 'verify') {
+        return { data: { ok: true, result: { verdict: 'citations_resolve', mode: 'deterministic', confidence: null }, error: null } };
+      }
+      if (domain === 'reason' && macro === 'evaluate_answer') {
+        throw new Error('brains unreachable');
+      }
+      return defaultLensRunImpl(domain, macro, input);
+    });
+
+    await openConKay();
+    typeAndSubmit('calculate 2+2');
+
+    await waitFor(() => expect(callsFor('reason', 'evaluate_answer')).toHaveLength(1));
+
+    // The citation-only badge (from reason.verify, which succeeded) still
+    // renders normally...
+    await waitFor(() => expect(messageBadgeMatches(/Citations resolve/).length).toBeGreaterThan(0));
+    // ...while the capability badge honestly reports "Unverified" — the
+    // failure never gets silently upgraded into a fabricated "Grounded"/
+    // "Proven ✓" state.
+    expect(await screen.findByText(/^Unverified$/)).toBeInTheDocument();
+    expect(screen.queryByText(/Proven ✓/)).toBeNull();
   });
 });

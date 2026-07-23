@@ -40,3 +40,53 @@ describe('ConKay verdict badge — multibrain annotation', () => {
     expect(screen.queryByText(/council/i)).toBeNull();
   });
 });
+
+/**
+ * Grounded research mode (V1.1 R3) — `capabilityVerdict` (the client-side
+ * adapted `reason.evaluate_answer` result) renders an ADDITIONAL
+ * `CapabilityBadge` alongside the existing TrustBadge — dual-render, not a
+ * swap. The existing verifyVerdict-only path (no `capabilityVerdict` at all)
+ * must keep rendering exactly as before.
+ */
+describe('ConKay capability badge — grounded research mode dual-render', () => {
+  it('no capabilityVerdict at all: only the existing TrustBadge renders, nothing new appears', () => {
+    renderMsg({ verifyVerdict: 'grounded', verifyMode: 'council', verifyConfidence: 0.82 });
+    expect(screen.getByText(/Grounded/)).toBeInTheDocument();
+    // No second badge — CapabilityBadge is entirely absent when the field is unset.
+    expect(screen.queryByText(/Proven ✓/)).toBeNull();
+    expect(screen.queryByText(/^Flagged$/)).toBeNull();
+    expect(screen.queryByText(/^Unverified$/)).toBeNull();
+  });
+
+  it('a successful evaluate_answer "grounded" verdict renders CapabilityBadge alongside TrustBadge', () => {
+    renderMsg({
+      verifyVerdict: 'grounded',
+      verifyMode: 'council',
+      verifyConfidence: 0.82,
+      capabilityVerdict: { ok: true, verdict: 'grounded', mode: 'deterministic', confidence: 0.95 },
+    });
+    // The existing citation-only badge is untouched...
+    expect(screen.getByText(/Grounded/)).toBeInTheDocument();
+    // ...and the new whole-answer capability badge renders alongside it.
+    expect(screen.getByText(/Proven ✓/)).toBeInTheDocument();
+  });
+
+  it('a failed/missing evaluation renders the honest "Unverified" tier — never a fabricated "grounded"', () => {
+    renderMsg({
+      verifyVerdict: 'citations_resolve',
+      // The overlay's failure path stamps this exact `{ ok: false }` sentinel
+      // (never a synthesized verdict string) when reason.evaluate_answer
+      // throws, times out, or is unreachable.
+      capabilityVerdict: { ok: false },
+    });
+    expect(screen.getByText(/Citations resolve/)).toBeInTheDocument();
+    expect(screen.getByText(/^Unverified$/)).toBeInTheDocument();
+    // Never a fake proven/grounded state on a failed check.
+    expect(screen.queryByText(/Proven ✓/)).toBeNull();
+  });
+
+  it('an unrecognized/empty verdict object also falls back to "Unverified" — the component never guesses', () => {
+    renderMsg({ capabilityVerdict: { ok: true, verdict: undefined } });
+    expect(screen.getByText(/^Unverified$/)).toBeInTheDocument();
+  });
+});
