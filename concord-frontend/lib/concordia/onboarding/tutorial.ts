@@ -203,6 +203,28 @@ const STEP_HINTS: Record<TutorialStep, TutorialHint | null> = {
 
 const STORAGE_KEY = 'concordia:tutorial:state';
 
+// Step -> the `data-tutorial-target` token TutorialHighlight.tsx should ring
+// while that step's hint is showing. Only steps with a REAL matching DOM
+// anchor get an entry (currently just the toolbar's Craft button — see
+// `data-tutorial-target="crafting-button"`, app/lenses/world/page.tsx); every
+// other step dispatches `token: null` so a stale ring never lingers past a
+// step it doesn't apply to. This was previously a dead listener
+// (dead-event-listener-detector finding, DET-C batch 4) — TutorialHighlight
+// had a real `concordia:tutorial-highlight` subscriber with zero dispatcher
+// anywhere in the codebase.
+const STEP_HIGHLIGHT_TOKEN: Partial<Record<TutorialStep, string>> = {
+  'craft-item': 'crafting-button',
+};
+
+function dispatchHighlight(token: string | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent('concordia:tutorial-highlight', { detail: { token } }));
+  } catch {
+    /* dispatch best-effort */
+  }
+}
+
 // ── TutorialManager ──────────────────────────────────────────────────
 
 export class TutorialManager {
@@ -237,6 +259,7 @@ export class TutorialManager {
     this._save();
     this._markVisited();
     this._hintCallback?.(null);
+    dispatchHighlight(null);
   }
 
   enableHints() {
@@ -248,6 +271,7 @@ export class TutorialManager {
     this._state = { ...this._state, hintsEnabled: false };
     this._save();
     this._hintCallback?.(null);
+    dispatchHighlight(null);
   }
 
   toggleHints() {
@@ -275,12 +299,16 @@ export class TutorialManager {
 
   replay(step: TutorialStep) {
     const hint = STEP_HINTS[step];
-    if (hint) this._hintCallback?.(hint);
+    if (hint) {
+      this._hintCallback?.(hint);
+      dispatchHighlight(STEP_HIGHLIGHT_TOKEN[step] ?? null);
+    }
   }
 
   private _showHint(step: TutorialStep) {
     const hint = STEP_HINTS[step];
     this._hintCallback?.(hint ?? null);
+    dispatchHighlight(STEP_HIGHLIGHT_TOKEN[step] ?? null);
   }
 
   private _load(): TutorialState {

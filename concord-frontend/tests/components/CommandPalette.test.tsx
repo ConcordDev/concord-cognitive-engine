@@ -215,15 +215,15 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // Seventeen items: ConKay staple + two mock lenses + the 7 hardcoded
+    // Eighteen items: ConKay staple + two mock lenses + the 7 hardcoded
     // `mode:*` run-mode entries (Fix 7 + Wave 4's `mode:dungeon`) + the
-    // `system:repair-cortex` deep-link entry + the 6 `hud:*` entries
-    // (DET-C batch 2) — all baked into the component itself regardless of
-    // the mocked lens-registry. Indices 0-16. ArrowDown wraps via
-    // (prev < length - 1 ? prev + 1 : 0); 19 presses from index 0 land at
-    // index 2 (19 mod 17 = 2) → Marketplace, demonstrating it wrapped
-    // (19 > 17).
-    for (let i = 0; i < 19; i++) {
+    // `system:repair-cortex` deep-link entry + the 7 `hud:*` entries
+    // (DET-C batch 2 + batch 4's `hud:concord-link-shell`) — all baked into
+    // the component itself regardless of the mocked lens-registry.
+    // Indices 0-17. ArrowDown wraps via (prev < length - 1 ? prev + 1 : 0);
+    // 20 presses from index 0 land at index 2 (20 mod 18 = 2) → Marketplace,
+    // demonstrating it wrapped (20 > 18).
+    for (let i = 0; i < 20; i++) {
       fireEvent.keyDown(input, { key: 'ArrowDown' });
     }
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -234,10 +234,10 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // 17 total items (see above). ArrowUp wraps via
-    // (prev > 0 ? prev - 1 : length - 1); starting at index 0, 16 ArrowUps
-    // land back at index 1 (Resonance) — (17 - 16) mod 17 = 1.
-    for (let i = 0; i < 16; i++) {
+    // 18 total items (see above). ArrowUp wraps via
+    // (prev > 0 ? prev - 1 : length - 1); starting at index 0, 17 ArrowUps
+    // land back at index 1 (Resonance) — (18 - 17) = 1.
+    for (let i = 0; i < 17; i++) {
       fireEvent.keyDown(input, { key: 'ArrowUp' });
     }
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -257,13 +257,16 @@ describe('CommandPalette', () => {
     render(<CommandPalette {...defaultProps} />);
     const options = screen.getAllByRole('option');
     // ConKay summon staple + two mock lenses + 7 hardcoded run-mode entries
-    // (Fix 7 + Wave 4's `mode:dungeon` — see above) + the 6 `hud:*` entries
+    // (Fix 7 + Wave 4's `mode:dungeon` — see above) + the 7 `hud:*` entries
     // (DET-C batch 2 — dead-event-listener fix for StatusWindowHUD/
     // SizeScalingHUD/SkillAffinityPanel/RogueliteUnlockShop/LinkScanOverlay/
     // CurtainDossier, each of which already listened for a
     // `concordia:open-*`/`*-toggle` window event with no palette-side
-    // dispatcher) + the `system:repair-cortex` deep-link entry (attention
-    // lens' Repair Cortex anchor).
+    // dispatcher; DET-C batch 4 added `hud:concord-link-shell` for the
+    // same reason — LinkShell's `concordia:concord-link-summon` had zero
+    // dispatchers and the component mounts with no `open` prop either, so
+    // it was fully unreachable) + the `system:repair-cortex` deep-link
+    // entry (attention lens' Repair Cortex anchor).
     //
     // Grouping is by first-category-seen order, not array position: `mode:*`
     // and `hud:*` both use category 'world', which is first seen at
@@ -271,7 +274,7 @@ describe('CommandPalette', () => {
     // seen) — so the `hud:*` entries land in the SAME group right after the
     // 7 modes, and `system:repair-cortex` (a whole separate, later-seen
     // category) sorts after the entire 'world' group, last overall.
-    expect(options).toHaveLength(17);
+    expect(options).toHaveLength(18);
     expect(options[0]).toHaveAttribute('id', 'palette-item-conkay');
     expect(options[1]).toHaveAttribute('id', 'palette-item-resonance');
     expect(options[2]).toHaveAttribute('id', 'palette-item-marketplace');
@@ -284,7 +287,8 @@ describe('CommandPalette', () => {
     expect(options[13]).toHaveAttribute('id', 'palette-item-hud:skill-affinity');
     expect(options[14]).toHaveAttribute('id', 'palette-item-hud:link-scan');
     expect(options[15]).toHaveAttribute('id', 'palette-item-hud:curtain');
-    expect(options[16]).toHaveAttribute('id', 'palette-item-system:repair-cortex');
+    expect(options[16]).toHaveAttribute('id', 'palette-item-hud:concord-link-shell');
+    expect(options[17]).toHaveAttribute('id', 'palette-item-system:repair-cortex');
   });
 
   it('hud:* entries dispatch their matching concordia:open-*/toggle window event instead of navigating (DET-C batch 2)', () => {
@@ -300,6 +304,7 @@ describe('CommandPalette', () => {
       ['skill affinity', 'concordia:open-skill-affinity'],
       ['concord link scan', 'concordia:link-scan-toggle'],
       ['curtain dossier', 'concordia:open-curtain'],
+      ['concord link — status', 'concordia:concord-link-summon'],
     ];
     for (const [query, expectedEvent] of cases) {
       dispatchSpy.mockClear();

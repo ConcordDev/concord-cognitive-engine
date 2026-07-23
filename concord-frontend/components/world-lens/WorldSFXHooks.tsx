@@ -19,13 +19,18 @@ import { useEffect, useRef } from 'react';
  *     when stationary)
  *
  * Wired events (window):
- *   - concordia:ui-click            → ui-click sfx
  *   - concordia:inventory-opened    → inventory-rustle sfx
  *   - concordia:craft-success       → craft-ding sfx
  *   - concordia:sword-swing         → sword-swoosh / sword-swoosh-heavy
  *
- * Plus a global capture-phase document click that plays ui-click for any
- * <button> press (covers HUD buttons across panels and dialogs).
+ * ui-click has no named-event listener — the global capture-phase document
+ * click below already plays it for every real <button>/[role="button"] press
+ * (covers HUD buttons across panels and dialogs) by calling dispatchSfx()
+ * directly, so a `concordia:ui-click` window event would have been a second,
+ * narrower path to the exact same sfx with zero real dispatchers anywhere in
+ * the codebase (dead-event-listener-detector finding, DET-C batch 4) —
+ * removed rather than wired, since the capture-phase handler already
+ * subsumes it.
  */
 
 const DISTRICT_TO_SURFACE: Record<string, 'grass' | 'stone' | 'wood' | 'water'> = {
@@ -100,16 +105,13 @@ export default function WorldSFXHooks({ playerPos, districtId, moving }: Props) 
       const heavy = (e as CustomEvent).detail?.heavy;
       dispatchSfx(heavy ? 'sword-swoosh-heavy' : 'sword-swoosh');
     };
-    const onUiClick = () => dispatchSfx('ui-click');
     window.addEventListener('concordia:inventory-opened', onInventoryOpen);
     window.addEventListener('concordia:craft-success', onCraftSuccess);
     window.addEventListener('concordia:sword-swing', onSwordSwing);
-    window.addEventListener('concordia:ui-click', onUiClick);
     return () => {
       window.removeEventListener('concordia:inventory-opened', onInventoryOpen);
       window.removeEventListener('concordia:craft-success', onCraftSuccess);
       window.removeEventListener('concordia:sword-swing', onSwordSwing);
-      window.removeEventListener('concordia:ui-click', onUiClick);
     };
   }, []);
 

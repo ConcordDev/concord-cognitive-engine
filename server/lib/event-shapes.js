@@ -109,6 +109,18 @@ export const EVENT_SHAPES = Object.freeze({
   "player:effect-applied":  { required: ["userId", "effectId"], optional: ["expiresAt", "magnitude", "source"] },
 
   // ── NPC ───────────────────────────────────────────────────────────
+  // PHANTOM (found by dead-event-listener-detector.js, DET-C batch 4,
+  // 2026-07-23): this shape has ZERO real `realtimeEmit("npc:dialogue", ...)`
+  // call sites and ZERO frontend subscribers anywhere in the repo — a
+  // documented-but-never-built event, not a live contract. The real,
+  // shipped NPC dialogue path is request/response HTTP
+  // (`/api/worlds/:worldId/npcs/:npcId/dialogue`, NPCDialogue.tsx,
+  // DialoguePanel.tsx) and Layer 13's `npc:conversation-bid` (ambient
+  // NPC-initiated chatter — see CLAUDE.md). A real broadcast-to-nearby-
+  // players-when-an-NPC-opens-a-tree feature could still be built on this
+  // exact shape (ENGINEERING triage, per CLAUDE.md's "closing the hard 20%"
+  // classes) — flagged here for a human to decide build-vs-remove rather
+  // than silently deleting a possibly-intended contract.
   "npc:dialogue":           { required: ["npcId", "tree"], optional: ["worldId", "questId", "phase", "userId"] },
 
   // ── Concord Link (cross-world) ────────────────────────────────────
@@ -132,6 +144,16 @@ export const EVENT_SHAPES = Object.freeze({
   "walker:dispatched":    { required: ["walkerId"], optional: ["fromWorld", "toWorld", "messageId", "contractId", "route", "dispatchedAt"] },
 
   // ── GameJuice fanfare ─────────────────────────────────────────────
+  // PHANTOM (found by dead-event-listener-detector.js, DET-C batch 4,
+  // 2026-07-23): ZERO real `realtimeEmit("gameJuice:fanfare", ...)` call
+  // sites and ZERO frontend subscribers — a documented-but-never-built
+  // event. The real, shipped juice/fanfare system
+  // (components/world-lens/GameJuice.tsx) is entirely LOCAL, driven by the
+  // `concordia:game-juice` window CustomEvent dispatched by whichever
+  // component observed the real milestone — never a socket broadcast, so
+  // it can't show a player's own fanfare to OTHER nearby players. This
+  // shape would be the natural contract for that (real feature, real gap,
+  // ENGINEERING triage) — flagged for a human to decide build-vs-remove.
   "gameJuice:fanfare":    { required: ["userId", "kind"], optional: ["magnitude", "tone", "label"] },
 
   // ── Forge — polyglot template engine lifecycle ────────────────────

@@ -17,7 +17,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles, LayoutPanelLeft,
   Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, Skull, Wrench,
-  ScrollText, Ruler, Layers, Radar, Coins, Eye,
+  ScrollText, Ruler, Layers, Radar, Coins, Eye, Link2,
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import {
@@ -370,6 +370,24 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         order: 935,
         keywords: ['curtain', 'secrets', 'dossier', 'declassify'],
       },
+      // DET-C batch 4 — LinkShell (components/world/concord-link/LinkShell.tsx,
+      // the Status/Inventory/Effects "Concord Link" summon shell — distinct
+      // from the cross-world-messaging ConcordLinkPanel) is mounted bare with
+      // no `open` prop and its ONLY toggle (`concordia:concord-link-summon`)
+      // had zero dispatchers anywhere — a fully unreachable feature, same
+      // shape as RogueliteUnlockShop above before DET-C batch 2 fixed it.
+      {
+        id: 'hud:concord-link-shell',
+        name: 'Concord Link — status, inventory & effects',
+        icon: Link2,
+        description: 'Live resource bars, personal-locker inventory, and active effects for your current world.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 936,
+        keywords: ['concord', 'link', 'status', 'inventory', 'effects', 'bars'],
+      },
     ];
     return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries, ...systemEntries, ...hudEntries];
   }, [expertiseLevel, userRole]);
@@ -497,6 +515,7 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         'hud:skill-affinity': 'concordia:open-skill-affinity',
         'hud:link-scan': 'concordia:link-scan-toggle',
         'hud:curtain': 'concordia:open-curtain',
+        'hud:concord-link-shell': 'concordia:concord-link-summon',
       };
       if (HUD_DISPATCH_EVENTS[lens.id] && typeof window !== 'undefined') {
         window.dispatchEvent(new Event(HUD_DISPATCH_EVENTS[lens.id]));

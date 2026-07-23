@@ -91,3 +91,69 @@ describe('tutorialManager — merged step content', () => {
     expect(localStorage.getItem('world_lens_visited')).toBe('1');
   });
 });
+
+// DET-C batch 4 — closes a real dead-event-listener finding: TutorialHighlight
+// (app/lenses/world/page.tsx) has a genuine `concordia:tutorial-highlight`
+// listener with zero dispatchers anywhere in the frontend. tutorialManager is
+// now the single real dispatcher, keyed off the same step-advance/replay/skip
+// transitions that already drive the hint toast — never a fabricated token
+// for a step with no real DOM anchor.
+describe('tutorialManager — concordia:tutorial-highlight dispatch (dead-listener closure)', () => {
+  it('dispatches the real crafting-button token when the craft-item step is shown', async () => {
+    const { tutorialManager } = await import('@/lib/concordia/onboarding/tutorial');
+    const tokens: (string | null | undefined)[] = [];
+    const onHighlight = (e: Event) => tokens.push((e as CustomEvent).detail?.token);
+    window.addEventListener('concordia:tutorial-highlight', onHighlight);
+    try {
+      tutorialManager.advance('moved-significant-distance');
+      tutorialManager.advance('rotated-camera');
+      tutorialManager.advance('sprinted');
+      tutorialManager.advance('near-npc');
+      tutorialManager.advance('completed-dialogue');
+      tutorialManager.advance('gathered'); // -> craft-item
+      expect(tutorialManager.state.step).toBe('craft-item');
+      expect(tokens[tokens.length - 1]).toBe('crafting-button');
+    } finally {
+      window.removeEventListener('concordia:tutorial-highlight', onHighlight);
+    }
+  });
+
+  it('dispatches token:null for steps with no real DOM anchor — never invents one', async () => {
+    const { tutorialManager } = await import('@/lib/concordia/onboarding/tutorial');
+    const tokens: (string | null | undefined)[] = [];
+    const onHighlight = (e: Event) => tokens.push((e as CustomEvent).detail?.token);
+    window.addEventListener('concordia:tutorial-highlight', onHighlight);
+    try {
+      tutorialManager.start(); // movement-basic — no anchor mapped
+      expect(tokens[tokens.length - 1]).toBeNull();
+    } finally {
+      window.removeEventListener('concordia:tutorial-highlight', onHighlight);
+    }
+  });
+
+  it('clears the highlight (token:null) on skip', async () => {
+    const { tutorialManager } = await import('@/lib/concordia/onboarding/tutorial');
+    const tokens: (string | null | undefined)[] = [];
+    const onHighlight = (e: Event) => tokens.push((e as CustomEvent).detail?.token);
+    window.addEventListener('concordia:tutorial-highlight', onHighlight);
+    try {
+      tutorialManager.skip(false);
+      expect(tokens[tokens.length - 1]).toBeNull();
+    } finally {
+      window.removeEventListener('concordia:tutorial-highlight', onHighlight);
+    }
+  });
+
+  it('replaying craft-item from the Help menu re-dispatches its real token', async () => {
+    const { tutorialManager } = await import('@/lib/concordia/onboarding/tutorial');
+    const tokens: (string | null | undefined)[] = [];
+    const onHighlight = (e: Event) => tokens.push((e as CustomEvent).detail?.token);
+    window.addEventListener('concordia:tutorial-highlight', onHighlight);
+    try {
+      tutorialManager.replay('craft-item');
+      expect(tokens[tokens.length - 1]).toBe('crafting-button');
+    } finally {
+      window.removeEventListener('concordia:tutorial-highlight', onHighlight);
+    }
+  });
+});

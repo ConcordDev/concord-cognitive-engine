@@ -212,6 +212,41 @@ describe('Promote round-trip — the ambient widget genuinely opens ConKayOverla
   });
 });
 
+describe('Dismiss round-trip — clicking the widget again closes an already-open overlay', () => {
+  it('dispatches conkay:dismiss (not another conkay:summon) when the real store already says open=true, and the overlay actually closes', async () => {
+    render(
+      <>
+        <ConKayWidgetLayer />
+        <ConKayOverlay />
+      </>,
+    );
+
+    // Open it first via the widget (real conkay:summon round-trip, same as
+    // the promote test above).
+    fireEvent.click(getWidget());
+    await waitFor(() => expect(screen.getByLabelText('Message ConKay')).toBeInTheDocument());
+    expect(attention().open).toBe(true);
+
+    // Second click on the SAME widget, while the real store still says open,
+    // must dismiss rather than no-op re-summon.
+    fireEvent.click(getWidget());
+    await waitFor(() => expect(attention().open).toBe(false));
+    await waitFor(() => expect(screen.queryByLabelText('Message ConKay')).not.toBeInTheDocument());
+  });
+
+  it('still dispatches conkay:summon (not dismiss) on the very first click, when open=false', async () => {
+    render(
+      <>
+        <ConKayWidgetLayer />
+        <ConKayOverlay />
+      </>,
+    );
+    expect(attention().open).toBe(false);
+    fireEvent.click(getWidget());
+    await waitFor(() => expect(attention().open).toBe(true));
+  });
+});
+
 describe('Collapse round-trip — closing preserves conversation continuity', () => {
   it('a message sent before closing is still in the transcript after reopening (ConKayOverlay never unmounts across open/close)', async () => {
     render(<ConKayOverlay />);

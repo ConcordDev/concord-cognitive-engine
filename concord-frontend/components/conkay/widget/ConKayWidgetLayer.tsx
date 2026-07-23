@@ -50,7 +50,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ConKayWidget, type ConKayWidgetState } from './ConKayWidget';
-import { useConKayWidgetState } from '../conkayAttentionStore';
+import { useConKayWidgetState, useConkayAttentionStore } from '../conkayAttentionStore';
 import { Z_INDEX } from '@/lib/ui/z-index';
 
 /** localStorage key for the user's "hide the ConKay widget" preference. */
@@ -89,6 +89,12 @@ export function ConKayWidgetLayer({ state, onActivate }: ConKayWidgetLayerProps)
   // whether a caller passes `state`.
   const derivedState = useConKayWidgetState();
   const effectiveState = state ?? derivedState;
+  // Real, store-derived "is the full overlay currently open" flag (the same
+  // `open` boolean ConKayOverlay's own lifecycle effect mirrors into this
+  // store — see conkayAttentionStore.ts's header). Used below so clicking the
+  // ambient widget toggles rather than only ever re-summoning an
+  // already-open overlay.
+  const overlayOpen = useConkayAttentionStore((s) => s.open);
 
   // Start visible during SSR/first client render (matches ConKayWidget's
   // server-rendered markup with no localStorage access), then reconcile the
@@ -115,8 +121,12 @@ export function ConKayWidgetLayer({ state, onActivate }: ConKayWidgetLayerProps)
       onActivate();
       return;
     }
-    window.dispatchEvent(new Event('conkay:summon'));
-  }, [onActivate]);
+    // Toggle: if the full overlay is already open (real state mirrored from
+    // ConKayOverlay itself, not guessed), a second click on the ambient
+    // widget dismisses it via the existing `conkay:dismiss` window-event
+    // contract ConKayOverlay already listens for; otherwise summon as before.
+    window.dispatchEvent(new Event(overlayOpen ? 'conkay:dismiss' : 'conkay:summon'));
+  }, [onActivate, overlayOpen]);
 
   if (hidden) return null;
 

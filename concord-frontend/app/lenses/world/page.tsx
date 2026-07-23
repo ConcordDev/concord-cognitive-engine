@@ -3003,6 +3003,39 @@ export default function WorldLensPage() {
     }
   }, [playerAvatar.position, rawWorldNPCs]);
 
+  // [System] contextual prompter feed — publishes the player's REAL current
+  // context (SystemPrompter.tsx listens for this; see that file's header).
+  // Every field below is read from state this page already tracks for other
+  // real purposes (nearbyNPC from the proximity effect above, worldBuildings
+  // from the buildings fetch, combatState.target from the same expression
+  // CombatHUD's own `inCombat` prop uses, isSwimming from the swim-state
+  // effect) — no invented signal. Fields with no real source in this file
+  // (nearMount/nearVehicle/nearNode/airborne/hasUnspentSkillPoint/
+  // hasUnreadStake) are left undefined; resolveAffordances() treats an
+  // absent optional field as honestly "unknown", never as false.
+  useEffect(() => {
+    const pos = playerAvatar.position;
+    const BUILDING_PROXIMITY_M = 4; // matches StationInteractionRouter's own gate
+    let nearestBuilding: WorldBuildingRow | null = null;
+    let nearestBuildingDist = Infinity;
+    for (const b of worldBuildings) {
+      const d = Math.hypot(b.x - pos.x, b.y - pos.y);
+      if (d < BUILDING_PROXIMITY_M && d < nearestBuildingDist) {
+        nearestBuilding = b;
+        nearestBuildingDist = d;
+      }
+    }
+    const ctx = {
+      nearBuilding: nearestBuilding ? { id: nearestBuilding.id, type: nearestBuilding.building_type } : null,
+      nearNpc: nearbyNPC ? { id: nearbyNPC.id, name: nearbyNPC.name } : null,
+      inCombat: !!combatState.target && !combatState.isDead,
+      inWater: isSwimming,
+    };
+    try {
+      window.dispatchEvent(new CustomEvent('concordia:context-update', { detail: ctx }));
+    } catch { /* dispatch best-effort */ }
+  }, [playerAvatar.position, worldBuildings, nearbyNPC, combatState.target, combatState.isDead, isSwimming]);
+
   // E key: portal entry OR nearest NPC dialogue (portal takes priority)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
