@@ -256,6 +256,29 @@ describe("tryComposeForUser", () => {
     assert.equal(r.reason, 'too_few_fragments');
     assert.ok(r.count < MIN_FRAGMENTS);
   });
+
+  // DET-C batch 3 — the 'dream:composed' realtime emit omitted the
+  // realtimeEmit options argument entirely, so it fell through to the
+  // unscoped global-broadcast branch: every connected client received
+  // every other player's personal dream-composed notification. Pin that
+  // the emit is scoped to the composing user.
+  it("scopes the 'dream:composed' realtime emit to the composing user", async () => {
+    const calls = [];
+    globalThis._concordRealtimeEmit = (event, payload, opts) => {
+      calls.push({ event, payload, opts });
+    };
+    try {
+      const r = await tryComposeForUser(db, "u1");
+      assert.equal(r.ok, true);
+      const call = calls.find((c) => c.event === "dream:composed");
+      assert.ok(call, "expected a dream:composed emit");
+      assert.equal(call.payload.userId, "u1");
+      assert.ok(call.opts, "expected a 3rd realtimeEmit options argument");
+      assert.equal(call.opts.userId, "u1");
+    } finally {
+      delete globalThis._concordRealtimeEmit;
+    }
+  });
 });
 
 describe("getRecentDreams", () => {

@@ -271,6 +271,28 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
     WHERE user_id = ? AND skill_type = ? AND native_world_type = ?
   `).run(level, xp, xp_to_next, userId, skillType, worldType);
 
+  // DET-C batch 3 — CharacterSheetPanel.tsx (concord-frontend/components/
+  // world-lens/) reads its skillSummary + bars from this exact table
+  // (player_skill_levels) via getCharacterProgress, and has listened for a
+  // 'concordia:character-updated' window event since it was written so it
+  // can refresh live while open — but nothing server-side ever emitted it.
+  // The two prior candidate wires (the 'level:up' mastery-track event and
+  // 'skill:xp-awarded' from skill-progression.js) are BOTH a different,
+  // unrelated progression system (mastery rank / Sovereign Refusal Archive
+  // dtus.skill_level) — dispatching this panel's refresh off either would
+  // have refreshed on the wrong trigger. This is the real one: emit
+  // 'character:updated' scoped to the leveling user whenever a skill level
+  // bump actually lands in player_skill_levels (bars may or may not also
+  // move, depending on opts.worldId below, but skillSummary always did).
+  if (leveled) {
+    try {
+      const emitFn = globalThis._concordRealtimeEmit;
+      if (typeof emitFn === "function") {
+        emitFn("character:updated", { userId, skillType, newLevel: level }, { userId });
+      }
+    } catch { /* realtime is best-effort */ }
+  }
+
   // Award character levels for every skill level gained — upgrade points follow
   let characterLevelResult = null;
   if (leveled && levelsGained > 0 && opts.worldId) {

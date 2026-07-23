@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -13,6 +13,7 @@ import { BookmarkFolderPicker } from '@/components/feed/BookmarkFolderPicker';
 import { WaveformPlayer, type AudioAttachment } from './WaveformPlayer';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { subscribe } from '@/lib/realtime/socket';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Virtuoso } from 'react-virtuoso';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -363,6 +364,28 @@ export default function FeedLensPage() {
   } = useLensDTUs({ lens: 'feed' });
 
   const queryClient = useQueryClient();
+
+  // ── Live timeline-post arrival pill ────────────────────────
+  // Real, non-throttled backend broadcast: server.js emits 'timeline:post'
+  // for every DTU tagged 'timeline' with privacy:'public' the instant it's
+  // created, so peers see it without waiting for a poll. Until now nothing
+  // subscribed to it (dead_socket_emit, DET-C backlog). Rather than
+  // auto-invalidating the infinite-scroll query (which would yank the
+  // reader's scroll position), this surfaces a dismissible "N new" pill —
+  // the reader opts into the refresh, same pattern as Twitter/Bluesky-style
+  // feeds. Count-only; doesn't matter if the arrival is the viewer's own
+  // post echoed back.
+  const [newPostCount, setNewPostCount] = useState(0);
+  useEffect(() => {
+    const off = subscribe<{ dtuId?: string }>('timeline:post', () => {
+      setNewPostCount((n) => n + 1);
+    });
+    return off;
+  }, []);
+  const showNewPosts = useCallback(() => {
+    setNewPostCount(0);
+    queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+  }, [queryClient]);
 
   // Backend action wiring
   const runFeedAction = useRunArtifact('feed');
@@ -1266,6 +1289,16 @@ export default function FeedLensPage() {
 
         {/* Post Feed */}
         <div>
+          {newPostCount > 0 && (
+            <div className="sticky top-0 z-10 flex justify-center py-2">
+              <button
+                onClick={showNewPosts}
+                className="rounded-full bg-neon-cyan/90 px-4 py-1.5 text-xs font-medium text-black shadow-lg hover:bg-neon-cyan transition-colors"
+              >
+                {newPostCount} new post{newPostCount !== 1 ? 's' : ''} — tap to show
+              </button>
+            </div>
+          )}
           {isLoading ? (
             <div className="p-4 space-y-6">
               {[1, 2, 3, 4].map((i) => (

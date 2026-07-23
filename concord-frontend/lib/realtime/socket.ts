@@ -297,6 +297,10 @@ export function disconnectSocket(): void {
 export type SocketEvent =
   // Resonance
   | 'resonance:update'
+  // Public timeline feed
+  | 'timeline:post'
+  // Character sheet (bars + skill levels) refresh signal
+  | 'character:updated'
   // DTU lifecycle
   | 'dtu:created'
   | 'dtu:updated'

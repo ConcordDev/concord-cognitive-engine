@@ -191,6 +191,32 @@ describe("active prediction lifecycle", () => {
     assert.equal(stillActive, undefined);
   });
 
+  // DET-C batch 3 — same missing-opts scoping bug as dream-engine.js: the
+  // 'prediction:realised' emit omitted the realtimeEmit options arg, so a
+  // personal speculative-anticipation record broadcast to every connected
+  // client instead of just the predicting user.
+  it("scopes the 'prediction:realised' realtime emit to the predicting user", async () => {
+    const db = setupDb();
+    seedActivity(db, "u1");
+    await tryPredictForUser(db, "u1");
+    const target = getActivePredictions(db, "u1")[0];
+
+    const calls = [];
+    globalThis._concordRealtimeEmit = (event, payload, opts) => {
+      calls.push({ event, payload, opts });
+    };
+    try {
+      realisePrediction(db, target.id, { matched: true });
+      const call = calls.find((c) => c.event === "prediction:realised");
+      assert.ok(call, "expected a prediction:realised emit");
+      assert.equal(call.payload.userId, "u1");
+      assert.ok(call.opts, "expected a 3rd realtimeEmit options argument");
+      assert.equal(call.opts.userId, "u1");
+    } finally {
+      delete globalThis._concordRealtimeEmit;
+    }
+  });
+
   it("sweepExpiredPredictions archives past TTL", async () => {
     const db = setupDb();
     seedActivity(db, "u1");

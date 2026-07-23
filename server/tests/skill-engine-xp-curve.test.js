@@ -106,3 +106,50 @@ describe("System A XP curve — xp_to_next = 100 * level", () => {
     db.close();
   });
 });
+
+describe("'character:updated' realtime emit (DET-C batch 3)", () => {
+  // CharacterSheetPanel.tsx (concord-frontend) has listened for a
+  // 'concordia:character-updated' window event (bridged from the raw
+  // 'character:updated' socket event) since it was written, but nothing
+  // server-side ever emitted it — the two plausible candidates ('level:up'
+  // mastery track, 'skill:xp-awarded' Sovereign-Refusal-Archive track) are
+  // both unrelated progression systems. gainSkillXP is the real trigger:
+  // it's the only writer of player_skill_levels, which is exactly what the
+  // panel's skillSummary reads.
+  it("emits 'character:updated' scoped to the user on a real level-up", () => {
+    const db = freshDb();
+    const calls = [];
+    globalThis._concordRealtimeEmit = (event, payload, opts) => {
+      calls.push({ event, payload, opts });
+    };
+    try {
+      const r = gainSkillXP(db, "u1", "swords", "standard", 100);
+      assert.equal(r.leveled, true);
+      const call = calls.find((c) => c.event === "character:updated");
+      assert.ok(call, "expected a character:updated emit on level-up");
+      assert.equal(call.payload.userId, "u1");
+      assert.equal(call.payload.newLevel, 2);
+      assert.ok(call.opts, "expected a 3rd realtimeEmit options argument");
+      assert.equal(call.opts.userId, "u1");
+    } finally {
+      delete globalThis._concordRealtimeEmit;
+    }
+    db.close();
+  });
+
+  it("does not emit 'character:updated' when no level-up occurs", () => {
+    const db = freshDb();
+    const calls = [];
+    globalThis._concordRealtimeEmit = (event, payload, opts) => {
+      calls.push({ event, payload, opts });
+    };
+    try {
+      const r = gainSkillXP(db, "u1", "swords", "standard", 10); // well under the 100 threshold
+      assert.equal(r.leveled, false);
+      assert.equal(calls.find((c) => c.event === "character:updated"), undefined);
+    } finally {
+      delete globalThis._concordRealtimeEmit;
+    }
+    db.close();
+  });
+});

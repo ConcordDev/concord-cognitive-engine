@@ -3913,6 +3913,22 @@ export default function WorldLensPage() {
       // event being live (worldSocket.on('combat:kill', handleCombatKill)
       // above already consumes it for gameplay state).
       'combat:kill',
+      // DET-C batch 3 — three real dead listeners the dead-event-listener
+      // detector's own maintainer comment names explicitly: DreamReader.tsx
+      // listens for `concordia:dream-composed`, ForwardPredictionsPanel.tsx
+      // for `concordia:prediction-realised`, NPCSchemeOverhearTip.tsx for
+      // `concordia:npc-scheme-resolved` — all three real server broadcasts
+      // (dream-engine.js#tryComposeForUser, forward-sim.js#realisePrediction,
+      // npc-schemes.js's terminal-phase transition) that were never bridged
+      // to a window CustomEvent under those exact derived names.
+      // EmergentEventFeed.tsx's TRACKED_EVENTS also subscribes to the raw
+      // socket names for its read-only activity log — that's a separate,
+      // parallel consumer, not a substitute for this bridge.
+      'dream:composed', 'prediction:realised', 'npc:scheme-resolved',
+      // CharacterSheetPanel.tsx listens for 'concordia:character-updated';
+      // skill-engine.js#gainSkillXP now emits 'character:updated' (scoped
+      // to the leveling user) on every real player_skill_levels level bump.
+      'character:updated',
     ];
     const srBridges: Array<[string, (...a: unknown[]) => void]> = SR_BRIDGE_EVENTS.map((kind) => {
       const winName = `concordia:${kind.replace(/:/g, '-')}`;
@@ -3984,14 +4000,36 @@ export default function WorldLensPage() {
   useEffect(() => {
     let rafId: number;
     let lastT = performance.now();
+    // DET-C batch 3 — AdaptiveMusicEngine.tsx has listened for
+    // 'concordia:combat-engaged' / 'concordia:calm' since it was written
+    // (multi-stem crossfade), but nothing ever dispatched either name; this
+    // frame loop already computes the exact `inCombat` boolean the two
+    // states hinge on (it drives the older single-track CombatMusicSystem
+    // below), so an edge-detected dispatch is the honest minimal wire — no
+    // new combat-detection logic invented. 'concordia:stealth' /
+    // 'concordia:discovery' are left dead: there is no current gameplay
+    // concept of a continuous "in stealth" or "just discovered something"
+    // state to derive them from (the closest real signal, the `stealth`
+    // control-scheme selection, only affects available combat moves, not a
+    // sneaking/detection posture) — wiring those would mean inventing the
+    // mechanic, not fixing a missed wire.
+    let wasInCombat = false;
 
     function musicFrame(now: number) {
       const delta = Math.min((now - lastT) / 1000, 0.1); // cap at 100 ms
       lastT = now;
       const cms = combatMusicRef.current;
+      const inCombat = !!(combatStateRef.current.target && !combatStateRef.current.isDead);
       if (cms) {
-        const inCombat = !!(combatStateRef.current.target && !combatStateRef.current.isDead);
         cms.update(delta, inCombat);
+      }
+      if (inCombat !== wasInCombat) {
+        wasInCombat = inCombat;
+        if (inCombat) {
+          window.dispatchEvent(new CustomEvent('concordia:combat-engaged'));
+        } else {
+          window.dispatchEvent(new CustomEvent('concordia:calm'));
+        }
       }
       rafId = requestAnimationFrame(musicFrame);
     }

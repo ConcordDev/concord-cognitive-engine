@@ -137,6 +137,21 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   // (server/domains/secrets.js) fires a blackmail/leverage-use narrative
   // beat with zero frontend consumer anywhere.
   { name: 'secret:weaponised'             as SocketEvent, channel: 'npc',     label: 'Secret weaponised' },
+  // DET-C batch 3 — real backend broadcasts (verified global, not scoped to
+  // a single user) with no frontend consumer anywhere. Each is genuinely
+  // "the world/agent substrate doing something on its own" — this feed's
+  // whole purpose — so it's the right home rather than a bespoke panel.
+  { name: 'agent:value-drift'             as SocketEvent, channel: 'agent',   label: 'Agent value drift flagged' },
+  { name: 'world:viability'               as SocketEvent, channel: 'system_health', label: 'Viability reading' },
+  { name: 'realm:governance-adjusted'     as SocketEvent, channel: 'world',   label: 'Realm governance adjusted' },
+  { name: 'lattice:claim-verified'        as SocketEvent, channel: 'agent',   label: 'Claim verified' },
+  { name: 'pain:avoidance_created'        as SocketEvent, channel: 'agent',   label: 'Avoidance learned' },
+  { name: 'royalty:cross-world'           as SocketEvent, channel: 'economy', label: 'Cross-world royalty hop' },
+  { name: 'npc:prop-interaction'          as SocketEvent, channel: 'npc',     label: 'NPC used a prop' },
+  { name: 'app:created'                   as SocketEvent, channel: 'world',   label: 'App created' },
+  { name: 'forge:template:created'        as SocketEvent, channel: 'world',   label: 'Forge template created' },
+  { name: 'forge:template:generated'      as SocketEvent, channel: 'world',   label: 'Forge template generated' },
+  { name: 'forge:template:published'      as SocketEvent, channel: 'world',   label: 'Forge template published' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {
