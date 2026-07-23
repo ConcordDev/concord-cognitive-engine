@@ -1192,6 +1192,23 @@ export async function seedContent({ db = null } = {}) {
       logger.warn("content_seeder", "districts_seed_failed", { err: err?.message });
     }
 
+    // Master-spec A3+A4 — purposeful-building framework ("no dead facades").
+    // Read-only diagnostic over the authored content/world/concordia-hub/
+    // city-layout.json (server/lib/building-purpose.js): validates every
+    // authored building has a real purpose + a valid district, and reports
+    // coverage against whatever world_buildings already exist. Never writes
+    // to world_buildings — that seeding stays owned by world-seeder.js.
+    try {
+      const { seedCityLayout } = await import("./building-purpose.js");
+      const r = seedCityLayout(db, "concordia-hub");
+      results.cityLayout = r?.total ?? 0;
+      if (r?.deadFacades) {
+        logger.warn("content_seeder", "city_layout_dead_facades", { count: r.deadFacades });
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "city_layout_seed_failed", { err: err?.message });
+    }
+
     try {
       const hpJson = readJSON("hacking-puzzles.json");
       if (Array.isArray(hpJson) && hpJson.length > 0) {

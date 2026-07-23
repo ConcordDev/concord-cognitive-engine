@@ -14,8 +14,17 @@
 // addition — `nodes`/`bounds`/`format`/`count` are unchanged, and a world
 // with no recorded districts gets an honest empty array, never fabricated
 // geometry.
+//
+// Additive (master-spec A3+A4 — purposeful buildings): each node's `extras`
+// also gains `purpose`/`district_id`/`lens`/`levels` when the node's
+// `building_type` resolves unambiguously in the authored city-layout
+// (server/lib/building-purpose.js#buildingPurposeForType). Only concordia-hub
+// has an authored layout today; any other world — or any building_type the
+// layout doesn't know about — keeps the pre-existing `extras` shape
+// unchanged (no fabricated purpose, ever).
 
 import { listDistricts } from "./districts.js";
+import { buildingPurposeForType } from "./building-purpose.js";
 
 export const SCENE_FORMAT = "concord-scene/v1";
 
@@ -49,6 +58,18 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
     if (x - w / 2 < minX) minX = x - w / 2; if (x + w / 2 > maxX) maxX = x + w / 2;
     if (z - d / 2 < minZ) minZ = z - d / 2; if (z + d / 2 > maxZ) maxZ = z + d / 2;
     if (y + h > maxY) maxY = y + h;
+    const extras = { state: r.state || "standing", floors: r.floors || 1, health: round(r.health_pct ?? 1) };
+    // Never throws, never fabricates — a miss just leaves extras unchanged.
+    let purposeInfo = null;
+    try {
+      purposeInfo = buildingPurposeForType(r.building_type, worldId);
+    } catch { purposeInfo = null; }
+    if (purposeInfo) {
+      extras.purpose = purposeInfo.purpose;
+      extras.district_id = purposeInfo.district_id;
+      extras.lens = purposeInfo.lens;
+      extras.levels = purposeInfo.levels;
+    }
     return {
       id: r.id,
       type: r.building_type,
@@ -56,7 +77,7 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
       material: r.material || "stone",
       // glTF-style transform: Y-up, rotation about Y in radians, scale = footprint.
       transform: { translation: [round(x), round(y), round(z)], rotationY: round(r.rotation || 0), scale: [round(w), round(h), round(d)] },
-      extras: { state: r.state || "standing", floors: r.floors || 1, health: round(r.health_pct ?? 1) },
+      extras,
     };
   });
 
