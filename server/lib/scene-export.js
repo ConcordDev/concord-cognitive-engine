@@ -95,7 +95,34 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
     districts = [];
   }
 
-  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length, districts };
+  // Additive (master-spec A1 — Central Plaza system): identify the recorded
+  // "plaza" district, if this world has one, and its real polygon centroid —
+  // the orientation point a client can jump to without a second round-trip.
+  // Only the district literally seeded with key "plaza" (districts.js
+  // DEFAULT_DISTRICTS — id `${worldId}:plaza`) qualifies. A world with no
+  // recorded plaza district (including any world other than concordia-hub
+  // today) gets an honest `null`, never a guessed center. The full
+  // district+building directory (names, palettes, authored purposes) lives
+  // behind the separate `scenebridge.map` macro — this field is deliberately
+  // just a locator, so every scene fetch doesn't have to carry the whole
+  // directory payload.
+  let plaza = null;
+  try {
+    const plazaDistrict = districts.find((d) => d.id === `${worldId}:plaza`);
+    if (plazaDistrict && Array.isArray(plazaDistrict.boundary) && plazaDistrict.boundary.length >= 3) {
+      const cx = plazaDistrict.boundary.reduce((s, v) => s + (Number(v.x) || 0), 0) / plazaDistrict.boundary.length;
+      const cz = plazaDistrict.boundary.reduce((s, v) => s + (Number(v.z) || 0), 0) / plazaDistrict.boundary.length;
+      plaza = {
+        districtId: plazaDistrict.id,
+        name: plazaDistrict.name,
+        position: [round(cx), round(plazaDistrict.elevationHint || 0), round(cz)],
+      };
+    }
+  } catch {
+    plaza = null;
+  }
+
+  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length, districts, plaza };
 }
 
 /** Cheap stats without building the whole node list. */
