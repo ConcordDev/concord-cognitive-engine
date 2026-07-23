@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Gamepad2, Plus, FileText, Cog, Swords, Grid3x3, Loader2, Repeat, GitBranch, Image as ImageIcon, Film, Zap, Play, Users, BarChart3, Pencil, Download, X, Check, Boxes, PawPrint } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { GdGddPanel } from './GdGddPanel';
@@ -167,8 +168,13 @@ export function GameDesignSection() {
           <div className="px-4 py-3 border-b border-zinc-800 space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
               {games.map((g) => (
-                <span key={g.id} className={cn('flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
-                  activeGame === g.id ? 'bg-lime-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
+                <span key={g.id} className={cn('relative flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
+                  activeGame === g.id ? 'text-white' : 'text-zinc-300')}>
+                  {activeGame === g.id ? (
+                    <motion.span layoutId="gd-project-pill" className="absolute inset-0 bg-lime-600 rounded-lg -z-10" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+                  ) : (
+                    <span className="absolute inset-0 bg-zinc-800 rounded-lg -z-10" aria-hidden="true" />
+                  )}
                   <button type="button" onClick={() => setActiveGame(g.id)}>{g.title}</button>
                   <button type="button" onClick={() => delGame(g.id)} className="text-zinc-300/70 hover:text-rose-200">×</button>
                 </span>
@@ -257,8 +263,11 @@ export function GameDesignSection() {
                   const active = tab === t.id;
                   return (
                     <button key={t.id} type="button" onClick={() => setTab(t.id)}
-                      className={cn('flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-lime-500',
-                        active ? 'bg-zinc-900 text-lime-300 border-x border-t border-zinc-800' : 'text-zinc-400 hover:text-zinc-200')}>
+                      className={cn('relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-lime-500',
+                        active ? 'text-lime-300 border-x border-t border-zinc-800' : 'text-zinc-400 hover:text-zinc-200')}>
+                      {active && (
+                        <motion.span layoutId="gd-tab-fill" className="absolute inset-0 bg-zinc-900 rounded-t-lg -z-10" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+                      )}
                       <Icon className="w-3.5 h-3.5" /> {t.label}
                     </button>
                   );

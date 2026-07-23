@@ -11,6 +11,7 @@ import {
   PenTool, Plus, BookText, LayoutGrid, Users, GitBranch, TrendingUp, Loader2,
   Globe, FileDown, Target, BarChart3, GitCompare, Settings2, Check, X,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { CwBinderPanel } from './CwBinderPanel';
@@ -139,8 +140,12 @@ export function CreativeWritingSection() {
           <div className="px-4 py-3 border-b border-zinc-800 space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
               {projects.map((p) => (
-                <span key={p.id} className={cn('flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
-                  activeProject === p.id ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
+                <span key={p.id} className={cn('relative flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
+                  activeProject === p.id ? 'text-white' : 'text-zinc-300')}>
+                  {activeProject === p.id && (
+                    <motion.span layoutId="cw-project-pill" className="absolute inset-0 bg-amber-600 rounded-lg -z-10" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+                  )}
+                  {activeProject !== p.id && <span className="absolute inset-0 bg-zinc-800 rounded-lg -z-10" aria-hidden="true" />}
                   <button type="button" onClick={() => setActiveProject(p.id)}>{p.title}</button>
                   <button type="button" onClick={() => delProject(p.id)} className="text-zinc-300/70 hover:text-rose-200">×</button>
                 </span>
@@ -191,19 +196,35 @@ export function CreativeWritingSection() {
                   </div>
                 </div>
               ) : dash && (
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1">
-                    <Stat label="Words" value={dash.wordCount.toLocaleString()} />
-                    <Stat label="Target" value={dash.targetWords ? dash.targetWords.toLocaleString() : '—'} />
-                    <Stat label="Chapters" value={dash.chapters} />
-                    <Stat label="Scenes" value={dash.scenes} />
-                    <Stat label="Characters" value={dash.characters} />
-                    <Stat label="Threads" value={dash.threads} />
+                <div className="px-4 py-3 border-b border-zinc-800 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1">
+                      <Stat label="Words" value={dash.wordCount.toLocaleString()} />
+                      <Stat label="Target" value={dash.targetWords ? dash.targetWords.toLocaleString() : '—'} />
+                      <Stat label="Chapters" value={dash.chapters} />
+                      <Stat label="Scenes" value={dash.scenes} />
+                      <Stat label="Characters" value={dash.characters} />
+                      <Stat label="Threads" value={dash.threads} />
+                    </div>
+                    <button aria-label="Manuscript settings" type="button" onClick={openSettings}
+                      className="text-zinc-500 hover:text-amber-300 shrink-0" title="Edit manuscript settings">
+                      <Settings2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button aria-label="Manuscript settings" type="button" onClick={openSettings}
-                    className="text-zinc-500 hover:text-amber-300 shrink-0" title="Edit manuscript settings">
-                    <Settings2 className="w-4 h-4" />
-                  </button>
+                  {/* NaNoWriMo-style manuscript goal bar — the one number every
+                      manuscript-tracking reference app leads with. Animates to
+                      the real wordCount/targetWords ratio on every dash refresh
+                      (project switch, scene save, session log). */}
+                  {dash.targetWords > 0 && (
+                    <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden" title={`${Math.min(100, Math.round((dash.wordCount / dash.targetWords) * 100))}% of target`}>
+                      <motion.div
+                        className="h-full bg-amber-500 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, Math.round((dash.wordCount / dash.targetWords) * 100))}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
@@ -212,8 +233,11 @@ export function CreativeWritingSection() {
                   const active = tab === t.id;
                   return (
                     <button key={t.id} type="button" onClick={() => setTab(t.id)}
-                      className={cn('flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-amber-500',
-                        active ? 'bg-zinc-900 text-amber-300 border-x border-t border-zinc-800' : 'text-zinc-400 hover:text-zinc-200')}>
+                      className={cn('relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-amber-500',
+                        active ? 'text-amber-300 border-x border-t border-zinc-800' : 'text-zinc-400 hover:text-zinc-200')}>
+                      {active && (
+                        <motion.span layoutId="cw-tab-fill" className="absolute inset-0 bg-zinc-900 rounded-t-lg -z-10" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+                      )}
                       <Icon className="w-3.5 h-3.5" /> {t.label}
                     </button>
                   );

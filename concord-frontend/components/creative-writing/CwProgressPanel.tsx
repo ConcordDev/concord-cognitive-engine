@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Plus, Flame, Target } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 
 interface ChapterWords { chapterId: string; title: string; words: number }
@@ -65,7 +66,12 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
         </div>
         {stats.targetWords > 0 && (
           <div className="h-2.5 rounded-full bg-zinc-800 overflow-hidden">
-            <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min(100, stats.targetPct)}%` }} />
+            <motion.div
+              className="h-full bg-amber-500 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, stats.targetPct)}%` }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+            />
           </div>
         )}
       </div>

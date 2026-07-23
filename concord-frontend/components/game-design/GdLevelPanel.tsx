@@ -163,6 +163,10 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
   const [newTile, setNewTile] = useState({ name: '', color: '#94a3b8' });
   const [resize, setResize] = useState({ cols: 0, rows: 0 });
   const [exportJson, setExportJson] = useState('');
+  // Tiled-style status bar — real cursor cell position, updated on every
+  // pointer move over the canvas (not decorative: the coordinates are the
+  // exact cell `onPointerDown` would paint).
+  const [hoverCell, setHoverCell] = useState<{ col: number; row: number } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const paintingRef = useRef(false);
   const dragObjRef = useRef<string | null>(null);
@@ -300,6 +304,7 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
 
   const onPointerMove = (e: React.PointerEvent) => {
     const c = cellAt(e);
+    setHoverCell(c ? { col: c.col, row: c.row } : null);
     if (!c) return;
     if (dragObjRef.current && level) {
       const id = dragObjRef.current;
@@ -541,10 +546,30 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onPointerLeave={onPointerUp}
+            onPointerLeave={() => { setHoverCell(null); void onPointerUp(); }}
             className="rounded cursor-crosshair"
             style={{ maxWidth: '100%', touchAction: 'none', imageRendering: 'pixelated' }}
           />
+          {/* Tiled-style status bar — real, live cursor/layer/brush state,
+              not a static caption. */}
+          <div className="mt-1.5 flex items-center gap-3 px-1 text-[10px] font-mono text-zinc-500 border-t border-zinc-800/70 pt-1.5">
+            <span className="tabular-nums">
+              {hoverCell ? `Cell ${hoverCell.col}, ${hoverCell.row}` : `${level.cols}×${level.rows} cells`}
+            </span>
+            <span className="text-zinc-700">|</span>
+            <span className="truncate">
+              Layer: <span className="text-zinc-300">{layer ? `${layer.name} (${layer.kind})` : 'none'}</span>
+            </span>
+            {layer && layer.kind !== 'object' && (
+              <>
+                <span className="text-zinc-700">|</span>
+                <span className="truncate">
+                  Brush: <span className="text-zinc-300">{layer.kind === 'intgrid' ? `int ${activeInt}` : (activeTile || 'none')}</span>
+                </span>
+              </>
+            )}
+            <span className="ml-auto text-zinc-600">{level.tileSize}px/tile · {level.orientation}</span>
+          </div>
         </div>
 
         <div className="space-y-2">

@@ -8,8 +8,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Loader2, Plus, FileText, Folder, ChevronUp, ChevronDown, Trash2, Save,
-  Columns2, X, BookOpen, Pencil, Check, GitBranch, FolderInput,
+  Columns2, X, BookOpen, Pencil, Check, GitBranch, FolderInput, Maximize2, Minimize2,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
@@ -56,6 +57,17 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   // Chapter rename (chapter-update).
   const [renamingChapter, setRenamingChapter] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  // Dabble-style distraction-free composition mode — hides the binder tree
+  // and reference pane so the editor is the only thing on screen. Real
+  // layout state, not decorative: Escape exits it same as the visible ✕.
+  const [focusMode, setFocusMode] = useState(false);
+
+  useEffect(() => {
+    if (!focusMode) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFocusMode(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [focusMode]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -189,7 +201,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   }
 
   const renderSceneRow = (sc: Scene) => (
-    <li key={sc.id} className="group flex items-center gap-1">
+    <motion.li layout="position" transition={{ type: 'spring', stiffness: 400, damping: 35 }} key={sc.id} className="group flex items-center gap-1">
       <button type="button" onClick={() => setSelected(sc.id)}
         className={cn('flex items-center gap-1.5 flex-1 text-left px-2 py-1 rounded text-xs',
           selected === sc.id ? 'bg-amber-600/30 text-amber-200' : 'text-zinc-300 hover:bg-zinc-800')}>
@@ -222,7 +234,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           <Trash2 className="w-3 h-3" />
         </button>
       </div>
-    </li>
+    </motion.li>
   );
 
   const unfiled = scenes.filter((sc) => !sc.chapterId);
@@ -231,8 +243,10 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
 
   return (
     <div className={cn('grid grid-cols-1 gap-3',
-      refOpen ? 'lg:grid-cols-[220px_1fr_300px]' : 'lg:grid-cols-[260px_1fr]')}>
-      {/* Binder */}
+      focusMode ? 'grid-cols-1' : refOpen ? 'lg:grid-cols-[220px_1fr_300px]' : 'lg:grid-cols-[260px_1fr]')}>
+      {/* Binder — unmounted (not just CSS-hidden) in focus mode so the
+          editor is genuinely the only thing on screen. */}
+      {!focusMode && (
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-zinc-300">Binder</h3>
@@ -244,7 +258,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           <p className="text-[11px] text-zinc-400 italic">Add a chapter to start your binder.</p>
         )}
         {chapters.map((ch) => (
-          <div key={ch.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-1.5">
+          <motion.div layout="position" transition={{ type: 'spring', stiffness: 400, damping: 35 }} key={ch.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-1.5">
             <div className="group flex items-center gap-1 px-1">
               <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               {renamingChapter === ch.id ? (
@@ -287,7 +301,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               className="mt-1 flex items-center gap-1 text-[10px] text-zinc-400 hover:text-amber-300 px-1">
               <Plus className="w-3 h-3" /> Scene
             </button>
-          </div>
+          </motion.div>
         ))}
         {unfiled.length > 0 && (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-1.5">
@@ -300,39 +314,54 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           <Plus className="w-3 h-3" /> Unfiled scene
         </button>
       </div>
+      )}
 
       {/* Editor */}
-      <div>
+      <div className={cn(focusMode && 'max-w-2xl mx-auto w-full')}>
         {!draft ? (
           <div className="flex items-center justify-center h-full min-h-[200px] text-[11px] text-zinc-400 italic border border-zinc-800 rounded-xl">
             Select a scene to write, or add one from the binder.
           </div>
         ) : (
           <div className="space-y-2">
-            <input value={draft.title}
-              onChange={(e) => { setDraft({ ...draft, title: e.target.value }); setDirty(true); }}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm font-semibold text-zinc-100" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <select value={draft.status}
-                onChange={(e) => { setDraft({ ...draft, status: e.target.value }); setDirty(true); }}
-                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
-                {STATUS.map((st) => <option key={st} value={st}>{st}</option>)}
-              </select>
-              <select value={draft.povCharacterId || ''}
-                onChange={(e) => { setDraft({ ...draft, povCharacterId: e.target.value || null }); setDirty(true); }}
-                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
-                <option value="">POV: none</option>
-                {characters.map((c) => <option key={c.id} value={c.id}>POV: {c.name}</option>)}
-              </select>
-              <span className="flex items-center justify-end text-[11px] text-zinc-400">{liveWords} words</span>
-            </div>
-            <input placeholder="Synopsis (one-line card)" value={draft.synopsis || ''}
-              onChange={(e) => { setDraft({ ...draft, synopsis: e.target.value }); setDirty(true); }}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-300" />
+            {!focusMode && (
+              <input value={draft.title}
+                onChange={(e) => { setDraft({ ...draft, title: e.target.value }); setDirty(true); }}
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm font-semibold text-zinc-100" />
+            )}
+            {!focusMode && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <select value={draft.status}
+                  onChange={(e) => { setDraft({ ...draft, status: e.target.value }); setDirty(true); }}
+                  className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
+                  {STATUS.map((st) => <option key={st} value={st}>{st}</option>)}
+                </select>
+                <select value={draft.povCharacterId || ''}
+                  onChange={(e) => { setDraft({ ...draft, povCharacterId: e.target.value || null }); setDirty(true); }}
+                  className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                  <option value="">POV: none</option>
+                  {characters.map((c) => <option key={c.id} value={c.id}>POV: {c.name}</option>)}
+                </select>
+                <span className="flex items-center justify-end text-[11px] text-zinc-400">{liveWords} words</span>
+              </div>
+            )}
+            {!focusMode && (
+              <input placeholder="Synopsis (one-line card)" value={draft.synopsis || ''}
+                onChange={(e) => { setDraft({ ...draft, synopsis: e.target.value }); setDirty(true); }}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-300" />
+            )}
+            {focusMode && (
+              <div className="flex items-center justify-between text-[11px] text-zinc-500 px-0.5">
+                <span className="truncate">{draft.title}</span>
+                <span className="tabular-nums">{liveWords} words</span>
+              </div>
+            )}
             <textarea value={draft.content} placeholder="Write your scene…"
               onChange={(e) => { setDraft({ ...draft, content: e.target.value }); setDirty(true); }}
-              rows={16}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 leading-relaxed resize-y font-serif" />
+              rows={focusMode ? 28 : 16}
+              autoFocus={focusMode}
+              className={cn('w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 leading-relaxed resize-y font-serif',
+                focusMode && 'text-base leading-loose border-transparent bg-transparent focus:outline-none')} />
             <div className="flex items-center gap-2">
               <button type="button" onClick={saveScene} disabled={!dirty || saving}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
@@ -341,10 +370,19 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               </button>
               <button type="button" onClick={takeSnapshot}
                 className="px-2.5 py-1.5 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Snapshot</button>
-              <button type="button" onClick={() => setRefOpen((v) => !v)}
-                className={cn('flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg',
-                  refOpen ? 'bg-amber-600/30 text-amber-200' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200')}>
-                <Columns2 className="w-3.5 h-3.5" /> Reference
+              {!focusMode && (
+                <button type="button" onClick={() => setRefOpen((v) => !v)}
+                  className={cn('flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg',
+                    refOpen ? 'bg-amber-600/30 text-amber-200' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200')}>
+                  <Columns2 className="w-3.5 h-3.5" /> Reference
+                </button>
+              )}
+              <button type="button" onClick={() => { setRefOpen(false); setFocusMode((v) => !v); }}
+                title={focusMode ? 'Exit focus mode (Esc)' : 'Focus mode — distraction-free writing'}
+                className={cn('ml-auto flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg',
+                  focusMode ? 'bg-amber-600/30 text-amber-200' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200')}>
+                {focusMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                {focusMode ? 'Exit focus' : 'Focus'}
               </button>
             </div>
 
@@ -352,8 +390,8 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               <ErrorState variant="inline" message={sceneExtrasError} onRetry={() => void loadSceneExtras()} />
             )}
 
-            {/* Plot threads carried by this scene */}
-            {threads.length > 0 && (
+            {/* Plot threads carried by this scene — hidden in focus mode */}
+            {!focusMode && threads.length > 0 && (
               <div className="border-t border-zinc-800 pt-2">
                 <p className="flex items-center gap-1 text-[10px] font-semibold text-zinc-400 uppercase mb-1">
                   <GitBranch className="w-3 h-3" /> Plot threads
@@ -375,8 +413,8 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               </div>
             )}
 
-            {/* Snapshots */}
-            {snapshots.length > 0 && (
+            {/* Snapshots — hidden in focus mode */}
+            {!focusMode && snapshots.length > 0 && (
               <div className="border-t border-zinc-800 pt-2">
                 <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1">Snapshots</p>
                 <ul className="space-y-0.5">
@@ -394,8 +432,8 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               </div>
             )}
 
-            {/* Comments */}
-            <div className="border-t border-zinc-800 pt-2">
+            {/* Comments — hidden in focus mode */}
+            <div className={cn('border-t border-zinc-800 pt-2', focusMode && 'hidden')}>
               <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1">Comments</p>
               <ul className="space-y-1 mb-1.5">
                 {comments.map((c) => (
