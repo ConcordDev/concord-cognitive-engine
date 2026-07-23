@@ -141,5 +141,53 @@ Nothing below has been asserted anywhere else in the repo.
 
 ---
 
+### Avatar rig + locomotion (Migration M1 — `avatar/avatar_rig.gd` /
+`avatar/animation_state_machine.gd` / `avatar/avatar_manager.gd`)
+
+- [ ] `AvatarRig`'s primitive placeholder (capsule sockets per `bone_specs()`)
+      actually reads as a legible humanoid silhouette, not a scattered pile of
+      capsules — the pure `bone_world_offset()` math has never been seen
+      rendered; an authoring mistake in one offset would only show up
+      visually.
+- [ ] GLB resolution (`_try_resolve_glb` → `AssetResolver`/`GlbLoader`, already
+      QA-queued above) swaps cleanly onto a rig spawned by `AvatarManager`
+      specifically — the reuse of those two nodes per-rig (one
+      `HTTPRequest`-driven resolver + loader per avatar) has never been load-
+      tested with more than a handful of concurrent avatars; a real world
+      scene with dozens of remote players/NPCs resolving GLBs simultaneously
+      could behave very differently than the pure logic implies (request
+      fan-out, cache contention, memory).
+- [ ] `animation_state_machine.select_state()`'s six locomotion states
+      (idle/walk/run/jump/fall/land) have never been mapped onto real
+      animation clips or even watched as a blend-weight number change while a
+      capsule rig moves — this migration unit stores the decision
+      (`AvatarRig.set_locomotion`) but wires no `AnimationPlayer`/
+      `AnimationTree` to it yet. Whether the chosen `RUN_MIN_SPEED = 8.5`
+      inference midpoint (see that file's own header comment on why it's an
+      inference, not a mirrored constant) actually feels right for a remote
+      avatar's run/walk read has NEVER been observed — it is a documented,
+      reasoned guess, not a measured one.
+- [ ] `AIRBORNE_VY_EPS = 0.3` (avatar_manager.gd) — the threshold that
+      classifies a remote avatar's INTERPOLATED vertical velocity as
+      "airborne" — has never been checked against real terrain-follow noise
+      (a remote avatar walking over uneven ground could, in principle, false-
+      trigger "jump"/"fall" if the terrain height sampling is noisier than
+      assumed; there is no engine here to generate that noise and observe
+      the threshold's behavior against it).
+- [ ] `LAND_HOLD_MS = 150`'s transient "land" pose has never been seen —
+      whether 150ms reads as a satisfying landing beat or is too
+      short/long to register at all is unverified.
+- [ ] `AvatarManager`'s despawn-on-staleness (`STALE_TIMEOUT_MS = 3000`) has
+      never been observed against a real disconnect/reconnect or a player
+      leaving render distance — whether 3s reads as "instant enough" or
+      leaves a visible frozen ghost briefly is unverified.
+- [ ] Whichever rig ends up under `player/character_controller.gd` (this unit
+      does not wire that mount — the LOCAL player's presentation layer is
+      out of scope here, see the module header comments) has never been
+      confirmed to actually look right attached to a physics-driven
+      `CharacterBody3D` versus a directly-positioned remote puppet.
+
+---
+
 Until every box above is checked on a real machine, treat the Godot client as
 **structurally complete but visually unproven.**
