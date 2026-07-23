@@ -1,9 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Wrench, Zap, Activity } from 'lucide-react';
+import { Wrench, Zap, Activity, Lock } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+
+// Repair Cortex is a SYSTEM-level surface (one loop for the whole server,
+// not per-user) — reading status is safe for anyone, but forcing a cycle
+// is a mutating admin action. Gate it the same way `isLensVisible` gates
+// the admin/command-center lenses (`lib/lens-registry.ts`): real role
+// synced from `/api/auth/me` into `useUIStore.userRole` (Providers.tsx),
+// fail-closed to 'user' when unauthenticated/unknown.
+function isRepairAdmin(role: string): boolean {
+  return role === 'admin' || role === 'sovereign';
+}
 
 interface RepairStatus {
   ok: boolean;
@@ -18,6 +28,8 @@ interface RepairStatus {
 function RepairPanel() {
   const [status, setStatus] = useState<RepairStatus | null>(null);
   const [forcing, setForcing] = useState(false);
+  const userRole = useUIStore((s) => s.userRole);
+  const canForceCycle = isRepairAdmin(userRole);
 
   useEffect(() => {
     loadStatus();
@@ -97,13 +109,23 @@ function RepairPanel() {
             </div>
           )}
 
-          <button
-            onClick={forceCycle}
-            disabled={forcing}
-            className="w-full bg-orange-500/10 border border-orange-500/30 rounded py-1.5 text-xs text-orange-400 hover:bg-orange-500/20 disabled:opacity-50 flex items-center justify-center gap-1"
-          >
-            <Zap className="w-3 h-3" /> {forcing ? 'Running...' : 'Force Repair Cycle'}
-          </button>
+          {canForceCycle ? (
+            <button
+              onClick={forceCycle}
+              disabled={forcing}
+              className="w-full bg-orange-500/10 border border-orange-500/30 rounded py-1.5 text-xs text-orange-400 hover:bg-orange-500/20 disabled:opacity-50 flex items-center justify-center gap-1"
+            >
+              <Zap className="w-3 h-3" /> {forcing ? 'Running...' : 'Force Repair Cycle'}
+            </button>
+          ) : (
+            <button
+              disabled
+              title="Forcing a repair cycle is a system-wide action, restricted to admin/sovereign roles"
+              className="w-full bg-lattice-deep border border-lattice-border rounded py-1.5 text-xs text-gray-500 opacity-60 cursor-not-allowed flex items-center justify-center gap-1"
+            >
+              <Lock className="w-3 h-3" /> Force Repair Cycle (admin only)
+            </button>
+          )}
         </>
       ) : (
         <p className="text-xs text-gray-400">Loading...</p>

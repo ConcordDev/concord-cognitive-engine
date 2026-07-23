@@ -215,13 +215,13 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // Ten items: ConKay staple + two mock lenses + the 7 hardcoded `mode:*`
-    // run-mode entries (Fix 7 + Wave 4's `mode:dungeon` — always present
-    // regardless of the mocked lens-registry, since they're baked into the
-    // component itself). Indices 0-9. ArrowDown wraps via
-    // (prev < length - 1 ? prev + 1 : 0); 22 presses from index 0 land at
-    // index 2 (22 mod 10 = 2) → Marketplace.
-    for (let i = 0; i < 22; i++) {
+    // Eleven items: ConKay staple + two mock lenses + the 7 hardcoded
+    // `mode:*` run-mode entries (Fix 7 + Wave 4's `mode:dungeon`) + the
+    // `system:repair-cortex` deep-link entry — all baked into the
+    // component itself regardless of the mocked lens-registry. Indices
+    // 0-10. ArrowDown wraps via (prev < length - 1 ? prev + 1 : 0); 13
+    // presses from index 0 land at index 2 (13 mod 11 = 2) → Marketplace.
+    for (let i = 0; i < 13; i++) {
       fireEvent.keyDown(input, { key: 'ArrowDown' });
     }
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -232,10 +232,10 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // 10 total items (see above). ArrowUp wraps via
-    // (prev > 0 ? prev - 1 : length - 1); starting at index 0, 9 ArrowUps
-    // land back at index 1 (Resonance) — (10 - 9) mod 10 = 1.
-    for (let i = 0; i < 9; i++) {
+    // 11 total items (see above). ArrowUp wraps via
+    // (prev > 0 ? prev - 1 : length - 1); starting at index 0, 10 ArrowUps
+    // land back at index 1 (Resonance) — (11 - 10) mod 11 = 1.
+    for (let i = 0; i < 10; i++) {
       fireEvent.keyDown(input, { key: 'ArrowUp' });
     }
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -255,14 +255,49 @@ describe('CommandPalette', () => {
     render(<CommandPalette {...defaultProps} />);
     const options = screen.getAllByRole('option');
     // ConKay summon staple + two mock lenses + 7 hardcoded run-mode entries
-    // (Fix 7 + Wave 4's `mode:dungeon` — see above).
-    expect(options).toHaveLength(10);
+    // (Fix 7 + Wave 4's `mode:dungeon` — see above) + the `system:repair-cortex`
+    // deep-link entry (attention lens' Repair Cortex anchor).
+    expect(options).toHaveLength(11);
     expect(options[0]).toHaveAttribute('id', 'palette-item-conkay');
     expect(options[1]).toHaveAttribute('id', 'palette-item-resonance');
     expect(options[2]).toHaveAttribute('id', 'palette-item-marketplace');
     expect(options[3]).toHaveAttribute('id', 'palette-item-mode:roguelite');
     expect(options[8]).toHaveAttribute('id', 'palette-item-mode:brawl');
     expect(options[9]).toHaveAttribute('id', 'palette-item-mode:dungeon');
+    expect(options[10]).toHaveAttribute('id', 'palette-item-system:repair-cortex');
+  });
+
+  it('surfaces the "Repair Cortex" entry on a matching query', () => {
+    render(<CommandPalette {...defaultProps} />);
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'repair cortex' } });
+    expect(screen.getByText('Repair Cortex — status')).toBeInTheDocument();
+  });
+
+  it('navigates to the attention lens and scrolls/focuses the repair-cortex anchor', () => {
+    const onClose = vi.fn();
+    // jsdom stub for scrollIntoView is set at module top; add a focus spy
+    // on the anchor element itself since jsdom's default focus() on a
+    // non-natively-focusable element (tabIndex=-1 <h2>) still works but we
+    // want to assert it was called.
+    const anchor = document.createElement('h2');
+    anchor.id = 'repair-cortex';
+    anchor.tabIndex = -1;
+    document.body.appendChild(anchor);
+    const focusSpy = vi.spyOn(anchor, 'focus');
+    const scrollSpy = vi.spyOn(anchor, 'scrollIntoView');
+
+    render(<CommandPalette isOpen={true} onClose={onClose} />);
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'repair cortex' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockPush).toHaveBeenCalledWith('/lenses/attention');
+    expect(scrollSpy).toHaveBeenCalled();
+    expect(focusSpy).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    document.body.removeChild(anchor);
   });
 
   it('marks the selected option with aria-selected=true', () => {

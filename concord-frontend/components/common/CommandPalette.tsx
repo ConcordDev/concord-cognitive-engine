@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles, LayoutPanelLeft,
-  Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, Skull,
+  Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, Skull, Wrench,
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import {
@@ -265,7 +265,25 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         keywords: ['mode', 'dungeon', 'raid', 'boss', 'instance'],
       },
     ];
-    return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries];
+    // System-surface deep links — pseudo-entries `system:<id>` that navigate
+    // to a lens and then scroll/focus a specific in-page anchor, for real
+    // surfaces that already exist but are easy to miss buried in a longer
+    // page (see `system:repair-cortex` handling in navigateToLens below).
+    const systemEntries: LensEntry[] = [
+      {
+        id: 'system:repair-cortex',
+        name: 'Repair Cortex — status',
+        icon: Wrench,
+        description: 'Self-healing loop status + force a repair cycle (Attention lens).',
+        category: 'system',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '/lenses/attention',
+        order: 920,
+        keywords: ['repair', 'cortex', 'self-healing', 'prophet-check', 'fix', 'attention'],
+      },
+    ];
+    return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries, ...systemEntries];
   }, [expertiseLevel, userRole]);
 
   // Filtered + scored results
@@ -392,6 +410,33 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
       // (operates the host lens' real macros) rather than navigating away.
       if (lens.id === 'conkay' && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('conkay:summon'));
+        return;
+      }
+      // `system:<id>` entries navigate to a lens, then scroll to + focus a
+      // specific in-page anchor (`id="<anchorId>"`) rather than just landing
+      // on the lens generically. Mirrors the precedent in
+      // `components/mobile/MobileSectionJump.tsx` (getElementById +
+      // scrollIntoView), retried briefly since the anchor may not be
+      // mounted yet immediately after a client-side navigation.
+      if (lens.id.startsWith('system:') && typeof window !== 'undefined') {
+        const anchorId = lens.id.slice('system:'.length);
+        const focusAnchor = (attempt = 0) => {
+          const el = document.getElementById(anchorId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (typeof (el as HTMLElement).focus === 'function') {
+              (el as HTMLElement).focus({ preventScroll: true });
+            }
+          } else if (attempt < 20) {
+            setTimeout(() => focusAnchor(attempt + 1), 100);
+          }
+        };
+        if (window.location.pathname === lens.path) {
+          focusAnchor();
+        } else {
+          router.push(lens.path);
+          focusAnchor();
+        }
         return;
       }
       // Paths carrying a query (e.g. a deep link) use a full navigation so the
