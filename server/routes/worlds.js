@@ -41,6 +41,7 @@ import * as cityPresence from "../lib/city-presence.js";
 import { listActiveUprisingsWithLocation } from "../lib/uprising.js";
 import { deformationsForWorld, CELL_SIZE as TERRAIN_CELL_SIZE } from "../lib/terrain-deformation.js";
 import { waterGridForWorld } from "../lib/terrain-water.js";
+import { terrainSpec } from "../lib/world-terrain.js";
 import { serverError } from "../lib/http-errors.js";
 import { shardingEnabled } from "../lib/world-shard-protocol.js";
 import { ensureWorldActive, markWorldUserCount, recordWorldActivity } from "../lib/world-shard-manager.js";
@@ -1823,6 +1824,39 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const deformations = deformationsForWorld(db, worldId);
       const water = waterGridForWorld(db, worldId);
       res.json({ ok: true, cellSize: TERRAIN_CELL_SIZE, deformations, water });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // Godot-parity — the server-canonical base heightmap spec (see
+  // server/lib/world-terrain.js), sourced from
+  // components/world-lens/TerrainRenderer.tsx#generatePoughkeepsieHeightmap
+  // (TERRAIN_SEED = 0xc0ffee) — the formula the Three.js client ACTUALLY
+  // renders, ported verbatim, + the seeded simplex/hashSeed primitives.
+  // (An earlier pass sourced this from concordia-city.ts#generateConcordiaHeightmap,
+  // which turned out to be dead/unused code in the frontend — that port
+  // is kept in world-terrain.js for provenance but is no longer what this
+  // route returns; see the module header there for the full history.)
+  // Any client (Godot, a future Three.js consumer, a test harness) can
+  // call this instead of guessing at the terrain shape from a screenshot.
+  // Same public-read posture as the /terrain route right above (no
+  // secrets — elevation profile + persisted deformation/water state are
+  // all public-safe). Also folds in the existing deformation deltas +
+  // water grid for convenience, but — honestly — those are computed
+  // against a THIRD, independent base elevation formula
+  // (terrain-deformation.js#baseElevation, a sine-approximation of the
+  // rendered shape, not the same numeric function), not the profile
+  // returned in `profile`/`sampledGrid` here; see the module header in
+  // world-terrain.js for the full three-formulas caveat. Reconciling all
+  // three into one canonical elevation truth is an explicit follow-up.
+  router.get("/:worldId/terrain-spec", (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const spec = terrainSpec(worldId);
+      const deformations = deformationsForWorld(db, worldId);
+      const water = waterGridForWorld(db, worldId);
+      res.json({ ok: true, ...spec, deformationCellSize: TERRAIN_CELL_SIZE, deformations, water });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
