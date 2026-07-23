@@ -41,6 +41,7 @@ import {
   nextPassFor,
 } from "./refinement-passes.js";
 import { submitAssetCandidateToGate } from "./quality-gate-bridge.js";
+import { runAssetGenerationTick } from "../asset-gen/generate-asset.js";
 
 const TICK_INTERVAL = 100; // every 100th heartbeat tick
 
@@ -48,8 +49,21 @@ const TICK_INTERVAL = 100; // every 100th heartbeat tick
  * @returns {Promise<{ checked: number, evolved: number, gated: number, errors: number }>}
  */
 export async function runEvolutionTick(STATE, db, deps = {}) {
-  const stats = { checked: 0, evolved: 0, gated: 0, errors: 0 };
+  const stats = { checked: 0, evolved: 0, gated: 0, errors: 0, generated: 0 };
   if (!db) return stats;
+
+  // Program C, Stage 5 hook (2026-07-23) — CREATE path, distinct from the
+  // REFINE loop below. Generates + FEA-validates + registers any missing
+  // target from lib/asset-gen/generate-asset.js's GENERATION_TARGETS, then
+  // submits it to the same quality gate the refine loop uses below. Thin,
+  // guarded, kill-switchable (CONCORD_ASSET_GEN_ENABLED=0 disables) — never
+  // touches the candidate-selection/refine loop that follows.
+  try {
+    const genStats = await runAssetGenerationTick(STATE, db, deps);
+    stats.generated = genStats.generated;
+  } catch {
+    stats.errors += 1;
+  }
 
   // Select candidates: top 3 by evolution_score, not at max quality, not archived.
   let candidates = [];
