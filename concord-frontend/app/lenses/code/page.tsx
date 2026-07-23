@@ -35,6 +35,7 @@ import SettingsPanel, { loadSettings as loadCodeSettings, DEFAULT_SETTINGS as DE
 import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
 import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
+import { GitHubConnectPanel } from '@/components/code/GitHubConnectPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Files as MTabFiles, Search as MTabSearch, GitBranch as MTabSC,
@@ -1797,6 +1798,7 @@ export default function CodeLensPage() {
                     onRefresh={refetchDTUs}
                   />
                 )}
+                {activity === 'github' && <GitHubConnectPanel />}
                 {activity === 'search' && (
                   <div className="p-4 text-xs text-gray-400 space-y-2">
                     <p>Use ⌘⇧F to open project search modal.</p>
