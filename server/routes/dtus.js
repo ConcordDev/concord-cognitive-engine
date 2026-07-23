@@ -144,6 +144,22 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
       res.status(status).json({ ok: false, error: clientMsg });
     }
   }));
+  // Real ancestor/descendant chain for the DTUDetailView "Lineage" tab —
+  // delegates to the dtu.lineage macro (one-hop lineage edges + the
+  // royalty_lineage citation graph) so the REST endpoint and the macro
+  // dispatcher can't drift, matching the dtu.stats endpoint's pattern above.
+  app.get("/api/dtus/:id/lineage", asyncHandler(async (req, res) => {
+    try {
+      const ctx = makeCtx(req);
+      const out = await runMacro("dtu", "lineage", { id: req.params.id }, ctx);
+      if (!out.ok) return res.status(out.error === "DTU not found" ? 404 : 500).json(out);
+      res.json(out);
+    } catch (e) {
+      const { status, clientMsg } = sanitizeMacroError(e, "dtu.lineage");
+      res.status(status).json({ ok: false, error: clientMsg });
+    }
+  }));
+
   app.post("/api/dtus", validate("dtuCreate"), asyncHandler(async (req, res) => {
     try {
       const ctx = makeCtx(req);

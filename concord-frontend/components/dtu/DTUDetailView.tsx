@@ -159,7 +159,11 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
   const isLoading = serverLoading && offlineLoading;
 
   // Fetch lineage (enhanced: includes forks, citations, citedBy, royaltyCascade)
-  const { data: lineageData } = useQuery({
+  const {
+    data: lineageData,
+    isLoading: lineageLoading,
+    isError: lineageIsError,
+  } = useQuery({
     queryKey: ['dtu-lineage', dtuId],
     queryFn: async () => {
       const res = await apiHelpers.dtus.lineage(dtuId);
@@ -815,6 +819,22 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
 
               {activeTab === 'lineage' && (
                 <div className="space-y-5">
+                  {/* Honest loading/error states — a failed fetch must never
+                      be conflated with a genuine "no ancestors" empty state
+                      (which is only trustworthy once the real chain has
+                      loaded successfully). */}
+                  {lineageLoading && (
+                    <p className="text-xs text-gray-400 flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full border-2 border-neon-cyan/40 border-t-neon-cyan animate-spin" />
+                      Loading lineage...
+                    </p>
+                  )}
+                  {lineageIsError && (
+                    <p className="text-xs text-red-400">
+                      Unable to load lineage right now. Try again shortly.
+                    </p>
+                  )}
+
                   {/* ── Lineage Tree Layout ── */}
 
                   {/* Parents (ancestors above) */}

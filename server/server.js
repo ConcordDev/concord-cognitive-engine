@@ -1666,7 +1666,7 @@ import "./lib/vocabularies.js";
 import { BoundedMap } from "./lib/bounded-map.js";
 import { generateEntityName, migrateEntityNames as runEntityNameMigration, isFunctionLabel as isEntityFunctionLabel } from "./lib/entity-naming.js";
 import { validateSafeFetchUrl as _ssrfValidate, isUrlSafeAsync as _ssrfIsSafeAsync, fetchWithPinnedIp as _ssrfFetchPinned } from "./lib/ssrf-guard.js";
-import { registerCitation as economyRegisterCitation } from "./economy/royalty-cascade.js";
+import { registerCitation as economyRegisterCitation, getAncestorChain as _dtuLineageAncestorChain } from "./economy/royalty-cascade.js";
 import { checkAccess as economyCheckAccess, TIER_HIERARCHY as ECONOMY_TIER_HIERARCHY } from "./economy/rights-enforcement.js";
 // Wave 6 — plugin marketplace checkout reuses the SAME purchase primitive
 // every other creative-artifact content type (music/art/code/...) already
@@ -28690,6 +28690,85 @@ register("dtu", "confidence", (ctx, input = {}) => {
     return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
   }
 }, { description: "Read a DTU's persistent, revisable confidence score — honest-unknown when no evidence has moved it yet." });
+
+// ── DTU lineage (EC1 — user-facing "where did this come from" tab) ─────────
+// Composes two REAL graphs; nothing here is fabricated:
+//   1. The in-memory parent/child edges (dtu.lineage.parents/children — set
+//      at dtu.create time from the caller's `lineage` input, and by the
+//      MEGA/HYPER consolidation pipeline) for the direct one-hop ancestors
+//      and descendants.
+//   2. The royalty citation graph (`royalty_lineage` table) via the same
+//      getAncestorChain() the royalty cascade payout path uses, for the
+//      full multi-generation ancestor chain + the real per-generation
+//      royalty rate — so this view can never disagree with the money math.
+// Fields with no real backing on this pass (forks / citedBy / relatedIds)
+// are left as empty arrays rather than invented — an honest "no ancestors"
+// empty state is the correct UI for an original, uncited DTU.
+function _dtuLineageRef(id) {
+  const d = STATE.dtus.get(id);
+  if (!d) return { id };
+  return {
+    id: d.id,
+    title: d.title || d.human?.summary || null,
+    summary: d.summary || d.human?.summary || null,
+    tier: d.tier || "regular",
+    ownerId: d.ownerId || null,
+  };
+}
+
+register("dtu", "lineage", (ctx, input = {}) => {
+  try {
+    const id = String(input.id || input.dtuId || "");
+    if (!id) return { ok: false, error: "missing_id" };
+    const dtu = STATE.dtus.get(id);
+    if (!dtu) return { ok: false, error: "DTU not found" };
+
+    const parentIds = Array.isArray(dtu.lineage?.parents) ? dtu.lineage.parents : [];
+    const childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
+    const parents = parentIds.map(_dtuLineageRef);
+    const children = childIds.map(_dtuLineageRef);
+
+    let royaltyCascade = [];
+    const db = ctx?.db || STATE?.db;
+    if (db) {
+      try {
+        const chain = _dtuLineageAncestorChain(db, id);
+        royaltyCascade = chain.map((a) => {
+          const ref = STATE.dtus.get(a.contentId);
+          return {
+            id: a.contentId,
+            title: ref?.title || null,
+            ownerId: ref?.ownerId || a.creatorId || null,
+            generation: a.generation,
+            royaltyRate: a.rate,
+            royaltyPercent: `${(a.rate * 100).toFixed(1)}%`,
+          };
+        });
+      } catch { /* honest: royalty_lineage table absent on a minimal/legacy DB */ }
+    }
+
+    return {
+      ok: true,
+      current: {
+        id: dtu.id,
+        title: dtu.title || null,
+        tier: dtu.tier || "regular",
+        type: dtu.machine?.kind || dtu.type || null,
+        ownerId: dtu.ownerId || null,
+        domain: dtu.domain || null,
+      },
+      parents,
+      children,
+      forks: [],
+      citations: [],
+      citedBy: [],
+      relatedIds: [],
+      royaltyCascade,
+    };
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Real DTU ancestor/descendant chain for the frontend Lineage tab — one-hop parent/child edges plus the royalty_lineage citation graph. Never fabricates a chain; empty arrays for a DTU with no real lineage." });
 
 // ── Unified Context Engine ─────────────────────────────────────────────────
 // Every lens, entity, and chat interaction uses this to retrieve knowledge
