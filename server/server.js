@@ -27078,6 +27078,23 @@ registerReasonMacros(register);
 import registerLiteraryMacros from "./domains/literary.js";
 registerLiteraryMacros(register);
 
+// Wiring-audit fix (2026-07-23): these 5 domain files (Phase II Waves 15-27)
+// each export a real registerXMacros(register) that delegates to a real,
+// tested lib engine, but the file itself was never imported from server.js
+// or domains/index.js — a caller-with-no-receiver dead-code gap (only their
+// own test files imported them). Wired here using the same 2-line pattern
+// as every other domain in this block. See server/tests/domain-registration-wiring.test.js.
+import registerImmersiveSimMacros from "./domains/immersive-sim.js";
+registerImmersiveSimMacros(register);
+import registerSkillTreeMacros from "./domains/skill-tree.js";
+registerSkillTreeMacros(register);
+import registerSportsMacros from "./domains/sports-careers.js";
+registerSportsMacros(register);
+import registerSurvivalMacros from "./domains/survival.js";
+registerSurvivalMacros(register);
+import registerVehicleTuningMacros from "./domains/vehicle-tuning.js";
+registerVehicleTuningMacros(register);
+
 // Private R&D Engine (#21) + Tier-0 wire-the-unwired: reaches the previously
 // unreachable FEA solver, causal-closure analyzer, and hypothesis engine, and
 // chains them with LRL grounding into one verifiable research loop (rnd.run).
