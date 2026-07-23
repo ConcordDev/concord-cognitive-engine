@@ -163,6 +163,187 @@ export function mergeMeshes(parts) {
   return { positions: Float32Array.from(positions), indices: Uint32Array.from(indices) };
 }
 
+// Default absolute position-match tolerance (meters) for weldCoincidentVertices.
+// Small enough to never merge genuinely distinct features at real sword scale
+// (mm-to-tens-of-cm), large enough to absorb Float32 round-trip error on
+// vertices produced by identical arithmetic.
+export const WELD_EPSILON_M = 1e-6;
+
+/**
+ * Weld coincident vertices in a merged mesh. Any two vertices whose (x,y,z)
+ * position is within `eps` of each other are unioned into a single vertex
+ * (the lower-index survivor becomes the canonical representative); triangle
+ * indices are remapped to the canonical vertices. Two kinds of now-redundant
+ * triangles are then dropped: (1) a triangle that repeats a vertex after
+ * remap (self-intersecting/zero-area), and (2) a pair of triangles that
+ * reference the exact same 3 canonical vertices with opposite winding —
+ * this is what an abutting section's two independent, oppositely-facing
+ * interior end caps look like once their shared ring has been welded to the
+ * same vertices; the pair contributes equal-and-opposite signed volume and
+ * represents no real exterior surface, so both are removed. Unreferenced
+ * vertices are then compacted out.
+ *
+ * O(n^2) vertex comparison — deliberately not a spatial hash: asset-gen
+ * meshes here are tens to low hundreds of vertices, not a real-time budget,
+ * and O(n^2) is simpler to keep exactly correct at an eps boundary (no
+ * quantization-cell edge cases to reason about).
+ *
+ * Two modes:
+ *  - **Auto** (default, no `opts.seams`): scans every vertex pair mesh-wide.
+ *    Vertices with no coincident partner are left untouched — a safe,
+ *    non-destructive no-op wherever a mesh has no genuine coincident
+ *    geometry. (See generateSwordMesh's HONESTY_NOTES: its hilt→guard and
+ *    guard→blade junctions do NOT actually share vertex positions — circle
+ *    → rect → diamond are different profile shapes at different scales —
+ *    so this pass correctly welds nothing there today; the pass exists as a
+ *    general-purpose safety net for meshes whose sections genuinely do
+ *    share a boundary ring.)
+ *  - **Seam-checked** (`opts.seams`): an array of
+ *    `{ a: {start, count}, b: {start, count} }` descriptors where the
+ *    CALLER asserts vertex `a.start + k` should coincide 1:1, in order,
+ *    with vertex `b.start + k` for every `k < count`. A declared seam that
+ *    doesn't actually satisfy that (mismatched counts, or any pair beyond
+ *    `eps`) is a real modeling inconsistency — this throws a NAMED error
+ *    (`parametric_mesh_seam_mismatch`) rather than silently leaving an
+ *    un-welded (or wrongly welded) seam.
+ *
+ * @param {{positions:Float32Array|number[], indices:Uint32Array|number[]}} mesh
+ * @param {number} [eps=WELD_EPSILON_M] absolute position-match tolerance (meters)
+ * @param {object} [opts]
+ * @param {Array<{a:{start:number,count:number}, b:{start:number,count:number}}>} [opts.seams]
+ * @returns {{positions:Float32Array, indices:Uint32Array, weldedVertexCount:number, droppedTriangleCount:number}}
+ */
+export function weldCoincidentVertices(mesh, eps = WELD_EPSILON_M, opts = {}) {
+  const { seams } = opts;
+  const positions = Array.from(mesh.positions);
+  const indices = Array.from(mesh.indices);
+  const vertCount = positions.length / 3;
+
+  const dist = (i, j) => {
+    const dx = positions[i * 3] - positions[j * 3];
+    const dy = positions[i * 3 + 1] - positions[j * 3 + 1];
+    const dz = positions[i * 3 + 2] - positions[j * 3 + 2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  };
+
+  if (Array.isArray(seams)) {
+    for (const seam of seams) {
+      const { a, b } = seam || {};
+      if (!a || !b || !Number.isInteger(a.count) || a.count !== b.count) {
+        throw new Error(
+          `parametric_mesh_seam_mismatch: declared seam ring vertex counts differ (a=${a?.count}, b=${b?.count}) — these rings cannot be welded`,
+        );
+      }
+      for (let k = 0; k < a.count; k++) {
+        const ai = a.start + k;
+        const bi = b.start + k;
+        const d = dist(ai, bi);
+        if (d > eps) {
+          throw new Error(
+            `parametric_mesh_seam_mismatch: seam vertex ${k} positions differ by ${d} (> eps ${eps}) — declared seam rings do not actually coincide`,
+          );
+        }
+      }
+    }
+  }
+
+  // Auto-weld: union every vertex with the first earlier vertex it
+  // coincides with (one-level union — canonical[j] is always already a
+  // self-canonical root at the moment it's chosen, so no path compression
+  // is needed).
+  const canonical = new Int32Array(vertCount);
+  for (let i = 0; i < vertCount; i++) {
+    canonical[i] = i;
+    for (let j = 0; j < i; j++) {
+      if (canonical[j] === j && dist(i, j) <= eps) {
+        canonical[i] = j;
+        break;
+      }
+    }
+  }
+
+  let droppedTriangleCount = 0;
+  const survivingTris = [];
+  for (let t = 0; t < indices.length; t += 3) {
+    const a = canonical[indices[t]];
+    const b = canonical[indices[t + 1]];
+    const c = canonical[indices[t + 2]];
+    if (a === b || b === c || a === c) {
+      // A literal degenerate/self-intersecting triangle (repeats a vertex
+      // after remap) — zero area, drop outright.
+      droppedTriangleCount++;
+      continue;
+    }
+    survivingTris.push([a, b, c]);
+  }
+
+  // Cancel exact mirror-pairs: once a shared ring is welded, an abutting
+  // section's interior end cap and the next section's interior start cap
+  // reference the SAME 3 (canonical) vertices but with opposite winding
+  // (they face each other — see HONESTY_NOTES). Each such pair contributes
+  // equal-and-opposite signed volume (swapping two vertices of a triple
+  // negates the scalar triple product), so together they represent no real
+  // exterior surface and both are dropped. This is a distinct condition
+  // from the self-intersecting case above (three DIFFERENT triangles, not
+  // one triangle repeating a vertex).
+  const bySortedKey = new Map();
+  for (let i = 0; i < survivingTris.length; i++) {
+    const [a, b, c] = survivingTris[i];
+    const arr = [a, b, c];
+    let sign = 1;
+    // Bubble-sort 3 elements while tracking permutation parity — safe
+    // because a, b, c are already known-distinct (degenerate case handled
+    // above), so parity is well-defined.
+    for (let x = 0; x < 3; x++) {
+      for (let y = 0; y < 2 - x; y++) {
+        if (arr[y] > arr[y + 1]) {
+          const tmp = arr[y]; arr[y] = arr[y + 1]; arr[y + 1] = tmp;
+          sign = -sign;
+        }
+      }
+    }
+    const key = arr.join(",");
+    if (!bySortedKey.has(key)) bySortedKey.set(key, []);
+    bySortedKey.get(key).push({ i, sign });
+  }
+  const isCancelled = new Uint8Array(survivingTris.length);
+  for (const entries of bySortedKey.values()) {
+    const pos = entries.filter((e) => e.sign > 0);
+    const neg = entries.filter((e) => e.sign < 0);
+    const pairCount = Math.min(pos.length, neg.length);
+    for (let k = 0; k < pairCount; k++) {
+      isCancelled[pos[k].i] = 1;
+      isCancelled[neg[k].i] = 1;
+      droppedTriangleCount += 2;
+    }
+  }
+
+  const newIndices = [];
+  for (let i = 0; i < survivingTris.length; i++) {
+    if (!isCancelled[i]) newIndices.push(...survivingTris[i]);
+  }
+
+  // Compact: keep only self-canonical (root) vertices, remap indices into
+  // the new, tighter index space.
+  const remap = new Int32Array(vertCount).fill(-1);
+  const newPositions = [];
+  let next = 0;
+  for (let i = 0; i < vertCount; i++) {
+    if (canonical[i] === i) {
+      remap[i] = next++;
+      newPositions.push(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+    }
+  }
+  const finalIndices = newIndices.map((v) => remap[v]);
+
+  return {
+    positions: Float32Array.from(newPositions),
+    indices: Uint32Array.from(finalIndices),
+    weldedVertexCount: vertCount - next,
+    droppedTriangleCount,
+  };
+}
+
 // ── Cross-section area + moment-of-inertia (for the beam co-product) ───────
 // Area is always computed exactly from the profile geometry (plain
 // geometry, no physics-library dependency). Moment of inertia REUSES
@@ -228,8 +409,10 @@ function assertPositive(name, v) {
  * Generate a deterministic bladed-weapon (sword) mesh: pommel + grip (a
  * tapered circular tube) → guard (a rectangular crossbar block) → blade (a
  * diamond-section taper converging to a point tip). Three appended,
- * individually-closed lofted sections — see the module-level honesty note
- * in the exported `HONESTY_NOTES` below re: seam manifoldness.
+ * individually-closed lofted sections, run through a `weldCoincidentVertices`
+ * pass at the merge step — see the module-level honesty note in the
+ * exported `HONESTY_NOTES` below re: what that pass does (and, verified,
+ * does not do) for this specific geometry.
  *
  * Same params → byte-identical arrays (pure function, no RNG, no Date.now).
  *
@@ -237,7 +420,8 @@ function assertPositive(name, v) {
  * @returns {{
  *   positions: Float32Array, indices: Uint32Array, normals: Float32Array,
  *   beam: { stations: Array<{s:number, area:number, momentOfInertia:number, approximation:boolean}> },
- *   meta: { totalLength:number, sectionVertexCounts:number[], sectionTriangleCounts:number[] }
+ *   meta: { totalLength:number, sectionVertexCounts:number[], sectionTriangleCounts:number[] },
+ *   weld: { weldedVertexCount:number, droppedTriangleCount:number }
  * }}
  */
 export function generateSwordMesh(params = {}) {
@@ -289,6 +473,23 @@ export function generateSwordMesh(params = {}) {
 
   const merged = mergeMeshes([hiltMesh, guardMesh, bladeMesh]);
 
+  // ── Weld pass over the merged solid (see weldCoincidentVertices' doc
+  // comment + this file's HONESTY_NOTES) ──────────────────────────────────
+  // Verified empirically (server/tests/parametric-mesh.test.js): the
+  // hilt→guard and guard→blade junctions do NOT actually share coincident
+  // vertex positions — circle (hilt, radius hiltRadius) → rect (guard,
+  // half-width/thickness guardWidth/2, guardThickness/2) → diamond (blade)
+  // are different profile shapes at different scales at each transition, by
+  // deliberate design (a sword's grip is narrower than its guard). This
+  // auto-weld pass is therefore a correct, verified NO-OP for the current
+  // SWORD_DEFAULTS-shaped geometry (0 vertices welded, 0 triangles dropped)
+  // — it's applied here as a general-purpose safety net so any future
+  // archetype/parameter combination whose sections genuinely DO share a
+  // boundary ring gets welded automatically, without silently leaving a
+  // seam. It never fabricates a weld: no `seams` are declared here (since
+  // none actually match), so it can't throw for this call.
+  const welded = weldCoincidentVertices(merged);
+
   // ── Beam abstraction co-product (Stage 4 input) ─────────────────────────
   const totalLength = xBladeStart + p.bladeLength;
   const beamStations = [];
@@ -306,8 +507,8 @@ export function generateSwordMesh(params = {}) {
   }
 
   return {
-    positions: merged.positions,
-    indices: merged.indices,
+    positions: welded.positions,
+    indices: welded.indices,
     // normals computed by the caller (or via glb-bridge's
     // computeVertexNormals) to keep this module free of the GLB bridge
     // dependency direction — see generateSwordMeshWithNormals below for the
@@ -315,8 +516,15 @@ export function generateSwordMesh(params = {}) {
     beam: { stations: beamStations },
     meta: {
       totalLength,
+      // Section counts are PRE-weld (as emitted by each independent
+      // loftClosedTube call, unaffected by the weld pass — see `weld` below
+      // for the post-weld delta actually applied to positions/indices).
       sectionVertexCounts: [hiltMesh.positions.length / 3, guardMesh.positions.length / 3, bladeMesh.positions.length / 3],
       sectionTriangleCounts: [hiltMesh.indices.length / 3, guardMesh.indices.length / 3, bladeMesh.indices.length / 3],
+    },
+    weld: {
+      weldedVertexCount: welded.weldedVertexCount,
+      droppedTriangleCount: welded.droppedTriangleCount,
     },
   };
 }
@@ -335,26 +543,45 @@ export async function generateSwordMeshWithNormals(params = {}) {
 
 // Honesty notes (read before treating this as a single seamless solid):
 //
-// 1. SEAMS ARE APPENDED, NOT WELDED. The hilt/guard/blade sections are each
-//    independently closed, watertight, correctly-wound 2-manifolds (proven
-//    by the directed-edge invariant + analytic-volume tests). They are
-//    concatenated end-to-end at matching x-planes, but their ring vertices
-//    are NOT shared/merged across the join — each section keeps its own end
-//    cap, so at the two junctions (grip→guard, guard→blade) there are two
-//    coincident, oppositely-facing cap surfaces rather than one continuous
-//    outer hull. This is harmless for volume/mass (each closed sub-solid
-//    still contributes its own correct signed volume — see
-//    mass-properties.js) but is NOT a fully-manifold single solid; a
-//    render pass would show (harmlessly) doubled/z-fighting geometry at
-//    those two seams, and Stage 4 FEA should either weld coincident
-//    vertices within an epsilon or, better, consume the `beam.stations`
-//    co-product directly instead of the raw triangle soup at the joints.
+// 1. A WELD PASS RUNS, BUT THE SWORD'S ACTUAL SEAMS DON'T COINCIDE (verified
+//    numerically — see server/tests/parametric-mesh.test.js). The
+//    hilt/guard/blade sections are each independently closed, watertight,
+//    correctly-wound 2-manifolds (proven by the directed-edge invariant +
+//    analytic-volume tests) and are concatenated end-to-end at matching
+//    x-planes via `weldCoincidentVertices`. That pass genuinely welds
+//    coincident vertices where they exist — but for THIS archetype's
+//    default and any real-world-shaped parameters, the hilt→guard junction
+//    is a circle ring (radius hiltRadius) meeting a rect ring (half-width
+//    guardWidth/2, half-thickness guardThickness/2), and the guard→blade
+//    junction is a rect ring meeting a diamond ring: different profile
+//    shapes at different scales at BOTH junctions, by deliberate design (a
+//    sword's grip is narrower than its crossguard, and the crossguard is a
+//    flat bar while the blade is a lenticular taper). No vertex on either
+//    side of either junction is within the weld epsilon of any vertex on
+//    the other side, so the pass correctly welds 0 vertices / drops 0
+//    triangles here — a verified no-op, not a broken weld. Each section
+//    keeps its own independent end cap at the two junctions, so there
+//    remain two distinct (non-overlapping-vertex, partially-overlapping-in-
+//    footprint) cap surfaces there rather than one continuous outer hull.
+//    This is harmless for volume/mass (each closed sub-solid still
+//    contributes its own correct signed volume — see mass-properties.js)
+//    and the merged whole still satisfies the closed-2-manifold
+//    directed-edge invariant (each disjoint closed sub-solid trivially
+//    does), but a render pass could still show partial z-fighting in the
+//    footprint area where two differently-shaped caps at the same x-plane
+//    overlap. Fully resolving that would require a true boolean/CSG union
+//    between mismatched cross-sections (out of scope — see
+//    `weldCoincidentVertices`'s doc-comment for why that's not warranted
+//    here), or Stage 4 FEA consuming the `beam.stations` co-product
+//    directly instead of the raw triangle soup at the joints (which it
+//    already does — see fea-gate.js).
 // 2. The diamond blade's `momentOfInertia` in `beam.stations` is a
 //    RECTANGLE-formula approximation of a true rhombus section (see
 //    crossSectionProps' doc-comment) — it over-states bending stiffness by
 //    roughly 4× relative to the exact rhombus formula, which is not
 //    reused here because physics-compute.js has no rhombus/diamond shape.
 export const HONESTY_NOTES = Object.freeze({
-  appendedSeamsNotWelded: true,
+  weldPassApplied: true,
+  swordJunctionsShareNoCoincidentVertices: true,
   diamondMomentOfInertiaIsRectangleApproximation: true,
 });

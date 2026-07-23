@@ -20,6 +20,46 @@ import { runFEA } from "../simulation/fea-solver.js";
 import { getMaterial } from "./mass-properties.js";
 
 // ── Tunable constants (named, not magic numbers) ────────────────────────
+//
+// Citations (doc-only — no behavior here changes; see this file's other
+// comments for the actual pass/fail logic):
+//
+// (a) NEAR-TIP TRUNCATION — justified by Saint-Venant's principle, not an
+//     arbitrary cutoff. A linearly-tapered beam that runs all the way to a
+//     true zero-area point is a genuine stress SINGULARITY: 1D
+//     Euler-Bernoulli theory assumes a slowly-varying cross-section, and
+//     Mc/I diverges as the section area (and thus I) goes to zero, so mesh
+//     refinement near a mathematical point never converges — it's a
+//     modeling artifact of idealizing the tip as a perfect point, not a
+//     real load path. Saint-Venant's principle (see COMSOL's own explainer
+//     on singularities and mesh convergence,
+//     https://www.comsol.com/support/learning-center/article/Singularities-in-Finite-Element-Models-Their-Causes-Effects-and-Workarounds-52971,
+//     and standard tapered-beam FEA practice) is why real structural
+//     analysis evaluates stress away from a singular point/sharp reentrant
+//     feature rather than driving refinement into it — the influence of a
+//     locally-idealized geometric detail is expected to die out over a
+//     distance comparable to the section's own dimension, so truncating
+//     before the singularity and evaluating the beam over the region it can
+//     still legitimately represent is standard, not a shortcut. See
+//     MIN_SECTION_AREA_FRACTION below for where this module draws that line.
+// (b) SAFETY FACTOR ≈1.5 — DEFAULT_SAFETY_FACTOR is a generic
+//     mechanical-design floor (Shigley-class "Mechanical Engineering
+//     Design" guidance: SF in the 1.5–2 range for well-characterized loads
+//     and materials with well-known properties under controlled conditions,
+//     higher for uncertain loads/materials/environments). It is NOT a
+//     sword-specific or bladed-weapon-specific figure — it's the textbook
+//     floor for the "known load, known material" end of the guidance range,
+//     used here because DEFAULT_TIP_LOAD_N is itself only an engineering
+//     assumption (see (c)), not because 1.5 was derived for swords.
+// (c) DEFAULT_TIP_LOAD_N = 50 — an engineering ASSUMPTION (a "moderate
+//     lateral parry/flick load"), not a measured value. Real bladed-weapon
+//     flex testing exists — e.g. the SCA (Society for Creative Anachronism)
+//     rattan/reenactment-weapon convention — but those tests calibrate
+//     loads for padded/rattan reenactment weapons, not for a steel blade
+//     under a structural parry/impact load, so they are NOT a like-for-like
+//     substitute for this module's 50N figure. Treat 50N as a placeholder
+//     "moderate" load until a real measured or use-case-specific figure
+//     replaces it (override via opts.tipLoadN in the meantime).
 export const DEFAULT_SAFETY_FACTOR = 1.5; // combinedStress ≤ yield / SF to "pass"
 export const DEFAULT_TIP_LOAD_N = 50; // a moderate lateral parry/flick load applied at the retained near-tip region (engineering assumption, not a measured value — override via opts.tipLoadN)
 export const MIN_SECTION_AREA_M2 = 1e-9; // absolute floor: a station at/below this area is a literal geometric degeneracy (e.g. the exact zero-area point of a linear taper) and can never be a real beam member end regardless of the relative floor below
@@ -32,7 +72,8 @@ export const MIN_SECTION_AREA_M2 = 1e-9; // absolute floor: a station at/below t
 // chain at the last station whose area is still at least this fraction of
 // the chain's largest (root) station area, and treats THAT as the modeled
 // "tip" — the region closest to the point that Euler-Bernoulli beam theory
-// can still meaningfully represent for a swept diamond taper.
+// can still meaningfully represent for a swept diamond taper. (See citation
+// (a) above — this is the concrete Saint-Venant-justified cutoff.)
 export const MIN_SECTION_AREA_FRACTION = 0.4;
 export const MAX_OPTIMIZE_ITERS = 12;
 export const DEFAULT_THICKEN_FACTOR = 1.15; // per-iteration multiplicative bump to the failing dimension

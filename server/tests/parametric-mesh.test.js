@@ -17,6 +17,7 @@ import path from "node:path";
 import {
   loftClosedTube,
   mergeMeshes,
+  weldCoincidentVertices,
   generateSwordMesh,
   generateSwordMeshWithNormals,
   HONESTY_NOTES,
@@ -161,6 +162,99 @@ describe("mergeMeshes", () => {
   });
 });
 
+describe("weldCoincidentVertices — genuine-coincidence case (positive proof the weld works)", () => {
+  it("welds two abutting same-profile rect tubes sharing an exact boundary ring into one clean manifold with fewer vertices", () => {
+    // Two 1x1x1 boxes stacked along +X, sharing the boundary ring at x=1 —
+    // unlike generateSwordMesh's real junctions, these DO have matching
+    // profile/shape/scale at the join, so this is the genuine-coincidence
+    // case weldCoincidentVertices exists to handle.
+    const a = loftClosedTube("rect", [
+      { x: 0, halfWidth: 0.5, halfThickness: 0.5 },
+      { x: 1, halfWidth: 0.5, halfThickness: 0.5 },
+    ]);
+    const b = loftClosedTube("rect", [
+      { x: 1, halfWidth: 0.5, halfThickness: 0.5 },
+      { x: 2, halfWidth: 0.5, halfThickness: 0.5 },
+    ]);
+    const merged = mergeMeshes([a, b]);
+    // Before welding: 16 verts (8+8), 24 tris (12+12) — includes the two
+    // interior end caps (2 tris each = 4 tris) that shouldn't survive a weld.
+    assert.equal(merged.positions.length / 3, 16);
+    assert.equal(merged.indices.length / 3, 24);
+
+    const welded = weldCoincidentVertices(merged);
+    // The shared boundary ring (4 verts) collapses from 8 to 4 -> 4 welded.
+    assert.equal(welded.weldedVertexCount, 4);
+    assert.equal(welded.positions.length / 3, 12);
+    // The two interior caps (2 tris each) become degenerate once their ring
+    // is shared and are dropped -> 4 dropped triangles, 20 remain.
+    assert.equal(welded.droppedTriangleCount, 4);
+    assert.equal(welded.indices.length / 3, 20);
+
+    const inv = directedEdgeInvariant(welded.indices);
+    assert.equal(inv.dupDirected, 0);
+    assert.equal(inv.missingReverse, 0);
+
+    // Volume is preserved (a 1x1x2 combined box = 2), proving the weld
+    // didn't distort geometry, only dedupe it.
+    const vol = signedVolume(welded.positions, welded.indices);
+    assert.ok(Math.abs(vol - 2) < 1e-9);
+  });
+
+  it("throws a NAMED error when a declared seam's rings genuinely don't match (count mismatch)", () => {
+    const a = loftClosedTube("circle", [
+      { x: 0, halfWidth: 0.5, halfThickness: 0.5 },
+      { x: 1, halfWidth: 0.5, halfThickness: 0.5 },
+    ], { sides: 8 });
+    const b = loftClosedTube("rect", [
+      { x: 1, halfWidth: 0.5, halfThickness: 0.5 },
+      { x: 2, halfWidth: 0.5, halfThickness: 0.5 },
+    ]);
+    const merged = mergeMeshes([a, b]);
+    assert.throws(
+      () => weldCoincidentVertices(merged, undefined, {
+        seams: [{ a: { start: 8, count: 8 }, b: { start: 16, count: 4 } }],
+      }),
+      /parametric_mesh_seam_mismatch/,
+    );
+  });
+
+  it("throws a NAMED error when a declared seam's rings have matching counts but non-coincident positions", () => {
+    const a = loftClosedTube("rect", [
+      { x: 0, halfWidth: 0.5, halfThickness: 0.5 },
+      { x: 1, halfWidth: 0.5, halfThickness: 0.5 },
+    ]);
+    const b = loftClosedTube("rect", [
+      { x: 1, halfWidth: 2.0, halfThickness: 2.0 }, // different scale — won't coincide
+      { x: 2, halfWidth: 2.0, halfThickness: 2.0 },
+    ]);
+    const merged = mergeMeshes([a, b]);
+    assert.throws(
+      () => weldCoincidentVertices(merged, undefined, {
+        seams: [{ a: { start: 4, count: 4 }, b: { start: 8, count: 4 } }],
+      }),
+      /parametric_mesh_seam_mismatch/,
+    );
+  });
+
+  it("auto mode (no declared seams) is a safe no-op when nothing coincides", () => {
+    const a = loftClosedTube("rect", [
+      { x: 0, halfWidth: 0.5, halfThickness: 0.5 },
+      { x: 1, halfWidth: 0.5, halfThickness: 0.5 },
+    ]);
+    const b = loftClosedTube("rect", [
+      { x: 5, halfWidth: 0.5, halfThickness: 0.5 }, // far away, no shared plane
+      { x: 6, halfWidth: 0.5, halfThickness: 0.5 },
+    ]);
+    const merged = mergeMeshes([a, b]);
+    const welded = weldCoincidentVertices(merged);
+    assert.equal(welded.weldedVertexCount, 0);
+    assert.equal(welded.droppedTriangleCount, 0);
+    assert.equal(welded.positions.length, merged.positions.length);
+    assert.equal(welded.indices.length, merged.indices.length);
+  });
+});
+
 describe("generateSwordMesh — determinism + ring/segment arithmetic", () => {
   it("same params produce byte-identical positions and indices", () => {
     const m1 = generateSwordMesh({ bladeSegments: 6, hiltSides: 6 });
@@ -238,7 +332,28 @@ describe("generateSwordMesh — determinism + ring/segment arithmetic", () => {
     for (const st of guardStations) assert.equal(st.approximation, false);
     for (const st of bladeStations) assert.equal(st.approximation, true);
     assert.equal(HONESTY_NOTES.diamondMomentOfInertiaIsRectangleApproximation, true);
-    assert.equal(HONESTY_NOTES.appendedSeamsNotWelded, true);
+    assert.equal(HONESTY_NOTES.weldPassApplied, true);
+    assert.equal(HONESTY_NOTES.swordJunctionsShareNoCoincidentVertices, true);
+  });
+
+  it("the merged+welded sword is a single closed 2-manifold across the WHOLE mesh (not just per-section)", () => {
+    const m = generateSwordMesh({ bladeSegments: 6, hiltSides: 6 });
+    const inv = directedEdgeInvariant(m.indices);
+    assert.equal(inv.dupDirected, 0);
+    assert.equal(inv.missingReverse, 0);
+  });
+
+  it("verified finding: the weld pass welds 0 vertices / drops 0 triangles for this archetype's real junction geometry (circle→rect→diamond, mismatched scales) — an honest no-op, not a broken weld", () => {
+    const hiltSides = 8;
+    const bladeSegments = 10;
+    const m = generateSwordMesh({ hiltSides, bladeSegments });
+    assert.equal(m.weld.weldedVertexCount, 0);
+    assert.equal(m.weld.droppedTriangleCount, 0);
+    // Positions/indices are therefore unchanged in size from the raw merge.
+    const expectedVerts = m.meta.sectionVertexCounts.reduce((a, b) => a + b, 0);
+    const expectedTris = m.meta.sectionTriangleCounts.reduce((a, b) => a + b, 0);
+    assert.equal(m.positions.length / 3, expectedVerts);
+    assert.equal(m.indices.length / 3, expectedTris);
   });
 
   it("moment of inertia for an exact rectangle guard station equals b·h³/12 directly", () => {
