@@ -422,6 +422,133 @@ export async function createGitHubIssue(db, userId, repo, issue = {}, opts = {})
   return { ok: true, number: res.data?.number || null, url: res.data?.html_url || null };
 }
 
+// GitHub paths can contain slashes (nested directories) but each *segment*
+// must be percent-encoded individually — encodeURIComponent on the whole
+// path would also escape the slashes, corrupting the route.
+function encodeGitHubPath(path) {
+  return String(path).split("/").map(encodeURIComponent).join("/");
+}
+
+/**
+ * List the file tree at a ref (recursive). If `query.ref` is omitted, the
+ * repo's real default branch is resolved first via GET /repos/{repo} — never
+ * guessed as "main"/"master". Uses the real Git Trees API
+ * (GET /repos/{repo}/git/trees/{ref}?recursive=1).
+ */
+export async function getGitHubRepoTree(db, userId, repo, query = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  let ref = query.ref;
+  if (!ref) {
+    const repoRes = await connectorFetch(db, userId, "github", `${GITHUB_BASE}/repos/${repo}`, { method: "GET", headers: GITHUB_HEADERS }, opts);
+    if (!repoRes.ok) return repoRes;
+    ref = repoRes.data?.default_branch;
+    if (!ref) return { ok: false, reason: "no_default_branch" };
+  }
+  const params = new URLSearchParams({ recursive: "1" });
+  const res = await connectorFetch(
+    db, userId, "github",
+    `${GITHUB_BASE}/repos/${repo}/git/trees/${encodeURIComponent(ref)}?${params.toString()}`,
+    { method: "GET", headers: GITHUB_HEADERS }, opts,
+  );
+  if (!res.ok) return res;
+  const tree = (res.data?.tree || []).map((t) => ({ path: t.path, type: t.type, sha: t.sha, size: t.size ?? null, mode: t.mode }));
+  return { ok: true, ref, sha: res.data?.sha || null, truncated: !!res.data?.truncated, tree };
+}
+
+/**
+ * Get a single file's real decoded content + its blob `sha` (required by
+ * commitGitHubFile to update the same file). Real Contents API
+ * (GET /repos/{repo}/contents/{path}[?ref=]). Honest not_a_file when the path
+ * resolves to a directory (an array response) rather than a blob; 404s pass
+ * through connectorFetch's own honest provider_error/status shape.
+ */
+export async function getGitHubFileContent(db, userId, repo, path, query = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  if (!path) return { ok: false, reason: "missing_path" };
+  const params = new URLSearchParams();
+  if (query.ref) params.set("ref", String(query.ref));
+  const qs = params.toString();
+  const res = await connectorFetch(
+    db, userId, "github",
+    `${GITHUB_BASE}/repos/${repo}/contents/${encodeGitHubPath(path)}${qs ? `?${qs}` : ""}`,
+    { method: "GET", headers: GITHUB_HEADERS }, opts,
+  );
+  if (!res.ok) return res;
+  const data = res.data;
+  if (Array.isArray(data) || !data || data.type !== "file") {
+    return { ok: false, reason: "not_a_file", detail: "path does not resolve to a single file" };
+  }
+  let content = "";
+  try {
+    content = data.encoding === "base64" ? Buffer.from(data.content || "", "base64").toString("utf8") : (data.content || "");
+  } catch {
+    content = "";
+  }
+  return { ok: true, path: data.path, sha: data.sha, size: data.size || 0, content, encoding: "utf8", htmlUrl: data.html_url || null };
+}
+
+/**
+ * Create or update a file (real two-way write) — PUT
+ * /repos/{repo}/contents/{path}. `sha` is the CALLER's declared intent:
+ * present -> update the existing blob at that sha; absent -> create a new
+ * file. We never silently invent or fetch a sha on the caller's behalf (that
+ * would risk clobbering a file the caller didn't know existed) — GitHub's own
+ * 422 ("sha wasn't supplied") surfaces honestly via connectorFetch's
+ * provider_error path if the caller omits sha for a path that already exists.
+ * Content is UTF-8 -> base64 encoded per the Contents API's real requirement.
+ */
+export async function commitGitHubFile(db, userId, repo, path, params = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  if (!path) return { ok: false, reason: "missing_path" };
+  if (typeof params.content !== "string") return { ok: false, reason: "missing_content" };
+  if (!params.message) return { ok: false, reason: "missing_message" };
+  const body = {
+    message: params.message,
+    content: Buffer.from(params.content, "utf8").toString("base64"),
+    ...(params.sha ? { sha: params.sha } : {}),
+    ...(params.branch ? { branch: params.branch } : {}),
+  };
+  const res = await connectorFetch(
+    db, userId, "github", `${GITHUB_BASE}/repos/${repo}/contents/${encodeGitHubPath(path)}`,
+    { method: "PUT", headers: { ...GITHUB_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify(body) },
+    opts,
+  );
+  if (!res.ok) return res;
+  return {
+    ok: true,
+    commitSha: res.data?.commit?.sha || null,
+    fileSha: res.data?.content?.sha || null,
+    path: res.data?.content?.path || path,
+    htmlUrl: res.data?.content?.html_url || null,
+  };
+}
+
+/**
+ * Create a branch (real Git Refs API — POST /repos/{repo}/git/refs) pointing
+ * at `fromRef`'s current tip commit. `fromRef` is resolved to a real commit
+ * sha first via GET /repos/{repo}/commits/{ref} (accepts a branch name, tag,
+ * or sha uniformly — no assumption about ref shape). Never guesses a sha.
+ */
+export async function createGitHubBranch(db, userId, repo, params = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  if (!params.branchName) return { ok: false, reason: "missing_branch_name" };
+  if (!params.fromRef) return { ok: false, reason: "missing_from_ref" };
+  const commitRes = await connectorFetch(
+    db, userId, "github", `${GITHUB_BASE}/repos/${repo}/commits/${encodeURIComponent(params.fromRef)}`,
+    { method: "GET", headers: GITHUB_HEADERS }, opts,
+  );
+  if (!commitRes.ok) return commitRes;
+  const baseSha = commitRes.data?.sha;
+  if (!baseSha) return { ok: false, reason: "ref_resolution_failed" };
+  const res = await connectorFetch(
+    db, userId, "github", `${GITHUB_BASE}/repos/${repo}/git/refs`,
+    { method: "POST", headers: { ...GITHUB_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify({ ref: `refs/heads/${params.branchName}`, sha: baseSha }) },
+    opts,
+  );
+  if (!res.ok) return res;
+  return { ok: true, ref: res.data?.ref || `refs/heads/${params.branchName}`, sha: res.data?.object?.sha || baseSha };
+}
+
 // GitHub's commit-status API only accepts these four literal state values —
 // reject anything else BEFORE any network call rather than letting an
 // unrecognized value reach GitHub as an ad-hoc string.
