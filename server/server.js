@@ -34136,6 +34136,19 @@ app.use("/api/parties", createPartiesRouter({ requireAuth, db, emitToUser }));
 // Cooperative mechanics: coop build sites, shared party stash, cross-world
 // raids. Built on top of the parties primitive — endpoints assume the caller
 // has been verified as a party member by the route guard.
+//
+// DET-C dead-event-listener sweep (batch 9) — ENGINEERING-triage flag, not
+// fixed here: 'coop:build:edit' (emitted below) has zero frontend
+// subscribers. Checked runtime-truth: 'coop/build', 'coop-mechanics', and
+// 'CoopBuild' have no hits anywhere in concord-frontend, world-lens-godot,
+// or concord-mobile — there is no grid editor, no site-creation UI, no
+// mount point at all for this feature; it's REST + realtime-emit with a
+// backing lib (lib/coop-mechanics.js) and no client. This is bigger than a
+// missing listener — it needs a real coop-build UI (site placement, a
+// shared grid canvas, cell-edit tools) designed and built, which is a
+// product decision this sweep shouldn't make unilaterally. Flagging for a
+// human to decide build-vs-remove, same disposition as
+// 'npc:dialogue'/'gameJuice:fanfare'/'minigame:started'.
 import * as _coopMechanics from "./lib/coop-mechanics.js";
 app.post("/api/coop/build/site", requireAuth(), (req, res) => {
   const userId = req.user?.id;

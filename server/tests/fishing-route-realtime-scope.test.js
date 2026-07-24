@@ -12,6 +12,12 @@
  * arena-match-found-emit.test.js — this is the 4th confirmed instance
  * this session.
  *
+ * Update (DET-C batch 9, dead-event-listener sweep): 'fishing:cast' itself
+ * was removed — nothing anywhere ever subscribed to it (the caster already
+ * gets the same sessionId/biteAtEpochMs synchronously in the HTTP response,
+ * which FishingMinigameOverlay.tsx already uses directly). 'fishing:bite'
+ * is real (has a frontend subscriber) and keeps its scoping test below.
+ *
  * Run: node --test server/tests/fishing-route-realtime-scope.test.js
  */
 
@@ -33,8 +39,8 @@ function layerFor(router, method, path) {
   return layer.route.stack[layer.route.stack.length - 1].handle;
 }
 
-describe("fishing.js — 'fishing:cast' / 'fishing:bite' are room-scoped to the casting user", () => {
-  it("passes userId via the 3rd realtimeEmit options argument on cast", async () => {
+describe("fishing.js — 'fishing:cast' is retired, 'fishing:bite' is room-scoped to the casting user", () => {
+  it("no longer emits 'fishing:cast' (retired dead-event-listener finding, DET-C batch 9)", async () => {
     const emitted = [];
     const { router } = buildApp(emitted);
     const castPost = layerFor(router, "post", "/cast");
@@ -45,24 +51,13 @@ describe("fishing.js — 'fishing:cast' / 'fishing:bite' are room-scoped to the 
       { json: (b) => { castRes = b; }, status() { return this; } },
     );
     assert.equal(castRes.ok, true);
+    // The cast response itself still carries sessionId/biteAtEpochMs
+    // synchronously — that's what the frontend actually uses.
+    assert.equal(typeof castRes.sessionId, "string");
+    assert.equal(typeof castRes.biteAtEpochMs, "number");
 
     const castEmit = emitted.find((e) => e.event === "fishing:cast");
-    assert.ok(castEmit, "fishing:cast must be emitted");
-    // The real bug: userId must arrive via the options arg (3rd param),
-    // which is what realtimeEmit's { userId = "" } destructure — and its
-    // io.to(`user:${userId}`) room-scoping — actually reads. A bare 2-arg
-    // call silently falls through to a global broadcast instead.
-    assert.ok(
-      castEmit.options && typeof castEmit.options.userId === "string" && castEmit.options.userId.length > 0,
-      "userId must be passed as the 3rd realtimeEmit argument (options), not payload alone",
-    );
-    assert.equal(castEmit.options.userId, "angler-1");
-    // event-shapes.js still requires userId IN the payload too (unlike the
-    // arena fix, which dropped it) — both fishing:cast and fishing:bite
-    // declare userId as a required payload field, so it must stay there
-    // as well as in options.
-    assert.equal(castEmit.payload.userId, "angler-1");
-    assert.equal(typeof castEmit.payload.sessionId, "string");
+    assert.equal(castEmit, undefined, "fishing:cast must NOT be emitted (retired: zero subscribers, redundant with the HTTP response)");
   });
 
   it("scopes fishing:bite the same way once the bite timer fires", async () => {

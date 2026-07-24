@@ -26,13 +26,20 @@ export default function createFishingRouter({ requireAuth, db, realtimeEmit }) {
         biome: biome ? String(biome).slice(0, 32) : "water",
       });
       if (result.ok && realtimeEmit) {
-        // Scoped to the casting user's own `user:<id>` room — a bare call
-        // (no third opts arg) silently defaults to a GLOBAL broadcast
-        // (server.js#realtimeEmit's `else` branch), leaking every player's
-        // sessionId to every other connected socket. Same signature-bug
-        // shape found and fixed elsewhere this session.
-        try { realtimeEmit("fishing:cast", { userId: req.user.id, sessionId: result.sessionId, biteAtEpochMs: result.biteAtEpochMs }, { userId: req.user.id }); }
-        catch { /* ok */ }
+        // DET-C dead-event-listener sweep (batch 9): this route used to also
+        // fire a 'fishing:cast' realtime event scoped to the casting user's
+        // own room. Checked the whole frontend (+ world-lens-godot,
+        // concord-mobile) — nothing ever subscribed to it. The reason: the
+        // caster already gets sessionId + biteAtEpochMs synchronously in
+        // this very HTTP response, and FishingMinigameOverlay.tsx drives its
+        // 'casting' phase off that response directly, not off a socket
+        // round-trip. A subscriber here would just be a second path setting
+        // the same state the HTTP response already set — dead weight, not a
+        // missing feature. Removed the emit; 'fishing:bite' below is kept
+        // as-is because it fires later (after a real setTimeout delay) and
+        // IS consumed (FishingMinigameOverlay subscribes to it to know when
+        // the bite window opens).
+        //
         // Schedule the bite emit. Fire-and-forget: realtimeEmit
         // shouldn't throw, but we wrap in try/catch in case the io
         // server churns mid-timer.

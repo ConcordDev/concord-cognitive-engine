@@ -6,6 +6,24 @@
 // events; uses the existing `spectator.subscribe` macro to subscribe
 // to the world's spectator channel. Dismiss via the close button or
 // `concordia:exit-spectator-mode`.
+//
+// DET-C dead-event-listener sweep (batch 9) — ENGINEERING-triage flag, not
+// fixed here: nothing anywhere dispatches `concordia:enter-spectator-mode`.
+// Checked runtime-truth across the whole app (brawl matchmaker/HUD, horror
+// role HUDs, roguelite run HUD, world lens) plus world-lens-godot and
+// concord-mobile — none of them offer a "watch this session" action. This
+// component and its backing `spectator.subscribe`/`spectator.list_for_world`
+// macros are real and fully built (not a stub), and it's genuinely mounted
+// in the world lens (app/lenses/world/page.tsx) waiting for the event — the
+// gap is one level up: there's no "spectate" entry point anywhere for a
+// brawl/horror/roguelite session in progress. The standalone
+// `/lenses/spectate/[worldId]` page is a DIFFERENT, whole-world spectator
+// view (betting markets + public ticker) and doesn't dispatch this event
+// either — it's not the same feature. Designing a real "watch a friend's
+// session" entry point is a product decision this sweep shouldn't make
+// unilaterally. Flagging for a human to decide build-vs-remove, same
+// disposition as 'npc:dialogue'/'gameJuice:fanfare'/'minigame:started'/
+// 'coop:build:edit'.
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';

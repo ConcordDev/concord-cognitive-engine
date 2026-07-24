@@ -240,6 +240,13 @@ const BrawlInviteToast = dynamic(
     })),
   { ssr: false }
 );
+const EventReminderToast = dynamic(
+  () =>
+    import('@/components/world/EventReminderToast').then((m) => ({
+      default: m.EventReminderToast,
+    })),
+  { ssr: false }
+);
 const BrawlActiveHUD = dynamic(
   () =>
     import('@/components/world/BrawlInviteToast').then((m) => ({
@@ -6011,6 +6018,9 @@ export default function WorldLensPage() {
 
           {/* Phase DB2 — Brawl invite toast + active brawl HUD */}
           <BrawlInviteToast />
+
+          {/* DET-C dead-event-listener fix — RSVP event:reminder toast */}
+          <EventReminderToast />
           <BrawlActiveHUD />
 
           {/* DET-C dead-event fix — wager invite toast (incoming challenge +

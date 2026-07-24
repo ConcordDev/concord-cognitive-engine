@@ -1,6 +1,25 @@
 // server/routes/minigames.js
 //
 // REST surface for the basketball + racing minigames.
+//
+// DET-C dead-event-listener sweep (batch 9) — ENGINEERING-triage flag, not
+// fixed here: 'minigame:started' (emitted below from both /basketball and
+// /racing) has zero frontend subscribers. Checked runtime-truth rather than
+// trusting the "dead" verdict at face value: BasketballMinigameOverlay.tsx
+// and RacingHUD.tsx both exist, are fully built, and DO subscribe to their
+// sibling events ('minigame:scored', 'minigame:complete') — so this isn't a
+// simple missing-listener fix. The real gap is one level up: NEITHER
+// overlay component is mounted anywhere in the app (grepped app/, components/,
+// lib/ — no import of either outside their own files and tests; also checked
+// world-lens-godot/ and concord-mobile/, nothing there either). There is no
+// "start a basketball match" or "start a race" UI action anywhere that would
+// even produce a matchId/raceId to open these overlays with, so wiring
+// 'minigame:started' alone wouldn't make the feature reachable — it would
+// need a real invite/start flow (who do you challenge? which hoop? which
+// track?) designed first. That's a bigger product decision than this sweep
+// should make unilaterally; flagging for a human to decide build-vs-remove,
+// same disposition as 'npc:dialogue'/'gameJuice:fanfare' in
+// server/tests/invariants/emit-subscribe-pairing.test.js.
 
 import { Router } from "express";
 import {

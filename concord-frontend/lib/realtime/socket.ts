@@ -596,6 +596,9 @@ export type SocketEvent =
   | 'spectator:count-updated'
   // World scheduler
   | 'world:event:scheduled'
+  // RSVP reminder — sweepEventReminders (server/lib/event-rsvp.js) fires this
+  // to user:<id> ~10min before an event the user RSVP'd to starts.
+  | 'event:reminder'
   // Tier 3 deferral 12: faction event scheduler
   | 'faction:event_started'
   | 'faction:event_ended'
