@@ -182,6 +182,8 @@ export class ConcordClient {
   public readonly affect: AffectClient;
   /** Autonomous-agent deploy / inspect / awareness sub-client. */
   public readonly agent: AgentClient;
+  /** Plugin gallery + signing sub-client (browse/publish/install/rate, keypair + trust registration). */
+  public readonly plugins: PluginClient;
 
   /**
    * Create a new Concord client.
@@ -210,6 +212,7 @@ export class ConcordClient {
     this.npc = new NpcClient(this);
     this.affect = new AffectClient(this);
     this.agent = new AgentClient(this);
+    this.plugins = new PluginClient(this);
   }
 
   // ── Internal HTTP helpers ──────────────────────────────────────────────
@@ -719,6 +722,98 @@ class AgentClient {
   /** The agent's awareness index — watch it rise as it wakes, dip as it sleeps. */
   async awarenessIndex(agentId: string): Promise<ApiResponse> {
     return this.client.get<ApiResponse>(`/api/agent/${agentId}/awareness`);
+  }
+}
+
+// ── Plugin gallery + signing sub-client ──────────────────────────────────
+
+/** A published plugin-gallery entry. */
+export interface PluginGalleryEntry {
+  pluginId: string;
+  name: string;
+  description?: string;
+  version?: string;
+  authorId: string;
+  trusted?: boolean;
+  loaded?: boolean;
+  rating?: number;
+  installCount?: number;
+  [key: string]: unknown;
+}
+
+/** Input for publishing a plugin to the gallery. */
+export interface PluginPublishInput {
+  pluginId?: string;
+  name: string;
+  description?: string;
+  version?: string;
+  source: string;
+  signature?: string;
+}
+
+/** A freshly-generated ed25519 signing keypair for plugin publishing. */
+export interface PluginKeypairResult extends ApiResponse {
+  publicKeyPem: string;
+  privateKeyPem: string;
+}
+
+/**
+ * Plugin gallery + signing sub-client. Browse/install/rate signed community
+ * plugins, and manage the ed25519 keypair + trusted-key registration used to
+ * sign a package before publishing. Installing genuinely loads the plugin
+ * through the same hardened validator + sandbox path as a boot-time disk
+ * scan — a validation failure comes back as an honest `ok:false`, never a
+ * fake "installed" success.
+ */
+class PluginClient {
+  constructor(private client: ConcordClient) {}
+
+  /** Browse gallery listings. */
+  async gallery(
+    params: { trustedOnly?: boolean; q?: string; limit?: number } = {},
+  ): Promise<ApiResponse<PluginGalleryEntry[]>> {
+    const query = new URLSearchParams();
+    if (params.trustedOnly) query.set("trustedOnly", "true");
+    if (params.q) query.set("q", params.q);
+    if (params.limit != null) query.set("limit", String(params.limit));
+    const qs = query.toString();
+    return this.client.get<ApiResponse<PluginGalleryEntry[]>>(
+      `/api/plugins/gallery${qs ? `?${qs}` : ""}`,
+    );
+  }
+
+  /** Get a single gallery entry by plugin ID (source is stripped from the response). */
+  async get(pluginId: string): Promise<ApiResponse<PluginGalleryEntry>> {
+    return this.client.get<ApiResponse<PluginGalleryEntry>>(
+      `/api/plugins/gallery/${encodeURIComponent(pluginId)}`,
+    );
+  }
+
+  /** Publish a signed plugin package to the gallery. */
+  async publish(input: PluginPublishInput): Promise<ApiResponse<PluginGalleryEntry>> {
+    return this.client.post<ApiResponse<PluginGalleryEntry>>("/api/plugins/gallery/publish", input);
+  }
+
+  /** Install a plugin from the gallery — actually loads it (sandboxed + validated). */
+  async install(pluginId: string): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>(`/api/plugins/gallery/${encodeURIComponent(pluginId)}/install`);
+  }
+
+  /** Rate an installed plugin (vote is typically 1 / -1). */
+  async rate(pluginId: string, vote: number): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>(`/api/plugins/gallery/${encodeURIComponent(pluginId)}/rate`, {
+      vote,
+    });
+  }
+
+  /** Generate a new ed25519 signing keypair for signing plugin packages. */
+  async generateKeypair(): Promise<PluginKeypairResult> {
+    return this.client.post<PluginKeypairResult>("/api/plugins/signing/keypair");
+  }
+
+  /** Register a public key as trusted for the authenticated author. */
+  async registerKey(publicKeyPem: string): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>("/api/plugins/signing/register-key", { publicKeyPem });
   }
 }
 
