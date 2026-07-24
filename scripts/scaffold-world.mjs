@@ -128,7 +128,11 @@ const KNOWN_TEMPLATES = Object.freeze([
   "fantasy", "cyber", "superhero", "crime",
   "sovereign-ruins", "lattice-crucible", "concord-link-frontier",
 ]);
-const IMPLEMENTED_TEMPLATES = Object.freeze(["fantasy", "cyber", "crime", "superhero"]);
+// Exported for the same reason as the template functions above — so a
+// reuser (server/lib/foundry/promote.js) can validate a candidate archetype
+// name against the same list this script enforces, instead of hardcoding a
+// second copy that could drift out of sync.
+export const IMPLEMENTED_TEMPLATES = Object.freeze(["fantasy", "cyber", "crime", "superhero"]);
 
 // tech_level / magic_level per implemented archetype. These values MIRROR
 // the real, already-authored content/world/<archetype>/meta.json files for
@@ -218,7 +222,15 @@ function validate({ worldId, worldName, universeType, template }) {
 // function below, and every default branch below is byte-for-byte the
 // original pre-template text/shape — see the no-flag regression test.
 
-function metaTemplate(worldId, worldName, universeType, template) {
+// Exported so server/lib/foundry/promote.js (the Foundry "promote a
+// published overlay world to a full first-class world node" pipeline) can
+// REUSE these exact template functions instead of forking a duplicate
+// taxonomy — see that file's header comment. Pure functions, no fs/db
+// access, safe to import from server-side code; this file's own CLI
+// behavior (the `main()` call at the bottom) is guarded to only run when
+// this script is executed directly, never on import — see the bottom of
+// this file.
+export function metaTemplate(worldId, worldName, universeType, template) {
   const flavor = template ? TECH_MAGIC_BY_TEMPLATE[template] : null;
   return {
     world_id: worldId,
@@ -240,7 +252,7 @@ function metaTemplate(worldId, worldName, universeType, template) {
   };
 }
 
-function npcTemplate(worldId, worldName, template) {
+export function npcTemplate(worldId, worldName, template) {
   // OCCUPATIONS[template][0] is a deterministic pick (always the table's
   // first entry) — no rng — so the same --template always produces the
   // same flavored occupation, keeping the scaffolder's output reproducible.
@@ -261,7 +273,7 @@ function npcTemplate(worldId, worldName, template) {
   };
 }
 
-function factionTemplate(worldId, worldName, template) {
+export function factionTemplate(worldId, worldName, template) {
   // FACTION_NAME[template].a[0] / .b[0] are the same deterministic
   // first-entry pick pattern as npcTemplate's occupation above.
   const name = template
@@ -285,7 +297,7 @@ function factionTemplate(worldId, worldName, template) {
   };
 }
 
-function loreTemplate(worldId, worldName) {
+export function loreTemplate(worldId, worldName) {
   return {
     history: [
       {
@@ -459,4 +471,14 @@ async function main() {
   if (!dryRun) printManualSteps(worldId);
 }
 
-main();
+// Only run the CLI entrypoint when this file is executed directly (`node
+// scripts/scaffold-world.mjs ...`), never when it's imported as a module —
+// server/lib/foundry/promote.js imports the template functions above for
+// reuse, and without this guard that import would re-trigger main() against
+// the SERVER's process.argv (parsing garbage, and potentially writing files
+// or calling process.exit(1) mid-request). Every existing CLI invocation
+// (including server/tests/scaffold-world.test.js, which spawns this file as
+// a real subprocess via execFileSync) still has process.argv[1] equal to
+// this file's path, so behavior there is byte-for-byte unchanged.
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) main();
