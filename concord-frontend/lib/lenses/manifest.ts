@@ -5378,6 +5378,16 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // (observing the concurrency stack is not minting knowledge). The `metric`
   // artifact + `json` export reflect the live data the page surfaces.
   { domain: 'ops-telemetry', label: 'Ops Telemetry',      artifacts: ['metric'],      macros: {}, exports: ['json'], actions: [], category: 'operations' },
+  // Frontier is ten independent compute engines (lib/frontier-engines.ts),
+  // each with its own distinct macro set — there is no single list/get/run
+  // convention across them, so `macros` is intentionally `{}` (same posture
+  // as ops-telemetry / concord-link-frontier: the real macro calls happen
+  // per-panel via `runFrontierMacro`, not through this generic contract).
+  // `actions` is intentionally empty too — every engine's Compute cell is a
+  // bespoke structured form (CLAUDE.md's "zero generic tendencies"
+  // invariant), never a ManifestActionBar-style generic action list this
+  // field would drive.
+  { domain: 'frontier', label: 'Frontier', artifacts: ['engine_run'], macros: {}, exports: [], actions: [], category: 'knowledge' },
   // World Observatory is a read-only simulation-observability dashboard —
   // the population/faction/realm/district counterpart to Ops Telemetry's
   // infra-only view. Unlike ops-telemetry it IS macro-backed: both

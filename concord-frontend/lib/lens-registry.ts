@@ -1517,6 +1517,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['money', 'investment', 'portfolio'],
   },
   {
+    id: 'frontier',
+    name: 'Frontier',
+    icon: Rocket,
+    description: 'Ten frontier compute engines — materials degradation, non-Newtonian FSI, safety-envelope compiler, QEC, ledger model checking, Byzantine consensus, economic equilibrium, constant-time analysis, homomorphic aggregation, spiking neural nets',
+    category: 'specialized',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/frontier',
+    order: 172,
+    keywords: ['frontier', 'engine', 'physics', 'materials', 'degradation', 'fsi', 'fluid', 'safety envelope', 'reachability', 'qec', 'quantum', 'consensus', 'equilibrium', 'constant-time', 'paillier', 'homomorphic', 'spiking', 'neural', 'compute', 'verify'],
+  },
+  {
     id: 'collab',
     name: 'Collab',
     icon: Users,
