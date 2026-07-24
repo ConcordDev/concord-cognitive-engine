@@ -810,7 +810,7 @@ function GatherPlanPanel() {
           const reqs = (spec?.resource_requirements ?? []).map((x) => ({ material: x.resource_type, quantity: x.quantity }));
           return { id: r.id, title: r.title, requirements: reqs };
         })
-        .filter((r) => r.requirements.length > 0);
+        .filter((r) => (r.requirements?.length ?? 0) > 0);
       const inventory: InventoryItem[] = ((invRes.data?.items ?? []) as Array<{ item_name: string; quantity?: number }>)
         .map((i) => ({ item_name: i.item_name, quantity: i.quantity ?? 1 }));
       // Build node hints from real world gather nodes — resource_type → node_type.

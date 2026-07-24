@@ -71,14 +71,31 @@ export function initReservesSchema(db) {
   `);
 
   // Ensure all three reserve rows exist with a zero balance if not already set.
+  //
+  // Money-hygiene fix (verification-audit campaign, money-txn-hygiene
+  // finding): these three seed INSERTs are a single logical "the reserve
+  // ledger has a home for all three buckets" operation. Un-transacted, a
+  // crash between them (e.g. process killed mid-boot) could leave only
+  // chargebackReserve/operatingReserve seeded and treasuryReserve missing.
+  // Reads degrade gracefully either way (readBalance/getReserveBalance both
+  // treat a missing row as balance 0), but a later WRITE does not:
+  // applyBalanceDelta's `UPDATE reserves_balance ... WHERE reserve = ?`
+  // silently affects 0 rows if the row was never created, so a real credit/
+  // debit to the un-seeded reserve would be lost — the balance UPDATE is a
+  // no-op while its paired reserves_ledger INSERT (which has no such
+  // existence precondition) still lands, producing exactly the "ledger says
+  // money moved, balance disagrees" split this campaign exists to close.
   const upsertBalance = db.prepare(`
     INSERT OR IGNORE INTO reserves_balance (reserve, balance_cents, updated_at)
     VALUES (?, 0, ?)
   `);
   const now = nowISO();
-  upsertBalance.run(RESERVE_CHARGEBACK, now);
-  upsertBalance.run(RESERVE_OPERATING,  now);
-  upsertBalance.run(RESERVE_TREASURY,   now);
+  const seedTx = db.transaction(() => {
+    upsertBalance.run(RESERVE_CHARGEBACK, now);
+    upsertBalance.run(RESERVE_OPERATING,  now);
+    upsertBalance.run(RESERVE_TREASURY,   now);
+  });
+  seedTx();
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────

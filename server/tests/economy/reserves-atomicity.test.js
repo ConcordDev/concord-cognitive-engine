@@ -144,3 +144,95 @@ describe("reserves.js atomicity (Finding 4)", () => {
     assert.strictEqual(balance.operatingReserve, 75);
   });
 });
+
+// ── initReservesSchema atomicity (money-txn-hygiene finding) ───────────────
+//
+// `initReservesSchema` seeds three `reserves_balance` rows (chargeback,
+// operating, treasury) via three sequential `INSERT OR IGNORE` calls. Prior
+// to this fix they were unwrapped: a crash between the 1st and 3rd insert
+// could leave the treasury row (or any later one) missing. Reads happen to
+// degrade gracefully (`readBalance`/`getReserveBalance` treat a missing row
+// as 0), but a subsequent `applyBalanceDelta` UPDATE against a
+// never-created row silently affects 0 rows — a real write to the
+// un-seeded reserve would be lost while its paired ledger INSERT still
+// lands. These tests assert the seed is genuinely all-or-nothing.
+describe("reserves.js initReservesSchema atomicity", () => {
+  const SEED_INSERT_RE = /INSERT OR IGNORE INTO reserves_balance/;
+
+  /**
+   * `initReservesSchema` prepares `upsertBalance` ONCE and calls `.run(...)`
+   * on it three times — unlike the other functions in this file, where a
+   * fresh `db.prepare(sql)` happens per write. `armRunFailureAtOccurrence`
+   * counts `.prepare()` CALLS, so it can't isolate "the Nth `.run()` on this
+   * one prepared statement" here (there's only ever one matching `.prepare()`
+   * call). This variant instead wraps `.run` itself and counts invocations.
+   */
+  function armRunFailureAtRunOccurrence(db, matchSql, occurrence) {
+    const origPrepare = db.prepare.bind(db);
+    let count = 0;
+    db.prepare = (sql) => {
+      const stmt = origPrepare(sql);
+      if (!matchSql.test(sql)) return stmt;
+      const origRun = stmt.run.bind(stmt);
+      return {
+        run: (...args) => {
+          count += 1;
+          if (count === occurrence) throw new Error(`simulated_failure_at_run_occurrence_${occurrence}`);
+          return origRun(...args);
+        },
+        get: (...args) => stmt.get(...args),
+        all: (...args) => stmt.all(...args),
+      };
+    };
+  }
+
+  it("rolls back earlier seed rows when a later seed INSERT fails", () => {
+    const db = new Database(":memory:");
+    db.pragma("journal_mode = WAL");
+    // Fail the 3rd of the three sequential seed inserts (treasuryReserve).
+    armRunFailureAtRunOccurrence(db, SEED_INSERT_RE, 3);
+
+    assert.throws(() => initReservesSchema(db), /simulated_failure_at_run_occurrence_3/);
+
+    // The tables themselves ARE created (schema DDL is separate from the
+    // seed transaction, and CREATE TABLE isn't rolled back by throwing
+    // inside a later db.transaction() call in the same function body).
+    const tableExists = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='reserves_balance'"
+    ).get();
+    assert.ok(tableExists, "reserves_balance table must still exist (DDL is unaffected)");
+
+    // But NONE of the three seed rows should have landed — all-or-nothing,
+    // not "the first two succeeded, the third didn't".
+    const rows = db.prepare("SELECT reserve FROM reserves_balance").all();
+    assert.strictEqual(rows.length, 0, "no partial seed rows should survive a failed initReservesSchema call");
+  });
+
+  it("control: initReservesSchema seeds all three reserves with no induced failure", () => {
+    const db = new Database(":memory:");
+    db.pragma("journal_mode = WAL");
+    initReservesSchema(db);
+
+    const rows = db.prepare("SELECT reserve, balance_cents FROM reserves_balance ORDER BY reserve").all();
+    assert.strictEqual(rows.length, 3, "all three reserve rows must be seeded");
+    const balance = getReserveBalance(db);
+    assert.strictEqual(balance.chargebackReserve, 0);
+    assert.strictEqual(balance.operatingReserve, 0);
+    assert.strictEqual(balance.treasuryReserve, 0);
+  });
+
+  it("is idempotent: calling it twice does not duplicate or reset existing balances", () => {
+    const db = new Database(":memory:");
+    db.pragma("journal_mode = WAL");
+    initReservesSchema(db);
+    allocateFromFee(db, { feeAmount: 100, sourceTxId: "tx_before_reinit" });
+    const before = getReserveBalance(db);
+
+    initReservesSchema(db); // re-run, as happens on every server boot
+
+    const after = getReserveBalance(db);
+    assert.deepStrictEqual(after, before, "re-running initReservesSchema must not reset existing balances");
+    const rows = db.prepare("SELECT COUNT(*) AS c FROM reserves_balance").get();
+    assert.strictEqual(rows.c, 3, "re-running must not duplicate rows");
+  });
+});
