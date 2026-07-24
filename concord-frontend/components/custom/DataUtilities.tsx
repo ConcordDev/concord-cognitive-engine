@@ -98,12 +98,12 @@ function SchemaTab() {
           <label className="flex items-center gap-1 text-[11px] text-zinc-400 shrink-0">
             <input type="checkbox" checked={f.required} onChange={(e) => setFields((p) => p.map((x, j) => j === i ? { ...x, required: e.target.checked } : x))} /> required
           </label>
-          <button onClick={() => setFields((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setFields((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400" aria-label={`Remove field${f.name.trim() ? ` "${f.name.trim()}"` : ''}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
         </div>
       ))}
       <div className="flex items-center gap-2">
-        <button onClick={() => setFields((p) => [...p, { name: '', type: 'string', required: false }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Add field</button>
-        <button onClick={run} disabled={busy} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Evaluate Schema</button>
+        <button onClick={() => setFields((p) => [...p, { name: '', type: 'string', required: false }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add field</button>
+        <button onClick={run} disabled={busy} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Play className="w-3.5 h-3.5" aria-hidden="true" />} Evaluate Schema</button>
       </div>
       {result && (result.error ? <p className="text-xs text-rose-400">{result.error}</p> : (
         <div className="rounded-lg border border-zinc-800 bg-black/30 p-3 text-xs space-y-2">
@@ -149,12 +149,12 @@ function TemplateTab() {
         <div key={i} className="flex items-center gap-2">
           <input value={v.key} onChange={(e) => setVars((p) => p.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} placeholder="variable" className="in w-40" />
           <input value={v.value} onChange={(e) => setVars((p) => p.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="value" className="in flex-1" />
-          <button onClick={() => setVars((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setVars((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400" aria-label={`Remove variable${v.key.trim() ? ` "${v.key.trim()}"` : ''}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
         </div>
       ))}
       <div className="flex items-center gap-2">
-        <button onClick={() => setVars((p) => [...p, { key: '', value: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Add variable</button>
-        <button onClick={run} disabled={busy} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Render</button>
+        <button onClick={() => setVars((p) => [...p, { key: '', value: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add variable</button>
+        <button onClick={run} disabled={busy} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Play className="w-3.5 h-3.5" aria-hidden="true" />} Render</button>
       </div>
       {result && (result.error ? <p className="text-xs text-rose-400">{result.error}</p> : (
         <div className="rounded-lg border border-zinc-800 bg-black/30 p-3 text-xs space-y-2">
@@ -202,10 +202,10 @@ function ValidateTab() {
             {r.kind !== 'required' && (
               <input value={r.value} onChange={(e) => setRules((p) => p.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder={r.kind === 'pattern' ? 'regex' : 'number'} className="in flex-1" />
             )}
-            <button onClick={() => setRules((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setRules((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400" aria-label={`Remove rule${r.field.trim() ? ` for "${r.field.trim()}"` : ''}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
           </div>
         ))}
-        <button onClick={() => setRules((p) => [...p, { field: '', kind: 'required', value: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Add rule</button>
+        <button onClick={() => setRules((p) => [...p, { field: '', kind: 'required', value: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add rule</button>
       </div>
       <div>
         <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Data to test</p>
@@ -213,12 +213,12 @@ function ValidateTab() {
           <div key={i} className="flex items-center gap-2 mb-1.5">
             <input value={v.key} onChange={(e) => setValues((p) => p.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} placeholder="field" className="in w-32" />
             <input value={v.value} onChange={(e) => setValues((p) => p.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="value" className="in flex-1" />
-            <button onClick={() => setValues((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setValues((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400" aria-label={`Remove value${v.key.trim() ? ` "${v.key.trim()}"` : ''}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
           </div>
         ))}
-        <button onClick={() => setValues((p) => [...p, { key: '', value: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Add value</button>
+        <button onClick={() => setValues((p) => [...p, { key: '', value: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add value</button>
       </div>
-      <button onClick={run} disabled={busy} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Validate</button>
+      <button onClick={run} disabled={busy} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Play className="w-3.5 h-3.5" aria-hidden="true" />} Validate</button>
       {result && (result.error ? <p className="text-xs text-rose-400">{result.error}</p> : (
         <div className="rounded-lg border border-zinc-800 bg-black/30 p-3 text-xs space-y-2">
           <div className="flex flex-wrap gap-3">
@@ -270,10 +270,10 @@ function TransformTab() {
           <div key={i} className="flex items-center gap-2 mb-1.5">
             <input value={v.key} onChange={(e) => setInput((p) => p.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} placeholder="field" className="in w-32" />
             <input value={v.value} onChange={(e) => setInput((p) => p.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="value" className="in flex-1" />
-            <button onClick={() => setInput((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setInput((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400" aria-label={`Remove input field${v.key.trim() ? ` "${v.key.trim()}"` : ''}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
           </div>
         ))}
-        <button onClick={() => setInput((p) => [...p, { key: '', value: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Add field</button>
+        <button onClick={() => setInput((p) => [...p, { key: '', value: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add field</button>
       </div>
       <div>
         <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Transform steps</p>
@@ -286,12 +286,12 @@ function TransformTab() {
             {(s.operation === 'rename' || s.operation === 'default') && (
               <input value={s.extra} onChange={(e) => setSteps((p) => p.map((x, j) => j === i ? { ...x, extra: e.target.value } : x))} placeholder={s.operation === 'rename' ? 'new name' : 'default value'} className="in flex-1" />
             )}
-            <button onClick={() => setSteps((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setSteps((p) => p.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-rose-400" aria-label={`Remove transform step${s.field.trim() ? ` for "${s.field.trim()}"` : ''}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
           </div>
         ))}
-        <button onClick={() => setSteps((p) => [...p, { field: '', operation: 'trim', extra: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Add step</button>
+        <button onClick={() => setSteps((p) => [...p, { field: '', operation: 'trim', extra: '' }])} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add step</button>
       </div>
-      <button onClick={run} disabled={busy} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Transform</button>
+      <button onClick={run} disabled={busy} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Play className="w-3.5 h-3.5" aria-hidden="true" />} Transform</button>
       {result && (result.error ? <p className="text-xs text-rose-400">{result.error}</p> : (
         <div className="rounded-lg border border-zinc-800 bg-black/30 p-3 text-xs space-y-2">
           <p className="text-zinc-400">Transforms applied: <span className="text-neon-cyan font-bold">{result.transformsApplied}</span></p>

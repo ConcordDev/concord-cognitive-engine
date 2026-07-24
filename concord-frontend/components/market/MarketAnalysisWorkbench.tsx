@@ -346,7 +346,7 @@ function CompetitorMatrixTab() {
           </span>
         ))}
         <input value={newFeature} onChange={(e) => setNewFeature(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addFeature()} placeholder="add feature" className={`w-24 ${inputCls}`} />
-        <button onClick={addFeature} className="px-2 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
+        <button onClick={addFeature} className="px-2 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Add feature"><Plus className="w-3 h-3" aria-hidden="true" /></button>
       </div>
 
       <button onClick={addCompetitor} className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">

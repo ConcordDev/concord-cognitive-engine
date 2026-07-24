@@ -718,8 +718,8 @@ function NewListingForm({
         <h2 className="text-amber-200 font-semibold inline-flex items-center gap-1.5">
           <Plus className="w-4 h-4" /> List a DTU for sale
         </h2>
-        <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white">
-          <X className="w-4 h-4" />
+        <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white" aria-label="Close listing form">
+          <X className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
       {loadingDtus ? (

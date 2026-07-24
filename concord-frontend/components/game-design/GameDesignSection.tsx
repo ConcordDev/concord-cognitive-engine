@@ -250,7 +250,7 @@ export function GameDesignSection() {
                 <div className="px-4 py-2 border-b border-zinc-800 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] text-zinc-400 uppercase">Whole-project export</p>
-                    <button type="button" onClick={() => setExportJson(null)} className="text-zinc-500 hover:text-zinc-300"><X className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={() => setExportJson(null)} className="text-zinc-500 hover:text-zinc-300" aria-label="Close whole-project export"><X className="w-3.5 h-3.5" aria-hidden="true" /></button>
                   </div>
                   <textarea readOnly value={exportJson} rows={6}
                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-[10px] text-zinc-300 font-mono resize-y" />

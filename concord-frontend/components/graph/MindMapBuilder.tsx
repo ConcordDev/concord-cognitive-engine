@@ -201,7 +201,7 @@ export function MindMapBuilder() {
                 {active.nodes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
               </select>
               <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="label (optional)" className="w-24 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
-              <button onClick={addCrossLink} disabled={!linkFrom || !linkTo} className="text-zinc-600 hover:text-violet-300 disabled:opacity-30"><Plus className="w-3.5 h-3.5" /></button>
+              <button onClick={addCrossLink} disabled={!linkFrom || !linkTo} className="text-zinc-600 hover:text-violet-300 disabled:opacity-30" aria-label="Add cross-link"><Plus className="w-3.5 h-3.5" aria-hidden="true" /></button>
             </div>
             {linkError && <p className="mt-1 text-[10px] text-rose-400">{linkError}</p>}
           </div>

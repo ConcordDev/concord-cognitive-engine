@@ -646,7 +646,7 @@ function SurveyPanel() {
                     </select>
                     <input className={inputCls} value={q.prompt} onChange={e => patchCustomQ(q.localId, { prompt: e.target.value })} placeholder="Question prompt" />
                     {customQs.length > 1 && (
-                      <button onClick={() => removeCustomQ(q.localId)} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => removeCustomQ(q.localId)} className="text-gray-500 hover:text-red-400 shrink-0" aria-label={`Remove question ${qi + 1}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
                     )}
                   </div>
                   {['single', 'multi', 'rating'].includes(q.kind) && (

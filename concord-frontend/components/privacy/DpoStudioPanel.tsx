@@ -174,8 +174,8 @@ function InventoryTool() {
             )}
           >
             {r.category}
-            <button onClick={() => setRows((rr) => rr.filter((_, j) => j !== i))} className="opacity-60 hover:opacity-100">
-              <X className="w-2.5 h-2.5" />
+            <button onClick={() => setRows((rr) => rr.filter((_, j) => j !== i))} className="opacity-60 hover:opacity-100" aria-label={`Remove data item "${r.category}"`}>
+              <X className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           </span>
         ))}
@@ -266,7 +266,7 @@ function ConsentTool() {
         {rows.map((r, i) => (
           <div key={`${r.subject}-${i}`} className="flex items-center justify-between rounded-lg border border-white/5 bg-black/30 px-2.5 py-1.5">
             <span className="text-[11px] text-gray-200">{r.subject} · <span className="text-gray-400">{r.status}</span>{r.expiry ? <span className="text-gray-500"> · exp {r.expiry}</span> : null}</span>
-            <button onClick={() => setRows((rr) => rr.filter((_, j) => j !== i))} className="text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button onClick={() => setRows((rr) => rr.filter((_, j) => j !== i))} className="text-gray-500 hover:text-rose-400" aria-label={`Remove consent record for ${r.subject}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
           </div>
         ))}
       </div>
@@ -345,13 +345,13 @@ function DpiaTool() {
           placeholder={placeholder}
           className={cn(inputCls, 'flex-1 min-w-[140px]')}
         />
-        <button onClick={() => { if (draft.trim()) { setValues([...values, draft.trim()]); setDraft(''); } }} className={runBtnCls}><Plus className="w-3 h-3" /></button>
+        <button onClick={() => { if (draft.trim()) { setValues([...values, draft.trim()]); setDraft(''); } }} className={runBtnCls} aria-label={`Add ${label.toLowerCase()}`}><Plus className="w-3 h-3" aria-hidden="true" /></button>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {values.map((v, i) => (
           <span key={`${v}-${i}`} className="inline-flex items-center gap-1 rounded bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] text-gray-300">
             {v}
-            <button onClick={() => setValues(values.filter((_, j) => j !== i))} className="opacity-60 hover:opacity-100"><X className="w-2.5 h-2.5" /></button>
+            <button onClick={() => setValues(values.filter((_, j) => j !== i))} className="opacity-60 hover:opacity-100" aria-label={`Remove ${label.toLowerCase()} "${v}"`}><X className="w-2.5 h-2.5" aria-hidden="true" /></button>
           </span>
         ))}
       </div>
@@ -463,7 +463,7 @@ function BreachTool() {
         {types.map((t, i) => (
           <span key={`${t}-${i}`} className="inline-flex items-center gap-1 rounded bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-[11px] text-rose-300">
             {t}
-            <button onClick={() => setTypes(types.filter((_, j) => j !== i))} className="opacity-60 hover:opacity-100"><X className="w-2.5 h-2.5" /></button>
+            <button onClick={() => setTypes(types.filter((_, j) => j !== i))} className="opacity-60 hover:opacity-100" aria-label={`Remove compromised data type "${t}"`}><X className="w-2.5 h-2.5" aria-hidden="true" /></button>
           </span>
         ))}
       </div>

@@ -1526,8 +1526,8 @@ function QualityMetricsPanel() {
               <input type="checkbox" checked={row.required} onChange={(e) => updateRow(i, { required: e.target.checked })} />
               required
             </label>
-            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400">
-              <Trash2 className="h-3.5 w-3.5" />
+            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400" aria-label={`Remove field${row.name.trim() ? ` "${row.name.trim()}"` : ` ${i + 1}`}`}>
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
         ))}
@@ -1535,7 +1535,7 @@ function QualityMetricsPanel() {
 
       <div className="flex items-center gap-2">
         <button onClick={addRow} className="inline-flex items-center gap-1 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-zinc-600">
-          <Plus className="h-3.5 w-3.5" /> Add field
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add field
         </button>
         <button
           onClick={analyze}
@@ -1653,8 +1653,8 @@ function ActionAnalyticsPanel() {
               placeholder="duration ms"
               className="input-lattice w-24 text-xs"
             />
-            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400">
-              <Trash2 className="h-3.5 w-3.5" />
+            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400" aria-label={`Remove event${row.action.trim() ? ` "${row.action.trim()}"` : ` ${i + 1}`}`}>
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
         ))}
@@ -1662,7 +1662,7 @@ function ActionAnalyticsPanel() {
 
       <div className="flex items-center gap-2">
         <button onClick={addRow} className="inline-flex items-center gap-1 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-zinc-600">
-          <Plus className="h-3.5 w-3.5" /> Add event
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add event
         </button>
         <button
           onClick={analyze}
@@ -1809,8 +1809,8 @@ function SystemReflectionPanel() {
               <input type="checkbox" checked={row.success} onChange={(e) => updateRow(i, { success: e.target.checked })} />
               success
             </label>
-            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400">
-              <Trash2 className="h-3.5 w-3.5" />
+            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400" aria-label={`Remove sample${row.endpoint.trim() ? ` "${row.endpoint.trim()}"` : ` ${i + 1}`}`}>
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
         ))}
@@ -1818,7 +1818,7 @@ function SystemReflectionPanel() {
 
       <div className="flex items-center gap-2">
         <button onClick={addRow} className="inline-flex items-center gap-1 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-zinc-600">
-          <Plus className="h-3.5 w-3.5" /> Add sample
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add sample
         </button>
         <button
           onClick={analyze}

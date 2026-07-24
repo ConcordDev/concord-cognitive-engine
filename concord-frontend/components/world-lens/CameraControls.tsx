@@ -305,8 +305,8 @@ export default function CameraControls({
             <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed" aria-label="Previous track">
               <SkipBack className="w-3.5 h-3.5 text-gray-600" />
             </button>
-            <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed">
-              <Play className="w-3.5 h-3.5 text-gray-600" />
+            <button disabled className="p-1 rounded bg-white/5 cursor-not-allowed" aria-label="Play cinematic timeline (not yet wired)">
+              <Play className="w-3.5 h-3.5 text-gray-600" aria-hidden="true" />
             </button>
             <div className="flex-1 relative">
               <div className="h-1 rounded-full bg-white/10 overflow-hidden">

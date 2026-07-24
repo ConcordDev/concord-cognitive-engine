@@ -963,8 +963,8 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
               <input placeholder="Category" value={ckCategory} onChange={(e) => setCkCategory(e.target.value)}
                 className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button type="button" onClick={addChecklistItem} disabled={busy || !ckItem.trim()}
-                className="px-2.5 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg">
-                <Plus className="w-3.5 h-3.5" />
+                className="px-2.5 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg" aria-label="Add packing checklist item">
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
           </div>

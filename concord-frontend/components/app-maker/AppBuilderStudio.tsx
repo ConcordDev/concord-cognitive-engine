@@ -1387,7 +1387,7 @@ function QuestGraphEditor({ run }: SubProps) {
                     return (
                       <div key={e.id} className="flex items-center gap-1 text-[11px] bg-lattice-deep rounded px-1.5 py-1">
                         <span className="truncate flex-1">→ {to?.title || e.to}{e.label ? ` (${e.label})` : ''}</span>
-                        <button onClick={() => deleteEdge(e.id)} className="text-gray-600 hover:text-red-400"><XCircle className="w-3 h-3" /></button>
+                        <button onClick={() => deleteEdge(e.id)} className="text-gray-600 hover:text-red-400" aria-label={`Delete edge to ${to?.title || e.to}`}><XCircle className="w-3 h-3" aria-hidden="true" /></button>
                       </div>
                     );
                   })}
