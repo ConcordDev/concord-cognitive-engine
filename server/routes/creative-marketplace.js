@@ -168,11 +168,19 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
       }
     }
 
+    // Institutional (org-scoped) licensing — optional. When the caller
+    // supplies licenseeType:'org', purchaseArtifact() verifies buyerId is a
+    // real leader/officer of licenseeOrgId (live membership check) before
+    // debiting buyerId's own wallet; the license grant then covers every
+    // real member of that org. Omitting these fields is the unchanged
+    // default per-user purchase.
     const result = purchaseArtifact(db, {
       buyerId,
       artifactId: req.params.id,
       requestId: req.body.requestId,
       ip: req.ip,
+      licenseeType: req.body.licenseeType,
+      licenseeOrgId: req.body.licenseeOrgId,
     });
     res.status(result.ok ? 200 : 400).json(result);
   });

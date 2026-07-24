@@ -24,6 +24,7 @@ import { grantLicense as grantDtuLicense } from "./rights-enforcement.js";
 import { validatePricing as validateTierPricing, getTier as getLicenseTier } from "./license-tiers.js";
 import { getAncestorChain } from "./royalty-cascade.js";
 import { batchLookup } from "./_batch-lookup.js";
+import { getOrganization, getOrgMembers, getOrgsForUser } from "../lib/world-organizations.js";
 import {
   ARTIFACT_TYPES, CREATIVE_MARKETPLACE, CREATIVE_FEDERATION,
   CREATIVE_QUESTS, CREATIVE_LEADERBOARD, CREATOR_RIGHTS, LICENSE_TYPES,
@@ -57,6 +58,30 @@ function ensureTierPricingColumn(db) {
 }
 
 /**
+ * Idempotently ensure the org-scoped licensing columns exist on
+ * creative_usage_licenses. Called on every read/write path that touches
+ * them so older deployments (and hand-rolled test schemas built before
+ * migration 381) upgrade in place — same pattern as
+ * ensureTierPricingColumn above.
+ */
+function ensureLicenseeOrgColumns(db) {
+  try {
+    const cols = db.prepare("PRAGMA table_info(creative_usage_licenses)").all();
+    const names = new Set(cols.map((c) => c.name));
+    if (!names.has("licensee_type")) {
+      db.exec(
+        "ALTER TABLE creative_usage_licenses ADD COLUMN licensee_type TEXT NOT NULL DEFAULT 'user' CHECK (licensee_type IN ('user','org'))"
+      );
+    }
+    if (!names.has("licensee_org_id")) {
+      db.exec("ALTER TABLE creative_usage_licenses ADD COLUMN licensee_org_id TEXT");
+    }
+  } catch {
+    /* table might not exist yet — first-boot safe */
+  }
+}
+
+/**
  * Map our loose content type strings (music/art/code/...) to the
  * UPPERCASE content type keys the license-tiers module uses.
  */
@@ -74,6 +99,95 @@ function _tierKeyForType(type) {
   if (!type) return null;
   const normalized = String(type).toLowerCase();
   return CONTENT_TYPE_TO_TIER_KEY[normalized] || null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INSTITUTIONAL (ORG-SCOPED) LICENSING — minimal version, owner-approved
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// creative_usage_licenses (migration 381) gained licensee_type ('user'|'org')
+// + licensee_org_id. The purchase flow is UNCHANGED for money: the buyer's
+// own real wallet is always debited (see purchaseArtifact) — there is no
+// org wallet. What widens is only the resulting license row: it can grant
+// to an org, and any REAL member of that org then has access. Membership is
+// verified LIVE against world-organizations.js's in-memory graph every time
+// — never trusted from a client-supplied id, and never cached/replicated
+// onto a per-member row that could go stale as the roster changes.
+
+// Only these roles may spend their own wallet to buy an org-scoped license.
+// world-organizations.js already gates its own elevated actions (setMemberRole)
+// to leader/officer — org-scoped purchasing follows the same precedent
+// ("an officer's personal wallet pays for a purchase" per the owner's spec).
+const ORG_PURCHASE_ROLES = new Set(["leader", "officer"]);
+
+/**
+ * Verify that `userId` may spend their own wallet to buy a license on
+ * behalf of `orgId` — the org must be real and userId must hold a
+ * leader/officer role in it RIGHT NOW (live read of the in-memory roster,
+ * never trusted from caller input alone).
+ *
+ * @returns {{ ok: true, role: string } | { ok: false, error: string }}
+ */
+function _verifyOrgPurchaseAuthority(orgId, userId) {
+  if (!orgId) return { ok: false, error: "missing_licensee_org_id" };
+  const org = getOrganization(orgId);
+  if (!org) return { ok: false, error: "org_not_found" };
+
+  const members = getOrgMembers(orgId); // live roster — [{ userId, role }]
+  const membership = members.find((m) => m.userId === userId);
+  if (!membership) return { ok: false, error: "not_org_member" };
+  if (!ORG_PURCHASE_ROLES.has(membership.role)) {
+    return { ok: false, error: "insufficient_org_role", requiredRoles: [...ORG_PURCHASE_ROLES] };
+  }
+  return { ok: true, role: membership.role };
+}
+
+/**
+ * Canonical "does user X have access to artifact Y" check for the
+ * creative-marketplace rail. Returns true if X holds a direct per-user
+ * license, OR if X is a CURRENT member of an org that holds an org-scoped
+ * license for the artifact. Org membership is re-checked live on every call
+ * (server/lib/world-organizations.js#getOrgMembers) — a license granted to
+ * an org yesterday doesn't grant access to someone who joined that org
+ * today via a stale snapshot; it grants access because they are a member
+ * *now*.
+ *
+ * @param {object} db
+ * @param {object} opts
+ * @param {string} opts.userId
+ * @param {string} opts.artifactId
+ * @param {string} [opts.tier] — restrict to a specific license_type; when
+ *   omitted, ANY active license (any tier) counts as access.
+ * @returns {{ hasAccess: boolean, via?: 'personal'|'org', orgId?: string, tier?: string }}
+ */
+export function hasArtifactAccess(db, { userId, artifactId, tier } = {}) {
+  if (!userId || !artifactId) return { hasAccess: false };
+  ensureLicenseeOrgColumns(db);
+
+  // 1. Direct per-user license.
+  {
+    let sql = "SELECT license_type FROM creative_usage_licenses WHERE artifact_id = ? AND licensee_id = ? AND status = 'active'";
+    const params = [artifactId, userId];
+    if (tier) { sql += " AND license_type = ?"; params.push(tier); }
+    const personal = db.prepare(sql).get(...params);
+    if (personal) return { hasAccess: true, via: "personal", tier: personal.license_type };
+  }
+
+  // 2. Org-scoped licenses on this artifact — verify live membership.
+  let orgSql = "SELECT license_type, licensee_org_id FROM creative_usage_licenses WHERE artifact_id = ? AND status = 'active' AND licensee_type = 'org'";
+  const orgParams = [artifactId];
+  if (tier) { orgSql += " AND license_type = ?"; orgParams.push(tier); }
+  const orgLicenses = db.prepare(orgSql).all(...orgParams);
+
+  for (const lic of orgLicenses) {
+    if (!lic.licensee_org_id) continue;
+    const members = getOrgMembers(lic.licensee_org_id);
+    if (members.some((m) => m.userId === userId)) {
+      return { hasAccess: true, via: "org", orgId: lic.licensee_org_id, tier: lic.license_type };
+    }
+  }
+
+  return { hasAccess: false };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -272,8 +386,15 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
       return { ok: false, error: "parent_artifact_not_found", artifactId: parent.artifactId };
     }
 
-    // Creator of parent doesn't need a license to their own work
-    const hasLicense = licensedSet.has(parent.artifactId);
+    // Creator of parent doesn't need a license to their own work.
+    // The batched query above only covers direct per-user licenses (the
+    // common case, kept perf-optimized); fall back to the org-aware
+    // hasArtifactAccess() check (real, live org-membership lookup) only
+    // when the fast path didn't already find a personal license.
+    let hasLicense = licensedSet.has(parent.artifactId);
+    if (!hasLicense) {
+      hasLicense = hasArtifactAccess(db, { userId: creatorId, artifactId: parent.artifactId }).hasAccess;
+    }
     if (!hasLicense && parentArtifact.creator_id !== creatorId) {
       return {
         ok: false,
@@ -379,16 +500,46 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
  *   - Gen 2: 5.25%
  *   - ... halves each generation, floor 0.05%
  *
+ * Institutional (org-scoped) licensing — minimal, owner-approved version:
+ * pass `{ licenseeType: 'org', licenseeOrgId }` to have the resulting
+ * license grant to an ORG instead of just the purchasing user. The wallet
+ * debit is UNCHANGED — `buyerId`'s own real wallet still pays, exactly as
+ * a normal purchase would (no org wallet, no new billing entity). The
+ * purchasing user must be a REAL, CURRENT leader/officer of that org
+ * (verified live against server/lib/world-organizations.js — never trusted
+ * from the caller); every member of the org then has real access via
+ * hasArtifactAccess().
+ *
  * @param {object} db
  * @param {object} opts
  * @param {string} opts.buyerId
  * @param {string} opts.artifactId
+ * @param {'user'|'org'} [opts.licenseeType='user']
+ * @param {string} [opts.licenseeOrgId] — required when licenseeType='org'
  */
-export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip }) {
+export function purchaseArtifact(db, {
+  buyerId, artifactId, tier, requestId, ip,
+  licenseeType = "user", licenseeOrgId,
+}) {
   ensureTierPricingColumn(db);
+  ensureLicenseeOrgColumns(db);
 
   if (!buyerId) return { ok: false, error: "missing_buyer_id" };
   if (!artifactId) return { ok: false, error: "missing_artifact_id" };
+  if (licenseeType !== "user" && licenseeType !== "org") {
+    return { ok: false, error: "invalid_licensee_type" };
+  }
+
+  // Org-scoped purchase: verify the buyer's authority to spend on the org's
+  // behalf BEFORE doing anything else. This is a live read of the real
+  // in-memory org roster — a client-supplied orgId is never trusted on its
+  // own, and role (not mere membership) is required, matching the owner's
+  // "an officer's personal wallet pays" framing.
+  let orgAuthority = null;
+  if (licenseeType === "org") {
+    orgAuthority = _verifyOrgPurchaseAuthority(licenseeOrgId, buyerId);
+    if (!orgAuthority.ok) return orgAuthority;
+  }
 
   const artifact = db.prepare(
     "SELECT * FROM creative_artifacts WHERE id = ? AND marketplace_status = 'active'"
@@ -450,6 +601,16 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
     "SELECT id, license_type FROM creative_usage_licenses WHERE artifact_id = ? AND licensee_id = ? AND status = 'active' AND license_type = ?"
   ).get(artifactId, buyerId, resolvedTier);
   if (existingLicense) return { ok: false, error: "already_licensed", tier: resolvedTier };
+
+  // For an org-scoped purchase, also block a duplicate grant to the SAME
+  // org at the same tier (regardless of which officer buys it) — otherwise
+  // every officer could separately pay for the same org-wide access.
+  if (licenseeType === "org") {
+    const existingOrgLicense = db.prepare(
+      "SELECT id FROM creative_usage_licenses WHERE artifact_id = ? AND licensee_type = 'org' AND licensee_org_id = ? AND status = 'active' AND license_type = ?"
+    ).get(artifactId, licenseeOrgId, resolvedTier);
+    if (existingOrgLicense) return { ok: false, error: "org_already_licensed", tier: resolvedTier };
+  }
 
   // Exclusive is still a one-holder-ever constraint
   if (resolvedTier === "exclusive" || artifact.license_type === "exclusive") {
@@ -556,6 +717,18 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
     const txBalanceCheck = validateBalance(db, buyerId, price);
     if (!txBalanceCheck.ok) throw new Error(`insufficient_balance:${txBalanceCheck.balance}:${price}`);
 
+    // Re-verify org purchase authority inside the transaction too — same
+    // race-condition-guard shape as the balance/exclusive re-checks below.
+    // world-organizations.js is an in-memory, synchronous, single-process
+    // store, so there's no interleaving within this transaction callback;
+    // this re-check exists so the membership verification and the
+    // license-row insert are unmistakably one atomic unit, not a check
+    // followed by a separate un-atomic write.
+    if (licenseeType === "org") {
+      const txOrgAuthority = _verifyOrgPurchaseAuthority(licenseeOrgId, buyerId);
+      if (!txOrgAuthority.ok) throw new Error(`org_authority_lost:${txOrgAuthority.error}`);
+    }
+
     // Re-check exclusive availability inside transaction (race condition guard)
     // Two users clicking "Buy" at the same millisecond: second one gets "already sold"
     if (artifact.license_type === "exclusive") {
@@ -586,7 +759,13 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       net: remainingAfterFees,
       status: "complete",
       refId: `creative:${purchaseId}`,
-      metadata: { batchId, role: "creative_purchase", artifactId, purchaseId },
+      metadata: {
+        batchId, role: "creative_purchase", artifactId, purchaseId,
+        // Auditability: an org-scoped purchase is still paid by buyerId's
+        // own wallet (unchanged debit above) — this just records, honestly,
+        // that it was made on behalf of an org.
+        licenseeType, licenseeOrgId: licenseeType === "org" ? licenseeOrgId : null,
+      },
       requestId, ip,
     });
 
@@ -706,17 +885,31 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
     //    (creative-marketplace derivative gate AND rights-enforcement
     //    checkAccess / downloadGuard / streamingGuard) sees the
     //    entitlement, regardless of which one it queries.
+    //    licensee_id is ALWAYS the purchasing user (buyerId) — even for an
+    //    org-scoped grant, so the row honestly records WHO paid; the org
+    //    grant is layered on top via licensee_type/licensee_org_id, and
+    //    hasArtifactAccess() is what widens access to every real org member.
     db.prepare(`
       INSERT INTO creative_usage_licenses (
         id, artifact_id, licensee_id, license_type,
-        status, purchase_price, purchase_id, granted_at
-      ) VALUES (?, ?, ?, ?, 'active', ?, ?, ?)
-    `).run(uid("cul"), artifactId, buyerId, resolvedTier, price, purchaseId, now);
+        status, purchase_price, purchase_id, granted_at,
+        licensee_type, licensee_org_id
+      ) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+    `).run(
+      uid("cul"), artifactId, buyerId, resolvedTier, price, purchaseId, now,
+      licenseeType, licenseeType === "org" ? licenseeOrgId : null,
+    );
 
     // Mirror into dtu_licenses (the rights-enforcement table). Using the
     // creative_artifact id as dtu_id here — they are the same identity
     // in the DTU lattice. content_type is normalized to lowercase to
     // match the TIER_HIERARCHY map in rights-enforcement.js.
+    // NOTE: dtu_licenses has no org concept (schema is per-user only) — it
+    // deliberately mirrors ONLY the purchasing buyerId, same as a personal
+    // purchase. Org-wide access is resolved dynamically at check-time via
+    // hasArtifactAccess() against the LIVE org roster (creative_usage_licenses
+    // is authoritative for org grants); replicating a static row per current
+    // member here would go stale the moment the roster changes.
     try {
       grantDtuLicense(db, {
         dtuId: artifactId,
@@ -790,6 +983,8 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
         total: totalCascade,
         payments: cascadePayments,
       },
+      licenseeType,
+      licenseeOrgId: licenseeType === "org" ? licenseeOrgId : null,
       batchId,
     };
   } catch (err) {
@@ -799,6 +994,9 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
     }
     if (err.message === "exclusive_already_sold") {
       return { ok: false, error: "exclusive_license_already_held" };
+    }
+    if (err.message?.startsWith("org_authority_lost:")) {
+      return { ok: false, error: err.message.split(":")[1] || "org_authority_lost" };
     }
     console.error("[economy] purchase_failed:", err.message);
     return { ok: false, error: "purchase_failed" };
@@ -1259,10 +1457,15 @@ export function rateArtifact(db, { artifactId, raterId, rating, review }) {
   if (!raterId) return { ok: false, error: "missing_rater_id" };
   if (!rating || rating < 1 || rating > 5) return { ok: false, error: "invalid_rating", validRange: "1-5" };
 
-  // Check rater has license (purchased the artifact)
-  const hasLicense = db.prepare(
-    "SELECT id FROM creative_usage_licenses WHERE artifact_id = ? AND licensee_id = ?"
-  ).get(artifactId, raterId);
+  // Check rater has license (purchased the artifact) — either directly, or
+  // via CURRENT membership in an org that holds an org-scoped license (real,
+  // live membership check — see hasArtifactAccess above).
+  const hasLicense = Boolean(
+    db.prepare(
+      "SELECT id FROM creative_usage_licenses WHERE artifact_id = ? AND licensee_id = ?"
+    ).get(artifactId, raterId)
+    || hasArtifactAccess(db, { userId: raterId, artifactId }).hasAccess,
+  );
 
   if (!hasLicense) return { ok: false, error: "must_purchase_before_rating" };
 
@@ -1489,27 +1692,79 @@ export function getCreativeQuestCompletions(db, { userId, federationTier }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Get all active licenses for an artifact.
+ * Get all active licenses for an artifact — this is the creator-facing
+ * sales view. An org-scoped sale (licensee_type='org') is enriched with the
+ * org's real (live) name and never rendered as an indistinguishable
+ * individual sale — the row honestly shows it was "purchased by X on
+ * behalf of <org>", per the owner's honesty requirement.
  */
 export function getArtifactLicenses(db, artifactId) {
+  ensureLicenseeOrgColumns(db);
   const licenses = db.prepare(
     "SELECT * FROM creative_usage_licenses WHERE artifact_id = ? ORDER BY granted_at DESC"
   ).all(artifactId);
-  return { ok: true, licenses };
+
+  const enriched = licenses.map((lic) => {
+    if (lic.licensee_type !== "org" || !lic.licensee_org_id) {
+      return { ...lic, purchasedOnBehalfOf: null };
+    }
+    const org = getOrganization(lic.licensee_org_id);
+    return {
+      ...lic,
+      purchasedOnBehalfOf: {
+        orgId: lic.licensee_org_id,
+        orgName: org?.name || null,
+        purchasedByUserId: lic.licensee_id,
+      },
+    };
+  });
+
+  return { ok: true, licenses: enriched };
 }
 
 /**
- * Get all licenses held by a user.
+ * Get all licenses held by a user — direct per-user purchases PLUS any
+ * org-scoped license granted to an org this user is a CURRENT member of
+ * (live membership lookup, not a stale snapshot). Org-derived entries are
+ * tagged `accessVia: 'org'` so a caller/UI never conflates "I bought this"
+ * with "my org bought this and I have access."
  */
 export function getUserLicenses(db, userId) {
-  const licenses = db.prepare(`
+  ensureLicenseeOrgColumns(db);
+  const personal = db.prepare(`
     SELECT l.*, a.title, a.type, a.creator_id
     FROM creative_usage_licenses l
     JOIN creative_artifacts a ON a.id = l.artifact_id
     WHERE l.licensee_id = ?
     ORDER BY l.granted_at DESC
-  `).all(userId);
-  return { ok: true, licenses };
+  `).all(userId).map((lic) => ({ ...lic, accessVia: "personal" }));
+
+  const memberOrgs = getOrgsForUser(userId); // [{ orgId, role }]
+  let orgDerived = [];
+  if (memberOrgs.length > 0) {
+    const orgIds = memberOrgs.map((o) => o.orgId);
+    const placeholders = orgIds.map(() => "?").join(",");
+    const orgRows = db.prepare(`
+      SELECT l.*, a.title, a.type, a.creator_id
+      FROM creative_usage_licenses l
+      JOIN creative_artifacts a ON a.id = l.artifact_id
+      WHERE l.licensee_type = 'org' AND l.status = 'active'
+        AND l.licensee_org_id IN (${placeholders})
+      ORDER BY l.granted_at DESC
+    `).all(...orgIds);
+    orgDerived = orgRows.map((lic) => {
+      const org = getOrganization(lic.licensee_org_id);
+      return {
+        ...lic,
+        accessVia: "org",
+        orgId: lic.licensee_org_id,
+        orgName: org?.name || null,
+        purchasedByUserId: lic.licensee_id,
+      };
+    });
+  }
+
+  return { ok: true, licenses: [...personal, ...orgDerived] };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
