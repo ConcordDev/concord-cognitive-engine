@@ -1,3 +1,8 @@
+// @sync-fs-ok: `writePromotedContent` writes the four world-content files
+// (meta/npcs/factions/lore) as one coherent set for a low-frequency, admin-
+// initiated promotion — the same shape as `foundry-publisher.js`'s annotated
+// publish-time write. Sync keeps the four writes ordered and un-interleaved
+// with any other promotion targeting the same directory.
 // server/lib/foundry/promote.js
 //
 // Foundry — Promotion (closes the compiler.js TODO: "'Promotion' to a

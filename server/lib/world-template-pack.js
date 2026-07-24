@@ -1,3 +1,9 @@
+// @sync-fs-ok: one-shot, operator-initiated pack export/import (also driven
+// by `scripts/world-template-pack.mjs`), same class as `dtu-portability.js`'s
+// annotated `exportUserCorpus`. The import path additionally depends on
+// ordered writes for its rollback: it tracks each written file so a mid-loop
+// failure can unlink exactly what it created rather than leaving a
+// half-written world directory behind.
 // server/lib/world-template-pack.js
 //
 // World Template Pack — package an EXISTING authored sub-world

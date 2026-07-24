@@ -1,3 +1,8 @@
+// @sync-fs-ok: `loadPluginsFromDisk` is the boot-time installed/ scan
+// (single caller, `server.js`'s startup path) and its contract is a
+// SYNCHRONOUS return — see its own docstring below. Only per-plugin
+// activation is async; the discovery reads are boot-ordering, not
+// per-request work.
 /**
  * Plugin Loader — Core Lifecycle Manager
  *

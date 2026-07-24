@@ -23,6 +23,7 @@
  */
 
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile, execFileSync } from "node:child_process";
@@ -36,20 +37,25 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 // `stale: true` so a caller can't mistake a months-old grade for a fresh one.
 const STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
-function readJsonArtifact(relPath) {
+// Artifact reads are async (`fs/promises`): this module is reached from a
+// live HTTP handler (`GET /api/admin/audit-export`) and some artifacts —
+// `audit/macro-depth.json` in particular — are multi-megabyte, so a sync
+// read + JSON.parse would block the event loop for every other request
+// while an admin downloads their evidence pack. Awaiting a missing file's
+// ENOENT also replaces the old existsSync-then-read pair, closing the
+// TOCTOU window between the two calls.
+async function readJsonArtifact(relPath) {
   const abs = path.join(REPO_ROOT, relPath);
-  if (!fs.existsSync(abs)) {
-    return { available: false, reason: "not_generated", source: relPath };
-  }
   let stat;
   try {
-    stat = fs.statSync(abs);
+    stat = await fsp.stat(abs);
   } catch (e) {
+    if (e?.code === "ENOENT") return { available: false, reason: "not_generated", source: relPath };
     return { available: false, reason: "stat_failed", source: relPath, error: String(e?.message || e) };
   }
   let data;
   try {
-    data = JSON.parse(fs.readFileSync(abs, "utf8"));
+    data = JSON.parse(await fsp.readFile(abs, "utf8"));
   } catch (e) {
     return { available: false, reason: "parse_failed", source: relPath, error: String(e?.message || e) };
   }
@@ -67,11 +73,10 @@ function readJsonArtifact(relPath) {
   };
 }
 
-function fileFreshness(relPath) {
+async function fileFreshness(relPath) {
   const abs = path.join(REPO_ROOT, relPath);
-  if (!fs.existsSync(abs)) return { available: false, reason: "not_generated", source: relPath };
   try {
-    const stat = fs.statSync(abs);
+    const stat = await fsp.stat(abs);
     const ageMs = Date.now() - stat.mtimeMs;
     return {
       available: true,
@@ -83,6 +88,7 @@ function fileFreshness(relPath) {
       stale: ageMs > STALE_THRESHOLD_MS,
     };
   } catch (e) {
+    if (e?.code === "ENOENT") return { available: false, reason: "not_generated", source: relPath };
     return { available: false, reason: "stat_failed", source: relPath, error: String(e?.message || e) };
   }
 }
@@ -104,10 +110,12 @@ function countFiles(globDir, matcher) {
 }
 
 /** Detector suite section — reads the committed BASELINE.json + REPORT.md freshness. */
-function buildDetectorsSection() {
-  const baseline = readJsonArtifact("audit/detectors/BASELINE.json");
-  const reportJson = readJsonArtifact("audit/detectors/REPORT.json"); // CI-only, often absent locally
-  const reportMd = fileFreshness("audit/detectors/REPORT.md");
+async function buildDetectorsSection() {
+  const [baseline, reportJson, reportMd] = await Promise.all([
+    readJsonArtifact("audit/detectors/BASELINE.json"),
+    readJsonArtifact("audit/detectors/REPORT.json"), // CI-only, often absent locally
+    fileFreshness("audit/detectors/REPORT.md"),
+  ]);
 
   return {
     baseline: baseline.available
@@ -140,9 +148,11 @@ function buildDetectorsSection() {
 }
 
 /** Macro-depth grade section — default (generous) + honest floor. */
-function buildMacroDepthSection() {
-  const gen = readJsonArtifact("audit/macro-depth.json");
-  const honest = readJsonArtifact("audit/macro-depth-honest.json");
+async function buildMacroDepthSection() {
+  const [gen, honest] = await Promise.all([
+    readJsonArtifact("audit/macro-depth.json"),
+    readJsonArtifact("audit/macro-depth-honest.json"),
+  ]);
   const shrink = (r) =>
     r.available
       ? {
@@ -166,9 +176,11 @@ function buildMacroDepthSection() {
 }
 
 /** UX-polish grade section — default + honest. */
-function buildUxPolishSection() {
-  const gen = readJsonArtifact("audit/ux-polish.json");
-  const honest = readJsonArtifact("audit/ux-polish-honest.json");
+async function buildUxPolishSection() {
+  const [gen, honest] = await Promise.all([
+    readJsonArtifact("audit/ux-polish.json"),
+    readJsonArtifact("audit/ux-polish-honest.json"),
+  ]);
   const shrink = (r) =>
     r.available
       ? {
@@ -191,8 +203,8 @@ function buildUxPolishSection() {
 }
 
 /** Doc-claims drift section — reads the persisted status file if present. */
-function buildDocClaimsSection() {
-  const r = readJsonArtifact("audit/doc-claims-status.json");
+async function buildDocClaimsSection() {
+  const r = await readJsonArtifact("audit/doc-claims-status.json");
   if (!r.available) {
     return {
       available: false,
@@ -296,12 +308,13 @@ export async function buildAuditExport({ includeLiveLoc = true } = {}) {
   const repo = buildRepoMetaSection();
   const loc = includeLiveLoc ? await tryLiveCountLoc() : { available: false, reason: "skipped" };
 
-  const sections = {
-    detectors: buildDetectorsSection(),
-    macroDepth: buildMacroDepthSection(),
-    uxPolish: buildUxPolishSection(),
-    docClaims: buildDocClaimsSection(),
-  };
+  const [detectors, macroDepth, uxPolish, docClaims] = await Promise.all([
+    buildDetectorsSection(),
+    buildMacroDepthSection(),
+    buildUxPolishSection(),
+    buildDocClaimsSection(),
+  ]);
+  const sections = { detectors, macroDepth, uxPolish, docClaims };
 
   // Overall bundle-level staleness: true if ANY available section is stale,
   // so a viewer can't miss it by only reading the top-level flag.

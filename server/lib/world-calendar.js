@@ -1,3 +1,7 @@
+// @sync-fs-ok: lazy, memoized per-world calendar.json load (`_calendarCache`)
+// — the same cached-content-load pattern as `world-flavor.js`'s loops.json,
+// which carries the same annotation. One small read per world per process,
+// never a per-request read.
 // server/lib/world-calendar.js
 //
 // Per-world calendar overrides for the Layer 7 day/night clock.
