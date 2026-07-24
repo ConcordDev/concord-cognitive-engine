@@ -1512,6 +1512,28 @@ registerHeartbeat("aerial-traffic-cycle", {
   handler: ({ db, state } = {}) => runAerialTrafficCycle({ db, state, io: REALTIME?.io }),
 });
 
+// V1.2 Wave A ("Society & Presence") — spontaneous gathering broadcast. The
+// real detection logic (`spontaneousGatherings`, server/lib/city-presence.js)
+// already existed and was already reachable via the `world.gatherings` macro
+// — but only as a pull: a client had to already be looking at the
+// EventsGatherings panel, and only got a snapshot once on mount. This
+// schedules that same real, tested clustering (>= N real co-located players
+// in a real 50m cell, honest-empty when nobody's actually clustered) and
+// broadcasts a genuine "gathering happening near you" signal to the room
+// for the world it was detected in — never a global broadcast, never a
+// fabricated headcount. Frequency 4 (~1 min); an internal per-gathering
+// cooldown (server/emergent/gathering-broadcast-cycle.js's
+// REBROADCAST_COOLDOWN_MS, default 3 min) throttles repeat broadcasts of a
+// still-active cluster. `scope: 'global'`: spontaneousGatherings scans the
+// whole in-memory presence map itself (same reasoning as aerial-traffic-
+// cycle just above). Kill-switch: CONCORD_GATHERING_DETECTOR=0.
+import { runGatheringBroadcastCycle } from "./emergent/gathering-broadcast-cycle.js";
+registerHeartbeat("gathering-broadcast-cycle", {
+  frequency: 4,
+  scope: "global",
+  handler: ({ db, state } = {}) => runGatheringBroadcastCycle({ db, state, io: REALTIME?.io }),
+});
+
 // Phase 11 (Item 12) — federation outbox pump. Drains pending
 // outbound ActivityPub activities. Opt-in via CONCORD_ACTIVITYPUB=true
 // so local-first installs don't make outbound HTTP fanouts they

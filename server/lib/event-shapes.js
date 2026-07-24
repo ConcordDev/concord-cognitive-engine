@@ -272,6 +272,19 @@ export const EVENT_SHAPES = Object.freeze({
     optional: ["routeSource"],
   },
 
+  // V1.2 Wave A — spontaneous gathering broadcast. Emitted by
+  // server/emergent/gathering-broadcast-cycle.js when real, currently
+  // co-located players cross the gathering threshold (see
+  // spontaneousGatherings, server/lib/city-presence.js). `gatherings` is the
+  // same Gathering[] shape the `world.gatherings` macro / EventsGatherings
+  // panel already consume ({ id, location, playerCount, description }) —
+  // never a fabricated headcount, never emitted when the array would be
+  // empty (the cycle skips the broadcast entirely in that case).
+  "world:gathering-detected": {
+    required: ["worldId", "gatherings"],
+    optional: [],
+  },
+
   // Sprint B Phase 9 — NPC visible sentience snapshot. Emitted by the
   // npc-perception-snapshot heartbeat (frequency 8). Drives frontend
   // head-turns, posture mirroring, and mood bias. The renderer
