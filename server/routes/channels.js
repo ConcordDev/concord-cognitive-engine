@@ -89,7 +89,16 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
       });
     }
 
-    // Emit WebSocket event for real-time UI updates
+    // Emit WebSocket event for real-time UI updates.
+    // DET-C batch 10 (2026-07-24): this broadcast (and its Discord/email
+    // siblings below) currently has zero frontend consumers — there is no
+    // channel-linking or inbound-message UI anywhere in concord-frontend
+    // for the external Telegram/Discord/email bridge at all, so there's
+    // nothing that could subscribe yet. Real backend feature, real UI gap
+    // (not a federation-outbound event — that label on this finding was
+    // stale/wrong). See server/tests/invariants/emit-subscribe-pairing.
+    // test.js's KNOWN_DEAD_BASELINE entry for "channel:inbound" for the
+    // full triage.
     if (realtimeEmit && routeResult.ok) {
       realtimeEmit("channel:inbound", {
         channel: "telegram",

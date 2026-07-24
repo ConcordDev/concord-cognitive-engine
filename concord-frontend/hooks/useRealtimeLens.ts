@@ -26,7 +26,18 @@ interface UseRealtimeLensResult {
   clearAlerts: () => void;
 }
 
-// Maps lens domain to WebSocket event names
+// Maps lens domain to WebSocket event names. A domain with no entry here
+// falls back to a single computed `${domain}:update` event (see the
+// `useMemo` below) — that's how 'chat' and 'graph' get wired without an
+// explicit map line: app/lenses/chat/page.tsx and app/lenses/graph/page.tsx
+// call useRealtimeLens('chat') / useRealtimeLens('graph'), which resolves
+// to socket.on('chat:update', ...) / socket.on('graph:update', ...) at
+// runtime. Both are real, server-emitted events (server/routes/chat.js,
+// server/server.js) — but because the event name here is a template
+// literal, not a string constant, static scanners (dead-event-listener-
+// detector.js, server/tests/invariants/emit-subscribe-pairing.test.js)
+// can't trace the pairing and flag both as dead. Confirmed false positive,
+// not a real gap — DET-C batch 10 (2026-07-24).
 const DOMAIN_EVENTS: Record<string, string[]> = {
   finance: ['finance:ticker', 'finance:market_update', 'finance:alert'],
   trades: ['finance:ticker', 'finance:market_update'],
