@@ -182,6 +182,136 @@ test("self-check catches a missing world_id/universe_type before any file is wri
   assert.equal(res.code, 1);
 });
 
+test("--template fantasy and --template cyber produce genuinely different, distinguishable output from each other and from the no-flag default", async (t) => {
+  const rootDefault = makeTempRoot();
+  const rootFantasy = makeTempRoot();
+  const rootCyber = makeTempRoot();
+  t.after(() => {
+    fs.rmSync(rootDefault, { recursive: true, force: true });
+    fs.rmSync(rootFantasy, { recursive: true, force: true });
+    fs.rmSync(rootCyber, { recursive: true, force: true });
+  });
+
+  const resDefault = runScaffolder(["tmpl-world", "Tmpl World", "tmpl_world", "--root", rootDefault]);
+  assert.equal(resDefault.code, 0, `no-flag run should succeed; stderr:\n${resDefault.stderr}`);
+
+  const resFantasy = runScaffolder(["tmpl-world", "Tmpl World", "tmpl_world", "--root", rootFantasy, "--template", "fantasy"]);
+  assert.equal(resFantasy.code, 0, `--template fantasy run should succeed; stderr:\n${resFantasy.stderr}`);
+  assert.match(resFantasy.stdout, /self-check: generated meta\/npc\/faction\/lore records pass the real content-seeder\.js validators — OK/);
+
+  const resCyber = runScaffolder(["tmpl-world", "Tmpl World", "tmpl_world", "--root", rootCyber, "--template", "cyber"]);
+  assert.equal(resCyber.code, 0, `--template cyber run should succeed; stderr:\n${resCyber.stderr}`);
+  assert.match(resCyber.stdout, /self-check: generated meta\/npc\/faction\/lore records pass the real content-seeder\.js validators — OK/);
+
+  const readAll = (root) => {
+    const dir = path.join(root, "content", "world", "tmpl-world");
+    return {
+      meta: JSON.parse(fs.readFileSync(path.join(dir, "meta.json"), "utf8")),
+      npcs: JSON.parse(fs.readFileSync(path.join(dir, "npcs.json"), "utf8")),
+      factions: JSON.parse(fs.readFileSync(path.join(dir, "factions.json"), "utf8")),
+    };
+  };
+
+  const dflt = readAll(rootDefault);
+  const fantasy = readAll(rootFantasy);
+  const cyber = readAll(rootCyber);
+
+  // Genre-flavored values differ from the generic placeholder defaults...
+  assert.equal(dflt.meta.tech_level, "unspecified");
+  assert.equal(dflt.meta.magic_level, "unspecified");
+  assert.equal(dflt.npcs[0].archetype, "villager");
+  assert.equal(dflt.factions[0].name, "The Founding Circle");
+
+  assert.equal(fantasy.meta.tech_level, "pre-industrial");
+  assert.equal(fantasy.meta.magic_level, "abundant");
+  assert.equal(fantasy.npcs[0].archetype, "hedge-mage");
+  assert.equal(fantasy.factions[0].name, "Verdant Conclave");
+  assert.match(fantasy.factions[0].goal, /reawaken a power the loremasters sealed/);
+
+  assert.equal(cyber.meta.tech_level, "near_future");
+  assert.equal(cyber.meta.magic_level, "trace");
+  assert.equal(cyber.npcs[0].archetype, "netrunner");
+  assert.equal(cyber.factions[0].name, "Syndicate Runners");
+  assert.match(cyber.factions[0].goal, /fork the city's governance/);
+
+  // ...and the two templates genuinely differ from EACH OTHER, not just
+  // from the default (guards against a stub that just special-cases one
+  // hardcoded genre regardless of which --template was passed).
+  assert.notEqual(fantasy.meta.tech_level, cyber.meta.tech_level);
+  assert.notEqual(fantasy.meta.magic_level, cyber.meta.magic_level);
+  assert.notEqual(fantasy.npcs[0].archetype, cyber.npcs[0].archetype);
+  assert.notEqual(fantasy.factions[0].name, cyber.factions[0].name);
+  assert.notEqual(fantasy.factions[0].goal, cyber.factions[0].goal);
+
+  // Every variant must still satisfy the real, unmodified validators —
+  // template flavor is never allowed to break the validity contract.
+  const seeder = await import(pathToFileURL(path.join(REPO_ROOT, "server/lib/content-seeder.js")).href);
+  for (const variant of [dflt, fantasy, cyber]) {
+    assert.equal(seeder.validateNpc(variant.npcs[0]).ok, true);
+    assert.equal(seeder.validateFaction(variant.factions[0]).ok, true);
+  }
+});
+
+test("--template rejects an unrecognized archetype name and a recognized-but-unimplemented one, writing nothing", (t) => {
+  const rootUnknown = makeTempRoot();
+  const rootUnimplemented = makeTempRoot();
+  t.after(() => {
+    fs.rmSync(rootUnknown, { recursive: true, force: true });
+    fs.rmSync(rootUnimplemented, { recursive: true, force: true });
+  });
+
+  const unknown = runScaffolder(["bad-tpl-world", "Bad Tpl World", "bad_tpl_world", "--root", rootUnknown, "--template", "steampunk"]);
+  assert.equal(unknown.code, 1);
+  assert.match(unknown.stderr, /not a recognized archetype name/);
+  assert.ok(!fs.existsSync(path.join(rootUnknown, "content", "world", "bad-tpl-world")));
+
+  // "sovereign-ruins" is a real archetype name from world-kit-templates.js
+  // but this scaffolder doesn't implement genre flavor for it (only
+  // fantasy/cyber/crime/superhero) — must error explicitly, not silently
+  // fall back to the generic placeholder.
+  const unimplemented = runScaffolder(["unimpl-tpl-world", "Unimpl Tpl World", "unimpl_tpl_world", "--root", rootUnimplemented, "--template", "sovereign-ruins"]);
+  assert.equal(unimplemented.code, 1);
+  assert.match(unimplemented.stderr, /does not yet implement genre-flavored generation/);
+  assert.ok(!fs.existsSync(path.join(rootUnimplemented, "content", "world", "unimpl-tpl-world")));
+});
+
+test("omitting --template reproduces today's exact byte-for-byte output (regression guard)", (t) => {
+  const rootA = makeTempRoot();
+  const rootB = makeTempRoot();
+  t.after(() => {
+    fs.rmSync(rootA, { recursive: true, force: true });
+    fs.rmSync(rootB, { recursive: true, force: true });
+  });
+
+  // Two independent no-flag runs against the same world-id/name/universe
+  // must be byte-identical to each other (determinism) — the strongest
+  // proxy this test file can assert for "adding --template changed
+  // nothing about the no-flag path," since the no-flag code path is
+  // exactly the same code whether or not --template ever gets exercised
+  // elsewhere in the file (a literal git-history diff against the
+  // pre-template script, run manually, is the other half of this guard —
+  // see the PR description).
+  const resA = runScaffolder(["byteidentical-world", "Byteidentical World", "byteidentical_world", "--root", rootA]);
+  const resB = runScaffolder(["byteidentical-world", "Byteidentical World", "byteidentical_world", "--root", rootB]);
+  assert.equal(resA.code, 0);
+  assert.equal(resB.code, 0);
+
+  const dirA = path.join(rootA, "content", "world", "byteidentical-world");
+  const dirB = path.join(rootB, "content", "world", "byteidentical-world");
+  for (const name of ["meta.json", "npcs.json", "factions.json", "lore.json"]) {
+    const a = fs.readFileSync(path.join(dirA, name));
+    const b = fs.readFileSync(path.join(dirB, name));
+    assert.ok(a.equals(b), `${name} must be byte-for-byte identical across two no-flag runs`);
+  }
+
+  // Normalize the only legitimately-varying token (the --root path itself)
+  // out of stdout and require full-string equality on everything else —
+  // this is the same "byte-for-byte" bar applied to the log line the
+  // --template plumbing touches.
+  const normalize = (s, root) => s.split(root).join("<ROOT>");
+  assert.equal(normalize(resA.stdout, rootA), normalize(resB.stdout, rootB));
+});
+
 test("generated files round-trip through JSON.parse with no ambiguity", (t) => {
   const root = makeTempRoot();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

@@ -24,7 +24,10 @@ const SECRETS = [
 ];
 
 // Occupation pools by a coarse world flavor (falls back to 'standard').
-const OCCUPATIONS = {
+// Exported (in addition to being used internally by generateNpcs) so other
+// tools — e.g. scripts/scaffold-world.mjs's --template flag — can draw
+// genre-flavored occupation text without reimplementing this table.
+export const OCCUPATIONS = {
   standard: ["archivist","trader","guard","healer","scholar","hunter","cook","smith","courier","tinker","farmer","scribe"],
   cyber: ["netrunner","fixer","ripperdoc","data-broker","drone-tech","synth-dealer","corpo clerk","street medic"],
   crime: ["bagman","fence","lookout","enforcer","numbers-runner","getaway driver","forger","informant"],
@@ -148,7 +151,9 @@ export function generateNpcs(bible, count, { startIndex = 0, levelRange = [2, 30
 // the rich hand-authored faction shape (motto/goal/values/fears/visual) so the
 // generated rows read like the authored ones and pass validateFaction.
 
-const FACTION_NAME = {
+// Exported alongside OCCUPATIONS for the same reason — reused by
+// scripts/scaffold-world.mjs's --template flag instead of a duplicated table.
+export const FACTION_NAME = {
   standard: {
     a: ["Order", "Covenant", "Circle", "Concord", "Assembly", "Charter", "Accord", "League"],
     b: ["Wardens", "Keepers", "Stewards", "Seekers", "Hands", "Voices", "Witnesses", "Heirs"],
@@ -181,7 +186,8 @@ const FACTION_MOTTO = [
   "We answer the silence.", "The map is not the land.", "Bend, but never break.",
   "We keep what others discard.",
 ];
-const FACTION_GOAL = {
+// Exported alongside OCCUPATIONS/FACTION_NAME for the same reason.
+export const FACTION_GOAL = {
   standard: ["consolidate the splintered districts under one accord", "preserve the old charters against erasure", "broker peace between the rival houses on their own terms"],
   cyber: ["fork the city's governance into something they alone can audit", "free the subnets from corporate metering", "trade in the secrets the grid was built to bury"],
   crime: ["own the routes nobody else dares run", "launder the district's grief into leverage", "settle an old debt the city pretends it forgot"],

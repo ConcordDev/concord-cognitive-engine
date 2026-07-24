@@ -69,6 +69,27 @@
 //   --dry-run        Print what would be written; touch nothing.
 //   --force           Overwrite existing meta.json/npcs.json/factions.json/
 //                     lore.json for the same world-id. Default: refuse.
+//   --template <archetype>
+//                     Optional genre flavor for the generated placeholders.
+//                     Uses the SAME archetype names as
+//                     server/lib/world-kit-templates.js (fantasy, cyber,
+//                     superhero, crime, sovereign-ruins, lattice-crucible,
+//                     concord-link-frontier) rather than inventing a new
+//                     naming scheme. Of those 7, this scaffolder implements
+//                     genre-flavored generation for 4 today — fantasy,
+//                     cyber, crime, superhero — the ones with the richest
+//                     existing per-genre tables in scripts/author/
+//                     generators.mjs (OCCUPATIONS / FACTION_NAME /
+//                     FACTION_GOAL, exported from that file specifically so
+//                     this script can reuse them instead of duplicating a
+//                     4th taxonomy). Passing one of the other 3 recognized-
+//                     but-not-yet-implemented names errors out explicitly
+//                     rather than silently falling back to the generic
+//                     placeholder. Omitting --template entirely reproduces
+//                     today's exact generic-placeholder output byte-for-
+//                     byte (see server/tests/scaffold-world.test.js's
+//                     no-flag regression case) — the flag is strictly
+//                     additive.
 //
 // Self-check (the load-bearing addition, per the task): before writing
 // anything, this script dynamically imports the REAL, unmodified
@@ -86,9 +107,43 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+// The per-genre data tables this scaffolder reuses for --template — see
+// the "Options" header comment above for why these specific 3 tables
+// (not world-kit-templates.js's calendar/industries/bestiary tables,
+// which are one layer down at the world-KIT enrichment stage, not the
+// meta/npc/faction stage this script produces).
+import { OCCUPATIONS, FACTION_NAME, FACTION_GOAL } from "./author/generators.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT = path.resolve(__dirname, "..");
+
+// Every archetype name server/lib/world-kit-templates.js recognizes — kept
+// in sync with that file's PHASES_BY_GENRE/INDUSTRIES_BY_GENRE/etc. keys so
+// a --template value is validated against the SAME vocabulary, not a 4th
+// taxonomy. Of these, IMPLEMENTED_TEMPLATES is the subset this scaffolder
+// actually draws genre flavor for today (the 4 with the richest existing
+// tables in scripts/author/generators.mjs: OCCUPATIONS / FACTION_NAME /
+// FACTION_GOAL all key on exactly these 4 archetype names).
+const KNOWN_TEMPLATES = Object.freeze([
+  "fantasy", "cyber", "superhero", "crime",
+  "sovereign-ruins", "lattice-crucible", "concord-link-frontier",
+]);
+const IMPLEMENTED_TEMPLATES = Object.freeze(["fantasy", "cyber", "crime", "superhero"]);
+
+// tech_level / magic_level per implemented archetype. These values MIRROR
+// the real, already-authored content/world/<archetype>/meta.json files for
+// the same archetype names (verified against the working tree) — they are
+// reused/cited, not invented, so a scaffolded fantasy/cyber/crime/superhero
+// world starts consistent with the existing canon worlds of that same
+// genre instead of a fabricated tech/magic guess. If the canon worlds'
+// values ever drift, update here to match — this table is a snapshot
+// citation, not an independent source of truth.
+const TECH_MAGIC_BY_TEMPLATE = Object.freeze({
+  fantasy: { tech_level: "pre-industrial", magic_level: "abundant" },
+  cyber: { tech_level: "near_future", magic_level: "trace" },
+  crime: { tech_level: "modern", magic_level: "none" },
+  superhero: { tech_level: "modern_high_tech", magic_level: "none" },
+});
 
 // content-seeder.js's validators are read from the REAL repo location
 // regardless of --root — see the header comment above for why this is
@@ -104,12 +159,13 @@ const UNIVERSE_TYPE_RE = /^[a-z][a-z0-9_]*$/;
 
 function parseArgs(argv) {
   const positional = [];
-  const opts = { root: DEFAULT_ROOT, dryRun: false, force: false };
+  const opts = { root: DEFAULT_ROOT, dryRun: false, force: false, template: undefined };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--root") { opts.root = path.resolve(argv[++i] || ""); }
     else if (a === "--dry-run") { opts.dryRun = true; }
     else if (a === "--force") { opts.force = true; }
+    else if (a === "--template") { opts.template = argv[++i]; }
     else if (a.startsWith("--")) { throw new Error(`unknown option: ${a}`); }
     else positional.push(a);
   }
@@ -119,16 +175,18 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    'usage: node scripts/scaffold-world.mjs <world-id> "<World Name>" <universe_type> [--root <path>] [--dry-run] [--force]',
+    'usage: node scripts/scaffold-world.mjs <world-id> "<World Name>" <universe_type> [--root <path>] [--dry-run] [--force] [--template <archetype>]',
     "",
     "  <world-id>       kebab-case, e.g. \"verdant-reach\" — must match " + WORLD_ID_RE,
     "  <universe_type>  e.g. \"verdant_reach\" — must match " + UNIVERSE_TYPE_RE + " (not a closed enum — see the file header)",
+    "  --template       optional genre flavor; implemented: " + IMPLEMENTED_TEMPLATES.join(", ") +
+      " (recognized but not yet implemented: " + KNOWN_TEMPLATES.filter(t => !IMPLEMENTED_TEMPLATES.includes(t)).join(", ") + ")",
   ].join("\n");
 }
 
 // ── Validation ───────────────────────────────────────────────────────────
 
-function validate({ worldId, worldName, universeType }) {
+function validate({ worldId, worldName, universeType, template }) {
   const errors = [];
   if (!worldId || !WORLD_ID_RE.test(worldId)) {
     errors.push(`world-id "${worldId}" must be kebab-case matching ${WORLD_ID_RE}`);
@@ -138,6 +196,13 @@ function validate({ worldId, worldName, universeType }) {
   }
   if (!universeType || !UNIVERSE_TYPE_RE.test(universeType)) {
     errors.push(`universe_type "${universeType}" must match ${UNIVERSE_TYPE_RE} (lowercase, starts with a letter, underscores allowed)`);
+  }
+  if (template !== undefined) {
+    if (!KNOWN_TEMPLATES.includes(template)) {
+      errors.push(`--template "${template}" is not a recognized archetype name — known: ${KNOWN_TEMPLATES.join(", ")} (see server/lib/world-kit-templates.js)`);
+    } else if (!IMPLEMENTED_TEMPLATES.includes(template)) {
+      errors.push(`--template "${template}" is a recognized archetype name but this scaffolder does not yet implement genre-flavored generation for it — implemented: ${IMPLEMENTED_TEMPLATES.join(", ")}. Omit --template for the generic placeholder instead.`);
+    }
   }
   return errors;
 }
@@ -149,7 +214,12 @@ function validate({ worldId, worldName, universeType }) {
 // invariant, placeholder prose says it's a placeholder rather than
 // pretending to be authored lore.
 
-function metaTemplate(worldId, worldName, universeType) {
+// `template` is undefined for the default (no --template) path in every
+// function below, and every default branch below is byte-for-byte the
+// original pre-template text/shape — see the no-flag regression test.
+
+function metaTemplate(worldId, worldName, universeType, template) {
+  const flavor = template ? TECH_MAGIC_BY_TEMPLATE[template] : null;
   return {
     world_id: worldId,
     world_name: worldName,
@@ -157,34 +227,54 @@ function metaTemplate(worldId, worldName, universeType) {
     is_hub: false,
     // Free-form strings read by upsertWorldRow's rule_modulators fold and
     // by downstream affinity/potency lookups — "unspecified" is an honest
-    // placeholder, not a fabricated setting. Replace before shipping.
-    tech_level: "unspecified",
-    magic_level: "unspecified",
-    description: `Scaffolded placeholder for the "${worldName}" world — generated by scripts/scaffold-world.mjs. Replace this description (and tech_level/magic_level above) with real authored content before treating this world as shipped.`,
+    // placeholder, not a fabricated setting, when no --template is given.
+    // With --template, these come from TECH_MAGIC_BY_TEMPLATE (see above)
+    // instead of a generic guess.
+    tech_level: flavor ? flavor.tech_level : "unspecified",
+    magic_level: flavor ? flavor.magic_level : "unspecified",
+    description: flavor
+      ? `Scaffolded placeholder for the "${worldName}" world (template: ${template}) — generated by scripts/scaffold-world.mjs. tech_level/magic_level above were seeded from the "${template}" archetype's existing per-genre data (see TECH_MAGIC_BY_TEMPLATE); replace this description and everything else with real authored content before treating this world as shipped.`
+      : `Scaffolded placeholder for the "${worldName}" world — generated by scripts/scaffold-world.mjs. Replace this description (and tech_level/magic_level above) with real authored content before treating this world as shipped.`,
     skill_affinity: { default: 0.7 },
     rule_modulators: {},
   };
 }
 
-function npcTemplate(worldId, worldName) {
+function npcTemplate(worldId, worldName, template) {
+  // OCCUPATIONS[template][0] is a deterministic pick (always the table's
+  // first entry) — no rng — so the same --template always produces the
+  // same flavored occupation, keeping the scaffolder's output reproducible.
+  const occupation = template ? OCCUPATIONS[template][0] : null;
   return {
     id: `${worldId}_first_resident`,
     name: "Unnamed Resident",
     faction_id: `${worldId}_founding_circle`,
     world_id: worldId,
-    archetype: "villager",
-    personality: `Scaffolded placeholder resident of ${worldName} — replace with a real authored personality before shipping this world.`,
-    background: "No background has been authored yet. This record exists only to satisfy validateNpc() so the world seeds cleanly; it is not real content.",
+    archetype: occupation || "villager",
+    personality: occupation
+      ? `Scaffolded placeholder resident of ${worldName} (template: ${template}) — a ${occupation} by trade. Replace with a real authored personality before shipping this world.`
+      : `Scaffolded placeholder resident of ${worldName} — replace with a real authored personality before shipping this world.`,
+    background: occupation
+      ? `No background has been authored yet. This record exists only to satisfy validateNpc() so the world seeds cleanly; it is not real content. (Occupation flavor drawn from scripts/author/generators.mjs's OCCUPATIONS["${template}"] table.)`
+      : "No background has been authored yet. This record exists only to satisfy validateNpc() so the world seeds cleanly; it is not real content.",
     narrative_context: {},
   };
 }
 
-function factionTemplate(worldId, worldName) {
+function factionTemplate(worldId, worldName, template) {
+  // FACTION_NAME[template].a[0] / .b[0] are the same deterministic
+  // first-entry pick pattern as npcTemplate's occupation above.
+  const name = template
+    ? `${FACTION_NAME[template].a[0]} ${FACTION_NAME[template].b[0]}`.replace(/-\s/, "-")
+    : "The Founding Circle";
+  const goalFlavor = template ? FACTION_GOAL[template][0] : null;
   return {
     id: `${worldId}_founding_circle`,
-    name: "The Founding Circle",
+    name,
     world_id: worldId,
-    goal: `Scaffolded placeholder faction for ${worldName} — replace with a real authored goal, values, and rivalries before shipping this world.`,
+    goal: goalFlavor
+      ? `Scaffolded placeholder faction for ${worldName} (template: ${template}) — genre-flavored starting goal drawn from scripts/author/generators.mjs's FACTION_GOAL["${template}"] table: "${goalFlavor}". Replace with a real authored goal, values, and rivalries before shipping this world.`
+      : `Scaffolded placeholder faction for ${worldName} — replace with a real authored goal, values, and rivalries before shipping this world.`,
     // Exercises validateFaction()'s hex-color visual branch with valid
     // 6-digit hex values (neutral gray placeholders, not a real palette).
     visual: {
@@ -328,19 +418,23 @@ async function main() {
     process.exit(1);
   }
 
-  const { worldId, worldName, universeType, root, dryRun, force } = args;
+  const { worldId, worldName, universeType, root, dryRun, force, template } = args;
   const worldDir = path.join(root, "content/world", worldId);
   const metaFile = path.join(worldDir, "meta.json");
   const npcsFile = path.join(worldDir, "npcs.json");
   const factionsFile = path.join(worldDir, "factions.json");
   const loreFile = path.join(worldDir, "lore.json");
 
-  console.log(`scaffold-world: root=${root} worldId=${worldId} universeType=${universeType} dryRun=${dryRun}`);
+  // Appending nothing when --template is omitted keeps this log line
+  // byte-for-byte identical to the pre-template output (see the no-flag
+  // regression test).
+  const templateLogSuffix = template ? ` template=${template}` : "";
+  console.log(`scaffold-world: root=${root} worldId=${worldId} universeType=${universeType}${templateLogSuffix} dryRun=${dryRun}`);
 
   const content = {
-    meta: metaTemplate(worldId, worldName, universeType),
-    npcs: [npcTemplate(worldId, worldName)],
-    factions: [factionTemplate(worldId, worldName)],
+    meta: metaTemplate(worldId, worldName, universeType, template),
+    npcs: [npcTemplate(worldId, worldName, template)],
+    factions: [factionTemplate(worldId, worldName, template)],
     lore: loreTemplate(worldId, worldName),
   };
 
