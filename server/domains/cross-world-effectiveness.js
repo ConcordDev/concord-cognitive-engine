@@ -24,8 +24,8 @@ import {
 } from "../lib/cross-world-effectiveness.js";
 import { SKILL_DOMAINS } from "../lib/skill-domains.js";
 import {
-  availabilityForMaterial,
   classifyAvailability,
+  liveAvailabilityForMaterial,
   materialForSkill,
   MATERIAL_KINDS,
 } from "../lib/embodied/material-availability.js";
@@ -34,8 +34,16 @@ export default function registerCrossWorldEffectivenessMacros(register) {
   register("cross_world_effectiveness", "explain", async (ctx, input = {}) => {
     const { domain, worldId, level = 1, maxLevel = 100 } = input || {};
     if (!domain || !worldId) return { ok: false, reason: "missing_inputs" };
-    return { ok: true, ...explainEffectiveness({ domain, worldId, level, maxLevel }) };
-  }, { note: "Diagnostic for a single (domain, world, level) triple. Returns dialogue-ready 'note' string." });
+    const materialKind = materialForSkill(domain);
+    const materialAvailability = materialKind ? liveAvailabilityForMaterial(ctx?.db, worldId, materialKind) : 1.0;
+    return {
+      ok: true,
+      ...explainEffectiveness({ domain, worldId, level, maxLevel }),
+      materialKind,
+      materialAvailability,
+      materialTier: materialKind ? classifyAvailability(materialAvailability) : "abundant",
+    };
+  }, { note: "Diagnostic for a single (domain, world, level) triple. Returns dialogue-ready 'note' string plus live materialTier (depletes/recovers with economy_flows activity)." });
 
   register("cross_world_effectiveness", "for_player", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -69,7 +77,11 @@ export default function registerCrossWorldEffectivenessMacros(register) {
           domain: r.domain, worldId, level: r.level, maxLevel,
         });
         const materialKind = materialForSkill(r.domain);
-        const materialAvailability = materialKind ? availabilityForMaterial(worldId, materialKind) : 1.0;
+        // Live regional-scarcity blend (npc-economy.js#computeRegionalScarcity)
+        // when economy_flows data exists for this (world, material); falls
+        // back to the static meta.json floor with byte-identical output
+        // when no such data exists yet — see material-availability.js.
+        const materialAvailability = materialKind ? liveAvailabilityForMaterial(db, worldId, materialKind) : 1.0;
         return {
           domain: r.domain,
           level: r.level,
@@ -90,7 +102,7 @@ export default function registerCrossWorldEffectivenessMacros(register) {
     // defaults (ballistic_ammo=1.0 / others 0.5).
     const materials = {};
     for (const kind of MATERIAL_KINDS) {
-      const v = availabilityForMaterial(worldId, kind);
+      const v = liveAvailabilityForMaterial(db, worldId, kind);
       materials[kind] = { value: v, tier: classifyAvailability(v) };
     }
 
