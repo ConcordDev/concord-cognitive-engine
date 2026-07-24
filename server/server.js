@@ -27302,6 +27302,11 @@ registerCrucibleMacros(register);
 import registerHandshakeProtocolMacros from "./domains/handshake-protocol.js";
 registerHandshakeProtocolMacros(register);
 
+// sovereign-ruins bespoke mechanic — "Still-Running Spells" (see
+// domains/sovereign-spells.js + lib/sovereign-spells.js + migration 392).
+import registerSovereignSpellsMacros from "./domains/sovereign-spells.js";
+registerSovereignSpellsMacros(register);
+
 // V1.2 Wave D — player-influenced districts governance. propose_change /
 // vote / list_proposals macros under the "district" domain (additive to
 // domains/district.js's separate snapshot-analytics macros in the same
