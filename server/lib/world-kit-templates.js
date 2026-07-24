@@ -18,6 +18,15 @@
 //   → reads content/world/<worldId>/meta.json for genre/affinity hints
 //   → writes any missing enrichment files to content/world/<worldId>/
 //   → never overwrites (idempotent)
+//
+// Wiring status (verified 2026-07-24, repo-wide grep — trust this over any
+// individual `purpose:` string below that predates this note): of the 7
+// generated file kinds, only bestiary.json has a real runtime consumer
+// (server/lib/procedural-creature.js). The other 6 — calendar,
+// industries, naming_conventions, apparel, diplomatic_graph, schedules —
+// are authoring reference only; nothing in server/ reads them back. Each
+// kind's own `purpose:` field below has been corrected to say so honestly
+// instead of claiming a runtime consumer that doesn't exist.
 
 const HOURS_PER_DAY_BY_GENRE = {
   fantasy: 24,
@@ -104,6 +113,7 @@ export function calendarTemplate({ worldId, genre, hints = {} }) {
     notes: [
       `[AUTHOR] Replace placeholder strings before shipping to canon.`,
       `Scaffolded by world-kit-templates.js — genre: ${genre}, hours/day: ${hpd}.`,
+      `Authoring reference only as of this note — no runtime consumer wired yet (server/emergent/environment-sensor.js hardcodes a 24h day and its own fixed dawn/day/dusk/night thresholds, independent of hours_per_day/day_phases here).`,
     ],
   };
 }
@@ -122,7 +132,7 @@ export function industriesTemplate({ worldId, genre, dominantSkillDomain }) {
   return {
     world_id: worldId,
     schema_version: "1.0",
-    purpose: `Industry rollups for ${worldId}. Each industry names jobs, raw inputs, processed outputs, and seasonal cadence. Used by the world-economy heartbeat to model price + scarcity + production cycles.`,
+    purpose: `Industry rollups for ${worldId}. Each industry names jobs, raw inputs, processed outputs, and seasonal cadence. Authoring reference only — no runtime consumer wired yet (server/lib/world-economy.js's pricing model is self-contained and does not read this file).`,
     dominant_industry: list[0],
     skill_domain_alignment: dominantSkillDomain || "default",
     industries: list.map(id => ({
@@ -143,7 +153,7 @@ export function namingTemplate({ worldId, genre }) {
   return {
     world_id: worldId,
     schema_version: "1.0",
-    purpose: `Per-faction / per-kingdom naming patterns for ${worldId}. The npc-spawner reads this to generate plausible names. Authored examples anchor the procedural generator.`,
+    purpose: `Per-faction / per-kingdom naming patterns for ${worldId}. Authoring reference only — no runtime consumer wired yet (server/emergent/naming.js generates names independently, via deterministic SHA-256-seeded phoneme composition or an LLM prompt, never by reading this file).`,
     genre,
     patterns: [
       {
@@ -162,7 +172,7 @@ export function apparelTemplate({ worldId, genre }) {
   return {
     world_id: worldId,
     schema_version: "1.0",
-    purpose: `Costume templates per faction + occasion for ${worldId}. Drives NPC procedural appearance + player wardrobe options.`,
+    purpose: `Costume templates per faction + occasion for ${worldId}. Authoring reference only — no runtime consumer wired yet (server/lib/wardrobe.js is a DB-backed outfit-slot CRUD module with no reference to this file or any per-world apparel data).`,
     occasions: ["everyday","ceremonial","work","combat","festival"],
     factions: [
       {
@@ -214,7 +224,7 @@ export function diplomaticGraphTemplate({ worldId }) {
   return {
     world_id: worldId,
     schema_version: "1.0",
-    purpose: `Per-faction-pair relationship lattice for ${worldId}. Drives Layer 11 faction-strategy + cross-world relationship seeding.`,
+    purpose: `Per-faction-pair relationship lattice for ${worldId}. Authoring reference only — no runtime consumer wired yet (server/lib/embodied/faction-strategy.js seeds relationships directly from each faction's own rival_factions/allied_factions arrays in factions.json, not from this file).`,
     edges: [
       {
         from: "[AUTHOR faction id]",
@@ -231,7 +241,7 @@ export function schedulesTemplate({ worldId, genre }) {
   return {
     world_id: worldId,
     schema_version: "1.0",
-    purpose: `Archetype-routine templates for ${worldId}. The npc-routines lib composes per-NPC schedules deterministically from these blocks + the NPC's preoccupations.`,
+    purpose: `Archetype-routine templates for ${worldId}. Authoring reference only — no runtime consumer wired yet (server/lib/npc-routines.js composes schedules purely from its own hardcoded ARCHETYPE_ROUTINES table, never by reading this file).`,
     genre,
     archetypes: {
       "[AUTHOR archetype]": {
