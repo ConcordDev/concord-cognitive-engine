@@ -8,6 +8,15 @@
  *     - Must export { id, name, version, init, destroy }
  *     - id must match namespace.name format (a-z0-9 + dots)
  *     - version must be valid semver (loose: x.y.z)
+ *     - `version` above is the PLUGIN's own release number — it says
+ *       nothing about which host ctx surface the plugin was written
+ *       against. Gate 1 separately checks `manifest.apiVersion` (a loose
+ *       semver contract version for the host ctx surface itself, see
+ *       server/lib/plugin-api-version.js + docs/PLUGIN_API_CONTRACT.md)
+ *       against the host's currently-supported major-version range. A
+ *       plugin with no `manifest.apiVersion` at all is treated as
+ *       implicitly declaring the pre-versioning baseline ("1.0.0") for
+ *       back-compat with every plugin written before this check existed.
  *
  *   Gate 2: Namespace Collision
  *     - Plugin id must not collide with existing loaded plugins
@@ -25,6 +34,13 @@
  *     - Write intents checked against allowed write targets
  *     - Emergent-gen plugins: writes limited to dtus.tags, dtus.meta
  */
+
+import {
+  isCompatible as isApiVersionCompatible,
+  CURRENT_API_VERSION,
+  MIN_SUPPORTED_API_VERSION,
+  IMPLICIT_LEGACY_API_VERSION,
+} from "../lib/plugin-api-version.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -116,6 +132,26 @@ function validateShape(pluginModule) {
 
   if (pluginModule.tick && typeof pluginModule.tick !== "function") {
     errors.push("tick_must_be_function");
+  }
+
+  // Host API contract version check. `manifest.apiVersion` declares which
+  // major version of the ctx surface (buildSandboxedContext) the plugin was
+  // written against — distinct from `pluginModule.version` (the plugin's own
+  // release number, checked above). Absent apiVersion is treated as the
+  // implicit pre-versioning baseline, so every plugin that predates this
+  // check (including the shipped example plugin) keeps validating with zero
+  // manifest change.
+  const declaredApiVersion = pluginModule.manifest?.apiVersion;
+  const effectiveApiVersion = (declaredApiVersion === undefined || declaredApiVersion === null)
+    ? IMPLICIT_LEGACY_API_VERSION
+    : declaredApiVersion;
+
+  if (typeof effectiveApiVersion !== "string" || !isApiVersionCompatible(effectiveApiVersion)) {
+    errors.push(
+      `api_version_incompatible: plugin declares manifest.apiVersion '${effectiveApiVersion}', ` +
+      `but this host only supports '${MIN_SUPPORTED_API_VERSION}' through '${CURRENT_API_VERSION}' ` +
+      `(major version must match) — see docs/PLUGIN_API_CONTRACT.md`
+    );
   }
 
   return { passed: errors.length === 0, errors };
