@@ -77,16 +77,49 @@ success).
 It reads as "new" only because the baseline predates the route.
 **Disposition: baseline.**
 
-### Residual ratchet state — honest
+### Cluster D — the 4 already-baselined `money-txn-hygiene` highs → audited, all class (a)
 
-`--diff --ci` still reports **`new_high_or_critical: 3`** (Clusters B + C). That
-is not a hidden failure and not a code defect: all three are triaged above as
-documented-false-positive / reviewed-intentional, and for all three the
-sanctioned resolution is a **deliberate baseline refresh**, which is its own
-reviewed step (tracked as the detector-debt wave's "refresh BASELINE.json"
-task) and is a PROTECTed-file edit that must not happen silently as a side
-effect of an unrelated commit. Refreshing the baseline is what closes these
-three; softening a detector is never the answer.
+The three clusters above cover only the findings that were NEW versus the
+baseline. A full (non-diff) run reports **7 high findings total** — the 3 above
+plus 4 that were already baselined but had never been audited as real (BUDGET
+v13's own rationale described them as "the pre-existing 4 real net-new deferred
+to a later audit"). That audit has now run. **All four are class (a): the writes
+cannot both execute on one path, and every delegate owns its own transaction.**
+No code changed.
+
+| Finding | Why it cannot be a sequential-composition bug |
+|---|---|
+| `economy/ledger.js:51` `recordTransaction()` | The two INSERTs are a try/catch column-fallback: the `catch` re-attempts without `ref_id` **only** when the error message names that column, and re-throws otherwise. SQLite wraps a lone statement in an implicit transaction, so a failed first attempt writes zero rows. `tests/ledger.test.js` already exercises both the fallback and the re-throw path. |
+| `economy/stripe.js:188` `handleWebhook()` | The two `economy_withdrawals` writes sit in different `switch` cases (`transfer.paid` vs `transfer.failed`); `event.type` selects exactly one per delivery. The delegate `_reverseFailedWithdrawal` already wraps its status-revert + REVERSAL ledger insert in its own `db.transaction(...)`. |
+| `lib/account-lifecycle.js:41` `requestAccountDeletion()` | `if (balance > 0.01)` schedules deletion; the `else` delegates to `executeAccountDeletion`, which wraps all 18 of its steps in one transaction. Strictly either/or. |
+| `routes/wagers.js:12` `createWagersRouter()` | The 5 "delegated" writes are spread across 5 **separate Express route handler closures** registered by the factory — they only ever run on distinct HTTP requests, so they are as mutually exclusive as an if/else, just gated by which route fired. The one handler with two delegate calls (`accept`) picks between them with an early `return`. Independently verified: all four delegates (`_executeProposal`, `_executeAcceptance`, `_executeResolution`, `_cancelAndRefund`, `routes/wagers.js:190–222`) wrap their balance mutation + status write in `db.transaction(...)`. |
+
+Verification: the four cited atomicity/fault-injection test files
+(`tests/wagers-atomicity.test.js`, `tests/economy/stripe-webhook-atomicity.test.js`,
+`tests/account-lifecycle-deletion.test.js`, `tests/ledger.test.js`) were re-run
+by the conductor without `--test-force-exit` — **108 pass / 0 fail**.
+
+One optional hardening note, deliberately NOT acted on: `recordTransaction`'s
+test asserts the inserted row's `amount` but never `COUNT(*) = 1` after the
+fallback path. Mutual exclusivity there is structurally guaranteed by SQLite's
+implicit-transaction-per-statement behavior rather than by the test, so this is
+a nice-to-have assertion, not a gap covering a suspected bug.
+
+### Residual ratchet state — resolved by authorized baseline refresh
+
+Every one of the **7** high findings is now audited and none is a code defect:
+3 new (Clusters B + C) and 4 pre-existing (Cluster D), all documented false
+positives or reviewed-intentional bypasses, none with an annotation mechanism
+available. The sanctioned resolution for exactly this situation is a
+**deliberate baseline refresh**.
+
+**That refresh is authorized** — the repo owner reviewed this triage on
+2026-07-24 and directed that the false positives be allowed. Recording it here
+because `audit/detectors/BASELINE.json` is `guard.mjs`-PROTECTed: a future
+reader finding 7 high findings sitting in the baseline should be able to see
+*why* they were accepted and by whose decision, rather than discovering them
+silently absorbed. The refresh is still its own scoped commit, never a side
+effect of unrelated work, and softening a detector remains not an option.
 
 ---
 
