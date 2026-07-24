@@ -46,6 +46,16 @@ import {
   getRateLimitStatus,
 } from "./runtime-compiler.js";
 
+// ── Default capability grants ───────────────────────────────────────────────
+//
+// The macro-namespace grants a plugin is confined to when it declares no
+// manifest of its own (see `buildSandboxedContext` below). Exported so any
+// caller that needs to DISPLAY what a plugin will actually be permitted to
+// call (e.g. the gallery's capability-disclosure field) reads the exact same
+// literal the enforcement path uses — never a hand-maintained parallel copy.
+export const DEFAULT_PLUGIN_MACRO_GRANTS = Object.freeze(["dtu.*", "discovery.*", "art.*", "music.*", "glyph-spells.*"]);
+export const DEFAULT_EMERGENT_GEN_MACRO_GRANTS = Object.freeze(["dtu.*", "discovery.*"]);
+
 // ── Plugin Store ────────────────────────────────────────────────────────────
 
 function getPluginStore(STATE) {
@@ -446,7 +456,7 @@ export function buildSandboxedContext(STATE, pluginId, opts = {}) {
   // + emergent rate-limit in callMacro below stay as defense-in-depth.
   const grants = Array.isArray(manifest?.macros) && manifest.macros.length
     ? manifest.macros
-    : (isEmergentGen ? ["dtu.*", "discovery.*"] : ["dtu.*", "discovery.*", "art.*", "music.*", "glyph-spells.*"]);
+    : (isEmergentGen ? DEFAULT_EMERGENT_GEN_MACRO_GRANTS : DEFAULT_PLUGIN_MACRO_GRANTS);
   let confinedRun = runMacro;
   if (runMacro) {
     try {

@@ -10,16 +10,52 @@
 
 import { verifyPluginPackage, computePluginHash } from "./plugin-signing.js";
 import { LruMap, LruSet } from "./lru-map.js";
-import { loadPluginFromSource, getPlugin as getLoadedPlugin } from "../plugins/loader.js";
+import {
+  loadPluginFromSource,
+  getPlugin as getLoadedPlugin,
+  unloadPlugin as unloadLoadedPlugin,
+  DEFAULT_PLUGIN_MACRO_GRANTS,
+} from "../plugins/loader.js";
 
 const _gallery = new LruMap(); // pluginId -> entry
 const _installs = new LruMap(); // pluginId -> Set<userId>
 
-export function publishPlugin({ pluginId, authorId, name, description, version, source, signature, db = null }) {
+// Capability disclosure: sanitize a publisher-supplied `manifest.macros`
+// list down to non-empty strings only. Anything malformed is dropped rather
+// than rejecting the publish — the loader's own confinement (makeConfinedCtx
+// / the forbidden-domain hard-denylist in confined-ctx.js) is what actually
+// enforces safety regardless of what a manifest claims, so a sloppy manifest
+// degrades to the safe default, never to a wider grant than intended.
+function sanitizeDeclaredMacros(manifest) {
+  if (!Array.isArray(manifest?.macros) || !manifest.macros.length) return null;
+  const grants = manifest.macros
+    .map((g) => (typeof g === "string" ? g.trim() : ""))
+    .filter(Boolean);
+  return grants.length ? grants : null;
+}
+
+// Always present alongside the existing `trusted` boolean (never renamed —
+// that would be a breaking API change for any consumer). States plainly what
+// `trusted` actually means today under the user-approved "lightweight
+// automated gate + honest labeling" scope: self-attestation, not review.
+function trustDescriptionFor(trusted) {
+  return trusted
+    ? "Self-attested: signed with a key this author registered for themselves. Not independently reviewed."
+    : "Unsigned, or the signature doesn't verify against a registered key. Not independently reviewed.";
+}
+
+export function publishPlugin({ pluginId, authorId, name, description, version, source, signature, manifest = null, db = null }) {
   if (!pluginId || !authorId || !source) {
     return { ok: false, error: "missing_pluginId_authorId_or_source" };
   }
   const verify = verifyPluginPackage({ source, signature, authorId, db });
+  // Item 3/4 — capability disclosure. `declaredMacros` is the SAME grant
+  // list `installFromGallery` forwards to `loadPluginFromSource` as its
+  // manifest (see below), so what's displayed here is what actually gets
+  // enforced at install time, never a hand-maintained parallel description.
+  // A publisher who declares nothing gets the loader's own default set —
+  // imported from loader.js, not re-typed here.
+  const declaredMacros = sanitizeDeclaredMacros(manifest) || [...DEFAULT_PLUGIN_MACRO_GRANTS];
   // Allow unsigned publish for emergent-gen / dev plugins; just flag trust=false.
   const entry = {
     pluginId,
@@ -31,6 +67,7 @@ export function publishPlugin({ pluginId, authorId, name, description, version, 
     signature: signature ?? null,
     hash: verify.hash ?? computePluginHash(source),
     trusted: verify.ok && verify.trusted,
+    declaredMacros,
     publishedAt: new Date().toISOString(),
     installs: 0,
     rating: { up: 0, down: 0 },
@@ -43,19 +80,24 @@ export function publishPlugin({ pluginId, authorId, name, description, version, 
     // `withLoadedFlag`/`installFromGallery` can look the plugin up in the
     // loader's own store correctly instead of guessing it equals `pluginId`.
     loadedPluginId: null,
+    // Takedown path (item 5) — both null until an admin calls delistPlugin.
+    delistedAt: null,
+    delistedReason: null,
+    delistedBy: null,
   };
   _gallery.set(pluginId, entry);
 
   if (db) {
     try {
       db.prepare(`INSERT OR REPLACE INTO plugin_gallery
-                  (plugin_id, author_id, name, description, version, source, signature, hash, trusted, published_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+                  (plugin_id, author_id, name, description, version, source, signature, hash, trusted, published_at, declared_macros_json)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(pluginId, authorId, entry.name, entry.description, entry.version,
-             source, signature ?? null, entry.hash, entry.trusted ? 1 : 0, entry.publishedAt);
-    } catch { /* table may not exist on first run */ }
+             source, signature ?? null, entry.hash, entry.trusted ? 1 : 0, entry.publishedAt,
+             JSON.stringify(declaredMacros));
+    } catch { /* table may not exist on first run, or declared_macros_json predates migration 393 */ }
   }
-  return { ok: true, plugin: { ...entry, source: undefined } }; // strip source from response
+  return { ok: true, plugin: withLoadedFlag(entry, null) }; // strip source from response
 }
 
 // `trusted` (self-attested signature verification, see plugin-signing.js) and
@@ -67,8 +109,23 @@ export function publishPlugin({ pluginId, authorId, name, description, version, 
 // §4). `STATE` is optional so callers that only need metadata (no loader
 // lookup) can omit it; `loaded` is simply absent from the response then,
 // never a guessed/defaulted `false`.
+//
+// This function also attaches the gallery's honesty fields, unconditionally
+// (they never depend on STATE): `declaredCapabilities` (capability
+// disclosure — the macro grants the plugin is confined to; see
+// publishPlugin) and `trustDescription` (a plain-language gloss on what the
+// existing `trusted` boolean actually means today — self-attestation, not
+// review; `trusted` itself is left exactly as-is for back-compat). Delisting
+// fields (`delistedAt`/`delistedReason`/`delistedBy`) pass through as-is —
+// null on a never-delisted entry, populated on one an admin took down (see
+// delistPlugin).
 function withLoadedFlag(entry, STATE) {
-  const out = { ...entry, source: undefined };
+  const out = {
+    ...entry,
+    source: undefined,
+    declaredCapabilities: entry.declaredMacros ? [...entry.declaredMacros] : [...DEFAULT_PLUGIN_MACRO_GRANTS],
+    trustDescription: trustDescriptionFor(!!entry.trusted),
+  };
   if (STATE) {
     // Look up by the loader's own recorded internal id first (set on a
     // successful load — see loadedPluginId above); only fall back to the
@@ -83,6 +140,7 @@ function withLoadedFlag(entry, STATE) {
 export function listGallery({ trustedOnly = false, search = null, limit = 50, STATE = null } = {}) {
   const out = [];
   for (const e of _gallery.values()) {
+    if (e.delistedAt) continue; // taken down — see delistPlugin; still reachable via getGalleryEntry for audit
     if (trustedOnly && !e.trusted) continue;
     if (search) {
       const s = search.toLowerCase();
@@ -149,6 +207,12 @@ export async function installFromGallery(STATE, pluginId, userId, opts = {}) {
   const entry = _gallery.get(pluginId);
   if (!entry) return { ok: false, error: "plugin_not_found" };
   if (!userId) return { ok: false, error: "user_required" };
+  // A delisted entry stays readable (see getGalleryEntry) but is no longer
+  // installable — otherwise the takedown path would be cosmetic for anyone
+  // who already has (or guesses) the pluginId.
+  if (entry.delistedAt) {
+    return { ok: false, error: "plugin_delisted", reason: entry.delistedReason || null };
+  }
 
   if (!_installs.has(pluginId)) _installs.set(pluginId, new Set());
   const userSet = _installs.get(pluginId);
@@ -171,7 +235,13 @@ export async function installFromGallery(STATE, pluginId, userId, opts = {}) {
     return { ok: false, error: "no_source_available" };
   }
 
-  const loadResult = await loadPluginFromSource(STATE, entry.source, opts);
+  // Item 3/4 — enforce the SAME grants the gallery discloses as
+  // `declaredCapabilities`. A caller-supplied `opts.manifest` (none of the
+  // current HTTP routes set one) wins if present; otherwise the entry's own
+  // declared/default grants are what actually gets confined, so disclosure
+  // and enforcement can never drift apart.
+  const loadOpts = opts.manifest ? opts : { ...opts, manifest: { macros: entry.declaredMacros || [...DEFAULT_PLUGIN_MACRO_GRANTS] } };
+  const loadResult = await loadPluginFromSource(STATE, entry.source, loadOpts);
 
   if (!loadResult.ok) {
     // A concurrent install from another user may have won the race between
@@ -210,4 +280,62 @@ export function ratePlugin(pluginId, userId, vote) {
   else if (vote === "down") entry.rating.down++;
   else return { ok: false, error: "invalid_vote" };
   return { ok: true, rating: entry.rating };
+}
+
+/**
+ * Admin-only takedown path (item 5 of the gallery-honesty pass). This is
+ * NOT a review/moderation queue — the user explicitly chose "lightweight
+ * automated gate + honest labeling" over that — it's the missing piece that
+ * makes "an admin can stop a running plugin" also mean "and the gallery
+ * stops advertising it." Delisting:
+ *   - stamps delistedAt/delistedReason/delistedBy on the entry (persisted if
+ *     `db` is supplied);
+ *   - excludes the entry from `listGallery` going forward (see the
+ *     `e.delistedAt` skip there) — but NOT from `getGalleryEntry` by direct
+ *     id, which still returns it (with the delisted fields visible) for
+ *     audit purposes;
+ *   - blocks future `installFromGallery` calls (see the delistedAt guard
+ *     there);
+ *   - if the plugin is CURRENTLY loaded, reuses the loader's own
+ *     `unloadPlugin` (never reimplements teardown) to actually stop it.
+ *
+ * Idempotent: delisting an already-delisted entry is a no-op success (the
+ * original delistedAt/reason/by are preserved, not overwritten).
+ *
+ * @param {string} pluginId
+ * @param {string} adminId - the acting admin's user id (recorded, not persisted to the DB column — the migration only adds delisted_at/delisted_reason)
+ * @param {string} [reason]
+ * @param {Object} [opts]
+ * @param {Object} [opts.db] - persists the takedown; best-effort, matches publishPlugin's convention
+ * @param {Object} [opts.STATE] - required to actually stop a currently-running plugin
+ * @returns {{ ok, error?, plugin?, alreadyDelisted?, unloaded? }}
+ */
+export function delistPlugin(pluginId, adminId, reason = null, { db = null, STATE = null } = {}) {
+  const entry = _gallery.get(pluginId);
+  if (!entry) return { ok: false, error: "plugin_not_found" };
+
+  if (entry.delistedAt) {
+    return { ok: true, alreadyDelisted: true, plugin: withLoadedFlag(entry, STATE) };
+  }
+
+  entry.delistedAt = new Date().toISOString();
+  entry.delistedReason = reason ?? null;
+  entry.delistedBy = adminId ?? null;
+
+  // Reuse the loader's own unload — never reimplement teardown here.
+  let unloaded = null;
+  const lookupId = entry.loadedPluginId || entry.pluginId;
+  if (STATE && getLoadedPlugin(STATE, lookupId).ok) {
+    const result = unloadLoadedPlugin(STATE, lookupId);
+    unloaded = !!result.ok;
+  }
+
+  if (db) {
+    try {
+      db.prepare(`UPDATE plugin_gallery SET delisted_at = ?, delisted_reason = ? WHERE plugin_id = ?`)
+        .run(entry.delistedAt, entry.delistedReason, pluginId);
+    } catch { /* table/columns may predate migration 393, or entry was never persisted */ }
+  }
+
+  return { ok: true, plugin: withLoadedFlag(entry, STATE), unloaded };
 }

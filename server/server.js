@@ -34539,9 +34539,9 @@ app.get("/api/plugins/gallery/:id", (req, res) => {
 });
 app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1mb" }), (req, res) => {
   const authorId = req.user?.id;
-  const { pluginId, name, description, version, source, signature } = req.body || {};
+  const { pluginId, name, description, version, source, signature, manifest } = req.body || {};
   res.json(_pluginGallery.publishPlugin({
-    pluginId, authorId, name, description, version, source, signature, db,
+    pluginId, authorId, name, description, version, source, signature, manifest, db,
   }));
 });
 // Installing from the gallery genuinely LOADS the plugin — same hardened
@@ -34560,6 +34560,7 @@ app.post("/api/plugins/gallery/:id/install", requireAuth(), asyncHandler(async (
   if (!result.ok) {
     const status = result.error === "plugin_not_found" ? 404
       : result.error === "user_required" ? 401
+      : result.error === "plugin_delisted" ? 410
       : 400; // install_failed / no_source_available — a genuine load/validation rejection
     return res.status(status).json(result);
   }
@@ -34569,6 +34570,22 @@ app.post("/api/plugins/gallery/:id/rate", requireAuth(), (req, res) => {
   const userId = req.user?.id;
   const { vote } = req.body || {};
   res.json(_pluginGallery.ratePlugin(req.params.id, userId, vote));
+});
+// Admin-only takedown (2026-07-24 gallery-honesty pass, see plugin-gallery.js
+// #delistPlugin): unlike the existing unload route below (which only stops a
+// currently-RUNNING plugin), this also stops the gallery entry itself from
+// being listed/installed again — the piece that was missing. Mirrors the
+// requireRole("owner","admin") gate the legacy unload route
+// (app.delete("/api/plugins/:id", ...)) already uses.
+app.post("/api/plugins/gallery/:id/delist", requireRole("owner", "admin"), express.json({ limit: "16kb" }), (req, res) => {
+  const adminId = req.user?.id || null;
+  const { reason } = req.body || {};
+  const result = _pluginGallery.delistPlugin(req.params.id, adminId, reason ?? null, { db, STATE });
+  if (!result.ok) {
+    const status = result.error === "plugin_not_found" ? 404 : 400;
+    return res.status(status).json(result);
+  }
+  res.json(result);
 });
 // Plugin signing helpers — generate a keypair, register a trusted public key.
 app.post("/api/plugins/signing/keypair", requireAuth(), (_req, res) => {
