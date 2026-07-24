@@ -19,8 +19,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Package, ShieldCheck, ShieldAlert, Download, ThumbsUp, ThumbsDown, Search, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Package, Download, ThumbsUp, ThumbsDown, Search, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { PluginInstallConsent } from './PluginInstallConsent';
+import { AuthorBadge } from './AuthorBadge';
 import type { GalleryPlugin, GalleryListResponse, GalleryErrorResponse, InstallResponse, RateResponse } from './types';
 
 function formatDate(iso: string): string {
@@ -187,16 +188,15 @@ export function PluginGalleryList() {
                   </div>
                   <p className="mt-1 text-[12px] text-slate-400">{plugin.description || 'No description provided.'}</p>
 
-                  <div
-                    className={`mt-2 flex items-center gap-1.5 text-[10px] ${plugin.trusted ? 'text-emerald-300' : 'text-amber-300'}`}
-                  >
-                    {plugin.trusted ? (
-                      <ShieldCheck className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    ) : (
-                      <ShieldAlert className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    )}
-                    <span>{plugin.trustDescription}</span>
-                  </div>
+                  {/* Author identity — real peer reputation (reused from the
+                      general reputation system) AND the self-attested
+                      signing status, clearly separate signals. */}
+                  <AuthorBadge
+                    authorId={plugin.authorId}
+                    reputation={plugin.authorReputationSummary}
+                    trusted={plugin.trusted}
+                    trustDescription={plugin.trustDescription}
+                  />
 
                   {plugin.declaredCapabilities?.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -216,7 +216,6 @@ export function PluginGalleryList() {
                       <Download className="h-3 w-3" aria-hidden="true" /> {plugin.installs} install{plugin.installs === 1 ? '' : 's'}
                     </span>
                     <span>published {formatDate(plugin.publishedAt)}</span>
-                    <span>by {plugin.authorId}</span>
                   </div>
                 </div>
 

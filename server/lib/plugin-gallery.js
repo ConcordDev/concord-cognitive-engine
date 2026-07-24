@@ -6,10 +6,20 @@
  *
  * Persistence: in-memory map plus optional db backing via the
  * plugin_gallery table from migration 086.
+ *
+ * SDK-H (author identity/reputation): every entry from `listGallery` /
+ * `getGalleryEntry` also carries `authorReputationSummary` — the author's
+ * REAL peer-visible reputation (citations/DTUs/badges), reused from the
+ * general reputation system (`profile.reputation-summary` + `reputation-
+ * badges.js`), never a parallel one. See `computeAuthorReputation` below for
+ * how it's derived and degrades honestly. This is deliberately a DIFFERENT
+ * trust signal from `trusted`/`trustDescription` (self-attested signing) —
+ * never conflate the two on the client.
  */
 
 import { verifyPluginPackage, computePluginHash } from "./plugin-signing.js";
 import { LruMap, LruSet } from "./lru-map.js";
+import { listBadges } from "./reputation-badges.js";
 import {
   loadPluginFromSource,
   getPlugin as getLoadedPlugin,
@@ -42,6 +52,97 @@ function trustDescriptionFor(trusted) {
   return trusted
     ? "Self-attested: signed with a key this author registered for themselves. Not independently reviewed."
     : "Unsigned, or the signature doesn't verify against a registered key. Not independently reviewed.";
+}
+
+// SDK-H — author identity/reputation. Rank used to pick the single
+// highest-tier badge to headline on a gallery card, matching the tier
+// ordering already authored in reputation-badges.js's TIER_TABLE.
+const _BADGE_TIER_RANK = { bronze: 1, silver: 2, gold: 3, platinum: 4, diamond: 5 };
+
+function pickTopBadge(badges) {
+  if (!Array.isArray(badges) || badges.length === 0) return null;
+  return badges.reduce((best, b) => {
+    if (!best) return b;
+    const rank = _BADGE_TIER_RANK[b.tier] || 0;
+    const bestRank = _BADGE_TIER_RANK[best.tier] || 0;
+    if (rank > bestRank) return b;
+    // Tie-break toward the composite headline category — it's the one
+    // meant to read as "the" tier when several single-axis badges tie.
+    if (rank === bestRank && b.category === "knowledge_entrepreneur" && best.category !== "knowledge_entrepreneur") return b;
+    return best;
+  }, null);
+}
+
+/**
+ * Author-identity reputation for a gallery entry (SDK-H). Reuses the two REAL
+ * peer-visible reputation sources this codebase already has — never invents a
+ * parallel one:
+ *
+ *   - `profile.reputation-summary` (`server/domains/profile.js`, V1.2 Wave A),
+ *     reached via the injected `getAuthorReputation(authorId)` callback.
+ *     `server.js` wires this to the real registered lens-action handler with
+ *     a real `ctx.db`, calling it with `targetUserId = authorId` — the SAME
+ *     peer-view path a human clicking "View Profile" on another user takes,
+ *     so it inherits that path's honesty (real DTU/citation counts, redacted
+ *     to public/marketplace-visible DTUs for a non-self view, all-zeros with
+ *     no fabricated reputation polygon when the author has no activity).
+ *     `plugin-gallery.js` never talks to `ctx.db` directly for this — it
+ *     only accepts already-resolved results through the callback, so this
+ *     module stays decoupled from the profile domain and the server.js boot
+ *     order (see CLAUDE.md's LENS_ACTIONS TDZ note).
+ *   - `listBadges` (`server/lib/reputation-badges.js`) — REAL tiered badges
+ *     (bronze/silver/gold/platinum/diamond) already granted to this user from
+ *     citation/download/lineage/listing activity. Imported directly (no db
+ *     dependency), so a real badge still shows even when the caller omits
+ *     `getAuthorReputation` entirely.
+ *
+ * Best-effort + honest by construction: a missing callback, an unregistered
+ * handler, a db error, or simply an author with no activity all degrade to
+ * `available:false` / `hasActivity:false` / empty `badges` — NEVER a
+ * fabricated tier or count. This is a SEPARATE trust signal from the
+ * gallery's own self-attested `trusted`/`trustDescription` (plugin-signing.js)
+ * — the two must never be merged into one badge/boolean on the client (see
+ * `AuthorBadge.tsx`).
+ *
+ * @param {string} authorId
+ * @param {{ getAuthorReputation?: (authorId: string) => ({ ok: boolean, result?: object } | null) }} [opts]
+ */
+function computeAuthorReputation(authorId, { getAuthorReputation = null } = {}) {
+  const out = {
+    authorId,
+    available: false,
+    hasActivity: false,
+    totalCitations: 0,
+    dtuCount: 0,
+    worldsOwned: 0,
+    reputationDomains: [],
+    badges: [],
+    topBadge: null,
+  };
+  if (!authorId) return out;
+
+  if (typeof getAuthorReputation === "function") {
+    try {
+      const r = getAuthorReputation(authorId);
+      if (r && r.ok && r.result) {
+        out.available = true;
+        out.totalCitations = Number(r.result.totalCitations) || 0;
+        out.dtuCount = Number(r.result.dtuCount) || 0;
+        out.worldsOwned = Number(r.result.worldsOwned) || 0;
+        out.reputationDomains = Array.isArray(r.result.reputation) ? r.result.reputation : [];
+        out.hasActivity = out.dtuCount > 0 || out.totalCitations > 0;
+      }
+    } catch { /* best-effort — a reputation-lookup failure never blocks the gallery */ }
+  }
+
+  try {
+    const b = listBadges(authorId);
+    out.badges = Array.isArray(b?.badges) ? b.badges : [];
+    out.topBadge = pickTopBadge(out.badges);
+    if (out.badges.length > 0) out.hasActivity = true;
+  } catch { /* leave badges empty — honest, not fabricated */ }
+
+  return out;
 }
 
 export function publishPlugin({ pluginId, authorId, name, description, version, source, signature, manifest = null, db = null }) {
@@ -137,7 +238,7 @@ function withLoadedFlag(entry, STATE) {
   return out;
 }
 
-export function listGallery({ trustedOnly = false, search = null, limit = 50, STATE = null } = {}) {
+export function listGallery({ trustedOnly = false, search = null, limit = 50, STATE = null, getAuthorReputation = null } = {}) {
   const out = [];
   for (const e of _gallery.values()) {
     if (e.delistedAt) continue; // taken down — see delistPlugin; still reachable via getGalleryEntry for audit
@@ -149,13 +250,29 @@ export function listGallery({ trustedOnly = false, search = null, limit = 50, ST
     out.push(withLoadedFlag(e, STATE));
   }
   out.sort((a, b) => b.installs - a.installs);
-  return { ok: true, plugins: out.slice(0, limit) };
+  const sliced = out.slice(0, limit);
+
+  // SDK-H — author identity/reputation, computed once per unique author
+  // rather than once per entry, so N gallery entries by the same author
+  // (a prolific publisher) cost one lookup, not N — the reasonable ceiling
+  // for a page capped at `limit` (max 50) entries.
+  const repCache = new Map();
+  for (const p of sliced) {
+    if (!repCache.has(p.authorId)) {
+      repCache.set(p.authorId, computeAuthorReputation(p.authorId, { getAuthorReputation }));
+    }
+    p.authorReputationSummary = repCache.get(p.authorId);
+  }
+
+  return { ok: true, plugins: sliced };
 }
 
-export function getGalleryEntry(pluginId, STATE = null) {
+export function getGalleryEntry(pluginId, STATE = null, { getAuthorReputation = null } = {}) {
   const e = _gallery.get(pluginId);
   if (!e) return { ok: false, error: "not_found" };
-  return { ok: true, plugin: withLoadedFlag(e, STATE) };
+  const plugin = withLoadedFlag(e, STATE);
+  plugin.authorReputationSummary = computeAuthorReputation(plugin.authorId, { getAuthorReputation });
+  return { ok: true, plugin };
 }
 
 /**

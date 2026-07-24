@@ -34537,6 +34537,35 @@ app.use("/api/faction-war", createFactionWarRouter({ db, requireAuth }));
 import * as _pluginGallery from "./lib/plugin-gallery.js";
 import * as _pluginSigning from "./lib/plugin-signing.js";
 
+// SDK-H — author identity/reputation for the gallery. Reuses the REAL
+// peer-visible `profile.reputation-summary` lens action (V1.2 Wave A) by
+// calling the SAME registered LENS_ACTIONS handler a human hits via
+// `/api/lens/run` with `{ domain: "profile", name: "reputation-summary",
+// targetUserId }` — never a hand-rolled duplicate query. `plugin-gallery.js`
+// only ever sees the resolved `{ ok, result }` this returns; it never touches
+// `db`/LENS_ACTIONS itself, keeping the two modules decoupled.
+//
+// Deliberately synchronous (the handler itself is a plain function, not
+// async) so `listGallery`/`getGalleryEntry` can stay synchronous too — several
+// existing tests call them without `await`.
+//
+// Referencing LENS_ACTIONS/makeCtx here is safe despite this call site sitting
+// before their `const` declarations further down the file: both are only
+// read inside this function's BODY, which only runs per-request (post-boot),
+// never at module-eval time — see the "Boot-order TDZ hazard" note in
+// CLAUDE.md. Best-effort: any failure returns null and the gallery degrades
+// to an honest "no reputation data" state (see computeAuthorReputation).
+function _pluginGalleryAuthorReputation(authorId) {
+  try {
+    if (!authorId) return null;
+    const handler = LENS_ACTIONS.get("profile.reputation-summary");
+    if (!handler) return null;
+    const ctx = makeCtx();
+    const virtualArtifact = { id: null, domain: "profile", type: "domain_action", data: { targetUserId: authorId }, meta: {} };
+    return handler(ctx, virtualArtifact, { targetUserId: authorId });
+  } catch { return null; }
+}
+
 app.get("/api/plugins/gallery", (req, res) => {
   const trustedOnly = req.query.trustedOnly === "true";
   const search = req.query.q ? String(req.query.q) : null;
@@ -34544,10 +34573,10 @@ app.get("/api/plugins/gallery", (req, res) => {
   // STATE is passed so each entry carries an honest `loaded` flag (is this
   // plugin's code actually running right now) alongside the unrelated
   // self-attested `trusted` flag — see plugin-gallery.js's withLoadedFlag.
-  res.json(_pluginGallery.listGallery({ trustedOnly, search, limit, STATE }));
+  res.json(_pluginGallery.listGallery({ trustedOnly, search, limit, STATE, getAuthorReputation: _pluginGalleryAuthorReputation }));
 });
 app.get("/api/plugins/gallery/:id", (req, res) => {
-  const r = _pluginGallery.getGalleryEntry(req.params.id, STATE);
+  const r = _pluginGallery.getGalleryEntry(req.params.id, STATE, { getAuthorReputation: _pluginGalleryAuthorReputation });
   if (!r.ok) return res.status(404).json(r);
   // Strip source from public response (getGalleryEntry already does this,
   // this stays as belt-and-suspenders against a future change to it).
