@@ -156,6 +156,16 @@ const AmbientChatPanel = dynamic(
     })),
   { ssr: false }
 );
+// V1.2 Wave A — shared DTU spaces. Discovery (create/browse/join) for
+// MU2's real workspace:room Yjs CRDT room; see the component's own header
+// for why the content/presence engine itself is untouched.
+const WorkspaceRoomsPanel = dynamic(
+  () =>
+    import('@/components/workspace/WorkspaceRoomsPanel').then((m) => ({
+      default: m.WorkspaceRoomsPanel,
+    })),
+  { ssr: false }
+);
 const FestivalBanner = dynamic(
   () =>
     import('@/components/world/FestivalBanner').then((m) => ({
@@ -1213,6 +1223,7 @@ import {
   ScrollText,
   Backpack,
   Gavel,
+  Share2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -2260,6 +2271,7 @@ export default function WorldLensPage() {
     | 'lore'
     | 'timeline'
     | 'character'
+    | 'workspace-rooms'
   >('none');
   // Local player avatar — mutable so moves update it in place. On
   // first mount we ask the server for saved state (via player:load)
@@ -6109,6 +6121,7 @@ export default function WorldLensPage() {
                 { key: 'jobs', label: 'Jobs', icon: Briefcase },
                 { key: 'lore', label: 'Lore', icon: BookOpen },
                 { key: 'timeline', label: 'Timeline', icon: History },
+                { key: 'workspace-rooms', label: 'Workspace', icon: Share2 },
               ] as const
             ).map(({ key, label, icon: Icon }) => (
               <button
@@ -6361,6 +6374,14 @@ export default function WorldLensPage() {
           {showPanel === 'collaboration' && (
             <SummonDrawer open title="Collaboration Tools" onClose={() => setShowPanel('none')}>
               <CollaborationTools />
+            </SummonDrawer>
+          )}
+          {/* V1.2 Wave A — shared DTU spaces: create/browse/join MU2's real
+              workspace:room Yjs CRDT rooms (see WorkspaceRoomsPanel's own
+              header for the full design). */}
+          {showPanel === 'workspace-rooms' && (
+            <SummonDrawer open title="Shared Workspace Rooms" onClose={() => setShowPanel('none')} widthClassName="w-[28rem]">
+              <WorkspaceRoomsPanel worldId={currentWorldId} districtId={currentWorldId} />
             </SummonDrawer>
           )}
           {showPanel === 'livecollab' && (

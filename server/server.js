@@ -79399,6 +79399,14 @@ structuredLog("info", "phase7_self_improving_init", {
 import registerSandwichMacros from "./domains/sandwich.js";
 registerSandwichMacros(register, { runMacro: runMcpTool, db: STATE?.db || globalThis._concordDB });
 
+// V1.2 Wave A (Society & Presence) — shared DTU spaces. Discovery metadata
+// (create-room / list-in-district / list-mine) over MU2's real
+// 'workspace:room' Yjs CRDT room (server/lib/yjs-realtime.js +
+// concord-frontend/components/workspace/SharedWorkspaceRoom.tsx). See
+// server/lib/workspace-rooms.js and server/migrations/377_workspace_rooms.js.
+import registerWorkspaceRoomMacros from "./domains/workspace-rooms.js";
+registerWorkspaceRoomMacros(register);
+
 // ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
 register("federation", "inbox_receive", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
