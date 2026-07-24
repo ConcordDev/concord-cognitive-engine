@@ -1315,6 +1315,36 @@ registerHeartbeat("realm-control-cycle", {
   handler: runRealmControlCycle,
 });
 
+// Grounding-audit find (2026-07-24) — kingdom-takeover.js#tickLegitimacy is a
+// fully-built decree-popularity-driven legitimacy regen/decay tick that had
+// ZERO callers anywhere in the codebase: without a schedule a realm's
+// legitimacy never organically drifted and nothing autonomously forced a
+// succession crisis when an interregnum realm just sat vacant forever. This
+// heartbeat calls the real tickLegitimacy(db) unmodified, then auto-resolves
+// (via the same npc-legacy.js#findHeirs heir-search death already uses)
+// any realm that is BOTH at the real legitimacy floor (0 — the same floor
+// tickLegitimacy's own clamp + the migration-158 CHECK constraint use) AND
+// currently ruler_kind = 'interregnum'. A player-held or player-contested
+// realm (ruler_kind = 'player') is never touched — see the module's own
+// safety-critical guard. Frequency 240 (~60min): tickLegitimacy's doc
+// comment calls it a "Daily" tick, but a literal calendar day in ticks
+// (5760) would leave a collapsed realm vacant far longer than is
+// interesting to observe; 240 matches the cadence this codebase already
+// uses for comparable slow civilizational drift (procgen-settlement-cycle,
+// lattice-breakthrough-pass) while staying safely slower than the
+// decree-issuing cycle (kingdom-decree-cycle @ 16) so each pass reacts to
+// genuinely new decree activity. scope:'global' — same reasoning as
+// realm-control-cycle/kingdom-decree-cycle immediately above: the
+// `SELECT ... FROM realms` queries here have no world_id filter, so 'world'
+// scope would re-run the same global realm set once per active shard.
+// Kill-switch: CONCORD_KINGDOM_LEGITIMACY=0.
+import { runKingdomLegitimacyCycle } from "./emergent/kingdom-legitimacy-cycle.js";
+registerHeartbeat("kingdom-legitimacy-cycle", {
+  frequency: 240,
+  scope: "global",
+  handler: runKingdomLegitimacyCycle,
+});
+
 // SL4 tail — periodic prune of expired user_active_effects (cook-engine only
 // pruned on cook; an idle world leaked dead rows). Pure GC. scope:'global'.
 import { runEffectsDecayCycle, EFFECTS_DECAY_FREQUENCY } from "./emergent/effects-decay-cycle.js";
