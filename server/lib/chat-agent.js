@@ -445,8 +445,15 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     } catch { /* action memory optional */ }
   }
 
+  // Opt-in seam (marathon-plan-context.js via agent-marathon.js#tickMarathon)
+  // for grounding the system prompt against a linked goal tree's REAL
+  // current state. Absent (the ordinary chat_agent.do path never sets it),
+  // this is "" — byte-identical to the pre-existing prompt composition, so
+  // nothing here changes behavior for any caller that doesn't opt in.
+  const extraSystemBlock = typeof opts.extraSystemBlock === "string" ? opts.extraSystemBlock : "";
+
   const messages = [
-    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + actionRecallBlock }) },
+    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + actionRecallBlock + extraSystemBlock }) },
     ...history,
     { role: "user", content: message },
   ];

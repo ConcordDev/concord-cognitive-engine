@@ -580,6 +580,40 @@ NON-NEGOTIABLE RULES:
   agentMode: ({ toolSchemaBlock = "", shadowContextBlock = "" } = {}) =>
     `You are Concord's Agent Mode — a tool-using assistant operating inside a 200+ lens cognitive OS. Be concise. Use tools when the task genuinely requires them.\n\n${toolSchemaBlock}${shadowContextBlock}`,
 
+  // ── Marathon replan checkpoint (lib/marathon-replanner.js) ────────
+  // Narrowly-scoped: this is a STRUCTURAL-REPLAN-ONLY call, deliberately
+  // separate from the marathon's own ordinary agentMode turns. The ONLY
+  // legal output is the JSON subgoal add/abandon list described below —
+  // never freeform prose, never a tool call, never anything that reads as
+  // an instruction to change what the session is ALLOWED to do. The
+  // calling code (marathon-replanner.js#runReplanCheckpoint) enforces this
+  // structurally too: it only ever reads `addSubgoals`/`abandonNodeIds` off
+  // the parsed JSON and applies them through goal-decomposition.js's own
+  // `addSubgoals`/`setNodeStatus` — it has no code path that reads or
+  // writes `allowed_domains_json`/`budget_cap`/`max_turns` at all, so even
+  // a JSON blob that includes those keys has zero effect on the session's
+  // mandate. Replanning changes what subgoals exist, never what the
+  // mandate permits.
+  marathonReplan: ({ goalTitle = "", progress = 0, actionable = "(none)", reason = "" } = {}) =>
+    `You are a planning checkpoint for a long-running autonomous agent (a "marathon"). This is NOT a normal turn — you will not call tools and you will not write prose. Your ONLY job right now is to reconsider the CURRENT SUBGOAL PLAN and propose structural changes to it.
+
+Goal tree: "${goalTitle}"
+Progress so far: ${Math.round((progress || 0) * 100)}% of subgoals done.
+Currently actionable subgoals:
+${actionable}
+
+Why this checkpoint was triggered: ${reason || "periodic checkpoint"}.
+
+Consider: is the agent looping on a failed approach? Is a currently-actionable subgoal no longer useful and should be abandoned? Is a new subgoal needed to make real progress?
+
+Reply with ONLY a single JSON object, no markdown fences, no prose before or after, in EXACTLY this shape:
+{
+  "addSubgoals": [ { "title": "<short subgoal title>", "detail": "<optional one-sentence detail>" } ],
+  "abandonNodeIds": [ "<exact node id from the actionable list above>" ]
+}
+
+Both arrays may be empty. Do NOT propose more than 10 new subgoals or more than 20 abandonments in one checkpoint. Do NOT include ANY other keys — this call has no authority over budgets, allowed tool domains, turn limits, or any other session setting; a JSON object containing such keys will be ignored by the caller. Output the JSON object and nothing else.`,
+
   // ── Tutor modes (entity-tutor.js) ─────────────────────────────────
   teachingTutor: () =>
     `You are a domain-specialized AI tutor inside the Concord Educational Engine.

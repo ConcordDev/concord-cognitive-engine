@@ -19,6 +19,12 @@
 
 import crypto from "node:crypto";
 import { runAgentLoop } from "./chat-agent.js";
+// Plan-tree integration (opt-in via opts.projectId only — see tickMarathon).
+// Three tightly-scoped, independently-testable modules; none of them ever
+// touch allowed_domains_json/budget_cap on agent_marathon_sessions.
+import { buildPlanContextBlock } from "./marathon-plan-context.js";
+import { applyPlanSync } from "./marathon-plan-sync.js";
+import { shouldReplan, runReplanCheckpoint } from "./marathon-replanner.js";
 
 const DEFAULT_TICK_TURNS = 5;
 const DEFAULT_MAX_TURNS = 200;
@@ -567,6 +573,21 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   // existing pattern in tests/agent-action-memory-wire.test.js.
   const toolGate = createToolGate(db, sessionId);
 
+  // Plan-grounding (read path, opt-in via opts.projectId — default
+  // undefined/off). When the caller explicitly names a linked project with
+  // a goal tree, pull nextActionable() + tree progress and hand it to
+  // runAgentLoop's opts.extraSystemBlock seam so the tick's system prompt
+  // is grounded against the REAL tree state, not a re-derived guess. Absent
+  // opts.projectId (every pre-existing caller), planCtx stays null and the
+  // prompt this tick builds is byte-identical to before this change —
+  // marathon-plan-context.js is never even invoked.
+  let planCtx = null;
+  if (opts.projectId) {
+    try {
+      planCtx = buildPlanContextBlock(db, opts.projectId);
+    } catch { /* plan context is best-effort — never blocks the tick */ }
+  }
+
   const result = await runAgentLoop({
     db,
     userId: session.user_id,
@@ -574,7 +595,10 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     runMacro,
     lensActions,
     history,
-    opts: { maxTurns: tickTurns, slot: opts.slot, sessionId, toolGate, brainChat: opts.brainChat },
+    opts: {
+      maxTurns: tickTurns, slot: opts.slot, sessionId, toolGate, brainChat: opts.brainChat,
+      extraSystemBlock: planCtx?.ok ? planCtx.block : "",
+    },
   });
 
   if (!result.ok) {
@@ -600,6 +624,17 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
 
   const totalTurns = session.total_turns + result.turns;
 
+  // Tree write-back (status sync, opt-in via the SAME planCtx resolved
+  // above — never re-discovers a link on its own). Detects
+  // `[SUBGOAL_COMPLETE: nodeId]` markers in this tick's final answer and
+  // applies them through goal-decomposition.js's own `setNodeStatus` (roll-
+  // up logic lives there, not here). Honest no-op when no tree is linked.
+  if (planCtx?.ok) {
+    try {
+      applyPlanSync(db, { treeId: planCtx.goalTreeId, answerText: result.answer || "" });
+    } catch { /* plan sync is best-effort — never blocks the tick */ }
+  }
+
   // Check for termination markers. A governance halt (revoked mid-tick, or
   // the spend budget was exhausted mid-tick) ALWAYS wins over a
   // COMPLETE/BLOCKED marker the brain happened to also emit this turn —
@@ -612,6 +647,34 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     nextStatus = "completed";
   } else if (BLOCKED_MARKER.test(result.answer || "")) {
     nextStatus = "paused";
+  }
+
+  // Explicit replan checkpoint (opt-in via the SAME planCtx; only when the
+  // session is still actually running — a completed/blocked/halted tick has
+  // nothing left to replan). Triggered by either a `[REPLAN_NEEDED: reason]`
+  // marker in this tick's answer or a turn-count interval (see
+  // marathon-replanner.js#shouldReplan). The checkpoint's own brain call is
+  // narrowly scoped (TASK_PROMPTS.marathonReplan) and its output is applied
+  // ONLY through goal-decomposition.js's addSubgoals/setNodeStatus — it
+  // never reads or writes allowed_domains_json/budget_cap, so a replan can
+  // change what subgoals exist but never what the mandate permits.
+  if (planCtx?.ok && nextStatus === "running") {
+    try {
+      const decision = shouldReplan({
+        answerText: result.answer || "",
+        priorTotalTurns: session.total_turns,
+        newTotalTurns: totalTurns,
+      });
+      if (decision.trigger) {
+        await runReplanCheckpoint(db, {
+          treeId: planCtx.goalTreeId,
+          userId: session.user_id,
+          reason: decision.reason,
+          brain: opts.replanBrainChat || opts.brainChat,
+          slot: opts.slot,
+        });
+      }
+    } catch { /* replan checkpoint is best-effort — never blocks the tick */ }
   }
 
   const nextTickAt = nextStatus === "running"
