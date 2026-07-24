@@ -116,38 +116,75 @@ export async function mintForgeAppAsDtu(db, opts) {
 }
 
 /**
- * List a forge_app DTU on the marketplace at a user-set price. Wraps
- * the existing creative_artifact_listings (or marketplace_listings)
- * insert; uses the schema variant that's present.
+ * List a forge_app DTU on the marketplace at a user-set price.
+ *
+ * Fixed (2026-07 grounding-audit continuation). This used to write into
+ * `creative_artifact_listings` (a "v2 schema" that, it turns out, NO
+ * migration anywhere in the repo ever creates — `scripts/audit/gates/
+ * schema-drift.mjs` has a standing honest-suppression comment for exactly
+ * this table) with a fallback to `marketplace_listings` (a real table with
+ * real readers — `server/durable.js`, `server/guidance.js` — but no
+ * purchase flow anywhere in the app). Either branch produced a "listing"
+ * nobody could ever buy: Phase 6a's "forge apps can be listed on the
+ * marketplace" claim was functionally hollow. This now lists through the
+ * REAL, purchasable `marketplace.list` macro (server.js) — the same
+ * `dtu.marketplace` + `purchaseWithRoyalties` system (95%-creator /
+ * 5%-platform royalty cascade) the Creator lens's own Listings tab uses.
+ * `mintForgeAppAsDtu`'s raw `INSERT INTO dtus` row is made resolvable to
+ * that macro by `resolveMarketplaceDtu`'s SQL-shadow hydration
+ * (`server/lib/dtu-shadow-hydrate.js`) — a sibling fix, already landed —
+ * so no change was needed on the mint side, only here. Pattern mirrors
+ * `server/lib/asset-gen/asset-marketplace.js#listGeneratedAssetOnMarketplace`.
+ *
+ * Signature change from the old `(db, opts)`: `marketplace.list` is a
+ * macro, not a raw table, so this now takes a macro `ctx` (with a live
+ * `ctx.macro.run`) instead of a bare `db` handle. The listing's SELLER is
+ * whichever user `ctx.actor.userId` resolves to — `marketplace.list`'s own
+ * ownership gate requires it to match the DTU's `ownerId`/`creator_id`, so
+ * callers must pass the SAME ctx their own actor is authenticated under
+ * (an explicit `opts.sellerId` can no longer override this — the old
+ * signature accepted one, but `marketplace.list` never read it either).
+ *
+ * @param {object} ctx    a macro ctx with a live `ctx.macro.run` (e.g. the
+ *   ctx any `register()`/`registerLensAction()` handler receives, or
+ *   `makeInternalCtx(...)` for internal/system callers).
+ * @param {object} opts
+ * @param {string} opts.dtuId          id returned by `mintForgeAppAsDtu`
+ * @param {number} [opts.price]        listing price in CC/USD units — the
+ *   same units `marketplace.list` expects elsewhere (NOT cents).
+ * @param {number} [opts.priceCents]   legacy cents-denominated price, kept
+ *   for the existing frontend dialog (`PublishForgeAppDialog.tsx`) that
+ *   still sends cents; converted to `price` (÷100) when `opts.price` is
+ *   absent. Prefer `opts.price` in new callers.
+ * @param {string} [opts.currency="USD"]
+ * @param {string} [opts.title]
+ * @param {string} [opts.description]
+ * @param {string[]} [opts.tags]
+ * @returns {Promise<{ok:boolean, listingId?:string, dtuId?:string,
+ *   listing?:object, reason?:string}>}
  */
-export function listForgeAppOnMarketplace(db, opts) {
-  if (!db) return { ok: false, reason: "no_db" };
-  const { dtuId, sellerId, priceCents, currency = "USD", title, description } = opts || {};
-  if (!dtuId || !sellerId || !(priceCents > 0)) return { ok: false, reason: "missing_inputs" };
+export async function listForgeAppOnMarketplace(ctx, opts) {
+  if (!ctx?.macro?.run) return { ok: false, reason: "no_macro_runtime" };
+  const { dtuId, price, priceCents, currency = "USD", title, description, tags } = opts || {};
+  if (!dtuId) return { ok: false, reason: "missing_inputs" };
 
-  // Try the v2 schema (creative_artifact_listings).
-  try {
-    const id = `cal_${crypto.randomUUID()}`;
-    db.prepare(`
-      INSERT INTO creative_artifact_listings
-        (id, artifact_id, seller_id, price, currency, status, listed_at)
-      VALUES (?, ?, ?, ?, ?, 'active', unixepoch())
-    `).run(id, dtuId, sellerId, priceCents, currency);
-    return { ok: true, listingId: id, schema: "creative_artifact_listings" };
-  } catch { /* try v1 */ }
+  const numPrice = price != null ? Number(price) : Number(priceCents || 0) / 100;
+  if (!Number.isFinite(numPrice) || numPrice < 0) return { ok: false, reason: "missing_inputs" };
 
-  // Fall back to marketplace_listings (auth schema).
-  try {
-    const id = `ml_${crypto.randomUUID()}`;
-    db.prepare(`
-      INSERT INTO marketplace_listings
-        (id, owner_user_id, title, description, price_cents, currency, visibility)
-      VALUES (?, ?, ?, ?, ?, ?, 'published')
-    `).run(id, sellerId, title || "Forge app", description || "", priceCents, currency);
-    return { ok: true, listingId: id, schema: "marketplace_listings" };
-  } catch (err) {
-    return { ok: false, reason: "no_marketplace_schema", error: err?.message };
+  const listed = await ctx.macro.run("marketplace", "list", {
+    dtuId,
+    price: numPrice,
+    currency,
+    contentType: "forge_app",
+    title,
+    description,
+    tags,
+  });
+
+  if (!listed?.ok) {
+    return { ok: false, reason: listed?.error || listed?.reason || "listing_failed" };
   }
+  return { ok: true, listingId: dtuId, dtuId, listing: listed.listing };
 }
 
 /**

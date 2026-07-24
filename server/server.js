@@ -79886,12 +79886,15 @@ register("dream", "publish", async (ctx, input = {}) => {
       WHERE id = ?
     `).run(row.dream_dtu_id);
 
-    // Mint marketplace listing via existing forge-marketplace path
+    // Mint marketplace listing via existing forge-marketplace path.
+    // `listForgeAppOnMarketplace(ctx, opts)` — fixed 2026-07 to list through
+    // the real `marketplace.list` macro; `price` is in CC units (not cents),
+    // and the seller resolves from `ctx.actor.userId` (this handler's own
+    // `userId`), so no separate `userId`/`sellerId` opt is read anymore.
     const fm = await import("./lib/forge-marketplace.js");
-    const r = await fm.listForgeAppOnMarketplace(db, {
-      userId,
+    const r = await fm.listForgeAppOnMarketplace(ctx, {
       dtuId: row.dream_dtu_id,
-      priceCc: Number(priceCc),
+      price: Number(priceCc),
       title: `Dream from ${new Date().toLocaleDateString()}`,
       description: "A grounded prose record of one night's substrate state.",
     });

@@ -84,40 +84,80 @@ describe("mintForgeAppAsDtu", () => {
   });
 });
 
+// Fixed (2026-07 grounding-audit continuation): listForgeAppOnMarketplace no
+// longer writes into the dead-end `creative_artifact_listings` (never
+// created by any migration) / `marketplace_listings` (real table, but no
+// purchase path) schemas. It now calls the REAL `marketplace.list` macro via
+// `ctx.macro.run` — same pattern as
+// `server/lib/asset-gen/asset-marketplace.js#listGeneratedAssetOnMarketplace`.
+// These unit tests stub `ctx.macro.run` to pin the call contract in
+// isolation (no server boot); the real macro + real royalty-cascade purchase
+// path is proven end-to-end in
+// `server/tests/forge-marketplace-purchase-e2e.test.js`.
+function makeFakeMacroCtx({ listResult } = {}) {
+  const calls = [];
+  return {
+    calls,
+    ctx: {
+      actor: { userId: "user:a" },
+      macro: {
+        run: async (domain, name, input) => {
+          calls.push({ domain, name, input });
+          return listResult;
+        },
+      },
+    },
+  };
+}
+
 describe("listForgeAppOnMarketplace", () => {
-  it("inserts via creative_artifact_listings when present", () => {
-    const db = makeFakeDb({ schema: "creative_artifact_listings" });
-    const r = listForgeAppOnMarketplace(db, {
+  it("calls the real marketplace.list macro with a CC-unit price derived from priceCents", async () => {
+    const { ctx, calls } = makeFakeMacroCtx({
+      listResult: { ok: true, listing: { price: 9.99, currency: "USD" } },
+    });
+    const r = await listForgeAppOnMarketplace(ctx, {
       dtuId: "forge:user:abc",
-      sellerId: "user:a",
       priceCents: 999,
       currency: "USD",
       title: "TODO",
     });
     assert.equal(r.ok, true);
-    assert.equal(r.schema, "creative_artifact_listings");
-    assert.equal(db._tables.creative_artifact_listings.size, 1);
+    assert.equal(r.listingId, "forge:user:abc");
+    assert.equal(r.dtuId, "forge:user:abc");
+    assert.deepEqual(r.listing, { price: 9.99, currency: "USD" });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].domain, "marketplace");
+    assert.equal(calls[0].name, "list");
+    assert.equal(calls[0].input.dtuId, "forge:user:abc");
+    assert.equal(calls[0].input.price, 9.99); // 999 cents -> 9.99 CC/USD units
+    assert.equal(calls[0].input.contentType, "forge_app");
   });
 
-  it("falls back to marketplace_listings when v2 schema is missing", () => {
-    const db = makeFakeDb({ schema: "marketplace_listings" });
-    const r = listForgeAppOnMarketplace(db, {
-      dtuId: "forge:user:abc",
-      sellerId: "user:a",
-      priceCents: 999,
-      currency: "USD",
-      title: "TODO",
-    });
+  it("accepts an explicit opts.price (CC units) in preference to priceCents", async () => {
+    const { ctx, calls } = makeFakeMacroCtx({ listResult: { ok: true, listing: { price: 5 } } });
+    const r = await listForgeAppOnMarketplace(ctx, { dtuId: "forge:user:abc", price: 5, priceCents: 999 });
     assert.equal(r.ok, true);
-    assert.equal(r.schema, "marketplace_listings");
-    assert.equal(db._tables.marketplace_listings.size, 1);
+    assert.equal(calls[0].input.price, 5);
   });
 
-  it("rejects missing inputs", () => {
-    const db = makeFakeDb();
-    const r = listForgeAppOnMarketplace(db, {});
+  it("passes through a real macro failure (e.g. ownership gate) as a reason, no fabricated success", async () => {
+    const { ctx } = makeFakeMacroCtx({ listResult: { ok: false, error: "not_your_dtu" } });
+    const r = await listForgeAppOnMarketplace(ctx, { dtuId: "forge:user:abc", priceCents: 999 });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "not_your_dtu");
+  });
+
+  it("rejects missing inputs", async () => {
+    const { ctx } = makeFakeMacroCtx({});
+    const r = await listForgeAppOnMarketplace(ctx, {});
     assert.equal(r.ok, false);
     assert.equal(r.reason, "missing_inputs");
+  });
+
+  it("rejects when the ctx has no macro runtime", async () => {
+    const r = await listForgeAppOnMarketplace({}, { dtuId: "x", priceCents: 100 });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_macro_runtime");
   });
 });
 
