@@ -24,7 +24,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LivenessPanel } from '@/components/admin/LivenessPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
-import { Activity, Cpu, Brain, Globe, RefreshCcw, AlertTriangle, Layers, Radar, ShieldAlert, ArrowUpRight } from 'lucide-react';
+import { Activity, Cpu, Brain, Globe, RefreshCcw, AlertTriangle, Layers, Radar, ShieldAlert, ArrowUpRight, Share2 } from 'lucide-react';
 
 interface HeartbeatStatRow {
   id: string;
@@ -96,6 +96,19 @@ interface WorldSummaryRow {
   stuckFactionSchedulers: number;
 }
 
+// Federation mesh (#38) — real shape returned by `fedmesh.peers`
+// (server/domains/fedmesh.js -> server/lib/federation-mesh.js#listPeers):
+// `SELECT peer_id AS peerId, url, brain_url AS brainUrl, capabilities_json,
+// revoked` with `capabilities` added as the parsed JSON array. `revoked`
+// comes back as the raw SQLite integer (0/1), not a JS boolean.
+interface FedmeshPeerRow {
+  peerId: string;
+  url: string | null;
+  brainUrl: string | null;
+  capabilities: string[];
+  revoked: number | boolean;
+}
+
 export default function OpsTelemetryPage() {
   const [hbStats, setHbStats] = useState<HeartbeatStatRow[]>([]);
   const [macroPool, setMacroPool] = useState<PoolStats | null>(null);
@@ -116,6 +129,20 @@ export default function OpsTelemetryPage() {
   // which means "fetched fine, zero worlds on this instance."
   const [simWorlds, setSimWorlds] = useState<WorldSummaryRow[] | null>(null);
   const [simError, setSimError] = useState<string | null>(null);
+  // Federation mesh (#38) — `null` means "not yet fetched successfully"
+  // (honest loading/error), distinct from `[]` (fetched fine, zero peers
+  // registered on this instance).
+  const [fedPeers, setFedPeers] = useState<FedmeshPeerRow[] | null>(null);
+  const [fedPeersError, setFedPeersError] = useState<string | null>(null);
+  // The automatic `fedmesh-sync-cycle` heartbeat drains the inbox on its own
+  // clock but its per-run accepted/rejected counts aren't captured anywhere
+  // queryable (the heartbeat-timing ring only stores timing, not handler
+  // return values — see server/emergent/heartbeat-registry.js `_timingMeta`).
+  // A manual drain trigger is the only way to show a REAL accepted/rejected
+  // result rather than fabricating a "synced" state.
+  const [fedDraining, setFedDraining] = useState(false);
+  const [fedDrainResult, setFedDrainResult] = useState<{ accepted: number; rejected: number; at: number } | null>(null);
+  const [fedDrainError, setFedDrainError] = useState<string | null>(null);
   // Wave 4 gap-closure — this page's own refresh() and LivenessPanel's
   // internal refresh used to run on two independent, uncoordinated 5s
   // setIntervals (two unjittered network round-trips every 5s). This page
@@ -169,6 +196,31 @@ export default function OpsTelemetryPage() {
         setSimError(e instanceof Error ? e.message : String(e));
       }
 
+      // Federation mesh (#38) — real peer registry via the `fedmesh.peers`
+      // lens macro (POST /api/lens/run), not a REST endpoint, so it goes
+      // through lensRun like worldstate.overview above. `includeRevoked:
+      // true` so the operator can see revoked peers too, not just active
+      // ones. Never fabricate: a failed/empty response clears fedPeers to
+      // null (honest "couldn't load") rather than leaving a stale list.
+      try {
+        const fedRes = await lensRun<{ ok: boolean; peers?: FedmeshPeerRow[]; reason?: string }>(
+          'fedmesh',
+          'peers',
+          { includeRevoked: true },
+        );
+        const fedPayload = fedRes.data.result;
+        if (fedRes.data.ok && fedPayload?.ok) {
+          setFedPeers(fedPayload.peers || []);
+          setFedPeersError(null);
+        } else {
+          setFedPeers(null);
+          setFedPeersError(fedRes.data.error || fedPayload?.reason || 'Failed to load federation peers');
+        }
+      } catch (e) {
+        setFedPeers(null);
+        setFedPeersError(e instanceof Error ? e.message : String(e));
+      }
+
       setLastRefresh(new Date());
       setHasLoadedOnce(true);
     } catch (e) {
@@ -201,6 +253,36 @@ export default function OpsTelemetryPage() {
     }
   }, [refresh]);
 
+  // Federation mesh (#38) — operator-triggered drain. `fedmesh.drain` calls
+  // the real `drainInbox()` and returns its real { accepted, rejected }
+  // counts for THIS call only; it is never auto-fired on the 5s poll
+  // interval (that would silently race the automatic fedmesh-sync-cycle
+  // heartbeat and make "who drained this" unclear) — it's an explicit
+  // operator action with an explicit, honest result.
+  const drainFedmeshInbox = useCallback(async () => {
+    setFedDraining(true);
+    setFedDrainError(null);
+    try {
+      const res = await lensRun<{ ok: boolean; accepted?: number; rejected?: number; reason?: string }>(
+        'fedmesh',
+        'drain',
+        {},
+      );
+      const payload = res.data.result;
+      if (res.data.ok && payload?.ok) {
+        setFedDrainResult({ accepted: payload.accepted ?? 0, rejected: payload.rejected ?? 0, at: Date.now() });
+      } else {
+        setFedDrainResult(null);
+        setFedDrainError(res.data.error || payload?.reason || 'Drain failed');
+      }
+    } catch (e) {
+      setFedDrainResult(null);
+      setFedDrainError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFedDraining(false);
+    }
+  }, []);
+
   // Discoverable keyboard shortcut: "r" forces an immediate refresh instead of
   // waiting for the next 5s tick (Grafana/Datadog convention). Registers in the
   // command palette + help modal via useLensCommand — not just a hidden handler.
@@ -229,6 +311,18 @@ export default function OpsTelemetryPage() {
       { activeUsers: 0, factionCount: 0, realmCount: 0, districtCount: 0, worldsWithWarnings: 0, stuckSchedulers: 0 },
     );
   }, [simWorlds]);
+
+  // Federation mesh (#38) — the automatic sync cadence is real telemetry
+  // already fetched above (hbStats), not new plumbing: find the
+  // `fedmesh-sync-cycle` row (server/emergent/fedmesh-sync-cycle.js,
+  // frequency 120) by id. `lastAt`/`totalRuns` come straight from the
+  // heartbeat-registry's timing ring, so "last ran Ns ago" is genuine.
+  const fedSyncModule = useMemo(
+    () => hbStats.find((m) => m.id === 'fedmesh-sync-cycle') ?? null,
+    [hbStats],
+  );
+  const fedActivePeers = useMemo(() => (fedPeers ? fedPeers.filter((p) => !p.revoked).length : null), [fedPeers]);
+  const fedRevokedPeers = useMemo(() => (fedPeers ? fedPeers.filter((p) => !!p.revoked).length : null), [fedPeers]);
 
   if (forbidden) return (
     <LensShell lensId="ops-telemetry" asMain={false}>
@@ -378,6 +472,107 @@ export default function OpsTelemetryPage() {
             )}
             {!simTotals && !simError && (
               <p className="text-[11px] text-slate-500">no simulation data loaded</p>
+            )}
+          </div>
+
+          {/* Federation mesh (#38) — server/domains/fedmesh.js + lib/federation-mesh.js
+              is a real DB-backed peer registry + consent-gated inbox that, until a
+              sibling unit added server/emergent/fedmesh-sync-cycle.js, had zero
+              frontend surface anywhere. This card shows the real peer list
+              (fedmesh.peers), the real automatic-sync cadence (the
+              fedmesh-sync-cycle row already present in hbStats above), and a
+              manual drain trigger whose result is the macro's own real
+              { accepted, rejected } counts — never a fabricated "Synced ✓". */}
+          <div data-testid="fedmesh-panel" className="rounded-xl border border-violet-500/20 bg-violet-500/[0.03] p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-violet-300">
+                <Share2 className="h-4 w-4" /> Federation mesh
+                <span className="text-[10px] font-normal normal-case text-slate-400">
+                  peer registry + consent-gated inbox (#38)
+                </span>
+              </h2>
+              <button
+                onClick={drainFedmeshInbox}
+                disabled={fedDraining}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-300 hover:bg-violet-500/20 disabled:opacity-50"
+              >
+                <RefreshCcw className={`h-3 w-3 ${fedDraining ? 'animate-spin' : ''}`} aria-hidden="true" />
+                {fedDraining ? 'draining…' : 'Drain inbox now'}
+              </button>
+            </div>
+
+            {fedPeersError && !fedPeers && (
+              <div role="alert" className="mb-2 flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{fedPeersError}</span>
+              </div>
+            )}
+            {!fedPeers && !fedPeersError && (
+              <p className="mb-2 text-[11px] text-slate-500">no peer data loaded</p>
+            )}
+            {fedPeers && fedPeers.length === 0 && (
+              <p className="mb-2 text-[11px] text-slate-500">No peers registered.</p>
+            )}
+            {fedPeers && fedPeers.length > 0 && (
+              <div className="mb-2 overflow-x-auto">
+                <table className="w-full text-[11px]" aria-label="Federation peers">
+                  <caption className="sr-only">Registered federation mesh peers, their endpoints, capabilities, and revoked status</caption>
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-left text-slate-400">
+                      <th scope="col" className="px-2 py-1.5">peer</th>
+                      <th className="px-2 py-1.5">url</th>
+                      <th className="px-2 py-1.5">brain url</th>
+                      <th className="px-2 py-1.5">capabilities</th>
+                      <th className="px-2 py-1.5">status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fedPeers.map((p) => (
+                      <tr key={p.peerId} className="border-b border-zinc-900">
+                        <td className="px-2 py-1 font-mono text-slate-200">{p.peerId}</td>
+                        <td className="px-2 py-1 font-mono text-slate-400">{p.url || '—'}</td>
+                        <td className="px-2 py-1 font-mono text-slate-400">{p.brainUrl || '—'}</td>
+                        <td className="px-2 py-1 text-slate-400">{p.capabilities?.length ? p.capabilities.join(', ') : '—'}</td>
+                        <td className="px-2 py-1">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] ${p.revoked ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                            {p.revoked ? 'revoked' : 'active'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <Metric label="known peers" value={fedPeers ? String(fedPeers.length) : '—'} />
+              <Metric label="active peers" value={fedActivePeers !== null ? String(fedActivePeers) : '—'} />
+              <Metric label="revoked peers" value={fedRevokedPeers !== null ? String(fedRevokedPeers) : '—'} />
+            </div>
+
+            <div className="mt-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">automatic sync (fedmesh-sync-cycle heartbeat)</div>
+              {fedSyncModule ? (
+                <p className="mt-0.5 text-[11px] text-slate-300">
+                  last ran {fedSyncModule.lastAt ? `${Math.round((Date.now() - fedSyncModule.lastAt) / 1000)}s ago` : 'never'} · {fedSyncModule.totalRuns} run{fedSyncModule.totalRuns === 1 ? '' : 's'} since boot
+                </p>
+              ) : (
+                <p className="mt-0.5 text-[11px] text-slate-500">no heartbeat sample yet (runs every 120 ticks — give it time)</p>
+              )}
+              <p className="mt-1 text-[10px] text-slate-500">
+                The heartbeat&apos;s own per-run accepted/rejected counts aren&apos;t exposed by telemetry (only that it ran) — use &quot;Drain inbox now&quot; for a real, visible result.
+              </p>
+            </div>
+
+            {fedDrainError && (
+              <div role="alert" className="mt-2 flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{fedDrainError}</span>
+              </div>
+            )}
+            {fedDrainResult && (
+              <p className="mt-2 text-[11px] text-emerald-300">
+                Manual drain at {new Date(fedDrainResult.at).toLocaleTimeString()}: {fedDrainResult.accepted} accepted, {fedDrainResult.rejected} rejected.
+              </p>
             )}
           </div>
 
