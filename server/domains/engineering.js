@@ -15,6 +15,14 @@ import { runFEA } from '../lib/simulation/fea-solver.js';
 // structuralCheck/electricalCheck combinators already consume this module's
 // other named exports (eng.columnBuckling, eng.voltageDrop, …).
 import { boltedConnection, transformerSizing } from '../lib/compute/engineering-compute.js';
+// checkThermalGate is the thermal-stress cross-check adapter (Wave E,
+// Cross-System Multi-Physics CAD): given the SAME nodes/members/loads/
+// supports model shape this file's own `runFEA` action already accepts
+// from a caller, it feeds a temperature-swing (ΔT) load alongside the
+// mechanical one through the identical, unmodified runFEA solver — see
+// server/lib/asset-gen/thermal-gate.js for the real formula (σ_thermal =
+// E·cte·ΔT) and the honest mechanical-vs-combined labeling.
+import { checkThermalGate, DEFAULT_DELTA_T_C } from '../lib/asset-gen/thermal-gate.js';
 
 // ── Material library (mechanical properties — SI + imperial) ───────────────
 // E in MPa, yield/ultimate in MPa, density in kg/m³, CTE in 1e-6/K.
@@ -791,6 +799,51 @@ export default function registerEngineeringActions(registerLensAction) {
           summary: fea.summary,
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── thermalStressCheck — ΔT-driven thermal stress, combined with the
+  // existing mechanical FEA (Wave E, Cross-System Multi-Physics CAD) ───────
+  // Sibling to `runFEA` above: accepts the identical nodes/members/loads/
+  // supports model shape, plus a temperature swing (`deltaT`, °C) and a
+  // MATERIAL_LIBRARY key (`material`). Returns BOTH the closed-form
+  // fully-restrained thermal stress per member (a real textbook formula,
+  // hand-verifiable, no solver call) and the REAL combined-vs-mechanical-
+  // only utilization from two actual runFEA solves — never blended into a
+  // single fabricated number. See server/lib/asset-gen/thermal-gate.js for
+  // the full honesty/scope caveats (a statically-determinate free-ended
+  // model can genuinely carry less thermal stress than the fully-restrained
+  // bound — `combinedUtilization` is a conservative worst-case screening
+  // check, not a certified indeterminate thermal-FE answer).
+  registerLensAction('engineering', 'thermalStressCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      if (nodes.length === 0 || members.length === 0) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+      const rawDeltaT = params?.deltaT ?? data.deltaT;
+      const deltaT = rawDeltaT === undefined || rawDeltaT === null || rawDeltaT === ''
+        ? DEFAULT_DELTA_T_C
+        : Number(rawDeltaT);
+      const material = params?.material ?? data.material ?? 'steel-a36';
+
+      const check = checkThermalGate({ nodes, members, loads, supports }, { deltaT, material });
+      // checkThermalGate never fabricates a pass: a hard precondition
+      // failure (bad model, unknown material, non-finite ΔT, missing
+      // supports, or a solver error) always carries `reason` and no
+      // numeric utilization — surface that as an honest macro error
+      // rather than wrapping it as a successful `result`.
+      if (check.reason) {
+        return { ok: false, error: check.reason, ...(check.error ? { detail: check.error } : {}) };
+      }
+      return { ok: true, result: check };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
