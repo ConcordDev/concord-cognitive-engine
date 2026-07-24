@@ -18,6 +18,7 @@
 
 import crypto from "node:crypto";
 import { recordOpinionEvent, getOpinion } from "./npc-opinions.js";
+import { applyPetitionEffect } from "./council-petition-effects.js";
 import logger from "../logger.js";
 
 function makeSessionId(realmId, seasonId, year) {
@@ -54,7 +55,15 @@ export function closeSession(db, sessionId) {
     const tally = tallyVotes(db, p.id);
     const resolution = tally.resolution;
     setResolution.run(resolution, p.id);
-    if (resolution === "approved") approved++;
+    if (resolution === "approved") {
+      approved++;
+      // Give the verdict teeth (never for rejected/tabled). Best-effort:
+      // a petition whose topic has no mapped effect, or whose effect
+      // application fails, must not block the rest of the close pass.
+      try { applyPetitionEffect(db, { ...p, resolution }); } catch (err) {
+        try { logger.warn?.("petition_effect_failed", { petitionId: p.id, error: err?.message }); } catch { /* noop */ }
+      }
+    }
     else if (resolution === "rejected") rejected++;
     else tabled++;
   }
