@@ -35,8 +35,7 @@ must export:
 | `description`, `author`, `license`, `intent` | no | — | metadata only; `intent` feeds Gate 4 (see §5) |
 
 A minimal module that would actually pass all four gates and run correctly
-through the sandbox — built directly from the real `ctx` surface in §2, not
-from the repo's shipped (broken) example:
+through the sandbox — built directly from the real `ctx` surface in §2:
 
 ```js
 // server/plugins/installed/example.hello-counter/index.js
@@ -119,19 +118,23 @@ for emergent-gen plugins by the patterns gate, and for everyone else they
 simply don't exist in the vm scope for a disk-loaded plugin — see the
 isolation description in `server/lib/plugin-sandbox.js:29-41`).
 
-**The shipped reference example is currently broken against this real ctx
-and should not be copied.** `server/plugins/installed/example-knowledge-weather/index.js`
-calls `ctx.schedule.every(...)` (line 35), `ctx.storage.get`/`.set` (lines
-57, 85 — the real property is `ctx.store`, not `ctx.storage`), a bare
-`fetch("http://localhost:5050/...")` (lines 67, 69), and `ctx.createDTU(...)`
-(line 77) — none of these exist on the ctx built by `buildSandboxedContext`
-or bridged by `bridgeFromHostCtx`. As of this writing there is no sibling
-change that has fixed this file; it is still the shape it was when the
-original audit found it. Its own header comment ("POST /api/plugins/reload")
-is also stale — no such route exists (`server.js` has no
-`/api/plugins/reload` handler; see §3 for the real load paths). Treat that
-file as a design sketch of *intent*, not as working reference code — use the
-table above and the minimal example in §1 instead.
+**The shipped reference example has since been rewritten against the real
+ctx and is a genuine, passing, working reference now** —
+`server/plugins/installed/example-knowledge-weather/index.js` (fixed
+2026-07, see `server/tests/plugin-example-knowledge-weather.test.js`, 5/5
+passing end-to-end through the real sandbox). An earlier draft of that file
+called `ctx.schedule.every(...)`, `ctx.storage.get`/`.set` (the real
+property is `ctx.store`, not `ctx.storage`), a bare
+`fetch("http://localhost:5050/...")`, and `ctx.createDTU(...)` — none of
+which exist on the ctx built by `buildSandboxedContext` or bridged by
+`bridgeFromHostCtx`. That prose is preserved in the file's own header
+comment as an explicit "here's what NOT to do" note for future authors, not
+as live code — the actual `init`/`macros`/`tick` in that file today use only
+`ctx.store`, `ctx.callMacro`, and `ctx.log`. There is also no
+`POST /api/plugins/reload` route (see §3 for the real load paths, including
+the admin-gated runtime-submission route that DOES exist). You can safely
+use `example-knowledge-weather/index.js` as working reference code now, in
+addition to the minimal example in §1.
 
 ## 3. How a plugin actually gets loaded
 
