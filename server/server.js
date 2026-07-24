@@ -45,6 +45,7 @@ import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
+import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
 import fs from "fs";
 import path from "path";
@@ -42036,12 +42037,20 @@ try {
 // the /api/lens/run dispatch (prefer LENS_ACTIONS, then MACROS) so every exposed
 // tool is actually reachable. Returns the raw { ok, ... } envelope (the MCP host
 // reads result.ok) — no unwrap, to keep the shape identical for both paths.
+//
+// The "which registry answers this pair" decision itself is delegated to
+// `resolveDualRegistry` (lib/dual-registry-resolve.js) so this exact
+// precedence ("prefer LENS_ACTIONS, then MACROS") is defined in exactly one
+// place — chat-agent.js's `run_lens_action` tool now calls the same helper,
+// so the two dispatchers can't silently drift apart again the way they had
+// (see docs/CONKAY_TOOL_AUTHORING_SPEC.md's "Corrections to the task's
+// framing" for the gap this closed).
 async function runMcpTool(domain, name, input, ctx) {
-  const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
-  if (lensHandler) {
+  const resolved = _resolveDualRegistry(domain, name, { lensActions: LENS_ACTIONS, runMacro });
+  if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
-    return await lensHandler(ctx, virtualArtifact, data);
+    return await resolved.handler(ctx, virtualArtifact, data);
   }
   return await runMacro(domain, name, input || {}, ctx);
 }

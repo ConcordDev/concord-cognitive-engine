@@ -28,6 +28,7 @@ import { brainChat, provenanceFrom } from "./byo-router.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
 import { recordInferenceSpan } from "./inference-metering.js";
 import { scanForInjection } from "./provenance-guard.js";
+import { resolveDualRegistry } from "./dual-registry-resolve.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -46,6 +47,7 @@ Available tools:
 - mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
 - mcp_list: List all tools available across connected external MCP servers. Params: {}
 - browser_act: Take actions on a web page — click, fill forms, select dropdowns, screenshot. Use when read-only browse_url isn't enough (need to log in, submit forms, navigate UI). Params: {"url": "https://...", "actions": [{"kind": "fill", "selector": "input[name='q']", "value": "..."}, {"kind": "click", "selector": "button[type='submit']"}, {"kind": "screenshot"}]}
+- run_authored_tool: Invoke one of YOUR OWN previously human-approved authored tools (a saved, named DSL program or sandboxed code a human proposed and approved for autonomous use). Params: {"toolId": "...", "input": {...}}
 
 Rules:
 - Use a tool when the task genuinely requires it. Don't fabricate results.
@@ -153,25 +155,32 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       case "run_lens_action": {
         const domain = String(call.params.domain || "");
         const action = String(call.params.action || "");
-        const key = `${domain}.${action}`;
-        if (!lensActions || !lensActions.get) {
-          // Map not injected; surface a hint rather than throw.
+        const actionInput = call.params.params || {};
+        // Resolve against BOTH registries — LENS_ACTIONS first, then MACROS
+        // (runMacro) — the same precedence server.js's runMcpTool already
+        // uses for the MCP server / /api/lens/run. Before this fix, this
+        // tool checked ONLY lensActions, so any macro registered via plain
+        // register() (e.g. a loaded plugin's macro) was unreachable through
+        // ConKay's own tool-calling loop even though the identical
+        // (domain, action) pair worked through runMcpTool. See
+        // dual-registry-resolve.js for the shared resolution logic.
+        const resolved = resolveDualRegistry(domain, action, { lensActions, runMacro });
+        if (resolved.via === "none") {
+          // Neither registry usable at all (nothing injected); surface a
+          // hint rather than throw.
           return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
         }
-        const handler = lensActions.get(key);
-        if (!handler) {
-          return { tool: call.tool, ok: false, error: `unknown lens action: ${key}` };
-        }
         try {
-          const actionInput = call.params.params || {};
-          const result = await handler(ctx, null, actionInput);
+          const result = resolved.via === "lens_action"
+            ? await resolved.handler(ctx, null, actionInput)
+            : await runMacro(domain, action, actionInput, ctx);
           // Carry the input alongside domain/action so a caller can run the
           // result through the frontend's detectArtifact registry (some
           // kinds, e.g. FEA, reshape input+output together — see
           // lib/conkay/artifact-kinds.ts) — the honest artifact->interactive-3D
           // pipeline needs this for agent-triggered lens actions the same way
           // it already works for directly-run macros.
-          return { tool: call.tool, ok: true, key, domain, action, input: actionInput, result };
+          return { tool: call.tool, ok: true, key: resolved.key, domain, action, input: actionInput, result };
         } catch (err) {
           return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
         }
