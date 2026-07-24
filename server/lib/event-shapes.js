@@ -401,6 +401,19 @@ export const EVENT_SHAPES = Object.freeze({
   "macro:stage":     { required: ["runId", "stage"], optional: ["domain", "action", "detail", "index", "total"] },
   "macro:completed": { required: ["runId", "domain", "action", "ok"], optional: ["ms", "error"] },
 
+  // ── R5/E22 — ConKay spatial mode (Godot Hub) ──────────────────────
+  // Same room + gating as macro:started/completed above (user:<id>, only
+  // when the request opted in with a correlation id). Fires ONLY after a
+  // real reason.verify/reason.evaluate_answer call completes with a usable
+  // verdict (server/lib/conkay-verdict-bridge.js#deriveConkayVerdictEmit) —
+  // never a guessed/default tier. `tier` is the same four-value vocabulary
+  // concord-frontend/components/common/CapabilityBadge.tsx renders
+  // (proven/flagged/reasoned/unverified), computed server-side by
+  // server/lib/capability-tier.js so a native client (no browser to run the
+  // frontend classifier in) gets the identical honest classification the
+  // web ConKay surface already shows per-message.
+  "conkay:verdict":  { required: ["runId", "domain", "action", "tier"], optional: ["verdict", "confidence"] },
+
   // ── Productivity reminders — live socket delivery (Wave 4) ────────
   // Emitted by server/domains/productivity.js's productivity-reminder-sweep
   // heartbeat (~30s cadence) to room `user:${userId}` the instant a

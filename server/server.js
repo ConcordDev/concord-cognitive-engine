@@ -42,6 +42,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { startSSE } from "./lib/sse.js";
@@ -41830,14 +41831,25 @@ app.post("/api/lens/run", async (req, res) => {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
       const result = _unwrapLensEnvelope(await lensHandler(ctx, virtualArtifact, rest));
       emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      // R5/E22 — ConKay spatial mode (Godot Hub): a real, non-fabricated
+      // capability-tier fact for the two verdict-producing macros only. See
+      // lib/conkay-verdict-bridge.js's header for why this reuses the SAME
+      // userId-scoped emitMacroLife spine macro:started/completed already
+      // use (already mirrored to a connected Godot client — no new room).
+      const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
+      if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
       return res.json({ ok: true, result });
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
     // Many domains (detectors, dtu, lens, scope, agents, etc.) only register
-    // here — the legacy LENS_ACTIONS path can't see them.
+    // here — the legacy LENS_ACTIONS path can't see them. (This is also where
+    // reason.verify/reason.evaluate_answer themselves register, so this is
+    // the branch that actually fires the conkay:verdict emit below today.)
     if (MACROS.get(domain)?.get(action)) {
       const result = _unwrapLensEnvelope(await runMacro(domain, action, rest, ctx));
       emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
+      if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
       return res.json({ ok: true, result });
     }
     // No registered macro for this (domain, action).

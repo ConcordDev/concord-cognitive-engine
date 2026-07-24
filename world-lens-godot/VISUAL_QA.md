@@ -584,6 +584,79 @@ it *looks* rendered has been seen:
 
 ---
 
+### ConKay spatial presence (R5/E22 — `conkay/conkay_presence.gd` +
+`conkay/conkay_pointing.gd` + `conkay/conkay_presence_state.gd`)
+
+The SAME ConKay identity already real on the web
+(`concord-frontend/components/conkay/widget/ConKayWidget.tsx`), given a
+presence inside the Godot Hub — not a new agent. The state-derivation logic
+(which macro/verdict events map to which discrete visual state, the
+in-flight-run-id bookkeeping, the color table) is pure and unit-tested
+(`tests/test_conkay_presence_state.gd`), as is the pointing geometry
+(`tests/test_conkay_pointing.gd` — direction/yaw-pitch/orthonormal-basis
+math, including the up-parallel singularity fallback). The server-side half
+(the new `conkay:verdict` event, and confirmation that `macro:started`/
+`macro:completed` already reach a Godot client's `user:<id>` room with zero
+new code) is verified for real by `server/tests/capability-tier.test.js`,
+`server/tests/conkay-verdict-bridge.test.js`, and
+`server/tests/conkay-verdict-event-shape.test.js` (all against a real,
+fully-booted `server.js`). Nothing about how any of it actually *looks* or
+*feels* in a live scene has been seen:
+
+- [ ] Whether the core+ring+3-satellite composition genuinely reads as "the
+      same ConKay" at a glance next to the web widget's SVG glyph — the
+      geometry mirrors the SVG's relative layout (one satellite "above", two
+      lower flanks) and its exact Tailwind color values, but a 3D orb lit by
+      Godot's default environment could easily look like a generic glowing
+      ball rather than a recognizable extension of the web identity until
+      seen on a real GPU.
+- [ ] `core_radius` / `orbit_radius` / `satellite_radius` / the placeholder
+      mount position (`Vector3(0, 1.6, 0)` in `world/boot.gd`) are all FIXED
+      design dials, not measured against any real avatar/building scale in
+      this scene — no prior art in this codebase to size a "companion orb"
+      against. Could read as comically large/small, or spawn inside/under
+      geometry, until placed against a real avatar and scene.
+- [ ] The THINKING-state ring spin (`thinking_spin_rate = 2.2` rad/s) is an
+      un-playtested constant — whether it reads as "actively working" versus
+      "spinning too fast/slow to notice" is a real, unverified visual
+      judgment call, the same class of open question as
+      `air_legibility.gd`'s altitude dials or `aerial-traffic-cycle.js`'s
+      cruise-altitude constant elsewhere in this doc.
+- [ ] `StandardMaterial3D` with `SHADING_MODE_UNSHADED` + a flat
+      `albedo_color`/`emission` pair (no bloom/glow environment configured
+      anywhere in this project) is a REASONED choice for a small ambient
+      marker, not a rendered/observed one — whether the four tier colors
+      (amber/emerald/rose/amber-again for reasoned) are legibly distinct
+      from each other under Godot's default viewport at the small scale this
+      orb is meant to render at has never been seen.
+- [ ] `point_at()`/`point_at_node()` have real, unit-tested math behind
+      them, but no caller in this repo invokes them yet — this unit
+      deliberately built the geometry only, without deciding WHEN ConKay
+      should point at something (see `conkay_pointing.gd`'s "explicitly out
+      of scope" note). A future unit wiring an actual trigger (e.g. "point
+      at the building a citation refers to") would be the first real test of
+      whether the resulting rotation looks like "pointing" rather than just
+      "facing a random direction."
+- [ ] **Lead/follow (real navigation) is NOT built** — see
+      `conkay_pointing.gd`'s class doc for why: it would need a
+      `NavigationServer3D` mesh bake off real scene geometry, steering
+      behavior, and gait blending, none of which exist for ConKay today.
+      Documented here as a clearly-scoped follow-on rather than a
+      half-built naive lerp-toward-target, which would visually read as
+      navigation without actually being it.
+- [ ] `macro:started`/`macro:completed` are asserted (by existing, passing
+      contract tests) to already reach a Godot client's `user:<id>` room —
+      but no test in this repo has driven a REAL end-to-end `/api/lens/run`
+      call with a ConKay correlation header through a live `/godot-ws`
+      connection and observed the frame arrive client-side (the closest
+      existing proof, `server/tests/godot-gateway-integration.test.js`,
+      covers `player:move`/`player:mode`/`design_command`, not this path).
+      The server-side plumbing is real and tested at the unit level; the
+      full wire round-trip for THIS specific event pair has not been
+      exercised.
+
+---
+
 ### Desktop shell (`concord-shell/` — R8/CL4, Program B Phase 6)
 
 The Tauri desktop shell that launches + supervises both `concord-frontend`

@@ -31,6 +31,8 @@ const TestSceneBootstrap := preload("res://tests/test_scene_bootstrap.gd")
 const TestAerialTrafficController := preload("res://tests/test_aerial_traffic_controller.gd")
 const TestAirLegibility := preload("res://tests/test_air_legibility.gd")
 const TestFeaSceneBuilder := preload("res://tests/test_fea_scene_builder.gd")
+const TestConKayPresenceState := preload("res://tests/test_conkay_presence_state.gd")
+const TestConKayPointing := preload("res://tests/test_conkay_pointing.gd")
 
 
 func _init() -> void:
@@ -53,6 +55,8 @@ func _init() -> void:
 		"AerialTrafficController": TestAerialTrafficController.run(),
 		"AirLegibility": TestAirLegibility.run(),
 		"FeaSceneBuilder": TestFeaSceneBuilder.run(),
+		"ConKayPresenceState": TestConKayPresenceState.run(),
+		"ConKayPointing": TestConKayPointing.run(),
 	}
 
 	var all_ok := true

@@ -467,7 +467,67 @@ If a future unit generalizes `design_command` to accept an explicit
 become reachable through it "for free" — but that generalization is not
 built here.
 
----
+## 13. ConKay spatial presence (R5/E22) — reuses the existing `user:<id>` mirror, one new event
+
+This is the master-spec's "CK-World" framing — the SAME ConKay identity
+already real on the web (`concord-frontend/components/conkay/`) rendered
+spatially in the Godot Hub, not a new agent. Two real, cross-device ConKay
+facts drive it:
+
+1. **A macro/brain call ConKay itself initiated is in flight ("busy").**
+   No new event was needed — `macro:started`/`macro:completed` (already
+   IMPLEMENTED per the summary table above) already fire to the caller's
+   `user:<id>` room whenever `/api/lens/run` carries a ConKay correlation id
+   (`x-conkay-run-id` / `body.__runId`), and that room was already mirrored
+   to a connected Godot client via `realtimeEmit`'s `{ userId }` branch
+   before this unit touched anything.
+2. **The capability tier of ConKay's last completed verification**
+   (Proven/Flagged/Reasoned/Unverified — the same four-value vocabulary
+   `concord-frontend/components/common/CapabilityBadge.tsx` renders). This
+   one had NO realtime event before this unit — `reason.verify`/
+   `reason.evaluate_answer`'s verdict was only ever classified client-side,
+   inside the browser tab that made the call. A new event, `conkay:verdict`,
+   closes that gap:
+
+```json
+{ "evt": "conkay:verdict", "data": { "runId": "...", "domain": "reason", "action": "verify", "tier": "proven", "verdict": "grounded", "confidence": 0.82, "ts": "...", "_seq": 1, "_evt": "conkay:verdict" } }
+```
+
+Fired from the SAME `emitMacroLife` helper (`server.js`'s
+`app.post("/api/lens/run")` handler) that already fires
+`macro:started`/`macro:completed` — same `user:<id>` gate (only when a
+correlation id AND a resolved non-anon user exist), same mirror path, no new
+room grammar. The derivation (which macro pairs produce a verdict, how the
+tier is computed) is a pure, separately-unit-tested module,
+`server/lib/conkay-verdict-bridge.js`, which delegates the actual
+proven/flagged/reasoned/unverified classification to a new canonical
+server-side port of the frontend's own classifier,
+`server/lib/capability-tier.js#capabilityTierFor` — kept byte-for-byte in
+step with `CapabilityBadge.tsx`'s `capabilityTierFor` so the two never
+drift. A `(domain, action)` pair outside the two known verdict macros, or a
+macro result that isn't genuinely `ok:true`, derives `null` — server.js
+emits nothing, never a guessed tier.
+
+**Client side:** `world-lens-godot/conkay/conkay_presence.gd` (a `Node3D`
+mounted in `world/boot.gd`) renders a small cyan lattice-node orb — the same
+core+ring+3-satellite composition `ConKayWidget.tsx`'s SVG glyph already
+uses, same colors — whose state is driven ENTIRELY by `macro:started`/
+`macro:completed`/`conkay:verdict` frames via a pure state-derivation module
+(`conkay/conkay_presence_state.gd`) with zero client-side timers. A separate
+pure module, `conkay/conkay_pointing.gd`, provides the "point at buildings/
+props" capability the master spec named — real look-at/yaw-pitch geometry
+given ConKay's position and a target position, NOT navigation/pathfinding
+(see that file's own "explicitly out of scope" note — lead/follow real
+navigation is a clearly-scoped, unattempted follow-on, not a half-built
+naive lerp).
+
+**Deliberately excluded:** `ConKayWidgetState`'s other two values
+("listening"/mic-active, "speaking"/TTS-active) and the overlay's `open`
+boolean are real but physically local to whichever browser tab is doing the
+capturing/playback — broadcasting them into a separate native process would
+present one device's local I/O state as if it were the account's shared
+truth. See `conkay_presence_state.gd`'s header for the full reasoning. No
+event carries them today and this unit does not add one.
 
 ## What this doc does NOT claim
 
@@ -508,6 +568,14 @@ built here.
   `"game-design"` domain. This revision does not claim any summary-table row
   above changed status; it documents a separate, REST-only capability that
   sits outside that vocabulary entirely.
+- **This revision (R5/E22 — ConKay spatial presence, §13 above):** adds ONE
+  new event, `conkay:verdict`, reusing the existing `macro:started`/
+  `macro:completed` userId-scoped mirror path unchanged (no new room
+  grammar, no new transport). Does not claim `spawn_entity`/`despawn_entity`
+  moved off PLANNED — the Godot presence node is mounted directly in
+  `boot.gd`, not spawned/despawned via any general entity-lifecycle event.
+  Does not touch `design_command`, `play_effect`, `apply_force`,
+  `query_state`, or `load_district`.
 
 ## Reproduction / verification
 
@@ -556,4 +624,19 @@ gdparse tests/test_fea_scene_builder.gd && gdlint tests/test_fea_scene_builder.g
 # Confirm design_command's domain is still hardcoded (the reason feaScene
 # uses plain REST instead of extending this channel):
 grep -n '_dispatchDesignCommand("game-design"' server/server.js
+
+# R5/E22 — ConKay spatial presence: the pure server-side classifier + its
+# unit test, the pure verdict-derivation bridge + its unit test, and the
+# conkay:verdict event-shape/realtimeEmit contract test:
+cd server && node --test tests/capability-tier.test.js tests/conkay-verdict-bridge.test.js tests/conkay-verdict-event-shape.test.js
+
+# R5/E22 — GDScript presence node + pointing geometry + state derivation,
+# and their pure-logic tests (parse/lint only — see VISUAL_QA.md):
+cd world-lens-godot && for f in conkay/*.gd tests/test_conkay_presence_state.gd tests/test_conkay_pointing.gd; do gdparse "$f"; done
+gdlint conkay/ tests/test_conkay_presence_state.gd tests/test_conkay_pointing.gd
+
+# Confirm macro:started/macro:completed were ALREADY mirrored to Godot
+# clients before this unit touched anything (no new code needed for the
+# "busy" half of ConKay's spatial state):
+grep -n '_godotGatewayEmitter?.emitToRoom(`user:' server/server.js
 ```
