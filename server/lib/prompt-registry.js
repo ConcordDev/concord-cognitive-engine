@@ -164,9 +164,15 @@ export const LENS_CONTEXT_HINTS = {
 //   - currentLens: lens id user is in (e.g. "studio", "code")
 //   - extra: free-form runtime context string to append (e.g. tool-result
 //     follow-up note)
+//   - userId + db: when both are present, the caller's learned
+//     conversational style profile (server/lib/initiative-engine.js
+//     #getStyleProfile — EMA-smoothed message length/formality/emoji rate
+//     from their REAL chat history, see learnStyle) is folded in as light
+//     tone/length guidance. Honest-empty when no profile has been learned
+//     yet (profile.exists === false) — never a fabricated/guessed default.
 
 export function composeSystemPrompt(brain, ctx = {}) {
-  const { mode = "chat", currentLens = null, extra = null, worldId = null } = ctx;
+  const { mode = "chat", currentLens = null, extra = null, worldId = null, userId = null, db = null } = ctx;
 
   const runtimeBits = [];
   runtimeBits.push(`Mode: ${mode}.`);
@@ -198,6 +204,34 @@ export function composeSystemPrompt(brain, ctx = {}) {
     runtimeBits.push(parts.join(" "));
   }
 
+  // Learned conversational style. When ctx.userId + ctx.db are both set,
+  // read back the EMA style profile learnStyle() has been accumulating from
+  // this user's REAL chat messages (see server.js's "Living chat / style
+  // learning" block). Same lazy-bound-lookup shape as worldVoice above.
+  // Honest by construction: a fresh/never-learned profile has
+  // exists===false and injects nothing — no guessed/fabricated preference,
+  // and this never replaces the DTU-citation / Modelfile-persona rules
+  // above, only adds light tone/length guidance on top.
+  let styleProfile = null;
+  if (userId && db && _getUserStyleProfile) {
+    try { styleProfile = _getUserStyleProfile(db, userId); } catch { /* style lookup best-effort */ }
+  }
+  if (styleProfile && styleProfile.exists) {
+    const bits = [];
+    if (styleProfile.formalityLevel <= 0.35) bits.push("casual/informal phrasing with contractions");
+    else if (styleProfile.formalityLevel >= 0.65) bits.push("more formal, fully-spelled-out phrasing");
+    if (styleProfile.avgMessageLength > 0 && styleProfile.avgMessageLength <= 120) {
+      bits.push("concise replies — they tend to write short messages");
+    }
+    if (styleProfile.emojiRate <= 0) bits.push("no emoji");
+    else if (styleProfile.emojiRate >= 0.05) bits.push("occasional emoji reads naturally to them");
+    if (bits.length) {
+      runtimeBits.push(
+        `Learned conversational style for this user (derived from their real message history — never override honesty, substance, or the DTU citation rules above with it): ${bits.join("; ")}.`
+      );
+    }
+  }
+
   const runtime = runtimeBits.join(" ");
 
   if (brain === "conscious") {
@@ -225,6 +259,25 @@ try {
   const mod = await import("./world-flavor.js");
   _getWorldVoice = mod.getWorldVoice;
 } catch { /* world-flavor optional — pre-Phase-G builds fall back gracefully */ }
+
+// Style-profile lookup binds to initiative-engine's getStyleProfile the same
+// way _getWorldVoice binds to world-flavor above. One engine instance is
+// cached per db handle (WeakMap keyed by the db object itself, so it can
+// never go stale across e.g. per-test in-memory databases) instead of
+// re-preparing ~20 SQL statements on every chat turn.
+const _styleEngineByDb = new WeakMap();
+let _getUserStyleProfile = null;
+try {
+  const mod = await import("./initiative-engine.js");
+  _getUserStyleProfile = (db, userId) => {
+    let engine = _styleEngineByDb.get(db);
+    if (!engine) {
+      engine = mod.createInitiativeEngine(db);
+      _styleEngineByDb.set(db, engine);
+    }
+    return engine.getStyleProfile(userId);
+  };
+} catch { /* initiative-engine optional — pre-Living-Chat builds fall back gracefully */ }
 
 // ── TASK PROMPTS ───────────────────────────────────────────────────────
 //

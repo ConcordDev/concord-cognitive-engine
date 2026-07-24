@@ -23607,6 +23607,26 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     }
   } catch (_e) { /* felt self optional */ }
 
+  // Living chat / style learning — every real user message now feeds the
+  // Conversational Initiative Engine's EMA-based style profile
+  // (server/lib/initiative-engine.js#learnStyle: message length, formality,
+  // emoji rate, vocabulary — server/routes/initiative.js's
+  // GET /api/initiative/style reads it back). Previously this only updated
+  // from INSIDE the initiative subsystem itself (generateDoubleText's call
+  // to _generateFollowUpText), or via POST /api/initiative/style/learn — a
+  // real, working endpoint with zero frontend caller. A user's own chat
+  // turns never reached it. Reuses the single engine instance
+  // registerInitiativeRoutes() already built (app._initiativeEngine, see
+  // server.js's "Initiative Engine Proactive Tick" section) instead of
+  // constructing + re-preparing a fresh engine every turn. Best-effort;
+  // never blocks the reply (same shape as the felt-self block above).
+  try {
+    const _styleUid = ctx?.actor?.userId || input?.userId || null;
+    if (_styleUid && prompt && app?._initiativeEngine) {
+      app._initiativeEngine.learnStyle(_styleUid, prompt);
+    }
+  } catch (_e) { /* style learning optional — never blocks chat */ }
+
   if (!STATE.sessions.has(sessionId)) {
     // ownerId enables defense-in-depth: assertSessionAccessible() refuses
     // session reads from anyone other than the owner (or a participant
@@ -24655,7 +24675,16 @@ let localReply = formatCrispResponse({
     // #worldVoice) injects into the system prompt. When the user is in a
     // world lens, their session carries a worldId; otherwise null is fine.
     const _worldId = input.worldId || sess_pre?.worldId || null;
-    const _composed = composeSystemPrompt("conscious", { mode, currentLens, worldId: _worldId });
+    // Style-learning wire — pass userId + db through so composeSystemPrompt
+    // can (best-effort, read-only) fold the learned style profile
+    // (initiative-engine.js#getStyleProfile) into the system prompt as
+    // functional context, the same way worldId triggers the per-world
+    // voice lookup above. Honest-empty when no profile has been learned yet.
+    const _composed = composeSystemPrompt("conscious", {
+      mode, currentLens, worldId: _worldId,
+      userId: ctx?.actor?.userId || input?.userId || null,
+      db: ctx?.db || globalThis._concordSTATE?.db || null,
+    });
     // Living chat / prompt-coloring — let the assistant's persistent felt state lightly
     // color its TONE (not its content, never its identity). A strained assistant is
     // steadier + more concise; a curious one leans in. Read-only; best-effort.
