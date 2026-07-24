@@ -80,12 +80,26 @@ function _validateCombatReach(userId, npcRow, skillData) {
 /**
  * Server-authoritative damage cap. After computeDamage() runs, verify
  * the result didn't blow past a sane maximum. A modified client can't
- * inflate damageResult.damage beyond what the server's own formula
+ * inflate damageResult.finalDamage beyond what the server's own formula
  * produced — this is the second guard, defending against a future bug
  * in computeDamage that drops a sanity check.
+ *
+ * FIX (found while hardening the Universal Move System Pillar 2/3 wiring
+ * end-to-end): this read `damageResult.damage` / `damageResult.isCrit`,
+ * but `computeDamage()` (lib/combat/damage-calculator.js) has never
+ * returned either field — it returns `{ rawDamage, resistancePct,
+ * finalDamage, statusEffectsApplied, kill }`. Every real call into this
+ * gate therefore hit `typeof undefined !== "number"` and rejected with
+ * `damage_missing`, unconditionally, regardless of world/skill/damage —
+ * i.e. the real POST /api/worlds/:worldId/combat/attack route 422'd on
+ * every single hit since this gate was added. Undetected because
+ * tests/combat-anti-cheat.test.js re-implements the validator inline
+ * (matching the same wrong contract) rather than importing/calling this
+ * function, and no other test drove a real success response from this
+ * route. Now reads the field computeDamage() actually produces.
  */
 function _validateDamageCap(damageResult, skillData, opts = {}) {
-  if (!damageResult || typeof damageResult.damage !== "number") {
+  if (!damageResult || typeof damageResult.finalDamage !== "number") {
     return { ok: false, reason: "damage_missing" };
   }
   const skillCap = Number(skillData?.max_damage) || 0;
@@ -104,8 +118,8 @@ function _validateDamageCap(damageResult, skillData, opts = {}) {
       }
     } catch { /* flavor lookup best-effort — fall back to skill cap only */ }
   }
-  if (damageResult.damage > cap + 0.5) {
-    return { ok: false, reason: "damage_cap_exceeded", computed: damageResult.damage, cap, isCrit };
+  if (damageResult.finalDamage > cap + 0.5) {
+    return { ok: false, reason: "damage_cap_exceeded", computed: damageResult.finalDamage, cap, isCrit };
   }
   return { ok: true };
 }
@@ -2382,6 +2396,29 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
           catch { /* keep empty */ }
           skillLevel = Number(dtu.skill_level ?? 1) || 1;
         }
+      }
+
+      // ── Universal Move System Pillar 2 — hard availability gate ────────────
+      // A world that lore-forbids a power class can't host it at all (a
+      // no-magic crime/superhero world rejects spells outright; magic
+      // resurfaces the moment you step into fantasy). `isAvailableIn` in
+      // lib/cross-world-potency.js was a pure, unit-tested function with NO
+      // live callsite anywhere in the server — this is the wire-up. Checked
+      // BEFORE the resource bar is spent so a forbidden cast doesn't also
+      // waste stamina/mana. Best-effort: legacy moves with no skill_kind
+      // stamp are never gated (skill_kind is stamped by move-descriptor.js
+      // at mint/evolve — pre-Universal-Move-System skills have none), and a
+      // lookup failure never blocks combat. No independent kill-switch: a
+      // world's lore-forbid is authored content, not a tunable dial.
+      if (skillData?.skill_kind) {
+        try {
+          const { isAvailableIn } = await import("../lib/cross-world-potency.js");
+          const worldRowForAvailability = db.prepare("SELECT rule_modulators FROM worlds WHERE id = ?").get(worldId);
+          const avail = isAvailableIn(worldRowForAvailability, { skillKind: skillData.skill_kind });
+          if (!avail.available) {
+            return res.status(422).json({ ok: false, error: "power_forbidden_in_world", reason: avail.reason });
+          }
+        } catch { /* availability gate best-effort — lookup failure falls through to combat */ }
       }
 
       // ── Consume resource bar ───────────────────────────────────────────────
