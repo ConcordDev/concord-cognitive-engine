@@ -31,6 +31,17 @@ import { checkThermalGate, DEFAULT_DELTA_T_C } from '../lib/asset-gen/thermal-ga
 // circuit-solver.js for the full method + the honest grounded-voltage-
 // source scope limitation (plain nodal analysis, not full MNA).
 import { solveCircuit } from '../lib/simulation/circuit-solver.js';
+// checkAeroGate is the aero-on-structure cross-check adapter (Cross-System
+// Multi-Physics CAD, aero leg) — sibling to checkThermalGate above: given
+// the SAME nodes/members/loads/supports model shape, it feeds a
+// quadratic free-stream drag load (q=0.5·ρ·v², F=q·Cd·A — the same
+// formula already used by physics-compute.js's dragForce/windLoad) per
+// member through the identical, unmodified runFEA solver. See
+// server/lib/asset-gen/aero-gate.js for the full honest-scope note (a
+// deliberate uniform-free-stream approximation — no wake/turbulence/
+// member-interference modeled) and the never-blended mechanical-vs-
+// combined labeling.
+import { checkAeroGate } from '../lib/asset-gen/aero-gate.js';
 
 // ── Material library (mechanical properties — SI + imperial) ───────────────
 // E in MPa, yield/ultimate in MPa, density in kg/m³, CTE in 1e-6/K.
@@ -879,6 +890,61 @@ export default function registerEngineeringActions(registerLensAction) {
         return { ok: false, error: solved.reason, ...(solved.nodeId ? { nodeId: solved.nodeId } : {}) };
       }
       return { ok: true, result: solved };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── aeroLoadCheck — quadratic free-stream drag load, combined with the
+  // existing mechanical FEA (Cross-System Multi-Physics CAD, aero leg) ─────
+  // Sibling to `thermalStressCheck` above: accepts the identical
+  // nodes/members/loads/supports model shape, plus a flow velocity
+  // (`velocity`, m/s) and direction (`direction`, a radian angle or
+  // {x,y,z} vector). Returns BOTH the dynamic pressure + per-member drag
+  // force (real formula, hand-verifiable, no solver call) and the REAL
+  // combined-vs-mechanical-only utilization from two actual runFEA
+  // solves — never blended into a single fabricated number. See
+  // server/lib/asset-gen/aero-gate.js for the full honesty/scope caveats
+  // (a deliberate uniform-free-stream approximation with no wake,
+  // turbulence, or member-to-member interference — a screening check,
+  // not a certified CFD result).
+  registerLensAction('engineering', 'aeroLoadCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      if (nodes.length === 0 || members.length === 0) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+      const velocity = params?.velocity ?? data.velocity;
+      const direction = params?.direction ?? data.direction;
+      const airDensity = params?.airDensity ?? data.airDensity;
+      const defaultCd = params?.defaultCd ?? data.defaultCd;
+      const defaultArea = params?.defaultArea ?? data.defaultArea;
+
+      const check = checkAeroGate(
+        { nodes, members, loads, supports },
+        {
+          velocity: velocity === undefined || velocity === null || velocity === '' ? undefined : Number(velocity),
+          ...(direction !== undefined && direction !== null ? { direction } : {}),
+          ...(airDensity !== undefined && airDensity !== null && airDensity !== '' ? { airDensity: Number(airDensity) } : {}),
+          ...(defaultCd !== undefined && defaultCd !== null && defaultCd !== '' ? { defaultCd: Number(defaultCd) } : {}),
+          ...(defaultArea !== undefined && defaultArea !== null && defaultArea !== '' ? { defaultArea: Number(defaultArea) } : {}),
+        }
+      );
+      // checkAeroGate never fabricates a pass: a hard precondition
+      // failure (bad model, invalid velocity/direction/air density,
+      // missing supports, missing per-member aero geometry, or a solver
+      // error) always carries `reason` and no numeric utilization —
+      // surface that as an honest macro error rather than wrapping it as
+      // a successful `result`.
+      if (check.reason) {
+        return { ok: false, error: check.reason, ...(check.error ? { detail: check.error } : {}), ...(check.memberIds ? { memberIds: check.memberIds } : {}) };
+      }
+      return { ok: true, result: check };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
