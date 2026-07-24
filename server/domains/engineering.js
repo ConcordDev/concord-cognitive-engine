@@ -23,6 +23,14 @@ import { boltedConnection, transformerSizing } from '../lib/compute/engineering-
 // server/lib/asset-gen/thermal-gate.js for the real formula (σ_thermal =
 // E·cte·ΔT) and the honest mechanical-vs-combined labeling.
 import { checkThermalGate, DEFAULT_DELTA_T_C } from '../lib/asset-gen/thermal-gate.js';
+// solveCircuit is a genuine textbook nodal-analysis (KCL) DC circuit
+// solver (Cross-System Multi-Physics CAD, electrical leg) — a real
+// resistor/source network solve, distinct from this domain's existing
+// `voltageDrop`/electrical.js's NEC ampacity+sizing tables, neither of
+// which solves a multi-node network. See server/lib/simulation/
+// circuit-solver.js for the full method + the honest grounded-voltage-
+// source scope limitation (plain nodal analysis, not full MNA).
+import { solveCircuit } from '../lib/simulation/circuit-solver.js';
 
 // ── Material library (mechanical properties — SI + imperial) ───────────────
 // E in MPa, yield/ultimate in MPa, density in kg/m³, CTE in 1e-6/K.
@@ -844,6 +852,33 @@ export default function registerEngineeringActions(registerLensAction) {
         return { ok: false, error: check.reason, ...(check.error ? { detail: check.error } : {}) };
       }
       return { ok: true, result: check };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── circuitSolve — DC nodal-analysis circuit solver (Wave E, Cross-
+  // System Multi-Physics CAD, electrical leg) ──────────────────────────────
+  // Sibling to `thermalStressCheck` above: a genuine textbook KCL nodal
+  // solve (see server/lib/simulation/circuit-solver.js for the full method)
+  // over a caller-supplied resistor/voltage-source/current-source network.
+  // Never fabricates a result — a singular matrix (floating sub-network,
+  // no ground reference), a disconnected node, an unsupported floating
+  // voltage source, or any malformed input surfaces as an honest
+  // `ok:false, error` with a real reason, not a numeric guess.
+  registerLensAction('engineering', 'circuitSolve', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const elements = Array.isArray(model.elements) ? model.elements : [];
+      const groundNodeId = params?.groundNodeId ?? data.groundNodeId ?? model.groundNodeId;
+
+      const solved = solveCircuit({ nodes, elements, groundNodeId });
+      if (!solved.ok) {
+        return { ok: false, error: solved.reason, ...(solved.nodeId ? { nodeId: solved.nodeId } : {}) };
+      }
+      return { ok: true, result: solved };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
