@@ -27925,6 +27925,14 @@ registerHeartbeat("cross-world-scheme-cycle", {
   handler: runCrossWorldSchemeCycle,
 });
 
+// Cross-world schemes macro surface — `lib/cross-world-schemes.js` was a
+// fully-built, tested engine (the cycle above) with zero macro/route/
+// frontend consumer. Full plotter/target parity: a real player can
+// propose a scheme against an NPC or another real player (see the
+// domain file header for the security note on plotterId scoping).
+import registerCrossWorldSchemesMacros from "./domains/cross-world-schemes.js";
+registerCrossWorldSchemesMacros(register);
+
 // T2.4 — emergent-module reconciliation: population-migration-cycle declared
 // itself a frequency-30 heartbeat in its own header but was never registered,
 // so due population_flow_events (kingdom decrees / refugee flows / voluntary

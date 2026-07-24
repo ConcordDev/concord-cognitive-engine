@@ -15,6 +15,7 @@
 // prayer/sermon/witnessed-conversion.
 
 import crypto from "node:crypto";
+import { getCurrentWorld } from "./world-travel.js";
 
 const FERVOR_STEP = 0.04;
 const DECAY_STEP_PER_DAY = 0.02;
@@ -32,14 +33,37 @@ function uid(prefix) {
 
 /* ───────── Faith CRUD ──────────────────────────────────────────────── */
 
-export function foundFaith(db, { actorKind, actorId, name, doctrine }) {
+// Best-effort founder-world lookup, following the same convention as every
+// other cross-world-aware subsystem (world-travel.js#getCurrentWorld reads
+// the canonical `users.current_world` column; NPCs resolve via their
+// `world_npcs` row). Returns null when the actor kind has no world concept
+// (e.g. 'authored') or the lookup fails — a faith with no resolvable world
+// is world-agnostic, same as every pre-migration row.
+function resolveFounderWorld(db, actorKind, actorId, explicitWorldId) {
+  if (explicitWorldId != null && explicitWorldId !== "") return String(explicitWorldId);
+  try {
+    if (actorKind === "player" && actorId) {
+      return getCurrentWorld(db, actorId) || null;
+    }
+    if (actorKind === "npc" && actorId) {
+      const row = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(actorId);
+      return row?.world_id || null;
+    }
+  } catch {
+    // Minimal build without users/world_npcs tables — degrade to null.
+  }
+  return null;
+}
+
+export function foundFaith(db, { actorKind, actorId, name, doctrine, worldId } = {}) {
   if (!actorKind || !actorId || !name) throw new Error("actorKind, actorId, name required");
   const id = uid("faith");
   const tenetCount = doctrine?.tenets?.length || 0;
+  const resolvedWorldId = resolveFounderWorld(db, actorKind, actorId, worldId);
   db.prepare(`
-    INSERT INTO faiths (id, name, doctrine_json, founder_kind, founder_id, tenet_count)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, String(name).slice(0, 120), JSON.stringify(doctrine || {}), actorKind, actorId, Math.min(32, tenetCount));
+    INSERT INTO faiths (id, name, doctrine_json, founder_kind, founder_id, tenet_count, world_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, String(name).slice(0, 120), JSON.stringify(doctrine || {}), actorKind, actorId, Math.min(32, tenetCount), resolvedWorldId);
   // Founder is automatically a prophet
   db.prepare(`
     INSERT INTO worshippers (faith_id, actor_kind, actor_id, faith_strength, role)
@@ -50,7 +74,7 @@ export function foundFaith(db, { actorKind, actorId, name, doctrine }) {
     VALUES (?, ?, ?, ?, 'founding')
   `).run(uid("fe"), id, actorKind, actorId);
   db.prepare(`UPDATE faiths SET total_worshippers = 1 WHERE id = ?`).run(id);
-  return { ok: true, faithId: id };
+  return { ok: true, faithId: id, worldId: resolvedWorldId };
 }
 
 export function getFaith(db, faithId) {
@@ -59,6 +83,17 @@ export function getFaith(db, faithId) {
 
 export function listFaiths(db) {
   return db.prepare("SELECT * FROM faiths ORDER BY total_worshippers DESC LIMIT 200").all();
+}
+
+// Faiths scoped to one world (e.g. "the state religion of Sandrun"). Rows
+// with world_id IS NULL (world-agnostic — every pre-migration faith, and
+// any faith founded by an actor whose world couldn't be resolved) are never
+// returned here; use listFaiths() for the unscoped view.
+export function listFaithsForWorld(db, worldId) {
+  if (!worldId) return [];
+  return db.prepare(`
+    SELECT * FROM faiths WHERE world_id = ? ORDER BY total_worshippers DESC LIMIT 200
+  `).all(String(worldId));
 }
 
 export function getWorshipper(db, faithId, actorKind, actorId) {
