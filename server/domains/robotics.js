@@ -2,15 +2,26 @@
 //
 // Robotics lens — ROS / Gazebo-shape robot simulation suite.
 //
-// Two families of macros:
+// Three families of macros:
 //   1. Pure-compute calculators (kinematicsCalc, pathPlan, sensorFusion,
 //      batteryLife) — operate on the artifact data shape.
 //   2. STATE-backed interactive control surface (fleet, telemetry,
 //      missions, sensor logs, teleop, FK/IK chains) — persisted per-user
 //      in globalThis._concordSTATE Maps keyed by userId.
+//   3. Safety-envelope compiler (safetyEnvelopeCompile/Get/Emit/List) — the
+//      OFFLINE design-and-verification half of "deterministic actuator
+//      control." Concord/Node.js cannot execute real-time control (GC
+//      pauses alone are milliseconds); these macros compute a verified-
+//      conservative safe operating envelope and store a static data
+//      artifact for a real RT toolchain to compile. See
+//      server/lib/simulation/safety-envelope.js for the full honest
+//      boundary text and method.
 //
 // Every interactive macro returns { ok, result } / { ok:false, error }
 // and never throws.
+
+import { computeEnvelope } from "../lib/simulation/safety-envelope.js";
+import { buildArtifact, emitTable } from "../lib/simulation/envelope-artifact.js";
 
 export default function registerRoboticsActions(registerLensAction) {
   // Fail-CLOSED numeric coercion: parseFloat lets the strings "Infinity"/"-Infinity"
@@ -31,7 +42,7 @@ export default function registerRoboticsActions(registerLensAction) {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
     if (!STATE.roboticsLens) STATE.roboticsLens = {};
     const s = STATE.roboticsLens;
-    for (const k of ["robots", "missions", "sensorLogs", "teleop"]) {
+    for (const k of ["robots", "missions", "sensorLogs", "teleop", "safetyEnvelopes"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -539,5 +550,108 @@ export default function registerRoboticsActions(registerLensAction) {
       saveRoboState();
       return { ok: true, result: { robotId, command: cmd, position: { ...pos }, trail: trail.slice(-20) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─── Safety-envelope compiler — offline verification, not control ──
+  //
+  // 🔴 Concord does not and cannot execute real-time control. These macros
+  // compute a verified-conservative safe operating envelope OFFLINE and
+  // store a static data artifact (a lookup table + its bounds + provenance)
+  // for a real RT toolchain (PLC / FPGA / microcontroller) to compile and
+  // execute. Nothing here is a controller. See
+  // server/lib/simulation/safety-envelope.js and
+  // server/lib/simulation/envelope-artifact.js for the full method + the
+  // honest runtime boundary text (also embedded in every emitted artifact).
+
+  // robotics.safetyEnvelopeCompile — run gridded forward reachability +
+  // Grönwall inflation over a plant/state-box/constraint spec and store the
+  // resulting artifact. Returns a summary (never the full lookup table —
+  // that can be up to MAX_GRID_CELLS entries; fetch it via
+  // safetyEnvelopeGet/safetyEnvelopeEmit).
+  registerLensAction("robotics", "safetyEnvelopeCompile", (ctx, _artifact, params = {}) => {
+    try {
+      const env = computeEnvelope({
+        plant: params.plant,
+        stateBox: params.stateBox,
+        inputBox: params.inputBox ?? null,
+        constraints: Array.isArray(params.constraints) ? params.constraints : [],
+        horizon: params.horizon || {},
+        adversarialInput: params.adversarialInput === true,
+        declaredLipschitz: params.declaredLipschitz ?? null,
+      });
+      const artifact = buildArtifact(env, { requestedBy: ruid(ctx) });
+      const s = getRoboState();
+      const uid = ruid(ctx);
+      const list = rlist(s.safetyEnvelopes, uid);
+      const id = rid("env");
+      list.push({ id, artifact, createdAt: rnow() });
+      if (list.length > 50) list.splice(0, list.length - 50); // ring buffer — artifacts can be large
+      saveRoboState();
+      return {
+        ok: true,
+        result: {
+          id,
+          claimTier: artifact.claimTier,
+          coverageFraction: artifact.coverageFraction,
+          safeCount: artifact.safeCount,
+          totalCells: artifact.totalCells,
+          lipschitz: artifact.bounds.lipschitz,
+          growthInflation: artifact.bounds.growthInflation,
+          integratorStepError: artifact.bounds.integratorStepError,
+          grid: artifact.grid,
+          equilibrium: artifact.equilibrium,
+          provenance: artifact.provenance,
+          note: "This is an OFFLINE-verification artifact, not a controller. Fetch the full lookup table via safetyEnvelopeGet or safetyEnvelopeEmit.",
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e), code: e?.code || null }; }
+  });
+
+  // robotics.safetyEnvelopeList — previously compiled envelopes for this user.
+  registerLensAction("robotics", "safetyEnvelopeList", (ctx, _artifact, _params) => {
+    try {
+      const s = getRoboState();
+      const list = rlist(s.safetyEnvelopes, ruid(ctx));
+      const summaries = list.map((e) => ({
+        id: e.id,
+        createdAt: e.createdAt,
+        claimTier: e.artifact.claimTier,
+        coverageFraction: e.artifact.coverageFraction,
+        safeCount: e.artifact.safeCount,
+        totalCells: e.artifact.totalCells,
+      }));
+      return { ok: true, result: { envelopes: summaries, total: summaries.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // robotics.safetyEnvelopeGet — the full structured artifact (including the
+  // row-major lookup table) for a previously compiled envelope.
+  registerLensAction("robotics", "safetyEnvelopeGet", (ctx, _artifact, params = {}) => {
+    try {
+      const id = rclean(params.id, 64);
+      if (!id) return { ok: false, error: "id required." };
+      const s = getRoboState();
+      const list = rlist(s.safetyEnvelopes, ruid(ctx));
+      const entry = list.find((e) => e.id === id);
+      if (!entry) return { ok: false, error: "Safety envelope not found." };
+      return { ok: true, result: { artifact: entry.artifact } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // robotics.safetyEnvelopeEmit — render a stored envelope's artifact as a
+  // 'json' | 'csv' | 'c-header' data table for an RT toolchain to compile.
+  // Every format embeds the honest runtime-boundary text.
+  registerLensAction("robotics", "safetyEnvelopeEmit", (ctx, _artifact, params = {}) => {
+    try {
+      const id = rclean(params.id, 64);
+      if (!id) return { ok: false, error: "id required." };
+      const format = ["json", "csv", "c-header"].includes(params.format) ? params.format : "json";
+      const s = getRoboState();
+      const list = rlist(s.safetyEnvelopes, ruid(ctx));
+      const entry = list.find((e) => e.id === id);
+      if (!entry) return { ok: false, error: "Safety envelope not found." };
+      const table = emitTable(entry.artifact, format);
+      return { ok: true, result: { id, format, table } };
+    } catch (e) { return { ok: false, error: String(e?.message || e), code: e?.code || null }; }
   });
 }
