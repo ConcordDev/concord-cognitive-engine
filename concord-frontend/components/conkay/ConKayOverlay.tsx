@@ -376,11 +376,15 @@ export function ConKayOverlay() {
     claim: string,
     citationIds: string[],
     // The full DTU refs the claim was cited against, in the same shape ConKay
-    // skills already attach to messages (id/title/tier) — passed through so
-    // the HUD store's `runDtuRefs` mirrors the real refs this call checks,
-    // never a re-derivation. Optional: callers that only have bare ids (none
-    // currently do) still get a working verdict, just an empty refs mirror.
-    dtuRefs: Array<{ id: string; title: string | null; tier: string | null }> = [],
+    // skills already attach to messages (id/title/tier/content) — passed
+    // through so the HUD store's `runDtuRefs` mirrors the real refs this call
+    // checks, never a re-derivation. Optional: callers that only have bare
+    // ids (none currently do) still get a working verdict, just an empty
+    // refs mirror. `content` (R8/CL3 gap fix) is the DTU's real body text
+    // when the producing path has it — see conkay-skills.ts's
+    // `ConKaySkillResult.dtuRefs` doc comment; null/absent is an honest
+    // "no body text available", never fabricated.
+    dtuRefs: Array<{ id: string; title: string | null; tier: string | null; content?: string | null }> = [],
     // The user's original question that prompted this reply — passed through
     // to reason.evaluate_answer's answer-relevancy axis. Optional/null: an
     // absent question still lets faithfulness/context-precision run, just
@@ -723,7 +727,7 @@ export function ConKayOverlay() {
     let placed = false;
     let liveText = '';
     const liveToolCalls: unknown[] = [];
-    const liveDtuRefs: Array<{ id: string; title: string | null; tier: string | null }> = [];
+    const liveDtuRefs: Array<{ id: string; title: string | null; tier: string | null; content?: string | null }> = [];
     let toolCount = 0;
     // A4 — run outcome, hoisted so the `finally` can report it to the run store.
     let finalOk = true;
@@ -794,7 +798,11 @@ export function ConKayOverlay() {
               tool?: string; ok?: boolean; key?: string; domain?: string; action?: string;
               input?: Record<string, unknown>; result?: unknown;
               dtuId?: string; title?: string;
-              artifact?: { kind?: string; id?: string; title?: string; image_b64?: string; prompt?: string };
+              // `content` (R8/CL3 gap fix): server/lib/chat-agent.js's
+              // create_dtu tool now echoes the summary it just minted the DTU
+              // with, so a freshly agent-created DTU carries real grounding
+              // text into liveDtuRefs, not just id/title.
+              artifact?: { kind?: string; id?: string; title?: string; content?: string; image_b64?: string; prompt?: string };
             };
             const toolName = String(tc.tool || 'tool');
             setSteps((prev) => [...prev, { id: `tool-${toolCount}`, label: `Called ${toolName}`, state: tc.ok === false ? 'error' : 'done' }]);
@@ -806,7 +814,12 @@ export function ConKayOverlay() {
             // populate the Cockpit's Artifact Viewer exactly like a directly-run
             // macro does — no separate, lesser code path for agent-driven work.
             if (tc.artifact?.kind === 'dtu' && tc.artifact.id) {
-              liveDtuRefs.push({ id: tc.artifact.id, title: tc.artifact.title ?? tc.title ?? null, tier: null });
+              liveDtuRefs.push({
+                id: tc.artifact.id,
+                title: tc.artifact.title ?? tc.title ?? null,
+                tier: null,
+                content: tc.artifact.content ?? null,
+              });
             } else if (tc.artifact?.kind === 'image' && tc.artifact.image_b64) {
               liveText += `\n\n![${tc.artifact.prompt || 'generated image'}](data:image/png;base64,${tc.artifact.image_b64})`;
             } else if (toolName === 'run_lens_action' && tc.ok !== false && tc.domain && tc.action) {

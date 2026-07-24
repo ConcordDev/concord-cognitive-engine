@@ -26892,6 +26892,14 @@ registerMoveBuilderMacros(register);
 import { registerReasoningTraceMacros } from "./domains/reasoning.js";
 registerReasoningTraceMacros(register);
 
+// R8/CL3 gap fix — the missing on-demand trigger for Program C's generative
+// asset pipeline (evo-asset.generate; see domains/evo-asset.js header).
+// Previously generateValidatedAsset/runAssetGenerationTick were only ever
+// invoked by the fixed one-item GENERATION_TARGETS heartbeat list; there was
+// no macro/route letting a player or ConKay request a custom design.
+import registerEvoAssetMacros from "./domains/evo-asset.js";
+registerEvoAssetMacros(register);
+
 // Maintenance — the operator surface for the autonomic nervous system. Reads the
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
 import registerRepairMacros from "./domains/repair.js";
@@ -28857,10 +28865,22 @@ register("dtu", "confidence", (ctx, input = {}) => {
 
 // ── DTU lineage (EC1 — user-facing "where did this come from" tab) ─────────
 // Composes two REAL graphs; nothing here is fabricated:
-//   1. The in-memory parent/child edges (dtu.lineage.parents/children — set
-//      at dtu.create time from the caller's `lineage` input, and by the
-//      MEGA/HYPER consolidation pipeline) for the direct one-hop ancestors
-//      and descendants.
+//   1. The in-memory parent/child edges (dtu.lineage.parents/children —
+//      object-shape, set at dtu.create time ONLY when the caller passes the
+//      separately-named `input.parents`, and by the MEGA/HYPER consolidation
+//      pipeline) for the direct one-hop ancestors and descendants. When a
+//      caller instead only supplies `input.lineage` (the field name that
+//      actually drives the real royalty-cascade auto-citation below), dtu.create
+//      leaves `dtu.lineage` as the plain ARRAY form of that input — the two
+//      "parent" fields are non-overlapping by historical accident, not by
+//      design. Below, `parentIds` derives from the array form as a fallback
+//      so the common case (only `lineage` supplied) still populates this
+//      one-hop view instead of silently going empty — never mutates the
+//      stored DTU, so every other `dtu.lineage`-as-array consumer elsewhere
+//      in server.js is unaffected. A caller who explicitly supplies BOTH
+//      fields (and wants them to differ) still gets the object-shape
+//      `dtu.lineage.parents` taken verbatim — the fallback only fires when
+//      the object-shape parents list is empty.
 //   2. The royalty citation graph (`royalty_lineage` table) via the same
 //      getAncestorChain() the royalty cascade payout path uses, for the
 //      full multi-generation ancestor chain + the real per-generation
@@ -28887,7 +28907,16 @@ register("dtu", "lineage", (ctx, input = {}) => {
     const dtu = STATE.dtus.get(id);
     if (!dtu) return { ok: false, error: "DTU not found" };
 
-    const parentIds = Array.isArray(dtu.lineage?.parents) ? dtu.lineage.parents : [];
+    let parentIds = Array.isArray(dtu.lineage?.parents) ? dtu.lineage.parents : [];
+    // Fallback: derive from the plain-array `input.lineage` form when the
+    // object-shape `parents` never got set (see the comment above this
+    // macro). `dtu.lineage` entries may be bare id strings or `{id}` refs —
+    // normalize both, same as the auto-citation block above does.
+    if (parentIds.length === 0 && Array.isArray(dtu.lineage)) {
+      parentIds = dtu.lineage
+        .map((p) => (typeof p === "string" ? p : p?.id))
+        .filter(Boolean);
+    }
     const childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
     const parents = parentIds.map(_dtuLineageRef);
     const children = childIds.map(_dtuLineageRef);

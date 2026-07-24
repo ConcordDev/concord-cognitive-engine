@@ -111,11 +111,15 @@ export interface ConkayVerifyVerdict {
 }
 
 /** A DTU reference in the exact shape ConKay skills already attach to messages
- *  (`conkay-skills.ts#ConKaySkillResult.dtuRefs`) — reused verbatim, not re-shaped. */
+ *  (`conkay-skills.ts#ConKaySkillResult.dtuRefs`) — reused verbatim, not re-shaped.
+ *  `content` (R8/CL3 gap fix) is the DTU's real, bounded body text when the
+ *  producing skill/path has it (e.g. `discovery.search`'s result shape) — null
+ *  when only title-level data was available; never fabricated. */
 export interface ConkayDtuRef {
   id: string;
   title: string | null;
   tier: string | null;
+  content?: string | null;
 }
 
 /** A completed FEA solve reshaped for the Forward-Sim panel's FEAResultViewer

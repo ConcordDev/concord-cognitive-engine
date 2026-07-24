@@ -22,7 +22,14 @@ function makeFakeDb() {
   }
   function runStmt() { return { changes: 0 }; }
   function allStmt(sql, args) {
-    if (sql.startsWith("SELECT id, type AS kind, title, creator_id, data AS meta_json, created_at FROM dtus")) {
+    if (sql.startsWith("PRAGMA table_info(dtus)")) {
+      // R8/CL3 gap fix: searchDtus probes for the optional content/body_json
+      // columns before building its SELECT. This fake db has neither — an
+      // empty result here is the honest answer, matching a legacy/minimal
+      // `dtus` table with no body-text columns.
+      return [];
+    }
+    if (sql.startsWith("SELECT id, type AS kind, title, creator_id, data AS meta_json, NULL AS content, NULL AS body_json, created_at FROM dtus")) {
       // Walk all params: like1, like2, [kind], [creatorId], [requesterId], limit
       // We extract the limit (last param) and the like pattern (first).
       const limit = args[args.length - 1];

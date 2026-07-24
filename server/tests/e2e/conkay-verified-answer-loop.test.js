@@ -210,3 +210,62 @@ describe("Ask ConKay E2E loop — Stage 2: reason.evaluate_answer (RAGAS-shaped 
     assert.equal(badge.verdict, "fabricated_citation");
   });
 });
+
+describe("Ask ConKay E2E loop — Stage 3 (GAP CLOSED): discovery.search now carries real body content", () => {
+  // Exercises the EXACT production call chain ConKay's "search my archive"
+  // skill uses (concord-frontend/components/conkay/conkay-skills.ts's
+  // `search` skill, the "prefer the semantic discovery macro" branch):
+  //   ctx.runMacro('discovery', 'search', { query, mine: true, limit: 12 })
+  //   -> items.map(r => ({ id, title, tier: r.kind, content: r.content }))
+  //   -> dtuRefs -> verifyMessage's `retrievedDtus`.
+  // Before the fix, `discovery.search`'s results carried
+  // { id, kind, title, creator_id, snippet, meta_summary } — no body field —
+  // so this exact mapping fed reason.evaluate_answer nothing but titles, same
+  // as the dtuRefs-shape gap proven in Stage 2 above. The fix
+  // (server/lib/cross-lens-discovery.js#searchDtus / extractDtuBodyText) adds
+  // a real, bounded `content` field sourced from the DTU's actual `data`
+  // column — this test proves that field now reaches evaluate_answer and
+  // flips the verdict from under-informative to genuinely "grounded".
+  it("discovery.search's real result shape includes a non-empty `content` field for a DTU whose body carries the substance", async () => {
+    const r = await runMacro("discovery", "search", {
+      query: "Photosynthesis",
+      mine: true,
+      keyword: true, // deterministic LIKE path — no embeddings reachable in this sandbox
+    }, ctx);
+    assert.equal(r.ok, true, `discovery.search must succeed: ${JSON.stringify(r)}`);
+    const hit = r.results.find((x) => x.id === dtuId);
+    assert.ok(hit, "the seeded DTU must be a real search hit");
+    assert.equal(typeof hit.content, "string", "the gap-fix `content` field must be present and be real body text");
+    assert.ok(hit.content.includes("Chlorophyll"), "content must be the DTU's REAL body, not a re-derivation of the title");
+  });
+
+  it("wiring discovery.search's results into reason.evaluate_answer the way ConKay's search skill does now reaches 'grounded' — not just title-only 'unverified'", async () => {
+    const search = await runMacro("discovery", "search", {
+      query: "Photosynthesis",
+      mine: true,
+      keyword: true,
+    }, ctx);
+    assert.equal(search.ok, true);
+    const hit = search.results.find((x) => x.id === dtuId);
+    assert.ok(hit);
+
+    // The EXACT dtuRefs shape the fixed conkay-skills.ts search skill builds:
+    // { id, title, tier, content } — content threaded through, not dropped.
+    const dtuRefs = [{ id: hit.id, title: hit.title, tier: hit.kind, content: hit.content }];
+    const answer = "Photosynthesis converts light energy into chemical energy stored in glucose, releasing oxygen as a byproduct.";
+
+    const r = await runMacro("reason", "evaluate_answer", {
+      answer,
+      question: "How does photosynthesis work?",
+      retrievedDtus: dtuRefs,
+      citations: [dtuId],
+    }, ctx);
+
+    assert.equal(r.ok, true);
+    assert.ok(r.faithfulness > 0.9, `expected high faithfulness now that discovery.search carries real content, got ${r.faithfulness}`);
+    assert.equal(r.verdict, "grounded");
+
+    const badge = toCapabilityVerdict(r);
+    assert.equal(badge.verdict, "grounded", "the green 'proven' tier, reached via the real production discovery.search -> dtuRefs -> evaluate_answer chain");
+  });
+});

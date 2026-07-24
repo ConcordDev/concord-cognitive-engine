@@ -185,11 +185,21 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           source: "agent_tool",
         }, ctx);
         if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "create_dtu failed" };
+        // R8/CL3 gap fix: echo the real summary this DTU was just minted
+        // with as `artifact.content` — ConKayOverlay.tsx's liveDtuRefs
+        // threads this into reason.evaluate_answer's retrievedDtus so a
+        // freshly agent-created DTU carries real grounding text, not just an
+        // id/title the faithfulness scorer can't match anything against.
+        // Key is omitted entirely (not set to an empty/undefined value) when
+        // the caller supplied no summary — an absent field, not a fabricated one.
+        const _summary = String(call.params.summary || "");
+        const artifact = { kind: "dtu", id: r.id || r.dtu?.id, title: call.params.title };
+        if (_summary) artifact.content = _summary;
         return {
           tool: call.tool, ok: true,
           dtuId: r.id || r.dtu?.id,
           title: call.params.title,
-          artifact: { kind: "dtu", id: r.id || r.dtu?.id, title: call.params.title },
+          artifact,
         };
       }
       case "expert_mode": {

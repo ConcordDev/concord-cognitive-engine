@@ -129,16 +129,49 @@ describe("Create artifact → DTU E2E loop — Stage 2: dtu.lineage (EC1) resolv
     assert.equal(r.royaltyCascade[0].royaltyRate, calculateGenerationalRate(1));
   });
 
-  it("REAL GAP: the one-hop `parents` array is empty for the SAME DTU, because only `input.lineage` (not `input.parents`) was supplied at creation", async () => {
+  it("GAP CLOSED: the one-hop `parents` array now derives from `input.lineage` alone — dtu.create's split lineage/parents fields no longer silently diverge for the common case", async () => {
     const r = await runMacro("dtu", "lineage", { id: childDtu.id }, vexCtx);
     assert.equal(r.ok, true);
-    // This is the honestly-reproduced current behavior, not a desired
-    // outcome — see this file's header for the two-different-field-names
-    // root cause. A real ancestor demonstrably exists (Stage 1 + the
-    // royaltyCascade assertion above both prove it), yet the traversal view
-    // the frontend Lineage tab's parent/child section reads is empty.
-    assert.deepEqual(r.parents, [],
-      "known gap: dtu.lineage's one-hop `parents` array does not populate from `input.lineage` alone");
+    // Previously this was `[]` even though a real ancestor demonstrably
+    // exists (Stage 1 + the royaltyCascade assertion above both prove it) —
+    // `dtu.lineage` macro's one-hop `parents` lookup only ever read the
+    // separately-named `dtu.lineage.parents` object-shape field, which
+    // `input.lineage`-only creation never sets. The fix (server.js, `dtu`
+    // `lineage` macro) derives `parentIds` from the plain-array
+    // `dtu.lineage` form as a fallback when the object-shape parents list
+    // is empty — never mutates the stored DTU, so it can't regress any of
+    // the many OTHER server.js call sites that still read `dtu.lineage` as
+    // a plain array (mega/hyper consolidation, orphan detection, etc).
+    assert.equal(r.parents.length, 1,
+      "dtu.lineage's one-hop `parents` array must now populate from `input.lineage` alone, not stay silently empty");
+    assert.equal(r.parents[0].id, parentDtu.id);
+    assert.equal(r.parents[0].title, parentDtu.title, "resolves the REAL parent title, not a placeholder");
+    assert.equal(r.parents[0].ownerId, "e2e_author_aria");
+  });
+
+  it("a caller who explicitly supplies BOTH `lineage` AND a DIFFERENT `parents` list keeps them independently — the fallback only fires when the object-shape parents list is empty", async () => {
+    const r = await runMacro("dtu", "create", {
+      title: "Divergent Lineage Demo — royalty ancestor differs from displayed parent",
+      source: "user",
+      visibility: "public",
+      lineage: [parentDtu.id], // drives the real royalty cascade
+      parents: [childDtu.id],  // deliberately a DIFFERENT id for the one-hop display
+      core: { definitions: ["a DTU exercising the legitimate lineage/parents divergence case"], claims: ["demonstrates the escape hatch still works"] },
+      human: { summary: "Exercises the case where royalty lineage and display parents intentionally differ." },
+    }, vexCtx);
+    assert.equal(r.ok, true, `dtu.create must succeed: ${JSON.stringify(r)}`);
+    const divergentDtu = r.dtu;
+
+    const lin = await runMacro("dtu", "lineage", { id: divergentDtu.id }, vexCtx);
+    assert.equal(lin.ok, true);
+    // Royalty cascade still resolves the REAL cited ancestor from `lineage`.
+    assert.equal(lin.royaltyCascade.length, 1);
+    assert.equal(lin.royaltyCascade[0].id, parentDtu.id);
+    // The one-hop display honors the EXPLICIT, differently-valued `parents`
+    // field verbatim — the fallback derivation never overrides an explicit
+    // (even if deliberately divergent) object-shape parents list.
+    assert.equal(lin.parents.length, 1);
+    assert.equal(lin.parents[0].id, childDtu.id);
   });
 
   it("the gap has a real, working escape hatch: supplying BOTH `lineage` AND `parents` populates both views correctly", async () => {
