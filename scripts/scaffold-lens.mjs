@@ -522,6 +522,7 @@ function printManualSteps(lensId, fnName) {
    | REAL_FREE | SIM_GRADE_A | DEMO, artifacts, pipeline steps) are honest
    claims about what the lens's data actually is; a script can't know that
    truthfully, only a human authoring the real lens can.
+   Before hand-building a rival-shape silhouette component for it, check docs/RIVAL_SHAPE_CATALOG.md for one to repoint instead of duplicating.
 
 4. Run the two self-check commands from concord-frontend/:
      npm run validate-routes
