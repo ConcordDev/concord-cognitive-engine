@@ -74,6 +74,21 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'Energy billing and cost breakdown',
     load: lazyNamed(() => import('@/components/energy/EnergyBillingPanel'), 'EnergyBillingPanel'),
   },
+  'markets.depth-chart': {
+    id: 'markets.depth-chart', label: 'Order Book Depth', scope: 'global',
+    keywords: ['order book', 'depth', 'markets', 'prediction', 'trading', 'bids'],
+    description: 'Real resting-order depth for an open prediction market',
+    load: () => import('@/components/markets/PredictionDepthPanel'),
+  },
+  'finance.ticker-tape': {
+    id: 'finance.ticker-tape', label: 'Live Price Ticker', scope: 'global',
+    keywords: ['ticker', 'tape', 'prices', 'live', 'crypto'],
+    description: 'Scrolling live crypto price tape',
+    // TickerTape takes an optional `className` for its direct mount in
+    // finance/page.tsx, so its default export isn't structurally a bare
+    // ComponentType<unknown> — cast explicitly (same as lazyNamed does).
+    load: () => import('@/components/finance/TickerTape').then((m) => ({ default: m.default as unknown as ComponentType<unknown> })),
+  },
 
   // — healthcare-adjacent (self-care / wellness / pharmacy / fitness) —
   'wellness.daily-recommendation': {

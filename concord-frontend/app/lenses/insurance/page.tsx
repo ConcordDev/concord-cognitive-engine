@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -16,12 +14,10 @@ import QuoteCompare from '@/components/insurance/QuoteCompare';
 import CoverageAnalyzer from '@/components/insurance/CoverageAnalyzer';
 import AmsWorkbench from '@/components/insurance/AmsWorkbench';
 import MutualAidPactsPanel from '@/components/insurance/MutualAidPactsPanel';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import {
   ShieldCheck,
   LayoutDashboard,
@@ -29,8 +25,6 @@ import {
   AlertTriangle,
   Building2,
   HeartHandshake,
-  ChevronDown,
-  Layers,
   X,
   Sparkles,
 } from 'lucide-react';
@@ -70,7 +64,6 @@ export default function InsuranceLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('insurance');
 
   const [mode, setMode] = useState<ModeTab>('Overview');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [visionNote, setVisionNote] = useState<{ analysis: string; tags?: string[] } | null>(null);
 
   useLensCommand(
@@ -87,7 +80,6 @@ export default function InsuranceLensPage() {
   return (
     <LensShell lensId="insurance" asMain={false}>
       <FirstRunTour lensId="insurance" />
-      <ManifestActionBar />
       <DepthBadge lensId="insurance" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
         <InsuranceWalletSection />
@@ -172,25 +164,6 @@ export default function InsuranceLensPage() {
         {mode === 'AMS' && <AmsWorkbench />}
         {mode === 'Pacts' && <MutualAidPactsPanel />}
 
-        {/* Lens Features */}
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeatures(!showFeatures)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-          >
-            <span className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              Lens Features & Capabilities
-            </span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-          </button>
-          {showFeatures && (
-            <div className="px-4 pb-4">
-              <LensFeaturePanel lensId="insurance" />
-            </div>
-          )}
-        </div>
-
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <InsurancePolicyTalk />
         </section>
@@ -203,9 +176,7 @@ export default function InsuranceLensPage() {
       </div>
 
       <a href="#insurance-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to insurance content</a>
-      <RecentMineCard domain="insurance" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="insurance" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

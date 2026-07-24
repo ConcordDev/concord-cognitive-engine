@@ -40,7 +40,7 @@ import { useUIStore } from '@/store/ui';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import dynamic from 'next/dynamic';
-const CandleChart = dynamic(() => import('@/components/crypto/CandleChart'), { ssr: false });
+const CandleChart = dynamic(() => import('@/components/charts/CandleChart'), { ssr: false });
 import { TokenSearch, loadWatchlist, saveWatchlist } from '@/components/crypto/TokenSearch';
 import { QRCodeReceive } from '@/components/crypto/QRCodeReceive';
 import { SwapPanel, type SwappableToken } from '@/components/crypto/SwapPanel';

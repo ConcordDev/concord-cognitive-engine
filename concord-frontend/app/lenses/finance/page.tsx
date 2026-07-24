@@ -21,10 +21,14 @@
  *
  * REMOVED (fabrication the old page shipped): synthetic sine-wave "portfolio
  * performance" chart, fake 24h high/low (price×1.05 / ×0.95), fake order-book
- * depth, and the facade trade/orders/alerts surfaces (finance has no order
- * book — that lives in the separate `markets` domain). RETIRED generic
- * scaffold: AutoActionStrip, ShellPreview, UniversalActions strip, raw button
- * walls, RecentMineCard, CrossLensRecentsPanel.
+ * depth, and the facade trade/orders/alerts surfaces. Finance intentionally
+ * has no securities order book — Concord has no equities trading. The one
+ * real resting-order-book/matching engine in the codebase lives in the
+ * `markets` domain, scoped to SPARKS-currency prediction-market pools
+ * (yes/no), not securities; its depth-chart UI lives at
+ * components/markets/DepthChart.tsx and cross-mounts into this destination.
+ * RETIRED generic scaffold: AutoActionStrip, ShellPreview, UniversalActions
+ * strip, raw button walls, RecentMineCard, CrossLensRecentsPanel.
  *
  * Full capability map: docs/lens-specs/finance-capability-map.md
  * ─────────────────────────────────────────────────────────────────────────
@@ -80,6 +84,7 @@ import BillsCalendar from '@/components/finance/BillsCalendar';
 import GoalsTracker from '@/components/finance/GoalsTracker';
 import RecurringInvestments from '@/components/finance/RecurringInvestments';
 import HoldingsManager from '@/components/finance/HoldingsManager';
+import CryptoExposureChart from '@/components/finance/CryptoExposureChart';
 import AllocationPie from '@/components/finance/AllocationPie';
 import DividendTracker from '@/components/finance/DividendTracker';
 import SpendingInsights from '@/components/finance/SpendingInsights';
@@ -96,6 +101,7 @@ import BillReminders from '@/components/finance/BillReminders';
 import RolloverRules from '@/components/finance/RolloverRules';
 import { MarketsPulse } from '@/components/finance/MarketsPulse';
 import { FredSeriesPanel } from '@/components/finance/FredSeriesPanel';
+import TickerTape from '@/components/finance/TickerTape';
 import { WorldBankPanel } from '@/components/global/WorldBankPanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 
@@ -573,6 +579,7 @@ export default function FinanceTerminalPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
               <HoldingsManager />
+              <CryptoExposureChart />
               <InvestmentCheckup />
             </div>
             <AllocationPie />
@@ -680,6 +687,8 @@ export default function FinanceTerminalPage() {
             <DTUExportButton domain="finance" data={{ summary, history, trend }} compact />
           </div>
         </header>
+
+        <TickerTape className="-mx-4" />
 
         {/* KPI strip — real dashboard-summary */}
         {loading ? (
