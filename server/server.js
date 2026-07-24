@@ -41822,7 +41822,16 @@ app.post("/api/plugins/register", asyncHandler(async (req, res) => {
   if (!["founder", "owner", "admin"].includes(role)) {
     return res.status(403).json({ ok: false, error: "admin_required" });
   }
-  const result = await runMacro("emergent", "plugin.register", { module: req.body, _runMacro: runMacro }, makeCtx(req));
+  // Fixed 2026-07 (docs/PLUGIN_AUTHORING_GUIDE.md §3): this route used to
+  // forward the parsed JSON body as `input.module` straight into the
+  // in-process `registerPlugin`/`activatePlugin` path, which can never work
+  // — JSON can't carry live functions, so `init`/`macros`/`hooks` were
+  // always plain data and activation always failed Gate 1. It now expects
+  // `{ source: "<plugin ESM source text>" }` and the macro routes that
+  // string through the hardened sandboxed loader (`loadPluginFromSource`),
+  // making this a real, working "submit plugin source over HTTP" endpoint.
+  const source = req.body?.source;
+  const result = await runMacro("emergent", "plugin.register", { source, _runMacro: runMacro }, makeCtx(req));
   res.json(result);
 }));
 

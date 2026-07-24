@@ -1,11 +1,48 @@
 /**
- * Concord Cognitive Engine — External Developer SDK
+ * Concord Cognitive Engine — Emergent-Governance Plugin Bookkeeping
+ * (formerly documented here as "External Developer SDK" — that framing is
+ * superseded; see the correction below before building against this file).
  *
- * Public interface for third-party developers to extend the civilization
- * through plugins, webhooks, and documented APIs without touching core
- * systems.
+ * ⚠️ NOT THE PLUGIN EXECUTION ENGINE. This module is a self-contained
+ * bookkeeping/API-key/webhook scaffold — API-key issuance + hashing,
+ * per-plugin rate-limit token buckets, webhook subscription records + a
+ * simulated delivery queue (`simulateHTTPPost` never issues a real HTTP
+ * request), and a "sandbox" (`createSandbox`) that is literally a JSON
+ * snapshot of DTU metadata with a TTL. This file's own `registerPlugin` /
+ * `activatePlugin` / `createSandbox` only create and mutate in-memory
+ * metadata records — none of them ever parses, evaluates, or executes a
+ * single line of actual plugin code. (There ARE unrelated, genuinely-
+ * executing functions with the SAME names in `server/plugins/loader.js` —
+ * see below; don't confuse the two.) No plugin code has ever actually run
+ * through this module.
  *
- * Design principles:
+ * The real plugin execution engine — the one that actually loads and runs
+ * third-party plugin source inside a hardened `worker_threads` + `vm`
+ * sandbox, gated by the 4-gate validator — is
+ * `server/plugins/loader.js` + `server/plugins/validator.js` +
+ * `server/lib/plugin-sandbox.js`. If you are looking for "the SDK for
+ * building a Concord plugin," read `docs/PLUGIN_AUTHORING_GUIDE.md`
+ * instead of this file — that doc is the current, code-verified source of
+ * truth for the real plugin contract, the real `ctx` surface, and how a
+ * plugin actually gets loaded.
+ *
+ * This file is still reachable (listed in the module dependency registry
+ * `server/emergent/module-registry.js`, and dynamically loaded + dispatched
+ * through `server/routes/sovereign-emergent.js`'s `sdk-*` cases — e.g.
+ * `sdk-register`, `sdk-activate`, `sdk-sandbox`) and has its own real tests
+ * (`server/tests/emergent-developer-sdk.test.js`),
+ * so it is not dead code in the sense of being unreachable — it's a
+ * parallel, disconnected bookkeeping system that happens to share
+ * plugin/webhook/sandbox *terminology* with the real engine without
+ * sharing any of its execution machinery. Don't extend this file expecting
+ * it to gain the ability to run plugin code; that capability lives in
+ * `server/plugins/loader.js` and its exports (`loadPluginFromSource`,
+ * `registerPlugin`/`activatePlugin` there — same names, different,
+ * genuinely-executing functions) — reuse those instead of teaching this
+ * module to `eval`/`vm` anything.
+ *
+ * Original design principles (still accurate for what this file actually
+ * does — bookkeeping, not execution):
  *   1. Read-only by default — no plugin can mutate internal state directly.
  *   2. DTU submissions always route through the council gate.
  *   3. Plugins cannot modify entities, organs, or governance.
