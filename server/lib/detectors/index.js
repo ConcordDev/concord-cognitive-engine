@@ -63,6 +63,7 @@ import { runDeadMacroCallDetector } from "./dead-macro-call-detector.js";
 import { runHardcodedLiteralDataPropDetector } from "./hardcoded-literal-data-prop-detector.js";
 import { runDomainReachabilityDetector } from "./domain-reachability-detector.js";
 import { runLensManifestCapabilityDetector } from "./lens-manifest-capability-detector.js";
+import { runConstantTimeDetector } from "./constant-time-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -609,6 +610,22 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Cross-references concord-frontend/lib/lenses/manifest.ts's declared macros:{...} capability claims against the real register()/registerLensAction() registry and flags any claim with no real backing macro.",
   run: runLensManifestCapabilityDetector,
+});
+
+// W3-A (2026-07-24) — the first AST-based detector in the suite (every other
+// detector is regex/string matching over raw file text). Parses each backend
+// source file with the TypeScript compiler API's parser and runs a small,
+// intentionally-simple intra-file taint analysis to find secret-dependent
+// control flow / memory indexing — the source-level PRECONDITION for a
+// timing side channel, not proof of one. See the module header for the full
+// honest-boundary statement (microarchitectural effects are not modeled).
+registerDetector({
+  id: "constant-time",
+  label: "ConstantTimeDetector",
+  consumers: ["code-quality"],
+  dataNeeds: ["fs"],
+  description: "AST-based: flags secret-dependent branches, secret-dependent array/object indexing, and secret-dependent loop bounds/early-exits (the classic non-constant-time-compare pattern) across server/ — the timing-side-channel precondition, not a hardware-level proof.",
+  run: runConstantTimeDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same

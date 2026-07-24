@@ -1,0 +1,5 @@
+// Fixture: deliberately broken syntax (unbalanced braces, dangling token
+// soup). The TypeScript parser tolerates this (best-effort recovery, no
+// throw), but proves the detector must never crash the sweep on malformed
+// input regardless.
+function broken(secret {{{ if (secret) return ]]] const x = }
