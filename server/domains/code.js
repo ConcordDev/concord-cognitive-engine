@@ -19,6 +19,11 @@ import { scanForInjection } from "../lib/provenance-guard.js";
 // selection in codebase-chat; also the file-manifest source for multi-file-plan
 // when the caller opts into useRetrieval instead of supplying an explicit list).
 import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTree } from "../lib/code-retrieval.js";
+// GH-3c — governed push: turns a propose-verified-patch result into a real,
+// human-approved commit against the user's connected GitHub repo. Logic
+// lives in the lib (mirrors repair-remediation.js's shape); these are thin
+// macro wrappers only.
+import codePushGovernance from "../lib/code-push-governance.js";
 
 const SNIPPET_KIND = "code_snippet";
 const SNAPSHOT_KIND = "code_snapshot_bundle";
@@ -970,6 +975,114 @@ Rules:
     // Unreachable in practice (the loop above always returns before falling
     // through), but kept honest if the loop bounds are ever changed.
     return { ok: false, reason: "retries_exhausted", lastAttempt: attempts[attempts.length - 1] || null, attempts, attemptsUsed: attempts.length };
+  });
+
+  // ── GH-3c — governed push proposals ────────────────────────────────────
+  // Closes the GH-1 -> GH-3 loop: propose-verified-patch (GH-3b) verifies an
+  // edit set locally; these four macros let a human review it and only on
+  // their explicit approval push it to a NEW branch on the user's real,
+  // connected GitHub repo. See server/lib/code-push-governance.js for the
+  // full honesty + conflict-handling contract; these wrappers only do
+  // params validation + call the lib.
+  const pushUid = (ctx) => {
+    const u = ctx?.actor?.userId || ctx?.userId || null;
+    return u && u !== "anon" ? u : null;
+  };
+
+  /**
+   * push-proposal-create — params: { repo, ref, branchName, patch? } where
+   * `patch` is the exact result object `code.propose-verified-patch`
+   * returns (`{ ok:true, result:{ edits, verification, ... } }`). When
+   * `patch` is omitted, this macro re-derives one itself by calling
+   * `code.propose-verified-patch` with the caller's own
+   * `taskQuery`/`prompt` (+ `projectId` or `repo`/`ref`/`maxEdits`/
+   * `retrievalLimit`/`maxRetries`) — so a caller that hasn't run GH-3b
+   * separately can still go straight to a push proposal in one call.
+   * Either way, only an actually-verified, non-empty edit set can become a
+   * proposal — an unverified or failed patch is rejected outright, never
+   * silently downgraded into a push candidate.
+   */
+  registerLensAction("code", "push-proposal-create", async (ctx, _artifact, params = {}) => {
+    const userId = pushUid(ctx);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!params.repo) return { ok: false, error: "repo required" };
+    if (!params.ref) return { ok: false, error: "ref (base branch) required" };
+    if (!params.branchName) return { ok: false, error: "branchName required" };
+    if (params.branchName === params.ref) return { ok: false, error: "branchName must differ from the base ref — never push to the base branch" };
+
+    let patch = params.patch;
+    if (!patch) {
+      const taskQuery = String(params.taskQuery || params.prompt || "").trim();
+      if (!taskQuery) return { ok: false, error: "patch (a propose-verified-patch result) or taskQuery required" };
+      const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+      if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable to derive a verified patch" };
+      const deriveParams = { taskQuery, repo: params.repo, ref: params.ref };
+      if (params.projectId) deriveParams.projectId = params.projectId;
+      if (params.maxEdits) deriveParams.maxEdits = params.maxEdits;
+      if (params.retrievalLimit) deriveParams.retrievalLimit = params.retrievalLimit;
+      if (params.maxRetries !== undefined) deriveParams.maxRetries = params.maxRetries;
+      try {
+        patch = await runMacro("code", "propose-verified-patch", deriveParams, ctx);
+      } catch (e) {
+        return { ok: false, error: `propose-verified-patch threw: ${e?.message || e}` };
+      }
+    }
+
+    if (!patch?.ok || !Array.isArray(patch.result?.edits) || patch.result.edits.length === 0) {
+      return {
+        ok: false,
+        error: "a successful, verified patch with at least one edit is required to create a push proposal",
+        detail: { patchOk: !!patch?.ok, reason: patch?.reason || null },
+      };
+    }
+    if (patch.result.verification && patch.result.verification.ok !== true) {
+      return { ok: false, error: "patch failed verification — cannot create a push proposal from an unverified patch" };
+    }
+
+    const edits = patch.result.edits
+      .map((e) => ({
+        filename: String(e?.filename || "").trim(),
+        before: typeof e?.before === "string" ? e.before : "",
+        after: typeof e?.after === "string" ? e.after : "",
+        reason: typeof e?.reason === "string" ? e.reason : null,
+      }))
+      .filter((e) => e.filename && e.after);
+    if (edits.length === 0) return { ok: false, error: "patch contained no usable edits" };
+
+    const proposal = codePushGovernance.createProposal({
+      userId, repo: params.repo, baseRef: params.ref, branchName: params.branchName, edits,
+    });
+    return { ok: true, result: { proposal } };
+  });
+
+  /** push-proposal-list — the calling user's OWN pending + resolved proposals only. */
+  registerLensAction("code", "push-proposal-list", (ctx) => {
+    const userId = pushUid(ctx);
+    if (!userId) return { ok: false, error: "no_user" };
+    return { ok: true, result: { proposals: codePushGovernance.listProposals(userId) } };
+  });
+
+  /**
+   * push-proposal-approve — THE human-in-the-loop gate. params: { id }.
+   * Never auto-approved; only fires on this explicit call. See
+   * code-push-governance.js#approveProposal for the full branch-create ->
+   * fresh-sha-refetch -> conflict-check -> commit sequence.
+   */
+  registerLensAction("code", "push-proposal-approve", async (ctx, _artifact, params = {}) => {
+    const userId = pushUid(ctx);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!params.id) return { ok: false, error: "id required" };
+    const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+    if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable" };
+    return await codePushGovernance.approveProposal(String(params.id), userId, runMacro, ctx);
+  });
+
+  /** push-proposal-reject — discards a pending proposal. Never calls GitHub. params: { id, reason? } */
+  registerLensAction("code", "push-proposal-reject", (ctx, _artifact, params = {}) => {
+    const userId = pushUid(ctx);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!params.id) return { ok: false, error: "id required" };
+    return codePushGovernance.rejectProposal(String(params.id), userId, params.reason);
   });
 
   /**
