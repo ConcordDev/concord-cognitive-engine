@@ -308,6 +308,28 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, error: `browser_act failed: ${err?.message || err}` };
         }
       }
+      case "run_authored_tool": {
+        // Dedicated tool type, dedicated dispatcher — deliberately NOT
+        // routed through the run_lens_action case above (see
+        // docs/CONKAY_TOOL_AUTHORING_SPEC.md's "Corrections to the task's
+        // framing": riding on run_lens_action would inherit whatever that
+        // registry's reachability semantics are; invokeAuthoredTool needs
+        // its own confined-ctx dispatch — a fixed, tool-owned manifest,
+        // never a caller-supplied one — regardless of how run_lens_action
+        // resolves its registries).
+        const { toolId, input } = call.params || {};
+        if (!toolId) return { tool: call.tool, ok: false, error: "run_authored_tool requires toolId" };
+        try {
+          const { invokeAuthoredTool } = await import("./conkay-tool-invoke.js");
+          const r = await invokeAuthoredTool(ctx.db, String(toolId), input || {}, {
+            runMacro, llm: ctx.llm, callerId: ctx.actor?.userId,
+          });
+          if (!r?.ok) return { tool: call.tool, ok: false, error: r?.reason || r?.error || "run_authored_tool failed" };
+          return { tool: call.tool, ok: true, toolId: String(toolId), kind: r.kind, result: r.result };
+        } catch (err) {
+          return { tool: call.tool, ok: false, error: `run_authored_tool error: ${err?.message || err}` };
+        }
+      }
       default:
         return { tool: call.tool, ok: false, error: `unknown tool: ${call.tool}` };
     }
@@ -341,6 +363,7 @@ export function formatToolResults(results) {
     if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
     if (r.tool === "mcp_call")     return _screenUntrusted(`mcp_call ${r.serverId}/${r.toolName}`, "mcp_external", (typeof r.result === "string" ? r.result : JSON.stringify(r.result)), (t) => `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${t.slice(0, 4000)}`);
     if (r.tool === "browser_act")  return _screenUntrusted(`browser_act ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browser_act ${r.url}] ${r.actionsExecuted} actions executed. finalUrl=${r.finalUrl || r.url}\n${t.slice(0, 4000)}`);
+    if (r.tool === "run_authored_tool") return `[TOOL_RESULT: run_authored_tool ${r.toolId}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 2000)}`;
   }).join("\n\n");
 }

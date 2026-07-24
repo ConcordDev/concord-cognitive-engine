@@ -167,6 +167,14 @@ export function domainForToolCall(call) {
     case "create_dtu": return "dtu"; // runMacro("dtu", "create", ...)
     case "expert_mode": return "expert_mode"; // runMacro("expert_mode", "answer", ...)
     case "generate_image": return "multimodal"; // runMacro("multimodal", "image_generate", ...)
+    // ConKay tool-authoring first slice (docs/CONKAY_TOOL_AUTHORING_SPEC.md
+    // §7 point 5) — a synthetic domain tag so a marathon session's
+    // allowed_domains_json allowlist can explicitly permit/deny authored-
+    // tool use per session. The per-call revoked/approved/authorization
+    // checks still live in conkay-tool-invoke.js#invokeAuthoredTool
+    // regardless of this allowlist — this only gates whether the SESSION
+    // may attempt run_authored_tool calls at all.
+    case "run_authored_tool": return "conkay_tool";
     default: return null;
   }
 }
