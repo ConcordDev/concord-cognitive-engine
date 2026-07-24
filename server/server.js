@@ -27489,6 +27489,17 @@ registerHeartbeat("initiative-cycle", {
   handler: () => runInitiativeCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
 });
 
+// Suggestion-only project continuation nudge (human-owned projects, mig 378) —
+// proposes picking a project back up through the SAME initiative-engine gate
+// as initiative-cycle above; never starts a marathon itself. scope:'global';
+// ~10 min; kill-switch CONCORD_PROJECT_CONTINUATION=0.
+import { runProjectContinuationCycle } from "./emergent/project-continuation-cycle.js";
+registerHeartbeat("project-continuation-cycle", {
+  frequency: 40,
+  scope: "global",
+  handler: () => runProjectContinuationCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
+});
+
 import { mountMcpServer, unreachableTools } from "./lib/mcp-server-host.js";
 // Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
 
