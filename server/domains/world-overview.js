@@ -42,6 +42,34 @@
 // Macros:
 //   worldstate.overview      — { worldIds?: string[] } -> lightweight per-world summary list
 //   worldstate.world_detail  — { worldId } -> full per-world deep-dive
+//   worldstate.connections   — { worldIds?: string[] } -> cross-world edge list
+//
+// worldstate.connections answers a question overview/world_detail can't:
+// not "how healthy is world X" but "how connected is the N-world system as
+// a whole." It aggregates edges BETWEEN world pairs from four already-real
+// cross-world substrates — no new tables, no mutation, same "reuse the real
+// getter, never re-derive" posture as the rest of this file:
+//   - trade    : cross_world_trade_orders (server/lib/cross-world-economy.js)
+//                grouped by (from_world, to_world); weight = total qty traded.
+//   - scheme   : cross_world_schemes (server/lib/cross-world-schemes.js)
+//                grouped by (plotter_world_id, target_world_id); weight =
+//                scheme count (any phase — an abandoned plot is still a real
+//                signal that world A has been scheming against world B).
+//   - royalty  : getCrossWorldRoyaltyFlow() (server/lib/cross-world-feed.js)
+//                — REUSED, not reimplemented, per the task's own instruction.
+//                Direction is money-flow: fromWorld = the citing/child DTU's
+//                world (where the sale/citation happened), toWorld = the
+//                cited/parent DTU's world (where the royalty settles).
+//   - migration: population_flow_events (server/lib/population-migration.js)
+//                grouped by (from_world_id, to_world_id); weight = event
+//                count, any status (in_transit/arrived/lost all indicate a
+//                real attempted move between those two worlds).
+//
+// Honesty invariant: an edge only appears when a GROUP BY over real rows
+// produces a non-zero group. Two worlds with zero cross-world activity of a
+// given kind get NO row for that kind — never a fabricated 0-weight
+// placeholder edge. An isolated world (no rows in any of the four source
+// tables, in either direction) contributes zero edges, period.
 
 import { listWorlds } from "../lib/world-loader.js";
 import { listKingdomsForWorld, kingdomLoyaltySummary } from "../lib/kingdoms.js";
@@ -49,6 +77,7 @@ import { listDistricts } from "../lib/districts.js";
 import { exportScene } from "../lib/scene-export.js";
 import { getWorldUserCount } from "../lib/city-presence.js";
 import { detectPathologies, classifyDisposition } from "../lib/world-health.js";
+import { getCrossWorldRoyaltyFlow } from "../lib/cross-world-feed.js";
 
 function safe(fn, fallback) {
   try { return fn(); } catch { return fallback; }
@@ -157,6 +186,114 @@ function computeWorldAggregate(db, worldId, { pathologies = null } = {}) {
   };
 }
 
+// ── worldstate.connections helpers ──────────────────────────────────────
+
+/**
+ * Trade-volume edges from cross_world_trade_orders, grouped by
+ * (from_world, to_world). Includes every order regardless of settlement
+ * status — an 'open'/'in_transit' order is already a real signal that a
+ * trade route between these two worlds is active, not only a 'delivered'
+ * one. weight = total qty ordered on that directed pair; orderCount is
+ * carried alongside for the frontend to show "N orders" without a second
+ * query.
+ */
+function tradeEdges(db) {
+  return safe(() => db.prepare(`
+    SELECT from_world AS fromWorld, to_world AS toWorld,
+           COUNT(*) AS orderCount, SUM(qty) AS totalQty
+      FROM cross_world_trade_orders
+     GROUP BY from_world, to_world
+  `).all().map((r) => ({
+    fromWorld: r.fromWorld,
+    toWorld: r.toWorld,
+    kind: "trade",
+    weight: Number(r.totalQty || 0),
+    orderCount: r.orderCount,
+  })), []);
+}
+
+/**
+ * Scheme-activity edges from cross_world_schemes, grouped by
+ * (plotter_world_id, target_world_id). weight = scheme count, any phase.
+ */
+function schemeEdges(db) {
+  return safe(() => db.prepare(`
+    SELECT plotter_world_id AS fromWorld, target_world_id AS toWorld,
+           COUNT(*) AS schemeCount
+      FROM cross_world_schemes
+     GROUP BY plotter_world_id, target_world_id
+  `).all().map((r) => ({
+    fromWorld: r.fromWorld,
+    toWorld: r.toWorld,
+    kind: "scheme",
+    weight: r.schemeCount,
+  })), []);
+}
+
+/**
+ * Migration edges from population_flow_events, grouped by
+ * (from_world_id, to_world_id). weight = event count, any status.
+ */
+function migrationEdges(db) {
+  return safe(() => db.prepare(`
+    SELECT from_world_id AS fromWorld, to_world_id AS toWorld,
+           COUNT(*) AS eventCount
+      FROM population_flow_events
+     GROUP BY from_world_id, to_world_id
+  `).all().map((r) => ({
+    fromWorld: r.fromWorld,
+    toWorld: r.toWorld,
+    kind: "migration",
+    weight: r.eventCount,
+  })), []);
+}
+
+/**
+ * Royalty-flow edges — REUSES getCrossWorldRoyaltyFlow (never re-derives
+ * the royalty_lineage/dtus/economy_ledger join). That getter returns a flat
+ * list of individual cross-world citations; this folds them into one edge
+ * per (childWorldId -> parentWorldId) pair by summing amountCC. A large
+ * lookback window is used (rather than the getter's 24h default) because
+ * this is a structural connectivity view, not a live activity feed — the
+ * getter's own `limit` cap (200) still bounds the query cost.
+ */
+function royaltyEdges(db) {
+  const { flows } = safe(
+    () => getCrossWorldRoyaltyFlow(db, { limit: 200, sinceMs: Date.now() }),
+    { flows: [] },
+  );
+  const agg = new Map();
+  for (const f of flows) {
+    const key = `${f.childWorldId} ${f.parentWorldId}`;
+    const prior = agg.get(key) || { weight: 0, citationCount: 0 };
+    agg.set(key, { weight: prior.weight + (f.amountCC || 0), citationCount: prior.citationCount + 1 });
+  }
+  return [...agg.entries()].map(([key, v]) => {
+    const [fromWorld, toWorld] = key.split(" ");
+    return {
+      fromWorld,
+      toWorld,
+      kind: "royalty",
+      weight: Math.round(v.weight * 100) / 100,
+      citationCount: v.citationCount,
+    };
+  });
+}
+
+function computeConnections(db, { worldIds = null } = {}) {
+  let edges = [
+    ...tradeEdges(db),
+    ...schemeEdges(db),
+    ...migrationEdges(db),
+    ...royaltyEdges(db),
+  ];
+  if (worldIds && worldIds.length) {
+    const allowed = new Set(worldIds);
+    edges = edges.filter((e) => allowed.has(e.fromWorld) && allowed.has(e.toWorld));
+  }
+  return edges;
+}
+
 export default function registerWorldOverviewMacros(register) {
   // world_detail — the full per-world deep-dive.
   register("worldstate", "world_detail", async (ctx, input = {}) => {
@@ -204,5 +341,21 @@ export default function registerWorldOverviewMacros(register) {
     });
 
     return { ok: true, worlds };
+  });
+
+  // connections — cross-world edge list (trade / scheme / royalty /
+  // migration) aggregated from four real existing substrates. No new
+  // tables, no mutation. An isolated world with zero cross-world activity
+  // contributes zero edges — never a fabricated placeholder row.
+  register("worldstate", "connections", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+
+    const worldIds = Array.isArray(input?.worldIds)
+      ? input.worldIds.map((v) => String(v || "").trim()).filter(Boolean)
+      : null;
+
+    const edges = computeConnections(db, { worldIds });
+    return { ok: true, edges };
   });
 }
