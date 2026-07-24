@@ -31,9 +31,13 @@
  *   - Consequence cascade: plugin-triggered DTU changes cascade
  */
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { getEmergentState } from "../emergent/store.js";
 import { validatePlugin as runValidation, RESERVED_NAMESPACES } from "./validator.js";
 import { makeConfinedCtx } from "../lib/confined-ctx.js";
+import { PluginSandbox, bridgeFromHostCtx } from "../lib/plugin-sandbox.js";
 import {
   compileEmergentPlugin as _compileEmergentPlugin,
   createPluginGovernanceProposal,
@@ -77,30 +81,323 @@ function getPluginStore(STATE) {
 
 // ── Core Functions ──────────────────────────────────────────────────────────
 
+function defaultInstalledDir() {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(here, "installed");
+}
+
 /**
  * 1. Load plugins from disk (installed/ directory).
  *
- * Scans server/plugins/installed/ for subdirectories with index.js.
- * Each is validated and activated. Failures are logged but don't block others.
+ * Scans server/plugins/installed/ for subdirectories with index.js, reads
+ * each plugin's raw source text, and activates it through the sandboxed
+ * path (`loadPluginFromSource`) — NEVER via a native `import()` of the
+ * file. A disk-authored plugin is the one genuinely-untrusted case (a
+ * third-party file on disk, as opposed to an in-memory module object
+ * constructed by trusted server code), so this is the real call site the
+ * plugin-sandbox hardening targets.
+ *
+ * Activation itself is async (the sandbox spins up a worker thread per
+ * plugin and evaluates its source before it's known to be safe), but this
+ * function's callers expect a synchronous return — so activation runs in
+ * the background and this returns immediately with whatever's already
+ * loaded. Failures land in `store.metrics.loadErrors` (see
+ * `getPluginMetrics`). Callers that need to await full activation (tests)
+ * should call `loadPluginFromSource` directly per file instead.
  *
  * @param {Object} STATE
  * @param {Object} opts
  * @param {Function} opts.register - Macro registration function
  * @param {Object} opts.helpers - Helper functions
- * @param {Function} [opts.resolvePath] - Custom path resolver for testing
- * @returns {{ ok, loaded: string[], failed: { id, error }[] }}
+ * @param {Function} [opts.runMacro] - Macro runner for plugin use
+ * @param {string} [opts.installedDir] - Override the installed/ directory (tests)
+ * @returns {{ ok, loaded: string[], failed: { id, error }[], pluginCount, scanning }}
  */
 export function loadPluginsFromDisk(STATE, opts = {}) {
   const store = getPluginStore(STATE);
   const loaded = [];
   const failed = [];
 
-  // In production, plugins would be loaded via dynamic import.
-  // For now, we document the pattern and support in-memory registration.
-  // Disk-based loading requires async dynamic import which is handled at
-  // startup in server.js. This function handles post-import activation.
+  const installedDir = opts.installedDir || defaultInstalledDir();
+  let entries = [];
+  try {
+    entries = fs.readdirSync(installedDir, { withFileTypes: true });
+  } catch (_err) {
+    // No installed/ directory (or unreadable) — nothing to load, not an error.
+    return { ok: true, loaded, failed, pluginCount: store.loaded.size, scanning: 0 };
+  }
 
-  return { ok: true, loaded, failed, pluginCount: store.loaded.size };
+  const candidates = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory || !entry.isDirectory()) continue;
+    const indexPath = path.join(installedDir, entry.name, "index.js");
+    if (!fs.existsSync(indexPath)) continue;
+    candidates.push({ dirName: entry.name, indexPath });
+  }
+
+  for (const { dirName, indexPath } of candidates) {
+    let source;
+    try {
+      source = fs.readFileSync(indexPath, "utf8");
+    } catch (err) {
+      failed.push({ id: dirName, error: `read_failed: ${err.message}` });
+      store.metrics.loadErrors.push({ pluginId: dirName, error: `read_failed: ${err.message}`, at: new Date().toISOString() });
+      continue;
+    }
+
+    void loadPluginFromSource(STATE, source, opts)
+      .then((result) => {
+        if (!result.ok) {
+          store.metrics.loadErrors.push({
+            pluginId: dirName,
+            error: typeof result.error === "string" ? result.error : "load_failed",
+            at: new Date().toISOString(),
+          });
+        }
+      })
+      .catch((err) => {
+        store.metrics.loadErrors.push({ pluginId: dirName, error: `unexpected: ${err.message}`, at: new Date().toISOString() });
+      });
+  }
+
+  return { ok: true, loaded, failed, pluginCount: store.loaded.size, scanning: candidates.length };
+}
+
+/**
+ * Load + activate a plugin from RAW SOURCE TEXT — the hardened path for
+ * genuinely untrusted (disk-authored) plugin code.
+ *
+ * Flow:
+ *   1. Fast pattern-gate pre-check on the raw source (unchanged validator.js
+ *      logic) — rejects obviously-malicious source before paying for a
+ *      worker spin-up. Defense-in-depth layer 1.
+ *   2. The source is evaluated ONCE, safely, inside `plugin-sandbox.js`'s
+ *      worker+vm isolation (see that file's header for the full isolation
+ *      story). We recover the plugin's reflected shape (id/name/version/
+ *      macro+hook names/etc) from that SAME evaluated module — there is no
+ *      window where a validated shape could differ from the code that
+ *      later executes.
+ *   3. The full 4-gate validator runs again against the reflected shape
+ *      (shape/namespace/patterns/dependencies) — unchanged validator.js,
+ *      defense-in-depth layer 2.
+ *   4. On success, the plugin is activated: `init()` is called inside the
+ *      sandbox, and its macros/hooks/tick are registered as thin async
+ *      proxies that message the worker — the plugin's own code never
+ *      leaves the sandbox.
+ *
+ * @param {Object} STATE
+ * @param {string} sourceCode - raw plugin ESM source text
+ * @param {Object} opts - { register, helpers, runMacro, isEmergentGen, manifest, timeoutMs, resourceLimits }
+ * @returns {Promise<{ ok, pluginId?, macros?, hooks?, error?, validation? }>}
+ */
+export async function loadPluginFromSource(STATE, sourceCode, opts = {}) {
+  const store = getPluginStore(STATE);
+  const { register, helpers, runMacro, isEmergentGen = false, manifest = null, timeoutMs, resourceLimits } = opts;
+
+  if (typeof sourceCode !== "string" || !sourceCode.trim()) {
+    return { ok: false, error: "source_code_required" };
+  }
+
+  // Layer 1 (defense in depth, unchanged validator.js): fast pattern
+  // pre-check on the raw source before a worker is even spun up.
+  const patternProbe = runValidation(
+    { id: "probe.pending", name: "pending", version: "0.0.0", init() {}, destroy() {} },
+    { sourceCode, isEmergentGen },
+  );
+  const patternsGate = patternProbe.gates.find((g) => g.name === "patterns");
+  if (patternsGate && !patternsGate.passed) {
+    return {
+      ok: false,
+      error: "validation_failed",
+      validation: { valid: false, gates: [patternsGate], errors: patternsGate.errors.map((e) => `[patterns] ${e}`) },
+    };
+  }
+
+  const pendingId = `pending.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 8)}`;
+
+  // The host ctx already carries the FULL existing confinement (capability
+  // manifest allowlist, forbidden domains, per-actor rate cap) — the sandbox
+  // reuses it verbatim rather than re-implementing (and risking divergence
+  // from) that policy. This is the "sanctioned API surface" the plugin can
+  // reach through, and nothing else.
+  const hostCtx = buildSandboxedContext(STATE, pendingId, { runMacro, log: helpers?.log, isEmergentGen, manifest });
+
+  const sandbox = new PluginSandbox({
+    pluginId: pendingId,
+    sourceCode,
+    timeoutMs,
+    resourceLimits,
+    bridge: bridgeFromHostCtx(hostCtx),
+  });
+
+  let shape;
+  try {
+    shape = await sandbox.load();
+  } catch (err) {
+    await sandbox.destroy().catch(() => {});
+    return { ok: false, error: `sandbox_load_failed: ${err.message || err}` };
+  }
+
+  // Layer 2 (defense in depth, unchanged validator.js): the full 4-gate
+  // pipeline against the plugin's REAL reflected shape.
+  const reflectionModule = reflectionModuleFromShape(shape);
+  const validation = runValidation(reflectionModule, {
+    loadedPlugins: store.loaded,
+    isEmergentGen,
+    sourceCode,
+  });
+
+  if (!validation.valid) {
+    await sandbox.destroy().catch(() => {});
+    return { ok: false, error: "validation_failed", validation };
+  }
+
+  if (!shape.id || store.loaded.has(shape.id)) {
+    await sandbox.destroy().catch(() => {});
+    const reason = !shape.id ? "missing_id_after_reflection" : `id_collision: plugin '${shape.id}' is already loaded`;
+    return {
+      ok: false,
+      error: "validation_failed",
+      validation: { valid: false, gates: [{ name: "namespace", passed: false, errors: [reason] }], errors: [`[namespace] ${reason}`] },
+    };
+  }
+
+  return activateSandboxedPlugin(STATE, sandbox, shape, { register, isEmergentGen });
+}
+
+/**
+ * Build a stub "reflection" module object from a sandbox-reported shape,
+ * so the EXISTING (unmodified) validator.js gates — which expect a module
+ * object with real `typeof x === "function"` exports — can run against a
+ * plugin whose actual functions never leave the worker. Only typeof/shape
+ * matters to the validator; the stub bodies are never invoked.
+ */
+function reflectionModuleFromShape(shape) {
+  const stub = () => ({ ok: true });
+  const macros = {};
+  for (const name of shape?.macroNames || []) macros[name] = stub;
+  const hooks = {};
+  for (const name of shape?.hookNames || []) hooks[name] = stub;
+  return {
+    id: shape?.id,
+    name: shape?.name,
+    version: shape?.version,
+    description: shape?.description,
+    author: shape?.author,
+    license: shape?.license,
+    intent: shape?.intent || null,
+    init: shape?.hasInit ? stub : undefined,
+    destroy: shape?.hasDestroy ? stub : undefined,
+    macros,
+    hooks,
+    tick: shape?.hasTick ? stub : undefined,
+  };
+}
+
+/**
+ * Activate a plugin whose code lives inside a `PluginSandbox` worker
+ * (as opposed to `activatePlugin` below, which calls a live in-process
+ * module — used by the trusted in-memory registration path, e.g.
+ * emergent-gen governance activation and existing tests).
+ */
+async function activateSandboxedPlugin(STATE, sandbox, shape, opts = {}) {
+  const store = getPluginStore(STATE);
+  const { register, isEmergentGen = false } = opts;
+  const pluginId = shape.id;
+
+  let initResult;
+  try {
+    initResult = await sandbox.callInit();
+  } catch (err) {
+    store.metrics.totalFailed++;
+    store.metrics.loadErrors.push({ pluginId, error: `init_threw: ${err.message || err}`, at: new Date().toISOString() });
+    await sandbox.destroy().catch(() => {});
+    return { ok: false, error: `init_threw: ${err.message || err}` };
+  }
+  if (initResult && initResult.ok === false) {
+    store.metrics.totalFailed++;
+    store.metrics.loadErrors.push({ pluginId, error: `init_returned_not_ok: ${initResult.error || "unknown"}`, at: new Date().toISOString() });
+    await sandbox.destroy().catch(() => {});
+    return { ok: false, error: `init_failed: ${initResult.error || "unknown"}` };
+  }
+
+  const registeredMacros = [];
+  if (register) {
+    for (const macroName of shape.macroNames || []) {
+      const dotIdx = macroName.indexOf(".");
+      if (dotIdx < 0) continue;
+      const domain = macroName.slice(0, dotIdx);
+      const action = macroName.slice(dotIdx + 1);
+
+      // Thin proxy: the plugin's actual macro handler code never leaves the
+      // sandboxed worker. Every invocation is a message round-trip, gated by
+      // the same confined ctx / capability manifest used for init above.
+      const wrappedHandler = async (_ctx, input = {}) => {
+        store.metrics.totalMacroCalls++;
+        return sandbox.callMacroHandler(macroName, input);
+      };
+
+      try {
+        register(domain, action, wrappedHandler, {
+          description: `[plugin:${pluginId}] ${macroName}`,
+          public: true,
+          plugin: pluginId,
+        });
+        registeredMacros.push(macroName);
+      } catch (err) {
+        store.metrics.loadErrors.push({ pluginId, error: `macro_register_failed: ${macroName}: ${err.message}`, at: new Date().toISOString() });
+      }
+    }
+  }
+
+  const registeredHooks = [];
+  for (const hookName of shape.hookNames || []) {
+    if (!store.hooks[hookName]) continue; // unknown hook
+    if (isEmergentGen && hookName.includes("before")) continue;
+
+    store.hooks[hookName].push({
+      pluginId,
+      // Hooks are historically fire-and-forget (fireHook doesn't await
+      // handlers) — the proxy swallows its own rejection into loadErrors
+      // rather than becoming an unhandled promise rejection.
+      handler: (payload) => {
+        sandbox.callHook(hookName, payload).catch((err) => {
+          store.metrics.loadErrors.push({ pluginId, error: `hook_error: ${hookName}: ${err.message}`, at: new Date().toISOString() });
+        });
+      },
+    });
+    registeredHooks.push(hookName);
+  }
+
+  const record = {
+    module: {
+      id: pluginId,
+      name: shape.name,
+      version: shape.version,
+      description: shape.description || "",
+      author: shape.author || "unknown",
+      intent: shape.intent || null,
+      // Display-only sentinel for getPluginMetrics/listPlugins' `!!tick`
+      // check — real tick dispatch always goes through record.sandbox.
+      tick: shape.hasTick ? true : undefined,
+    },
+    _emergentGen: isEmergentGen,
+    _sandboxed: true,
+    sandbox,
+    registeredMacros,
+    registeredHooks,
+    loadedAt: new Date().toISOString(),
+    ctx: null,
+  };
+  store.loaded.set(pluginId, record);
+  store.metrics.totalLoaded++;
+  if (isEmergentGen) store.metrics.totalEmergentGen++;
+
+  if (store.metrics.loadErrors.length > 20) {
+    store.metrics.loadErrors = store.metrics.loadErrors.slice(-20);
+  }
+
+  return { ok: true, pluginId, macros: registeredMacros, hooks: registeredHooks };
 }
 
 /**
@@ -318,7 +615,18 @@ export function unloadPlugin(STATE, pluginId) {
 
   // Call destroy
   try {
-    if (record.module.destroy) {
+    if (record._sandboxed && record.sandbox) {
+      // Async worker teardown — fire-and-forget (unloadPlugin's contract is
+      // synchronous); the worker is terminated regardless of whether the
+      // plugin's own destroy() resolves cleanly.
+      void record.sandbox.destroy().catch((err) => {
+        store.metrics.loadErrors.push({
+          pluginId,
+          error: `sandbox_destroy_error: ${err.message}`,
+          at: new Date().toISOString(),
+        });
+      });
+    } else if (record.module.destroy) {
       record.module.destroy();
     }
   } catch (err) {
@@ -584,7 +892,13 @@ function runTickWithTimeout(record, timeoutMs) {
       resolve({ ok: false, timedOut: true, error: `tick exceeded ${timeoutMs}ms budget` });
     }, timeoutMs);
     try {
-      const ret = record.module.tick(record.ctx);
+      // Sandboxed plugins: the tick call is itself an async message
+      // round-trip that ALSO self-terminates the worker on its own timeout
+      // (see PluginSandbox#tick) — this outer race is a harmless second
+      // guard, not the load-bearing one, for that case.
+      const ret = record._sandboxed && record.sandbox
+        ? record.sandbox.tick()
+        : record.module.tick(record.ctx);
       if (ret && typeof ret.then === "function") {
         ret.then(
           () => { if (settled) return; settled = true; clearTimeout(timer); resolve({ ok: true }); },
