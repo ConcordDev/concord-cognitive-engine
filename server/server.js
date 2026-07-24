@@ -79563,6 +79563,16 @@ registerSandwichMacros(register, { runMacro: runMcpTool, db: STATE?.db || global
 import registerWorkspaceRoomMacros from "./domains/workspace-rooms.js";
 registerWorkspaceRoomMacros(register);
 
+// V1.2 Wave B (Deep ConKay Agency) — the "project" linking layer (mig 378).
+// Ties a durable goal tree (decomp.*), its marathon session(s)
+// (agent_marathon.*), and a relevance-scoped conversation-memory pull into
+// one addressable, resumable unit. Domain named "agent_projects" (not
+// "projects" — that domain already belongs to the unrelated Linear/Asana-
+// style task tracker in server/domains/projects.js). See
+// server/lib/project-thread.js and server/migrations/378_projects.js.
+import registerAgentProjectMacros from "./domains/agent-projects.js";
+registerAgentProjectMacros(register);
+
 // ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
 register("federation", "inbox_receive", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
