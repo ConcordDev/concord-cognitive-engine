@@ -185,6 +185,17 @@ export function SpikingNetworkPanel({ engine }: { engine: FrontierEngineDef }) {
       const netCfg = { neurons, synapses, dt, duration, externalCurrents, seed: 42 };
 
       const simRes = await runFrontierMacro<SimulateResult>('sim', 'spikingNetworkSimulate', netCfg);
+      // Bump the session run counter as soon as the FIRST real response for
+      // this click lands (matching the convention every sibling panel uses:
+      // increment right after `await`, before checking ok/refusal) — one
+      // Run click is one entry, no matter how many of the up-to-8 macro
+      // calls below it takes. Fixed during test authoring: this used to
+      // only increment at the very end of the success path, so a refusal
+      // on the FIRST run of a session left `runCount === 0` and
+      // VerifyCell's `runCount === 0 ? 'idle' : status` silently rendered
+      // the real refusal as the idle "run the compute cell" placeholder
+      // instead of the honest refused state.
+      setRunCount((n) => n + 1);
       if (!simRes.ok || !simRes.result) {
         setReason(refusalText(simRes.error, simRes.refusal) || 'Unknown refusal.');
         setStatus('refused');
@@ -256,7 +267,6 @@ export function SpikingNetworkPanel({ engine }: { engine: FrontierEngineDef }) {
         crosscheck,
         membrane: { samples: probeSamples, reference, firstSpikeT, probeParams: { tau_m, V_rest, V_th, R, I: I_probe } },
       });
-      setRunCount((n) => n + 1);
       setStatus('ok');
     } catch (e) {
       setReason(e instanceof Error ? e.message : String(e));
