@@ -4,7 +4,7 @@
 
 import {
   startMarathon, listMarathons, getMarathon,
-  tickMarathon, pauseMarathon, abandonMarathon,
+  tickMarathon, pauseMarathon, abandonMarathon, revokeMarathon,
 } from "../lib/agent-marathon.js";
 
 export default function registerAgentMarathonMacros(register) {
@@ -12,8 +12,11 @@ export default function registerAgentMarathonMacros(register) {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db || !userId) return { ok: false, reason: "no_actor" };
+    // `input` is forwarded whole, so the mig-379 governance fields
+    // (allowedDomains: string[], budgetCap: number) already flow straight
+    // through to startMarathon — no extra destructuring needed here.
     return startMarathon(db, userId, input);
-  }, { note: "Start a long-running marathon session — agent works toward goal across many turns over hours/days." });
+  }, { note: "Start a long-running marathon session — agent works toward goal across many turns over hours/days. Optional allowedDomains (string[]) + budgetCap (number) set the enforced governance envelope." });
 
   register("agent_marathon", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -55,4 +58,11 @@ export default function registerAgentMarathonMacros(register) {
     if (!db || !input?.sessionId) return { ok: false, reason: "missing_inputs" };
     return abandonMarathon(db, input.sessionId);
   }, { note: "Abandon a marathon (terminal — cannot be resumed)." });
+
+  register("agent_marathon", "revoke", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db || !userId || !input?.sessionId) return { ok: false, reason: "missing_inputs" };
+    return revokeMarathon(db, input.sessionId, userId);
+  }, { note: "Owner-only, real-time stop — enforced inside the very next tool-call gate check even if a tick is already mid-flight, not just before the next scheduled tick." });
 }

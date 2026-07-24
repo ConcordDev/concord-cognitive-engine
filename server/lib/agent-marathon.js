@@ -29,14 +29,41 @@ const BLOCKED_MARKER = /\[TASK_BLOCKED:\s*([^\]]*)\]/i;
 
 export function startMarathon(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, reason: "missing_inputs" };
-  const { goal, title, maxTurns } = opts || {};
+  const { goal, title, maxTurns, allowedDomains, budgetCap } = opts || {};
   if (!goal) return { ok: false, reason: "missing_goal" };
   const id = `mar_${crypto.randomUUID().slice(0, 16)}`;
-  db.prepare(`
-    INSERT INTO agent_marathon_sessions
-      (id, user_id, title, goal, status, max_turns)
-    VALUES (?, ?, ?, ?, 'pending', ?)
-  `).run(id, userId, title || goal.slice(0, 80), goal, Math.min(2000, maxTurns || DEFAULT_MAX_TURNS));
+
+  // Governance envelope (mig 379) — both OPT-IN restrictions. Omitting
+  // either preserves the pre-existing unrestricted behavior, which matters
+  // for callers that don't know about this envelope yet: the autonomous
+  // re-goal path (emergent/agent-marathon-cycle.js#reGoalIdleAgents calls
+  // startMarathon with only { goal }), and every pre-migration 379 test/
+  // caller. MarathonPanel.tsx (the human "New marathon" UI) is the one
+  // caller expected to always pass an explicit budgetCap.
+  let allowedDomainsJson = null;
+  if (Array.isArray(allowedDomains) && allowedDomains.length > 0) {
+    const cleaned = allowedDomains.filter((d) => typeof d === "string" && d.trim()).slice(0, 500);
+    if (cleaned.length > 0) allowedDomainsJson = JSON.stringify(cleaned);
+  }
+  const cap = (Number.isFinite(budgetCap) && budgetCap > 0) ? Math.min(100_000, Math.floor(budgetCap)) : null;
+
+  try {
+    db.prepare(`
+      INSERT INTO agent_marathon_sessions
+        (id, user_id, title, goal, status, max_turns, allowed_domains_json, budget_cap)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)
+    `).run(id, userId, title || goal.slice(0, 80), goal, Math.min(2000, maxTurns || DEFAULT_MAX_TURNS), allowedDomainsJson, cap);
+  } catch {
+    // Pre-migration-379 schema (governance columns absent) — fall back to
+    // the original insert shape so an unmigrated DB still works exactly as
+    // before, rather than throwing. The envelope is simply absent (fully
+    // unrestricted), which is the correct back-compat behavior.
+    db.prepare(`
+      INSERT INTO agent_marathon_sessions
+        (id, user_id, title, goal, status, max_turns)
+      VALUES (?, ?, ?, ?, 'pending', ?)
+    `).run(id, userId, title || goal.slice(0, 80), goal, Math.min(2000, maxTurns || DEFAULT_MAX_TURNS));
+  }
   // Seed the user-goal turn so resume sees it.
   db.prepare(`
     INSERT INTO agent_marathon_turns
@@ -120,12 +147,123 @@ export function emitMarathonStatus(session, sessionId, nextStatus, totalTurns) {
   } catch { /* never block on telemetry */ }
 }
 
+/**
+ * Resolve the macro-domain a tool call targets, for allowed_domains_json
+ * enforcement. Only tool types that actually route through a macro domain
+ * get a domain tag; run_compute / browse_url / browser_act / mcp_call /
+ * mcp_list carry no macro-domain concept at all (they don't call
+ * runMacro), so allowed_domains does not — and semantically cannot —
+ * scope them. They're still counted against budget_cap by the gate below;
+ * only the domain-allowlist check is a no-op for them (returns null here).
+ */
+export function domainForToolCall(call) {
+  if (!call || typeof call.tool !== "string") return null;
+  switch (call.tool) {
+    case "run_lens_action": {
+      const d = call.params && call.params.domain;
+      return (typeof d === "string" && d.trim()) ? d.trim() : null;
+    }
+    case "web_search": return "tools"; // runMacro("tools", "web_search", ...)
+    case "create_dtu": return "dtu"; // runMacro("dtu", "create", ...)
+    case "expert_mode": return "expert_mode"; // runMacro("expert_mode", "answer", ...)
+    case "generate_image": return "multimodal"; // runMacro("multimodal", "image_generate", ...)
+    default: return null;
+  }
+}
+
+/**
+ * Build a per-session governance gate — real-time enforcement of
+ * revocation + the domain allowlist + the spend budget, checked
+ * immediately before EVERY real tool call chat-agent.js's runAgentLoop is
+ * about to dispatch (wired via its opt-in `opts.toolGate` hook). Nothing
+ * here is decorative: every branch either lets a real call through (and
+ * durably records the spend before it runs) or returns an honest refusal
+ * the brain sees in its next turn — never a silent no-op, and never a
+ * fabricated success.
+ *
+ * Contract for the returned function:
+ *   - `{ ok: true }` — call is allowed, dispatch it.
+ *   - `{ ok: false, halt: false, reason }` — refuse THIS call only; the
+ *     brain sees a real tool error and the marathon keeps running.
+ *   - `{ ok: false, halt: true, reason }` — stop the WHOLE tick right now
+ *     (revoked, or the spend budget is exhausted); tickMarathon maps
+ *     `reason` onto a terminal session status.
+ *
+ * Fails OPEN (returns `{ ok: true }`) only when there's no session row at
+ * all, or when the governance columns don't exist yet (pre-migration-379
+ * DB / hand-rolled minimal test schema) — matching the same back-compat
+ * contract as startMarathon's insert fallback above: an unmigrated session
+ * is fully unrestricted, never silently broken.
+ */
+export function createToolGate(db, sessionId) {
+  return async function toolGate(call) {
+    if (!db || !sessionId) return { ok: true };
+    let session;
+    try {
+      session = db.prepare(`
+        SELECT status, allowed_domains_json, budget_cap, budget_spent, revoked_at
+        FROM agent_marathon_sessions WHERE id = ?
+      `).get(sessionId);
+    } catch {
+      return { ok: true }; // governance columns absent — never block on a missing envelope
+    }
+    if (!session) return { ok: true };
+
+    // Revocation always wins. Re-read fresh from the DB on every single
+    // call (not cached), so a revoke landing mid-tick — the user hitting
+    // Revoke while several turns are still in flight — stops the very
+    // next tool dispatch, not just the next tick.
+    if (session.revoked_at) {
+      return { ok: false, halt: true, reason: "revoked" };
+    }
+
+    const domain = domainForToolCall(call);
+    if (domain) {
+      let allowed = null;
+      try {
+        allowed = session.allowed_domains_json ? JSON.parse(session.allowed_domains_json) : null;
+      } catch {
+        allowed = null;
+      }
+      if (Array.isArray(allowed) && !allowed.includes(domain)) {
+        // Refuse just THIS call — the marathon keeps running and the brain
+        // sees a real, actionable refusal (not a crash, not a silent drop).
+        return { ok: false, halt: false, reason: `domain_not_allowed:${domain}` };
+      }
+    }
+
+    if (session.budget_cap != null && session.budget_spent >= session.budget_cap) {
+      return { ok: false, halt: true, reason: "budget_exhausted" };
+    }
+
+    // This call is really about to execute — spend the budget now,
+    // atomically, BEFORE the tool runs (not after: a crash/timeout mid-call
+    // must never leave an approved call uncounted, and must never let the
+    // same slot be double-spent on retry).
+    try {
+      db.prepare(`UPDATE agent_marathon_sessions SET budget_spent = budget_spent + 1 WHERE id = ?`).run(sessionId);
+    } catch { /* budget_spent column absent — never block on it */ }
+    return { ok: true };
+  };
+}
+
 export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }) {
   if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
   const session = db.prepare(`SELECT * FROM agent_marathon_sessions WHERE id = ?`).get(sessionId);
   if (!session) return { ok: false, reason: "session_not_found" };
-  if (["completed", "abandoned", "failed"].includes(session.status)) {
+  if (["completed", "abandoned", "failed", "revoked"].includes(session.status)) {
     return { ok: true, alreadyTerminal: true, status: session.status };
+  }
+  // Governance envelope (mig 379) — revocation checked BEFORE this tick does
+  // any work at all. `session.revoked_at` comes from the `SELECT *` above,
+  // so this is a no-op (undefined, falsy) against a pre-migration-379 /
+  // hand-rolled minimal test schema — same back-compat contract as
+  // startMarathon's insert fallback. The mid-tick gate below is the second,
+  // load-bearing check: a revoke landing WHILE this tick's runAgentLoop is
+  // still in flight (several turns/tool calls deep) is caught there too.
+  if (session.revoked_at) {
+    db.prepare(`UPDATE agent_marathon_sessions SET status = 'revoked', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
+    return { ok: true, status: "revoked", reason: "revoked" };
   }
   if (session.total_turns >= session.max_turns) {
     db.prepare(`UPDATE agent_marathon_sessions SET status = 'failed', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
@@ -176,6 +314,15 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
 
   const tickTurns = Math.min(opts.tickTurns || DEFAULT_TICK_TURNS, session.max_turns - session.total_turns);
 
+  // Governance envelope (mig 379) — the real, enforced gate. Passed into
+  // runAgentLoop's opt-in `opts.toolGate` hook so it runs immediately
+  // before EVERY real tool dispatch this tick makes, not just once at the
+  // top of the tick. `opts.brainChat` passthrough is test-only (never
+  // exposed via the agent_marathon.tick macro/HTTP surface) — it lets
+  // tests script the brain's replies deterministically, matching the
+  // existing pattern in tests/agent-action-memory-wire.test.js.
+  const toolGate = createToolGate(db, sessionId);
+
   const result = await runAgentLoop({
     db,
     userId: session.user_id,
@@ -183,7 +330,7 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     runMacro,
     lensActions,
     history,
-    opts: { maxTurns: tickTurns, slot: opts.slot, sessionId },
+    opts: { maxTurns: tickTurns, slot: opts.slot, sessionId, toolGate, brainChat: opts.brainChat },
   });
 
   if (!result.ok) {
@@ -209,9 +356,15 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
 
   const totalTurns = session.total_turns + result.turns;
 
-  // Check for termination markers.
+  // Check for termination markers. A governance halt (revoked mid-tick, or
+  // the spend budget was exhausted mid-tick) ALWAYS wins over a
+  // COMPLETE/BLOCKED marker the brain happened to also emit this turn —
+  // the tick already stopped for real inside runAgentLoop, so the status
+  // must honestly reflect that, not whatever text came back.
   let nextStatus = "running";
-  if (COMPLETE_MARKER.test(result.answer || "")) {
+  if (result.halted) {
+    nextStatus = result.haltReason === "revoked" ? "revoked" : "failed";
+  } else if (COMPLETE_MARKER.test(result.answer || "")) {
     nextStatus = "completed";
   } else if (BLOCKED_MARKER.test(result.answer || "")) {
     nextStatus = "paused";
@@ -234,7 +387,7 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   // lights up ("your marathon refactor is done" / "I'm blocked on X").
   // Best-effort; the marathon itself succeeds whether or not the
   // initiative engine is wired.
-  if (nextStatus === "completed" || nextStatus === "paused") {
+  if (nextStatus === "completed" || nextStatus === "paused" || nextStatus === "revoked" || (result.halted && nextStatus === "failed")) {
     emitMarathonStatus(session, sessionId, nextStatus, totalTurns);
     try {
       // Direct insert into initiative engine table if present — the
@@ -242,7 +395,11 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
       const trigger = nextStatus === "completed" ? "pending_work" : "reflective_followup";
       const msg = nextStatus === "completed"
         ? `Marathon complete: "${session.title}" finished after ${totalTurns} turns.`
-        : `Marathon paused: "${session.title}" hit a block at turn ${totalTurns}. Reason in the answer body.`;
+        : nextStatus === "revoked"
+          ? `Marathon revoked: "${session.title}" was stopped by revocation after ${totalTurns} turns.`
+          : (result.halted && nextStatus === "failed")
+            ? `Marathon halted: "${session.title}" hit its spend/action budget cap after ${totalTurns} turns.`
+            : `Marathon paused: "${session.title}" hit a block at turn ${totalTurns}. Reason in the answer body.`;
       try {
         const initId = `init_mar_${sessionId.slice(4, 16)}_${Date.now().toString(36)}`;
         db.prepare(`
@@ -264,6 +421,7 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     artifacts: result.artifacts,
     provider: result.provider,
     model: result.model,
+    ...(result.halted ? { halted: true, haltReason: result.haltReason } : {}),
   };
 }
 
@@ -295,10 +453,58 @@ export function abandonMarathon(db, sessionId) {
   return { ok: true };
 }
 
+/**
+ * Owner-only, real-time stop for a marathon (mig 379 governance envelope).
+ * Distinct from `abandonMarathon` above: abandon only flips `status`, which
+ * stops FUTURE ticks (findDueMarathons filters on status='running') but
+ * does nothing about a tick that's already mid-flight — the old
+ * pause/abandon pair never checked status again once a tick's runAgentLoop
+ * call started. `revokeMarathon` additionally sets `revoked_at`, which
+ * `createToolGate` re-reads fresh from the DB before every single tool
+ * dispatch — so a revoke lands on the very next tool call even if the
+ * current tick is several turns deep, not just on the next tick.
+ *
+ * Ownership check mirrors the one real ownership check already in this
+ * file (the `agent_marathon.get` macro's `session.user_id !== userId`) —
+ * pause/abandon predate that check and don't verify ownership at the lib
+ * layer; revoke is new and gets it right from the start.
+ */
+export function revokeMarathon(db, sessionId, userId) {
+  if (!db || !sessionId || !userId) return { ok: false, reason: "missing_inputs" };
+  const session = db.prepare(`SELECT user_id, status FROM agent_marathon_sessions WHERE id = ?`).get(sessionId);
+  if (!session) return { ok: false, reason: "not_found" };
+  if (session.user_id !== userId) return { ok: false, reason: "not_owner" };
+  if (["completed", "abandoned", "revoked", "failed"].includes(session.status)) {
+    return { ok: false, reason: "already_terminal", status: session.status };
+  }
+  try {
+    db.prepare(`
+      UPDATE agent_marathon_sessions
+      SET revoked_at = unixepoch(), status = 'revoked', updated_at = unixepoch()
+      WHERE id = ?
+    `).run(sessionId);
+  } catch {
+    // Pre-migration-379 schema (no revoked_at column to enforce against) —
+    // an honest failure, never a fabricated success: the caller needs to
+    // know revocation did NOT actually get recorded/enforced.
+    return { ok: false, reason: "governance_columns_missing" };
+  }
+  return { ok: true, sessionId, status: "revoked" };
+}
+
 function safeParse(s) {
   try { return JSON.parse(s); } catch { return []; }
 }
 
+// Governance envelope (mig 379) — sane non-null default for the "New
+// marathon" UI's budget-cap field (MarathonPanel.tsx). Per-tick a marathon
+// can run up to DEFAULT_TICK_TURNS turns with up to 5 tool calls each
+// (chat-agent.js caps at `calls.slice(0, 5)`); DEFAULT_BUDGET_CAP gives a
+// long-running session real room to work (well beyond DEFAULT_MAX_TURNS'
+// own scale) while still being a REAL ceiling instead of "unrestricted" —
+// the user must explicitly opt into unrestricted, not get it by default.
+const DEFAULT_BUDGET_CAP = 150;
+
 export const MARATHON_CONSTANTS = Object.freeze({
-  DEFAULT_TICK_TURNS, DEFAULT_MAX_TURNS, DEFAULT_TICK_INTERVAL_S,
+  DEFAULT_TICK_TURNS, DEFAULT_MAX_TURNS, DEFAULT_TICK_INTERVAL_S, DEFAULT_BUDGET_CAP,
 });

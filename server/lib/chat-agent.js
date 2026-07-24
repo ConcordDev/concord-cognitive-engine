@@ -457,6 +457,43 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     const ctx = { db, actor: { userId } };
     const results = [];
     for (const call of calls.slice(0, 5)) {
+      // Opt-in governance hook (never set by ordinary chat_agent.do calls —
+      // only agent-marathon.js's tickMarathon supplies one, via
+      // createToolGate). Checked immediately before EVERY real tool
+      // dispatch, so a caller-supplied gate can enforce a domain allowlist
+      // / spend budget / revocation flag mid-loop, not just between turns.
+      // A thrown gate fails OPEN (never blocks on a broken governance hook)
+      // — see agent-marathon.js#createToolGate for why that's still safe.
+      if (typeof opts.toolGate === "function") {
+        let gate = null;
+        try { gate = await opts.toolGate(call); } catch { gate = null; }
+        if (gate && gate.ok === false) {
+          const refusal = { tool: call.tool, ok: false, error: gate.reason || "tool_call_blocked" };
+          results.push(refusal);
+          allToolCalls.push(refusal);
+          emit("tool_call", refusal);
+          if (gate.halt) {
+            // Stop the WHOLE tick right now (revoked / budget exhausted) —
+            // persist what we have so the caller sees the real partial
+            // state, never a silently-continued loop.
+            messages.push({ role: "assistant", content: r.text });
+            messages.push({ role: "user", content: formatToolResults(results) });
+            return {
+              ok: true,
+              answer: visibleAnswer,
+              toolCalls: allToolCalls,
+              artifacts: allArtifacts,
+              turns: turnsTaken,
+              provider: lastProvider,
+              model: lastModel,
+              halted: true,
+              haltReason: gate.reason || "halted",
+              ...provenanceFrom({ provider: lastProvider, model: lastModel }),
+            };
+          }
+          continue; // refused just this call — brain sees the error, loop continues
+        }
+      }
       const result = await executeToolCall(ctx, runMacro, lensActions, call);
       results.push(result);
       allToolCalls.push(result);

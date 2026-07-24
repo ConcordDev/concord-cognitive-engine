@@ -18,10 +18,12 @@ import {
 import { listExposedTools, MCP_HOST_CONSTANTS } from "../lib/mcp-server-host.js";
 
 import { up as upMig171 } from "../migrations/171_agent_marathon_sessions.js";
+import { up as upMig379 } from "../migrations/379_agent_marathon_governance.js";
 
 function setup() {
   const db = new Database(":memory:");
   upMig171(db);
+  upMig379(db); // mig 379 — governance envelope (allowed_domains_json/budget_cap/budget_spent/revoked_at)
   return db;
 }
 
