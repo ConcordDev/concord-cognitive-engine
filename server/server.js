@@ -1778,6 +1778,11 @@ import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 import { validateParamSchema } from "./lib/macro-param-schema.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
+// V1.2 Wave A — Society & Presence: ephemeral spatially-scoped chat channel.
+// See lib/proximity-chat.js's header comment for why this is a separate,
+// deliberately non-persisted module rather than an extension of
+// lib/ambient-chat.js's district-scoped, DB-backed system.
+import * as proximityChat from "./lib/proximity-chat.js";
 // Godot Phase 3a — mount legitimacy check for the player:mode handler
 // (validates a claimed "mount:<speciesId>" mode against a real active
 // mounted_instances row before it's allowed to relax the anti-cheat speed cap).
@@ -9367,6 +9372,24 @@ async function tryInitWebSockets(server) {
     // authenticated user without the client needing to subscribe explicitly.
     if (socket.data.userId) {
       socket.join(`user:${socket.data.userId}`);
+      // V1.2 Wave A — lightweight groups: also auto-join the caller's
+      // current party room (if any) so this socket receives
+      // party:member-joined/left/disbanded scoped to that room instead of
+      // (as it was before this unit) a global broadcast to every connected
+      // socket regardless of party membership — the same class of privacy
+      // gap the DET-C batch 6 world-scoping fix closed for combat events.
+      // Best-effort + fire-and-forget: a socket that connects before its
+      // party membership can be looked up just doesn't get the room until
+      // the next party-mutating HTTP call (which also explicitly
+      // socketsJoin/socketsLeave the caller's live sockets — see
+      // /api/parties/* below), so there's no permanent gap.
+      (async () => {
+        try {
+          const { getMyParty } = await import("./lib/parties.js");
+          const party = getMyParty(db, socket.data.userId);
+          if (party?.party_id) socket.join(`party:${party.party_id}`);
+        } catch { /* best-effort */ }
+      })();
     }
 
     // Send hello
@@ -9650,6 +9673,59 @@ async function tryInitWebSockets(server) {
       }
       cityPresence.setUserVisibility(userId, mode);
       socket.emit("player:visibility:ack", { mode });
+    });
+
+    // ── Player presence status (V1.2 Wave A — Society & Presence) ──
+    // A real, user-controlled activity status distinct from the ghost
+    // toggle above: "available" | "away" | "busy" | "dnd". Broadcast
+    // additively on the existing city:positions payload / getNearbyUsers
+    // results (cityPresence.js), and readable by party members regardless
+    // of distance via GET /api/parties/me/presence. Ephemeral in-memory,
+    // same lifecycle as movementMode/visibility (resets to "available" on
+    // reconnect).
+    socket.on("player:presence-status", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const status = data?.status;
+      if (!cityPresence.setUserPresenceStatus(userId, status)) {
+        socket.emit("player:presence-status:nack", { reason: "invalid_status" });
+        return;
+      }
+      socket.emit("player:presence-status:ack", { status });
+    });
+
+    // ── Proximity chat (V1.2 Wave A — Society & Presence) ───────────
+    // Ephemeral, real-time-only: reaches every OTHER user within the
+    // message's radius of the SENDER's own server-tracked position at the
+    // moment of sending. Nothing is persisted and nothing is retrievable
+    // after the fact — see lib/proximity-chat.js's header comment for the
+    // full reasoning (and why this is deliberately NOT routed through
+    // lib/ambient-chat.js's persisted, district-scoped system).
+    //
+    // Delivery is direct-to-recipient (`user:<id>` room) rather than a
+    // wider room the client would have to filter — someone outside range
+    // never receives the payload at all, matching this session's
+    // room-scoping discipline (see the DET-C batch 6 world-scoping fix on
+    // `realtimeEmit`).
+    socket.on("proximity:chat:send", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const built = proximityChat.buildProximityChatMessage(userId, data?.body, {
+        radius: data?.radius,
+        senderName: socket.data?.username || null,
+      });
+      if (!built.ok) {
+        socket.emit("proximity:chat:nack", { reason: built.error });
+        return;
+      }
+      const recipients = proximityChat.resolveProximityRecipients(userId, built.message.radiusM);
+      for (const rid of recipients) {
+        try { REALTIME?.io?.to(`user:${rid}`).emit("proximity:chat", built.message); } catch { /* best-effort */ }
+      }
+      // Echo to the sender (their own other devices, and so the sending UI
+      // renders its own message without waiting on a recipient round-trip).
+      socket.emit("proximity:chat", built.message);
+      socket.emit("proximity:chat:ack", { id: built.message.id, recipientCount: recipients.length });
     });
 
     // ── Combat: attack another entity (player or NPC) ──────────────
@@ -55125,11 +55201,29 @@ app.delete("/api/worlds/:worldId/markers/:markerId", requireAuth(), asyncHandler
 }));
 
 // ── Phase U5 — parties + LFG ────────────────────────────────────────────
+// V1.2 Wave A note: the party CRUD below (createParty/invite/accept/leave/
+// kick/disband, migration 070) already existed and was already fully
+// wired — this is the canonical lightweight-group model, deliberately
+// distinct from world-organizations.js's heavier guild/org machinery
+// (persistent, treasury-bearing, up to 500 members) and from that same
+// file's separate in-memory `_parties`/`_userParty` maps (an older, unrelated
+// temp-group concept used elsewhere, left untouched). What this unit adds:
+// (a) real `party:<id>` room membership so join/leave/kick/disband reach
+// ONLY that party's members instead of the global broadcast every one of
+// these emits used before (a real privacy gap — the same class DET-C batch
+// 6 closed for world-scoped combat events), and (b) a presence read so
+// members can see each other's live location/status regardless of distance
+// (getPresenceForUsers in city-presence.js — an id-based lookup, not a
+// radius one).
+function _partyRoom(partyId) { return `party:${partyId}`; }
 
 app.post("/api/parties", requireAuth(), asyncHandler(async (req, res) => {
   const { createParty } = await import("./lib/parties.js");
   const userId = req.user?.id || req.user?.userId;
   const r = createParty(db, userId, req.body || {});
+  if (r.ok && r.partyId) {
+    try { REALTIME?.io?.in(`user:${userId}`).socketsJoin(_partyRoom(r.partyId)); } catch { /* best-effort */ }
+  }
   res.status(r.ok ? 200 : 400).json(r);
 }));
 
@@ -55152,7 +55246,14 @@ app.post("/api/parties/invites/:inviteId/accept", requireAuth(), asyncHandler(as
   const userId = req.user?.id || req.user?.userId;
   const r = acceptPartyInvite(db, req.params.inviteId, userId);
   if (r.ok && r.partyId) {
-    try { realtimeEmit?.("party:member-joined", { partyId: r.partyId, userId }); } catch { /* best-effort */ }
+    const room = _partyRoom(r.partyId);
+    // Bring the new member's live socket(s) into the room FIRST so they
+    // also receive their own join broadcast (harmless — matches the
+    // room-then-emit ordering used by every other room-scoped feature in
+    // this file), then scope the notification to the party room instead of
+    // the prior global broadcast.
+    try { REALTIME?.io?.in(`user:${userId}`).socketsJoin(room); } catch { /* best-effort */ }
+    try { REALTIME?.io?.to(room).emit("party:member-joined", { partyId: r.partyId, userId, ts: nowISO() }); } catch { /* best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
 }));
@@ -55162,7 +55263,12 @@ app.post("/api/parties/:partyId/leave", requireAuth(), asyncHandler(async (req, 
   const userId = req.user?.id || req.user?.userId;
   const r = leaveParty(db, req.params.partyId, userId);
   if (r.ok) {
-    try { realtimeEmit?.("party:member-left", { partyId: req.params.partyId, userId, disbanded: !!r.disbanded }); } catch { /* best-effort */ }
+    const room = _partyRoom(req.params.partyId);
+    // Emit to the room BEFORE evicting the leaver's own sockets, so their
+    // other devices (and the confirming client itself, redundantly with the
+    // HTTP response) also observe the same event remaining members do.
+    try { REALTIME?.io?.to(room).emit("party:member-left", { partyId: req.params.partyId, userId, disbanded: !!r.disbanded, ts: nowISO() }); } catch { /* best-effort */ }
+    try { REALTIME?.io?.in(`user:${userId}`).socketsLeave(room); } catch { /* best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
 }));
@@ -55170,7 +55276,16 @@ app.post("/api/parties/:partyId/leave", requireAuth(), asyncHandler(async (req, 
 app.post("/api/parties/:partyId/kick", requireAuth(), asyncHandler(async (req, res) => {
   const { kickFromParty } = await import("./lib/parties.js");
   const userId = req.user?.id || req.user?.userId;
-  const r = kickFromParty(db, req.params.partyId, userId, req.body?.targetUserId);
+  const targetUserId = req.body?.targetUserId;
+  const r = kickFromParty(db, req.params.partyId, userId, targetUserId);
+  if (r.ok) {
+    const room = _partyRoom(req.params.partyId);
+    // Pre-this-unit this route had NO realtime notification at all — a
+    // kicked member's client only found out on its next `/api/parties/me`
+    // poll. Real-time join/leave parity with accept/leave above.
+    try { REALTIME?.io?.to(room).emit("party:member-kicked", { partyId: req.params.partyId, targetUserId, byUserId: userId, ts: nowISO() }); } catch { /* best-effort */ }
+    try { REALTIME?.io?.in(`user:${targetUserId}`).socketsLeave(room); } catch { /* best-effort */ }
+  }
   res.status(r.ok ? 200 : 400).json(r);
 }));
 
@@ -55178,7 +55293,14 @@ app.post("/api/parties/:partyId/disband", requireAuth(), asyncHandler(async (req
   const { disbandParty } = await import("./lib/parties.js");
   const userId = req.user?.id || req.user?.userId;
   const r = disbandParty(db, req.params.partyId, userId);
-  if (r.ok) { try { realtimeEmit?.("party:disbanded", { partyId: req.params.partyId }); } catch { /* best-effort */ } }
+  if (r.ok) {
+    const room = _partyRoom(req.params.partyId);
+    try { REALTIME?.io?.to(room).emit("party:disbanded", { partyId: req.params.partyId, ts: nowISO() }); } catch { /* best-effort */ }
+    // Evict every remaining socket from the now-defunct room so a stale
+    // party:<id> room doesn't silently accumulate members who can never
+    // leave it again through the normal leave/kick paths.
+    try { REALTIME?.io?.in(room).socketsLeave(room); } catch { /* best-effort */ }
+  }
   res.status(r.ok ? 200 : 400).json(r);
 }));
 
@@ -55190,6 +55312,24 @@ app.get("/api/parties/me", requireAuth(), asyncHandler(async (req, res) => {
     party: getMyParty(db, userId),
     incomingInvites: listIncomingInvites(db, userId),
   });
+}));
+
+// V1.2 Wave A — live presence for the caller's own party, regardless of raw
+// proximity (unlike getNearbyUsers/getPlayersNear, which are distance-
+// filtered, this is a pure id-based lookup over exactly the caller's own
+// party roster — cityPresence.getPresenceForUsers). No partyId path param
+// by design: the caller's party is resolved server-side from their own
+// membership row, so there is no party-id-guessing surface to authorize
+// against — a user can only ever read presence for the party they are
+// actually in.
+app.get("/api/parties/me/presence", requireAuth(), asyncHandler(async (req, res) => {
+  const { getMyParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const party = getMyParty(db, userId);
+  if (!party) return res.json({ ok: true, party: null, presence: [] });
+  const memberIds = (party.members || []).map((m) => m.userId);
+  const presence = cityPresence.getPresenceForUsers(memberIds);
+  res.json({ ok: true, partyId: party.party_id, presence });
 }));
 
 app.post("/api/parties/:partyId/share-quest", requireAuth(), asyncHandler(async (req, res) => {

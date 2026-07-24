@@ -228,6 +228,7 @@ export function setUserMovementMode(userId, mode, { mountSpeedMps = null } = {})
       movementMode: mode,
       mountSpeedMps: Number.isFinite(mountSpeedMps) ? mountSpeedMps : null,
       flightActive: mode === MOVE_MODES.FLY,
+      presenceStatus: PRESENCE_STATUS.AVAILABLE,
       lastUpdate: Date.now(), createdAt: Date.now(),
       dirty: true, avatar: null,
     });
@@ -330,6 +331,131 @@ export function getUserVisibility(userId) {
  *  field at all). */
 function _isHidden(entry) {
   return entry?.visibility === PRESENCE_VISIBILITY.HIDDEN;
+}
+
+// ── Presence status (V1.2 Wave A — Society & Presence) ─────────────────────
+// Distinct from PRESENCE_VISIBILITY above. Visibility is a binary "can
+// anyone else perceive me at all" ghost toggle (BD#27). This is a real,
+// user-controlled activity status — "available" / "away" / "busy" /
+// "do-not-disturb" — that a VISIBLE user still broadcasts so nearby players
+// and party members know whether to expect a response. A hidden user's
+// status is moot (they're not perceivable at all), so the two compose
+// rather than overlap: `visibility` gates whether you're seen; `presenceStatus`
+// is what's shown once you are.
+//
+// Purely additive — same convention as `locomotion` (R5) and `movementMode`
+// (Godot Phase 3a): a new field on the existing entry, carried forward on
+// every plain position update, defaulted for any pre-existing entry that
+// predates this field. No existing consumer that ignores it is affected.
+//
+// Not to be confused with `server/domains/message.js`'s `status-set`/
+// `status-get` macros — those are Slack-shaped chat-workspace presence
+// (active/away/dnd + emoji/text), scoped entirely to the `message` lens's
+// own per-user state map. This is world-spatial presence: a status other
+// players physically near you (or in your party — see
+// `getPresenceForUsers` below) can see. Deliberately kept as two separate,
+// non-overlapping fields rather than one shared status, since a player
+// legitimately can be "away" from world/company activity while still
+// "active" in a chat workspace tab, or vice versa.
+export const PRESENCE_STATUS = Object.freeze({
+  AVAILABLE: "available",
+  AWAY: "away",
+  BUSY: "busy",
+  DND: "dnd",
+});
+const _PRESENCE_STATUS_VALUES = new Set(Object.values(PRESENCE_STATUS));
+
+/**
+ * Set a user's world-presence status. Mirrors setUserVisibility's contract
+ * exactly: creates a stub presence entry (walking default, visible,
+ * available) if the user has no presence yet, so a client can set a status
+ * before their first position update lands. Rejects unrecognized values —
+ * left unchanged on rejection.
+ *
+ * @param {string} userId
+ * @param {string} status - "available" | "away" | "busy" | "dnd"
+ * @returns {boolean} true if applied.
+ */
+export function setUserPresenceStatus(userId, status) {
+  if (!userId) return false;
+  if (!_PRESENCE_STATUS_VALUES.has(status)) return false;
+  const entry = _userPositions.get(userId);
+  if (!entry) {
+    _userPositions.set(userId, {
+      cityId: "concordia-central",
+      districtId: null,
+      x: 0, y: 0, z: 0,
+      direction: 0, rotation: 0,
+      action: "idle", currentAnimation: "idle",
+      locomotion: "idle",
+      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
+      clientState: {},
+      vehicleId: null,
+      vehicleType: null,
+      movementMode: MOVE_MODES.WALK,
+      mountSpeedMps: null,
+      flightActive: false,
+      visibility: PRESENCE_VISIBILITY.VISIBLE,
+      presenceStatus: status,
+      lastUpdate: Date.now(), createdAt: Date.now(),
+      dirty: true, avatar: null,
+    });
+    return true;
+  }
+  entry.presenceStatus = status;
+  entry.dirty = true;
+  return true;
+}
+
+/** Read a user's world-presence status ("available" if no presence yet, or
+ *  the entry predates this field). Never throws on a missing user. */
+export function getUserPresenceStatus(userId) {
+  const entry = _userPositions.get(userId);
+  return _PRESENCE_STATUS_VALUES.has(entry?.presenceStatus) ? entry.presenceStatus : PRESENCE_STATUS.AVAILABLE;
+}
+
+/**
+ * Look up live presence for an explicit list of userIds, WITHOUT any radius
+ * filter — the "regardless of raw proximity" read path lightweight groups
+ * (parties) need so members can see each other's status/location no matter
+ * how far apart they physically are in the world. This is the one presence
+ * read in this file that is id-based rather than distance-based; every
+ * other query (getNearbyUsers/getPlayersNear/getPlayersInCell) is
+ * intentionally radius-scoped.
+ *
+ * A hidden (ghost) user's coordinates are withheld here exactly as they are
+ * from a stranger's proximity query — party membership is not a bypass of
+ * the visibility contract ("changes how you're seen, never what you see").
+ * Only their online/status field survives, so party UI can render
+ * "in the group, location hidden" instead of the member silently
+ * vanishing from the roster.
+ *
+ * @param {string[]} userIds
+ * @returns {Array<{userId, online, hidden, x, y, z, cityId, worldId, presenceStatus}>}
+ */
+export function getPresenceForUsers(userIds) {
+  if (!Array.isArray(userIds)) return [];
+  const out = [];
+  for (const uid of userIds) {
+    const entry = _userPositions.get(uid);
+    if (!entry) {
+      out.push({ userId: uid, online: false, hidden: false, x: null, y: null, z: null, cityId: null, worldId: null, presenceStatus: PRESENCE_STATUS.AVAILABLE });
+      continue;
+    }
+    const hidden = _isHidden(entry);
+    out.push({
+      userId: uid,
+      online: true,
+      hidden,
+      x: hidden ? null : entry.x,
+      y: hidden ? null : entry.y,
+      z: hidden ? null : entry.z,
+      cityId: hidden ? null : entry.cityId,
+      worldId: hidden ? null : entry.worldId,
+      presenceStatus: _PRESENCE_STATUS_VALUES.has(entry.presenceStatus) ? entry.presenceStatus : PRESENCE_STATUS.AVAILABLE,
+    });
+  }
+  return out;
 }
 
 /**
@@ -731,6 +857,10 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     // Presence privacy — carried over from previous entry, never reset by a
     // plain position update. Only setUserVisibility can flip it.
     visibility: prev?.visibility ?? PRESENCE_VISIBILITY.VISIBLE,
+    // Presence status (V1.2 Wave A) — carried over from previous entry,
+    // never reset by a plain position update. Only setUserPresenceStatus
+    // can flip it. Same non-reset contract as visibility/movementMode.
+    presenceStatus: prev?.presenceStatus ?? PRESENCE_STATUS.AVAILABLE,
     lastUpdate: now,
     createdAt: prev?.createdAt ?? now,
     dirty: true, // mark for next flush
@@ -877,6 +1007,8 @@ export function getNearbyUsers(userId, radius = 500) {
             action: other.action,
             // R5 continuation — see broadcastPositions' identical field.
             locomotion: other.locomotion ?? "idle",
+            // V1.2 Wave A — additive field, see broadcastPositions' identical field.
+            presenceStatus: other.presenceStatus ?? PRESENCE_STATUS.AVAILABLE,
             avatar: other.avatar,
           });
         }
@@ -1140,6 +1272,12 @@ export function broadcastPositions(cityId, realtimeEmit) {
         // own inferred-from-interpolation classification when present.
         // Existing consumers that don't read `locomotion` are unaffected.
         locomotion: p.locomotion ?? "idle",
+        // V1.2 Wave A — additive field. Existing consumers that don't read
+        // `presenceStatus` are unaffected. A hidden user never reaches this
+        // array at all (see the _isHidden filter above), so there is no
+        // separate redaction needed here the way getPresenceForUsers needs
+        // one for its id-based (not distance-based) lookup.
+        presenceStatus: p.presenceStatus ?? PRESENCE_STATUS.AVAILABLE,
         displayName: uid, // caller may enrich later
       });
     }

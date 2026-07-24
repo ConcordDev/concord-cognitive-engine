@@ -725,7 +725,13 @@ export type SocketEvent =
   // was localStorage-only decoration with no live effect. Now wired
   // end-to-end from app/settings/page.tsx.
   | 'player:visibility:ack'
-  | 'player:visibility:nack';
+  | 'player:visibility:nack'
+  // V1.2 Wave A — Society & Presence: user-controlled world-presence status
+  // (available/away/busy/dnd), distinct from the visibility ghost toggle
+  // above. Wired end-to-end from app/settings/page.tsx, same ack/nack +
+  // timeout-fallback shape as player:visibility.
+  | 'player:presence-status:ack'
+  | 'player:presence-status:nack';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

@@ -117,6 +117,62 @@ function saveSettings(s: SettingsPanelSettings) {
 // so rather than pretending it took effect.
 const VISIBILITY_APPLY_TIMEOUT_MS = 1500;
 
+// V1.2 Wave A — Society & Presence: a real, user-controlled activity status,
+// distinct from the ghost/appear-offline toggle above. Applied immediately
+// on click (not gated behind the form's Save button) — this is meant to be
+// a quick, always-available status switch, the same interaction shape
+// Slack/Discord use for their own presence pickers, not a settings-form
+// field you commit once and forget. Server-side state is genuinely
+// ephemeral in-memory (server.js's `player:presence-status` handler resets
+// to "available" on reconnect, same as visibility/movementMode), so the
+// localStorage copy here is a client-side memory of the LAST CHOSEN status
+// only — used to re-apply it next time a world socket connects, never
+// presented as if it were itself the live, authoritative state.
+const PRESENCE_STATUS_STORAGE_KEY = 'concord:presenceStatus';
+const PRESENCE_STATUS_APPLY_TIMEOUT_MS = 1500;
+
+type PresenceStatus = 'available' | 'away' | 'busy' | 'dnd';
+const PRESENCE_STATUS_OPTIONS: { value: PresenceStatus; label: string; dot: string }[] = [
+  { value: 'available', label: 'Available', dot: 'bg-emerald-400' },
+  { value: 'away', label: 'Away', dot: 'bg-amber-400' },
+  { value: 'busy', label: 'Busy', dot: 'bg-orange-500' },
+  { value: 'dnd', label: 'Do Not Disturb', dot: 'bg-rose-500' },
+];
+
+function loadPresenceStatus(): PresenceStatus {
+  if (typeof window === 'undefined') return 'available';
+  try {
+    const raw = localStorage.getItem(PRESENCE_STATUS_STORAGE_KEY);
+    return (PRESENCE_STATUS_OPTIONS.some((o) => o.value === raw) ? raw : 'available') as PresenceStatus;
+  } catch {
+    return 'available';
+  }
+}
+
+function applyLivePresenceStatus(status: PresenceStatus): Promise<{ applied: boolean; note: string }> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: { applied: boolean; note: string }) => {
+      if (settled) return;
+      settled = true;
+      offAck();
+      offNack();
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const offAck = subscribe<{ status: string }>('player:presence-status:ack', () => {
+      finish({ applied: true, note: `Status set to ${status}.` });
+    });
+    const offNack = subscribe<{ reason: string }>('player:presence-status:nack', (data) => {
+      finish({ applied: false, note: `Could not apply status live (${data?.reason || 'unknown'}). Saved for next time.` });
+    });
+    const timer = setTimeout(() => {
+      finish({ applied: false, note: 'Not connected to a world right now — status saved for next time you play.' });
+    }, PRESENCE_STATUS_APPLY_TIMEOUT_MS);
+    emit('player:presence-status', { status });
+  });
+}
+
 function applyLiveVisibility(hidden: boolean): Promise<{ applied: boolean; note: string }> {
   return new Promise((resolve) => {
     const mode = hidden ? 'hidden' : 'visible';
@@ -148,11 +204,27 @@ export default function SettingsPage() {
   const [hydrated, setHydrated] = useState(false);
   const [visibilityNote, setVisibilityNote] = useState<string | null>(null);
   const savingVisibilityRef = useRef(false);
+  const [presenceStatus, setPresenceStatus] = useState<PresenceStatus>('available');
+  const [presenceNote, setPresenceNote] = useState<string | null>(null);
+  const applyingPresenceRef = useRef(false);
 
   useEffect(() => {
     setSettings(loadSettings());
+    setPresenceStatus(loadPresenceStatus());
     setHydrated(true);
   }, []);
+
+  const handlePresenceStatusChange = useCallback((next: PresenceStatus) => {
+    if (applyingPresenceRef.current || next === presenceStatus) return;
+    applyingPresenceRef.current = true;
+    setPresenceStatus(next);
+    try { localStorage.setItem(PRESENCE_STATUS_STORAGE_KEY, next); } catch { /* best-effort */ }
+    setPresenceNote('Applying status…');
+    applyLivePresenceStatus(next).then(({ note }) => {
+      applyingPresenceRef.current = false;
+      setPresenceNote(note);
+    });
+  }, [presenceStatus]);
 
   const handleSave = useCallback((next: SettingsPanelSettings) => {
     saveSettings(next);
@@ -254,6 +326,45 @@ export default function SettingsPage() {
           {visibilityNote}
         </div>
       )}
+      <section
+        className="mt-6 rounded-lg border border-slate-700/40 bg-slate-900/30 p-4"
+        aria-labelledby="presence-status-heading"
+      >
+        <header className="mb-3">
+          <h2 id="presence-status-heading" className="text-base font-semibold text-slate-100">
+            Presence Status
+          </h2>
+          <p className="text-xs text-slate-400">
+            Shown to players near you and to your party, distinct from the
+            &quot;World Visible to Others&quot; ghost toggle above — visibility
+            gates whether you can be seen at all; this is what shows once you
+            are.
+          </p>
+        </header>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Presence status">
+          {PRESENCE_STATUS_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={presenceStatus === opt.value}
+              onClick={() => handlePresenceStatusChange(opt.value)}
+              className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                presenceStatus === opt.value
+                  ? 'border-cyan-500/60 bg-cyan-950/50 text-cyan-200'
+                  : 'border-slate-700/50 bg-slate-900/40 text-slate-300 hover:border-slate-600'
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${opt.dot}`} aria-hidden="true" />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {presenceNote && (
+          <div role="status" className="mt-3 rounded-md border border-cyan-700/40 bg-cyan-950/30 px-3 py-2 text-xs text-cyan-200">
+            {presenceNote}
+          </div>
+        )}
+      </section>
       <section
         className="mt-8 rounded-lg border border-slate-700/40 bg-slate-900/30 p-4"
         aria-labelledby="integrations-heading"
