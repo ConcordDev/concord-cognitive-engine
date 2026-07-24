@@ -255,6 +255,243 @@ export function createToolGate(db, sessionId) {
   };
 }
 
+// ── Turn history compaction (bounds growth for very long marathon sessions) ─
+//
+// Grounding-audit gap (2026-07-24, migration 387): tickMarathon used to feed
+// EVERY prior turn into the brain call with no cap. This mirrors the
+// rolling-window pattern conversation-memory.js already uses for regular
+// chat sessions (WINDOW_THRESHOLD=50 raw messages triggers a pass that folds
+// the oldest COMPRESSION_BATCH=20 into a compact record, leaving a fixed-
+// size tail) — the same trigger/batch numbers are reused here as sensible,
+// already-battle-tested precedent rather than invented from scratch.
+//
+// Deliberate divergence from conversation-memory.js: that engine calls the
+// Utility brain to extract insights/decisions/claims because its output is
+// a searchable DTU a user might reference in a LATER, unrelated
+// conversation. A marathon checkpoint has a narrower job — keep the SAME
+// agent's own transcript coherent for itself so it can keep working — so
+// this uses a pure deterministic condensation (no brain call, no fabricated
+// content, built only from the real compacted turns' own text). That avoids
+// adding a second async LLM dependency to a governance-critical path (every
+// tick already makes one brain call via runAgentLoop) and keeps the
+// mechanism byte-testable without live brain infra.
+//
+// The checkpoint is a single `role:'system', is_checkpoint:1` turn per
+// session (migration 387). Re-compaction passes UPDATE that same row rather
+// than inserting a new one, folding the newly-aged batch's topics/excerpts
+// into the existing summary under a hard cap (MAX_CHECKPOINT_EXCERPTS /
+// MAX_CHECKPOINT_TOPICS) — so the checkpoint's own size stays bounded no
+// matter how many times a very long session re-compacts; it never grows
+// without limit the way the raw-turn-per-tick approach did. Structured
+// state (coversThroughTurnIndex, topics, excerpts) rides in the existing
+// `tool_calls_json` column — a system checkpoint turn has no real tool
+// calls, so that slot is otherwise unused. `content` is the deterministic
+// rendered text actually fed to the brain as a {role, content} message —
+// chat-agent.js's runAgentLoop needs no changes to understand it.
+
+/** Raw (uncovered) turn count that triggers a compaction pass. Matches
+ *  conversation-memory.js's WINDOW_THRESHOLD as precedent. */
+export const MARATHON_HISTORY_THRESHOLD = Number(process.env.CONCORD_MARATHON_HISTORY_THRESHOLD) || 50;
+
+/** How many of the oldest uncovered turns get folded in per pass. Matches
+ *  conversation-memory.js's COMPRESSION_BATCH as precedent — leaves a tail
+ *  of THRESHOLD - BATCH = 30 raw turns, matching ACTIVE_WINDOW there too. */
+export const MARATHON_COMPRESSION_BATCH = Number(process.env.CONCORD_MARATHON_COMPRESSION_BATCH) || 20;
+
+/** Hard cap on how many excerpt lines the rolling checkpoint ever carries —
+ *  keeps the checkpoint's own rendered size bounded across unlimited
+ *  re-compactions (bookended: oldest half + newest half kept on overflow). */
+export const MAX_CHECKPOINT_EXCERPTS = 12;
+
+/** Hard cap on distinct topics carried in the rolling checkpoint. */
+export const MAX_CHECKPOINT_TOPICS = 8;
+
+const CHECKPOINT_EXCERPT_MAX_LEN = 200;
+const CHECKPOINT_RENDER_MAX_LEN = 4000;
+
+/** Deterministic keyword-frequency topic extraction — no brain call, no
+ *  invention; every returned topic is a word that actually appears in the
+ *  compacted turns. Same technique as conversation-memory.js#extractFallback. */
+function extractCheckpointTopics(turns) {
+  const text = turns.map((t) => String(t.content || "")).join(" ").toLowerCase();
+  const words = text.split(/\W+/).filter((w) => w.length > 4);
+  const freq = new Map();
+  for (const w of words) freq.set(w, (freq.get(w) || 0) + 1);
+  return Array.from(freq.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([w]) => w);
+}
+
+function renderCheckpoint(state) {
+  const header = `[Marathon checkpoint — ${state.totalTurnsCompacted} earlier turn(s) condensed, through turn ${state.coversThroughTurnIndex}]`;
+  const topicsLine = state.topics.length ? `Topics so far: ${state.topics.join(", ")}` : "";
+  const excerptLines = state.excerpts.map((e) => `- ${e}`);
+  return [header, topicsLine, ...excerptLines].filter(Boolean).join("\n").slice(0, CHECKPOINT_RENDER_MAX_LEN);
+}
+
+/** Fold a newly-aged batch of real turns into (or onto) the prior checkpoint
+ *  state. Every excerpt/topic is derived from the batch's own real content —
+ *  never invented. Overflow is bookended (keep the earliest + most recent
+ *  excerpts) rather than simply truncated, so a checkpoint that's been
+ *  re-compacted many times still shows both "how the session started" and
+ *  "what it was doing most recently" instead of losing the start entirely. */
+function mergeCheckpointState(prevState, newBatchTurns, coversThroughTurnIndex) {
+  const newTopics = extractCheckpointTopics(newBatchTurns);
+  const newExcerpts = newBatchTurns.map((t) =>
+    `${t.role}: ${String(t.content || "").replace(/\s+/g, " ").trim().slice(0, CHECKPOINT_EXCERPT_MAX_LEN)}`
+  );
+
+  const topics = Array.from(new Set([...(prevState?.topics || []), ...newTopics])).slice(0, MAX_CHECKPOINT_TOPICS);
+
+  let excerpts = [...(prevState?.excerpts || []), ...newExcerpts];
+  if (excerpts.length > MAX_CHECKPOINT_EXCERPTS) {
+    const keepHead = Math.ceil(MAX_CHECKPOINT_EXCERPTS / 2);
+    const keepTail = MAX_CHECKPOINT_EXCERPTS - keepHead;
+    excerpts = [...excerpts.slice(0, keepHead), ...excerpts.slice(-keepTail)];
+  }
+
+  return {
+    checkpoint: true,
+    coversThroughTurnIndex,
+    totalTurnsCompacted: (prevState?.totalTurnsCompacted || 0) + newBatchTurns.length,
+    topics,
+    excerpts,
+  };
+}
+
+/**
+ * Fold the oldest MARATHON_COMPRESSION_BATCH not-yet-covered real turns of a
+ * marathon session into the session's single rolling checkpoint turn, if the
+ * uncovered count exceeds MARATHON_HISTORY_THRESHOLD. Never throws — a
+ * failure here must never stop the marathon; callers just proceed with the
+ * uncompressed history for this tick (identical to the pre-387 behavior).
+ *
+ * @returns {{ ok: boolean, compressed?: boolean, reason?: string, turnsCompacted?: number, coversThroughTurnIndex?: number }}
+ */
+export function compressMarathonHistory(db, sessionId) {
+  try {
+    if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
+
+    let cols;
+    try {
+      cols = db.prepare(`PRAGMA table_info(agent_marathon_turns)`).all().map((c) => c.name);
+    } catch {
+      return { ok: false, reason: "table_missing" };
+    }
+    if (!cols.includes("is_checkpoint")) {
+      // Pre-387 schema — no column to anchor a checkpoint on. Back-compat:
+      // behave exactly as before (uncapped history), never throw.
+      return { ok: false, reason: "pre_387_schema" };
+    }
+
+    const existingCheckpoint = db.prepare(`
+      SELECT id, tool_calls_json FROM agent_marathon_turns
+      WHERE session_id = ? AND is_checkpoint = 1
+      ORDER BY turn_index ASC LIMIT 1
+    `).get(sessionId);
+
+    let prevState = null;
+    if (existingCheckpoint?.tool_calls_json) {
+      try { prevState = JSON.parse(existingCheckpoint.tool_calls_json); } catch { prevState = null; }
+    }
+    const coveredThrough = Number.isFinite(prevState?.coversThroughTurnIndex) ? prevState.coversThroughTurnIndex : -1;
+
+    const uncovered = db.prepare(`
+      SELECT turn_index, role, content FROM agent_marathon_turns
+      WHERE session_id = ? AND role IN ('user','assistant') AND turn_index > ?
+      ORDER BY turn_index ASC
+    `).all(sessionId, coveredThrough);
+
+    if (uncovered.length <= MARATHON_HISTORY_THRESHOLD) {
+      return { ok: true, compressed: false, reason: "below_threshold" };
+    }
+
+    const toCompress = uncovered.slice(0, MARATHON_COMPRESSION_BATCH);
+    const newCoversThrough = toCompress[toCompress.length - 1].turn_index;
+    const state = mergeCheckpointState(prevState, toCompress, newCoversThrough);
+    const rendered = renderCheckpoint(state);
+    const stateJson = JSON.stringify(state);
+
+    if (existingCheckpoint) {
+      db.prepare(`
+        UPDATE agent_marathon_turns SET content = ?, tool_calls_json = ? WHERE id = ?
+      `).run(rendered, stateJson, existingCheckpoint.id);
+    } else {
+      // Anchor the checkpoint row's turn_index at the FIRST compacted turn's
+      // index, so `ORDER BY turn_index ASC` places it exactly where that
+      // batch used to sit — before the surviving tail, after anything
+      // already folded in by an earlier pass.
+      db.prepare(`
+        INSERT INTO agent_marathon_turns
+          (session_id, turn_index, role, content, tool_calls_json, is_checkpoint)
+        VALUES (?, ?, 'system', ?, ?, 1)
+      `).run(sessionId, toCompress[0].turn_index, rendered, stateJson);
+    }
+
+    return { ok: true, compressed: true, turnsCompacted: toCompress.length, coversThroughTurnIndex: newCoversThrough };
+  } catch (err) {
+    // Never let a compaction bug stop the marathon itself.
+    return { ok: false, reason: "compression_error", error: err?.message };
+  }
+}
+
+/**
+ * Build the bounded `{ history, lastMessage }` tickMarathon feeds into
+ * runAgentLoop. Runs compressMarathonHistory first (best-effort; never
+ * throws) so a very long session's oldest turns fold into the single
+ * rolling checkpoint BEFORE this tick's history is assembled. Below
+ * MARATHON_HISTORY_THRESHOLD, this reads byte-identically to the pre-387
+ * "every prior turn" query — the checkpoint filter is a strict superset
+ * that's a no-op until a checkpoint actually exists.
+ *
+ * @param {object} db
+ * @param {string} sessionId
+ * @param {string} fallbackMessage - used as lastMessage if no turns exist yet
+ * @returns {{ history: Array<{role:string, content:string}>, lastMessage: string }}
+ */
+export function buildMarathonHistory(db, sessionId, fallbackMessage) {
+  compressMarathonHistory(db, sessionId);
+
+  let cols = [];
+  try { cols = db.prepare(`PRAGMA table_info(agent_marathon_turns)`).all().map((c) => c.name); } catch { /* handled by hasCheckpointColumn below */ }
+  const hasCheckpointColumn = cols.includes("is_checkpoint");
+
+  let coveredThrough = -1;
+  if (hasCheckpointColumn) {
+    const cp = db.prepare(`
+      SELECT tool_calls_json FROM agent_marathon_turns
+      WHERE session_id = ? AND is_checkpoint = 1 ORDER BY turn_index ASC LIMIT 1
+    `).get(sessionId);
+    if (cp?.tool_calls_json) {
+      try {
+        const state = JSON.parse(cp.tool_calls_json);
+        if (Number.isFinite(state?.coversThroughTurnIndex)) coveredThrough = state.coversThroughTurnIndex;
+      } catch { /* malformed state — treat as no checkpoint coverage */ }
+    }
+  }
+
+  const rows = hasCheckpointColumn
+    ? db.prepare(`
+        SELECT turn_index, role, content FROM agent_marathon_turns
+        WHERE session_id = ? AND (
+          is_checkpoint = 1
+          OR (role IN ('user','assistant') AND turn_index > ?)
+        )
+        ORDER BY turn_index ASC
+      `).all(sessionId, coveredThrough)
+    : db.prepare(`
+        SELECT turn_index, role, content FROM agent_marathon_turns
+        WHERE session_id = ? AND role IN ('user','assistant')
+        ORDER BY turn_index ASC
+      `).all(sessionId);
+
+  const priorTurns = rows.map((t) => ({ role: t.role, content: t.content }));
+  const history = priorTurns.slice(0, -1);
+  const lastMessage = priorTurns[priorTurns.length - 1]?.content || fallbackMessage;
+  return { history, lastMessage };
+}
+
 export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }) {
   if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
   const session = db.prepare(`SELECT * FROM agent_marathon_sessions WHERE id = ?`).get(sessionId);
@@ -309,16 +546,15 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   // Mark running.
   db.prepare(`UPDATE agent_marathon_sessions SET status = 'running', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
 
-  // Build history from prior turns.
-  const priorTurns = db.prepare(`
-    SELECT role, content FROM agent_marathon_turns
-    WHERE session_id = ? AND role IN ('user','assistant')
-    ORDER BY turn_index ASC
-  `).all(sessionId);
-
+  // Build history from prior turns — bounded via buildMarathonHistory
+  // (migration 387): once a very long session's raw turn count exceeds
+  // MARATHON_HISTORY_THRESHOLD, the oldest MARATHON_COMPRESSION_BATCH turns
+  // fold into a single rolling checkpoint turn (mirrors conversation-
+  // memory.js's rolling-window pattern), so the brain-call history stays
+  // bounded no matter how many days a marathon runs. Below the threshold
+  // this is byte-identical to the pre-387 "every prior turn" query.
   // The first user-turn is the goal; subsequent are tool-result responses.
-  const history = priorTurns.slice(0, -1).map(t => ({ role: t.role, content: t.content }));
-  const lastMessage = priorTurns[priorTurns.length - 1]?.content || session.goal;
+  const { history, lastMessage } = buildMarathonHistory(db, sessionId, session.goal);
 
   const tickTurns = Math.min(opts.tickTurns || DEFAULT_TICK_TURNS, session.max_turns - session.total_turns);
 
@@ -515,4 +751,5 @@ const DEFAULT_BUDGET_CAP = 150;
 
 export const MARATHON_CONSTANTS = Object.freeze({
   DEFAULT_TICK_TURNS, DEFAULT_MAX_TURNS, DEFAULT_TICK_INTERVAL_S, DEFAULT_BUDGET_CAP,
+  MARATHON_HISTORY_THRESHOLD, MARATHON_COMPRESSION_BATCH, MAX_CHECKPOINT_EXCERPTS, MAX_CHECKPOINT_TOPICS,
 });
