@@ -16,6 +16,8 @@ static func run() -> TestUtils:
 	_test_parses_well_shaped_pads_verbatim(t)
 	_test_drops_malformed_entries_without_crashing(t)
 	_test_empty_or_missing_field_yields_empty_array(t)
+	_test_parses_well_shaped_districts_verbatim(t)
+	_test_drops_malformed_districts_without_crashing(t)
 	return t
 
 
@@ -54,3 +56,38 @@ static func _test_empty_or_missing_field_yields_empty_array(t: TestUtils) -> voi
 	t.check(
 		SceneBootstrap.parse_landing_pads([]).is_empty(),
 		"an empty raw array yields an empty result — honest 'no pads' for worlds with none authored")
+
+
+## C15 — same verbatim-passthrough-or-drop coverage as the pad tests above,
+## for the additive `districts` field (server/lib/districts.js,
+## migration 374, consumed downstream by world/air_legibility.gd).
+static func _test_parses_well_shaped_districts_verbatim(t: TestUtils) -> void:
+	var raw := [
+		{
+			"id": "concordia-hub:plaza", "worldId": "concordia-hub", "name": "The Concord Plaza",
+			"boundary": [{"x": -70, "z": -70}, {"x": 70, "z": -70}, {"x": 70, "z": 70}, {"x": -70, "z": 70}],
+			"palette": {"primary": "#d9c9a3", "secondary": "#8b7355", "accent": "#f2c14e"},
+			"lightingTag": "warm_day", "elevationHint": 0,
+		},
+	]
+	var parsed := SceneBootstrap.parse_districts(raw)
+	t.check_eq(parsed.size(), 1, "one well-shaped district entry parses to one output entry")
+	t.check_eq(parsed[0]["id"], "concordia-hub:plaza", "id is passed through verbatim")
+	t.check_eq(
+		parsed[0]["palette"], {"primary": "#d9c9a3", "secondary": "#8b7355", "accent": "#f2c14e"},
+		"palette dict is passed through verbatim, real server-authored hex colors")
+
+
+static func _test_drops_malformed_districts_without_crashing(t: TestUtils) -> void:
+	var raw := [
+		{"id": "no-palette", "name": "X"},
+		{"palette": {"primary": "#ffffff"}},  # no id
+		{"id": "empty-palette", "palette": {}},  # palette present but no primary
+		"not-even-a-dict",
+		{"id": "well-shaped", "palette": {"primary": "#5c5c5c"}},
+	]
+	var parsed := SceneBootstrap.parse_districts(raw)
+	t.check_eq(
+		parsed.size(), 1,
+		"only the one well-shaped entry survives — malformed entries are dropped, never fabricated")
+	t.check_eq(parsed[0]["id"], "well-shaped", "the surviving entry is the genuinely well-shaped one")

@@ -43,7 +43,7 @@ this doc is about *what the payloads mean*, not how they're framed.
 |---|---|---|---|
 | `spawn_entity` | server→client | PLANNED | nearest real analog: `companion:deployed` (`server/routes/companions.js:70`) — narrow, one entity kind |
 | `despawn_entity` | server→client | PLANNED | no real Concord event names an entity leaving a scene |
-| `update_transform` | server→client | IMPLEMENTED | `city:positions` / `city:npcs` (`server/lib/city-presence.js:1077,1287`) |
+| `update_transform` | server→client | IMPLEMENTED | `city:positions` / `city:npcs` (`server/lib/city-presence.js:1077,1287`); also `world:aerial-traffic` (C16, `server/emergent/aerial-traffic-cycle.js`) |
 | `play_effect` | server→client | PARTIAL | `combat:polish` (`server/lib/combat-polish.js:599`) — real, but bypasses the Godot mirror |
 | `cast_spell_visual` | server→client | PLANNED | nearest real analog: `combat:hit`'s optional `element`/`skillId` fields (`server/lib/event-shapes.js`) — no dedicated cast event |
 | `set_animation` | server→client | IMPLEMENTED (folded into `update_transform`) | `city:positions.users[].action`/`.mode`, `city:npcs.npcs[].currentAnimation` |
@@ -164,6 +164,53 @@ anti-cheat (reach/speed/teleport checks) and replies `player:move:ack` /
 ```json
 { "evt": "player:move", "data": { "cityId": "concordia-central", "x": 12.4, "y": 0, "z": -8.1, "direction": 1.57, "rotation": 0, "action": "walk", "currentAnimation": "walk", "districtId": "concordia-hub:plaza" } }
 ```
+
+**A third `update_transform` instance (C16, this revision): `world:aerial-traffic`.**
+`server/emergent/aerial-traffic-cycle.js` (a real heartbeat, `registerHeartbeat`'d
+at `frequency: 1` — every due governor tick, ~15s) advances a small in-memory
+fleet of unowned ambient background air entities per active world (the
+`crosswind-courier` flavor, grounded in the real Crosswind Couriers
+faction/NPC already authored in `content/world/concordia-hub/{factions,
+npcs}.json` — see `server/lib/aerial-traffic.js`'s header) flying real
+closed-loop routes between the world's real landing pads
+(`landingPadsForWorld`, falling back to district centroids —
+`server/lib/districts.js` — for a world with no authored pads; a world with
+neither gets an honest empty route and no traffic, never fabricated
+geometry). Position is a pure, deterministic function of `(route, speedMps,
+startedAtMs, now)` — see `positionAtTime()` — so the same inputs always
+produce the same output. Broadcast, world-scoped, via the SAME Godot-mirror
+pattern `combat:polish` and the `combat:impact` NPC-route emit already use
+(`globalThis._concordEmitToWorld`, falling back to a bare `io.to()` when
+the gateway hook isn't present):
+
+```json
+{
+  "evt": "world:aerial-traffic",
+  "data": {
+    "worldId": "concordia-hub",
+    "routeSource": "landing_pads",
+    "entities": [
+      { "id": "aerial:concordia-hub:0:1721...", "kind": "crosswind-courier", "x": 139.5, "y": 60, "z": -248.9, "heading": 1.219 }
+    ]
+  }
+}
+```
+
+Shape pinned at `server/lib/event-shapes.js`'s `"world:aerial-traffic"`
+entry. Client-side consumer: `world-lens-godot/world/
+aerial_traffic_controller.gd` — reuses `snapshot_buffer.gd` UNCHANGED (the
+same class `avatar_manager.gd` uses for `city:positions`/`city:npcs`), and
+follows the SAME implicit-despawn convention those two events already
+established: there is no dedicated `despawn_entity` message (see §2 below,
+still PLANNED) — an id absent from a fresh snapshot for long enough is
+treated as gone client-side, not signaled by the server. Wired end-to-end
+in `world/boot.gd` (mounted, routed on `evt == "world:aerial-traffic"`).
+Honest, queued-for-real-hardware caveat: the ~15s broadcast cadence is far
+coarser than `SnapshotBuffer`'s `RENDER_DELAY_MS=120`/`MAX_HORIZON_MS=250`
+were tuned for (~100ms city:positions cadence); see
+`world-lens-godot/VISUAL_QA.md`'s "Ambient aerial traffic" entry for the
+full honest accounting of what that means visually and has NOT been
+verified.
 
 ## 4. `play_effect` — PARTIAL
 
@@ -378,6 +425,14 @@ realtime events a running world uses (D19), and DTU-backed scene save/load
   NOT claim a visual authoring UI exists (D18), and does NOT claim
   live-preview or scene save/load (D19/D20) were touched. Every other
   PLANNED/PARTIAL row in the summary table is unchanged by this revision.
+- **This revision (C16 — ambient aerial traffic):** adds a THIRD real
+  `update_transform` instance (`world:aerial-traffic`) alongside the two
+  that already existed — it does NOT change `spawn_entity`/`despawn_entity`
+  from PLANNED; the new traffic follows the SAME implicit-despawn-via-
+  absence convention `city:positions`/`city:npcs` already use rather than
+  introducing a dedicated spawn/despawn wire message, so those two rows
+  stay exactly as PLANNED as before. Does not touch `play_effect`,
+  `cast_spell_visual`, `apply_force`, `query_state`, or `load_district`.
 - The 3 PARTIAL rows (`play_effect`, `apply_force`'s NPC-path half,
   `load_district`) share one root cause worth naming once: several combat/
   world emit sites call `io.to(room).emit(...)` directly instead of going
@@ -412,4 +467,14 @@ grep -n "_godotGatewayEmitter" server/server.js
 
 # Grep the PARTIAL-status direct io.to() emit sites that bypass the mirror:
 grep -n 'io.to(`world:' server/lib/combat-polish.js server/routes/worlds.js
+
+# C16 — ambient aerial traffic: pure lib + heartbeat contract tests (25 cases):
+cd server && node --test tests/aerial-traffic-cycle.test.js
+
+# C16/C15 — GDScript parse + lint (requires: pip install gdtoolkit):
+cd world-lens-godot && for f in $(find . -name '*.gd'); do gdparse "$f"; done && gdlint .
+
+# The world:aerial-traffic heartbeat registration + shape contract:
+grep -n "aerial-traffic-cycle" server/server.js
+grep -n "world:aerial-traffic" server/lib/event-shapes.js
 ```

@@ -441,6 +441,80 @@ field)
       required or merely a suggested touch-down zone is an open design
       question, not decided by this unit.
 
+### Air legibility (C15 — `world/air_legibility.gd` + `world/scene_bootstrap.gd`'s
+additive `districts` parsing)
+
+- [ ] No renderer consumes `AirLegibility.legibility_for_altitude()` yet —
+      this unit is the data transform only (see that file's own "Where this
+      plugs into rendering" header section for the exact intended call
+      site: `scene_bootstrap.gd#_spawn_node`'s per-node `MeshInstance3D`
+      would need a real material swap keyed by each node's
+      `extras.district_id`). Whether the resulting flat-band silhouettes
+      actually read as legible from a real flying camera — versus looking
+      flat/wrong/undifferentiated — has never been seen.
+- [ ] `ALTITUDE_SIMPLIFY_M = 45.0` / `ALTITUDE_FLATTEN_M = 120.0` are
+      authored design dials (see the file's own header), not measured
+      against a real flight — whether 45m/120m are the right thresholds for
+      Concordia's actual building heights and terrain silhouette (versus
+      simplifying too early/late) is unverified and untunable without
+      seeing real geometry from the air.
+- [ ] `boost_contrast()`'s saturation/value math has only been checked
+      numerically (`tests/test_air_legibility.gd`) — whether the resulting
+      colors genuinely read as higher-contrast silhouettes against a real
+      sky/fog/lighting setup (versus just "more saturated," which is not
+      the same thing perceptually) has never been observed.
+- [ ] No outline/rim-light shader exists for `silhouette_color` specifically
+      (only the flat `band_color` fill is plausibly a simple material swap)
+      — whether a true silhouette read needs an edge/outline pass at all,
+      or a flat-color material is sufficient at altitude, is an open
+      rendering question this unit does not answer.
+
+### Ambient aerial traffic (C16 — `world/aerial_traffic_controller.gd` +
+`server/emergent/aerial-traffic-cycle.js`)
+
+- [ ] No mesh/geometry is spawned per entity yet — this unit is the data +
+      protocol layer only (real server-tracked route/position, real
+      SnapshotBuffer-based interpolation, real world-scoped broadcast); a
+      visible "crosswind-courier" model/impostor was explicitly out of
+      scope (see the controller's own "What this file does NOT build"
+      header section).
+- [ ] **Cadence-vs-smoothness is a real open question, not just unverified
+      polish.** The server broadcasts positions on every due governor tick
+      (~15s — the tightest cadence `registerHeartbeat` offers), far coarser
+      than the ~100ms cadence `SnapshotBuffer`'s `RENDER_DELAY_MS=120`/
+      `MAX_HORIZON_MS=250` were tuned for. Between broadcasts, `sample()`'s
+      documented "hold last, never extrapolate" behavior means an entity
+      visually freezes for most of each ~15s window, then snaps to the next
+      sampled position — reasoned as acceptable for slow, distant,
+      background sky traffic, but genuinely never seen. If it reads as
+      janky rather than "distant and unhurried," the fix is most likely
+      either (a) a tighter server broadcast frequency (trades tick-budget
+      cost for smoothness) or (b) a dedicated, longer render-delay
+      constant for THIS controller specifically (SnapshotBuffer's
+      constants are shared file-level consts today — a per-consumer
+      override would need a small, disjoint follow-up), not a rewrite of
+      the interpolation scheme itself.
+- [ ] `CRUISE_ALTITUDE_M = 60` (server/lib/aerial-traffic.js) is an
+      authored design dial (see that file's header), not checked against
+      Concordia's real building heights from the air — whether couriers
+      flying at pad-elevation + 60m actually clear every authored building
+      (tallest authored `elevationHint` in `districts.js` is 18, for the
+      observatory district; buildings themselves may extend higher than
+      their district's ambient elevation hint) has never been visually
+      confirmed.
+- [ ] `DEFAULT_SPEED_MPS = 9` was chosen only by comparison to the real
+      seeded flight-mount species speeds (10.5–12 m/s) — whether 9 m/s
+      actually reads as "ambient background traffic" at Concordia's real
+      scale (routes ~1,450m around the 3 landing pads) rather than
+      "conspicuously slow" or "still too fast to notice," has never been
+      watched.
+- [ ] Real geometry/mesh choice for the `crosswind-courier` flavor (what a
+      courier actually looks like in flight — a mount-and-rider silhouette?
+      a cargo-glider shape? something else grounded in the Crosswind
+      Couriers' authored tabard/satchel look from
+      `content/world/concordia-hub/npcs.json`) is undecided — this unit
+      only ships the kind STRING, not a model.
+
 ---
 
 Until every box above is checked on a real machine, treat the Godot client as

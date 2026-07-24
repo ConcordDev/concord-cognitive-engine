@@ -1489,6 +1489,28 @@ registerHeartbeat("sovereign-manifestation-cycle", {
   handler: ({ state } = {}) => runSovereignManifestationCycle({ state, io: REALTIME?.io }),
 });
 
+// C16 — ambient aerial traffic ("non-empty sky"). Every tick (frequency 1,
+// the tightest cadence the scheduler offers) advances a small in-memory
+// fleet of unowned background air entities per active world (real routes
+// only — landing pads or district centroids, see server/lib/
+// aerial-traffic.js's header) and broadcasts their position via the same
+// Godot-mirror-aware world-room emit combat-polish.js/routes/worlds.js use
+// (docs/GODOT_PROTOCOL.md §4/§7's `_concordEmitToWorld` pattern). Actually
+// SPAWNING a new entity is gated separately, internally, to roughly every
+// ~3 min (server/emergent/aerial-traffic-cycle.js's SPAWN_CHECK_INTERVAL_MS)
+// — the cycle runs often so positions stay fresh, the population itself
+// changes rarely. `scope: 'global'`: the handler discovers every active
+// world itself with no ctx.worldId filter (same shape `scheme-overhear-
+// cycle`/`world-zone-hazard-cycle` are marked 'global' for — see their own
+// "Track A" comments below — to avoid re-running the same worlds once per
+// shard under CONCORD_SHARD_WORLDS). Kill-switch: CONCORD_AERIAL_TRAFFIC=0.
+import { runAerialTrafficCycle } from "./emergent/aerial-traffic-cycle.js";
+registerHeartbeat("aerial-traffic-cycle", {
+  frequency: 1,
+  scope: "global",
+  handler: ({ db, state } = {}) => runAerialTrafficCycle({ db, state, io: REALTIME?.io }),
+});
+
 // Phase 11 (Item 12) — federation outbox pump. Drains pending
 // outbound ActivityPub activities. Opt-in via CONCORD_ACTIVITYPUB=true
 // so local-first installs don't make outbound HTTP fanouts they

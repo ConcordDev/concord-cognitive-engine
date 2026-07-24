@@ -258,6 +258,20 @@ export const EVENT_SHAPES = Object.freeze({
     optional: ["healthPct", "position", "structuralStress", "attackerId"],
   },
 
+  // C16 — ambient aerial traffic ("non-empty sky"). Emitted by
+  // server/emergent/aerial-traffic-cycle.js on every due tick for a world
+  // with a real route (landing pads or, as fallback, district centroids —
+  // see server/lib/aerial-traffic.js). `entities` is a small (<= a few)
+  // array of { id, kind, x, y, z, heading } snapshots — position-over-time
+  // for unowned background traffic, never a full NPC payload. Mirrors the
+  // `update_transform` vocabulary item in docs/GODOT_PROTOCOL.md; the
+  // Godot-side consumer feeds these into the existing SnapshotBuffer the
+  // same way city:positions does.
+  "world:aerial-traffic": {
+    required: ["worldId", "entities"],
+    optional: ["routeSource"],
+  },
+
   // Sprint B Phase 9 — NPC visible sentience snapshot. Emitted by the
   // npc-perception-snapshot heartbeat (frequency 8). Drives frontend
   // head-turns, posture mirroring, and mood bias. The renderer

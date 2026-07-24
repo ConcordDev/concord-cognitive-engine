@@ -8,6 +8,7 @@ extends Node3D
 
 const GatewayClient := preload("res://net/gateway_client.gd")
 const SceneBootstrap := preload("res://world/scene_bootstrap.gd")
+const AerialTrafficController := preload("res://world/aerial_traffic_controller.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 @export var gateway_url: String = "ws://127.0.0.1:5050/godot-ws"
@@ -16,11 +17,19 @@ const SceneBootstrap := preload("res://world/scene_bootstrap.gd")
 
 var _gateway: GatewayClient
 var _bootstrap: SceneBootstrap
+var _aerial_traffic: AerialTrafficController
 
 
 func _ready() -> void:
 	_bootstrap = SceneBootstrap.new()
 	add_child(_bootstrap)
+
+	# C16 — ambient aerial traffic. Same "mount + let boot.gd's _on_event
+	# dispatch to it" pattern as SceneBootstrap; see that file's own class
+	# doc for why no visible geometry is spawned here yet (data layer only).
+	_aerial_traffic = AerialTrafficController.new()
+	_aerial_traffic.world_id = world_id
+	add_child(_aerial_traffic)
 
 	_gateway = GatewayClient.new()
 	_gateway.gateway_url = gateway_url
@@ -53,6 +62,8 @@ func _on_event(evt: String, data: Dictionary) -> void:
 	match evt:
 		"scene:data":
 			_bootstrap.apply_scene(data)
+		"world:aerial-traffic":
+			_aerial_traffic.apply_snapshot(data, Time.get_ticks_msec())
 		"room:joined":
 			print("[boot] joined room ", data.get("room", "?"))
 		_:

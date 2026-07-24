@@ -22,15 +22,31 @@ extends Node3D
 ## authored mesh yet — same "no fabrication" posture as everything else in
 ## this file); a world with no authored pads (every world other than
 ## concordia-hub today) yields an honest empty array.
+##
+## Additive (C15 — air legibility): `scene:data`'s `districts` field
+## (server/lib/scene-export.js, real district rows from `listDistricts` —
+## server/lib/districts.js, migration 374: boundary polygon, palette hex
+## triple, lightingTag, elevationHint) is parsed via `parse_districts` (pure
+## static, same verbatim-passthrough-or-drop posture as
+## `parse_landing_pads`) and exposed through `get_districts()`. This file
+## does not itself decide how a district's palette should look at altitude
+## — that transform is `world/air_legibility.gd#legibility_for_altitude`,
+## kept separate because it is a rendering-config concern, not a scene-
+## parsing one. A future renderer wires the two together (see
+## air_legibility.gd's own header for exactly where and why the actual
+## material/shader application isn't built by this unit — no engine here to
+## verify it against).
 
 signal scene_ready(count: int)
 signal scene_failed(reason: String)
 signal landing_pads_ready(pads: Array)
+signal districts_ready(districts: Array)
 
 const SCENE_FORMAT := "concord-scene/v1"
 
 var _spawned: Array[Node3D] = []
 var _landing_pads: Array = []
+var _districts: Array = []
 
 
 ## Apply a scene:data payload. Clears any prior spawn.
@@ -53,6 +69,9 @@ func apply_scene(payload: Dictionary) -> void:
 	_landing_pads = SceneBootstrap.parse_landing_pads(payload.get("landingPads", []))
 	landing_pads_ready.emit(_landing_pads)
 
+	_districts = SceneBootstrap.parse_districts(payload.get("districts", []))
+	districts_ready.emit(_districts)
+
 	scene_ready.emit(_spawned.size())
 
 
@@ -61,6 +80,14 @@ func apply_scene(payload: Dictionary) -> void:
 ## Returns a duplicate so callers can't mutate this node's internal state.
 func get_landing_pads() -> Array:
 	return _landing_pads.duplicate(true)
+
+
+## Real district data (boundary/palette/lightingTag/elevationHint) from the
+## most recent `apply_scene` call — see `world/air_legibility.gd` for the
+## consumer. Returns a duplicate so callers can't mutate this node's
+## internal state.
+func get_districts() -> Array:
+	return _districts.duplicate(true)
 
 
 func _spawn_node(node: Dictionary) -> void:
@@ -119,6 +146,29 @@ static func parse_landing_pads(raw: Array) -> Array:
 			continue
 		var pos = entry["position"]
 		if typeof(pos) != TYPE_DICTIONARY or not (pos.has("x") and pos.has("z")):
+			continue
+		out.append(entry.duplicate(true))
+	return out
+
+
+## Passes through well-shaped district entries verbatim (id, name, boundary,
+## palette, lightingTag, elevationHint — whatever the server sent); silently
+## drops any entry missing `id` or a `palette` dict with at least a
+## `primary` hex string — the two fields `air_legibility.gd#
+## legibility_for_altitude` actually depends on — rather than fabricating a
+## placeholder district. Never throws on malformed input — an empty/missing
+## `raw` array (every world other than concordia-hub today, per
+## districts.js's own "no authored layout for this world" honest-empty
+## path) yields an honest empty result.
+static func parse_districts(raw: Array) -> Array:
+	var out: Array = []
+	for entry in raw:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if not entry.has("id"):
+			continue
+		var palette = entry.get("palette", null)
+		if typeof(palette) != TYPE_DICTIONARY or not palette.has("primary"):
 			continue
 		out.append(entry.duplicate(true))
 	return out

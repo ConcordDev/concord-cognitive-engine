@@ -28,6 +28,8 @@ const TestDesignCommandClient := preload("res://tests/test_design_command_client
 const TestLandAirTransitionController := preload(
 	"res://tests/test_land_air_transition_controller.gd")
 const TestSceneBootstrap := preload("res://tests/test_scene_bootstrap.gd")
+const TestAerialTrafficController := preload("res://tests/test_aerial_traffic_controller.gd")
+const TestAirLegibility := preload("res://tests/test_air_legibility.gd")
 
 
 func _init() -> void:
@@ -47,6 +49,8 @@ func _init() -> void:
 		"DesignCommandClient": TestDesignCommandClient.run(),
 		"LandAirTransitionController": TestLandAirTransitionController.run(),
 		"SceneBootstrap": TestSceneBootstrap.run(),
+		"AerialTrafficController": TestAerialTrafficController.run(),
+		"AirLegibility": TestAirLegibility.run(),
 	}
 
 	var all_ok := true
