@@ -199,13 +199,43 @@ Spot-checked independently by the conductor at
 `mentorship/MentorshipSessionsPanel.tsx:103`, `world/ZoneBadge.tsx:54`, and
 `world-lens/SeasonalEffects.tsx:108` — all three genuinely guarded.
 
-**Disposition: baseline.** There is no annotation mechanism for this detector,
-and the only code "fix" would be to rewrite 26 correct guards into a shape the
-regex happens to like — which is worse code written to satisfy a checker, the
-exact inversion this project forbids. Teaching the detector to recognise an
-optional-chained guard would be a real bidirectional correctness fix, but
-`server/lib/detectors/*` is guard-protected, so that needs explicit
-authorization and its own pinning test.
+**Resolution: the detector was fixed, with authorization — 26 → 1.**
+
+Rewriting 26 correct guards into a shape the regex liked was never an option:
+that is worse code written to satisfy a checker, the exact inversion this
+project exists to prevent. The real defect was in the checker.
+`hasPrecedingPrefixGuard` built its pattern with `escapeRegExp(prefixText)`,
+producing literal dots, so a prefix recorded as `r.data.result.session` could
+never match the guard text `r.data?.result?.session`. Fixed by allowing each
+`.` to appear as `?.` in the guard, plus recognising the ternary guard form
+(`data?.zone ? … : null`).
+
+Accepting `a?.b` where `a.b` was expected cannot hide a real unguarded chain —
+the optional form proves strictly more about the path, since it also survives a
+null `a`. The ternary branch carries a `(?!\.)` lookahead so a *continuing*
+optional chain (`r.data?.result`) is never misread as a ternary test, which
+would have been a genuine loosening.
+
+Pinned bidirectionally in `server/tests/frontend-unsafe-chain-detector.test.js`
+(14/14): both guarded shapes go quiet, the genuinely unguarded control
+(`r.data.result.sessions.map(…)`, no guard anywhere) **still trips**, and the
+continuing-optional-chain case still trips. A one-directional test here would
+have proved nothing — a detector that stopped flagging the control would be
+softened, not fixed.
+
+**One residual, disposition baseline:** `world-creator/DraftEditor.tsx:193` is
+a *different* blind spot — guarded by an early-return negative
+(`if (!r.data?.ok || !r.data.result) { …; return; }`) rather than a positive
+`if (x) {…}`. Recognising that requires reasoning about whether the `return`
+actually exits, which regex cannot do safely; broadening for it would risk
+real false negatives. Left flagged and documented rather than papered over.
+
+Note on scope: `scripts/autoloop/guard.mjs`'s PROTECTED list covers detector
+**baselines** (`BASELINE.json`, `BUDGET.json`) and the named grader scripts —
+detector *sources* are not in that regex list. The rule that governs a change
+like this one is CLAUDE.md's: a checker fix is permitted only as a
+bidirectional correctness fix with a pinning test and explicit human
+authorization. Both held here.
 
 ### (a)/(c) split — `frontend-fake-data` (35), needs per-finding judgment
 

@@ -341,8 +341,27 @@ function hasOptionalOnBase(c, name) {
  */
 function hasPrecedingPrefixGuard(c, prefixText, beforeIndex) {
   if (!prefixText) return false;
-  const esc = escapeRegExp(prefixText);
-  const re = new RegExp(`if\\s*\\([^)]*\\b${esc}\\b`, "g");
+  // Match the prefix with each `.` allowed to appear as `?.` in the GUARD
+  // text. `escapeRegExp(prefixText)` alone produces literal dots, so the
+  // canonical house idiom
+  //     if (r.data?.result?.session) { …r.data.result.session… }
+  // never matched a prefix recorded as `r.data.result.session`, and every
+  // correctly-guarded read inside the block was reported as unguarded.
+  // That was a pure false-negative-on-the-guard bug: `a?.b` proves exactly
+  // the same thing about the path as `a.b` does — more, in fact, since it
+  // also survives a null `a` — so accepting it cannot hide a real unguarded
+  // chain. (2026-07-24: 26 of this detector's 27 findings were this one
+  // blind spot, including the idiom the module's own header cites as
+  // correct at `if (payload?.items) payload.items.map(...)`.)
+  const optDot = prefixText.split(".").map(escapeRegExp).join("\\??\\.");
+  // Two guard forms, both requiring the guard to PRECEDE the usage:
+  //   1. `if (… prefix …)`      — statement guard
+  //   2. `prefix ?` (ternary)   — expression guard, e.g.
+  //        data?.zone ? { name: data.zone.name } : null
+  //      The `(?!\.)` is load-bearing: it stops `prefix?.next` (an optional
+  //      chain continuing) from being misread as a ternary test, which
+  //      would let a genuinely unguarded deep chain mark itself safe.
+  const re = new RegExp(`(?:if\\s*\\([^)]*\\b${optDot}\\b|\\b${optDot}\\b\\s*\\?(?!\\.))`, "g");
   let m;
   while ((m = re.exec(c)) != null) {
     if (m.index < beforeIndex) return true;
