@@ -42,6 +42,17 @@ import { solveCircuit } from '../lib/simulation/circuit-solver.js';
 // member-interference modeled) and the never-blended mechanical-vs-
 // combined labeling.
 import { checkAeroGate } from '../lib/asset-gen/aero-gate.js';
+// runMultiPhysicsBundle is the closing leg of Cross-System Multi-Physics
+// CAD — a COMPOSITION layer over the three legs above, not a fourth
+// physics engine: it lets a caller request thermalStressCheck's and/or
+// aeroLoadCheck's checks against ONE beam-frame model in a single call
+// (plus, optionally, an entirely independent circuitSolve request), and
+// NEVER collapses different physical domains into one fabricated
+// "combined" score. See server/lib/asset-gen/multi-physics-bundle.js for
+// the full design-decision writeup (why electrical is excluded from the
+// structural bundle, and the genuine opt-in simultaneous thermal+aero
+// combined-loads solve).
+import { runMultiPhysicsBundle } from '../lib/asset-gen/multi-physics-bundle.js';
 
 // ── Material library (mechanical properties — SI + imperial) ───────────────
 // E in MPa, yield/ultimate in MPa, density in kg/m³, CTE in 1e-6/K.
@@ -945,6 +956,63 @@ export default function registerEngineeringActions(registerLensAction) {
         return { ok: false, error: check.reason, ...(check.error ? { detail: check.error } : {}), ...(check.memberIds ? { memberIds: check.memberIds } : {}) };
       }
       return { ok: true, result: check };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── multiPhysicsCheck — unified multi-physics bundle over ONE beam-frame
+  // model (Cross-System Multi-Physics CAD, closing leg) ────────────────────
+  // Thin wrapper around runMultiPhysicsBundle, following the exact same
+  // registration pattern as thermalStressCheck/aeroLoadCheck/circuitSolve
+  // above. `params.legs` requests any of { thermal, aero } — each `true`
+  // (module defaults) or an options object (deltaT/material for thermal;
+  // velocity/direction/airDensity/defaultCd/defaultArea for aero) — against
+  // the SAME model this file's own runFEA/thermalStressCheck/aeroLoadCheck
+  // already accept. `params.electrical` is an entirely SEPARATE, optional
+  // circuit-network request (its own {nodes,elements,groundNodeId} model) —
+  // see multi-physics-bundle.js for why it is never folded into the
+  // structural `allPass` or any structural utilization number: a circuit
+  // solve and a beam-frame stress check are not commensurable (different
+  // model shape, different units), so blending them would be exactly the
+  // false-precision fabrication CLAUDE.md's honesty invariant forbids.
+  // `params.simultaneous:true` (requires BOTH legs.thermal and legs.aero)
+  // additionally runs a genuine simultaneous thermal+aero combined-loads
+  // solve — real superposition through one real runFEA call, reported as
+  // `simultaneous.simultaneousUtilization`, distinct from the independent
+  // per-leg `ok`s. Never fabricates a pass: each leg's own honest failure
+  // (bad model, unknown material, missing supports, missing aero geometry,
+  // solver error) surfaces under that leg's own key without aborting
+  // sibling legs that succeeded.
+  registerLensAction('engineering', 'multiPhysicsCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+      const legs = params?.legs ?? data.legs;
+      const electrical = params?.electrical ?? data.electrical;
+      const simultaneous = (params?.simultaneous ?? data.simultaneous) === true;
+
+      const needsStructuralModel = !!(legs && (legs.thermal || legs.aero));
+      if (needsStructuralModel && (nodes.length === 0 || members.length === 0)) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+
+      const bundle = runMultiPhysicsBundle(
+        { nodes, members, loads, supports },
+        { legs, electrical, simultaneous }
+      );
+      // A bad bundle REQUEST (e.g. no legs at all) is an honest top-level
+      // failure; a bad INDIVIDUAL leg still returns ok:true at the bundle
+      // level with that leg's own failure nested under legs.<name> (or
+      // under `electrical`) — see multi-physics-bundle.js.
+      if (!bundle.ok) {
+        return { ok: false, error: bundle.reason };
+      }
+      return { ok: true, result: bundle };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
