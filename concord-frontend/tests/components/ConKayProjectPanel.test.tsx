@@ -24,11 +24,18 @@
 // sibling in the same cockpit-lane registry).
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 
 const lensRunMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRunMock(...args),
+}));
+
+// mig 386 per-subgoal assignee — the "claim/release" control only renders
+// for a resolvable current user, so stub useAuth rather than depend on a
+// real network fetch to /api/auth/me.
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'owner_a' }, isLoading: false, isAuthenticated: true }),
 }));
 
 import { ConKayProjectPanel, type ConKayProjectSummary } from '@/components/conkay/ConKayProjectPanel';
@@ -220,5 +227,107 @@ describe('ConKayProjectPanel', () => {
     await waitFor(() => expect(detailEl).toHaveTextContent('Linked goal tree is gone (tree_not_found)'));
     expect(detailEl).toHaveTextContent('missing');
     expect(detailEl).toHaveTextContent('Not available in this session.');
+  });
+
+  describe('per-subgoal assignee (mig 386) — self-claim, no participant roster', () => {
+    const detailWithRoot = {
+      ok: true,
+      project: PROJECT,
+      goalTree: {
+        ok: true,
+        treeId: 'gt_1',
+        tree: {
+          id: 'gt_1', title: 'Two-step goal', description: '', status: 'active',
+          root: {
+            id: 'node_root', title: 'Root goal', status: 'active', assignedToUserId: null,
+            children: [
+              { id: 'node_child', title: 'Write the spec', status: 'pending', assignedToUserId: null, children: [] },
+            ],
+          },
+        },
+        progress: 0, total: 2, done: 0,
+      },
+      marathons: [],
+      memory: { available: false, reason: 'no_state', items: [] },
+    };
+
+    it('shows a Claim button for an unassigned subgoal, and calls decomp.assign with the current user on click', async () => {
+      lensRunMock.mockImplementation(
+        (domain: string, action: string): Promise<MacroResponse> => {
+          if (domain === 'agent_projects' && action === 'list') {
+            return Promise.resolve({ data: { ok: true, result: { projects: [PROJECT] }, error: null } });
+          }
+          if (domain === 'agent_projects' && action === 'get') {
+            return Promise.resolve({ data: { ok: true, result: detailWithRoot, error: null } });
+          }
+          if (domain === 'decomp' && action === 'assign') {
+            return Promise.resolve({ data: { ok: true, result: { ok: true, nodeId: 'node_child', assignedToUserId: 'owner_a' }, error: null } });
+          }
+          return Promise.resolve({ data: { ok: true, result: {}, error: null } });
+        },
+      );
+
+      render(<ConKayProjectPanel />);
+      const row = await screen.findByTestId(`ck-project-row-${PROJECT.id}`);
+      fireEvent.click(row.querySelector('button')!);
+
+      const subgoalRow = await screen.findByTestId('ck-project-subgoal-node_child');
+      expect(subgoalRow).toHaveTextContent('Write the spec');
+      fireEvent.click(within(subgoalRow).getByRole('button', { name: 'Claim' }));
+
+      await waitFor(() =>
+        expect(lensRunMock).toHaveBeenCalledWith('decomp', 'assign', { treeId: 'gt_1', nodeId: 'node_child', assigneeUserId: 'owner_a' }),
+      );
+    });
+
+    it('a subgoal already assigned to the current user shows a "You" chip and a Release button', async () => {
+      const mineDetail = JSON.parse(JSON.stringify(detailWithRoot));
+      mineDetail.goalTree.tree.root.children[0].assignedToUserId = 'owner_a';
+      lensRunMock.mockImplementation(
+        (domain: string, action: string): Promise<MacroResponse> => {
+          if (domain === 'agent_projects' && action === 'list') {
+            return Promise.resolve({ data: { ok: true, result: { projects: [PROJECT] }, error: null } });
+          }
+          if (domain === 'agent_projects' && action === 'get') {
+            return Promise.resolve({ data: { ok: true, result: mineDetail, error: null } });
+          }
+          return Promise.resolve({ data: { ok: true, result: {}, error: null } });
+        },
+      );
+
+      render(<ConKayProjectPanel />);
+      const row = await screen.findByTestId(`ck-project-row-${PROJECT.id}`);
+      fireEvent.click(row.querySelector('button')!);
+
+      const chip = await screen.findByTestId('ck-project-subgoal-assignee-node_child');
+      expect(chip).toHaveTextContent('You');
+      expect(screen.getByRole('button', { name: 'Release' })).toBeInTheDocument();
+    });
+
+    it('a subgoal assigned to someone else renders a read-only chip with no claim control (no roster to validate against)', async () => {
+      const othersDetail = JSON.parse(JSON.stringify(detailWithRoot));
+      othersDetail.goalTree.tree.root.children[0].assignedToUserId = 'someone_else';
+      lensRunMock.mockImplementation(
+        (domain: string, action: string): Promise<MacroResponse> => {
+          if (domain === 'agent_projects' && action === 'list') {
+            return Promise.resolve({ data: { ok: true, result: { projects: [PROJECT] }, error: null } });
+          }
+          if (domain === 'agent_projects' && action === 'get') {
+            return Promise.resolve({ data: { ok: true, result: othersDetail, error: null } });
+          }
+          return Promise.resolve({ data: { ok: true, result: {}, error: null } });
+        },
+      );
+
+      render(<ConKayProjectPanel />);
+      const row = await screen.findByTestId(`ck-project-row-${PROJECT.id}`);
+      fireEvent.click(row.querySelector('button')!);
+
+      const chip = await screen.findByTestId('ck-project-subgoal-assignee-node_child');
+      expect(chip).toHaveTextContent('someone_else');
+      const subgoalRow = await screen.findByTestId('ck-project-subgoal-node_child');
+      expect(within(subgoalRow).queryByRole('button', { name: 'Claim' })).not.toBeInTheDocument();
+      expect(within(subgoalRow).queryByRole('button', { name: 'Release' })).not.toBeInTheDocument();
+    });
   });
 });

@@ -16,14 +16,16 @@ import Database from "better-sqlite3";
 import { up as upWorkspaceRooms } from "../migrations/377_workspace_rooms.js";
 import { up as upWorkspaceRoomObjectives } from "../migrations/380_workspace_room_objectives.js";
 import { up as upGoalTrees } from "../migrations/340_goal_decomposition.js";
+import { up as upGoalNodeAssignee } from "../migrations/386_goal_node_assignee.js";
 import { up as upAgentMarathon } from "../migrations/171_agent_marathon_sessions.js";
 import { up as upAgentMarathonGovernance } from "../migrations/379_agent_marathon_governance.js";
 import {
   createRoom, getRoom, listInDistrict, listMine,
   setRoomObjective, getRoomObjective, linkMarathonToRoom, getActiveRoomMarathon,
   describeRoomConkayActivity, startOrResumeConkayAssist, CONKAY_ASSIST_DEFAULT_DOMAINS,
+  assignSubgoal, realParticipantIds,
 } from "../lib/workspace-rooms.js";
-import { createGoalTree } from "../lib/goal-decomposition.js";
+import { createGoalTree, addSubgoals } from "../lib/goal-decomposition.js";
 import { startMarathon } from "../lib/agent-marathon.js";
 import registerWorkspaceRoomMacros from "../domains/workspace-rooms.js";
 
@@ -31,15 +33,38 @@ import registerWorkspaceRoomMacros from "../domains/workspace-rooms.js";
  *  and the goal-tree / marathon tables that setRoomObjective /
  *  startOrResumeConkayAssist call straight into (mirrors
  *  tests/agent-projects.test.js's pattern of migrating the tables its lib
- *  file genuinely depends on, rather than running the full ledger). */
+ *  file genuinely depends on, rather than running the full ledger). Mig 386
+ *  adds the per-subgoal assignee column these tests also exercise. */
 function freshDb() {
   const db = new Database(":memory:");
   upWorkspaceRooms(db);
   upGoalTrees(db);
+  upGoalNodeAssignee(db);
   upAgentMarathon(db);
   upAgentMarathonGovernance(db);
   upWorkspaceRoomObjectives(db);
   return db;
+}
+
+/** Simulate a real live Socket.IO room membership without booting the whole
+ *  server — mirrors the exact shape `lib/workspace-rooms.js#realParticipantIds`
+ *  reads (`io.sockets.adapter.rooms` / `io.sockets.sockets`), so the test
+ *  proves the REAL authorization path, not a stubbed-out one. Returns a
+ *  teardown function that removes the fake `globalThis.__CONCORD_REALTIME__`. */
+function fakeRoomPresence(socketRoomName, userIds) {
+  const socketsMap = new Map();
+  const roomSet = new Set();
+  userIds.forEach((uid, i) => {
+    const sid = `sock_${i}_${uid}`;
+    socketsMap.set(sid, { data: { userId: uid } });
+    roomSet.add(sid);
+  });
+  const rooms = new Map([[socketRoomName, roomSet]]);
+  const prior = globalThis.__CONCORD_REALTIME__;
+  globalThis.__CONCORD_REALTIME__ = {
+    io: { sockets: { adapter: { rooms }, sockets: socketsMap } },
+  };
+  return () => { globalThis.__CONCORD_REALTIME__ = prior; };
 }
 
 /** Minimal macro-registry harness mirroring server.js's real `register`. */
@@ -604,5 +629,164 @@ describe("V1.2 Wave B — workspace macros (set-objective / get-objective / conk
     const second = await registry.call("workspace", "conkay-assist", ctx, { roomId });
     assert.equal(second.resumed, true);
     assert.equal(second.sessionId, first.sessionId);
+  });
+});
+
+// ── Per-subgoal assignment (mig 386) — real-participant-checked ────────────
+
+describe("realParticipantIds (lib, direct) — real live signal, honest owner-only fallback", () => {
+  it("with no realtime reachable, only the durable owner counts", () => {
+    const room = { id: "wr_x", owner_id: "owner1" };
+    const ids = realParticipantIds(room);
+    assert.deepEqual([...ids], ["owner1"]);
+  });
+
+  it("live socket.io room membership widens the set to whoever is actually connected", () => {
+    const restore = fakeRoomPresence("workspace:room:wr_x", ["owner1", "alice", "bob"]);
+    try {
+      const ids = realParticipantIds({ id: "wr_x", owner_id: "owner1" });
+      assert.deepEqual([...ids].sort(), ["alice", "bob", "owner1"]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("a socket connected to a DIFFERENT room's channel does not count", () => {
+    const restore = fakeRoomPresence("workspace:room:some-other-room", ["mallory"]);
+    try {
+      const ids = realParticipantIds({ id: "wr_x", owner_id: "owner1" });
+      assert.deepEqual([...ids], ["owner1"]);
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("assignSubgoal (lib, direct)", () => {
+  let db, roomId, treeId, childId;
+  beforeEach(() => {
+    db = freshDb();
+    roomId = createRoom(db, { ownerId: "owner1", worldId: "w", name: "Team room" }).room.id;
+    setRoomObjective(db, roomId, "owner1", { objective: "Ship it", mintGoalTree: true });
+    treeId = getRoomObjective(db, roomId).goalTreeId;
+    const rootId = getGoalTreeRootId(db, treeId);
+    const added = addSubgoals(db, { treeId, parentId: rootId, subgoals: ["design", "implement"] });
+    childId = added.nodes[0].id;
+  });
+
+  function getGoalTreeRootId(database, tid) {
+    return database.prepare(`SELECT id FROM goal_nodes WHERE tree_id = ? AND parent_id IS NULL`).get(tid).id;
+  }
+
+  it("requires a real room, a real linked tree, and an authenticated caller", () => {
+    assert.equal(assignSubgoal(db, "wr_missing", "owner1", { nodeId: childId }).reason, "room_not_found");
+    assert.equal(assignSubgoal(db, roomId, null, { nodeId: childId }).reason, "no_user");
+    assert.equal(assignSubgoal(db, roomId, "owner1", {}).reason, "missing_node_id");
+  });
+
+  it("the owner (always a real participant, even offline) can self-assign a subgoal", () => {
+    const r = assignSubgoal(db, roomId, "owner1", { nodeId: childId, assigneeUserId: "owner1" });
+    assert.equal(r.ok, true);
+    assert.equal(r.assignedToUserId, "owner1");
+    const row = db.prepare(`SELECT assigned_to_user_id FROM goal_nodes WHERE id = ?`).get(childId);
+    assert.equal(row.assigned_to_user_id, "owner1");
+  });
+
+  it("a caller who is NOT a real current participant is rejected", () => {
+    const r = assignSubgoal(db, roomId, "stranger", { nodeId: childId, assigneeUserId: "stranger" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "not_a_participant");
+    const row = db.prepare(`SELECT assigned_to_user_id FROM goal_nodes WHERE id = ?`).get(childId);
+    assert.equal(row.assigned_to_user_id, null, "rejected assignment never writes the field");
+  });
+
+  it("a real (live-connected) participant can assign to ANOTHER real participant", () => {
+    const restore = fakeRoomPresence(`workspace:room:${roomId}`, ["owner1", "alice"]);
+    try {
+      const r = assignSubgoal(db, roomId, "owner1", { nodeId: childId, assigneeUserId: "alice" });
+      assert.equal(r.ok, true);
+      assert.equal(r.assignedToUserId, "alice");
+    } finally {
+      restore();
+    }
+  });
+
+  it("assigning to a non-participant string is rejected even when the caller is legitimate", () => {
+    const restore = fakeRoomPresence(`workspace:room:${roomId}`, ["owner1", "alice"]);
+    try {
+      const r = assignSubgoal(db, roomId, "owner1", { nodeId: childId, assigneeUserId: "not-in-the-room" });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "assignee_not_a_participant");
+    } finally {
+      restore();
+    }
+  });
+
+  it("passing assigneeUserId: null clears a previously-set assignee (unassign)", () => {
+    assignSubgoal(db, roomId, "owner1", { nodeId: childId, assigneeUserId: "owner1" });
+    const cleared = assignSubgoal(db, roomId, "owner1", { nodeId: childId, assigneeUserId: null });
+    assert.equal(cleared.ok, true);
+    assert.equal(cleared.assignedToUserId, null);
+    const row = db.prepare(`SELECT assigned_to_user_id FROM goal_nodes WHERE id = ?`).get(childId);
+    assert.equal(row.assigned_to_user_id, null);
+  });
+
+  it("a room with no linked goal tree refuses to assign", () => {
+    const bareRoom = createRoom(db, { ownerId: "owner2", worldId: "w", name: "Bare" }).room.id;
+    const r = assignSubgoal(db, bareRoom, "owner2", { nodeId: childId, assigneeUserId: "owner2" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "goal_tree_not_linked");
+  });
+
+  it("getGoalTree / workspace.get-objective surfaces the assignment on the real node", () => {
+    assignSubgoal(db, roomId, "owner1", { nodeId: childId, assigneeUserId: "owner1" });
+    const got = getRoomObjective(db, roomId);
+    const node = got.goalTree.tree.root.children.find((c) => c.id === childId);
+    assert.equal(node.assignedToUserId, "owner1");
+    const sibling = got.goalTree.tree.root.children.find((c) => c.id !== childId);
+    assert.equal(sibling.assignedToUserId, null, "unassigned sibling stays honestly null");
+  });
+});
+
+describe("workspace.assign-subgoal macro (end to end)", () => {
+  let db, registry, ctx, roomId, treeId, childId;
+  beforeEach(async () => {
+    db = freshDb();
+    registry = makeRegistry();
+    registerWorkspaceRoomMacros(registry.register);
+    ctx = { db, actor: { userId: "owner1" } };
+    roomId = createRoom(db, { ownerId: "owner1", worldId: "w", name: "Macro room" }).room.id;
+    await registry.call("workspace", "set-objective", ctx, { roomId, objective: "Ship v1.2", mintGoalTree: true });
+    treeId = getRoomObjective(db, roomId).goalTreeId;
+    const rootId = db.prepare(`SELECT id FROM goal_nodes WHERE tree_id = ? AND parent_id IS NULL`).get(treeId).id;
+    const added = addSubgoals(db, { treeId, parentId: rootId, subgoals: ["design"] });
+    childId = added.nodes[0].id;
+  });
+
+  it("requires an authenticated actor, roomId, and nodeId", async () => {
+    const noUser = await registry.call("workspace", "assign-subgoal", { db, actor: {} }, { roomId, nodeId: childId });
+    assert.equal(noUser.reason, "no_user");
+    const noRoom = await registry.call("workspace", "assign-subgoal", ctx, { nodeId: childId });
+    assert.equal(noRoom.reason, "missing_room_id");
+    const noNode = await registry.call("workspace", "assign-subgoal", ctx, { roomId });
+    assert.equal(noNode.reason, "missing_node_id");
+  });
+
+  it("the owner can self-assign, and a stranger is rejected, through the macro layer", async () => {
+    const ok = await registry.call("workspace", "assign-subgoal", ctx, { roomId, nodeId: childId, assigneeUserId: "owner1" });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.assignedToUserId, "owner1");
+
+    const strangerCtx = { db, actor: { userId: "mallory" } };
+    const rejected = await registry.call("workspace", "assign-subgoal", strangerCtx, { roomId, nodeId: childId, assigneeUserId: "mallory" });
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.reason, "not_a_participant");
+  });
+
+  it("omitting assigneeUserId clears the assignment through the macro layer", async () => {
+    await registry.call("workspace", "assign-subgoal", ctx, { roomId, nodeId: childId, assigneeUserId: "owner1" });
+    const cleared = await registry.call("workspace", "assign-subgoal", ctx, { roomId, nodeId: childId });
+    assert.equal(cleared.ok, true);
+    assert.equal(cleared.assignedToUserId, null);
   });
 });

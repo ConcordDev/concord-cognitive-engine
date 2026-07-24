@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { runMigrations } from "../migrate.js";
 import {
-  createGoalTree, addSubgoals, setNodeStatus, getGoalTree, nextActionable, listGoalTrees,
+  createGoalTree, addSubgoals, setNodeStatus, getGoalTree, nextActionable, listGoalTrees, assignNode,
 } from "../lib/goal-decomposition.js";
 import registerDecompMacros from "../domains/decomp.js";
 
@@ -80,5 +80,67 @@ describe("Persistent Goal Decomposition (#10)", () => {
     assert.equal(nx.actionable[0].title, "x");
     const list = await macros.get("decomp.list")({ db, actor: { userId: "u9" } }, {});
     assert.equal(list.trees.length, 1);
+  });
+
+  describe("assignNode (#386) — per-subgoal assignee, pure storage", () => {
+    it("assigns and clears a real node's assignee", () => {
+      const t = createGoalTree(db, { userId: "u1", title: "Assignable", mintDtu: false });
+      const r = assignNode(db, { treeId: t.treeId, nodeId: t.rootId, assigneeUserId: "u1" });
+      assert.equal(r.ok, true);
+      assert.equal(r.assignedToUserId, "u1");
+      const tree = getGoalTree(db, t.treeId);
+      assert.equal(tree.tree.root.assignedToUserId, "u1");
+
+      const cleared = assignNode(db, { treeId: t.treeId, nodeId: t.rootId, assigneeUserId: null });
+      assert.equal(cleared.ok, true);
+      assert.equal(cleared.assignedToUserId, null);
+      assert.equal(getGoalTree(db, t.treeId).tree.root.assignedToUserId, null);
+    });
+
+    it("rejects a node that doesn't belong to the given tree", () => {
+      const t1 = createGoalTree(db, { userId: "u1", title: "Tree 1", mintDtu: false });
+      const t2 = createGoalTree(db, { userId: "u1", title: "Tree 2", mintDtu: false });
+      const r = assignNode(db, { treeId: t2.treeId, nodeId: t1.rootId, assigneeUserId: "u1" });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "node_not_found");
+    });
+
+    it("a new node defaults to unassigned", () => {
+      const t = createGoalTree(db, { userId: "u1", title: "Default unassigned", mintDtu: false });
+      assert.equal(getGoalTree(db, t.treeId).tree.root.assignedToUserId, null);
+    });
+  });
+
+  describe("decomp.assign macro (#386) — single-owner self-claim, no third-party assignment", () => {
+    it("the tree owner can claim (self-assign) and release a subgoal", async () => {
+      const c = await macros.get("decomp.create")({ db, actor: { userId: "owner_a" } }, { title: "Solo project", mintDtu: false });
+      const claim = await macros.get("decomp.assign")({ db, actor: { userId: "owner_a" } }, { treeId: c.treeId, nodeId: c.rootId, assigneeUserId: "owner_a" });
+      assert.equal(claim.ok, true);
+      assert.equal(claim.assignedToUserId, "owner_a");
+
+      const release = await macros.get("decomp.assign")({ db, actor: { userId: "owner_a" } }, { treeId: c.treeId, nodeId: c.rootId, assigneeUserId: null });
+      assert.equal(release.ok, true);
+      assert.equal(release.assignedToUserId, null);
+    });
+
+    it("rejects a caller who does not own the tree", async () => {
+      const c = await macros.get("decomp.create")({ db, actor: { userId: "owner_b" } }, { title: "Not yours", mintDtu: false });
+      const r = await macros.get("decomp.assign")({ db, actor: { userId: "intruder" } }, { treeId: c.treeId, nodeId: c.rootId, assigneeUserId: "intruder" });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "not_owned");
+    });
+
+    it("rejects assigning to anyone other than the caller — no participant roster to validate against here", async () => {
+      const c = await macros.get("decomp.create")({ db, actor: { userId: "owner_c" } }, { title: "Solo", mintDtu: false });
+      const r = await macros.get("decomp.assign")({ db, actor: { userId: "owner_c" } }, { treeId: c.treeId, nodeId: c.rootId, assigneeUserId: "someone_else" });
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "assignee_must_be_self");
+    });
+
+    it("requires an authenticated actor and both treeId + nodeId", async () => {
+      const c = await macros.get("decomp.create")({ db, actor: { userId: "owner_d" } }, { title: "X", mintDtu: false });
+      assert.equal((await macros.get("decomp.assign")({ db, actor: {} }, { treeId: c.treeId, nodeId: c.rootId })).reason, "no_user");
+      assert.equal((await macros.get("decomp.assign")({ db, actor: { userId: "owner_d" } }, { nodeId: c.rootId })).reason, "missing_tree_or_node");
+    });
   });
 });

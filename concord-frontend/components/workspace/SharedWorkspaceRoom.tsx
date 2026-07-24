@@ -60,7 +60,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, EyeOff, Eye, X, Plus, Bot, Target, Sparkles, Loader2 } from 'lucide-react';
+import { Users, EyeOff, Eye, X, Plus, Bot, Target, Sparkles, Loader2, UserRound } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
@@ -119,6 +119,16 @@ export interface SharedWorkspaceRoomProps {
   className?: string;
 }
 
+/** Mirrors server/lib/goal-decomposition.js#getGoalTree's real per-node shape
+ *  (mig 386 added `assignedToUserId`, nullable). */
+interface GoalTreeNode {
+  id: string;
+  title: string;
+  status: string;
+  assignedToUserId: string | null;
+  children: GoalTreeNode[];
+}
+
 /** Mirrors server/lib/goal-decomposition.js#getGoalTree's real return shape
  *  (only the fields this component actually renders). */
 interface GoalTreeState {
@@ -127,7 +137,86 @@ interface GoalTreeState {
   progress?: number;
   total?: number;
   done?: number;
-  tree?: { title: string; status: string };
+  tree?: { title: string; status: string; root?: GoalTreeNode | null };
+}
+
+/** One real, live participant this component can name a subgoal assignee
+ *  after: either the current user (self-claim) or someone the Yjs Awareness
+ *  layer has actually seen present in this room right now. Never a
+ *  fabricated roster — the assign dropdown only ever offers people this
+ *  session genuinely knows about; the backend (workspace.assign-subgoal)
+ *  separately re-validates against its own real, live Socket.IO membership
+ *  signal and rejects anyone else regardless of what this list offered. */
+interface AssignCandidate {
+  userId: string;
+  displayName: string;
+}
+
+/** A single subgoal row + its children, recursively. Renders a real
+ *  assignee chip when `assignedToUserId` is set, and a small assign/clear
+ *  control scoped to the real people this session knows are here — never a
+ *  raw textarea for an arbitrary user id. */
+function SubgoalNodeRow({
+  node, depth, candidates, onAssign, pendingNodeId,
+}: {
+  node: GoalTreeNode;
+  depth: number;
+  candidates: AssignCandidate[];
+  onAssign: (nodeId: string, assigneeUserId: string | null) => void;
+  pendingNodeId: string | null;
+}) {
+  const assignee = node.assignedToUserId
+    ? candidates.find((c) => c.userId === node.assignedToUserId)
+    : null;
+  const isPending = pendingNodeId === node.id;
+  return (
+    <li data-testid={`subgoal-row-${node.id}`}>
+      <div className="flex items-center gap-1.5 py-0.5" style={{ paddingLeft: depth * 12 }}>
+        <span className={cn(
+          'text-[11px] truncate flex-1 min-w-0',
+          node.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-200'
+        )}>
+          {node.title}
+        </span>
+        {node.assignedToUserId && (
+          <span
+            data-testid={`subgoal-assignee-${node.id}`}
+            title={`Assigned to ${assignee?.displayName || node.assignedToUserId}`}
+            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan shrink-0"
+          >
+            <UserRound className="w-2.5 h-2.5" aria-hidden="true" />
+            <span className="max-w-[6rem] truncate">{assignee?.displayName || node.assignedToUserId}</span>
+          </span>
+        )}
+        <select
+          aria-label={`Assign "${node.title}"`}
+          value={node.assignedToUserId || ''}
+          disabled={isPending}
+          onChange={(e) => onAssign(node.id, e.target.value || null)}
+          className="text-[10px] bg-black/30 border border-lattice-border/60 rounded px-1 py-0.5 text-gray-400 shrink-0 disabled:opacity-40"
+        >
+          <option value="">Unassigned</option>
+          {candidates.map((c) => (
+            <option key={c.userId} value={c.userId}>{c.displayName}</option>
+          ))}
+        </select>
+      </div>
+      {node.children.length > 0 && (
+        <ul>
+          {node.children.map((child) => (
+            <SubgoalNodeRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              candidates={candidates}
+              onAssign={onAssign}
+              pendingNodeId={pendingNodeId}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
 }
 
 /** Mirrors workspace.get-objective's real macro response. */
@@ -227,6 +316,18 @@ export function SharedWorkspaceRoom({ roomId, userId, displayName, className }: 
   const [objectiveError, setObjectiveError] = useState<string | null>(null);
   const [conkayActivity, setConkayActivity] = useState<ConkayActivity | null>(null);
   const [askingConkay, setAskingConkay] = useState(false);
+  const [assigningNodeId, setAssigningNodeId] = useState<string | null>(null);
+
+  // The real people this session can offer as an assignee: yourself, plus
+  // whoever the live Yjs Awareness layer has actually seen present here.
+  // Never a fabricated roster — see the module header + SubgoalNodeRow.
+  const assignCandidates = useMemo<AssignCandidate[]>(() => {
+    const list: AssignCandidate[] = [{ userId, displayName: `${displayName} (you)` }];
+    for (const c of collaborators) {
+      if (c.userId !== userId) list.push({ userId: c.userId, displayName: c.displayName });
+    }
+    return list;
+  }, [userId, displayName, collaborators]);
 
   const loadObjective = useCallback(async () => {
     if (!roomId) return;
@@ -235,6 +336,23 @@ export function SharedWorkspaceRoom({ roomId, userId, displayName, className }: 
   }, [roomId]);
 
   useEffect(() => { loadObjective(); }, [loadObjective]);
+
+  // Assign/unassign a subgoal — a real backend call (workspace.assign-subgoal)
+  // that re-validates caller + assignee against the room's actual live
+  // participant set server-side; this reloads the real tree state on
+  // success rather than optimistically guessing the result, since a
+  // rejection (e.g. the assignee just disconnected) must be shown honestly.
+  const assignSubgoalNode = useCallback(async (nodeId: string, assigneeUserId: string | null) => {
+    setAssigningNodeId(nodeId);
+    try {
+      await lensRun<{ ok: boolean; reason?: string }>('workspace', 'assign-subgoal', {
+        roomId, nodeId, assigneeUserId,
+      });
+      await loadObjective();
+    } finally {
+      setAssigningNodeId(null);
+    }
+  }, [roomId, loadObjective]);
 
   // Poll whether ConKay is actively working this room — real read of the
   // real linked marathon session, not a client-side timer pretending to be
@@ -450,6 +568,20 @@ export function SharedWorkspaceRoom({ roomId, userId, displayName, className }: 
           <p className="text-[11px] text-amber-400">
             Linked goal tree is unavailable ({objectiveState.goalTree.reason}).
           </p>
+        )}
+
+        {/* Per-subgoal assignment — real participants claiming real pieces
+            of the shared tree, not a read-only progress display. */}
+        {objectiveState?.goalTree?.ok && objectiveState.goalTree.tree?.root && (
+          <ul className="mt-1 space-y-0.5 border-t border-lattice-border/40 pt-1.5" aria-label="Subgoals">
+            <SubgoalNodeRow
+              node={objectiveState.goalTree.tree.root}
+              depth={0}
+              candidates={assignCandidates}
+              onAssign={assignSubgoalNode}
+              pendingNodeId={assigningNodeId}
+            />
+          </ul>
         )}
 
         {objectiveState?.objective && objectiveState?.goalTreeId && (

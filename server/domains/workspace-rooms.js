@@ -13,7 +13,7 @@
 import {
   createRoom, listInDistrict, listMine,
   setRoomObjective, getRoomObjective, startOrResumeConkayAssist,
-  getActiveRoomMarathon, describeRoomConkayActivity,
+  getActiveRoomMarathon, describeRoomConkayActivity, assignSubgoal,
 } from "../lib/workspace-rooms.js";
 
 export default function registerWorkspaceRoomMacros(register) {
@@ -128,4 +128,24 @@ export default function registerWorkspaceRoomMacros(register) {
     if (!session) return { ok: true, active: false };
     return { ok: true, active: true, activity: describeRoomConkayActivity(session) };
   }, { note: "poll whether ConKay is actively working on this room's objective, with an honest activity summary" });
+
+  /**
+   * workspace.assign-subgoal — claim (or, with assigneeUserId omitted/null,
+   * release) a node in the room's linked goal tree. Both the caller and the
+   * assignee must be real current participants of the room (see
+   * lib/workspace-rooms.js#realParticipantIds — the owner, plus whoever is
+   * actually live-connected to the room's Socket.IO channel right now); an
+   * arbitrary user id is rejected, not accepted on faith.
+   * input: { roomId, nodeId, assigneeUserId? }
+   */
+  register("workspace", "assign-subgoal", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const { roomId, nodeId, assigneeUserId } = input;
+    if (!roomId) return { ok: false, reason: "missing_room_id" };
+    if (!nodeId) return { ok: false, reason: "missing_node_id" };
+    return assignSubgoal(db, roomId, userId, { nodeId, assigneeUserId: assigneeUserId ?? null });
+  }, { note: "assign or clear a subgoal's assignee; caller and assignee must both be real current room participants (mig 386)" });
 }

@@ -136,13 +136,37 @@ export function setNodeStatus(db, { treeId, nodeId, status } = {}) {
   return { ok: true, rolledUp, treeDone };
 }
 
+/**
+ * Assign (or, with `assigneeUserId` null/omitted, clear) a subgoal node's
+ * owner. Pure storage — this does NOT check whether `assigneeUserId` is a
+ * real participant in anything; that authorization belongs to the caller
+ * (see lib/workspace-rooms.js#assignSubgoal for the room-scoped, real-
+ * participant-checked path, and domains/decomp.js's `decomp.assign` for the
+ * single-owner-project self-claim path). Returns { ok, nodeId, assignedToUserId }.
+ */
+export function assignNode(db, { treeId, nodeId, assigneeUserId } = {}) {
+  if (!db) return { ok: false, reason: "no_db" };
+  if (!treeId || !nodeId) return { ok: false, reason: "missing_tree_or_node" };
+  const node = db.prepare(`SELECT id FROM goal_nodes WHERE id = ? AND tree_id = ?`).get(nodeId, treeId);
+  if (!node) return { ok: false, reason: "node_not_found" };
+
+  const assignee = assigneeUserId === null || assigneeUserId === undefined ? null : String(assigneeUserId);
+  try {
+    db.prepare(`UPDATE goal_nodes SET assigned_to_user_id = ?, updated_at = unixepoch() WHERE id = ?`).run(assignee, nodeId);
+  } catch (e) {
+    return { ok: false, reason: "update_failed", error: String(e?.message || e) };
+  }
+  return { ok: true, nodeId, assignedToUserId: assignee };
+}
+
 /** Assemble the full tree in one query (no N+1). Returns { ok, tree, progress }. */
 export function getGoalTree(db, treeId) {
   if (!db || !treeId) return { ok: false, reason: "missing_tree" };
   const meta = db.prepare(`SELECT id, user_id AS userId, title, description, root_dtu_id AS rootDtuId, status FROM goal_trees WHERE id = ?`).get(treeId);
   if (!meta) return { ok: false, reason: "tree_not_found" };
   const rows = db.prepare(`
-    SELECT id, parent_id AS parentId, title, detail, status, depth, ordinal, dtu_id AS dtuId
+    SELECT id, parent_id AS parentId, title, detail, status, depth, ordinal, dtu_id AS dtuId,
+           assigned_to_user_id AS assignedToUserId
     FROM goal_nodes WHERE tree_id = ? ORDER BY depth, ordinal
   `).all(treeId);
 

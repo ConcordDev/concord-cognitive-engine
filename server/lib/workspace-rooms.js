@@ -28,8 +28,9 @@
 // explicit table/decision, not smuggled into this metadata layer.
 
 import crypto from "node:crypto";
-import { createGoalTree, getGoalTree } from "./goal-decomposition.js";
+import { createGoalTree, getGoalTree, assignNode } from "./goal-decomposition.js";
 import { startMarathon, getMarathon } from "./agent-marathon.js";
+import { KNOWN_SCOPES } from "./yjs-realtime.js";
 
 const NAME_MAX_LEN = 80;
 const OBJECTIVE_MAX_LEN = 500;
@@ -392,6 +393,91 @@ export function startOrResumeConkayAssist(db, roomId, callerId, opts = {}) {
     ok: true, resumed: false, sessionId: start.sessionId, status: session?.status || "pending",
     activity: describeRoomConkayActivity(session),
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V1.2 Wave B follow-on — per-subgoal assignment. Grounding-audit finding:
+// team mode lets multiple humans co-edit a room's shared objective + linked
+// goal tree, but the tree itself (goal-decomposition.js, mig 340) had no way
+// for one human to claim a piece of it. Closed by mig 386's
+// `goal_nodes.assigned_to_user_id` + the functions below.
+//
+// Authorization deliberately does NOT invent a durable room-membership/ACL
+// table — this module's own header already declines to build one (MU2's
+// presence is intentionally ephemeral; there is no honest durable "was ever
+// in this room" signal to check against). Instead it uses the one REAL,
+// LIVE signal that already exists: which sockets are currently joined to
+// this room's `workspace:room` Socket.IO channel (`socket.join` in
+// server.js's `room:join` handler, driven by useYjsDoc.ts on the client —
+// every SharedWorkspaceRoom mount joins this exact room to receive Yjs sync,
+// independent of the separate Awareness-level "appear offline" toggle, so a
+// participant who's merely hidden from the presence list is still correctly
+// counted here). The room's owner is always included even if not currently
+// connected — mirrors every other "owner can always manage their own room"
+// check in this file (setRoomObjective's tree-ownership gate, etc).
+// ─────────────────────────────────────────────────────────────────────────
+
+/** The Socket.IO room name useYjsDoc.ts's clients actually join for a given
+ *  workspace room id (see server.js's `room:join` handler + this module's
+ *  SHARED_WORKSPACE scope). */
+function socketRoomFor(roomId) {
+  return `${KNOWN_SCOPES.SHARED_WORKSPACE}:${roomId}`;
+}
+
+/**
+ * The real, current participant set for a room: its durable owner, plus
+ * every distinct `userId` presently attached to its live Socket.IO channel.
+ * Best-effort — if realtime isn't reachable (no `io` yet, e.g. a cold-start
+ * macro call or a headless test), this honestly degrades to "owner only"
+ * rather than fabricating a wider roster.
+ */
+export function realParticipantIds(room) {
+  const ids = new Set();
+  if (room?.owner_id) ids.add(String(room.owner_id));
+  try {
+    const io = globalThis?.__CONCORD_REALTIME__?.io;
+    if (io && room?.id) {
+      const socketIds = io.sockets?.adapter?.rooms?.get(socketRoomFor(room.id));
+      if (socketIds) {
+        for (const sid of socketIds) {
+          const uid = io.sockets?.sockets?.get(sid)?.data?.userId;
+          if (uid) ids.add(String(uid));
+        }
+      }
+    }
+  } catch { /* best-effort — the owner-only fallback above is still honest */ }
+  return ids;
+}
+
+/**
+ * Assign (or, with `assigneeUserId` null/omitted, unassign) a subgoal node
+ * in a room's linked goal tree. Both the caller AND the assignee must be
+ * real current participants (`realParticipantIds` above) — this never
+ * accepts an arbitrary user id, and never lets a non-participant reach into
+ * a room's tree they're not actually part of.
+ */
+export function assignSubgoal(db, roomId, callerId, { nodeId, assigneeUserId } = {}) {
+  if (!db || !roomId) return { ok: false, reason: "missing_inputs" };
+  const uid = callerId ? String(callerId) : null;
+  if (!uid) return { ok: false, reason: "no_user" };
+  if (!nodeId) return { ok: false, reason: "missing_node_id" };
+
+  const room = getRoom(db, roomId);
+  if (!room) return { ok: false, reason: "room_not_found" };
+  if (!room.goal_tree_id) return { ok: false, reason: "goal_tree_not_linked" };
+
+  const participants = realParticipantIds(room);
+  if (!participants.has(uid)) return { ok: false, reason: "not_a_participant" };
+
+  let target = null;
+  if (assigneeUserId !== null && assigneeUserId !== undefined && assigneeUserId !== "") {
+    target = String(assigneeUserId);
+    if (!participants.has(target)) return { ok: false, reason: "assignee_not_a_participant" };
+  }
+
+  const result = assignNode(db, { treeId: room.goal_tree_id, nodeId, assigneeUserId: target });
+  if (!result.ok) return result;
+  return { ok: true, roomId, nodeId, assignedToUserId: target };
 }
 
 export { NAME_MAX_LEN };

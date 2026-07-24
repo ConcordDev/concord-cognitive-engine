@@ -42,9 +42,10 @@
 //     for a fresh project — never backfilled with sample content.
 
 import { useCallback, useEffect, useState } from 'react';
-import { FolderKanban, Loader2, ChevronDown, ChevronUp, Plus, RotateCcw } from 'lucide-react';
+import { FolderKanban, Loader2, ChevronDown, ChevronUp, Plus, RotateCcw, UserRound } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface ConKayProjectSummary {
   id: string;
@@ -60,6 +61,15 @@ interface GoalTreeNode {
   id: string;
   title: string;
   status: string;
+  /** mig 386 — nullable; a `project` (project-thread.js, mig 378) has no
+   *  participant roster of its own (it's addressable by exactly one owner),
+   *  so the only meaningful action here is the owner claiming/releasing a
+   *  subgoal as their own current focus — see `decomp.assign`'s
+   *  self-only contract in server/domains/decomp.js. A tree can also be
+   *  shared into a workspace room (workspace.assign-subgoal), in which case
+   *  this may already show someone else's assignment made from there —
+   *  rendered honestly, read-only, from here. */
+  assignedToUserId: string | null;
   children: GoalTreeNode[];
 }
 
@@ -125,7 +135,73 @@ function marathonBadgeClass(status: string): string {
   return MARATHON_BADGE_CLASS[status] || MARATHON_BADGE_CLASS.pending;
 }
 
+/**
+ * A single subgoal row + its children, recursively. A `project` has no
+ * participant roster (see the `GoalTreeNode.assignedToUserId` comment
+ * above), so the only real action offered is the current owner claiming or
+ * releasing a subgoal as their own — never an arbitrary third-party id.
+ * An assignment made from elsewhere (a workspace room sharing this same
+ * tree) is still rendered honestly as a plain chip, just without a claim
+ * control on it (this panel can't validate a stranger's id is real).
+ */
+function ProjectGoalNodeRow({
+  node, depth, currentUserId, onToggleClaim, pendingNodeId,
+}: {
+  node: GoalTreeNode;
+  depth: number;
+  currentUserId: string | null;
+  onToggleClaim: (nodeId: string, claim: boolean) => void;
+  pendingNodeId: string | null;
+}) {
+  const isMine = !!currentUserId && node.assignedToUserId === currentUserId;
+  const isPending = pendingNodeId === node.id;
+  return (
+    <li data-testid={`ck-project-subgoal-${node.id}`}>
+      <div className="flex items-center gap-1.5 py-0.5" style={{ paddingLeft: depth * 12 }}>
+        <span className={`flex-1 min-w-0 truncate text-[11px] ${node.status === 'done' ? 'text-white/30 line-through' : 'text-cyan-100/80'}`}>
+          {node.title}
+        </span>
+        {node.assignedToUserId && (
+          <span
+            data-testid={`ck-project-subgoal-assignee-${node.id}`}
+            title={isMine ? 'Assigned to you' : `Assigned to ${node.assignedToUserId}`}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-1.5 py-0.5 text-[10px] text-cyan-200/80"
+          >
+            <UserRound className="h-2.5 w-2.5" aria-hidden="true" />
+            {isMine ? 'You' : node.assignedToUserId}
+          </span>
+        )}
+        {currentUserId && (isMine || !node.assignedToUserId) && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => onToggleClaim(node.id, !isMine)}
+            className="shrink-0 rounded-md border border-cyan-400/15 px-1.5 py-0.5 text-[10px] text-cyan-300/60 hover:text-cyan-100 disabled:opacity-40"
+          >
+            {isPending ? '…' : isMine ? 'Release' : 'Claim'}
+          </button>
+        )}
+      </div>
+      {node.children.length > 0 && (
+        <ul>
+          {node.children.map((child) => (
+            <ProjectGoalNodeRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              currentUserId={currentUserId}
+              onToggleClaim={onToggleClaim}
+              pendingNodeId={pendingNodeId}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 export function ConKayProjectPanel() {
+  const { user } = useAuth();
   const [status, setStatus] = useState<PanelStatus>('loading');
   const [projects, setProjects] = useState<ConKayProjectSummary[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -139,6 +215,7 @@ export function ConKayProjectPanel() {
 
   const [pendingResumeId, setPendingResumeId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [pendingClaimNodeId, setPendingClaimNodeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -170,6 +247,21 @@ export function ConKayProjectPanel() {
       setDetailLoading(false);
     }
   }, []);
+
+  // Claim (self-assign) or release a subgoal. A real backend call
+  // (`decomp.assign`, self-only — see server/domains/decomp.js) that
+  // re-verifies tree ownership server-side; reloads the real detail on
+  // success rather than guessing, so a rejection is never papered over.
+  const toggleClaim = useCallback(async (treeId: string, nodeId: string, claim: boolean) => {
+    if (!user?.id) return;
+    setPendingClaimNodeId(nodeId);
+    try {
+      await lensRun('decomp', 'assign', { treeId, nodeId, assigneeUserId: claim ? user.id : null });
+      if (expandedId) await fetchDetail(expandedId);
+    } finally {
+      setPendingClaimNodeId(null);
+    }
+  }, [user?.id, expandedId, fetchDetail]);
 
   const createProject = useCallback(async () => {
     const name = newName.trim();
@@ -365,6 +457,17 @@ export function ConKayProjectPanel() {
                               {detail.goalTree.tree?.title} — {detail.goalTree.done}/{detail.goalTree.total} done
                               {' '}({Math.round((detail.goalTree.progress || 0) * 100)}%)
                             </div>
+                          )}
+                          {detail.goalTree?.ok && detail.goalTree.tree?.root && detail.goalTree.treeId && (
+                            <ul className="mt-1 space-y-0.5" aria-label="Subgoals">
+                              <ProjectGoalNodeRow
+                                node={detail.goalTree.tree.root}
+                                depth={0}
+                                currentUserId={user?.id || null}
+                                onToggleClaim={(nodeId, claim) => toggleClaim(detail.goalTree!.treeId!, nodeId, claim)}
+                                pendingNodeId={pendingClaimNodeId}
+                              />
+                            </ul>
                           )}
                         </div>
 

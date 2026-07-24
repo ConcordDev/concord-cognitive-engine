@@ -495,3 +495,87 @@ describe('SharedWorkspaceRoom — V1.2 Wave B "team mode" (shared objective + Co
     expect(tickCall![2]).toMatchObject({ sessionId: 'mar_9' });
   });
 });
+
+describe('SharedWorkspaceRoom — per-subgoal assignee (mig 386)', () => {
+  let testDoc: Y.Doc;
+
+  beforeEach(() => {
+    handlers.clear();
+    onMock.mockClear();
+    offMock.mockClear();
+    emitMock.mockClear();
+    connectMock.mockClear();
+    socketState.connected = true;
+    testDoc = new Y.Doc();
+    mockUseYjsDoc.mockReturnValue({ doc: testDoc, synced: true, socketReady: true, resetVersion: 0 });
+  });
+
+  function treeWithRoot(assignedToUserId: string | null) {
+    return {
+      ok: true,
+      objective: 'Ship it',
+      goalTreeId: 'gt_1',
+      goalTree: {
+        ok: true, progress: 0, total: 2, done: 0,
+        tree: {
+          title: 'Ship it', status: 'active',
+          root: {
+            id: 'node_root', title: 'Root goal', status: 'active', assignedToUserId: null,
+            children: [
+              { id: 'node_child', title: 'Design the thing', status: 'pending', assignedToUserId, children: [] },
+            ],
+          },
+        },
+      },
+    };
+  }
+
+  it('renders an assignee chip for a subgoal that already has one, and none for an unassigned sibling', async () => {
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({ data: { ok: true, result: treeWithRoot('user_me') } });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    renderRoom();
+
+    expect(await screen.findByTestId('subgoal-assignee-node_child')).toBeInTheDocument();
+    expect(screen.queryByTestId('subgoal-assignee-node_root')).not.toBeInTheDocument();
+    expect(screen.getByText('Design the thing')).toBeInTheDocument();
+  });
+
+  it('picking a value in the assign dropdown calls workspace.assign-subgoal and reloads the tree', async () => {
+    let getObjectiveCalls = 0;
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        getObjectiveCalls += 1;
+        return Promise.resolve({ data: { ok: true, result: treeWithRoot(getObjectiveCalls === 1 ? null : 'user_me') } });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+      }
+      if (domain === 'workspace' && action === 'assign-subgoal') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, nodeId: 'node_child', assignedToUserId: 'user_me' } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    renderRoom();
+
+    const select = await screen.findByLabelText('Assign "Design the thing"');
+    fireEvent.change(select, { target: { value: 'user_me' } });
+
+    const assignCall = await new Promise<unknown[]>((resolve) => {
+      const check = () => {
+        const call = lensRunMock.mock.calls.find((c) => c[0] === 'workspace' && c[1] === 'assign-subgoal');
+        if (call) resolve(call); else setTimeout(check, 5);
+      };
+      check();
+    });
+    expect(assignCall[2]).toMatchObject({ roomId: 'room-1', nodeId: 'node_child', assigneeUserId: 'user_me' });
+
+    expect(await screen.findByTestId('subgoal-assignee-node_child')).toBeInTheDocument();
+  });
+});
