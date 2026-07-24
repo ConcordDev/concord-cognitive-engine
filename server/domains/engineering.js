@@ -42,6 +42,19 @@ import { solveCircuit } from '../lib/simulation/circuit-solver.js';
 // member-interference modeled) and the never-blended mechanical-vs-
 // combined labeling.
 import { checkAeroGate } from '../lib/asset-gen/aero-gate.js';
+// checkFsiGate is Wave W1-B's non-Newtonian fluid-structure interaction
+// gate — a SIBLING to checkThermalGate/checkAeroGate above (same
+// {nodes,members,loads,supports} beam-frame model shape, same unchanged
+// runFEA), not an extension of either: it is two-way (the wall's own
+// deflection changes the channel gap the flow sees, solved as a Picard
+// fixed-point iteration), where thermal/aero are one-way overlays. See
+// server/lib/asset-gen/fsi-gate.js for the full honest-scope note (a
+// screening-level "local pressure-gradient intensity as wall-load proxy"
+// approximation, laminar-only, and four genuinely-reachable honest
+// failure states: did_not_converge / coupling_diverged / gap_collapsed /
+// non_laminar_regime_unsupported).
+import { checkFsiGate } from '../lib/asset-gen/fsi-gate.js';
+import { powerLawPipeFlow, carreauPipeFlow, generalisedReynolds, HONEST_BOUNDARY } from '../lib/simulation/non-newtonian-flow.js';
 // runMultiPhysicsBundle is the closing leg of Cross-System Multi-Physics
 // CAD — a COMPOSITION layer over the three legs above, not a fourth
 // physics engine: it lets a caller request thermalStressCheck's and/or
@@ -956,6 +969,129 @@ export default function registerEngineeringActions(registerLensAction) {
         return { ok: false, error: check.reason, ...(check.error ? { detail: check.error } : {}), ...(check.memberIds ? { memberIds: check.memberIds } : {}) };
       }
       return { ok: true, result: check };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── fsiCheck — non-Newtonian fluid-structure interaction gate (Wave
+  // W1-B) ───────────────────────────────────────────────────────────────
+  // A wall beam model (the SAME nodes/members/loads/supports shape this
+  // file's own runFEA/thermalStressCheck/aeroLoadCheck accept — but,
+  // unlike those, every member MUST lie along global X; see
+  // fsi-gate.js's orientation-guard hazard note) plus a driving pressure
+  // drop and a non-Newtonian fluid description. Iterates a real Picard
+  // fixed-point coupling (flow on the current gap → wall load → real
+  // runFEA deflection → gap update) rather than a one-shot overlay.
+  // NEVER fabricates a pass: `did_not_converge`, `coupling_diverged`,
+  // `gap_collapsed`, and `non_laminar_regime_unsupported` are all real,
+  // reachable outcomes surfaced as honest macro errors, never silently
+  // downgraded to a fabricated success.
+  registerLensAction('engineering', 'fsiCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      if (nodes.length === 0 || members.length === 0) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+
+      const num = (v) => (v === undefined || v === null || v === '' ? undefined : Number(v));
+      const fluidModel = params?.fluidModel ?? data.fluidModel ?? 'powerLaw';
+      const check = checkFsiGate(
+        { nodes, members, loads, supports },
+        {
+          fluidModel,
+          K: num(params?.K ?? data.K),
+          n: num(params?.n ?? data.n),
+          mu0: num(params?.mu0 ?? data.mu0),
+          muInf: num(params?.muInf ?? data.muInf),
+          lambda: num(params?.lambda ?? data.lambda),
+          deltaP: num(params?.deltaP ?? data.deltaP),
+          density: num(params?.density ?? data.density),
+          nominalGap: Array.isArray(params?.nominalGap ?? data.nominalGap)
+            ? (params?.nominalGap ?? data.nominalGap)
+            : num(params?.nominalGap ?? data.nominalGap),
+          channelWidth: num(params?.channelWidth ?? data.channelWidth),
+          relaxation: num(params?.relaxation ?? data.relaxation),
+          maxIters: num(params?.maxIters ?? data.maxIters),
+          gapTolerance: num(params?.gapTolerance ?? data.gapTolerance),
+        }
+      );
+      // checkFsiGate never fabricates a pass: any hard precondition
+      // failure (bad model, unsupported member orientation, invalid
+      // fluid/pressure/density input, non-laminar regime) or coupling
+      // failure (did_not_converge / coupling_diverged / gap_collapsed)
+      // always carries `reason` and no numeric utilization — surface
+      // that as an honest macro error rather than wrapping it as a
+      // successful `result`.
+      if (check.reason) {
+        return {
+          ok: false,
+          error: check.reason,
+          ...(check.memberIds ? { memberIds: check.memberIds } : {}),
+          ...(check.residualHistory ? { residualHistory: check.residualHistory } : {}),
+          ...(check.Re !== undefined ? { Re: check.Re, regime: check.regime } : {}),
+        };
+      }
+      return { ok: true, result: check };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── nonNewtonianFlow — standalone non-Newtonian pipe-flow primitive
+  // (Wave W1-B) ───────────────────────────────────────────────────────────
+  // The FLUID side of fsiCheck above, exposed on its own: a real
+  // power-law (Rabinowitsch-Mooney closed form) or Carreau (bisection +
+  // adaptive-quadrature numeric) laminar pipe-flow computation, plus the
+  // generalized (Metzner-Reed) Reynolds number classification. Useful
+  // for a caller who wants the flow-only number without a structural
+  // model at all. See server/lib/simulation/non-newtonian-flow.js.
+  registerLensAction('engineering', 'nonNewtonianFlow', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const fluidModel = params?.fluidModel ?? data.fluidModel ?? 'powerLaw';
+      const num = (v) => (v === undefined || v === null || v === '' ? undefined : Number(v));
+      const diameter = num(params?.diameter ?? data.diameter);
+      const lengthM = num(params?.lengthM ?? data.lengthM);
+      const pressureDropPa = num(params?.pressureDropPa ?? data.pressureDropPa);
+      const n = num(params?.n ?? data.n);
+      const density = num(params?.density ?? data.density);
+
+      if (![diameter, lengthM, pressureDropPa, n].every((v) => Number.isFinite(v)) || diameter <= 0 || lengthM <= 0 || n <= 0) {
+        return { ok: false, error: 'bad_flow_input' };
+      }
+
+      let flowRate;
+      if (fluidModel === 'carreau') {
+        const mu0 = num(params?.mu0 ?? data.mu0);
+        const muInf = num(params?.muInf ?? data.muInf);
+        const lambda = num(params?.lambda ?? data.lambda);
+        if (![mu0, muInf, lambda].every((v) => Number.isFinite(v)) || mu0 <= 0 || muInf < 0 || lambda < 0) {
+          return { ok: false, error: 'bad_fluid_params' };
+        }
+        flowRate = carreauPipeFlow({ mu0, muInf, lambda, n, diameter, lengthM, pressureDropPa });
+      } else if (fluidModel === 'powerLaw') {
+        const K = num(params?.K ?? data.K);
+        if (!Number.isFinite(K) || K <= 0) return { ok: false, error: 'bad_fluid_params' };
+        flowRate = powerLawPipeFlow({ K, n, diameter, lengthM, pressureDropPa });
+      } else {
+        return { ok: false, error: 'unsupported_fluid_model', fluidModel };
+      }
+
+      const meanVelocity = flowRate / (Math.PI * (diameter / 2) * (diameter / 2));
+      let reynolds = null;
+      if (Number.isFinite(density) && density > 0) {
+        const K = params?.K ?? data.K ?? params?.mu0 ?? data.mu0; // reference viscosity index for the screening Re check
+        const re = generalisedReynolds({ K: Number(K), n, density, velocity: meanVelocity, diameter });
+        reynolds = { value: re.value, regime: re.regime };
+      }
+
+      return { ok: true, result: { flowRate, meanVelocity, reynolds, honestBoundary: HONEST_BOUNDARY } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
