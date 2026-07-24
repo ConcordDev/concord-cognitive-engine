@@ -6,6 +6,7 @@ import {
   startMarathon, listMarathons, getMarathon,
   tickMarathon, pauseMarathon, abandonMarathon, revokeMarathon,
 } from "../lib/agent-marathon.js";
+import { buildMarathonDigest } from "../lib/marathon-digest.js";
 
 export default function registerAgentMarathonMacros(register) {
   register("agent_marathon", "start", async (ctx, input = {}) => {
@@ -58,6 +59,17 @@ export default function registerAgentMarathonMacros(register) {
     if (!db || !input?.sessionId) return { ok: false, reason: "missing_inputs" };
     return abandonMarathon(db, input.sessionId);
   }, { note: "Abandon a marathon (terminal — cannot be resumed)." });
+
+  register("agent_marathon", "digest", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db || !input?.sessionId) return { ok: false, reason: "missing_inputs" };
+    const session = getMarathon(db, input.sessionId);
+    if (!session) return { ok: false, reason: "not_found" };
+    if (ctx?.actor?.userId && session.user_id !== ctx.actor.userId) {
+      return { ok: false, reason: "not_owner" };
+    }
+    return buildMarathonDigest(db, input.sessionId);
+  }, { note: "Deterministic, non-LLM human-legible progress digest for a marathon session — built only from real turns/tool_calls_json/artifacts_json, never a fabricated summary." });
 
   register("agent_marathon", "revoke", async (ctx, input = {}) => {
     const db = ctx?.db;

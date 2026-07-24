@@ -25,6 +25,11 @@ import { runAgentLoop } from "./chat-agent.js";
 import { buildPlanContextBlock } from "./marathon-plan-context.js";
 import { applyPlanSync } from "./marathon-plan-sync.js";
 import { shouldReplan, runReplanCheckpoint } from "./marathon-replanner.js";
+// Progress-digest companion (see marathon-digest.js) — used only to build a
+// nicer human-legible message body for the check-in nudge below. Pure
+// condensation, no brain call; safe to import with no circularity (digest
+// has no dependency back on this module).
+import { buildMarathonDigest } from "./marathon-digest.js";
 
 const DEFAULT_TICK_TURNS = 5;
 const DEFAULT_MAX_TURNS = 200;
@@ -151,6 +156,85 @@ export function emitMarathonStatus(session, sessionId, nextStatus, totalTurns) {
       }, { userId: session.user_id });
     }
   } catch { /* never block on telemetry */ }
+}
+
+// ── Periodic check-in nudge for long-running (still `running`) marathons ──
+//
+// Gap: `initiative-engine.js`'s TRIGGER_TYPES already lists "check_in" but
+// nothing in the codebase ever inserts one — a marathon can run for days
+// with no "here's where things stand" nudge unless/until it hits a
+// TERMINAL status (see the Sprint-13 terminal-status hooks further down in
+// tickMarathon). This is a SEPARATE mechanism for the opposite case: the
+// session is still genuinely `running`, just for a long time.
+//
+// Idempotency is enforced by a real query against the `initiatives` table
+// (json_extract on metadata_json.sessionId), not an in-memory flag or a
+// one-shot column on the session row — so it's correct across process
+// restarts, across multiple concurrent ticks of the same session, and
+// re-running this check on every subsequent tick of an already-nudged
+// session is a harmless no-op forever after (never re-fires for the same
+// session, matching "must never fire more than once per threshold-crossing").
+
+/** Wall-clock age (seconds) past which a still-`running` marathon session
+ *  earns a one-time "check_in" initiative nudge. Override for ops tuning
+ *  or tests via CONCORD_MARATHON_CHECKIN_AGE_S. */
+export const MARATHON_CHECKIN_AGE_S = Number(process.env.CONCORD_MARATHON_CHECKIN_AGE_S) || 24 * 60 * 60;
+
+/**
+ * Fire a one-time "check_in" initiative for a marathon session that is
+ * still `running` (not terminal) once it has been going for at least
+ * MARATHON_CHECKIN_AGE_S wall-clock seconds. Never throws; every failure
+ * mode returns `{ fired: false, reason }` instead.
+ *
+ * @param {object} db
+ * @param {object} session - the session row (must carry id, user_id, title, created_at)
+ * @param {number} [totalTurns] - this tick's post-update total_turns, for the message body
+ * @returns {{ fired: boolean, reason?: string }}
+ */
+export function maybeFireMarathonCheckIn(db, session, totalTurns) {
+  try {
+    if (!db || !session || !session.id) return { fired: false, reason: "missing_inputs" };
+    if (!Number.isFinite(session.created_at)) return { fired: false, reason: "no_created_at" };
+
+    const ageS = Math.floor(Date.now() / 1000) - session.created_at;
+    if (ageS < MARATHON_CHECKIN_AGE_S) return { fired: false, reason: "below_threshold" };
+
+    let already;
+    try {
+      already = db.prepare(`
+        SELECT id FROM initiatives
+        WHERE trigger_type = 'check_in' AND json_extract(metadata_json, '$.sessionId') = ?
+        LIMIT 1
+      `).get(session.id);
+    } catch {
+      return { fired: false, reason: "initiatives_table_missing" };
+    }
+    if (already) return { fired: false, reason: "already_fired" };
+
+    let excerpt = "";
+    try {
+      const d = buildMarathonDigest(db, session.id);
+      if (d.ok && d.text) excerpt = d.text.split("\n").slice(0, 2).join(" ");
+    } catch { /* digest is a best-effort message enhancement only */ }
+
+    const msg = excerpt
+      ? `Marathon check-in: ${excerpt}`
+      : `Marathon check-in: "${session.title}" has been running for over ${Math.floor(MARATHON_CHECKIN_AGE_S / 3600)}h (turn ${totalTurns ?? session.total_turns}). Still in progress.`;
+
+    try {
+      const initId = `init_chk_${session.id.slice(4, 16)}_${Date.now().toString(36)}`;
+      db.prepare(`
+        INSERT INTO initiatives (id, user_id, trigger_type, priority, message, status, metadata_json, created_at)
+        VALUES (?, ?, 'check_in', 'low', ?, 'pending', ?, unixepoch())
+      `).run(initId, session.user_id, msg, JSON.stringify({ sessionId: session.id, ageSeconds: ageS }));
+      return { fired: true };
+    } catch {
+      return { fired: false, reason: "insert_failed" };
+    }
+  } catch (err) {
+    // Belt-and-suspenders — this must never throw into tickMarathon.
+    return { fired: false, reason: "unexpected_error", error: err?.message };
+  }
 }
 
 /**
@@ -717,6 +801,16 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     } catch { /* never block on telemetry */ }
   }
 
+  // Periodic check-in nudge (separate from the terminal-status hooks just
+  // above — this is for a session that is STILL running, just for a long
+  // time). See maybeFireMarathonCheckIn's own doc comment for the
+  // idempotency contract. Best-effort; never blocks the marathon.
+  if (nextStatus === "running") {
+    try {
+      maybeFireMarathonCheckIn(db, session, totalTurns);
+    } catch { /* never block the marathon on a check-in nudge */ }
+  }
+
   return {
     ok: true,
     sessionId,
@@ -815,4 +909,5 @@ const DEFAULT_BUDGET_CAP = 150;
 export const MARATHON_CONSTANTS = Object.freeze({
   DEFAULT_TICK_TURNS, DEFAULT_MAX_TURNS, DEFAULT_TICK_INTERVAL_S, DEFAULT_BUDGET_CAP,
   MARATHON_HISTORY_THRESHOLD, MARATHON_COMPRESSION_BATCH, MAX_CHECKPOINT_EXCERPTS, MAX_CHECKPOINT_TOPICS,
+  MARATHON_CHECKIN_AGE_S,
 });

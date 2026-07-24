@@ -16,7 +16,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   Hammer, Play, Pause, X, ChevronRight, CheckCircle2, AlertTriangle, Loader2,
-  Plus, ShieldAlert, ShieldOff,
+  Plus, ShieldAlert, ShieldOff, FileText,
 } from 'lucide-react';
 import { subscribe } from '@/lib/realtime/socket';
 
@@ -125,6 +125,12 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
   const [budgetCap, setBudgetCap] = useState<number>(DEFAULT_BUDGET_CAP);
   const [unrestrictedBudget, setUnrestrictedBudget] = useState(false);
 
+  // On-demand deterministic progress digest (`agent_marathon.digest` macro —
+  // server/lib/marathon-digest.js). Purely a display convenience on top of
+  // real turns/tool_calls_json/artifacts_json — never a brain call.
+  const [digestText, setDigestText] = useState<string | null>(null);
+  const [digestLoading, setDigestLoading] = useState(false);
+
   const refresh = useCallback(async () => {
     const r = await macro('list', {});
     if (r?.ok) setSessions(r.sessions || []);
@@ -164,9 +170,17 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
 
   const loadDetail = useCallback(async (sessionId: string) => {
     setSelectedId(sessionId);
+    setDigestText(null);
     const r = await macro('get', { sessionId });
     if (r?.ok) setDetail(r.session);
   }, []);
+
+  const summarizeProgress = async (sessionId: string) => {
+    setDigestLoading(true);
+    const r = await macro('digest', { sessionId });
+    setDigestLoading(false);
+    setDigestText(r?.ok ? (r.text || null) : null);
+  };
 
   useEffect(() => {
     if (!selectedId) return;
@@ -439,7 +453,27 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
                 <Loader2 className="w-3 h-3 animate-spin" /> ticking…
               </span>
             )}
+            <button
+              onClick={() => summarizeProgress(detail.id)}
+              disabled={digestLoading}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs disabled:opacity-50"
+              title="Deterministic progress summary built from real turns/tool calls/artifacts — no brain call."
+            >
+              {digestLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+              Summarize progress
+            </button>
           </div>
+          {digestText && (
+            <div className="mb-4 px-3 py-2 rounded-lg bg-zinc-900/70 ring-1 ring-zinc-800">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] uppercase tracking-wide text-zinc-500">Progress digest</span>
+                <button onClick={() => setDigestText(null)} className="text-zinc-500 hover:text-zinc-300" aria-label="Dismiss digest">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <pre className="whitespace-pre-wrap text-xs text-zinc-300 leading-relaxed font-sans">{digestText}</pre>
+            </div>
+          )}
           <div className="space-y-3">
             {detail.turns.map((t, i) => (
               <div key={i} className={`px-3 py-2 rounded text-xs ${
