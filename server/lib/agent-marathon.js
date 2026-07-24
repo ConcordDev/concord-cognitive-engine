@@ -30,6 +30,10 @@ import { shouldReplan, runReplanCheckpoint } from "./marathon-replanner.js";
 // condensation, no brain call; safe to import with no circularity (digest
 // has no dependency back on this module).
 import { buildMarathonDigest } from "./marathon-digest.js";
+// ConKay-E — tool-call fingerprint log for crash-forensics (migration 394,
+// `agent_marathon_tool_log`). Used inside createToolGate below; see
+// marathon-tick-durability.js for the durability contract.
+import { recordToolDispatch, recordToolOutcome } from "./marathon-tick-durability.js";
 
 const DEFAULT_TICK_TURNS = 5;
 const DEFAULT_MAX_TURNS = 200;
@@ -292,8 +296,29 @@ export function domainForToolCall(call) {
  * DB / hand-rolled minimal test schema) — matching the same back-compat
  * contract as startMarathon's insert fallback above: an unmigrated session
  * is fully unrestricted, never silently broken.
+ *
+ * ConKay-E addition (migration 394) — every call this gate actually lets
+ * through (the `{ ok: true }` path, after revocation/domain/budget all
+ * pass) is durably logged into `agent_marathon_tool_log` for crash
+ * forensics: a 'dispatched' row is written SYNCHRONOUSLY right here,
+ * before this function returns and chat-agent.js's loop goes on to
+ * actually execute the tool. The returned `{ ok: true, ... }` object
+ * carries a bundled `recordOutcome(result)` closure (not a separate opts
+ * hook) so the matching 'completed'/'failed' write stays defined right
+ * here too, in the same closure that created the row — chat-agent.js only
+ * has to call `gate.recordOutcome(result)` once the tool call resolves; it
+ * never needs to know this is a marathon-only forensics feature. Refused
+ * calls (domain-not-allowed, budget-exhausted, revoked) are NOT logged —
+ * they were never actually dispatched, so there's nothing to have crashed
+ * mid-flight. Best-effort throughout: a logging failure never blocks or
+ * refuses a real tool call.
+ *
+ * @param {object} db
+ * @param {string} sessionId
+ * @param {number} [tickSeq] - which tickMarathon() invocation this gate
+ *   belongs to (informational only, stored on each dispatched row).
  */
-export function createToolGate(db, sessionId) {
+export function createToolGate(db, sessionId, tickSeq) {
   return async function toolGate(call) {
     if (!db || !sessionId) return { ok: true };
     let session;
@@ -341,7 +366,39 @@ export function createToolGate(db, sessionId) {
     try {
       db.prepare(`UPDATE agent_marathon_sessions SET budget_spent = budget_spent + 1 WHERE id = ?`).run(sessionId);
     } catch { /* budget_spent column absent — never block on it */ }
-    return { ok: true };
+
+    // ── ConKay-E — tool-call fingerprint log (crash-forensics) ───────────
+    // This call genuinely passed every check above and is about to
+    // execute. Write the 'dispatched' row NOW, synchronously, before
+    // returning control — chat-agent.js's loop calls executeToolCall
+    // immediately after this function resolves, so this is the last safe
+    // moment to record "this call was in flight" before a mid-tool-call
+    // crash would otherwise leave zero evidence behind. See
+    // marathon-tick-durability.js for the full durability contract.
+    let toolLogId = null;
+    try {
+      toolLogId = recordToolDispatch(db, sessionId, tickSeq, call?.tool, call?.params);
+    } catch {
+      toolLogId = null;
+    }
+
+    return {
+      ok: true,
+      ...(toolLogId != null
+        ? {
+          toolLogId,
+          recordOutcome: (result) => {
+            try {
+              recordToolOutcome(
+                db, toolLogId,
+                result?.ok ? "completed" : "failed",
+                result?.error ?? result?.result ?? result?.answer ?? null,
+              );
+            } catch { /* best-effort forensics only — never throw into the caller's loop */ }
+          },
+        }
+        : {}),
+    };
   };
 }
 
@@ -655,7 +712,11 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   // exposed via the agent_marathon.tick macro/HTTP surface) — it lets
   // tests script the brain's replies deterministically, matching the
   // existing pattern in tests/agent-action-memory-wire.test.js.
-  const toolGate = createToolGate(db, sessionId);
+  // tickSeq (this tick's about-to-be-assigned turn index — same value
+  // `nextTurnIndex` below will compute) rides along on every dispatched
+  // tool-log row purely as forensic context (see ConKay-E addition on
+  // createToolGate above).
+  const toolGate = createToolGate(db, sessionId, session.total_turns + 1);
 
   // Plan-grounding (read path, opt-in via opts.projectId — default
   // undefined/off). When the caller explicitly names a linked project with

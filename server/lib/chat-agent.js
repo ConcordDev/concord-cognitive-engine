@@ -518,8 +518,8 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       // / spend budget / revocation flag mid-loop, not just between turns.
       // A thrown gate fails OPEN (never blocks on a broken governance hook)
       // — see agent-marathon.js#createToolGate for why that's still safe.
+      let gate = null;
       if (typeof opts.toolGate === "function") {
-        let gate = null;
         try { gate = await opts.toolGate(call); } catch { gate = null; }
         if (gate && gate.ok === false) {
           const refusal = { tool: call.tool, ok: false, error: gate.reason || "tool_call_blocked" };
@@ -549,6 +549,17 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         }
       }
       const result = await executeToolCall(ctx, runMacro, lensActions, call);
+      // ConKay-E — tool-call fingerprint log (crash-forensics primitive;
+      // see agent-marathon.js#createToolGate + marathon-tick-durability.js).
+      // `gate.recordOutcome` only exists when opts.toolGate is a marathon's
+      // createToolGate AND it already wrote a 'dispatched' row for this
+      // exact call above — ordinary chat_agent.do calls never supply
+      // opts.toolGate at all, so `gate` is null there and this is a no-op.
+      // Disjoint from the toolGate governance check above (that decides
+      // whether to run the call at all; this just records that it did).
+      if (gate && typeof gate.recordOutcome === "function") {
+        try { gate.recordOutcome(result); } catch { /* best-effort forensics only */ }
+      }
       results.push(result);
       allToolCalls.push(result);
       // Real-time — fired the instant THIS tool call actually finishes, not
