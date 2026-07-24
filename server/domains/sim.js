@@ -9,6 +9,15 @@
 // historical data, and persistent per-user system-dynamics model storage.
 //
 // All handlers return { ok, result?, error? } and never throw.
+//
+// W3-C addition: spikingNetworkSimulate / spikingSTDPLearn wrap the LIF +
+// STDP spiking-neuron substrate (server/lib/simulation/spiking-network.js,
+// server/lib/simulation/stdp.js) as declarative macros — build a network
+// from a JSON spec, run it, optionally learn via STDP + dynamic topology.
+// See HONEST_BOUNDARY in the result payload for the honest scope.
+
+import { SpikingNetwork, HONEST_BOUNDARY } from "../lib/simulation/spiking-network.js";
+import { applySTDP, pruneSynapses, growSynapses } from "../lib/simulation/stdp.js";
 
 // ─── Persistent per-user model store ─────────────────────────────────────────
 // System-dynamics models authored in the visual builder persist here keyed by
@@ -1174,6 +1183,128 @@ export default function registerSimActions(registerLensAction) {
       } };
     } catch (e) {
       return { ok: false, error: `scenarioDiff failed: ${e.message}` };
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── NEW: spiking neural substrate (LIF + STDP + dynamic topology) ──────
+  // ════════════════════════════════════════════════════════════════════════
+  // Declarative wrapper around server/lib/simulation/{spiking-network,stdp}.js.
+  // A fresh network is built from the request spec every call — no
+  // persistent cross-call state — which keeps this macro pure/stateless
+  // like the rest of the domain's original four macros.
+
+  const MAX_SIM_STEPS = 2_000_000;
+
+  function buildAndRunSpikingNetwork(cfg) {
+    const neuronsSpec = Array.isArray(cfg.neurons) ? cfg.neurons : [];
+    const synapsesSpec = Array.isArray(cfg.synapses) ? cfg.synapses : [];
+    if (!neuronsSpec.length) throw new Error("neurons[] required (at least one { id, ...LIF params })");
+    for (const n of neuronsSpec) {
+      if (!n || typeof n.id === "undefined" || n.id === null) throw new Error("every neuron spec needs an id");
+    }
+    const dt = Number(cfg.dt) > 0 ? Number(cfg.dt) : 0.1;
+    const duration = Number(cfg.duration) > 0 ? Number(cfg.duration) : 100;
+    if (duration / dt > MAX_SIM_STEPS) {
+      throw new Error(`duration/dt exceeds the simulation step budget (${MAX_SIM_STEPS})`);
+    }
+    // Deterministic when a seed is supplied (mulberry32); Math.random otherwise.
+    let rng = Math.random;
+    if (Number.isFinite(cfg.seed)) {
+      let s = (cfg.seed >>> 0) || 1;
+      rng = () => {
+        s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff;
+        return s / 0x7fffffff;
+      };
+    }
+    const net = new SpikingNetwork({ dt, rng });
+    for (const n of neuronsSpec) net.addNeuron(String(n.id), n);
+    for (const s of synapsesSpec) {
+      if (!s || typeof s.from === "undefined" || typeof s.to === "undefined") {
+        throw new Error("every synapse spec needs from/to");
+      }
+      net.addSynapse({ id: s.id, from: String(s.from), to: String(s.to), weight: Number(s.weight ?? 1), delay: Number(s.delay ?? 0) });
+    }
+    const currents = cfg.externalCurrents && typeof cfg.externalCurrents === "object" ? cfg.externalCurrents : {};
+    const noiseSpec = cfg.noise && typeof cfg.noise === "object" ? cfg.noise : null;
+    net.run(duration, (_t, network) => {
+      const out = {};
+      for (const n of neuronsSpec) {
+        const base = Number(currents[n.id]) || 0;
+        const noiseCfg = noiseSpec ? noiseSpec[n.id] : null;
+        out[n.id] = noiseCfg ? base + network.gaussianNoise(Number(noiseCfg.std) || 0, Number(noiseCfg.mean) || 0) : base;
+      }
+      return out;
+    });
+    return { net, neuronsSpec, dt, duration };
+  }
+
+  // Runs a LIF network from a declarative spec:
+  //   { neurons:[{id, tau_m?, V_rest?, V_reset?, V_th?, R?, refractory?}],
+  //     synapses:[{id?, from, to, weight?, delay?}],
+  //     dt?, duration?, externalCurrents?: {neuronId: I},
+  //     noise?: {neuronId: {std, mean?}}, seed? }
+  // Returns the real recorded spike train + final membrane potentials +
+  // current synapse weights. Pure per-call — no persistence.
+  registerLensAction("sim", "spikingNetworkSimulate", (_ctx, artifact, params) => {
+    try {
+      const p = params || {};
+      const cfg = { ...(artifact?.data || {}), ...p };
+      const { net, neuronsSpec, dt, duration } = buildAndRunSpikingNetwork(cfg);
+      return {
+        ok: true,
+        result: {
+          spikeTrain: net.getSpikeTrain(),
+          spikeCounts: Object.fromEntries(neuronsSpec.map((n) => [String(n.id), net.getSpikeTrain(String(n.id)).length])),
+          finalPotentials: Object.fromEntries([...net.neurons.values()].map((n) => [n.id, round3(n.V)])),
+          synapses: net.getSynapseWeights(),
+          dt,
+          duration,
+          honestBoundary: HONEST_BOUNDARY,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `spikingNetworkSimulate failed: ${e.message}` };
+    }
+  });
+
+  // Runs the same declarative LIF network, then applies spike-timing-
+  // dependent plasticity to every synapse from the REAL recorded spike
+  // trains, and optionally a dynamic-topology pass (prune synapses at the
+  // weight floor, grow new ones between correlated, unconnected neurons).
+  // Extra params: { stdp?: {A_plus, A_minus, tau_plus, tau_minus, w_min,
+  //   w_max, mode, window}, topology?: { prune?: {floor, epsilon},
+  //   grow?: {formationProbability, initialWeight, delay, correlationWindow} } }
+  registerLensAction("sim", "spikingSTDPLearn", (_ctx, artifact, params) => {
+    try {
+      const p = params || {};
+      const cfg = { ...(artifact?.data || {}), ...p };
+      const { net, neuronsSpec, dt, duration } = buildAndRunSpikingNetwork(cfg);
+      const before = net.getSynapseWeights();
+
+      const stdpResults = applySTDP(net, cfg.stdp || {});
+
+      let pruned = [];
+      let grown = [];
+      const topology = cfg.topology && typeof cfg.topology === "object" ? cfg.topology : null;
+      if (topology?.prune) pruned = pruneSynapses(net, topology.prune);
+      if (topology?.grow) grown = growSynapses(net, topology.grow);
+
+      return {
+        ok: true,
+        result: {
+          spikeCounts: Object.fromEntries(neuronsSpec.map((n) => [String(n.id), net.getSpikeTrain(String(n.id)).length])),
+          weightsBefore: before,
+          stdpUpdates: stdpResults,
+          weightsAfter: net.getSynapseWeights(),
+          topology: { pruned, grown },
+          dt,
+          duration,
+          honestBoundary: HONEST_BOUNDARY,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `spikingSTDPLearn failed: ${e.message}` };
     }
   });
 }
