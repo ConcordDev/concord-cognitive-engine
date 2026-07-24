@@ -23,6 +23,7 @@
 import {
   createProject, listProjects, getProject, linkMarathonToProject, touchProjectOpened,
 } from "../lib/project-thread.js";
+import { findSimilarOutcomes } from "../lib/marathon-outcomes.js";
 
 export default function registerAgentProjectMacros(register) {
   register("agent_projects", "create", async (ctx, input = {}) => {
@@ -71,4 +72,19 @@ export default function registerAgentProjectMacros(register) {
     if (!input.projectId) return { ok: false, reason: "missing_project_id" };
     return touchProjectOpened(db, userId, input.projectId);
   }, { note: "stamp a project as opened-now by its owner (the 'resume' beat)" });
+
+  // Retrieval-on-request only — this macro is the ONLY caller of
+  // findSimilarOutcomes (see lib/marathon-outcomes.js's header). It must
+  // never be invoked automatically inside a marathon's own prompt
+  // construction; a new marathon's prompt is never silently padded with
+  // "here's how similar projects went" unless a user/agent explicitly
+  // calls this macro. Scoped to the CALLING user's own past outcomes by
+  // default (privacy-preserving) — a caller can only see their own history.
+  register("agent_projects", "similar_outcomes", async (ctx, input = {}) => {
+    const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
+    const userId = input.userId || ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.goalText) return { ok: false, reason: "missing_goal_text" };
+    return findSimilarOutcomes(db, input.goalText, input.limit, { userId });
+  }, { note: "deterministic keyword-overlap lookup of past completed/failed projects with a similar goal, for the user to review before starting a new one" });
 }

@@ -111,7 +111,15 @@ export function listProjects(db, userId, opts = {}) {
   return rows.map((r) => ({ ...r, marathonCount: cmap.get(r.id) || 0 }));
 }
 
-function _tokenize(text) {
+/** Deterministic, LLM-free tokenizer — lowercase, split on non-alphanumeric,
+ *  drop words of length <= 2. Exported (not just used internally by
+ *  `relevantMemories` below) so other deterministic keyword-overlap scorers
+ *  in this codebase mirror the EXACT same tokenization instead of each
+ *  inventing a slightly different one — see server/lib/marathon-outcomes.js
+ *  #findSimilarOutcomes, which reuses this function verbatim per the same
+ *  "overlap count IS the score, no LLM call" contract described in the
+ *  module header above. */
+export function tokenize(text) {
   return String(text || "")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
@@ -126,7 +134,7 @@ function relevantMemories(dtusMap, userId, queryText, limit = DEFAULT_MEMORY_LIM
   if (!dtusMap || typeof dtusMap.values !== "function") {
     return { available: false, reason: "no_state", items: [] };
   }
-  const queryTerms = new Set(_tokenize(queryText));
+  const queryTerms = new Set(tokenize(queryText));
   if (queryTerms.size === 0) return { available: true, items: [] };
 
   const scored = [];
@@ -140,7 +148,7 @@ function relevantMemories(dtusMap, userId, queryText, limit = DEFAULT_MEMORY_LIM
       ...(dtu.machine?.claims || []),
     ].join(" ");
     let overlap = 0;
-    for (const t of _tokenize(haystack)) if (queryTerms.has(t)) overlap++;
+    for (const t of tokenize(haystack)) if (queryTerms.has(t)) overlap++;
     if (overlap > 0) scored.push({ dtu, overlap });
   }
   scored.sort((a, b) => b.overlap - a.overlap || new Date(b.dtu.updatedAt || 0) - new Date(a.dtu.updatedAt || 0));
@@ -254,5 +262,5 @@ export function touchProjectOpened(db, userId, projectId) {
 }
 
 export default {
-  createProject, listProjects, getProject, linkMarathonToProject, touchProjectOpened,
+  createProject, listProjects, getProject, linkMarathonToProject, touchProjectOpened, tokenize,
 };
