@@ -27292,6 +27292,11 @@ registerVoiceTTSMacros(register);
 import registerLandClaimsMacros from "./domains/land-claims.js";
 registerLandClaimsMacros(register);
 
+// lattice-crucible bespoke mechanic — "player-conditional drift" (see
+// domains/crucible.js + lib/embodied/crucible-observer-drift.js).
+import registerCrucibleMacros from "./domains/crucible.js";
+registerCrucibleMacros(register);
+
 // V1.2 Wave D — player-influenced districts governance. propose_change /
 // vote / list_proposals macros under the "district" domain (additive to
 // domains/district.js's separate snapshot-analytics macros in the same
