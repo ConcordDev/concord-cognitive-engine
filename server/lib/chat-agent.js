@@ -29,9 +29,24 @@ import { TASK_PROMPTS } from "./prompt-registry.js";
 import { recordInferenceSpan } from "./inference-metering.js";
 import { scanForInjection } from "./provenance-guard.js";
 import { resolveDualRegistry } from "./dual-registry-resolve.js";
+import { createInitiativeEngine } from "./initiative-engine.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
+
+// Grounding-audit gap fix (2026-07-24) — tool-preference tally. One
+// initiative-engine instance per db handle (WeakMap keyed on the db object
+// itself, same shape as prompt-registry.js's _styleEngineByDb) so recording
+// a tool call doesn't re-prepare ~20 SQL statements on every dispatch.
+const _styleEngineByDb = new WeakMap();
+function _getStyleEngine(db) {
+  let engine = _styleEngineByDb.get(db);
+  if (!engine) {
+    engine = createInitiativeEngine(db);
+    _styleEngineByDb.set(db, engine);
+  }
+  return engine;
+}
 
 const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, include a marker in your response EXACTLY like this (one per line, multiple allowed):
 [TOOL_CALL: {"tool": "tool_name", "params": {...}}]
@@ -535,6 +550,20 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       // fake-replay with setTimeout" into genuine incremental disclosure.
       emit("tool_call", result);
       if (result.artifact) allArtifacts.push(result.artifact);
+      // Grounding-audit gap fix (2026-07-24) — tool-preference tally. Every
+      // REAL tool-call dispatch (this is the one exact site — one increment
+      // per call, regardless of ok/error, since even a failed web_search
+      // still reflects which tool the user/brain reached for) increments a
+      // per-user, per-tool counter (initiative-engine.js#recordToolUsage).
+      // prompt-registry.js#composeSystemPrompt reads it back to surface a
+      // "tends to prefer X" line once a clear majority emerges — see its
+      // MIN_TOOL_SAMPLE/DOMINANT_TOOL_SHARE thresholds. Synchronous (a
+      // single indexed upsert) but still guarded — a tally failure must
+      // never break the agent loop, same as every other optional signal
+      // here.
+      if (db && userId) {
+        try { _getStyleEngine(db).recordToolUsage(userId, call.tool); } catch { /* tool-preference tally optional */ }
+      }
       // Item 2 — record into long-term memory (fire-and-forget; never blocks).
       if (db && userId) {
         import("./agent-action-log.js").then(({ recordAction }) => recordAction(db, {

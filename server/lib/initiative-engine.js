@@ -290,6 +290,23 @@ function _safeParseJSON(str, fallback) {
 }
 
 /**
+ * Prepare a statement that references an OPTIONAL column/table shape (e.g.
+ * migration 388's tool_usage_json, added on top of migration 029's base
+ * user_style_profile table). Returns null instead of throwing when the
+ * underlying schema predates the migration — callers must check for null
+ * and degrade honestly (no-op / empty result), never crash. This keeps
+ * older fixtures/tests that apply only the base migration working exactly
+ * as before, the same "optional lookup" shape this file already uses for
+ * the world-flavor / prompt-registry bindings.
+ * @param {object} db
+ * @param {string} sql
+ * @returns {object|null}
+ */
+function _prepareOptional(db, sql) {
+  try { return db.prepare(sql); } catch { return null; }
+}
+
+/**
  * Prepare all SQLite statements (lazy, cached per engine instance).
  * @param {object} db
  * @returns {object}
@@ -405,6 +422,19 @@ function _prepareStatements(db) {
         emoji_rate = @emoji_rate,
         vocabulary_json = @vocabulary_json,
         shared_context_json = @shared_context_json,
+        updated_at = @updated_at
+    `),
+    // Migration 388 — tool-preference tally. A targeted upsert touching
+    // ONLY (user_id, tool_usage_json, updated_at); the other NOT NULL
+    // columns fall back to their table DEFAULTs on first-insert (see
+    // migration 029), so recording a tool call for a brand-new user never
+    // needs to fabricate a fake formality/emoji baseline just to satisfy
+    // the schema.
+    recordToolUsage: _prepareOptional(db, `
+      INSERT INTO user_style_profile (user_id, tool_usage_json, updated_at)
+      VALUES (@user_id, @tool_usage_json, @updated_at)
+      ON CONFLICT(user_id) DO UPDATE SET
+        tool_usage_json = @tool_usage_json,
         updated_at = @updated_at
     `),
 
@@ -1185,6 +1215,7 @@ export function createInitiativeEngine(db) {
         emojiRate: 0.0,
         vocabulary: {},
         sharedContext: {},
+        toolUsage: {},
         updatedAt: null,
         exists: false,
       };
@@ -1197,9 +1228,64 @@ export function createInitiativeEngine(db) {
       emojiRate: row.emoji_rate,
       vocabulary: _safeParseJSON(row.vocabulary_json, {}),
       sharedContext: _safeParseJSON(row.shared_context_json, {}),
+      // Migration 388 — real tool-call tally (see recordToolUsage below).
+      // On a DB that predates the migration, row.tool_usage_json is simply
+      // absent from the SELECT * result (SQLite doesn't error on a missing
+      // column read this way), so this degrades to {} honestly.
+      toolUsage: _safeParseJSON(row.tool_usage_json, {}),
       updatedAt: row.updated_at,
       exists: true,
     };
+  }
+
+  /**
+   * Record one real tool-call dispatch for a user's tool-preference tally.
+   * Called from chat-agent.js#executeToolCall's real dispatch site — once
+   * per actually-executed tool call (see chat-agent.js for the exact hook).
+   * This is a plain running count (NOT an EMA like the other style
+   * signals) because the dominance check in
+   * prompt-registry.js#composeSystemPrompt needs true share-of-total, which
+   * a smoothed average would distort.
+   *
+   * Honest-degrade: on a DB that predates migration 388 (the optional
+   * tool_usage_json column), this is a no-op that returns an empty tally —
+   * never throws, never fabricates a signal it can't actually persist.
+   *
+   * @param {string} userId
+   * @param {string} toolName - e.g. "web_search", "run_lens_action"
+   * @returns {object} The user's updated tool-usage tally, e.g. {"web_search": 3}
+   */
+  function recordToolUsage(userId, toolName) {
+    if (!userId) throw new ValidationError("userId is required");
+    if (!toolName || typeof toolName !== "string") {
+      throw new ValidationError("toolName is required and must be a string");
+    }
+
+    const stmt = stmts().recordToolUsage;
+    if (!stmt) return {}; // migration 388 not applied on this DB — degrade honestly
+
+    const existing = stmts().getStyleProfile.get(userId);
+    const tally = _safeParseJSON(existing?.tool_usage_json, {});
+    tally[toolName] = (tally[toolName] || 0) + 1;
+
+    stmt.run({
+      user_id: userId,
+      tool_usage_json: JSON.stringify(tally),
+      updated_at: new Date().toISOString(),
+    });
+
+    return tally;
+  }
+
+  /**
+   * Get the raw tool-usage tally for a user (convenience read; the same
+   * data is also folded into getStyleProfile(userId).toolUsage).
+   * @param {string} userId
+   * @returns {object} e.g. {"web_search": 3, "create_dtu": 1}
+   */
+  function getToolUsageTally(userId) {
+    if (!userId) throw new ValidationError("userId is required");
+    return getStyleProfile(userId).toolUsage;
   }
 
   /**
@@ -1477,6 +1563,8 @@ export function createInitiativeEngine(db) {
     generateDoubleText,
     learnStyle,
     getStyleProfile,
+    recordToolUsage,
+    getToolUsageTally,
     adaptMessage,
     checkRateLimits,
     getBackoff,

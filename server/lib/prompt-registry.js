@@ -170,6 +170,29 @@ export const LENS_CONTEXT_HINTS = {
 //     from their REAL chat history, see learnStyle) is folded in as light
 //     tone/length guidance. Honest-empty when no profile has been learned
 //     yet (profile.exists === false) — never a fabricated/guessed default.
+//     The same profile also carries a real tool-preference tally
+//     (toolUsage, from initiative-engine.js#recordToolUsage — see the
+//     dominance thresholds below) surfaced the same honest-empty way.
+
+// Tool-preference dominance thresholds (grounding-audit gap fix, 2026-07-24
+// — the V1.2 roadmap named "tool-preference" learning but nothing computed
+// it; see initiative-engine.js#recordToolUsage for where the tally comes
+// from). Chosen the same way the formality/emoji thresholds above were:
+// require clear separation from "no signal," never a guess off a handful
+// of calls.
+//   MIN_TOOL_SAMPLE = 5   — at least 5 observed real tool-call dispatches
+//                           before a preference is considered at all. Below
+//                           this floor a 100% share is still statistically
+//                           meaningless (they used web_search once or twice).
+//   DOMINANT_TOOL_SHARE = 0.6 — the top tool must account for a clear
+//                           majority (60%+) of all calls, not a bare
+//                           plurality. A user split ~evenly across two or
+//                           three tools (≈50% or ≈33% each) gets no line —
+//                           the same "don't guess near the neutral middle"
+//                           posture as the formality split (≤0.35 / ≥0.65,
+//                           leaving a wide dead zone around 0.5 uncommitted).
+const MIN_TOOL_SAMPLE = 5;
+const DOMINANT_TOOL_SHARE = 0.6;
 
 export function composeSystemPrompt(brain, ctx = {}) {
   const { mode = "chat", currentLens = null, extra = null, worldId = null, userId = null, db = null } = ctx;
@@ -225,6 +248,26 @@ export function composeSystemPrompt(brain, ctx = {}) {
     }
     if (styleProfile.emojiRate <= 0) bits.push("no emoji");
     else if (styleProfile.emojiRate >= 0.05) bits.push("occasional emoji reads naturally to them");
+    // Tool-preference signal (grounding-audit gap fix — see
+    // initiative-engine.js#recordToolUsage). Honest-empty by construction:
+    // MIN_TOOL_SAMPLE requires enough real tool calls to matter before ANY
+    // preference is considered (below the floor, even a 100% share is just
+    // "they used web_search once or twice" — not a pattern). Above the
+    // floor, DOMINANT_TOOL_SHARE requires a clear majority — a user whose
+    // calls split roughly evenly across two or three tools (e.g. ~33% each)
+    // must get no line, same as the formality/emoji signals never guess
+    // from a near-neutral reading.
+    const toolTally = styleProfile.toolUsage;
+    if (toolTally && typeof toolTally === "object") {
+      const entries = Object.entries(toolTally).filter(([, n]) => typeof n === "number" && n > 0);
+      const totalCalls = entries.reduce((sum, [, n]) => sum + n, 0);
+      if (totalCalls >= MIN_TOOL_SAMPLE) {
+        const [topTool, topCount] = entries.reduce((best, cur) => (cur[1] > best[1] ? cur : best), entries[0]);
+        if (topCount / totalCalls >= DOMINANT_TOOL_SHARE) {
+          bits.push(`tends to reach for the ${topTool} tool when a tool is needed (${topCount}/${totalCalls} of their recent tool calls)`);
+        }
+      }
+    }
     if (bits.length) {
       runtimeBits.push(
         `Learned conversational style for this user (derived from their real message history — never override honesty, substance, or the DTU citation rules above with it): ${bits.join("; ")}.`
