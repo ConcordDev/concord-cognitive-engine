@@ -5,7 +5,7 @@
 // production ConcordiaScene component sets), let it poll, and assert real
 // beacon groups land in the scene at the REAL gathering centroid — not a
 // hashed/fabricated spot like the authored-event beacons use.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { render, cleanup, waitFor } from '@testing-library/react';
 import * as THREE from 'three';
 
@@ -26,7 +26,7 @@ declare global {
 
 describe('WorldEventBeacons', () => {
   let scene: THREE.Scene;
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     scene = new THREE.Scene();

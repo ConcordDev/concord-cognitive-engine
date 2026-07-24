@@ -5378,6 +5378,15 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // (observing the concurrency stack is not minting knowledge). The `metric`
   // artifact + `json` export reflect the live data the page surfaces.
   { domain: 'ops-telemetry', label: 'Ops Telemetry',      artifacts: ['metric'],      macros: {}, exports: ['json'], actions: [], category: 'operations' },
+  // World Observatory is a read-only simulation-observability dashboard —
+  // the population/faction/realm/district counterpart to Ops Telemetry's
+  // infra-only view. Unlike ops-telemetry it IS macro-backed: both
+  // `worldstate.overview` and `worldstate.world_detail` are real, tested
+  // macros (server/domains/world-overview.js) that perform pure composition
+  // of existing getters — no new tables, no mutation. `actions` is
+  // intentionally empty for the same reason as ops-telemetry: there is no
+  // authoring/mutation action on this surface, only observation.
+  { domain: 'world-observatory', label: 'World Observatory', artifacts: ['world_state'], macros: { list: 'worldstate.overview', get: 'worldstate.world_detail' }, exports: ['json'], actions: [], category: 'operations' },
   { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'photos.list',             get: 'photos.get', create: 'photos.share' }, exports: ['json'], actions: ['share', 'world'], category: 'creative' },
   { domain: 'quests',        label: 'Quests',             artifacts: ['quest'],       macros: { list: 'quests.mine',             get: 'quests.progress' },        exports: ['json'], actions: ['accept', 'record-progress', 'claim-rewards', 'share'], category: 'lifestyle' },
   { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'spectate.list',           get: 'spectate.get',         create: 'spectate.watch',   run: 'spectate.bet' },           exports: ['json'], actions: ['watch', 'bet', 'my_positions'], category: 'social' },

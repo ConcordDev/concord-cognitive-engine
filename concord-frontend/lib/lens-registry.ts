@@ -130,6 +130,7 @@ import {
   Cog,
   Fish,
   Car,
+  Radar,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -2774,6 +2775,20 @@ export const LENS_REGISTRY: LensEntry[] = [
     order: 91,
     keywords: ['ops', 'telemetry', 'heartbeat', 'worker', 'brain', 'concurrency', 'shard'],
     minExpertise: 'engineering', // World Lens Phase 5 (Sanctum tier)
+  },
+  {
+    id: 'world-observatory',
+    name: 'World Observatory',
+    icon: Radar,
+    description: 'Simulation-scale mission control — population, faction relations, realm legitimacy/treasury, and district density across every world (read-only).',
+    category: 'system',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/world-observatory',
+    order: 92,
+    keywords: ['world', 'observatory', 'simulation', 'faction', 'realm', 'district', 'population', 'mission control'],
+    macroDomain: 'worldstate',
+    minExpertise: 'engineering', // World Lens Phase 5 (Sanctum tier) — same posture as ops-telemetry
   },
   {
     id: 'quests',
