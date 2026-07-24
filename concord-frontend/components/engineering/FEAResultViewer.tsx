@@ -4,6 +4,8 @@ import { useRef, useMemo, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
+import { ComputedResultBadge } from '@/components/common/ComputedResultBadge';
+import { getFeaVerification, type FeaComputationResult } from './fea-verification';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,6 +46,19 @@ export interface FEAResultViewerProps {
    * default orbit view (ForwardSimPanel, the engineering lens) is unchanged.
    */
   cameraControls?: ReactNode;
+  /**
+   * Optional OVERALL FEA computation result — the real `engineering.runFEA`
+   * response envelope (`{ ok, summary: { allPass, maxUtilization, ... } }`
+   * or `{ ok: false, error }`), distinct from the `members` prop's per-member
+   * geometry. When supplied, renders the honest verified/failed/no_data
+   * <ComputedResultBadge> for "was this structure actually checked, and did
+   * it pass" — the OVERALL check, complementary to (not a replacement for)
+   * the per-member <UtilizationBadge> in the table below. Omitted entirely
+   * by callers that only have node/member geometry and no full solver
+   * envelope (ForwardSimPanel, the ConKay fea-frame adapter) — no badge is
+   * rendered in that case, never a fabricated one.
+   */
+  result?: FeaComputationResult | null;
 }
 
 // ── Stress color: blue(0) → green(0.5) → red(1.0+) ──────────────────────────
@@ -104,7 +119,7 @@ function FEAScene({
   showDeformed,
   showStress,
   cameraControls,
-}: Required<Omit<FEAResultViewerProps, 'height' | 'cameraControls'>> & {
+}: Required<Omit<FEAResultViewerProps, 'height' | 'cameraControls' | 'result'>> & {
   cameraControls?: ReactNode;
 }) {
   // Build lookup maps
@@ -257,14 +272,31 @@ export function FEAResultViewer({
   showStress = true,
   height = '400px',
   cameraControls,
+  result,
 }: FEAResultViewerProps) {
   const sortedMembers = useMemo(
     () => [...members].sort((a, b) => b.utilization - a.utilization),
     [members]
   );
 
+  // Only classify/render when a caller actually passed `result` — omitting
+  // the prop entirely (ForwardSimPanel, the fea-frame adapter) renders no
+  // badge at all, never a fabricated "not run" for a surface that never had
+  // this concept wired.
+  const verification = result !== undefined ? getFeaVerification(result) : null;
+
   return (
     <div className="space-y-4">
+      {verification && (
+        <div className="flex items-center justify-between">
+          <ComputedResultBadge
+            state={verification.state}
+            label={verification.label}
+            detail={verification.detail}
+            size="md"
+          />
+        </div>
+      )}
       {/* 3-D Viewport */}
       <div
         className="relative rounded-lg overflow-hidden border border-lattice-border bg-black/40"

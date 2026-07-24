@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { ComputedResultBadge } from '@/components/common/ComputedResultBadge';
+import { getWallVerification } from './wall-verification';
 
 async function callMason<T>(action: string, data: Record<string, unknown>): Promise<T | null> {
   try {
@@ -215,6 +217,7 @@ function WallStrengthCheck() {
           <Hammer className="h-4 w-4 text-amber-400" />
           <span className="text-sm font-semibold text-white">Wall strength check</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">masonry.wallStrength</span>
+          <ComputedResultBadge {...getWallVerification(result)} />
         </div>
         {result && (
           <SaveAsDtuButton compact apiSource="concord-masonry-wall"
