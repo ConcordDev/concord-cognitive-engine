@@ -1763,7 +1763,7 @@ import "./lib/vocabularies.js";
 import { BoundedMap } from "./lib/bounded-map.js";
 import { generateEntityName, migrateEntityNames as runEntityNameMigration, isFunctionLabel as isEntityFunctionLabel } from "./lib/entity-naming.js";
 import { validateSafeFetchUrl as _ssrfValidate, isUrlSafeAsync as _ssrfIsSafeAsync, fetchWithPinnedIp as _ssrfFetchPinned } from "./lib/ssrf-guard.js";
-import { registerCitation as economyRegisterCitation, getAncestorChain as _dtuLineageAncestorChain } from "./economy/royalty-cascade.js";
+import { registerCitation as economyRegisterCitation, getAncestorChain as _dtuLineageAncestorChain, getDescendants as _dtuLineageDescendants } from "./economy/royalty-cascade.js";
 import { checkAccess as economyCheckAccess, TIER_HIERARCHY as ECONOMY_TIER_HIERARCHY } from "./economy/rights-enforcement.js";
 // Wave 6 — plugin marketplace checkout reuses the SAME purchase primitive
 // every other creative-artifact content type (music/art/code/...) already
@@ -29071,6 +29071,162 @@ register("dtu", "lineage", (ctx, input = {}) => {
     return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
   }
 }, { description: "Real DTU ancestor/descendant chain for the frontend Lineage tab — one-hop parent/child edges plus the royalty_lineage citation graph. Never fabricates a chain; empty arrays for a DTU with no real lineage." });
+
+// ── DTU citation graph (V1.2 Wave A — "Society & Presence" reputation +
+// citation graph capability) ────────────────────────────────────────────
+// Real node/edge projection over the SAME royalty_lineage traversal the
+// royalty cascade + dtu.lineage (EC1, above) already use —
+// getAncestorChain()/getDescendants() — not new graph-traversal SQL.
+// `dtu_citations` (migration 010) is a per-DTU aggregate COUNTER, not an
+// edge table, so it can't back a graph; `royalty_lineage` (child_id ->
+// parent_id, written by economy/royalty-cascade.js#registerCitation on
+// every consented citation, not only paid ones) is the real edge source.
+// Shaped for the shared GraphView component
+// (concord-frontend/components/atlas/GraphView.tsx):
+//   { nodes: [{ id, label, group, weight }], edges: [{ source, target, kind }] }
+//
+// Two input modes:
+//   { dtuId }  -> the citation neighborhood of one DTU: every ancestor (what
+//                 it cites) + every descendant (what cites it), walked to
+//                 MAX_CASCADE_DEPTH generations, with the REAL edges among
+//                 that node set read back from royalty_lineage so a
+//                 multi-generation chain renders as an actual chain, not a
+//                 center-only fan-out star.
+//   { userId } -> the union of citation neighborhoods across every DTU that
+//                 user authored (creator_id, falling back to owner_user_id),
+//                 capped at DTU_CITATION_GRAPH_MAX_NODES so a prolific
+//                 creator's graph stays renderable.
+// Honest empty state: no DB / no royalty_lineage table / no lineage for the
+// subject -> an empty or single-node graph, never a fabricated edge.
+const DTU_CITATION_GRAPH_MAX_NODES = 250;
+
+function _dtuCitationGraphNodeRef(db, id) {
+  // Prefer the durable `dtus` table (the table royalty_lineage/dtu_citations
+  // actually key against) for title/tier/creator; fall back to the
+  // in-memory STATE.dtus map for dev/test builds with no DB row.
+  try {
+    const row = db.prepare(`SELECT id, title, tier, creator_id AS creatorId FROM dtus WHERE id = ?`).get(id);
+    if (row) return { id: row.id, title: row.title || null, tier: row.tier || "regular", creatorId: row.creatorId || null };
+  } catch { /* honest: dtus table may lack creator_id/tier on an older schema */ }
+  const mem = STATE.dtus?.get?.(id);
+  if (mem) return { id, title: mem.title || null, tier: mem.tier || "regular", creatorId: mem.ownerId || null };
+  return { id, title: null, tier: "regular", creatorId: null };
+}
+
+register("dtu", "citation-graph", (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || STATE?.db;
+    const dtuId = input.dtuId || input.id || null;
+    const userId = input.userId || null;
+    if (!dtuId && !userId) return { ok: false, error: "missing_dtuId_or_userId" };
+    if (!db) return { ok: true, result: { nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0 } } };
+
+    let hasLineageTable = true;
+    try { db.prepare("SELECT 1 FROM royalty_lineage LIMIT 1").get(); }
+    catch { hasLineageTable = false; }
+    if (!hasLineageTable) {
+      // Honest empty graph — no royalty_lineage table on this DB.
+      if (dtuId) return { ok: true, result: { nodes: [{ id: dtuId, label: dtuId, group: "self" }], edges: [], stats: { nodeCount: 1, edgeCount: 0 } } };
+      return { ok: true, result: { nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0 } } };
+    }
+
+    // Seed DTU set: either the one requested DTU, or every DTU authored by userId.
+    let seedIds = [];
+    if (dtuId) {
+      seedIds = [dtuId];
+    } else {
+      let ownerCol = "creator_id";
+      try { db.prepare("SELECT creator_id FROM dtus LIMIT 1").get(); }
+      catch { ownerCol = "owner_user_id"; }
+      let rows = [];
+      try {
+        rows = db.prepare(`SELECT id FROM dtus WHERE ${ownerCol} = ? ORDER BY created_at DESC LIMIT 100`).all(userId);
+      } catch { rows = []; }
+      seedIds = rows.map((r) => r.id);
+    }
+    const selfIds = new Set(seedIds);
+
+    if (seedIds.length === 0) {
+      return { ok: true, result: { nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0 } } };
+    }
+
+    const nodeIds = new Set(seedIds);
+    let _citationGraphCapReached = false;
+    for (const id of seedIds) {
+      if (_citationGraphCapReached || nodeIds.size >= DTU_CITATION_GRAPH_MAX_NODES) break;
+      try {
+        for (const a of _dtuLineageAncestorChain(db, id)) {
+          nodeIds.add(a.contentId);
+          if (nodeIds.size >= DTU_CITATION_GRAPH_MAX_NODES) { _citationGraphCapReached = true; break; }
+        }
+      } catch { /* honest: royalty_lineage read failure — skip, never fabricate */ }
+      if (_citationGraphCapReached) break;
+      try {
+        for (const d of _dtuLineageDescendants(db, id)) {
+          nodeIds.add(d.contentId);
+          if (nodeIds.size >= DTU_CITATION_GRAPH_MAX_NODES) { _citationGraphCapReached = true; break; }
+        }
+      } catch { /* honest: royalty_lineage read failure — skip, never fabricate */ }
+      if (_citationGraphCapReached) break;
+    }
+
+    const idList = [...nodeIds].slice(0, DTU_CITATION_GRAPH_MAX_NODES);
+    const idSet = new Set(idList);
+
+    // Real edges among the collected node set — read directly off
+    // royalty_lineage (child_id cites parent_id) so a multi-generation
+    // chain renders as an actual chain, chunked to stay well under
+    // SQLite's default bound-parameter limit (999).
+    const edges = [];
+    const seenEdgeKeys = new Set();
+    const CHUNK = 300;
+    for (let i = 0; i < idList.length; i += CHUNK) {
+      const chunk = idList.slice(i, i + CHUNK);
+      const placeholders = chunk.map(() => "?").join(",");
+      let rows = [];
+      try {
+        rows = db.prepare(
+          `SELECT DISTINCT child_id AS childId, parent_id AS parentId FROM royalty_lineage
+           WHERE child_id IN (${placeholders}) AND parent_id IN (${placeholders})`,
+        ).all(...chunk, ...chunk);
+      } catch { rows = []; }
+      for (const r of rows) {
+        if (!idSet.has(r.childId) || !idSet.has(r.parentId)) continue;
+        const key = `${r.childId}->${r.parentId}`;
+        if (seenEdgeKeys.has(key)) continue;
+        seenEdgeKeys.add(key);
+        // Citation direction: child cites parent -> edge points child -> parent.
+        edges.push({ source: r.childId, target: r.parentId, kind: "citation" });
+      }
+    }
+
+    const nodes = idList.map((id) => {
+      const ref = _dtuCitationGraphNodeRef(db, id);
+      const inDeg = edges.filter((e) => e.target === id).length; // cited-by count
+      return {
+        id,
+        label: ref.title || id,
+        group: selfIds.has(id) ? "self" : "cited",
+        weight: Math.min(1, 0.4 + inDeg * 0.15),
+      };
+    });
+
+    return {
+      ok: true,
+      result: {
+        nodes,
+        edges,
+        stats: {
+          nodeCount: nodes.length,
+          edgeCount: edges.length,
+          truncated: nodeIds.size > DTU_CITATION_GRAPH_MAX_NODES,
+        },
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Real citation-neighborhood graph for one DTU or a user's authored corpus, built on the same royalty_lineage traversal (getAncestorChain/getDescendants) as dtu.lineage/economy.royaltyFlow — shaped for the shared GraphView component. Never fabricates nodes or edges." });
 
 // ── Royalty flow card (EC2 — "where did my royalty income come from") ─────
 // Thin macro wrapper over computeRoyaltyFlow (server/lib/creator-dashboard.js),

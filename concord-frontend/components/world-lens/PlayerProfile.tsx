@@ -71,6 +71,16 @@ interface PlayerProfileProps {
   friends?: { id: string; name: string; online: boolean }[];
   visitorLog?: VisitorLogEntry[];
   isOwnProfile?: boolean;
+  /**
+   * View ANOTHER player's real profile instead of the caller's own. When
+   * set, every `profile.*` fetch passes `{ targetUserId }` so the backend
+   * resolves against that user (server/domains/profile.js) and returns its
+   * peer-safe redacted shape (no updatedAt, no private/internal DTUs) —
+   * never the caller's own data. Takes precedence over `isOwnProfile`: a
+   * supplied targetUserId always means "viewing someone else," regardless
+   * of how the caller wired that prop.
+   */
+  targetUserId?: string;
   onFollow?: (playerId: string) => void;
   onMessage?: (playerId: string) => void;
   onTour?: (playerId: string) => void;
@@ -189,12 +199,20 @@ export default function PlayerProfile({
   friends = [],
   visitorLog: visitorLogProp,
   isOwnProfile = false,
+  targetUserId,
   onFollow,
   onMessage,
   onTour,
   onAddFriend,
 }: PlayerProfileProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'portfolio' | 'badges' | 'friends' | 'visitors'>('overview');
+
+  // A supplied targetUserId always means "viewing someone else" — defensive
+  // against stale isOwnProfile wiring showing the wrong person's data (this
+  // is exactly the bug that used to make world/page.tsx's "View Profile"
+  // button on another player always reopen the caller's own profile).
+  const viewingPeer = !!targetUserId;
+  const effectiveIsOwnProfile = viewingPeer ? false : isOwnProfile;
 
   // Backend-fetched state. A caller-supplied prop always wins (the prop is
   // passed straight through); otherwise we fetch REAL data from the `profile`
@@ -205,26 +223,35 @@ export default function PlayerProfile({
   const [fetchedVisitors, setFetchedVisitors] = useState<VisitorLogEntry[]>([]);
 
   useEffect(() => {
-    // Skip the fetch entirely if every surface was supplied via props.
-    if (profileProp && portfolioProp && badgesProp && (visitorLogProp || !isOwnProfile)) return;
+    // Skip the fetch entirely if every surface was supplied via props (never
+    // applies to a peer view — props always describe some already-resolved
+    // subject, and targetUserId means we must (re)fetch for the new subject).
+    if (!viewingPeer && profileProp && portfolioProp && badgesProp && (visitorLogProp || !effectiveIsOwnProfile)) return;
     let cancelled = false;
     (async () => {
       try {
+        const params = targetUserId ? { targetUserId } : {};
         const calls: Promise<unknown>[] = [
-          lensRun('profile', 'profile-get', {}),
-          lensRun('profile', 'reputation-summary', {}),
-          lensRun('profile', 'badges-list', {}),
-          lensRun('profile', 'portfolio-list', {}),
+          lensRun('profile', 'profile-get', params),
+          lensRun('profile', 'reputation-summary', params),
+          lensRun('profile', 'badges-list', params),
+          lensRun('profile', 'portfolio-list', params),
         ];
-        if (isOwnProfile) calls.push(lensRun('profile', 'visitors-list', {}));
+        // Visitor log is a self-only surface (server/domains/profile.js
+        // keeps visitors-list caller-scoped by default) — never fetched for
+        // a peer view.
+        if (effectiveIsOwnProfile) calls.push(lensRun('profile', 'visitors-list', {}));
         const [profRes, repRes, badgeRes, portRes, visRes] = await Promise.all(calls) as Array<{
           data: { ok: boolean; result: Record<string, unknown> | null };
         }>;
         if (cancelled) return;
 
         // Merge the editable profile + the derived reputation summary into the
-        // rich ProfileData shape this panel renders.
-        if (!profileProp) {
+        // rich ProfileData shape this panel renders. A peer view (viewingPeer)
+        // always uses the freshly-fetched data for the new subject, even if a
+        // stale prop from a prior self-view render is still set — never let
+        // yesterday's own-profile prop paper over today's target's data.
+        if (viewingPeer || !profileProp) {
           const ep = (profRes?.data?.result?.profile ?? {}) as Record<string, unknown>;
           const rep = (repRes?.data?.result ?? {}) as Record<string, unknown>;
           setFetchedProfile({
@@ -240,18 +267,21 @@ export default function PlayerProfile({
             followerCount: 0,
             followingCount: 0,
             reputation: Array.isArray(rep.reputation) ? (rep.reputation as ReputationScore[]) : [],
+            // updatedAt is stripped from the peer-view profile shape entirely
+            // (server/domains/profile.js redaction) — joinDate honestly
+            // blanks for a peer view rather than fabricating one.
             joinDate: ep.updatedAt ? String(ep.updatedAt).slice(0, 10) : '',
           });
         }
-        if (!badgesProp) {
+        if (viewingPeer || !badgesProp) {
           const list = (badgeRes?.data?.result?.badges ?? []) as Badge[];
           setFetchedBadges(list);
         }
-        if (!portfolioProp) {
+        if (viewingPeer || !portfolioProp) {
           const list = (portRes?.data?.result?.portfolio ?? []) as DTUPortfolioItem[];
           setFetchedPortfolio(list);
         }
-        if (!visitorLogProp && isOwnProfile && visRes) {
+        if (!visitorLogProp && effectiveIsOwnProfile && visRes) {
           const list = (visRes?.data?.result?.visitors ?? []) as VisitorLogEntry[];
           setFetchedVisitors(list);
         }
@@ -260,7 +290,7 @@ export default function PlayerProfile({
       }
     })();
     return () => { cancelled = true; };
-  }, [profileProp, portfolioProp, badgesProp, visitorLogProp, isOwnProfile]);
+  }, [profileProp, portfolioProp, badgesProp, visitorLogProp, effectiveIsOwnProfile, viewingPeer, targetUserId]);
 
   // Caller props win; otherwise use the fetched/real data.
   const profile = profileProp ?? fetchedProfile;
@@ -506,7 +536,7 @@ export default function PlayerProfile({
         </div>
 
         {/* Action buttons */}
-        {!isOwnProfile && (
+        {!effectiveIsOwnProfile && (
           <div className="flex gap-2 mt-4">
             <button
               onClick={handleFollow}
@@ -545,7 +575,7 @@ export default function PlayerProfile({
           { key: 'portfolio', label: 'Portfolio' },
           { key: 'badges', label: 'Badges' },
           { key: 'friends', label: 'Friends' },
-          ...(isOwnProfile ? [{ key: 'visitors' as const, label: 'Visitors' }] : []),
+          ...(effectiveIsOwnProfile ? [{ key: 'visitors' as const, label: 'Visitors' }] : []),
         ] as const).map(t => (
           <button
             key={t.key}

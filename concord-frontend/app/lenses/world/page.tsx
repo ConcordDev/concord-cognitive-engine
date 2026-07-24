@@ -9,6 +9,7 @@ import { EarthEventsLive } from '@/components/world/EarthEventsLive';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useViewedPlayerProfile } from '@/hooks/useViewedPlayerProfile';
 import { useTilePush } from '@/hooks/useTilePush';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
@@ -2273,6 +2274,12 @@ export default function WorldLensPage() {
     | 'character'
     | 'workspace-rooms'
   >('none');
+  // Which OTHER player's profile is currently open in the 'profile' panel
+  // (null = the caller's own). Fed by the `concordia:view-player-profile`
+  // event PlayerPresence's "View Profile" button dispatches — previously
+  // dead-wired (nothing captured the target id, so the panel always showed
+  // the caller's own profile regardless of which player was clicked).
+  const { viewedProfileUserId, clearViewedProfile } = useViewedPlayerProfile();
   // Local player avatar — mutable so moves update it in place. On
   // first mount we ask the server for saved state (via player:load)
   // and land back wherever the user logged off.
@@ -5362,7 +5369,17 @@ export default function WorldLensPage() {
             worldId={currentWorldId}
             playerPosition={{ x: playerAvatar.position.x, y: 0, z: playerAvatar.position.z }}
           />
-          {!hudHidden && <CurrencyHUD onClick={() => setShowPanel('profile')} />}
+          {!hudHidden && (
+            <CurrencyHUD
+              onClick={() => {
+                // Always the caller's OWN profile from this entry point —
+                // clear any previously-viewed peer so a stale target id
+                // doesn't leak into a self-view.
+                clearViewedProfile();
+                setShowPanel('profile');
+              }}
+            />
+          )}
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
             onOpenMap={() => setShowPanel('map')}
@@ -6367,8 +6384,15 @@ export default function WorldLensPage() {
             </SummonDrawer>
           )}
           {showPanel === 'profile' && (
-            <SummonDrawer open title="Profile" onClose={() => setShowPanel('none')}>
-              <PlayerProfile isOwnProfile />
+            <SummonDrawer
+              open
+              title={viewedProfileUserId ? 'Player Profile' : 'Profile'}
+              onClose={() => { setShowPanel('none'); clearViewedProfile(); }}
+            >
+              <PlayerProfile
+                isOwnProfile={!viewedProfileUserId}
+                targetUserId={viewedProfileUserId ?? undefined}
+              />
             </SummonDrawer>
           )}
           {showPanel === 'collaboration' && (

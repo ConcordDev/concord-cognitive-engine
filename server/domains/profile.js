@@ -68,14 +68,45 @@ export default function registerProfileActions(registerLensAction) {
     "architecture", "mentorship", "governance", "exploration",
   ];
 
+  // Resolve which user a call is about: an explicit `targetUserId` param
+  // wins, falling back to the caller's own id exactly as before. Every
+  // pre-existing caller (no targetUserId) is byte-for-byte unaffected.
+  const resolveTarget = (ctx, params) => {
+    const callerId = aid(ctx);
+    const raw = params && params.targetUserId != null ? String(params.targetUserId).trim() : "";
+    const targetUserId = raw || callerId;
+    return { callerId, targetUserId, isSelf: targetUserId === callerId };
+  };
+
+  // Peer-safe allow-list for another user's editable profile (V1.2 Wave A —
+  // "reputation + citation graph" viewer). This is an ALLOW-list, not a
+  // deny-list, on purpose: a field added to the editable profile later is
+  // private-by-default until someone deliberately adds it here. Nothing on
+  // this object is account-security-adjacent today (no email / settings live
+  // on it), but `updatedAt` (an internal edit timestamp, not part of public
+  // identity) is deliberately excluded from the peer view as defense in
+  // depth — the self view keeps seeing it unchanged.
+  const PEER_VISIBLE_PROFILE_FIELDS = ["id", "displayName", "bio", "profession", "firmName", "avatar"];
+
   // ── profile-get ──────────────────────────────────────────────────
   // The editable profile. Empty defaults if unset — never fabricated.
-  registerLensAction("profile", "profile-get", (ctx, _artifact, _params = {}) => {
+  // `params.targetUserId` (optional): view ANOTHER user's public profile
+  // instead of the caller's own. Self view (omitted / equal to caller)
+  // returns the full editable-profile shape unchanged; peer view is
+  // redacted to PEER_VISIBLE_PROFILE_FIELDS only.
+  registerLensAction("profile", "profile-get", (ctx, _artifact, params = {}) => {
     try {
       const STATE = store();
-      const userId = aid(ctx);
-      const p = userProfile(STATE, userId);
-      return { ok: true, result: { profile: { ...p } } };
+      const { targetUserId, isSelf } = resolveTarget(ctx, params);
+      const p = userProfile(STATE, targetUserId);
+      if (isSelf) {
+        return { ok: true, result: { profile: { ...p }, isSelf: true } };
+      }
+      const peerProfile = {};
+      for (const f of PEER_VISIBLE_PROFILE_FIELDS) {
+        peerProfile[f] = f === "id" ? targetUserId : (p[f] ?? "");
+      }
+      return { ok: true, result: { profile: peerProfile, isSelf: false } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -109,12 +140,16 @@ export default function registerProfileActions(registerLensAction) {
   // REAL earned achievements as badges. Reads player_achievements (the user's
   // earned rows), joined to achievement_catalog for title/description/icon when
   // present. Empty when no DB, no table, or no earned rows. NEVER fabricated.
-  registerLensAction("profile", "badges-list", (ctx, _artifact, _params = {}) => {
+  // `params.targetUserId` (optional): another user's badges — badges are
+  // earned achievements, already meant to be shown off, so no redaction vs
+  // self view beyond scoping the query to the target instead of the caller.
+  registerLensAction("profile", "badges-list", (ctx, _artifact, params = {}) => {
     try {
-      const userId = aid(ctx);
+      const { targetUserId, isSelf } = resolveTarget(ctx, params);
+      const userId = targetUserId;
       const db = ctx?.db;
       if (!db || !tableExists(db, "player_achievements")) {
-        return { ok: true, result: { badges: [], count: 0 } };
+        return { ok: true, result: { badges: [], count: 0, isSelf } };
       }
       const hasCatalog = tableExists(db, "achievement_catalog");
       let rows;
@@ -151,7 +186,7 @@ export default function registerProfileActions(registerLensAction) {
           earnedDate,
         };
       });
-      return { ok: true, result: { badges, count: badges.length } };
+      return { ok: true, result: { badges, count: badges.length, isSelf } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -159,13 +194,19 @@ export default function registerProfileActions(registerLensAction) {
   // REAL owned DTUs authored by this user (creator_id, falling back to
   // owner_user_id), with citation counts joined from dtu_citations. Empty when
   // no DB / no dtus table / no authored rows. NEVER fabricated.
+  // `params.targetUserId` (optional): another user's portfolio. Peer view
+  // additionally redacts to visibility IN ('public','marketplace') — a
+  // stranger must never see someone else's private/internal (unpublished)
+  // DTUs just because they clicked "View Profile"; self view is unchanged
+  // and still sees every visibility.
   registerLensAction("profile", "portfolio-list", (ctx, _artifact, params = {}) => {
     try {
-      const userId = aid(ctx);
+      const { targetUserId, isSelf } = resolveTarget(ctx, params);
+      const userId = targetUserId;
       const db = ctx?.db;
       const limit = Math.min(Math.max(Number((params || {}).limit) || 50, 1), 200);
       if (!db || !tableExists(db, "dtus")) {
-        return { ok: true, result: { portfolio: [], count: 0 } };
+        return { ok: true, result: { portfolio: [], count: 0, isSelf } };
       }
       const hasCitations = tableExists(db, "dtu_citations");
       const citeSelect = hasCitations
@@ -174,6 +215,7 @@ export default function registerProfileActions(registerLensAction) {
       const citeJoin = hasCitations
         ? "LEFT JOIN dtu_citations cit ON cit.dtu_id = d.id"
         : "";
+      const visibilityClause = isSelf ? "" : "AND d.visibility IN ('public','marketplace')";
       // creator_id is the authored-by column (migration 087); fall back to
       // owner_user_id if creator_id is unpopulated in this env.
       const run = (ownerCol) => db.prepare(`
@@ -181,7 +223,7 @@ export default function registerProfileActions(registerLensAction) {
                d.visibility AS visibility, ${citeSelect}
         FROM dtus d
         ${citeJoin}
-        WHERE d.${ownerCol} = ?
+        WHERE d.${ownerCol} = ? ${visibilityClause}
         ORDER BY d.created_at DESC
         LIMIT ?
       `).all(userId, limit);
@@ -195,7 +237,7 @@ export default function registerProfileActions(registerLensAction) {
         visibility: r.visibility || "private",
         publishedDate: r.createdAt ? String(r.createdAt).slice(0, 10) : "",
       }));
-      return { ok: true, result: { portfolio, count: portfolio.length } };
+      return { ok: true, result: { portfolio, count: portfolio.length, isSelf } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -206,9 +248,17 @@ export default function registerProfileActions(registerLensAction) {
   //   - reputation[]: per-domain 0..100 scores derived deterministically from
   //     the user's real authored-DTU + citation activity (NOT random). Returns
   //     all-zeros (and reputation: []) when there's no DB / no activity.
-  registerLensAction("profile", "reputation-summary", (ctx, _artifact, _params = {}) => {
+  // `params.targetUserId` (optional): another user's reputation summary.
+  // These are all aggregate counts (no content), so nothing here is
+  // account-security-adjacent — but peer view still scopes the underlying
+  // DTU aggregate to publicly-visible DTUs only (same visibility rule as
+  // portfolio-list), so the count a stranger sees matches what they could
+  // actually browse in the portfolio tab, never a count inflated by private
+  // work they can't see.
+  registerLensAction("profile", "reputation-summary", (ctx, _artifact, params = {}) => {
     try {
-      const userId = aid(ctx);
+      const { targetUserId, isSelf } = resolveTarget(ctx, params);
+      const userId = targetUserId;
       const db = ctx?.db;
       const empty = {
         totalCitations: 0,
@@ -218,15 +268,16 @@ export default function registerProfileActions(registerLensAction) {
         reputation: [],
       };
       if (!db || !tableExists(db, "dtus")) {
-        return { ok: true, result: { ...empty } };
+        return { ok: true, result: { ...empty, isSelf } };
       }
 
       const hasCitations = tableExists(db, "dtu_citations");
+      const visibilityClause = isSelf ? "" : "AND visibility IN ('public','marketplace')";
 
       // Real authored-DTU aggregates (creator_id → owner_user_id fallback).
       const aggregate = (ownerCol) => {
         const countRow = db.prepare(
-          `SELECT COUNT(*) AS n FROM dtus WHERE ${ownerCol} = ?`,
+          `SELECT COUNT(*) AS n FROM dtus WHERE ${ownerCol} = ? ${visibilityClause}`,
         ).get(userId);
         let totalCitations = 0;
         if (hasCitations) {
@@ -234,7 +285,7 @@ export default function registerProfileActions(registerLensAction) {
             SELECT COALESCE(SUM(cit.citation_count), 0) AS c
             FROM dtus d
             JOIN dtu_citations cit ON cit.dtu_id = d.id
-            WHERE d.${ownerCol} = ?
+            WHERE d.${ownerCol} = ? ${visibilityClause.replace("visibility", "d.visibility")}
           `).get(userId);
           totalCitations = Number(citeRow?.c) || 0;
         }
@@ -259,7 +310,7 @@ export default function registerProfileActions(registerLensAction) {
       if (agg.dtuCount === 0 && agg.totalCitations === 0) {
         return {
           ok: true,
-          result: { ...empty, worldsOwned },
+          result: { ...empty, worldsOwned, isSelf },
         };
       }
 
@@ -282,6 +333,7 @@ export default function registerProfileActions(registerLensAction) {
           worldsOwned,
           dtuCount: agg.dtuCount,
           reputation,
+          isSelf,
         },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
