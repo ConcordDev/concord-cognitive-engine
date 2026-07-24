@@ -38920,9 +38920,38 @@ register("marketplace", "installed", (_ctx, _input) => {
   return { ok: true, plugins, count: plugins.length };
 });
 
+import { readAndHydrateDtu } from "./lib/dtu-shadow-hydrate.js";
+
+// Resolve a DTU for the marketplace macros against BOTH the in-memory
+// STATE.dtus index AND (on a miss) the real SQL `dtus` table.
+//
+// Bug this closes: dozens of content types (gamedesign.js#building-publish,
+// forge-marketplace.js#mintForgeAppAsDtu, and ~20 others — grep `INSERT INTO
+// dtus` under server/) mint a DTU via a raw SQL INSERT, which is a real,
+// durable row — but only `dtu.create` populates STATE.dtus, which is the
+// ONLY thing `marketplace.list`/`purchaseWithRoyalties` used to read. A
+// SQL-only DTU was therefore invisible to the marketplace despite being
+// real. `readAndHydrateDtu` (server/lib/dtu-shadow-hydrate.js) reconstructs
+// the equivalent STATE.dtus shape from the row; we cache it into STATE.dtus
+// here (a legitimate lazy-hydration read-through cache — the SQL row is the
+// real source of truth, this just makes the in-memory index consistent
+// with it) so subsequent lookups (list → purchase, or a second purchase)
+// are O(1) Map reads like any native STATE.dtus entry, and so every
+// downstream macro that reads `STATE.dtus.get(id)` after this point (the
+// royalty cascade, `myListings`, etc.) sees the exact same object.
+function resolveMarketplaceDtu(dtuId) {
+  if (!dtuId) return null;
+  const inMemory = STATE.dtus.get(dtuId);
+  if (inMemory) return inMemory;
+  if (!db) return null;
+  const hydrated = readAndHydrateDtu(db, dtuId);
+  if (hydrated) STATE.dtus.set(dtuId, hydrated);
+  return hydrated || null;
+}
+
 register("marketplace", "list", async (ctx, input) => {
   const { dtuId, price, currency, contentType, title, description, tags, preview } = input || {};
-  const dtu = STATE.dtus.get(dtuId);
+  const dtu = resolveMarketplaceDtu(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
 
   // Ownership + scope gate. Previously ANY authenticated caller could flip
@@ -39761,7 +39790,12 @@ register("creative", "domains", async (ctx, input) => {
 
 register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   const { dtuId } = input || {};
-  const dtu = STATE.dtus.get(dtuId);
+  // Same resolution as marketplace.list — see resolveMarketplaceDtu's doc
+  // comment. Purchasing a SQL-only DTU (e.g. a forge_app or a building-
+  // publish blueprint that was listed) needs the same hydration, since a
+  // fresh process (or a purchase attempted before any `list` call warmed
+  // STATE.dtus) would otherwise miss it too.
+  const dtu = resolveMarketplaceDtu(dtuId);
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
 
   // Federated origin: if the DTU's metadata records origin_peer_id (set
@@ -81203,6 +81237,13 @@ export const __TEST__ = Object.freeze({
   ROYALTY_RATES,
   CREATIVE_REGISTRY,
   computeRoyaltyCascade,
+  // SQL-shadow DTU hydration test surface (marketplace.list /
+  // purchaseWithRoyalties raw-INSERT-victim fix). `db` is exposed so a test
+  // can seed a raw `INSERT INTO dtus` row exactly like
+  // gamedesign.js#building-publish / forge-marketplace.js#mintForgeAppAsDtu
+  // do, then prove `resolveMarketplaceDtu` finds and hydrates it.
+  db,
+  resolveMarketplaceDtu,
   verifyCitationIntegrity,
   registerInCreativeRegistry,
   entityExploreCreativeGlobal,
