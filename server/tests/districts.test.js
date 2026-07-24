@@ -14,6 +14,7 @@ import Database from "better-sqlite3";
 import { runMigrations } from "../migrate.js";
 import {
   pointInPolygon,
+  polygonArea,
   seedDefaultDistricts,
   listDistricts,
   getDistrict,
@@ -72,6 +73,34 @@ describe("districts — pointInPolygon (pure)", () => {
     const tri = [{ x: 0, z: 0 }, { x: 10, z: 4 }, { x: 4, z: 10 }];
     assert.equal(pointInPolygon(4, 4, tri), true);
     assert.equal(pointInPolygon(9, 9, tri), false);
+  });
+});
+
+describe("districts — polygonArea (pure, F25 district streaming policy)", () => {
+  it("computes the exact area of a 10x10 square", () => {
+    const square = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }, { x: 0, z: 10 }];
+    assert.equal(polygonArea(square), 100);
+  });
+
+  it("is orientation-agnostic (CW and CCW give the same positive area)", () => {
+    const ccw = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }, { x: 0, z: 10 }];
+    const cw = [{ x: 0, z: 0 }, { x: 0, z: 10 }, { x: 10, z: 10 }, { x: 10, z: 0 }];
+    assert.equal(polygonArea(ccw), polygonArea(cw));
+  });
+
+  it("matches the real concordia-hub plaza rect area (140x140)", () => {
+    // districts.js DEFAULT_DISTRICTS plaza: rect(0, 0, 70, 70)
+    const plaza = [
+      { x: -70, z: -70 }, { x: 70, z: -70 }, { x: 70, z: 70 }, { x: -70, z: 70 },
+    ];
+    assert.equal(polygonArea(plaza), 140 * 140);
+  });
+
+  it("degrades honestly on a malformed polygon", () => {
+    assert.equal(polygonArea([]), 0);
+    assert.equal(polygonArea(null), 0);
+    assert.equal(polygonArea([{ x: 0, z: 0 }, { x: 1, z: 1 }]), 0, "only 2 vertices");
+    assert.equal(polygonArea([{ x: 0, z: 0 }, { x: 1 }, { x: 2, z: 2 }]), 0, "vertex missing z");
   });
 });
 
@@ -194,5 +223,16 @@ describe("districts — scene-export additive field", () => {
     const s = exportScene(db, "some-world-with-no-districts");
     assert.equal(s.ok, true);
     assert.deepEqual(s.districts, []);
+  });
+
+  it("each district carries real buildingCount + areaM2 (F25 — district streaming policy)", () => {
+    const s = exportScene(db, "concordia-hub");
+    const plaza = s.districts.find((d) => d.id === "concordia-hub:plaza");
+    // b1 (10,20) and b2 (-30,-10) both fall inside the plaza rect (±70).
+    assert.equal(plaza.buildingCount, 2, "both fixture buildings land inside the plaza boundary");
+    assert.equal(plaza.areaM2, 140 * 140, "real shoelace area of the plaza rect");
+    const market = s.districts.find((d) => d.id === "concordia-hub:market");
+    assert.equal(market.buildingCount, 0, "a district with no buildings inside it is honestly 0, not omitted");
+    assert.ok(market.areaM2 > 0, "area is still computed even with zero buildings");
   });
 });

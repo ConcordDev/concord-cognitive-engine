@@ -32,8 +32,25 @@
 // contract as `plaza` below: a world with no authored pads (every world
 // other than concordia-hub today) gets an honest empty array, never
 // fabricated geometry.
+//
+// Additive (F25 — district streaming policy): each entry of the `districts`
+// array also gains `buildingCount` (real count of this world's ACTUAL
+// `world_buildings` rows whose (x,z) falls inside the district's real
+// boundary polygon, via `pointInPolygon` — the same geometric test
+// `districtAt` uses) and `areaM2` (the district's real shoelace-formula
+// polygon area, `polygonArea`). This is what lets a client (Godot's
+// `world/district_streaming_policy.gd`) tune chunk-streaming density
+// per-district from REAL authored data instead of a uniform constant — a
+// dense district (many buildings packed into its footprint) gets a wider
+// load radius than a sparse one. `densityPerM2` is deliberately NOT
+// pre-computed here: `round()` below truncates to 3 decimals, which would
+// silently zero out a ratio this small (~0.0002-0.0006/m²) — shipping the
+// two whole, precise inputs is more honest than a lossily-rounded ratio.
+// A district row is mutated in place (each call to `listDistricts` returns
+// freshly-parsed objects, never shared/cached state, so this never leaks
+// across requests).
 
-import { listDistricts } from "./districts.js";
+import { listDistricts, pointInPolygon, polygonArea } from "./districts.js";
 import { buildingPurposeForType, landingPadsForWorld } from "./building-purpose.js";
 
 export const SCENE_FORMAT = "concord-scene/v1";
@@ -103,6 +120,28 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
     districts = listDistricts(db, worldId);
   } catch {
     districts = [];
+  }
+
+  // F25 — real per-district building density (see header comment above).
+  // Never fails the scene export: a computation error just leaves every
+  // district's buildingCount/areaM2 at the honest default (0), same
+  // degrade-gracefully posture as `districts`/`plaza`/`landingPads`.
+  try {
+    for (const d of districts) {
+      d.areaM2 = Math.round(polygonArea(d.boundary));
+      d.buildingCount = 0;
+    }
+    for (const r of visible) {
+      const x = Number(r.x) || 0, z = Number(r.z) || 0;
+      for (const d of districts) {
+        if (pointInPolygon(x, z, d.boundary)) { d.buildingCount++; break; }
+      }
+    }
+  } catch {
+    for (const d of districts) {
+      if (typeof d.areaM2 !== "number") d.areaM2 = 0;
+      if (typeof d.buildingCount !== "number") d.buildingCount = 0;
+    }
   }
 
   // Additive (master-spec A1 — Central Plaza system): identify the recorded

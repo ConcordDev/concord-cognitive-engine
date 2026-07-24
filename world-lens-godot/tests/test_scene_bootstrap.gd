@@ -18,6 +18,8 @@ static func run() -> TestUtils:
 	_test_empty_or_missing_field_yields_empty_array(t)
 	_test_parses_well_shaped_districts_verbatim(t)
 	_test_drops_malformed_districts_without_crashing(t)
+	_test_parses_rooftop_buildings_from_nodes(t)
+	_test_rooftop_parsing_drops_non_rooftop_and_malformed_nodes(t)
 	return t
 
 
@@ -91,3 +93,64 @@ static func _test_drops_malformed_districts_without_crashing(t: TestUtils) -> vo
 		parsed.size(), 1,
 		"only the one well-shaped entry survives — malformed entries are dropped, never fabricated")
 	t.check_eq(parsed[0]["id"], "well-shaped", "the surviving entry is the genuinely well-shaped one")
+
+
+## F26 — real node shape from server/lib/scene-export.js (`extras.levels`
+## naming a "rooftop" entry, exactly like "station-observatory" in
+## content/world/concordia-hub/city-layout.json), reduced to the flat
+## descriptor `rooftop_access_controller.gd` consumes.
+static func _test_parses_rooftop_buildings_from_nodes(t: TestUtils) -> void:
+	var nodes := [
+		{
+			"id": "station-observatory", "name": "The Observatory",
+			"transform": {"translation": [-192.0, 0.0, 4.0], "rotationY": 0.0, "scale": [16.0, 12.0, 16.0]},
+			"extras": {
+				"lens": "astronomy",
+				"levels": {"ground": "main floor", "mid": "gallery", "rooftop": "rooftop deck"},
+			},
+		},
+	]
+	var parsed := SceneBootstrap.parse_rooftop_buildings(nodes)
+	t.check_eq(parsed.size(), 1, "one rooftop-tagged node parses to one rooftop descriptor")
+	t.check_eq(parsed[0]["id"], "station-observatory", "id is passed through")
+	t.check_eq(parsed[0]["x"], -192.0, "x comes from the real transform.translation")
+	t.check_eq(parsed[0]["z"], 4.0, "z comes from the real transform.translation")
+	t.check_eq(parsed[0]["half_w"], 8.0, "half_w is HALF of the real transform.scale.x (16/2)")
+	t.check_eq(parsed[0]["half_d"], 8.0, "half_d is HALF of the real transform.scale.z (16/2)")
+	t.check_eq(
+		parsed[0]["roof_y"], 12.0,
+		"roof_y is translation.y + scale.y (0 + 12) — the real roofline")
+	t.check_eq(
+		parsed[0]["purpose"], "rooftop deck",
+		"purpose is the real authored levels.rooftop string")
+
+
+static func _test_rooftop_parsing_drops_non_rooftop_and_malformed_nodes(t: TestUtils) -> void:
+	var nodes := [
+		{
+			"id": "no-rooftop-level",
+			"transform": {"translation": [0.0, 0.0, 0.0], "scale": [10.0, 8.0, 10.0]},
+			"extras": {"levels": {"ground": "main floor"}},
+		},
+		{
+			"id": "no-extras",
+			"transform": {"translation": [0.0, 0.0, 0.0], "scale": [10.0, 8.0, 10.0]},
+		},
+		{
+			"id": "no-transform",
+			"extras": {"levels": {"rooftop": "roof"}},
+		},
+		"not-even-a-dict",
+		{
+			"id": "well-shaped-rooftop",
+			"transform": {"translation": [1.0, 2.0, 3.0], "scale": [4.0, 5.0, 6.0]},
+			"extras": {"levels": {"rooftop": "a real roof"}},
+		},
+	]
+	var parsed := SceneBootstrap.parse_rooftop_buildings(nodes)
+	t.check_eq(
+		parsed.size(), 1,
+		"only the one genuinely rooftop-tagged, well-shaped node survives")
+	t.check_eq(
+		parsed[0]["id"], "well-shaped-rooftop",
+		"the surviving entry is the genuinely well-shaped one")

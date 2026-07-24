@@ -47,6 +47,28 @@ function isOnSegment(x, z, a, b, eps = EPS) {
  * @param {Array<{x:number,z:number}>} polygon
  * @returns {boolean}
  */
+/**
+ * Shoelace-formula polygon area (always non-negative — orientation-agnostic).
+ * Pure. Used for real per-district building-density computation (F25 —
+ * district streaming policy); a malformed polygon (<3 vertices, or a vertex
+ * missing x/z) honestly returns 0 rather than a guessed area.
+ * @param {Array<{x:number,z:number}>} polygon
+ * @returns {number}
+ */
+export function polygonArea(polygon) {
+  if (!Array.isArray(polygon) || polygon.length < 3) return 0;
+  let sum = 0;
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i];
+    const b = polygon[(i + 1) % polygon.length];
+    if (!a || !b || typeof a.x !== "number" || typeof a.z !== "number" || typeof b.x !== "number" || typeof b.z !== "number") {
+      return 0;
+    }
+    sum += a.x * b.z - b.x * a.z;
+  }
+  return Math.abs(sum) / 2;
+}
+
 export function pointInPolygon(x, z, polygon) {
   if (!Array.isArray(polygon) || polygon.length < 3) return false;
 
@@ -251,4 +273,4 @@ export function districtAt(db, worldId, x, z) {
   return null;
 }
 
-export default { pointInPolygon, seedDefaultDistricts, listDistricts, getDistrict, districtAt };
+export default { pointInPolygon, polygonArea, seedDefaultDistricts, listDistricts, getDistrict, districtAt };

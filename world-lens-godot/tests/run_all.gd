@@ -36,6 +36,9 @@ const TestConKayPresenceState := preload("res://tests/test_conkay_presence_state
 const TestConKayPointing := preload("res://tests/test_conkay_pointing.gd")
 const TestSessionManager := preload("res://tests/test_session_manager.gd")
 const TestCameraRig := preload("res://tests/test_camera_rig.gd")
+const TestDistrictStreamingPolicy := preload("res://tests/test_district_streaming_policy.gd")
+const TestRooftopAccessController := preload("res://tests/test_rooftop_access_controller.gd")
+const TestWayfindingMarkers := preload("res://tests/test_wayfinding_markers.gd")
 
 
 func _init() -> void:
@@ -63,6 +66,9 @@ func _init() -> void:
 		"ConKayPointing": TestConKayPointing.run(),
 		"SessionManager": TestSessionManager.run(),
 		"CameraRig": TestCameraRig.run(),
+		"DistrictStreamingPolicy": TestDistrictStreamingPolicy.run(),
+		"RooftopAccessController": TestRooftopAccessController.run(),
+		"WayfindingMarkers": TestWayfindingMarkers.run(),
 	}
 
 	var all_ok := true

@@ -36,17 +36,37 @@ extends Node3D
 ## air_legibility.gd's own header for exactly where and why the actual
 ## material/shader application isn't built by this unit — no engine here to
 ## verify it against).
+##
+## Additive (F26 — rooftop as first-class space): each `scene:data.nodes`
+## entry already carries `extras.levels` when the building resolves in the
+## authored city-layout (server/lib/building-purpose.js, threaded through
+## server/lib/scene-export.js) — a Dictionary like
+## `{"ground": "...", "mid": "...", "rooftop": "The Observatory — rooftop
+## deck."}`. That data had NO client consumer before this unit — a rooftop
+## was a text description with nothing that could ever tell "is the player
+## standing on it." `parse_rooftop_buildings` reduces the subset of nodes
+## whose `levels` names a `rooftop` entry into a flat descriptor carrying
+## the REAL geometry a reachability check needs: horizontal footprint
+## half-extents (from the node's own `transform.scale` — the exact
+## footprint this file already spawns a box mesh from) and roofline height
+## (`transform.translation.y + transform.scale.y` — the building's actual
+## authored height, never a guessed constant). The occupancy/reachability
+## DECISION on top of this data lives in the consumer,
+## `world/rooftop_access_controller.gd` (same split as landing pads:
+## parsing lives here, gating logic lives in the controller).
 
 signal scene_ready(count: int)
 signal scene_failed(reason: String)
 signal landing_pads_ready(pads: Array)
 signal districts_ready(districts: Array)
+signal rooftop_buildings_ready(buildings: Array)
 
 const SCENE_FORMAT := "concord-scene/v1"
 
 var _spawned: Array[Node3D] = []
 var _landing_pads: Array = []
 var _districts: Array = []
+var _rooftop_buildings: Array = []
 
 
 ## Apply a scene:data payload. Clears any prior spawn.
@@ -72,6 +92,9 @@ func apply_scene(payload: Dictionary) -> void:
 	_districts = SceneBootstrap.parse_districts(payload.get("districts", []))
 	districts_ready.emit(_districts)
 
+	_rooftop_buildings = SceneBootstrap.parse_rooftop_buildings(nodes)
+	rooftop_buildings_ready.emit(_rooftop_buildings)
+
 	scene_ready.emit(_spawned.size())
 
 
@@ -88,6 +111,14 @@ func get_landing_pads() -> Array:
 ## internal state.
 func get_districts() -> Array:
 	return _districts.duplicate(true)
+
+
+## Real rooftop-accessible building descriptors from the most recent
+## `apply_scene` call — see `world/rooftop_access_controller.gd` for the
+## consumer. Returns a duplicate so callers can't mutate this node's
+## internal state.
+func get_rooftop_buildings() -> Array:
+	return _rooftop_buildings.duplicate(true)
 
 
 func _spawn_node(node: Dictionary) -> void:
@@ -171,4 +202,50 @@ static func parse_districts(raw: Array) -> Array:
 		if typeof(palette) != TYPE_DICTIONARY or not palette.has("primary"):
 			continue
 		out.append(entry.duplicate(true))
+	return out
+
+
+## F26 — reduces the full `nodes` array (concord-scene/v1's per-building
+## transform + extras) down to the rooftop-accessible subset, each as a
+## flat descriptor: real horizontal footprint half-extents (from the
+## node's own `transform.scale` [w,h,d] — the same footprint this file
+## already spawns a box mesh from) + real roofline height
+## (`translation.y + scale.y` — the building's actual authored height). A
+## node only qualifies when its authored `extras.levels` (server/lib/
+## building-purpose.js's per-building `levels` field, threaded through
+## server/lib/scene-export.js) names a "rooftop" entry — currently only
+## "station-observatory" in content/world/concordia-hub/city-layout.json,
+## but any future building that authors a `levels.rooftop` string is
+## picked up automatically, no code change needed. Never throws on
+## malformed input; a node missing any required field is silently dropped,
+## never fabricated.
+static func parse_rooftop_buildings(nodes: Array) -> Array:
+	var out: Array = []
+	for node in nodes:
+		if typeof(node) != TYPE_DICTIONARY:
+			continue
+		var extras = node.get("extras", null)
+		if typeof(extras) != TYPE_DICTIONARY:
+			continue
+		var levels = extras.get("levels", null)
+		if typeof(levels) != TYPE_DICTIONARY or not levels.has("rooftop"):
+			continue
+		var t = node.get("transform", null)
+		if typeof(t) != TYPE_DICTIONARY:
+			continue
+		var tr: Array = t.get("translation", [])
+		var sc: Array = t.get("scale", [])
+		if tr.size() < 3 or sc.size() < 3:
+			continue
+		out.append({
+			"id": String(node.get("id", "")),
+			"name": String(node.get("name", "")),
+			"lens": extras.get("lens", null),
+			"purpose": String(levels.get("rooftop", "")),
+			"x": float(tr[0]),
+			"z": float(tr[2]),
+			"half_w": float(sc[0]) / 2.0,
+			"half_d": float(sc[2]) / 2.0,
+			"roof_y": float(tr[1]) + float(sc[1]),
+		})
 	return out
