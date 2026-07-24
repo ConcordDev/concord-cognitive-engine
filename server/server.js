@@ -34507,12 +34507,16 @@ app.get("/api/plugins/gallery", (req, res) => {
   const trustedOnly = req.query.trustedOnly === "true";
   const search = req.query.q ? String(req.query.q) : null;
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 25));
-  res.json(_pluginGallery.listGallery({ trustedOnly, search, limit }));
+  // STATE is passed so each entry carries an honest `loaded` flag (is this
+  // plugin's code actually running right now) alongside the unrelated
+  // self-attested `trusted` flag — see plugin-gallery.js's withLoadedFlag.
+  res.json(_pluginGallery.listGallery({ trustedOnly, search, limit, STATE }));
 });
 app.get("/api/plugins/gallery/:id", (req, res) => {
-  const r = _pluginGallery.getGalleryEntry(req.params.id);
+  const r = _pluginGallery.getGalleryEntry(req.params.id, STATE);
   if (!r.ok) return res.status(404).json(r);
-  // Strip source from public response.
+  // Strip source from public response (getGalleryEntry already does this,
+  // this stays as belt-and-suspenders against a future change to it).
   res.json({ ok: true, plugin: { ...r.plugin, source: undefined } });
 });
 app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1mb" }), (req, res) => {
@@ -34522,10 +34526,27 @@ app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1
     pluginId, authorId, name, description, version, source, signature, db,
   }));
 });
-app.post("/api/plugins/gallery/:id/install", requireAuth(), (req, res) => {
+// Installing from the gallery genuinely LOADS the plugin — same hardened
+// path (static pattern gate + PluginSandbox worker+vm isolation + full
+// 4-gate validator) as the boot-time disk scan (`loadPluginsFromDisk`
+// above, "===== PLUGIN SYSTEM ====="). A validation/sandbox failure is
+// reported honestly (4xx, `ok:false`) — it is never recorded as a fake
+// "installed" success. See plugin-gallery.js#installFromGallery.
+app.post("/api/plugins/gallery/:id/install", requireAuth(), asyncHandler(async (req, res) => {
   const userId = req.user?.id;
-  res.json(_pluginGallery.recordInstall(req.params.id, userId));
-});
+  const result = await _pluginGallery.installFromGallery(STATE, req.params.id, userId, {
+    register,
+    helpers: { uid, nowISO, log, upsertDTU, realtimeEmit, saveStateDebounced },
+    runMacro,
+  });
+  if (!result.ok) {
+    const status = result.error === "plugin_not_found" ? 404
+      : result.error === "user_required" ? 401
+      : 400; // install_failed / no_source_available — a genuine load/validation rejection
+    return res.status(status).json(result);
+  }
+  res.json(result);
+}));
 app.post("/api/plugins/gallery/:id/rate", requireAuth(), (req, res) => {
   const userId = req.user?.id;
   const { vote } = req.body || {};
