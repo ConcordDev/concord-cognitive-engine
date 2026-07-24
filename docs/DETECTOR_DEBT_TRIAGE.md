@@ -159,10 +159,53 @@ telemetry, which is not a defect signal and varies run-to-run.
   name. Mechanical, and a real accessibility win rather than lint appeasement.
   Heaviest: `custom/DataUtilities.tsx` (6), `privacy/DpoStudioPanel.tsx` (5),
   `bio/BioResearchPanel.tsx` (3), `meta/DevPortal.tsx` (3).
-- **`frontend-unsafe-chain` (27).** Nested access 2+ levels deep with no guard.
-  The detector's own message names the precedent: the 2026-07-05 `/api/lens/run`
-  envelope audit, 48+ real instances fixed in `db1a0a75`/`61122eef`. Same fix
-  pattern applies. Heaviest: `mentorship/MentorshipSessionsPanel.tsx` (4).
+- **`frontend-unsafe-chain` (27).** ~~Nested access 2+ levels deep with no
+  guard.~~ **Worked 2026-07-24 — the "one root cause" framing was wrong, and
+  the outcome is 27 → 26, not 27 → 0.** Only ONE of the 27 was a real bug;
+  the other 26 are a single documented detector blind spot. See the
+  dedicated subsection below.
+
+### WORKED — `frontend-unsafe-chain`: 1 real bug, 26 documented false positives
+
+Result: **27 → 26.** The cluster did not go to zero, and that is the correct
+end state, not incomplete work.
+
+**The one real bug** (`components/art/ConceptArtBoard.tsx:65`): the error path
+read `r.data?.result?.ok === false` and `r.data.result.error`. But `lensRun`
+(`lib/api/client.ts`) already unwraps the `/api/lens/run` `{ok, result}`
+envelope — tolerating single OR double wrap — before it resolves, so a macro's
+success/failure lands at `r.data.ok`/`r.data.error`, never nested under
+`r.data.result`. `art.concept-art-list` returns `{ok, result:{conceptArt,count}}`,
+which after the double-unwrap leaves `r.data.result` as a flat
+`{conceptArt, count}` with no `.ok`/`.error` on it at all. So the check was
+structurally always-undefined and the error branch **could never fire** — a
+real "db unavailable" or query failure silently rendered an empty board while
+the component's own error banner sat unreachable. Fixed to read the real
+contract; the existing banner is now actually reachable.
+
+**The 26 false positives** are one shape, verified individually rather than
+pattern-matched: `if (x?.a?.b) { …x.a.b… }` — an optional-chained guard
+followed by a plain-dot read of the exact same, now-proven-truthy path. That
+is crash-safe by JS short-circuit semantics, and it is literally the idiom the
+detector's own docstring holds up as correct (`if (payload?.items)
+payload.items.map(…)`). It gets flagged anyway because the guard text contains
+`?.` where the detector's substring match expects plain dots. Two variants:
+`world/ZoneBadge.tsx:54` guards with a ternary rather than an `if`, and
+`world-creator/DraftEditor.tsx:193` is guarded by an earlier `if (!r.data?.ok
+|| !r.data.result) return;` early-return (its reported chain is also a regex
+mismatch — the real expression is `r.data.result.worldPayload`).
+
+Spot-checked independently by the conductor at
+`mentorship/MentorshipSessionsPanel.tsx:103`, `world/ZoneBadge.tsx:54`, and
+`world-lens/SeasonalEffects.tsx:108` — all three genuinely guarded.
+
+**Disposition: baseline.** There is no annotation mechanism for this detector,
+and the only code "fix" would be to rewrite 26 correct guards into a shape the
+regex happens to like — which is worse code written to satisfy a checker, the
+exact inversion this project forbids. Teaching the detector to recognise an
+optional-chained guard would be a real bidirectional correctness fix, but
+`server/lib/detectors/*` is guard-protected, so that needs explicit
+authorization and its own pinning test.
 
 ### (a)/(c) split — `frontend-fake-data` (35), needs per-finding judgment
 

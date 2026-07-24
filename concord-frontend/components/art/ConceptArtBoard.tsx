@@ -62,8 +62,19 @@ export function ConceptArtBoard() {
     setRefreshing(true);
     try {
       const r = await lensRun('art', 'concept-art-list', {});
-      if (r.data?.result?.ok === false) {
-        setError(r.data.result.error || 'failed to load concept board');
+      // lensRun() already unwraps the POST /api/lens/run { ok, result }
+      // envelope (single or double wrap — see lib/api/client.ts) before
+      // this call resolves, so the macro's own success/failure lands at
+      // r.data.ok / r.data.error, never nested under r.data.result. The
+      // art.concept-art-list macro itself returns { ok, result: { conceptArt,
+      // count } } on success — after lensRun's double-unwrap that leaves
+      // r.data.result as the flat { conceptArt, count } payload with no
+      // .ok/.error fields on it at all, so the old `r.data.result.ok`/
+      // `r.data.result.error` reads were structurally always undefined:
+      // a real "db unavailable"/query failure never surfaced, it silently
+      // rendered an empty board instead.
+      if (r.data?.ok === false) {
+        setError(r.data.error || 'failed to load concept board');
         setEntries([]);
       } else {
         setError(null);
