@@ -89,7 +89,16 @@ export default function MarketingLensPage() {
       case 'seo': return <MarketingSEOPanel />;
       case 'crm': return <MarketingContactsPanel />;
       case 'calendar': return <MarketingCalendarPanel />;
-      default: return null;
+      default:
+        // Unreachable given StudioTab's closed union + the switch above
+        // covers every member, but if a future tab is ever added without
+        // a matching case, this keeps the user looking at an honest
+        // message instead of a blank screen.
+        return (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-6 text-center text-sm text-zinc-400">
+            No panel is wired for this view yet.
+          </div>
+        );
     }
   };
 

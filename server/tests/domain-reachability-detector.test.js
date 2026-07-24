@@ -142,10 +142,17 @@ describe("domain-reachability detector — synthetic fixtures", () => {
   });
 
   it("REGRESSION: a doc-comment showing 'export default function registerXMacros(register) {' as a usage example for a NAMED-export factory must not be misread as a real, unreachable default export", async () => {
-    // Mirrors the real shape of server/domains/_dtu-recent-mine.js and
-    // server/domains/_recent-mine-helper.js: no real default export, a named
-    // factory export, and a `//` comment block showing a caller how to wrap
-    // it in their own `export default function registerXMacros(register) {`.
+    // Mirrors the real shape of server/domains/_dtu-recent-mine.js (still
+    // live, consumed by _recent-mine-bulk.js): no real default export, a
+    // named factory export, and a `//` comment block showing a caller how
+    // to wrap it in their own `export default function registerXMacros(register) {`.
+    // (The sibling non-DTU generic factory this comment used to cite,
+    // server/domains/_recent-mine-helper.js, was itself flagged as
+    // genuinely dead — zero real domain consumers, only its own unit test —
+    // by the domain-reachability detector's `domain_helper_unreachable`
+    // check, and was removed rather than force-adopted into a domain whose
+    // response shape didn't match. This synthetic fixture below preserves
+    // the regression coverage independent of that file's existence.)
     const helperFile = [
       "// Usage in a domain file:",
       "//",

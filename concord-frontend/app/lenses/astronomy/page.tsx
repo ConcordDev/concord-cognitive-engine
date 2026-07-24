@@ -119,7 +119,15 @@ export default function AstronomyLensPage() {
           </PipingProvider>
         );
       default:
-        return null;
+        // Unreachable given GroupId's closed union + the switch above
+        // covers every member, but if a future group is ever added to
+        // GROUPS without a matching case, this keeps the user looking at
+        // an honest message instead of a blank screen.
+        return (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-6 text-center text-sm text-zinc-400">
+            No panel is wired for this view yet.
+          </div>
+        );
     }
   };
 

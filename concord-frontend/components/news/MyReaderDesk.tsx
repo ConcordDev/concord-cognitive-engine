@@ -80,6 +80,14 @@ export function MyReaderDesk() {
           ? <NewsReaderSection key={`reader-${mutationTick}`} />
           : <NewsParitySuite key={`tools-${mutationTick}`} />}
 
+        {/* ArticleDetailModal takes no isOpen/onClose props here because it
+            owns its open/close state via ArticleDetailContext
+            (openArticleId/closeArticle) and internally renders the shared
+            <Modal isOpen={...} onClose={closeArticle}> primitive, which
+            wires Escape -> onClose (components/common/Modal.tsx) — not
+            reachable through this call site's own props or file-level
+            Escape handler, which is what this detector's static scan checks. */}
+        {/* @modal-escape-ok: see explanation above */}
         <ArticleDetailModal onMutated={onMutated} />
       </div>
     </ArticleDetailProvider>

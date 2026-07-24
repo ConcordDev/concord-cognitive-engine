@@ -74,6 +74,9 @@ function makeBuilding(overrides: Partial<BuildingDTU> = {}): BuildingDTU {
 }
 
 async function waitForBuildEvent(): Promise<void> {
+  // @resource-leak-ok: { once: true } self-removes this listener the first
+  // time the event fires — there is no matching removeEventListener call
+  // because none is needed, not because cleanup was forgotten.
   await new Promise<void>((resolve) => {
     window.addEventListener('concordia:buildings-ready', () => resolve(), { once: true });
   });

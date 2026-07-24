@@ -171,6 +171,23 @@ export function readAvatarAppearanceHint(avatarId: string): AvatarAppearanceHint
 }
 
 /**
+ * Phase BA5 — derives the wear-uniform-ref shape from `useAvatarScars`'s
+ * live `{ scars, drift }` snapshot: `drift` (0..1) becomes the `u_wear`
+ * shader uniform (0 = pristine, 1 = grimy) and `scars` passes through for
+ * the per-frame render block to map onto bone-region DecalGeometry.
+ * Extracted as a pure function (real drift/scars in, real ref shape out)
+ * so it's directly testable without mounting the Three.js scene — the
+ * `useEffect` below is the only caller, and just assigns its result to
+ * `wearUniformRef.current`.
+ */
+export function buildAvatarWearState(
+  drift: number,
+  scars: AvatarScar[],
+): { u_wear: number; scars: AvatarScar[] } {
+  return { u_wear: drift, scars };
+}
+
+/**
  * Attempts the baked hero-GLB path for a hero NPC (Phase S): computes the
  * SAME rich appearance (armor included) a procedural-fallback build of
  * this NPC would have gotten, then threads its `.armor` through to
@@ -227,7 +244,7 @@ export async function tryLoadHeroMesh(
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
 import { useAvatarAnimator } from '@/hooks/useAvatarAnimator';
-import { useAvatarScars } from '@/hooks/useAvatarScars';
+import { useAvatarScars, type AvatarScar } from '@/hooks/useAvatarScars';
 import { serializableToGaitPose } from '@/lib/concordia/animator-protocol';
 // Wave 4 finding #8 — the live position broadcast that 9+ world-lens
 // satellite components read via window.__concordiaPlayerPos /
@@ -505,7 +522,7 @@ export default function AvatarSystem3D({
   const { scars: avatarScars, drift: avatarDrift } = useAvatarScars(playerAvatar?.id);
   const wearUniformRef = useRef<{ u_wear: number; scars: typeof avatarScars }>({ u_wear: 0, scars: [] });
   useEffect(() => {
-    wearUniformRef.current = { u_wear: avatarDrift, scars: avatarScars };
+    wearUniformRef.current = buildAvatarWearState(avatarDrift, avatarScars);
   }, [avatarDrift, avatarScars]);
   // Phase B3 — flight-physics shadow state. Initialised when player
   // enters glide; ticked per frame; emitted as `concordia:flight-state`
