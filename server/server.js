@@ -79693,6 +79693,25 @@ registerAgentProjectMacros(register);
 import registerWorldOverviewMacros from "./domains/world-overview.js";
 registerWorldOverviewMacros(register);
 
+// V1.2 Wave E grounding audit — cross-domain reproducible notebooks. Several
+// real per-domain "lab notebook" logs already exist and stay siloed
+// (server/domains/chem.js notebook-add/list/delete, server/domains/bio.js
+// notebook-create/list/…, server/domains/science.js notebook-add/…,
+// server/domains/lab.js notebook-create/… durable-SQL variant) — none of
+// them reimplemented here. This domain composes ANY register()-based macro
+// call from ANY domain into a durable, ordered "cell" record (real
+// domain/action/input/output, executed via `ctx.macro.run` — the same
+// internal macro-invocation mechanism the rest of this codebase already
+// uses), with genuine replay-based reproducibility (re-invokes the SAME
+// call, honestly reports matched/differed — never a fabricated "reproduced"
+// claim) and real DTU lineage (an output_dtu_id captured only when the
+// underlying macro genuinely produced one; an optional, caller-declared
+// citation registration through the same royalty-cascade `registerCitation`
+// the rest of the platform uses). See server/lib/notebook.js and
+// server/migrations/384_cross_domain_notebooks.js.
+import registerNotebookMacros from "./domains/notebook.js";
+registerNotebookMacros(register);
+
 // ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
 register("federation", "inbox_receive", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
