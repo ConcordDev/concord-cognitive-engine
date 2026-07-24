@@ -1,0 +1,31 @@
+[package]
+name = "concord-shell"
+version = "0.1.0"
+description = "Desktop shell that launches and supervises the Concord Next.js frontend and the Godot 4 world-lens client as one packaged app."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# See ../README.md's "What was actually verified" section. This crate
+# depends on `tauri`, which pulls in `wry`/`webkit2gtk` on Linux -- those
+# require system libraries (libwebkit2gtk-4.1-dev, libgtk-3-dev, libsoup,
+# javascriptcoregtk) that are NOT installed in the container this was
+# authored in. `cargo check -p concord-shell` is expected to fail at link
+# time (or earlier, at a sys-crate build script probing pkg-config) in that
+# environment. It has never successfully compiled here. Build it for real
+# on a machine with the Tauri prerequisites installed:
+# https://v2.tauri.app/start/prerequisites/
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+concord-shell-supervisor = { path = "../crates/supervisor" }
+concord-shell-core = { path = "../crates/shell-core" }
+
+[[bin]]
+name = "concord-shell"
+path = "src/main.rs"

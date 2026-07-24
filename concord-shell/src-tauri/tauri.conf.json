@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Concord Shell",
+  "version": "0.1.0",
+  "identifier": "org.concord.shell",
+  "build": {
+    "frontendDist": "http://127.0.0.1:3000",
+    "devUrl": "http://127.0.0.1:3000"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Concord",
+        "url": "http://127.0.0.1:3000",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 640
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": [],
+    "icon": []
+  }
+}

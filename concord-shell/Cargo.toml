@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["src-tauri", "crates/supervisor", "crates/health-probe", "crates/shell-core"]
+
+# Workspace-wide lints. Kept minimal and non-controversial.
+[workspace.package]
+edition = "2021"
+license = "UNLICENSED"
+publish = false

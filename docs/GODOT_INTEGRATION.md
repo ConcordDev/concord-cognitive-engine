@@ -265,4 +265,51 @@ cd server && node --test tests/godot-gateway-integration.test.js
 
 # GDScript parse + lint (requires: pip install gdtoolkit):
 cd world-lens-godot && for f in $(find . -name '*.gd'); do gdparse "$f"; done && gdlint .
+
+# Desktop shell process-lifecycle tests (real, no display/GUI/Godot binary
+# required — see the "Desktop packaging" section below):
+cd concord-shell && cargo test -p concord-shell-supervisor -p concord-shell-health-probe -p concord-shell-core
 ```
+
+## Desktop packaging (`concord-shell/`) — R8/CL4, Program B Phase 6
+
+**Status: scaffolded and partially verified.** `concord-shell/` is a Tauri
+project that launches and supervises BOTH `concord-frontend` (via its
+existing `npm run dev`/`npm start` scripts — no reimplemented web server)
+and a user-supplied Godot binary (pointed at `world-lens-godot/project.godot`)
+as one packaged desktop app.
+
+Honesty split (full ledger in `concord-shell/README.md`):
+
+- **Genuinely compiled and tested in this repo's sandboxed authoring
+  environment** (no display, no GTK/WebKit libs, no Godot binary): the
+  bounded-restart/backoff process-lifecycle state machine
+  (`concord-shell-supervisor`, 13 tests), a dependency-free TCP/HTTP health
+  prober (`concord-shell-health-probe`, 8 tests against real local sockets),
+  and — notably — the REAL process-orchestration glue
+  (`concord-shell-core`, 6 tests) that actually spawns/kills/`try_wait`s
+  child processes and reacts to crashes, run against real throwaway `sh`
+  processes standing in for the frontend/Godot binaries. That crate was
+  deliberately kept free of any `tauri` dependency specifically so it could
+  be proven for real here, rather than only reviewed by eye.
+- **Scaffolded, NOT built or run here**: the actual Tauri binary
+  (`concord-shell/src-tauri`, package `concord-shell`) — `cargo check`
+  reproducibly fails in this container at `gdk-sys`'s build script
+  (`pkg-config` can't find `gdk-3.0`, i.e. no GTK3 dev libraries installed),
+  which is expected and requires the Tauri prerequisites
+  (https://v2.tauri.app/start/prerequisites/) on a real machine. The
+  hand-authored `tauri.conf.json` is unvalidated by the actual Tauri CLI
+  (not installed here; `cargo install tauri-cli` was attempted and did not
+  finish in the available time budget) — treat its exact schema as a
+  best-effort draft until `cargo tauri dev` is run for real.
+- **Cross-runtime reconnect composition**: `world-lens-godot/net/gateway_client.gd`'s
+  existing connection-level WebSocket backoff (built in an earlier unit,
+  unchanged here) and the shell's OS-process-level supervisor answer
+  different questions and don't duplicate each other — see
+  `concord-shell/README.md`'s "Cross-runtime error recovery (G30)" section
+  for the exact composition argument.
+
+All real-machine verification (does a window open, does the Godot binary
+actually launch and render, does killing it visibly trigger a shell-level
+restart) is queued in `world-lens-godot/VISUAL_QA.md`'s new "Desktop shell"
+section — nothing about the actual running app is asserted here.
