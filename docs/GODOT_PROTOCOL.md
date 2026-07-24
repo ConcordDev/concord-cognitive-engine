@@ -410,6 +410,63 @@ live-preview subscription wiring a design-mode Godot client to the same
 realtime events a running world uses (D19), and DTU-backed scene save/load
 + a design↔play toggle (D20/D21).
 
+## 12. FEA/engineering visualization (R5/E23) — plain REST, not `design_command`
+
+This is a new capability, not a vocabulary item from the master-spec §8 list
+above — flagged here because it deliberately does NOT extend `design_command`,
+and that choice is worth recording so a future unit doesn't "fix" it by
+routing it through the gateway instead.
+
+**What's real:** `server/domains/engineering.js` registers a new
+`engineering.feaScene` macro (reachable the ordinary way, `POST
+/api/lens/run` with `{domain:"engineering", name:"feaScene", input:{model}}`)
+that runs the SAME real beam-frame solver `engineering.runFEA` already uses
+(`server/lib/simulation/fea-solver.js#runFEA`) and assembles a single,
+self-contained `concord-fea-scene/v1` JSON: the real input geometry (node
+positions, member connectivity) merged by member id with the solver's real
+per-member stress/utilization, plus boundary conditions (supports/loads) and
+reactions/displacements/summary. `engineering.runFEA`'s own response
+(unchanged) omits the input geometry — a caller that already holds the model
+client-side (the web engineering lens page) merges it back in itself; a
+stateless native client has no such held model, so `feaScene` exists to hand
+back everything in one response. Contract-tested against a hand-derived
+sigma=Mc/I ground truth at `server/tests/engineering-fea-scene.test.js`.
+
+**Godot-side:** `world-lens-godot/engineering/fea_scene_builder.gd`
+(`FeaSceneBuilder`, extends `Node3D`) fetches via a plain `HTTPRequest` POST
+— the exact pattern `world/dtu_prop_renderer.gd` already established for the
+`dtu_props` macro domain — and renders nodes as joint spheres, members as
+beams, colored by a real green→yellow→red gradient driven by each member's
+actual `utilization` ratio (never a fixed/decorative gradient). Pure
+transform/color math is unit-tested at `tests/test_fea_scene_builder.gd`;
+see `world-lens-godot/VISUAL_QA.md`'s new entry for what's genuinely
+unverified without a real renderer (beam scale at real model dimensions, no
+camera auto-framing, whether the color ramp reads correctly under default
+lighting).
+
+**Why this bypasses `design_command` rather than extending it:** §11 above
+already went through this channel's actual server-side dispatch
+(`_onGodotClientMessage`'s `"design_command"` case →
+`_dispatchDesignCommand("game-design", action, params, ctx)`), and the
+domain there is a HARDCODED LITERAL — `"game-design"` — not a field the
+client supplies. `DESIGN_COMMAND_ACTIONS` is similarly scoped to that one
+domain's macros only. Reaching `engineering.feaScene` through this channel
+would mean changing `_dispatchDesignCommand`'s call site to accept a
+`domain` argument off the incoming frame (and re-deciding whether that
+should be a generic multi-domain allow-list or stay curated) — a real change
+to a shared, actively-changing region of `server.js`, out of proportion for
+a single-macro visualization feature. `request_scene()` on
+`FeaSceneBuilder` is this feature's own minimal trigger instead: a caller
+(a future engineering-lens-in-Godot surface, a test harness, or any other
+Godot scene holding a real FEA model) calls it directly with `{nodes,
+members, loads, supports}` — the same "plain macro REST call, no gateway
+required" posture `dtu_prop_renderer.gd` already uses, needing neither the
+WebSocket gateway to be mounted nor `design_command`'s allow-list touched.
+If a future unit generalizes `design_command` to accept an explicit
+`domain` field (useful for reasons beyond this one macro), `feaScene` would
+become reachable through it "for free" — but that generalization is not
+built here.
+
 ---
 
 ## What this doc does NOT claim
@@ -443,6 +500,14 @@ realtime events a running world uses (D19), and DTU-backed scene save/load
   scoped follow-on (swap the direct `io.to()` call for the equivalent
   `emitToWorld`/`realtimeEmit` call at each named site), not a design
   question.
+- **This revision (R5/E23 — FEA/engineering visualization, §12 above):** adds
+  a new macro (`engineering.feaScene`) and a new Godot consumer
+  (`fea_scene_builder.gd`) that deliberately do NOT touch `design_command` —
+  `DESIGN_COMMAND_ACTIONS` is unchanged (still the same 4 curated
+  `game-design` actions) and `_dispatchDesignCommand` still hardcodes the
+  `"game-design"` domain. This revision does not claim any summary-table row
+  above changed status; it documents a separate, REST-only capability that
+  sits outside that vocabulary entirely.
 
 ## Reproduction / verification
 
@@ -477,4 +542,18 @@ cd world-lens-godot && for f in $(find . -name '*.gd'); do gdparse "$f"; done &&
 # The world:aerial-traffic heartbeat registration + shape contract:
 grep -n "aerial-traffic-cycle" server/server.js
 grep -n "world:aerial-traffic" server/lib/event-shapes.js
+
+# R5/E23 — FEA/engineering visualization: the new macro's contract test
+# (hand-derived sigma=Mc/I ground truth, same fixture family as
+# tests/e2e/design-simulate-fea-loop.test.js):
+cd server && node --test tests/engineering-fea-scene.test.js
+
+# R5/E23 — GDScript scene builder + its pure-logic test (parse/lint only —
+# see VISUAL_QA.md):
+cd world-lens-godot && gdparse engineering/fea_scene_builder.gd && gdlint engineering/fea_scene_builder.gd
+gdparse tests/test_fea_scene_builder.gd && gdlint tests/test_fea_scene_builder.gd
+
+# Confirm design_command's domain is still hardcoded (the reason feaScene
+# uses plain REST instead of extending this channel):
+grep -n '_dispatchDesignCommand("game-design"' server/server.js
 ```

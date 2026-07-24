@@ -189,6 +189,18 @@ const egId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36
 const egList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
 const egClean = (v, max = 120) => String(v == null ? '' : v).trim().slice(0, max);
 
+// Low/moderate/high/overstressed banding for a utilization ratio — same
+// thresholds (0.4 / 0.75 / 1.0) the runFEA action's own inline `contour`
+// computation uses below, factored out here (read-only, no behavior change
+// to runFEA) so the feaScene action (R5/E23 — Godot 3D FEA visualization)
+// can reuse the identical banding without duplicating or drifting from it.
+function utilizationBand(u) {
+  if (u > 1) return 'overstressed';
+  if (u > 0.75) return 'high';
+  if (u > 0.4) return 'moderate';
+  return 'low';
+}
+
 export default function registerEngineeringActions(registerLensAction) {
   // ─── toleranceAnalysis (existing — kept) ─────────────────────────────────
   registerLensAction('engineering', 'toleranceAnalysis', (ctx, artifact, params) => {
@@ -776,6 +788,85 @@ export default function registerEngineeringActions(registerLensAction) {
           utilization: fea.utilization,
           reactions: fea.reactions,
           contour,
+          summary: fea.summary,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── feaScene — self-contained 3D-visualization payload (R5/E23) ────────
+  // runFEA's own result (above) omits the input geometry — a caller that
+  // already holds the model (the web engineering lens page, which built the
+  // nodes/members client-side) merges them back in itself. A native/stateless
+  // 3D client (the Godot world-lens-godot FEA scene builder, or any other
+  // out-of-process renderer) has no such client-held model, so it needs one
+  // JSON that carries BOTH the real geometry (node positions, member
+  // connectivity) AND the real computed results (per-member stress/
+  // utilization, reactions, displacements) in a single response.
+  //
+  // This is purely an assembly step: the SAME runFEA() call, the SAME
+  // computed numbers — never reshaped, rounded, or approximated. Nodes/
+  // members/supports/loads are echoed back verbatim from the input (the
+  // real geometry the caller sent), merged by member id with the solver's
+  // own stresses/utilization arrays (which runFEA guarantees are in 1:1
+  // order with the input `members` array — see fea-solver.js's
+  // computeMemberForces/computeStresses/checkUtilization, each a plain
+  // `.map()` over `members`).
+  registerLensAction('engineering', 'feaScene', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+      if (nodes.length === 0 || members.length === 0) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+
+      const fea = runFEA({ nodes, members, loads, supports, onStage: ctx?.emitMacroStage });
+      if (!fea.ok) return { ok: false, error: fea.error || 'FEA solve failed' };
+
+      // Index the solver's per-member results by id (falling back to
+      // positional index — same 1:1 order guarantee runFEA's own contour
+      // block above relies on) so a member missing an id still merges.
+      const utilById = new Map((fea.utilization || []).map((u) => [String(u.id), u]));
+      const stressById = new Map((fea.stresses || []).map((s) => [String(s.id), s]));
+
+      const sceneNodes = nodes.map((n) => ({
+        id: String(n.id), x: n.x, y: n.y, z: n.z || 0,
+      }));
+
+      const sceneMembers = members.map((m, i) => {
+        const util = utilById.get(String(m.id)) || fea.utilization?.[i] || null;
+        const stress = stressById.get(String(m.id)) || fea.stresses?.[i] || null;
+        const utilization = util ? util.utilization : 0;
+        return {
+          id: String(m.id),
+          nodeI: String(m.nodeI),
+          nodeJ: String(m.nodeJ),
+          utilization,
+          band: utilizationBand(utilization),
+          pass: util ? !!util.pass : true,
+          combinedStress: stress ? stress.combinedStress : 0,
+          axialStress: stress ? stress.axialStress : 0,
+          bendingStress: stress ? stress.bendingStress : 0,
+          allowableStress: util ? util.allowableStress : null,
+        };
+      });
+
+      return {
+        ok: true,
+        result: {
+          format: 'concord-fea-scene/v1',
+          nodes: sceneNodes,
+          members: sceneMembers,
+          supports,
+          loads,
+          displacements: fea.displacements,
+          reactions: fea.reactions,
           summary: fea.summary,
         },
       };

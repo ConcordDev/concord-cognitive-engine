@@ -30,6 +30,7 @@ const TestLandAirTransitionController := preload(
 const TestSceneBootstrap := preload("res://tests/test_scene_bootstrap.gd")
 const TestAerialTrafficController := preload("res://tests/test_aerial_traffic_controller.gd")
 const TestAirLegibility := preload("res://tests/test_air_legibility.gd")
+const TestFeaSceneBuilder := preload("res://tests/test_fea_scene_builder.gd")
 
 
 func _init() -> void:
@@ -51,6 +52,7 @@ func _init() -> void:
 		"SceneBootstrap": TestSceneBootstrap.run(),
 		"AerialTrafficController": TestAerialTrafficController.run(),
 		"AirLegibility": TestAirLegibility.run(),
+		"FeaSceneBuilder": TestFeaSceneBuilder.run(),
 	}
 
 	var all_ok := true

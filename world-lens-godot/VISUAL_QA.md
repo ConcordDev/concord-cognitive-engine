@@ -517,5 +517,72 @@ additive `districts` parsing)
 
 ---
 
+### FEA/engineering visualization (R5/E23 — `engineering/fea_scene_builder.gd`
++ `server/domains/engineering.js`'s new `feaScene` macro)
+
+The banding/color MATH is pure and unit-tested (`tests/test_fea_scene_builder.gd`
+drives `utilization_to_color`/`beam_transform`/`node_positions` against
+hand-computed expectations — 0.0 → pure green, 0.5 → yellow, 1.0 → pure red,
+clamped above 1.0). The server-side macro itself is verified against a real
+hand-derived sigma=Mc/I result (`server/tests/engineering-fea-scene.test.js`,
+same cantilever fixture `server/tests/e2e/design-simulate-fea-loop.test.js`
+already established as this session's ground truth). Nothing about how any of
+it *looks* rendered has been seen:
+
+- [ ] Whether the green→yellow→red utilization ramp is legible at a glance
+      against Godot's default lighting/material response (`emission_enabled`
+      at a flat `0.4` energy multiplier is a REASONED, un-playtested
+      constant — no prior art in this codebase to mirror, unlike most other
+      constants elsewhere in this project) — could easily read as muddy or
+      washed out until seen on a real GPU.
+- [ ] `BEAM_RADIUS = 0.03` / `NODE_RADIUS = 0.05` are a FIXED display
+      proportion, not a real cross-section render, and are almost certainly
+      wrong at the scale of a real structural model: the ground-truth test
+      fixture's members are ~0.4m long with a ~0.04m×0.012m section — a
+      0.03 world-unit beam radius would read as absurdly thick relative to
+      that member's real length, while the SAME constant against a
+      50-member, 20m-span frame (the solver's documented ~200-member/<20ms
+      scale target) would look like a hairline. This needs either a
+      per-scene auto-scaled radius (e.g. proportional to the model's own
+      bounding-box diagonal, the same auto-centering `CameraRig` already
+      does in the web `FEAResultViewer.tsx`) or an `@export` the caller
+      tunes per model — neither exists yet; flagged honestly rather than
+      guessed at.
+- [ ] No camera auto-framing exists (the web `FEAResultViewer.tsx` has a
+      `CameraRig` that centers + backs off proportional to the model's
+      diagonal — nothing analogous is wired here yet), so a real model at
+      an arbitrary scale/origin could render entirely off-screen or too
+      close/far to read without a scene author manually placing a camera.
+- [ ] `beam_transform`'s orthonormal-basis construction (reference-axis
+      fallback at the `|y·RIGHT| > 0.999` singularity) is numerically
+      verified by the pure test for a vertical and a horizontal member, but
+      an ARBITRARY 3D member orientation (neither axis-aligned) has never
+      been rendered — whether the beam's rotation about its own long axis
+      (the remaining degree of freedom an orthonormal Y-aligned basis
+      doesn't pin down) ever looks visibly "twisted" for a non-circular
+      cross-section is moot today (CylinderMesh is axisymmetric, so this is
+      currently a non-issue) but would matter if a future pass renders a
+      real I-beam/rectangular profile instead of a placeholder cylinder.
+- [ ] `request_scene()`'s `HTTPRequest` → `/api/lens/run` call has never
+      reached a live server from this file — only the pure
+      `build_request_body` shape and the HTTPRequest wiring pattern (copied
+      from the already-real `world/dtu_prop_renderer.gd`) are proven. The
+      server-side macro itself IS proven end-to-end
+      (`server/tests/engineering-fea-scene.test.js`, a real hermetic
+      handler-level test), so the gap here is purely "this specific GDScript
+      HTTP call has never fired," not "the endpoint might not work."
+- [ ] Deformed-shape / displacement-amplified rendering (the web viewer's
+      `showDeformed`/`amplification` overlay) is NOT built here — `feaScene`
+      does return `displacements` in its payload, but this Godot builder
+      only draws the undeformed geometry today; a deformed overlay is a
+      real, scoped follow-on, not attempted in this unit.
+- [ ] No node/member picking or on-screen numeric readout exists (the web
+      viewer's utilization-sorted table + PASS/WARN/FAIL badges have no
+      Godot analog yet) — a viewer would currently need to eyeball color
+      only, with no way to click a beam and read its exact utilization
+      number.
+
+---
+
 Until every box above is checked on a real machine, treat the Godot client as
 **structurally complete but visually unproven.**
