@@ -27672,6 +27672,24 @@ registerConkayMacros(register);
 import registerFedmeshMacros from "./domains/fedmesh.js";
 registerFedmeshMacros(register);
 
+// Wire-the-unwired (Wave E) — the fedmesh macros above had zero scheduled
+// sync: a peer pushing into `fedmesh_inbox` via `fedmesh.receive` sat
+// 'pending' forever unless a human called `fedmesh.drain` by hand. This
+// heartbeat drains the consent-gated inbox on a clock (same cadence as the
+// OTHER federation substrate's `lattice-federation-poll` below) and reports
+// peer-registry counts. See server/emergent/fedmesh-sync-cycle.js for what
+// "sync" concretely means for this push-then-drain mesh (no new protocol
+// invented — drainInbox + listPeers are the existing functions this calls).
+// Kill-switch: CONCORD_FEDMESH_SYNC=0.
+import { runFedmeshSyncCycle } from "./emergent/fedmesh-sync-cycle.js";
+registerHeartbeat("fedmesh-sync-cycle", {
+  frequency: 120, // ~30 min, matches lattice-federation-poll's cadence
+  handler: runFedmeshSyncCycle,
+  // fedmesh_peers/fedmesh_inbox (migration 348) have no world_id column —
+  // platform-wide substrate. Parent-only.
+  scope: "global",
+});
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
