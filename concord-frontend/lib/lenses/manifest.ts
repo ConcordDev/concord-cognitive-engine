@@ -5387,6 +5387,14 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // intentionally empty for the same reason as ops-telemetry: there is no
   // authoring/mutation action on this surface, only observation.
   { domain: 'world-observatory', label: 'World Observatory', artifacts: ['world_state'], macros: { list: 'worldstate.overview', get: 'worldstate.world_detail' }, exports: ['json'], actions: [], category: 'operations' },
+  // Concord Link Frontier is a read-only news/royalty-flow surface, REST-backed
+  // by design (the ops-telemetry precedent) — `/api/cross-world/feed` and
+  // `/api/cross-world/royalty-flow` (server/lib/cross-world-feed.js) are real
+  // HTTP routes, not macros, so `macros` is intentionally `{}`. Before this
+  // lens the two routes were consumed only by the pre-login `/explore` page;
+  // this surfaces the same real data to logged-in players. No authoring
+  // action exists on this surface (pure observation), so `actions` is empty.
+  { domain: 'concord-link-frontier', label: 'Concord Link Frontier', artifacts: ['world_event', 'royalty_flow'], macros: {}, exports: ['json'], actions: [], category: 'operations' },
   { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'photos.list',             get: 'photos.get', create: 'photos.share' }, exports: ['json'], actions: ['share', 'world'], category: 'creative' },
   { domain: 'quests',        label: 'Quests',             artifacts: ['quest'],       macros: { list: 'quests.mine',             get: 'quests.progress' },        exports: ['json'], actions: ['accept', 'record-progress', 'claim-rewards', 'share'], category: 'lifestyle' },
   { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'spectate.list',           get: 'spectate.get',         create: 'spectate.watch',   run: 'spectate.bet' },           exports: ['json'], actions: ['watch', 'bet', 'my_positions'], category: 'social' },

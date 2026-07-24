@@ -2791,6 +2791,21 @@ export const LENS_REGISTRY: LensEntry[] = [
     minExpertise: 'engineering', // World Lens Phase 5 (Sanctum tier) — same posture as ops-telemetry
   },
   {
+    id: 'concord-link-frontier',
+    name: 'Concord Link Frontier',
+    icon: Globe,
+    description: 'The news layer of the federation — notable cross-world events and cross-world citation royalty flow, live, for logged-in players (was pre-login-only via /explore).',
+    category: 'system',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/concord-link-frontier',
+    order: 93,
+    keywords: ['concord link', 'frontier', 'cross-world', 'federation', 'royalty', 'feed', 'news'],
+    // REST-backed by design (no macro domain — /api/cross-world/feed and
+    // /api/cross-world/royalty-flow are direct HTTP routes), same posture as
+    // ops-telemetry: macroDomain intentionally omitted.
+  },
+  {
     id: 'quests',
     name: 'Quests',
     icon: ScrollText,
