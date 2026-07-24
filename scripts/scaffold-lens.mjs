@@ -52,6 +52,25 @@
 //                      MUST pass a temp directory here so the real repo's
 //                      lens-manifest.js / lens-features-extended.js /
 //                      app/lenses/ are never touched by a test run.
+//   --archetype <name> Content-shape variant for the generated macro
+//                      domain + page. One of:
+//                        - "echo-counter" (default) — a pure echo macro +
+//                          an in-memory counter macro, per the templates
+//                          below.
+//                        - "list-crud" — a real create/list/delete macro
+//                          trio over an in-memory record list + a minimal
+//                          table+form page. This is a common enough
+//                          starting SHAPE (most lenses need SOME form of
+//                          create/list/delete) that picking it is not
+//                          itself a rival-shape design decision — unlike a
+//                          full Bloomberg-terminal-style UI, which is
+//                          exactly the kind of human judgment call this
+//                          script still refuses to fabricate (see
+//                          docs/RIVAL_SHAPE_CATALOG.md).
+//                      Omitting this flag is guaranteed to reproduce
+//                      today's default ("echo-counter") output byte for
+//                      byte — the default code path is untouched by
+//                      adding this option.
 //   --dry-run          Print what would be written/edited; touch nothing.
 //   --force            Overwrite an existing domain file / page / registry
 //                       entry for the same lens-id. Default: refuse.
@@ -86,14 +105,21 @@ const KNOWN_CATEGORIES = new Set([
 
 const LENS_ID_RE = /^[a-z][a-z0-9-]*$/;
 
+// Archetype enum — see the "--archetype" option doc above for what each
+// generates. "echo-counter" is the original/default shape; it must never
+// change behavior when the flag is omitted.
+const KNOWN_ARCHETYPES = new Set(["echo-counter", "list-crud"]);
+const DEFAULT_ARCHETYPE = "echo-counter";
+
 // ── CLI parsing ──────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
   const positional = [];
-  const opts = { root: DEFAULT_ROOT, dryRun: false, force: false, skipRegistry: false };
+  const opts = { root: DEFAULT_ROOT, dryRun: false, force: false, skipRegistry: false, archetype: undefined };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--root") { opts.root = path.resolve(argv[++i] || ""); }
+    else if (a === "--archetype") { opts.archetype = argv[++i]; }
     else if (a === "--dry-run") { opts.dryRun = true; }
     else if (a === "--force") { opts.force = true; }
     else if (a === "--skip-registry") { opts.skipRegistry = true; }
@@ -106,15 +132,16 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    'usage: node scripts/scaffold-lens.mjs <lens-id> "<Display Name>" <CATEGORY> [--root <path>] [--dry-run] [--force] [--skip-registry]',
+    'usage: node scripts/scaffold-lens.mjs <lens-id> "<Display Name>" <CATEGORY> [--root <path>] [--archetype <name>] [--dry-run] [--force] [--skip-registry]',
     "",
     `  <CATEGORY> must be one of: ${Array.from(KNOWN_CATEGORIES).sort().join(", ")}`,
+    `  --archetype must be one of: ${Array.from(KNOWN_ARCHETYPES).sort().join(", ")} (default: ${DEFAULT_ARCHETYPE})`,
   ].join("\n");
 }
 
 // ── Validation ───────────────────────────────────────────────────────────
 
-function validate({ lensId, displayName, categoryRaw }) {
+function validate({ lensId, displayName, categoryRaw, archetype: archetypeRaw }) {
   const errors = [];
   if (!lensId || !LENS_ID_RE.test(lensId)) {
     errors.push(`lens-id "${lensId}" must be kebab-case matching ${LENS_ID_RE}`);
@@ -126,7 +153,11 @@ function validate({ lensId, displayName, categoryRaw }) {
   if (!KNOWN_CATEGORIES.has(category)) {
     errors.push(`category "${categoryRaw}" is not one of the known enum values: ${Array.from(KNOWN_CATEGORIES).sort().join(", ")}`);
   }
-  return { errors, category };
+  const archetype = archetypeRaw || DEFAULT_ARCHETYPE;
+  if (!KNOWN_ARCHETYPES.has(archetype)) {
+    errors.push(`archetype "${archetypeRaw}" is not one of the known values: ${Array.from(KNOWN_ARCHETYPES).sort().join(", ")}`);
+  }
+  return { errors, category, archetype };
 }
 
 // ── lensNumber allocation ────────────────────────────────────────────────
@@ -369,6 +400,272 @@ function extendedFeaturesEntryTemplate(lensId, displayName, category, lensNumber
 `;
 }
 
+// ── "list-crud" archetype templates ─────────────────────────────────────
+// A second, opt-in content-shape variant (--archetype list-crud): a real
+// create/list/delete macro trio + a minimal table+form page, instead of
+// the default echo/counter pair. Picking THIS shape is a common enough
+// starting point that it isn't itself a rival-shape decision (unlike a
+// bespoke Bloomberg-terminal-style UI) — see docs/RIVAL_SHAPE_CATALOG.md
+// for that separate, still-human, judgment call. These functions are
+// additive: the default "echo-counter" templates above are untouched, so
+// omitting --archetype reproduces today's output byte for byte.
+
+function domainFileTemplateListCrud(lensId, displayName) {
+  const fnName = domainRegisterFnName(lensId);
+  return `// server/domains/${lensId}.js
+//
+// SCAFFOLDED by scripts/scaffold-lens.mjs (--archetype list-crud) for the "${displayName}" lens.
+//
+// The three macros below are REAL and working, not TODO placeholders —
+// they are meant to be a working starting point you replace with real
+// domain logic, per CLAUDE.md's "honest by construction" invariant (a
+// shipped macro must never fabricate a success it didn't do).
+//
+// "${lensId}.create" / "${lensId}.list" / "${lensId}.delete" operate on
+// honestly-scoped in-memory state (a Map, not a DB table) — records really
+// persist for the life of the process, but do NOT survive a restart and
+// are NOT rows in a real table. This create/list/delete SHAPE is a common
+// starting point, not a rival-shape design decision — replace the Map with
+// a real migration + table once this lens has a real substrate, and check
+// docs/RIVAL_SHAPE_CATALOG.md before hand-building a bespoke UI shell.
+
+const _records = new Map(); // scaffold-only in-memory state, see note above: user -> array of records
+
+function actorId(ctx) {
+  return ctx?.actor?.userId || ctx?.user?.id || ctx?.user?.userId || "anon";
+}
+
+function recordsFor(user) {
+  if (!_records.has(user)) _records.set(user, []);
+  return _records.get(user);
+}
+
+export default function ${fnName}(register) {
+  /**
+   * ${lensId}.create — appends a record to the caller's in-memory list.
+   * input: { title }
+   */
+  register("${lensId}", "create", async (ctx, input = {}) => {
+    const title = typeof input.title === "string" && input.title.trim().length > 0
+      ? input.title.trim().slice(0, 200)
+      : null;
+    if (!title) return { ok: false, reason: "title_required" };
+    const user = actorId(ctx);
+    const list = recordsFor(user);
+    const record = { id: \`\${Date.now()}-\${list.length}\`, title, createdAt: new Date().toISOString() };
+    list.push(record);
+    return { ok: true, record };
+  }, { note: "scaffold: in-memory create (not durable — see file header)" });
+
+  /**
+   * ${lensId}.list — returns the caller's in-memory records.
+   * input: {}
+   */
+  register("${lensId}", "list", async (ctx, _input = {}) => {
+    const user = actorId(ctx);
+    return { ok: true, records: recordsFor(user).slice() };
+  }, { note: "scaffold: in-memory list (not durable — see file header)" });
+
+  /**
+   * ${lensId}.delete — removes a record by id from the caller's in-memory list.
+   * input: { id }
+   */
+  register("${lensId}", "delete", async (ctx, input = {}) => {
+    const id = typeof input.id === "string" ? input.id : null;
+    if (!id) return { ok: false, reason: "id_required" };
+    const user = actorId(ctx);
+    const list = recordsFor(user);
+    const idx = list.findIndex((r) => r.id === id);
+    if (idx === -1) return { ok: false, reason: "not_found" };
+    list.splice(idx, 1);
+    return { ok: true, id };
+  }, { note: "scaffold: in-memory delete (not durable — see file header)" });
+}
+`;
+}
+
+function pageTemplateListCrud(lensId, displayName) {
+  const compName = lensId
+    .split("-")
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join("") + "LensPage";
+  return `'use client';
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * CONCORD // ${displayName.toUpperCase()} — scaffolded by scripts/scaffold-lens.mjs (--archetype list-crud)
+ * ─────────────────────────────────────────────────────────────────────────
+ * This is a real, minimal, WORKING page, not a generic button-wall. Per
+ * CLAUDE.md's "zero generic tendencies" hard invariant, a lens must not
+ * read as an undifferentiated pile of auto-generated macro buttons — so
+ * the primary surface below is a small bespoke create/list/delete table +
+ * form with its own state and its own direct \`lensRun(...)\` calls, not
+ * just <ManifestActionBar/> alone.
+ *
+ * This create/list/delete SHAPE is a common, low-risk starting point —
+ * NOT a rival-shape design decision. Before hand-building a bespoke UI
+ * shell for this lens, check docs/RIVAL_SHAPE_CATALOG.md for one to
+ * repoint instead of duplicating.
+ *
+ * <ManifestActionBar/> is still mounted underneath as a secondary "quick
+ * actions" strip (the manifest-driven convenience CLAUDE.md's Per-Lens
+ * Polish sprint introduced) — but it is not the whole page.
+ *
+ * Replace everything below the header with the lens's real workflow.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { lensRun } from '@/lib/api/client';
+import { ds } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
+
+interface ListCrudRecord { id: string; title: string; createdAt: string }
+interface CreateResult { ok: boolean; record?: ListCrudRecord; reason?: string }
+interface ListResult { ok: boolean; records?: ListCrudRecord[]; reason?: string }
+interface DeleteResult { ok: boolean; id?: string; reason?: string }
+
+export default function ${compName}() {
+  const [title, setTitle] = useState('');
+  const [records, setRecords] = useState<ListCrudRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setError(null);
+    const res = await lensRun<ListResult>('${lensId}', 'list', {});
+    if (res.data.ok && res.data.result?.ok) {
+      setRecords(res.data.result.records ?? []);
+    } else {
+      setError(res.data.result?.reason || res.data.error || 'List failed.');
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const create = useCallback(async () => {
+    if (!title.trim()) return;
+    setLoading(true);
+    setError(null);
+    const res = await lensRun<CreateResult>('${lensId}', 'create', { title });
+    if (res.data.ok && res.data.result?.ok) {
+      setTitle('');
+      await refresh();
+    } else {
+      setError(res.data.result?.reason || res.data.error || 'Create failed.');
+    }
+    setLoading(false);
+  }, [title, refresh]);
+
+  const remove = useCallback(async (id: string) => {
+    setError(null);
+    const res = await lensRun<DeleteResult>('${lensId}', 'delete', { id });
+    if (res.data.ok && res.data.result?.ok) {
+      await refresh();
+    } else {
+      setError(res.data.result?.reason || res.data.error || 'Delete failed.');
+    }
+  }, [refresh]);
+
+  return (
+    <LensShell lensId="${lensId}">
+      <div className={ds.pageContainer}>
+        <header className={ds.sectionHeader}>
+          <div>
+            <h1 className={ds.heading1}>${displayName}</h1>
+            <p className={ds.textMuted}>
+              Scaffolded lens — replace this page with the real ${displayName} workflow.
+            </p>
+          </div>
+        </header>
+
+        <section className="rounded-lg border border-white/10 bg-white/5 p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Create a record</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Title"
+              className="min-w-[12rem] flex-1 rounded border border-white/20 bg-black/20 px-2 py-1.5 text-sm text-white placeholder:text-gray-500"
+            />
+            <button
+              type="button"
+              onClick={create}
+              disabled={loading || !title.trim()}
+              className={cn(ds.btnPrimary, 'text-sm')}
+            >
+              {loading ? 'Creating…' : 'Create'}
+            </button>
+          </div>
+          {error && <p className="text-sm text-red-400">{error}</p>}
+        </section>
+
+        <section className="rounded-lg border border-white/10 bg-white/5 p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Records (in-memory, not durable)</h2>
+          <table className="w-full text-left text-sm text-gray-300">
+            <thead>
+              <tr className="text-xs uppercase tracking-wide text-gray-500">
+                <th className="pb-2 pr-4">Title</th>
+                <th className="pb-2 pr-4">Created</th>
+                <th className="pb-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id} className="border-t border-white/10">
+                  <td className="py-2 pr-4 text-white">{r.title}</td>
+                  <td className="py-2 pr-4 font-mono">{r.createdAt}</td>
+                  <td className="py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => remove(r.id)}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {records.length === 0 && (
+                <tr>
+                  <td colSpan={3} className={cn(ds.textMuted, 'py-3 text-center')}>No records yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className={cn(ds.textMuted, 'text-xs uppercase tracking-wide')}>Quick actions</h2>
+          <ManifestActionBar lensId="${lensId}" />
+        </section>
+      </div>
+    </LensShell>
+  );
+}
+`;
+}
+
+function extendedFeaturesEntryTemplateListCrud(lensId, displayName, category, lensNumber) {
+  return `  ${lensId}: {
+    lensId: "${lensId}",
+    lensNumber: ${lensNumber},
+    category: "${category}",
+    features: [
+      f("${lensId}_scaffold_create", "Create Record", "Scaffold-generated example macro (${lensId}.create) — replace with real feature descriptors once this lens has real capabilities.", "infrastructure", []),
+      f("${lensId}_scaffold_list", "List Records", "Scaffold-generated example macro (${lensId}.list) — replace once this lens has a real durable substrate.", "infrastructure", []),
+      f("${lensId}_scaffold_delete", "Delete Record", "Scaffold-generated example macro (${lensId}.delete) — replace once this lens has a real durable substrate.", "infrastructure", []),
+    ],
+    featureCount: 3, economicIntegrations: [], emergentAccess: false, botAccess: false, usbIntegration: false,
+  },
+`;
+}
+
 // ── Safe file writers ────────────────────────────────────────────────────
 
 function writeFileChecked(filePath, content, { dryRun, force }) {
@@ -438,8 +735,13 @@ function insertDomainTag(root, lensId, tags, { dryRun }) {
  * server/lib/lens-features-extended.js, right before the final `};` that
  * closes the object (the object is the last statement in the file).
  * Idempotent + checked the same way as insertDomainTag.
+ *
+ * `entryText` is the fully-rendered entry string (built by the caller from
+ * whichever archetype's `extendedFeaturesEntryTemplate*` function applies)
+ * — this function stays archetype-agnostic, it only knows how to find the
+ * insertion point and dedupe by key.
  */
-function insertExtendedFeature(root, lensId, displayName, category, lensNumber, { dryRun }) {
+function insertExtendedFeature(root, lensId, entryText, { dryRun }) {
   const file = path.join(root, "server/lib/lens-features-extended.js");
   if (!fs.existsSync(file)) {
     console.warn(`[skip] ${file} not found under --root; skipping EXTENDED_FEATURES edit`);
@@ -462,8 +764,7 @@ function insertExtendedFeature(root, lensId, displayName, category, lensNumber, 
     console.log(`[ok] EXTENDED_FEATURES already has an entry for "${lensId}" — skipping (idempotent)`);
     return;
   }
-  const entry = extendedFeaturesEntryTemplate(lensId, displayName, category, lensNumber);
-  const next = content.slice(0, closeIdx) + "\n" + entry + content.slice(closeIdx);
+  const next = content.slice(0, closeIdx) + "\n" + entryText + content.slice(closeIdx);
   applyCheckedEdit(file, next, { dryRun });
 }
 
@@ -543,7 +844,7 @@ function main() {
     process.exit(1);
   }
 
-  const { errors, category } = validate(args);
+  const { errors, category, archetype } = validate(args);
   if (errors.length > 0 || !args.lensId) {
     console.error("scaffold-lens: invalid arguments:");
     for (const e of errors) console.error(`  - ${e}`);
@@ -556,14 +857,29 @@ function main() {
   const fnName = domainRegisterFnName(lensId);
   const lensNumber = nextLensNumber(root);
 
+  // Archetype -> template-function selection. "echo-counter" (the default,
+  // used whenever --archetype is omitted) always resolves to the exact
+  // same functions this script has always called — that code path is
+  // untouched, so omitting the flag reproduces prior output byte for byte.
+  const buildDomainFile = archetype === "list-crud" ? domainFileTemplateListCrud : domainFileTemplate;
+  const buildPage = archetype === "list-crud" ? pageTemplateListCrud : pageTemplate;
+  const buildExtendedFeaturesEntry = archetype === "list-crud" ? extendedFeaturesEntryTemplateListCrud : extendedFeaturesEntryTemplate;
+
   const domainFile = path.join(root, "server/domains", `${lensId}.js`);
   const pageFile = path.join(root, "concord-frontend/app/lenses", lensId, "page.tsx");
 
-  console.log(`scaffold-lens: root=${root} lensId=${lensId} category=${category} lensNumber=${lensNumber} dryRun=${dryRun}`);
+  // NOTE: this log line's format is intentionally unchanged from before the
+  // --archetype option existed for the default archetype, to keep the
+  // documented "omitting --archetype reproduces prior behavior byte for
+  // byte" guarantee airtight (see the byte-identical regression test).
+  // Non-default archetypes get the extra field since there's no prior
+  // behavior to preserve for them.
+  const archetypeSuffix = archetype === DEFAULT_ARCHETYPE ? "" : ` archetype=${archetype}`;
+  console.log(`scaffold-lens: root=${root} lensId=${lensId} category=${category}${archetypeSuffix} lensNumber=${lensNumber} dryRun=${dryRun}`);
 
   try {
-    writeFileChecked(domainFile, domainFileTemplate(lensId, displayName), { dryRun, force });
-    writeFileChecked(pageFile, pageTemplate(lensId, displayName), { dryRun, force });
+    writeFileChecked(domainFile, buildDomainFile(lensId, displayName), { dryRun, force });
+    writeFileChecked(pageFile, buildPage(lensId, displayName), { dryRun, force });
   } catch (err) {
     console.error(`scaffold-lens: ${err.message}`);
     process.exit(1);
@@ -584,7 +900,8 @@ function main() {
     const tags = deriveTags(displayName);
     try {
       insertDomainTag(root, lensId, tags, { dryRun, force });
-      insertExtendedFeature(root, lensId, displayName, category, lensNumber, { dryRun, force });
+      const entryText = buildExtendedFeaturesEntry(lensId, displayName, category, lensNumber);
+      insertExtendedFeature(root, lensId, entryText, { dryRun, force });
     } catch (err) {
       console.error(`registry edit failed: ${err.message}`);
       process.exitCode = 1;

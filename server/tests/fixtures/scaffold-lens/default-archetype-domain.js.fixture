@@ -1,0 +1,49 @@
+// server/domains/regression-fixture-lens.js
+//
+// SCAFFOLDED by scripts/scaffold-lens.mjs for the "Regression Fixture Lens" lens.
+//
+// The two macros below are REAL and working, not TODO placeholders — they
+// are meant to be a working starting point you replace with real domain
+// logic, per CLAUDE.md's "honest by construction" invariant (a shipped
+// macro must never fabricate a success it didn't do).
+//
+// - "regression-fixture-lens.echo" is pure and stateless: round-trips a message.
+// - "regression-fixture-lens.counter" is honestly-scoped in-memory state (a Map, not a
+//   DB table) — it really increments and really persists for the life of
+//   the process, but does NOT survive a restart and is NOT per-DB-row.
+//   Replace it with a real migration + table once this lens has a real
+//   substrate; don't let it linger as if it were durable storage.
+
+const _counters = new Map(); // scaffold-only in-memory state, see note above
+
+function actorId(ctx) {
+  return ctx?.actor?.userId || ctx?.user?.id || ctx?.user?.userId || "anon";
+}
+
+export default function registerRegressionFixtureLensMacros(register) {
+  /**
+   * regression-fixture-lens.echo — round-trips a message. Pure, side-effect-free.
+   * input: { message? }
+   */
+  register("regression-fixture-lens", "echo", async (_ctx, input = {}) => {
+    const message = typeof input.message === "string" && input.message.length > 0
+      ? input.message.slice(0, 500)
+      : "pong";
+    return { ok: true, message, receivedAt: new Date().toISOString() };
+  }, { note: "scaffold: pure echo round-trip" });
+
+  /**
+   * regression-fixture-lens.counter — increments an in-memory per-user counter.
+   * input: { key? } — optional sub-key to scope the counter within a user.
+   */
+  register("regression-fixture-lens", "counter", async (ctx, input = {}) => {
+    const user = actorId(ctx);
+    const key = typeof input.key === "string" && input.key.length > 0
+      ? input.key.slice(0, 64)
+      : "default";
+    const mapKey = `${user}:${key}`;
+    const next = (_counters.get(mapKey) || 0) + 1;
+    _counters.set(mapKey, next);
+    return { ok: true, key, count: next };
+  }, { note: "scaffold: in-memory counter (not durable — see file header)" });
+}
