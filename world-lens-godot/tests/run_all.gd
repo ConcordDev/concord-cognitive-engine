@@ -34,6 +34,8 @@ const TestAirLegibility := preload("res://tests/test_air_legibility.gd")
 const TestFeaSceneBuilder := preload("res://tests/test_fea_scene_builder.gd")
 const TestConKayPresenceState := preload("res://tests/test_conkay_presence_state.gd")
 const TestConKayPointing := preload("res://tests/test_conkay_pointing.gd")
+const TestSessionManager := preload("res://tests/test_session_manager.gd")
+const TestCameraRig := preload("res://tests/test_camera_rig.gd")
 
 
 func _init() -> void:
@@ -59,6 +61,8 @@ func _init() -> void:
 		"FeaSceneBuilder": TestFeaSceneBuilder.run(),
 		"ConKayPresenceState": TestConKayPresenceState.run(),
 		"ConKayPointing": TestConKayPointing.run(),
+		"SessionManager": TestSessionManager.run(),
+		"CameraRig": TestCameraRig.run(),
 	}
 
 	var all_ok := true

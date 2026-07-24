@@ -22,8 +22,21 @@ extends CharacterBody3D
 ## (coyote time + jump buffer + variable height), the 30Hz send-gate, and
 ## nack-snapback position selection — is PURE STATIC so it is unit-testable
 ## without a scene tree or a live CharacterBody3D (see tests/).
+##
+## ── Session-manager input gate (R5/E24) ──────────────────────────────────────
+## Optional injected `session_manager` (session/session_manager.gd). When
+## wired, `_physics_process` early-returns unless
+## `session_manager.is_input_owner(SessionManager.InputOwner.CHARACTER)` is
+## true — this is what keeps movement from firing while the client is in
+## Design free-fly or viewing an FEA overlay, per SessionManager's own
+## input-ownership rules. Left `null` (the default), this controller behaves
+## exactly as it did before this unit — always active — so every existing
+## pure-function test and any standalone use of this controller is
+## unaffected.
 
 signal move_rejected(snapped_to: Vector3)
+
+const SessionManager := preload("res://session/session_manager.gd")
 
 # ── Constants — mirrored 1:1 from physics-world.ts / jump-forgiveness.ts ────
 const GRAVITY: float = 9.81
@@ -57,6 +70,10 @@ const MOVE_SEND_MIN_INTERVAL_MS: int = 33
 ## existing DI convention (see docs/GODOT_INTEGRATION.md's "Key decisions"
 ## table) so this controller stays unit-testable and mount-order-agnostic.
 @export var gateway: Node = null
+## Optional injected SessionManager (session/session_manager.gd) — see
+## class doc "Session-manager input gate". Null means "always active", the
+## pre-R5/E24 behavior.
+@export var session_manager: Node = null
 
 var vertical_vel: float = 0.0
 var is_airborne: bool = false
@@ -77,6 +94,13 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# R5/E24 input gate — see class doc "Session-manager input gate". Duck-
+	# typed exactly like this file's own `gateway` DI checks below (no
+	# session_manager wired == always active, the pre-R5/E24 behavior).
+	if session_manager != null and session_manager.has_method("is_input_owner"):
+		if not session_manager.is_input_owner(SessionManager.InputOwner.CHARACTER):
+			return
+
 	var now_ms := Time.get_ticks_msec()
 
 	if _pending_snap:

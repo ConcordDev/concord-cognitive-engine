@@ -208,6 +208,18 @@ func member_count() -> int:
 	return _spawned_members.size()
 
 
+## Real focus point for an orbit camera (session/camera_rig.gd) — the
+## centroid of the CURRENTLY SPAWNED node markers, never an assumed origin.
+## Empty (no scene spawned yet) yields Vector3.ZERO, same honest default
+## CameraRig already falls back to before any real focus is set.
+func get_bounds_center() -> Vector3:
+	var positions: Array[Vector3] = []
+	for n in _spawned_nodes.values():
+		if is_instance_valid(n):
+			positions.append(n.position)
+	return FeaSceneBuilder.centroid(positions)
+
+
 # ── Pure static helpers ──────────────────────────────────────────────────────
 
 ## Body for `POST /api/lens/run` — the exact envelope every macro call in
@@ -271,3 +283,15 @@ static func beam_transform(from: Vector3, to: Vector3) -> Transform3D:
 	var z_axis := x_axis.cross(y_axis).normalized()
 	var basis := Basis(x_axis, y_axis, z_axis)
 	return Transform3D(basis, mid)
+
+
+## Average of `positions` — the real orbit-camera focus point (see
+## `get_bounds_center`). An empty array honestly yields Vector3.ZERO rather
+## than dividing by zero.
+static func centroid(positions: Array[Vector3]) -> Vector3:
+	if positions.is_empty():
+		return Vector3.ZERO
+	var sum := Vector3.ZERO
+	for p in positions:
+		sum += p
+	return sum / float(positions.size())

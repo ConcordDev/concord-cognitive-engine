@@ -13,6 +13,7 @@ static func run() -> TestUtils:
 	_test_node_positions(t)
 	_test_utilization_to_color(t)
 	_test_beam_transform(t)
+	_test_centroid(t)
 	return t
 
 
@@ -90,3 +91,22 @@ static func _test_beam_transform(t: TestUtils) -> void:
 	t.check(
 		degenerate.origin.is_equal_approx(Vector3(1, 1, 1)),
 		"a zero-length member falls back to its shared point rather than crashing")
+
+
+## R5/E24 — the real orbit-camera focus point (session/camera_rig.gd
+## consumes this via FeaSceneBuilder.get_bounds_center()).
+static func _test_centroid(t: TestUtils) -> void:
+	var positions: Array[Vector3] = [Vector3(0, 0, 0), Vector3(2, 0, 0), Vector3(1, 3, 0)]
+	var center := FeaSceneBuilder.centroid(positions)
+	t.check(
+		center.is_equal_approx(Vector3(1.0, 1.0, 0.0)), "centroid is the true average of all points")
+
+	var empty: Array[Vector3] = []
+	t.check_eq(
+		FeaSceneBuilder.centroid(empty), Vector3.ZERO,
+		"an empty position list honestly yields Vector3.ZERO, never dividing by zero")
+
+	var single: Array[Vector3] = [Vector3(5, 5, 5)]
+	t.check(
+		FeaSceneBuilder.centroid(single).is_equal_approx(Vector3(5, 5, 5)),
+		"a single point's centroid is itself")

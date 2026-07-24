@@ -99,6 +99,7 @@ enum Mode { GROUND, AIRBORNE }
 const CharacterController := preload("res://player/character_controller.gd")
 const FlightController := preload("res://avatar/flight_controller.gd")
 const AerialMountController := preload("res://avatar/aerial_mount_controller.gd")
+const SessionManager := preload("res://session/session_manager.gd")
 
 ## Mirrors server.js's `player:move` accept-rate cap, same constant every
 ## other controller in this project cites.
@@ -126,6 +127,15 @@ const ASCEND_LAUNCH_THRESHOLD_MS: float = 350.0
 ## "Honest gap: flight legitimacy is not server-gated". Not a real
 ## anti-cheat boundary.
 @export var flight_capable: bool = true
+## Optional injected SessionManager (session/session_manager.gd, R5/E24) —
+## when wired, `_physics_process` early-returns unless this controller
+## currently owns input (SessionManager.InputOwner.CHARACTER) — e.g. while
+## the client is in Design free-fly or an FEA overlay is open, this
+## controller (and the mounted avatar it drives) simply stops simulating.
+## Null (default) means "always active", the pre-R5/E24 behavior — every
+## existing pure-function test and any standalone use of this controller is
+## unaffected.
+@export var session_manager: Node = null
 
 ## Real pad data — see `wire_landing_pads_from_scene_bootstrap()`. Each
 ## entry is expected to be a Dictionary shaped like
@@ -155,6 +165,11 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# R5/E24 input gate — see the `session_manager` export's own doc.
+	if session_manager != null and session_manager.has_method("is_input_owner"):
+		if not session_manager.is_input_owner(SessionManager.InputOwner.CHARACTER):
+			return
+
 	if _pending_snap:
 		global_position = _snap_target
 		_vertical_vel = 0.0
