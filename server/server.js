@@ -60442,6 +60442,30 @@ app.post("/api/admin/repair/remediations/:id/apply", requireRole("owner", "admin
   res.status(r.ok ? 200 : (r.error === "not_found" ? 404 : 409)).json(r);
 }));
 
+// ── Audit export pack (OP2, R7 self-host proof) ──────────────────────────
+// One-click evidence bundle for a self-hoster or auditor: the detector
+// suite baseline, macro-depth grade (default + honest), UX-polish grade
+// (default + honest), doc-claims drift status, and repo/deploy metadata.
+// Same admin-telemetry role gate as `/api/admin/heartbeat-stats` /
+// `/api/admin/repair/detections`. See `lib/audit-export.js` for the
+// honesty discipline: every section reads an ALREADY-PERSISTED artifact
+// and reports ITS OWN generatedAt/staleness — this route never re-runs an
+// expensive detector/grader synchronously. `?download=1` sets a
+// Content-Disposition header so a browser saves it as a file instead of
+// rendering it inline; `?loc=0` skips the one live computation (a bounded
+// `count-loc` run, ~2-4s) for callers that want the fastest possible
+// response over the freshest LOC figure.
+app.get("/api/admin/audit-export", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const { buildAuditExport } = await import("./lib/audit-export.js");
+  const includeLiveLoc = req.query.loc !== "0";
+  const bundle = await buildAuditExport({ includeLiveLoc });
+  if (req.query.download === "1") {
+    const stamp = bundle.generatedAt.replace(/[:.]/g, "-");
+    res.setHeader("Content-Disposition", `attachment; filename="concord-audit-export-${stamp}.json"`);
+  }
+  res.json(bundle);
+}));
+
 // ── System Infrastructure Status Endpoints ──────────────────────────────────
 
 app.get("/api/admin/scaling/status", requireAuth(), requireRole("owner"), (_req, res) => {

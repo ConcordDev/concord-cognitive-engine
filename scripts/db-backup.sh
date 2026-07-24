@@ -81,13 +81,36 @@ else
 fi
 
 # --- Integrity check — never ship a corrupt backup ---
+# NOTE: previously silently skipped (no message at all) whenever the
+# sqlite3 CLI wasn't installed. Verified live on a box without it: this
+# whole block was a no-op and nothing said so. Fall back to the
+# better-sqlite3 the server already depends on — same fallback pattern
+# already used above for the snapshot step itself — instead of leaving a
+# backup shipped with zero verification and no indication of that fact.
+INTEGRITY=""
+INTEGRITY_CHECKED=false
 if command -v sqlite3 &>/dev/null; then
   INTEGRITY=$(sqlite3 "$STAGING_DIR/concord.db" "PRAGMA integrity_check;" 2>&1 | head -1)
+  INTEGRITY_CHECKED=true
+elif command -v node &>/dev/null; then
+  INTEGRITY=$(node -e "
+    const Database = require('$PROJECT_ROOT/server/node_modules/better-sqlite3');
+    const db = new Database('$STAGING_DIR/concord.db', { readonly: true });
+    const rows = db.pragma('integrity_check');
+    db.close();
+    process.stdout.write(rows.length === 1 && rows[0].integrity_check === 'ok' ? 'ok' : JSON.stringify(rows));
+  " 2>&1)
+  INTEGRITY_CHECKED=true
+fi
+
+if [ "$INTEGRITY_CHECKED" = true ]; then
   if [ "$INTEGRITY" != "ok" ]; then
     echo "[db-backup] INTEGRITY CHECK FAILED: $INTEGRITY"
     exit 1
   fi
   echo "[db-backup] integrity: ok"
+else
+  echo "[db-backup] WARN: neither sqlite3 nor node available — SKIPPING integrity check on this backup."
 fi
 
 [ -f "$STATE_PATH" ] && cp "$STATE_PATH" "$STAGING_DIR/concord_state.json"
