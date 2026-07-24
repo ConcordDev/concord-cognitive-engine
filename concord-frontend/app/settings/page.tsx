@@ -16,7 +16,7 @@
  * router.back() so the settings page slots naturally into any flow.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Settings as SettingsIcon, Download, Upload, RotateCcw } from 'lucide-react';
 import SettingsPanel from '@/components/world-lens/SettingsPanel';
@@ -25,6 +25,7 @@ import { LensActionBar, type LensAction } from '@/components/lens/LensActionBar'
 import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
 import { DomainProbeCard } from '@/components/system/DomainProbeCard';
 import { probesByGroup } from '@/lib/headless-probes';
+import { emit, subscribe } from '@/lib/realtime/socket';
 
 const STORAGE_KEY = 'concord:settings';
 
@@ -105,10 +106,48 @@ function saveSettings(s: SettingsPanelSettings) {
   }
 }
 
+// BD#27 world-visibility (ghost / appear-offline) round trip. The server's
+// `player:visibility` socket handler (server.js) is genuinely ephemeral
+// in-memory — it resets to "visible" on reconnect, same as movementMode —
+// so this Save button is the one honest place to *apply* the Privacy tab's
+// "World Visible to Others" toggle to the player's live presence, not just
+// stash a preference nobody reads. Best-effort: if there's no live world
+// socket connection right now, the toggle still saves locally (applies
+// next time the player is in a world and re-opens Settings), and we say
+// so rather than pretending it took effect.
+const VISIBILITY_APPLY_TIMEOUT_MS = 1500;
+
+function applyLiveVisibility(hidden: boolean): Promise<{ applied: boolean; note: string }> {
+  return new Promise((resolve) => {
+    const mode = hidden ? 'hidden' : 'visible';
+    let settled = false;
+    const finish = (result: { applied: boolean; note: string }) => {
+      if (settled) return;
+      settled = true;
+      offAck();
+      offNack();
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const offAck = subscribe<{ mode: string }>('player:visibility:ack', () => {
+      finish({ applied: true, note: hidden ? 'You are now hidden from other players.' : 'You are now visible to other players.' });
+    });
+    const offNack = subscribe<{ reason: string }>('player:visibility:nack', (data) => {
+      finish({ applied: false, note: `Could not apply live visibility (${data?.reason || 'unknown'}). Preference saved for next time.` });
+    });
+    const timer = setTimeout(() => {
+      finish({ applied: false, note: 'Not connected to a world right now — preference saved for next time you play.' });
+    }, VISIBILITY_APPLY_TIMEOUT_MS);
+    emit('player:visibility', { mode });
+  });
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<SettingsPanelSettings>(DEFAULT_SETTINGS);
   const [hydrated, setHydrated] = useState(false);
+  const [visibilityNote, setVisibilityNote] = useState<string | null>(null);
+  const savingVisibilityRef = useRef(false);
 
   useEffect(() => {
     setSettings(loadSettings());
@@ -117,9 +156,24 @@ export default function SettingsPage() {
 
   const handleSave = useCallback((next: SettingsPanelSettings) => {
     saveSettings(next);
+    const prevHidden = settings?.privacy?.worldVisibility === false;
+    const nextHidden = next?.privacy?.worldVisibility === false;
     setSettings(next);
+
+    if (nextHidden !== prevHidden && !savingVisibilityRef.current) {
+      savingVisibilityRef.current = true;
+      setVisibilityNote('Applying visibility change…');
+      applyLiveVisibility(nextHidden).then(({ note }) => {
+        savingVisibilityRef.current = false;
+        setVisibilityNote(note);
+        // Give the user a beat to read the honest result before leaving.
+        setTimeout(() => router.back(), 900);
+      });
+      return;
+    }
+
     router.back();
-  }, [router]);
+  }, [router, settings]);
 
   const handleCancel = useCallback(() => {
     setSettings(loadSettings());
@@ -192,6 +246,14 @@ export default function SettingsPage() {
       }
     >
       <SettingsPanel settings={settings} onSave={handleSave} onCancel={handleCancel} />
+      {visibilityNote && (
+        <div
+          role="status"
+          className="mt-3 rounded-md border border-cyan-700/40 bg-cyan-950/30 px-3 py-2 text-xs text-cyan-200"
+        >
+          {visibilityNote}
+        </div>
+      )}
       <section
         className="mt-8 rounded-lg border border-slate-700/40 bg-slate-900/30 p-4"
         aria-labelledby="integrations-heading"

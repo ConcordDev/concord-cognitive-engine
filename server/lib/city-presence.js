@@ -1230,6 +1230,25 @@ export function getCityNpcs(cityId) {
  * Advance NPC patrol paths and broadcast their new positions alongside
  * player positions. Called from the same 100ms tick as `broadcastPositions`
  * so the frontend sees them through the same pipeline.
+ *
+ * ── DET-C batch 8 investigation (dead-event-listener sweep, 2026-07-23) ──
+ * The `city:npcs` broadcast below (this module's ONLY delivery path for
+ * these specific procedurally-spawned NPCs — the world-mechanics
+ * `spawn_npc` action in server.js, cityPresence.spawnNpc) is genuinely
+ * unconsumed: concord-frontend never subscribes to it (NPC rendering in
+ * app/lenses/world/page.tsx polls the DB-backed `/api/worlds/:worldId/npcs`
+ * authored-NPC table instead — a different NPC population entirely), and
+ * world-lens-godot/avatar/avatar_manager.gd has a real `ingest_snapshot()`
+ * method shaped for exactly this payload but is never instantiated from
+ * world-lens-godot/world/boot.gd's event dispatch (only exercised by that
+ * repo's own unit test) — so it's WIP there, not a live consumer either.
+ * The correct fix is wiring a real subscriber into the browser's NPC
+ * render path (app/lenses/world/page.tsx / AvatarSystem3D.tsx) so these
+ * mechanic-spawned NPCs actually become visible — a real, if narrow,
+ * gameplay gap, not a redundant broadcast. Left in place (removing it
+ * would silently make these NPCs permanently unreachable) and documented
+ * rather than risking an unverified change to the live avatar-rendering
+ * pipeline in this batch.
  */
 function tickNpcs(cityId, realtimeEmit) {
   const now = Date.now();

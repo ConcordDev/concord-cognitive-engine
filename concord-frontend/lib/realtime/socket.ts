@@ -165,6 +165,14 @@ export function getSocket(): Socket {
     // instead of waiting for the next backoff tick. Cheap, idempotent (connect
     // on an already-connected/connecting socket is a no-op), and the single
     // biggest UX win for "came back from sleep / tunnel and it just works".
+    // @resource-leak-ok: `socket` is a module-scope singleton (getSocket()
+    // only ever constructs it once — see the `_onlineListenerWired` guard
+    // right here) that is meant to live for the whole page session;
+    // disconnectSocket() tears down the socket.io connection but
+    // deliberately doesn't recreate `socket` or reset this flag, so there is
+    // exactly one 'online' listener for the lifetime of `window` itself —
+    // the same intentional-singleton shape as an app-wide resize/visibility
+    // listener, not a per-instance leak.
     if (typeof window !== 'undefined' && !_onlineListenerWired) {
       _onlineListenerWired = true;
       window.addEventListener('online', () => {
@@ -316,6 +324,12 @@ export type SocketEvent =
   | 'pain:wound_created'
   | 'pain:wound_healed'
   | 'affect:pain_signal'
+  // Dead-event-listener fix (DET-C batch 8) — server/existential/engine.js
+  // fires this when an entity's existential-OS channel crosses an authored
+  // policy threshold (e.g. stress/loneliness). Genuinely emergent — "the
+  // world creates this on its own" — so it belongs in EmergentEventFeed's
+  // TRACKED_EVENTS, not a bespoke surface.
+  | 'qualia:policy'
   // Repair cortex
   | 'repair:dtu_logged'
   | 'repair:cycle_complete'
@@ -325,6 +339,12 @@ export type SocketEvent =
   | 'meta:committed'
   // System
   | 'system:alert'
+  // Dead-event-listener fix (DET-C batch 8) — server/emergent/repair-cortex.js's
+  // `reconnect_websocket` self-repair action (a real corrective, not informational
+  // logging) had no consumer, so a repair pass "fixing" a stale server-side socket
+  // state never actually made any connected browser reconnect. Providers.tsx now
+  // subscribes and calls reconnectSocket().
+  | 'system:reconnect'
   | 'queue:notifications:new'
   // Council
   | 'council:proposal'
@@ -694,7 +714,15 @@ export type SocketEvent =
   // a bare-id-as-options-object bug — verified via server/lib/detectors/
   // realtime-emit-signature-detector.js: 0 flagged instances repo-wide).
   | 'auction:buy-order-placed'
-  | 'auction:buy-order-filled';
+  | 'auction:buy-order-filled'
+  // Dead-event-listener fix (DET-C batch 8) — server.js's "player:visibility"
+  // socket handler (BD#27, ghost/appear-offline mode) has ack'd/nack'd since
+  // it shipped, but nothing ever emitted the request OR subscribed to the
+  // reply: the existing Settings > Privacy "World Visible to Others" toggle
+  // was localStorage-only decoration with no live effect. Now wired
+  // end-to-end from app/settings/page.tsx.
+  | 'player:visibility:ack'
+  | 'player:visibility:nack';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

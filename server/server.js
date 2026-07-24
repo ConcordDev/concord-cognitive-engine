@@ -9403,6 +9403,16 @@ async function tryInitWebSockets(server) {
       }
 
       socket.join(room);
+      // DET-C batch 8 (dead-event-listener sweep, re-confirmed 2026-07-23):
+      // this still flags as `dead_socket_emit` because the detector's
+      // SCAN_DIRS only walks concord-frontend/{app,components,lib,hooks} —
+      // it structurally never sees world-lens-godot/ (a real external
+      // GDScript client in this monorepo) or concord-mobile/, and couldn't
+      // parse .gd syntax with its JS/TS regexes even if it did. The batch-2
+      // comment on the sibling room:leave handler below already named the
+      // real consumer: world-lens-godot/world/boot.gd's `_on_event` match
+      // arm for "room:joined". Detector false positive from scan-scope, not
+      // a real dead broadcast — do not remove.
       socket.emit("room:joined", { room, ts: nowISO() });
     });
 
@@ -9501,6 +9511,13 @@ async function tryInitWebSockets(server) {
         // socket so a live exploitation tool can't keep hammering. Telemetry
         // + auto-drop are both best-effort and never block the move path.
         if (result.shouldDisconnect) {
+          // DET-C batch 8: flags as `dead_socket_emit` for the same
+          // scan-scope reason as player:mode:ack/:nack above (detector
+          // never walks world-lens-godot/) — the Godot gateway's own
+          // send of this same event name is real (server/server.js
+          // `_godotGatewaySend(client, "anti-cheat:dropped", ...)`,
+          // mirroring this socket.io path 1:1 for a Godot client hitting
+          // the same violation cap). Not a dead broadcast.
           socket.emit("anti-cheat:dropped", { reason: "too_many_violations" });
           socket.disconnect(true);
         }
@@ -9559,6 +9576,16 @@ async function tryInitWebSockets(server) {
       // same emitted reasons.
       const result = applyPlayerMode(userId, data);
       if (result.drop) return;
+      // DET-C batch 8: `player:mode:ack`/`:nack` still show up as
+      // `dead_socket_emit` findings — the detector's SCAN_DIRS never walks
+      // world-lens-godot/ (nor concord-mobile/), and its JS/TS regexes
+      // couldn't parse GDScript `match` arms even if it did. Both ARE
+      // consumed for real: world-lens-godot/avatar/{mount_controller,
+      // flight_controller,ground_vehicle_controller,
+      // aerial_mount_controller}.gd all branch on `evt == "player:mode:nack"`
+      // to roll back an optimistic client-side mode flip the server
+      // rejected. Detector false positive from scan-scope, not a real dead
+      // broadcast.
       if (result.nack) { socket.emit("player:mode:nack", result.nack); return; }
       if (result.ack) socket.emit("player:mode:ack", result.ack);
     });

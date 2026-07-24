@@ -29,6 +29,38 @@
  *   4. Damage must be within [0, weaponMaxDamage * critMultiplier].
  *
  * Failed validation is logged and the event is dropped, never broadcast.
+ *
+ * ── DET-C batch 8 investigation (dead-event-listener sweep, 2026-07-23) ──
+ * `combat:attack` and `combat:miss` are genuinely orphaned today, on both
+ * sides, and NOT a detector scan-scope false positive like the Godot-only
+ * events documented elsewhere in this sweep:
+ *   - The REST routes that trigger these broadcasts (POST /api/combat/attack,
+ *     /api/combat/hit — server/routes/combat.js, mounted at /api/combat in
+ *     server.js) are never called by concord-frontend, concord-mobile, or
+ *     world-lens-godot. Nothing exercises broadcastAttack()/broadcastHit()
+ *     outside this module's own unit tests.
+ *   - Even if they were called, broadcastAttack/broadcastHit call
+ *     `REALTIME.io.to(...).emit(...)` directly rather than going through
+ *     `realtimeEmit`/`emitToWorld`, so they'd bypass the Godot gateway's
+ *     mirror (`_godotGatewayEmitter.emitToRoom`/`.broadcast`, wired inside
+ *     those two helpers in server.js) even if a Godot client existed to
+ *     receive them.
+ *   - docs/GODOT_INTEGRATION.md independently confirms the INBOUND
+ *     direction is unfinished too ("`combat:attack` is NOT wired" for the
+ *     Godot gateway's dispatch table) — consistent with this being a real,
+ *     never-adopted parallel combat pipeline, not a rendering gap.
+ * The LIVE combat path is a different mechanism entirely: the browser emits
+ * `combat:attack` (client→server, the SAME event name, opposite direction —
+ * see server.js's `socket.on("combat:attack", ...)`), which computes damage
+ * via `cityPresence.applyAttack()` and broadcasts `combat:hit`/`combat:impact`
+ * (server/lib/combat/impact-feel.js) — CombatInputController.tsx only ever
+ * speaks that path.
+ * Retiring this module (removing the /api/combat mount + these two files) or
+ * wiring CombatInputController.tsx to call the REST routes + subscribe to
+ * these broadcasts are both real options, but both are combat-input-path
+ * architecture decisions bigger than a single dead-event fix — deferred
+ * rather than forced in this batch. Left in place, documented, not silently
+ * dropped.
  */
 
 import logger from "../logger.js";

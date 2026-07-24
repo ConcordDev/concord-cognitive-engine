@@ -49,6 +49,9 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'dtu:promoted',                channel: 'agent',   label: 'DTU promoted' },
   { name: 'pain:wound_created',          channel: 'agent',   label: 'Pain wound' },
   { name: 'pain:wound_healed',           channel: 'agent',   label: 'Wound healed' },
+  // Dead-event-listener fix (DET-C batch 8): existential-OS policy triggers
+  // (server/existential/engine.js) had no frontend consumer anywhere.
+  { name: 'qualia:policy'              as SocketEvent, channel: 'agent',   label: 'Existential policy triggered' },
   // Phase 3 — system health channel surfaces detector-emitted invariant warnings.
   { name: 'world:invariant-warning' as SocketEvent, channel: 'system_health', label: 'System invariant warning' },
   // Phase F3.5 — strategic faction + scheme + prediction + dream + refusal.
