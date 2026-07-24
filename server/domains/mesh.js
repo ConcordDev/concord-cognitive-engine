@@ -55,6 +55,7 @@
 // row (the macro-assassin's V2 vector probes exactly this).
 
 import { TRANSPORT_SPECS, TRANSPORT_LIST } from "../lib/concord-mesh.js";
+import { HashDag, generateKeypair } from "../lib/consensus/hash-dag.js";
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE writing.
 // An absent/null field is fine (the macro uses its default). Returns null when
@@ -93,6 +94,25 @@ function userMap(map, uid) {
 function userArr(map, uid) {
   if (!map.has(uid)) map.set(uid, []);
   return map.get(uid);
+}
+
+// ── Byzantine hash-DAG convergence replica state (W2-C) ────────────────────
+// See server/lib/consensus/{vector-clock,hash-dag}.js for the engine. Each
+// mesh user gets one signed replica (an Ed25519 identity generated on first
+// use), so the mesh lens can demonstrate real causally-ordered,
+// content-addressed, Byzantine-detecting convergence across store-and-forward
+// delivery — not a toy. Honest boundary: this is convergence + detection,
+// NOT Byzantine agreement — no quorum, no leader election. See the
+// hash-dag.js module docstring for the full statement.
+function getOrCreateConsensusReplica(uid) {
+  const s = meshState();
+  if (!s.meshConsensusDags) s.meshConsensusDags = new Map(); // userId -> { dag, keypair }
+  let entry = s.meshConsensusDags.get(uid);
+  if (!entry) {
+    entry = { dag: new HashDag(), keypair: generateKeypair() };
+    s.meshConsensusDags.set(uid, entry);
+  }
+  return entry;
 }
 
 function nextSeq(uid) {
@@ -707,4 +727,115 @@ export default function registerMeshActions(register) {
       return { ok: false, error: e?.message || "overview failed" };
     }
   }, { description: "Mesh dashboard roll-up — node, message, channel, queue counts." });
+
+  /**
+   * consensusStatus — this user's Byzantine hash-DAG replica identity and
+   * current DAG shape (heads, integrated count, anything still deferred
+   * awaiting missing parents, and how many distinct authors it has bound).
+   */
+  registerLensAction("mesh", "consensusStatus", (ctx) => {
+    try {
+      const uid = userId(ctx);
+      const { dag, keypair } = getOrCreateConsensusReplica(uid);
+      return {
+        ok: true,
+        result: {
+          nodeId: uid,
+          publicKeyPem: keypair.publicKeyPem,
+          heads: dag.getHeads(),
+          size: dag.size,
+          deferred: dag.deferred.size,
+          knownAuthors: dag.trustedKeys.size,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || "consensusStatus failed" };
+    }
+  }, { description: "Byzantine hash-DAG replica identity + status for this mesh user." });
+
+  /**
+   * consensusAppend — author + sign a new causally-ordered update
+   * (key/value payload) onto this user's replica, referencing its current
+   * heads. Returns the signed record — this is the wire message a caller
+   * would broadcast to other replicas via consensusMergeRemote.
+   */
+  registerLensAction("mesh", "consensusAppend", (ctx, artifact, params) => {
+    try {
+      const uid = userId(ctx);
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const key = String(data.key || "").trim();
+      if (!key) return { ok: false, error: "key required" };
+      const { dag, keypair } = getOrCreateConsensusReplica(uid);
+      const record = dag.appendUpdate({
+        nodeId: uid,
+        payload: { key, value: data.value ?? null },
+        publicKeyPem: keypair.publicKeyPem,
+        privateKeyPem: keypair.privateKeyPem,
+      });
+      return { ok: true, result: { record, heads: dag.getHeads(), size: dag.size } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "consensusAppend failed" };
+    }
+  }, { description: "Append a signed, causally-ordered update to this user's hash-DAG replica." });
+
+  /**
+   * consensusMergeRemote — accept a remote signed hash-DAG record (as
+   * produced by consensusAppend, elsewhere). Verifies hash integrity,
+   * signature, and known parentage before integrating; a node whose parent
+   * isn't known yet is honestly deferred, never silently accepted.
+   */
+  registerLensAction("mesh", "consensusMergeRemote", (ctx, artifact, params) => {
+    try {
+      const uid = userId(ctx);
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      if (!data.record || typeof data.record !== "object") return { ok: false, error: "record required" };
+      const { dag } = getOrCreateConsensusReplica(uid);
+      const merge = dag.mergeRemote(data.record);
+      return { ok: true, result: { merge, heads: dag.getHeads(), size: dag.size, deferred: dag.deferred.size } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "consensusMergeRemote failed" };
+    }
+  }, { description: "Merge a remote signed hash-DAG update into this user's replica (verifies signature, hash integrity, and known parentage)." });
+
+  /**
+   * consensusState — the deterministic causal linearization (topological
+   * order with a stable hash tiebreak for concurrent updates — no wall
+   * clock involved) and the materialized key/value state folded over it.
+   */
+  registerLensAction("mesh", "consensusState", (ctx) => {
+    try {
+      const uid = userId(ctx);
+      const { dag } = getOrCreateConsensusReplica(uid);
+      return {
+        ok: true,
+        result: {
+          order: dag.linearize(),
+          state: dag.materializeState(),
+          heads: dag.getHeads(),
+          size: dag.size,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || "consensusState failed" };
+    }
+  }, { description: "Deterministic causal linearization + materialized state of this user's hash-DAG replica." });
+
+  /**
+   * consensusEquivocation — the Byzantine part: scan this replica for an
+   * author who signed two different updates at the same causal position.
+   * Both signed messages come back as evidence — cryptographic proof the
+   * author cannot repudiate, even though this alone cannot force a decision
+   * (no quorum/agreement layer sits on top of this).
+   */
+  registerLensAction("mesh", "consensusEquivocation", (ctx, artifact, params) => {
+    try {
+      const uid = userId(ctx);
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const { dag } = getOrCreateConsensusReplica(uid);
+      const evidence = dag.detectEquivocation(data.nodeId || undefined);
+      return { ok: true, result: { evidence, count: evidence.length } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "consensusEquivocation failed" };
+    }
+  }, { description: "Scan this user's hash-DAG replica for equivocation — an author signing two updates at the same causal position." });
 }
