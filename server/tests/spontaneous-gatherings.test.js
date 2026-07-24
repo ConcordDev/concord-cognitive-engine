@@ -21,8 +21,36 @@ test("spontaneousGatherings clusters nearby present players (>=2 in a 50m cell)"
   assert.ok(big.id.startsWith(`gather_${W}`), "id is world-scoped");
   assert.match(big.description, /3 players/);
 
+  // The gathering carries a real x/z centroid derived from the ACTUAL
+  // clustered player positions (10,10 / 20,20 / 30,30) — never a fabricated
+  // or hashed coordinate. Mean of the three real positions is (20, 20).
+  assert.equal(big.worldId, W);
+  assert.ok(Number.isFinite(big.x), "x must be a real finite number");
+  assert.ok(Number.isFinite(big.z), "z must be a real finite number");
+  assert.equal(big.x, 20, "x centroid must be the mean of the clustered players' real x positions");
+  assert.equal(big.z, 20, "z centroid must be the mean of the clustered players' real z positions");
+  assert.equal(big.y, 0, "y centroid derived from the real (0) y positions");
+
   // The lone player (count 1) is NOT a gathering.
   assert.ok(!gatherings.some((g) => g.location === "edge"), "single player must not cluster");
+});
+
+test("spontaneousGatherings centroid tracks the real cluster, not a fixed/hashed point", () => {
+  const W = `test-gather-centroid-${Date.now()}`;
+  // Two players clustered away from the origin (still within the world's
+  // +/-1000m envelope — see WORLD_BOUNDS in lib/math-safety.js — so the
+  // adversarial-hardening clamp doesn't zero them out), in a different cell
+  // than the first test, to prove the centroid is computed from THIS
+  // cluster's real positions rather than any constant.
+  updateUserPosition("c_u1", { worldId: W, x: 300, y: 5, z: 400 });
+  updateUserPosition("c_u2", { worldId: W, x: 310, y: 15, z: 410 });
+
+  const gatherings = spontaneousGatherings(W, { minCount: 2 });
+  const g = gatherings.find((row) => row.playerCount === 2);
+  assert.ok(g, "expected the 2-player cluster to be detected");
+  assert.equal(g.x, 305, "x centroid = mean(300, 310)");
+  assert.equal(g.z, 405, "z centroid = mean(400, 410)");
+  assert.equal(g.y, 10, "y centroid = mean(5, 15)");
 });
 
 test("spontaneousGatherings is honest-empty for an empty / unknown world", () => {

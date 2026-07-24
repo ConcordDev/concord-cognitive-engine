@@ -1106,18 +1106,30 @@ export function getPlayersInCell(worldId, cellX, cellZ, cellSize = 50) {
 // users. Returns the Gathering shape the EventsGatherings panel renders.
 export function spontaneousGatherings(worldId, { cellSize = 50, minCount = 2, limit = 20 } = {}) {
   if (!worldId) return [];
-  const cells = new Map(); // "cx:cz" -> { count, district, cx, cz }
+  const cells = new Map(); // "cx:cz" -> { count, district, cx, cz, sumX, sumY, sumZ }
   for (const [, pos] of _userPositions) {
     // Movement paths (server.js / routes/world.js) set cityId, not worldId, so
     // pos.worldId falls back to cityId. Match on either so a client that scopes
     // by cityId still surfaces — otherwise the panel reads empty even with
     // co-located players (PR review on this helper).
     if (pos.worldId !== worldId && pos.cityId !== worldId) continue;
-    const cx = Math.floor((Number(pos.x) || 0) / cellSize);
-    const cz = Math.floor((Number(pos.z) || 0) / cellSize);
+    const px = Number(pos.x) || 0;
+    const pz = Number(pos.z) || 0;
+    const py = Number(pos.y) || 0;
+    const cx = Math.floor(px / cellSize);
+    const cz = Math.floor(pz / cellSize);
     const key = `${cx}:${cz}`;
-    const cur = cells.get(key) || { count: 0, district: pos.districtId || null, cx, cz };
+    const cur = cells.get(key) || { count: 0, district: pos.districtId || null, cx, cz, sumX: 0, sumY: 0, sumZ: 0 };
     cur.count += 1;
+    // Real cluster centroid — the running sum of the ACTUAL co-located
+    // players' live positions, not a fabricated/hashed spot. Averaged below
+    // once the cell's final membership is known. This is the same live
+    // presence data the cell-bucketing above already reads to detect the
+    // gathering exists in the first place — no new data source, just carried
+    // through instead of discarded.
+    cur.sumX += px;
+    cur.sumY += py;
+    cur.sumZ += pz;
     if (!cur.district && pos.districtId) cur.district = pos.districtId;
     cells.set(key, cur);
   }
@@ -1130,6 +1142,13 @@ export function spontaneousGatherings(worldId, { cellSize = 50, minCount = 2, li
       location,
       playerCount: c.count,
       description: `${c.count} players gathering at ${location}`,
+      // Centroid of the real clustered positions — lets a client actually
+      // navigate to the gathering (WorldEventBoard "Head there" / in-world
+      // beacon), instead of just naming a district.
+      x: c.sumX / c.count,
+      y: c.sumY / c.count,
+      z: c.sumZ / c.count,
+      worldId,
     });
   }
   out.sort((a, b) => b.playerCount - a.playerCount);

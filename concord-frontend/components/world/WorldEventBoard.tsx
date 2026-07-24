@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   CalendarDays, X, Loader2, RefreshCw, PartyPopper, Sparkles, Clock, MapPin, Gift,
-  Users, Plus, Check, ArrowRight,
+  Users, Plus, Check, ArrowRight, Navigation,
 } from 'lucide-react';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -31,8 +31,11 @@ import { cn } from '@/lib/utils';
 //
 // Gatherings (absorbed from EventsGatherings):
 //   lensRun('world','gatherings',{ worldId }) → { ok, result:{ gatherings:[
-//     { id, location, playerCount, description } ] } } — live clusters of
-//     co-present players. Honest-empty when nobody is grouped up.
+//     { id, location, playerCount, description, x, y, z, worldId } ] } } —
+//     live clusters of co-present players. x/y/z is the real centroid of
+//     the clustered players' positions (server/lib/city-presence.js), so
+//     "Head there" can dispatch a real, non-fabricated destination.
+//     Honest-empty when nobody is grouped up.
 
 interface RawEvent {
   id: string;
@@ -53,6 +56,10 @@ interface Gathering {
   location?: string;
   playerCount?: number;
   description?: string;
+  x?: number;
+  y?: number;
+  z?: number;
+  worldId?: string;
 }
 
 // Event types offered by the create form — matches the backend EVENT_TYPES
@@ -337,6 +344,20 @@ export function WorldEventBoard({ worldId, onClose }: Props) {
     }
   }, [refresh]);
 
+  // "Head there" — reuses the exact same navigation mechanism the world
+  // marker system's "Travel" button already uses (WorldAdventureKitPanel's
+  // MapTab#travel): dispatch `world:fast-travel` with a real destination and
+  // AvatarSystem3D teleports the player via the physics world. A gathering's
+  // x/y/z is the live centroid of the clustered players who triggered
+  // detection (server/lib/city-presence.js#spontaneousGatherings) — never a
+  // fabricated coordinate — so this only fires when a real destination exists.
+  const handleHeadThere = useCallback((g: Gathering) => {
+    if (typeof g.x !== 'number' || typeof g.z !== 'number') return;
+    window.dispatchEvent(new CustomEvent('world:fast-travel', {
+      detail: { x: g.x, y: typeof g.y === 'number' ? g.y : 0, z: g.z },
+    }));
+  }, []);
+
   const handleCreate = useCallback(async () => {
     if (!form.name.trim()) return;
     setActionError(null);
@@ -527,23 +548,36 @@ export function WorldEventBoard({ worldId, onClose }: Props) {
               empty={gatherings.length === 0}
               emptyLabel="No spontaneous gatherings right now"
             >
-              {gatherings.map((g) => (
-                <li
-                  key={g.id}
-                  className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-3 py-2"
-                >
-                  <ArrowRight className="w-3 h-3 flex-shrink-0 text-yellow-400" />
-                  <span className="flex-1 text-xs text-gray-200">
-                    {g.description || g.location || 'Players gathering'}
-                  </span>
-                  {g.playerCount != null && (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
-                      <Users className="w-3 h-3" />
-                      {g.playerCount}
+              {gatherings.map((g) => {
+                const canHeadThere = typeof g.x === 'number' && typeof g.z === 'number';
+                return (
+                  <li
+                    key={g.id}
+                    className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-3 py-2"
+                  >
+                    <ArrowRight className="w-3 h-3 flex-shrink-0 text-yellow-400" />
+                    <span className="flex-1 text-xs text-gray-200">
+                      {g.description || g.location || 'Players gathering'}
                     </span>
-                  )}
-                </li>
-              ))}
+                    {g.playerCount != null && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
+                        <Users className="w-3 h-3" />
+                        {g.playerCount}
+                      </span>
+                    )}
+                    {canHeadThere && (
+                      <button
+                        type="button"
+                        onClick={() => handleHeadThere(g)}
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium bg-yellow-600/20 text-yellow-300 border border-yellow-500/30 hover:bg-yellow-600/30 transition-colors flex-shrink-0"
+                        title="Travel to this gathering"
+                      >
+                        <Navigation className="w-3 h-3" /> Head there
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </Section>
 
             <Section

@@ -276,10 +276,13 @@ export const EVENT_SHAPES = Object.freeze({
   // server/emergent/gathering-broadcast-cycle.js when real, currently
   // co-located players cross the gathering threshold (see
   // spontaneousGatherings, server/lib/city-presence.js). `gatherings` is the
-  // same Gathering[] shape the `world.gatherings` macro / EventsGatherings
-  // panel already consume ({ id, location, playerCount, description }) —
-  // never a fabricated headcount, never emitted when the array would be
-  // empty (the cycle skips the broadcast entirely in that case).
+  // same Gathering[] shape the `world.gatherings` macro / EventsGatherings /
+  // WorldEventBoard panels already consume ({ id, location, playerCount,
+  // description, x, y, z, worldId }) — x/y/z is the real centroid of the
+  // clustered player positions that triggered detection (never fabricated),
+  // added so a client can navigate a player there. Never a fabricated
+  // headcount, never emitted when the array would be empty (the cycle skips
+  // the broadcast entirely in that case).
   "world:gathering-detected": {
     required: ["worldId", "gatherings"],
     optional: [],

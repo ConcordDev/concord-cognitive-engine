@@ -80063,8 +80063,11 @@ register("replay", "recording_for_world", async (_ctx, input = {}) => {
 }, { note: "World build-replay recording assembled from event_timeline_log." });
 
 // Spontaneous gatherings: clusters of nearby currently-present players in a
-// world (>= 2 in a 50m cell). Backs the EventsGatherings panel's gatherings
-// section. Honest-empty when nobody's clustered.
+// world (>= 2 in a 50m cell). Backs the WorldEventBoard panel's Gatherings
+// section (and the legacy EventsGatherings panel) plus WorldEventBeacons'
+// in-world markers. Each gathering carries a real x/y/z centroid derived
+// from the clustered players' own live positions (never fabricated), so a
+// client can navigate a player there. Honest-empty when nobody's clustered.
 register("world", "gatherings", async (_ctx, input = {}) => {
   const { worldId } = input || {};
   if (!worldId) return { ok: false, reason: "missing_worldId" };
