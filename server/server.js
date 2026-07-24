@@ -27297,6 +27297,11 @@ registerLandClaimsMacros(register);
 import registerCrucibleMacros from "./domains/crucible.js";
 registerCrucibleMacros(register);
 
+// concord-link-frontier bespoke mechanic — "the Handshake Protocol" (see
+// domains/handshake-protocol.js + lib/handshake-protocol.js).
+import registerHandshakeProtocolMacros from "./domains/handshake-protocol.js";
+registerHandshakeProtocolMacros(register);
+
 // V1.2 Wave D — player-influenced districts governance. propose_change /
 // vote / list_proposals macros under the "district" domain (additive to
 // domains/district.js's separate snapshot-analytics macros in the same
