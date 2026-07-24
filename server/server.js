@@ -1246,6 +1246,17 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// V1.2 Wave D — player-influenced districts governance resolution. Every 200
+// ticks (~50min, matching Layer 11 faction-strategy-cycle's cadence): resolve
+// any district_proposals whose voting window has closed (quorum + majority ->
+// accepted, applied to the real districts table; otherwise rejected/expired).
+// Kill-switch: CONCORD_DISTRICT_GOVERNANCE=0.
+import { runDistrictGovernanceCycle } from "./emergent/district-governance-cycle.js";
+registerHeartbeat("district-governance-cycle", {
+  frequency: 200,
+  handler: runDistrictGovernanceCycle,
+});
+
 // Wire-the-unwired: goddess.compose_now (lib/goddess-broadcaster.js) had no
 // caller anywhere — no heartbeat, no frontend button — so the /lenses/
 // goddess page's "composed hourly" claim was false and the feed stayed
@@ -27249,6 +27260,13 @@ registerVoiceTTSMacros(register);
 // list_for_user macros for the world lens to interrogate the substrate.
 import registerLandClaimsMacros from "./domains/land-claims.js";
 registerLandClaimsMacros(register);
+
+// V1.2 Wave D — player-influenced districts governance. propose_change /
+// vote / list_proposals macros under the "district" domain (additive to
+// domains/district.js's separate snapshot-analytics macros in the same
+// domain namespace — see that file's own header comment).
+import registerDistrictGovernanceMacros from "./domains/districts.js";
+registerDistrictGovernanceMacros(register);
 import registerGearMacros from "./domains/gear.js";
 registerGearMacros(register);
 
