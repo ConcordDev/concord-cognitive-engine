@@ -38,16 +38,36 @@
  * every list mutation is a real `.push()`/`.delete()` CRDT operation on
  * the shared doc, and every presence entry is a real remote Awareness
  * state.
+ *
+ * V1.2 Wave B (Deep ConKay Agency) — "team mode". A room can now carry a
+ * shared OBJECTIVE (server/lib/workspace-rooms.js#setRoomObjective, mig
+ * 380) optionally linked to a real goal_decomposition tree, and ConKay can
+ * be asked to genuinely work on it: `workspace.conkay-assist` starts (or
+ * resumes) a real, BOUNDED agent-marathon.js session scoped to the room —
+ * no new execution engine, the exact same engine MarathonPanel.tsx drives.
+ *
+ * The ConKay "who's here" entry below is deliberately NOT injected into
+ * the Yjs Awareness CRDT above (that protocol is peer-authored ephemeral
+ * client state — `useYjsAwareness`'s own header is explicit that every
+ * entry there is "a real remote Awareness state", and ConKay is not a
+ * connected Yjs peer). Instead it's a second, clearly-labeled real data
+ * source: a lightweight poll of `workspace.conkay-status`, which reads the
+ * REAL linked marathon session's REAL last recorded turn/tool-call
+ * (server/lib/workspace-rooms.js#describeRoomConkayActivity). It only
+ * ever renders when `active: true` comes back from that macro, and its
+ * label is always derived from real stored state — never an animated
+ * "thinking…" the backend can't back up.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, EyeOff, Eye, X, Plus } from 'lucide-react';
+import { Users, EyeOff, Eye, X, Plus, Bot, Target, Sparkles, Loader2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
 import { useYjsAwareness } from '@/hooks/useYjsAwareness';
 import { useWorkspaceBus, type WorkspaceBusDTU } from '@/components/workspace-bus';
 import { DTUEmbed, type DTUEmbedRecord } from '@/components/dtu/DTUEmbed';
+import { lensRun } from '@/lib/api/client';
 
 /** Scope for every Shared Workspace Room doc — mirrors
  *  server/lib/yjs-realtime.js#KNOWN_SCOPES.SHARED_WORKSPACE. Not imported
@@ -98,6 +118,39 @@ export interface SharedWorkspaceRoomProps {
   displayName: string;
   className?: string;
 }
+
+/** Mirrors server/lib/goal-decomposition.js#getGoalTree's real return shape
+ *  (only the fields this component actually renders). */
+interface GoalTreeState {
+  ok: boolean;
+  reason?: string;
+  progress?: number;
+  total?: number;
+  done?: number;
+  tree?: { title: string; status: string };
+}
+
+/** Mirrors workspace.get-objective's real macro response. */
+interface RoomObjectiveState {
+  ok: boolean;
+  objective: string | null;
+  goalTreeId: string | null;
+  goalTree: GoalTreeState | null;
+}
+
+/** Mirrors server/lib/workspace-rooms.js#describeRoomConkayActivity's real
+ *  return shape — every field here is derived from a real stored marathon
+ *  turn, never fabricated. */
+interface ConkayActivity {
+  sessionId: string;
+  status: string;
+  label: string;
+  totalTurns: number;
+  maxTurns: number;
+  lastToolCalls: string[];
+}
+
+const CONKAY_STATUS_POLL_MS = 4000;
 
 export function SharedWorkspaceRoom({ roomId, userId, displayName, className }: SharedWorkspaceRoomProps) {
   const { doc, synced } = useYjsDoc({ scope: SHARED_WORKSPACE_SCOPE, docId: roomId, enabled: !!roomId });
@@ -166,6 +219,100 @@ export function SharedWorkspaceRoom({ roomId, userId, displayName, className }: 
     [bus.history, dtuRefs]
   );
 
+  // ── V1.2 Wave B — shared objective + ConKay participation ──────────────
+  const [objectiveState, setObjectiveState] = useState<RoomObjectiveState | null>(null);
+  const [editingObjective, setEditingObjective] = useState(false);
+  const [objectiveDraft, setObjectiveDraft] = useState('');
+  const [savingObjective, setSavingObjective] = useState(false);
+  const [objectiveError, setObjectiveError] = useState<string | null>(null);
+  const [conkayActivity, setConkayActivity] = useState<ConkayActivity | null>(null);
+  const [askingConkay, setAskingConkay] = useState(false);
+
+  const loadObjective = useCallback(async () => {
+    if (!roomId) return;
+    const res = await lensRun<RoomObjectiveState>('workspace', 'get-objective', { roomId });
+    if (res.data?.result?.ok) setObjectiveState(res.data.result);
+  }, [roomId]);
+
+  useEffect(() => { loadObjective(); }, [loadObjective]);
+
+  // Poll whether ConKay is actively working this room — real read of the
+  // real linked marathon session, not a client-side timer pretending to be
+  // one (see the module header for why this is a poll of
+  // workspace.conkay-status rather than a synthetic Yjs Awareness entry).
+  useEffect(() => {
+    if (!roomId) { setConkayActivity(null); return; }
+    let cancelled = false;
+    const poll = async () => {
+      const res = await lensRun<{ ok: boolean; active: boolean; activity?: ConkayActivity }>(
+        'workspace', 'conkay-status', { roomId }
+      );
+      if (cancelled) return;
+      const r = res.data?.result;
+      setConkayActivity(r?.ok && r.active && r.activity ? r.activity : null);
+    };
+    poll();
+    const t = setInterval(poll, CONKAY_STATUS_POLL_MS);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [roomId]);
+
+  const startEditingObjective = useCallback(() => {
+    setObjectiveDraft(objectiveState?.objective || '');
+    setObjectiveError(null);
+    setEditingObjective(true);
+  }, [objectiveState]);
+
+  const saveObjective = useCallback(async () => {
+    const trimmed = objectiveDraft.trim();
+    if (!trimmed || savingObjective) return;
+    setSavingObjective(true);
+    setObjectiveError(null);
+    try {
+      const res = await lensRun<{ ok: boolean; reason?: string }>('workspace', 'set-objective', {
+        roomId,
+        objective: trimmed,
+        // Mint a tracked goal tree the first time an objective is set, so
+        // "team mode" has something real for ConKay/decomp to work
+        // against from the start — never re-minted once one exists.
+        mintGoalTree: !objectiveState?.goalTreeId,
+      });
+      if (res.data?.result?.ok) {
+        setEditingObjective(false);
+        await loadObjective();
+      } else {
+        setObjectiveError(res.data?.result?.reason || res.data?.error || 'Could not save objective.');
+      }
+    } finally {
+      setSavingObjective(false);
+    }
+  }, [objectiveDraft, savingObjective, roomId, objectiveState, loadObjective]);
+
+  const askConkayForHelp = useCallback(async () => {
+    if (askingConkay) return;
+    setAskingConkay(true);
+    try {
+      const res = await lensRun<{ ok: boolean; sessionId?: string; resumed?: boolean; reason?: string }>(
+        'workspace', 'conkay-assist', { roomId }
+      );
+      const r = res.data?.result;
+      if (r?.ok && r.sessionId && !r.resumed) {
+        // First real tick — kicks the session from 'pending' to actually
+        // working (mirrors MarathonPanel.tsx's own separate start/tick
+        // steps; auto-tick heartbeats only pick up 'running' sessions).
+        await lensRun('agent_marathon', 'tick', { sessionId: r.sessionId, tickTurns: 5 });
+      }
+      const status = await lensRun<{ ok: boolean; active: boolean; activity?: ConkayActivity }>(
+        'workspace', 'conkay-status', { roomId }
+      );
+      const s = status.data?.result;
+      setConkayActivity(s?.ok && s.active && s.activity ? s.activity : null);
+    } finally {
+      setAskingConkay(false);
+    }
+  }, [askingConkay, roomId]);
+
+  const canAskConkay = !!(objectiveState?.objective && objectiveState?.goalTreeId) && !conkayActivity;
+
   return (
     <div className={cn('rounded-lg border border-lattice-border/60 bg-lattice-surface/20', className)}>
       <header className="flex items-center justify-between gap-3 px-3 py-2 border-b border-lattice-border/60">
@@ -194,10 +341,25 @@ export function SharedWorkspaceRoom({ roomId, userId, displayName, className }: 
 
       <div className="flex items-center gap-2 px-3 py-2 border-b border-lattice-border/60">
         <Users className="w-3.5 h-3.5 text-gray-500 shrink-0" aria-hidden="true" />
-        {collaborators.length === 0 ? (
+        {collaborators.length === 0 && !conkayActivity ? (
           <span className="text-[11px] text-gray-500">Only you here right now.</span>
         ) : (
           <ul className="flex flex-wrap items-center gap-1.5" aria-label="Collaborators currently in this room">
+            {/* ConKay's presence entry — real, not decorative. Only ever
+                rendered when workspace.conkay-status just reported an
+                actually-active marathon session; the label is that
+                session's real last-recorded action (see module header). */}
+            {conkayActivity && (
+              <li
+                data-testid="conkay-presence"
+                title={`ConKay — ${conkayActivity.label} (turn ${conkayActivity.totalTurns}/${conkayActivity.maxTurns})`}
+                className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-neon-cyan/10 border border-neon-cyan/40"
+              >
+                <Bot className="w-3 h-3 text-neon-cyan shrink-0" aria-hidden="true" />
+                <span className="text-neon-cyan font-medium">ConKay</span>
+                <span className="text-gray-400">— {conkayActivity.label}</span>
+              </li>
+            )}
             {collaborators.map((c) => (
               <li
                 key={c.userId}
@@ -212,6 +374,100 @@ export function SharedWorkspaceRoom({ roomId, userId, displayName, className }: 
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      {/* V1.2 Wave B — shared objective + ConKay participation. A real
+          input + a real goal-tree progress readout, never a raw JSON
+          textarea (this codebase's zero-generic-tendencies invariant). */}
+      <div className="px-3 py-2 border-b border-lattice-border/60 space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <Target className="w-3.5 h-3.5 text-gray-500 shrink-0" aria-hidden="true" />
+          <span className="text-[10px] uppercase tracking-wide text-gray-500">Shared objective</span>
+        </div>
+
+        {editingObjective ? (
+          <div className="flex items-start gap-2">
+            <input
+              type="text"
+              value={objectiveDraft}
+              onChange={(e) => setObjectiveDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') saveObjective(); }}
+              placeholder="What is this room working toward?"
+              aria-label="Room objective"
+              maxLength={500}
+              autoFocus
+              className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded border border-lattice-border/60 bg-black/30 text-white placeholder:text-gray-600"
+            />
+            <button
+              type="button"
+              onClick={saveObjective}
+              disabled={!objectiveDraft.trim() || savingObjective}
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-1.5 rounded border border-neon-cyan/50 text-neon-cyan hover:bg-neon-cyan/10 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            >
+              {savingObjective ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditingObjective(false); setObjectiveError(null); }}
+              className="text-[11px] px-2 py-1.5 rounded border border-lattice-border/60 text-gray-400 hover:text-white shrink-0"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : objectiveState?.objective ? (
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs text-gray-200 flex-1 min-w-0">{objectiveState.objective}</p>
+            <button
+              type="button"
+              onClick={startEditingObjective}
+              className="text-[10px] text-gray-500 hover:text-white shrink-0"
+            >
+              Edit
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={startEditingObjective}
+            className="text-[11px] text-gray-500 hover:text-neon-cyan text-left"
+          >
+            No shared objective set yet — click to give this room a goal.
+          </button>
+        )}
+        {objectiveError && <p className="text-[11px] text-red-400">{objectiveError}</p>}
+
+        {/* Real linked goal tree progress — the room's own tree, read live
+            via workspace.get-objective -> goal-decomposition.js's getter.
+            Honest-empty when nothing is linked yet. */}
+        {objectiveState?.goalTree?.ok && (
+          <p className="text-[11px] text-gray-500">
+            Goal tree &ldquo;{objectiveState.goalTree.tree?.title}&rdquo; — {objectiveState.goalTree.done}/{objectiveState.goalTree.total} subgoals done
+            {' '}({Math.round((objectiveState.goalTree.progress || 0) * 100)}%)
+          </p>
+        )}
+        {objectiveState?.goalTreeId && objectiveState.goalTree && !objectiveState.goalTree.ok && (
+          <p className="text-[11px] text-amber-400">
+            Linked goal tree is unavailable ({objectiveState.goalTree.reason}).
+          </p>
+        )}
+
+        {objectiveState?.objective && objectiveState?.goalTreeId && (
+          <button
+            type="button"
+            onClick={askConkayForHelp}
+            disabled={askingConkay || !canAskConkay}
+            title={conkayActivity ? 'ConKay is already working on this room' : 'Ask ConKay to work on the shared objective'}
+            className={cn(
+              'inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded border shrink-0',
+              canAskConkay
+                ? 'border-neon-cyan/50 text-neon-cyan hover:bg-neon-cyan/10'
+                : 'border-lattice-border/60 text-gray-500 cursor-not-allowed'
+            )}
+          >
+            {askingConkay ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {conkayActivity ? 'ConKay is on it' : 'Ask ConKay to help'}
+          </button>
         )}
       </div>
 

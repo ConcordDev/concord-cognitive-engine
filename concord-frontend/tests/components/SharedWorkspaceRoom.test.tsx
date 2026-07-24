@@ -23,7 +23,7 @@
  * file does.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import React from 'react';
 import * as Y from 'yjs';
@@ -48,7 +48,7 @@ vi.mock('lucide-react', async (importOriginal) => {
 
 type Handler = (payload: unknown) => void;
 
-const { handlers, onMock, offMock, emitMock, connectMock, socketState, mockUseYjsDoc } = vi.hoisted(() => {
+const { handlers, onMock, offMock, emitMock, connectMock, socketState, mockUseYjsDoc, lensRunMock } = vi.hoisted(() => {
   const handlers = new Map<string, Set<Handler>>();
   const onMock = vi.fn((event: string, cb: Handler) => {
     let set = handlers.get(event);
@@ -64,7 +64,8 @@ const { handlers, onMock, offMock, emitMock, connectMock, socketState, mockUseYj
   const connectMock = vi.fn();
   const socketState = { connected: true };
   const mockUseYjsDoc = vi.fn();
-  return { handlers, onMock, offMock, emitMock, connectMock, socketState, mockUseYjsDoc };
+  const lensRunMock = vi.fn();
+  return { handlers, onMock, offMock, emitMock, connectMock, socketState, mockUseYjsDoc, lensRunMock };
 });
 
 vi.mock('@/hooks/useSocket', () => ({
@@ -82,6 +83,16 @@ vi.mock('@/hooks/useSocket', () => ({
 
 vi.mock('@/lib/hooks/useYjsDoc', () => ({
   useYjsDoc: mockUseYjsDoc,
+}));
+
+// V1.2 Wave B — the shared-objective + ConKay-participation macros
+// (workspace.get-objective / set-objective / conkay-assist / conkay-status,
+// agent_marathon.tick) all go through this same `lensRun` client helper —
+// mock it so these tests exercise real component behavior against
+// controlled, real-shaped macro responses instead of hitting the network
+// (which would just ECONNREFUSED under jsdom).
+vi.mock('@/lib/api/client', () => ({
+  lensRun: (...args: unknown[]) => lensRunMock(...args),
 }));
 
 import { KeyboardProvider } from '@/lib/keyboard';
@@ -150,6 +161,24 @@ describe('SharedWorkspaceRoom', () => {
     socketState.connected = true;
     testDoc = new Y.Doc();
     mockUseYjsDoc.mockReturnValue({ doc: testDoc, synced: true, socketReady: true, resetVersion: 0 });
+
+    // Default: honest-empty for both new macros, so pre-existing tests that
+    // don't care about "team mode" see exactly what a bare room with no
+    // objective/ConKay session set looks like — never a fabricated result.
+    lensRunMock.mockReset();
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, objective: null, goalTreeId: null, goalTree: null } } });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders an honest empty state — no fabricated DTUs or collaborators', () => {
@@ -250,5 +279,219 @@ describe('SharedWorkspaceRoom', () => {
   it('shows an honest message when the Workspace Bus is empty', () => {
     renderRoom();
     expect(within(screen.getByText(/Add from your Workspace Bus/).closest('div')!).getByText(/Your Workspace Bus is empty/)).toBeInTheDocument();
+  });
+});
+
+describe('SharedWorkspaceRoom — V1.2 Wave B "team mode" (shared objective + ConKay participation)', () => {
+  let testDoc: Y.Doc;
+
+  beforeEach(() => {
+    handlers.clear();
+    onMock.mockClear();
+    offMock.mockClear();
+    emitMock.mockClear();
+    connectMock.mockClear();
+    socketState.connected = true;
+    testDoc = new Y.Doc();
+    mockUseYjsDoc.mockReturnValue({ doc: testDoc, synced: true, socketReady: true, resetVersion: 0 });
+  });
+
+  it('a bare room (no objective set) shows the honest empty-objective prompt, not a fabricated goal', async () => {
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, objective: null, goalTreeId: null, goalTree: null } } });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    renderRoom();
+    expect(await screen.findByText(/No shared objective set yet/)).toBeInTheDocument();
+    // No ConKay chip, and the "Ask ConKay" button doesn't render at all
+    // without both an objective and a linked goal tree.
+    expect(screen.queryByTestId('conkay-presence')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ask ConKay to help/ })).not.toBeInTheDocument();
+  });
+
+  it('a room with a real objective + linked goal tree renders both honestly, derived from the macro response', async () => {
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: {
+              ok: true,
+              objective: 'Ship the v1.2 release',
+              goalTreeId: 'gt_abc',
+              goalTree: { ok: true, progress: 0.5, total: 4, done: 2, tree: { title: 'v1.2 release plan', status: 'active' } },
+            },
+          },
+        });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    renderRoom();
+
+    expect(await screen.findByText('Ship the v1.2 release')).toBeInTheDocument();
+    expect(screen.getByText(/v1\.2 release plan/)).toBeInTheDocument();
+    expect(screen.getByText(/2\/4 subgoals done/)).toBeInTheDocument();
+    expect(screen.getByText(/\(50%\)/)).toBeInTheDocument();
+
+    // Objective + goal tree are both set and ConKay isn't active yet — the
+    // real "ask for help" affordance is available.
+    expect(screen.getByRole('button', { name: /Ask ConKay to help/ })).toBeEnabled();
+  });
+
+  it('a dangling linked goal tree is reported plainly, not silently hidden', async () => {
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: {
+              ok: true, objective: 'Ship it', goalTreeId: 'gt_gone',
+              goalTree: { ok: false, reason: 'tree_not_found' },
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+    });
+    renderRoom();
+    expect(await screen.findByText(/Linked goal tree is unavailable/)).toBeInTheDocument();
+    expect(screen.getByText(/tree_not_found/)).toBeInTheDocument();
+  });
+
+  it('clicking the empty-objective prompt reveals a real text input, and Save calls workspace.set-objective with the typed text', async () => {
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, objective: null, goalTreeId: null, goalTree: null } } });
+      }
+      if (domain === 'workspace' && action === 'set-objective') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, room: { objective: 'Plan the launch', goal_tree_id: 'gt_new' } } } });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    renderRoom();
+
+    fireEvent.click(await screen.findByText(/No shared objective set yet/));
+    const input = screen.getByLabelText('Room objective') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Plan the launch' } });
+
+    // After Save, get-objective is re-fetched — switch its mock to reflect
+    // the just-saved state so the round trip is genuinely exercised.
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({
+          data: { ok: true, result: { ok: true, objective: 'Plan the launch', goalTreeId: 'gt_new', goalTree: { ok: true, progress: 0, total: 1, done: 0, tree: { title: 'Plan the launch', status: 'active' } } } },
+        });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Plan the launch')).toBeInTheDocument();
+    const setCall = lensRunMock.mock.calls.find((c) => c[0] === 'workspace' && c[1] === 'set-objective');
+    expect(setCall).toBeTruthy();
+    expect(setCall![2]).toMatchObject({ roomId: 'room-1', objective: 'Plan the launch', mintGoalTree: true });
+  });
+
+  it('when ConKay is actively working, a real presence chip appears with its honest activity label — no fabricated "thinking"', async () => {
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: {
+              ok: true, objective: 'Ship it', goalTreeId: 'gt_1',
+              goalTree: { ok: true, progress: 0, total: 1, done: 0, tree: { title: 'Ship it', status: 'active' } },
+            },
+          },
+        });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: {
+              ok: true, active: true,
+              activity: { sessionId: 'mar_1', status: 'running', label: 'Working — last action: run_lens_action', totalTurns: 2, maxTurns: 200, lastToolCalls: ['run_lens_action'] },
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    renderRoom();
+
+    const chip = await screen.findByTestId('conkay-presence');
+    expect(within(chip).getByText(/Working — last action: run_lens_action/)).toBeInTheDocument();
+    expect(within(chip).getByText('ConKay')).toBeInTheDocument();
+
+    // The "ask for help" button reflects the real active state instead of
+    // offering to start a second, duplicate session.
+    const askButton = screen.getByRole('button', { name: /ConKay is on it/ });
+    expect(askButton).toBeDisabled();
+  });
+
+  it('"Ask ConKay to help" starts (or resumes) a session via workspace.conkay-assist, ticks it once, then re-polls status', async () => {
+    let statusCallCount = 0;
+    lensRunMock.mockImplementation((domain: string, action: string) => {
+      if (domain === 'workspace' && action === 'get-objective') {
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: {
+              ok: true, objective: 'Ship it', goalTreeId: 'gt_1',
+              goalTree: { ok: true, progress: 0, total: 1, done: 0, tree: { title: 'Ship it', status: 'active' } },
+            },
+          },
+        });
+      }
+      if (domain === 'workspace' && action === 'conkay-status') {
+        statusCallCount += 1;
+        // First poll (on mount): nobody's working yet. Second poll (after
+        // the click handler's own real re-check): now active.
+        if (statusCallCount === 1) {
+          return Promise.resolve({ data: { ok: true, result: { ok: true, active: false } } });
+        }
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: { ok: true, active: true, activity: { sessionId: 'mar_9', status: 'pending', label: 'Queued to start', totalTurns: 0, maxTurns: 200, lastToolCalls: [] } },
+          },
+        });
+      }
+      if (domain === 'workspace' && action === 'conkay-assist') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, resumed: false, sessionId: 'mar_9', status: 'pending' } } });
+      }
+      if (domain === 'agent_marathon' && action === 'tick') {
+        return Promise.resolve({ data: { ok: true, result: { ok: true, status: 'running' } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    renderRoom();
+
+    const askButton = await screen.findByRole('button', { name: /Ask ConKay to help/ });
+    fireEvent.click(askButton);
+
+    expect(await screen.findByTestId('conkay-presence')).toBeInTheDocument();
+
+    const assistCall = lensRunMock.mock.calls.find((c) => c[0] === 'workspace' && c[1] === 'conkay-assist');
+    expect(assistCall![2]).toMatchObject({ roomId: 'room-1' });
+    const tickCall = lensRunMock.mock.calls.find((c) => c[0] === 'agent_marathon' && c[1] === 'tick');
+    expect(tickCall).toBeTruthy();
+    expect(tickCall![2]).toMatchObject({ sessionId: 'mar_9' });
   });
 });

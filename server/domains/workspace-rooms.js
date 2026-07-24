@@ -10,7 +10,11 @@
 // <SharedWorkspaceRoom roomId={id} .../> which talks to the real
 // 'workspace:room' Yjs scope directly over its own socket path.
 
-import { createRoom, listInDistrict, listMine } from "../lib/workspace-rooms.js";
+import {
+  createRoom, listInDistrict, listMine,
+  setRoomObjective, getRoomObjective, startOrResumeConkayAssist,
+  getActiveRoomMarathon, describeRoomConkayActivity,
+} from "../lib/workspace-rooms.js";
 
 export default function registerWorkspaceRoomMacros(register) {
   /**
@@ -52,4 +56,76 @@ export default function registerWorkspaceRoomMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, rooms: listMine(db, userId, { limit: input?.limit }) };
   }, { note: "list rooms the caller owns" });
+
+  // ── V1.2 Wave B — "team mode": shared objective + ConKay participation ──
+  // (lib/workspace-rooms.js, mig 380). See that file's header for the full
+  // design; these four macros are thin wrappers, same shape as the three
+  // above.
+
+  /**
+   * workspace.set-objective — set/clear a room's shared objective and,
+   * optionally, link/mint a real goal_decomposition tree.
+   * input: { roomId, objective?, goalTreeId?, mintGoalTree? }
+   */
+  register("workspace", "set-objective", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const { roomId, objective, goalTreeId, mintGoalTree } = input;
+    if (!roomId) return { ok: false, reason: "missing_room_id" };
+    return setRoomObjective(db, roomId, userId, { objective, goalTreeId, mintGoalTree });
+  }, { note: "set/clear a room's shared objective; optionally link an existing goal tree the caller owns, or mint a fresh one" });
+
+  /**
+   * workspace.get-objective — read a room's objective + its linked goal
+   * tree's REAL live state (never a snapshot). Honest-empty when neither
+   * is set.
+   * input: { roomId }
+   */
+  register("workspace", "get-objective", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const { roomId } = input;
+    if (!roomId) return { ok: false, reason: "missing_room_id" };
+    return getRoomObjective(db, roomId);
+  }, { note: "read a room's shared objective + linked goal tree's live state" });
+
+  /**
+   * workspace.conkay-assist — give ConKay a real, bounded participant role
+   * in a room's work: start (or resume) an agent-marathon.js session
+   * scoped to the room's objective + goal tree, under the mig-379
+   * governance envelope (allowedDomains defaults to the conservative
+   * dtu+decomp allowlist — NOT the full tool surface a bare
+   * agent_marathon.start gets). Requires the room to already have both an
+   * objective and a linked goal tree set (via workspace.set-objective).
+   * input: { roomId, allowedDomains?, budgetCap?, maxTurns? }
+   */
+  register("workspace", "conkay-assist", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const { roomId, allowedDomains, budgetCap, maxTurns } = input;
+    if (!roomId) return { ok: false, reason: "missing_room_id" };
+    return startOrResumeConkayAssist(db, roomId, userId, { allowedDomains, budgetCap, maxTurns });
+  }, { note: "start or resume a bounded, room-scoped ConKay marathon session working toward the room's objective (reuses agent-marathon.js end to end — no new execution engine)" });
+
+  /**
+   * workspace.conkay-status — read-only poll: is ConKay actively working
+   * on this room right now, and an honest summary of what it's doing
+   * (derived from the real marathon session's real last recorded turn —
+   * never a fabricated "thinking..."). Backs SharedWorkspaceRoom.tsx's
+   * ConKay presence indicator.
+   * input: { roomId }
+   */
+  register("workspace", "conkay-status", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const { roomId } = input;
+    if (!roomId) return { ok: false, reason: "missing_room_id" };
+    const session = getActiveRoomMarathon(db, roomId);
+    if (!session) return { ok: true, active: false };
+    return { ok: true, active: true, activity: describeRoomConkayActivity(session) };
+  }, { note: "poll whether ConKay is actively working on this room's objective, with an honest activity summary" });
 }
