@@ -39010,6 +39010,16 @@ register("marketplace", "myListings", async (ctx, _input) => {
       downloads: dtu.marketplace.purchases || 0,
       listedAt: dtu.marketplace.listedAt || dtu.createdAt || null,
       tierPrices: dtu.marketplace.tierPrices || undefined,
+      // Real, honest verification passthrough (V1.2 Wave C) — forwards
+      // WHATEVER is actually on the DTU's `meta`, never invents a value.
+      // Only server/lib/asset-gen/asset-marketplace.js#mintGeneratedAssetAsDtu
+      // populates these today (feaVerified/feaSummary); every other content
+      // type forwards null/undefined here, which
+      // marketplace-verification.js#getListingVerification classifies as the
+      // honest "no_data" state — never a default "verified".
+      contentType: dtu.marketplace.contentType || null,
+      feaVerified: typeof dtu.meta?.feaVerified === "boolean" ? dtu.meta.feaVerified : null,
+      feaSummary: dtu.meta?.feaSummary || null,
     });
   }
   listings.sort((a, b) => new Date(b.listedAt || 0) - new Date(a.listedAt || 0));

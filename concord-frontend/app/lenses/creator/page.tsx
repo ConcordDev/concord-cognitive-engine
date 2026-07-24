@@ -37,6 +37,7 @@ import { RoyaltyFlowCard } from '@/components/creator/RoyaltyFlowCard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import KnowledgeEntrepreneurBadge from '@/components/creator/KnowledgeEntrepreneurBadge';
+import { ListingVerificationBadge, type FeaSummary } from '@/components/marketplace/ListingVerificationBadge';
 import { lensRun } from '@/lib/api/client';
 import {
   useArtifacts,
@@ -82,6 +83,14 @@ interface MyListing {
   tierPrices?: { usage?: number; remix?: number; commercial?: number };
   totalEarnings?: number;
   sourceDtuId?: string;
+  // Real, honest verification passthrough (V1.2 Wave C) — server.js's
+  // `marketplace.myListings` forwards WHATEVER is actually on the source
+  // DTU's `meta` (only server/lib/asset-gen/asset-marketplace.js populates
+  // these today); null/undefined here is the honest default for every
+  // non-engineering listing, never treated as "verified".
+  contentType?: string | null;
+  feaVerified?: boolean | null;
+  feaSummary?: FeaSummary | null;
 }
 
 interface PendingWithdrawal {
@@ -789,7 +798,10 @@ function ListingRow({ listing, onUpdate, onWithdraw, onRelist }: ListingRowProps
       {!editing ? (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px]">
-            <div className="text-gray-100 font-medium truncate">{listing.title}</div>
+            <div className="text-gray-100 font-medium truncate inline-flex items-center gap-2">
+              {listing.title}
+              <ListingVerificationBadge listing={listing} />
+            </div>
             <div className="text-xs text-gray-400">
               {listing.price} CC · {listing.downloads} downloads · {listing.status}
               {listing.totalEarnings != null && (
