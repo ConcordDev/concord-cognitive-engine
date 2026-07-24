@@ -20,21 +20,21 @@ const src = readFileSync(
   'utf8'
 );
 
-describe('TerrainRenderer.tsx — real ground texture wiring', () => {
-  it('imports warmTerrainTextures and getTerrainTextureSync as static imports', () => {
+describe('TerrainRenderer.tsx — real ground texture, source-text pin (behavior for warmTerrainTextures/getTerrainTextureSync lives in tests/lib/terrain-textures.test.ts; this file only pins that TerrainRenderer.tsx\'s source reaches into that already-tested logic — see file header for why)', () => {
+  it('the source statically imports warmTerrainTextures and getTerrainTextureSync (source-text pin)', () => {
     expect(src).toMatch(/import \{ warmTerrainTextures, getTerrainTextureSync \} from '@\/lib\/world-lens\/terrain-textures';/);
   });
 
-  it('kicks off warming once per build, fire-and-forget (not awaited)', () => {
+  it('the source starts texture warming once per build without awaiting the promise (source-text pin, not proof of async timing)', () => {
     expect(src).toMatch(/const terrainTexturesReady = warmTerrainTextures\(THREE\);/);
   });
 
-  it('checks the synchronous cache when constructing each chunk material (best-effort, no blocking)', () => {
+  it('the source reads the synchronous texture cache and assigns it onto the chunk material (source-text pin, not proof of a non-blocking read at runtime)', () => {
     expect(src).toMatch(/const zoneTex = getTerrainTextureSync\(zone\);/);
     expect(src).toMatch(/material\.map = zoneTex;/);
   });
 
-  it('sets a real tiled repeat (not stretched 1x1) using a chunk-size-derived constant', () => {
+  it('the source computes a tiled repeat from a chunk-size-derived constant, not a stretched 1x1 (source-text pin)', () => {
     expect(src).toMatch(/const TERRAIN_TEXTURE_TILE_METERS = 4;/);
     expect(src).toMatch(/const TERRAIN_TEXTURE_REPEAT = CHUNK_SIZE \/ TERRAIN_TEXTURE_TILE_METERS;/);
     expect(src).toMatch(/zoneTex\.repeat\.set\(TERRAIN_TEXTURE_REPEAT, TERRAIN_TEXTURE_REPEAT\);/);
@@ -60,7 +60,7 @@ describe('TerrainRenderer.tsx — real ground texture wiring', () => {
     expect(block).toMatch(/!mat\.map/);
   });
 
-  it('vertexColors stays enabled — the real texture multiplies the existing AO/blend tint, it does not replace it', () => {
+  it('the source keeps vertexColors enabled after assigning the texture map — the texture multiplies the existing AO/blend tint instead of replacing it (source-text pin)', () => {
     expect(src).toMatch(/material\.vertexColors = true;/);
   });
 });

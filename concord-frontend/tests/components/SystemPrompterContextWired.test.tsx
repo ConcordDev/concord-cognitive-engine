@@ -62,7 +62,7 @@ describe('SystemPrompter — reacts to a real concordia:context-update dispatch'
 });
 
 describe('World lens page — genuinely publishes concordia:context-update', () => {
-  it('dispatches concordia:context-update from real, already-tracked proximity/combat/swim state', () => {
+  it('page.tsx\'s source contains the literal dispatchEvent(new CustomEvent(\'concordia:context-update\', ...)) statement, populated from real, already-tracked proximity/combat/swim state — not fabricated values (source-text pin; page.tsx cannot be mounted in jsdom, see file header)', () => {
     const src = readFileSync(WORLD, 'utf8');
     expect(src).toMatch(/dispatchEvent\(new CustomEvent\('concordia:context-update', \{ detail: ctx \}\)\)/);
     // Every field comes from state this page tracks for other real reasons —

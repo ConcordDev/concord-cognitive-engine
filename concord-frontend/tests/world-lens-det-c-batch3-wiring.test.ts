@@ -57,22 +57,22 @@ describe('DET-C batch 3 — SR_BRIDGE_EVENTS additions', () => {
   });
 });
 
-describe('DET-C batch 3 — AdaptiveMusicEngine combat-engaged/calm wiring', () => {
-  it('tracks an inCombat edge and dispatches literal, statically-greppable events on each branch', () => {
+describe('DET-C batch 3 — AdaptiveMusicEngine combat-engaged/calm, source-text pin (page.tsx can\'t mount in jsdom — see file header)', () => {
+  it('the source tracks an inCombat edge and contains two literal, statically-greppable event strings, one per branch (source-text pin — proves the strings exist as static text; does not prove either one executes)', () => {
     const frameBlock = pageSrc.match(/function musicFrame\(now: number\) \{[\s\S]*?\n {4}\}/);
     expect(frameBlock).toBeTruthy();
     const body = frameBlock![0];
     expect(body).toMatch(/if \(inCombat !== wasInCombat\)/);
-    // Each branch must dispatch a LITERAL string argument (not a ternary
-    // passed to `new CustomEvent(...)`) — a dynamic ternary is invisible to
-    // the dead-event-listener detector's static DISPATCH_RE, which is
-    // exactly the false-positive class already on file for
-    // dtu:updated/quality:approved. Two literal calls, not one dynamic one.
+    // Each branch must use a LITERAL string argument (not a ternary passed
+    // to `new CustomEvent(...)`) — a dynamic ternary is invisible to the
+    // dead-event-listener detector's static DISPATCH_RE, which is exactly
+    // the false-positive class already on file for dtu:updated/quality:approved.
+    // Two literal strings, not one dynamic one.
     expect(body).toMatch(/window\.dispatchEvent\(new CustomEvent\('concordia:combat-engaged'\)\);/);
     expect(body).toMatch(/window\.dispatchEvent\(new CustomEvent\('concordia:calm'\)\);/);
   });
 
-  it('derives inCombat from the same combatStateRef check CombatMusicSystem already uses (no new detection logic)', () => {
+  it('the source\'s inCombat derivation is identical, character-for-character, to the check CombatMusicSystem already uses (source-text pin keeping the two usage sites in sync, no new detection logic)', () => {
     const frameBlock = pageSrc.match(/function musicFrame\(now: number\) \{[\s\S]*?\n {4}\}/);
     expect(frameBlock![0]).toMatch(
       /const inCombat = !!\(combatStateRef\.current\.target && !combatStateRef\.current\.isDead\);/
