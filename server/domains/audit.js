@@ -1,6 +1,15 @@
 // server/domains/audit.js
 // Domain actions for auditing and compliance: compliance checks, trail analysis, risk scoring, sampling plans.
 
+import { checkModel, replayTrace } from "../lib/verification/model-checker.js";
+import {
+  buildLedgerConservationModel,
+  buildTreasuryInvariantModel,
+  buildRoyaltyCascadeModel,
+  correctCreditPredicate,
+  buggyCreditPredicateDoubleCounts,
+} from "../lib/verification/invariant-specs.js";
+
 export default function registerAuditActions(registerLensAction) {
   /**
    * complianceCheck
@@ -1442,4 +1451,98 @@ export default function registerAuditActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ---------------------------------------------------------------------
+  // W2-B — bounded model checker surface.
+  //
+  // Formal-verification macros over server/lib/verification/model-checker.js
+  // + invariant-specs.js. These run a BOUNDED explicit-state search (BFS)
+  // over a small hand-specified abstraction of the real money invariants —
+  // NOT the live database, NOT a proof. Every result carries `exhaustive`
+  // and a `note` field spelling out exactly what was and wasn't covered;
+  // callers must read `status` before trusting anything else in the result.
+  // Read-only / pure-compute — no DB or STATE writes.
+  // ---------------------------------------------------------------------
+
+  function clampBound(value, fallback, max) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return fallback;
+    return Math.min(n, max);
+  }
+
+  /**
+   * modelCheckLedgerConservation
+   * Explores mint/transfer/marketplace-purchase/withdraw sequences over the
+   * two-row TRANSFER/MARKETPLACE_PURCHASE ledger shape and checks that
+   * circulating balance never exceeds total minted USD.
+   * params.predicate: "correct" (default, mirrors economy/balances.js#CREDIT_ROW_PREDICATE)
+   *                    | "buggy" (the historical double-credit defect — for demonstrating the catch)
+   * params.maxStates, params.maxDepth: search bounds (clamped to sane ceilings)
+   */
+  registerLensAction("audit", "modelCheckLedgerConservation", (_ctx, _artifact, params = {}) => {
+    try {
+      const predicate = params.predicate === "buggy" ? buggyCreditPredicateDoubleCounts : correctCreditPredicate;
+      const model = buildLedgerConservationModel({ creditPredicate: predicate });
+      const maxStates = clampBound(params.maxStates, 5000, 20000);
+      const maxDepth = clampBound(params.maxDepth, 6, 15);
+      const result = checkModel(model, { maxStates, maxDepth });
+
+      const response = { ok: true, result };
+      if (result.status === "violation") {
+        const replay = replayTrace(model, result.trace);
+        response.result = { ...result, replay: { reproduced: replay.ok, finalState: replay.ok ? replay.finalState : undefined } };
+      }
+      return response;
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  /**
+   * modelCheckTreasuryInvariant
+   * Same abstraction as modelCheckLedgerConservation, framed for
+   * economy/coin-service.js#verifyTreasuryInvariant's "circulating <=
+   * total_usd" contract across mint/burn(withdraw)/purchase sequences.
+   */
+  registerLensAction("audit", "modelCheckTreasuryInvariant", (_ctx, _artifact, params = {}) => {
+    try {
+      const predicate = params.predicate === "buggy" ? buggyCreditPredicateDoubleCounts : correctCreditPredicate;
+      const model = buildTreasuryInvariantModel({ creditPredicate: predicate });
+      const maxStates = clampBound(params.maxStates, 5000, 20000);
+      const maxDepth = clampBound(params.maxDepth, 6, 15);
+      const result = checkModel(model, { maxStates, maxDepth });
+      return { ok: true, result };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  /**
+   * modelCheckRoyaltyCascade
+   * Explores citation-breadth + purchase sequences against
+   * economy/royalty-cascade.js#distributeRoyalties's 30% cap and
+   * MAX_CASCADE_DEPTH=50 lineage bound.
+   * params.enforceCap: default true (real behavior); false demonstrates the
+   *   cap-removed defect this check would catch.
+   * params.saleAmount: default 1000.
+   */
+  registerLensAction("audit", "modelCheckRoyaltyCascade", (_ctx, _artifact, params = {}) => {
+    try {
+      const enforceCap = params.enforceCap !== false;
+      const saleAmount = Number.isFinite(Number(params.saleAmount)) && Number(params.saleAmount) > 0 ? Number(params.saleAmount) : 1000;
+      const model = buildRoyaltyCascadeModel({ enforceCap, saleAmount });
+      const maxStates = clampBound(params.maxStates, 5000, 20000);
+      const maxDepth = clampBound(params.maxDepth, 10, 20);
+      const result = checkModel(model, { maxStates, maxDepth });
+
+      const response = { ok: true, result };
+      if (result.status === "violation") {
+        const replay = replayTrace(model, result.trace);
+        response.result = { ...result, replay: { reproduced: replay.ok, finalState: replay.ok ? replay.finalState : undefined } };
+      }
+      return response;
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
 }
