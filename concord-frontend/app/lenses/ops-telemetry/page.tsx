@@ -15,14 +15,16 @@
  * Auto-refreshes every 5 seconds while the tab is visible.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { AdminRequiredState } from '@/components/common/EmptyState';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LivenessPanel } from '@/components/admin/LivenessPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Activity, Cpu, Brain, Globe, RefreshCcw, AlertTriangle, Layers } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
+import { Activity, Cpu, Brain, Globe, RefreshCcw, AlertTriangle, Layers, Radar, ShieldAlert, ArrowUpRight } from 'lucide-react';
 
 interface HeartbeatStatRow {
   id: string;
@@ -79,6 +81,21 @@ interface WorldShardRow {
   restartCount: number;
 }
 
+// Wave E — simulation-scale rollup. Same real shape `worldstate.overview`
+// returns (server/domains/world-overview.js), consumed here only as a
+// platform-wide aggregate; the full per-world grid + drill-down already
+// lives at /lenses/world-observatory (Wave D) — this section deliberately
+// does not rebuild that view a second time.
+interface WorldSummaryRow {
+  worldId: string;
+  name: string;
+  activeUsers: number;
+  factionCount: number;
+  realmCount: number;
+  districtCount: number;
+  stuckFactionSchedulers: number;
+}
+
 export default function OpsTelemetryPage() {
   const [hbStats, setHbStats] = useState<HeartbeatStatRow[]>([]);
   const [macroPool, setMacroPool] = useState<PoolStats | null>(null);
@@ -94,6 +111,11 @@ export default function OpsTelemetryPage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   // Wave 7 / D2 — the cost-story telemetry ("a thousand NPCs for the cost of ten").
   const [costs, setCosts] = useState<{ calls: number; tokensIn: number; tokensOut: number; costLabel: string; byBrain: Record<string, { calls: number }> } | null>(null);
+  // Wave E — simulation-overview rollup (worldstate.overview). `null` means
+  // "not yet fetched successfully" (honest loading/error), distinct from `[]`
+  // which means "fetched fine, zero worlds on this instance."
+  const [simWorlds, setSimWorlds] = useState<WorldSummaryRow[] | null>(null);
+  const [simError, setSimError] = useState<string | null>(null);
   // Wave 4 gap-closure — this page's own refresh() and LivenessPanel's
   // internal refresh used to run on two independent, uncoordinated 5s
   // setIntervals (two unjittered network round-trips every 5s). This page
@@ -122,6 +144,31 @@ export default function OpsTelemetryPage() {
       if (ba?.ok) setBrainActivity(ba.brains || []);
       if (ws?.ok) { setShards(ws.shards || []); setSharded(!!ws.sharded); }
       if (ic?.ok) setCosts({ calls: ic.calls, tokensIn: ic.tokensIn, tokensOut: ic.tokensOut, costLabel: ic.costLabel, byBrain: ic.byBrain || {} });
+
+      // Wave E — worldstate.overview is a lens macro (POST /api/lens/run),
+      // not one of the /api/admin/* REST endpoints above, so it goes through
+      // lensRun rather than fetch. Never fabricate: a failed/empty response
+      // clears simWorlds to null (honest "couldn't load") rather than
+      // leaving a stale number on screen.
+      try {
+        const simRes = await lensRun<{ ok: boolean; worlds?: WorldSummaryRow[]; reason?: string }>(
+          'worldstate',
+          'overview',
+          {},
+        );
+        const simPayload = simRes.data.result;
+        if (simRes.data.ok && simPayload?.ok) {
+          setSimWorlds(simPayload.worlds || []);
+          setSimError(null);
+        } else {
+          setSimWorlds(null);
+          setSimError(simRes.data.error || simPayload?.reason || 'Failed to load simulation overview');
+        }
+      } catch (e) {
+        setSimWorlds(null);
+        setSimError(e instanceof Error ? e.message : String(e));
+      }
+
       setLastRefresh(new Date());
       setHasLoadedOnce(true);
     } catch (e) {
@@ -163,6 +210,25 @@ export default function OpsTelemetryPage() {
     ],
     { lensId: 'ops-telemetry' }
   );
+
+  // Wave E — real client-side rollup over the real per-world array. Every
+  // number here is a genuine sum/count of `simWorlds`, never a placeholder —
+  // when simWorlds is null (not yet loaded / load failed) the rollup is
+  // null too, so the section renders an honest state instead of "0".
+  const simTotals = useMemo(() => {
+    if (!simWorlds) return null;
+    return simWorlds.reduce(
+      (acc, w) => ({
+        activeUsers: acc.activeUsers + (w.activeUsers || 0),
+        factionCount: acc.factionCount + (w.factionCount || 0),
+        realmCount: acc.realmCount + (w.realmCount || 0),
+        districtCount: acc.districtCount + (w.districtCount || 0),
+        worldsWithWarnings: acc.worldsWithWarnings + (w.stuckFactionSchedulers > 0 ? 1 : 0),
+        stuckSchedulers: acc.stuckSchedulers + (w.stuckFactionSchedulers || 0),
+      }),
+      { activeUsers: 0, factionCount: 0, realmCount: 0, districtCount: 0, worldsWithWarnings: 0, stuckSchedulers: 0 },
+    );
+  }, [simWorlds]);
 
   if (forbidden) return (
     <LensShell lensId="ops-telemetry" asMain={false}>
@@ -255,6 +321,64 @@ export default function OpsTelemetryPage() {
           {/* F2 — substrate liveness (the moat-mass + funnel/distribution/economy headline) */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
             <LivenessPanel refreshToken={livenessTick} />
+          </div>
+
+          {/* Wave E — Simulation Overview. This lens was infra-health-only
+              (heartbeat timing, worker pools, brain endpoints, world shards)
+              with zero simulation *content* visibility — the natural "one
+              place operators look" didn't cover population/faction/realm/
+              district state at all. Rather than re-render the full per-world
+              grid + drill-down here (that's /lenses/world-observatory's job,
+              Wave D), this is a single honest platform-wide rollup + a
+              deep-link — a dashboard-of-dashboards summary, not a duplicate. */}
+          <div data-testid="simulation-overview-panel" className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.03] p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
+                <Radar className="h-4 w-4" /> Simulation overview
+                <span className="text-[10px] font-normal normal-case text-slate-400">
+                  population / faction / realm / district, platform-wide
+                </span>
+              </h2>
+              <Link
+                href="/lenses/world-observatory"
+                className="flex shrink-0 items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 hover:bg-cyan-500/20"
+              >
+                Full observatory <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+              </Link>
+            </div>
+            {simError && !simTotals && (
+              <div role="alert" className="flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{simError}</span>
+              </div>
+            )}
+            {!simError && simTotals && simWorlds && simWorlds.length === 0 && (
+              <p className="text-[11px] text-slate-500">No worlds detected on this instance.</p>
+            )}
+            {simTotals && simWorlds && simWorlds.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                <Metric label="worlds" value={String(simWorlds.length)} />
+                <Metric label="active users" value={simTotals.activeUsers.toLocaleString()} />
+                <Metric label="factions" value={simTotals.factionCount.toLocaleString()} />
+                <Metric label="realms" value={simTotals.realmCount.toLocaleString()} />
+                <Metric label="districts" value={simTotals.districtCount.toLocaleString()} />
+                <div className={`rounded-lg border px-2.5 py-1.5 ${simTotals.worldsWithWarnings > 0 ? 'border-red-500/40 bg-red-500/10' : 'border-zinc-800 bg-zinc-950/40'}`}>
+                  <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wider ${simTotals.worldsWithWarnings > 0 ? 'text-red-300' : 'text-slate-500'}`}>
+                    {simTotals.worldsWithWarnings > 0 && <ShieldAlert className="h-3 w-3" aria-hidden="true" />} worlds w/ warnings
+                  </div>
+                  <div className={`mt-0.5 text-sm font-semibold tabular-nums ${simTotals.worldsWithWarnings > 0 ? 'text-red-200' : 'text-slate-100'}`}>
+                    {simTotals.worldsWithWarnings}
+                    {simTotals.stuckSchedulers > 0 && (
+                      <span className="ml-1 text-[10px] font-normal text-red-300/80">
+                        ({simTotals.stuckSchedulers} stuck scheduler{simTotals.stuckSchedulers === 1 ? '' : 's'})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {!simTotals && !simError && (
+              <p className="text-[11px] text-slate-500">no simulation data loaded</p>
+            )}
           </div>
 
           {/* Wave 7 / D2 — the cost-story telemetry: LLM calls track SALIENT exchanges,
