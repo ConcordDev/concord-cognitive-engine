@@ -1113,4 +1113,35 @@ export default function registerEngineeringActions(registerLensAction) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   });
+
+  // ─── mint-and-list — Program C's CAS→FEA→GLB pipeline → real marketplace ──
+  // V1.2 Wave C (Creation → Economy Loop). Takes a COMPLETED, already-run
+  // asset-gen output (`generateValidatedAsset` in
+  // server/lib/asset-gen/generate-asset.js, or the equivalent fields off a
+  // promoted evo_assets row: archetype/material/glbPath/massProps/feaResult)
+  // plus a price, and does both steps every other real-money creative path
+  // already does: mint a real DTU (via dtu.create — populates both the SQL
+  // row and STATE.dtus, unlike forge-marketplace.js's raw-SQL insert), then
+  // list it on the real marketplace (marketplace.list — the same macro the
+  // Creator lens Listings tab uses, backed by purchaseWithRoyalties' 95%
+  // creator / 5% platform royalty cascade). See
+  // server/lib/asset-gen/asset-marketplace.js for the full honesty contract:
+  // an asset with no passing FEA check is refused by default, never minted
+  // with a fabricated "verified" claim.
+  registerLensAction('engineering', 'mint-and-list', async (ctx, _artifact, params = {}) => {
+    try {
+      const { assetGenResult, price, currency, title, description, allowUnverified } = params || {};
+      if (!assetGenResult || typeof assetGenResult !== 'object') {
+        return { ok: false, error: 'assetGenResult (a completed generateValidatedAsset/asset-gen output) is required' };
+      }
+      const { mintAndListGeneratedAsset } = await import('../lib/asset-gen/asset-marketplace.js');
+      const result = await mintAndListGeneratedAsset(ctx, assetGenResult, price, {
+        currency, title, description, allowUnverified: allowUnverified === true,
+      });
+      if (!result.ok) return { ok: false, error: result.reason, ...result };
+      return { ok: true, result };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 }
