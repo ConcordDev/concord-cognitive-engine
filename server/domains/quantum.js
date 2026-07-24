@@ -4,6 +4,16 @@
 // path), circuit analysis, error/noise modelling, QASM import/export,
 // algorithm templates, step-through execution, Bloch-vector readout, and
 // persistent per-user saved circuits.
+//
+// QEC macros (qec_*) below are a SEPARATE simulator, added alongside the
+// gate-based one: stabilizer simulation of the toric surface code +
+// Union-Find decoding. It cannot be built on the statevector engine above
+// (which caps around 20 qubits) — see lib/simulation/qec-surface-code.js and
+// lib/simulation/qec-decoder.js headers for the full complementary-not-
+// competing relationship and the honest boundary statement.
+
+import { buildToricCode, syndromeOf, sampleBitFlipError, xorEdgeSets, isHomologicallyTrivial } from "../lib/simulation/qec-surface-code.js";
+import { runBitFlipTrial, runDepolarizingTrial, sweepLogicalErrorRate, unionFindDecode } from "../lib/simulation/qec-decoder.js";
 
 export default function registerQuantumActions(registerLensAction) {
   // ─── Persistent per-user circuit store ──────────────────────────────
@@ -728,6 +738,128 @@ export default function registerQuantumActions(registerLensAction) {
       list.splice(idx, 1);
       saveQ();
       return { ok: true, result: { deleted: params.id, remaining: list.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─── QEC honest boundary (shared across the three macros below) ────
+  const QEC_HONEST_BOUNDARY =
+    "Stabilizer simulation (Gottesman-Knill, polynomial-time) with an almost-linear " +
+    "O(n·α(n)) Union-Find decoder. Research/verification only — makes no latency " +
+    "claim; real hardware must decode within the microsecond coherence window, an " +
+    "FPGA/ASIC problem this does not address. Error model is i.i.d. per-qubit with " +
+    "perfect syndrome measurement — no correlated noise, leakage, crosstalk, or " +
+    "measurement error. Complementary to (not a replacement for) the gate-based " +
+    "statevector simulator above: that one gives exact amplitudes up to ~20 qubits; " +
+    "this one scales to thousands of qubits but cannot produce an amplitude.";
+  function qecClampD(d) { return Math.max(2, Math.min(15, Math.round(Number(d) || 3))); }
+  function qecClampP(p) { const v = Number(p); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.05; }
+  function qecClampTrials(n, max) { return Math.max(1, Math.min(max, Math.round(Number(n) || 200))); }
+  function qecLcgFromSeed(seed) {
+    let s = (Number.isFinite(seed) ? Math.floor(seed) : Date.now()) >>> 0;
+    if (s === 0) s = 0x9e3779b9;
+    return () => { s = (1664525 * s + 1013904223) >>> 0; return s / 4294967296; };
+  }
+
+  // ─── Macro: qecLatticeInfo ───────────────────────────────────────────
+  // Structural facts about a distance-d toric-code lattice — no simulation run.
+  registerLensAction("quantum", "qecLatticeInfo", (_ctx, _artifact, params) => {
+    try {
+      const d = qecClampD(params?.d);
+      const lat = buildToricCode(d);
+      return {
+        ok: true,
+        result: {
+          d, numNodes: lat.numNodes, numQubits: lat.numQubits,
+          boundaryConditions: "toroidal (periodic) — literal toric code, not an open-boundary planar surface code",
+          honestBoundary: QEC_HONEST_BOUNDARY,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─── Macro: qecSimulateThreshold ─────────────────────────────────────
+  // Monte-Carlo sweep of logical error rate vs physical error rate, across
+  // one or more code distances, for the threshold-reproduction study. Caps
+  // are DoS guards on a shared macro-worker, not tuning knobs — a caller
+  // wanting a tighter statistical estimate should run the module directly
+  // (see server/tests/qec-decoder.test.js for a 3000-trials-per-point run).
+  registerLensAction("quantum", "qecSimulateThreshold", (_ctx, _artifact, params) => {
+    try {
+      const distances = Array.isArray(params?.distances) && params.distances.length
+        ? params.distances.slice(0, 4).map(qecClampD)
+        : [3, 5];
+      const pValues = Array.isArray(params?.pValues) && params.pValues.length
+        ? params.pValues.slice(0, 25).map(qecClampP)
+        : [0.02, 0.05, 0.08, 0.099, 0.12, 0.15, 0.2];
+      const trials = qecClampTrials(params?.trials, 1500);
+      const channel = params?.channel === "depolarizing" ? "depolarizing" : "bitflip";
+      const rng = qecLcgFromSeed(params?.seed);
+
+      const series = {};
+      for (const d of distances) {
+        series[`d${d}`] = sweepLogicalErrorRate(d, pValues, trials, rng, channel);
+      }
+      return {
+        ok: true,
+        result: {
+          channel, trials, pValues, distances, series,
+          reference: "Published UF-decoder toric-code threshold ~9.9% (Delfosse & Nickerson, arXiv:1709.06218) under a bit-flip channel with perfect syndrome measurement.",
+          honestBoundary: QEC_HONEST_BOUNDARY,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─── Macro: qecDecodeSingle ───────────────────────────────────────────
+  // Decode one instance (random or explicit) at distance d for step-through
+  // visualization: error pattern, syndrome, correction, and the homological
+  // success/failure determination.
+  registerLensAction("quantum", "qecDecodeSingle", (_ctx, _artifact, params) => {
+    try {
+      const d = qecClampD(params?.d);
+      const lat = buildToricCode(d);
+      const channel = params?.channel === "depolarizing" ? "depolarizing" : "bitflip";
+
+      let error;
+      if (Array.isArray(params?.errorQubits)) {
+        error = new Set(params.errorQubits.map((n) => Math.max(0, Math.min(lat.numQubits - 1, Math.round(Number(n))))).filter((n) => Number.isFinite(n)));
+      } else {
+        const p = qecClampP(params?.p);
+        const rng = qecLcgFromSeed(params?.seed);
+        error = sampleBitFlipError(lat, p, rng);
+      }
+
+      const syndrome = syndromeOf(lat, error);
+      const { correction, rounds, residualSyndrome } = unionFindDecode(lat, syndrome);
+      const residualError = xorEdgeSets(error, correction);
+      const success = isHomologicallyTrivial(lat, residualError);
+
+      return {
+        ok: true,
+        result: {
+          d, numQubits: lat.numQubits, channel,
+          errorQubits: [...error], syndromeNodes: [...syndrome], correctionQubits: [...correction],
+          rounds, residualSyndromeClosed: residualSyndrome.size === 0,
+          logicalSuccess: success, logicalFailure: !success,
+          honestBoundary: QEC_HONEST_BOUNDARY,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─── Macro: qecRunTrial ────────────────────────────────────────────────
+  // A single pass/fail trial (bit-flip or depolarizing) without exposing
+  // the full error/syndrome detail — cheap enough to call in a loop from a
+  // UI that wants to build up an empirical rate incrementally.
+  registerLensAction("quantum", "qecRunTrial", (_ctx, _artifact, params) => {
+    try {
+      const d = qecClampD(params?.d);
+      const p = qecClampP(params?.p);
+      const channel = params?.channel === "depolarizing" ? "depolarizing" : "bitflip";
+      const lat = buildToricCode(d);
+      const rng = qecLcgFromSeed(params?.seed);
+      const result = channel === "depolarizing" ? runDepolarizingTrial(lat, p, rng) : runBitFlipTrial(lat, p, rng);
+      return { ok: true, result: { d, p, channel, ...result, honestBoundary: QEC_HONEST_BOUNDARY } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 }
