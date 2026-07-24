@@ -79646,6 +79646,17 @@ registerWorkspaceRoomMacros(register);
 import registerAgentProjectMacros from "./domains/agent-projects.js";
 registerAgentProjectMacros(register);
 
+// V1.2 Wave D (Worlds & Simulation Depth) — read-only simulation-
+// observability aggregation. No new tables, no mutation: composes
+// world-health.js's PURE pathology detection, Layer-11 faction strategy
+// state/relations, kingdoms.js realm legitimacy/treasury, scene-export.js's
+// district building-density computation, and city-presence.js's live
+// per-world presence count into one per-world snapshot. Backend for a
+// future "observatory" frontend view (a separate, dependent unit). See
+// server/domains/world-overview.js for the full field-provenance writeup.
+import registerWorldOverviewMacros from "./domains/world-overview.js";
+registerWorldOverviewMacros(register);
+
 // ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
 register("federation", "inbox_receive", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
