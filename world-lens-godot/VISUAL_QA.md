@@ -98,6 +98,55 @@ Nothing below has been asserted anywhere else in the repo.
       code comment in `player/character_controller.gd` for why), so remapping
       / gamepad support does not exist until a real input-adapter layer is
       built and verified on a real machine.
+
+### C14 — land↔air transition (`avatar/land_air_transition_controller.gd`)
+
+Structurally complete (parse+lint clean via `gdparse`/`gdlint`, pure trigger/
+gating/ack-nack logic covered by `tests/test_land_air_transition_controller.gd`
+and the additive `world/scene_bootstrap.gd` pad-parsing covered by
+`tests/test_scene_bootstrap.gd`) but **has never run inside a real Godot
+process.** Nothing below is asserted anywhere else in the repo.
+
+- [ ] The jump-then-sustained-ascend launch trigger (`should_launch_flight`,
+      gated by `ASCEND_LAUNCH_THRESHOLD_MS = 350.0`) FEELS like a deliberate
+      "launch into flight" gesture rather than an annoying delay tacked onto
+      an ordinary jump, or an accidental trigger during normal platforming —
+      the 350ms figure is a REASONED, un-playtested constant (no TS/JS/server
+      source to cite, same honest posture as `MountController`'s
+      `MIN_TURN_RADIUS_M`), and "does 350ms feel right" is a felt-experience
+      claim no amount of pure-function testing can prove.
+- [ ] The mounted standstill-liftoff trigger (`should_launch_mounted`, same
+      350ms threshold) feels natural for a creature with no jump animation to
+      telegraph "about to fly" — has never been watched against a real mount
+      model.
+- [ ] Composing `CharacterController.integrate_gravity` (unmounted ground
+      leg) and `FlightController.step_flight` (unmounted air leg) inside ONE
+      CharacterBody3D's `_physics_process`, switching between them on a
+      state-machine trigger rather than a manually-toggled `set_flight_active`
+      call, has never been observed end-to-end — the two pure cores are each
+      independently tested (this unit's tests, plus the pre-existing
+      `test_flight_controller.gd`), but the actual felt TRANSITION (does the
+      character visibly "leap into" flight, or does it look like a jump that
+      abruptly turns into hovering) has not been seen.
+- [ ] Landing-pad radii (Plaza Skydock 14m, Riverside Skydock 14m, Industrial
+      Skydock 16m — real authored values from `city-layout.json`) have never
+      been checked against the pads' actual rendered footprint (no pad mesh
+      exists yet — `scene_bootstrap.gd` does not spawn geometry for pads,
+      only stores their data — so there is nothing to visually judge the
+      radius against regardless).
+- [ ] Optimistic-apply-then-reconcile for the mode switch (immediate local
+      flip on trigger, quiet settle on `player:mode:ack`, visible rollback on
+      `player:mode:nack`) has never been watched against real network
+      latency — whether a rollback (snapping back from "flying" to "grounded"
+      mid-animation) reads as an acceptable "honest revert" or a jarring
+      glitch is a felt-experience judgment call, not provable by the pure
+      `resolve_mode_transition` unit tests alone.
+- [ ] `wire_landing_pads_from_scene_bootstrap` has never been exercised
+      against a real `scene:data` frame from a live server — the shape
+      assumption (`payload.landingPads` is an array of
+      `{position:{x,z}, radius_m, ...}` dicts) is verified against
+      `server/lib/scene-export.js`/`building-purpose.js` source code and this
+      unit's own `test_scene_bootstrap.gd`, not against a real wire frame.
 - [ ] `player:move` frames sent through `GatewayClient.send_event` actually
       reach a live `/godot-ws` gateway and produce a real `player:move:nack`
       to test the snap-back path against — **the server-side gateway is not
