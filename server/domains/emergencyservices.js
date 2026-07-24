@@ -156,9 +156,9 @@ export default function registerEmergencyServicesActions(registerLensAction) {
     const userId = emActor(ctx);
     const orgId = params && params.orgId ? emClean(params.orgId, 100) : null;
     if (!orgId) return { ok: true, key: userId, scope: "user", tier: null, userId, orgId: null };
-    const org = getOrganization(orgId);
+    const org = getOrganization(ctx?.db, orgId);
     if (!org) return { ok: false, error: "org_not_found" };
-    const membership = getOrgMembers(orgId).find((m) => m.userId === userId);
+    const membership = getOrgMembers(ctx?.db, orgId).find((m) => m.userId === userId);
     if (!membership) return { ok: false, error: "not_a_member" };
     const tier = EMS_ROLE_BY_ORG_ROLE[membership.role] || "trainee";
     if (writeTiers && !writeTiers.includes(tier)) return { ok: false, error: "insufficient_role" };
@@ -613,7 +613,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       const leaderId = emActor(ctx);
       const name = emClean(params.name, 120);
       if (!name) return { ok: false, error: "name_required" };
-      const res = createOrganization({
+      const res = createOrganization(ctx?.db, {
         name, type: EMS_ORG_TYPE, leaderId,
         description: emClean(params.description, 500),
         districtId: params.districtId ? emClean(params.districtId, 100) : null,
@@ -634,7 +634,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       // officer/leader (EMS "supervisor"/"chief") requires an existing
       // supervisor+ to call agency-set-role.
       const requested = params.role === "apprentice" ? "apprentice" : "member";
-      const res = joinOrganization(orgId, userId, requested);
+      const res = joinOrganization(ctx?.db, orgId, userId, requested);
       if (!res.ok) return res;
       return { ok: true, result: { role: res.role, emsRole: EMS_ROLE_BY_ORG_ROLE[res.role] || "trainee" } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -645,7 +645,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       const userId = emActor(ctx);
       const orgId = emClean(params.orgId, 100);
       if (!orgId) return { ok: false, error: "orgId_required" };
-      return leaveOrganization(orgId, userId);
+      return leaveOrganization(ctx?.db, orgId, userId);
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -655,8 +655,8 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       if (!orgId) return { ok: false, error: "orgId_required" };
       const scope = emScope(ctx, { orgId }, null);
       if (!scope.ok) return scope;
-      const org = getOrganization(orgId);
-      const members = getOrgMembers(orgId).map((m) => ({ ...m, emsRole: EMS_ROLE_BY_ORG_ROLE[m.role] || "trainee" }));
+      const org = getOrganization(ctx?.db, orgId);
+      const members = getOrgMembers(ctx?.db, orgId).map((m) => ({ ...m, emsRole: EMS_ROLE_BY_ORG_ROLE[m.role] || "trainee" }));
       return { ok: true, result: { organization: org, members, myRole: scope.tier, myOrgRole: scope.orgRole } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
@@ -673,7 +673,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       // enforces "only leader/officer may change roles" — not duplicated here.
       const requested = params.role;
       const newRole = EMS_ROLE_TO_ORG_ROLE[requested] || requested;
-      const res = setMemberRole(orgId, targetUserId, newRole, actorId);
+      const res = setMemberRole(ctx?.db, orgId, targetUserId, newRole, actorId);
       if (!res.ok) return res;
       return { ok: true, result: { role: res.role, emsRole: EMS_ROLE_BY_ORG_ROLE[res.role] || "trainee" } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -686,9 +686,9 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       // teamListMine: any org the caller already belongs to (firm, crew,
       // guild, ...) doubles as their dispatch agency the moment they start
       // passing its orgId into these macros.
-      const orgs = getOrgsForUser(userId)
+      const orgs = getOrgsForUser(ctx?.db, userId)
         .map((m) => {
-          const org = getOrganization(m.orgId);
+          const org = getOrganization(ctx?.db, m.orgId);
           return org ? { ...org, myRole: m.role, myEmsRole: EMS_ROLE_BY_ORG_ROLE[m.role] || "trainee" } : null;
         })
         .filter(Boolean);
@@ -698,7 +698,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
 
   registerLensAction("emergency-services", "agency-list", (ctx, _a, params = {}) => {
     try {
-      const orgs = listOrganizations({
+      const orgs = listOrganizations(ctx?.db, {
         type: EMS_ORG_TYPE,
         districtId: params.districtId,
         limit: Math.min(intOr(params.limit, 50), 100),
@@ -734,8 +734,8 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       const userId = emActor(ctx);
       const orgId = emClean(params.orgId, 100);
       if (!orgId) return { ok: false, error: "orgId_required" };
-      if (!getOrganization(orgId)) return { ok: false, error: "org_not_found" };
-      const membership = getOrgMembers(orgId).find((m) => m.userId === userId);
+      if (!getOrganization(ctx?.db, orgId)) return { ok: false, error: "org_not_found" };
+      const membership = getOrgMembers(ctx?.db, orgId).find((m) => m.userId === userId);
       if (!membership) return { ok: false, error: "not_a_member" };
       const tier = EMS_ROLE_BY_ORG_ROLE[membership.role] || "trainee";
       if (tier !== "chief" && tier !== "supervisor") return { ok: false, error: "insufficient_role" };
@@ -757,13 +757,13 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       const incidentId = emClean(params.incidentId, 100);
       if (!sourceOrgId || !targetOrgId || !incidentId) return { ok: false, error: "sourceOrgId_targetOrgId_incidentId_required" };
       if (sourceOrgId === targetOrgId) return { ok: false, error: "cannot_share_with_own_agency" };
-      const sourceOrg = getOrganization(sourceOrgId);
+      const sourceOrg = getOrganization(ctx?.db, sourceOrgId);
       if (!sourceOrg) return { ok: false, error: "source_agency_not_found" };
-      const membership = getOrgMembers(sourceOrgId).find((m) => m.userId === userId);
+      const membership = getOrgMembers(ctx?.db, sourceOrgId).find((m) => m.userId === userId);
       if (!membership) return { ok: false, error: "not_a_member" };
       const tier = EMS_ROLE_BY_ORG_ROLE[membership.role] || "trainee";
       if (!EMS_WRITE_TIERS.includes(tier)) return { ok: false, error: "insufficient_role" };
-      const targetOrg = getOrganization(targetOrgId);
+      const targetOrg = getOrganization(ctx?.db, targetOrgId);
       if (!targetOrg) return { ok: false, error: "target_agency_not_found" };
       if (!s.mutualAidConsent.has(targetOrgId)) return { ok: false, error: "target_agency_not_accepting_mutual_aid" };
       // The incident must be a REAL record on the source agency's own
@@ -798,8 +798,8 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       const userId = emActor(ctx);
       const orgId = emClean(params.orgId, 100);
       if (!orgId) return { ok: false, error: "orgId_required" };
-      if (!getOrganization(orgId)) return { ok: false, error: "org_not_found" };
-      const membership = getOrgMembers(orgId).find((m) => m.userId === userId);
+      if (!getOrganization(ctx?.db, orgId)) return { ok: false, error: "org_not_found" };
+      const membership = getOrgMembers(ctx?.db, orgId).find((m) => m.userId === userId);
       if (!membership) return { ok: false, error: "not_a_member" };
       // Resolve a LIVE snapshot of each referenced incident from the
       // source agency's own board (status may have moved since sharing) —
@@ -826,7 +826,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       if (share.status !== "active") return { ok: false, error: `share_is_${share.status}` };
       // Caller must be a REAL member of the TARGET agency (the one being
       // asked for aid) — not the source, and not an outsider.
-      const membership = getOrgMembers(share.targetOrgId).find((m) => m.userId === userId);
+      const membership = getOrgMembers(ctx?.db, share.targetOrgId).find((m) => m.userId === userId);
       if (!membership) return { ok: false, error: "not_a_member" };
       const tier = EMS_ROLE_BY_ORG_ROLE[membership.role] || "trainee";
       if (!EMS_WRITE_TIERS.includes(tier)) return { ok: false, error: "insufficient_role" };
@@ -865,7 +865,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       const share = s.mutualAid.find((r) => r.id === shareId);
       if (!share) return { ok: false, error: "share_not_found" };
       // Only the SOURCE agency (the one that shared it) can recall.
-      const membership = getOrgMembers(share.sourceOrgId).find((m) => m.userId === userId);
+      const membership = getOrgMembers(ctx?.db, share.sourceOrgId).find((m) => m.userId === userId);
       if (!membership) return { ok: false, error: "not_a_member" };
       const tier = EMS_ROLE_BY_ORG_ROLE[membership.role] || "trainee";
       if (!EMS_WRITE_TIERS.includes(tier)) return { ok: false, error: "insufficient_role" };

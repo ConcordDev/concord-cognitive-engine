@@ -13,7 +13,9 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import registerEmergencyServicesActions from "../domains/emergencyservices.js";
+import { up as upWorldOrgs } from "../migrations/383_world_organizations.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -26,17 +28,24 @@ function call(name, ctx, params = {}) {
 
 before(() => { registerEmergencyServicesActions(register); });
 
+// Organizations are now DB-backed (durability fix — see
+// lib/world-organizations.js's header comment); the macros read/write
+// through `ctx.db`. One in-memory db for the whole file — every test mints
+// a fresh org id via agency-create so there's no cross-test bleed.
+const _orgDb = new Database(":memory:");
+upWorldOrgs(_orgDb);
+
 beforeEach(() => {
   globalThis._concordSTATE = { emergencyServicesLens: {} };
   globalThis._concordSaveStateDebounced = () => {};
 });
 
-const chiefA = { actor: { userId: "chief_a" }, userId: "chief_a" };
-const responderA = { actor: { userId: "responder_a" }, userId: "responder_a" };
-const traineeA = { actor: { userId: "trainee_a" }, userId: "trainee_a" };
-const chiefB = { actor: { userId: "chief_b" }, userId: "chief_b" };
-const responderB = { actor: { userId: "responder_b" }, userId: "responder_b" };
-const outsider = { actor: { userId: "rando" }, userId: "rando" };
+const chiefA = { actor: { userId: "chief_a" }, userId: "chief_a", db: _orgDb };
+const responderA = { actor: { userId: "responder_a" }, userId: "responder_a", db: _orgDb };
+const traineeA = { actor: { userId: "trainee_a" }, userId: "trainee_a", db: _orgDb };
+const chiefB = { actor: { userId: "chief_b" }, userId: "chief_b", db: _orgDb };
+const responderB = { actor: { userId: "responder_b" }, userId: "responder_b", db: _orgDb };
+const outsider = { actor: { userId: "rando" }, userId: "rando", db: _orgDb };
 
 function makeAgency(ctx, name) {
   const r = call("agency-create", ctx, { name });

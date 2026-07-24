@@ -15,6 +15,14 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
+import { up as upWorldOrgs } from "../migrations/383_world_organizations.js";
+
+// Organizations are now DB-backed (durability fix — see
+// lib/world-organizations.js's header comment). A real in-memory db carries
+// the world_organizations + org_members schema for Test 2 below.
+const _orgDb = new Database(":memory:");
+upWorldOrgs(_orgDb);
 
 // ── World Engine ─────────────────────────────────────────────────────────────
 import {
@@ -234,7 +242,7 @@ describe("Test 1: World Engine — Districts & Scene", () => {
 
 describe("Test 2: Organizations — Social Systems", () => {
   it("2a: Create and manage organization", () => {
-    const result = createOrganization({
+    const result = createOrganization(_orgDb, {
       name: "Test Guild", type: "guild", leaderId: "user-org-1",
       districtId: "district_art",
     });
@@ -244,23 +252,23 @@ describe("Test 2: Organizations — Social Systems", () => {
     assert.equal(org.name, "Test Guild");
     assert.equal(org.type, "guild");
 
-    const fetched = getOrganization(org.id);
+    const fetched = getOrganization(_orgDb, org.id);
     assert.ok(fetched, "Should fetch org by ID");
     record("2a", "Organization CRUD", "PASS", `org=${org.id}, type=${org.type}`);
   });
 
   it("2b: Join and leave organization", () => {
-    const result = createOrganization({
+    const result = createOrganization(_orgDb, {
       name: "Join Test Org", type: "crew", leaderId: "user-org-2",
       districtId: "district_art",
     });
     assert.ok(result.ok);
     const orgId = result.organization.id;
 
-    const joined = joinOrganization(orgId, "user-org-3");
+    const joined = joinOrganization(_orgDb, orgId, "user-org-3");
     assert.ok(joined.ok, "Should join successfully");
 
-    const left = leaveOrganization(orgId, "user-org-3");
+    const left = leaveOrganization(_orgDb, orgId, "user-org-3");
     assert.ok(left.ok, "Should leave successfully");
     record("2b", "Organization join/leave", "PASS", "join and leave both succeed");
   });
@@ -307,20 +315,20 @@ describe("Test 2: Organizations — Social Systems", () => {
 
   it("2f: Alliances between organizations", () => {
     // Need a real org for alliance founder
-    const orgResult = createOrganization({
+    const orgResult = createOrganization(_orgDb, {
       name: "Alliance Founder Org", type: "guild", leaderId: "user-alliance-founder",
     });
     assert.ok(orgResult.ok);
     const founderOrgId = orgResult.organization.id;
 
-    const alliance = createAlliance({
+    const alliance = createAlliance(_orgDb, {
       name: "Test Alliance", founderOrgId, description: "Test alliance",
     });
     assert.ok(alliance.ok, "Alliance creation should succeed");
     assert.ok(alliance.allianceId, "Should return allianceId");
 
     // Create a second org to join
-    const org2 = createOrganization({
+    const org2 = createOrganization(_orgDb, {
       name: "Alliance Member Org", type: "crew", leaderId: "user-alliance-member",
     });
     assert.ok(org2.ok);

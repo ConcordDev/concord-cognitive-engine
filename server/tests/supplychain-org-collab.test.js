@@ -11,8 +11,10 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import registerSupplychainActions from "../domains/supplychain.js";
 import { peelRedundantArtifactWrapper } from "../lib/lens-input-normalize.js";
+import { up as upWorldOrgs } from "../migrations/383_world_organizations.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -33,12 +35,20 @@ function dispatch(action, ctx, input = {}) {
 
 before(() => { registerSupplychainActions(register); });
 
+// Organizations are now DB-backed (durability fix — see
+// lib/world-organizations.js's header comment); the macros read/write
+// through `ctx.db`. One in-memory db for the whole file — every test mints
+// a fresh org id via orgCreate, so there's no cross-test bleed (same
+// convention the module-scope-Map version of this test used).
+const _orgDb = new Database(":memory:");
+upWorldOrgs(_orgDb);
+
 beforeEach(() => {
   globalThis._concordSTATE = {};
   globalThis._concordSaveStateDebounced = () => {};
 });
 
-const ctx = (userId) => ({ actor: { userId }, userId });
+const ctx = (userId) => ({ actor: { userId }, userId, db: _orgDb });
 const leader = ctx("sc_leader");
 const memberUser = ctx("sc_member");
 const apprenticeUser = ctx("sc_apprentice");

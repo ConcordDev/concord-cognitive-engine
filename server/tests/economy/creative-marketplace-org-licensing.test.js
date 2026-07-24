@@ -32,6 +32,7 @@ import {
 import { getBalance } from "../../economy/balances.js";
 import { PLATFORM_ACCOUNT_ID } from "../../economy/fees.js";
 import { createOrganization, joinOrganization, setMemberRole } from "../../lib/world-organizations.js";
+import { up as upWorldOrgs } from "../../migrations/383_world_organizations.js";
 
 // ── In-Memory SQLite Helper (mirrors tests/creative-marketplace.test.js) ────
 
@@ -194,6 +195,11 @@ function createTestDb() {
     );
   `);
 
+  // Organizations are now DB-backed (durability fix — see
+  // lib/world-organizations.js's header comment); this test's org(s) live
+  // in the SAME db as the marketplace tables above.
+  upWorldOrgs(db);
+
   return db;
 }
 
@@ -235,11 +241,11 @@ function publishTestBeat(db, opts = {}) {
 }
 
 /** Build a real org (leader=officer1) with member1 joined as plain 'member'. */
-function buildTestOrg() {
-  const created = createOrganization({ name: "Test Studio Org", type: "studio", leaderId: "officer1" });
+function buildTestOrg(db) {
+  const created = createOrganization(db, { name: "Test Studio Org", type: "studio", leaderId: "officer1" });
   assert.ok(created.ok, JSON.stringify(created));
   const orgId = created.organization.id;
-  const joined = joinOrganization(orgId, "member1", "member");
+  const joined = joinOrganization(db, orgId, "member1", "member");
   assert.ok(joined.ok, JSON.stringify(joined));
   return orgId;
 }
@@ -257,7 +263,7 @@ describe("Org-scoped purchase — wallet debit is unchanged", () => {
     db = createTestDb();
     seedUsers(db);
     beat = publishTestBeat(db);
-    orgId = buildTestOrg();
+    orgId = buildTestOrg(db);
   });
 
   it("debits officer1's own wallet the exact price, same as a personal purchase", () => {
@@ -314,7 +320,7 @@ describe("Org-scoped license — access widens to every real member", () => {
     db = createTestDb();
     seedUsers(db);
     beat = publishTestBeat(db);
-    orgId = buildTestOrg(); // leader/officer1 = leader, member1 = member
+    orgId = buildTestOrg(db); // leader/officer1 = leader, member1 = member
   });
 
   it("grants access to the purchasing officer (leader)", () => {
@@ -333,7 +339,7 @@ describe("Org-scoped license — access widens to every real member", () => {
 
   it("grants access to a member who joins the org AFTER the purchase (live membership, not a snapshot)", () => {
     purchaseArtifact(db, { buyerId: "officer1", artifactId: beat.artifact.id, licenseeType: "org", licenseeOrgId: orgId });
-    joinOrganization(orgId, "buyer2", "member");
+    joinOrganization(db, orgId, "buyer2", "member");
     const access = hasArtifactAccess(db, { userId: "buyer2", artifactId: beat.artifact.id });
     assert.equal(access.hasAccess, true, "membership is checked live, not replicated at grant time");
   });
@@ -381,7 +387,7 @@ describe("Org-scoped purchase — membership/role is enforced, never trusted fro
     db = createTestDb();
     seedUsers(db);
     beat = publishTestBeat(db);
-    orgId = buildTestOrg();
+    orgId = buildTestOrg(db);
   });
 
   it("rejects a purchase claiming an org the buyer is not a member of at all", () => {
@@ -403,7 +409,7 @@ describe("Org-scoped purchase — membership/role is enforced, never trusted fro
   });
 
   it("allows the purchase once that same member is promoted to officer", () => {
-    const promoted = setMemberRole(orgId, "member1", "officer", "officer1");
+    const promoted = setMemberRole(db, orgId, "member1", "officer", "officer1");
     assert.ok(promoted.ok, JSON.stringify(promoted));
     const res = purchaseArtifact(db, {
       buyerId: "member1", artifactId: beat.artifact.id,
@@ -435,7 +441,7 @@ describe("Org-scoped purchase — membership/role is enforced, never trusted fro
   });
 
   it("blocks a duplicate org-scoped license at the same tier even from a different officer", () => {
-    setMemberRole(orgId, "member1", "officer", "officer1");
+    setMemberRole(db, orgId, "member1", "officer", "officer1");
     const first = purchaseArtifact(db, {
       buyerId: "officer1", artifactId: beat.artifact.id,
       licenseeType: "org", licenseeOrgId: orgId,

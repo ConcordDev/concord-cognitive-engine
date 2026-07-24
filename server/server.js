@@ -80203,13 +80203,13 @@ register("firm", "chat", async (ctx, _input = {}) => {
   if (!userId) return { ok: false, reason: "unauthenticated" };
   try {
     const orgLib = await import("./lib/world-organizations.js");
-    const orgs = orgLib.getOrgsForUser(userId);
+    const orgs = orgLib.getOrgsForUser(db, userId);
     if (!orgs.length) return { ok: true, firm: null };
     const orgId = orgs[0].orgId;
-    const org = orgLib.getOrganization(orgId);
+    const org = orgLib.getOrganization(db, orgId);
     const cp = await import("./lib/city-presence.js");
     const ocLib = await import("./lib/org-chat.js");
-    const rawMembers = orgLib.getOrgMembers(orgId);
+    const rawMembers = orgLib.getOrgMembers(db, orgId);
     const messages = ocLib.listOrgChat(db, orgId, { limit: 30 });
     // Resolve display names for the roster + message authors in one lookup, so
     // the panel shows "Marcus the Healer", not a raw user id.
@@ -80229,7 +80229,7 @@ register("firm", "post", async (ctx, input = {}) => {
   if (!userId) return { ok: false, reason: "unauthenticated" };
   try {
     const orgLib = await import("./lib/world-organizations.js");
-    const orgs = orgLib.getOrgsForUser(userId);
+    const orgs = orgLib.getOrgsForUser(db, userId);
     if (!orgs.length) return { ok: false, error: "not_in_org" };
     const orgId = orgs[0].orgId;
     const ocLib = await import("./lib/org-chat.js");
@@ -80237,7 +80237,7 @@ register("firm", "post", async (ctx, input = {}) => {
       orgId,
       userId,
       body: input?.body,
-      isMember: (u) => orgLib.getOrgMembers(orgId).some((m) => m.userId === u),
+      isMember: (u) => orgLib.getOrgMembers(db, orgId).some((m) => m.userId === u),
     });
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Post a message to the caller's firm/org chat." });

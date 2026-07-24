@@ -59,25 +59,25 @@ export default function createWorldOrgsExtendedRouter({ requireAuth, db }) {
   const auth = typeof requireAuth === "function" && requireAuth.length === 0 ? requireAuth() : requireAuth;
 
   const _isMemberOf = (orgId) => {
-    const members = getOrgMembers(orgId);
+    const members = getOrgMembers(db, orgId);
     return (userId) => members.some(m => m.userId === userId);
   };
   const _isOfficerOf = (orgId) => {
-    const members = getOrgMembers(orgId);
+    const members = getOrgMembers(db, orgId);
     return (userId) => members.some(m => m.userId === userId && (m.role === "officer" || m.role === "leader"));
   };
   const _isLeaderOf = (orgId) => {
-    const members = getOrgMembers(orgId);
+    const members = getOrgMembers(db, orgId);
     return (userId) => members.some(m => m.userId === userId && m.role === "leader");
   };
 
   // ─── Org reads ─────────────────────────────────────────────────────────────
   router.get("/stats", (_req, res) => {
-    res.json({ ok: true, ...getOrganizationStats() });
+    res.json({ ok: true, ...getOrganizationStats(db) });
   });
 
   router.get("/:orgId/members", (req, res) => {
-    res.json({ ok: true, orgId: req.params.orgId, ...getOrgMembers(req.params.orgId) });
+    res.json({ ok: true, orgId: req.params.orgId, members: getOrgMembers(db, req.params.orgId) });
   });
 
   // ─── Member-role admin ─────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ export default function createWorldOrgsExtendedRouter({ requireAuth, db }) {
     if (!actorId || !targetUserId || !role) {
       return res.status(400).json({ ok: false, error: "targetUserId+role required" });
     }
-    res.json({ ok: true, ...setMemberRole(req.params.orgId, targetUserId, role, actorId) });
+    res.json({ ok: true, ...setMemberRole(db, req.params.orgId, targetUserId, role, actorId) });
   });
 
   // ─── Treasury ──────────────────────────────────────────────────────────────
@@ -97,14 +97,14 @@ export default function createWorldOrgsExtendedRouter({ requireAuth, db }) {
     if (!userId || !Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ ok: false, error: "amount must be a positive number" });
     }
-    res.json({ ok: true, ...contributeToTreasury(req.params.orgId, amount, userId) });
+    res.json({ ok: true, ...contributeToTreasury(db, req.params.orgId, amount, userId) });
   });
 
   // ─── Alliances ─────────────────────────────────────────────────────────────
   router.post("/alliances", auth, (req, res) => {
     const { name, founderOrgId, description } = req.body || {};
     if (!name || !founderOrgId) return res.status(400).json({ ok: false, error: "name+founderOrgId required" });
-    res.json({ ok: true, ...createAlliance({ name, founderOrgId, description }) });
+    res.json({ ok: true, ...createAlliance(db, { name, founderOrgId, description }) });
   });
 
   router.post("/alliances/:allianceId/join", auth, (req, res) => {

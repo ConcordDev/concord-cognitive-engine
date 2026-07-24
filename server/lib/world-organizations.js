@@ -6,6 +6,34 @@
  *
  * Organization types: guild, crew, studio, firm, lab, band, club
  * Each gets a headquarters building in the relevant district.
+ *
+ * ── Durability (grounding audit, 2026-07) ─────────────────────────────────
+ * Organizations + their rosters used to live ONLY in a module-scope
+ * `LruMap` — a real, player-formed guild vanished the instant the server
+ * process restarted. That's inconsistent with the authored-faction "realm"
+ * system (migration 158_kingdoms.js), which is durable. This module is now
+ * DB-backed: `world_organizations` (migration — see server/migrations/)
+ * holds the org row, `org_members` holds the roster. Every function that
+ * touches org/roster state takes `db` as its FIRST argument (the same
+ * convention `server/lib/guild-substrate.js` and `server/economy/
+ * creative-marketplace.js` already use) and is a real read/write against
+ * those tables — never the in-memory Map alone.
+ *
+ * `_orgRowCache` is a read-through, write-invalidated performance cache for
+ * the ORG ROW ONLY (name/type/treasury/stats/...) — never the roster/member
+ * count, which is always a live query so a join/leave/role-change is
+ * instantly visible with no separate invalidation path to get wrong. A
+ * fresh process boots with an empty cache and falls straight through to a
+ * real `SELECT`, so correctness never depends on the cache being warm —
+ * this is the same "cache but the DB is the real source of truth" pattern
+ * `server/lib/dtu-shadow-hydrate.js` documents (Wave C).
+ *
+ * Parties (temporary groups), mentorships, and the recruitment board remain
+ * in-memory by design — they're genuinely ephemeral session state, not the
+ * durability bug this audit found. Alliances also remain in-memory (no
+ * player-durability complaint was raised against them); `createAlliance`
+ * still takes `db` because it must verify the founder org is real against
+ * the durable substrate.
  */
 
 import { randomUUID } from "crypto";
@@ -29,11 +57,11 @@ const RECRUITMENT_LISTING_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const MAX_RECRUITMENT_LISTINGS = 1000;
 
 // ══════════════════════════════════════════════════════════════════════════════
-// STATE
+// STATE (in-memory only — everything else lives in the DB, see above)
 // ══════════════════════════════════════════════════════════════════════════════
 
-/** @type {Map<string, object>} Organizations keyed by org ID */
-const _orgs = new LruMap();
+/** @type {Map<string, object>} Read-through org-row cache, keyed by org ID. */
+const _orgRowCache = new LruMap();
 
 /** @type {Map<string, object>} Parties (temp groups) keyed by party ID */
 const _parties = new Map();
@@ -47,118 +75,261 @@ const _mentorships = new LruMap();
 /** @type {object[]} Recruitment board listings */
 const _recruitmentBoard = [];
 
-/** @type {Map<string, Map<string, string>>} orgId -> Map<userId, role> */
-const _orgMembers = new LruMap();
-
 // ══════════════════════════════════════════════════════════════════════════════
-// ORGANIZATIONS
+// ORGANIZATIONS — DB-backed (world_organizations + org_members)
 // ══════════════════════════════════════════════════════════════════════════════
 
-export function createOrganization({ name, type, description, leaderId, districtId, purpose, recruitCriteria, revenueSplit }) {
+function _defaultRevenueSplit() {
+  return { leader: 10, treasury: 20, members: 70 };
+}
+
+function _hydrateOrgRow(row) {
+  if (!row || !row.id) return null;
+  let revenueSplit, headquarters, stats;
+  try { revenueSplit = JSON.parse(row.revenue_split_json); } catch { revenueSplit = _defaultRevenueSplit(); }
+  try { headquarters = JSON.parse(row.headquarters_json); } catch { headquarters = { districtId: row.district_id || null, customized: false }; }
+  try { stats = JSON.parse(row.stats_json); } catch { stats = { totalEarned: 0, totalCited: 0, activeMissions: 0 }; }
+  if (!revenueSplit || typeof revenueSplit !== "object") revenueSplit = _defaultRevenueSplit();
+  if (!headquarters || typeof headquarters !== "object") headquarters = { districtId: row.district_id || null, customized: false };
+  if (!stats || typeof stats !== "object") stats = { totalEarned: 0, totalCited: 0, activeMissions: 0 };
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type || "guild",
+    description: row.description || "",
+    leaderId: row.leader_id,
+    districtId: row.district_id || null,
+    purpose: row.purpose || "",
+    recruitCriteria: row.recruit_criteria || "open",
+    revenueSplit,
+    treasury: Number(row.treasury) || 0,
+    dtuCount: Number(row.dtu_count) || 0,
+    headquarters,
+    createdAt: row.created_at,
+    stats,
+  };
+}
+
+/**
+ * Read-through cache lookup for the org ROW (never the roster). Returns
+ * null on any miss/error — callers treat that as "org not found", same as
+ * a plain Map miss would have before this module was made durable.
+ */
+function _readOrgRow(db, orgId) {
+  if (!db || !orgId) return null;
+  const cached = _orgRowCache.get(orgId);
+  if (cached) return cached;
+  let row;
+  try {
+    row = db.prepare(`SELECT * FROM world_organizations WHERE id = ?`).get(orgId);
+  } catch {
+    return null;
+  }
+  const org = _hydrateOrgRow(row);
+  if (org) _orgRowCache.set(orgId, org);
+  return org;
+}
+
+function _memberCount(db, orgId) {
+  if (!db || !orgId) return 0;
+  try {
+    const row = db.prepare(`SELECT COUNT(*) AS c FROM org_members WHERE org_id = ?`).get(orgId);
+    return row?.c || 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function createOrganization(db, { name, type, description, leaderId, districtId, purpose, recruitCriteria, revenueSplit } = {}) {
+  if (!db) return { ok: false, error: "db_required" };
   if (!name || !leaderId) return { ok: false, error: "name_and_leader_required" };
   if (type && !ORG_TYPES.has(type)) return { ok: false, error: `invalid_type. Valid: ${[...ORG_TYPES]}` };
 
   const id = `org_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const finalRevenueSplit = (revenueSplit && typeof revenueSplit === "object") ? revenueSplit : _defaultRevenueSplit();
+  const headquarters = { districtId: districtId || null, customized: false };
+  const stats = { totalEarned: 0, totalCited: 0, activeMissions: 0 };
+  const finalType = type || "guild";
+  const finalDescription = description || "";
+  const finalPurpose = purpose || "";
+  const finalRecruitCriteria = recruitCriteria || "open";
+
+  try {
+    const insertOrg = db.prepare(`
+      INSERT INTO world_organizations
+        (id, name, type, description, leader_id, district_id, purpose, recruit_criteria, revenue_split_json, treasury, dtu_count, headquarters_json, stats_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)
+    `);
+    const insertMember = db.prepare(`
+      INSERT INTO org_members (org_id, user_id, role, joined_at) VALUES (?, ?, 'leader', ?)
+    `);
+    const doInsert = () => {
+      insertOrg.run(
+        id, name, finalType, finalDescription, leaderId, districtId || null,
+        finalPurpose, finalRecruitCriteria, JSON.stringify(finalRevenueSplit),
+        JSON.stringify(headquarters), JSON.stringify(stats), now,
+      );
+      insertMember.run(id, leaderId, now);
+    };
+    if (typeof db.transaction === "function") db.transaction(doInsert)();
+    else doInsert();
+  } catch (err) {
+    return { ok: false, error: err?.message || "create_failed" };
+  }
+
   const org = {
-    id, name, type: type || "guild", description: description || "",
+    id, name, type: finalType, description: finalDescription,
     leaderId, districtId: districtId || null,
-    purpose: purpose || "", recruitCriteria: recruitCriteria || "open",
-    revenueSplit: revenueSplit || { leader: 10, treasury: 20, members: 70 },
-    treasury: 0, dtuCount: 0,
-    headquarters: { districtId, customized: false },
-    createdAt: new Date().toISOString(),
-    stats: { totalEarned: 0, totalCited: 0, activeMissions: 0 },
+    purpose: finalPurpose, recruitCriteria: finalRecruitCriteria,
+    revenueSplit: finalRevenueSplit, treasury: 0, dtuCount: 0,
+    headquarters, createdAt: now, stats,
   };
-  _orgs.set(id, org);
+  _orgRowCache.set(id, org);
 
-  const members = new Map();
-  members.set(leaderId, "leader");
-  _orgMembers.set(id, members);
-
-  return { ok: true, organization: org };
+  return { ok: true, organization: { ...org, memberCount: 1 } };
 }
 
-export function getOrganization(orgId) {
-  const org = _orgs.get(orgId);
+export function getOrganization(db, orgId) {
+  const org = _readOrgRow(db, orgId);
   if (!org) return null;
-  const members = _orgMembers.get(orgId);
-  return { ...org, memberCount: members?.size || 0 };
+  return { ...org, memberCount: _memberCount(db, orgId) };
 }
 
-export function joinOrganization(orgId, userId, role = "member") {
-  const org = _orgs.get(orgId);
+export function joinOrganization(db, orgId, userId, role = "member") {
+  if (!db) return { ok: false, error: "db_required" };
+  const org = _readOrgRow(db, orgId);
   if (!org) return { ok: false, error: "org_not_found" };
-  const members = _orgMembers.get(orgId);
-  if (members.size >= MAX_ORG_MEMBERS) return { ok: false, error: "org_full" };
-  if (members.has(userId)) return { ok: false, error: "already_member" };
-  members.set(userId, role);
+  if (_memberCount(db, orgId) >= MAX_ORG_MEMBERS) return { ok: false, error: "org_full" };
+  let existing;
+  try {
+    existing = db.prepare(`SELECT 1 FROM org_members WHERE org_id = ? AND user_id = ?`).get(orgId, userId);
+  } catch (err) {
+    return { ok: false, error: err?.message || "join_failed" };
+  }
+  if (existing) return { ok: false, error: "already_member" };
+  try {
+    db.prepare(`INSERT INTO org_members (org_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)`)
+      .run(orgId, userId, role, new Date().toISOString());
+  } catch (err) {
+    return { ok: false, error: err?.message || "join_failed" };
+  }
   return { ok: true, role };
 }
 
-export function leaveOrganization(orgId, userId) {
-  const members = _orgMembers.get(orgId);
-  if (!members?.has(userId)) return { ok: false, error: "not_member" };
-  const org = _orgs.get(orgId);
+export function leaveOrganization(db, orgId, userId) {
+  if (!db) return { ok: false, error: "db_required" };
+  let membership;
+  try {
+    membership = db.prepare(`SELECT role FROM org_members WHERE org_id = ? AND user_id = ?`).get(orgId, userId);
+  } catch {
+    membership = null;
+  }
+  if (!membership) return { ok: false, error: "not_member" };
+  const org = _readOrgRow(db, orgId);
   if (org?.leaderId === userId) return { ok: false, error: "leader_cannot_leave" };
-  members.delete(userId);
+  try {
+    db.prepare(`DELETE FROM org_members WHERE org_id = ? AND user_id = ?`).run(orgId, userId);
+  } catch (err) {
+    return { ok: false, error: err?.message || "leave_failed" };
+  }
   return { ok: true };
 }
 
-export function setMemberRole(orgId, targetUserId, newRole, actorId) {
-  const org = _orgs.get(orgId);
+export function setMemberRole(db, orgId, targetUserId, newRole, actorId) {
+  if (!db) return { ok: false, error: "db_required" };
+  const org = _readOrgRow(db, orgId);
   if (!org) return { ok: false, error: "org_not_found" };
-  const members = _orgMembers.get(orgId);
-  const actorRole = members?.get(actorId);
+  let actorRole, targetExists;
+  try {
+    actorRole = db.prepare(`SELECT role FROM org_members WHERE org_id = ? AND user_id = ?`).get(orgId, actorId)?.role;
+    targetExists = db.prepare(`SELECT 1 FROM org_members WHERE org_id = ? AND user_id = ?`).get(orgId, targetUserId);
+  } catch (err) {
+    return { ok: false, error: err?.message || "set_role_failed" };
+  }
   if (actorRole !== "leader" && actorRole !== "officer") return { ok: false, error: "insufficient_rank" };
-  if (!members.has(targetUserId)) return { ok: false, error: "target_not_member" };
+  if (!targetExists) return { ok: false, error: "target_not_member" };
   if (!MEMBER_ROLES.includes(newRole)) return { ok: false, error: "invalid_role" };
-  members.set(targetUserId, newRole);
+  try {
+    db.prepare(`UPDATE org_members SET role = ? WHERE org_id = ? AND user_id = ?`).run(newRole, orgId, targetUserId);
+  } catch (err) {
+    return { ok: false, error: err?.message || "set_role_failed" };
+  }
   return { ok: true, role: newRole };
 }
 
-export function getOrgMembers(orgId) {
-  const members = _orgMembers.get(orgId);
-  if (!members) return [];
-  return [...members.entries()].map(([userId, role]) => ({ userId, role }));
+export function getOrgMembers(db, orgId) {
+  if (!db || !orgId) return [];
+  try {
+    return db.prepare(`SELECT user_id AS userId, role FROM org_members WHERE org_id = ? ORDER BY joined_at ASC`).all(orgId);
+  } catch {
+    return [];
+  }
 }
 
 // Reverse lookup: which org(s) is a user a member of. Used to resolve "the
 // caller's firm" for org-scoped chat without the client supplying an orgId.
-export function getOrgsForUser(userId) {
-  if (!userId) return [];
-  const out = [];
-  for (const [orgId, members] of _orgMembers) {
-    if (members.has(userId)) out.push({ orgId, role: members.get(userId) });
+export function getOrgsForUser(db, userId) {
+  if (!db || !userId) return [];
+  try {
+    return db.prepare(`SELECT org_id AS orgId, role FROM org_members WHERE user_id = ?`).all(userId);
+  } catch {
+    return [];
   }
-  return out;
 }
 
-export function listOrganizations({ type, districtId, limit = 50 } = {}) {
-  let orgs = [..._orgs.values()];
-  if (type) orgs = orgs.filter(o => o.type === type);
-  if (districtId) orgs = orgs.filter(o => o.districtId === districtId);
-  return orgs.slice(0, limit).map(o => ({
-    ...o, memberCount: _orgMembers.get(o.id)?.size || 0,
-  }));
+export function listOrganizations(db, { type, districtId, limit = 50 } = {}) {
+  if (!db) return [];
+  let sql = `SELECT * FROM world_organizations WHERE 1=1`;
+  const params = [];
+  if (type) { sql += ` AND type = ?`; params.push(type); }
+  if (districtId) { sql += ` AND district_id = ?`; params.push(districtId); }
+  sql += ` ORDER BY created_at DESC LIMIT ?`;
+  params.push(Math.max(1, Math.min(500, Number(limit) || 50)));
+  let rows;
+  try {
+    rows = db.prepare(sql).all(...params);
+  } catch {
+    return [];
+  }
+  return rows.map((row) => {
+    const org = _hydrateOrgRow(row);
+    _orgRowCache.set(org.id, org);
+    return { ...org, memberCount: _memberCount(db, org.id) };
+  });
 }
 
-export function contributeToTreasury(orgId, amount, userId) {
-  const org = _orgs.get(orgId);
+export function contributeToTreasury(db, orgId, amount, userId) {
+  if (!db) return { ok: false, error: "db_required" };
+  const org = _readOrgRow(db, orgId);
   if (!org) return { ok: false, error: "org_not_found" };
-  org.treasury += amount;
-  org.stats.totalEarned += amount;
-  return { ok: true, treasury: org.treasury };
+  const amt = Number(amount) || 0;
+  const newTreasury = org.treasury + amt;
+  const newStats = { ...org.stats, totalEarned: (org.stats.totalEarned || 0) + amt };
+  try {
+    db.prepare(`UPDATE world_organizations SET treasury = ?, stats_json = ? WHERE id = ?`)
+      .run(newTreasury, JSON.stringify(newStats), orgId);
+  } catch (err) {
+    return { ok: false, error: err?.message || "contribute_failed" };
+  }
+  // Invalidate rather than patch-in-place — the next read re-hydrates the
+  // authoritative row from the DB, so a fresh process (empty cache) and a
+  // long-running one (invalidated cache) behave identically.
+  _orgRowCache.delete(orgId);
+  void userId; // kept for API compat; there's no per-user contribution ledger
+  return { ok: true, treasury: newTreasury };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ALLIANCES — Cross-organization collaboration
+// ALLIANCES — Cross-organization collaboration (in-memory; org existence is
+// verified live against the durable substrate above)
 // ══════════════════════════════════════════════════════════════════════════════
 
 /** @type {Map<string, object>} Alliances keyed by alliance ID */
 const _alliances = new LruMap();
 
-export function createAlliance({ name, founderOrgId, description }) {
-  const org = _orgs.get(founderOrgId);
+export function createAlliance(db, { name, founderOrgId, description }) {
+  const org = _readOrgRow(db, founderOrgId);
   if (!org) return { ok: false, error: "org_not_found" };
   const id = `alliance_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`;
   _alliances.set(id, {
@@ -178,7 +349,7 @@ export function joinAlliance(allianceId, orgId) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// PARTIES — Temporary groups of 2-10
+// PARTIES — Temporary groups of 2-10 (in-memory by design — session-lived)
 // ══════════════════════════════════════════════════════════════════════════════
 
 export function createParty(leaderId) {
@@ -225,7 +396,7 @@ export function getUserParty(userId) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MENTORSHIP
+// MENTORSHIP (in-memory by design — session-lived)
 // ══════════════════════════════════════════════════════════════════════════════
 
 export function registerMentor(userId, { domain, maxMentees = 3 }) {
@@ -266,7 +437,7 @@ export function getMentorships(userId) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// RECRUITMENT BOARD
+// RECRUITMENT BOARD (in-memory by design — session-lived listings)
 // ══════════════════════════════════════════════════════════════════════════════
 
 function _cullExpiredRecruitments() {
@@ -321,13 +492,24 @@ export function getRecruitmentBoard({ districtId, type, limit = 50 } = {}) {
 // STATS
 // ══════════════════════════════════════════════════════════════════════════════
 
-export function getOrganizationStats() {
+export function getOrganizationStats(db) {
+  let totalOrgs = 0;
+  const orgsByType = Object.fromEntries([...ORG_TYPES].map(t => [t, 0]));
+  if (db) {
+    try {
+      const rows = db.prepare(`SELECT type, COUNT(*) AS c FROM world_organizations GROUP BY type`).all();
+      for (const r of rows) {
+        if (Object.prototype.hasOwnProperty.call(orgsByType, r.type)) orgsByType[r.type] = r.c;
+        totalOrgs += r.c;
+      }
+    } catch { /* best-effort; degrade to zeros */ }
+  }
   return {
-    totalOrgs: _orgs.size,
+    totalOrgs,
     totalParties: _parties.size,
     totalMentorships: _mentorships.size,
     totalRecruitments: _recruitmentBoard.length,
     totalAlliances: _alliances.size,
-    orgsByType: Object.fromEntries([...ORG_TYPES].map(t => [t, [..._orgs.values()].filter(o => o.type === t).length])),
+    orgsByType,
   };
 }

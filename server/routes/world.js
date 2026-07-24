@@ -295,28 +295,28 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Organizations ────────────────────────────────────────────────────────
 
   router.get("/orgs", wrap((_req, res) => {
-    const orgs = listOrganizations();
+    const orgs = listOrganizations(db);
     res.json({ ok: true, organizations: orgs, count: orgs.length });
   }));
 
   router.post("/orgs", auth, wrap((req, res) => {
-    const org = createOrganization({ ...req.body, leaderId: _userId(req) });
+    const org = createOrganization(db, { ...req.body, leaderId: _userId(req) });
     res.status(201).json({ ok: true, organization: org });
   }));
 
   router.get("/orgs/:id", wrap((req, res) => {
-    const org = getOrganization(req.params.id);
+    const org = getOrganization(db, req.params.id);
     if (!org) return res.status(404).json({ ok: false, error: "Organization not found" });
     res.json({ ok: true, organization: org });
   }));
 
   router.post("/orgs/:id/join", auth, wrap((req, res) => {
-    const result = joinOrganization(req.params.id, _userId(req));
+    const result = joinOrganization(db, req.params.id, _userId(req));
     res.json({ ok: true, ...result });
   }));
 
   router.post("/orgs/:id/leave", auth, wrap((req, res) => {
-    const result = leaveOrganization(req.params.id, _userId(req));
+    const result = leaveOrganization(db, req.params.id, _userId(req));
     res.json({ ok: true, ...result });
   }));
 

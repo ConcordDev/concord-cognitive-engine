@@ -128,12 +128,12 @@ const ORG_PURCHASE_ROLES = new Set(["leader", "officer"]);
  *
  * @returns {{ ok: true, role: string } | { ok: false, error: string }}
  */
-function _verifyOrgPurchaseAuthority(orgId, userId) {
+function _verifyOrgPurchaseAuthority(db, orgId, userId) {
   if (!orgId) return { ok: false, error: "missing_licensee_org_id" };
-  const org = getOrganization(orgId);
+  const org = getOrganization(db, orgId);
   if (!org) return { ok: false, error: "org_not_found" };
 
-  const members = getOrgMembers(orgId); // live roster — [{ userId, role }]
+  const members = getOrgMembers(db, orgId); // live roster — [{ userId, role }]
   const membership = members.find((m) => m.userId === userId);
   if (!membership) return { ok: false, error: "not_org_member" };
   if (!ORG_PURCHASE_ROLES.has(membership.role)) {
@@ -181,7 +181,7 @@ export function hasArtifactAccess(db, { userId, artifactId, tier } = {}) {
 
   for (const lic of orgLicenses) {
     if (!lic.licensee_org_id) continue;
-    const members = getOrgMembers(lic.licensee_org_id);
+    const members = getOrgMembers(db, lic.licensee_org_id);
     if (members.some((m) => m.userId === userId)) {
       return { hasAccess: true, via: "org", orgId: lic.licensee_org_id, tier: lic.license_type };
     }
@@ -537,7 +537,7 @@ export function purchaseArtifact(db, {
   // "an officer's personal wallet pays" framing.
   let orgAuthority = null;
   if (licenseeType === "org") {
-    orgAuthority = _verifyOrgPurchaseAuthority(licenseeOrgId, buyerId);
+    orgAuthority = _verifyOrgPurchaseAuthority(db, licenseeOrgId, buyerId);
     if (!orgAuthority.ok) return orgAuthority;
   }
 
@@ -719,13 +719,14 @@ export function purchaseArtifact(db, {
 
     // Re-verify org purchase authority inside the transaction too — same
     // race-condition-guard shape as the balance/exclusive re-checks below.
-    // world-organizations.js is an in-memory, synchronous, single-process
-    // store, so there's no interleaving within this transaction callback;
-    // this re-check exists so the membership verification and the
-    // license-row insert are unmistakably one atomic unit, not a check
-    // followed by a separate un-atomic write.
+    // world-organizations.js is now DB-backed (world_organizations +
+    // org_members), but better-sqlite3 is synchronous and this whole
+    // callback runs inside one `db.transaction()`, so there's still no
+    // interleaving within it; this re-check exists so the membership
+    // verification and the license-row insert are unmistakably one atomic
+    // unit, not a check followed by a separate un-atomic write.
     if (licenseeType === "org") {
-      const txOrgAuthority = _verifyOrgPurchaseAuthority(licenseeOrgId, buyerId);
+      const txOrgAuthority = _verifyOrgPurchaseAuthority(db, licenseeOrgId, buyerId);
       if (!txOrgAuthority.ok) throw new Error(`org_authority_lost:${txOrgAuthority.error}`);
     }
 
@@ -1708,7 +1709,7 @@ export function getArtifactLicenses(db, artifactId) {
     if (lic.licensee_type !== "org" || !lic.licensee_org_id) {
       return { ...lic, purchasedOnBehalfOf: null };
     }
-    const org = getOrganization(lic.licensee_org_id);
+    const org = getOrganization(db, lic.licensee_org_id);
     return {
       ...lic,
       purchasedOnBehalfOf: {
@@ -1739,7 +1740,7 @@ export function getUserLicenses(db, userId) {
     ORDER BY l.granted_at DESC
   `).all(userId).map((lic) => ({ ...lic, accessVia: "personal" }));
 
-  const memberOrgs = getOrgsForUser(userId); // [{ orgId, role }]
+  const memberOrgs = getOrgsForUser(db, userId); // [{ orgId, role }]
   let orgDerived = [];
   if (memberOrgs.length > 0) {
     const orgIds = memberOrgs.map((o) => o.orgId);
@@ -1753,7 +1754,7 @@ export function getUserLicenses(db, userId) {
       ORDER BY l.granted_at DESC
     `).all(...orgIds);
     orgDerived = orgRows.map((lic) => {
-      const org = getOrganization(lic.licensee_org_id);
+      const org = getOrganization(db, lic.licensee_org_id);
       return {
         ...lic,
         accessVia: "org",
