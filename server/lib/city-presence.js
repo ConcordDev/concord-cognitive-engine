@@ -63,6 +63,61 @@ const FRAME_DISTANCE_RATIO = 16;            // single-frame ceiling = max_speed 
 const MIN_UPDATE_INTERVAL_MS = 20;          // no faster than 50Hz from any one user
 const GRACE_PERIOD_MS = 500;                // first few updates after login skip speed check
 
+// ── Locomotion classification (R5 continuation — real walk/run state) ──────
+// The anti-cheat speed check just above already computes a real,
+// server-authoritative `speedMps` from position deltas over server wall-clock
+// dt for every ACCEPTED move packet — it was previously discarded after the
+// max-speed comparison (only cached in `_lastSpeed` for the AOI radius). This
+// classifies that same speed into a discrete locomotion label so remote-
+// avatar animation (Godot's avatar_manager.gd / animation_state_machine.gd)
+// has a ground-truth signal instead of only inferring speed from noisy
+// interpolated snapshot deltas, and instead of trusting the sender's
+// self-reported `action` string (the web client hardcodes `action: 'walk'`
+// unconditionally — see AvatarSystem3D.tsx/app/lenses/world/page.tsx — and
+// the pre-this-unit Godot client only ever had idle/walk, never run).
+//
+// Thresholds are NOT invented here — they mirror the two real, only-ever-
+// produced horizontal speeds on the Three.js client
+// (AvatarSystem3D.tsx:362-363 `MOVE_SPEED = 5.0` / `RUN_SPEED = 12.0`) via
+// the same constants world-lens-godot/avatar/animation_state_machine.gd
+// already uses for its own (client-side, inference-based) classification:
+// IDLE_MAX_SPEED = 0.05 (that file's own idle/walk cutoff, itself mirrored
+// from character_controller.gd) and RUN_MIN_SPEED = 8.5 (the documented
+// "honest midpoint" between MOVE_SPEED and RUN_SPEED). Keeping the exact
+// same numbers server-side means the server's label and a Godot client's own
+// independent inference agree on the boundary even when only one of the two
+// signals is available.
+const LOCOMOTION_IDLE_MAX_SPEED_MPS = 0.05;
+const LOCOMOTION_RUN_MIN_SPEED_MPS = 8.5;
+// Hysteresis band so a speed oscillating right at the walk/run boundary
+// (packet jitter, quantization) doesn't flap the classification every
+// packet. Mirrors animation_state_machine.gd's own BLEND_BAND (1.5 m/s) —
+// same number, different purpose (crossfade band there, state-lock band
+// here): once classified "run", speed must drop a full BLEND_BAND below
+// RUN_MIN_SPEED before falling back to "walk".
+const LOCOMOTION_HYSTERESIS_MPS = 1.5;
+
+/**
+ * Classify a real, server-derived horizontal speed into a discrete
+ * locomotion label. Pure function — no map/entry access — so it is
+ * independently unit-testable.
+ *
+ * @param {number} speedMps - server-computed distance/dt for one accepted
+ *   move packet (never a client-supplied value).
+ * @param {string|null} [prevLocomotion] - the user's previously classified
+ *   label, if any. Only used to apply hysteresis at the run/walk boundary;
+ *   omit/null for a user's first classified packet.
+ * @returns {"idle"|"walk"|"run"}
+ */
+export function classifyLocomotion(speedMps, prevLocomotion = null) {
+  const s = Number.isFinite(speedMps) ? speedMps : 0;
+  if (s < LOCOMOTION_IDLE_MAX_SPEED_MPS) return "idle";
+  if (prevLocomotion === "run") {
+    return s >= (LOCOMOTION_RUN_MIN_SPEED_MPS - LOCOMOTION_HYSTERESIS_MPS) ? "run" : "walk";
+  }
+  return s >= LOCOMOTION_RUN_MIN_SPEED_MPS ? "run" : "walk";
+}
+
 /**
  * Server-authoritative max-speed lookup. Caller passes in the entry's
  * vehicle_type (already validated against DB at mount time); unknowns
@@ -165,6 +220,7 @@ export function setUserMovementMode(userId, mode, { mountSpeedMps = null } = {})
       x: 0, y: 0, z: 0,
       direction: 0, rotation: 0,
       action: "idle", currentAnimation: "idle",
+      locomotion: "idle",
       health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
       clientState: {},
       vehicleId: null,
@@ -241,6 +297,7 @@ export function setUserVisibility(userId, mode) {
       x: 0, y: 0, z: 0,
       direction: 0, rotation: 0,
       action: "idle", currentAnimation: "idle",
+      locomotion: "idle",
       health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
       clientState: {},
       vehicleId: null,
@@ -505,6 +562,12 @@ function distanceSq(a, b) {
 export function updateUserPosition(userId, { cityId, x, y, z, direction, action, rotation, currentAnimation, districtId, worldId }) {
   const prev = _userPositions.get(userId);
   const now = Date.now();
+  // Server-classified locomotion label for this packet. `null` means "not
+  // recomputed this call" (rate-limited/rejected returns bail out before
+  // reaching the entry build below; city-transition/grace/dt<=0 skip the
+  // speed math entirely) — the entry build further down carries the
+  // previous value forward in that case, same convention as `action`.
+  let computedLocomotion = null;
 
   // ── Position safety (adversarial-hardening) ──────────────────────────
   // Coerce NaN/Infinity/non-finite coords to a finite fallback, then clamp
@@ -597,6 +660,12 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       }
       // S3 — remember the mover's speed for the speed-scaled interest radius.
       if (Number.isFinite(speedMps)) _lastSpeed.set(userId, speedMps);
+      // Locomotion classification — real speed, real thresholds, hysteresis
+      // against the user's own previous label. Computed only on an ACCEPTED
+      // packet (a rejected speed-hack/teleport attempt returns above and
+      // never reaches here), same as position itself only advancing on
+      // acceptance.
+      computedLocomotion = classifyLocomotion(speedMps, prev.locomotion || null);
     }
   }
 
@@ -636,6 +705,12 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     rotation: rotation ?? prev?.rotation ?? 0,
     action: action ?? prev?.action ?? "idle",
     currentAnimation: currentAnimation ?? prev?.currentAnimation ?? "idle",
+    // Server-authoritative locomotion label (see classifyLocomotion above).
+    // `computedLocomotion` is non-null only when this call actually ran the
+    // speed math on an accepted packet; otherwise carry the previous value
+    // forward (teleport/city-transition/grace-period packets, and a user's
+    // very first packet which has no speed to derive) — never fabricated.
+    locomotion: computedLocomotion ?? prev?.locomotion ?? "idle",
     health: prev?.health ?? 100,
     maxHealth: prev?.maxHealth ?? 100,
     stamina: prev?.stamina ?? 100,
@@ -800,6 +875,8 @@ export function getNearbyUsers(userId, radius = 500) {
             z: other.z,
             direction: other.direction,
             action: other.action,
+            // R5 continuation — see broadcastPositions' identical field.
+            locomotion: other.locomotion ?? "idle",
             avatar: other.avatar,
           });
         }
@@ -1056,6 +1133,13 @@ export function broadcastPositions(cityId, realtimeEmit) {
         // read `mode` are unaffected; new (Godot) clients can render
         // ride/fly/drive animations off it without a separate round-trip.
         mode: currentModeFor(p),
+        // R5 continuation — additive field. Server-authoritative
+        // idle/walk/run label (classifyLocomotion, derived from real
+        // per-packet speed, never the sender's self-reported `action`).
+        // avatar_manager.gd's AnimationStateMachine prefers this over its
+        // own inferred-from-interpolation classification when present.
+        // Existing consumers that don't read `locomotion` are unaffected.
+        locomotion: p.locomotion ?? "idle",
         displayName: uid, // caller may enrich later
       });
     }

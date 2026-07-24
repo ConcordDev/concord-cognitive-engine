@@ -20,6 +20,7 @@ static func run() -> TestUtils:
 	_test_variable_jump_height(t)
 	_test_send_throttle(t)
 	_test_nack_snapback(t)
+	_test_classify_action(t)
 	return t
 
 
@@ -131,3 +132,41 @@ static func _test_nack_snapback(t: TestUtils) -> void:
 	t.check(
 		partial_prev.is_equal_approx(fallback),
 		"a prev field missing a required axis falls back honestly rather than guessing")
+
+
+static func _test_classify_action(t: TestUtils) -> void:
+	# R5 continuation — real idle/walk/run classification of the LOCAL
+	# player's own outgoing `action` field. Mirrors
+	# AnimationStateMachine.IDLE_MAX_SPEED / RUN_MIN_SPEED and
+	# server/lib/city-presence.js's classifyLocomotion thresholds exactly.
+	t.check_eq(
+		CharacterController.classify_action(0.0), "idle",
+		"stationary speed classifies as idle")
+	t.check_eq(
+		CharacterController.classify_action(CharacterController.LOCOMOTION_IDLE_MAX_SPEED - 0.01),
+		"idle", "just under the idle cutoff still classifies as idle")
+
+	t.check_eq(
+		CharacterController.classify_action(CharacterController.LOCOMOTION_IDLE_MAX_SPEED + 0.01),
+		"walk", "just over the idle cutoff classifies as walk")
+	t.check_eq(
+		CharacterController.classify_action(CharacterController.MOVE_SPEED), "walk",
+		"the controller's own MOVE_SPEED (5.0) classifies as walk")
+	t.check_eq(
+		CharacterController.classify_action(CharacterController.LOCOMOTION_RUN_MIN_SPEED - 0.01),
+		"walk", "just under the run boundary still classifies as walk")
+
+	t.check_eq(
+		CharacterController.classify_action(CharacterController.LOCOMOTION_RUN_MIN_SPEED), "run",
+		"exactly at the run boundary classifies as run")
+	t.check_eq(
+		CharacterController.classify_action(CharacterController.RUN_SPEED), "run",
+		"the controller's own RUN_SPEED (12.0) classifies as run")
+
+	# Sanity: the controller's own RUN_SPEED must actually exceed MOVE_SPEED,
+	# or a Shift-held player would move at the same speed as an idle-handed
+	# walker and could never be classified/seen as running at all (the
+	# pre-this-unit gap this whole change closes).
+	t.check(
+		CharacterController.RUN_SPEED > CharacterController.MOVE_SPEED,
+		"RUN_SPEED must exceed MOVE_SPEED for a run mechanic to exist at all")

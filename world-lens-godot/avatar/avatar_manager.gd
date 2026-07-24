@@ -4,19 +4,23 @@ extends Node
 ## (`city:positions`) and NPC (`city:npcs`) frame, interpolated through the
 ## existing net/snapshot_buffer.gd (same now-120ms sampling the Three.js
 ## client uses — see that file's own header comment), and drives each rig's
-## locomotion via animation_state_machine.gd fed by velocity INFERRED from
-## consecutive interpolated samples.
+## locomotion via animation_state_machine.gd fed by BOTH a velocity INFERRED
+## from consecutive interpolated samples AND (R5 continuation) a
+## server-authoritative `.locomotion` label when the snapshot carries one.
 ##
-## Velocity inference (not a shortcut — the honest parity path): the wire
-## protocol carries no run/walk signal for a remote entity at all. Every
-## ordinary `player:move` frame hardcodes `action: 'walk'`
-## (concord-frontend/app/lenses/world/page.tsx:4703) and
-## server/lib/city-presence.js's `broadcastPositions` (:1031-1046) just
-## relays whatever `action` string the sender supplied — it does not
-## re-derive locomotion server-side either. So classifying a remote avatar's
-## interpolated velocity is not a Godot-only approximation of a richer
-## server signal; it is the ONLY signal available on this path, on both
-## clients. See animation_state_machine.gd's header comment for the
+## Velocity inference used to be the ONLY signal available (documented here
+## as an honest gap): the wire protocol carried no run/walk signal for a
+## remote entity at all — every ordinary `player:move` frame hardcoded
+## `action: 'walk'` and server/lib/city-presence.js's `broadcastPositions`
+## just relayed whatever `action` string the sender supplied. That gap is now
+## closed server-side: `city-presence.js#classifyLocomotion` derives a real
+## idle/walk/run label from the server's own authoritative per-packet speed
+## (position delta / server wall-clock dt) and broadcasts it as an additive
+## `.locomotion` field, ingested here into `_locomotion_hints` and passed to
+## `AnimationStateMachine.select_state` as `locomotion_hint`, which prefers it
+## over its own inference. NPC snapshots (`city:npcs`) carry no `.locomotion`
+## field, so NPCs still animate off pure velocity inference — see
+## animation_state_machine.gd's header comment for the full contract and the
 ## boundary constants this feeds into.
 ##
 ## The LOCAL player is NOT managed here. player/character_controller.gd
@@ -47,6 +51,11 @@ var _buffer := SnapshotBuffer.new()
 var _rigs: Dictionary = {}          # id -> AvatarRig
 var _kinds: Dictionary = {}         # id -> "player" | "npc"
 var _actions: Dictionary = {}       # id -> last known action/currentAnimation string
+## R5 continuation — id -> last known server-authoritative locomotion label
+## (`city:positions.users[].locomotion`, city-presence.js#classifyLocomotion).
+## "" means absent (an NPC snapshot, or an older server): AnimationStateMachine
+## falls back to its own inferred-speed classification in that case.
+var _locomotion_hints: Dictionary = {}
 var _last_seen_ms: Dictionary = {}  # id -> ms of last snapshot mention
 var _prev_sample: Dictionary = {}   # id -> {"pos": Vector3, "ts": int}
 var _grounded_since_ms: Dictionary = {}  # id -> ms of last airborne->grounded transition
@@ -55,9 +64,9 @@ var _was_airborne: Dictionary = {}       # id -> bool (previous frame)
 
 ## Ingest one `city:positions` (kind "player") or `city:npcs` (kind "npc")
 ## payload. `entities` maps id -> a Dictionary carrying at least x/y/z and
-## (direction|rotation), optionally `action`/`currentAnimation`. Pure data-in
-## bookkeeping only — no engine calls happen here; `_process` (engine-gated)
-## reacts to what this stages into the SnapshotBuffer.
+## (direction|rotation), optionally `action`/`currentAnimation`/`locomotion`.
+## Pure data-in bookkeeping only — no engine calls happen here; `_process`
+## (engine-gated) reacts to what this stages into the SnapshotBuffer.
 func ingest_snapshot(now_ms: int, entities: Dictionary, kind: String) -> void:
 	var states := {}
 	for id in entities.keys():
@@ -70,6 +79,7 @@ func ingest_snapshot(now_ms: int, entities: Dictionary, kind: String) -> void:
 		]
 		_kinds[id] = kind
 		_actions[id] = String(e.get("action", e.get("currentAnimation", "")))
+		_locomotion_hints[id] = String(e.get("locomotion", ""))
 		_last_seen_ms[id] = now_ms
 	_buffer.ingest(now_ms, states)
 
@@ -108,6 +118,7 @@ func _process(_delta: float) -> void:
 			"vertical_velocity": kin["vertical_velocity"],
 			"is_airborne": is_air,
 			"action": _actions.get(id, ""),
+			"locomotion_hint": _locomotion_hints.get(id, ""),
 			"ms_since_grounded": ms_since_grounded,
 		})
 
@@ -139,6 +150,7 @@ func _despawn_stale(now_ms: int) -> void:
 		_rigs.erase(id)
 		_kinds.erase(id)
 		_actions.erase(id)
+		_locomotion_hints.erase(id)
 		_last_seen_ms.erase(id)
 		_prev_sample.erase(id)
 		_grounded_since_ms.erase(id)

@@ -56,8 +56,27 @@ const JUMP_BUFFER_MS: int = 130
 ## Ascending velocity is multiplied by this on early jump-button release.
 const JUMP_CUT_FACTOR: float = 0.45
 ## m/s walk speed. Client-feel only — the server is authoritative and this
-## number does not need to match any server-side cap.
+## number does not need to match any server-side cap. Mirrors
+## concord-frontend/components/world-lens/AvatarSystem3D.tsx:362
+## (`const MOVE_SPEED = 5.0; // m/s walking`) exactly.
 const MOVE_SPEED: float = 5.0
+## m/s run/sprint speed, held Shift. Mirrors AvatarSystem3D.tsx:363
+## (`const RUN_SPEED = 12.0; // m/s running`) exactly — this controller had
+## no sprint input at all before this unit (R5 continuation: real locomotion
+## state for `player:move`), so a Godot player could never move faster than
+## MOVE_SPEED and therefore could never be seen "running" by anyone.
+const RUN_SPEED: float = 12.0
+## m/s. The idle/walk classification boundary this controller's own outgoing
+## `action` field uses. Mirrors AnimationStateMachine.IDLE_MAX_SPEED
+## (avatar/animation_state_machine.gd) and server/lib/city-presence.js's
+## `LOCOMOTION_IDLE_MAX_SPEED_MPS` exactly, so this controller's self-report
+## agrees with how the server independently re-derives the same speed.
+const LOCOMOTION_IDLE_MAX_SPEED: float = 0.05
+## m/s. The walk/run classification boundary. Mirrors
+## AnimationStateMachine.RUN_MIN_SPEED and server/lib/city-presence.js's
+## `LOCOMOTION_RUN_MIN_SPEED_MPS` exactly — the documented "honest midpoint"
+## between MOVE_SPEED and RUN_SPEED ((5.0 + 12.0) / 2 = 8.5).
+const LOCOMOTION_RUN_MIN_SPEED: float = 8.5
 ## Mirrors server.js's own `player:move` accept-rate cap
 ## (`if (now - _moveRateState.last < 33) return;`) so the client never
 ## sends faster than the server bothers to read.
@@ -110,8 +129,14 @@ func _physics_process(delta: float) -> void:
 		_pending_snap = false
 
 	var input_dir := _read_input_direction()
-	var desired_x := input_dir.x * MOVE_SPEED
-	var desired_z := input_dir.y * MOVE_SPEED
+	# R5 continuation — real sprint input (Shift), mirroring
+	# AvatarSystem3D.tsx's `isRunning = keys.has('shift')` exactly. Before
+	# this unit there was no way for a Godot player to move faster than
+	# MOVE_SPEED at all.
+	var is_running := Input.is_key_pressed(KEY_SHIFT)
+	var move_speed := RUN_SPEED if is_running else MOVE_SPEED
+	var desired_x := input_dir.x * move_speed
+	var desired_z := input_dir.y * move_speed
 
 	if swimming:
 		vertical_vel = CharacterController.integrate_swim(vertical_vel, delta)
@@ -208,6 +233,15 @@ func set_swim(on: bool) -> bool:
 func _send_move_intent() -> void:
 	if gateway == null or not gateway.has_method("send_event"):
 		return
+	# R5 continuation — `action` now reports a real idle/walk/run
+	# classification of this frame's actual HORIZONTAL speed (excludes
+	# vertical_vel, unlike the pre-this-unit `velocity.length()` check, which
+	# would have misclassified a fall/jump as "walk"). This is the client's
+	# own honest self-report; the server independently re-derives the same
+	# classification from position deltas over server wall-clock time
+	# (city-presence.js#classifyLocomotion) and never trusts this field for
+	# anything server-authoritative (anti-cheat, broadcast to other clients).
+	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
 	gateway.send_event("player:move", {
 		"cityId": world_id,
 		"x": global_position.x,
@@ -215,7 +249,7 @@ func _send_move_intent() -> void:
 		"z": global_position.z,
 		"direction": rotation.y,
 		"rotation": rotation.y,
-		"action": "idle" if velocity.length() < 0.05 else "walk",
+		"action": CharacterController.classify_action(horizontal_speed),
 	})
 
 
@@ -300,6 +334,26 @@ static func cut_jump(vertical_vel: float, factor: float = JUMP_CUT_FACTOR) -> fl
 static func should_send_move(
 		now_ms: int, last_sent_ms: int, min_interval_ms: int = MOVE_SEND_MIN_INTERVAL_MS) -> bool:
 	return (now_ms - last_sent_ms) >= min_interval_ms
+
+
+## Classify a HORIZONTAL speed into this controller's outgoing `action`
+## string. Mirrors AnimationStateMachine._locomotion_label
+## (avatar/animation_state_machine.gd) and server/lib/city-presence.js's
+## classifyLocomotion exactly (same two boundaries: idle below
+## LOCOMOTION_IDLE_MAX_SPEED, run at/above LOCOMOTION_RUN_MIN_SPEED) — this
+## is the LOCAL player's own honest self-report of its own real velocity, not
+## a self-declared flag; the server independently re-derives the same label
+## server-side from position deltas and never trusts this field for anything
+## authoritative. No hysteresis here (unlike the server/receiving-side
+## classifiers): this runs on the controller's own continuous, non-network
+## velocity every physics frame, driven by deliberate key transitions rather
+## than packet jitter, so there is no flapping risk to guard against.
+static func classify_action(horizontal_speed: float) -> String:
+	if horizontal_speed < LOCOMOTION_IDLE_MAX_SPEED:
+		return "idle"
+	if horizontal_speed < LOCOMOTION_RUN_MIN_SPEED:
+		return "walk"
+	return "run"
 
 
 ## Select the snap-back position from a `player:move:nack` payload's `prev`

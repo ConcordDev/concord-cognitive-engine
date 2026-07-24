@@ -20,6 +20,9 @@ static func run() -> TestUtils:
 	_test_action_override_precedence(t)
 	_test_velocity_vector_input(t)
 	_test_never_fabricates_motion_on_first_sighting_shape(t)
+	_test_locomotion_hint_wins_over_inferred_speed(t)
+	_test_locomotion_hint_never_overrides_airborne_or_land(t)
+	_test_locomotion_hint_absent_or_malformed_falls_back_to_inference(t)
 	return t
 
 
@@ -176,3 +179,72 @@ static func _test_never_fabricates_motion_on_first_sighting_shape(t: TestUtils) 
 	# fabricated jump/run.
 	var fresh := AnimationStateMachine.select_state({"speed": 0.0, "is_airborne": false})
 	t.check_eq(fresh["state"], "idle", "a motionless/fresh reading never fabricates jump or run")
+
+
+static func _test_locomotion_hint_wins_over_inferred_speed(t: TestUtils) -> void:
+	# R5 continuation — server-authoritative `locomotion_hint` (see the
+	# header comment) must win over this file's own inferred-speed label for
+	# STATE selection, while the blend weights still come from the actually
+	# inferred `speed` (so the crossfade stays smooth).
+	var hinted_run := AnimationStateMachine.select_state({
+		"speed": 5.0, "is_airborne": false, "locomotion_hint": "run",
+	})
+	t.check_eq(
+		hinted_run["state"], "run",
+		"a 'run' hint wins even though 5.0 m/s would infer 'walk' on its own")
+	t.check(
+		not hinted_run["is_override"], "a locomotion hint is not flagged as a one-shot override")
+	var run_blend: Dictionary = hinted_run["blend"]
+	t.check_almost(
+		run_blend["walk"], 1.0,
+		"blend weights still reflect the REAL inferred speed (5.0 is deep in the walk band)")
+	t.check_almost(run_blend["run"], 0.0, "run blend weight is 0 when the real speed is walk-band")
+
+	var hinted_walk := AnimationStateMachine.select_state({
+		"speed": 12.0, "is_airborne": false, "locomotion_hint": "walk",
+	})
+	t.check_eq(
+		hinted_walk["state"], "walk",
+		"a 'walk' hint wins even though 12.0 m/s would infer 'run' on its own")
+
+	var hinted_idle := AnimationStateMachine.select_state({
+		"speed": 5.0, "is_airborne": false, "locomotion_hint": "idle",
+	})
+	t.check_eq(hinted_idle["state"], "idle", "an 'idle' hint wins over nonzero inferred speed")
+
+
+static func _test_locomotion_hint_never_overrides_airborne_or_land(t: TestUtils) -> void:
+	var airborne_with_hint := AnimationStateMachine.select_state({
+		"speed": 0.0, "is_airborne": true, "vertical_velocity": 5.0,
+		"locomotion_hint": "walk",
+	})
+	t.check_eq(
+		airborne_with_hint["state"], "jump",
+		"airborne state wins over a locomotion hint — the server has no jump/fall signal")
+
+	var landing_with_hint := AnimationStateMachine.select_state({
+		"speed": 0.0, "is_airborne": false, "ms_since_grounded": 0,
+		"locomotion_hint": "run",
+	})
+	t.check_eq(
+		landing_with_hint["state"], "land",
+		"the transient land-hold state wins over a locomotion hint")
+
+
+static func _test_locomotion_hint_absent_or_malformed_falls_back_to_inference(t: TestUtils) -> void:
+	var no_hint := AnimationStateMachine.select_state({"speed": 12.0, "is_airborne": false})
+	t.check_eq(
+		no_hint["state"], "run",
+		"an absent locomotion_hint (e.g. an NPC snapshot) falls back to inferred-speed classification")
+
+	var empty_hint := AnimationStateMachine.select_state({
+		"speed": 12.0, "is_airborne": false, "locomotion_hint": "",
+	})
+	t.check_eq(empty_hint["state"], "run", "an empty-string hint falls back to inference too")
+
+	var bogus_hint := AnimationStateMachine.select_state({
+		"speed": 12.0, "is_airborne": false, "locomotion_hint": "sprint",
+	})
+	t.check_eq(
+		bogus_hint["state"], "run",
+		"a hint value outside {idle,walk,run} is ignored, falling back to inference")

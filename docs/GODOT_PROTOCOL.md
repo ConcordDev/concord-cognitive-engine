@@ -118,7 +118,7 @@ at `:1108`):
     "cityId": "concordia-central",
     "chunk": { "x": 3, "z": -1 },
     "users": [
-      { "userId": "u1", "x": 12.4, "y": 0, "z": -8.1, "direction": 1.57, "action": "walk", "avatar": {...}, "vehicleId": null, "vehicleType": null, "mode": "walk", "displayName": "u1" }
+      { "userId": "u1", "x": 12.4, "y": 0, "z": -8.1, "direction": 1.57, "action": "walk", "locomotion": "run", "avatar": {...}, "vehicleId": null, "vehicleType": null, "mode": "walk", "displayName": "u1" }
     ],
     "timestamp": "2026-07-23T...",
     "ts": "...", "_seq": 1, "_evt": "city:positions"
@@ -261,11 +261,28 @@ carried as fields *inside* the transform snapshots documented under
 `update_transform`, above:
 
 - `city:positions.users[].action` — a free-text action tag (`"walk"`,
-  `"idle"`, ...), and `.mode` (Godot Phase 3a additive field — `"walk"`/
-  `"sprint"`/`"fly"`/`"mount:<species>"`/`"vehicle:<type>"`,
-  `server/lib/city-presence.js:1057`).
+  `"idle"`, ...) self-reported by the sender, and `.mode` (Godot Phase 3a
+  additive field — `"walk"`/`"sprint"`/`"fly"`/`"mount:<species>"`/
+  `"vehicle:<type>"`, `server/lib/city-presence.js`).
+- `city:positions.users[].locomotion` — **R5 continuation, additive.**
+  Server-authoritative `"idle"`/`"walk"`/`"run"` label, derived from the
+  server's own per-packet speed (position delta / server wall-clock dt —
+  never the sender's self-reported `.action`) via
+  `classifyLocomotion()`/`getNearbyUsers()` in `server/lib/city-presence.js`.
+  This closes a real gap the note below used to describe: `.action` alone
+  was either hardcoded (`"walk"`, always, on the web client — the field
+  documents a *label*, not a live signal) or, on the pre-this-unit Godot
+  client, only ever idle/walk (no sprint input existed at all). `.locomotion`
+  is ground truth regardless of what a sender's own `.action` claims;
+  `world-lens-godot/avatar/animation_state_machine.gd`'s `select_state`
+  prefers it (`locomotion_hint` input key) over its own inferred-from-
+  interpolated-velocity classification when present, falling back to
+  inference for NPC snapshots (`city:npcs`, no `.locomotion` field) or an
+  older server. Hysteresis (a 1.5 m/s band around the run/walk boundary,
+  matching the animation state machine's own `BLEND_BAND`) prevents the
+  label from flapping on packet-to-packet speed jitter.
 - `city:npcs.npcs[].currentAnimation` (`server/lib/city-presence.js`, the
-  NPC broadcast builder above line 1287).
+  NPC broadcast builder).
 
 This is an honest design choice already made by the existing snapshot
 protocol, not a gap: baking animation state into the same periodic snapshot

@@ -20,23 +20,35 @@ extends RefCounted
 ## with the local player on the same cutoff.
 ##
 ## RUN_MIN_SPEED is grounded in concord-frontend/components/world-lens/
-## AvatarSystem3D.tsx:190-191 (`const MOVE_SPEED = 5.0; // m/s walking` /
+## AvatarSystem3D.tsx:362-363 (`const MOVE_SPEED = 5.0; // m/s walking` /
 ## `const RUN_SPEED = 12.0; // m/s running`) — the only two horizontal speeds
 ## the Three.js client's WASD+shift path ever actually produces
-## (`baseSpeed = isRunning ? RUN_SPEED : MOVE_SPEED`, AvatarSystem3D.tsx:2531,
-## with `isRunning = keys.has('shift')` at :2523). BUT — and this is the
-## honest caveat this file is built around — the wire protocol never carries
-## which of the two a REMOTE player used: every outbound `player:move` frame
-## for ordinary locomotion hardcodes `action: 'walk'`
-## (concord-frontend/app/lenses/world/page.tsx:4703), and
-## server/lib/city-presence.js's `broadcastPositions` (:1031-1046) just
-## relays whatever `action` string the client sent — it never re-derives
-## walk-vs-run itself either. So for any avatar OTHER than the local player,
-## there is no server-sent run/walk signal to mirror; RUN_MIN_SPEED here is
-## the honest inference boundary — the midpoint of the two known discrete
-## speeds ((MOVE_SPEED + RUN_SPEED) / 2 = 8.5) — used by avatar_manager.gd to
-## classify a remote avatar's INTERPOLATED velocity. It is a Godot-native
-## decision, not a literally-mirrored constant, and is documented as such.
+## (`baseSpeed = isRunning ? RUN_SPEED : MOVE_SPEED`, with
+## `isRunning = keys.has('shift')`).
+##
+## ── UPDATE (R5 continuation) — the server now carries a real signal ────────
+## The paragraph this replaces documented an honest gap: the wire protocol
+## carried no run/walk signal for a REMOTE avatar at all (every outbound
+## `player:move` frame hardcoded `action: 'walk'` on the web client, and the
+## pre-this-unit Godot client only ever sent idle/walk — no sprint input
+## existed). That gap is now closed on BOTH ends:
+##   - server/lib/city-presence.js#classifyLocomotion derives a real
+##     idle/walk/run label from the SERVER's own authoritative per-packet
+##     speed (position delta / server wall-clock dt — never the sender's
+##     self-reported `action` string) and broadcasts it as an additive
+##     `.locomotion` field on `city:positions`/`getNearbyUsers`. This covers
+##     every sender, including a web client that still hardcodes
+##     `action: 'walk'` — the server reclassifies from real movement anyway.
+##   - player/character_controller.gd now has a real Shift-to-run input
+##     (RUN_SPEED = 12.0, mirrored from the same Three.js constants) so a
+##     Godot player can actually BE classified as running.
+## `select_state`'s new `locomotion_hint` input key (see below) lets a caller
+## (avatar_manager.gd) pass this server-authoritative label through and have
+## it WIN over this file's own inferred-from-interpolated-velocity label —
+## ground truth over inference. RUN_MIN_SPEED / IDLE_MAX_SPEED stay in use as
+## the fallback inference path (NPCs, which have no `.locomotion` field yet;
+## an older server; or any sender where the hint is absent/malformed) and as
+## the source of the blend-crossfade weights either way.
 ##
 ## JUMP / FALL / LAND have no Three.js equivalent at all: the browser client's
 ## `AnimationClip` union (AvatarSystem3D.tsx:101-123) contains no jump/fall/
@@ -93,6 +105,21 @@ const LAND_HOLD_MS: int = 150
 ##   "action"             String — server/local one-shot override. Anything
 ##                         not in LOCOMOTION_STATES takes over immediately,
 ##                         full weight, regardless of kinematics.
+##   "locomotion_hint"     String — server-authoritative idle/walk/run label
+##                         (city:positions.users[].locomotion /
+##                         server/lib/city-presence.js#classifyLocomotion).
+##                         When present and one of "idle"/"walk"/"run", WINS
+##                         over this file's own speed-inferred label for
+##                         STATE selection (ground truth beats inference) —
+##                         but never overrides jump/fall/land, which have no
+##                         server-side equivalent, and the blend weights
+##                         still crossfade off the locally inferred `speed`
+##                         so the visual transition stays smooth even when
+##                         the discrete hint pops. Absent/malformed (empty
+##                         string, or anything outside {idle,walk,run} — e.g.
+##                         an NPC snapshot, which has no `.locomotion` field)
+##                         falls through to the inferred-speed path exactly
+##                         as before this key existed.
 ##
 ## Returns { "state": String, "blend": Dictionary, "is_override": bool }.
 ## `blend` always carries the six canonical keys at minimum (0.0 where
@@ -114,6 +141,14 @@ static func select_state(input: Dictionary) -> Dictionary:
 
 	if ms_since_grounded >= 0 and ms_since_grounded < LAND_HOLD_MS:
 		return {"state": "land", "blend": _single("land"), "is_override": false}
+
+	# Server-authoritative locomotion hint — see this func's doc comment.
+	# Ground truth (real per-packet speed, computed server-side) wins over
+	# this file's own inference for STATE selection; blend weights still
+	# crossfade off the locally inferred `speed` for smooth visuals.
+	var hint := String(input.get("locomotion_hint", ""))
+	if hint == "idle" or hint == "walk" or hint == "run":
+		return {"state": hint, "blend": _locomotion_blend(speed), "is_override": false}
 
 	return {
 		"state": _locomotion_label(speed),
