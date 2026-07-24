@@ -5395,6 +5395,14 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // this surfaces the same real data to logged-in players. No authoring
   // action exists on this surface (pure observation), so `actions` is empty.
   { domain: 'concord-link-frontier', label: 'Concord Link Frontier', artifacts: ['world_event', 'royalty_flow'], macros: {}, exports: ['json'], actions: [], category: 'operations' },
+  // Plugin Gallery is the real frontend surface for /api/plugins/gallery/*
+  // (server/lib/plugin-gallery.js) — REST-backed by design (no macro domain),
+  // same posture as concord-link-frontier. This is NOT the older /api/plugins
+  // emergent/developer-sdk loader behind the "system" lens's
+  // LensPluginSystem — the two subsystems are unrelated. `actions` lists the
+  // real mutating HTTP verbs a user can take (install / rate); publish/delist
+  // are author/admin-only and not exposed as generic lens actions here.
+  { domain: 'plugins', label: 'Plugin Gallery', artifacts: ['gallery_plugin'], macros: {}, exports: ['json'], actions: ['install', 'rate'], category: 'operations' },
   { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'photos.list',             get: 'photos.get', create: 'photos.share' }, exports: ['json'], actions: ['share', 'world'], category: 'creative' },
   { domain: 'quests',        label: 'Quests',             artifacts: ['quest'],       macros: { list: 'quests.mine',             get: 'quests.progress' },        exports: ['json'], actions: ['accept', 'record-progress', 'claim-rewards', 'share'], category: 'lifestyle' },
   { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'spectate.list',           get: 'spectate.get',         create: 'spectate.watch',   run: 'spectate.bet' },           exports: ['json'], actions: ['watch', 'bet', 'my_positions'], category: 'social' },

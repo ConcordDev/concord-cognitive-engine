@@ -183,7 +183,10 @@ describe('getManifestCount', () => {
 describe('getLensesMissingMacro', () => {
   // The only manifest entries without list/get macros are the REST-backed
   // dashboard lenses, which bind to HTTP routes instead of the macro system.
-  const REST_DASHBOARDS = ['lattice', 'narrative-walk', 'ops-telemetry'];
+  // 'concord-link-frontier' and 'plugins' were added after this allowlist was
+  // last updated — both are genuinely REST-backed (no macro domain by
+  // design, see their manifest.ts comments), so they belong here too.
+  const REST_DASHBOARDS = ['lattice', 'narrative-walk', 'ops-telemetry', 'concord-link-frontier', 'plugins'];
 
   it('returns only REST-dashboard lenses for the list macro (others all have list)', () => {
     const missing = getLensesMissingMacro('list');

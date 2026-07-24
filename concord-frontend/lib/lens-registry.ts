@@ -2806,6 +2806,22 @@ export const LENS_REGISTRY: LensEntry[] = [
     // ops-telemetry: macroDomain intentionally omitted.
   },
   {
+    id: 'plugins',
+    name: 'Plugin Gallery',
+    icon: Boxes,
+    description: 'Browse, install, and rate signed plugin packages — real capability disclosure before every install (server/lib/plugin-gallery.js).',
+    category: 'system',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/plugins',
+    order: 94,
+    keywords: ['plugins', 'gallery', 'marketplace', 'install', 'sandbox', 'capability', 'signed'],
+    // REST-backed by design (no macro domain — /api/plugins/gallery/* are
+    // direct HTTP routes), same posture as concord-link-frontier. NOT the
+    // same subsystem as the older /api/plugins loader behind the "system"
+    // lens's LensPluginSystem — macroDomain intentionally omitted.
+  },
+  {
     id: 'quests',
     name: 'Quests',
     icon: ScrollText,
