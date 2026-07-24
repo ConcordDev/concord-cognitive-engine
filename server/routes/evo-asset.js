@@ -14,6 +14,8 @@ import { Router } from "express";
 import path from "path";
 import fs from "fs";
 import { resolveCurrentBest, recordInteraction } from "../lib/evo-asset/registry.js";
+import { isGlbSource, extractMeshData } from "../lib/evo-asset/glb-bridge.js";
+import { meshToSTL } from "../lib/asset-gen/stl-export.js";
 
 export default function createEvoAssetRouter({ requireAuth, db }) {
   const router = Router();
@@ -83,9 +85,23 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
   // GET /api/evo-asset/file/:id — serves the canonical file content. Public
   // because asset binaries aren't user-private. Streams from disk; no
   // path-traversal possible since we look the path up from the registry.
+  //
+  // GET /api/evo-asset/file/:id?format=stl — sibling export option: the
+  // SAME canonical mesh, re-serialized to binary STL (server/lib/asset-gen/
+  // stl-export.js#meshToSTL) instead of the source GLB. No new geometry is
+  // generated and no separate asset/version is registered — the vertex
+  // data is extracted from the already-promoted GLB (glb-bridge.js's
+  // extractMeshData, the same vertex-extraction bridge the refinement
+  // passes use) and re-packed. STL isn't CDN-mirrored today, so this path
+  // always converts from the local canonical file rather than following
+  // the GLB CDN-redirect branch below. Honest failure (never a corrupt or
+  // silently-wrong file): a non-GLB canonical source, an unreadable/multi-
+  // primitive GLB, or a degenerate mesh all return `{ ok:false, reason }`
+  // instead of a fabricated STL.
   router.get("/file/:id", async (req, res) => {
     try {
       const id = req.params.id;
+      const format = String(req.query.format || "").toLowerCase();
       // Exclude material_upgrade from the geometry channel — it's a
       // metadata-only JSON (served via /material), never the canonical mesh.
       const row = db.prepare(`
@@ -98,6 +114,33 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
          LIMIT 1
       `).get(id);
       if (!row) return res.status(404).json({ ok: false, error: "not_found" });
+
+      if (format === "stl") {
+        const filePath = row.version_path ?? row.local_path;
+        if (!filePath) return res.status(404).json({ ok: false, error: "file_missing" });
+        try {
+          await fs.promises.access(filePath);
+        } catch {
+          return res.status(404).json({ ok: false, error: "file_missing" });
+        }
+        if (!isGlbSource(filePath)) {
+          return res.status(422).json({ ok: false, error: "not_glb_source" });
+        }
+        let mesh;
+        try {
+          mesh = await extractMeshData(filePath);
+        } catch (err) {
+          return res.status(422).json({ ok: false, error: "mesh_extract_failed", reason: err?.message });
+        }
+        const stl = meshToSTL(mesh);
+        if (!stl.ok) {
+          return res.status(422).json({ ok: false, error: "stl_export_failed", reason: stl.reason, detail: stl.detail });
+        }
+        res.setHeader("Content-Type", "model/stl");
+        res.setHeader("Content-Disposition", `attachment; filename="${id}.stl"`);
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.send(stl.buffer);
+      }
 
       // CDN redirect path: when CONCORD_CDN_BASE_URL is configured and we
       // have a stored cdn_url for this asset (or version), 302 to it. Saves
