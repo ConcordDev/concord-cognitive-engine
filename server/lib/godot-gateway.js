@@ -50,7 +50,7 @@ const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter
  * @param {number} [deps.rateLimitPerSec=20]  sustained per-client messages/sec (token-bucket refill rate).
  * @param {number} [deps.rateLimitBurst=30]  per-client token-bucket capacity (burst allowance above sustained rate).
  * @param {() => number} [deps.now]  injectable clock (ms) for the rate limiter, for deterministic tests.
- * @returns {{wss, emitToRoom, broadcast, close, rooms, clients, getSeq}}
+ * @returns {{wss, emitToRoom, broadcast, joinRoomForClient, close, rooms, clients, getSeq}}
  */
 export function mountGodotGateway(httpServer, deps = {}) {
   const {
@@ -127,6 +127,24 @@ export function mountGodotGateway(httpServer, deps = {}) {
   }
   function leaveAllRooms(client) {
     for (const room of [...client.rooms]) leaveRoom(client, room);
+  }
+
+  // Godot Integration Phase 4 (D19 — live system preview). Lets an injected
+  // `onClientMessage` handler (server.js's `_onGodotClientMessage`) join a
+  // CLIENT'S connection into a real world room from server-side code, the
+  // same room `room:join` already lets the client ask for itself. This is
+  // what makes a design-mode client that references a live world (e.g. a
+  // `design_command` action carrying a worldId) start receiving the SAME
+  // realtime traffic (combat:impact, world:sonic-pulse, quest events, ...)
+  // any play-mode client in that world already gets via emitToRoom above —
+  // no parallel "design preview" event stream, just the real world room.
+  // Returns false (no-op) for an invalid room shape or a missing client —
+  // never throws, since a hiccup here must never break the caller's macro
+  // dispatch.
+  function joinRoomForClient(client, room) {
+    if (!client || typeof room !== "string" || !ROOM_RE.test(room)) return false;
+    joinRoom(client, room);
+    return true;
   }
 
   /** Fan out an enveloped frame to every OPEN socket joined to `room`. */
@@ -431,6 +449,7 @@ export function mountGodotGateway(httpServer, deps = {}) {
     wss,
     emitToRoom,
     broadcast,
+    joinRoomForClient,
     close,
     rooms,
     clients,

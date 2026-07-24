@@ -25,6 +25,7 @@ const TestGroundVehicleController := preload("res://tests/test_ground_vehicle_co
 const TestMountController := preload("res://tests/test_mount_controller.gd")
 const TestAerialMountController := preload("res://tests/test_aerial_mount_controller.gd")
 const TestDesignCommandClient := preload("res://tests/test_design_command_client.gd")
+const TestDesignPlaytestClient := preload("res://tests/test_design_playtest_client.gd")
 const TestLandAirTransitionController := preload(
 	"res://tests/test_land_air_transition_controller.gd")
 const TestSceneBootstrap := preload("res://tests/test_scene_bootstrap.gd")
@@ -50,6 +51,7 @@ func _init() -> void:
 		"MountController": TestMountController.run(),
 		"AerialMountController": TestAerialMountController.run(),
 		"DesignCommandClient": TestDesignCommandClient.run(),
+		"DesignPlaytestClient": TestDesignPlaytestClient.run(),
 		"LandAirTransitionController": TestLandAirTransitionController.run(),
 		"SceneBootstrap": TestSceneBootstrap.run(),
 		"AerialTrafficController": TestAerialTrafficController.run(),

@@ -22124,7 +22124,17 @@ async function maybeRunLocalUpgrade() {
 async function pipelineCommitDTU(ctx, dtu, opts={}) {
   // DEDUP GATE: block templates and exact title dupes (system-generated only)
   if (dtu.source !== "user" && dtu.source !== "import") {
-    const firstDef = dtu.core?.definitions?.[0] || "";
+    // Real bug found by the Game Design Lens D20 unit's own test: this used
+    // to assume core.definitions[0] is always a string (the "Working
+    // definition: ..." convention some domains use). A caller supplying real
+    // structured content as {term, definition} objects (or any non-string
+    // shape) crashed here with "firstDef.startsWith is not a function" for
+    // every non-"user"/"import" source — a genuine, narrow bug, not
+    // something any domain caller was doing wrong. String()-coercing first
+    // makes the check honest for either shape without loosening what it
+    // actually blocks (an object never matched the template patterns
+    // anyway, so this changes zero currently-blocked cases).
+    const firstDef = String(dtu.core?.definitions?.[0] || "");
     if (firstDef.startsWith("Working definition:") || firstDef.includes("synthesis from")) {
       structuredLog("debug", "dedup_blocked_template_pipeline", { title: dtu.title?.slice(0, 60) });
       return { ok: false, error: "template_blocked" };
@@ -66370,11 +66380,18 @@ function _godotGatewaySend(client, evt, payload = {}) {
 // publish/spawn a building into a live 3D world's `world_buildings` table.
 // An action NOT in this set gets an honest `unsupported_action` result,
 // never silently forwarded to an arbitrary macro.
+// D20 (2026-07-24) extends this same curated allow-list — mechanically, per
+// docs/GODOT_PROTOCOL.md §11's own note that reaching more gamedesign.js
+// macros this way is "more entries", not a new pattern — with the two
+// scene-save/scene-load macros that round-trip a level design through the
+// real DTU substrate (server/domains/gamedesign.js, "D20" section).
 const DESIGN_COMMAND_ACTIONS = new Set([
   "game-create",       // gamedesign.js:148 — creates a game project
   "entity-add",        // gamedesign.js:296 — adds a roster entity (place-entity intent)
   "level-create",      // gamedesign.js:346 — creates a level (tile grid + default layers)
   "building-publish",  // gamedesign.js:1905 — mints a blueprint DTU + spawns a REAL world_buildings row
+  "scene-save",        // gamedesign.js "D20" section — snapshots a level into a real dtu.create DTU
+  "scene-load",        // gamedesign.js "D20" section — reconstructs a level from a saved DTU by id
 ]);
 
 // Shared resolver — the SAME two-step lookup `/api/lens/run` uses
@@ -66407,6 +66424,28 @@ async function _dispatchDesignCommand(domain, action, params, ctx) {
   return { ok: false, error: "unknown_macro", domain, action };
 }
 
+// Shared by the `design_command` and `design:mode` cases below — a Godot
+// client only ever reaches either post-auth (godot-gateway.js rejects
+// pre-auth frames itself), so `userId` is always a real authenticated user.
+// makeCtx's `reqMeta` block calls `req.get(...)` unconditionally whenever
+// `req` is truthy, so a bare `{user:{id}}` stub would throw — this fake req
+// carries every field makeCtx dereferences (get/ip/method/path/query/
+// headers) so the REAL actor-resolution branch (`req.user.id` present) runs
+// untouched and produces the identical member-role actor shape an
+// authenticated HTTP request would get.
+function _godotFakeReqFor(userId) {
+  return {
+    user: { id: userId },
+    headers: {},
+    query: {},
+    method: "WS",
+    path: "/godot-ws",
+    originalUrl: "/godot-ws",
+    ip: "godot-gateway",
+    get: () => undefined,
+  };
+}
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
   switch (evt) {
@@ -66432,7 +66471,8 @@ function _onGodotClientMessage(client, evt, data) {
       return;
     }
     case "design_command": {
-      // Phase 4 (D17) first slice — see DESIGN_COMMAND_ACTIONS above.
+      // Phase 4 (D17 first slice, D20 scene-save/scene-load) — see
+      // DESIGN_COMMAND_ACTIONS above.
       const action = typeof data?.action === "string" ? data.action : "";
       const params = data?.params && typeof data.params === "object" ? data.params : {};
       if (!action) {
@@ -66443,26 +66483,21 @@ function _onGodotClientMessage(client, evt, data) {
         _godotGatewaySend(client, "design_command:result", { ok: false, error: "unsupported_action", action });
         return;
       }
-      // makeCtx(null) would resolve an anonymous actor; a Godot client only
-      // reaches this switch post-auth (godot-gateway.js rejects pre-auth
-      // frames itself), so client.userId is always a real authenticated
-      // user. makeCtx's `reqMeta` block calls `req.get(...)` unconditionally
-      // whenever `req` is truthy, so a bare `{user:{id}}` stub would throw —
-      // this fake req carries every field makeCtx dereferences (get/ip/
-      // method/path/query/headers) so the REAL actor-resolution branch
-      // (`req.user.id` present) runs untouched and produces the identical
-      // member-role actor shape an authenticated HTTP request would get.
-      const _godotFakeReq = {
-        user: { id: userId },
-        headers: {},
-        query: {},
-        method: "WS",
-        path: "/godot-ws",
-        originalUrl: "/godot-ws",
-        ip: "godot-gateway",
-        get: () => undefined,
-      };
-      const ctx = makeCtx(_godotFakeReq);
+      // D19 — live system preview. Any curated action whose params carry a
+      // worldId (today: building-publish) auto-joins this client into that
+      // world's REAL room — the same `world:<id>` room emitToWorld/
+      // realtimeEmit already fan every live event into (combat:impact,
+      // world:sonic-pulse, quest events, npc-conversation-bid, ...). This is
+      // additive to the existing dispatch below, not a parallel preview
+      // stream: a design-mode client that references a live world starts
+      // observing the SAME real system activity a play-mode client in that
+      // world already sees, through the SAME room. Best-effort — a failure
+      // here must never block the actual design_command dispatch.
+      if (typeof params.worldId === "string" && params.worldId) {
+        try { globalThis._concordGodotGateway?.joinRoomForClient?.(client, `world:${params.worldId}`); }
+        catch { /* survive — room-join is a bonus, not a precondition */ }
+      }
+      const ctx = makeCtx(_godotFakeReqFor(userId));
       _dispatchDesignCommand("game-design", action, params, ctx)
         .then((result) => {
           _godotGatewaySend(client, "design_command:result", { action, ...result });
@@ -66471,6 +66506,44 @@ function _onGodotClientMessage(client, evt, data) {
           _godotGatewaySend(client, "design_command:result", {
             ok: false, error: "handler_error", action, message: String(e?.message || e),
           });
+        });
+      return;
+    }
+    case "design:mode": {
+      // Phase 4 (D21) — the design ⇄ playtest toggle for the SAME scene.
+      // Mirrors the player:mode ack/nack descriptor discipline (see
+      // applyPlayerMode above) rather than design_command's raw {ok,result}
+      // envelope: the client gets a clean design:mode:ack / design:mode:nack
+      // frame either way. Internally this still dispatches through the SAME
+      // curated resolver design_command uses (`_dispatchDesignCommand`) —
+      // never a parallel mechanism — but only ever to one of exactly two
+      // fixed macro names (never a client-supplied action string), because
+      // "mode" only ever means "playtest" or "design" here.
+      const requested = typeof data?.mode === "string" ? data.mode.trim().slice(0, 32) : "";
+      if (requested !== "playtest" && requested !== "design") {
+        _godotGatewaySend(client, "design:mode:nack", { reason: "unknown_mode", requested });
+        return;
+      }
+      const action = requested === "playtest" ? "playtest-enter" : "playtest-exit";
+      const params = requested === "playtest"
+        ? { levelId: typeof data?.levelId === "string" ? data.levelId : "" }
+        : {};
+      const ctx = makeCtx(_godotFakeReqFor(userId));
+      _dispatchDesignCommand("game-design", action, params, ctx)
+        .then((result) => {
+          if (!result?.ok) {
+            _godotGatewaySend(client, "design:mode:nack", { reason: result?.error || "rejected", requested });
+            return;
+          }
+          _godotGatewaySend(client, "design:mode:ack", {
+            mode: result.result?.mode || requested,
+            levelId: result.result?.levelId ?? null,
+            gameId: result.result?.gameId ?? null,
+            scene: result.result?.scene ?? null,
+          });
+        })
+        .catch((e) => {
+          _godotGatewaySend(client, "design:mode:nack", { reason: "handler_error", message: String(e?.message || e) });
         });
       return;
     }

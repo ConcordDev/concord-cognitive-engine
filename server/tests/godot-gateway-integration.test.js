@@ -112,14 +112,73 @@ function connect(url) {
     ws.once("error", reject);
   });
 }
+// Queued frame delivery, keyed per-socket. A naive "attach a 'message'
+// listener, detach on first frame, repeat" pattern (this file's original
+// shape) has a real race: if TWO frames arrive in the same synchronous
+// flush (e.g. a broadcast landing back-to-back with a direct reply — exactly
+// what dtu.create's global "dtu:created" broadcast does relative to a
+// design_command:result reply, both below), the second message can fire
+// before the NEXT await re-attaches a listener, and ws's EventEmitter drops
+// an emit with zero listeners silently — no error, just a vanished frame,
+// which reads as a mystery hang. Queuing every frame from ONE listener
+// attached once per socket removes the window entirely: nothing is ever
+// "in flight" waiting for a listener to exist.
+const _frameQueues = new WeakMap();
+function _queueFor(ws) {
+  let q = _frameQueues.get(ws);
+  if (!q) {
+    q = { pending: [], waiters: [] };
+    ws.on("message", (raw) => {
+      let frame;
+      try { frame = JSON.parse(raw.toString()); } catch { return; }
+      const waiter = q.waiters.shift();
+      if (waiter) waiter(frame);
+      else q.pending.push(frame);
+    });
+    _frameQueues.set(ws, q);
+  }
+  return q;
+}
 function nextFrame(ws, timeoutMs = 5000) {
+  const q = _queueFor(ws);
+  if (q.pending.length > 0) return Promise.resolve(q.pending.shift());
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => { ws.off("message", onMsg); reject(new Error("nextFrame timeout")); }, timeoutMs);
-    function onMsg(raw) { clearTimeout(t); ws.off("message", onMsg); try { resolve(JSON.parse(raw.toString())); } catch (e) { reject(e); } }
-    ws.on("message", onMsg);
+    let settled = false;
+    const t = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      const idx = q.waiters.indexOf(deliver);
+      if (idx >= 0) q.waiters.splice(idx, 1);
+      reject(new Error("nextFrame timeout"));
+    }, timeoutMs);
+    function deliver(frame) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(t);
+      resolve(frame);
+    }
+    q.waiters.push(deliver);
   });
 }
 function sendMsg(ws, evt, data) { ws.send(JSON.stringify({ evt, data })); }
+
+// dtu.create broadcasts a global "dtu:created" event (realtimeEmit with no
+// scope — every authenticated gateway client, including whichever one just
+// triggered it, receives it). The D20 scene-save/scene-load tests below are
+// the first ones in this file whose design_command dispatch calls through to
+// a real dtu.create, so this is the first place that becomes visible: the
+// broadcast can arrive interleaved with the direct design_command:result
+// reply, in either order. Skips unrelated frames instead of assuming the
+// very next queued frame is the one under test.
+async function waitForEvt(ws, evtName, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error(`waitForEvt(${evtName}) timed out waiting`);
+    const frame = await nextFrame(ws, remaining);
+    if (frame.evt === evtName) return frame;
+  }
+}
 
 async function registerUser(username) {
   const res = await fetch(`${API_BASE}/api/auth/register`, {
@@ -262,9 +321,12 @@ test("player:move round-trips through real cityPresence anti-cheat over /godot-w
     // cityPresence.updateUserPosition can't run the speed/teleport checks
     // yet — this MUST ack, proving the frame reached the real handler and
     // not the gateway's old blanket `error {reason:"unknown_evt"}`).
+    // waitForEvt (not a bare nextFrame) — the periodic ~100ms city:positions
+    // presence broadcast (server/lib/city-presence.js) reaches every
+    // authenticated client, this one included, and can legitimately land
+    // between this send and its ack/nack reply.
     sendMsg(ws, "player:move", { cityId: "godot-it-move-world", x: 1, y: 0, z: 1, direction: 0 });
-    const ack = await nextFrame(ws);
-    assert.equal(ack.evt, "player:move:ack");
+    const ack = await waitForEvt(ws, "player:move:ack");
     assert.equal(ack.data.ok, true);
     assert.equal(ack.data.chunkCrossed, true); // first-ever position for this user
 
@@ -283,8 +345,7 @@ test("player:move round-trips through real cityPresence anti-cheat over /godot-w
     // anti-cheat that guards the socket.io path also guards the Godot path,
     // not a laxer/duplicate copy.
     sendMsg(ws, "player:move", { cityId: "godot-it-move-world", x: 900, y: 0, z: 900, direction: 0 });
-    const nack = await nextFrame(ws);
-    assert.equal(nack.evt, "player:move:nack");
+    const nack = await waitForEvt(ws, "player:move:nack");
     assert.ok(["teleport_detected", "speed_hack_detected"].includes(nack.data.reason), `unexpected reason: ${nack.data.reason}`);
     // The rejected move must not have overwritten server state — prev is the
     // last GOOD (accepted) position, proving the update was actually
@@ -399,6 +460,10 @@ test("design_command building-publish spawns a REAL world_buildings row (SQLite-
     sendMsg(ws, "auth", { token });
     await nextFrame(ws); // hello
 
+    // waitForEvt (not a bare nextFrame) — building-publish's own
+    // "world:building-spawned" broadcast (and D19's auto-join means this
+    // client is now IN that world's room) can legitimately land interleaved
+    // with the direct design_command:result reply.
     sendMsg(ws, "design_command", {
       action: "building-publish",
       params: {
@@ -409,8 +474,7 @@ test("design_command building-publish spawns a REAL world_buildings row (SQLite-
         position: { x: 111, y: 0, z: 222 },
       },
     });
-    const frame = await nextFrame(ws);
-    assert.equal(frame.evt, "design_command:result");
+    const frame = await waitForEvt(ws, "design_command:result");
     assert.equal(frame.data.action, "building-publish");
     assert.equal(frame.data.ok, true, `building-publish should succeed: ${JSON.stringify(frame.data)}`);
     assert.equal(frame.data.spawned, true);
@@ -482,6 +546,310 @@ test("design_command surfaces a real handler-level rejection (level-create with 
     // proving the dispatch reaches genuine handler logic, not a stub.
     assert.equal(frame.data.ok, false);
     assert.equal(frame.data.error, "game not found");
+  } finally { ws.close(); }
+});
+
+// ── D19/D20/D21 (Program B Phase 4 continuation, 2026-07-24) ────────────────
+// D19: live system preview (a design_command action carrying a worldId
+// auto-joins the client into that world's REAL room). D20: scene save/load
+// via a real dtu.create/dtu.get DTU. D21: the design ⇄ playtest mode toggle,
+// mirroring player:mode's ack/nack discipline.
+
+test("D19 — a design_command action carrying a worldId auto-joins the client into that world's real room", async () => {
+  const { token } = await registerUser(`godotit_${TS}_n`);
+  const ws = await connect(WS_URL);
+  const worldId = `godot-it-d19-world-${TS}`;
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    // Deliberately never sends room:join — the auto-join done by the
+    // design_command dispatch (because building-publish's params carry a
+    // worldId) is what's under test.
+    sendMsg(ws, "design_command", {
+      action: "building-publish",
+      params: {
+        archetype: "market",
+        name: "D19 preview building",
+        dimensions: { width: 6, height: 5, depth: 6 },
+        worldId,
+        position: { x: 5, y: 0, z: 5 },
+      },
+    });
+    const publishFrame = await nextFrame(ws);
+    assert.equal(publishFrame.data.ok, true, `building-publish should succeed: ${JSON.stringify(publishFrame.data)}`);
+
+    // A REAL system event — the same combat:impact a live play-mode session
+    // in this world would receive — fired via the real emitToWorld. This
+    // reaches the client with NO explicit room:join frame ever sent, proving
+    // the design_command dispatch itself performed the room join.
+    const framePromise = nextFrame(ws);
+    const r = __TEST__.emitToWorld(worldId, "combat:impact", {
+      attackerId: "npc1", targetId: "npc2", severity: "rocked",
+    });
+    assert.equal(r.ok, true);
+    const frame = await framePromise;
+    assert.equal(frame.evt, "combat:impact");
+    assert.equal(frame.data.severity, "rocked");
+  } finally { ws.close(); }
+});
+
+test("D19 — a design_command action with NO worldId does not join any world room (no over-broad subscription)", async () => {
+  const { token } = await registerUser(`godotit_${TS}_n2`);
+  const ws = await connect(WS_URL);
+  const worldId = `godot-it-d19-noleak-world-${TS}`;
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "design_command", { action: "game-create", params: { title: "D19 no-worldId game" } });
+    const frame1 = await nextFrame(ws);
+    assert.equal(frame1.data.ok, true);
+
+    // No frame should arrive for this unrelated world within a short window —
+    // the client was never joined to it.
+    let sawIt = false;
+    const onMsg = (raw) => {
+      try { if (JSON.parse(raw.toString()).evt === "world:probe") sawIt = true; } catch { /* ignore */ }
+    };
+    ws.on("message", onMsg);
+    __TEST__.emitToWorld(worldId, "world:probe", { n: 1 });
+    await new Promise((r) => { setTimeout(r, 250); });
+    ws.off("message", onMsg);
+    assert.equal(sawIt, false, "a design_command with no worldId must not subscribe the client to any world room");
+  } finally { ws.close(); }
+});
+
+test("D20 — scene-save/scene-load round-trips a level design (with a placed entity) through a real dtu.create/dtu.get DTU", async () => {
+  const { token, userId } = await registerUser(`godotit_${TS}_o`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "design_command", { action: "game-create", params: { title: "D20 Test Game", genre: "puzzle" } });
+    const gameFrame = await nextFrame(ws);
+    assert.equal(gameFrame.data.ok, true, JSON.stringify(gameFrame.data));
+    const gameId = gameFrame.data.result.game.id;
+
+    sendMsg(ws, "design_command", {
+      action: "entity-add",
+      params: { gameId, name: "D20 Slime", kind: "enemy", health: 12, damage: 3, speed: 2 },
+    });
+    const entityFrame = await nextFrame(ws);
+    assert.equal(entityFrame.data.ok, true, JSON.stringify(entityFrame.data));
+    const entityId = entityFrame.data.result.entity.id;
+
+    sendMsg(ws, "design_command", { action: "level-create", params: { gameId, name: "D20 Level", cols: 10, rows: 6 } });
+    const levelFrame = await nextFrame(ws);
+    assert.equal(levelFrame.data.ok, true, JSON.stringify(levelFrame.data));
+    const levelId = levelFrame.data.result.level.id;
+
+    // level-layer-add / level-object-add are real gamedesign.js macros but
+    // are NOT in the curated design_command allow-list (D18 didn't extend
+    // it that far) — dispatched directly the way an internal harness would,
+    // purely to set up a level with a genuinely PLACED entity to snapshot.
+    // scene-save/scene-load themselves (the thing under test) are still
+    // exercised only via real design_command gateway frames below.
+    const testReq = {
+      user: { id: userId }, headers: {}, query: {}, method: "TEST",
+      path: "/test", originalUrl: "/test", ip: "test", get: () => undefined,
+    };
+    const testCtx = __TEST__.makeCtx(testReq);
+    const layerResult = await __TEST__.dispatchLensRun(
+      "game-design", "level-layer-add", { levelId, kind: "object", name: "Actors" }, testCtx,
+    );
+    assert.equal(layerResult.ok, true, JSON.stringify(layerResult));
+    const layerId = layerResult.result.layer.id;
+    const objResult = await __TEST__.dispatchLensRun(
+      "game-design", "level-object-add",
+      { levelId, layerId, entityId, name: "Slime Spawn", x: 40, y: 60 }, testCtx,
+    );
+    assert.equal(objResult.ok, true, JSON.stringify(objResult));
+
+    // ── Save ──
+    // scene-save's dtu.create ALSO broadcasts a global "dtu:created" event
+    // (realtimeEmit with no scope) that reaches this same client — waitForEvt
+    // skips it instead of assuming the very next frame is the reply.
+    sendMsg(ws, "design_command", { action: "scene-save", params: { levelId } });
+    const saveFrame = await waitForEvt(ws, "design_command:result");
+    assert.equal(saveFrame.evt, "design_command:result");
+    assert.equal(saveFrame.data.ok, true, JSON.stringify(saveFrame.data));
+    const dtuId = saveFrame.data.result.dtuId;
+    assert.ok(dtuId, "scene-save should return a real dtu id");
+    assert.equal(saveFrame.data.result.entityCount, 1);
+
+    // Real effect OUTSIDE the dispatch path — a genuine STATE.dtus row from
+    // the real dtu.create macro, not just an echoed response.
+    const savedDtu = __TEST__.STATE.dtus.get(dtuId);
+    assert.ok(savedDtu, "scene-save must leave a real STATE.dtus row (via the real dtu.create macro)");
+    assert.equal(savedDtu.meta.type, "level_design");
+    assert.equal(savedDtu.meta.level.cols, 10);
+    assert.equal(savedDtu.meta.level.rows, 6);
+    assert.equal(savedDtu.meta.entities.length, 1);
+    assert.equal(savedDtu.meta.entities[0].name, "D20 Slime");
+
+    // ── Load into a BRAND NEW game project (no gameId param passed) ──
+    // scene-load itself only calls dtu.get (no broadcast), but a slightly
+    // late-arriving "dtu:created" from the PRIOR scene-save could still be
+    // in flight — waitForEvt stays safe either way.
+    sendMsg(ws, "design_command", { action: "scene-load", params: { dtuId } });
+    const loadFrame = await waitForEvt(ws, "design_command:result");
+    assert.equal(loadFrame.data.ok, true, JSON.stringify(loadFrame.data));
+    const restored = loadFrame.data.result;
+    assert.equal(restored.entityCount, 1);
+    assert.equal(restored.level.cols, 10);
+    assert.equal(restored.level.rows, 6);
+    assert.notEqual(restored.level.id, levelId, "scene-load creates a NEW level row, not a mutation of the original");
+    assert.notEqual(restored.gameId, gameId, "no gameId param was passed, so scene-load creates a fresh game project");
+
+    // The reconstructed object layer references a NEW (remapped) entity id —
+    // never the original entityId, which only exists in the SOURCE game.
+    const restoredObjLayer = restored.level.layers.find((l) => l.kind === "object");
+    assert.ok(restoredObjLayer, "the reconstructed level should have its object layer back");
+    assert.equal(restoredObjLayer.objects.length, 1);
+    const restoredObj = restoredObjLayer.objects[0];
+    assert.notEqual(restoredObj.entityId, entityId, "entityId must be remapped to a newly-created entity, not the stale original id");
+    const restoredEntity = (__TEST__.STATE.gameDesignLens.entities.get(userId) || [])
+      .find((e) => e.id === restoredObj.entityId);
+    assert.ok(restoredEntity, "the remapped entityId should resolve to a real, newly-created entity row");
+    assert.equal(restoredEntity.name, "D20 Slime");
+    assert.equal(restoredEntity.health, 12);
+
+    // The ORIGINAL level is untouched by the save/load round-trip.
+    const originalStillThere = (__TEST__.STATE.gameDesignLens.levels.get(userId) || [])
+      .find((l) => l.id === levelId);
+    assert.ok(originalStillThere, "the original level must be unaffected by scene-save/scene-load");
+  } finally { ws.close(); }
+});
+
+test("D20 — scene-load rejects a non-level-design DTU and an unauthorized private DTU honestly", async () => {
+  const { token: tokenA, userId: userIdA } = await registerUser(`godotit_${TS}_q1`);
+  const { token: tokenB } = await registerUser(`godotit_${TS}_q2`);
+  const wsA = await connect(WS_URL);
+  const wsB = await connect(WS_URL);
+  try {
+    sendMsg(wsA, "auth", { token: tokenA });
+    await nextFrame(wsA); // hello
+    sendMsg(wsB, "auth", { token: tokenB });
+    await nextFrame(wsB); // hello
+
+    // A real DTU that is NOT a level-design snapshot (created directly via
+    // dtu.create, bypassing gamedesign.js entirely) must be rejected with a
+    // specific, honest reason — never partially/incorrectly reconstructed.
+    const testCtxA = __TEST__.makeCtx({
+      user: { id: userIdA }, headers: {}, query: {}, method: "TEST",
+      path: "/test", originalUrl: "/test", ip: "test", get: () => undefined,
+    });
+    const plainDtu = await __TEST__.dispatchLensRun("dtu", "create", {
+      title: "Not a level",
+      // Real structured content so this clears dtu.create's council gate
+      // (its inner pipeline commit re-checks minScore=2 regardless of the
+      // caller being user-initiated) — irrelevant to what's under test here
+      // (scene-load's type check), just enough for an honest, real DTU.
+      core: {
+        definitions: ["A plain DTU with no level_design meta."],
+        claims: ["This DTU intentionally carries no game-design meta.type."],
+      },
+    }, testCtxA);
+    assert.equal(plainDtu.ok, true);
+    // Real-DTU "dtu:created" broadcasts fan out to EVERY authenticated
+    // gateway client (both wsA and wsB) — waitForEvt everywhere in this test
+    // to stay robust to one of those landing between a send and its reply.
+    sendMsg(wsA, "design_command", { action: "scene-load", params: { dtuId: plainDtu.dtu.id } });
+    const wrongTypeFrame = await waitForEvt(wsA, "design_command:result");
+    assert.equal(wrongTypeFrame.data.ok, false);
+    assert.equal(wrongTypeFrame.data.error, "not_a_level_design_dtu");
+
+    // User A saves a real (private-by-default) level design...
+    sendMsg(wsA, "design_command", { action: "game-create", params: { title: "Private Game" } });
+    const gameFrame = await waitForEvt(wsA, "design_command:result");
+    const gameId = gameFrame.data.result.game.id;
+    sendMsg(wsA, "design_command", { action: "level-create", params: { gameId, name: "Private Level" } });
+    const levelFrame = await waitForEvt(wsA, "design_command:result");
+    const levelId = levelFrame.data.result.level.id;
+    sendMsg(wsA, "design_command", { action: "scene-save", params: { levelId } });
+    const saveFrame = await waitForEvt(wsA, "design_command:result");
+    assert.equal(saveFrame.data.ok, true, JSON.stringify(saveFrame.data));
+    const dtuId = saveFrame.data.result.dtuId;
+    assert.equal(__TEST__.STATE.dtus.get(dtuId).visibility, "private", "a level-design DTU defaults to private");
+
+    // ...and User B (a different user) must be honestly rejected trying to
+    // load it — never silently reconstructed for a non-owner.
+    sendMsg(wsB, "design_command", { action: "scene-load", params: { dtuId } });
+    const forbiddenFrame = await waitForEvt(wsB, "design_command:result");
+    assert.equal(forbiddenFrame.data.ok, false);
+    assert.equal(forbiddenFrame.data.error, "not_authorized");
+  } finally { wsA.close(); wsB.close(); }
+});
+
+test("D21 — design:mode playtest toggle round-trips ack/nack over /godot-ws (mirrors player:mode's discipline)", async () => {
+  const { token, userId } = await registerUser(`godotit_${TS}_p`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    // Exiting playtest before ever entering it is an honest nack, never a
+    // silent no-op "success".
+    sendMsg(ws, "design:mode", { mode: "design" });
+    const earlyExitNack = await nextFrame(ws);
+    assert.equal(earlyExitNack.evt, "design:mode:nack");
+    assert.equal(earlyExitNack.data.reason, "not_in_playtest");
+
+    // An unrecognized mode string nacks honestly too — never silently
+    // coerced to one of the two real modes.
+    sendMsg(ws, "design:mode", { mode: "spectator" });
+    const badModeNack = await nextFrame(ws);
+    assert.equal(badModeNack.evt, "design:mode:nack");
+    assert.equal(badModeNack.data.reason, "unknown_mode");
+
+    // Entering playtest for a level that doesn't exist is a real
+    // handler-level rejection, not a fabricated ack.
+    sendMsg(ws, "design:mode", { mode: "playtest", levelId: "no-such-level" });
+    const badLevelNack = await nextFrame(ws);
+    assert.equal(badLevelNack.evt, "design:mode:nack");
+    assert.equal(badLevelNack.data.reason, "level not found");
+
+    // Set up a real game + level to actually enter playtest for.
+    sendMsg(ws, "design_command", { action: "game-create", params: { title: "D21 Test Game" } });
+    const gameFrame = await nextFrame(ws);
+    const gameId = gameFrame.data.result.game.id;
+    sendMsg(ws, "design_command", { action: "level-create", params: { gameId, name: "D21 Level", cols: 8, rows: 8 } });
+    const levelFrame = await nextFrame(ws);
+    const levelId = levelFrame.data.result.level.id;
+
+    sendMsg(ws, "design:mode", { mode: "playtest", levelId });
+    const enterAck = await nextFrame(ws);
+    assert.equal(enterAck.evt, "design:mode:ack");
+    assert.equal(enterAck.data.mode, "playtest");
+    assert.equal(enterAck.data.levelId, levelId);
+    assert.equal(enterAck.data.gameId, gameId);
+    assert.ok(enterAck.data.scene, "entering playtest should hand back the real compiled runtime scene");
+    assert.equal(enterAck.data.scene.cols, 8);
+    assert.equal(enterAck.data.scene.rows, 8);
+
+    // Real, independently-queryable server-side effect — an active
+    // playtest session for this user, not just an echoed ack.
+    const session = __TEST__.STATE.gameDesignLens.playtestSessions.get(userId);
+    assert.ok(session, "playtest-enter should open a real session in STATE.gameDesignLens.playtestSessions");
+    assert.equal(session.levelId, levelId);
+
+    // The level itself is untouched (still there, still editable) — the
+    // playtest toggle never mutates the design.
+    const stillEditable = (__TEST__.STATE.gameDesignLens.levels.get(userId) || [])
+      .find((l) => l.id === levelId);
+    assert.ok(stillEditable, "the level must remain fully present/editable in design mode after entering playtest");
+
+    sendMsg(ws, "design:mode", { mode: "design" });
+    const exitAck = await nextFrame(ws);
+    assert.equal(exitAck.evt, "design:mode:ack");
+    assert.equal(exitAck.data.mode, "design");
+    assert.equal(exitAck.data.levelId, levelId);
+    assert.equal(
+      __TEST__.STATE.gameDesignLens.playtestSessions.get(userId), undefined,
+      "exiting playtest must clear the session",
+    );
   } finally { ws.close(); }
 });
 
