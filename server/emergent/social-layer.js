@@ -1058,12 +1058,35 @@ export function getActiveStories(STATE, userId) {
   return { ok: true, stories };
 }
 
+/**
+ * Track a distinct viewer on a post, lazily creating the set.
+ *
+ * `viewStory` and `recordWatchTime` both accepted `userId` and referenced it
+ * nowhere (found 2026-07-25 by the unused-destructured-param detector), so
+ * `viewCount` was a raw increment that one user could inflate without limit —
+ * and there was no way to ask how many distinct people had actually seen a
+ * post. `votePoll` in this same file already uses `userId` to dedupe, so the
+ * file's own convention says identity matters here.
+ *
+ * Deliberately additive: `viewCount` keeps its existing "total views"
+ * meaning, and `uniqueViewCount` is reported alongside it. Callers relying on
+ * the old field are unaffected. Anonymous views (no userId) still count
+ * toward the total and simply don't add a unique viewer, which is honest
+ * rather than guessing an identity.
+ */
+function noteViewer(post, userId) {
+  if (!post.viewers) post.viewers = new Set();
+  if (userId) post.viewers.add(userId);
+  return post.viewers.size;
+}
+
 export function viewStory(STATE, { userId, storyId }) {
   const social = getSocialState(STATE);
   const post = social.posts.get(storyId);
   if (!post) return { ok: false, error: "Story not found" };
   post.viewCount++;
-  return { ok: true, storyId, viewCount: post.viewCount };
+  const uniqueViewCount = noteViewer(post, userId);
+  return { ok: true, storyId, viewCount: post.viewCount, uniqueViewCount };
 }
 
 // ── Polls ────────────────────────────────────────────────────────────────
@@ -1402,7 +1425,8 @@ export function recordWatchTime(STATE, { userId, postId, durationMs }) {
   if (!post) return { ok: false, error: "Post not found" };
   post.watchTimeMs += (durationMs || 0);
   post.viewCount++;
-  return { ok: true, postId, watchTimeMs: post.watchTimeMs, viewCount: post.viewCount };
+  const uniqueViewCount = noteViewer(post, userId);
+  return { ok: true, postId, watchTimeMs: post.watchTimeMs, viewCount: post.viewCount, uniqueViewCount };
 }
 
 // ── Scheduled Posts ──────────────────────────────────────────────────────
