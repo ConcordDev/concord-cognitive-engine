@@ -213,6 +213,89 @@ export function renderSceneFrame(
   }
 }
 
+// World Lens plan Phase 5 ("Auto-exposure timing + render resilience")
+// testability seam.
+//
+// Two fixes live here, both aimed at the same symptom class ("the 3D canvas
+// goes dark/frozen while the rest of the app keeps updating"):
+//
+// 1. ORDERING. createAutoExposure() (post-auto-exposure.ts) drives
+//    renderer.toneMappingExposure off a `gl.readPixels()` sample of the
+//    canvas's own drawing buffer. This WebGLRenderer is constructed WITHOUT
+//    `preserveDrawingBuffer: true` (the default), so per the WebGL spec the
+//    drawing buffer's contents are only well-defined for the SAME task that
+//    rendered them — once control returns to the browser and it
+//    composites/presents the frame, a later read is implementation-defined
+//    (commonly cleared to transparent black; some software rasterizers do
+//    this more eagerly than hardware/ANGLE paths). The auto-exposure tick
+//    previously ran BEFORE renderSceneFrame() in the animate() loop, so its
+//    readPixels sampled whatever was left in the buffer from the PRIOR
+//    frame, across a full browser compositor boundary — exactly the
+//    "readback outside a rAF frame" trap: unreliable by construction,
+//    independent of what actually rendered. Calling it immediately AFTER
+//    renderSceneFrame(), in the same synchronous turn, samples the buffer
+//    THIS frame's render() call just wrote, before the browser has any
+//    chance to composite or clear it — the one timing that's guaranteed
+//    valid regardless of preserveDrawingBuffer or GL backend.
+//
+// 2. RESILIENCE. The animate() loop's `gameLoop()` function has no outer
+//    try/catch, and it re-arms itself with `requestAnimationFrame(gameLoop)`
+//    as its OWN LAST STATEMENT. Previously renderSceneFrame() (composer /
+//    SSGI / plain-render dispatch) was called completely unguarded: any
+//    exception it throws — a shader compile failure, a lost/reset WebGL
+//    context, an EffectComposer render-target error, all more likely to
+//    surface under a stressed software (SwiftShader) rasterizer than on
+//    real hardware — propagates out of gameLoop, so the re-arm call is
+//    never reached and the ENTIRE render loop stops forever on whatever
+//    was last painted. Since React-driven HUD overlays are on a separate
+//    render path, they keep updating normally while the WebGL canvas is
+//    frozen or (once the browser reclaims the un-preserved backbuffer on a
+//    resize/visibility change) goes black — a live, data-driven HUD next to
+//    a dead 3D canvas is exactly this failure mode. Wrapping the render
+//    call and falling back to the simplest possible `renderer.render(scene,
+//    camera)` (skipping composer/SSGI/post-FX, far less likely to fail
+//    itself) means one bad frame degrades visual quality for that frame
+//    instead of killing the loop outright — the caller's `requestAnimationFrame`
+//    re-arm is reached either way.
+//
+// Pulled into its own seam (mirroring renderSceneFrame above) so both the
+// render-then-sample ORDER and the never-throw contract are pinned by real
+// tests, not just documented in a comment two closures away from where they
+// can be verified.
+export function renderFrameAndSampleExposure(
+  refs: {
+    ssgiPassRef: { current: { render: (t: unknown) => void } | null };
+    composerRef: { current: { render: (delta: number) => void } | null };
+    ssgiOutputTargetRef: { current: unknown | null };
+  },
+  renderer: { render: (scene: unknown, camera: unknown) => void },
+  scene: unknown,
+  camera: unknown,
+  delta: number,
+  autoExposure: { tick: (renderer: unknown, w: number, h: number) => void } | null | undefined,
+  canvasWidth: number,
+  canvasHeight: number,
+  onError?: (err: unknown) => void,
+): void {
+  try {
+    renderSceneFrame(refs, renderer, scene, camera, delta);
+    if (autoExposure) autoExposure.tick(renderer, canvasWidth, canvasHeight);
+  } catch (err) {
+    onError?.(err);
+    // Fall back to the simplest possible render path so a transient
+    // composer/SSGI/auto-exposure failure degrades this frame's visual
+    // quality instead of freezing every future frame. Guarded too — if the
+    // context is genuinely gone, three.js can still throw; swallow it so
+    // the caller's requestAnimationFrame re-arm is ALWAYS reached and a
+    // later 'webglcontextrestored' event has a running loop to resume into.
+    try {
+      renderer.render(scene, camera);
+    } catch (fallbackErr) {
+      onError?.(fallbackErr);
+    }
+  }
+}
+
 // World Lens plan Phase 4 ("Camera") testability seam — the per-frame
 // cinematic-shot interpolation (position/lookAt/tilt eased from the shot's
 // start framing toward its computed target) pulled out of the render
@@ -2033,7 +2116,10 @@ export default function ConcordiaScene({
           if (clouds) clouds.tick(delta);
         } catch { /* noop */ }
 
-        // ── Visual-polish Wave 5: drive motion-blur matrices + chromAb tick + auto-exposure
+        // ── Visual-polish Wave 5: drive motion-blur matrices + chromAb tick ──
+        // (auto-exposure moved below — it reads the framebuffer, so it must
+        // sample AFTER this frame's render, not before it; see
+        // renderFrameAndSampleExposure's doc comment.)
         try {
           const polish = polishPassesRef.current;
           if (polish?.motionBlur && cameraRef.current) {
@@ -2045,13 +2131,6 @@ export default function ConcordiaScene({
             polishMatRef.current.prev = curVP.clone();
           }
           if (polish?.chromAb) polish.chromAb.tick(globalThis.performance.now());
-          if (polish?.autoExposure) {
-            polish.autoExposure.tick(
-              renderer as unknown as Parameters<typeof polish.autoExposure.tick>[0],
-              canvas!.clientWidth,
-              canvas!.clientHeight,
-            );
-          }
         } catch { /* polish passes optional */ }
 
         // Render: SSGI feeds the composer's spliced pass 0 > EffectComposer
@@ -2063,7 +2142,15 @@ export default function ConcordiaScene({
         // volumetric fog still apply. Only bypass the composer entirely if
         // it genuinely failed to construct (ppErr path). Branch logic lives
         // in renderSceneFrame() (exported above) so it's directly testable.
-        renderSceneFrame(
+        //
+        // Auto-exposure samples the drawing buffer via readPixels immediately
+        // AFTER this render — see renderFrameAndSampleExposure's doc comment
+        // (World Lens plan Phase 5) for why the order is load-bearing, and
+        // why the function guards its own render + fallback internally (a
+        // throw here must never skip the requestAnimationFrame re-arm below
+        // — that would freeze the 3D canvas forever while HUD overlays keep
+        // updating on their own, separate render path).
+        renderFrameAndSampleExposure(
           {
             ssgiPassRef: ssgiPassRef as unknown as { current: { render: (t: unknown) => void } | null },
             composerRef,
@@ -2073,6 +2160,10 @@ export default function ConcordiaScene({
           scene,
           camera,
           delta,
+          polishPassesRef.current?.autoExposure as unknown as Parameters<typeof renderFrameAndSampleExposure>[5],
+          canvas!.clientWidth,
+          canvas!.clientHeight,
+          (err) => console.warn('[ConcordiaScene] render frame failed, falling back to bare render:', err),
         );
 
         // Phase AA — feed perf-monitor (Stats.js + budget snapshot).
