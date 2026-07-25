@@ -53,6 +53,7 @@ import { runUxModalNoEscapeDetector } from "./ux-modal-no-escape-detector.js";
 import { runCommandInjectionDetector } from "./command-injection-detector.js";
 import { runAuthzCoverageDetector } from "./authz-coverage-detector.js";
 import { runFrontendUnsafeChainDetector } from "./frontend-unsafe-chain-detector.js";
+import { runAsymmetricStatusUpdateDetector } from "./asymmetric-status-update-detector.js";
 import { runDuplicateHandlerRaceDetector } from "./duplicate-handler-race-detector.js";
 import { runFabricationMechanismDetector } from "./fabrication-mechanism-detector.js";
 import { runWorkflowGateIntegrityDetector } from "./workflow-gate-integrity-detector.js";
@@ -346,6 +347,24 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Flags hardcoded arrays rendered as live data with no fetch hook nearby, Math.random() synthesizing a rendered value inside JSX, and lorem/sample/placeholder content rendered as real copy, across lens pages + components.",
   run: runFrontendFakeDataDetector,
+});
+
+// Sibling to frontend-fake-data, seeded by a real bug found in
+// SpikingNetworkPanel.tsx (2026-07-25): the success path called
+// `setRunCount(n => n + 1)` but the early-return refusal branch did not,
+// while the render read `runCount === 0 ? 'idle' : status` — so a real
+// backend refusal displayed to the user as "never attempted". Same honesty
+// class as fabricated data (the UI states something untrue about what the
+// system did), arrived at from the opposite direction: not inventing a
+// success, but hiding a failure.
+registerDetector({
+  id: "asymmetric-status-update",
+  label: "AsymmetricStatusUpdateDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description:
+    "A state setter called on the success path but not in a sibling early-return refusal/error branch, where that state gates an idle-vs-status ternary — a refusal disguised as never-attempted.",
+  run: runAsymmetricStatusUpdateDetector,
 });
 
 // Category #2 — production resource leaks (setInterval without clear,
