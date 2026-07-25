@@ -25,20 +25,88 @@ import path from "path";
 import crypto from "crypto";
 
 import { optimizeToPass } from "./fea-gate.js";
-import { generateSwordMeshWithNormals } from "./parametric-mesh.js";
+import {
+  generateSwordMesh, generateSwordMeshWithNormals,
+  generateSpearMesh, generateSpearMeshWithNormals,
+  generateStaffMesh, generateStaffMeshWithNormals,
+  generateMaceMesh, generateMaceMeshWithNormals,
+  generateShieldMesh, generateShieldMeshWithNormals,
+} from "./parametric-mesh.js";
 import { massProperties } from "./mass-properties.js";
 import { packGLB } from "../evo-asset/glb-bridge.js";
 import { registerAsset, appendVersion, promoteVersion } from "../evo-asset/registry.js";
 import { submitAssetCandidateToGate } from "../evo-asset/quality-gate-bridge.js";
 
 // ── Archetype registry ──────────────────────────────────────────────────
-// Only "sword" is implemented (parametric-mesh.js's only Stage-2 archetype
-// today). Adding a new archetype means adding a `generateWithNormals` +
-// `defaultMaterial` entry here — no other change to this module's flow.
+// Five Stage-2 archetypes are wired end-to-end: sword, spear, staff, mace,
+// shield (parametric-mesh.js's `generateXMesh`/`generateXMeshWithNormals`
+// pairs). Each entry supplies everything `generateValidatedAsset` needs to
+// run that archetype through the SAME chain the sword always used — no
+// per-archetype branching anywhere else in this file:
+//   - `generate` / `generateWithNormals`: the plain (search-loop-speed) and
+//     normals-bearing mesh generators.
+//   - `defaultMaterial`: a MATERIAL_LIBRARY key (mass-properties.js) —
+//     picked for what the archetype actually IS (a quarterstaff and a
+//     period wood-board shield are NOT steel; this module is
+//     single-material, so this is an honest approximation of the dominant
+//     material, the same simplification the sword already makes for its
+//     non-blade hilt/grip).
+//   - `defaultUseCase`: the fea-gate.js USE_CASES key appropriate to how
+//     this archetype is actually loaded in use (see fea-gate.js's
+//     non-blade-use-case rationale block) — a mace/staff/shield run
+//     through the sword's bending gate would be a wrong answer delivered
+//     confidently, so each non-blade archetype gets its own.
+//   - `thickenParam` / `thickenParamDefault`: which generator param is the
+//     failing dimension optimizeToPass's search loop bumps, and its
+//     fallback seed value (a byte-for-byte transcription of that
+//     generator's own internal default for the param — cross-checked
+//     against the live generator in server/tests/fea-gate-archetypes.test.js
+//     so a future default change in parametric-mesh.js fails a test here
+//     instead of silently drifting).
 const ARCHETYPES = Object.freeze({
   sword: {
+    generate: generateSwordMesh,
     generateWithNormals: generateSwordMeshWithNormals,
     defaultMaterial: "steel-a36",
+    defaultUseCase: "sword-bending",
+    thickenParam: "bladeBaseThickness",
+    thickenParamDefault: 0.006, // SWORD_DEFAULTS.bladeBaseThickness
+  },
+  spear: {
+    generate: generateSpearMesh,
+    generateWithNormals: generateSpearMeshWithNormals,
+    defaultMaterial: "steel-a36",
+    // The spear head is the same real diamond blade cross-section a sword
+    // blade uses (parametric-mesh.js's archetype-2 comment) — it converges
+    // through the SAME bending gate unmodified (verified: maxUtilization
+    // 0.273 at default params), so it needs no dedicated use case.
+    defaultUseCase: "sword-bending",
+    thickenParam: "headBaseThickness",
+    thickenParamDefault: 0.007, // SPEAR_DEFAULTS.headBaseThickness
+  },
+  staff: {
+    generate: generateStaffMesh,
+    generateWithNormals: generateStaffMeshWithNormals,
+    defaultMaterial: "douglas-fir", // a quarterstaff is a wood weapon, not steel
+    defaultUseCase: "staff-swing",
+    thickenParam: "gripRadius",
+    thickenParamDefault: 0.012, // STAFF_DEFAULTS.gripRadius
+  },
+  mace: {
+    generate: generateMaceMesh,
+    generateWithNormals: generateMaceMeshWithNormals,
+    defaultMaterial: "steel-a36",
+    defaultUseCase: "mace-impact",
+    thickenParam: "handleRadius",
+    thickenParamDefault: 0.014, // MACE_DEFAULTS.handleRadius
+  },
+  shield: {
+    generate: generateShieldMesh,
+    generateWithNormals: generateShieldMeshWithNormals,
+    defaultMaterial: "douglas-fir", // a period round shield is primarily a wood board, not solid steel (a solid steel disc at these dimensions masses ~37kg — not a carryable shield)
+    defaultUseCase: "shield-face-load",
+    thickenParam: "plateThickness",
+    thickenParamDefault: 0.012, // SHIELD_DEFAULTS.plateThickness
   },
 });
 
@@ -63,15 +131,17 @@ function ensureDir(dir) {
  * with NO file written.
  *
  * @param {object} opts
- * @param {string} [opts.archetype="sword"]
+ * @param {string} [opts.archetype="sword"] one of the ARCHETYPES keys: sword, spear, staff, mace, shield
  * @param {object} [opts.params={}]        forwarded to the mesh generator (pre-optimization seed)
  * @param {string} [opts.material]         MATERIAL_LIBRARY key; defaults to the archetype's default
  * @param {string} [opts.outDir]           directory to write the .glb into (default EVO_ASSET_GEN_DIR)
  * @param {number} [opts.maxIters]         forwarded to optimizeToPass
- * @param {number} [opts.tipLoadN]         forwarded to optimizeToPass / structuralCheck
+ * @param {number} [opts.tipLoadN]         forwarded to optimizeToPass / structuralCheck (blade use cases)
+ * @param {number} [opts.axialLoadN]       forwarded to optimizeToPass / structuralCheck (chain use cases)
+ * @param {number} [opts.transverseLoadN]  forwarded to optimizeToPass / structuralCheck (chain use cases)
  * @param {number} [opts.safetyFactor]     forwarded to optimizeToPass / structuralCheck
  * @param {number} [opts.thickenFactor]    forwarded to optimizeToPass
- * @param {string} [opts.useCase]          forwarded to structuralCheck (only "sword-bending" supported)
+ * @param {string} [opts.useCase]          forwarded to structuralCheck; defaults to the archetype's own defaultUseCase (see fea-gate.js's USE_CASES)
  * @returns {Promise<{
  *   ok: true, archetype: string, glbPath: string, massProps: object,
  *   feaResult: object, params: object, history: Array
@@ -87,10 +157,12 @@ export async function generateValidatedAsset(opts = {}) {
     outDir,
     maxIters,
     tipLoadN,
+    axialLoadN,
+    transverseLoadN,
     safetyFactor,
     thickenFactor,
     useCase,
-    generate, // test-only override, forwarded to optimizeToPass
+    generate, // test-only override, forwarded to optimizeToPass (takes priority over the archetype's own generator)
   } = opts;
 
   const arch = ARCHETYPES[archetype];
@@ -99,13 +171,19 @@ export async function generateValidatedAsset(opts = {}) {
   }
   const mat = material || arch.defaultMaterial;
 
-  const optimizeOpts = { material: mat };
+  const optimizeOpts = {
+    material: mat,
+    useCase: useCase !== undefined ? useCase : arch.defaultUseCase,
+    thickenParam: arch.thickenParam,
+    thickenParamDefault: arch.thickenParamDefault,
+    generate: generate !== undefined ? generate : arch.generate,
+  };
   if (maxIters !== undefined) optimizeOpts.maxIters = maxIters;
   if (tipLoadN !== undefined) optimizeOpts.tipLoadN = tipLoadN;
+  if (axialLoadN !== undefined) optimizeOpts.axialLoadN = axialLoadN;
+  if (transverseLoadN !== undefined) optimizeOpts.transverseLoadN = transverseLoadN;
   if (safetyFactor !== undefined) optimizeOpts.safetyFactor = safetyFactor;
   if (thickenFactor !== undefined) optimizeOpts.thickenFactor = thickenFactor;
-  if (useCase !== undefined) optimizeOpts.useCase = useCase;
-  if (generate !== undefined) optimizeOpts.generate = generate;
 
   let optResult;
   try {
