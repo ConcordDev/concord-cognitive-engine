@@ -285,8 +285,14 @@ jobs:
           # fetches (feeds/web-exploration/oracle/embeddings) in CI's no-egress
           # sandbox — those stalls cancel tests + drop coverage. This step uses a
           # direct c8+node invocation (not `npm test`), so the guard is wired here too.
+          # --test-force-exit dropped 2026-07-25 (matching test:main/
+          # test:behavior in server/package.json): the open-handle leak it
+          # used to mask (worker + fallback-timer both unref'd, so the event
+          # loop wound down without ever delivering the worker's buffered
+          # `exit` event) is root-caused and fixed in workers/heartbeat-pool.js,
+          # workers/macro-pool.js, and server.js#terminateCognitiveWorkerForTest.
           npx c8 --check-coverage --statements 35 --branches 35 --functions 25 --lines 35 \
-            node --test --import=./tests/preload/no-egress.mjs --test-force-exit \
+            node --test --import=./tests/preload/no-egress.mjs \
             tests/*.test.js \
             2>&1 | tee /tmp/server-coverage.log
 
@@ -1167,66 +1173,40 @@ jobs:
             kill $(cat server/server.pid) 2>/dev/null || true
           fi
 
-  # ── Server clean-exit canary (informational) ──────────────────────────────
-  # Runs the full server suite WITHOUT --test-force-exit. The main suite
-  # force-exits because module-scope timers historically kept the process
-  # alive after the last test; those timers are now unref'd under
-  # NODE_ENV=test (see server.js `_unrefInTest` + tests/preload/no-egress.mjs
-  # header). This canary proves each test file's child process exits on its
-  # own. Informational (`continue-on-error: true`) until it has a green
-  # streak — promotion to blocking (and dropping --test-force-exit from
-  # test:main) happens only after the canary proves itself in CI.
-  server-clean-exit-canary:
-    name: Server Clean-Exit Canary
-    runs-on: ubuntu-latest
-    # Bumped 15->45 (matches audits.yml's structural-audits budget for a
-    # comparable full-suite run): now that the Node-22 fix above lets this
-    # job actually FIND its test files instead of failing in ~1s on Node 20,
-    # it needs real time to run the whole suite WITHOUT --test-force-exit
-    # (that's the entire point of the canary — proving every child process
-    # exits on its own, which takes longer than the force-exit variant).
-    # Confirmed empirically: the prior 15-minute budget was hit mid-run
-    # (job cancelled while node/npm processes were still actively executing
-    # tests, not stuck) once the glob fix let it progress past instant
-    # failure.
-    timeout-minutes: 45
-    continue-on-error: true
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          # MUST be 22, not the workflow-wide NODE_VERSION (20): `node --test`
-          # only expands glob-pattern file arguments ('tests/**/*.test.js' /
-          # 'tests/**/*-tests.js' below, via test:clean-exit) on Node >= 21 —
-          # on Node 20 it fails immediately with "Could not find '<literal
-          # glob string>'" instead of matching any files (confirmed
-          # empirically: identical command, identical Node 20.20.2 build,
-          # reproduces every time). Same root cause + fix already applied in
-          # .github/workflows/audits.yml's structural-audits job. This job is
-          # continue-on-error, so the bug was silent rather than blocking —
-          # but it also meant the canary could never build the green streak
-          # its own header comment says gates promoting it to blocking.
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: server/package-lock.json
-
-      - name: Install server dependencies
-        working-directory: ./server
-        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
-
-      - name: Run server suite without force-exit
-        working-directory: ./server
-        env:
-          NODE_ENV: test
-          JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
-          ADMIN_PASSWORD: testpassword123
-          OLLAMA_HOST: http://127.0.0.1:11434
-          BRAIN_CONSCIOUS_URL: http://127.0.0.1:11434
-          BRAIN_SUBCONSCIOUS_URL: http://127.0.0.1:11434
-          BRAIN_UTILITY_URL: http://127.0.0.1:11434
-          BRAIN_REPAIR_URL: http://127.0.0.1:11434
-        run: npm run test:clean-exit
+  # ── Server clean-exit canary — RETIRED 2026-07-25 ──────────────────────────
+  # This job used to run `npm run test:clean-exit` to prove the full server
+  # suite exits cleanly WITHOUT --test-force-exit, as the precondition for
+  # dropping that flag from test:main. Its own header comment said promotion
+  # (dropping the flag from test:main) would happen "only after the canary
+  # proves itself in CI" with a green streak.
+  #
+  # That gate was, in fact, satisfied differently than stated: the underlying
+  # open-handle leak (worker + fallback-timer both .unref()'d, so the event
+  # loop wound down without ever delivering the worker's buffered `exit`
+  # event) was root-caused and fixed in workers/heartbeat-pool.js,
+  # workers/macro-pool.js, and server.js#terminateCognitiveWorkerForTest, and
+  # --test-force-exit was then dropped from every live test script in
+  # server/package.json (commit 0b0c11df) on the strength of a LOCAL measured
+  # flagless run (37,622 tests / 37,613 pass / 0 fail / 4 cancelled), not an
+  # observed green streak on this canary job in CI. Recording that deviation
+  # here honestly rather than quietly treating the gate as met as specified.
+  #
+  # With the flag gone from test:main, `test:clean-exit` (server/package.json)
+  # is byte-identical to `test:main`, and this job — informational,
+  # continue-on-error, ~45min budget — became a full duplicate of the
+  # blocking suite that .github/workflows/audits.yml's `structural-audits`
+  # job already runs via `npm run test:ci` (scripts/ci-test-tolerant.mjs ->
+  # test:main), which is itself now flagless too. Nothing this job could
+  # still prove isn't already proven, continuously, by that gate. Retired
+  # rather than kept as a second ~45min job re-running the same suite.
+  #
+  # `audit/detectors/gate-monitors.json` still carries a
+  # `job:server-clean-exit-canary` ack entry pointing at this comment block;
+  # that entry is now orphaned by this removal. Left as-is — this task is
+  # not authorized to edit audit/detectors/*.json — flagging it here for
+  # whichever pass owns that file next.
+  #
+  # The `test:clean-exit` script itself is left in server/package.json
+  # (unused by any workflow now, but still correct and still referenced
+  # descriptively in CLAUDE.md's test-suite history) rather than deleted, to
+  # keep this change to the CI job only.

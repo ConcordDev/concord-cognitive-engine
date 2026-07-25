@@ -110,8 +110,17 @@ async function rerunIsolated(files) {
 
 function rerunOnceIsolated(files) {
   return new Promise((resolve) => {
+    // No --test-force-exit here (dropped 2026-07-25, matching test:main/
+    // test:behavior in server/package.json): the open-handle leak that flag
+    // used to paper over (worker + fallback-timer both unref'd, so the event
+    // loop wound down without ever delivering the worker's buffered `exit`
+    // event) is root-caused and fixed. If a single isolated file still leaks
+    // a handle, it should now hang to the --test-timeout=180000 above and
+    // get killed by that instead of being force-exited — a real leak in one
+    // file surfacing as a timeout here is the intended, honest outcome, not
+    // a regression.
     const args = ["--test", "--import=./tests/preload/no-egress.mjs",
-      "--test-force-exit", "--test-timeout=180000", ...files];
+      "--test-timeout=180000", ...files];
     // CRITICAL: a FRESH throwaway DB + STATE so the re-run is a true clean room.
     // The full parallel suite leaves the shared DB_PATH/STATE polluted with rows,
     // so a count-exact assertion (e.g. "tallies artworks … exactly") would fail
