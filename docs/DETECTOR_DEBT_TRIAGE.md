@@ -1,21 +1,504 @@
 # Detector debt — triage ledger
 
-Phase-1/2 output of the detector-debt sweep design recorded in the live plan:
-**enumerate + document (read-only) → cluster by root cause → fix per cluster**,
-never per raw finding. Each entry records what the detector flags, the real
-shape of the flagged code, and — critically — **whether the detector's own
-source comments already name the pattern as a known false-positive class**.
-That check exists because a prior batch burned a whole pass rediscovering,
-per-finding, that 6 of 7 `money_txn_untransacted_writes` hits were one class
-the detector already documented inline.
+Phase-1/2 output of the detector-debt sweep: **enumerate + document
+(read-only) → cluster by root cause → fix per cluster**, never per raw
+finding. Each entry records what the detector flags, the real shape of the
+flagged code, and — critically — **whether the detector's own source comments
+already name the pattern as a known false-positive class**. That check exists
+because a prior batch burned a whole pass rediscovering, per-finding, that 6
+of 7 `money_txn_untransacted_writes` hits were one class the detector already
+documented inline.
 
 **Hard rule, unchanged:** `server/lib/detectors/*`, `audit/detectors/BASELINE.json`,
-and `audit/detectors/BUDGET.json` are `guard.mjs`-PROTECTed. A genuine
-false positive is resolved by a sanctioned per-file/per-call-site annotation
-(`@sync-fs-ok:`, `@sql-loop-ok:`, `@select-star-ok:`) or by a deliberate,
-reviewed baseline refresh — **never** by softening a detector.
+`audit/detectors/BUDGET.json` and `scripts/autoloop/*` are `guard.mjs`-PROTECTed.
+A genuine false positive is resolved by a sanctioned per-file/per-call-site
+annotation or by a deliberate, reviewed baseline refresh — **never** by
+softening a detector.
+
+The current-state section below is the live picture. Everything under
+**"Historical record"** is the append-only log of prior worked passes; it is
+kept for provenance and should not be read as current counts.
 
 ---
+
+# CURRENT STATE — live run 2026-07-25T12:11:32Z
+
+Produced by exactly one invocation of `cd server && node scripts/run-detectors.js`
+at HEAD `9ea23642` (branch `claude/game-systems-audit-continuation-cobe3q`).
+46 detectors registered, all reported `ok` — no `no_db`, no `detector_threw`.
+Wall-clock ≈ 4 min under contention with a concurrently-running test suite.
+
+## 1. Real counts
+
+| severity | count |
+|---|---:|
+| critical | **0** |
+| high | **7** |
+| medium | **0** |
+| low | **0** |
+| info | **53** |
+| **total** | **60** |
+
+Two things about this table are worth stating plainly:
+
+- **The medium and low tiers are empty.** That is new. The 18 medium findings
+  captured in `BASELINE.json` v1 (generated 2026-07-25T09:33Z) have all been
+  closed by the 24 commits that landed between that refresh and this run —
+  `stale-code`'s three `_new`/`_old` rebuild-staging tables (exempted in
+  `01162d7f`), the `command-injection` autoloop sink (`e4bb055d`/`2c02f284`),
+  the three `dead-event-listener` Godot-scope orphans (`60e84066`), the nine
+  `unused-destructured-param` findings (`f9cbf528`/`f0a2e16b`), and the
+  `frontend-unsafe-chain` `DraftEditor` residual.
+- **All 7 highs are the same 7 that the 2026-07-25 authorized baseline refresh
+  reviewed and blessed.** Zero net-new highs. The ratchet
+  (`--diff --ci`) is therefore green; this pass found no new blocking finding.
+
+**Drift vs `BASELINE.json` v1** (`0 critical / 7 high / 18 medium / 0 low /
+53 info` = 78 fingerprints): high unchanged at 7, medium 18 → 0, info
+unchanged at 53, total 78 → 60. Note the 6 `money-txn-hygiene` fingerprints
+will not match the baseline's byte-for-byte: `creditWallet`/`debitWallet`
+moved from `server.js:74220`/`:74280` to `:74445`/`:74505`, and the
+fingerprint is `sha256(detector|ruleId|location|severity)` — line drift alone
+re-fingerprints an unchanged finding. That is a known property of the scheme,
+not a new defect; it is why this ledger records *shape*, not line numbers, as
+the identity of a finding.
+
+## 2. Is the info tier still run-to-run unstable?
+
+CLAUDE.md says the `macro-usage` detector "emits RUNTIME telemetry, so the
+info tier (and therefore the total) genuinely varies run-to-run." **That is now
+mostly stale, and the mechanism is narrower than the sentence implies.**
+
+- Fingerprints are `sha256(detector|ruleId|location|severity)`
+  (`server/lib/detectors/baseline.js:17`) — **the message text is not
+  hashed.** `macro_usage_summary`'s counts can change freely without changing
+  its fingerprint or the total.
+- `macro-usage-detector.js` was changed in the "zero-tech-debt sweep" to stop
+  emitting per-macro `dispatcher_reach` / retirement-candidate findings; its
+  own comment says they are "observational data, not actionable bugs" and are
+  "counted in the summary, not emitted as per-macro findings"
+  (`macro-usage-detector.js:118-131`). The detector produced **2 findings this
+  run**, not the 153 that `BUDGET.json` v13's rationale describes.
+- The one surviving variance vector is `macro_runtime_live`
+  (`macro-usage-detector.js:110`): a per-macro info finding emitted for a
+  macro that has **zero static call sites**, is dispatcher/manifest-reachable,
+  **and** fired inside the 30-day telemetry window. It reported `0
+  runtime-live` this run (`audit/detectors/macro-telemetry.jsonl` holds 277
+  aggregated rows, but they are for macros that do have static call sites, so
+  none qualify). If a zero-callsite macro ever fires, the info tier grows by
+  one finding per such macro.
+
+So: the info tier is *currently* stable, and the variance that remains is
+bounded and identifiable rather than diffuse. Where a number below could
+move for that reason, it is called out.
+
+## 3. Per-finding ledger
+
+Every one of the 60 findings, read at the source rather than inferred from
+the message. Cluster column keys to §4.
+
+### 3.1 HIGH — 7 findings
+
+| # | Detector · rule | Location | What the code actually is | Cluster |
+|---|---|---|---|---|
+| H1 | `money-txn-hygiene` · `money_txn_untransacted_writes` | `server/economy/ledger.js:51` `recordTransaction()` | `try` INSERT into `economy_ledger` **with** `ref_id`; `catch` re-runs the *same* INSERT without it, and only when the error message names that column, else re-throws. Two static writes, one runtime write. | A1 |
+| H2 | same | `server/economy/stripe.js:188` `handleWebhook()` | Two `economy_withdrawals` writes in different `switch` cases (`transfer.paid` vs `transfer.failed`); `event.type` selects exactly one per delivery. Handler is idempotent via `isEventProcessed`; the delegate `_reverseFailedWithdrawal` owns its own `db.transaction(...)`. | A1 |
+| H3 | same | `server/lib/account-lifecycle.js:42` `requestAccountDeletion()` | Read in full: `if (balance > 0.01)` INSERTs into `account_deletion_requests` and **returns**; the `else` path delegates to `executeAccountDeletion`, which wraps its 18 steps in one transaction. Strictly either/or. The message's `tables: balance_at_request` is a **column** name lifted out of the INSERT column list — the detector's table extraction misfiring, which is itself further FP evidence. | A1 |
+| H4 | same | `server/routes/wagers.js:12` `createWagersRouter()` | A router **factory**. Its "5 delegated writes" are 5 separate Express route-handler closures, each running on a distinct HTTP request. Attributing all five to the factory function is an artifact of function-scope attribution. All four delegates wrap their balance mutation + status write in `db.transaction(...)`. | A1 |
+| H5 | same | `server/server.js:74445` `creditWallet()` | Verified at the live line: primary `INSERT INTO economy_ledger (… ref_id)`, then `catch (e) { if (e.message?.includes('ref_id')) { … INSERT without ref_id … } }`. Column-fallback, never sequential. | A1 |
+| H6 | same | `server/server.js:74505` `debitWallet()` | Identical shape to H5. | A1 |
+| H7 | `authz-coverage` · `authz_write_auth_bypass` | `server/server.js:7331` | `/api/welding/portal/` in `WRITE_AUTH_PUBLIC_PATHS`. Reviewed anonymous-customer portal token; the token is the access control, scoped server-side to one estimate/invoice. Documented inline directly above the array and at the route handlers, and security-tested end-to-end. | A2 |
+
+### 3.2 INFO — everything carrying a real location, plus the three counted rollups — 25 findings
+
+| # | Detector · rule | Location | What the code actually is | Cluster |
+|---|---|---|---|---|
+| I1 | `fake-data` · `fake_ident_in_production` | `concord-frontend/components/studio/MixerPeekStrip.tsx:41` (defn), `:159`, `:186` (uses) | 🔴 **`fakeLevel(volume)` synthesizes a VU-meter level from `Date.now()` and a sine wave and renders it as a live per-track meter.** Its own comment: *"Real per-track post-fader RMS would require feeding the audio analyser node into here, which we can wire later."* | **C1 — real defect** |
+| I2 | same | `concord-frontend/components/desert/DesertOfflineMapView.tsx:66`, `:71` | `placeholderBlobPromise` memoizes a canvas-drawn tile that *says* "cached tile isn't available offline" — an honest unavailable-state graphic, not fabricated data. | B3 |
+| I3 | same | `concord-frontend/components/foundry/FoundryCanvas.tsx:191` | `stubNote` builds `" (N system(s) pending Phase 7)"` from `r.skippedStubs` — an **honest disclosure** appended to a success toast so the user is told what was *not* published. | B3 |
+| I4 | `frontend-fake-data` · `placeholder_content_weak` | `concord-frontend/app/lenses/metacognition/page.tsx:1258` | The term is inside a CSS attribute selector: `document.querySelector('input[placeholder*="Domain to assess"]')`. A DOM query, not rendered content. | B2 |
+| I5 | same | `concord-frontend/components/app-maker/AppBuilderStudio.tsx:418` | `updateProp('placeholder', e.target.value)` — the property editor for the `placeholder` prop of an input the *user* is designing. Legitimate field name. | B2 |
+| I6 | same | `concord-frontend/components/legacy/CodebaseScanner.tsx:232` | `<Metric label="TODO / FIXME Debt" value={String(active.summary.totalTodos)} />` — "TODO" is the metric's **subject**; the value comes from a real scan result. | B2 |
+| I7 | same | `concord-frontend/components/studio/BouncePanel.tsx:100` | A tooltip that says *"The reference audio attached to this publish is a generated placeholder tone (4s, 220Hz), not your project mix."* Flagged **for being honest about a placeholder** — the detector's `NEGATION_RE` covers denials ("never sample data") but not affirmative disclosures. | B2 |
+| I8–I15 | `env-config-drift` · `magic_timeout` | `astronomy/SkyChartWorkbench.tsx:164`, `fashion/FashionAIStylistPanel.tsx:57`, `fitness/StravaBeaconPanel.tsx:162`, `fitness/StravaGpsPanel.tsx:88`, `fitness/StravaSegmentsPanel.tsx:102`, `space/OwnedSatellites.tsx:147`, `space/SkyMap.tsx:68`, `space/VisiblePassPredictor.tsx:81` | **All eight are the same thing**: the `timeout` field of a `PositionOptions` object passed to `navigator.geolocation.getCurrentPosition` / `watchPosition` (10000 or 15000 ms). A W3C browser-API parameter, not deployment config. | B1 |
+| I16 | `architectural-hub` · `architectural_leaf_utility` | `server/lib/lru-map.js` | fan-in 98, fan-out 0. | A3 |
+| I17 | same | `server/logger.js` | fan-in 319, fan-out 0. | A3 |
+| I18 | `lens-health` · `lens_unknown_domain` | `concord-frontend/app/lenses/world/page.tsx:6222` | `domain: 'mainland'` is a field on a **quest object literal** passed to `<QuestLog>` (rendered as display text at `QuestLog.tsx:73`; defaulted at `:136`). It is not a `/api/lens/run` macro domain. The rule matches `domain: "x"` anywhere in a file that also contains a `lensRun` call — and this file is 6,000+ lines with many. | C2 |
+| I19 | `macro-usage` · `dispatcher_reach` | `server/routes/domain.js:225` | Notes that an open `// @macro-dispatcher` file makes every macro reachable, which is why per-macro zero-callsite findings are downgraded. Structural note. | A4 |
+| I20 | `authz-coverage` · `authz_central_gate_ok` | `server/server.js` | A **positive** assertion: global write-auth gate present at mount line 7353, 648 mutating routes behind it, 8 bypass paths. This finding firing is the healthy state. | A4 |
+| I21 | `stale-code` · `route_orphan_summary` | (no location) | "546 route(s) declared but not statically referenced… manual triage required for retirement." | C3 |
+| I22 | `fake-data` · `fake_data_summary` | (no location) | "2250 unit test(s) mock production modules… Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)." | C4 |
+
+### 3.3 INFO — pure per-detector rollups, 28 findings
+
+One `*_summary` finding per detector, emitted whether or not anything was
+found. These are the suite reporting its own scan coverage; none is a defect
+signal. Recorded here for completeness because they are 47% of the run's
+total (28 of 60) and would otherwise look like unexplained debt. Full list,
+exactly as emitted:
+
+`macro_usage_summary` · `lens_health_summary` ·
+`lens_decorative_state_summary` · `dtu_lineage_summary` ·
+`heartbeat_summary` (122 heartbeats) · `secret_leak_summary` (9,156 files,
+0 flagged) · `perf_summary` (4,389 files) · `historical_trend_summary` (only
+1 history row — needs ≥5 for slope analysis) · `predictive_growth_summary` ·
+`architectural_hub_summary` (0 hubs, 0 cycles) ·
+`frontend_fake_data_summary` · `asymmetric_status_update_summary` (0 flagged) ·
+`unused_destructured_param_summary` (0 flagged) ·
+`dead_envelope_field_access_summary` (0 flagged; 42 candidate reads suppressed
+as not-provably-dead) · `command_injection_summary` (0 flagged) ·
+`authz_coverage_summary` · `frontend_unsafe_chain_summary` (0 flagged) ·
+`duplicate_handler_race_summary` · `fabrication_mechanism_summary` ·
+`workflow_gate_integrity_summary` · `money_txn_hygiene_summary` ·
+`realtime_emit_signature_summary` · `stale_lying_test_summary` (0 flagged) ·
+`dead_macro_call_summary` (10,724 registered pairs, 0 flagged) ·
+`hardcoded_literal_data_prop_summary` · `domain_reachability_summary`
+(418 domain files, 0 unreachable) · `lens_manifest_capability_summary`
+(1,683 claims, 0 unbacked) · `constant_time_summary`.
+
+(`stale-code` and `fake-data` emitted rollups too, but both carry a
+triage-relevant count and are ledgered above as I21 and I22 rather than here.)
+
+Detectors reporting **zero findings entirely** (not even a rollup):
+`maintenance-gates`, `invariant-guardian`, `concordia-substrate`,
+`resource-leak`, `observability-gap`, `agent-budget`, `http-error`,
+`frontend-ghost-click`, `dead-event-listener`, `ux-broken-link`,
+`ux-a11y-button-no-label`, `ux-loading-state-missing`,
+`ux-form-error-display`, `ux-route-empty-render`, `ux-modal-no-escape`.
+
+## 4. Clusters
+
+### (a) DOCUMENTED-FALSE-POSITIVE — the detector's own source names the class
+
+#### A1 — `money_txn_untransacted_writes` × 6 · **no annotation mechanism exists**
+
+`money-txn-hygiene-detector.js`'s header names five of these six call sites
+**verbatim**, in a section titled "Known precision limit — no control-flow
+awareness":
+
+> *"…it counts call SITES, not reachable execution paths. Two write call sites
+> that are actually MUTUALLY EXCLUSIVE — an if/else branch, a switch-case, or
+> a try/catch fallback pattern ('attempt with ref_id column, catch → retry
+> without it') — are indistinguishable, from pure text, from two writes that
+> always run back-to-back. Real examples found scanning this repo:
+> `economy/ledger.js#recordTransaction` (try/catch column-fallback),
+> `server.js#creditWallet`/`debitWallet` (same fallback shape),
+> `economy/stripe.js#handleWebhook` (separate `switch` cases), and
+> `lib/account-lifecycle.js#requestAccountDeletion` (if-balance vs
+> else-immediate-delete) all trip the >=2-writes-no-transaction rule without
+> being the sequential-composition bug this detector targets. **Accept these
+> as a known noise class rather than a detector bug.**"*
+
+H4 (`wagers.js#createWagersRouter`) is not named by name but is the same
+documented limitation applied to a router factory — function-scope
+attribution across sibling route closures.
+
+**Annotation: none.** `grep -E '@[a-z-]+-ok|detector-allow'
+server/lib/detectors/money-txn-hygiene-detector.js` returns **0 matches**.
+There is no per-call-site escape hatch for this rule, so no site can carry
+one, and none does. The only sanctioned closure is the baseline — which is
+exactly what happened on 2026-07-25, with recorded owner authorization.
+
+Separately, and worth not re-deriving: wrapping `creditWallet`/`debitWallet`
+in `db.transaction(...)` **cannot** fix the reported concern, because the
+wallet balance those functions mutate lives in an in-memory `Map` that a SQL
+transaction cannot roll back. The existing construction — a compensating
+in-memory reversal on a genuine ledger-write failure — is the correct one.
+
+**Disposition: no code fix. Already baselined. Do not re-dispatch.**
+
+#### A2 — `authz_write_auth_bypass` × 1 · **no annotation mechanism exists**
+
+The detector's own message states the resolution mechanism inline:
+*"intentional bypasses are baselined; a NEW one needs review."* Its header
+(§"What this detector actually asserts", rule 3) makes the same point: *"Each
+non-infrastructure bypass is a finding so the baseline captures the current
+set; a NEWLY-added unauthenticated-write path becomes a new finding the PR
+gate surfaces for human review."* **Firing is the design.**
+
+The review it asks for exists and is written down twice in the source (a
+comment block above `WRITE_AUTH_PUBLIC_PATHS` and a `NOTE:` on the array line
+itself) and is backed by a live proof file — `server/tests/e2e/welding-portal-routes.test.js`
+**verified present on disk**, covering cross-tenant isolation, invalid-token
+rejection, and no fabricated payment success.
+
+The detector carries an in-source `INFRA_BYPASS` allowlist for auth-bootstrap
+paths, but that list is deliberately generic-infrastructure only; a
+product-specific portal correctly does not belong in it, which is why this
+one is a baseline entry rather than a detector edit.
+
+**Annotation: none.** 0 matches for any `-ok` token in
+`authz-coverage-detector.js`. **Disposition: no code fix. Already baselined.**
+
+#### A3 — `architectural_leaf_utility` × 2
+
+The detector demotes these to `info` itself and says why, in the message
+(*"leaf utility — wide use is by design"*) and in the source at
+`architectural-hub-detector.js:93-99`: *"a module with fan-out 0 imports
+nothing local, so it does no orchestration work. Loggers, type-only re-export
+modules, constants files all land here. They are widely imported by design;
+'splitting' them just moves the leaf to a different path. Demote to info, not
+'split risk'."* `lru-map.js` and `logger.js` are exactly the two examples the
+comment describes.
+
+**Annotation: none needed** (the rule self-demotes). **Disposition: none.**
+
+#### A4 — observational/positive findings × 2 + the 28 rollups
+
+`dispatcher_reach` (I19) and the suppressed per-macro findings behind it are
+described in the detector's own source as *"observational data, not
+actionable bugs"* (`macro-usage-detector.js:127-131`).
+`authz_central_gate_ok` (I20) is a **positive** assertion — it firing means
+the gate is intact. The 31 `*_summary` findings are scan-coverage rollups.
+
+**Disposition: none. These 30 findings are not debt and should not appear in
+any work list.** Together with A1–A3 they are why "60 findings" overstates the
+actual debt by roughly an order of magnitude.
+
+### (b) SHARED-ROOT-CAUSE — one pattern, N sites
+
+#### B1 — `magic_timeout` × 8 · one root cause: the Geolocation API
+
+All eight findings are `{ …, timeout: 10000|15000 }` inside a
+`PositionOptions` object passed to `navigator.geolocation.getCurrentPosition`
+or `watchPosition`. Verified individually — all eight, not sampled. This is a
+W3C-specified browser-API field with a fixed meaning (how long to wait for a
+GPS fix before invoking the error callback), and every one of the eight sites
+pairs it with a real, honest error callback (`"Location denied: …"`,
+`"GPS error: …"`). There is no legitimate second value for a deployment to
+hold.
+
+**This is NOT a documented FP class** — `env-config-drift-detector.js` has
+zero mentions of geolocation, `getCurrentPosition`, or `PositionOptions`
+(grep confirms 0 hits), and `TIMEOUT_RE` matches any `timeout: <5-7 digits>`
+that is not guarded by `process.env.`. The classification above is this
+pass's determination from reading all eight sites, not a citation.
+
+**Single fix, one pattern:** the sanctioned annotation is
+`@env-config-ok` (`env-config-drift-detector.js:110`,
+`ANNOTATION_OK_RE = /@env-config-ok\b/`). It is checked **twice** — against
+the whole file content (file-scoped suppression) and against the individual
+finding's line — so one comment per file closes it. **No site currently
+carries one.** Eight one-line comments, each stating the real reason
+(*"browser Geolocation `PositionOptions.timeout`, a W3C API parameter, not
+deployment config"*), closes the entire cluster. Precedent already exists in
+this repo: the 2026-07-24 pass closed 8 different `env-config-drift` findings
+this same way.
+
+Alternative disposition, equally defensible: leave them. They are `info`,
+they cost nothing, and eight annotations is eight more comments to maintain.
+
+#### B2 — `placeholder_content_weak` × 4 · one root cause: term-position blindness
+
+All four are the words `placeholder` / `TODO` appearing in a **non-content
+position**: a CSS attribute selector (I4), a prop-editor field name (I5), a
+metric label whose subject *is* TODO debt (I6), and an honest disclosure
+tooltip (I7). None is fabricated content rendered as real. The detector
+already carries defenses for several sibling shapes — a `PLACEHOLDER_ATTR_RE`
+exemption for the `placeholder="…"` JSX attribute, a Tailwind
+`placeholder-`/`placeholder:` guard, an import-specifier skip, and a
+`NEGATION_RE` for honest denials — so this is the same family of
+term-position problem it already handles, just four positions it does not yet
+cover.
+
+I7 deserves a specific note: it is flagged **because the code is honest**. A
+tooltip that tells the user the attached audio is a generated placeholder
+tone rather than their mix is precisely the honest-failure construction this
+project mandates, and saying so trips the keyword scan. That is the same
+self-inflicted-false-positive shape CLAUDE.md already documents for the
+UX-polish grader.
+
+**Single fix, one pattern:** `// detector-allow: frontend-fake-data <reason>`
+on the flagged line or up to 4 lines above (`LINE_ALLOW_RE`,
+`frontend-fake-data-detector.js:75`); `@frontend-fake-data-ok-file` suppresses
+a whole file. **No site currently carries either.** Four line comments.
+
+#### B3 — `fake_ident_in_production` × 3 · one root cause: honest-placeholder naming
+
+`placeholderBlobPromise` ×2 (I2) and `stubNote` ×1 (I3) are identifiers whose
+*name* contains a fake-data keyword while the *code* is the honest-failure
+path: an explicit "tile unavailable offline" graphic, and a disclosure of how
+many systems were skipped as stubs. The detector already exempts
+`_`-prefixed identifiers, a `dummy*` domain-noun allowlist, and a
+`mockOpenAI`-style runtime-mode allowlist — the same family of
+name-vs-behavior problem, three names it does not cover.
+
+**Single fix, one pattern:** `@fake-data-ok` on the line or up to 6 lines
+above (`fake-data-detector.js:162-167`). **No site currently carries one.**
+Two files, three comments (or two, if the two `DesertOfflineMapView` hits sit
+within six lines of one comment — they are 5 lines apart, so one placed at
+`:66` covers both).
+
+### (c) INDEPENDENT — standalone, needs its own work
+
+#### C1 — 🔴 `MixerPeekStrip` fabricates its VU meters while a real RMS API sits unused
+
+**This is the one real defect in the run, and it is a zero-demo-content
+violation of the exact shape CLAUDE.md names as a hard invariant.** It is
+sitting at `info` severity only because the detector that caught it works by
+identifier naming.
+
+The finding, verified end to end:
+
+- `concord-frontend/components/studio/MixerPeekStrip.tsx:41` defines
+  `fakeLevel(volume)`, which returns `volume` plus a deterministic
+  `Math.sin(Date.now()/800 …)` jitter. Its comment: *"Pseudo-realistic VU
+  swing… Looks alive without being misleading. Real per-track post-fader RMS
+  would require feeding the audio analyser node into here, which we can wire
+  later."*
+- It is called at `:159` (collapsed meter row) and `:186` (expanded
+  channel-strip grid) and fed straight into `<Meter level={level} …>`.
+- The component is really mounted: `components/studio/SessionWorkspace.tsx:28`
+  imports it, `:177` renders it with the live `project.tracks`.
+- **The real substrate already exists and is fully built.**
+  `concord-frontend/lib/daw/engine.ts:665` defines a `ChannelMeter` class —
+  a per-channel `AnalyserNode` tapped off the post-effects output, with
+  `getLevel()` computing true RMS from `getByteTimeDomainData`. Its class
+  docstring reads: *"A small AnalyserNode tapped off the post-effects output
+  **so MixerPeekStrip can read real-time RMS** without fighting for the master
+  analyser."*
+- `MixerEngine` exposes it publicly as `getTrackLevel(trackId)` (`:726`) and
+  `getAllTrackLevels()` (`:732`), the latter commented *"All track levels in
+  one shot. **Used by MixerPeekStrip's RAF loop.**"*
+- **Both accessors have zero callers.** `grep -rn "getAllTrackLevels\|getTrackLevel"
+  concord-frontend` outside `engine.ts` returns nothing.
+
+So the meter the user watches is a sine wave driven by the volume *slider
+position*, while a correct per-channel RMS meter — built for this exact
+consumer, documented as being for this exact consumer — is wired into the
+audio graph and never read. The comment's own defense ("Looks alive without
+being misleading") does not hold: a meter that moves when you drag a fader on
+a muted-source track, and moves identically whether audio is playing or not,
+misleads by construction.
+
+This is not a detector-tuning question. It is a real fix, and a small one.
+
+**Disposition: real fix, INDEPENDENT.** Not suitable for a mechanical batch —
+it needs a RAF/interval loop in `MixerPeekStrip` reading
+`mixerEngine.getAllTrackLevels()`, an honest zero/idle state when no
+`AudioContext` or no engine instance is available (never a synthesized
+fallback), and a check against the existing
+`concord-frontend/tests/components/MixerPeekStrip-perf-budget.test.tsx`,
+which already tests `meterTickIntervalMs` degradation and is the natural place
+to pin the new behavior. Note the existing test file's own header describes
+the component's "honest perf-budget degradation" — that honesty framing is
+currently true of the *tick rate* and false of the *value being ticked*.
+
+#### C2 — `lens_unknown_domain` "mainland" · verified FP, low value
+
+`domain: 'mainland'` at `world/page.tsx:6222` is a field on a quest object
+literal handed to `<QuestLog>`, where it is rendered as display text
+(`QuestLog.tsx:73`) and defaulted (`:136`). It is not a macro domain and no
+`/api/lens/run` call carries it. The detector's `DOMAIN_REF_RE` matches
+`domain: "x"` anywhere in a file that also contains a `lensRun` call; this
+6,000-line page has many, so an unrelated object key gets swept in.
+
+The detector documents its *severity* choice (`lens-health-detector.js:165-174`:
+unknown domains fall through to the utility-brain catch-all, so `info` not
+`high`, after `high` "produced 8 false-positive blockers in CI") but it does
+**not** document this key-collision mechanism. So: verified false positive,
+undocumented, and there is **no annotation mechanism** on this detector (0
+`-ok` tokens).
+
+**Disposition: none. Baseline-absorbed.** Fixing it would mean either editing
+a PROTECTED detector or renaming a legitimate domain-model field to dodge a
+regex — both worse than the finding.
+
+#### C3 — `route_orphan_summary`: 546 statically-unreferenced routes
+
+A standing backlog, not a run finding. The message itself scopes the work:
+*"May include mobile-template URLs, federation peer endpoints, or true
+orphans — manual triage required for retirement."* Genuinely large, genuinely
+manual, and genuinely low-urgency (an unreferenced route is dead weight, not a
+defect). Notably, the sibling `domain-reachability` detector reports **0
+unreachable** across 418 domain files and `dead-macro-call` reports **0**
+across 10,724 registered pairs — so the macro layer is clean and this is
+specifically an HTTP-route-surface question.
+
+**Disposition: separate scoped project. Do not fold into a detector sweep.**
+
+#### C4 — `fake_data_summary`: 2,250 test files mocking production modules
+
+Also a standing backlog with a disposition already written into the message:
+*"candidates for fixture-loader migration. Per-mock findings suppressed (each
+is a legitimate test isolation; migration is a test-PR concern)."*
+
+**Disposition: none for this sweep.**
+
+## 5. Cluster sizes and prioritized work list
+
+| Cluster | Findings | Class | Real severity | Fix cost | Action |
+|---|---:|---|---|---|---|
+| **C1** `MixerPeekStrip` fake VU meters | 3 (1 defect) | (c) independent | 🔴 **high** — zero-demo-content violation | small–medium | **Fix.** Wire `getAllTrackLevels()`; honest idle state; pin in the existing perf-budget test. |
+| **B1** geolocation `magic_timeout` | 8 | (b) shared root cause | none (verified FP) | trivial | Annotate `@env-config-ok` ×8, or consciously leave. |
+| **B2** `placeholder_content_weak` | 4 | (b) shared root cause | none (verified FP) | trivial | Annotate `// detector-allow: frontend-fake-data <reason>` ×4. |
+| **B3** `fake_ident_in_production` honest names | 3 | (b) shared root cause | none (verified FP) | trivial | Annotate `@fake-data-ok` ×2–3. |
+| **A1** money-txn control-flow blindness | 6 | (a) documented FP | none | n/a — no annotation exists | **Nothing. Already baselined + owner-authorized.** |
+| **A2** welding-portal write-auth bypass | 1 | (a) documented FP | none | n/a — no annotation exists | **Nothing. Firing is the design.** |
+| **A3** leaf-utility hubs | 2 | (a) documented FP | none | n/a | Nothing. |
+| **A4** observational + rollups | 30 | (a) documented FP | none | n/a | Nothing — exclude from all counts of "debt". |
+| **C2** "mainland" lens domain | 1 | (c) independent | none (verified FP) | n/a — no annotation exists | Nothing. |
+| **C3** 546 orphan routes | 1 (rollup) | (c) independent | low | large | Separate scoped project. |
+| **C4** 2,250 test mocks | 1 (rollup) | (c) independent | low | large | Separate scoped project (test-PR venue). |
+
+**Top cluster by value, unambiguously: C1.** It is the only finding in the
+entire run that represents a real user-visible defect, and it is the highest
+class of defect this project recognizes — fabricated data rendered as live
+while the real substrate sits one function call away, which is verbatim the
+pattern CLAUDE.md's zero-demo-content invariant describes.
+
+**Everything else is either already-dispositioned false-positive noise (A1–A4,
+C2: 40 findings) or trivial annotation work (B1–B3: 15 findings), with 2
+standing-backlog rollups (C3, C4) and C1's 3 findings making up the rest —
+6+1+2+30+1 + 8+4+3 + 3 + 1+1 = 60.** Of 60 findings, exactly **one** is a
+code defect. That ratio is itself the useful
+output of this pass: it means a fix-batch dispatched at the raw run would have
+spent ~98% of its effort re-deriving conclusions already written down in
+detector source comments or in this file.
+
+**Recommended order:**
+
+1. **C1** — the real fix. One agent, one component, one test file.
+2. **B1 + B2 + B3** — 15 annotations across 13 files, all verified above, all
+   with the exact annotation string recorded. One agent, one commit,
+   mechanical. Optional: the honest alternative is to leave all 15, since they
+   are `info` and cost nothing but a slightly noisier report.
+3. **C3 / C4** — schedule separately; neither belongs to a detector sweep.
+4. **A1–A4, C2** — closed. If they reappear in a future dispatch, that
+   dispatch is re-doing work; point it here.
+
+## 6. How the live numbers compare to CLAUDE.md — **CLAUDE.md is stale**
+
+Not edited by this pass, per the task's constraint. The specific sentences
+that are now wrong, in the "Repo metrics & detector gates" bullet block:
+
+| CLAUDE.md sentence (verbatim fragment) | Live reality (2026-07-25T12:11Z) |
+|---|---|
+| *"`audit/detectors/BASELINE.json` is **v1, generated 2026-07-19 — 416 fingerprints: 0 critical / 9 high / 201 medium / 7 low / 199 info**"* | The file on disk is v1 **generated 2026-07-25T09:33:19Z with 77 fingerprints: 0 critical / 7 high / 18 medium / 0 low / 53 info**. The 2026-07-19 / 416-fingerprint description is superseded — and CLAUDE.md's own hedge ("Read those files directly rather than trusting a remembered number") is the correct instruction. |
+| *"`BUDGET.json` is **v13, `maxTotal` 460** (floor 436 + headroom)"* | `maxTotal` 460 is accurate as a file fact, but the floor it is sized against is gone: the live total is **60**, not 436. The budget now has ~7.7× headroom. Its `perDetector` map is likewise stale in almost every row (e.g. `macro-usage: 160` vs 2 actual, `frontend-fake-data: 45` vs 5, `dead-event-listener: 80` vs 0, `ux-a11y-button-no-label: 42` vs 0, `stale-lying-test: 30` vs 0). |
+| *"A live `cd server && node scripts/run-detectors.js` on 2026-07-24 reported 0 critical / 7 high / 196 medium / 8 low / 51 info; treat that as a dated snapshot"* | Correctly labelled as dated, and it is: **0 / 7 / 0 / 0 / 53**. Medium 196 → 0 and low 8 → 0. |
+| *"the `macro-usage` detector emits RUNTIME telemetry, so the info tier (and therefore the total) genuinely varies run-to-run, which is why `BUDGET.json` v13's own rationale sizes its headroom to absorb that noise"* | Materially overstated now — see §2. Per-macro `dispatcher_reach`/retirement findings are suppressed in the detector source, fingerprints do not hash the message, and the only live variance vector is `macro_runtime_live`, which reported **0** this run. |
+| *"**It is currently RED at 3**, all three triaged as documented false positives… they close via a deliberate baseline refresh"* | **Stale — that refresh happened.** It was owner-authorized on 2026-07-25 (recorded in the historical section below) and applied at commit `855bfe00`. The ratchet is **green**: 7 high, all 7 baselined, zero net-new. |
+| *"The perf backlog once cited here (73 high) is closed"* | Still true — `performance-hotspot` reports 1 finding this run, an info rollup. |
+
+Two adjacent staleness notes, for whoever next edits CLAUDE.md — neither is
+in CLAUDE.md itself, so they are recorded here rather than in the table above:
+`BUDGET.json` v13's `perDetector` map lists **40** detectors and this
+document's own historical section says "**44 detectors**"; the live run
+registers and executes **46**. (CLAUDE.md's "~30 detectors" is a correct
+historical statement about the state at PR #808, not a current count, and
+does not need changing.)
+
+---
+---
+
+# Historical record — prior passes (append-only)
+
+Everything below predates the current-state section above. Counts in it are
+point-in-time and are **not** the live picture. Kept for provenance: it
+records what each earlier pass found, decided, and why, which is what stops a
+later pass from re-deriving the same conclusions.
+
 
 ## HIGH tier — 2026-07-24 (V1.5 pre-Wave-4 pass)
 
