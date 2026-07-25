@@ -27,6 +27,10 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { useCodeProject } from './CodeProjectContext';
+// Socket URL comes from the ONE shared resolver. A bare options-only
+// construction here defaults to same-origin (the Next dev server), which
+// cannot serve a WebSocket upgrade through rewrites — see lib/realtime/socket.ts.
+import { SOCKET_URL } from '@/lib/realtime/socket';
 
 /** Character offset (Yjs awareness cursor field) → 1-based line/column,
  *  computed from the REAL current text — never a fabricated position. */
@@ -891,7 +895,7 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
     if (typeof window === 'undefined') return;
     try {
       const { io } = await import('socket.io-client');
-      const s = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+      const s = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
       s.emit('room:join', { room: `code:liveshare:${code}` });
       s.on('liveshare:op', () => { void poll(code); });
       socketRef.current = s;
@@ -1132,7 +1136,7 @@ function SharedDebugTerminalTile({ code }: { code: string }) {
         // socket.io-client returns a Socket whose typed signature is
         // narrower than the structural shape we use here; cast through
         // unknown so TS keeps `s` as Sock for the closures below.
-        s = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true }) as unknown as Sock;
+        s = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true }) as unknown as Sock;
         socketRef.current = s;
         s.emit('room:join', { room: `code:liveshare:${code}` });
         s.emit('liveshare:debug:state-request', { code });

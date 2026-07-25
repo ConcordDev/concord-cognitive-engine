@@ -15,7 +15,16 @@ import { updateClockOffset } from '../offline/db';
 // empty-string fallback: same-origin + the nginx `/socket.io/` proxy
 // (`nginx/conf.d/default.conf`) is the correct, already-working prod
 // topology — defaulting prod to a hardcoded port would be wrong there.
-const SOCKET_URL =
+// EXPORTED because it must be the ONE place this is resolved. It wasn't, and
+// `lib/hooks/useYjsDoc.ts` consequently re-implemented the connection with a
+// bare `io({ path: '/socket.io' })` — no URL, i.e. same-origin — reintroducing
+// the exact bug the comment above describes this constant as fixing. Observed
+// live 2026-07-25 on `/lenses/world`: the `SOCKET_URL` socket connected to
+// :5050 and pumped 79 frames, while SIX same-origin sockets to :3000 each died
+// with "WebSocket is closed before the connection is established" (Next's
+// rewrites proxy HTTP but not WS upgrades), driving the "Disconnected" badge.
+// Any new socket consumer must import this rather than resolve its own.
+export const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV !== 'production' ? 'http://localhost:5050' : '');

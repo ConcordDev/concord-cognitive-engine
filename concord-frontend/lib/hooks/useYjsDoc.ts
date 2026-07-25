@@ -24,6 +24,10 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import type { Socket } from 'socket.io-client';
+// Single source of truth for where the socket server actually lives — see the
+// comment on SOCKET_URL. Importing it (rather than re-deriving) is what keeps
+// this hook from drifting back to a same-origin connection.
+import { SOCKET_URL } from '@/lib/realtime/socket';
 
 export interface UseYjsDocOptions {
   scope: string;     // e.g. 'code:liveshare' or 'collab:doc'
@@ -73,7 +77,17 @@ export function useYjsDoc({ scope, docId, enabled = true }: UseYjsDocOptions): U
       try {
         const { io } = await import('socket.io-client');
         if (disposed) return;
-        socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+        // Connect to the SAME resolved backend the rest of the app uses.
+        // This was `io({ path: '/socket.io', ... })` — no URL, so socket.io
+        // defaulted to SAME-ORIGIN (the Next dev server on :3000), which has
+        // no socket server: `next.config.js`'s rewrites proxy HTTP but not
+        // WebSocket upgrades. Every attempt died with "WebSocket is closed
+        // before the connection is established", and with `reconnection: true`
+        // it retried forever. Measured on `/lenses/world` (2026-07-25): the
+        // shared :5050 socket carried 79 frames while six of these same-origin
+        // sockets failed at 0 frames, which is what lit the "Disconnected"
+        // badge even though realtime was in fact working.
+        socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
         const room = `${scope}:${docId}`;
         socket.on('connect', () => {
           if (disposed) return;

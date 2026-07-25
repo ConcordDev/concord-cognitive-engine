@@ -39,6 +39,10 @@ import {
   FileText, Plus, History, Users, MessageSquare, Bell, Shield,
   Eye, RotateCcw, Check, Loader2, Send, AtSign, Crown, X, MapPin, Layers,
 } from 'lucide-react';
+// Socket URL comes from the ONE shared resolver. A bare options-only
+// construction here defaults to same-origin (the Next dev server), which
+// cannot serve a WebSocket upgrade through rewrites — see lib/realtime/socket.ts.
+import { SOCKET_URL } from '@/lib/realtime/socket';
 
 // ── Macro response shapes ──────────────────────────────────────────────────
 interface DocSummary {
@@ -341,7 +345,7 @@ export function CollabDocWorkspace() {
         try {
           const { io } = await import('socket.io-client');
           if (stop) return;
-          socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+          socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
           const room = `collab:doc:${activeDocId}`;
           socket.emit('room:join', { room });
           const onOp = () => { if (!stop) void tick(); };

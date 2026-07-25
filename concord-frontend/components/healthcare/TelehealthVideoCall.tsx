@@ -24,6 +24,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Loader2, AlertCircle, Users } from 'lucide-react';
 import type { Socket } from 'socket.io-client';
 import SimplePeer from 'simple-peer';
+import { SOCKET_URL } from '@/lib/realtime/socket';
 
 interface Props {
   visitId: string;
@@ -95,7 +96,10 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
     let socket: Socket;
     try {
       const { io } = await import('socket.io-client');
-      socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+            // Same-origin `io({...})` never connects: Next's rewrites proxy HTTP
+      // but not WebSocket upgrades, so this signalling socket died on every
+      // attempt. Use the one resolved SOCKET_URL (see lib/realtime/socket.ts).
+      socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
     } catch {
       setStatus('error');
       setError('Realtime connection unavailable. Try refreshing.');
