@@ -7032,7 +7032,9 @@ export default function WorldLensPage() {
                   )}
                   {activeTool === 'dsl' && <ConcordDSLEditor />}
                   {activeTool === 'terminal' && <ConcordTerminal />}
-                  {activeTool === 'diff' && <DTUDiffViewer />}
+                  {activeTool === 'diff' && (
+                    <DTUDiffViewer dtuId={selectedBuilding?.dtuId ?? null} />
+                  )}
                   {activeTool === 'standards' && <StandardsLibrary />}
                   {activeTool === 'fabrication' && <FabricationExportPanel />}
                   {activeTool === 'embed' && (

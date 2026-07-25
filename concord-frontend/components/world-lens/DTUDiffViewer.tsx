@@ -1,104 +1,89 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+/**
+ * DTUDiffViewer — real DTU version-history diff.
+ *
+ * HONESTY NOTE (fixed 2026-07): this component used to ship with a
+ * hardcoded `VERSIONS` array of three invented "USB-A Beam 6m" revisions
+ * (fake authors `eng.martinez`/`eng.chen`, fake dates, fake seismic/wind
+ * ratings, a fake "Validation Comparison" panel, and a "3D Diff Overlay"
+ * callout describing a feature that does not exist anywhere in the
+ * codebase). It rendered as though the backend had supplied real DTU
+ * revision history — it had not; nothing was ever fetched.
+ *
+ * The real substrate: `dtu_versions` (migration 001_core_tables.js) is a
+ * genuine per-version `body_json` snapshot table, written on every
+ * `/api/dtus/guided` create/update and `/api/dtus/durable` create (see
+ * `server/guidance.js`, `server/durable.js`). `GET /api/dtus/:id/versions`
+ * (added alongside this fix) projects those rows with full body content so
+ * two real versions of the same DTU can be diffed field-by-field.
+ *
+ * Honest limits, stated rather than papered over:
+ *  - A DTU created only through the in-memory macro path
+ *    (`dtu.create`/`dtu.update` in server.js) never gets a `dtu_versions`
+ *    row, so this legitimately renders "no version history" for most DTUs
+ *    today. That is the correct, honest behavior — not a bug to hide.
+ *  - There is no per-version author field in the real schema, so this
+ *    component does not invent one. It shows the DTU's single owner once,
+ *    not a fabricated per-revision engineer name.
+ *  - The diff is a generic recursive field/value comparison over whatever
+ *    `body_json` actually contains — never a fixed beam-engineering schema
+ *    (material/seismic/wind/etc.) that only ever matched the old fake data.
+ */
 
-// ── Seed Data ──────────────────────────────────────────────────────────────────
+import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api/client';
 
-interface DTUVersion {
+// ── Types ────────────────────────────────────────────────────────────────
+
+interface DTUVersionRecord {
   id: string;
-  version: string;
-  name: string;
-  material: string;
-  length: string;
-  width: string;
-  height: string;
-  seismicRating: number;
-  windRating: string;
-  weight: string;
-  connections: number;
-  stiffenerPlates?: number;
-  author: string;
-  date: string;
-  validations: {
-    gravity: string;
-    wind: string;
-    seismic: string;
-    thermal: string;
-    fire: string;
-  };
+  version: number;
+  createdAt: string;
+  body: Record<string, unknown>;
 }
 
-const VERSIONS: DTUVersion[] = [
-  {
-    id: 'dtu-3204-v1.0',
-    version: 'v1.0',
-    name: 'USB-A Beam 6m',
-    material: 'USB-A',
-    length: '6m',
-    width: '0.2m',
-    height: '0.35m',
-    seismicRating: 6.2,
-    windRating: '120mph',
-    weight: '142kg',
-    connections: 2,
-    author: 'eng.martinez',
-    date: '2025-08-14',
-    validations: {
-      gravity: '2.3 SF',
-      wind: '120mph',
-      seismic: '6.2',
-      thermal: 'pass',
-      fire: '2.0hr',
-    },
-  },
-  {
-    id: 'dtu-3204-v1.1',
-    version: 'v1.1',
-    name: 'USB-A Beam 6m (Draft)',
-    material: 'USB-A',
-    length: '6m',
-    width: '0.2m',
-    height: '0.36m',
-    seismicRating: 6.4,
-    windRating: '125mph',
-    weight: '146kg',
-    connections: 2,
-    author: 'eng.martinez',
-    date: '2025-10-02',
-    validations: {
-      gravity: '2.35 SF',
-      wind: '125mph',
-      seismic: '6.4',
-      thermal: 'pass',
-      fire: '2.0hr',
-    },
-  },
-  {
-    id: 'dtu-3204-v2.0',
-    version: 'v2.0',
-    name: 'USB-A Beam 6m (Reinforced)',
-    material: 'USB-A+',
-    length: '6m',
-    width: '0.22m',
-    height: '0.38m',
-    seismicRating: 7.1,
-    windRating: '145mph',
-    weight: '159kg',
-    connections: 2,
-    stiffenerPlates: 2,
-    author: 'eng.chen',
-    date: '2026-01-19',
-    validations: {
-      gravity: '2.5 SF',
-      wind: '145mph',
-      seismic: '7.1',
-      thermal: 'pass',
-      fire: '2.5hr',
-    },
-  },
-];
+interface DTUVersionsResponse {
+  ok: boolean;
+  error?: string;
+  dtu?: { id: string; title: string | null; tier: string | null; ownerId: string | null };
+  versions?: DTUVersionRecord[];
+}
 
-// ── Diff helpers ───────────────────────────────────────────────────────────────
+interface DTUDiffViewerProps {
+  dtuId?: string | null;
+}
+
+// ── Generic body_json flattening (no domain-specific schema) ───────────────
+
+function flatten(value: unknown, prefix = '', out: Record<string, string> = {}): Record<string, string> {
+  if (value === null || value === undefined) {
+    out[prefix || '(root)'] = '—';
+    return out;
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      out[prefix || '(root)'] = '[]';
+      return out;
+    }
+    value.forEach((item, i) => flatten(item, prefix ? `${prefix}[${i}]` : `[${i}]`, out));
+    return out;
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) {
+      out[prefix || '(root)'] = '{}';
+      return out;
+    }
+    for (const [k, v] of entries) flatten(v, prefix ? `${prefix}.${k}` : k, out);
+    return out;
+  }
+  out[prefix || '(value)'] = String(value);
+  return out;
+}
+
+// ── Diff helpers ─────────────────────────────────────────────────────────
 
 type DiffStatus = 'added' | 'removed' | 'modified' | 'unchanged';
 
@@ -110,53 +95,38 @@ interface DiffRow {
   status: DiffStatus;
 }
 
-function computeDelta(field: string, v1Val: string | undefined, v2Val: string | undefined): string {
+function computeDelta(v1Val: string | undefined, v2Val: string | undefined): string {
   if (v1Val === undefined) return '+ new';
   if (v2Val === undefined) return '- removed';
   if (v1Val === v2Val) return '—';
 
   const n1 = parseFloat(v1Val);
   const n2 = parseFloat(v2Val);
-  if (!isNaN(n1) && !isNaN(n2)) {
+  if (!isNaN(n1) && !isNaN(n2) && String(n1) === v1Val.trim() && String(n2) === v2Val.trim()) {
     const diff = n2 - n1;
-    const pct = ((diff / n1) * 100).toFixed(1);
+    const pct = n1 !== 0 ? ((diff / n1) * 100).toFixed(1) : null;
     const arrow = diff > 0 ? '▲' : '▼';
     const sign = diff > 0 ? '+' : '';
-    return `${arrow} ${sign}${diff.toFixed(2)} (${sign}${pct}%)`;
+    return pct !== null ? `${arrow} ${sign}${diff.toFixed(2)} (${sign}${pct}%)` : `${arrow} ${sign}${diff.toFixed(2)}`;
   }
   return 'changed';
 }
 
-function buildDiffRows(a: DTUVersion, b: DTUVersion): DiffRow[] {
-  const fields: { field: string; key: keyof DTUVersion }[] = [
-    { field: 'Name', key: 'name' },
-    { field: 'Material', key: 'material' },
-    { field: 'Length', key: 'length' },
-    { field: 'Width', key: 'width' },
-    { field: 'Height', key: 'height' },
-    { field: 'Seismic Rating', key: 'seismicRating' },
-    { field: 'Wind Rating', key: 'windRating' },
-    { field: 'Weight', key: 'weight' },
-    { field: 'Connections', key: 'connections' },
-    { field: 'Stiffener Plates', key: 'stiffenerPlates' },
-    { field: 'Author', key: 'author' },
-    { field: 'Date', key: 'date' },
-  ];
+function buildDiffRows(a: Record<string, unknown>, b: Record<string, unknown>): DiffRow[] {
+  const flatA = flatten(a);
+  const flatB = flatten(b);
+  const fields = Array.from(new Set([...Object.keys(flatA), ...Object.keys(flatB)])).sort();
 
-  return fields.map(({ field, key }) => {
-    const v1 = a[key] !== undefined ? String(a[key]) : undefined;
-    const v2 = b[key] !== undefined ? String(b[key]) : undefined;
-
+  return fields.map((field) => {
+    const v1 = flatA[field];
+    const v2 = flatB[field];
     let status: DiffStatus = 'unchanged';
     if (v1 === undefined && v2 !== undefined) status = 'added';
     else if (v1 !== undefined && v2 === undefined) status = 'removed';
     else if (v1 !== v2) status = 'modified';
-
-    return { field, v1, v2, delta: computeDelta(field, v1, v2), status };
+    return { field, v1, v2, delta: computeDelta(v1, v2), status };
   });
 }
-
-// ── Status color maps ──────────────────────────────────────────────────────────
 
 const statusRowBg: Record<DiffStatus, string> = {
   added: 'bg-green-900/30 border-l-2 border-green-500',
@@ -179,81 +149,37 @@ const legendItems: { status: DiffStatus; label: string; color: string }[] = [
   { status: 'unchanged', label: 'Unchanged', color: 'bg-white/20' },
 ];
 
-// ── Validation comparison helper ───────────────────────────────────────────────
-
-interface ValidationRow {
-  test: string;
-  v1: string;
-  v2: string;
-  indicator: string;
-  indicatorColor: string;
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
 }
 
-function buildValidationRows(a: DTUVersion, b: DTUVersion): ValidationRow[] {
-  const tests: { test: string; key: keyof DTUVersion['validations'] }[] = [
-    { test: 'Gravity', key: 'gravity' },
-    { test: 'Wind', key: 'wind' },
-    { test: 'Seismic', key: 'seismic' },
-    { test: 'Thermal', key: 'thermal' },
-    { test: 'Fire Rating', key: 'fire' },
-  ];
+// ── Component ────────────────────────────────────────────────────────────
 
-  return tests.map(({ test, key }) => {
-    const v1 = a.validations[key];
-    const v2 = b.validations[key];
-    const same = v1 === v2;
-    return {
-      test,
-      v1,
-      v2,
-      indicator: same ? '— same' : '▲ improved',
-      indicatorColor: same ? 'text-white/40' : 'text-green-400',
-    };
-  });
-}
-
-// ── Summary builder ────────────────────────────────────────────────────────────
-
-function buildSummary(a: DTUVersion, b: DTUVersion): string {
-  const parts: string[] = [];
-
-  if (a.material !== b.material) parts.push(`Upgraded material to ${b.material}`);
-  if (a.width !== b.width || a.height !== b.height) parts.push('increased cross-section');
-  if (b.stiffenerPlates && !a.stiffenerPlates)
-    parts.push(`added ${b.stiffenerPlates} stiffener plates`);
-
-  const seismicDelta = (
-    ((b.seismicRating - a.seismicRating) / a.seismicRating) *
-    100
-  ).toFixed(1);
-  parts.push(
-    `Seismic rating improved from ${a.seismicRating} to ${b.seismicRating} (+${seismicDelta}%)`
-  );
-
-  const w1 = parseFloat(a.weight);
-  const w2 = parseFloat(b.weight);
-  const weightDelta = (((w2 - w1) / w1) * 100).toFixed(0);
-  parts.push(`Weight increased by ${weightDelta}%`);
-
-  return `${b.version}: ${parts.join(', ')}.`;
-}
-
-// ── Component ──────────────────────────────────────────────────────────────────
-
-export default function DTUDiffViewer() {
+export default function DTUDiffViewer({ dtuId = null }: DTUDiffViewerProps) {
   const [leftIdx, setLeftIdx] = useState(0);
-  const [rightIdx, setRightIdx] = useState(2);
+  const [rightIdx, setRightIdx] = useState<number | null>(null);
   const [showUnchanged, setShowUnchanged] = useState(false);
+  const [timelineSide, setTimelineSide] = useState<'left' | 'right'>('left');
 
-  const leftVersion = VERSIONS[leftIdx];
-  const rightVersion = VERSIONS[rightIdx];
+  const { data, isLoading, isError } = useQuery<DTUVersionsResponse>({
+    queryKey: ['dtu-versions', dtuId],
+    queryFn: async () => (await api.get(`/api/dtus/${dtuId}/versions`)).data,
+    enabled: !!dtuId,
+  });
 
-  const diffRows = useMemo(() => buildDiffRows(leftVersion, rightVersion), [leftVersion, rightVersion]);
-  const validationRows = useMemo(
-    () => buildValidationRows(leftVersion, rightVersion),
+  const versions = data?.versions ?? [];
+  const rIdx = rightIdx === null ? Math.max(versions.length - 1, 0) : rightIdx;
+  const leftVersion = versions[leftIdx];
+  const rightVersion = versions[rIdx];
+
+  const diffRows = useMemo(
+    () => (leftVersion && rightVersion ? buildDiffRows(leftVersion.body, rightVersion.body) : []),
     [leftVersion, rightVersion]
   );
-  const summary = useMemo(() => buildSummary(leftVersion, rightVersion), [leftVersion, rightVersion]);
 
   const visibleRows = useMemo(
     () => (showUnchanged ? diffRows : diffRows.filter((r) => r.status !== 'unchanged')),
@@ -261,23 +187,85 @@ export default function DTUDiffViewer() {
   );
 
   const unchangedCount = diffRows.filter((r) => r.status === 'unchanged').length;
+  const addedCount = diffRows.filter((r) => r.status === 'added').length;
+  const removedCount = diffRows.filter((r) => r.status === 'removed').length;
+  const modifiedCount = diffRows.filter((r) => r.status === 'modified').length;
 
-  // Timeline selection
   const handleTimelineClick = (idx: number, side: 'left' | 'right') => {
     if (side === 'left') setLeftIdx(idx);
     else setRightIdx(idx);
   };
 
-  const [timelineSide, setTimelineSide] = useState<'left' | 'right'>('left');
+  // ── Honest empty / unavailable states ────────────────────────────────
+
+  if (!dtuId) {
+    return (
+      <div className="w-full max-w-5xl mx-auto p-6 font-mono text-sm text-white/60">
+        <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-5">
+          <h2 className="text-lg font-semibold mb-2 tracking-wide text-white/90">DTU Diff Viewer</h2>
+          <p>No DTU selected. Select a placed component in the world to view its recorded version history.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-5xl mx-auto p-6 font-mono text-sm text-white/60">
+        <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-5">
+          Loading version history for {dtuId}&hellip;
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || data?.ok === false) {
+    return (
+      <div className="w-full max-w-5xl mx-auto p-6 font-mono text-sm text-white/60">
+        <div className="rounded-xl bg-black/80 backdrop-blur border border-red-500/20 p-5">
+          <h2 className="text-lg font-semibold mb-2 tracking-wide text-white/90">DTU Diff Viewer</h2>
+          <p className="text-red-400/80">
+            Version history unavailable for this DTU{data?.error ? ` (${data.error})` : ''}.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (versions.length < 2) {
+    return (
+      <div className="w-full max-w-5xl mx-auto p-6 font-mono text-sm text-white/60">
+        <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-5">
+          <h2 className="text-lg font-semibold mb-2 tracking-wide text-white/90">DTU Diff Viewer</h2>
+          <p>
+            {versions.length === 0
+              ? 'This DTU has no recorded version history yet.'
+              : 'Only one recorded version on file — nothing to compare yet.'}
+          </p>
+          <p className="text-white/30 text-xs mt-2">
+            Version snapshots are recorded on each edit made through the guided DTU editor. DTUs
+            authored through other paths may not yet have snapshot history.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Real diff UI ──────────────────────────────────────────────────────
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4 space-y-4 font-mono text-sm text-white/90">
-      {/* ── Header / Version Selectors ────────────────────────────────── */}
+      {/* Header / Version Selectors */}
       <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-5">
-        <h2 className="text-lg font-semibold mb-4 tracking-wide">DTU Diff Viewer</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold tracking-wide">DTU Diff Viewer</h2>
+          <span className="text-xs text-white/30">
+            {data?.dtu?.title || dtuId}
+            {data?.dtu?.ownerId ? ` · owner ${data.dtu.ownerId}` : ''}
+          </span>
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          {/* Left version selector */}
           <div className="flex-1">
             <label className="block text-xs text-white/50 mb-1 uppercase tracking-wider">
               Base Version
@@ -287,31 +275,28 @@ export default function DTUDiffViewer() {
               onChange={(e) => setLeftIdx(Number(e.target.value))}
               className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-white/90 focus:outline-none focus:border-blue-500/60"
             >
-              {VERSIONS.map((v, i) => (
+              {versions.map((v, i) => (
                 <option key={v.id} value={i} className="bg-black text-white">
-                  {v.version} — {v.name}
+                  v{v.version} — {formatDate(v.createdAt)}
                 </option>
               ))}
             </select>
           </div>
 
-          <div className="flex items-end justify-center text-white/30 text-xl pb-2">
-            &rarr;
-          </div>
+          <div className="flex items-end justify-center text-white/30 text-xl pb-2">&rarr;</div>
 
-          {/* Right version selector */}
           <div className="flex-1">
             <label className="block text-xs text-white/50 mb-1 uppercase tracking-wider">
               Compare Version
             </label>
             <select
-              value={rightIdx}
+              value={rIdx}
               onChange={(e) => setRightIdx(Number(e.target.value))}
               className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-white/90 focus:outline-none focus:border-blue-500/60"
             >
-              {VERSIONS.map((v, i) => (
+              {versions.map((v, i) => (
                 <option key={v.id} value={i} className="bg-black text-white">
-                  {v.version} — {v.name}
+                  v{v.version} — {formatDate(v.createdAt)}
                 </option>
               ))}
             </select>
@@ -319,20 +304,23 @@ export default function DTUDiffViewer() {
         </div>
       </div>
 
-      {/* ── Summary Banner ────────────────────────────────────────────── */}
+      {/* Summary Banner — a real, computed count of the diff, not a narrative */}
       <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-4">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 text-blue-400 text-lg">i</span>
           <p className="text-white/70 leading-relaxed">
-            <span className="text-white/90 font-medium">Version {summary}</span>
+            <span className="text-white/90 font-medium">
+              v{leftVersion.version} &rarr; v{rightVersion.version}:
+            </span>{' '}
+            {modifiedCount} modified, {addedCount} added, {removedCount} removed, {unchangedCount} unchanged.
           </p>
         </div>
       </div>
 
-      {/* ── Properties Diff Table ─────────────────────────────────────── */}
+      {/* Properties Diff Table */}
       <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
-          <h3 className="font-semibold tracking-wide">Properties Diff</h3>
+          <h3 className="font-semibold tracking-wide">Field Diff</h3>
           <button
             onClick={() => setShowUnchanged(!showUnchanged)}
             className="text-xs px-3 py-1 rounded-md border border-white/10 hover:border-white/30 transition-colors text-white/50 hover:text-white/80"
@@ -346,64 +334,38 @@ export default function DTUDiffViewer() {
             <thead>
               <tr className="border-b border-white/10 text-xs text-white/40 uppercase tracking-wider">
                 <th className="px-5 py-3 w-1/4">Field</th>
-                <th className="px-5 py-3 w-1/4">{leftVersion.version}</th>
-                <th className="px-5 py-3 w-1/4">{rightVersion.version}</th>
+                <th className="px-5 py-3 w-1/4">v{leftVersion.version}</th>
+                <th className="px-5 py-3 w-1/4">v{rightVersion.version}</th>
                 <th className="px-5 py-3 w-1/4">Delta</th>
               </tr>
             </thead>
             <tbody>
-              {visibleRows.map((row) => (
-                <tr key={row.field} className={`${statusRowBg[row.status]} transition-colors`}>
-                  <td className="px-5 py-2.5 text-white/70 font-medium">{row.field}</td>
-                  <td className="px-5 py-2.5 text-white/60">{row.v1 ?? '—'}</td>
-                  <td className="px-5 py-2.5 text-white/80">{row.v2 ?? '—'}</td>
-                  <td className={`px-5 py-2.5 font-medium ${statusDeltaColor[row.status]}`}>
-                    {row.delta}
+              {visibleRows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-4 text-white/30 text-center">
+                    No differences between these two versions.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                visibleRows.map((row) => (
+                  <tr key={row.field} className={`${statusRowBg[row.status]} transition-colors`}>
+                    <td className="px-5 py-2.5 text-white/70 font-medium">{row.field}</td>
+                    <td className="px-5 py-2.5 text-white/60">{row.v1 ?? '—'}</td>
+                    <td className="px-5 py-2.5 text-white/80">{row.v2 ?? '—'}</td>
+                    <td className={`px-5 py-2.5 font-medium ${statusDeltaColor[row.status]}`}>
+                      {row.delta}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* ── Validation Comparison ─────────────────────────────────────── */}
-      <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10">
-          <h3 className="font-semibold tracking-wide">Validation Comparison</h3>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:divide-x sm:divide-white/10">
-          {/* v1 column header */}
-          <div className="px-5 py-2 border-b border-white/10 text-xs text-white/40 uppercase tracking-wider">
-            {leftVersion.version} Results
-          </div>
-          <div className="px-5 py-2 border-b border-white/10 text-xs text-white/40 uppercase tracking-wider">
-            {rightVersion.version} Results
-          </div>
-
-          {validationRows.map((row) => (
-            <React.Fragment key={row.test}>
-              {/* Left result */}
-              <div className="px-5 py-2.5 flex items-center justify-between border-b border-white/5">
-                <span className="text-white/60">{row.test}</span>
-                <span className="text-white/50">{row.v1}</span>
-              </div>
-              {/* Right result */}
-              <div className="px-5 py-2.5 flex items-center justify-between border-b border-white/5">
-                <span className="text-white/80">{row.v2}</span>
-                <span className={`text-xs font-medium ${row.indicatorColor}`}>
-                  {row.indicator}
-                </span>
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
-
-      {/* ── 3D Diff Overlay Legend ─────────────────────────────────────── */}
+      {/* Diff status legend */}
       <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-5">
-        <h3 className="font-semibold tracking-wide mb-3">3D Diff Overlay Legend</h3>
+        <h3 className="font-semibold tracking-wide mb-3">Diff Legend</h3>
         <div className="flex flex-wrap gap-4">
           {legendItems.map((item) => (
             <div key={item.status} className="flex items-center gap-2">
@@ -412,12 +374,9 @@ export default function DTUDiffViewer() {
             </div>
           ))}
         </div>
-        <p className="text-white/30 text-xs mt-3">
-          Enable the 3D overlay in the viewport to see geometric changes highlighted on the model.
-        </p>
       </div>
 
-      {/* ── Version Timeline ──────────────────────────────────────────── */}
+      {/* Version Timeline — real version numbers + real recorded timestamps */}
       <div className="rounded-xl bg-black/80 backdrop-blur border border-white/10 p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold tracking-wide">Version Timeline</h3>
@@ -445,18 +404,17 @@ export default function DTUDiffViewer() {
           </div>
         </div>
 
-        <div className="relative flex items-center justify-between px-4 py-6">
-          {/* Connecting line */}
+        <div className="relative flex items-center justify-between px-4 py-6 overflow-x-auto">
           <div className="absolute left-8 right-8 top-1/2 h-px bg-white/10" />
 
-          {VERSIONS.map((v, i) => {
+          {versions.map((v, i) => {
             const isLeft = i === leftIdx;
-            const isRight = i === rightIdx;
+            const isRight = i === rIdx;
             return (
               <button
                 key={v.id}
                 onClick={() => handleTimelineClick(i, timelineSide)}
-                className="relative z-10 flex flex-col items-center gap-2 group"
+                className="relative z-10 flex flex-col items-center gap-2 group shrink-0 px-2"
               >
                 <div
                   className={`w-5 h-5 rounded-full border-2 transition-all ${
@@ -474,18 +432,12 @@ export default function DTUDiffViewer() {
                     isLeft || isRight ? 'text-white/90 font-medium' : 'text-white/40'
                   }`}
                 >
-                  {v.version}
+                  v{v.version}
                 </span>
-                <span className="text-[10px] text-white/30">{v.date}</span>
-                {isLeft && (
-                  <span className="text-[10px] text-blue-400 font-medium">BASE</span>
-                )}
-                {isRight && !isLeft && (
-                  <span className="text-[10px] text-green-400 font-medium">COMPARE</span>
-                )}
-                {isLeft && isRight && (
-                  <span className="text-[10px] text-purple-400 font-medium">BOTH</span>
-                )}
+                <span className="text-[10px] text-white/30 whitespace-nowrap">{formatDate(v.createdAt)}</span>
+                {isLeft && <span className="text-[10px] text-blue-400 font-medium">BASE</span>}
+                {isRight && !isLeft && <span className="text-[10px] text-green-400 font-medium">COMPARE</span>}
+                {isLeft && isRight && <span className="text-[10px] text-purple-400 font-medium">BOTH</span>}
               </button>
             );
           })}

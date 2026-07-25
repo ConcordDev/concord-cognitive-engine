@@ -742,6 +742,10 @@ export const apiHelpers = {
     inspect: (entityType: string, entityId: string) =>
       api.get(`/api/inspect/${entityType}/${entityId}`),
 
+    // Real DTU version history (full body_json per version, from dtu_versions)
+    dtuVersions: (dtuId: string) =>
+      api.get(`/api/dtus/${dtuId}/versions`),
+
     // Undo
     undo: (undoToken: string, userId?: string) =>
       api.post('/api/undo', { undoToken, user_id: userId }),
