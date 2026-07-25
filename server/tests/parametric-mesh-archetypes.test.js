@@ -29,6 +29,10 @@ import {
   generateStaffMesh,
   generateMaceMesh,
   generateShieldMesh,
+  generateAxeMesh,
+  generateAxeMeshWithNormals,
+  generateHammerMesh,
+  generateHammerMeshWithNormals,
 } from "../lib/asset-gen/parametric-mesh.js";
 import { structuralCheck } from "../lib/asset-gen/fea-gate.js";
 import { packGLB, extractMeshData, computeVertexNormals } from "../lib/evo-asset/glb-bridge.js";
@@ -88,6 +92,13 @@ const ARCHETYPES = [
   { name: "staff", generate: generateStaffMesh, minVolume: 1e-4, maxVolume: 0.01 },
   { name: "mace", generate: generateMaceMesh, minVolume: 1e-5, maxVolume: 0.005 },
   { name: "shield", generate: generateShieldMesh, minVolume: 1e-3, maxVolume: 0.02 },
+  // axe/hammer: a genuinely different construction from the five above —
+  // a head that CROSSES the haft (real CSG, via csg-boolean.js), not a
+  // coaxial loft. See parametric-mesh.js's "Archetypes 6/7" section
+  // doc-comment. Bounds are generous around the measured ~6.4e-4 /
+  // ~4.5e-4 m^3 default volumes.
+  { name: "axe", generate: generateAxeMesh, minVolume: 1e-4, maxVolume: 0.005 },
+  { name: "hammer", generate: generateHammerMesh, minVolume: 1e-4, maxVolume: 0.005 },
 ];
 
 describe("New archetypes (spear/staff/mace/shield) — each a genuinely different cross-section chain, verified via the same manifold + volume idiom as generateSwordMesh", () => {
@@ -221,6 +232,105 @@ describe("New archetypes (spear/staff/mace/shield) — each a genuinely differen
         const len = Math.hypot(normals[v], normals[v + 1], normals[v + 2]);
         assert.ok(Math.abs(len - 1) < 1e-6, `unit-length normal at vertex ${v / 3}`);
       }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  // ── axe/hammer: genuine CSG crossing (server/lib/asset-gen/csg-boolean.js) ──
+  it("axe: rejects bad params by name (haftSides/arcSides < 3, non-positive dims, bitTipZ <= eyeFrontZ, head doesn't fit on the haft)", () => {
+    assert.throws(() => generateAxeMesh({ haftSides: 2 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateAxeMesh({ arcSides: 1 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateAxeMesh({ haftLength: 0 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateAxeMesh({ eyeHalfHeight: -1 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateAxeMesh({ bitTipZ: 0.01, eyeFrontZ: 0.02 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateAxeMesh({ headThickness: 10 }), /parametric_mesh_bad_param/);
+  });
+
+  it("hammer: rejects bad params by name (haftSides/arcSides < 3, non-positive dims, peenTipZ <= peenShoulderZ, head doesn't fit on the haft)", () => {
+    assert.throws(() => generateHammerMesh({ haftSides: 2 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateHammerMesh({ arcSides: 0 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateHammerMesh({ faceHalfHeight: 0 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateHammerMesh({ peenTipZ: 0.01, peenShoulderZ: 0.02 }), /parametric_mesh_bad_param/);
+    assert.throws(() => generateHammerMesh({ headThickness: 10 }), /parametric_mesh_bad_param/);
+  });
+
+  it("axe/hammer: default params genuinely exercise the crossing CSG (not a trivial 'head swallows haft whole' no-op) — pins the precondition documented in parametric-mesh.js's AXE_DEFAULTS/HAMMER_DEFAULTS, same idiom as the mace crossing-precondition test above", () => {
+    // AXE_DEFAULTS: pollZ (0.012) < haftRadius (0.016) -> the haft cylinder
+    // genuinely bulges past the poll's flat back.
+    assert.ok(0.012 < 0.016, "axe poll depth must be smaller than the haft radius to exercise a genuine arc bulge");
+    // HAMMER_DEFAULTS: faceZ (0.01) < haftRadius (0.016) -> same, on the face side.
+    assert.ok(0.01 < 0.016, "hammer face depth must be smaller than the haft radius to exercise a genuine arc bulge");
+    // Both eye/peen half-heights exceed the haft radius (a real "the head
+    // is bigger than the handle" precondition, not a degenerate config).
+    assert.ok(0.05 > 0.016 && 0.03 > 0.016);
+  });
+
+  it("axe: refuses a degenerate head/haft configuration honestly rather than emit a plausible-looking wrong mesh — a haft radius bigger than the whole head silhouette makes 'the head crosses the haft' false, and csg-boolean.js's named refusal must surface through generateAxeMesh unmodified", () => {
+    // haftRadius (1.0) far exceeds the head's own extent (bitTipZ default
+    // 0.14) -> every silhouette vertex ends up INSIDE the circle -> the
+    // union algorithm's own `csg_boolean_head_fully_inside_haft` refusal.
+    assert.throws(() => generateAxeMesh({ haftRadius: 1.0 }), /csg_boolean_head_fully_inside_haft/);
+  });
+
+  it("hammer: same refusal-propagation contract as axe", () => {
+    assert.throws(() => generateHammerMesh({ haftRadius: 1.0 }), /csg_boolean_head_fully_inside_haft/);
+  });
+
+  it("axe: survives the REAL (unmodified) fea-gate.js structural solver end-to-end under the 'mace-impact' full-chain use case (haft -> head, axial swing-impact load) — the physically appropriate check for a haft transmitting a chopping impact, unlike 'sword-bending' which only ever sees the head's own 2 approximation-tagged stations", () => {
+    const mesh = generateAxeMesh();
+    const check = structuralCheck(mesh.beam, { totalLength: mesh.meta.totalLength, useCase: "mace-impact" });
+    assert.equal(check.ok, true, `axe failed structural check: ${JSON.stringify(check)}`);
+    assert.ok(Number.isFinite(check.maxUtilization) && check.maxUtilization > 0 && check.maxUtilization <= 1);
+    assert.equal(check.failingStations.length, 0);
+  });
+
+  it("hammer: survives the same 'mace-impact' full-chain structural check", () => {
+    const mesh = generateHammerMesh();
+    const check = structuralCheck(mesh.beam, { totalLength: mesh.meta.totalLength, useCase: "mace-impact" });
+    assert.equal(check.ok, true, `hammer failed structural check: ${JSON.stringify(check)}`);
+    assert.ok(Number.isFinite(check.maxUtilization) && check.maxUtilization > 0 && check.maxUtilization <= 1);
+    assert.equal(check.failingStations.length, 0);
+  });
+
+  it("axe + normals round-trips through glb-bridge packGLB -> extractMeshData", async () => {
+    const mesh = await generateAxeMeshWithNormals({ haftSides: 6, arcSides: 12 });
+    assert.equal(mesh.normals.length, mesh.positions.length);
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const fs = await import("node:fs");
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "parametric-mesh-archetype-"));
+    try {
+      const out = path.join(tmpDir, "axe.glb");
+      await packGLB({ positions: mesh.positions, indices: mesh.indices, normals: mesh.normals }, out);
+      const ext = await extractMeshData(out);
+      assert.equal(ext.positions.length, mesh.positions.length);
+      assert.equal(ext.indices.length, mesh.indices.length);
+      assert.deepEqual(Array.from(ext.indices), Array.from(mesh.indices));
+      const normals = computeVertexNormals(mesh.positions, mesh.indices);
+      for (let v = 0; v < normals.length; v += 3) {
+        const len = Math.hypot(normals[v], normals[v + 1], normals[v + 2]);
+        assert.ok(Math.abs(len - 1) < 1e-6, `unit-length normal at vertex ${v / 3}`);
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("hammer + normals round-trips through glb-bridge packGLB -> extractMeshData", async () => {
+    const mesh = await generateHammerMeshWithNormals({ haftSides: 6, arcSides: 12 });
+    assert.equal(mesh.normals.length, mesh.positions.length);
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const fs = await import("node:fs");
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "parametric-mesh-archetype-"));
+    try {
+      const out = path.join(tmpDir, "hammer.glb");
+      await packGLB({ positions: mesh.positions, indices: mesh.indices, normals: mesh.normals }, out);
+      const ext = await extractMeshData(out);
+      assert.equal(ext.positions.length, mesh.positions.length);
+      assert.equal(ext.indices.length, mesh.indices.length);
+      assert.deepEqual(Array.from(ext.indices), Array.from(mesh.indices));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

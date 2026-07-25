@@ -26,6 +26,7 @@
 // signed-tetrahedron-sum formula used in mass-properties.js.
 
 import { momentOfInertia } from "../compute/physics-compute.js";
+import { unionCircleWithPolygon2D, extrudeRingBetweenX, ringArea2D } from "./csg-boolean.js";
 
 // ── Cross-section profiles ──────────────────────────────────────────────
 // Unit-scale 2D points (Y,Z) around the origin, CCW as seen looking down the
@@ -1146,3 +1147,301 @@ export function generateShieldMesh(params = {}) {
 }
 
 export const generateShieldMeshWithNormals = withNormalsWrapper(generateShieldMesh);
+
+// ── Archetypes 6/7: axe + hammer — a genuinely CROSSING head ────────────────
+//
+// Every archetype above (sword/spear/staff/mace/shield) is a chain of
+// COAXIAL sections — each junction is two rings that only ABUT (share a
+// plane, zero volume overlap), which is exactly why `loftSectionsWithBridges`
+// / `bridgeMismatchedRings` is the right tool there and a general
+// boolean/CSG union is the WRONG one (see that function's doc-comment: a
+// BSP-style CSG degenerates precisely on the coplanar end-caps that kind of
+// junction produces).
+//
+// An axe or hammer head is a genuinely different junction: the head
+// CROSSES the haft off-axis (perpendicular, in this module's convention) —
+// real volumetric interpenetration, not abutment. That is exactly the case
+// `server/lib/asset-gen/csg-boolean.js` was built for (see its own
+// doc-comment for the chosen approach — a bounded, closed-form
+// circle/polygon primitive intersection, not a general BSP mesh boolean —
+// and why). This section is the 3D assembly that consumes it.
+//
+// Topology: haft-below tube (capped at the butt, open where it meets the
+// head) → [bridgeMismatchedRings] → a CSG "crossing collar" (the haft's
+// circular cross-section unioned with the head's own 2D silhouette,
+// extruded uniformly through the head's X-thickness slab via
+// `extrudeRingBetweenX`) → [bridgeMismatchedRings] → haft-above tube
+// (open where it meets the head, capped at the far end — a short
+// "overstrike" protrusion past the head, as on a real axe/hammer). Every
+// junction reuses the SAME already-proven bridging machinery the coaxial
+// archetypes use; no new bridging logic is introduced at this layer — only
+// the collar's own interior (built from `unionCircleWithPolygon2D` +
+// `extrudeRingBetweenX`) is new, and both of those are independently
+// manifold-proven in `server/tests/csg-boolean.test.js` before this file
+// ever merges them with the rest of the mesh.
+//
+// The head's own 2D silhouette (in the Y-Z plane, extruded along X) is a
+// "kite": two points forming a FLAT band (the poll, or a hammer's striking
+// face — a real flat surface a real axe/hammer has) and one point where the
+// opposite side tapers to a point (the bit, or a hammer's peen — the other
+// real feature these tools have). This is a genuine cross-section, not a
+// sword-blade clone: it varies over the SWING axis (Z here), not the haft
+// axis (X), which is precisely what makes it a crossing case instead of a
+// coaxial one.
+
+/**
+ * The head's 2D silhouette (Y-Z plane): a "kite" — two points forming a
+ * flat band on one side (a poll / striking face), one point where the
+ * opposite side tapers to a point (a bit / peen). Star-shaped from the
+ * origin by construction (required by `unionCircleWithPolygon2D`).
+ */
+function kiteHeadSilhouette({ frontHalfHeight, frontShoulderZ, frontTipZ, backHalfHeight, backZ }) {
+  return [
+    { y: frontHalfHeight, z: frontShoulderZ },
+    { y: 0, z: frontTipZ },
+    { y: -frontHalfHeight, z: frontShoulderZ },
+    { y: -backHalfHeight, z: -backZ },
+    { y: backHalfHeight, z: -backZ },
+  ];
+}
+
+/**
+ * Shared 3D assembly for the two crossing archetypes (axe, hammer): haft
+ * tube (below) → CSG crossing collar → haft tube (above), fully merged and
+ * welded into one closed manifold. See the section doc-comment above for
+ * why each junction is built the way it is.
+ *
+ * @returns {{positions:Float32Array, indices:Uint32Array, weld:object, headCrossSectionArea:number, union:object}}
+ */
+function assembleHeadCrossingArchetype({ haftRadius, haftSides, haftLength, xHeadLo, xHeadHi, silhouette, arcSides }) {
+  const union = unionCircleWithPolygon2D(haftRadius, silhouette, { arcSides });
+
+  const haftBelow = loftClosedTube("circle", [
+    { x: 0, halfWidth: haftRadius, halfThickness: haftRadius },
+    { x: xHeadLo, halfWidth: haftRadius, halfThickness: haftRadius },
+  ], { sides: haftSides, capStart: true, capEnd: false });
+
+  const haftAbove = loftClosedTube("circle", [
+    { x: xHeadHi, halfWidth: haftRadius, halfThickness: haftRadius },
+    { x: haftLength, halfWidth: haftRadius, halfThickness: haftRadius },
+  ], { sides: haftSides, capStart: false, capEnd: true });
+
+  const collar = extrudeRingBetweenX(union.ring, xHeadLo, xHeadHi);
+
+  const haftLoRing = ringPointsAt("circle", xHeadLo, haftRadius, haftRadius, haftSides);
+  const haftHiRing = ringPointsAt("circle", xHeadHi, haftRadius, haftRadius, haftSides);
+  // Same "ringA=earlier(smaller-x) section's closing ring, ringB=later
+  // section's opening ring" convention bridgeMismatchedRings documents —
+  // here both rings of each bridge happen to sit at the SAME x (a flat,
+  // zero-x-extent bridge, exactly like the sword's own hilt->guard bridge
+  // where the two sections' stations also touch at a single x), which the
+  // function does not require to differ (it bridges by angle only).
+  const bridgeLo = bridgeMismatchedRings(haftLoRing, collar.ringLo);
+  const bridgeHi = bridgeMismatchedRings(collar.ringHi, haftHiRing);
+
+  const merged = mergeMeshes([haftBelow, haftAbove, collar, bridgeLo, bridgeHi]);
+  const welded = weldCoincidentVertices(merged);
+
+  return {
+    positions: welded.positions,
+    indices: welded.indices,
+    weld: { weldedVertexCount: welded.weldedVertexCount, droppedTriangleCount: welded.droppedTriangleCount },
+    headCrossSectionArea: ringArea2D(union.ring),
+    union,
+  };
+}
+
+/**
+ * Beam co-product for a crossing archetype: haft stations (circle, exact)
+ * either side of the head, plus TWO stations spanning the head's own
+ * X-slab whose AREA is the EXACT shoelace area of the real computed union
+ * cross-section (`ringArea2D` — no approximation needed, unlike
+ * momentOfInertia; see below) and whose `momentOfInertia` reuses the same
+ * diamond/rectangle bounding-box approximation `crossSectionProps` already
+ * uses for every other non-circular head in this file (flagged
+ * `approximation: true`, same honesty convention as HONESTY_NOTES). This
+ * matters because the head's real cross-section (circle union'd with a
+ * kite) has no closed-form moment of inertia in this module's existing
+ * vocabulary, but its AREA has an exact closed form (the polygon that's
+ * already been computed) — so area is exact where an exact answer costs
+ * nothing extra, and only momentOfInertia falls back to the established
+ * approximation, exactly the same asymmetry `crossSectionProps` already
+ * documents for the diamond case.
+ */
+function crossingHeadBeamStations({ haftRadius, xHeadLo, xHeadHi, haftLength, silhouette, headCrossSectionArea }) {
+  const circleProps = crossSectionProps("circle", haftRadius, haftRadius);
+  const headThicknessHalf = (xHeadHi - xHeadLo) / 2;
+  const maxHalfHeight = Math.max(...silhouette.map((p) => Math.abs(p.y)));
+  const headMoi = crossSectionProps("diamond", headThicknessHalf, maxHalfHeight).momentOfInertia;
+  const headStation = { area: headCrossSectionArea, momentOfInertia: headMoi, approximation: true };
+
+  return [
+    { s: 0, ...circleProps },
+    { s: xHeadLo / haftLength, ...circleProps },
+    { s: xHeadLo / haftLength, ...headStation },
+    { s: xHeadHi / haftLength, ...headStation },
+    { s: xHeadHi / haftLength, ...circleProps },
+    { s: 1, ...circleProps },
+  ];
+}
+
+function assertPositiveSet(p, keys) {
+  for (const k of keys) assertPositive(k, p[k]);
+}
+
+const AXE_DEFAULTS = {
+  haftLength: 0.5,
+  haftRadius: 0.016,
+  haftSides: 10,
+  overstrike: 0.02,
+  headThickness: 0.03,
+  eyeHalfHeight: 0.05,
+  eyeFrontZ: 0.025,
+  bitTipZ: 0.14,
+  pollZ: 0.012,
+  arcSides: 20,
+};
+
+/**
+ * Generate a deterministic axe mesh: a circular haft with a bladed head
+ * CROSSING it perpendicular to the haft axis — a real off-axis attachment
+ * (the eye/poll band flat on one side, a bit tapering to a point on the
+ * other), built via genuine CSG (see the section doc-comment above), not a
+ * coaxial loft. `eyeFrontZ`/`eyeHalfHeight` describe the eye/poll band's
+ * flat shoulder; `bitTipZ` is where the bit tapers to its edge; `pollZ` is
+ * the poll's flat back depth — deliberately smaller than `haftRadius` by
+ * default so the haft cylinder genuinely bulges past the poll's flat face
+ * in the assembled collar (a real exercised interpenetration, not merely a
+ * "head swallows haft" trivial case — see `server/tests/csg-boolean.test.js`
+ * for the standalone proof of this exact parameter regime).
+ *
+ * @param {object} [params] see AXE_DEFAULTS for the full parameter set + units (meters)
+ */
+export function generateAxeMesh(params = {}) {
+  const p = { ...AXE_DEFAULTS, ...params };
+  assertPositiveSet(p, ["haftLength", "haftRadius", "overstrike", "headThickness", "eyeHalfHeight", "eyeFrontZ", "bitTipZ", "pollZ"]);
+  if (!Number.isInteger(p.haftSides) || p.haftSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: haftSides must be an integer >= 3, got ${p.haftSides}`);
+  }
+  if (!Number.isInteger(p.arcSides) || p.arcSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: arcSides must be an integer >= 3, got ${p.arcSides}`);
+  }
+  if (p.bitTipZ <= p.eyeFrontZ) {
+    throw new Error(`parametric_mesh_bad_param: bitTipZ (${p.bitTipZ}) must exceed eyeFrontZ (${p.eyeFrontZ})`);
+  }
+  const xHeadHi = p.haftLength - p.overstrike;
+  const xHeadLo = xHeadHi - p.headThickness;
+  if (xHeadLo <= 0) {
+    throw new Error(`parametric_mesh_bad_param: headThickness (${p.headThickness}) + overstrike (${p.overstrike}) must be less than haftLength (${p.haftLength})`);
+  }
+
+  const silhouette = kiteHeadSilhouette({
+    frontHalfHeight: p.eyeHalfHeight, frontShoulderZ: p.eyeFrontZ, frontTipZ: p.bitTipZ,
+    backHalfHeight: p.eyeHalfHeight, backZ: p.pollZ,
+  });
+
+  const assembled = assembleHeadCrossingArchetype({
+    haftRadius: p.haftRadius, haftSides: p.haftSides, haftLength: p.haftLength,
+    xHeadLo, xHeadHi, silhouette, arcSides: p.arcSides,
+  });
+
+  const beam = {
+    stations: crossingHeadBeamStations({
+      haftRadius: p.haftRadius, xHeadLo, xHeadHi, haftLength: p.haftLength,
+      silhouette, headCrossSectionArea: assembled.headCrossSectionArea,
+    }),
+  };
+
+  return {
+    positions: assembled.positions,
+    indices: assembled.indices,
+    beam,
+    meta: {
+      totalLength: p.haftLength,
+      xHeadLo, xHeadHi,
+      headCrossSectionArea: assembled.headCrossSectionArea,
+    },
+    weld: assembled.weld,
+  };
+}
+
+export const generateAxeMeshWithNormals = withNormalsWrapper(generateAxeMesh);
+
+const HAMMER_DEFAULTS = {
+  haftLength: 0.45,
+  haftRadius: 0.016,
+  haftSides: 10,
+  overstrike: 0.02,
+  headThickness: 0.032,
+  peenHalfHeight: 0.03,
+  peenShoulderZ: 0.02,
+  peenTipZ: 0.075,
+  faceHalfHeight: 0.05,
+  faceZ: 0.01,
+  arcSides: 20,
+};
+
+/**
+ * Generate a deterministic hammer mesh: a circular haft with a head
+ * CROSSING it perpendicular to the haft axis, same CSG construction as
+ * `generateAxeMesh` but a genuinely different silhouette — a flared FLAT
+ * striking face on one side (`faceHalfHeight` wider than the eye,
+ * `faceZ` deliberately smaller than `haftRadius` by default so the collar
+ * genuinely exercises the circle-bulging-past-the-face case — see
+ * `server/tests/csg-boolean.test.js`) and a narrower tapered PEEN on the
+ * other (`peenHalfHeight`/`peenShoulderZ`/`peenTipZ`) — not a rescaled
+ * axe: the face is wider than the eye (flares out) where the axe's poll is
+ * the SAME width as its eye (a flat band), and the peen is shorter and
+ * blunter than the axe's bit.
+ *
+ * @param {object} [params] see HAMMER_DEFAULTS for the full parameter set + units (meters)
+ */
+export function generateHammerMesh(params = {}) {
+  const p = { ...HAMMER_DEFAULTS, ...params };
+  assertPositiveSet(p, ["haftLength", "haftRadius", "overstrike", "headThickness", "peenHalfHeight", "peenShoulderZ", "peenTipZ", "faceHalfHeight", "faceZ"]);
+  if (!Number.isInteger(p.haftSides) || p.haftSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: haftSides must be an integer >= 3, got ${p.haftSides}`);
+  }
+  if (!Number.isInteger(p.arcSides) || p.arcSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: arcSides must be an integer >= 3, got ${p.arcSides}`);
+  }
+  if (p.peenTipZ <= p.peenShoulderZ) {
+    throw new Error(`parametric_mesh_bad_param: peenTipZ (${p.peenTipZ}) must exceed peenShoulderZ (${p.peenShoulderZ})`);
+  }
+  const xHeadHi = p.haftLength - p.overstrike;
+  const xHeadLo = xHeadHi - p.headThickness;
+  if (xHeadLo <= 0) {
+    throw new Error(`parametric_mesh_bad_param: headThickness (${p.headThickness}) + overstrike (${p.overstrike}) must be less than haftLength (${p.haftLength})`);
+  }
+
+  const silhouette = kiteHeadSilhouette({
+    frontHalfHeight: p.peenHalfHeight, frontShoulderZ: p.peenShoulderZ, frontTipZ: p.peenTipZ,
+    backHalfHeight: p.faceHalfHeight, backZ: p.faceZ,
+  });
+
+  const assembled = assembleHeadCrossingArchetype({
+    haftRadius: p.haftRadius, haftSides: p.haftSides, haftLength: p.haftLength,
+    xHeadLo, xHeadHi, silhouette, arcSides: p.arcSides,
+  });
+
+  const beam = {
+    stations: crossingHeadBeamStations({
+      haftRadius: p.haftRadius, xHeadLo, xHeadHi, haftLength: p.haftLength,
+      silhouette, headCrossSectionArea: assembled.headCrossSectionArea,
+    }),
+  };
+
+  return {
+    positions: assembled.positions,
+    indices: assembled.indices,
+    beam,
+    meta: {
+      totalLength: p.haftLength,
+      xHeadLo, xHeadHi,
+      headCrossSectionArea: assembled.headCrossSectionArea,
+    },
+    weld: assembled.weld,
+  };
+}
+
+export const generateHammerMeshWithNormals = withNormalsWrapper(generateHammerMesh);
