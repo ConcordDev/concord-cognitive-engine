@@ -52,7 +52,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -242,7 +242,16 @@ describe('E2E — Universal Move System Pillar 2/3 through the real combat/attac
     authHeaders = { Authorization: 'Bearer ' + reg.body.token };
   });
 
-  after(function () { return stopServer(serverProc); });
+  after(function () {
+    const done = stopServer(serverProc);
+  // Remove the spawned server's data dir. Each of these e2e tests boots a
+  // REAL server against a fresh mkdtemp dir, which migrates a full ~118MB
+  // SQLite DB. Without this the dir survives the run, so a full suite
+  // stranded ~800MB in /tmp and eventually filled the disk mid-run.
+  // force:true so a missing dir can never fail teardown.
+  rmSync(dataDir, { recursive: true, force: true });
+    return done;
+  });
 
   /** Fetch a real, live NPC id in a real content-seeded world via the real
    *  GET /api/worlds/:worldId/npcs route (proves the world is really seeded,

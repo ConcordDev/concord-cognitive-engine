@@ -25,7 +25,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -172,12 +172,13 @@ async function getJSONAuth(base, path, headers) {
 describe('E2E — /api/time-loop/* route family', { timeout: 120000 }, function() {
   let base;
   let serverProc;
+  let dataDir;
   let authHeaders;
   const WORLD_ID = 'concordia-hub';
 
   before(async function() {
     const port = await getFreePort();
-    const dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-timeloop-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-timeloop-'));
     base = 'http://127.0.0.1:' + port;
     serverProc = await spawnServer(port, dataDir, { AUTH_MODE: 'public' }, 90000);
 
@@ -198,7 +199,16 @@ describe('E2E — /api/time-loop/* route family', { timeout: 120000 }, function(
     authHeaders = { Authorization: 'Bearer ' + reg.body.token };
   });
 
-  after(function() { return stopServer(serverProc); });
+  after(function() {
+    const stopped = stopServer(serverProc);
+    // Remove the spawned server's data dir. Each of these e2e tests boots a
+    // REAL server against a fresh mkdtemp dir that migrates a full ~118MB
+    // SQLite DB. Without this the dir outlives the run, so one full suite
+    // stranded ~800MB in /tmp and twice filled the disk mid-run.
+    // force:true so a missing dir can never fail teardown.
+    rmSync(dataDir, { recursive: true, force: true });
+    return stopped;
+  });
 
   // None of these 5 assertions should ever see 404 — a 404 here is exactly
   // the "missing leading slash before a path param" defect class the audit

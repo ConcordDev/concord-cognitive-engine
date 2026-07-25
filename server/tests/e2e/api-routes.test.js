@@ -20,7 +20,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -166,15 +166,25 @@ async function postJSON(base, path, payload) {
 describe('E2E API routes — public auth mode', { timeout: 120000 }, function() {
   let base;
   let serverProc;
+  let dataDir;
 
   before(async function() {
     const port = await getFreePort();
-    const dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-pub-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-pub-'));
     base = 'http://127.0.0.1:' + port;
     serverProc = await spawnServer(port, dataDir, { AUTH_MODE: 'public' }, 90000);
   });
 
-  after(function() { return stopServer(serverProc); });
+  after(function() {
+    const stopped = stopServer(serverProc);
+    // Remove the spawned server's data dir. Each of these e2e tests boots a
+    // REAL server against a fresh mkdtemp dir that migrates a full ~118MB
+    // SQLite DB. Without this the dir outlives the run, so one full suite
+    // stranded ~800MB in /tmp and twice filled the disk mid-run.
+    // force:true so a missing dir can never fail teardown.
+    rmSync(dataDir, { recursive: true, force: true });
+    return stopped;
+  });
 
   // ── /health ──────────────────────────────────────────────────────────────
 
@@ -435,15 +445,25 @@ describe('E2E API routes — public auth mode', { timeout: 120000 }, function() 
 describe('E2E API routes — hybrid auth (auth protection)', { timeout: 120000 }, function() {
   let base;
   let serverProc;
+  let dataDir;
 
   before(async function() {
     const port = await getFreePort();
-    const dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-hyb-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-hyb-'));
     base = 'http://127.0.0.1:' + port;
     serverProc = await spawnServer(port, dataDir, { AUTH_MODE: 'hybrid' }, 90000);
   });
 
-  after(function() { return stopServer(serverProc); });
+  after(function() {
+    const stopped = stopServer(serverProc);
+    // Remove the spawned server's data dir. Each of these e2e tests boots a
+    // REAL server against a fresh mkdtemp dir that migrates a full ~118MB
+    // SQLite DB. Without this the dir outlives the run, so one full suite
+    // stranded ~800MB in /tmp and twice filled the disk mid-run.
+    // force:true so a missing dir can never fail teardown.
+    rmSync(dataDir, { recursive: true, force: true });
+    return stopped;
+  });
 
   // ── Always-public routes still work ──────────────────────────────────────
 

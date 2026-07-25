@@ -45,7 +45,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -203,6 +203,7 @@ async function registerWelder(base, label) {
 describe('E2E — welding client portal (/api/welding/portal/*)', { timeout: 120000 }, function () {
   let base;
   let serverProc;
+  let dataDir;
   let welderAHeaders;
   let welderBHeaders;
 
@@ -215,7 +216,7 @@ describe('E2E — welding client portal (/api/welding/portal/*)', { timeout: 120
 
   before(async function () {
     const port = await getFreePort();
-    const dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-weldportal-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-weldportal-'));
     base = 'http://127.0.0.1:' + port;
     // Hybrid, NOT public — auth must be genuinely enforced elsewhere in
     // this server for the "no auth required" assertions below to mean
@@ -281,7 +282,16 @@ describe('E2E — welding client portal (/api/welding/portal/*)', { timeout: 120
     assert.notEqual(estimateBToken, estimateAToken, 'sanity: tokens must differ');
   });
 
-  after(function () { return stopServer(serverProc); });
+  after(function() {
+    const stopped = stopServer(serverProc);
+    // Remove the spawned server's data dir. Each of these e2e tests boots a
+    // REAL server against a fresh mkdtemp dir that migrates a full ~118MB
+    // SQLite DB. Without this the dir outlives the run, so one full suite
+    // stranded ~800MB in /tmp and twice filled the disk mid-run.
+    // force:true so a missing dir can never fail teardown.
+    rmSync(dataDir, { recursive: true, force: true });
+    return stopped;
+  });
 
   // ── Token strength (secured-token fix) ──────────────────────────────────
 
