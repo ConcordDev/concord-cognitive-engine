@@ -66,6 +66,82 @@ export const api: AxiosInstance = axios.create({
   withCredentials: true, // SECURITY: Include cookies in cross-origin requests
 });
 
+// ---- Auth-refresh single-flight + failure cooldown ------------------------
+//
+// The 401 interceptor below auto-refreshes an expired access cookie. Its
+// `_authRetried` guard is stored on the REQUEST CONFIG, which makes it a
+// per-request guard, not a global one: every new request that 401s arrives
+// with a fresh config and therefore fires its OWN `POST /api/auth/refresh`.
+//
+// That is correct for the case it was written for (one expired access cookie,
+// a valid refresh cookie behind it). It is wrong for the LOGGED-OUT case,
+// where there is no refresh cookie at all, so every refresh is guaranteed to
+// fail and the app keeps asking anyway. Measured on a real logged-out tab
+// (2026-07-25): 11 refresh attempts in 8 minutes, one per background poller
+// that happened to 401, with no memory that the previous one had just failed.
+//
+// The server's `authRateLimiter` allows 5 FAILED auth attempts per 15 minutes
+// (`skipSuccessfulRequests: true`), so attempts 6+ return 429 — and because
+// the logged-out browser is also on the 30-req/min anonymous bucket, the
+// wasted traffic pushed unrelated reads (`/api/system/health`,
+// `/api/events/paginated`) into 429 as well. Net effect: a tab left sitting on
+// the login page rate-limits ITSELF, and a user who returns to it meets a
+// limit the app inflicted on its own behalf. The server was behaving
+// correctly throughout; the client was the fault.
+//
+// Two guards, both standard:
+//   1. SINGLE-FLIGHT — concurrent 401s await one shared refresh instead of
+//      starting N. Fixes the burst.
+//   2. FAILURE COOLDOWN — after a refresh fails, suppress further attempts for
+//      a window. Fixes the steady drip, which is the half that actually
+//      exhausts a 15-minute budget.
+//
+// Any 2xx clears the cooldown (see the success interceptor), so a real login
+// immediately restores normal refresh behaviour — the cooldown can never
+// strand a session that has genuinely come back.
+const REFRESH_FAIL_COOLDOWN_MS = 60_000;
+let _refreshInFlight: Promise<unknown> | null = null;
+let _refreshBlockedUntil = 0;
+
+/** Test seam + login hook: forget that refresh was failing. */
+export function clearAuthRefreshBackoff(): void {
+  _refreshBlockedUntil = 0;
+}
+
+/** Introspection for tests — never used to make control-flow decisions. */
+export function _authRefreshState() {
+  return { blockedUntil: _refreshBlockedUntil, inFlight: _refreshInFlight !== null };
+}
+
+/**
+ * Refresh the session at most once concurrently, and not at all while a recent
+ * failure is still cooling down. Rejects (rather than silently resolving) when
+ * suppressed, so the caller takes its existing "refresh failed" branch — the
+ * user-visible behaviour is unchanged, only the request volume drops.
+ */
+export async function attemptTokenRefresh(): Promise<unknown> {
+  if (Date.now() < _refreshBlockedUntil) {
+    throw new Error('auth_refresh_cooling_down');
+  }
+  if (_refreshInFlight) return _refreshInFlight;
+
+  _refreshInFlight = api
+    .post('/api/auth/refresh')
+    .then((res) => {
+      _refreshBlockedUntil = 0;
+      return res;
+    })
+    .catch((err) => {
+      _refreshBlockedUntil = Date.now() + REFRESH_FAIL_COOLDOWN_MS;
+      throw err;
+    })
+    .finally(() => {
+      _refreshInFlight = null;
+    });
+
+  return _refreshInFlight;
+}
+
 // ---- Retry with exponential backoff for transient server errors ----
 const MAX_RETRIES = 3;
 const RETRY_STATUS_CODES = new Set([502, 503, 504]);
@@ -157,6 +233,9 @@ api.interceptors.response.use(
       }
     }
 
+    // A 2xx proves the session is live again, so lift any refresh suppression.
+    clearAuthRefreshBackoff();
+
     return response;
   },
   async (error: AxiosError) => {
@@ -208,7 +287,7 @@ api.interceptors.response.use(
         if (config && !config._authRetried) {
           config._authRetried = true;
           try {
-            await api.post('/api/auth/refresh');
+            await attemptTokenRefresh();
             // New cookies are now set; replay the original request. The
             // axios instance will pick up the refreshed CSRF + auth
             // cookies automatically via withCredentials.
