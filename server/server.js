@@ -1771,6 +1771,7 @@ import configureMiddleware from "./middleware/index.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
+import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
@@ -5564,14 +5565,38 @@ function initDatabase() {
   try {
     // Ensure the DB parent directory exists (handles both /data/concord.db and /data/db/concord.db)
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    // Tuning bumped for 32GB-host deployments. mmap=4GB lets SQLite
-    // memory-map large tables (DTU substrate) directly so reads bypass
-    // the page cache entirely; cache=-1024MB (1GB negative = KB count
-    // is page count) holds frequently-touched pages in RAM. Override
-    // via env on smaller boxes.
-    const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 4096;
-    const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 1024;
-    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 10000;
+    // Launch-readiness pragma pass (2026-07-25) — the mmap/cache defaults
+    // below were originally "bumped for 32GB-host deployments" (a dedicated
+    // box). The REAL target for this launch is the documented 9 vCPU / 50GB
+    // shared box (see "GPU/CPU pinning audit" elsewhere in this file's
+    // history / docker-compose.yml): ~20GB already committed to 5+ Ollama
+    // processes plus the Node heap, leaving materially less headroom than a
+    // dedicated 32GB host. Holding the old absolute 4GB mmap / 1GB cache on
+    // THIS box competes with exactly the memory headroom the memory-pressure
+    // watchdog and the new event-loop load-shedder (lib/request-admission.js)
+    // are trying to protect. Halved both, mirroring the same "correct the
+    // stale dedicated-host assumption to match the real shared box" move
+    // already made for the Ollama model tuning in this deployment. Still
+    // fully env-overridable up for a genuinely dedicated host.
+    const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 2048;
+    const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 512;
+    // wal_autocheckpoint sizing (2026-07-25 launch-readiness pass): the
+    // previous 10000-page default (~78MB of WAL, at this DB's page_size=8192)
+    // meant every automatic checkpoint had up to ~78MB of dirty pages to
+    // flush back into the main file in ONE synchronous call. better-sqlite3
+    // has no async escape hatch — that flush runs on the same single Node
+    // thread that serves every HTTP request, so a big rare checkpoint is a
+    // direct, self-inflicted contributor to the exact event-loop-lag spikes
+    // the new admission-control gate (lib/request-admission.js, 300ms
+    // default) exists to shed around. Research consensus (SQLite's own docs,
+    // and production WAL-tuning writeups) frames this as a frequency/burst-
+    // size tradeoff with production deployments typically landing between
+    // 2000-10000 pages; the previous value sat at the extreme high (bursty)
+    // end of that range. Moved to 4000 pages (~32MB) — smaller, more
+    // frequent checkpoints instead of rarer, larger ones — while staying
+    // comfortably above SQLite's own stock default (1000 pages) so this
+    // isn't checkpointing on every trivial write either. Override via env.
+    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 4000;
     // Stability audit (2026-07-20) — wal_autocheckpoint sets the checkpoint
     // CADENCE, but under checkpoint starvation (a long-running reader holding
     // the WAL open, an export, a stuck analytics query) SQLite can't reclaim
@@ -5579,10 +5604,30 @@ function initDatabase() {
     // disk fills — which then breaks writes for every user, not just the
     // slow reader. journal_size_limit is the hard backstop: once the WAL
     // exceeds this size, SQLite forcibly truncates it back down after the
-    // next checkpoint that CAN complete, instead of growing forever. 64MB
-    // default is generous headroom over the ~80MB (10000 pages × 8KB) a
-    // normal checkpoint cycle touches. Override via env on busier boxes.
+    // next checkpoint that CAN complete, instead of growing forever. With
+    // the walPages change above, 64MB default is now genuinely larger than
+    // the ~32MB (4000 pages × 8KB) a normal checkpoint cycle touches — this
+    // backstop should only ever fire during real starvation, not every
+    // normal cycle (previously it sat BELOW the ~78MB the old 10000-page
+    // cadence touched, which meant the "starvation-only" backstop and the
+    // routine cadence overlapped — corrected as a side effect of the change
+    // above). Override via env on busier boxes.
     const walSizeLimitMb = Number(process.env.CONCORD_SQLITE_WAL_SIZE_LIMIT_MB) || 64;
+    // busy_timeout (2026-07-25 launch-readiness pass) — research consensus
+    // (SQLite docs + production WAL writeups) is unanimous that this is the
+    // single highest-leverage pragma for concurrent-write survival: without
+    // enough of it, a second writer contending for the one WAL write lock
+    // fails INSTANTLY with SQLITE_BUSY instead of waiting the lock out. The
+    // writer's 10s default already exceeds the commonly-cited 5s production
+    // floor. The read-replica handle was hardcoded to 5000ms with no env
+    // override (inconsistent with every other pragma here) — bumped to
+    // match the writer's default and made overridable, since there's no
+    // principled reason a reader should get a SHORTER grace period than the
+    // writer before giving up: a reader that fails fast under any transient
+    // contention (e.g. mid-checkpoint on the writer) turns into a
+    // user-visible 500 instead of a brief, invisible wait.
+    const busyTimeoutMs = Number(process.env.CONCORD_SQLITE_BUSY_TIMEOUT_MS) || 10000;
+    const replicaBusyTimeoutMs = Number(process.env.CONCORD_SQLITE_REPLICA_BUSY_TIMEOUT_MS) || 10000;
     if (READ_REPLICA) {
       // Read-only replica: the writer owns schema + WAL journal mode. Open
       // Open WRITABLE (not readonly). The monolith has many scattered boot-time
@@ -5599,7 +5644,7 @@ function initDatabase() {
       db.pragma("journal_mode = WAL");        // already-WAL → no-op read of current mode
       db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
       db.pragma(`cache_size = -${cacheMb * 1024}`);
-      db.pragma("busy_timeout = 5000");
+      db.pragma(`busy_timeout = ${replicaBusyTimeoutMs}`);
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`);
       structuredLog?.("info", "db_readonly_replica", { dbPath: DB_PATH, mode: "writable-until-listen" });
     } else {
@@ -5610,7 +5655,7 @@ function initDatabase() {
       db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
       db.pragma(`cache_size = -${cacheMb * 1024}`);
       db.pragma("temp_store = MEMORY");       // Temp tables in RAM
-      db.pragma("busy_timeout = 10000");      // 10s retry — burst-safe under concurrent writers
+      db.pragma(`busy_timeout = ${busyTimeoutMs}`); // 10s default retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
       db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
@@ -8036,6 +8081,22 @@ async function initMetrics() {
       name: "concord_heartbeat_low_priority_skipped_total",
       help: "lowPriority heartbeat ticks skipped due to event-loop pressure, by module",
       labelNames: ["module"],
+      registers: [METRICS.registry],
+    });
+
+    // Launch-readiness (2026-07-25) — front-door load shedding. Counts an
+    // HTTP request rejected with a real 503+Retry-After by
+    // lib/request-admission.js's event-loop-lag admission gate, by priority
+    // class (protected/sheddable — critical/health traffic is never
+    // evaluated, so it never appears here) and reason (event_loop_lag =
+    // sheddable traffic shed at the lower bar; event_loop_lag_critical =
+    // even protected/authenticated traffic shed at the much higher bar).
+    // Sustained non-zero rate means the box is admission-limiting under
+    // real load — pair with `concord_event_loop_lag_ms` to see why.
+    METRICS.counters.requestsShed = new prom.Counter({
+      name: "concord_requests_shed_total",
+      help: "HTTP requests rejected (503) by the event-loop-lag load shedder, by priority class and reason",
+      labelNames: ["priority", "reason"],
       registers: [METRICS.registry],
     });
 
@@ -32331,6 +32392,16 @@ app.use((req, res, next) => {
 // ---- Privacy: unauthenticated throttle + bot guard (runs after authMiddleware) ----
 if (unauthRateLimiter) app.use(unauthRateLimiter);
 app.use(botGuardMiddleware);
+
+// ---- Front-door load shedding (Launch-readiness, 2026-07-25) ----
+// Admission control ONLY — never touches an already-admitted, in-flight
+// request. Mounted after auth (req.user is populated) and after the bot
+// guard, before any route is reached. See lib/request-admission.js for the
+// full rationale (priority classes, threshold choices, honesty invariant).
+// Kill-switch: CONCORD_LOAD_SHED_ENABLED=0.
+app.use(createLoadSheddingMiddleware({
+  onShed: (priority, reason) => { METRICS.counters.requestsShed?.inc({ priority, reason }); },
+}));
 
 // ---- Global Async Safety Net ----
 // Wraps all async route handlers to catch unhandled promise rejections.
