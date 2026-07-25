@@ -188,6 +188,8 @@ export function FoundryCanvas() {
         return;
       }
       setWorldStatus('published');
+      // @fake-data-ok: builds an honest disclosure of how many systems the backend
+      // actually skipped, appended to the success toast so the user is told.
       const stubNote = r.skippedStubs?.length ? ` (${r.skippedStubs.length} system(s) pending Phase 7)` : '';
       flash('ok', `Published as a live world${stubNote}.`);
     } catch {

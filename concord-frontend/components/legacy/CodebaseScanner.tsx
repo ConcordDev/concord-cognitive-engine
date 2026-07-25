@@ -229,6 +229,8 @@ export function CodebaseScanner() {
             <Metric label="Avg Complexity" value={active.summary.avgComplexity.toFixed(1)} />
             <Metric label="Test : Code Ratio" value={active.summary.testToCodeRatio.toFixed(2)} />
             <Metric label="Legacy-Lang Files" value={String(active.summary.legacyLanguageFiles)} tone={active.summary.legacyLanguageFiles > 0 ? 'warn' : 'ok'} />
+            {/* detector-allow: frontend-fake-data — "TODO" is the metric's subject (scanned
+                TODO/FIXME debt); the value comes from a real scan result. */}
             <Metric label="TODO / FIXME Debt" value={String(active.summary.totalTodos)} tone={active.summary.totalTodos > 0 ? 'warn' : 'ok'} />
             <Metric label="Comment Ratio" value={`${(active.summary.avgCommentRatio * 100).toFixed(0)}%`} />
             <Metric label="Languages" value={String(active.languages.length)} />

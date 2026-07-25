@@ -144,7 +144,7 @@ export function OwnedSatellites() {
         void findPasses(lat, lon);
       },
       (e) => { setPassError(`Location denied: ${e.message}`); setPassLoading(false); },
-      { timeout: 10000 },
+      { timeout: 10000 }, // @env-config-ok: PositionOptions.timeout — a W3C Geolocation API argument (how long to wait for a GPS fix before the error callback fires), not deployment config.
     );
   }
 

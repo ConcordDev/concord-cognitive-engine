@@ -85,7 +85,7 @@ export function StravaGpsPanel() {
         }]);
       },
       (err) => setError(`GPS error: ${err.message}`),
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }, // @env-config-ok: PositionOptions.timeout — a W3C Geolocation API argument (how long to wait for a GPS fix before the error callback fires), not deployment config.
     );
   };
 

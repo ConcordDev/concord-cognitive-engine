@@ -415,6 +415,8 @@ function CanvasEditor({ project, run, reload }: SubProps) {
                 <label className="block text-[10px] text-gray-400">Placeholder
                   <input
                     value={String(sel.props.placeholder || '')}
+                    // detector-allow: frontend-fake-data — "placeholder" is the NAME of the
+                    // prop being edited on the input the user is designing, not content.
                     onChange={(e) => updateProp('placeholder', e.target.value)}
                     className="w-full bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs mt-0.5"
                   />
