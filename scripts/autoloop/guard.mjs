@@ -36,12 +36,32 @@ const PROTECTED = [
 ];
 
 // 2) Money / auth invariant files — edits here are a HARD human-escalation, never autonomous.
+//
+// Path-rot fix (2026-07-25, authorized). This list was audited by resolving
+// every literal path in it (and in PROTECTED) against the real tree — the
+// same "a rotted proof means the invariant silently stopped being enforced"
+// discipline `verify-invariant-test-links.mjs` applies to docs, turned on the
+// guard itself. Exactly one entry did not resolve, and it was the worst
+// possible one: the coin-MINTING file. The list said
+// `server/lib/coin-service.js`; the file has always lived at
+// `server/economy/coin-service.js` (its four siblings here are already
+// `server/economy/...`, so this was a copy-paste slip, not a move).
+//
+// Consequence while it was rotted: `mintCoins`/`burnCoins` — the functions
+// that create and destroy Concord Coin against the 1:1 USD peg — were NOT
+// covered by the money/auth escalation gate this list exists to enforce. The
+// rule had never matched a single file. Verified empirically: commit
+// 7cfefba0 edits that exact file and the guard reported "clean".
+//
+// Pinned by tests/autoloop-guard-invariant-paths.test.js, which resolves
+// every literal path in both lists so this class of rot fails loudly instead
+// of silently disarming a gate.
 const INVARIANT = [
   /^server\/economy\/royalty-cascade\.js$/,
   /^server\/economy\/withdrawals\.js$/,
   /^server\/economy\/balances\.js$/,
   /^server\/lib\/creative-marketplace-constants\.js$/,
-  /^server\/lib\/coin-service\.js$/,
+  /^server\/economy\/coin-service\.js$/,
 ];
 
 const files = changedFiles();
