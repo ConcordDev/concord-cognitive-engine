@@ -314,6 +314,25 @@ export function getReflections(db, dtuId, { limit = 50, offset = 0 } = {}) {
 /**
  * Set or override lens protection mode for an artifact.
  * Culture lens CANNOT be overridden — ISOLATED forever.
+ *
+ * ⚠️ `creatorId` IS ACCEPTED BUT NOT VERIFIED — the caller MUST enforce
+ * ownership before calling this.
+ *
+ * Flagged 2026-07-25 by the unused-destructured-param detector. The override
+ * path below gates on a `creatorOverride` table, so the *concept* of "only the
+ * creator may override" exists — but nothing here checks that `creatorId`
+ * actually owns `artifactId`. The check was never implemented, and it cannot be
+ * implemented here honestly: `lens_protection` has no creator column
+ * (see the INSERT below) and this module has no ownership source to join
+ * against, so adding one would need a migration and a deliberate design call.
+ *
+ * The param is retained rather than deleted on purpose — dropping it would
+ * erase the evidence that an ownership check is missing, which is exactly how
+ * this kind of gap gets lost. Currently latent, NOT live: `setLensProtection`
+ * is only re-exported from economy/index.js and called from
+ * tests/lens-culture.test.js — no route or macro reaches it. Anyone wiring it
+ * to a real surface must add the ownership check first, or artifact protection
+ * modes become editable by any caller.
  */
 export function setLensProtection(db, { artifactId, lensId, protectionMode, creatorId }) {
   if (!artifactId || !lensId || !protectionMode) {
