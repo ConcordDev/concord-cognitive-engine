@@ -60,6 +60,7 @@ import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
 
 import { isAvailableIn, crossWorldPotency, worldAffinity } from '../../lib/cross-world-potency.js';
+import { armOrphanGuard } from '../lib/e2e-orphan-guard.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_JS = join(__dirname, '../../server.js');
@@ -113,6 +114,11 @@ function spawnServer(port, dataDir, extraEnv, timeoutMs) {
       cwd: SERVER_CWD,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    // The after() hook below tears this child (and dataDir) down on the happy
+    // path, but it never runs when `node --test` SIGTERMs a file that blew its
+    // --test-timeout — which orphans a real, CPU-burning server process and
+    // strands its migrated SQLite tree. See tests/lib/e2e-orphan-guard.js.
+    armOrphanGuard(child, dataDir);
 
     let resolved = false;
     const timer = setTimeout(function () {

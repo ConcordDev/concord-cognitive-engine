@@ -14,7 +14,7 @@
     "test:depth:raw": "NODE_ENV=test DB_PATH=/tmp/deploy-gate-depth.db node --test --import=./tests/preload/no-egress.mjs --test-concurrency=2 --test-force-exit --test-timeout=60000 'tests/depth/*.test.js'",
     "test:watch": "node --test --watch --test-timeout=60000 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:coverage": "NODE_ENV=test node --test --import=./tests/preload/no-egress.mjs --test-force-exit --test-timeout=60000 --experimental-test-coverage 'tests/**/*.test.js' 'tests/**/*-tests.js'",
-    "test:e2e": "node --test --test-force-exit --test-timeout=60000 'tests/e2e/**/*.test.js'",
+    "test:e2e": "node --test --test-force-exit --test-timeout=300000 'tests/e2e/**/*.test.js'",
     "test:behavior": "NODE_ENV=test node --test --import=./tests/preload/no-egress.mjs --test-force-exit --test-timeout=900000 tests/behavior/lens-behavior-smoke.behavior.js",
     "test:sim": "node --test --test-force-exit --test-timeout=120000 'tests/sim/**/*.test.js'",
     "lint": "eslint .",
