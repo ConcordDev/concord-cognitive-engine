@@ -40,7 +40,15 @@ If you ever change to a smaller GPU, override the conscious model: `BRAIN_CONSCI
 ## Heap
 
 The Node server expects a 32GB heap. Set in three places (already wired in repo):
-- `package.json` start script: `node --max-old-space-size=32768 server.js`
+- `package.json` start script: `MAX_OLD_SPACE_SIZE=32768 node --max-old-space-size=32768 --expose-gc server.js`
+  (the env var and the flag MUST stay numerically in sync, and `--expose-gc` is
+  required or both watchdogs' `if (global.gc) global.gc()` silently no-ops —
+  pinned by `server/tests/invariants/launch-script-memory-config.test.js`)
+- **Bare metal does not use this script.** `pm2 start ecosystem.config.cjs --env runpod`
+  (via `startup.sh`) is the real deploy path, and it sets its own, different
+  ceiling: `--max-old-space-size=8192` with `MAX_OLD_SPACE_SIZE: '8192'`, retuned
+  2026-07-20 for the real 9 vCPU / 50GB A40 box. Do not cite the 32GB figure for
+  that deployment.
 - `docker-compose.yml`: `NODE_OPTIONS=--max-old-space-size=32768` and `MAX_OLD_SPACE_SIZE=32768`
 - The `memory-pressure.js` watchdog reads `MAX_OLD_SPACE_SIZE` for its 70/80/90% shed thresholds — these MUST agree.
 

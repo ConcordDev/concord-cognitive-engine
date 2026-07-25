@@ -4,8 +4,8 @@
   "version": "5.0.0",
   "type": "module",
   "scripts": {
-    "start": "node --max-old-space-size=32768 server.js",
-    "dev": "node --max-old-space-size=32768 --watch server.js",
+    "start": "MAX_OLD_SPACE_SIZE=32768 node --max-old-space-size=32768 --expose-gc server.js",
+    "dev": "MAX_OLD_SPACE_SIZE=32768 node --max-old-space-size=32768 --expose-gc --watch server.js",
     "test": "npm run test:main && npm run test:behavior",
     "test:main": "NODE_ENV=test node --test --import=./tests/preload/no-egress.mjs --test-timeout=300000 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:clean-exit": "NODE_ENV=test node --test --import=./tests/preload/no-egress.mjs --test-timeout=300000 'tests/**/*.test.js' 'tests/**/*-tests.js'",

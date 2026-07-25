@@ -12,12 +12,21 @@
 // Per the project invariant in CLAUDE.md: a module crash must never stop
 // the tick. Every handler is wrapped in try/catch.
 //
-// Phase A — Modules are dispatched in PARALLEL by default. Modules with
-// ordering dependencies opt back in via `serial: true`.
+// Phase A — Modules are dispatched STRICTLY SEQUENTIALLY, one at a time,
+// never Promise.all/concurrently (see the doc comment on
+// `tickAllRegistered()` below for why). `serial: true` modules simply run
+// after the default-flagged ones, in registration order — it is not an
+// opt-in to a parallel default, both groups are sequential.
 // Phase B — Each handler invocation is timed and observed into the
-// `concord_heartbeat_block_ms` histogram (declared in server.js). Hung
-// modules are timed out at MODULE_TIMEOUT_MS so they cannot starve
-// the next tick.
+// `concord_heartbeat_block_ms` histogram (declared in server.js). Each
+// handler races against a MODULE_TIMEOUT_MS timer via `Promise.race` so a
+// hung module doesn't block the dispatcher indefinitely — but this only
+// bounds handlers that actually yield the event loop (i.e. `await` at
+// least once). A synchronous, CPU-bound handler runs the JS stack to
+// completion before anything else — including the timeout's own
+// `setTimeout` callback — can execute, so for a truly synchronous hang
+// this is not real preemption/cancellation, only a best-effort bound on
+// handlers that cooperate by awaiting.
 // Phase C — Modules flagged `worker: true` route through the heartbeat
 // worker pool instead of running inline on the main thread.
 // Phase F — Modules flagged `scope: 'global'` only run on the parent
@@ -115,8 +124,13 @@ export function registerHeartbeat(id, { frequency, handler, neverDisable = false
  * before npc-knowledge-bridge reads its writes) — that ordering already
  * implied sequential execution between the two groups; this just makes
  * execution sequential WITHIN each group too. Each handler is independently
- * try/caught and timed; a hung module is timed out at MODULE_TIMEOUT_MS so it
- * cannot starve the rest of the tick indefinitely.
+ * try/caught and timed; each is raced against MODULE_TIMEOUT_MS via
+ * `Promise.race` so the dispatcher can move on rather than wait forever.
+ * That race can only resolve early for handlers that actually yield the
+ * event loop (i.e. `await` somewhere) — a synchronous, CPU-bound handler
+ * runs to completion before the timeout's own callback can fire, so this
+ * is a bound on cooperative handlers, not real preemption of a genuine
+ * synchronous hang.
  *
  * @param {{ state: object, db: object, tickCount: number, reason?: string, scope?: 'global'|'world'|'all' }} ctx
  */

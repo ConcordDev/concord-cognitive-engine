@@ -116,7 +116,7 @@ the full ledger with real timestamps. No manual intervention needed.
 # Point at a real DATA_DIR — DO NOT use a directory that matters if you're
 # just verifying. The commands below assume server/.env is already
 # populated by setup.sh's auto-generated secrets.
-npm start          # node --max-old-space-size=32768 server.js
+npm start          # MAX_OLD_SPACE_SIZE=32768 node --max-old-space-size=32768 --expose-gc server.js
 # or for hot-reload dev:
 npm run dev
 ```
