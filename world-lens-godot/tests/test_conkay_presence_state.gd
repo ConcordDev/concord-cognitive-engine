@@ -1,7 +1,22 @@
 class_name TestConKayPresenceState
 extends RefCounted
 ## Pure-logic tests for conkay/conkay_presence_state.gd (R5/E22 — ConKay
-## spatial mode). ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md.
+## spatial mode).
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 22 checks
+## are asserted on every run.
+##
+## Verified: the state derivation is a pure fold over real macro events, so
+## `apply_macro_event`/`is_busy`/`visual_state` are genuinely covered — the
+## busy state tracks real in-flight calls rather than a timer, and that is
+## now asserted under execution.
+##
+## NOT verified: `color_for_state` returns real Color values and those values
+## are checked, but whether the resulting presence is READABLE as a state
+## change to a person in the Hub is not — headless installs RasterizerDummy
+## and draws nothing. Queued in world-lens-godot/VISUAL_QA.md.
 
 const ConKayPresenceState := preload("res://conkay/conkay_presence_state.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

@@ -1,9 +1,27 @@
 class_name TestGaitSolver
 extends RefCounted
 ## Pure-logic tests for avatar/gait_solver.gd AND avatar/two_bone_ik.gd.
-## ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md. These call
-## static functions directly; no scene tree or live rig node is needed, same
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — at 74 checks
+## the largest in the project, all asserted on every run. These call static
+## functions directly; no scene tree or live rig node is needed, same
 ## pattern as tests/test_animation_state_machine.gd.
+##
+## Verified: distance-driven gait phase (cycling and wrapping), the
+## speed→stride relationship, the exact 180-degree left/right leg phase
+## offset, and the law-of-cosines two-bone IK solve — reachable targets, and
+## the clamped behaviour for targets too far and too close. Because these run
+## on real engine Vector3/Basis value types, the IK assertions are checked
+## against the engine's own vector math rather than a reasoned model of it.
+##
+## NOT verified: whether the resulting WALK reads as a walk. Foot-sliding,
+## swing-phase toe clearance (LIFT_HEIGHT_M is this port's own reasoned
+## value, with no Three.js equivalent to mirror), and knee-pop at the IK
+## clamp boundaries are all things only a human watching a rig at a real
+## display can judge — headless installs RasterizerDummy and draws nothing.
+## Queued in world-lens-godot/VISUAL_QA.md.
 
 const GaitSolver := preload("res://avatar/gait_solver.gd")
 const TwoBoneIK := preload("res://avatar/two_bone_ik.gd")

@@ -1,10 +1,28 @@
 class_name TestFlightController
 extends RefCounted
 ## Pure-logic tests for avatar/flight_controller.gd's ported aero core
-## (`new_flight_state`/`step_flight`). ENGINE-GATED execution — see
-## world-lens-godot/VISUAL_QA.md. Calls static functions directly; no
+## (`new_flight_state`/`step_flight`).
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 20 checks
+## are asserted on every run. Calls static functions directly; no
 ## CharacterBody3D or scene tree needed, same pattern as
 ## tests/test_character_controller.gd.
+##
+## Verified: the ported state machine's arithmetic — bank→yaw drift, airspeed
+## bleed and dive-gain, stall onset and nose-down recovery, the glide-floor
+## vertical velocity, and that airspeed never exceeds the 45 m/s ceiling that
+## also happens to be the server's authoritative FLY_MAX_SPEED_MPS. That last
+## one is a real anti-cheat-envelope check and it genuinely holds.
+##
+## NOT verified: how flying FEELS, which is most of what this controller is
+## for. Also unexercised here: the `_physics_process` glue that converts the
+## pure state into a CharacterBody3D velocity and calls `move_and_slide()`,
+## so real collision response is untested, and the honest-zero wind sample
+## means "still air" is all anything has ever flown through. Headless
+## installs RasterizerDummy and draws nothing — queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const FlightController := preload("res://avatar/flight_controller.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

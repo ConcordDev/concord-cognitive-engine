@@ -1,7 +1,25 @@
 class_name TestFeaSceneBuilder
 extends RefCounted
 ## Pure-logic tests for engineering/fea_scene_builder.gd's static helpers.
-## ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md.
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 22 checks
+## are asserted on every run.
+##
+## Verified: `build_request_body`, `node_positions`, `centroid`,
+## `beam_transform` and `utilization_to_color` — including that a member's
+## color comes from the solver's OWN utilization ratio, echoed verbatim
+## rather than re-derived or rounded client-side. The transform math runs
+## against real engine Transform3D/Basis types.
+##
+## NOT verified: exactly the two things fea_scene_builder.gd's own header
+## flags — whether beam scale/thickness look right at real-world model
+## dimensions, and whether the utilization color ramp reads correctly under
+## default lighting. Both are display-time judgements and headless installs
+## RasterizerDummy, which draws nothing. The live `engineering.feaScene`
+## macro round trip is also unexercised. Queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const FeaSceneBuilder := preload("res://engineering/fea_scene_builder.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

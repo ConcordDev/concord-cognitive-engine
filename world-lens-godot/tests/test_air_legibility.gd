@@ -1,9 +1,26 @@
 class_name TestAirLegibility
 extends RefCounted
 ## Pure-logic tests for world/air_legibility.gd (C15 — air legibility).
-## ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md: these check
-## the real color-math transform, never how it actually renders (no engine
-## available in this container to confirm that).
+##
+## ENGINE-EXECUTED (2026-07-25). The parenthetical that used to sit here —
+## "no engine available in this container" — is superseded: a real Godot 4.4
+## headless binary now lives at `./.godot-runtime/bin/godot` (see
+## docs/GODOT_RUNTIME.md), and `--script tests/run_all.gd` compiles and RUNS
+## this suite — its 30 checks are asserted on every run.
+##
+## Verified: the color-math transform itself — hex parsing of the real
+## authored district `palette.primary` strings, relative luminance, the
+## contrast boost, and the altitude→descriptor selection. No output is
+## invented from nothing; every color derives from the district's own data,
+## and that now holds under execution rather than under inspection.
+##
+## NOT verified — and for THIS unit the gap is the substance of the feature,
+## not a footnote: whether the boosted colors are actually LEGIBLE from
+## altitude under real lighting. C15 is a readability claim, and readability
+## cannot be asserted by arithmetic. The original header's distinction ("the
+## real color-math transform, never how it actually renders") was correct and
+## still stands; only its reason has changed. Queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const AirLegibility := preload("res://world/air_legibility.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

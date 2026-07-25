@@ -4,8 +4,25 @@ extends RefCounted
 ## (added by C14 — land↔air transition — so
 ## avatar/land_air_transition_controller.gd has a real source of pad data
 ## from a `scene:data` payload instead of requiring pads to be hand-wired).
-## ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md. Does NOT
-## re-test `node_to_transform` (no change made to it by this unit).
+## Does NOT re-test `node_to_transform` (no change made to it by this unit).
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 22 checks
+## are asserted on every run.
+##
+## What that covers is genuinely complete for what it covers: parsing a
+## `concord-scene/v1` payload's pads/districts/rooftop nodes is a pure data
+## transform with no visual component of its own, so these checks — including
+## that unknown/additional fields pass through VERBATIM rather than being
+## dropped or invented — fully verify that half.
+##
+## NOT verified: `apply_scene`/`_spawn_node`, the engine half that actually
+## instantiates a MeshInstance3D + BoxMesh per node. Those placeholder boxes
+## were never a visual-quality claim to begin with (see scene_bootstrap.gd's
+## own header), and headless installs RasterizerDummy and draws nothing, so
+## nothing here says a scene renders. Queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const SceneBootstrap := preload("res://world/scene_bootstrap.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

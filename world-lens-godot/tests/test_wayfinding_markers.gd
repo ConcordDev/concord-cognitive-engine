@@ -1,8 +1,25 @@
 class_name TestWayfindingMarkers
 extends RefCounted
 ## Pure-logic tests for world/wayfinding_markers.gd — F27 (multi-altitude
-## navigation aids: ground + air wayfinding markers). ENGINE-GATED
-## execution — see world-lens-godot/VISUAL_QA.md.
+## navigation aids: ground + air wayfinding markers).
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 35 checks
+## are asserted on every run.
+##
+## Verified: `polygon_centroid`, the three `poi_from_*` adapters,
+## `collect_pois`, `detail_level_for_altitude`, `marker_for_poi` and
+## `nearby_markers` — i.e. that the three real data sources fold into one POI
+## list correctly and that altitude selects the detail level it claims.
+##
+## NOT verified, and it is the whole purpose of a navigation aid: whether the
+## markers are actually READABLE — at ground level, at altitude, and against
+## the district colors AirLegibility hands them. A marker that computes to
+## the right position and detail level can still be invisible, cluttered, or
+## unreadable in flight, and only a human at a real display can say;
+## headless installs RasterizerDummy and draws nothing. Queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const WayfindingMarkers := preload("res://world/wayfinding_markers.gd")
 const AirLegibility := preload("res://world/air_legibility.gd")

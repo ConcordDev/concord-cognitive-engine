@@ -1,12 +1,23 @@
 class_name TestPropInstancer
 extends RefCounted
 ## Pure-logic tests for world/prop_instancer.gd's transform assembly.
-## ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md.
 ##
-## NOTE: this suite exercises Transform3D/Vector3/Basis value-type math,
-## which — unlike Node-derived classes — is usable in GDScript without a
-## running scene tree. It is still ENGINE-GATED in the sense that it has
-## never actually been executed by a real `godot` binary in this container.
+## ENGINE-EXECUTED (2026-07-25) — and this suite gained more from that than
+## most. It exercises Transform3D/Vector3/Basis value-type math, and the
+## header used to argue from first principles that such math "is usable in
+## GDScript without a running scene tree" while admitting it had never
+## actually been run by a real `godot` binary. It now has: a real Godot 4.4
+## headless binary lives at `./.godot-runtime/bin/godot` (see
+## docs/GODOT_RUNTIME.md) and `--script tests/run_all.gd` compiles and RUNS
+## these 8 checks. So the expected transforms are no longer hand-derived
+## values checked against a reasoned model of Godot's semantics — they are
+## asserted against the ENGINE'S OWN Transform3D/Basis implementation.
+##
+## NOT verified: `build_multimesh`/`build_instance`, which touch real
+## MultiMesh / MultiMeshInstance3D resources, are outside this suite; and
+## nothing here says anything about how instanced props actually LOOK or
+## perform at real prop counts. Headless installs RasterizerDummy and draws
+## nothing — that stays queued in world-lens-godot/VISUAL_QA.md.
 
 const PropInstancer := preload("res://world/prop_instancer.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

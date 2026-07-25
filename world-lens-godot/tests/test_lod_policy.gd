@@ -1,7 +1,21 @@
 class_name TestLodPolicy
 extends RefCounted
-## Pure-logic tests for world/lod_policy.gd. ENGINE-GATED execution — see
-## world-lens-godot/VISUAL_QA.md; `gdparse` only confirms valid syntax.
+## Pure-logic tests for world/lod_policy.gd.
+##
+## ENGINE-EXECUTED (2026-07-25). The prior "`gdparse` only confirms valid
+## syntax" caveat is superseded: a real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 23 checks
+## are asserted on every run.
+##
+## Verified: the pure distance→band decisions (`band_for_distance`,
+## `visibility_range_for_band`, `band_name`) and their parity with the
+## Three.js client's STANDARD_LOD_BANDS constants. NOT verified: whether
+## those band distances actually look right in motion — detail pop-in is
+## precisely the kind of claim a headless run cannot make, since
+## RasterizerDummy draws nothing. `apply_to_instance`'s real
+## GeometryInstance3D.visibility_range wiring is likewise unexercised here.
+## Both stay queued in world-lens-godot/VISUAL_QA.md.
 
 const LodPolicy := preload("res://world/lod_policy.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

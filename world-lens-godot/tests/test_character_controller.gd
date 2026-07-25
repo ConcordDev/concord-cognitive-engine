@@ -1,11 +1,27 @@
 class_name TestCharacterController
 extends RefCounted
 ## Pure-logic tests for player/character_controller.gd's movement
-## integration math + netcode gating. ENGINE-GATED execution — see
-## world-lens-godot/VISUAL_QA.md. These call the class's STATIC methods
-## directly; no CharacterBody3D needs to exist in a live scene tree for
-## this to run under a real engine (static method calls on a preloaded
-## script resource don't require an instance).
+## integration math + netcode gating.
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 32 checks
+## are asserted on every run. The header's prior prediction that static
+## method calls on a preloaded script resource would need no CharacterBody3D
+## instance under a real engine turned out to be correct; it is now an
+## observed fact rather than a forecast.
+##
+## Verified: the gravity/swim integration, glide boost, jump-forgiveness
+## buffer/coyote gating, the <=30Hz `should_send_move` rate gate, action
+## classification, and `snapback_position` — i.e. the numeric parity with
+## physics-world.ts / jump-forgiveness.ts that this port claims.
+##
+## NOT verified: the live CharacterBody3D half — `_physics_process` +
+## `move_and_slide` collision response against real world geometry — and,
+## crucially, FEEL. "Feels identical to the Three.js/Rapier client for the
+## same inputs" is the claim this file's subject makes, and no headless run
+## can substantiate it: RasterizerDummy draws nothing and there is no player
+## at a display. Queued in world-lens-godot/VISUAL_QA.md.
 
 const CharacterController := preload("res://player/character_controller.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

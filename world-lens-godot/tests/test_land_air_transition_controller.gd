@@ -2,13 +2,25 @@ class_name TestLandAirTransitionController
 extends RefCounted
 ## Pure-logic tests for avatar/land_air_transition_controller.gd — C14
 ## (master-spec "land↔air transition: stations, pads, state changes").
-## ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md.
 ##
-## Covers, per the C14 unit brief: correct trigger detection for each
-## transition type (jump-then-sustained-ascend, pad takeoff, mounted
-## takeoff, landing by ground-contact, landing by pad), the mode-request
-## payload shape, ack/nack state resolution (apply-on-ack /
-## rollback-on-nack), and landing-pad-proximity gating.
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 37 checks
+## are asserted on every run.
+##
+## Covers, per the C14 unit brief, and now genuinely executes: correct
+## trigger detection for each transition type (jump-then-sustained-ascend,
+## pad takeoff, mounted takeoff, landing by ground-contact, landing by pad),
+## the mode-request payload shape, ack/nack state resolution (apply-on-ack /
+## rollback-on-nack), and landing-pad-proximity gating — the last of which
+## runs against the real authored pads from concordia-hub's city-layout.json.
+##
+## NOT verified: that a transition looks or feels like one. The decision
+## logic firing at the right moment is a separate claim from an avatar that
+## lifts off and touches down without a visible snap, and only a human at a
+## real display can make the second — headless installs RasterizerDummy and
+## draws nothing. The `_physics_process` glue that acts on these decisions is
+## likewise unexercised. Queued in world-lens-godot/VISUAL_QA.md.
 
 const LandAirTransitionController := preload("res://avatar/land_air_transition_controller.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

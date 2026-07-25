@@ -1,11 +1,25 @@
 class_name TestCameraRig
 extends RefCounted
 ## Pure-logic tests for session/camera_rig.gd's static transform math —
-## R5/E24 "unified session/camera manager". ENGINE-GATED execution — see
-## world-lens-godot/VISUAL_QA.md. Does NOT exercise `_process`/`_ready`
-## (needs a live Camera3D + scene tree) — only the pure functions that feed
-## them, mirroring this project's established convention (e.g.
-## character_controller.gd's own pure-vs-engine split).
+## R5/E24 "unified session/camera manager".
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 17 checks
+## are asserted on every run. The Transform3D/Basis results are therefore
+## checked against the engine's own math rather than a hand-derived model of
+## it, which matters more for a camera rig than for most units here.
+##
+## Verified: `follow_transform` (including yaw-rotated offsets),
+## `orbit_transform`, `free_fly_step` (with diagonal-input normalisation) and
+## `smoothed_transform`'s interpolation and clamping.
+##
+## NOT verified, and this is the larger half of what a camera IS: `_process`/
+## `_ready` are still unexercised (they need a live Camera3D + scene tree),
+## and nothing about FRAMING can be asserted headlessly — whether the follow
+## cam sits at a comfortable distance, whether smoothing reads as smooth or
+## as lag, whether mouse-look and orbit-drag feel right. RasterizerDummy
+## renders no viewport at all. Queued in world-lens-godot/VISUAL_QA.md.
 
 const CameraRig := preload("res://session/camera_rig.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

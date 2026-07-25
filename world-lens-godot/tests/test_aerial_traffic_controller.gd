@@ -1,10 +1,25 @@
 class_name TestAerialTrafficController
 extends RefCounted
 ## Pure-logic tests for world/aerial_traffic_controller.gd's static helpers
-## (C16 — ambient aerial traffic). ENGINE-GATED execution — see
-## world-lens-godot/VISUAL_QA.md. Does not exercise SnapshotBuffer itself
+## (C16 — ambient aerial traffic). Does not exercise SnapshotBuffer itself
 ## (already covered by its own test suite) — only the parse/gate logic this
 ## unit adds.
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 10 checks
+## are asserted on every run.
+##
+## Verified: `entities_to_states` parses a `world:aerial-traffic` frame into
+## the state shape it claims, and `should_prune` gates stale entities on the
+## stated threshold. Both are pure data transforms and are now fully
+## exercised.
+##
+## NOT verified: the entire point of C16 — whether the sky reads as
+## non-empty. Traffic density, altitude banding and whether couriers are
+## legible against the skybox are display-time judgements; headless installs
+## RasterizerDummy and draws nothing. Nor has this consumed a frame from a
+## live gateway. Queued in world-lens-godot/VISUAL_QA.md.
 
 const AerialTrafficController := preload("res://world/aerial_traffic_controller.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

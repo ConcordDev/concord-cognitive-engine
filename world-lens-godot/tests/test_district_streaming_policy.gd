@@ -1,8 +1,27 @@
 class_name TestDistrictStreamingPolicy
 extends RefCounted
 ## Pure-logic tests for world/district_streaming_policy.gd — F25 (district
-## streaming policy: dense enterable city tuning). ENGINE-GATED execution
-## — see world-lens-godot/VISUAL_QA.md.
+## streaming policy: dense enterable city tuning).
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 18 checks
+## are asserted on every run.
+##
+## Verified: `density_per_m2`, the point-in-polygon test, `district_at` and
+## `radius_for_district`/`radius_for_position` — run against the real
+## authored concordia-hub district rects, so the classification of each real
+## district as dense or sparse is genuinely computed, not asserted on paper.
+##
+## NOT verified, and worth separating from the visual gap the rest of this
+## directory carries: correctness of the CODE is not correctness of the
+## DIAL. DENSITY_HIGH_THRESHOLD_PER_M2 sits in a real gap in the real data,
+## but whether that cut produces good streaming behaviour is a play-and-perf
+## question — district_streaming_policy.gd's own header flags it as a
+## first-draft constant queued for a balance pass, and that stands. Whether
+## the resulting radii avoid visible pop-in additionally needs a display;
+## headless installs RasterizerDummy and draws nothing. Queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const DistrictStreamingPolicy := preload("res://world/district_streaming_policy.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

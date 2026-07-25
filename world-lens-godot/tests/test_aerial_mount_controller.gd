@@ -1,8 +1,18 @@
 class_name TestAerialMountController
 extends RefCounted
 ## Pure-logic tests for avatar/aerial_mount_controller.gd — C11 (master-spec
-## "Aerial mounts & witch brooms"). ENGINE-GATED execution — see
-## world-lens-godot/VISUAL_QA.md.
+## "Aerial mounts & witch brooms").
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 17 checks
+## are asserted on every run.
+##
+## NOT verified: the ground↔air ride itself. Whether a rider transitions
+## between MountController's arc-turn ground path and FlightController's aero
+## path without a visible snap, and how a hippogriff/gryphon/wyvern reads in
+## flight, are display-time judgements a headless run cannot make —
+## RasterizerDummy draws nothing. Queued in world-lens-godot/VISUAL_QA.md.
 ##
 ## Deliberately does NOT re-test `MountController.step_mount` or
 ## `FlightController.step_flight`'s own math (already covered by

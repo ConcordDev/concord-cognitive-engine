@@ -1,11 +1,25 @@
 class_name TestDtuPropInteraction
 extends RefCounted
 ## Pure-logic tests for world/dtu_prop_interaction.gd's static helpers.
-## ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md.
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 11 checks
+## are asserted on every run.
 ##
 ## `find_prop_ancestor` is exercised against plain `Node.new()` trees built
-## with `add_child`/`set_meta` — this works without a running SceneTree
-## because meta + parent/child linkage are Node-local, not tree-dependent.
+## with `add_child`/`set_meta`. The header used to ARGUE that this works
+## without a running SceneTree because meta + parent/child linkage are
+## Node-local rather than tree-dependent; those are now real engine Node
+## objects under a real engine, so that is an observed fact rather than a
+## reasoned claim.
+##
+## NOT verified: the engine-dependent half of the unit — the actual raycast
+## (`_process`/`_unhandled_input` querying `get_viewport().world_3d`) needs a
+## live camera, physics space and display, and headless installs
+## RasterizerDummy and draws nothing. Nor does anything here exercise the
+## real `dtu_props.interact` round trip against a running server. Both stay
+## queued in world-lens-godot/VISUAL_QA.md.
 
 const DtuPropInteraction := preload("res://world/dtu_prop_interaction.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

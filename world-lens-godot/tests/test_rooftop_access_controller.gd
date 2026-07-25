@@ -1,7 +1,25 @@
 class_name TestRooftopAccessController
 extends RefCounted
 ## Pure-logic tests for world/rooftop_access_controller.gd — F26 (rooftop as
-## first-class space). ENGINE-GATED execution — see
+## first-class space).
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 14 checks
+## are asserted on every run.
+##
+## Verified: `is_over_footprint`, `rooftop_state` and
+## `nearest_rooftop_building`, exercised against the real authored building
+## shapes from concordia-hub's city-layout.json — including the observatory,
+## the one building that actually authors a `rooftop` level. The
+## footprint/altitude classification is pure geometry and is now genuinely
+## covered.
+##
+## NOT verified: that a rooftop plays as a first-class space. Whether a
+## player can get up there, stand on real collision geometry, and read the
+## rooftop as somewhere to be are all things this suite says nothing about —
+## the controller's `wire_from_scene_bootstrap`/`update` glue is unexercised
+## and headless installs RasterizerDummy, which draws nothing. Queued in
 ## world-lens-godot/VISUAL_QA.md.
 
 const RooftopAccessController := preload("res://world/rooftop_access_controller.gd")

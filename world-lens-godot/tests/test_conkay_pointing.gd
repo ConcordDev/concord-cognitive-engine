@@ -1,8 +1,22 @@
 class_name TestConKayPointing
 extends RefCounted
 ## Pure-logic tests for conkay/conkay_pointing.gd (R5/E22 — "point at
-## buildings/props" geometry). ENGINE-GATED execution — see
-## world-lens-godot/VISUAL_QA.md.
+## buildings/props" geometry).
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 20 checks
+## are asserted on every run.
+##
+## Verified: `direction_to`, `distance_to`, `yaw_pitch_to` and
+## `look_at_basis` produce correct geometry, now checked against the engine's
+## own Vector3/Basis implementations rather than a reasoned model of them.
+##
+## NOT verified: that a viewer can TELL what ConKay is pointing at. This unit
+## exists to make attention direction legible, and legibility is a
+## display-time judgement — headless installs RasterizerDummy and draws
+## nothing, and no pointer/arrow mesh has ever been rotated by this basis on
+## screen. Queued in world-lens-godot/VISUAL_QA.md.
 
 const ConKayPointing := preload("res://conkay/conkay_pointing.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

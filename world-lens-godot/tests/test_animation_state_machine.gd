@@ -1,9 +1,24 @@
 class_name TestAnimationStateMachine
 extends RefCounted
-## Pure-logic tests for avatar/animation_state_machine.gd. ENGINE-GATED
-## execution — see world-lens-godot/VISUAL_QA.md. These call `select_state`
-## and its static helpers directly; no scene tree or live rig node is needed,
-## same pattern as tests/test_character_controller.gd.
+## Pure-logic tests for avatar/animation_state_machine.gd.
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 43 checks
+## are asserted on every run. These call `select_state` and its static
+## helpers directly; no scene tree or live rig node is needed, same pattern
+## as tests/test_character_controller.gd.
+##
+## Verified: which of the six states (idle/walk/run/jump/fall/land) is
+## selected for a given kinematic snapshot, the server-action override
+## precedence, and the blend-weight dictionary's shape and values —
+## including the speed thresholds' parity with the Three.js client.
+##
+## NOT verified: that the resulting crossfades LOOK right on a rig. Selecting
+## the correct state and emitting sane blend weights is a different claim
+## from an avatar that transitions without popping or foot-sliding, and a
+## headless run cannot make the second one — RasterizerDummy draws nothing.
+## Queued in world-lens-godot/VISUAL_QA.md.
 
 const AnimationStateMachine := preload("res://avatar/animation_state_machine.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

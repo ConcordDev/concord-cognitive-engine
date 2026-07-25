@@ -1,9 +1,23 @@
 class_name TestGroundVehicleController
 extends RefCounted
 ## Pure-logic tests for avatar/ground_vehicle_controller.gd's ported 3DOF
-## core (`vehicle_spec`/`empty_pose`/`step_vehicle`). ENGINE-GATED execution
-## — see world-lens-godot/VISUAL_QA.md. Calls static functions directly; no
+## core (`vehicle_spec`/`empty_pose`/`step_vehicle`).
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 16 checks
+## are asserted on every run. Calls static functions directly; no
 ## CharacterBody3D or scene tree needed.
+##
+## Verified: the byte-for-byte port of vehicle-system.ts's spec table and
+## `stepVehicle` integration — throttle/steer response, speed clamping, and
+## pose advancement now produce the numbers the TS source produces.
+##
+## NOT verified: driving feel, and the `_physics_process` glue that applies
+## the stepped pose to a real CharacterBody3D (so collision, slope handling
+## and any visible jitter are all untested). Headless installs
+## RasterizerDummy and draws nothing — queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const GroundVehicleController := preload("res://avatar/ground_vehicle_controller.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

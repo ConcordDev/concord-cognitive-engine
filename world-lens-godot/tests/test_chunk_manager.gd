@@ -1,9 +1,22 @@
 class_name TestChunkManager
 extends RefCounted
 ## Pure-logic tests for world/chunk_manager.gd's coordinate math.
-## ENGINE-GATED execution: never run against a real engine — see
-## world-lens-godot/VISUAL_QA.md. `gdparse` only confirms this is
-## syntactically valid GDScript.
+##
+## ENGINE-EXECUTED (2026-07-25). The prior "never run against a real engine,
+## gdparse only confirms valid syntax" caveat is superseded: a real Godot 4.4
+## headless binary now lives at `./.godot-runtime/bin/godot` (see
+## docs/GODOT_RUNTIME.md), and `--script tests/run_all.gd` compiles and RUNS
+## this suite — its 16 checks are asserted on every run.
+##
+## What that does and does not buy: `world_to_chunk`/`chunk_load_set`/
+## `diff_chunk_sets` are an integer-grid transform plus a set diff with no
+## visual output of their own, so those ARE now genuinely verified. The
+## engine-touching half of chunk_manager.gd — `ResourceLoader.
+## load_threaded_request`/`get_status`/`get` and the actual scene
+## instancing — is not exercised here, and whether streaming at these radii
+## reads without pop-in is a display-time question. Headless installs
+## RasterizerDummy and draws nothing, so that stays queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const ChunkManager := preload("res://world/chunk_manager.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

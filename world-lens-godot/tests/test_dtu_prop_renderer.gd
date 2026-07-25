@@ -1,7 +1,24 @@
 class_name TestDtuPropRenderer
 extends RefCounted
 ## Pure-logic tests for world/dtu_prop_renderer.gd's static helpers.
-## ENGINE-GATED execution — see world-lens-godot/VISUAL_QA.md.
+##
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 20 checks
+## are asserted on every run.
+##
+## Verified: `build_list_request_body`, `placement_to_transform`, and
+## `slot_color`/`placeholder_size_for_slot` as VALUES — the request envelope
+## is right, the transform math is right, and each slot maps to the color
+## and size it claims to.
+##
+## NOT verified: everything this renderer exists to do on screen. Whether
+## those slot colors and placeholder box sizes actually read as distinct
+## props, whether a real .glb resolves and mounts through AssetResolver +
+## GlbLoader, and how a populated shelf/counter/window/rooftop/plaza looks
+## in a scene are all display-time questions — headless installs
+## RasterizerDummy and draws nothing. Queued in
+## world-lens-godot/VISUAL_QA.md.
 
 const DtuPropRenderer := preload("res://world/dtu_prop_renderer.gd")
 const TestUtils := preload("res://tests/test_utils.gd")

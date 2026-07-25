@@ -1,16 +1,25 @@
 class_name TestSessionManager
 extends RefCounted
 ## Pure-logic tests for session/session_manager.gd — R5/E24 "unified
-## session/camera manager". ENGINE-GATED execution — see
-## world-lens-godot/VISUAL_QA.md.
+## session/camera manager".
 ##
-## Covers the Mode legal-transition table (every legal edge, and every
-## deliberately-illegal one — especially WORLD<->PLAYTEST, which must never
-## be legal directly), FEA-overlay legality per mode, and the pure
-## input-owner / camera-rig-mode derivation functions. Does NOT exercise the
-## engine-level ack/nack broker (`request_mode`'s DesignPlaytestClient
-## round trip) since that needs a live Node signal graph — see
-## world-lens-godot/VISUAL_QA.md's engine-gated section for that half.
+## ENGINE-EXECUTED (2026-07-25). A real Godot 4.4 headless binary now lives
+## at `./.godot-runtime/bin/godot` (see docs/GODOT_RUNTIME.md), and
+## `--script tests/run_all.gd` compiles and RUNS this suite — its 21 checks
+## are asserted on every run.
+##
+## Covers, and now genuinely executes: the Mode legal-transition table (every
+## legal edge, and every deliberately-illegal one — especially
+## WORLD<->PLAYTEST, which must never be legal directly), FEA-overlay
+## legality per mode, and the pure input-owner / camera-rig-mode derivation
+## functions. These are a pure state machine with no visual output of their
+## own, so that half is verified in full rather than merely compiled.
+##
+## Still NOT exercised: the engine-level ack/nack broker (`request_mode`'s
+## DesignPlaytestClient round trip), which needs a live Node signal graph and
+## a running server. Nor does anything here confirm that a mode switch looks
+## clean on screen — headless installs RasterizerDummy and draws nothing.
+## Both remain in world-lens-godot/VISUAL_QA.md's engine-gated section.
 
 const SessionManager := preload("res://session/session_manager.gd")
 const CameraRig := preload("res://session/camera_rig.gd")
