@@ -65,10 +65,38 @@ export function updateSwimState(db, worldId, userId, pos) {
         swimming = playerY <= surfaceElev + cellWater;
       }
     } catch { /* water grid absent — fall back to plane */ }
+    // Read the prior swim flag so we can push ONLY on a real enter/exit-water
+    // transition. This function runs on every player move, so an unconditional
+    // emit would flood the socket; SubmarineHUD's own comment says it expects
+    // "discrete dive events" and keeps a tight backstop poll for the continuous
+    // oxygen decay in between. Cost is one extra indexed lookup on a path that
+    // already does getElevationAt + waterDepthAt.
+    let wasSwimming = null;
+    try {
+      const prior = db.prepare(`
+        SELECT is_swimming FROM world_visits
+        WHERE world_id = ? AND user_id = ? AND departed_at IS NULL
+      `).get(worldId, userId);
+      if (prior) wasSwimming = !!prior.is_swimming;
+    } catch { /* shape varies by build — degrade to no push, backstop covers it */ }
+
     db.prepare(`
       UPDATE world_visits SET is_swimming = ?, swim_depth = ?, last_position = ?
       WHERE world_id = ? AND user_id = ? AND departed_at IS NULL
     `).run(swimming ? 1 : 0, waterDepth, JSON.stringify(pos), worldId, userId);
+
+    if (wasSwimming !== null && wasSwimming !== swimming) {
+      // globalThis._concordRealtimeEmit is the documented escape hatch server.js
+      // stashes so emergent/lib modules can emit without a circular import.
+      // Per-user: dive state is this player's, never the world's.
+      try {
+        globalThis._concordRealtimeEmit?.(
+          "submarine:dive-state",
+          { worldId, isSwimming: swimming, swimDepth: waterDepth },
+          { userId },
+        );
+      } catch { /* push is best-effort */ }
+    }
     return { swimming, waterDepth };
   } catch { return { swimming: false, waterDepth: 0 }; }
 }

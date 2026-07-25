@@ -54798,7 +54798,25 @@ app.post("/api/extraction/:runId/die", requireAuth(), asyncHandler(async (req, r
 
 app.post("/api/extraction/zone", requireAuth(), asyncHandler(async (req, res) => {
   const { declareExtractionZone } = await import("./lib/extraction.js");
-  res.json(declareExtractionZone(db, req.body || {}));
+  const result = declareExtractionZone(db, req.body || {});
+  // A declared zone is WORLD state, not the caller's state. The generic mode
+  // middleware above only pushes extraction:state to the acting user, so every
+  // OTHER player in the world would learn about a new extraction zone solely
+  // from ExtractionRunHUD's 30s backstop poll. Emit world-scoped so their HUD
+  // re-fetches immediately. The listener (ExtractionRunHUD.tsx) subscribes via
+  // useRealtimeRefresh and re-fetches /api/extraction/zones/:worldId — it never
+  // reads this payload, so the fields here are diagnostic only.
+  // Emitted through realtimeEmit (not the standalone emitModeToWorld helper)
+  // for the reason DET-C batch 6 documents on the worldId tier: the helper
+  // would silently drop achievement-bridge dispatch, event_timeline_log
+  // persistence, dev-mode shape validation, and the Godot gateway mirror.
+  const zoneWorldId = req.body?.worldId;
+  if (result?.ok && zoneWorldId) {
+    try {
+      realtimeEmit("extraction:zones", { zoneId: result.zoneId, worldId: zoneWorldId }, { worldId: zoneWorldId });
+    } catch { /* push is best-effort; the HUD keeps a backstop poll */ }
+  }
+  res.json(result);
 }));
 
 app.get("/api/extraction/zones/:worldId", asyncHandler(async (req, res) => {
@@ -54924,7 +54942,23 @@ app.get("/api/time-loop/active/:worldId", requireAuth(), asyncHandler(async (req
 // abilities, they fire when each combatant's cooldown elapses.
 app.post("/api/party-combat/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startCombat } = await import("./lib/party-combat.js");
-  res.json(startCombat(db, req.body || {}));
+  const started = startCombat(db, req.body || {});
+  // PartyCombatHUD only backstop-polls /api/party-combat/active while NOT yet in
+  // a session (its own comment says so), so every participant except the caller
+  // sat in that degraded path until the next 1s discovery tick. Push per-player,
+  // not per-world: discovery goes through findActiveSessionForPlayer(db, userId),
+  // and that query matches `entity_id = userId AND entity_kind = 'player'` — so
+  // entityId IS the userId for player combatants, and NPC combatants have no
+  // socket to notify. The HUD re-fetches on the event and ignores this payload.
+  if (started?.ok) {
+    for (const p of (req.body?.participants || [])) {
+      if ((p?.entityKind || "player") !== "player" || !p?.entityId) continue;
+      try {
+        realtimeEmit("party-combat:state", { sessionId: started.sessionId }, { userId: p.entityId });
+      } catch { /* push is best-effort */ }
+    }
+  }
+  res.json(started);
 }));
 
 app.post("/api/party-combat/:sessionId/queue", requireAuth(), asyncHandler(async (req, res) => {
@@ -80619,7 +80653,20 @@ register("spectator", "subscribe", async (ctx, input = {}) => {
   const userId = ctx?.actor?.userId || null;
   try {
     const lib = await import("./lib/spectator.js");
-    return lib.startSession(db, worldId, userId);
+    const started = lib.startSession(db, worldId, userId);
+    // A new spectator changes the world's spectator COUNT, which SpectatorOverlay
+    // renders for everyone watching that world. Without this push the count only
+    // moved on its 15s backstop poll. World-scoped: the count is world state, not
+    // the joiner's. (The overlay re-runs spectator.list_for_world on the event and
+    // never reads this payload.) Departures are the 10-min idle sweep in
+    // sweepStaleSessions — that path has no io handle, so a leave still settles on
+    // the backstop; stated rather than papered over.
+    if (started?.ok) {
+      try {
+        realtimeEmit("spectator:count-updated", { worldId }, { worldId });
+      } catch { /* push is best-effort */ }
+    }
+    return started;
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Open a read-only spectator session on a world. Returns session token + WS hint." });
 
