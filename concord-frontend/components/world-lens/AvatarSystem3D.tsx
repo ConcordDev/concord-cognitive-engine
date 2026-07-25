@@ -30,6 +30,7 @@ import {
   breathingChestScaleY,
   breathPhaseFromId,
   type GaitParams,
+  type GaitPose,
   type BodyType,
 } from '@/lib/concordia/gait-synthesis';
 import {
@@ -245,7 +246,28 @@ export async function tryLoadHeroMesh(
 // has failed (e.g. SSR / locked-down browser).
 import { useAvatarAnimator } from '@/hooks/useAvatarAnimator';
 import { useAvatarScars, type AvatarScar } from '@/hooks/useAvatarScars';
-import { serializableToGaitPose } from '@/lib/concordia/animator-protocol';
+import { serializableToGaitPose, type SerializableGaitPose } from '@/lib/concordia/animator-protocol';
+
+/**
+ * Phase AA2 — the worker-first / inline-fallback gait resolution shared by
+ * both the player and NPC per-frame gait blocks below: prefer the Web
+ * Worker's already-computed pose (rehydrated via `serializableToGaitPose`)
+ * when one is available, and fall back to synchronous `synthesizeGait` on
+ * the main thread when the worker hasn't returned one yet (boot warmup,
+ * worker failure, or SSR). Extracted as a pure function (real worker-pose-
+ * or-null in, real GaitPose out) so this fallback logic is directly
+ * testable without mounting the Three.js scene — the two call sites below
+ * are its only callers.
+ */
+export function resolveGaitPose(
+  workerPose: SerializableGaitPose | null,
+  fallbackParams: GaitParams,
+  fallbackPhase: number,
+): GaitPose {
+  return workerPose
+    ? serializableToGaitPose(workerPose)
+    : synthesizeGait(fallbackParams, fallbackPhase);
+}
 // Wave 4 finding #8 — the live position broadcast that 9+ world-lens
 // satellite components read via window.__concordiaPlayerPos /
 // __concordiaNpcPositions. See the module doc comment for the full list
@@ -2910,9 +2932,7 @@ export default function AvatarSystem3D({
               stridePhaseRef.current,
               delta,
             );
-            const gaitPose = workerPose
-              ? serializableToGaitPose(workerPose)
-              : synthesizeGait(gaitParams, stridePhaseRef.current);
+            const gaitPose = resolveGaitPose(workerPose, gaitParams, stridePhaseRef.current);
             applyGaitPose(gaitPose, (name) => pm.getObjectByName(name) ?? undefined);
 
             // ── FABRIK foot IK — plant feet on actual terrain ──
@@ -3099,9 +3119,7 @@ export default function AvatarSystem3D({
               newPhase,
               delta,
             );
-            const npcGaitPose = workerNpcPose
-              ? serializableToGaitPose(workerNpcPose)
-              : synthesizeGait(npcParams, newPhase);
+            const npcGaitPose = resolveGaitPose(workerNpcPose, npcParams, newPhase);
             applyGaitPose(npcGaitPose, getMesh);
           } else {
             applyGaitPose(synthesizeIdle(elapsed, npcCfg, 1), getMesh);

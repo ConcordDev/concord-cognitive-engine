@@ -6,18 +6,48 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import AccessibilityDOMApplier from '@/components/accessibility/AccessibilityDOMApplier';
 import { useUIStore } from '@/store/ui';
 import { useEventRouter } from '@/lib/event-router';
 import GameJuice from '@/components/world-lens/GameJuice';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { Providers } from '@/components/Providers';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => '/dashboard',
+}));
+
+// Real render of the real Providers tree (same mocking shape already
+// established + verified working in tests/components/Providers.test.tsx),
+// with AccessibilityDOMApplier deliberately left UNMOCKED so its real
+// mount + DOM-mutation effect can be observed. Only the heavy/unrelated
+// subtrees (AppShell, sockets, react-query's network calls, etc.) are
+// stubbed.
+vi.mock('@/lib/realtime/socket', () => ({
+  connectSocket: vi.fn(),
+  disconnectSocket: vi.fn(),
+  reconnectSocket: vi.fn(),
+  subscribe: vi.fn(() => () => {}),
+}));
+vi.mock('@/lib/api/client', () => ({
+  api: { get: vi.fn(() => Promise.resolve({ data: {} })) },
+  default: { get: vi.fn(() => Promise.resolve({ data: {} })) },
+}));
+vi.mock('@/lib/perf', () => ({ observeWebVitals: vi.fn() }));
+vi.mock('@/components/shell/AppShell', () => ({
+  AppShell: ({ children }: { children: React.ReactNode }) => <div data-testid="app-shell">{children}</div>,
+}));
+vi.mock('@/components/common/PermissionGate', () => ({
+  PermissionProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock('@/components/common/ErrorBoundary', () => ({
+  ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock('@/components/providers/I18nProvider', () => ({
+  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock('@/components/media/GlobalMediaController', () => ({
+  GlobalMediaController: () => null,
 }));
 
 function EventRouterHost() {
@@ -88,9 +118,34 @@ describe('G3.1 — store bridge + mounts are wired', () => {
     expect(accessibility.highContrast).toBe(true);
   });
 
-  it('AccessibilityDOMApplier is mounted in Providers', () => {
-    const src = readFileSync(path.resolve(__dirname, '..', 'components/Providers.tsx'), 'utf8');
-    expect(src).toMatch(/<AccessibilityDOMApplier \/>/);
+  it('mounts the real AccessibilityDOMApplier inside the real Providers tree, and its DOM-mutation effect actually fires', () => {
+    // Real render of the real Providers component (not a mock of it) — see
+    // this file's top-of-file vi.mock block for what's stubbed (AppShell,
+    // sockets, react-query network calls) and, just as importantly, what
+    // is NOT stubbed: AccessibilityDOMApplier itself. If Providers.tsx
+    // stopped rendering <AccessibilityDOMApplier /> (or it moved outside
+    // the tree, or its own effect broke), the assertions below would fail
+    // for real — this cannot pass from source text alone.
+    act(() => {
+      useUIStore.getState().setAllAccessibility({
+        colorblindMode: 'tritanopia', textScale: 1.25, screenReader: false, keyboardNavigation: false,
+        reducedMotion: false, subtitles: false, subtitleFontSize: 16, gameSpeed: 1, highContrast: true,
+      });
+    });
+
+    render(
+      <Providers>
+        <div>content</div>
+      </Providers>
+    );
+
+    const root = document.documentElement;
+    expect(root.dataset.colorblind).toBe('tritanopia');
+    expect(root.classList.contains('a11y-high-contrast')).toBe(true);
+    expect(root.style.fontSize).toBe('20px'); // 16 × 1.25
+    // The SVG filter defs AccessibilityDOMApplier itself renders (its own
+    // returned JSX, not something Providers could fake) are present too.
+    expect(document.getElementById('a11y-cb-filters')).not.toBeNull();
   });
 
   it('GameJuice gates motion on reduced-motion: a disaster trigger renders the shake overlay normally but downgrades to non-shake when reduced-motion is on', () => {
