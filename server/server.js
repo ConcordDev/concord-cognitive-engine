@@ -33342,10 +33342,27 @@ async function terminateCognitiveWorkerForTest() {
   const w = cognitiveWorker;
   cognitiveWorker = null;
   await new Promise((resolve) => {
-    const done = () => resolve();
+    let settled = false;
+    const done = () => { if (settled) return; settled = true; resolve(); };
+    // Same teardown defect the worker pools had, fixed the same way
+    // (2026-07-25). This site is the THIRD instance of the pattern; the other
+    // two are workers/heartbeat-pool.js and workers/macro-pool.js, whose
+    // headers carry the full root-cause writeup.
+    //
+    // Short version: the worker exits within ~1-3ms of the shutdown message —
+    // worker-side teardown is not the slow part. The hang is main-thread-side
+    // and specific to `node --test`. With the worker unref'd AND the fallback
+    // timer below unref'd, nothing is left ref'd once teardown starts, so the
+    // event loop can wind down without ever delivering the worker's buffered
+    // "exit" event, leaving this Promise pending forever until
+    // --test-force-exit yanks the process.
+    //
+    // ref() the worker for the duration of the wait, and use a REF'd fallback
+    // that hard-resolves rather than only calling terminate().
+    try { w.ref?.(); } catch { /* not all worker impls expose ref */ }
     w.once("exit", done);
     try { w.postMessage({ type: "shutdown" }); } catch { done(); }
-    setTimeout(() => { w.terminate().catch(() => {}); }, 2000).unref();
+    setTimeout(() => { w.terminate().catch(() => {}); done(); }, 2000);
   });
 }
 
