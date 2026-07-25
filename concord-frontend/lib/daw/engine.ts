@@ -689,6 +689,29 @@ class ChannelMeter {
   }
 }
 
+/**
+ * Currently-live MixerEngine, published so meter UIs can read REAL
+ * per-channel RMS. The engine instance itself is owned by whoever
+ * constructed it (the studio lens holds it in a ref); meter surfaces render
+ * far from that ref and have no prop path to it, and the honest alternative
+ * to reaching the real analysers is rendering zero — never synthesized
+ * motion. Same module-singleton shape as `getAudioContext()` above.
+ *
+ * Returns null before any engine exists, and again after `dispose()`.
+ * Callers MUST treat null as a genuine "not measuring" idle state.
+ */
+let activeMixer: MixerEngine | null = null;
+
+export function getActiveMixer(): MixerEngine | null {
+  return activeMixer;
+}
+
+/** Publish/retract the live engine. Kept as a function so the constructor
+ *  passes `this` as an argument rather than aliasing it to a variable. */
+function setActiveMixer(mixer: MixerEngine | null): void {
+  activeMixer = mixer;
+}
+
 export class MixerEngine {
   private ctx: AudioContext;
   private channelNodes: Map<string, { gain: GainNode; panner: StereoPannerNode; effectsChain: EffectsChainEngine; meter: ChannelMeter }> = new Map();
@@ -705,6 +728,8 @@ export class MixerEngine {
     this.masterGain.connect(this.masterEffects.input);
     this.masterEffects.output.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
+    // Publish as the live mixer so meter UIs can read real per-channel RMS.
+    setActiveMixer(this);
   }
 
   addChannel(trackId: string): { input: AudioNode } {
@@ -808,6 +833,9 @@ export class MixerEngine {
     this.masterGain.disconnect();
     this.masterEffects.dispose();
     this.analyser.disconnect();
+    // Stop publishing a disposed engine — meter UIs must fall back to a real
+    // idle/zero reading, not keep reading a dead graph.
+    if (getActiveMixer() === this) setActiveMixer(null);
   }
 }
 
