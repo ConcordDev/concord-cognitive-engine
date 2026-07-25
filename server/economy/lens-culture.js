@@ -334,7 +334,7 @@ export function getReflections(db, dtuId, { limit = 50, offset = 0 } = {}) {
  * to a real surface must add the ownership check first, or artifact protection
  * modes become editable by any caller.
  */
-export function setLensProtection(db, { artifactId, lensId, protectionMode, creatorId }) {
+export function setLensProtection(db, { artifactId, lensId, protectionMode, creatorId }) { // @unused-param-ok — retained deliberately as the only in-code evidence the check is missing
   if (!artifactId || !lensId || !protectionMode) {
     return { ok: false, error: "missing_required_fields" };
   }

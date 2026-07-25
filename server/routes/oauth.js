@@ -152,7 +152,14 @@ export default function registerOAuthRoutes(app, {
    * in place rather than deleting it, since deleting would erase the one
    * remaining signal that this data is expected to flow somewhere.
    */
-  function createOAuthUser({ email, name, avatarUrl }) {
+  // `avatarUrl` used to be destructured here and never read (flagged
+  // 2026-07-25). Providers do send it, but there is nowhere to put it: no
+  // migration defines an avatar column on `users`, and the object built below
+  // has no avatar field. Dropped from the signature so it stops implying the
+  // provider's avatar is captured — it is not. Persisting it would need a
+  // migration plus a decision about hotlinking vs. caching third-party image
+  // URLs, which is a feature, not a cleanup.
+  function createOAuthUser({ email, name }) {
     // Generate a username from name or email prefix
     const baseName = (name || email.split("@")[0] || "user").toLowerCase().replace(/[^a-z0-9_-]/g, "");
     let username = baseName;

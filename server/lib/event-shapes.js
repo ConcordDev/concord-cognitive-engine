@@ -458,6 +458,12 @@ export const EVENT_SHAPES = Object.freeze({
   // server/lib/capability-tier.js so a native client (no browser to run the
   // frontend classifier in) gets the identical honest classification the
   // web ConKay surface already shows per-message.
+  // NOT dead: consumed by world-lens-godot/conkay/{conkay_presence,
+  // conkay_presence_state}.gd, outside the detector's SCAN_DIRS. The
+  // `@dead-event-ok` opt-out the detector documents is NOT wired to its
+  // socket-broadcast rule (ANNOTATION_OK_RE is only tested in the DOM-dispatch
+  // and listener-orphan passes), so this cannot be annotated away and stays
+  // baselined as a known FP.
   "conkay:verdict":  { required: ["runId", "domain", "action", "tier"], optional: ["verdict", "confidence"] },
 
   // ── Productivity reminders — live socket delivery (Wave 4) ────────

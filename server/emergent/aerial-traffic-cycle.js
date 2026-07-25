@@ -166,11 +166,14 @@ export async function runAerialTrafficCycle({ db, state, io, tickCount: _t } = {
       const emitWorld = globalThis._concordEmitToWorld;
       let emitted = false;
       if (typeof emitWorld === "function") {
+        // NOT dead: consumed by world-lens-godot/world/aerial_traffic_controller.gd
+        // (`func _on_event` branches on `evt == "world:aerial-traffic"`). The detector's
+        // SCAN_DIRS never walks world-lens-godot/, so this reads as a dead broadcast.
         const r = emitWorld(worldId, "world:aerial-traffic", payload);
         emitted = !!r?.ok;
       } else if (io) {
         try {
-          io.to(`world:${worldId}`).emit("world:aerial-traffic", payload);
+          io.to(`world:${worldId}`).emit("world:aerial-traffic", payload); // NOT dead — same GDScript consumer as above
           emitted = true;
         } catch { /* realtime emit is best-effort — never blocks the tick */ }
       }

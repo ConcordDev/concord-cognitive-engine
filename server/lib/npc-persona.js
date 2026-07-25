@@ -112,7 +112,14 @@ export function installPersona(db, { dtuId, worldId, installerUserId, x = 0, z =
       npc.level || 1,
       typeof npc.narrative_context === "string" ? npc.narrative_context : JSON.stringify(npc.narrative_context || {}),
       // world_npcs has no `name` column — the NPC name lives in the state JSON blob.
-      JSON.stringify({ name: npc.name || "Imported NPC" }),
+      // `installedBy` rides along for the same reason: the caller passes
+      // installerUserId and it was previously accepted and dropped (flagged
+      // 2026-07-25 by the unused-destructured-param detector), so an imported
+      // persona landed in a live world with no record of who put it there.
+      // Recording it here rather than widening the table — state is already the
+      // designated blob for per-NPC fields with no column, and this is purely
+      // additive to a JSON object nothing else reads positionally.
+      JSON.stringify({ name: npc.name || "Imported NPC", installedBy: installerUserId || null }),
     );
   } catch (err) { return { ok: false, error: String(err?.message || err), at: "world_npcs_insert" }; }
 

@@ -253,7 +253,15 @@ export function listDTU(db, { dtuId, sellerId, price, licenseType = "standard" }
  * - Review ratings
  * - Age decay (timeliness)
  */
-export function computeInitialCRETI({ contentLength, citationCount, hasMetadata, hasTags }) {
+// `contentLength` was accepted and never read (flagged 2026-07-25 by the
+// unused-destructured-param detector). Removed rather than wired in: the CRETI
+// rubric below is fully enumerated — Credibility from metadata/tags, Relevance
+// flat, Evidence from citations, Timeliness flat, Impact from later activity —
+// and content length feeds none of those five by design. Scoring longer content
+// higher would be a deliberate rubric change to a money-adjacent quality score,
+// not a cleanup, so it is NOT being smuggled in here. Callers pass the same
+// object; binding one fewer key changes no behavior.
+export function computeInitialCRETI({ citationCount, hasMetadata, hasTags }) {
   let score = 0;
 
   // Credibility (0-20): based on metadata quality

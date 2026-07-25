@@ -9698,6 +9698,15 @@ async function tryInitWebSockets(server) {
       // to roll back an optimistic client-side mode flip the server
       // rejected. Detector false positive from scan-scope, not a real dead
       // broadcast.
+      //
+      // 2026-07-25: tried to annotate these away and found the opt-out does
+      // not exist for this rule. The detector's header documents a
+      // `@dead-event-ok` escape hatch, but ANNOTATION_OK_RE is only tested in
+      // the DOM-dispatch and listener-orphan passes — never in the
+      // socket-broadcast pass that produces these. So `dead_socket_emit`
+      // findings are UNSUPPRESSIBLE by annotation and stay baselined as known
+      // FPs. Fixing that gap means editing a PROTECTED detector, which needs
+      // explicit authorization plus a bidirectional pinning test.
       if (result.nack) { socket.emit("player:mode:nack", result.nack); return; }
       if (result.ack) socket.emit("player:mode:ack", result.ack);
     });
@@ -20319,7 +20328,12 @@ function selectProductionAction(lens, entity) {
 /**
  * Build the production prompt — includes schema, exemplar, domain context.
  */
-function buildProductionPrompt({ lens, action, actionDesc, context, entity, schema, exemplar }) {
+// `entity` was destructured here and never referenced (flagged 2026-07-25).
+// The prompt is assembled entirely by TASK_PROMPTS.professionalLensSpecialist
+// from lens/action/actionDesc/schema/exemplar, so entity contributed nothing.
+// Dropped rather than threaded into the prompt: changing what context an LLM
+// prompt carries is a behavior change to generation quality, not a cleanup.
+function buildProductionPrompt({ lens, action, actionDesc, context, schema, exemplar }) {
   let prompt = TASK_PROMPTS.professionalLensSpecialist({ lens, action, actionDesc, schema, exemplar });
   // The registry function professionalLensSpecialist already folds in
   // schema + exemplar when supplied, so no separate prompt extension is

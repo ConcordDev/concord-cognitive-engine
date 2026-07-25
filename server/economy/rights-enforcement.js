@@ -400,7 +400,7 @@ export function checkDerivativeRights(db, { userId, parentDtuId, parentContentTy
  * relabel the function to match what it actually does (e.g.
  * `checkDerivativeListingRights`) so callers aren't misled by the name.
  */
-export function checkListingRights(db, { dtuId, sellerId, contentType, parentDtuId }) {
+export function checkListingRights(db, { dtuId, sellerId, contentType, parentDtuId }) { // @unused-param-ok — retained deliberately as the only in-code evidence the check is missing
   // If this is a derivative, check remix rights on parent
   if (parentDtuId) {
     const derivCheck = checkDerivativeRights(db, {
