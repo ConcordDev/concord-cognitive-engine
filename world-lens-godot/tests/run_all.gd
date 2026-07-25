@@ -48,6 +48,7 @@ const TestCameraRig := preload("res://tests/test_camera_rig.gd")
 const TestDistrictStreamingPolicy := preload("res://tests/test_district_streaming_policy.gd")
 const TestRooftopAccessController := preload("res://tests/test_rooftop_access_controller.gd")
 const TestWayfindingMarkers := preload("res://tests/test_wayfinding_markers.gd")
+const TestArtStyle := preload("res://tests/test_art_style.gd")
 
 
 func _init() -> void:
@@ -78,6 +79,7 @@ func _init() -> void:
 		"DistrictStreamingPolicy": TestDistrictStreamingPolicy.run(),
 		"RooftopAccessController": TestRooftopAccessController.run(),
 		"WayfindingMarkers": TestWayfindingMarkers.run(),
+		"ArtStyle": TestArtStyle.run(),
 	}
 
 	var all_ok := true

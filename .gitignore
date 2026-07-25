@@ -83,3 +83,10 @@ export_templates/
 world-lens-godot/build/
 world-lens-godot/*.pck
 world-lens-godot/*.x86_64
+
+# Visual-QA harness output (scripts/visual-qa.mjs). Full-resolution 1152x648
+# captures + the engine log for one run; regenerated on every run and never
+# committed. The DOWNSAMPLED golden baselines it compares against
+# (world-lens-godot/tests/goldens/, ~2-4 KB each) ARE committed — that is the
+# whole point of a baseline — and are deliberately NOT ignored here.
+world-lens-godot/.visual-qa/

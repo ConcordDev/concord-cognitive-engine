@@ -1,0 +1,89 @@
+class_name TestArtStyle
+extends RefCounted
+## Pure-logic tests for world/art_style.gd — the Godot client's reader for the
+## LOCKED art-direction constants (docs/ART_STYLE_GUIDE.md).
+##
+## These assert the SPEC PLUMBING and the colour maths: that the generated
+## `res://art_style.json` really is being read (not a hardcoded copy drifting
+## from concordia-theme.ts), that the per-world saturation dial resolves to the
+## documented values, and that `apply_saturation` moves saturation only.
+##
+## What these DO NOT assert: that any of it reaches pixels. That claim needs a
+## real rasterizer and belongs to `scripts/visual-qa.mjs`, which renders these
+## same materials under Xvfb/llvmpipe and measures the frame. Both halves are
+## needed — this one would happily pass if the shader silently no-opped.
+
+const ArtStyle := preload("res://world/art_style.gd")
+const TestUtils := preload("res://tests/test_utils.gd")
+
+
+static func run() -> TestUtils:
+	var t := TestUtils.new()
+	_test_spec_loads_with_the_locked_constants(t)
+	_test_saturation_dial_matches_the_documented_table(t)
+	_test_unknown_world_falls_back_without_fabricating(t)
+	_test_apply_saturation_touches_only_saturation(t)
+	_test_band_index_quantises(t)
+	_test_outline_derives_from_the_shadow_band(t)
+	return t
+
+
+static func _test_spec_loads_with_the_locked_constants(t: TestUtils) -> void:
+	var spec := ArtStyle.load_spec()
+	t.check(not spec.is_empty(), "art_style.json loads (run scripts/gen-art-style-spec.mjs)")
+	# The four locked ART_STYLE constants, read from the generated spec — if the
+	# TS source changes these, the generator's --check gate fails first.
+	t.check_almost(ArtStyle.outline_width_m(), 0.018, "OUTLINE_WIDTH_M")
+	t.check_eq(ArtStyle.ramp_bands(), 3, "RAMP_BANDS")
+	t.check_almost(ArtStyle.grounded_dial(), 0.45, "GROUNDED_DIAL")
+	t.check_almost(ArtStyle.outline_darken(), 0.35, "OUTLINE_DARKEN")
+	t.check_eq(ArtStyle.canon_worlds().size(), 9, "9 canon worlds in the spec")
+
+
+static func _test_saturation_dial_matches_the_documented_table(t: TestUtils) -> void:
+	t.check_almost(ArtStyle.saturation_for_world("crime"), 0.62, "crime is the noir floor")
+	t.check_almost(ArtStyle.saturation_for_world("cyber"), 1.35, "cyber is the neon ceiling")
+	t.check_almost(ArtStyle.saturation_for_world("concordia-hub"), 1.0, "hub is the baseline")
+	# The legacy 'concordia' alias must resolve like themeForWorldId() does.
+	t.check_almost(ArtStyle.saturation_for_world("concordia"), 1.0, "legacy alias resolves to hub")
+	t.check_eq(ArtStyle.theme_id_for_world("concordia"), "concordia-hub", "alias -> hub theme")
+
+
+static func _test_unknown_world_falls_back_without_fabricating(t: TestUtils) -> void:
+	var id := ArtStyle.theme_id_for_world("no-such-world")
+	t.check_eq(id, String(ArtStyle.load_spec().get("defaultThemeId", "")), "unknown -> default theme")
+	t.check_almost(ArtStyle.saturation_for_world("no-such-world"), 1.0, "unknown world -> 1.0 dial")
+	# A palette is never invented for a world: the fallback is a REAL registered
+	# theme's gradient, and it has the same 3 stops as every other.
+	t.check_eq(ArtStyle.toon_gradient("no-such-world").size(), 3, "fallback gradient is real, 3 stops")
+
+
+static func _test_apply_saturation_touches_only_saturation(t: TestUtils) -> void:
+	var base := Color.from_hsv(0.33, 0.5, 0.8)
+	var up := ArtStyle.apply_saturation(base, 1.35)
+	var down := ArtStyle.apply_saturation(base, 0.62)
+	t.check_almost(up.h, base.h, "hue unchanged going up")
+	t.check_almost(up.v, base.v, "value unchanged going up")
+	t.check_almost(up.s, 0.5 * 1.35, "saturation scaled up")
+	t.check_almost(down.s, 0.5 * 0.62, "saturation scaled down")
+	# Clamped, never wrapped — a 1.35x dial on an already-vivid colour must not
+	# roll over into a different-looking colour.
+	var vivid := ArtStyle.apply_saturation(Color.from_hsv(0.1, 0.95, 1.0), 1.35)
+	t.check_almost(vivid.s, 1.0, "saturation clamps at 1.0")
+
+
+static func _test_band_index_quantises(t: TestUtils) -> void:
+	t.check_eq(ArtStyle.band_index(0.0, 3), 0, "darkest term -> shadow band")
+	t.check_eq(ArtStyle.band_index(0.5, 3), 1, "mid term -> mid band")
+	t.check_eq(ArtStyle.band_index(1.0, 3), 2, "brightest term -> light band")
+	t.check_eq(ArtStyle.band_index(2.0, 3), 2, "out-of-range clamps, never overflows")
+	t.check_eq(ArtStyle.band_index(0.9, 1), 0, "single band degenerates safely")
+
+
+static func _test_outline_derives_from_the_shadow_band(t: TestUtils) -> void:
+	var grad := ArtStyle.toon_gradient("cyber")
+	t.check_eq(grad.size(), 3, "cyber has a 3-stop gradient")
+	var outline := ArtStyle.outline_color("cyber")
+	t.check_almost(outline.r, grad[0].r * 0.35, "outline R = shadow x OUTLINE_DARKEN")
+	t.check_almost(outline.g, grad[0].g * 0.35, "outline G = shadow x OUTLINE_DARKEN")
+	t.check_almost(outline.b, grad[0].b * 0.35, "outline B = shadow x OUTLINE_DARKEN")

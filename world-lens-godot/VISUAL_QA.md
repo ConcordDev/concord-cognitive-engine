@@ -24,11 +24,22 @@ What that changed:
   carefully: **export proves PACKAGING, not APPEARANCE.** Nothing below moved out
   of the human-eyes queue because of it except the packaging item itself.
 
-**What has NOT changed:** headless Godot installs `RasterizerDummy` and draws
-nothing at all. Every *rendering, layout, performance and feel* claim below is
-still unverified and still needs eyes on a real machine with a GPU. "The project
-imports and every script compiles" and "it looks right" are different claims —
-only the first one is now settled.
+**Superseded again, 2026-07-25 (second pass): PIXELS ARE NOW MACHINE-CHECKED.**
+The claim that stood here — "headless Godot installs `RasterizerDummy` and draws
+nothing at all, so every rendering claim needs eyes on a real machine with a
+GPU" — was half right and half a wrong inference. `--headless` really does draw
+nothing. But headless is not the only option without a monitor: Godot renders
+for real against a **virtual X display** (`Xvfb`) on Mesa/**llvmpipe**, and a
+`SceneTree` script can pull the framebuffer back with
+`get_root().get_texture().get_image()`. `scripts/visual-qa.mjs` does exactly
+that and asserts on the resulting pixels. See § *Machine-verified — rendered
+pixels* below for what that genuinely settles, and § *Why software rendering
+still cannot settle most of this file* for the much longer list of what it
+does not.
+
+"The project imports and every script compiles", "something is drawn and it is
+geometrically correct", and "it looks right" are three different claims. The
+first two are now settled. The third is not, and mostly cannot be by a machine.
 
 This file remains the queue of every claim that requires **eyes on a real
 machine**. **No document in this repo — including `docs/GODOT_INTEGRATION.md` —
@@ -53,6 +64,17 @@ checked off below.**
    > Never fold the import into a run with `--quit` / `--quit-after 1`
    > ([godot#77508](https://github.com/godotengine/godot/issues/77508)) — import
    > needs more than one iteration and quitting early leaves half-imported state.
+2b. Then run the **rendered-pixel** checks — they need no GPU and no monitor,
+   only `xvfb`, and they gate the same way:
+   ```bash
+   node scripts/gen-art-style-spec.mjs --check   # art spec has not drifted
+   node scripts/visual-qa.mjs                    # 36 assertions over real frames
+   ```
+   Read § *Machine-verified — rendered pixels* for exactly what this settles,
+   and § *Why software rendering still cannot settle most of this file* for the
+   limits. If a golden diff fires, look at the frames in
+   `world-lens-godot/.visual-qa/` before assuming either verdict, then
+   `node scripts/visual-qa.mjs --update-goldens` if the change is intended.
 3. `$GD --path world-lens-godot --editor` (or open the project in the editor) for
    everything below.
 4. Point `boot.gd`'s `gateway_url` / `auth_token` / `world_id` at a running
@@ -94,13 +116,149 @@ Reproduce with the commands in `docs/GODOT_RUNTIME.md` §3.5. Engine:
       **nothing** about what is drawn — the exported binary was itself run
       `--headless`, so no pixel has been rendered here either.
 
+## Machine-verified — rendered pixels (`scripts/visual-qa.mjs`)
+
+**Reproduce (~7s of render, 22 frames):**
+
+```bash
+node scripts/fetch-godot.mjs        # once — engine binary, checksum-verified
+node scripts/gen-art-style-spec.mjs # once — derives art_style.json from the TS
+node scripts/visual-qa.mjs          # exits non-zero on any failed assertion
+```
+
+Under the hood that is one process:
+
+```bash
+xvfb-run -a -s "-screen 0 1280x720x24" ./.godot-runtime/bin/godot \
+  --display-driver x11 --rendering-driver opengl3 \
+  --path world-lens-godot --script res://tools/visual_probe.gd
+```
+
+Engine `4.4.stable.official.4c311cbee`, rasterizer **llvmpipe (LLVM 20.1.2)**,
+viewport 1152x648. Output frames land in the gitignored
+`world-lens-godot/.visual-qa/`; the committed baselines are downsampled
+144x81 PNGs in `world-lens-godot/tests/goldens/` (~2-4 KB each, ~55 KB total —
+deliberately not full-resolution, see the harness header for why).
+
+**Determinism measured, not assumed:** three consecutive runs produced
+**byte-identical** frames for all 22 shots (`md5sum` compared), and every
+assertion is therefore exact rather than tolerance-tuned.
+
+**Every assertion below is proven capable of failing.** `--fault=<name>`
+injects a specific defect and the run must go red; an assertion that cannot
+fail proves nothing:
+
+| `--fault=` | what it breaks | assertions that correctly go red |
+|---|---|---|
+| `no-camera` | renders with no `Camera3D` | render-non-blank (9), ramp-banding, saturation-ordering, scene-geometry, transform-footprint, golden-diff (22) |
+| `no-toon` | swaps the cel material for a smooth one | ramp-banding, golden-diff (19) |
+| `flat-saturation` | ignores the per-world saturation dial | saturation-ordering, golden-diff (8) |
+| `empty-scene` | spawns no geometry | scene-geometry, transform-footprint, golden-diff (11) |
+| (tamper with a baseline PNG) | — | golden-diff, naming the changed tiles |
+
+- [x] **Something is actually drawn — for all 9 canon worlds.** Each world's
+      full theme (sky/sun/ambient + `toonGradient` + saturation) renders a frame
+      with real luminance variance, >= 8 distinct colour buckets and >50%
+      non-black pixels. This is the entire class of defect headless **cannot**
+      see: a null material, a missing asset, a dead shader, a camera pointed at
+      nothing. Fails under `--fault=no-camera`.
+- [x] **`RAMP_BANDS = 3` genuinely reaches pixels.** A toon-shaded sphere shows
+      3 (occasionally 4, counting the anti-aliased rim) distinct luminance
+      plateaus. The lower bound is the load-bearing half — a *smooth* material
+      measures 2, because a continuous gradient leaves no empty histogram bins
+      to split the run. That is precisely the "the cel shader silently no-opped"
+      failure this check exists to catch, and `--fault=no-toon` demonstrates it
+      catching it. Measured once at a fixed dial, not per world: desaturating
+      compresses the gradient's luminance separation, so the noir worlds
+      legitimately read as 2 plateaus — reported as information, never asserted
+      (widening the window to admit 2 would also stop it catching a dead shader).
+- [x] **`WORLD_SATURATION` reaches pixels, in the right order, for all 9
+      worlds.** Rendering a FIXED reference palette under each world's dial —
+      so the dial is the only varying input — the measured mean chroma is
+      strictly monotonic in the spec: crime 0.62 -> 0.0359, sovereign-ruins
+      0.80 -> 0.0505, concord-link-frontier 0.95 -> 0.0633, concordia-hub 1.00
+      -> 0.0678, tunya 1.05 -> 0.0721, fantasy 1.12 -> 0.0784,
+      lattice-crucible 1.15 -> 0.0812, superhero 1.25 -> 0.0908, cyber 1.35 ->
+      0.1006. Zero inversions across all 36 ordered pairs. Relative ordering is
+      the assertion, not absolute values — llvmpipe and tonemapping shift
+      absolutes, they do not reorder them. Fails under `--fault=flat-saturation`.
+- [x] **`scene:data` -> placeholder BoxMesh geometry appears** — `SceneBootstrap.
+      apply_scene()` fed a 3-node `concord-scene/v1` payload renders exactly 3
+      distinct visible regions. **Scope:** the payload is a fixture matching
+      `server/lib/scene-export.js`'s format, NOT a live server frame — the
+      live-gateway path stays in the unverified queue below.
+- [x] **`{ok:false}` scene payloads draw no phantom geometry** — the pixel proof
+      of `scene_bootstrap.gd`'s honesty contract: zero visible regions, flat
+      frame. (Read this one with its companion: a blank render satisfies it
+      trivially, which is why it is only meaningful alongside the
+      geometry-appears check above, and why both are listed rather than one.)
+- [x] **`scale = [w, h, d]` produces the right footprint, and `rotationY` maps
+      with correct Y-up parity (no axis flip, no inverted sign).** Measured
+      top-down orthographic, where world units map to pixels at a known scale:
+      an 8x2 footprint measures 87x22 px against 86.4x21.6 expected (0.7%
+      error); the same box at `rotationY = PI/2` measures 21x86 px against
+      21.6x86.4 (2.8%); at `rotationY = PI/6` the region's **principal axis**
+      measures -30.0 deg against -30 expected. The principal axis is what
+      catches an inverted rotation sign — a bounding box is symmetric under
+      +/-theta and cannot.
+      > **This check found a real defect on its first run.** `_spawn_node` built
+      > its basis as `Basis().rotated(UP, r).scaled(s)`, which scales along the
+      > PARENT axes after rotating — so an 8x2 building at `rotationY = PI/2`
+      > came back out 8 wide x 2 deep: **the footprint of a rotated building
+      > never rotated at all.** Fixed (`SceneBootstrap.node_basis`, now
+      > `R * from_scale(s)`), pinned twice — by the rendered-pixel assertion and
+      > by pure checks in `tests/test_scene_bootstrap.gd`. No pure test had
+      > caught it in the ~2 years the file existed, because the composition
+      > happened inline in the engine half that nothing could execute.
+- [x] **The locked art constants are read, not re-typed.** `world/art_style.gd`
+      loads `res://art_style.json`, which `scripts/gen-art-style-spec.mjs`
+      DERIVES from `concord-frontend/lib/world-lens/concordia-theme.ts` (the
+      same file the web client reads). `node scripts/gen-art-style-spec.mjs
+      --check` is a drift gate. `tests/test_art_style.gd` (28 checks) pins the
+      spec plumbing and the colour maths; the harness pins that it reaches
+      pixels. Both halves are needed — the pure tests would happily pass if the
+      shader no-opped.
+
+### Why software rendering still cannot settle most of this file
+
+Read these limits as part of the claims above, not as footnotes to them.
+
+1. **It proves WHAT draws. It proves NOTHING about HOW FAST.** llvmpipe is a
+   CPU rasterizer; its frame times have no relationship to a GPU's. Every
+   framerate, hitch, pop-in, draw-call-budget, LOD-transition-smoothness and
+   streaming-race item below stays human-verified, permanently, at this
+   rasterizer.
+2. **llvmpipe is not a GPU.** No vendor extensions, different precision, and
+   possible gaps in shader-feature support. **If an effect silently no-ops
+   under llvmpipe, a green assertion here is a FALSE assurance.** The
+   mitigation is structural, not hopeful: assertions are written so the thing
+   under test going away turns them red (hence the fault table above), and the
+   ramp check specifically exists to catch a dead shader. It is a mitigation,
+   not a guarantee — a first run on real GPU hardware is still owed.
+3. **Aesthetic judgement is not machine-verifiable and none was moved.** "Does
+   the hub feel alive", "is the framing right", "does the rig read as a legible
+   humanoid rather than a pile of capsules", "does this read as premium" —
+   all still human. The harness can say three regions were drawn; it cannot say
+   they look like buildings.
+4. **A fixture is not a live server.** Everything network-dependent — real
+   `/godot-ws` frames, reconnect behaviour, real `.glb` assets, interpolation
+   under real latency — is untouched by this harness and stays below.
+5. **One rasterizer, one resolution, one driver version.** Baselines are exact
+   here and may legitimately shift on a different Mesa build. A golden diff is
+   a "look at this" signal, not proof of a defect.
+
 ## Checklist (all UNVERIFIED)
 
 ### Engine / project
 - [ ] Project opens in the **graphical** editor without errors or missing-resource
       warnings (headless import passing does not prove the editor UI path).
 - [ ] An exported build launches **with a window and a GPU** and draws its first
-      frame. Export packaging is verified (above); a real windowed launch is not.
+      frame. Export packaging is verified (above). **Partially advanced, not
+      closed:** the project (not the exported build) now launches against a
+      virtual X display and draws real frames on llvmpipe — so "it draws" is
+      settled, while "the EXPORTED binary draws, on a GPU, in a real window" is
+      still three untested things. Leave unchecked until someone runs the
+      exported build on hardware.
 - [ ] The **Web** export actually loads in a browser. The bundle builds, but it has
       never been served or opened — and it is exported with `thread_support=true`,
       which requires cross-origin-isolation headers (`COOP`/`COEP`) from whatever
@@ -113,12 +271,26 @@ Reproduce with the commands in `docs/GODOT_RUNTIME.md` §3.5. Engine:
 - [ ] Malformed / oversized inbound frames do not crash the client.
 
 ### Scene rendering
-- [ ] `scene:request` → placeholder BoxMesh geometry appears.
+- [ ] `scene:request` → placeholder BoxMesh geometry appears. **Half done:** the
+      RENDER half is machine-verified above (a `concord-scene/v1` payload handed
+      to `apply_scene` really does draw one region per node). What is still
+      unverified is the WIRE half — a real `scene:request` to a live gateway
+      returning a real `scene:data` frame. The gateway is not mounted yet.
 - [ ] Placeholder boxes render at the **correct position / rotation / scale**
-      versus the Three.js client for the same world (side-by-side).
-- [ ] `rotationY` maps correctly (Y-up parity; no axis flip).
-- [ ] `scale = [w, h, d]` footprint matches the building's real dimensions.
-- [ ] `{ok:false}` scene payloads are handled honestly (no phantom geometry).
+      versus the Three.js client for the same world (side-by-side). *(The Godot
+      side's transform mapping is now verified against the spec in absolute
+      pixel terms; the cross-client comparison is a separate claim and is not
+      made.)*
+- [x] **`rotationY` maps correctly (Y-up parity; no axis flip)** — machine-
+      verified by principal-axis measurement in `scripts/visual-qa.mjs`. This
+      check FOUND A REAL DEFECT here (rotated footprints never rotated); see the
+      machine-verified section for the detail and the fix.
+- [x] **`scale = [w, h, d]` footprint** renders at the mapped dimensions
+      (<= 2.8% pixel error, orthographic top-down). *Scope: verified against the
+      `concord-scene/v1` contract, not against a live server's real building
+      rows — that half needs the gateway.*
+- [x] **`{ok:false}` scene payloads are handled honestly (no phantom
+      geometry)** — machine-verified: zero drawn regions.
 
 ### Assets
 - [ ] `GlbLoader` downloads and displays a real `.glb` correctly.

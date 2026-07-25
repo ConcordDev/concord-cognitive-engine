@@ -1,0 +1,142 @@
+{
+  "_note": "Downsampled visual-QA baselines. Regenerate: node scripts/visual-qa.mjs --update-goldens",
+  "golden": {
+    "w": 144,
+    "h": 81,
+    "tolerance": 12
+  },
+  "shots": {
+    "art_concordia-hub": {
+      "meanChroma": 0.1472,
+      "meanLuma": 0.84348,
+      "lumaStdDev": 0.13599,
+      "distinctColors": 42
+    },
+    "art_tunya": {
+      "meanChroma": 0.15345,
+      "meanLuma": 0.861,
+      "lumaStdDev": 0.15135,
+      "distinctColors": 53
+    },
+    "art_cyber": {
+      "meanChroma": 0.51461,
+      "meanLuma": 0.38368,
+      "lumaStdDev": 0.30967,
+      "distinctColors": 58
+    },
+    "art_crime": {
+      "meanChroma": 0.12453,
+      "meanLuma": 0.48276,
+      "lumaStdDev": 0.29734,
+      "distinctColors": 50
+    },
+    "art_fantasy": {
+      "meanChroma": 0.14438,
+      "meanLuma": 0.81789,
+      "lumaStdDev": 0.21385,
+      "distinctColors": 64
+    },
+    "art_superhero": {
+      "meanChroma": 0.17476,
+      "meanLuma": 0.87105,
+      "lumaStdDev": 0.15771,
+      "distinctColors": 55
+    },
+    "art_sovereign-ruins": {
+      "meanChroma": 0.13167,
+      "meanLuma": 0.8989,
+      "lumaStdDev": 0.11414,
+      "distinctColors": 25
+    },
+    "art_lattice-crucible": {
+      "meanChroma": 0.38519,
+      "meanLuma": 0.47094,
+      "lumaStdDev": 0.34802,
+      "distinctColors": 58
+    },
+    "art_concord-link-frontier": {
+      "meanChroma": 0.08365,
+      "meanLuma": 0.89856,
+      "lumaStdDev": 0.11738,
+      "distinctColors": 42
+    },
+    "sat_concordia-hub": {
+      "meanChroma": 0.06776,
+      "meanLuma": 0.18572,
+      "lumaStdDev": 0.21316,
+      "distinctColors": 25
+    },
+    "sat_tunya": {
+      "meanChroma": 0.07207,
+      "meanLuma": 0.18525,
+      "lumaStdDev": 0.21164,
+      "distinctColors": 22
+    },
+    "sat_cyber": {
+      "meanChroma": 0.10064,
+      "meanLuma": 0.18217,
+      "lumaStdDev": 0.2018,
+      "distinctColors": 26
+    },
+    "sat_crime": {
+      "meanChroma": 0.03592,
+      "meanLuma": 0.18922,
+      "lumaStdDev": 0.22451,
+      "distinctColors": 22
+    },
+    "sat_fantasy": {
+      "meanChroma": 0.07844,
+      "meanLuma": 0.18456,
+      "lumaStdDev": 0.20941,
+      "distinctColors": 23
+    },
+    "sat_superhero": {
+      "meanChroma": 0.0908,
+      "meanLuma": 0.18323,
+      "lumaStdDev": 0.20515,
+      "distinctColors": 25
+    },
+    "sat_sovereign-ruins": {
+      "meanChroma": 0.0505,
+      "meanLuma": 0.18762,
+      "lumaStdDev": 0.21929,
+      "distinctColors": 22
+    },
+    "sat_lattice-crucible": {
+      "meanChroma": 0.08124,
+      "meanLuma": 0.18425,
+      "lumaStdDev": 0.20844,
+      "distinctColors": 24
+    },
+    "sat_concord-link-frontier": {
+      "meanChroma": 0.06327,
+      "meanLuma": 0.18621,
+      "lumaStdDev": 0.21473,
+      "distinctColors": 25
+    },
+    "ramp_probe": {
+      "meanChroma": 0.06776,
+      "meanLuma": 0.18572,
+      "lumaStdDev": 0.21316,
+      "distinctColors": 25
+    },
+    "scene_ok": {
+      "meanChroma": 0.31166,
+      "meanLuma": 0.06144,
+      "lumaStdDev": 0.06181,
+      "distinctColors": 5
+    },
+    "scene_fail": {
+      "meanChroma": 0.35,
+      "meanLuma": 0.05296,
+      "lumaStdDev": 0,
+      "distinctColors": 1
+    },
+    "scene_xform": {
+      "meanChroma": 0,
+      "meanLuma": 0.00749,
+      "lumaStdDev": 0.0862,
+      "distinctColors": 2
+    }
+  }
+}

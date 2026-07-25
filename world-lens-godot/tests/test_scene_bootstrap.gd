@@ -37,7 +37,34 @@ static func run() -> TestUtils:
 	_test_drops_malformed_districts_without_crashing(t)
 	_test_parses_rooftop_buildings_from_nodes(t)
 	_test_rooftop_parsing_drops_non_rooftop_and_malformed_nodes(t)
+	_test_node_basis_rotates_the_footprint(t)
 	return t
+
+
+## Regression pin for the basis-composition defect that `scripts/visual-qa.mjs`
+## found by RENDERING a rotated node and measuring its footprint in pixels.
+## The old `Basis().rotated(UP, r).scaled(s)` scales along the PARENT axes
+## after rotating, so an 8 x 2 footprint at rotationY = PI/2 came back out as
+## 8 wide x 2 deep — the footprint of a rotated building never rotated. The
+## correct composition scales in the node's own frame first (`R * from_scale`).
+static func _test_node_basis_rotates_the_footprint(t: TestUtils) -> void:
+	var scale := Vector3(8.0, 1.0, 2.0)
+
+	var b0 := SceneBootstrap.node_basis(0.0, scale)
+	t.check_almost(b0.x.length(), 8.0, "unrotated: local X keeps the width")
+	t.check_almost(b0.z.length(), 2.0, "unrotated: local Z keeps the depth")
+
+	var b90 := SceneBootstrap.node_basis(PI / 2.0, scale)
+	t.check_almost(b90.x.length(), 8.0, "rotated 90deg: local X still 8 long")
+	t.check_almost(b90.z.length(), 2.0, "rotated 90deg: local Z still 2 long")
+	# +rotationY takes world +X toward world -Z (Y-up, right-handed).
+	t.check_almost(b90.x.z, -8.0, "rotated 90deg: width now lies along -Z")
+	t.check(absf(b90.x.x) < 0.001, "rotated 90deg: no width left along +X")
+
+	var b30 := SceneBootstrap.node_basis(PI / 6.0, scale)
+	t.check_almost(b30.x.length(), 8.0, "rotated 30deg: scale magnitude preserved")
+	t.check_almost(b30.x.x, 8.0 * cos(PI / 6.0), "rotated 30deg: X component")
+	t.check_almost(b30.x.z, -8.0 * sin(PI / 6.0), "rotated 30deg: Z component sign")
 
 
 static func _test_parses_well_shaped_pads_verbatim(t: TestUtils) -> void:

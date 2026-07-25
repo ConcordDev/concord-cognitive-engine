@@ -132,8 +132,7 @@ func _spawn_node(node: Dictionary) -> void:
 	var origin: Vector3 = mapped["origin"]
 	var rot_y: float = mapped["rotationY"]
 	var scale: Vector3 = mapped["scale"]
-	var basis := Basis().rotated(Vector3.UP, rot_y).scaled(scale)
-	mi.transform = Transform3D(basis, origin)
+	mi.transform = Transform3D(SceneBootstrap.node_basis(rot_y, scale), origin)
 
 	add_child(mi)
 	_spawned.append(mi)
@@ -149,6 +148,24 @@ func _clear() -> void:
 # ── Pure static transform mapping ────────────────────────────────────────────
 # concord-scene/v1 is Y-up, rotationY in radians, scale = [w, h, d] footprint —
 # which matches Godot's Y-up convention directly (no axis swap needed).
+
+## Composes a node's basis: rotate about Y, THEN scale in the node's OWN frame.
+##
+## Order is load-bearing and was wrong until `scripts/visual-qa.mjs` rendered it
+## and measured the footprint. The previous `Basis().rotated(UP, r).scaled(s)`
+## composes as `from_scale(s) * R` — Godot's `Basis.scaled()` scales along the
+## PARENT axes, applied after the rotation — so an 8x2 building at rotationY =
+## PI/2 came out re-stretched back to 8 wide x 2 deep instead of 2 wide x 8
+## deep: the footprint of any rotated building never rotated at all. Composing
+## `R * from_scale(s)` scales along the node's own axes first, then rotates,
+## which is what `concord-scene/v1`'s `scale = [w, h, d]` footprint means.
+##
+## Pure + static so it is pinned by `tests/test_scene_bootstrap.gd` without a
+## scene tree, and independently by the rendered-pixel `transform-footprint`
+## assertion in the visual harness.
+static func node_basis(rot_y: float, scale: Vector3) -> Basis:
+	return Basis().rotated(Vector3.UP, rot_y) * Basis.from_scale(scale)
+
 
 static func node_to_transform(node: Dictionary) -> Dictionary:
 	var t: Dictionary = node.get("transform", {})
