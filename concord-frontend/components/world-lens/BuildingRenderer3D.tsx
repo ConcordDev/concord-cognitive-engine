@@ -3,6 +3,12 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { TextureForge } from '@/lib/world-lens/texture-forge';
 import { makeStandardLOD } from '@/lib/world-lens/lod';
+import {
+  ART_STYLE,
+  CONCORDIA_THEMES,
+  DEFAULT_THEME_ID,
+} from '@/lib/world-lens/concordia-theme';
+import { applyCelShade, toonGradientTextureFromPalette } from '@/lib/world-lens/cel-shade';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -138,8 +144,14 @@ export default function BuildingRenderer3D({
   buildings,
   validationData,
   viewMode,
-  renderStyle = 'pbr',
-  toonGradient = ['#1a1a2e', '#3a3a5a', '#8888bb'],
+  // Defaults follow the locked anti-photoreal direction (docs/ART_STYLE_GUIDE.md):
+  // toon is the house style, PBR is the opt-out. The fallback ramp is the registry's
+  // own DEFAULT_THEME_ID palette rather than the hardcoded blue-grey that used to sit
+  // here — that triple matched no authored world, so a caller omitting toonGradient
+  // was rendering an invented palette. Callers that know their world should still
+  // pass its gradient; this is only the un-themed fallback.
+  renderStyle = 'toon',
+  toonGradient = CONCORDIA_THEMES[DEFAULT_THEME_ID].toonGradient,
   onBuildingClick,
   buildingStyle,
 }: BuildingRenderer3DProps) {
@@ -153,6 +165,34 @@ export default function BuildingRenderer3D({
     THREE: typeof import('three'),
     validation?: ValidationData,
   ) => {
+    // ART DIRECTION — the shared cel-shade pass, applied to whichever of the
+    // three build paths below produced this building.
+    //
+    // Before 2026-07-25 the ONLY toon handling in this file lived in the legacy
+    // box-composite path's material factory, so the two paths that actually
+    // build most world buildings — the real-GLB path and the procedural
+    // `createBuilding` path — returned MeshStandardMaterial and returned EARLY,
+    // i.e. they could not be cel-shaded at all no matter what `renderStyle`
+    // said. And no building of any kind had an ink outline: `applyCelShade` had
+    // exactly two call sites, both on avatars, so the player was outlined and
+    // the entire world around them was not (docs/ART_DIRECTION_AUDIT.md §3.4).
+    //
+    // MUST be called AFTER the group's final `scale.set(...)` — applyCelShade
+    // solves outline width against the accumulated scale from the root down, so
+    // scaling afterwards would re-introduce size-proportional ink.
+    //
+    // Skipped for the engineering view modes: stress_heatmap / validation drive
+    // material.emissive / roughness / metalness to read out FEA results, which
+    // is a diagnostic surface, not an art surface.
+    const celShadeBuilding = (g: unknown) => {
+      if (renderStyle !== 'toon' || viewMode !== 'normal') return;
+      try {
+        applyCelShade(g, THREE, { palette: toonGradient });
+      } catch (err) {
+        if (typeof console !== 'undefined') console.warn('[BuildingRenderer3D] cel-shade skipped, building still renders', err);
+      }
+    };
+
     // Phase A2: if the DTU has a recognised archetype (tavern / archive /
     // forge / market / tower) AND faction visual heraldry, take the
     // procedural-buildings path which builds richer silhouettes per
@@ -261,6 +301,7 @@ export default function BuildingRenderer3D({
             } catch (matErr) {
               if (typeof console !== 'undefined') console.warn('[BuildingRenderer3D] material_upgrade skipped, real asset still renders', matErr);
             }
+            celShadeBuilding(cloned);
             return cloned;
           }
         } catch (err) {
@@ -292,6 +333,7 @@ export default function BuildingRenderer3D({
         // survive — setInteriorVisible() reads them to lazy-attach the decor.
         result.userData = { ...result.userData, buildingId: dtu.id, dtuName: dtu.name };
         result.scale.set(dtu.dimensions.width / 10, dtu.dimensions.height / 8, dtu.dimensions.depth / 8);
+        celShadeBuilding(result);
         return result;
       } catch (err) {
         if (typeof console !== 'undefined') console.warn('[BuildingRenderer3D] procedural-buildings failed, falling back to legacy', err);
@@ -339,41 +381,8 @@ export default function BuildingRenderer3D({
       }
     };
 
-    // Toon gradient map: 1×3 DataTexture with NearestFilter (required by MeshToonMaterial)
-    const createToonGradientMap = () => {
-      const data = new Uint8Array(3 * 4);
-      const stops = toonGradient.map(hex => {
-        const n = parseInt(hex.replace('#', ''), 16);
-        return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
-      });
-      for (let i = 0; i < 3; i++) {
-        data[i * 4]     = stops[i][0];
-        data[i * 4 + 1] = stops[i][1];
-        data[i * 4 + 2] = stops[i][2];
-        data[i * 4 + 3] = 255;
-      }
-      const tex = new THREE.DataTexture(data, 1, 3);
-      tex.minFilter = THREE.NearestFilter;
-      tex.magFilter = THREE.NearestFilter;
-      tex.needsUpdate = true;
-      return tex;
-    };
-
     const createMaterial = (overrides?: Partial<typeof matConfig>) => {
       const cfg = { ...matConfig, ...overrides };
-
-      if (renderStyle === 'toon' && !overrides) {
-        return new THREE.MeshToonMaterial({
-          color: cfg.color,
-          transparent: cfg.transparent,
-          opacity: cfg.opacity,
-          emissive: new THREE.Color(0xffcc88),
-          emissiveIntensity: 0.05,
-          gradientMap: createToonGradientMap(),
-        });
-      }
-
-      const textures = overrides ? {} : getProceduralTextures(matType);
       // T3.3 — per-world silhouette: when a buildingStyle spec is supplied, its
       // emissive / roughness / metalness override the defaults so cyber reads
       // neon-emissive and crime reads matte-noir. Falls back to the warm
@@ -381,6 +390,25 @@ export default function BuildingRenderer3D({
       const styleEmissive = buildingStyle && buildingStyle.emissive
         ? new THREE.Color(buildingStyle.emissive) : new THREE.Color(0xffcc88);
       const styleEmissiveIntensity = buildingStyle ? buildingStyle.emissiveIntensity : 0.08;
+
+      if (renderStyle === 'toon') {
+        // Previously gated on `!overrides`, which left the foundation, columns,
+        // beams and roof PBR while only the walls went toon — one building in
+        // two shading languages. The ramp is now the SHARED
+        // toonGradientTextureFromPalette (sampled at ART_STYLE.RAMP_BANDS)
+        // instead of a local 3-stop texture builder, so band count comes from
+        // the one locked constant rather than a hardcoded 3 in this file.
+        return new THREE.MeshToonMaterial({
+          color: cfg.color,
+          transparent: cfg.transparent,
+          opacity: cfg.opacity,
+          emissive: styleEmissive,
+          emissiveIntensity: styleEmissiveIntensity,
+          gradientMap: toonGradientTextureFromPalette(THREE, toonGradient, ART_STYLE.RAMP_BANDS),
+        });
+      }
+
+      const textures = overrides ? {} : getProceduralTextures(matType);
       return new THREE.MeshStandardMaterial({
         color: cfg.color,
         roughness: buildingStyle ? buildingStyle.roughness : cfg.roughness,
@@ -719,6 +747,11 @@ export default function BuildingRenderer3D({
     // ── Position in world ────────────────────────────────────────
     group.position.set(dtu.position.x, dtu.position.y, dtu.position.z);
 
+    // Materials on this path were already built toon-or-PBR by createMaterial;
+    // this call is what adds the ink outline the path never had (and is a no-op
+    // on the material swap, since applyCelShade skips MeshToonMaterial).
+    celShadeBuilding(group);
+
     return group;
   }, [viewMode, renderStyle, toonGradient, buildingStyle]);
 
@@ -767,10 +800,21 @@ export default function BuildingRenderer3D({
           dtu.dimensions.height,
           dtu.dimensions.depth,
         );
-        const simplifiedMat = new THREE.MeshStandardMaterial({
-          color: PBR_MATERIAL_CONFIG[dtu.material].color,
-          roughness: 0.8,
-        });
+        // LOD coherence: the medium/low proxies must speak the same shading
+        // language as the high-detail mesh, or a building visibly pops from
+        // cel-shaded to smooth-shaded as the camera pulls back — the exact
+        // per-component drift ART_STYLE exists to prevent. (Billboard LOD is
+        // already MeshBasicMaterial, i.e. flat/unlit, which reads correctly
+        // under either style.)
+        const simplifiedMat = renderStyle === 'toon' && viewMode === 'normal'
+          ? new THREE.MeshToonMaterial({
+              color: PBR_MATERIAL_CONFIG[dtu.material].color,
+              gradientMap: toonGradientTextureFromPalette(THREE, toonGradient, ART_STYLE.RAMP_BANDS),
+            })
+          : new THREE.MeshStandardMaterial({
+              color: PBR_MATERIAL_CONFIG[dtu.material].color,
+              roughness: 0.8,
+            });
         const simplified = new THREE.Mesh(simplifiedGeom, simplifiedMat);
         simplified.position.y = dtu.dimensions.height / 2;
         simplified.castShadow = true;
@@ -782,9 +826,14 @@ export default function BuildingRenderer3D({
           dtu.dimensions.height,
           dtu.dimensions.depth,
         );
-        const proxyMat = new THREE.MeshLambertMaterial({
-          color: PBR_MATERIAL_CONFIG[dtu.material].color,
-        });
+        const proxyMat = renderStyle === 'toon' && viewMode === 'normal'
+          ? new THREE.MeshToonMaterial({
+              color: PBR_MATERIAL_CONFIG[dtu.material].color,
+              gradientMap: toonGradientTextureFromPalette(THREE, toonGradient, ART_STYLE.RAMP_BANDS),
+            })
+          : new THREE.MeshLambertMaterial({
+              color: PBR_MATERIAL_CONFIG[dtu.material].color,
+            });
         const proxy = new THREE.Mesh(proxyGeom, proxyMat);
         proxy.position.y = dtu.dimensions.height / 2;
         const proxyGroup = new THREE.Group();
@@ -851,14 +900,14 @@ export default function BuildingRenderer3D({
                   map?: { dispose: () => void } | null;
                   normalMap?: { dispose: () => void } | null;
                   roughnessMap?: { dispose: () => void } | null;
-                  gradientMap?: { dispose: () => void } | null;
+                  gradientMap?: ({ dispose: () => void; userData?: { __celShared?: boolean } }) | null;
                 }
               | {
                   dispose: () => void;
                   map?: { dispose: () => void } | null;
                   normalMap?: { dispose: () => void } | null;
                   roughnessMap?: { dispose: () => void } | null;
-                  gradientMap?: { dispose: () => void } | null;
+                  gradientMap?: ({ dispose: () => void; userData?: { __celShared?: boolean } }) | null;
                 }[];
           };
           if (mesh.geometry) mesh.geometry.dispose();
@@ -873,14 +922,27 @@ export default function BuildingRenderer3D({
               if (m.map) m.map.dispose();
               if (m.normalMap) m.normalMap.dispose();
               if (m.roughnessMap) m.roughnessMap.dispose();
-              if (m.gradientMap) m.gradientMap.dispose();
+              // EXCEPT the shared toon ramp: toonGradientTextureFromPalette
+              // caches one DataTexture per (palette, band count) and hands the
+              // same instance to every material that asks. Disposing it here
+              // would destroy a texture the cache still owns, so the NEXT mount
+              // would receive a disposed handle and render untextured. Anything
+              // flagged __celShared is cache-owned and must outlive us.
+              if (m.gradientMap && !m.gradientMap.userData?.__celShared) m.gradientMap.dispose();
               m.dispose();
             });
           }
         });
       }
     };
-  }, [buildings, validationData, viewMode, renderFromDTU, onBuildingClick]);
+    // `renderStyle` / `toonGradient` are read DIRECTLY in this effect now (the
+    // medium/low LOD proxy materials pick toon-vs-standard from them), not only
+    // through `renderFromDTU`. They were already covered transitively —
+    // `renderFromDTU` lists both in its own deps, so its identity changes when
+    // they do and this effect re-ran anyway — but leaving them implicit meant
+    // the LOD path's correctness depended on an unrelated callback's dep list.
+    // Naming them is behaviourally a no-op and makes the dependency real.
+  }, [buildings, validationData, viewMode, renderFromDTU, onBuildingClick, renderStyle, toonGradient]);
 
   return (
     <div

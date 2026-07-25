@@ -2240,7 +2240,12 @@ export default function WorldLensPage() {
   // 'concordia-hub') — reuse it here instead.
   const currentWorldDisplayName =
     CONCORDIA_THEMES[concordiaTheme]?.label || activeDistrict.name;
-  const [concordiaRenderStyle, setConcordiaRenderStyle] = useState<'pbr' | 'toon'>('pbr');
+  // Default = TOON. docs/ART_STYLE_GUIDE.md is an explicitly LOCKED anti-photoreal
+  // thesis ("Photoreal invites comparison to $200M productions; a stylized look sets
+  // its own standard"), yet this defaulted to 'pbr' until 2026-07-25 — so the locked
+  // direction shipped only to players who found and clicked a toggle. PBR stays
+  // reachable through that toggle; it is now the opt-in, not the default.
+  const [concordiaRenderStyle, setConcordiaRenderStyle] = useState<'pbr' | 'toon'>('toon');
   const [showPanel, setShowPanel] = useState<
     | 'none'
     | 'inventory'
@@ -5217,9 +5222,24 @@ export default function WorldLensPage() {
             lodCenter={TERRAIN_LOD_CENTER_ORIGIN}
             quality="medium"
           />
+          {/* ART DIRECTION — renderStyle + toonGradient are threaded here on
+              purpose. Until 2026-07-25 this call site passed NEITHER, with two
+              consequences the art audit (docs/ART_DIRECTION_AUDIT.md §3.3)
+              measured: (1) the PBR/Toon toggle above was wired to
+              ConcordiaScene but not to the buildings, so flipping it to "Toon"
+              left every building PBR — the control silently did not do what its
+              label said; (2) BuildingRenderer3D fell back to its hardcoded
+              default ramp ['#1a1a2e','#3a3a5a','#8888bb'], a blue-grey matching
+              no authored world, so all 10 worlds' toon buildings were the same
+              colour. Passing the active theme's own gradient is what makes the
+              per-world palette (concordia-theme.ts CONCORDIA_THEMES) reach
+              building pixels. Uses `concordiaTheme` (not the raw world id) so a
+              manual theme-picker override moves palette and buildings together. */}
           <BuildingRenderer3D
             buildings={buildingRendererBuildings}
             viewMode="normal"
+            renderStyle={concordiaRenderStyle}
+            toonGradient={(CONCORDIA_THEMES[concordiaTheme] ?? CONCORDIA_THEMES['neon-punk']).toonGradient}
             buildingStyle={buildingStyleForWorld(worldIdForTheme)}
           />
           {/* Phase A3 — L-system trees + procedural rocks per biome.

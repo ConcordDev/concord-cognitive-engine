@@ -452,7 +452,13 @@ export default function ConcordiaScene({
   districtId,
   quality: initialQuality = 'medium',
   theme: themeProp = 'neon-punk',
-  renderStyle = 'pbr',
+  // Default = TOON, matching BuildingRenderer3D's default and the locked
+  // anti-photoreal direction. This knob only drives POST-FX here (bloom off,
+  // Sobel ink pass on); leaving it at 'pbr' while buildings defaulted to toon
+  // would give the omit-the-prop callers (Foundry / ConKay preview adapters)
+  // toon buildings under a bloom-on, ink-off scene — the half-committed look
+  // docs/CONCORDIA_PLAN.md diagnoses at :1049-1051.
+  renderStyle = 'toon',
   questObjectives = [],
   onBuildingClick,
   onTerrainClick,

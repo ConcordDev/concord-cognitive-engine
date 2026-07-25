@@ -54,7 +54,6 @@ import { physicsWorld } from '@/lib/world-lens/physics-world';
 import { sampleGroundY, outOfBounds } from '@/lib/world-lens/coord-frame';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
-import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
 import { getTimeScale, getPlayerTimeScale } from '@/lib/concordia/use-time-scale';
 import { getDischargeWorldPosition, getWeaponTipWorldPosition, DISCHARGE_ARCHETYPES, type WeaponArchetype } from '@/lib/concordia/weapon-archetypes';
 
@@ -999,7 +998,14 @@ export default function AvatarSystem3D({
       try {
         if ((window as unknown as { __CONCORD_CEL_SHADE__?: boolean }).__CONCORD_CEL_SHADE__ !== false) {
           // Share the global outline weight so crowd + hero silhouettes read alike.
-          applyCelShade(group, THREE, { outlineScale: 1 + ART_STYLE.OUTLINE_WIDTH_M * 3 });
+          // Outline width now comes from applyCelShade's own default —
+          // ART_STYLE.OUTLINE_WIDTH_M applied as a real world-space METRE
+          // value. The old `1 + OUTLINE_WIDTH_M * 3` turned a documented metre
+          // constant into a unitless 1.054× hull grow, which made ink thickness
+          // scale with mesh size (docs/ART_DIRECTION_AUDIT.md §3.4). No palette
+          // is passed: avatars keep the neutral grayscale ramp (see the
+          // character-grounding exception in concordia-theme.ts's header).
+          applyCelShade(group, THREE);
         }
       } catch { /* cel-shade best-effort — never block mesh creation */ }
 
@@ -1122,13 +1128,12 @@ export default function AvatarSystem3D({
           // (above); enhanced hero/player avatars stay PBR by default to keep their
           // SSS skin + wear detail. Opt INTO matching toon (so heroes share the
           // world's outline weight + ramp) via window.__CONCORD_HERO_CEL_SHADE__ =
-          // true — the chair A/Bs full-toon before it becomes the default. Reads the
-          // global ART_STYLE outline weight so it can't drift from the crowd.
+          // true — the chair A/Bs full-toon before it becomes the default. Takes
+          // applyCelShade's shared ART_STYLE.OUTLINE_WIDTH_M default so hero ink
+          // can't drift from the crowd's.
           try {
             if ((window as unknown as { __CONCORD_HERO_CEL_SHADE__?: boolean }).__CONCORD_HERO_CEL_SHADE__ === true) {
-              applyCelShade(result.group as unknown as Parameters<typeof applyCelShade>[0], THREE, {
-                outlineScale: 1 + ART_STYLE.OUTLINE_WIDTH_M * 3,
-              });
+              applyCelShade(result.group as unknown as Parameters<typeof applyCelShade>[0], THREE);
             }
           } catch { /* cel-shade best-effort — never block the hero build */ }
           facialControllersRef.current.set(avatarId, result.facial);

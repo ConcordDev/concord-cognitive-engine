@@ -73,13 +73,40 @@ function makeBuilding(overrides: Partial<BuildingDTU> = {}): BuildingDTU {
   };
 }
 
-async function waitForBuildEvent(): Promise<void> {
+type BuiltGroup = { traverse: (cb: (obj: unknown) => void) => void };
+
+/**
+ * Resolves with the `buildingGroup` the component publishes on
+ * `concordia:buildings-ready` — the real built Object3D graph, so a test can
+ * inspect the actual materials that were handed to the GPU-side objects rather
+ * than re-deriving what it thinks they should be.
+ */
+async function waitForBuildEvent(): Promise<BuiltGroup> {
   // @resource-leak-ok: { once: true } self-removes this listener the first
   // time the event fires — there is no matching removeEventListener call
   // because none is needed, not because cleanup was forgotten.
-  await new Promise<void>((resolve) => {
-    window.addEventListener('concordia:buildings-ready', () => resolve(), { once: true });
+  return new Promise<BuiltGroup>((resolve) => {
+    window.addEventListener(
+      'concordia:buildings-ready',
+      (e) => resolve((e as CustomEvent).detail.buildingGroup as BuiltGroup),
+      { once: true },
+    );
   });
+}
+
+type GradientBearingMaterial = { gradientMap?: { userData?: Record<string, unknown> } | null };
+
+/** Every material in a built group that carries a `gradientMap` (i.e. is toon-shaded). */
+function materialsWithGradientMap(group: BuiltGroup): GradientBearingMaterial[] {
+  const out: GradientBearingMaterial[] = [];
+  group.traverse((obj) => {
+    const mesh = obj as { material?: GradientBearingMaterial | GradientBearingMaterial[] };
+    if (!mesh.material) return;
+    for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      if (m && m.gradientMap) out.push(m);
+    }
+  });
+  return out;
 }
 
 describe('BuildingRenderer3D texture disposal (legacy structural path)', () => {
@@ -110,21 +137,103 @@ describe('BuildingRenderer3D texture disposal (legacy structural path)', () => {
     expect(disposeSpy).toHaveBeenCalledTimes(3 * 3);
   });
 
-  it('disposes the toon gradientMap for every floor on unmount (toon mode)', async () => {
+  // ── Toon mode: the gradient ramp is CACHE-OWNED, so NOT disposing it is the
+  // correct behavior — and is the opposite of what this test asserted before
+  // 2026-07-25.
+  //
+  // The original contract was "one 1x3 DataTexture gradientMap allocated per
+  // floor, therefore N disposals on unmount." That was true when this file
+  // built its own gradient inline (`createToonGradientMap()`, one fresh texture
+  // per material). The art-direction wiring pass replaced that with the shared
+  // `toonGradientTextureFromPalette()`, which caches ONE DataTexture per
+  // (palette, band-count) and hands the same instance to every material asking
+  // for that ramp — so the band count comes from the single locked
+  // ART_STYLE.RAMP_BANDS constant instead of a hardcoded 3 in this file.
+  //
+  // That makes the old per-floor disposal actively WRONG: unmounting one
+  // building would dispose a texture the cache still owns and still hands out,
+  // so the next mount — of any building anywhere sharing that palette — would
+  // receive a disposed handle and render untextured. Hence the
+  // `__celShared` flag and the cleanup's skip.
+  //
+  // The two tests below pin that contract in BOTH directions, so this can't
+  // silently regress into either a leak or a use-after-dispose.
+  it('does NOT dispose the cache-owned toon gradientMap, and it survives remount', async () => {
+    const building = makeBuilding({ floors: 2 });
+
+    // Mount once so the shared ramp is definitely in the cache, then grab the
+    // exact texture instance the materials were handed.
+    const first = render(
+      <BuildingRenderer3D buildings={[building]} viewMode="normal" renderStyle="toon" />
+    );
+    await waitForBuildEvent();
+
+    const { toonGradientTextureFromPalette } = await import('@/lib/world-lens/cel-shade');
+    const { CONCORDIA_THEMES, DEFAULT_THEME_ID, ART_STYLE } = await import(
+      '@/lib/world-lens/concordia-theme'
+    );
+    const palette = CONCORDIA_THEMES[DEFAULT_THEME_ID].toonGradient;
+    const shared = toonGradientTextureFromPalette(THREE, palette, ART_STYLE.RAMP_BANDS);
+
+    // It really is the shared/cached instance, not a per-call allocation —
+    // if this stopped holding, the disposal-skip below would be papering over
+    // a genuine per-floor leak instead of protecting a cache.
+    expect(toonGradientTextureFromPalette(THREE, palette, ART_STYLE.RAMP_BANDS)).toBe(shared);
+    expect(shared.userData?.__celShared).toBe(true);
+
+    // Spy only AFTER the mount, so this counts unmount-time disposals only.
+    const sharedDisposeSpy = vi.spyOn(shared, 'dispose');
+    first.unmount();
+
+    // The whole point: cleanup must leave the cache's texture alive.
+    expect(sharedDisposeSpy).not.toHaveBeenCalled();
+
+    // And the cache must still hand back that same, still-usable instance on a
+    // fresh mount — this is the actual use-after-dispose regression the skip
+    // exists to prevent.
+    const second = render(
+      <BuildingRenderer3D buildings={[building]} viewMode="normal" renderStyle="toon" />
+    );
+    await waitForBuildEvent();
+    expect(toonGradientTextureFromPalette(THREE, palette, ART_STYLE.RAMP_BANDS)).toBe(shared);
+    expect(sharedDisposeSpy).not.toHaveBeenCalled();
+    second.unmount();
+  });
+
+  it('still disposes a NON-shared gradientMap (the skip is targeted, not a gutted cleanup)', async () => {
+    // Guards the other direction: it would be easy to "fix" the failing
+    // assertion above by deleting the gradientMap disposal outright. This
+    // proves the cleanup still frees any gradient texture that ISN'T
+    // cache-owned — i.e. the skip keys on `__celShared`, not on the field name.
     const disposeSpy = vi.spyOn(THREE.Texture.prototype, 'dispose');
 
     const building = makeBuilding({ floors: 2 });
     const { unmount } = render(
       <BuildingRenderer3D buildings={[building]} viewMode="normal" renderStyle="toon" />
     );
+    const group = await waitForBuildEvent();
 
-    await waitForBuildEvent();
+    // Retag every mounted toon material's gradient as NOT cache-owned, which is
+    // exactly the shape a future per-instance ramp would have.
+    const untagged = new Set<{ userData?: Record<string, unknown> }>();
+    for (const mat of materialsWithGradientMap(group)) {
+      const g = mat.gradientMap as { userData?: Record<string, unknown> } | null;
+      if (g && !untagged.has(g)) {
+        g.userData = { ...(g.userData || {}), __celShared: false };
+        untagged.add(g);
+      }
+    }
+    expect(untagged.size).toBeGreaterThan(0);
+
+    disposeSpy.mockClear();
     unmount();
 
-    // Toon mode skips the procedural map/normalMap/roughnessMap path
-    // entirely and instead allocates one 1x3 DataTexture gradientMap per
-    // floor: 2 floors * 1 gradientMap = 2 disposals.
-    expect(disposeSpy).toHaveBeenCalledTimes(2);
+    // Every gradient we un-tagged must now be freed by the same cleanup path.
+    expect(disposeSpy.mock.calls.length).toBeGreaterThanOrEqual(untagged.size);
+
+    // Restore the cache's real flag so later tests in this file (and the shared
+    // module-level cache) aren't left poisoned by this one.
+    for (const g of untagged) g.userData = { ...(g.userData || {}), __celShared: true };
   });
 
   it('does not leak textures across a rebuild (props change re-triggers the effect)', async () => {
