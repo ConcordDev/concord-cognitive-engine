@@ -50,8 +50,25 @@ Two things about this table are worth stating plainly:
   `unused-destructured-param` findings (`f9cbf528`/`f0a2e16b`), and the
   `frontend-unsafe-chain` `DraftEditor` residual.
 - **All 7 highs are the same 7 that the 2026-07-25 authorized baseline refresh
-  reviewed and blessed.** Zero net-new highs. The ratchet
-  (`--diff --ci`) is therefore green; this pass found no new blocking finding.
+  reviewed and blessed.** Zero net-new highs *by shape*.
+
+  > ⚠️ **Correction (2026-07-25, later the same day): "zero net-new by shape"
+  > does NOT imply the ratchet is green, and the original wording here claimed
+  > it did.** The ratchet does not compare shapes — it compares
+  > `sha256(detector|ruleId|location|severity)` fingerprints, exactly as the
+  > paragraph below already explains. So the two statements contradicted each
+  > other, and the measurement settles it: a live
+  > `node scripts/run-detectors.js --diff --ci` at 16:05Z reports
+  > `added: 3 (high=2, info=1)` and **fails** with
+  > `new_high_or_critical { count: 2 }`, exit 1. The 2 highs are precisely the
+  > drifted `creditWallet`/`debitWallet` fingerprints this section predicted
+  > would not match — predicted correctly, then concluded from wrongly.
+  >
+  > Keep the distinction sharp when reading any row in this ledger: **"no new
+  > defect" and "the gate passes" are different claims.** Both are true or
+  > false independently, and here the first is true while the second is false.
+  > The gate closes only via a human-authorized `BASELINE.json` refresh
+  > (`guard.mjs` PROTECTs that file), never by re-reasoning about shape.
 
 **Drift vs `BASELINE.json` v1** (`0 critical / 7 high / 18 medium / 0 low /
 53 info` = 78 fingerprints): high unchanged at 7, medium 18 → 0, info
@@ -123,7 +140,7 @@ the message. Cluster column keys to §4.
 | I8–I15 | `env-config-drift` · `magic_timeout` | `astronomy/SkyChartWorkbench.tsx:164`, `fashion/FashionAIStylistPanel.tsx:57`, `fitness/StravaBeaconPanel.tsx:162`, `fitness/StravaGpsPanel.tsx:88`, `fitness/StravaSegmentsPanel.tsx:102`, `space/OwnedSatellites.tsx:147`, `space/SkyMap.tsx:68`, `space/VisiblePassPredictor.tsx:81` | **All eight are the same thing**: the `timeout` field of a `PositionOptions` object passed to `navigator.geolocation.getCurrentPosition` / `watchPosition` (10000 or 15000 ms). A W3C browser-API parameter, not deployment config. | B1 |
 | I16 | `architectural-hub` · `architectural_leaf_utility` | `server/lib/lru-map.js` | fan-in 98, fan-out 0. | A3 |
 | I17 | same | `server/logger.js` | fan-in 319, fan-out 0. | A3 |
-| I18 | `lens-health` · `lens_unknown_domain` | `concord-frontend/app/lenses/world/page.tsx:6222` | `domain: 'mainland'` is a field on a **quest object literal** passed to `<QuestLog>` (rendered as display text at `QuestLog.tsx:73`; defaulted at `:136`). It is not a `/api/lens/run` macro domain. The rule matches `domain: "x"` anywhere in a file that also contains a `lensRun` call — and this file is 6,000+ lines with many. | C2 |
+| I18 | `lens-health` · `lens_unknown_domain` | `concord-frontend/app/lenses/world/page.tsx:6242` (was `:6222` when first triaged — see note below) | `domain: 'mainland'` is a field on a **quest object literal** passed to `<QuestLog>` (rendered as display text at `QuestLog.tsx:73`; defaulted at `:136`). It is not a `/api/lens/run` macro domain. The rule matches `domain: "x"` anywhere in a file that also contains a `lensRun` call — and this file is 6,000+ lines with many. | C2 |
 | I19 | `macro-usage` · `dispatcher_reach` | `server/routes/domain.js:225` | Notes that an open `// @macro-dispatcher` file makes every macro reachable, which is why per-macro zero-callsite findings are downgraded. Structural note. | A4 |
 | I20 | `authz-coverage` · `authz_central_gate_ok` | `server/server.js` | A **positive** assertion: global write-auth gate present at mount line 7353, 648 mutating routes behind it, 8 bypass paths. This finding firing is the healthy state. | A4 |
 | I21 | `stale-code` · `route_orphan_summary` | (no location) | "546 route(s) declared but not statically referenced… manual triage required for retirement." | C3 |
@@ -386,7 +403,7 @@ currently true of the *tick rate* and false of the *value being ticked*.
 
 #### C2 — `lens_unknown_domain` "mainland" · verified FP, low value
 
-`domain: 'mainland'` at `world/page.tsx:6222` is a field on a quest object
+`domain: 'mainland'` at `world/page.tsx:6242` is a field on a quest object
 literal handed to `<QuestLog>`, where it is rendered as display text
 (`QuestLog.tsx:73`) and defaulted (`:136`). It is not a macro domain and no
 `/api/lens/run` call carries it. The detector's `DOMAIN_REF_RE` matches
