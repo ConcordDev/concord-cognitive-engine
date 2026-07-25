@@ -143,7 +143,17 @@ export function dispatchComboVfx(opts: {
   // why that gating exists (it kills the doomed-request storm the same
   // pattern caused in BuildingRenderer3D). Same fire-and-forget contract as
   // before: this function never awaits or surfaces the result.
+  //
+  // Source is 'concordia' (the established internal gameplay-derived-asset
+  // convention — see gameplay-asset-bridge.js), NOT the previously-used
+  // 'combat_combo': that string was never in the evo_assets.source CHECK
+  // constraint (migration 373), so every call under it was doomed twice
+  // over — 404 today, and would have thrown a CHECK violation if the route
+  // ever tried to auto-register it as-is. sourceId is namespaced `combo:`
+  // so it can't collide with any other 'concordia'-sourced id scheme
+  // (skill:/craft:/loot:/creature ids from gameplay-asset-bridge.js, or the
+  // bare archetype filenames from bootstrapWorldLensAssets).
   if (opts.vfxSeed) {
-    recordAssetInteraction('combat_combo', opts.vfxSeed, `combo_trigger_t${opts.tier}`, opts.tier * 0.5);
+    recordAssetInteraction('concordia', `combo:${opts.vfxSeed}`, `combo_trigger_t${opts.tier}`, opts.tier * 0.5);
   }
 }

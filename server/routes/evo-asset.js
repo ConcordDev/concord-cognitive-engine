@@ -13,7 +13,7 @@
 import { Router } from "express";
 import path from "path";
 import fs from "fs";
-import { resolveCurrentBest, recordInteraction } from "../lib/evo-asset/registry.js";
+import { resolveCurrentBest, recordInteraction, resolveOrAutoRegisterForInteraction } from "../lib/evo-asset/registry.js";
 import { isGlbSource, extractMeshData } from "../lib/evo-asset/glb-bridge.js";
 import { meshToSTL } from "../lib/asset-gen/stl-export.js";
 
@@ -177,14 +177,23 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
   });
 
   // POST /api/evo-asset/interaction — record a player interaction
+  //
+  // Auto-registers a real placeholder evo_assets row on first touch for the
+  // three internally-originated sources ('authored' / 'evolved' /
+  // 'concordia') — see resolveOrAutoRegisterForInteraction's header for why
+  // this is restricted to those three and never the external CC0-catalog
+  // sources. Verified 2026-07-25: without this, every passive world-lens
+  // presence ping (building render, NPC dialogue/combat, combo VFX) 404'd
+  // by construction — the frontend and server agreed on field names but
+  // never on a resolvable (source, sourceId) scheme. See
+  // server/tests/invariants/evo-asset-source-scheme.test.js.
   router.post("/interaction", auth, (req, res) => {
     try {
       const userId = _userId(req);
-      const { source, sourceId, assetId: directId, action, weight } = req.body || {};
+      const { source, sourceId, assetId: directId, action, weight, kind } = req.body || {};
       let assetId = directId;
       if (!assetId && source && sourceId) {
-        const row = db.prepare(`SELECT id FROM evo_assets WHERE source = ? AND source_id = ?`).get(source, sourceId);
-        assetId = row?.id;
+        assetId = resolveOrAutoRegisterForInteraction(db, { source, sourceId, kind });
       }
       if (!assetId) return res.status(404).json({ ok: false, error: "asset_not_found" });
       // A present-but-invalid id flowed into recordInteraction → FK throw → 500
@@ -273,14 +282,40 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
   // GET /api/evo-asset/stats — public transparency
   router.get("/stats", (req, res) => {
     try {
+      // Interaction placeholders are EXCLUDED from the library counts and
+      // reported as their own number instead.
+      //
+      // resolveOrAutoRegisterForInteraction() (lib/evo-asset/registry.js)
+      // creates a real evo_assets row on a first-ever interaction so the
+      // interaction can be recorded honestly. Those rows carry no asset —
+      // no mesh, no texture, `local_path` is the virtual
+      // `interaction://<source>/<sourceId>`. Counting them here would
+      // inflate an endpoint whose own comment calls it "public
+      // transparency": a viewer would read "concordia: 412" as 412 real
+      // assets when most are contentless first-touch markers. Since every
+      // rendered building and NPC mints one, the inflation would dwarf the
+      // real library.
+      //
+      // They are excluded from byQuality/bySource rather than hidden
+      // outright — suppressing them entirely would be its own small
+      // dishonesty, since the rows do exist. `interactionPlaceholders`
+      // below reports them explicitly, so the number is neither inflated
+      // nor concealed.
+      const PLACEHOLDER_PREDICATE = `local_path LIKE 'interaction://%'`;
       const byQuality = db.prepare(`
-        SELECT quality_level, COUNT(*) AS n FROM evo_assets WHERE archived_at IS NULL
+        SELECT quality_level, COUNT(*) AS n FROM evo_assets
+         WHERE archived_at IS NULL AND NOT (${PLACEHOLDER_PREDICATE})
          GROUP BY quality_level ORDER BY quality_level
       `).all();
       const bySource = db.prepare(`
-        SELECT source, COUNT(*) AS n FROM evo_assets WHERE archived_at IS NULL
+        SELECT source, COUNT(*) AS n FROM evo_assets
+         WHERE archived_at IS NULL AND NOT (${PLACEHOLDER_PREDICATE})
          GROUP BY source ORDER BY n DESC
       `).all();
+      const interactionPlaceholders = db.prepare(`
+        SELECT COUNT(*) AS n FROM evo_assets
+         WHERE archived_at IS NULL AND ${PLACEHOLDER_PREDICATE}
+      `).get()?.n ?? 0;
       const totalEvolutions = db.prepare(`
         SELECT COUNT(*) AS n FROM evo_asset_versions WHERE promoted = 1
       `).get()?.n ?? 0;
@@ -289,7 +324,7 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
          WHERE promoted = 1 AND promoted_at >= ?
          GROUP BY pass_kind
       `).all(Math.floor(Date.now() / 1000) - 7 * 86400);
-      res.json({ ok: true, byQuality, bySource, totalEvolutions, recentEvolutions });
+      res.json({ ok: true, byQuality, bySource, interactionPlaceholders, totalEvolutions, recentEvolutions });
     } catch {
       res.status(500).json({ ok: false, error: "An unexpected error occurred" });
     }

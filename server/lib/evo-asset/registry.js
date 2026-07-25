@@ -138,6 +138,70 @@ export function selectEvolutionCandidates(db, limit = 5) {
 }
 
 /**
+ * Sources that are safe to auto-register a placeholder row for on first
+ * POST /api/evo-asset/interaction, when the (source, sourceId) pair isn't
+ * already in the registry. Restricted to the three INTERNALLY-originated
+ * conventions — assets Concord itself mints ids for: 'authored' (art/
+ * whiteboard-lens author uploads + the CC0 seed pack), 'evolved' (assets
+ * produced by the refinement pipeline itself), and 'concordia' (gameplay-
+ * derived virtual blueprints — see gameplay-asset-bridge.js).
+ *
+ * Deliberately EXCLUDES the five external CC0-catalog sources (kenney/
+ * polyhaven/ambientcg/os3a/sketchfab) and 'github': those sourceIds are
+ * only honest when they name a real upstream-catalog entry the bootstrap
+ * loaders in source-loaders.js actually fetched. Auto-registering an
+ * arbitrary client-supplied id under one of them would fabricate a fake
+ * catalog row, not an honest placeholder for real gameplay presence.
+ */
+export const AUTO_REGISTER_INTERACTION_SOURCES = new Set(["authored", "evolved", "concordia"]);
+
+// Every `kind` the evo_assets.kind CHECK constraint currently admits
+// (migration 100's gameplay set + migration 202's 'blueprint'). Kept here
+// as an explicit allow-list (not re-derived from SQL) so a caller passing
+// an unrecognised kind fails closed onto 'mesh' instead of hitting a CHECK
+// violation at insert time.
+const ALLOWED_INTERACTION_KINDS = new Set([
+  "mesh", "texture", "material", "hdri", "sprite",
+  "creature", "item", "skill", "drop", "craft", "species", "blueprint",
+]);
+
+/**
+ * Resolve an existing evo_assets id for (source, sourceId), or — for the
+ * internally-originated sources above only — auto-register a placeholder
+ * row so a first-ever interaction can still be recorded honestly (a real
+ * new row, not a fabricated success). Mirrors the auto-register-on-first-
+ * use idiom already shipped in gameplay-asset-bridge.js#onSkillUsed, lifted
+ * here so the generic HTTP interaction route can share it.
+ *
+ * Returns the resolved/created asset id, or null when nothing should be
+ * registered (unknown external-catalog id, or missing source/sourceId).
+ */
+export function resolveOrAutoRegisterForInteraction(db, { source, sourceId, kind } = {}) {
+  if (!source || !sourceId) return null;
+  const existing = db.prepare(`
+    SELECT id FROM evo_assets WHERE source = ? AND source_id = ?
+  `).get(source, sourceId);
+  if (existing) return existing.id;
+  if (!AUTO_REGISTER_INTERACTION_SOURCES.has(source)) return null;
+
+  const safeKind = ALLOWED_INTERACTION_KINDS.has(kind) ? kind : "mesh";
+  const created = registerAsset(db, {
+    kind: safeKind,
+    source,
+    sourceId,
+    // Virtual placeholder path — the same "no real file" convention
+    // gameplay-asset-bridge.js#_gameplayPath uses for its own blueprint
+    // assets. Never resolved as a real file; the refinement scheduler's own
+    // passes already fail closed (try/catch, stats.errors++) against a
+    // missing local_path, same as every other virtual gameplay-bridge
+    // asset today.
+    localPath: `interaction://${source}/${sourceId}`,
+    qualityLevel: 0,
+  });
+  return created?.id ?? null;
+}
+
+/**
  * Look up the best-quality canonical asset for a given (source, sourceId)
  * pair. Used by the frontend loader to resolve an asset reference to its
  * current best version. Returns null if the asset is not registered or
