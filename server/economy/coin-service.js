@@ -19,6 +19,34 @@ function nowISO() {
 const TREASURY_ID = "treasury_main";
 
 /**
+ * Build the treasury_events.metadata_json payload for a mint/burn.
+ *
+ * `treasury_events` has no request_id/ip columns of its own (migration 008:
+ * id, event_type, amount, usd_*, coins_*, ref_id, metadata_json, created_at),
+ * so the caller-supplied audit fields belong in metadata_json — the column
+ * that exists precisely to carry per-event context.
+ *
+ * Why this matters: mintCoins/burnCoins both DESTRUCTURED `requestId` and `ip`
+ * and then referenced neither, while all three real callers pass them —
+ * the Stripe webhook mint (stripe.js), the admin mint (routes.js), and the
+ * fiat withdrawal burn (stripe.js). The three most audit-sensitive paths on
+ * the money system were each handing over a request correlation id and an
+ * originating IP that went straight on the floor, leaving treasury events
+ * un-correlatable with the request that caused them during an incident.
+ *
+ * Keys are omitted rather than written as null when absent, so events from
+ * callers that genuinely have no request context (tests, internal reward
+ * mints) stay byte-identical to their previous `{"userId":"…"}` payload
+ * instead of gaining noise columns.
+ */
+function eventMetadata(userId, requestId, ip) {
+  const meta = { userId };
+  if (requestId) meta.requestId = requestId;
+  if (ip) meta.ip = ip;
+  return JSON.stringify(meta);
+}
+
+/**
  * Mint coins — called when a user purchases tokens via Stripe.
  * Atomically increases both USD and coin supply in the treasury.
  * @param {object} db — better-sqlite3 instance
@@ -74,7 +102,7 @@ export function mintCoins(db, { amount, userId, refId, requestId, ip }) {
       VALUES (?, 'MINT', ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       uid("tev"), amount, usdBefore, usdAfter, coinsBefore, coinsAfter,
-      refId || null, JSON.stringify({ userId }), nowISO(),
+      refId || null, eventMetadata(userId, requestId, ip), nowISO(),
     );
 
     return { usdBefore, usdAfter, coinsBefore, coinsAfter };
@@ -133,7 +161,7 @@ export function burnCoins(db, { amount, userId, refId, requestId, ip }) {
       VALUES (?, 'BURN', ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       uid("tev"), amount, usdBefore, usdAfter, coinsBefore, coinsAfter,
-      refId || null, JSON.stringify({ userId }), nowISO(),
+      refId || null, eventMetadata(userId, requestId, ip), nowISO(),
     );
 
     return { usdBefore, usdAfter, coinsBefore, coinsAfter };
