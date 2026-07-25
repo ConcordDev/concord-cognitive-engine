@@ -615,6 +615,7 @@ export const LENIENT_EVENTS = new Set([
   "pong",
   "prediction:ready",
   "promotion:approved",
+  "promotion:rejected",
   "qualia:policy",
   "quest:completed",
   "queue:notifications:new",

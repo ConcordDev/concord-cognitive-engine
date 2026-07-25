@@ -2818,7 +2818,7 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
         ).get(npcId);
         if (bossRow) bossRow.name = npcNameFromRow(bossRow); // world_npcs has no `name` column — derive from state
         const bossPhases = globalThis.__CONCORD_STATE__?.bossPhases?.get?.(npcId);
-        const { isBossRow, computeBossState } = await import("../lib/combat/boss-hud.js");
+        const { isBossRow, computeBossState, bossPhaseEnterPayload } = await import("../lib/combat/boss-hud.js");
         if (isBossRow(bossRow, bossPhases)) {
           const payload = computeBossState({
             npcId, worldId,
@@ -2827,6 +2827,13 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
             phases: bossPhases, defeated: !!kill,
           });
           req.app.locals.io?.to(`world:${worldId}`).emit('boss:state', payload);
+          // The discrete phase-transition beat alongside the continuous HUD
+          // state. Returns null unless THIS hit actually crossed a threshold,
+          // so the feed gets one row per phase change, not one per landed hit.
+          const phaseEnter = bossPhaseEnterPayload(payload);
+          if (phaseEnter) {
+            req.app.locals.io?.to(`world:${worldId}`).emit('boss:phase-enter', phaseEnter);
+          }
         }
       } catch { /* boss HUD emit best-effort — never blocks combat */ }
 

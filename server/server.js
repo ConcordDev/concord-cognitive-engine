@@ -49361,6 +49361,18 @@ function initChatSocketHandlers(io) {
           llm: true,
         }, ctx);
 
+        // Surface each executed tool call to the chat rail. `chat.respond` runs
+        // a real [TOOL_CALL:] execution loop (_executeToolCalls) and returns the
+        // per-tool outcome as `toolCalls`, but the socket handler only ever
+        // emitted chat:complete — so the rail's tool lines never rendered.
+        // Emitted on THIS socket (not broadcast): it is one user's session.
+        try {
+          const { buildChatToolResultEvents } = await import("./lib/chat/tool-result-events.js");
+          for (const ev of buildChatToolResultEvents(result, sessionId)) {
+            socket.emit("chat:tool_result", ev);
+          }
+        } catch (_e) { /* tool-result surfacing is best-effort — never blocks the reply */ }
+
         // Check for lens recommendation
         let lensRecommendation = null;
         try {

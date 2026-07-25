@@ -43,6 +43,16 @@ import {
  * DTU-worthy event definitions.
  * Not every event deserves a DTU. Chat token streaming? No.
  * Council vote? YES. That's KNOWLEDGE worth preserving.
+ *
+ * ⚠ These keys are DTU-BRIDGE TYPE TAGS, NOT SOCKET CHANNELS. This module
+ * contains zero socket emits — `bridgeEvent` feeds DTU creation, and the only
+ * things it broadcasts are its own 'dtu:event_bridged' / 'event:dtu_available'
+ * notifications. A name appearing here is NOT evidence that a browser can ever
+ * receive it. The 2026-07-25 dead-subscription audit retired four frontend
+ * subscriptions ('weather:alert', 'market:trade', 'entity:production_mode',
+ * 'pipeline:triggered') that existed only because these tags were mistaken for
+ * live socket events. Before adding one of these names to the frontend's
+ * SocketEvent union, find a real `realtimeEmit`/`io.to(...).emit` for it.
  */
 export const DTU_WORTHY_EVENTS = Object.freeze({
   // Knowledge creation events

@@ -367,6 +367,28 @@ export function rejectPromotion(proposalId, reason, rejecterId = "sovereign") {
 
   _pushHistory({ action: "rejected", proposalId, rejecterId, reason, timestamp: nowISO() });
 
+  // Symmetry with approvePromotion, which has always emitted its half. A
+  // rejection resolved the proposal just as finally as an approval did, but
+  // never told the client — so the sovereign console could hear "approved"
+  // and was structurally deaf to "rejected".
+  // NOTE the `id` field: the frontend handler (useSocket.ts, shared by
+  // promotion:approved/rejected) gates on `d.id` and keys the store update by
+  // it. `proposal.id` IS proposalId, so `id` is that same value under the name
+  // the listener actually reads.
+  if (typeof globalThis.realtimeEmit === "function") {
+    try {
+      globalThis.realtimeEmit("promotion:rejected", {
+        id: proposalId,
+        proposalId,
+        itemId: proposal.itemId,
+        itemType: proposal.itemType,
+        stage: proposal.from,
+        status: "rejected",
+        reason: reason || "no reason",
+      });
+    } catch { /* realtime is best-effort — never fail the rejection over it */ }
+  }
+
   return { ok: true, proposalId, rejected: true, reason };
 }
 
