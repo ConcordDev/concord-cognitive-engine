@@ -46,7 +46,13 @@ const pageSrc = readFileSync(
 );
 
 describe('Phase 2 fix — SkyWeatherRenderer attaches to the live scene', () => {
-  it('still dispatches the original sky-weather-ready readiness signal (back-compat)', () => {
+  // Static source-pinning check, not a runtime assertion: SkyWeatherRenderer
+  // builds real Three.js scene state (shaders, particle systems) that isn't
+  // mountable in jsdom (see file header). This only proves the CustomEvent
+  // construction is still present in source — a back-compat regression
+  // guard against silently dropping the old event name. Runtime behavior is
+  // not exercised here.
+  it('source still declares the original sky-weather-ready CustomEvent construction (back-compat regression guard, not runtime-verified)', () => {
     expect(skySrc).toMatch(/window\.dispatchEvent\(new CustomEvent\('concordia:sky-weather-ready', \{/);
   });
 
@@ -70,7 +76,12 @@ describe('Phase 2 fix — SkyWeatherRenderer attaches to the live scene', () => 
 });
 
 describe('Phase 2 fix — WaterRenderer attaches to the live scene', () => {
-  it('still dispatches the original water-ready readiness signal (back-compat)', () => {
+  // Static source-pinning check, not a runtime assertion: WaterRenderer
+  // builds real Three.js scene state that isn't mountable in jsdom (see
+  // file header). This only proves the CustomEvent construction is still
+  // present in source — a back-compat regression guard against silently
+  // dropping the old event name. Runtime behavior is not exercised here.
+  it('source still declares the original water-ready CustomEvent construction (back-compat regression guard, not runtime-verified)', () => {
     expect(waterSrc).toMatch(/window\.dispatchEvent\(new CustomEvent\('concordia:water-ready', \{/);
   });
 
@@ -85,7 +96,7 @@ describe('Phase 2 fix — WaterRenderer attaches to the live scene', () => {
   });
 });
 
-describe('Phase 2 fix — ConcordiaScene no longer double-renders a decorative water plane', () => {
+describe('Phase 2 fix — ConcordiaScene source no longer declares a duplicate decorative water plane (static regression guard, not runtime-verified)', () => {
   it('the old flat river/creek Mesh construction is gone', () => {
     expect(sceneSrc).not.toMatch(/river\.name = 'water:river';/);
     expect(sceneSrc).not.toMatch(/creek\.name = 'water:creek';/);
@@ -102,7 +113,7 @@ describe('Phase 2 fix — ConcordiaScene no longer double-renders a decorative w
   });
 });
 
-describe('Phase 2 fix — page.tsx wires real river/creek geometry into WaterRenderer, not placeholder values', () => {
+describe('Phase 2 fix — page.tsx source declares real river/creek geometry values passed into WaterRenderer, not placeholder values (static regression guard, not runtime-verified)', () => {
   it('riverConfig matches the real river-bluff placement (was a disconnected placeholder at world origin)', () => {
     expect(pageSrc).toMatch(/riverConfig=\{\{ width: 120, flowDirection: 0, flowSpeed: 1, centerX: -700, length: 600 \}\}/);
   });

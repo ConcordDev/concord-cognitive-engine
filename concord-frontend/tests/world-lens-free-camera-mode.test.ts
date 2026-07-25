@@ -23,12 +23,20 @@
 // construction + Rapier physics that aren't mountable in jsdom — this file
 // follows the established source-pinning pattern
 // (tests/concordia-scene-resource-leak-fix.test.tsx,
-// tests/concordia-scene-ultra-postfx-fix.test.tsx).
+// tests/concordia-scene-ultra-postfx-fix.test.tsx) for those two files only.
+//
+// CameraControls.tsx has no such constraint — it's a plain, prop-driven
+// React component with no Three.js/canvas dependency — so its coverage
+// below is a real `render()` + `screen` assertion against the mounted
+// "Free Camera Controls" hint panel, not a source-text match.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import CameraControls, { type CameraState } from '@/components/world-lens/CameraControls';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sceneSrc = readFileSync(
@@ -37,10 +45,6 @@ const sceneSrc = readFileSync(
 );
 const avatarSrc = readFileSync(
   path.resolve(__dirname, '..', 'components/world-lens/AvatarSystem3D.tsx'),
-  'utf8'
-);
-const cameraControlsSrc = readFileSync(
-  path.resolve(__dirname, '..', 'components/world-lens/CameraControls.tsx'),
   'utf8'
 );
 
@@ -101,9 +105,41 @@ describe('Phase 4 fix — AvatarSystem3D.tsx: player WASD is suppressed during f
 });
 
 describe('Phase 4 fix — CameraControls.tsx: the Free hint panel matches what is actually wired', () => {
-  it('documents R/F vertical movement and the Shift speed boost, not just the original W/S/A/D subset', () => {
-    expect(cameraControlsSrc).toMatch(/<kbd className="px-1 py-0\.5 rounded bg-white\/10 text-gray-400 text-\[9px\]">R<\/kbd> Up/);
-    expect(cameraControlsSrc).toMatch(/<kbd className="px-1 py-0\.5 rounded bg-white\/10 text-gray-400 text-\[9px\]">F<\/kbd> Down/);
-    expect(cameraControlsSrc).toMatch(/<kbd className="px-1 py-0\.5 rounded bg-white\/10 text-gray-400 text-\[9px\]">Shift<\/kbd> Speed boost/);
+  function freeCameraState(): CameraState {
+    return {
+      mode: 'free',
+      zoom: 50,
+      rotation: 'NE',
+      followTarget: 'avatar',
+      cinematicPlaying: false,
+      cinematicTime: 0,
+      cinematicDuration: 0,
+      transitioning: false,
+    };
+  }
+
+  it('renders R/F vertical movement and the Shift speed boost in the Free hint panel, not just the original W/S/A/D subset', () => {
+    render(
+      React.createElement(CameraControls, {
+        cameraState: freeCameraState(),
+        onModeChange: () => {},
+        onZoom: () => {},
+        onRotate: () => {},
+        onTransition: () => {},
+      }),
+    );
+
+    expect(screen.getByText('Free Camera Controls')).toBeInTheDocument();
+
+    // Original W/S/A/D subset — still present.
+    expect(screen.getByText('W').closest('span')).toHaveTextContent('Forward');
+    expect(screen.getByText('S').closest('span')).toHaveTextContent('Back');
+    expect(screen.getByText('A').closest('span')).toHaveTextContent('Left');
+    expect(screen.getByText('D').closest('span')).toHaveTextContent('Right');
+
+    // The fix under test: R/F vertical + Shift speed boost actually render.
+    expect(screen.getByText('R').closest('span')).toHaveTextContent('Up');
+    expect(screen.getByText('F').closest('span')).toHaveTextContent('Down');
+    expect(screen.getByText('Shift').closest('span')).toHaveTextContent('Speed boost');
   });
 });
