@@ -59,6 +59,20 @@ function spawnServer(port, dataDir, extraEnv, timeoutMs) {
       ANTHROPIC_API_KEY: '',
     }, extraEnv);
 
+    // The spawned server MUST derive its own DB/state from DATA_DIR above.
+    // `Object.assign({}, process.env, ...)` inherits everything we do not
+    // explicitly override, and tests/preload/no-egress.mjs sets DB_PATH +
+    // STATE_PATH on THIS (parent) process for per-test-file isolation. Those
+    // are absolute paths that take precedence over DATA_DIR, so leaving them
+    // in the child env silently points the spawned server at the PARENT's
+    // throwaway database -- defeating the isolation this dataDir exists to
+    // provide, and making parent and child write the same file concurrently.
+    // Found 2026-07-25: cross-world-potency-routes went 6/6 -> 1/6 the moment
+    // the preload's isolation started actually taking effect, because the
+    // child booted against an empty inherited DB instead of seeding its own.
+    delete env.DB_PATH;
+    delete env.STATE_PATH;
+
     const child = spawn(process.execPath, [SERVER_JS], {
       env: env,
       cwd: SERVER_CWD,
