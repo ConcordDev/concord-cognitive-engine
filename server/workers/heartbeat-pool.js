@@ -185,10 +185,41 @@ export async function terminateAllForTest() {
   _poolReady = false;
   const toKill = workers.splice(0, workers.length).filter(Boolean);
   await Promise.all(toKill.map((w) => new Promise((resolve) => {
-    const done = () => resolve();
-    w.once("exit", done);
-    try { w.postMessage({ type: "shutdown" }); } catch { done(); }
-    setTimeout(() => { w.terminate().catch(() => {}); }, 2000).unref();
+    // Root-caused via direct diagnostic (2026-07-25): the worker genuinely
+    // calls `_db.close()` + `process.exit(0)` within ~1-3ms of receiving the
+    // shutdown postMessage — worker-side teardown is NOT the slow part. The
+    // hang is entirely main-thread-side and specific to running under
+    // `node --test`: workers are spawned `.unref()`'d (see _spawnWorker) so
+    // a live pool never keeps a test-file process alive, and the fallback
+    // timer below used to be `.unref()`'d too. With NOTHING left ref'd, the
+    // event loop can decide it has "nothing to do" and let the process wind
+    // down WITHOUT ever delivering the worker's buffered "exit" event back
+    // to this listener — leaving the surrounding Promise permanently
+    // pending until `--test-force-exit` yanks the process, which node:test
+    // correctly reports as "Promise resolution is still pending but the
+    // event loop has already resolved" (confirmed via a minimal repro: the
+    // identical sequence resolves in ~6ms as a plain script, only hangs
+    // under `node --test`). Since this function's entire purpose is to
+    // BLOCK until the worker is genuinely gone, re-ref the worker for this
+    // teardown-only wait so the loop stays alive long enough to observe the
+    // real exit, and make the fallback timer ref'd + a hard resolve path
+    // (not just a `.terminate()` call relying on yet another "exit" event)
+    // so this can never hang indefinitely even if "exit" is somehow lost.
+    w.ref();
+    let fallback;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(fallback);
+      resolve();
+    };
+    w.once("exit", finish);
+    try { w.postMessage({ type: "shutdown" }); } catch { finish(); }
+    fallback = setTimeout(() => {
+      try { w.terminate(); } catch { /* already dead */ }
+      finish();
+    }, 2000);
   })));
   for (const task of queue) {
     try { task.reject(new Error("pool_shutdown")); } catch { /* listener may be gone */ }
