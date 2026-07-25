@@ -1,40 +1,16 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-25T09:33:19.941Z",
+  "generatedAt": "2026-07-25T18:54:15.501Z",
   "totals": {
     "critical": 0,
     "high": 7,
-    "medium": 18,
+    "medium": 0,
     "low": 0,
-    "info": 53,
-    "total": 78
+    "info": 37,
+    "total": 44
   },
   "detectorCount": 46,
   "fingerprints": {
-    "9c379b1814c0a383": {
-      "detector": "stale-code",
-      "id": "table_orphan",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/migrations/372_ledger_staking_types.js:34",
-      "message": "Table economy_ledger_new is created but never read or written outside migrations"
-    },
-    "08ab8ebf800b3fda": {
-      "detector": "stale-code",
-      "id": "table_orphan",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/migrations/379_agent_marathon_governance.js:70",
-      "message": "Table agent_marathon_sessions_new is created but never read or written outside migrations"
-    },
-    "a759627b8d06f38d": {
-      "detector": "stale-code",
-      "id": "table_orphan",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/migrations/379_agent_marathon_governance.js:124",
-      "message": "Table agent_marathon_sessions_old is created but never read or written outside migrations"
-    },
     "7702b52eea3af593": {
       "detector": "stale-code",
       "id": "route_orphan_summary",
@@ -49,7 +25,23 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "859 macros · 0 dead · 397 single-caller · 2 popular · 352 dispatcher-reach (0 runtime-live, 352 retirement-candidates)"
+      "message": "859 macros · 0 dead · 397 single-caller · 2 popular · 352 dispatcher-reach (2 runtime-live, 350 retirement-candidates)"
+    },
+    "9d83f4a6fe552b2a": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:79067",
+      "message": "Macro refusal.composition fired 56 time(s) at runtime — live"
+    },
+    "f9e8af906863d65d": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:80625",
+      "message": "Macro world.gatherings fired 9 time(s) at runtime — live"
     },
     "9c6176383f6bf175": {
       "detector": "macro-usage",
@@ -67,12 +59,12 @@
       "location": null,
       "message": "Scanned 264 lenses · 1 issues found"
     },
-    "546ad7d4959ab837": {
+    "20a6ba9ee475213f": {
       "detector": "lens-health",
       "id": "lens_unknown_domain",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/world/page.tsx:6222",
+      "location": "concord-frontend/app/lenses/world/page.tsx:6242",
       "message": "Lens world calls domain \"mainland\" — no dedicated handler registered; runtime routes via utility-brain AI catch-all. Adding a register(\"mainland\", ...) handler would give deterministic behavior."
     },
     "2f600c033f853e95": {
@@ -105,7 +97,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 9146 files; flagged 0"
+      "message": "Scanned 9161 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -113,7 +105,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 4380 server files"
+      "message": "Scanned 4390 server files"
     },
     "3b5cf89535467e0d": {
       "detector": "historical-trend",
@@ -137,7 +129,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 4380 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 4390 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
     },
     "8124c3bcdf890d24": {
       "detector": "architectural-hub",
@@ -155,61 +147,13 @@
       "location": "server/logger.js",
       "message": "Module server/logger.js fan-in=319 fan-out=0 (leaf utility — wide use is by design)"
     },
-    "ad66e414bf4e8ea4": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/desert/DesertOfflineMapView.tsx:66",
-      "message": "Production reference to identifier suggesting fake data: placeholderBlobPromise"
-    },
-    "1a101d20e612d427": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/desert/DesertOfflineMapView.tsx:71",
-      "message": "Production reference to identifier suggesting fake data: placeholderBlobPromise"
-    },
-    "55fcddcaefdaec56": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/foundry/FoundryCanvas.tsx:191",
-      "message": "Production reference to identifier suggesting fake data: stubNote"
-    },
-    "50042f5d3382b7d1": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:41",
-      "message": "Production reference to identifier suggesting fake data: fakeLevel"
-    },
-    "c4929bdd64b1122a": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:159",
-      "message": "Production reference to identifier suggesting fake data: fakeLevel"
-    },
-    "a3b38d537d3aca10": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:186",
-      "message": "Production reference to identifier suggesting fake data: fakeLevel"
-    },
     "e8ca0dab4cb5f073": {
       "detector": "fake-data",
       "id": "fake_data_summary",
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "2250 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
+      "message": "2253 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
     },
     "efc9d1d4b9d4111b": {
       "detector": "frontend-fake-data",
@@ -217,39 +161,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3000 frontend file(s) under app/lenses + components; flagged 4"
-    },
-    "0a38115ea1d40cbc": {
-      "detector": "frontend-fake-data",
-      "id": "placeholder_content_weak",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/metacognition/page.tsx:1258",
-      "message": "Placeholder-sounding content rendered as real: \"placeholder\" in 'input[placeholder*=\"Domain to assess\"]'"
-    },
-    "c99c501103608e6a": {
-      "detector": "frontend-fake-data",
-      "id": "placeholder_content_weak",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/app-maker/AppBuilderStudio.tsx:418",
-      "message": "Placeholder-sounding content rendered as real: \"placeholder\" in onChange={(e) => updateProp('placeholder', e.target.value)}"
-    },
-    "d8234e4e68a23d16": {
-      "detector": "frontend-fake-data",
-      "id": "placeholder_content_weak",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/legacy/CodebaseScanner.tsx:232",
-      "message": "Placeholder-sounding content rendered as real: \"TODO\" in <Metric label=\"TODO / FIXME Debt\" value={String(active.summary.totalTodos)} tone={active.summary.totalTodos > 0 ? 'warn…"
-    },
-    "8822504e1d8c7b48": {
-      "detector": "frontend-fake-data",
-      "id": "placeholder_content_weak",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/BouncePanel.tsx:100",
-      "message": "Placeholder-sounding content rendered as real: \"placeholder\" in title=\"The reference audio attached to this publish is a generated placeholder tone (4s, 220Hz), not your project mix. …"
+      "message": "Scanned 3000 frontend file(s) under app/lenses + components; flagged 0"
     },
     "2d470ae36f577f2e": {
       "detector": "asymmetric-status-update",
@@ -265,79 +177,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 5808 file(s); 5660 had analyzable function signatures; flagged 9"
-    },
-    "43d6636dcaf95721": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/economy/dtu-pipeline.js:256",
-      "message": "`computeInitialCRETI` destructures `contentLength` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as t"
-    },
-    "4a59ac38c1bcd1d1": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/economy/lens-culture.js:318",
-      "message": "`setLensProtection` destructures `creatorId` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre"
-    },
-    "b777a7c519e8c271": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/economy/rights-enforcement.js:384",
-      "message": "`checkListingRights` destructures `dtuId` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fi"
-    },
-    "99d8c8a42b6b0b52": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/npc-persona.js:93",
-      "message": "`installPersona` destructures `installerUserId` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the "
-    },
-    "c10c23384b0338ec": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/oauth.js:155",
-      "message": "`createOAuthUser` destructures `avatarUrl` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-f"
-    },
-    "972fd99736718668": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/server.js:20322",
-      "message": "`buildProductionPrompt` destructures `entity` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pr"
-    },
-    "d5da109a33ce2986": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/debate/KialoArgumentMap.tsx:921",
-      "message": "`SourceForm` destructures `busy` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix analyti"
-    },
-    "7972e2d8730d08d9": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/hr/BlsWageForecast.tsx:76",
-      "message": "`reasonMessage` destructures `false` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix ana"
-    },
-    "5108c27aefbbe2fc": {
-      "detector": "unused-destructured-param",
-      "id": "unused_destructured_param",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/plugins/PluginInstallConsent.tsx:26",
-      "message": "`describeFailure` destructures `false` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix a"
+      "message": "Scanned 5810 file(s); 5662 had analyzable function signatures; flagged 0"
     },
     "e780256036c63ff8": {
       "detector": "dead-envelope-field-access",
@@ -347,109 +187,13 @@
       "location": null,
       "message": "Scanned 3454 frontend file(s); 1403 called lensRun(); flagged 0; 42 candidate read(s) suppressed because the backend macro's return shape is flat or unknown (not provably dead)"
     },
-    "905794c0c06cc41d": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/astronomy/SkyChartWorkbench.tsx:164",
-      "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "a770e4bb549010cf": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/fashion/FashionAIStylistPanel.tsx:57",
-      "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "294e8bd527641d1e": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/fitness/StravaBeaconPanel.tsx:162",
-      "message": "Magic timeout 15000ms — consider env-driven"
-    },
-    "5df63892308fc832": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/fitness/StravaGpsPanel.tsx:88",
-      "message": "Magic timeout 15000ms — consider env-driven"
-    },
-    "079cf91b44ed5d74": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/fitness/StravaSegmentsPanel.tsx:102",
-      "message": "Magic timeout 15000ms — consider env-driven"
-    },
-    "9e072171776a482d": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/space/OwnedSatellites.tsx:147",
-      "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "dcb6a24c6f7cc5cb": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/space/SkyMap.tsx:68",
-      "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "e6ed2832bd901f40": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/space/VisiblePassPredictor.tsx:81",
-      "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "5cf3700cdce36d37": {
-      "detector": "dead-event-listener",
-      "id": "dead_socket_emit",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/emergent/aerial-traffic-cycle.js",
-      "message": "Server broadcasts socket event 'world:aerial-traffic' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
-    },
-    "e4096a19d6ea9f01": {
-      "detector": "dead-event-listener",
-      "id": "dead_socket_emit",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/event-shapes.js",
-      "message": "Server broadcasts socket event 'conkay:verdict' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
-    },
-    "e1dee0a1e7c8739b": {
-      "detector": "dead-event-listener",
-      "id": "dead_socket_emit",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/server.js",
-      "message": "Server broadcasts socket event 'player:mode:ack' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
-    },
     "54bf106d12062895": {
       "detector": "command-injection",
       "id": "command_injection_summary",
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 40 child_process-importing file(s) of 9219; flagged 1"
-    },
-    "6664f30f1a999701": {
-      "detector": "command-injection",
-      "id": "cmd_injection_variable_command",
-      "severity": "medium",
-      "kind": "static",
-      "location": "scripts/autoloop/lib.mjs:21",
-      "message": "execSync() runs a shell on a non-literal command (variable_command) — shell-injection sink"
+      "message": "Scanned 42 child_process-importing file(s) of 9238; flagged 0"
     },
     "4baf9918ecae7d2c": {
       "detector": "authz-coverage",
@@ -481,15 +225,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3454 frontend file(s); 1563 had fetch/macro-sourced data; flagged 1"
-    },
-    "e25310cb2185bf38": {
-      "detector": "frontend-unsafe-chain",
-      "id": "unsafe_chain_partial_guard",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/world-creator/DraftEditor.tsx:193",
-      "message": "`data` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `data.resu"
+      "message": "Scanned 3454 frontend file(s); 1563 had fetch/macro-sourced data; flagged 0"
     },
     "c4a010146d380e31": {
       "detector": "duplicate-handler-race",
@@ -497,7 +233,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3565 frontend file(s) + 2356 server file(s); flagged 0."
+      "message": "Scanned 3565 frontend file(s) + 2357 server file(s); flagged 0."
     },
     "d462654fb51261ca": {
       "detector": "fabrication-mechanism",
@@ -505,7 +241,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 6135 file(s); flagged 0"
+      "message": "Scanned 6140 file(s); flagged 0"
     },
     "d0df7c8fcaee4508": {
       "detector": "workflow-gate-integrity",
@@ -521,7 +257,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 228 money-shaped file(s) of 4392 under server/; flagged 6"
+      "message": "Scanned 228 money-shaped file(s) of 4402 under server/; flagged 6"
     },
     "28713dd4b913d372": {
       "detector": "money-txn-hygiene",
@@ -555,20 +291,20 @@
       "location": "server/routes/wagers.js:12",
       "message": "createWagersRouter() performs 5 money-table write(s) (0 direct + 5 delegated) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "ca9fcd9f188954a2": {
+    "62b34a8a35d12bfb": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:74220",
+      "location": "server/server.js:74445",
       "message": "creditWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "113bb2ea8994da2b": {
+    "ea1dd5a9bef5d2d8": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:74280",
+      "location": "server/server.js:74505",
       "message": "debitWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
     "577671649c5313ca": {
@@ -577,7 +313,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 95 realtimeEmit-mentioning file(s) of 9219; 216 call site(s); flagged 0"
+      "message": "Scanned 95 realtimeEmit-mentioning file(s) of 9238; 218 call site(s); flagged 0"
     },
     "da8b979a5bb58c77": {
       "detector": "stale-lying-test",
@@ -585,7 +321,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 89 readFileSync-using test file(s) of 929 test file(s); flagged 0"
+      "message": "Scanned 90 readFileSync-using test file(s) of 934 test file(s); flagged 0"
     },
     "5645d17312ed6ec6": {
       "detector": "dead-macro-call",
@@ -601,7 +337,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3089 JSX file(s) of 3727; flagged 0"
+      "message": "Scanned 3089 JSX file(s) of 3728; flagged 0"
     },
     "3a206e9b65e3bf45": {
       "detector": "domain-reachability",
@@ -625,7 +361,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 2364 of 4393 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
+      "message": "Scanned 2366 of 4403 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
     }
   }
 }
