@@ -68,10 +68,21 @@ export function classify({ source = "unknown", kind = "unknown", signals = {} } 
   if (source && String(source) !== "unknown") reasons.push(`source:${source}`);
 
   // Hard escalators — any of these forces Critical regardless of kind.
-  if (signals.dataLoss) reasons.push("data_loss_signal");
-  if (signals.security) reasons.push("security_signal");
-  if (signals.moneyMoved) reasons.push("money_moved_signal");
-  const escalated = reasons.length > 0;
+  // NOTE: `escalated` must be derived ONLY from these three signals, never
+  // from `reasons.length` — `reasons` already carries the source-provenance
+  // entry pushed above, and source must never change the severity verdict
+  // (see the function doc comment). A prior bug computed `escalated` as
+  // `reasons.length > 0`, so any call with a real `source` (i.e. every real
+  // caller) forced Critical unconditionally regardless of kind — caught by
+  // client-error-intake.test.js, which passes `source: "client_error"` with
+  // non-critical kinds; bug-triage.test.js's own source test happened to use
+  // an already-critical kind (`wash_trade`) so it never exercised the bug.
+  const escalatorReasons = [];
+  if (signals.dataLoss) escalatorReasons.push("data_loss_signal");
+  if (signals.security) escalatorReasons.push("security_signal");
+  if (signals.moneyMoved) escalatorReasons.push("money_moved_signal");
+  reasons.push(...escalatorReasons);
+  const escalated = escalatorReasons.length > 0;
 
   let severity;
   if (escalated || CRITICAL_KINDS.has(k)) {

@@ -56,6 +56,58 @@ function listSourceFiles(dir = SERVER_ROOT, acc = []) {
 const ALL_SOURCE_FILES = listSourceFiles();
 const repoRel = (abs) => relative(REPO_ROOT, abs);
 
+// ─── Helper: strip comments (but not string/template contents) ────────────
+//
+// A raw text grep for `eval(` / `new Function(` matches those tokens INSIDE
+// comments too — a JSDoc block describing what a sandbox blocks ("blocks
+// `eval()` calls"), a detector's own forbidden-pattern-string comment, or a
+// comment asserting "Never eval()s." all trip a literal-text scan even
+// though there's no executable call there. Strip comments before matching
+// so the drift gate reasons about code, not prose about code — the same
+// comment-blindness class already documented for the UX grader in
+// CLAUDE.md's guard-fix invariant.
+//
+// Deliberately preserves line count (newlines are kept, comment bodies are
+// blanked to spaces) so line-number diagnostics stay accurate, and tracks
+// string/template-literal state so a `//` or `/*` INSIDE a string (e.g. a
+// URL) is never mistaken for a comment start.
+function stripComments(src) {
+  let out = "";
+  let i = 0;
+  const n = src.length;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let inString = null; // one of `'`, `"`, "`" or null
+  while (i < n) {
+    const c = src[i];
+    const c2 = src[i + 1];
+    if (inLineComment) {
+      if (c === "\n") { inLineComment = false; out += c; } else out += " ";
+      i++;
+      continue;
+    }
+    if (inBlockComment) {
+      if (c === "*" && c2 === "/") { inBlockComment = false; out += "  "; i += 2; continue; }
+      out += c === "\n" ? "\n" : " ";
+      i++;
+      continue;
+    }
+    if (inString) {
+      if (c === "\\") { out += "  "; i += 2; continue; } // escape sequence — blank both chars, stay in string
+      out += c === "\n" ? "\n" : c;
+      if (c === inString) inString = null;
+      i++;
+      continue;
+    }
+    if (c === "/" && c2 === "/") { inLineComment = true; out += "  "; i += 2; continue; }
+    if (c === "/" && c2 === "*") { inBlockComment = true; out += "  "; i += 2; continue; }
+    if (c === "'" || c === '"' || c === "`") { inString = c; out += c; i++; continue; }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
 // ─── Helper: grep for a pattern across the tree, with an allowlist ─────────
 function scan(pattern, allowlist) {
   const allow = new Set(allowlist.map(p => p.replace(/^\.\//, "")));
@@ -65,12 +117,17 @@ function scan(pattern, allowlist) {
     if (allow.has(rel)) continue;
     let src;
     try { src = readFileSync(f, "utf-8"); } catch { continue; }
-    const matches = src.match(pattern);
+    const stripped = stripComments(src);
+    const matches = stripped.match(pattern);
     if (matches) {
-      // Find the first matching line for diagnostics
-      const lines = src.split("\n");
-      const lineIdx = lines.findIndex(l => pattern.test(l));
-      violations.push({ file: rel, line: lineIdx + 1, snippet: lines[lineIdx]?.trim().slice(0, 120) });
+      // Find the first matching line for diagnostics. Line indices are
+      // derived from the (newline-preserving) stripped text so they stay
+      // aligned with the original file; the printed snippet still shows
+      // the original source line for readability.
+      const strippedLines = stripped.split("\n");
+      const origLines = src.split("\n");
+      const lineIdx = strippedLines.findIndex(l => pattern.test(l));
+      violations.push({ file: rel, line: lineIdx + 1, snippet: origLines[lineIdx]?.trim().slice(0, 120) });
     }
   }
   return violations;
@@ -145,6 +202,56 @@ test("CodeQL drift: no top-level eval() in any source file", () => {
   }
   assert.equal(violations.length, 0,
     `Forbidden eval() call: ${violations.length} sites — CodeQL js/code-injection exclusion is unsafe with new eval sites`);
+});
+
+// ─── Bidirectional pin for the stripComments() checker fix ─────────────────
+//
+// The `scan()` helper used to grep raw file text, so `eval(` / `new Function(`
+// mentioned inside a comment (JSDoc explaining a sandbox, a detector's own
+// forbidden-pattern string, a "Never eval()s." assertion) tripped the same
+// violation as a real call. That's what made these two tests above fail
+// against server/lib/{plugin-sandbox,conkay-tool-authoring,simulation/safety-envelope}.js
+// — all three offending sites are prose, not code (confirmed by reading each
+// file directly). Per this repo's checker-correctness rule (CLAUDE.md
+// "Metrics you can't game"), the fix must be proven in BOTH directions, not
+// just widened into a bigger allowlist.
+test("checker fix (direction 1): comment-only eval()/new Function() mentions no longer false-positive", () => {
+  // Mirrors the exact real-world shapes that used to trip the raw-text scan.
+  const commentOnlySrc = [
+    "/**",
+    " *  and `new Function(str)` structurally — V8 refuses to compile code",
+    " *  blocks `eval()` calls too.",
+    " */",
+    "// it hunts for `eval(`, `process.exit`, `require('fs')`, etc.",
+    "/** Build the { f, dim } vector field from a plant data spec. Never eval()s. */",
+    "function realCode() { return 1 + 1; }",
+  ].join("\n");
+  assert.equal(stripComments(commentOnlySrc).match(/new\s+Function\s*\(/), null,
+    "new Function( mentioned only in a comment must not match after stripping");
+  assert.equal(stripComments(commentOnlySrc).match(/(?<![$.])\beval\s*\(/), null,
+    "eval( mentioned only in a comment must not match after stripping");
+});
+
+test("checker fix (direction 2): a REAL top-level eval()/new Function() call is still caught", () => {
+  const realEvalSrc = "function danger(x) { return eval(x); }";
+  const realNewFnSrc = "const f = new Function('a', 'b', 'return a+b');";
+  assert.ok(stripComments(realEvalSrc).match(/(?<![$.])\beval\s*\(/),
+    "a real eval() call must still match after stripping");
+  assert.ok(stripComments(realNewFnSrc).match(/new\s+Function\s*\(/),
+    "a real new Function() call must still match after stripping");
+
+  // A real call sharing a line with a trailing comment must still be caught
+  // — comment-stripping must blank only the comment portion, not the code
+  // that precedes it on the same line.
+  const mixedLineSrc = "const f = new Function('a', 'return a'); // legit dynamic fn, not a comment mention";
+  assert.ok(stripComments(mixedLineSrc).match(/new\s+Function\s*\(/),
+    "a real call preceding a trailing comment must still match");
+
+  // A string literal containing `//` (e.g. a URL) must not be mistaken for
+  // a comment start and must not swallow a real call later on the line.
+  const urlThenEvalSrc = "const u = 'https://example.com'; return eval(payload);";
+  assert.ok(stripComments(urlThenEvalSrc).match(/(?<![$.])\beval\s*\(/),
+    "a real eval() call after a URL-bearing string literal must still match");
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
