@@ -472,3 +472,83 @@ zero errors, confirming TypeScript's own control-flow narrowing agrees the
 guard makes every access after it safe. Left as-is; disposition:
 **documented false positive**, matching the established precedent from the
 26-FP batch above.
+
+---
+
+## 2026-07-25 — precision pass + two new honesty detectors + a guard-rot finding
+
+### `frontend-fake-data`: 35 → 1 (precision 2.9% → 100%)
+
+The rule's signal was worthless at 35 findings with one true positive.
+Manual classification of every finding identified three distinct
+false-positive mechanisms, each fixed narrowly (see the detector's own
+inline comments for the per-case citations):
+
+1. `title`/`name`/`desc`/`description`/`code` reclassified from
+   `CONTENT_KEY_WORDS` to `STRUCTURAL_KEY_WORDS` — on this tree they are
+   overwhelmingly identity/presentation fields on nav-destination and
+   settings-option arrays.
+2. A top-level spread of external data (`...recalls.map(...)`,
+   `...(status?.routes || [])`) exempts the array — it is built from a
+   fetch/prop/state source, not hardcoded.
+3. `{ident}` as a call-argument shorthand property is no longer misread as
+   JSX interpolation.
+
+Plus two placeholder-content fixes: a negation before the term ("never
+sample data" — honestly *denying* fabrication) and the term as an identity
+key's value (a tab named "Sample Data").
+
+**Bidirectionality was verified against the real tree, not just fixtures**:
+the one true positive (`DTUDiffViewer`'s fabricated `VERSIONS`) still fires,
+and fires because it carries `author`/`date` — fields no legitimate nav
+config needs. Landed in `bedde3c0`.
+
+Residual: `DTUDiffViewer.tsx`'s fabricated version history is a real
+honesty violation, deliberately left for the Frontend Rebuild Program
+rather than papered over here.
+
+### New: `asymmetric-status-update`
+
+Seeded by a real bug fixed this session in `SpikingNetworkPanel.tsx` — the
+success path bumped `runCount` but the early-return refusal branch did not,
+while the render read `runCount === 0 ? 'idle' : status`, so a genuine
+backend refusal displayed as "never attempted". Same honesty class as
+fabricated data, reached from the opposite direction: not inventing a
+success, but hiding a failure.
+
+Reports 0 findings on the current tree. Verified as **real engagement, not
+a silent no-op**: it scans 3,000 frontend files and its 16 positive-fixture
+tests fire. Registered (44 detectors), landed in `bedde3c0`.
+
+### 🔴 `scripts/autoloop/guard.mjs` — one rotted money-invariant rule
+
+Auditing every literal path in the guard's own `PROTECTED` + `INVARIANT`
+lists (the same "a rotted proof means the invariant silently stopped being
+enforced" discipline `verify-invariant-test-links.mjs` applies to docs,
+turned on the guard itself) found **exactly one rot — and it is the
+CC-minting file**:
+
+    INVARIANT entry:  /^server\/lib\/coin-service\.js$/
+    actual location:  server/economy/coin-service.js
+
+That rule has never matched anything. `mintCoins`/`burnCoins` — the
+functions that create and destroy Concord Coin — are **not** covered by the
+money/auth human-escalation gate, despite the list plainly intending to
+cover them. Every other rule in both lists resolves to a real path.
+
+**Not fixed here.** `guard.mjs` is itself PROTECTED, and correcting the path
+is a real behavioral change (it would start requiring human escalation for
+`server/economy/coin-service.js` edits). Per CLAUDE.md's checker rule this
+needs explicit human authorization, not a silent conductor edit — which is
+precisely the discipline the guard exists to enforce. Surfaced for a
+decision.
+
+### Related real finding (money-path audit gap, not a guard issue)
+
+`server/economy/coin-service.js:31` —
+`export function mintCoins(db, { amount, userId, refId, requestId, ip })`
+destructures `requestId` and `ip` and then references neither anywhere in
+the file, while `economy_ledger` carries `request_id` and `ip` columns.
+Every mint is therefore written with a null audit trail on two columns that
+exist specifically to carry it. `burnCoins` has the same shape. Found by
+the new `unused-destructured-param` detector's top hit.
