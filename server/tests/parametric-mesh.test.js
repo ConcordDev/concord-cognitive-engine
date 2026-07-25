@@ -18,6 +18,9 @@ import {
   loftClosedTube,
   mergeMeshes,
   weldCoincidentVertices,
+  ringPointsAt,
+  bridgeMismatchedRings,
+  loftSectionsWithBridges,
   generateSwordMesh,
   generateSwordMeshWithNormals,
   HONESTY_NOTES,
@@ -252,6 +255,116 @@ describe("weldCoincidentVertices — genuine-coincidence case (positive proof th
     assert.equal(welded.droppedTriangleCount, 0);
     assert.equal(welded.positions.length, merged.positions.length);
     assert.equal(welded.indices.length, merged.indices.length);
+  });
+});
+
+describe("bridgeMismatchedRings — the real fix for a mismatched-profile junction (replaces the two-independent-caps approach at abutting, non-interpenetrating sections)", () => {
+  it("bridges two SAME-shape, SAME-scale rings identically to a normal loftClosedTube quad strip (degenerate/sanity case)", () => {
+    const ringA = ringPointsAt("rect", 0, 0.5, 0.5);
+    const ringB = ringPointsAt("rect", 1, 0.5, 0.5);
+    const bridge = bridgeMismatchedRings(ringA, ringB);
+    assert.equal(bridge.positions.length / 3, 8);
+    assert.equal(bridge.indices.length / 3, 4 * 2); // one quad-strip segment, 4 quads = 8 tris... i.e. na+nb
+    const inv = directedEdgeInvariant(bridge.indices);
+    // The bridge ALONE is an open annulus (its two ring loops are meant to
+    // be closed by the ADJOINING sections' own lateral walls, not by the
+    // bridge itself — see the module doc-comment) so dupDirected must still
+    // be 0 even standalone, but missingReverse is expected here.
+    assert.equal(inv.dupDirected, 0);
+    // Volume of just this bridge slab standing alone (not meaningful as a
+    // real solid on its own, but should match the exact frustum volume of a
+    // 1x1 square prism from x=0 to x=1 once the two ring loops are notionally
+    // closed) is cross-checked precisely in the full-assembly tests below.
+  });
+
+  it("rejects a degenerate ring (fewer than 3 points) with a named error, never silently producing garbage", () => {
+    assert.throws(
+      () => bridgeMismatchedRings([{ x: 0, y: 1, z: 0 }, { x: 0, y: -1, z: 0 }], ringPointsAt("rect", 1, 0.5, 0.5)),
+      /parametric_mesh_bridge_bad_ring/,
+    );
+  });
+
+  it("full assembly: circle(8)->rect and rect->diamond junctions (the sword's real geometry) are closed manifolds with no vertex-count mismatch left unresolved", () => {
+    // Independently re-derive (not import) the two real sword junctions and
+    // assemble them end-to-end via loftSectionsWithBridges + weld, proving
+    // the mechanism generateSwordMesh relies on is correct in isolation of
+    // that function's own params/defaults.
+    const loft = loftSectionsWithBridges([
+      { shape: "circle", stations: [{ x: -1, halfWidth: 0.013, halfThickness: 0.013 }, { x: 0, halfWidth: 0.013, halfThickness: 0.013 }], sides: 8 },
+      { shape: "rect", stations: [{ x: 0, halfWidth: 0.06, halfThickness: 0.009 }, { x: 0.02, halfWidth: 0.06, halfThickness: 0.009 }] },
+      { shape: "diamond", stations: [{ x: 0.02, halfWidth: 0.0225, halfThickness: 0.003 }, { x: 0.27, halfWidth: 0, halfThickness: 0 }], pointEnd: true },
+    ]);
+    const inv = directedEdgeInvariant(loft.indices);
+    assert.equal(inv.dupDirected, 0);
+    assert.equal(inv.missingReverse, 0);
+    // Every vertex index used by a triangle must be in-bounds.
+    const vertCount = loft.positions.length / 3;
+    for (const i of loft.indices) assert.ok(i >= 0 && i < vertCount);
+    // Positive, finite, plausible-magnitude volume (a thin blade-and-hilt
+    // shape at real sword scale — nowhere near zero, nowhere near huge).
+    const vol = signedVolume(loft.positions, loft.indices);
+    assert.ok(Number.isFinite(vol) && vol > 0 && vol < 1e-3);
+  });
+
+  it("full assembly: SAME-shape different-SCALE junction (nested circles, no angular crossing) is also a closed manifold", () => {
+    const loft = loftSectionsWithBridges([
+      { shape: "circle", stations: [{ x: 0, halfWidth: 0.01, halfThickness: 0.01 }, { x: 1, halfWidth: 0.01, halfThickness: 0.01 }], sides: 8 },
+      { shape: "circle", stations: [{ x: 1, halfWidth: 0.05, halfThickness: 0.05 }, { x: 1.2, halfWidth: 0.05, halfThickness: 0.05 }], sides: 12 },
+    ]);
+    const inv = directedEdgeInvariant(loft.indices);
+    assert.equal(inv.dupDirected, 0);
+    assert.equal(inv.missingReverse, 0);
+    const vol = signedVolume(loft.positions, loft.indices);
+    assert.ok(vol > 0);
+  });
+
+  it("honest failure: a ring whose vertex angles are not monotonic around the origin (not star-shaped from the centerline) is refused, not silently bridged into a wrong-but-plausible mesh", () => {
+    // A hand-built "ring" that jumps back and forth in angle (not a valid
+    // CCW star-shaped polygon around the origin) — the precondition
+    // bridgeMismatchedRings requires and explicitly checks for.
+    const brokenRing = [
+      { x: 0, y: 1, z: 0 },
+      { x: 0, y: -1, z: 0.1 },
+      { x: 0, y: 0.5, z: -0.5 },
+      { x: 0, y: -0.9, z: -0.1 },
+      { x: 0, y: 0.2, z: 0.9 },
+    ];
+    const okRing = ringPointsAt("rect", 1, 0.5, 0.5);
+    assert.throws(() => bridgeMismatchedRings(brokenRing, okRing), /parametric_mesh_bridge_non_star_shaped/);
+  });
+});
+
+describe("loftSectionsWithBridges — chain of N coaxial sections, only the first/last capped", () => {
+  it("a single section behaves exactly like a normal fully-capped loftClosedTube", () => {
+    const loft = loftSectionsWithBridges([
+      { shape: "rect", stations: [{ x: 0, halfWidth: 0.5, halfThickness: 0.5 }, { x: 1, halfWidth: 0.5, halfThickness: 0.5 }] },
+    ]);
+    assert.equal(loft.sectionVertexCounts.length, 1);
+    assert.equal(loft.positions.length / 3, 8);
+    assert.equal(loft.indices.length / 3, 12);
+    assert.ok(Math.abs(signedVolume(loft.positions, loft.indices) - 1) < 1e-9);
+    const inv = directedEdgeInvariant(loft.indices);
+    assert.equal(inv.dupDirected, 0);
+    assert.equal(inv.missingReverse, 0);
+    assert.equal(loft.weld.weldedVertexCount, 0);
+  });
+
+  it("rejects an empty section list", () => {
+    assert.throws(() => loftSectionsWithBridges([]), /parametric_mesh_bad_sections/);
+  });
+
+  it("a chain of 4 mismatched sections (circle->rect->diamond->circle) stays a single closed manifold end-to-end", () => {
+    const loft = loftSectionsWithBridges([
+      { shape: "circle", stations: [{ x: 0, halfWidth: 0.02, halfThickness: 0.02 }, { x: 0.3, halfWidth: 0.02, halfThickness: 0.02 }], sides: 6 },
+      { shape: "rect", stations: [{ x: 0.3, halfWidth: 0.05, halfThickness: 0.01 }, { x: 0.35, halfWidth: 0.05, halfThickness: 0.01 }] },
+      { shape: "diamond", stations: [{ x: 0.35, halfWidth: 0.03, halfThickness: 0.02 }, { x: 0.5, halfWidth: 0.03, halfThickness: 0.02 }] },
+      { shape: "circle", stations: [{ x: 0.5, halfWidth: 0.04, halfThickness: 0.04 }, { x: 0.6, halfWidth: 0, halfThickness: 0 }], sides: 10, pointEnd: true },
+    ]);
+    const inv = directedEdgeInvariant(loft.indices);
+    assert.equal(inv.dupDirected, 0);
+    assert.equal(inv.missingReverse, 0);
+    assert.equal(loft.sectionVertexCounts.length, 4);
+    assert.ok(signedVolume(loft.positions, loft.indices) > 0);
   });
 });
 

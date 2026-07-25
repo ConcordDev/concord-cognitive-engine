@@ -674,6 +674,52 @@ function assertPositive(name, v) {
 }
 
 /**
+ * Shared assembly step used by every archetype below (and, in spirit, by
+ * generateSwordMesh — kept separate there since it predates this helper and
+ * its own tests already pin its exact return shape): loft the section chain
+ * via loftSectionsWithBridges, then build the matching beam co-product by
+ * mapping crossSectionProps over the SAME sections/stations used for the
+ * mesh, at the SAME totalLength normalization. Every archetype's `sections`
+ * array is both the mesh spec and the beam spec — there is exactly one
+ * source of truth for a station's shape/scale, never two.
+ *
+ * @param {Array<{shape:string, stations:Array<{x:number,halfWidth:number,halfThickness:number}>, sides?:number, pointStart?:boolean, pointEnd?:boolean}>} sections
+ * @param {number} totalLength
+ * @returns {{positions:Float32Array, indices:Uint32Array, beam:object, meta:object, weld:object}}
+ */
+function assembleArchetype(sections, totalLength) {
+  const loft = loftSectionsWithBridges(sections);
+  const beamStations = [];
+  for (const sec of sections) {
+    for (const st of sec.stations) {
+      beamStations.push({ s: st.x / totalLength, ...crossSectionProps(sec.shape, st.halfWidth, st.halfThickness) });
+    }
+  }
+  return {
+    positions: loft.positions,
+    indices: loft.indices,
+    beam: { stations: beamStations },
+    meta: {
+      totalLength,
+      sectionVertexCounts: loft.sectionVertexCounts,
+      sectionTriangleCounts: loft.sectionTriangleCounts,
+    },
+    weld: loft.weld,
+  };
+}
+
+/** Convenience: wrap an archetype's plain generator with glb-bridge's
+ * computeVertexNormals, matching generateSwordMeshWithNormals's shape. */
+function withNormalsWrapper(generate) {
+  return async function generateWithNormals(params = {}) {
+    const { computeVertexNormals } = await import("../evo-asset/glb-bridge.js");
+    const mesh = generate(params);
+    const normals = computeVertexNormals(mesh.positions, mesh.indices);
+    return { ...mesh, normals };
+  };
+}
+
+/**
  * Generate a deterministic bladed-weapon (sword) mesh: pommel + grip (a
  * tapered circular tube) → guard (a rectangular crossbar block) → blade (a
  * diamond-section taper converging to a point tip). Assembled via
@@ -850,3 +896,253 @@ export const HONESTY_NOTES = Object.freeze({
   junctionsClosedByRingBridge: true,
   diamondMomentOfInertiaIsRectangleApproximation: true,
 });
+
+// ── Archetype 2: polearm (spear) ────────────────────────────────────────────
+// haft (long circular tapered pole) → socket/ferrule (a WIDER circular
+// collar the spearhead's socket fits over — same shape as the haft, but a
+// genuinely different scale, so this is the "nested, no angular crossing"
+// bridging case) → head (a diamond/lenticular leaf-blade taper to a point,
+// the same real cross-section a bladed weapon actually uses, exercised at a
+// different length/proportion than the sword's blade).
+const SPEAR_DEFAULTS = {
+  haftLength: 1.8,
+  haftRadius: 0.014,
+  haftSides: 8,
+  socketRadius: 0.02,
+  socketLength: 0.04,
+  headLength: 0.28,
+  headBaseWidth: 0.045,
+  headBaseThickness: 0.007,
+  headSegments: 8,
+};
+
+/**
+ * Generate a deterministic polearm (spear) mesh. Same honesty contract as
+ * generateSwordMesh: pure/deterministic, junctions closed by
+ * bridgeMismatchedRings (not two independent caps), beam co-product for
+ * Stage 4 FEA (the diamond head uses the same rectangle-formula
+ * momentOfInertia approximation as the sword's blade — see
+ * crossSectionProps' doc-comment and HONESTY_NOTES above).
+ *
+ * @param {object} [params] see SPEAR_DEFAULTS for the full parameter set + units (meters)
+ */
+export function generateSpearMesh(params = {}) {
+  const p = { ...SPEAR_DEFAULTS, ...params };
+  for (const k of [
+    "haftLength", "haftRadius", "socketRadius", "socketLength",
+    "headLength", "headBaseWidth", "headBaseThickness",
+  ]) assertPositive(k, p[k]);
+  if (!Number.isInteger(p.haftSides) || p.haftSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: haftSides must be an integer >= 3, got ${p.haftSides}`);
+  }
+  if (!Number.isInteger(p.headSegments) || p.headSegments < 1) {
+    throw new Error(`parametric_mesh_bad_param: headSegments must be a positive integer, got ${p.headSegments}`);
+  }
+
+  const xHaftStart = 0;
+  const xHaftEnd = xHaftStart + p.haftLength;
+  const haftStations = [
+    { x: xHaftStart, halfWidth: p.haftRadius, halfThickness: p.haftRadius },
+    { x: xHaftEnd, halfWidth: p.haftRadius, halfThickness: p.haftRadius },
+  ];
+
+  const xSocketEnd = xHaftEnd + p.socketLength;
+  const socketStations = [
+    { x: xHaftEnd, halfWidth: p.socketRadius, halfThickness: p.socketRadius },
+    { x: xSocketEnd, halfWidth: p.socketRadius, halfThickness: p.socketRadius },
+  ];
+
+  const xHeadStart = xSocketEnd;
+  const headStations = [];
+  for (let i = 0; i <= p.headSegments; i++) {
+    const t = i / p.headSegments;
+    headStations.push({
+      x: xHeadStart + t * p.headLength,
+      halfWidth: (p.headBaseWidth / 2) * (1 - t),
+      halfThickness: (p.headBaseThickness / 2) * (1 - t),
+    });
+  }
+
+  const totalLength = xHeadStart + p.headLength;
+  return assembleArchetype([
+    { shape: "circle", stations: haftStations, sides: p.haftSides },
+    { shape: "circle", stations: socketStations, sides: p.haftSides },
+    { shape: "diamond", stations: headStations, pointEnd: true },
+  ], totalLength);
+}
+
+export const generateSpearMeshWithNormals = withNormalsWrapper(generateSpearMesh);
+
+// ── Archetype 3: quarterstaff (staff) ───────────────────────────────────────
+// grip (long thin circular pole) → orb/finial (a WIDER circular head — same
+// shape, different scale AND different tessellation, both bridged) with its
+// own flat cap at the top (no taper-to-point here, unlike the bladed
+// archetypes — a genuinely different silhouette, not a renamed clone).
+const STAFF_DEFAULTS = {
+  gripLength: 1.4,
+  gripRadius: 0.012,
+  gripSides: 8,
+  orbLength: 0.09,
+  orbRadius: 0.05,
+  orbSides: 12,
+};
+
+/** Generate a deterministic quarterstaff mesh. See SPEAR/generateSwordMesh
+ * for the shared honesty contract. */
+export function generateStaffMesh(params = {}) {
+  const p = { ...STAFF_DEFAULTS, ...params };
+  for (const k of ["gripLength", "gripRadius", "orbLength", "orbRadius"]) assertPositive(k, p[k]);
+  if (!Number.isInteger(p.gripSides) || p.gripSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: gripSides must be an integer >= 3, got ${p.gripSides}`);
+  }
+  if (!Number.isInteger(p.orbSides) || p.orbSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: orbSides must be an integer >= 3, got ${p.orbSides}`);
+  }
+
+  const xGripStart = 0;
+  const xGripEnd = xGripStart + p.gripLength;
+  const gripStations = [
+    { x: xGripStart, halfWidth: p.gripRadius, halfThickness: p.gripRadius },
+    { x: xGripEnd, halfWidth: p.gripRadius, halfThickness: p.gripRadius },
+  ];
+
+  const xOrbEnd = xGripEnd + p.orbLength;
+  const orbStations = [
+    { x: xGripEnd, halfWidth: p.orbRadius, halfThickness: p.orbRadius },
+    { x: xOrbEnd, halfWidth: p.orbRadius, halfThickness: p.orbRadius },
+  ];
+
+  const totalLength = xOrbEnd;
+  return assembleArchetype([
+    { shape: "circle", stations: gripStations, sides: p.gripSides },
+    { shape: "circle", stations: orbStations, sides: p.orbSides },
+  ], totalLength);
+}
+
+export const generateStaffMeshWithNormals = withNormalsWrapper(generateStaffMesh);
+
+// ── Archetype 4: flanged mace ────────────────────────────────────────────────
+// handle (circular tapered pole) → collar/ferrule (a wider circular ring) →
+// head (a diamond cross-section, WIDE in one axis and THIN in the other —
+// a flanged mace head's real proportions, not a sword-blade clone — tapered
+// down to a smaller-but-nonzero flat top rather than a point, since a mace
+// head is blunt, not bladed). At default proportions the collar→head
+// junction genuinely CROSSES (the diamond's thin axis is narrower than the
+// collar, its wide axis is wider), the same real-junction shape sword's
+// hilt→guard junction has — exercised again here at different geometry.
+const MACE_DEFAULTS = {
+  handleLength: 0.55,
+  handleRadius: 0.014,
+  handleSides: 8,
+  collarLength: 0.03,
+  collarRadius: 0.02,
+  headLength: 0.16,
+  headBaseWidth: 0.09,
+  headBaseThickness: 0.03,
+  headTipWidth: 0.035,
+  headTipThickness: 0.02,
+  headSegments: 6,
+};
+
+/** Generate a deterministic flanged-mace mesh. See SPEAR/generateSwordMesh
+ * for the shared honesty contract. */
+export function generateMaceMesh(params = {}) {
+  const p = { ...MACE_DEFAULTS, ...params };
+  for (const k of [
+    "handleLength", "handleRadius", "collarLength", "collarRadius",
+    "headLength", "headBaseWidth", "headBaseThickness", "headTipWidth", "headTipThickness",
+  ]) assertPositive(k, p[k]);
+  if (!Number.isInteger(p.handleSides) || p.handleSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: handleSides must be an integer >= 3, got ${p.handleSides}`);
+  }
+  if (!Number.isInteger(p.headSegments) || p.headSegments < 1) {
+    throw new Error(`parametric_mesh_bad_param: headSegments must be a positive integer, got ${p.headSegments}`);
+  }
+
+  const xHandleStart = 0;
+  const xHandleEnd = xHandleStart + p.handleLength;
+  const handleStations = [
+    { x: xHandleStart, halfWidth: p.handleRadius, halfThickness: p.handleRadius },
+    { x: xHandleEnd, halfWidth: p.handleRadius, halfThickness: p.handleRadius },
+  ];
+
+  const xCollarEnd = xHandleEnd + p.collarLength;
+  const collarStations = [
+    { x: xHandleEnd, halfWidth: p.collarRadius, halfThickness: p.collarRadius },
+    { x: xCollarEnd, halfWidth: p.collarRadius, halfThickness: p.collarRadius },
+  ];
+
+  const xHeadStart = xCollarEnd;
+  const headStations = [];
+  for (let i = 0; i <= p.headSegments; i++) {
+    const t = i / p.headSegments;
+    headStations.push({
+      x: xHeadStart + t * p.headLength,
+      halfWidth: (p.headBaseWidth / 2) * (1 - t) + (p.headTipWidth / 2) * t,
+      halfThickness: (p.headBaseThickness / 2) * (1 - t) + (p.headTipThickness / 2) * t,
+    });
+  }
+
+  const totalLength = xHeadStart + p.headLength;
+  return assembleArchetype([
+    { shape: "circle", stations: handleStations, sides: p.handleSides },
+    { shape: "circle", stations: collarStations, sides: p.handleSides },
+    { shape: "diamond", stations: headStations }, // flat-capped top (blunt, not bladed) — no pointEnd
+  ], totalLength);
+}
+
+export const generateMaceMeshWithNormals = withNormalsWrapper(generateMaceMesh);
+
+// ── Archetype 5: round shield ────────────────────────────────────────────────
+// A genuinely different topology from the other four: the centerline here
+// is the shield's DEPTH axis (front-to-back), not a weapon's length axis.
+// plate (a wide, thin circular disc — the shield face) → boss (a smaller
+// circular dome rising from the plate's center, tapering to a point). The
+// boss is strictly nested inside the plate's footprint (no angular
+// crossing) — this is precisely the "shoulder" case where the OLD
+// independent-double-cap approach was most visibly wrong: two full flat
+// discs of very different radii both claiming the same plane, instead of
+// one continuous surface with a smaller circular hole where the boss rises
+// through it.
+const SHIELD_DEFAULTS = {
+  plateRadius: 0.35,
+  plateThickness: 0.012,
+  plateSides: 16,
+  bossRadius: 0.06,
+  bossHeight: 0.05,
+  bossSides: 12,
+};
+
+/** Generate a deterministic round-shield mesh. See SPEAR/generateSwordMesh
+ * for the shared honesty contract. */
+export function generateShieldMesh(params = {}) {
+  const p = { ...SHIELD_DEFAULTS, ...params };
+  for (const k of ["plateRadius", "plateThickness", "bossRadius", "bossHeight"]) assertPositive(k, p[k]);
+  if (!Number.isInteger(p.plateSides) || p.plateSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: plateSides must be an integer >= 3, got ${p.plateSides}`);
+  }
+  if (!Number.isInteger(p.bossSides) || p.bossSides < 3) {
+    throw new Error(`parametric_mesh_bad_param: bossSides must be an integer >= 3, got ${p.bossSides}`);
+  }
+
+  const xPlateStart = 0;
+  const xPlateEnd = xPlateStart + p.plateThickness;
+  const plateStations = [
+    { x: xPlateStart, halfWidth: p.plateRadius, halfThickness: p.plateRadius },
+    { x: xPlateEnd, halfWidth: p.plateRadius, halfThickness: p.plateRadius },
+  ];
+
+  const xBossEnd = xPlateEnd + p.bossHeight;
+  const bossStations = [
+    { x: xPlateEnd, halfWidth: p.bossRadius, halfThickness: p.bossRadius },
+    { x: xBossEnd, halfWidth: 0, halfThickness: 0 },
+  ];
+
+  const totalLength = xBossEnd;
+  return assembleArchetype([
+    { shape: "circle", stations: plateStations, sides: p.plateSides },
+    { shape: "circle", stations: bossStations, sides: p.bossSides, pointEnd: true },
+  ], totalLength);
+}
+
+export const generateShieldMeshWithNormals = withNormalsWrapper(generateShieldMesh);
