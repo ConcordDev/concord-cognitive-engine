@@ -418,6 +418,10 @@ export function handlePromotionCommand(parts) {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-export function init({ STATE, helpers } = {}) {
+// No-op lifecycle hook: this module needs no init-time wiring. The
+// parameters it used to destructure were never referenced, which read as
+// though STATE/helpers were used here. Callers still pass them; extra
+// arguments are simply ignored, so the interface is unchanged.
+export function init() {
   return { ok: true };
 }

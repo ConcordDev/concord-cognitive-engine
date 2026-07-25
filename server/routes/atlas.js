@@ -16,7 +16,6 @@
 import { asyncHandler } from "../lib/async-handler.js";
 
 export default function registerAtlasRoutes(app, {
-  STATE,
   makeCtx,
   runMacro,
   perEndpointRateLimit,
