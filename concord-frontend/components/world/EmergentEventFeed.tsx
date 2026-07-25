@@ -155,6 +155,15 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'forge:template:created'        as SocketEvent, channel: 'world',   label: 'Forge template created' },
   { name: 'forge:template:generated'      as SocketEvent, channel: 'world',   label: 'Forge template generated' },
   { name: 'forge:template:published'      as SocketEvent, channel: 'world',   label: 'Forge template published' },
+  // Dead-event-listener fix (2026-07-24) — server/emergent/gathering-broadcast-cycle.js
+  // pushes a real, cooldown-throttled "N players clustered nearby" signal
+  // (spontaneousGatherings() over live presence, never fabricated) but had
+  // zero frontend subscriber: EventsGatherings.tsx only PULLS the
+  // world.gatherings macro once on mount, so nobody who wasn't already
+  // looking at that panel ever heard about a gathering forming. This is
+  // exactly the "world/agent substrate doing something on its own, ambient,
+  // no dedicated push UI" shape this feed exists for.
+  { name: 'world:gathering-detected'      as SocketEvent, channel: 'world',   label: 'Players gathering nearby' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {

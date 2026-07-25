@@ -49,6 +49,7 @@ import {
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
 import { hudCornerStyle } from '@/lib/world-lens/hud-corner-registry';
+import { shouldTogglePhotoMode, resolvePhotoModeCanvas } from '@/lib/world-lens/photo-mode-key';
 import { weatherTypeToIcon } from '@/lib/world-lens/weather-icon';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
@@ -70,6 +71,7 @@ import { ShardHealthBadge } from '@/components/hud/ShardHealthBadge';
 import { FriendsPresencePanel } from '@/components/world/FriendsPresencePanel';
 import { AchievementToast } from '@/components/world/AchievementToast';
 import { PartyPanel } from '@/components/world/PartyPanel';
+import { ProximityChatPanel } from '@/components/world/ProximityChatPanel';
 import { MapPingLayer } from '@/components/world/MapPingLayer';
 import { KillFeed } from '@/components/world/KillFeed';
 import { DiseaseStatusHUD } from '@/components/world/DiseaseStatusHUD';
@@ -3109,18 +3111,10 @@ export default function WorldLensPage() {
   const [photoModeCanvas, setPhotoModeCanvas] = useState<HTMLCanvasElement | null>(null);
   useEffect(() => {
     function handlePhotoModeKey(e: KeyboardEvent) {
-      if (e.key !== 'p' && e.key !== 'P') return;
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      if (dialogueNPC || combatState.target) return;
+      if (!shouldTogglePhotoMode(e, { dialogueNPC, combatTarget: combatState.target })) return;
       setPhotoModeOpen((prev) => {
         const next = !prev;
-        if (next) {
-          try {
-            const renderer = (window as unknown as { __concordiaRenderer?: { domElement?: HTMLCanvasElement } }).__concordiaRenderer;
-            setPhotoModeCanvas(renderer?.domElement ?? null);
-          } catch { setPhotoModeCanvas(null); }
-        }
+        if (next) setPhotoModeCanvas(resolvePhotoModeCanvas(window));
         return next;
       });
     }
@@ -3455,6 +3449,23 @@ export default function WorldLensPage() {
       if (data.reason === 'speed_hack_detected' || data.reason === 'teleport_detected') {
         pushCombatLog(`Movement rejected: ${data.reason.replace(/_/g, ' ')}`, 'info');
       }
+    };
+
+    // DET-C: the server sends `anti-cheat:dropped` immediately before
+    // forcibly disconnecting a socket that racked up too many rejected
+    // player:move packets (see server.js's player:move handler — the
+    // Godot gateway sends the identical event to a Godot client hitting
+    // the same violation cap). Pre-this-fix the browser client had no
+    // subscriber at all: the player just silently lost their socket with
+    // no explanation, indistinguishable from a network blip. Surface the
+    // real reason in the combat log before the disconnect tears the
+    // socket down — better than a mystery drop.
+    const handleAntiCheatDropped = (msg: unknown) => {
+      const data = msg as { reason?: string } | undefined;
+      pushCombatLog(
+        `Disconnected by anti-cheat: ${(data?.reason || 'too many violations').replace(/_/g, ' ')}`,
+        'info'
+      );
     };
 
     // ── Combat ack: our attack landed (or didn't) ──────────────────
@@ -3883,6 +3894,7 @@ export default function WorldLensPage() {
     worldSocket.on('city:positions', handleCityPositions);
     worldSocket.on('player:move:ack', handleMoveAck);
     worldSocket.on('player:move:nack', handleMoveNack);
+    worldSocket.on('anti-cheat:dropped', handleAntiCheatDropped);
     const handleCombatDodgeAck = (msg: unknown) => {
       const data = msg as { userId?: string; direction?: 'left' | 'right' | 'back' };
       if (!data?.userId) return;
@@ -4024,6 +4036,7 @@ export default function WorldLensPage() {
       worldSocket.off('city:positions', handleCityPositions);
       worldSocket.off('player:move:ack', handleMoveAck);
       worldSocket.off('player:move:nack', handleMoveNack);
+      worldSocket.off('anti-cheat:dropped', handleAntiCheatDropped);
       worldSocket.off('combat:attack:ack', handleCombatAck);
       worldSocket.off('combat:hit', handleCombatHit);
       worldSocket.off('combat:npc-attack-evaded', handleNpcAttackEvaded);
@@ -7164,6 +7177,9 @@ export default function WorldLensPage() {
 
       {/* Phase U5 — party panel (bottom-right next to friends). */}
       <PartyPanel />
+
+      {/* V1.2 Wave A — ephemeral proximity chat (bottom-left). */}
+      <ProximityChatPanel />
 
       {/* Phase U6 — world marker overlay (top-left). */}
       <MapPingLayer worldId={currentWorldId} />

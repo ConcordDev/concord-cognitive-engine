@@ -102,6 +102,11 @@ export function StatusWindowHUD({ worldId }: Props) {
   // dispatch idiom other palette-launched HUDs (e.g. DungeonHUD) use.
   useEffect(() => {
     function onOpen() { setOpen(true); }
+    // Real dispatcher: CommandPalette.tsx's HUD_DISPATCH_EVENTS table maps
+    // 'hud:status-window' -> 'concordia:open-status-window', same keyed-object +
+    // dynamic-Event indirection as the other hud:* HUD listeners. Confirmed live
+    // by tests/components/CommandPalette.test.tsx (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('concordia:open-status-window', onOpen);
     return () => window.removeEventListener('concordia:open-status-window', onOpen);
   }, []);

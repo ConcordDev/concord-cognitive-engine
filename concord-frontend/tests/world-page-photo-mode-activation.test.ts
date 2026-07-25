@@ -26,6 +26,20 @@
 // established source-pinning pattern used throughout this plan's work
 // (tests/concordia-scene-resource-leak-fix.test.tsx,
 // tests/components/sky-water-scene-connect.test.tsx).
+//
+// The P-key guard logic (which key, which focus state, which combat/
+// dialogue state) and the canvas-resolution logic were later extracted into
+// pure, independently testable functions —
+// lib/world-lens/photo-mode-key.ts's `shouldTogglePhotoMode` /
+// `resolvePhotoModeCanvas` — with real behavioral coverage (constructed
+// KeyboardEvents, real assertions on the real return value) in
+// tests/lib/photo-mode-key.test.ts. The blocks below that reference that
+// extraction are now honest source-shape pins on page.tsx's WIRING to those
+// functions (imported, and called from the keydown handler) rather than a
+// claim to re-verify the guard decisions themselves — that verification
+// lives in the dedicated unit test, the same split this plan already used
+// for hud-corner-registry.ts (tests/lib/hud-corner-registry.test.ts) vs.
+// tests/world-page-hud-corner-registry-wiring.test.ts.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
@@ -38,36 +52,52 @@ const pageSrc = readFileSync(
   'utf8'
 );
 
-describe('Phase 2 fix — Photo Mode has a real open/close/canvas wire', () => {
-  it('the old hardcoded open={false} / no-op onClose mount is gone', () => {
+describe('Phase 2 fix — Photo Mode page.tsx source shape (state + mount + P-key guard invocation; the guard\'s own decisions are behavior-tested in tests/lib/photo-mode-key.test.ts)', () => {
+  it('page.tsx source no longer contains the old hardcoded, permanently-false PhotoMode stub with a no-op onClose', () => {
     expect(pageSrc).not.toMatch(/<PhotoMode open=\{false\} onClose=\{\(\) => undefined\} \/>/);
   });
 
-  it('declares real photoModeOpen/photoModeCanvas state', () => {
+  it('declares real photoModeOpen/photoModeCanvas state (page.tsx source shape)', () => {
     expect(pageSrc).toMatch(/const \[photoModeOpen, setPhotoModeOpen\] = useState\(false\);/);
     expect(pageSrc).toMatch(/const \[photoModeCanvas, setPhotoModeCanvas\] = useState<HTMLCanvasElement \| null>\(null\);/);
   });
 
-  it('mounts PhotoMode with the real state and a real canvasRef', () => {
+  it('mounts PhotoMode with the real state and a real canvasRef (page.tsx source shape)', () => {
     expect(pageSrc).toMatch(/<PhotoMode open=\{photoModeOpen\} onClose=\{\(\) => setPhotoModeOpen\(false\)\} canvasRef=\{photoModeCanvas\} \/>/);
   });
 
-  it('binds P (case-insensitive) to toggle photo mode, ignoring text-input focus', () => {
-    expect(pageSrc).toMatch(/if \(e\.key !== 'p' && e\.key !== 'P'\) return;/);
-    expect(pageSrc).toMatch(/target\.tagName === 'INPUT' \|\| target\.tagName === 'TEXTAREA' \|\| target\.isContentEditable/);
+  // The actual key/focus-target guard decision used to be inlined here and
+  // was only source-string-pinned. It's now delegated to the pure, real-
+  // behavior-tested `shouldTogglePhotoMode` (tests/lib/photo-mode-key.test.ts
+  // covers lowercase/uppercase P, wrong key, INPUT/TEXTAREA/contentEditable
+  // focus, and the happy path with constructed KeyboardEvents). This block
+  // only pins that page.tsx imports the function and that handlePhotoModeKey
+  // invokes it — not that the guard decides correctly, which is the other
+  // file's job.
+  it('handlePhotoModeKey\'s keydown listener source invokes the imported shouldTogglePhotoMode guard (case-insensitive P recognition and input-focus checks are real-tested in tests/lib/photo-mode-key.test.ts, not re-asserted here)', () => {
+    expect(pageSrc).toMatch(/import \{ shouldTogglePhotoMode, resolvePhotoModeCanvas \} from '@\/lib\/world-lens\/photo-mode-key';/);
+    expect(pageSrc).toMatch(/if \(!shouldTogglePhotoMode\(e, \{ dialogueNPC, combatTarget: combatState\.target \}\)\) return;/);
+    // Regression guard: the old inline key-check must not have been
+    // re-duplicated alongside the delegated call.
+    expect(pageSrc).not.toMatch(/if \(e\.key !== 'p' && e\.key !== 'P'\) return;/);
   });
 
-  it('the P-key handler is gated outside combat/dialogue', () => {
+  it('handlePhotoModeKey\'s guard invocation passes dialogueNPC and combatState.target through to shouldTogglePhotoMode — the dialogue/combat gate itself is real-tested in tests/lib/photo-mode-key.test.ts', () => {
     const keyHandlerBlock = pageSrc.match(
       /function handlePhotoModeKey\(e: KeyboardEvent\) \{[\s\S]*?\n {4}\}/
     );
     expect(keyHandlerBlock).toBeTruthy();
-    expect(keyHandlerBlock![0]).toMatch(/if \(dialogueNPC \|\| combatState\.target\) return;/);
+    expect(keyHandlerBlock![0]).toMatch(/shouldTogglePhotoMode\(e, \{ dialogueNPC, combatTarget: combatState\.target \}\)/);
+    // Regression guard: the dialogue/combat short-circuit must not have been
+    // re-inlined alongside the delegated call.
+    expect(keyHandlerBlock![0]).not.toMatch(/if \(dialogueNPC \|\| combatState\.target\) return;/);
   });
 
-  it('resolves the canvas from the same __concordiaRenderer global ConcordiaScene.tsx exposes for WebXR', () => {
-    expect(pageSrc).toMatch(/window as unknown as \{ __concordiaRenderer\?: \{ domElement\?: HTMLCanvasElement \} \}/);
-    expect(pageSrc).toMatch(/setPhotoModeCanvas\(renderer\?\.domElement \?\? null\);/);
+  it('handlePhotoModeKey\'s canvas resolution invokes the imported resolvePhotoModeCanvas(window) instead of inlining the __concordiaRenderer lookup (real resolution behavior tested in tests/lib/photo-mode-key.test.ts)', () => {
+    expect(pageSrc).toMatch(/setPhotoModeCanvas\(resolvePhotoModeCanvas\(window\)\);/);
+    // Regression guard: the inline global-reading lookup must not have been
+    // re-duplicated alongside the delegated call.
+    expect(pageSrc).not.toMatch(/window as unknown as \{ __concordiaRenderer\?: \{ domElement\?: HTMLCanvasElement \} \}/);
   });
 });
 

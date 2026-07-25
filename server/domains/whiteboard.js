@@ -993,25 +993,23 @@ export default function registerWhiteboardActions(registerLensAction) {
     return Array.from(byId.values()).filter(v => v.el !== null && !v.tombstone).map(v => v.el);
   }
 
-  // DET-C dead-event-listener sweep (batch 9) — ENGINEERING-triage flag, not
-  // fixed here: 'ops-apply'/'ops-since' below implement a genuine, tested,
-  // fine-grained operational-transform-style collab protocol (per-element
-  // add/update/delete ops with a monotonic clock + compaction), and the
-  // 'whiteboard:ops' broadcast it fires has zero frontend callers. Checked
-  // runtime-truth: neither 'ops-apply', 'ops-since', nor 'whiteboard:ops'
-  // appears anywhere in concord-frontend outside their own contract tests
-  // (server/tests/whiteboard-domain-parity.test.js,
-  // server/tests/depth/whiteboard-behavior.test.js). The reason isn't a
-  // missing listener — it's that the real frontend collab hook
-  // (concord-frontend/hooks/useWhiteboardCollab.ts) took the simpler
-  // last-write-wins path instead: it debounces a full-scene push through
-  // 'broadcast-scene' (-> 'whiteboard:scene-update') rather than streaming
-  // per-element ops. Both mechanisms are real and independently correct;
-  // the frontend just never adopted this second one. Switching the hook
-  // over would be a real product/architecture call (finer-grained conflict
-  // resolution vs. the simplicity of last-write-wins) — bigger than this
-  // sweep should decide unilaterally, so flagging rather than ripping out
-  // tested backend code or fabricating a redundant second frontend path.
+  // DET-C dead-event-listener sweep (batch 9) — RESOLVED (follow-up pass).
+  // 'ops-apply'/'ops-since' below implement a genuine, tested, fine-grained
+  // operational-transform-style collab protocol (per-element add/update/
+  // delete ops with a monotonic clock + compaction). It previously had zero
+  // frontend caller — the collab hook only ever used the simpler full-scene
+  // 'broadcast-scene' (-> 'whiteboard:scene-update') last-write-wins push.
+  // Wired additively, not as a replacement: concord-frontend/hooks/
+  // useWhiteboardCollab.ts now exposes `broadcastOps()` (POSTs to
+  // 'ops-apply') and subscribes to 'whiteboard:ops', folding incoming ops
+  // into `remoteScene` with the same LWW-per-element rule `foldOps` below
+  // applies; concord-frontend/components/whiteboard/CollabBoardSection.tsx's
+  // `onCanvasChange` diffs the shape array on every edit and calls
+  // `broadcastOps` with the changed elements, alongside (not instead of) the
+  // existing `broadcastScene` full-snapshot push. See
+  // server/tests/whiteboard-domain-parity.test.js and
+  // server/tests/depth/whiteboard-behavior.test.js for the backend contract
+  // this wiring now actually exercises end-to-end.
   registerLensAction("whiteboard", "ops-apply", (ctx, _a, params = {}) => {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);

@@ -15,7 +15,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TOAST = path.resolve(__dirname, '..', 'components', 'world', 'WagerInviteToast.tsx');
 const MODAL = path.resolve(__dirname, '..', 'components', 'concordia', 'economy', 'WagerModal.tsx');
 const WORLD = path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx');
 const USE_SOCKET = path.resolve(__dirname, '..', 'hooks', 'useSocket.ts');
@@ -46,20 +45,6 @@ vi.mock('@/lib/api/client', () => ({
 import { WagerInviteToast } from '@/components/world/WagerInviteToast';
 
 describe('DET-C — WagerInviteToast wiring', () => {
-  const src = readFileSync(TOAST, 'utf8');
-
-  it('listens for the bridged concordia:wager-* window events', () => {
-    expect(src).toMatch(/concordia:wager-proposed/);
-    expect(src).toMatch(/concordia:wager-accepted/);
-    expect(src).toMatch(/concordia:wager-declined/);
-    expect(src).toMatch(/concordia:wager-resolved/);
-  });
-
-  it('mounted in world lens', () => {
-    const w = readFileSync(WORLD, 'utf8');
-    expect(w).toMatch(/WagerInviteToast/);
-  });
-
   describe('real render + accept/decline fetch calls', () => {
     beforeEach(() => {
       apiPostMock.mockClear();
@@ -117,14 +102,53 @@ describe('DET-C — WagerInviteToast wiring', () => {
       });
       expect(await screen.findByText(/You won the wager/)).toBeTruthy();
     });
-  });
 
-  it('stacks multiple simultaneous prompts via stackIndex, not a double-fixed wrapper', () => {
-    // Guards against re-introducing a `position: fixed` wrapper div around
-    // IncomingWagerPrompt instances (which is itself fixed-positioned) —
-    // that would make every prompt render at the exact same screen offset.
-    expect(src).not.toMatch(/<div className="pointer-events-auto fixed[^"]*">\s*\{incoming\.map/);
-    expect(src).toMatch(/stackIndex=\{i\}/);
+    it('shows an outcome flash on a real concordia:wager-accepted event', async () => {
+      render(<WagerInviteToast />);
+      act(() => {
+        window.dispatchEvent(new CustomEvent('concordia:wager-accepted'));
+      });
+      expect(await screen.findByText(/Your wager was accepted/)).toBeTruthy();
+    });
+
+    it('shows an outcome flash on a real concordia:wager-declined event', async () => {
+      render(<WagerInviteToast />);
+      act(() => {
+        window.dispatchEvent(new CustomEvent('concordia:wager-declined'));
+      });
+      expect(await screen.findByText(/Your wager was declined/)).toBeTruthy();
+    });
+
+    it('stacks two simultaneous prompts at distinct rendered offsets, neither nested inside the other', async () => {
+      // Real proof that IncomingWagerPrompt instances stack via their own
+      // stackIndex-derived inline offset (WagerModal.tsx `bottom: ${6 +
+      // stackIndex * 8}rem`) rather than being wrapped in a single shared
+      // `position: fixed` container div — a shared wrapper would collapse
+      // every prompt onto the exact same screen position.
+      render(<WagerInviteToast />);
+      dispatchProposed('wager-a');
+      dispatchProposed('wager-b');
+      const prompts = await screen.findAllByText(/Challenge from user-other/);
+      expect(prompts).toHaveLength(2);
+
+      const fixedRoots = prompts.map((p) => p.closest('.fixed') as HTMLElement | null);
+      expect(fixedRoots.every(Boolean)).toBe(true);
+      // Neither prompt's fixed root contains the other — they're siblings,
+      // not one nested inside a shared fixed wrapper.
+      expect(fixedRoots[0]).not.toBe(fixedRoots[1]);
+      expect(fixedRoots[0]!.contains(fixedRoots[1]!)).toBe(false);
+      expect(fixedRoots[1]!.contains(fixedRoots[0]!)).toBe(false);
+      // Each stackIndex produces a genuinely different rendered offset.
+      const offsets = fixedRoots.map((r) => r!.style.bottom);
+      expect(new Set(offsets).size).toBe(2);
+    });
+  });
+});
+
+describe('DET-C — WagerInviteToast mount-site source pin (page.tsx owned by another pass)', () => {
+  it('world lens page.tsx source declares <WagerInviteToast /> (structural mount-site pin, not runtime-testable — page.tsx is a 9000+ line unmountable page)', () => {
+    const w = readFileSync(WORLD, 'utf8');
+    expect(w).toMatch(/WagerInviteToast/);
   });
 });
 
@@ -170,9 +194,13 @@ describe('DET-C — server-side realtimeEmit targeting fix (routes/wagers.js)', 
     expect(src).toMatch(/realtimeEmit\?\.\("wager:resolved",\s*resolvedPayload,\s*\{\s*userId:\s*wager\.opponent_id\s*\}\)/);
   });
 
-  it('no wager realtimeEmit call passes a bare identifier as the 3rd argument', () => {
+  it('wager realtimeEmit source lines never pass a bare identifier as the 3rd argument (structural regression pin)', () => {
     // Regression guard for the exact shape of the original bug:
     // `}, opponentId);` / `}, wager.proposer_id);` with no `{ userId: ... }`.
+    // server/routes/wagers.js is out of scope to edit in this pass — this is
+    // a deliberate static source-shape check, not a claim of exercised
+    // runtime behavior (which the render tests above cover for the frontend
+    // side of this same fix).
     expect(src).not.toMatch(/realtimeEmit\?\.\([^)]*\},\s*opponentId\)/);
     expect(src).not.toMatch(/realtimeEmit\?\.\([^)]*\},\s*wager\.proposer_id\)/);
   });

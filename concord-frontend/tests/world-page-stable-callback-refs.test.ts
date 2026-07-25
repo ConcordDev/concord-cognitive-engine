@@ -51,7 +51,7 @@ describe('world lens page — stable callback/prop identity into child effects',
     expect(slice).not.toMatch(/onWalkers=\{\s*\(/); // no inline arrow wrapper
   });
 
-  it('memoizes TerrainRenderer\'s districts prop on worldBuildings instead of recomputing it inline every render', () => {
+  it('TerrainRenderer\'s districts prop is derived via a useMemo keyed on worldBuildings, not recomputed inline on every pass (structural memoization-shape pin — page.tsx is too large to mount in this suite)', () => {
     expect(src).toMatch(/const terrainDistricts = useMemo\(\s*\(\)\s*=>\s*deriveTerrainZones\(worldBuildings\),\s*\[worldBuildings\]\s*\)/);
     const slice = src.slice(src.indexOf('<TerrainRenderer'), src.indexOf('<TerrainRenderer') + 300);
     expect(slice).toMatch(/districts=\{terrainDistricts\}/);

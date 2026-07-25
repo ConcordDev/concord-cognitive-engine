@@ -204,6 +204,12 @@ export function RogueliteUnlockShop() {
 
   useEffect(() => {
     function onOpen() { setOpen(true); }
+    // Real dispatcher: CommandPalette.tsx's HUD_DISPATCH_EVENTS table maps
+    // 'hud:roguelite-shop' -> 'concordia:open-roguelite-shop', same keyed-object +
+    // dynamic-Event indirection as the other hud:* HUD listeners. Confirmed live by
+    // tests/roguelite-hud-wired.test.tsx and tests/components/CommandPalette.test.tsx
+    // (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('concordia:open-roguelite-shop', onOpen);
     return () => window.removeEventListener('concordia:open-roguelite-shop', onOpen);
   }, []);

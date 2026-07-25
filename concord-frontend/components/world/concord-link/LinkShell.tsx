@@ -46,6 +46,11 @@ export function LinkShell({ worldId = 'concordia-hub', open: openProp }: { world
   useEffect(() => { if (openProp !== undefined) setOpen(openProp); }, [openProp]);
   useEffect(() => {
     const onSummon = () => setOpen((o) => !o);
+    // Real dispatcher: CommandPalette.tsx's HUD_DISPATCH_EVENTS table maps
+    // 'hud:concord-link-shell' -> 'concordia:concord-link-summon', same keyed-object
+    // + dynamic-Event indirection as the other hud:* HUD listeners. Confirmed live
+    // by tests/components/CommandPalette.test.tsx (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('concordia:concord-link-summon', onSummon);
     return () => window.removeEventListener('concordia:concord-link-summon', onSummon);
   }, []);

@@ -57,12 +57,19 @@ describe("DET-C batch 3 — feed lens subscribes to 'timeline:post'", () => {
     expect(showNewPostsBlock![0]).toMatch(/queryClient\.invalidateQueries\(\{ queryKey: \['feed-posts'\] \}\)/);
   });
 
-  it('renders the pill only when newPostCount > 0, wired to showNewPosts', () => {
+  // Structural source-shape pin only — the real interactive proof (pill
+  // shows up on a live 'timeline:post' event and a click on it clears the
+  // pill + resets the counter) is a genuine render+dispatch test in
+  // tests/feed-lens-states.test.tsx (describe block "'timeline:post' new-post
+  // pill (DET-C dead-event fix)"), which reuses that file's existing
+  // full-page-mount harness instead of duplicating ~80 lines of module mocks
+  // here for one small feature.
+  it('page.tsx source keeps the pill JSX gated on newPostCount > 0 and bound to showNewPosts (structural regression pin — interactive proof lives in feed-lens-states.test.tsx)', () => {
     expect(pageSrc).toMatch(/\{newPostCount > 0 && \(/);
     expect(pageSrc).toMatch(/onClick=\{showNewPosts\}/);
   });
 
-  it("'timeline:post' is a member of the shared SocketEvent union (typed subscribe call)", () => {
+  it("'timeline:post' is declared as a member of the SocketEvent union type (TypeScript type-level fact — SocketEvent doesn't exist at runtime to exercise)", () => {
     expect(socketSrc).toMatch(/\| 'timeline:post'/);
   });
 });

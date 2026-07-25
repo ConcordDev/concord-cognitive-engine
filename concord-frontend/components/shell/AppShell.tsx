@@ -33,6 +33,7 @@ import { useSessionStore } from '@/store/sessions';
 import { useMusicStore } from '@/lib/music/store';
 import { useEventRouter } from '@/lib/event-router';
 import { useSocialNotificationToast } from '@/hooks/useSocialNotificationToast';
+import { useChannelInboundToast } from '@/hooks/useChannelInboundToast';
 import { api } from '@/lib/api/client';
 
 /**
@@ -132,6 +133,11 @@ export function AppShell({ children }: AppShellProps) {
   // follows / shares / mentions / DMs surface within ~500ms instead
   // of waiting on the NotificationBell 60s poll.
   useSocialNotificationToast();
+
+  // DET-C batch 10 — Telegram/Discord/email inbound-webhook bridge
+  // (server/routes/channels.js) toast; see the hook's own header for the
+  // full "this had zero frontend consumer" history.
+  useChannelInboundToast();
 
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen);

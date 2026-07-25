@@ -97,6 +97,10 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   // presence were never forwarded to the event bus at all.
   'whiteboard:reaction',
   'whiteboard:presence',
+  // Dead-event-listener fix (DET-C batch 9 follow-up) — ops-apply's
+  // 'whiteboard:ops' broadcast (server/domains/whiteboard.js) had zero
+  // frontend caller or consumer; useWhiteboardCollab now subscribes.
+  'whiteboard:ops',
   // Message lens multi-device sync
   'message:saved',
   'message:unsaved',
@@ -223,6 +227,12 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'wager:accepted' as SocketEvent,
   'wager:declined' as SocketEvent,
   'wager:resolved' as SocketEvent,
+  // DET-C batch 11 — V1.2 Wave A's party-room kick notification
+  // (server.js's POST /api/parties/:partyId/kick) had zero frontend
+  // consumer. PartyPanel.tsx's window.addEventListener('party:member-
+  // kicked', ...) needs the literal same-name window CustomEvent; see the
+  // rename branch below (same-name dispatch, no renaming needed here).
+  'party:member-kicked' as SocketEvent,
 ];
 
 interface UseSocketOptions {
@@ -326,7 +336,8 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
               event === ('dynasty:heir_acceded' as SocketEvent) ||
               event === ('refusal:compound-threshold' as SocketEvent) ||
               event === ('ark:archive_unlocked' as SocketEvent) ||
-              event === ('vela:reveal' as SocketEvent)
+              event === ('vela:reveal' as SocketEvent) ||
+              event === ('party:member-kicked' as SocketEvent)
             ) {
               window.dispatchEvent(new CustomEvent(event as string, { detail: data }));
             } else if (event === ('brawl-invited' as SocketEvent)) {

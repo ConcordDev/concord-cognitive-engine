@@ -6,6 +6,7 @@
  *   - peerCursors: live cursor positions of other participants
  *   - voteCounts: aggregated per-element vote tally
  *   - broadcastScene(scene): debounced scene push (last-write-wins)
+ *   - broadcastOps(ops): element-granular CRDT/OT push (see below)
  *   - broadcastCursor(x, y): rate-limited cursor ping
  *   - castVote(elementId): toggle a vote on an element
  *
@@ -16,6 +17,22 @@
  * The hook is purely additive — it doesn't replace the local Canvas
  * state, it mirrors remote scene-updates into a `remoteScene` accumulator
  * that the host component can choose to merge on conflict.
+ *
+ * ── Ops (CRDT/OT) sync ───────────────────────────────────────────────
+ * `server/domains/whiteboard.js`'s `ops-apply`/`ops-since` macros implement
+ * a real per-element last-writer-wins fold keyed on a monotonic Lamport
+ * clock, broadcasting `whiteboard:ops` to the board's room on every apply.
+ * Dead-event-listener sweep (DET-C batch 9) found the backend protocol
+ * fully built and tested but never called from the frontend — the canvas
+ * only ever used the simpler full-scene `broadcastScene` push. `broadcastOps`
+ * below is the missing caller (see `CollabBoardSection.onCanvasChange`,
+ * which diffs the shape array and sends the changed elements as ops), and
+ * the `whiteboard:ops` subscription folds incoming remote ops into
+ * `remoteScene` using the same LWW-per-element algorithm the server's
+ * `foldOps` uses, so a peer's granular edit merges without waiting for a
+ * full-scene refetch. `broadcastScene` is unchanged and still the
+ * reconciliation path (initial join, and any caller that hasn't computed a
+ * diff) — the two compose rather than replace one another.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -28,6 +45,21 @@ export interface PeerCursor {
   x: number;
   y: number;
   lastSeenMs: number;
+}
+
+/** One element-granular edit, matching server/domains/whiteboard.js's
+ *  ops-apply input shape (`{type, element}` for add/update, `{type,
+ *  elementId}` for delete). */
+export interface WhiteboardOp {
+  type: 'add' | 'update' | 'delete';
+  element?: Record<string, unknown>;
+  elementId?: string;
+}
+
+interface WhiteboardOpsPayload {
+  boardId?: string;
+  ops?: Array<{ clock: number; type: string; elementId: string; element?: Record<string, unknown> | null }>;
+  clock?: number;
 }
 
 export interface LivePresence {
@@ -87,6 +119,20 @@ export function useWhiteboardCollab({
   const sceneDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSceneRef = useRef<unknown | null>(null);
   const lastBroadcastAtRef = useRef(0);
+  // Ops sync bookkeeping — the Lamport clock this client has observed so far
+  // (seeded from ops-apply's response / ops-since's baseline, advanced by
+  // every incoming whiteboard:ops push) and, per element, the highest clock
+  // already applied — mirrors the server's foldOps LWW-per-element contract
+  // so a stale/out-of-order op is dropped instead of clobbering a newer edit.
+  const opsClockRef = useRef(0);
+  const lastOpClockByElementRef = useRef<Map<string, number>>(new Map());
+
+  // A new board resets both — clocks/edit history from one board must never
+  // leak into another.
+  useEffect(() => {
+    opsClockRef.current = 0;
+    lastOpClockByElementRef.current = new Map();
+  }, [boardId]);
 
   // Join on mount, leave on unmount.
   useEffect(() => {
@@ -151,6 +197,44 @@ export function useWhiteboardCollab({
         })
         .catch(() => { setState((prev) => ({ ...prev, remoteSceneUpdateCount: prev.remoteSceneUpdateCount + 1 })); });
     });
+    // Element-granular ops push (see the module header "Ops (CRDT/OT) sync"
+    // note) — folds each op into remoteScene using the same LWW-per-element
+    // rule server/domains/whiteboard.js's foldOps applies, so a peer's
+    // single-element edit merges immediately without waiting on the
+    // debounced full-scene refetch above.
+    const offOps = onEvent('whiteboard:ops', (payload: unknown) => {
+      const p = payload as WhiteboardOpsPayload;
+      if (p.boardId !== boardId || !Array.isArray(p.ops) || p.ops.length === 0) return;
+      // Ignore the echo of our own broadcast, same window broadcastScene uses.
+      if (Date.now() - lastBroadcastAtRef.current < 1500) return;
+      if (typeof p.clock === 'number') opsClockRef.current = Math.max(opsClockRef.current, p.clock);
+      setState((prev) => {
+        const prevScene = prev.remoteScene as { elements?: unknown[] } | null;
+        const baseElements = Array.isArray(prevScene?.elements) ? prevScene!.elements : [];
+        const byId = new Map(
+          baseElements.map((el) => [String((el as { id?: string })?.id ?? ''), el]),
+        );
+        let changed = false;
+        for (const op of p.ops!) {
+          if (!op || typeof op.elementId !== 'string') continue;
+          const lastClock = lastOpClockByElementRef.current.get(op.elementId) ?? 0;
+          if (typeof op.clock !== 'number' || op.clock <= lastClock) continue; // stale/out-of-order — drop
+          lastOpClockByElementRef.current.set(op.elementId, op.clock);
+          if (op.type === 'delete') {
+            if (byId.delete(op.elementId)) changed = true;
+          } else if (op.element && typeof op.element === 'object') {
+            byId.set(op.elementId, op.element);
+            changed = true;
+          }
+        }
+        if (!changed) return prev;
+        return {
+          ...prev,
+          remoteScene: { ...(prevScene ?? {}), elements: Array.from(byId.values()) },
+          remoteSceneUpdateCount: prev.remoteSceneUpdateCount + 1,
+        };
+      });
+    });
     const offCursor = onEvent('whiteboard:cursor', (payload: unknown) => {
       const p = payload as { boardId?: string; userId?: string; x?: number; y?: number };
       if (p.boardId !== boardId || typeof p.userId !== 'string' || typeof p.x !== 'number' || typeof p.y !== 'number') return;
@@ -213,6 +297,7 @@ export function useWhiteboardCollab({
     });
     return () => {
       offScene?.();
+      offOps?.();
       offCursor?.();
       offVote?.();
       offPresence?.();
@@ -255,6 +340,26 @@ export function useWhiteboardCollab({
     }, sceneDebounceMs);
   }, [boardId, enabled, sceneDebounceMs]);
 
+  // Element-granular ops push — the missing caller for ops-apply (see the
+  // module header "Ops (CRDT/OT) sync" note). Sent immediately (no debounce;
+  // the caller already knows exactly which elements changed, so there's
+  // nothing to coalesce the way broadcastScene coalesces a burst of drags
+  // into one full-scene payload). knownClock lets the server seed its clock
+  // past whatever this client has already observed (see ops-apply's own
+  // knownClock handling), so a client that's been offline briefly doesn't
+  // regress the board's Lamport clock backwards.
+  const broadcastOps = useCallback((ops: WhiteboardOp[]) => {
+    if (!boardId || !enabled || !Array.isArray(ops) || ops.length === 0) return;
+    lastBroadcastAtRef.current = Date.now(); // suppress our own ops echo, same convention as broadcastScene
+    api.post('/api/lens/run', {
+      domain: 'whiteboard', action: 'ops-apply',
+      input: { boardId, ops, knownClock: opsClockRef.current },
+    }).then((res) => {
+      const clock = (res as { data?: { result?: { clock?: number } } } | undefined)?.data?.result?.clock;
+      if (typeof clock === 'number') opsClockRef.current = Math.max(opsClockRef.current, clock);
+    }).catch(() => { /* best effort */ });
+  }, [boardId, enabled]);
+
   // Rate-limited cursor push.
   const broadcastCursor = useCallback((x: number, y: number) => {
     if (!boardId || !enabled) return;
@@ -291,5 +396,5 @@ export function useWhiteboardCollab({
     } catch (_e) { /* best effort */ }
   }, [boardId, enabled]);
 
-  return { ...state, broadcastScene, broadcastCursor, castVote };
+  return { ...state, broadcastScene, broadcastOps, broadcastCursor, castVote };
 }

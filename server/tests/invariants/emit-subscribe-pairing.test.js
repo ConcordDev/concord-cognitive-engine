@@ -71,18 +71,36 @@ const KNOWN_DEAD_BASELINE = new Set([
   // calls is out of scope here — this is a documentation fix, not a
   // wiring fix.
   "chat:update",
-  "city:npcs",                      // city-presence sync — frontend pulls via REST, not socket
+  // Dead-event-listener follow-up (2026-07-24) corrected this entry's rationale:
+  // the prior comment ("city-presence sync — frontend pulls via REST, not socket")
+  // was factually wrong — `realtimeEmit("city:npcs", ...)` (server/lib/
+  // city-presence.js) IS genuinely consumed, just not by concord-frontend (which
+  // this test's collectSubscribes() scans) — by the Godot world client instead:
+  // world-lens-godot/avatar/avatar_manager.gd explicitly documents and ingests
+  // "`city:npcs`" frames (see its header + `update_transform` docs/GODOT_PROTOCOL.md
+  // §3, which cites both `city:positions`/`city:npcs` as IMPLEMENTED and mirrored via
+  // realtimeEmit's global broadcast() path). Same indirection CLASS as chat:update
+  // above (a real, live consumer this static two-directory scan structurally can't
+  // see), just a different transport (a non-web client) instead of a regex-invisible
+  // template literal. Kept in the baseline — not stale (still emitted) and not
+  // "wired" by this test's own definition (subs.has() will never be true for a
+  // consumer outside concord-frontend) — with the corrected reason on record.
+  "city:npcs",
   "emergent:activity",              // emergent-engine summary — replaced by activity:new
-  // DET-C batch 4 (2026-07-23) found these two as PHANTOM shapes — event-shapes.js
-  // documents each with ZERO real realtimeEmit() call sites AND zero frontend
-  // subscribers (a documented-but-never-built contract, not a live broadcast that
-  // lost its listener). See server/lib/event-shapes.js's "npc:dialogue" / "gameJuice:
-  // fanfare" entries for the full ENGINEERING-triage rationale (real feature, real
-  // gap, flagged for a human to decide build-vs-remove) — added here by DET-C batch 6
-  // so this invariant reflects that decision instead of failing on it. Re-confirmed
-  // stable, no change, by DET-C batch 10 (2026-07-24).
-  "gameJuice:fanfare",               // documented-but-unbuilt broadcast-fanfare-to-nearby-players shape
-  "npc:dialogue",                    // documented-but-unbuilt broadcast-dialogue-tree-open shape
+  // "gameJuice:fanfare" + "npc:dialogue" removed (dead-event-listener sweep
+  // continuation, 2026-07-24): both event-shapes.js entries were RETIRED
+  // outright (deleted, not just left undispatched) — DET-C batch 4 had found
+  // ZERO real realtimeEmit() call sites for either, ever, so they were
+  // documented-but-never-built contracts, not live broadcasts that lost a
+  // listener. See server/lib/event-shapes.js's "── NPC ──"/"── GameJuice
+  // fanfare ──" section headers for the full retirement rationale. (Their
+  // presence in this baseline was also accidentally self-perpetuating: the
+  // explanatory comments that used to sit above each entry literally
+  // contained the text `realtimeEmit("npc:dialogue", ...)` /
+  // `realtimeEmit("gameJuice:fanfare", ...)` as part of describing why they
+  // were dead, which collectEmits() above — a raw regex with no comment
+  // awareness — matched as if they were real call sites. Deleting the
+  // comments alongside the registry entries closes that footgun too.)
   // DET-C batch 10 (2026-07-24) corrected this entry's rationale: the prior comment
   // ("knowledge graph diff — graph view pulls on-demand") was factually wrong — the
   // graph lens is live, not pull-only. Same indirection class as chat:update above:
@@ -92,19 +110,16 @@ const KNOWN_DEAD_BASELINE = new Set([
   // RealtimeDataPanel at graph/page.tsx:1175-1177). Kept in the baseline for the same
   // reason as chat:update — documentation fix, not a wiring fix.
   "graph:update",
-  // DET-C batch 10 (2026-07-24): moved here from SERVER_ONLY_ALLOWLIST — its old
-  // rationale there ("Federation outbound — consumed by other Concord nodes") was
-  // factually wrong. All three real emit sites (server/routes/channels.js — telegram/
-  // discord/email webhook inbound handlers) are explicitly commented "Emit WebSocket
-  // event for real-time UI updates", not federation forwarding; there is no
-  // federation-relay code anywhere near these call sites. The real gap: the external
-  // channel-bridge feature (Telegram/Discord/email linking + inbound routing) has
-  // ZERO frontend surface at all — no linking page, no inbox view, nothing that could
-  // subscribe even if it wanted to. Same PHANTOM/ENGINEERING-triage shape as
-  // npc:dialogue/gameJuice:fanfare above (real backend feature, no UI was ever built
-  // for it) — flagged for a human to decide build-vs-remove rather than force-fitting
-  // it into an unrelated feed just to clear the finding.
-  "channel:inbound",
+  // "channel:inbound" removed (DET-C batch 11, 2026-07-24): debt cleared for real —
+  // server/routes/channels.js's realtimeEmit call sites now pass { userId } so the
+  // broadcast is scoped to the recipient's own user:<id> room instead of an unscoped
+  // global emit (it had been leaking which userId received an external message to
+  // every connected socket), and concord-frontend/hooks/useChannelInboundToast.ts
+  // (mounted in AppShell alongside useSocialNotificationToast) subscribes for real and
+  // surfaces a toast. 'channel:inbound' is also now in socket.ts's SocketEvent union.
+  // The full channel-linking settings page / inbound-message inbox view is still not
+  // built — that remains a genuinely separate, larger feature — but the specific
+  // "broadcast into the void" gap this baseline entry tracked is closed.
   "world:action",                    // generic world event — superseded by typed channels
   // "world:broadcast" + "world:loot-node" removed 2026-06-26: debt cleared — both now have real
   // frontend subscribers (wired into EmergentEventFeed during the orphan-emit wiring pass).

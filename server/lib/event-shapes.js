@@ -33,7 +33,11 @@ export const EVENT_SHAPES = Object.freeze({
   // broadcastHit path (already room-scoped to user:<id>, not global) does
   // not — so this stays optional rather than forcing that path to change.
   "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon", "targetId", "targetHealth", "targetMaxHealth", "targetKilled", "targetPosition", "attackerPosition", "element", "skillId", "tier", "style", "skillKey", "worldId"] },
-  "combat:miss":   { required: ["attackerId", "victimId"], optional: ["missed"] },
+  // "combat:miss" removed (dead-event-listener follow-up, 2026-07-24): its
+  // sole emitter (combat-netcode.js's broadcastHit i-frame-whiff branch) was
+  // retired — nothing ever subscribed to it, and the route that triggered it
+  // (POST /api/combat/hit) was never called by any client. See
+  // server/lib/combat-netcode.js's module header RESOLVED note.
   "combat:death":  { required: ["victimId"], optional: ["killerId", "position"] },
   // Sprint 1 — defensive-loop wiring. ack events carry the granted i-frame
   // window + parry result; the :perfect events drive the reward slow-mo.
@@ -77,7 +81,20 @@ export const EVENT_SHAPES = Object.freeze({
   "fishing:caught": { required: ["userId", "sessionId", "fishId"], optional: ["fishName", "qualityScore", "tier"] },
 
   // ── Minigames (Phase E) ───────────────────────────────────────────
-  "minigame:started":  { required: ["matchId", "kind"], optional: ["players", "trackId"] },
+  // "minigame:started" was RETIRED (dead-event-listener sweep continuation,
+  // 2026-07-24): routes/minigames.js really emitted it, but
+  // BasketballMinigameOverlay.tsx / RacingHUD.tsx (its only plausible
+  // consumers — both real, fully built, and already subscribe to the two
+  // siblings below) are not mounted anywhere in the app, world-lens-godot,
+  // or concord-mobile — there is no "start a match/race" UI action anywhere
+  // that would even produce a matchId to react to. Wiring the broadcast
+  // alone would not have made the feature reachable; a real challenge/
+  // matchmaking flow needs designing first (who do you challenge, where's
+  // the hoop/track) — bigger than this sweep's scope. The REST match-
+  // creation/scoring backend (lib/minigames/{basketball,racing}.js) and the
+  // two overlay components are untouched and fully functional for a future
+  // properly-designed entry point; only the dead ambient "a match started"
+  // ping was removed.
   "minigame:scored":   { required: ["matchId", "kind", "actor"], optional: ["eventKind", "points"] },
   "minigame:complete": { required: ["matchId", "kind"], optional: ["winner"] },
 
@@ -112,19 +129,19 @@ export const EVENT_SHAPES = Object.freeze({
   "player:effect-applied":  { required: ["userId", "effectId"], optional: ["expiresAt", "magnitude", "source"] },
 
   // ── NPC ───────────────────────────────────────────────────────────
-  // PHANTOM (found by dead-event-listener-detector.js, DET-C batch 4,
-  // 2026-07-23): this shape has ZERO real `realtimeEmit("npc:dialogue", ...)`
-  // call sites and ZERO frontend subscribers anywhere in the repo — a
-  // documented-but-never-built event, not a live contract. The real,
-  // shipped NPC dialogue path is request/response HTTP
+  // RETIRED (dead-event-listener sweep continuation, 2026-07-24): this
+  // "npc:dialogue" shape had ZERO real `realtimeEmit(...)` call sites and
+  // ZERO frontend subscribers anywhere in the repo, ever — two independent
+  // audit passes confirmed it (DET-C batch 4, then this continuation). It
+  // was a documented-but-never-built broadcast-to-nearby-players-when-an-
+  // NPC-opens-a-tree contract, not a live event with a lost listener — the
+  // real, shipped NPC dialogue path is request/response HTTP
   // (`/api/worlds/:worldId/npcs/:npcId/dialogue`, NPCDialogue.tsx,
   // DialoguePanel.tsx) and Layer 13's `npc:conversation-bid` (ambient
-  // NPC-initiated chatter — see CLAUDE.md). A real broadcast-to-nearby-
-  // players-when-an-NPC-opens-a-tree feature could still be built on this
-  // exact shape (ENGINEERING triage, per CLAUDE.md's "closing the hard 20%"
-  // classes) — flagged here for a human to decide build-vs-remove rather
-  // than silently deleting a possibly-intended contract.
-  "npc:dialogue":           { required: ["npcId", "tree"], optional: ["worldId", "questId", "phase", "userId"] },
+  // NPC-initiated chatter — see CLAUDE.md). Deleted rather than left as a
+  // shape describing a feature that doesn't exist; a real "nearby players
+  // see this NPC's dialogue open" broadcast can be re-added on this exact
+  // shape if someone actually builds it.
 
   // ── Concord Link (cross-world) ────────────────────────────────────
   "concord-link:delivered": { required: ["messageId"], optional: ["fromWorld", "toWorld", "hops"] },
@@ -147,17 +164,19 @@ export const EVENT_SHAPES = Object.freeze({
   "walker:dispatched":    { required: ["walkerId"], optional: ["fromWorld", "toWorld", "messageId", "contractId", "route", "dispatchedAt"] },
 
   // ── GameJuice fanfare ─────────────────────────────────────────────
-  // PHANTOM (found by dead-event-listener-detector.js, DET-C batch 4,
-  // 2026-07-23): ZERO real `realtimeEmit("gameJuice:fanfare", ...)` call
-  // sites and ZERO frontend subscribers — a documented-but-never-built
-  // event. The real, shipped juice/fanfare system
-  // (components/world-lens/GameJuice.tsx) is entirely LOCAL, driven by the
-  // `concordia:game-juice` window CustomEvent dispatched by whichever
-  // component observed the real milestone — never a socket broadcast, so
-  // it can't show a player's own fanfare to OTHER nearby players. This
-  // shape would be the natural contract for that (real feature, real gap,
-  // ENGINEERING triage) — flagged for a human to decide build-vs-remove.
-  "gameJuice:fanfare":    { required: ["userId", "kind"], optional: ["magnitude", "tone", "label"] },
+  // RETIRED (dead-event-listener sweep continuation, 2026-07-24): this
+  // "gameJuice:fanfare" shape had ZERO real `realtimeEmit(...)` call sites
+  // and ZERO frontend subscribers, ever — two independent audit passes
+  // confirmed it (DET-C batch 4, then this continuation). The real, shipped
+  // juice/fanfare system (components/world-lens/GameJuice.tsx) is entirely
+  // LOCAL, driven by the `concordia:game-juice` window CustomEvent
+  // dispatched by whichever component observed the real milestone — never
+  // a socket broadcast. The closest real "nearby players see your moment"
+  // mechanism that exists is `skill:tier-witnessed` (routes/worlds.js),
+  // already wired into EmergentEventFeed.tsx and NPC mentorship reactions —
+  // a generic cross-player fanfare broadcast was never started, let alone
+  // built. Deleted rather than left as a shape describing a feature that
+  // doesn't exist.
 
   // ── Forge — polyglot template engine lifecycle ────────────────────
   // Emitted by emergent/forge-template-engine.js when a template is

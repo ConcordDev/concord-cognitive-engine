@@ -9621,13 +9621,15 @@ async function tryInitWebSockets(server) {
         // socket so a live exploitation tool can't keep hammering. Telemetry
         // + auto-drop are both best-effort and never block the move path.
         if (result.shouldDisconnect) {
-          // DET-C batch 8: flags as `dead_socket_emit` for the same
-          // scan-scope reason as player:mode:ack/:nack above (detector
-          // never walks world-lens-godot/) — the Godot gateway's own
-          // send of this same event name is real (server/server.js
-          // `_godotGatewaySend(client, "anti-cheat:dropped", ...)`,
-          // mirroring this socket.io path 1:1 for a Godot client hitting
-          // the same violation cap). Not a dead broadcast.
+          // DET-C batch 8/10: previously flagged `dead_socket_emit` — the
+          // Godot gateway's own send of this same event name
+          // (`_godotGatewaySend(client, "anti-cheat:dropped", ...)`) had no
+          // real Godot-side consumer either, and the browser socket.io path
+          // here had none at all: a rejected client just silently lost its
+          // socket with no explanation. Fixed for the browser client:
+          // app/lenses/world/page.tsx's `handleAntiCheatDropped` now
+          // subscribes and logs the real reason to the combat log before
+          // the disconnect below tears the socket down.
           socket.emit("anti-cheat:dropped", { reason: "too_many_violations" });
           socket.disconnect(true);
         }
@@ -16179,15 +16181,26 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
 
   // Broadcast DTU change via WebSocket (local-first realtime)
   if (broadcast && REALTIME.ready) {
-    const eventType = isNew ? "dtu:created" : "dtu:updated";
     try {
-      realtimeEmit(eventType, {
+      // Two literal emits (not one dynamic `realtimeEmit(eventType, ...)`)
+      // so dead-event-listener-detector.js's static REALTIME_EMIT_RE can see
+      // both branches — the dynamic form made "dtu:updated" invisible to it
+      // despite a real frontend consumer (ThoughtStream.tsx's
+      // `socket.on('dtu:updated', ...)`). Same fix precedent as
+      // concordia:combat-engaged/calm (DET-C batch 3, world/page.tsx) and
+      // the sibling shadow_vault/quality:approved split below.
+      const dtuBroadcastPayload = {
         id: dtu.id,
         title: dtu.title,
         tier: dtu.tier,
         tags: dtu.tags,
         updatedAt: dtu.updatedAt
-      });
+      };
+      if (isNew) {
+        realtimeEmit("dtu:created", dtuBroadcastPayload);
+      } else {
+        realtimeEmit("dtu:updated", dtuBroadcastPayload);
+      }
       // Graph lens listens for 'graph:update' via useRealtimeLens
       // fallback; emit it so the in-memory graph visualizer can
       // hot-patch its node/edge cache when a DTU is created or
@@ -20257,11 +20270,20 @@ async function runEntityQualityGate(artifactId, entityId, lens) {
   artifact.meta.qualityCheckedAt = nowISO();
   saveStateDebounced();
 
-  // Emit quality event
+  // Emit quality event. Two literal .emit() calls (not one ternary-selected
+  // event name) so dead-event-listener-detector.js's static SOCKET_EMIT_RE
+  // can see both branches — the ternary form made "quality:approved"
+  // invisible to it despite a real frontend consumer
+  // (LevelUpJuiceBridge.tsx's `subscribe('quality:approved', ...)`). Same
+  // fix precedent as concordia:combat-engaged/calm (DET-C batch 3) and the
+  // sibling dtu:created/updated split above.
   if (REALTIME?.io) {
-    REALTIME.io.emit(artifact.meta.status === "shadow_vault" ? "quality:shadowed" : "quality:approved", {
-      artifactId, domain: lens, entityId, status: artifact.meta.status,
-    });
+    const qualityPayload = { artifactId, domain: lens, entityId, status: artifact.meta.status };
+    if (artifact.meta.status === "shadow_vault") {
+      REALTIME.io.emit("quality:shadowed", qualityPayload);
+    } else {
+      REALTIME.io.emit("quality:approved", qualityPayload);
+    }
   }
 }
 
@@ -34673,10 +34695,16 @@ app.post("/api/coop/build/edit", requireAuth(), (req, res) => {
   const userId = req.user?.id;
   const { siteId, dtuId, op, cell } = req.body || {};
   const r = _coopMechanics.applyCoopBuildEdit({ siteId, userId, dtuId, op, cell });
-  if (r.ok) {
-    try { REALTIME?.io?.to(`party:${r.site.partyId}`).emit("coop:build:edit", { siteId, by: userId, dtuId, op, cell }); }
-    catch { /* realtime best-effort */ }
-  }
+  // DET-C batch 9/11: the realtime broadcast this used to fire
+  // (`coop:build:edit`) is retired, not wired — verified there is
+  // genuinely no coop-build UI anywhere (concord-frontend, world-lens-godot,
+  // concord-mobile) for it to reach: no site-creation flow, no shared grid
+  // canvas, no cell-edit tools. Building that UI is a real product decision
+  // (site placement + a live-shared grid + cell tools), not a listener fix,
+  // so it's out of scope here. The REST surface stays fully functional —
+  // GET /api/coop/build/:siteId and .../party/:partyId already let any
+  // future client (or a poll-based one) read the edited state; only the
+  // now-untriggerable live-push notification was removed.
   res.json(r);
 });
 app.get("/api/coop/build/:siteId", (req, res) => {

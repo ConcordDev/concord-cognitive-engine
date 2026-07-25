@@ -226,6 +226,12 @@ export function ConKayOverlay() {
     const onDismiss = () => setOpen(false);
     document.addEventListener('keydown', onKey);
     window.addEventListener('conkay:summon', onSummon);
+    // Real dispatcher: ConKayWidgetLayer.tsx fires this via
+    // `window.dispatchEvent(new Event(overlayOpen ? 'conkay:dismiss' : 'conkay:summon'))`
+    // — a ternary argument to `new Event(...)`, invisible to the detector's literal-
+    // string regexes (which also only match CustomEvent, not bare Event). Confirmed
+    // live by tests/components/ConKayWidgetAttention.test.tsx (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('conkay:dismiss', onDismiss);
     return () => {
       document.removeEventListener('keydown', onKey);

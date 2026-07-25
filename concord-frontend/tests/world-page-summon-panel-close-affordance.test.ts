@@ -51,8 +51,8 @@ const CONVERTED_PANELS = [
   'voice', 'voiceassist',
 ];
 
-describe('Phase 5 fix — 15 panels now have a real close affordance via SummonDrawer', () => {
-  it('imports SummonDrawer', () => {
+describe('Phase 5 fix — 15 panels now have a real dismiss affordance via SummonDrawer (source-shape pins; page.tsx is too large to mount in this suite)', () => {
+  it('page.tsx source imports SummonDrawer', () => {
     expect(pageSrc).toMatch(/import \{ SummonDrawer \} from '@\/components\/lens\/SummonDrawer';/);
   });
 
@@ -80,8 +80,8 @@ describe('Phase 5 fix — 15 panels now have a real close affordance via SummonD
   });
 });
 
-describe('Phase 5 — panels correctly left unconverted already have real, working close functionality', () => {
-  it('lists the deliberately-unconverted panels and the inner component each one already handles closing itself', () => {
+describe('Phase 5 — panels correctly left unconverted already have their own real, working dismiss functionality (verified via source review, not re-tested here)', () => {
+  it('lists the deliberately-unconverted panels and the inner component each one already implements its own dismiss affordance for (structural inventory pin, not a behavioral assertion — see the body comment)', () => {
     // Not a behavioral assertion (these components live in separate files,
     // individually verified via `grep -c onClose` before this decision was
     // made) — this test exists so a future pass that DOES convert one of

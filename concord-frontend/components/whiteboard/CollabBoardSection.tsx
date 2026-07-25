@@ -15,10 +15,36 @@ import { lensRun } from '@/lib/api/client';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { WhiteboardCollabPanel } from './WhiteboardCollabPanel';
 import { WhiteboardWorkspaceSummary } from './WhiteboardWorkspaceSummary';
-import { useWhiteboardCollab } from '@/hooks/useWhiteboardCollab';
+import { useWhiteboardCollab, WhiteboardOp } from '@/hooks/useWhiteboardCollab';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
+
+/**
+ * Diff two shape arrays into ops-apply's element-granular op shape (see
+ * useWhiteboardCollab's "Ops (CRDT/OT) sync" note). Identity is by `id`;
+ * an id present in `next` but not `prev` is an add, present in both but a
+ * different object reference is an update (WhiteboardCanvas's internal
+ * setShapes only ever creates a new object for the shape(s) that actually
+ * changed — untouched shapes keep their prior reference), and present in
+ * `prev` but not `next` is a delete. Order-independent — the server folds
+ * by elementId + clock, not array position.
+ */
+function diffShapesToOps(prev: Shape[], next: Shape[]): WhiteboardOp[] {
+  const ops: WhiteboardOp[] = [];
+  const prevById = new Map(prev.map((s) => [s.id, s]));
+  const nextIds = new Set<string>();
+  for (const s of next) {
+    nextIds.add(s.id);
+    const before = prevById.get(s.id);
+    if (!before) ops.push({ type: 'add', element: s as unknown as Record<string, unknown> });
+    else if (before !== s) ops.push({ type: 'update', element: s as unknown as Record<string, unknown> });
+  }
+  for (const s of prev) {
+    if (!nextIds.has(s.id)) ops.push({ type: 'delete', elementId: s.id });
+  }
+  return ops;
+}
 
 interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number }
 interface Cluster { theme: string; memberIds: string[]; size: number }
@@ -203,10 +229,22 @@ export function CollabBoardSection() {
   }
 
   function onCanvasChange(shapes: Shape[]) {
+    // Fine-grained ops sync (server/domains/whiteboard.js ops-apply/ops-since,
+    // broadcast 'whiteboard:ops') runs alongside the full-scene push below.
+    // The backend OT protocol was real and tested but had zero frontend
+    // caller (dead-event-listener sweep, DET-C batch 9) — diffing the shape
+    // array here and sending the changed elements as ops gives peers the
+    // fast, element-granular merge path (see useWhiteboardCollab's
+    // 'whiteboard:ops' listener); broadcastScene below remains the
+    // full-snapshot reconciliation path (first paint, a fresh join, or any
+    // edit this diff can't express) so nothing about the existing sync
+    // contract changes.
+    const ops = diffShapesToOps(activeShapes, shapes);
     setActiveShapes(shapes);
     setDirty(true);
     // Push to peers (no-ops server-side for a private/un-shared board).
     collab.broadcastScene({ elements: shapes, appState: {} });
+    if (ops.length > 0) collab.broadcastOps(ops);
   }
 
   // ── AI actions ─────────────────────────────────────────────────

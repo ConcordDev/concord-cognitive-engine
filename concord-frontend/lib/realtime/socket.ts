@@ -37,6 +37,18 @@ let socket: Socket | null = null;
 // in). Track every joined room and replay the joins on each `connect`.
 const _joinedRooms = new Set<string>();
 
+// Rooms the server has actually CONFIRMED (via `room:joined`), as opposed
+// to `_joinedRooms` above which only tracks what this client has ATTEMPTED
+// to join (optimistic, fire-and-forget `emit('room:join', ...)`). DET-C:
+// the server's `room:joined` ack previously had zero frontend subscribers
+// at all — a room-scoped feature (collab doc sync, code liveshare,
+// astronomy co-observe) had no way to tell "join request sent" apart from
+// "server actually admitted this socket to the room", so a caller racing
+// its first room-scoped emit against a slow join had no signal to wait on.
+// `isRoomJoined()` below gives real callers that signal; existing
+// call sites keep working exactly as before (this is additive).
+const _confirmedRooms = new Set<string>();
+
 // Guard so the global `online` listener is wired exactly once.
 let _onlineListenerWired = false;
 
@@ -204,8 +216,24 @@ export function getSocket(): Socket {
       Object.keys(_lastSeq).forEach((k) => delete _lastSeq[k]);
     });
 
+    // Server ack for `room:join` (server.js's `socket.on('room:join', ...)`
+    // handler, fired after `socket.join(room)` succeeds). Marks the room
+    // CONFIRMED so `isRoomJoined()` callers get a real signal instead of
+    // having to assume the optimistic `emit('room:join', ...)` above landed.
+    socket.on('room:joined', (data: { room?: string }) => {
+      if (data?.room) {
+        _confirmedRooms.add(data.room);
+        console.debug('[Socket] Room join confirmed:', data.room);
+      }
+    });
+
     socket.on('disconnect', (reason) => {
       console.debug('[Socket] Disconnected:', reason);
+      // A fresh connection gets a fresh, empty server-side room set (see the
+      // re-join block in the `connect` handler above) — the CONFIRMED set
+      // must be cleared in lockstep so isRoomJoined() doesn't report a stale
+      // "confirmed" for a room membership that no longer exists server-side.
+      _confirmedRooms.clear();
       // Debounced grace period (Unit F10): start (or restart) the "is the
       // backend actually gone?" timer. socket.io auto-reconnects on a brief
       // Wi-Fi flap or a server restart-in-place, so a blind disconnect→reset
@@ -373,6 +401,9 @@ export type SocketEvent =
   | 'whiteboard:scene-update'
   | 'whiteboard:cursor'
   | 'whiteboard:vote-cast'
+  // Dead-event-listener fix (DET-C batch 9 follow-up) — ops-apply's
+  // element-granular CRDT/OT broadcast, folded by useWhiteboardCollab.
+  | 'whiteboard:ops'
   // Message lens multi-device sync (server/domains/message.js, room user:${userId})
   | 'message:saved'
   | 'message:unsaved'
@@ -492,6 +523,13 @@ export type SocketEvent =
   | 'party:leader_changed'
   | 'party:kicked'
   | 'party:chat'
+  // DET-C batch 11 — V1.2 Wave A's real, hyphen-namespaced party-room
+  // events (server.js's /api/parties/* routes, distinct from the
+  // underscore-namespaced 'party:member_joined' etc. above that the server
+  // never actually emits). 'party:member-kicked' previously had zero
+  // frontend consumer; PartyPanel.tsx now listens for it (see the
+  // FORWARDED_EVENTS same-name window-dispatch bridge in useSocket.ts).
+  | 'party:member-kicked'
   // Phase 19: retention hooks
   | 'daily:login_recorded'
   // Wave 1 deferral 3: level-up rank crossing
@@ -638,7 +676,8 @@ export type SocketEvent =
   | 'fishing:bite'
   | 'fishing:caught'
   // Minigames (Phase E)
-  | 'minigame:started'
+  // 'minigame:started' retired (dead-event-listener sweep continuation,
+  // 2026-07-24) — see server/routes/minigames.js's header comment.
   | 'minigame:scored'
   | 'minigame:complete'
   // Forge polyglot template engine
@@ -731,7 +770,27 @@ export type SocketEvent =
   // above. Wired end-to-end from app/settings/page.tsx, same ack/nack +
   // timeout-fallback shape as player:visibility.
   | 'player:presence-status:ack'
-  | 'player:presence-status:nack';
+  | 'player:presence-status:nack'
+  // DET-C batch 10 — server/routes/channels.js's Telegram/Discord/email
+  // inbound-webhook bridge (server/channels/{telegram,discord,email}.js)
+  // realtimeEmit'd this on every routed inbound message with zero frontend
+  // consumer anywhere (there was no channel-linking or inbox UI at all).
+  // Now scoped to the recipient's user:<id> room (see the fix on the
+  // realtimeEmit call sites in channels.js) and surfaced as a toast via
+  // useSocialNotificationToast's sibling hook, useChannelInboundToast.
+  | 'channel:inbound'
+  // V1.2 Wave A — ephemeral spatially-scoped proximity chat
+  // (server/lib/proximity-chat.js, server.js's 'proximity:chat:send'
+  // socket handler). DET-C batch 11: 'proximity:chat' (the delivered
+  // message, direct-to-recipient on their own user:<id> room, including
+  // an echo back to the sender) plus the 'proximity:chat:ack'/':nack'
+  // send-confirmation pair had zero frontend consumer at all — the whole
+  // feature had no UI. concord-frontend/components/world/
+  // ProximityChatPanel.tsx now provides a minimal-but-real send/receive
+  // surface, mounted in the world lens.
+  | 'proximity:chat'
+  | 'proximity:chat:ack'
+  | 'proximity:chat:nack';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {
@@ -794,6 +853,24 @@ export function joinRoom(room: string): void {
 export function leaveRoom(room: string): void {
   _joinedRooms.delete(room);
   emit('room:leave', { room });
+  // room:leave has no server ack (see server.js's room:leave handler —
+  // socket.leave(room) is the real behavior; the retired ack had zero
+  // consumers) so there's nothing to await here. Drop the confirmed flag
+  // optimistically; a stale leave/rejoin race self-heals on the next
+  // room:joined ack.
+  _confirmedRooms.delete(room);
+}
+
+/**
+ * True once the server has ACKed this socket's membership in `room` via
+ * `room:joined` — as opposed to merely having attempted to join it (see
+ * `_joinedRooms` vs `_confirmedRooms` above). Room-scoped features (collab
+ * doc sync, code liveshare, astronomy co-observe) that emit a room-scoped
+ * event immediately after `joinRoom()` can use this to avoid racing the
+ * join itself, or to render a "connecting…" vs "live" indicator.
+ */
+export function isRoomJoined(room: string): boolean {
+  return _confirmedRooms.has(room);
 }
 
 // ---- Correlation ID Helper (Category 5: Observability) ----

@@ -19,8 +19,29 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, screen, act } from '@testing-library/react';
 import React from 'react';
+
+// ── 'timeline:post' live-arrival pill (DET-C dead-event fix) ─────────────────
+// Mocked at the socket.io-client level (not lib/realtime/socket.ts itself) so
+// the page's real `subscribe('timeline:post', ...)` call runs unmodified —
+// this captures the handler socket.ts actually registers via `.on(...)` and
+// lets the test fire it directly, the same pattern already used by
+// tests/components/mentorship-notifier.test.tsx.
+let lastTimelinePostHandler: ((data: unknown) => void) | null = null;
+vi.mock('socket.io-client', () => ({
+  io: () => ({
+    on: (event: string, handler: (data: unknown) => void) => {
+      if (event === 'timeline:post') lastTimelinePostHandler = handler;
+    },
+    off: () => {},
+    emit: () => {},
+    connect: () => {},
+    disconnect: () => {},
+    connected: false,
+    io: { on: () => {} },
+  }),
+}));
 
 // ── channel 1: useLensData (lens artifact list) ──────────────────────────────
 const lensDataState: { items: unknown[]; isError: boolean; error: Error | null } = {
@@ -58,6 +79,7 @@ const feedState: {
 const trendingState: { isError: boolean; error: Error | null } = { isError: false, error: null };
 const refetchFeed = vi.fn();
 const refetchTrending = vi.fn();
+const invalidateQueriesMock = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
@@ -83,7 +105,7 @@ vi.mock('@tanstack/react-query', () => ({
     isFetchingNextPage: false,
   }),
   useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(() => Promise.resolve({})), isPending: false }),
-  useQueryClient: () => ({ invalidateQueries: vi.fn(), setQueryData: vi.fn(), getQueryData: vi.fn() }),
+  useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock, setQueryData: vi.fn(), getQueryData: vi.fn() }),
 }));
 
 // ── api + artifact-action channels: inert (mocked hooks never invoke them) ──
@@ -182,6 +204,8 @@ beforeEach(() => {
   refetchLens.mockClear();
   refetchFeed.mockClear();
   refetchTrending.mockClear();
+  invalidateQueriesMock.mockClear();
+  lastTimelinePostHandler = null;
 });
 
 describe('/lenses/feed — UX state contract', () => {
@@ -214,5 +238,45 @@ describe('/lenses/feed — UX state contract', () => {
     const { getByText } = render(React.createElement(FeedLensPage));
     expect(getByText('First real post body')).toBeTruthy();
     expect(getByText('Second real post body')).toBeTruthy();
+  });
+});
+
+// DET-C dead-event fix (tests/feed-lens-timeline-post-pill.test.ts carries
+// the companion structural pins for the same feature — source-of-truth for
+// the JSX shape and the SocketEvent type membership). This block is the
+// genuine runtime proof: a real 'timeline:post' arrival through the actual
+// lib/realtime/socket.ts `subscribe()` call (captured at the socket.io-client
+// boundary, not stubbed away) really shows the pill, and a real click on it
+// really clears the pill and invalidates the feed query.
+describe("/lenses/feed — 'timeline:post' new-post pill (DET-C dead-event fix)", () => {
+  it('shows no new-post pill before any timeline:post arrival', () => {
+    feedState.pages = { pages: [[makePost('p1', 'Existing post')]] };
+    render(React.createElement(FeedLensPage));
+    expect(screen.queryByText(/new post.*tap to show/i)).toBeNull();
+  });
+
+  it('a real timeline:post arrival shows the pill, and clicking it clears the pill and invalidates the feed query', () => {
+    feedState.pages = { pages: [[makePost('p1', 'Existing post')]] };
+    render(React.createElement(FeedLensPage));
+    expect(lastTimelinePostHandler).not.toBeNull();
+
+    act(() => { lastTimelinePostHandler!({ dtuId: 'dtu-new-1' }); });
+
+    const pill = screen.getByText(/1 new post.*tap to show/i);
+    expect(pill).toBeTruthy();
+
+    fireEvent.click(pill);
+    expect(screen.queryByText(/new post.*tap to show/i)).toBeNull();
+    expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['feed-posts'] });
+  });
+
+  it('two real timeline:post arrivals pluralize the pill correctly', () => {
+    feedState.pages = { pages: [[makePost('p1', 'Existing post')]] };
+    render(React.createElement(FeedLensPage));
+    act(() => {
+      lastTimelinePostHandler!({ dtuId: 'dtu-new-1' });
+      lastTimelinePostHandler!({ dtuId: 'dtu-new-2' });
+    });
+    expect(screen.getByText(/2 new posts.*tap to show/i)).toBeTruthy();
   });
 });

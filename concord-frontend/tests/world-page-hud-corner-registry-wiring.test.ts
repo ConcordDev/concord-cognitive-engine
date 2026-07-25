@@ -23,8 +23,8 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(path.resolve(__dirname, '..', 'app/lenses/world/page.tsx'), 'utf8');
 
-describe('world/page.tsx — hud-corner-registry wiring (Phase 6b)', () => {
-  it('imports hudCornerStyle from the registry', () => {
+describe('world/page.tsx — hud-corner-registry source-shape pins (the registry function\'s own behavior is real-tested in tests/lib/hud-corner-registry.test.ts; Phase 6b)', () => {
+  it('page.tsx source imports hudCornerStyle from the registry (real behavior of hudCornerStyle itself: tests/lib/hud-corner-registry.test.ts)', () => {
     expect(src).toMatch(/import \{ hudCornerStyle \} from '@\/lib\/world-lens\/hud-corner-registry';/);
   });
 
@@ -53,17 +53,17 @@ describe('world/page.tsx — hud-corner-registry wiring (Phase 6b)', () => {
     }
   });
 
-  it('the confirmed top-left collision pair (fullscreen-toggle, resource-bars) both drop their old identical "top-4 left-4" class', () => {
+  it('page.tsx source no longer contains the confirmed top-left collision pair\'s (fullscreen-toggle, resource-bars) old identical "top-4 left-4" class (regression guard against reintroducing the confirmed visual collision)', () => {
     expect(src).not.toMatch(/className=\{`absolute top-4 left-4 z-30/);
     expect(src).not.toMatch(/className=\{`absolute top-4 left-4 z-20 pointer-events-none/);
   });
 
-  it('the confirmed top-right collision pair (theme-picker, camera-controls) both drop their old identical "top-4 right-4" class', () => {
+  it('page.tsx source no longer contains the confirmed top-right collision pair\'s (theme-picker, camera-controls) old identical "top-4 right-4" class (regression guard against reintroducing the confirmed visual collision)', () => {
     expect(src).not.toMatch(/className=\{`absolute top-4 right-4 z-20 flex items-center gap-1\.5 bg-black\/50/);
     expect(src).not.toMatch(/className=\{`absolute top-4 right-4 z-20 \$\{hudHidden/);
   });
 
-  it('each mount keeps its edge-inset (left-4/right-4/left-1\\/2) and z-index classes unchanged', () => {
+  it('page.tsx source shape: each mount keeps its edge-inset (left-4/right-4/left-1\\/2) and z-index classes unchanged alongside the hudCornerStyle(id) offset', () => {
     expect(src).toMatch(/style=\{hudCornerStyle\('fullscreen-toggle'\)\} className=\{`absolute left-4 z-30/);
     expect(src).toMatch(/style=\{hudCornerStyle\('theme-picker'\)\} className=\{`absolute right-4 z-20/);
     expect(src).toMatch(/style=\{hudCornerStyle\('camera-controls'\)\} className=\{`absolute right-4 z-20/);
