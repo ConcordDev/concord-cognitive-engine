@@ -73,7 +73,9 @@ async function runLaborForecast(input: Record<string, unknown>): Promise<MacroEn
   return { ok: false, error: (inner as FailResult)?.error || 'Forecast unavailable.' };
 }
 
-function reasonMessage(env: Extract<MacroEnv, { ok: false }>): { icon: 'egress' | 'warn'; text: string } {
+// FP: no destructuring here — the `{ ok: false }` flagged is a TS literal type inside
+// an Extract<> generic, which the detector's regex reads as a param named `false`.
+function reasonMessage(env: Extract<MacroEnv, { ok: false }>): { icon: 'egress' | 'warn'; text: string } { // @unused-param-ok
   if (env.reason === 'no_egress') {
     return {
       icon: 'egress',

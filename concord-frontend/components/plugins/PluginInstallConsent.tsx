@@ -23,7 +23,9 @@ export interface PluginInstallConsentProps {
   onInstalled: (result: InstallResponse, plugin: GalleryPlugin) => void;
 }
 
-function describeFailure(result: Extract<InstallResponse, { ok: false }>): string {
+// FP: no destructuring here — the `{ ok: false }` flagged is a TS literal type inside
+// an Extract<> generic, which the detector's regex reads as a param named `false`.
+function describeFailure(result: Extract<InstallResponse, { ok: false }>): string { // @unused-param-ok
   const parts: string[] = [result.error];
   if (result.reason) parts.push(result.reason);
   return parts.join(' — ');
