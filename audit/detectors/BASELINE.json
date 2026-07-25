@@ -1,15 +1,15 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-25T00:50:38.997Z",
+  "generatedAt": "2026-07-25T09:33:19.941Z",
   "totals": {
     "critical": 0,
     "high": 7,
-    "medium": 55,
-    "low": 8,
-    "info": 51,
-    "total": 121
+    "medium": 18,
+    "low": 0,
+    "info": 53,
+    "total": 78
   },
-  "detectorCount": 43,
+  "detectorCount": 46,
   "fingerprints": {
     "9c379b1814c0a383": {
       "detector": "stale-code",
@@ -105,7 +105,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 9134 files; flagged 0"
+      "message": "Scanned 9146 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -113,55 +113,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 4368 server files"
-    },
-    "8153b95271ea0be5": {
-      "detector": "performance-hotspot",
-      "id": "perf_select_star_hot",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/domains/admin.js:621",
-      "message": "SELECT * full-scan or JOIN — project explicit columns"
-    },
-    "35aac07ef3cbb58f": {
-      "detector": "performance-hotspot",
-      "id": "perf_select_star_hot",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/domains/admin.js:664",
-      "message": "SELECT * full-scan or JOIN — project explicit columns"
-    },
-    "facb23ef0a6e42fc": {
-      "detector": "performance-hotspot",
-      "id": "perf_select_star_hot",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/domains/admin.js:719",
-      "message": "SELECT * full-scan or JOIN — project explicit columns"
-    },
-    "26bdc1e30df62a8b": {
-      "detector": "performance-hotspot",
-      "id": "perf_select_star_hot",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/domains/education.js:544",
-      "message": "SELECT * full-scan or JOIN — project explicit columns"
-    },
-    "17d0376f3c5a9812": {
-      "detector": "performance-hotspot",
-      "id": "perf_select_star_hot",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/domains/education.js:585",
-      "message": "SELECT * full-scan or JOIN — project explicit columns"
-    },
-    "187efccf35085b9d": {
-      "detector": "performance-hotspot",
-      "id": "perf_select_star_hot",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/domains/education.js:639",
-      "message": "SELECT * full-scan or JOIN — project explicit columns"
+      "message": "Scanned 4380 server files"
     },
     "3b5cf89535467e0d": {
       "detector": "historical-trend",
@@ -177,7 +129,7 @@
       "severity": "info",
       "kind": "predictive",
       "location": null,
-      "message": "30 samples · 14 tables observed · heap 15MB"
+      "message": "30 samples · 14 tables observed · heap 13MB"
     },
     "7d25275889c77630": {
       "detector": "architectural-hub",
@@ -185,7 +137,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 4368 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 4380 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
     },
     "8124c3bcdf890d24": {
       "detector": "architectural-hub",
@@ -251,22 +203,6 @@
       "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:186",
       "message": "Production reference to identifier suggesting fake data: fakeLevel"
     },
-    "c8ae131b4c240726": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/components/ui/Skeleton.tsx:38",
-      "message": "TODO marker in production: migrate to `ds.skeleton` once the design-system agent lands one."
-    },
-    "97001bc6cd711f0c": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/domains/foundry.js:502",
-      "message": "TODO marker in production: in compiler.js's header comment (\"'Promotion' to a full"
-    },
     "e8ca0dab4cb5f073": {
       "detector": "fake-data",
       "id": "fake_data_summary",
@@ -281,47 +217,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3000 frontend file(s) under app/lenses + components; flagged 40"
-    },
-    "bd2ce9e83ff0e4f4": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/alliance/page.tsx:44",
-      "message": "'TABS' is a hardcoded array literal (3 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its encl"
-    },
-    "17dde65774639536": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/analytics/page.tsx:598",
-      "message": "'data' is a hardcoded array literal (1 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its encl"
-    },
-    "6331cddf8cc860ba": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/answers/page.tsx:133",
-      "message": "'ANSWERS_FALLBACK' is a hardcoded array literal (30 object(s), up to 8 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*"
-    },
-    "a68e52c0138328db": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/grounding/page.tsx:52",
-      "message": "'DESTINATIONS' is a hardcoded array literal (3 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
-    },
-    "e4c498898b54d90b": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/history/page.tsx:74",
-      "message": "'GROUPS' is a hardcoded array literal (4 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its en"
+      "message": "Scanned 3000 frontend file(s) under app/lenses + components; flagged 4"
     },
     "0a38115ea1d40cbc": {
       "detector": "frontend-fake-data",
@@ -331,38 +227,6 @@
       "location": "concord-frontend/app/lenses/metacognition/page.tsx:1258",
       "message": "Placeholder-sounding content rendered as real: \"placeholder\" in 'input[placeholder*=\"Domain to assess\"]'"
     },
-    "a160557f0b977b6f": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/parenting/page.tsx:21",
-      "message": "'DESTINATIONS' is a hardcoded array literal (4 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
-    },
-    "115f337b3faf2f7d": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/supplychain/page.tsx:42",
-      "message": "'DESTINATIONS' is a hardcoded array literal (5 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
-    },
-    "45d3d66328174729": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/alliance/AllianceAnalyticsPanel.tsx:450",
-      "message": "'TOOLS' is a hardcoded array literal (3 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its enc"
-    },
-    "3b04551600c81b6b": {
-      "detector": "frontend-fake-data",
-      "id": "placeholder_content_weak",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/animation/AnimationReferenceImages.tsx:188",
-      "message": "Placeholder-sounding content rendered as real: \"placeholder\" in description=\"Upload a photo or sketch to see it here — real stored bytes, not a placeholder.\""
-    },
     "c99c501103608e6a": {
       "detector": "frontend-fake-data",
       "id": "placeholder_content_weak",
@@ -370,62 +234,6 @@
       "kind": "static",
       "location": "concord-frontend/components/app-maker/AppBuilderStudio.tsx:418",
       "message": "Placeholder-sounding content rendered as real: \"placeholder\" in onChange={(e) => updateProp('placeholder', e.target.value)}"
-    },
-    "62555758cd416261": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/automotive/VehicleHistory.tsx:77",
-      "message": "'events' is a hardcoded array literal (2 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its en"
-    },
-    "c4237d7adc7f5c10": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/common/ExportMenu.tsx:79",
-      "message": "'options' is a hardcoded array literal (2 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its e"
-    },
-    "04f13c3b69df1751": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/common/LanguageSelector.tsx:23",
-      "message": "'LOCALE_INFO' is a hardcoded array literal (10 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
-    },
-    "7da1ecf89636feec": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/emergent/PresenceDashboard.tsx:47",
-      "message": "'ORIGINAL_PILLARS' is a hardcoded array literal (4 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*)"
-    },
-    "dba82be82d4fd81e": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/global/CountryPicker.tsx:14",
-      "message": "'COUNTRIES' is a hardcoded array literal (44 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in it"
-    },
-    "bab6aef826ea640c": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/hr/BlsSeriesExplorer.tsx:50",
-      "message": "'PRESETS' is a hardcoded array literal (6 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its e"
-    },
-    "e0685c14a3e13025": {
-      "detector": "frontend-fake-data",
-      "id": "placeholder_content_strong",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/law/CaseAnalytics.tsx:138",
-      "message": "Placeholder-sounding content rendered as real: \"sample data\" in description=\"Add cases in the Case Files tab — analytics runs the real caseAnalysis / deadlineTracker macros over your …"
     },
     "d8234e4e68a23d16": {
       "detector": "frontend-fake-data",
@@ -435,78 +243,6 @@
       "location": "concord-frontend/components/legacy/CodebaseScanner.tsx:232",
       "message": "Placeholder-sounding content rendered as real: \"TODO\" in <Metric label=\"TODO / FIXME Debt\" value={String(active.summary.totalTodos)} tone={active.summary.totalTodos > 0 ? 'warn…"
     },
-    "2a24816b856227b9": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/observe/ObservePlatform.tsx:634",
-      "message": "'routes' is a hardcoded array literal (1 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its en"
-    },
-    "db3cea0f1f37d270": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/ocean/TidePredictions.tsx:24",
-      "message": "'COMMON_STATIONS' is a hardcoded array literal (5 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) "
-    },
-    "f0a1c847ab168e9e": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/onboarding/OnboardingWizard.tsx:37",
-      "message": "'STEPS' is a hardcoded array literal (7 object(s), up to 7 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its enc"
-    },
-    "e53866d1af23b1dd": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/questmarket/PlanningTools.tsx:71",
-      "message": "'participants' is a hardcoded array literal (1 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
-    },
-    "82f040a9d9f74799": {
-      "detector": "frontend-fake-data",
-      "id": "placeholder_content_strong",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/schema/SchemaWorkbench.tsx:133",
-      "message": "Placeholder-sounding content rendered as real: \"Sample Data\" in { id: 'sample', label: 'Sample Data', icon: Beaker },"
-    },
-    "4956db7d8c8eda12": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/scope/VisibilityScopePicker.tsx:62",
-      "message": "'SCOPE_OPTIONS' is a hardcoded array literal (5 object(s), up to 6 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in"
-    },
-    "e3e41186ae8fb235": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/social/CrossPostExternal.tsx:62",
-      "message": "'PLATFORMS' is a hardcoded array literal (4 object(s), up to 6 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
-    },
-    "d2fb2fb223fa1075": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/society/WorldBankExplorer.tsx:26",
-      "message": "'POPULAR_COUNTRIES' is a hardcoded array literal (12 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api."
-    },
-    "7c90f306ca13f554": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/srs/SRSReview.tsx:37",
-      "message": "'QUALITY_OPTIONS' is a hardcoded array literal (6 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) "
-    },
     "8822504e1d8c7b48": {
       "detector": "frontend-fake-data",
       "id": "placeholder_content_weak",
@@ -515,93 +251,101 @@
       "location": "concord-frontend/components/studio/BouncePanel.tsx:100",
       "message": "Placeholder-sounding content rendered as real: \"placeholder\" in title=\"The reference audio attached to this publish is a generated placeholder tone (4s, 220Hz), not your project mix. …"
     },
-    "ac3b1c46d85b6f3d": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
+    "2d470ae36f577f2e": {
+      "detector": "asymmetric-status-update",
+      "id": "asymmetric_status_update_summary",
+      "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/components/themes/ThemeSelector.tsx:32",
-      "message": "'BUILT_IN_THEMES' is a hardcoded array literal (6 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) "
+      "location": null,
+      "message": "Scanned 3000 frontend file(s) under app/lenses + components; flagged 0"
     },
-    "87e458b49785f87b": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
-      "severity": "medium",
+    "5fc62141c912ecc8": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param_summary",
+      "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/components/ux-suite/AvatarComputeToggle.tsx:18",
-      "message": "'OPTIONS' is a hardcoded array literal (3 object(s), up to 4 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its e"
+      "location": null,
+      "message": "Scanned 5808 file(s); 5660 had analyzable function signatures; flagged 9"
     },
-    "9cd9a24372cb0380": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "43d6636dcaf95721": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world/concordia-hud/panels/DecreePanel.tsx:37",
-      "message": "'DECREE_SPECS' is a hardcoded array literal (8 object(s), up to 5 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in "
+      "location": "server/economy/dtu-pipeline.js:256",
+      "message": "`computeInitialCRETI` destructures `contentLength` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as t"
     },
-    "4df7ecd56f181cf8": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "4a59ac38c1bcd1d1": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-lens/AccessibilityPanel.tsx:37",
-      "message": "'COLORBLIND_OPTIONS' is a hardcoded array literal (5 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api."
+      "location": "server/economy/lens-culture.js:318",
+      "message": "`setLensProtection` destructures `creatorId` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre"
     },
-    "1ac8543191e7a72a": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "b777a7c519e8c271": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-lens/CameraControls.tsx:58",
-      "message": "'presets' is a hardcoded array literal (3 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its e"
+      "location": "server/economy/rights-enforcement.js:384",
+      "message": "`checkListingRights` destructures `dtuId` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fi"
     },
-    "0d47fd9535ceb624": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "99d8c8a42b6b0b52": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-lens/ConcordDSLEditor.tsx:24",
-      "message": "'TEMPLATES' is a hardcoded array literal (5 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
+      "location": "server/lib/npc-persona.js:93",
+      "message": "`installPersona` destructures `installerUserId` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the "
     },
-    "55c7d0ab17b4190a": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "c10c23384b0338ec": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-lens/DTUDiffViewer.tsx:31",
-      "message": "'VERSIONS' is a hardcoded array literal (3 object(s), up to 15 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
+      "location": "server/routes/oauth.js:155",
+      "message": "`createOAuthUser` destructures `avatarUrl` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-f"
     },
-    "9be44c499f24ad66": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "972fd99736718668": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-lens/GuidedCreator.tsx:20",
-      "message": "'CATEGORIES' is a hardcoded array literal (11 object(s), up to 3 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in i"
+      "location": "server/server.js:20322",
+      "message": "`buildProductionPrompt` destructures `entity` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pr"
     },
-    "211b83870f469b6a": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "d5da109a33ce2986": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-lens/NotarizationPanel.tsx:45",
-      "message": "'CHAINS' is a hardcoded array literal (3 object(s), up to 7 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its en"
+      "location": "concord-frontend/components/debate/KialoArgumentMap.tsx:921",
+      "message": "`SourceForm` destructures `busy` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix analyti"
     },
-    "bb17aa189fbdf8b1": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "7972e2d8730d08d9": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-lens/SettingsPanel.tsx:102",
-      "message": "'SUPPORTED_LANGUAGES' is a hardcoded array literal (11 object(s), up to 2 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/ap"
+      "location": "concord-frontend/components/hr/BlsWageForecast.tsx:76",
+      "message": "`reasonMessage` destructures `false` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix ana"
     },
-    "38b130acacd887fa": {
-      "detector": "frontend-fake-data",
-      "id": "hardcoded_array_rendered_as_live_data",
+    "5108c27aefbbe2fc": {
+      "detector": "unused-destructured-param",
+      "id": "unused_destructured_param",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world-lens/StressTestPanel.tsx:20",
-      "message": "'SCENARIOS' is a hardcoded array literal (4 object(s), up to 6 fields) rendered via .map()/interpolation with no data-fetching call (useLensData/useLensDTUs/useQuery/useSWR/lensRun/fetch/api.*) in its"
+      "location": "concord-frontend/components/plugins/PluginInstallConsent.tsx:26",
+      "message": "`describeFailure` destructures `false` from a parameter but never references it in the function body — the signature promises the value matters; the body proves it doesn't. Same shape as the pre-fix a"
+    },
+    "e780256036c63ff8": {
+      "detector": "dead-envelope-field-access",
+      "id": "dead_envelope_field_access_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 3454 frontend file(s); 1403 called lensRun(); flagged 0; 42 candidate read(s) suppressed because the backend macro's return shape is flat or unknown (not provably dead)"
     },
     "905794c0c06cc41d": {
       "detector": "env-config-drift",
@@ -610,14 +354,6 @@
       "kind": "static",
       "location": "concord-frontend/components/astronomy/SkyChartWorkbench.tsx:164",
       "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "a5392546fee20d1f": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_prod_url",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/environment/EnviroPanel.tsx:214",
-      "message": "Hardcoded production URL: https://www.ncdc.noaa.gov/cdo-web/token"
     },
     "a770e4bb549010cf": {
       "detector": "env-config-drift",
@@ -651,38 +387,6 @@
       "location": "concord-frontend/components/fitness/StravaSegmentsPanel.tsx:102",
       "message": "Magic timeout 15000ms — consider env-driven"
     },
-    "3e3478f4fe50a367": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_prod_url",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/integrations/AnalysisPanel.tsx:66",
-      "message": "Hardcoded production URL: https://api.internal/auth"
-    },
-    "ff70355f13fca227": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_prod_url",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/integrations/AnalysisPanel.tsx:74",
-      "message": "Hardcoded production URL: https://api.internal/billing"
-    },
-    "943f1952d75176b6": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_prod_url",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/law/PatentSearch.tsx:380",
-      "message": "Hardcoded production URL: https://search.patentsview.org/api/v1/patent/?q=${encodeURIComponent(JSON.string"
-    },
-    "c3d7e0cfd63aa7e7": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_prod_url",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/law/PatentSearch.tsx:395",
-      "message": "Hardcoded production URL: https://patents.google.com/?q=${encodeURIComponent(p.patentId)}"
-    },
     "9e072171776a482d": {
       "detector": "env-config-drift",
       "id": "magic_timeout",
@@ -707,30 +411,6 @@
       "location": "concord-frontend/components/space/VisiblePassPredictor.tsx:81",
       "message": "Magic timeout 10000ms — consider env-driven"
     },
-    "7fc781493c9ae95a": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_prod_url",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/desert/tile-cache.ts:42",
-      "message": "Hardcoded production URL: https://concord.local/__desert_tile_manifest__"
-    },
-    "faea0dd7c229e5b9": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_localhost",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/godot-gateway.js:412",
-      "message": "Hardcoded localhost URL with no env-var fallback in this file: http://localhost"
-    },
-    "f405a506e03be138": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_prod_url",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/pollinations-image.js:35",
-      "message": "Hardcoded production URL: https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}"
-    },
     "5cf3700cdce36d37": {
       "detector": "dead-event-listener",
       "id": "dead_socket_emit",
@@ -738,14 +418,6 @@
       "kind": "static",
       "location": "server/emergent/aerial-traffic-cycle.js",
       "message": "Server broadcasts socket event 'world:aerial-traffic' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
-    },
-    "72c21401c67a6fec": {
-      "detector": "dead-event-listener",
-      "id": "dead_socket_emit",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/city-presence.js",
-      "message": "Server broadcasts socket event 'city:npcs' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
     },
     "e4096a19d6ea9f01": {
       "detector": "dead-event-listener",
@@ -763,21 +435,13 @@
       "location": "server/server.js",
       "message": "Server broadcasts socket event 'player:mode:ack' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
     },
-    "c15c2403be414de4": {
-      "detector": "dead-event-listener",
-      "id": "orphan_socket_consumer",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/realtime/socket.ts",
-      "message": "Frontend subscribes to socket event 'room:join' but no server code ever emits it (checked realtimeEmit/io.emit/socket.emit and common emit-helper aliases) — the subscription will never fire."
-    },
     "54bf106d12062895": {
       "detector": "command-injection",
       "id": "command_injection_summary",
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 38 child_process-importing file(s) of 9207; flagged 1"
+      "message": "Scanned 40 child_process-importing file(s) of 9219; flagged 1"
     },
     "6664f30f1a999701": {
       "detector": "command-injection",
@@ -833,7 +497,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3565 frontend file(s) + 2355 server file(s); flagged 0."
+      "message": "Scanned 3565 frontend file(s) + 2356 server file(s); flagged 0."
     },
     "d462654fb51261ca": {
       "detector": "fabrication-mechanism",
@@ -841,7 +505,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 6134 file(s); flagged 0"
+      "message": "Scanned 6135 file(s); flagged 0"
     },
     "d0df7c8fcaee4508": {
       "detector": "workflow-gate-integrity",
@@ -857,7 +521,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 229 money-shaped file(s) of 4380 under server/; flagged 6"
+      "message": "Scanned 228 money-shaped file(s) of 4392 under server/; flagged 6"
     },
     "28713dd4b913d372": {
       "detector": "money-txn-hygiene",
@@ -875,12 +539,12 @@
       "location": "server/economy/stripe.js:188",
       "message": "handleWebhook() performs 2 money-table write(s) (1 direct + 1 delegated, tables: economy_withdrawals) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "167d4c65d978fff2": {
+    "099aa2cb4ec132d6": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/lib/account-lifecycle.js:41",
+      "location": "server/lib/account-lifecycle.js:42",
       "message": "requestAccountDeletion() performs 2 money-table write(s) (1 direct + 1 delegated, tables: balance_at_request) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of "
     },
     "ca5409e0d1cd7cdc": {
@@ -913,7 +577,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 95 realtimeEmit-mentioning file(s) of 9207; 217 call site(s); flagged 0"
+      "message": "Scanned 95 realtimeEmit-mentioning file(s) of 9219; 216 call site(s); flagged 0"
     },
     "da8b979a5bb58c77": {
       "detector": "stale-lying-test",
@@ -961,7 +625,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 2363 of 4381 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
+      "message": "Scanned 2364 of 4393 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
     }
   }
 }

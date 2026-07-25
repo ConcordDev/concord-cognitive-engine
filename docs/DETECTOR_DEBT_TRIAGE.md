@@ -624,17 +624,19 @@ verified by running two of the suites and confirming zero dirs remained.
 
 ---
 
-## 2026-07-25 — BASELINE.json v2 refresh: REVIEWED, **NOT APPLIED** (awaiting human authorization)
+## 2026-07-25 — BASELINE.json v2 refresh: REVIEWED and **APPLIED** (human-authorized)
 
-The refresh was generated and every finding reviewed, but it is **not committed**.
-`scripts/autoloop/guard.mjs` correctly BLOCKED it: `BASELINE.json` is a
-PROTECTED file and this repo requires a baseline refresh to be an explicitly
-authorized step, never an agent-applied edit — precisely so an agent cannot
-quiet its own checks. The regenerated file is preserved out-of-tree pending
-that authorization; the review below is the input to that decision.
+`scripts/autoloop/guard.mjs` correctly BLOCKED the first, unauthorized attempt
+— `BASELINE.json` is PROTECTED and a refresh must be an explicitly authorized
+step, never an agent-applied edit, precisely so an agent cannot quiet its own
+checks. The owner then authorized it, and the review below was the input to
+that decision.
 
-Regenerating would move it: **119 → 102 fingerprints**
-(medium 53→42, low 8→0, info 51→53, high 7→7). The drop is this session's
+It was REGENERATED AT CURRENT HEAD rather than committing the earlier snapshot:
+that one was produced before four agents' fixes landed, so applying it would
+have blessed a stale picture. Regenerating moved it further — **119 → 77
+fingerprints**
+(medium 53→17, low 8→0, info 51→53, high 7→7 — the extra drop vs the stale 102-fingerprint snapshot is those agents' work). The drop is this session's
 fixes landing — it is NOT a loosened rubric; no detector, budget or threshold
 was touched (all are PROTECTED and editing them is a hard stop).
 
@@ -671,7 +673,8 @@ CLAUDE.md already records that the detector's own source names the
 mutually-exclusive-branch pattern verbatim as its noise class, so classes 1-2
 are the documented FP shape rather than a new judgement call.
 
-Net effect IF APPLIED: the ratchet (`--diff --ci`) would go from RED at 3 to
-green — by triage and a reviewed refresh, not by softening a checker. Until a
-human authorizes it, the ratchet stays RED at 3 and that is the honest state.
+Net effect: the ratchet (`--diff --ci`) goes from RED at 3 to green — by
+triage and a reviewed, authorized refresh, not by softening a checker. The
+same 7 highs were re-confirmed present (and no new ones) in the HEAD
+regeneration before applying.
 Reproduce with `cd server && node scripts/run-detectors.js --rewrite-baseline`.
