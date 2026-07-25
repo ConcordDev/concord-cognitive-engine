@@ -2766,6 +2766,13 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
         element: skillData.element || 'none',
         bar_used: barType === 'multi' ? 'mana' : barType,
         bar_cost: barCost,
+        // Hit position for damage_events.{x,z} → the tracking/footprint feed.
+        // `npcPosRow` is the same live world_npcs position `_validateCombatReach`
+        // already authenticated this hit against, so it's server-authoritative by
+        // construction. It can legitimately be null (the reach check passes such a
+        // row through as "npc_no_pos") — applyDamageToNPC stores NULL rather than
+        // inventing a coordinate, and the read route drops those rows.
+        x: npcPosRow?.x, z: npcPosRow?.z,
       });
 
       // ── Temperament P4/P5 — fold the hit into morale/restraint ──────────────
@@ -3305,6 +3312,11 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
 
       const { eventId, kill: killRaw } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
         element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
+        // Hit position → the attacking NPC's live world_npcs position (already
+        // SELECTed above for this route). The footprint overlay draws CREATURE
+        // tracks, so the NPC combatant's position is the correct one on both
+        // directions of the exchange. Null-safe: NULL beats a guessed coordinate.
+        x: npc?.x, z: npc?.z,
       });
       let kill = killRaw;
 

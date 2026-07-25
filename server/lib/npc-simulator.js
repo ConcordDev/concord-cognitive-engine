@@ -758,6 +758,12 @@ function _performNPCAttack(npc, target, worldId, db, archetype) {
     const damageResult = computeDamage(attackerStats, defenderStats, {});
     const { kill } = applyDamageToPlayer(db, worldId, npc.id, 'npc', target.userId, damageResult, {
       element: 'none', bar_used: 'hp', bar_cost: damageResult.finalDamage,
+      // Hit position → the attacking NPC's live simulated location. This is the
+      // same `npc.location` the simulator pathfinds, checks line-of-sight, and
+      // range-gates this very attack from, and the same value it already ships
+      // on its own socket events — i.e. the authoritative "where this creature
+      // is", not a reconstruction. Feeds damage_events.{x,z} → footprint feed.
+      x: npc.location?.x, z: npc.location?.z,
     });
 
     // Wave 4 (Gap C) — autonomous NPC heartbeat attacks are a second real

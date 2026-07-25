@@ -54462,10 +54462,19 @@ app.get("/api/tracking/recent/:worldId", requireAuth(), asyncHandler(async (req,
     // Best-effort: damage_events table shape varies by build.
     let rows = [];
     try {
+      // x/z NOT NULL is load-bearing, not defensive tidiness. damage_events.{x,z}
+      // arrived late (migration 299) and for a long time NOTHING populated them,
+      // so legacy rows — and any future write path that genuinely has no position
+      // in scope — carry NULL. FootprintLayer feeds each row straight into a
+      // THREE.Vector3 `.set(x, 0.05, z).project(camera)`, and JS coerces null to 0
+      // in matrix arithmetic: a NULL row does NOT glitch out, it renders a
+      // convincing footprint at world ORIGIN. Serving those rows would be
+      // fabricating a location. A positionless hit is simply not a track.
       rows = db.prepare(`
         SELECT id, attacker_id, target_id, x, z, occurred_at
         FROM damage_events
         WHERE world_id = ? AND occurred_at >= ?
+          AND x IS NOT NULL AND z IS NOT NULL
         ORDER BY occurred_at DESC LIMIT 50
       `).all(req.params.worldId, since);
     } catch { rows = []; }

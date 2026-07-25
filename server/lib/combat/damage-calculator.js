@@ -102,6 +102,61 @@ export function computeDamage(attackerStats, defenderStats, skillSpec = {}) {
   };
 }
 
+// ── Hit position (damage_events.x / .z) ───────────────────────────────────────
+// Migration 299 added damage_events.{x,z} because the tracking feed
+// (GET /api/tracking/recent/:worldId → components/world/FootprintLayer.tsx)
+// reads the hit position — but neither INSERT below ever populated them, so
+// every row carried NULL and the overlay had nothing real to render. Worse
+// than nothing: the overlay's projector is a THREE.Vector3 `.set()` +
+// `.project()`, and JS coerces `null` to 0 in matrix arithmetic, so a
+// NULL-coordinate row draws a perfectly plausible footprint at world ORIGIN.
+// A fabricated location rendered as a real one — hence: only ever stamp a
+// position a caller genuinely supplied, and let the read side drop the rest.
+//
+// Callers pass the live world position of the NPC combatant (the creature
+// whose track the overlay draws). Absent or non-finite → NULL, never 0.
+function _coord(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Per-world leading-edge coalesce for the `tracking:footprints-updated` push.
+// Combat is a hot path and the listener (useRealtimeRefresh) DISCARDS the
+// payload and re-fetches, so N pushes inside one window are strictly
+// redundant with the single re-fetch they collapse into — coalescing loses
+// no information at all, it only removes duplicate fan-out. Freshness during
+// an active fight stays bounded by the window; the tail of a burst is picked
+// up by the component's own 30s backstop poll.
+const FOOTPRINT_EMIT_THROTTLE_MS =
+  Number(process.env.CONCORD_FOOTPRINT_EMIT_THROTTLE_MS) || 5000;
+const _lastFootprintEmit = new Map(); // worldId → ms
+
+function _notifyFootprints(worldId, x, z) {
+  // Only a real, recorded position is worth a push — a NULL-coordinate row is
+  // filtered out by the read route and would refresh the overlay into nothing.
+  if (!worldId || x === null || z === null) return false;
+  try {
+    const now = Date.now();
+    const last = _lastFootprintEmit.get(worldId) || 0;
+    if (now - last < FOOTPRINT_EMIT_THROTTLE_MS) return false;
+    _lastFootprintEmit.set(worldId, now);
+    // World-scoped. `_concordEmitToWorld` is stashed at server.js module scope
+    // (lib modules can't import server.js — circular); `_concordRealtimeEmit`
+    // is the lazier fallback. Absent (tests, shard boot) → silent no-op.
+    const toWorld = globalThis._concordEmitToWorld;
+    if (typeof toWorld === "function") {
+      toWorld(worldId, "tracking:footprints-updated", { worldId, x, z });
+      return true;
+    }
+    const emit = globalThis._concordRealtimeEmit;
+    if (typeof emit === "function") {
+      emit("tracking:footprints-updated", { worldId, x, z }, { worldId });
+      return true;
+    }
+  } catch { /* footprint push best-effort — never blocks combat */ }
+  return false;
+}
+
 // ── applyDamage ───────────────────────────────────────────────────────────────
 /**
  * Apply computed damage to a database entity (NPC or player resource bars).
@@ -111,12 +166,15 @@ export function applyDamageToNPC(db, worldId, attackerId, attackerType, npcId, d
   const id = crypto.randomUUID();
   const { finalDamage, rawDamage, resistancePct, statusEffectsApplied, kill } = damageResult;
 
+  const hitX = _coord(meta.x);
+  const hitZ = _coord(meta.z);
+
   db.prepare(`
     INSERT INTO damage_events
       (id, world_id, attacker_id, attacker_type, target_id, target_type,
        skill_dtu_id, item_dtu_id, element, raw_damage, resistance_pct, final_damage,
-       bar_used, bar_cost, status_effects, kill)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       bar_used, bar_cost, status_effects, kill, x, z)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     id, worldId, attackerId, attackerType, npcId, 'npc',
     meta.skill_dtu_id || null, meta.item_dtu_id || null,
@@ -124,7 +182,10 @@ export function applyDamageToNPC(db, worldId, attackerId, attackerType, npcId, d
     rawDamage, resistancePct, finalDamage,
     meta.bar_used || null, meta.bar_cost || 0,
     JSON.stringify(statusEffectsApplied), kill ? 1 : 0,
+    hitX, hitZ,
   );
+
+  _notifyFootprints(worldId, hitX, hitZ);
 
   // Deduct HP from NPC
   const npc = db.prepare('SELECT current_hp, status_effects FROM world_npcs WHERE id = ?').get(npcId);
@@ -144,12 +205,15 @@ export function applyDamageToPlayer(db, worldId, attackerId, attackerType, userI
   const id = crypto.randomUUID();
   const { finalDamage, rawDamage, resistancePct, statusEffectsApplied, kill } = damageResult;
 
+  const hitX = _coord(meta.x);
+  const hitZ = _coord(meta.z);
+
   db.prepare(`
     INSERT INTO damage_events
       (id, world_id, attacker_id, attacker_type, target_id, target_type,
        skill_dtu_id, item_dtu_id, element, raw_damage, resistance_pct, final_damage,
-       bar_used, bar_cost, status_effects, kill)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       bar_used, bar_cost, status_effects, kill, x, z)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     id, worldId, attackerId, attackerType, userId, 'player',
     meta.skill_dtu_id || null, meta.item_dtu_id || null,
@@ -157,7 +221,10 @@ export function applyDamageToPlayer(db, worldId, attackerId, attackerType, userI
     rawDamage, resistancePct, finalDamage,
     meta.bar_used || null, meta.bar_cost || 0,
     JSON.stringify(statusEffectsApplied), kill ? 1 : 0,
+    hitX, hitZ,
   );
+
+  _notifyFootprints(worldId, hitX, hitZ);
 
   // Deduct from player resource bars
   const bars = db.prepare(`
