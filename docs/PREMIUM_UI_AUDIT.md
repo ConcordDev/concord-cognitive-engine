@@ -157,12 +157,25 @@ Adoption numbers (reproduced 2026-07-18, `concord-frontend/`):
 
 | Signal | Count | Command |
 |---|---|---|
+> **Row freshness (2026-07-25).** Every command in this table is written
+> relative to `concord-frontend/`, which is how the audit was run — but
+> `scripts/check-doc-claims-all.mjs` executes from the repo root, so the one
+> row it gates (`text-[Npx]` occurrences, the only bolded count with a
+> `| wc -l`) silently returned **0** and read as a passing "we eliminated
+> them all" when in fact nothing had been eliminated. The path is now
+> repo-root-absolute so the number is reproducible from anywhere, and the
+> count is refreshed: **1695 at audit time (2026-07-18) → 1763 today** — the
+> arbitrary-size debt this row exists to track has grown by 68, not shrunk.
+> The other rows keep their audit-time values and their `concord-frontend/`-
+> relative commands; they are unbolded, so they are recorded findings rather
+> than gated live claims. Re-run them from `concord-frontend/`.
+
 | Lens pages total | 260 | `ls app/lenses/*/page.tsx \| wc -l` |
 | …importing premium `components/ui` primitives | **13** | `grep -rl "from '@/components/ui'" app/lenses/*/page.tsx` |
 | …carrying generic scaffold (`AutoActionStrip`/`UniversalActions`/`ManifestActionBar`) | **222** | `grep -rlE "AutoActionStrip\|UniversalActions\|ManifestActionBar" app/lenses/*/page.tsx` |
 | …carrying `RecentMineCard` | **202** | `grep -rl RecentMineCard app/lenses/*/page.tsx` |
 | …with ≥1 arbitrary `text-[Npx]` size | **175** | `grep -rlE "text-\[[0-9]+px\]" app/lenses/*/page.tsx` |
-| total arbitrary `text-[Npx]` occurrences | **1695** | `grep -rhoE "text-\[[0-9]+px\]" app/lenses/*/page.tsx \| wc -l` |
+| total arbitrary `text-[Npx]` occurrences | **1763** | `grep -rhoE "text-\[[0-9]+px\]" concord-frontend/app/lenses/*/page.tsx \| wc -l` |
 | …with `sr-only` "polish sentinel" divs | **109** | `grep -rliE sentinel app/lenses/*/page.tsx` |
 
 ### The grade is gamed (critical honesty finding)
