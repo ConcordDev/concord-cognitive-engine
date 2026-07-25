@@ -20,9 +20,6 @@ export default function registerAtlasSignalRoutes(app, {
   STATE,
   makeCtx,
   runMacro,
-  uiJson,
-  uid,
-  validate,
   perEndpointRateLimit,
 }) {
 

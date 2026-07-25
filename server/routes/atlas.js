@@ -19,9 +19,6 @@ export default function registerAtlasRoutes(app, {
   STATE,
   makeCtx,
   runMacro,
-  uiJson,
-  uid,
-  validate,
   perEndpointRateLimit,
 }) {
 

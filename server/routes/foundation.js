@@ -28,9 +28,6 @@ export default function registerFoundationRoutes(app, {
   STATE,
   makeCtx,
   runMacro,
-  uiJson,
-  uid,
-  validate,
   perEndpointRateLimit,
 }) {
 

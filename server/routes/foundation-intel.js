@@ -28,9 +28,6 @@ export default function registerFoundationIntelRoutes(app, {
   STATE,
   makeCtx,
   runMacro,
-  uiJson,
-  uid,
-  validate,
   perEndpointRateLimit,
 }) {
 
