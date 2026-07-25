@@ -37,10 +37,33 @@ static func _test_placement_to_transform(t: TestUtils) -> void:
 		missing.origin.is_equal_approx(Vector3.ZERO),
 		"missing position defaults to origin, not a fabricated offset")
 
+	# This previously "passed" only because the typed `var pos: Array`
+	# assignment threw before the typeof() guard could run, leaving an empty
+	# array that fell through to the origin. It now exercises the real guard.
 	var malformed := DtuPropRenderer.placement_to_transform({"position": "not_an_array"})
 	t.check(
 		malformed.origin.is_equal_approx(Vector3.ZERO),
 		"malformed position defaults to origin rather than crashing")
+
+	var short_array := DtuPropRenderer.placement_to_transform({"position": [1.0, 2.0]})
+	t.check(
+		short_array.origin.is_equal_approx(Vector3.ZERO),
+		"an under-length position array defaults to origin")
+
+	var non_numeric := DtuPropRenderer.placement_to_transform({"position": ["a", "b", "c"]})
+	t.check(
+		non_numeric.origin.is_equal_approx(Vector3.ZERO),
+		"a well-shaped array of non-numeric entries defaults to origin, not a coerced offset")
+
+	var dict_pos := DtuPropRenderer.placement_to_transform({"position": {"x": 1.0}})
+	t.check(
+		dict_pos.origin.is_equal_approx(Vector3.ZERO),
+		"a dictionary position defaults to origin rather than crashing")
+
+	var int_array := DtuPropRenderer.placement_to_transform({"position": [1, 2, 3]})
+	t.check(
+		int_array.origin.is_equal_approx(Vector3(1.0, 2.0, 3.0)),
+		"integer position entries are real numbers and map through")
 
 
 static func _test_slot_color_and_size(t: TestUtils) -> void:

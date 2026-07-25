@@ -40,9 +40,19 @@ static func run() -> TestUtils:
 static func _test_clamp_leaves_slow_velocity_untouched(t: TestUtils) -> void:
 	# A raw flight-step velocity well under the hippogriff's real cap should
 	# pass through unchanged.
-	var raw := Vector3(3.0, 0.5, 4.0)  # length = 5.0, under 11.0
+	# |(3, 0.5, 4)| = sqrt(3^2 + 0.5^2 + 4^2) = sqrt(9 + 0.25 + 16) = sqrt(25.25)
+	# = 5.0249378... — NOT 5.0. This is an off-axis vector, not the 3-4-5
+	# triple it resembles; the 0.5 climb component counts. (The original 5.0
+	# constant here simply dropped it. The tolerance is deliberately left at
+	# the default 1e-3: the real discrepancy was 0.025, far too large to be
+	# float32 noise, so widening eps would have masked arithmetic error rather
+	# than revealed it.)
+	var raw := Vector3(3.0, 0.5, 4.0)
+	var expected_mag: float = sqrt(3.0 * 3.0 + 0.5 * 0.5 + 4.0 * 4.0)  # under the 11.0 cap
 	var clamped := AerialMountController.clamp_velocity_to_species_cap(raw, HIPPOGRIFF_SPEED_MPS)
-	t.check_almost(clamped.length(), 5.0, "under-cap velocity is returned with its original magnitude")
+	t.check_almost(
+		clamped.length(), expected_mag,
+		"under-cap velocity is returned with its original magnitude")
 	t.check_eq(clamped, raw, "under-cap velocity is byte-identical, not just same-magnitude")
 
 

@@ -64,13 +64,35 @@ static func _test_roll_drives_yaw_drift(t: TestUtils) -> void:
 
 
 static func _test_level_flight_bleeds_airspeed(t: TestUtils) -> void:
+	# `step_flight` clamps its own timestep to a 0.25s maximum — a deliberate
+	# spiral-of-death guard carried over verbatim from the authoritative
+	# source (`concord-frontend/lib/concordia/flight-physics.ts`'s
+	# `const dt = Math.max(0.0001, Math.min(0.25, dtSeconds))`). So a single
+	# call with dt=1.0 does NOT advance a full second of simulation; it
+	# advances 0.25s and bleeds 0.1 m/s. To measure the genuine per-second
+	# rate, accumulate one real second out of legal sub-clamp timesteps.
 	var s: Dictionary = FlightController.new_flight_state()
 	var inputs := {"roll": 0.0, "pitch": 0.0, "active": true}
 	var wind := {"wind": {"x": 0.0, "y": 0.0, "z": 0.0}, "lift": 0.0}
-	var next: Dictionary = FlightController.step_flight(s, inputs, wind, 1.0)
-	var expected: float = s["airspeed"] - FlightController.AIRSPEED_BLEED * 1.0
+	var state: Dictionary = s
+	for _i in range(5):
+		state = FlightController.step_flight(state, inputs, wind, 0.2)
+	# Level flight: pitch never leaves 0, so no dive gain and no stall. One
+	# second of pure drag => exactly AIRSPEED_BLEED m/s lost.
+	var expected: float = float(s["airspeed"]) - FlightController.AIRSPEED_BLEED * 1.0
 	t.check_almost(
-		next["airspeed"], expected, "level flight bleeds airspeed at AIRSPEED_BLEED per second")
+		state["airspeed"], expected, "level flight bleeds airspeed at AIRSPEED_BLEED per second")
+
+	# Pin the timestep clamp itself, so the behaviour that made the old
+	# single-call expectation wrong is now covered rather than surprising.
+	var one_big_step: Dictionary = FlightController.step_flight(s, inputs, wind, 1.0)
+	var clamped: Dictionary = FlightController.step_flight(s, inputs, wind, 0.25)
+	t.check_almost(
+		one_big_step["airspeed"], clamped["airspeed"],
+		"an over-long dt is clamped to 0.25s, matching flight-physics.ts")
+	t.check_almost(
+		one_big_step["airspeed"], float(s["airspeed"]) - FlightController.AIRSPEED_BLEED * 0.25,
+		"the clamped step bleeds exactly 0.25s worth of drag")
 
 
 static func _test_dive_gains_airspeed(t: TestUtils) -> void:

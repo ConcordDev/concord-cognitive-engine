@@ -4,11 +4,18 @@ extends RefCounted
 ## standalone via `godot --headless --script res://tests/run_all.gd`,
 ## without vendoring a full framework (gdUnit4 is not in this skeleton).
 ##
-## ENGINE-GATED: this has never actually been executed against a real Godot
-## binary — the agent proxy blocks the headless engine download (see
-## docs/GODOT_INTEGRATION.md). `gdparse`/`gdlint` confirm this is
-## syntactically valid, loadable GDScript. Nothing more. See
-## world-lens-godot/VISUAL_QA.md.
+## EXECUTED AGAINST A REAL ENGINE (2026-07-25): this harness and every suite
+## it collects now run under a real Godot 4.4 headless binary
+## (`./.godot-runtime/bin/godot`, see docs/GODOT_RUNTIME.md) via
+## `godot --headless --path world-lens-godot --script tests/run_all.gd`. The
+## earlier "never executed / gdparse+gdlint only" caveat here is superseded —
+## that first real run promptly surfaced four genuine defects that lint had
+## green-lit, including an honesty-invariant violation in air_legibility.gd
+## and a dead defensive branch in dtu_prop_renderer.gd.
+##
+## Still out of scope for this harness: anything requiring rendered output.
+## These are pure-logic assertions, not visual verification — see
+## world-lens-godot/VISUAL_QA.md for what remains genuinely unverified.
 
 var failures: Array[String] = []
 var checks: int = 0

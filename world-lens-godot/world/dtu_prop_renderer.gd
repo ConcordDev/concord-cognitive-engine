@@ -183,12 +183,33 @@ static func build_list_request_body(world_id: String, building_id: String) -> Di
 ## Maps a placement's `{position:[x,y,z]}` (server/lib/dtu-props.js's
 ## normalizePosition shape) into a Transform3D. Missing/malformed position
 ## defaults to the origin, never a fabricated offset.
+##
+## `pos` is deliberately UNTYPED. It was previously declared `var pos: Array`,
+## which made GDScript enforce the type at assignment — so a non-Array
+## `position` (e.g. a string) threw "Trying to assign value of type 'String'
+## to a variable of type 'Array'" one line BEFORE the `typeof()` check meant
+## to handle exactly that case, rendering the defensive branch unreachable.
+## The malformed-input path only appeared to work because the failed
+## assignment left `pos` as an empty Array, which then fell through to the
+## origin by accident rather than by the guard. Keeping it untyped lets the
+## guard actually guard.
 static func placement_to_transform(placement: Dictionary) -> Transform3D:
-	var pos: Array = placement.get("position", [0, 0, 0])
+	var pos: Variant = placement.get("position", [0, 0, 0])
 	var origin := Vector3.ZERO
 	if typeof(pos) == TYPE_ARRAY and pos.size() >= 3:
-		origin = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+		# Element-level check too: a well-shaped array carrying non-numeric
+		# entries must degrade to the origin rather than throw on `float()`.
+		if _is_number(pos[0]) and _is_number(pos[1]) and _is_number(pos[2]):
+			origin = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
 	return Transform3D(Basis(), origin)
+
+
+## True only for real numeric scalars — deliberately NOT accepting strings,
+## so a `"12"` in a position array reads as malformed input rather than being
+## silently coerced into a coordinate the server never sent.
+static func _is_number(v: Variant) -> bool:
+	var tv := typeof(v)
+	return tv == TYPE_INT or tv == TYPE_FLOAT
 
 
 ## Distinguishing (not "final art") placeholder tint per slot — purely so a

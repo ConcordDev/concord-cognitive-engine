@@ -30,6 +30,22 @@ const OBSERVATORY_ROOFTOP := {
 }
 
 
+## Angles are equal modulo 2*PI: +PI and -PI denote the SAME heading. Raw
+## float comparison is the wrong equivalence relation for an angle, and
+## `atan2` — whose range is (-PI, +PI] — puts the exactly-behind case right on
+## its branch cut, where the returned sign is decided purely by the sign of a
+## zero (`atan2(-0.0, -1.0) == -PI` but `atan2(+0.0, -1.0) == +PI`). This
+## wraps the difference into [-PI, PI] before comparing, so the assertion
+## tests the heading rather than which side of the cut it landed on. Note the
+## tolerance is NOT widened — `eps` stays as tight as the caller asks; only
+## the comparison operator is corrected.
+static func _check_angle_eq(t: TestUtils, actual: float, expected: float, label: String,
+		eps: float = 0.001) -> void:
+	var delta: float = wrapf(actual - expected, -PI, PI)
+	t.check(absf(delta) <= eps,
+		"%s (expected ~%s modulo 2PI, got %s)" % [label, str(expected), str(actual)])
+
+
 static func run() -> TestUtils:
 	var t := TestUtils.new()
 	_test_polygon_centroid(t)
@@ -133,8 +149,27 @@ static func _test_marker_for_poi_direction_and_distance(t: TestUtils) -> void:
 		marker["distance_m"], 10.0,
 		"distance matches the real straight-line distance to the target")
 	# Player at origin facing a target due +Z: ConKayPointing's yaw convention
-	# (unrotated Node3D faces -Z) puts a +Z target at yaw == PI.
-	t.check_almost(marker["yaw"], PI, "yaw matches ConKayPointing.yaw_pitch_to's own convention", 0.01)
+	# (`atan2(-d.x, -d.z)`, zero when d == Vector3.FORWARD == -Z) puts a +Z
+	# target exactly half a turn away. That is the atan2 branch cut, so the
+	# engine may legitimately report it as either +PI or -PI — the same
+	# heading. Compare modulo 2PI.
+	_check_angle_eq(
+		t, marker["yaw"], PI, "yaw matches ConKayPointing.yaw_pitch_to's own convention", 0.01)
+
+	# A non-degenerate bearing, to pin the convention's actual SIGN rather
+	# than only its branch-cut-ambiguous antipode. For a target due +X,
+	# d == (1,0,0), so yaw = atan2(-1, -0) = -PI/2: turning toward Godot's
+	# +X (Vector3.RIGHT) from a -Z facing is a negative yaw under this
+	# convention. If the convention ever flipped, this check fails while the
+	# modulo comparison above would not.
+	var east_poi := {
+		"id": "east-target", "kind": "landing_pad", "name": "East Target",
+		"x": 10.0, "y": 0.0, "z": 0.0,
+	}
+	var east_marker := WayfindingMarkers.marker_for_poi(Vector3.ZERO, east_poi)
+	_check_angle_eq(
+		t, east_marker["yaw"], -PI / 2.0,
+		"a due-+X target yaws negative, pinning the convention's sign", 0.01)
 	t.check_eq(marker["detail_level"], "full", "ground-level player position yields full detail")
 
 

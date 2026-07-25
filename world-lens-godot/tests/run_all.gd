@@ -2,14 +2,23 @@ extends SceneTree
 ## run_all — headless test aggregator. Runs every pure-logic test suite and
 ## exits non-zero if any suite has a failing check.
 ##
-## ENGINE-GATED: this has never actually been executed against a real Godot
-## binary (the agent proxy blocks the headless engine download — see
-## docs/GODOT_INTEGRATION.md). `gdparse`/`gdlint` confirm this is
-## syntactically valid, loadable GDScript. Nothing more — see
-## world-lens-godot/VISUAL_QA.md.
+## EXECUTED AGAINST A REAL ENGINE (2026-07-25). The prior "never executed,
+## gdparse/gdlint only" caveat is superseded: a real Godot 4.4 headless
+## binary now lives at `./.godot-runtime/bin/godot` (fetch/verify via
+## `node scripts/fetch-godot.mjs`; see docs/GODOT_RUNTIME.md).
 ##
-## Intended usage once a real engine is available:
-##   godot --headless --path world-lens-godot --script res://tests/run_all.gd
+## Usage:
+##   ./.godot-runtime/bin/godot --headless --path world-lens-godot \
+##       --script tests/run_all.gd
+##
+## Lint is NOT a substitute for this: `gdlint` green-lights code the engine
+## cannot even run. The first real execution of this suite immediately found
+## four defects lint had passed — a silently-fabricated district palette
+## (honesty-invariant violation), two wrong hand-computed test expectations,
+## and a defensive branch made unreachable by a static type annotation.
+##
+## Scope: pure-logic assertions only. Rendered/visual behaviour remains
+## unverified — see world-lens-godot/VISUAL_QA.md.
 
 const TestUtils := preload("res://tests/test_utils.gd")
 const TestChunkManager := preload("res://tests/test_chunk_manager.gd")

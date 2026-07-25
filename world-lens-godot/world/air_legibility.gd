@@ -51,13 +51,15 @@ extends RefCounted
 ##      district's building MeshInstance3D materials — a real
 ##      StandardMaterial3D swap, and possibly an outline/rim-light shader
 ##      for `silhouette_color` specifically.
-## Step 3 is real engine-visual work this container cannot render or verify
-## — there is no Godot binary available here (docs/GODOT_INTEGRATION.md's
-## "Validation achieved" section), so writing untested material/shader code
-## and calling it done would be exactly the kind of unverified visual claim
-## CLAUDE.md's honesty invariant warns against. What IS built and tested
-## here is the real, deterministic data transform a renderer would call —
-## queued for visual verification in VISUAL_QA.md.
+## Step 3 is real engine-VISUAL work: applying materials and confirming they
+## read correctly on screen still cannot be verified here. A real Godot 4.4
+## headless binary IS now available (docs/GODOT_RUNTIME.md) and the pure
+## transform below is genuinely executed by it, but headless execution proves
+## logic, not appearance — writing untested material/shader code and calling
+## it done would still be exactly the kind of unverified visual claim
+## CLAUDE.md's honesty invariant warns against. What IS built and engine-
+## tested here is the real, deterministic data transform a renderer would
+## call — the rendering itself stays queued in VISUAL_QA.md.
 
 ## Design dial — see class doc "The two altitude dials" section. Above this
 ## altitude, a district's rendering starts ramping from full palette detail
@@ -128,11 +130,26 @@ static func boost_contrast(c: Color, strength: float) -> Color:
 ##   secondary_visible:  bool — whether ground-detail secondary/accent
 ##                        colors should still be drawn (false once past
 ##                        ALTITUDE_SIMPLIFY_M)
-##   palette_ok:         bool — false if `palette.primary` failed to parse
-##                        as a real hex color (degraded-gray fallback used)
+##   palette_ok:         bool — false whenever the output is NOT derived from
+##                        real authored data: `palette.primary` missing,
+##                        `palette` absent/malformed, or the hex string failed
+##                        to parse. In every such case the degraded neutral
+##                        gray is returned and flagged, never passed off as an
+##                        authored color.
 static func legibility_for_altitude(district: Dictionary, altitude_m: float) -> Dictionary:
-	var palette: Dictionary = district.get("palette", {})
-	var primary_hex := String(palette.get("primary", "#808080"))
+	# Honest-by-construction: a district carrying no real `palette.primary`
+	# must be FLAGGED (`palette_ok:false`), never silently substituted with a
+	# plausible-looking default. An earlier version defaulted the lookup to
+	# the literal "#808080", which parses cleanly and therefore reported
+	# `palette_ok:true` — fabricating a gray and presenting it as authored
+	# district data. The empty-string default below is unparseable by
+	# construction, so it flows through `parse_hex_color`'s documented
+	# degraded path: the same neutral gray, but with `ok:false` so callers can
+	# detect the degradation and surface it instead of rendering a wrong hue
+	# as if it were real. A non-Dictionary `palette` degrades the same way.
+	var raw_palette: Variant = district.get("palette", {})
+	var palette: Dictionary = raw_palette if typeof(raw_palette) == TYPE_DICTIONARY else {}
+	var primary_hex := String(palette.get("primary", ""))
 	var parsed := AirLegibility.parse_hex_color(primary_hex)
 	var primary: Color = parsed["color"]
 
