@@ -97,7 +97,14 @@ function stopServer() {
   }
   // Cleanup test data
   try { fs.rmSync(join(__dirname, `../.parity-test-data-${TS}`), { recursive: true, force: true }); } catch (_e) { logger.debug('storage-parity.test', 'silent catch', { error: _e?.message }); }
-  try { fs.unlinkSync(join(__dirname, `../.parity-test-state-${TS}.json`)); } catch (_e) { logger.debug('storage-parity.test', 'silent catch', { error: _e?.message }); }
+  // Both the state file AND its atomic-write sidecar. The server writes
+  // `<name>.json.tmp` then renames; if the spawned process is killed
+  // mid-write the `.tmp` survives, and teardown only ever removed the
+  // `.json` — which is how a stray `.parity-test-state-*.json.tmp` ended up
+  // sitting untracked in the repo.
+  for (const suffix of ['.json', '.json.tmp']) {
+    try { fs.unlinkSync(join(__dirname, `../.parity-test-state-${TS}${suffix}`)); } catch (_e) { logger.debug('storage-parity.test', 'silent catch', { error: _e?.message }); }
+  }
 }
 
 async function api(method, path, body = null, headers = {}) {

@@ -36,9 +36,13 @@ coverage/
 .next/
 server/tests/.verification_scorecard.db
 
-# Test parity state dumps (auto-generated, huge, per-run)
-.parity-test-state-*.json
-server/.parity-test-state-*.json
+# Test parity state dumps (auto-generated, huge, per-run).
+# Trailing `*` is load-bearing: the server persists this file atomically
+# (write `<name>.json.tmp`, then rename), so a run interrupted mid-write
+# leaves a `.json.tmp` behind. The old `*.json` patterns didn't match that
+# suffix, so the stray file showed up as untracked repo noise.
+.parity-test-state-*.json*
+server/.parity-test-state-*.json*
 
 # Test data directories (auto-generated during E2E/integration runs)
 server/.parity-test-data-*/
