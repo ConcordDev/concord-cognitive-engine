@@ -552,3 +552,72 @@ the file, while `economy_ledger` carries `request_id` and `ip` columns.
 Every mint is therefore written with a null audit trail on two columns that
 exist specifically to carry it. `burnCoins` has the same shape. Found by
 the new `unused-destructured-param` detector's top hit.
+
+---
+
+## 2026-07-25 (cont.) — unused-destructured-param cluster worked to closure
+
+The new detector's 90 findings were clustered by root cause and worked
+through rather than fixed one-by-one. Four clusters, four dispositions:
+
+### A. Audit-field drops (11) — REAL, fixed
+
+Caller-supplied audit data accepted and discarded. This cluster produced the
+session's most significant find.
+
+- `coin-service.js` `mintCoins`/`burnCoins` dropped `requestId` + `ip` that
+  ALL THREE real callers pass (Stripe webhook mint, admin mint, fiat
+  withdrawal burn). Now persisted into `treasury_events.metadata_json`
+  (`7cfefba0`).
+- `emergent-accounts.js` `creditOperatingWallet`/`debitReserveAccount` wrote
+  NO ledger row at all and ignored `refId`, so balances moved with no audit
+  trail and a retry double-credited. Brought in line with their sibling
+  `transferToReserve` (`1cef28e3`).
+- **Following that thread found a live production bug**: `transferToReserve`
+  records `type: "EMERGENT_TRANSFER"`, which was never in economy_ledger's
+  type allowlist — so every call failed the CHECK, rolled back, and returned
+  `transfer_failed`, via the live route `economy/routes.js:1254`. Same for
+  `ADJUSTMENT`/`MAKE_GOOD` (reconciliation's *correction* path: drift could
+  be detected but never corrected). Migration 395 (`695b0746`).
+- `account-lifecycle.js` `requestAccountDeletion` dropped `ip` on an
+  irreversible action; now routed through the existing `economyAudit` sink
+  (`5321791e`).
+
+### B. Metric integrity (2) — REAL, fixed
+
+`social-layer.js` `viewStory`/`recordWatchTime` ignored `userId`, so
+`viewCount` was inflatable by one user and nothing could report distinct
+viewers — while `votePoll` in the same file already dedupes by `userId`.
+Added `uniqueViewCount` additively (`670ffefb`).
+
+### C. Stale DI bindings (18) — NOT a defect, removed as noise
+
+Six route registrars destructured `uiJson`/`uid`/`validate` and used none.
+Checked whether full-bag destructuring was the house convention before
+touching it: only 8 route files destructure `uiJson` and just 2 use it, so
+these were stale copies, not a uniform signature. Removed (`7569a1e3`).
+
+### D. Lifecycle-hook boilerplate (19) — mixed, split three ways
+
+`STATE`/`helpers` on emergent `init` hooks and route registrars. A first
+mechanical pass tried to treat all eight init hooks identically and
+**correctly refused on five** because their shapes differed — that refusal
+is why this was split rather than blanket-edited:
+- 3 hooks are pure no-ops (`return { ok: true }`) → destructure removed
+- 3 genuinely use `STATE` → only `helpers` removed
+- 2 use neither → both removed
+- 6 registrars dropped an unused `STATE`
+(`ba7044fa`)
+
+**Method note worth keeping**: every one of these was read before editing.
+The blanket-edit version of cluster D would have deleted a live `STATE`
+binding from three modules. Cheap mechanical passes are fine for *finding*;
+they are not fine for *fixing* without reading each site.
+
+### Related: the disk leak this work surfaced
+
+Chasing these findings kept hitting ENOSPC. Root cause was unrelated to the
+detector: 7 e2e suites spawn real servers against `mkdtemp` dirs (each
+migrating a ~118MB SQLite DB) and never removed them — ~800MB stranded per
+full suite run, measured at 63 leftover dirs / 1.3GB. Fixed in `0cf1f5a9`,
+verified by running two of the suites and confirming zero dirs remained.
