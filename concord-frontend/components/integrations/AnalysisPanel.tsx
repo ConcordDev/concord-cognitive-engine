@@ -61,6 +61,10 @@ export function AnalysisPanel() {
 interface Sample { latencyMs: number; statusCode: number }
 interface Endpoint { name: string; url: string; samples: Sample[] }
 
+// @env-config-ok: these two URLs are illustrative sample data for the "Load example"
+// preset button below (EXAMPLE_ENDPOINTS) — never fetched, just fed to the client-side
+// apiHealthCheck macro as latency-sample metadata. `api.internal` is a non-resolvable
+// placeholder host (same class as `example.com`), not a real deployment endpoint.
 const EXAMPLE_ENDPOINTS: Endpoint[] = [
   {
     name: 'auth-service', url: 'https://api.internal/auth',

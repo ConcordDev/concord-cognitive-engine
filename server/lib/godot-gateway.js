@@ -409,6 +409,9 @@ export function mountGodotGateway(httpServer, deps = {}) {
   function onUpgrade(req, socket, head) {
     let pathname;
     try {
+      // @env-config-ok: `http://localhost` here is only a dummy base for the WHATWG
+      // URL parser — req.url is a relative path and only `.pathname` is read; nothing
+      // is ever connected to this "host". Standard Node idiom for parsing a path.
       pathname = new URL(req.url, "http://localhost").pathname;
     } catch {
       return; // not ours; let another handler deal with it

@@ -316,3 +316,159 @@ when authorized: use `execFileSync` with an argv array at those two call sites
    worse than no test.
 4. `dead-event-listener` (34) — per-item judgment.
 5. The small buckets, then `frontend-fake-data` through the rebuild program.
+
+---
+
+## WORKED — the four small buckets (2026-07-25)
+
+`performance-hotspot` `SELECT *` (6), `stale-code` (3), `fake-data` TODO
+markers (2), `env-config-drift` hardcoded URLs (8) — 19 findings, dispatched
+together as one small-bucket unit. Result: **19 → 3** (the 3 residual
+`stale-code` findings are a verified-correct idiom, documented below, not a
+defect — see disposition).
+
+### `performance-hotspot` `SELECT *` (6, low) → RESOLVED, 6 → 0
+
+All six were the `listAll()` full-table-scan queries in the db-backed store
+facades of `domains/admin.js` (`admin_alert_rules`, `admin_feature_flags`,
+`admin_incidents`) and `domains/education.js` (`edu_courses`,
+`edu_discussions`, `edu_cohorts`) — never the pinpoint `WHERE id = ?` lookups
+next to them, which the detector correctly leaves alone. Each table's
+`rowTo*` mapper names its exact field set 1:1 against the migration's
+`CREATE TABLE` (364 for admin, 363 for education), so projecting explicit
+columns was unambiguous — no annotation needed. `admin_incidents` is the one
+case where the projection is a genuine narrowing: `rowToIncident` never reads
+back `created_at` (only `incidentToParams` writes it on insert), so the
+explicit column list correctly omits it. Verified with
+`server/tests/{admin-domain-parity,admin-ops-persistence,education-catalog-persistence,education-domain-parity,education-lens-macros,ops-substrate-admin-gate}.test.js`
+— 120/120 pass.
+
+### `stale-code` (3, medium) → verified real idiom, disposition: baseline
+
+`agent_marathon_sessions_new` + `agent_marathon_sessions_old`
+(`server/migrations/379_agent_marathon_governance.js`, lines 70 and 124) and
+`economy_ledger_new` (`server/migrations/372_ledger_staking_types.js`, line
+34) are the SQLite create-new → copy → drop → rename table-rebuild idiom
+(used because SQLite can't `ALTER` a `CHECK` constraint). Read both
+migrations in full: `_new` is created, populated via an explicit-column
+`INSERT ... SELECT`, then the original table is dropped and `_new` is
+renamed onto its name (379's `down()` does the mirror-image rebuild through
+an `_old` table). Both migrations already carry a thorough header comment
+naming this exact pattern and citing the precedent migration. The temp table
+genuinely is "created but never read outside migrations" — that's not a bug,
+it's what a rebuild-idiom temp table always looks like, for the tick of time
+it exists mid-migration.
+
+No annotation mechanism exists on `stale-code-detector.js`'s `table_orphan`
+rule, and per the standing hard rule (`server/lib/detectors/*` is
+guard.mjs-protected territory — no casual edits, and CLAUDE.md's migrations
+are append-only, so neither the detector nor the two migration files may be
+touched to silence this). **Disposition: baseline** — same closure mechanism
+as the Cluster B/C findings in the HIGH tier above (verify + document; no
+code changed; the 3 findings are absorbed by a deliberate, separately
+authorized baseline refresh, not a silent edit).
+
+### `fake-data` TODO markers (2, low) → RESOLVED, 2 → 0
+
+- `concord-frontend/components/ui/Skeleton.tsx:38` — a genuine, still-true
+  design-token debt note ("migrate to `ds.skeleton` once the design-system
+  agent lands one"); `lib/design-system.ts` confirmed to carry no `skeleton`
+  token yet, so the TODO isn't stale and "doing the trivial thing it asks"
+  isn't actually trivial (it asks for a not-yet-designed token). Not fake
+  data at all — the component only renders honest `animate-pulse`
+  placeholders. Resolved with the sanctioned `@fake-data-ok:` annotation
+  rather than inventing a token unilaterally.
+- `server/domains/foundry.js:502` — not a live TODO; the word "TODO" only
+  appeared inside a doc comment's prose ("This closes the TODO in
+  compiler.js's header comment...") describing work the `foundry.promote`
+  macro had *already* closed. Reworded to "closes the gap noted in..." so
+  the prose doesn't spell out the literal flagged keyword — same
+  self-inflicted-false-positive shape CLAUDE.md's UI-quality-rubric section
+  already warns about for the UX-polish grader.
+
+Verified with `concord-frontend/tests/components/Skeleton.test.tsx` (22/22)
+and `server/tests/foundry-promote.test.js` (6/6).
+
+### `env-config-drift` hardcoded URLs (8, medium) → RESOLVED, 8 → 0
+
+Per-site judgment, as expected — all 8 turned out to be genuine false
+positives once traced, none needed a real `CONCORD_*` env var:
+
+| Site | Real shape |
+|---|---|
+| `components/integrations/AnalysisPanel.tsx` — `https://api.internal/{auth,billing}` | Illustrative sample data behind the panel's "Load example" preset button, fed to a client-side latency-analysis macro as metadata — never fetched. `api.internal` is a non-resolvable placeholder host, same class as `example.com`. |
+| `components/environment/EnviroPanel.tsx` — `ncdc.noaa.gov/cdo-web/token` | A plain `<a href>` telling the user where to sign up for a free `NOAA_CDO_TOKEN`. Never fetched by the app — a doc/signup link, exactly the false-positive shape the dispatch brief predicted. |
+| `components/law/PatentSearch.tsx` — `search.patentsview.org` | A citation string stamped onto the saved DTU's provenance (`apiUrl` prop). The real fetch already happens server-side in `server/domains/law.js` (`USPTO_PATENTSVIEW` const, out of this detector's `server/lib`-only scan scope) — this frontend string documents which request produced the data, it never issues one itself. |
+| `components/law/PatentSearch.tsx` — `patents.google.com` | Fixed "open on Google Patents" deep link — the same class as the detector's own already-exempted `google.com/maps` entry. |
+| `lib/desert/tile-cache.ts` — `https://concord.local/__desert_tile_manifest__` | Confirmed sentinel: the browser Cache API needs a Request/URL-shaped key to store the manifest entry inside the same tile cache; `concord.local` never resolves and is never fetched. |
+| `server/lib/godot-gateway.js` — `http://localhost` | Standard Node idiom — a dummy base URL for `new URL(req.url, base)` so a relative path can be parsed; only `.pathname` is read, nothing connects to it. |
+| `server/lib/pollinations-image.js` — `image.pollinations.ai` | A real, actually-fetched endpoint, but the single free/keyless public base for this service with no alternate mirror or per-tenant variant — the same "stable public API contract, not deployment config" class as the detector's own `coingecko.com`/`open-meteo.com` exemptions. An env var here would have no legitimate second value to hold (the task brief's explicit warning against inventing one applies directly). |
+
+All 8 resolved via the sanctioned `@env-config-ok:` annotation (file-scoped —
+`env-config-drift-detector.js` skips the whole file once the marker appears
+anywhere in it), each with a reason specific to that site, not a generic
+string. No `server/lib/detectors/*` file was touched. Verified with
+`server/tests/{godot-gateway,godot-gateway-integration,godot-gateway-mirror-emit,dead-macro-call-fixes,chat-domain-parity}.test.js`
+(118/118) and `concord-frontend/tests/{lib/desert-tile-cache,components/patent-search}.test.tsx`
+(26/26); `npx eslint` clean on every touched frontend file.
+
+### Net effect on the ratchet
+
+19 findings → 3 (all 3 residual `stale-code` findings are a verified-correct
+migration idiom awaiting the same authorized-baseline-refresh mechanism as
+the HIGH-tier clusters above, not a defect). 16 findings closed by real code
+changes (6 `SELECT *` projections + 2 TODO resolutions) or sanctioned
+per-site annotations (8 `@env-config-ok`), zero by softening a detector.
+
+---
+
+## `dead-event-listener` residual 7 → 4, and `frontend-unsafe-chain` residual 1 → confirmed FP — 2026-07-25
+
+Continuation of the 34 → 7 `dead-event-listener` pass (commit `23e70476`)
+and the 27 → 1 `frontend-unsafe-chain` pass documented above. Per-item
+judgment, as both prior passes predicted the remainder would need. No
+`server/lib/detectors/*` file touched — the guard-fix authorization from the
+`frontend-unsafe-chain` pass covered only the guard-recognition fix already
+landed, not a further edit, and this pass didn't need one for the
+dead-event-listener side either (the two real fixes below are annotation +
+retirement, not detector changes).
+
+### `dead-event-listener`: 7 → 4
+
+| Event | Location | Disposition | Evidence |
+|---|---|---|---|
+| `world:aerial-traffic` | `server/emergent/aerial-traffic-cycle.js` | **Documented FP** (Godot scan-scope) | Real consumer: `world-lens-godot/world/boot.gd`'s central `_on_event` dispatch table has an explicit `"world:aerial-traffic"` case calling `_aerial_traffic.apply_snapshot(...)`. Already well-commented in the emit-site source. No code change. |
+| `conkay:verdict` | `server/lib/event-shapes.js` (registry) | **Documented FP** (Godot scan-scope) | Same `boot.gd` dispatch table: `"macro:started", "macro:completed", "conkay:verdict":` case calls `_conkay.handle_event(evt, data)`. Real emit site: `server.js:42390`/`:42402` via `emitMacroLife`. No code change. |
+| `player:mode:ack` | `server/server.js` | **Documented FP** (Godot scan-scope) | Not routed through `boot.gd`'s central dispatcher — each of `flight_controller.gd`, `mount_controller.gd`, `ground_vehicle_controller.gd`, `aerial_mount_controller.gd`, `land_air_transition_controller.gd` independently calls `gateway.event_received.connect(_on_gateway_event)` and branches on `evt == "player:mode:ack"`/`"player:mode:nack"`. Already documented at `server.js:9691` ("DET-C batch 8"). No code change. |
+| `player:mode:nack` | `server/server.js` | **Documented FP** (Godot scan-scope) | Same as above. No code change. |
+| `combat:attack` | `server/lib/event-shapes.js` (registry) | **RETIRED** | Stale registry entry from before `combat-netcode.js`'s `broadcastAttack()` was removed (2026-07-24 batch). Confirmed zero `realtimeEmit`/`io.emit` call sites for `"combat:attack"` anywhere in `server/` — the name is alive today only in the *opposite* direction (browser `CombatInputController.tsx` emits it, `server.js`'s `socket.on("combat:attack", ...)` consumes it inbound), a path `validateEvent`/this registry never touches (only wired into `realtimeEmit`'s dev-mode shape check). Removed the entry, left a comment recording why. |
+| `city:npcs` | `server/lib/city-presence.js` | **RETIRED** | Genuinely dead on every transport, not a scan-scope FP like the four above — verified directly rather than assumed from the Godot-consumer pattern: `world-lens-godot/avatar/avatar_manager.gd#ingest_snapshot` is shaped for this payload but `AvatarManager` is never instantiated anywhere in that tree (no `.new()`, no `.tscn` reference; `aerial_traffic_controller.gd`'s own header says "AvatarManager has no live caller today"), `boot.gd`'s dispatch table has no `city:npcs`/`city:positions` case, and no REST route exposes `getCityNpcs` client-side. This corrects a wrong claim of "genuinely consumed... by the Godot world client" that had been recorded in `tests/invariants/emit-subscribe-pairing.test.js`'s baseline on 2026-07-24 — re-verified against the actual tree rather than trusted. Removed the `realtimeEmit("city:npcs", ...)` broadcast from `tickNpcs()` (the patrol-advance simulation it fed is unchanged, still read by `getCityNpcs`/`getAllNPCsForEmergence`); removed the now-stale baseline entry from the invariant test. Zero observable behavior change — nothing has ever rendered these mechanic-spawned NPCs regardless of the broadcast. |
+| `room:join` | `concord-frontend/lib/realtime/socket.ts` | **Documented FP + comment fix** | Direction-inversion class, exactly the type flagged in the dispatch brief: the frontend *emits* `room:join` (`socket.ts:210`), `server.js`'s `socket.on("room:join", ...)` consumes it, and the server acks with `room:joined`, which the frontend genuinely subscribes to (`socket.ts:223`) — real, correct, bidirectional wiring. The false "orphan_socket_consumer" flag was self-inflicted: a comment at `socket.ts:219` literally quoted `` socket.on('room:join', ...) `` to describe the *server's* handler, and the detector's socket-consumption regex is deliberately not comment-aware (documented tradeoff in the detector's own source, verified against `CommandPalette.tsx`'s precedent). Reworded the comment to describe the same fact without the literal quoted call syntax — a comment-only edit, no logic change, following the same precedent CLAUDE.md's UI-quality-rubric section already sets for this exact situation ("write around it in prose, don't spell out the literal component names"). |
+
+Verified: standalone detector invocation 7 → 4; `node --test
+tests/invariants/emit-subscribe-pairing.test.js` 3/3 (no `--test-force-exit`);
+`npx eslint server/lib/city-presence.js server/lib/event-shapes.js
+server/tests/invariants/emit-subscribe-pairing.test.js
+concord-frontend/lib/realtime/socket.ts` clean.
+
+### `frontend-unsafe-chain`: 1 → confirmed FP, left as-is
+
+`concord-frontend/components/world-creator/DraftEditor.tsx:193` —
+`r.data.result.worldPayload`, guarded by the early-return negative at line
+186 (`if (!r.data?.ok || !r.data.result) { setBusy(false); setErr(...);
+return; }`). This is exactly the blind spot the `frontend-unsafe-chain`
+pass above already named and declined to fix in the detector (recognizing
+whether an early `return` actually exits requires control-flow reasoning a
+regex can't do safely).
+
+Considered restructuring the call site into a positive-guard shape the
+detector already recognizes (`if (x) {...}`), and rejected it: that would
+mean wrapping the remaining ~15 lines of `playtest()` (the world-mint
+`fetch`, the `draft-publish` macro call, the router push) inside a nested
+`if` block, trading a standard early-return guard clause for deeper nesting
+— a real readability regression written to please a regex, which is exactly
+what this project's method forbids. `npx tsc --noEmit` on the file reports
+zero errors, confirming TypeScript's own control-flow narrowing agrees the
+guard makes every access after it safe. Left as-is; disposition:
+**documented false positive**, matching the established precedent from the
+26-FP batch above.

@@ -216,10 +216,19 @@ export function getSocket(): Socket {
       Object.keys(_lastSeq).forEach((k) => delete _lastSeq[k]);
     });
 
-    // Server ack for `room:join` (server.js's `socket.on('room:join', ...)`
-    // handler, fired after `socket.join(room)` succeeds). Marks the room
-    // CONFIRMED so `isRoomJoined()` callers get a real signal instead of
-    // having to assume the optimistic `emit('room:join', ...)` above landed.
+    // Server ack for the room-join request above (server.js's inbound
+    // room:join handler, fired server-side after socket.join(room)
+    // succeeds). Marks the room CONFIRMED so isRoomJoined() callers get a
+    // real signal instead of having to assume the optimistic emit above
+    // landed.
+    // (Deliberately not spelling the server call as literal
+    // `socket` + `.on(` + `'room:join'` text: dead-event-listener-detector.js's
+    // socket-consumption regex isn't comment-aware by design, and that
+    // exact quoted syntax — describing the SERVER's listener — was
+    // previously misread as a FRONTEND subscription to room:join, firing
+    // a false orphan_socket_consumer finding. The real wiring is: this
+    // frontend emits room:join, the server listens for it and acks with
+    // room:joined, and this handler is the genuine subscriber to that ack.)
     socket.on('room:joined', (data: { room?: string }) => {
       if (data?.room) {
         _confirmedRooms.add(data.room);

@@ -211,6 +211,8 @@ function NoaaStations() {
       {error && /NOAA_CDO_TOKEN/.test(error) ? (
         <div className="rounded border border-amber-500/20 bg-amber-500/5 p-2 text-[10px] text-amber-200 space-y-1">
           <div className="flex items-center gap-1"><KeyRound className="h-3 w-3" /> API token required</div>
+          {/* @env-config-ok: this is a doc/signup link telling the user where to get a free
+              NOAA_CDO_TOKEN — never fetched by the app itself, so it isn't deployment config. */}
           <a href="https://www.ncdc.noaa.gov/cdo-web/token" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200"><ExternalLink className="h-3 w-3" /> Free signup</a>
         </div>
       ) : error ? (

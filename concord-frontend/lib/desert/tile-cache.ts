@@ -39,6 +39,10 @@
  */
 
 const CACHE_NAME = 'concord-desert-tiles-v1';
+// @env-config-ok: not a real host — `concord.local` never resolves and this key is
+// never fetched over the network. The Cache API requires a Request/URL-shaped key to
+// store the manifest entry inside the same tile cache (see header comment above); this
+// is a synthetic same-cache storage key, not a configurable endpoint.
 const MANIFEST_KEY = 'https://concord.local/__desert_tile_manifest__';
 
 /**

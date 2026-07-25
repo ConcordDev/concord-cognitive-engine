@@ -71,21 +71,22 @@ const KNOWN_DEAD_BASELINE = new Set([
   // calls is out of scope here — this is a documentation fix, not a
   // wiring fix.
   "chat:update",
-  // Dead-event-listener follow-up (2026-07-24) corrected this entry's rationale:
-  // the prior comment ("city-presence sync — frontend pulls via REST, not socket")
-  // was factually wrong — `realtimeEmit("city:npcs", ...)` (server/lib/
-  // city-presence.js) IS genuinely consumed, just not by concord-frontend (which
-  // this test's collectSubscribes() scans) — by the Godot world client instead:
-  // world-lens-godot/avatar/avatar_manager.gd explicitly documents and ingests
-  // "`city:npcs`" frames (see its header + `update_transform` docs/GODOT_PROTOCOL.md
-  // §3, which cites both `city:positions`/`city:npcs` as IMPLEMENTED and mirrored via
-  // realtimeEmit's global broadcast() path). Same indirection CLASS as chat:update
-  // above (a real, live consumer this static two-directory scan structurally can't
-  // see), just a different transport (a non-web client) instead of a regex-invisible
-  // template literal. Kept in the baseline — not stale (still emitted) and not
-  // "wired" by this test's own definition (subs.has() will never be true for a
-  // consumer outside concord-frontend) — with the corrected reason on record.
-  "city:npcs",
+  // "city:npcs" removed (dead-event-listener follow-up, 2026-07-25): the
+  // 2026-07-24 comment that used to sit here claimed it "IS genuinely
+  // consumed... by the Godot world client instead" — that claim does not
+  // hold up under direct verification. world-lens-godot/avatar/
+  // avatar_manager.gd's `ingest_snapshot()` is shaped for this payload but
+  // is never instantiated anywhere in the world-lens-godot tree (no
+  // `AvatarManager.new()`, no `.tscn` scene reference), and boot.gd's
+  // central event dispatch table has no `city:npcs`/`city:positions` case
+  // (aerial_traffic_controller.gd's own header says outright "AvatarManager
+  // has no live caller today"). There's also no REST path exposing
+  // `getCityNpcs` client-side. So the broadcast reached no consumer on
+  // either transport; server/lib/city-presence.js#tickNpcs no longer emits
+  // it (the mechanic-spawned NPC patrol state it fed still advances
+  // internally, read by getCityNpcs/getAllNPCsForEmergence — only the
+  // broadcast into an empty room was removed). See that function's header
+  // comment for the full investigation.
   "emergent:activity",              // emergent-engine summary — replaced by activity:new
   // "gameJuice:fanfare" + "npc:dialogue" removed (dead-event-listener sweep
   // continuation, 2026-07-24): both event-shapes.js entries were RETIRED

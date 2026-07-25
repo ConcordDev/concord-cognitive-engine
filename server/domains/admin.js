@@ -618,7 +618,7 @@ export default function registerAdminActions(registerLensAction) {
   `;
   function dbAlertRuleStore(db) {
     return {
-      listAll() { return db.prepare("SELECT * FROM admin_alert_rules ORDER BY rowid ASC").all().map(rowToAlertRule); },
+      listAll() { return db.prepare("SELECT id, name, metric, comparator, threshold, severity, aggregation, window_minutes, enabled, created_at, updated_at FROM admin_alert_rules ORDER BY rowid ASC").all().map(rowToAlertRule); },
       get(id) { const r = db.prepare("SELECT * FROM admin_alert_rules WHERE id = ?").get(id); return r ? rowToAlertRule(r) : null; },
       put(rule) { db.prepare(UPSERT_ALERT_RULE_SQL).run(alertRuleToParams(rule)); },
       delete(id) { db.prepare("DELETE FROM admin_alert_rules WHERE id = ?").run(id); },
@@ -661,7 +661,7 @@ export default function registerAdminActions(registerLensAction) {
   `;
   function dbFeatureFlagStore(db) {
     return {
-      listAll() { return db.prepare("SELECT * FROM admin_feature_flags ORDER BY rowid ASC").all().map(rowToFeatureFlag); },
+      listAll() { return db.prepare("SELECT id, key, enabled, description, rollout_pct, created_at, updated_at FROM admin_feature_flags ORDER BY rowid ASC").all().map(rowToFeatureFlag); },
       get(id) { const r = db.prepare("SELECT * FROM admin_feature_flags WHERE id = ?").get(id); return r ? rowToFeatureFlag(r) : null; },
       put(flag) { db.prepare(UPSERT_FEATURE_FLAG_SQL).run(featureFlagToParams(flag)); },
       size() { return db.prepare("SELECT COUNT(*) AS n FROM admin_feature_flags").get().n; },
@@ -716,7 +716,7 @@ export default function registerAdminActions(registerLensAction) {
   `;
   function dbIncidentStore(db) {
     return {
-      listAll() { return db.prepare("SELECT * FROM admin_incidents ORDER BY rowid ASC").all().map(rowToIncident); },
+      listAll() { return db.prepare("SELECT id, title, severity, service, description, status, acknowledged_by, acknowledged_at, opened_at, resolved_at, duration_ms, timeline_json FROM admin_incidents ORDER BY rowid ASC").all().map(rowToIncident); },
       get(id) { const r = db.prepare("SELECT * FROM admin_incidents WHERE id = ?").get(id); return r ? rowToIncident(r) : null; },
       put(inc) { db.prepare(UPSERT_INCIDENT_SQL).run(incidentToParams(inc)); },
     };

@@ -26,7 +26,18 @@ const RESERVED = new Set(["ts", "_seq", "_rid", "_evt"]);
 
 export const EVENT_SHAPES = Object.freeze({
   // ── Combat ────────────────────────────────────────────────────────
-  "combat:attack": { required: ["attackerId"], optional: ["weapon", "animation", "direction", "position"] },
+  // "combat:attack" removed from this registry (dead-event-listener
+  // follow-up, 2026-07-25): this registry only pins the shape of
+  // realtimeEmit/server-to-frontend BROADCASTS, but nothing has broadcast
+  // a "combat:attack" event since combat-netcode.js's broadcastAttack()
+  // was retired (see that module's own RESOLVED note, 2026-07-24 batch).
+  // The event name `combat:attack` is still very much alive today, but in
+  // the OPPOSITE direction: the browser emits it (CombatInputController.tsx)
+  // and server.js's `socket.on("combat:attack", ...)` handler consumes it
+  // client-to-server — that inbound path is never run through
+  // validateEvent/this registry at all, so this entry described a shape
+  // nothing was validating. Confirmed zero `realtimeEmit`/`io.emit` call
+  // sites for "combat:attack" anywhere in server/ before removing.
   // Wave 4 — worldId added (optional, not required): the socket PvP path at
   // server.js's combat:attack handler now stamps a best-effort worldId
   // (cityPresence.getPlayerWorld), but the separate combat-netcode.js

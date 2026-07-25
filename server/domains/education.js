@@ -541,7 +541,7 @@ export default function registerEducationActions(registerLensAction) {
   `;
   function dbCourseStore(db) {
     return {
-      listAll() { return db.prepare("SELECT * FROM edu_courses ORDER BY rowid ASC").all().map(rowToCourse); },
+      listAll() { return db.prepare("SELECT id, author_id, title, description, category, level, duration_hours, instructor, institution, kind, status, enrollment_count, rating, lessons_json, created_at FROM edu_courses ORDER BY rowid ASC").all().map(rowToCourse); },
       get(id) { const r = db.prepare("SELECT * FROM edu_courses WHERE id = ?").get(id); return r ? rowToCourse(r) : null; },
       put(c) { db.prepare(UPSERT_COURSE_SQL).run(courseToParams(c)); },
       delete(id) { db.prepare("DELETE FROM edu_courses WHERE id = ?").run(id); },
@@ -582,7 +582,7 @@ export default function registerEducationActions(registerLensAction) {
   function dbDiscussionStore(db) {
     return {
       listByCourse(courseId) { return db.prepare("SELECT * FROM edu_discussions WHERE course_id = ? ORDER BY rowid ASC").all(courseId).map(rowToDiscussion); },
-      listAll() { return db.prepare("SELECT * FROM edu_discussions ORDER BY rowid ASC").all().map(rowToDiscussion); },
+      listAll() { return db.prepare("SELECT id, course_id, author_id, text, reply_to, upvotes, created_at FROM edu_discussions ORDER BY rowid ASC").all().map(rowToDiscussion); },
       get(id) { const r = db.prepare("SELECT * FROM edu_discussions WHERE id = ?").get(id); return r ? rowToDiscussion(r) : null; },
       put(d) { db.prepare(UPSERT_DISCUSSION_SQL).run(discussionToParams(d)); },
     };
@@ -636,7 +636,7 @@ export default function registerEducationActions(registerLensAction) {
   function dbCohortStore(db) {
     return {
       listByCourse(courseId) { return db.prepare("SELECT * FROM edu_cohorts WHERE course_id = ? ORDER BY rowid ASC").all(courseId).map(rowToCohort); },
-      listAll() { return db.prepare("SELECT * FROM edu_cohorts ORDER BY rowid ASC").all().map(rowToCohort); },
+      listAll() { return db.prepare("SELECT id, course_id, author_id, title, instructor, scheduled_at, duration_min, capacity, status, roster_json, agenda, started_at, ended_at, created_at FROM edu_cohorts ORDER BY rowid ASC").all().map(rowToCohort); },
       get(id) { const r = db.prepare("SELECT * FROM edu_cohorts WHERE id = ?").get(id); return r ? rowToCohort(r) : null; },
       put(c) { db.prepare(UPSERT_COHORT_SQL).run(cohortToParams(c)); },
     };

@@ -499,8 +499,8 @@ export default function registerFoundryMacros(register) {
    * generating a real content/world/<publishedWorldId>/{meta,npcs,
    * factions,lore}.json directory that content-seeder.js's
    * discoverSubWorlds() will pick up on the next boot. This closes the
-   * TODO in compiler.js's header comment ("'Promotion' to a full
-   * first-class world node ... is a later flag").
+   * gap noted in compiler.js's header comment ("'Promotion' to a full
+   * first-class world node ... is a later flag") — that flag is this macro.
    *
    * NEVER automatic — publish/compile/preview/marketplace behavior is
    * completely unaffected by this macro's existence; a creator must

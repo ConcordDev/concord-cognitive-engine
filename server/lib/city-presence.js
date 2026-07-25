@@ -1468,32 +1468,52 @@ export function getCityNpcs(cityId) {
 }
 
 /**
- * Advance NPC patrol paths and broadcast their new positions alongside
- * player positions. Called from the same 100ms tick as `broadcastPositions`
- * so the frontend sees them through the same pipeline.
+ * Advance NPC patrol paths (position/animation state in `_npcState`,
+ * still consumed internally by `getAllNPCsForEmergence`/`getCityNpcs`).
+ * Called from the same 100ms tick as `broadcastPositions`.
  *
  * ── DET-C batch 8 investigation (dead-event-listener sweep, 2026-07-23) ──
- * The `city:npcs` broadcast below (this module's ONLY delivery path for
- * these specific procedurally-spawned NPCs — the world-mechanics
- * `spawn_npc` action in server.js, cityPresence.spawnNpc) is genuinely
- * unconsumed: concord-frontend never subscribes to it (NPC rendering in
+ * found the `city:npcs` broadcast this function used to emit (this
+ * module's ONLY delivery path for these specific procedurally-spawned
+ * NPCs — the world-mechanics `spawn_npc` action in server.js,
+ * cityPresence.spawnNpc) genuinely unconsumed on BOTH transports:
+ * concord-frontend never subscribed to it (NPC rendering in
  * app/lenses/world/page.tsx polls the DB-backed `/api/worlds/:worldId/npcs`
  * authored-NPC table instead — a different NPC population entirely), and
- * world-lens-godot/avatar/avatar_manager.gd has a real `ingest_snapshot()`
- * method shaped for exactly this payload but is never instantiated from
- * world-lens-godot/world/boot.gd's event dispatch (only exercised by that
- * repo's own unit test) — so it's WIP there, not a live consumer either.
- * The correct fix is wiring a real subscriber into the browser's NPC
- * render path (app/lenses/world/page.tsx / AvatarSystem3D.tsx) so these
- * mechanic-spawned NPCs actually become visible — a real, if narrow,
- * gameplay gap, not a redundant broadcast. Left in place (removing it
- * would silently make these NPCs permanently unreachable) and documented
- * rather than risking an unverified change to the live avatar-rendering
- * pipeline in this batch.
+ * world-lens-godot/avatar/avatar_manager.gd has an `ingest_snapshot()`
+ * method shaped for this exact payload but — contrary to a later, INCORRECT
+ * "genuinely consumed by Godot" claim briefly recorded in
+ * tests/invariants/emit-subscribe-pairing.test.js's `city:npcs` baseline
+ * comment (2026-07-24) — was never actually instantiated anywhere:
+ * `AvatarManager.new()` / a `.tscn` scene reference does not exist in the
+ * world-lens-godot tree (re-verified directly, 2026-07-25; see also
+ * aerial_traffic_controller.gd's own header, which says outright
+ * "AvatarManager has no live caller today"). `boot.gd`'s central
+ * `_on_event` dispatch table has cases for `world:aerial-traffic`,
+ * `macro:started`/`macro:completed`/`conkay:verdict`, and `room:joined` —
+ * `city:npcs`/`city:positions` are not among them and fall through to the
+ * no-op default. There is also no REST path exposing `getCityNpcs`
+ * client-side. So these mechanic-spawned patrol NPCs have never been
+ * visible to any player through any transport, broadcast or not — retiring
+ * the emit changes zero observable behavior. Wiring a real subscriber
+ * would mean building a first render pipeline for this NPC population
+ * (browser AND/OR a from-scratch Godot AvatarManager scene wire-up) —
+ * inventing a feature, not fixing a missed wire, and not something
+ * verifiable end-to-end without a Godot runtime this environment doesn't
+ * have. Retired per the same standard the AdaptiveMusicEngine
+ * stealth/discovery listeners and combat-netcode.js's `broadcastAttack()`
+ * were retired under: an emit firing into a room nobody has ever been in
+ * is honestly removed, not left as a no-op. The underlying patrol
+ * simulation (`_npcState` position/animation advance below) is unchanged —
+ * only the broadcast that had no listener is gone. A future render pass
+ * for this NPC population starts from a clean slate: add the subscriber
+ * first, then reintroduce the broadcast.
  */
+// `realtimeEmit` is kept in the signature for call-site compatibility
+// (startNpcLoop passes it) even though the function no longer broadcasts;
+// see the header comment above.
 function tickNpcs(cityId, realtimeEmit) {
   const now = Date.now();
-  const perChunk = new Map(); // "cityId:cx:cz" -> [npc, ...]
 
   for (const npc of _npcState.values()) {
     if (npc.cityId !== cityId) continue;
@@ -1520,36 +1540,8 @@ function tickNpcs(cityId, realtimeEmit) {
         npc.lastMoveAt = now;
       }
     }
-
-    // Group by chunk so we can emit per-chunk broadcasts like players
-    const cx = toChunk(npc.x);
-    const cz = toChunk(npc.z);
-    const key = `${cityId}:${cx}:${cz}`;
-    if (!perChunk.has(key)) perChunk.set(key, []);
-    perChunk.get(key).push({
-      id: npc.id,
-      name: npc.name,
-      occupation: npc.occupation,
-      position: { x: npc.x, y: npc.y, z: npc.z },
-      rotation: npc.direction,
-      direction: npc.direction,
-      currentAnimation: npc.animation,
-      health: npc.health,
-      maxHealth: npc.maxHealth,
-      isHostile: npc.isHostile,
-      appearance: npc.appearance,
-      timestamp: now,
-    });
-  }
-
-  for (const [key, npcs] of perChunk) {
-    const parts = key.split(":");
-    realtimeEmit("city:npcs", {
-      cityId: parts[0],
-      chunk: { x: Number(parts[1]), z: Number(parts[2]) },
-      npcs,
-      timestamp: new Date().toISOString(),
-    });
+    // Position/animation state now lives only in `_npcState`, read by
+    // `getCityNpcs`/`getAllNPCsForEmergence` — no broadcast (see header).
   }
 }
 
