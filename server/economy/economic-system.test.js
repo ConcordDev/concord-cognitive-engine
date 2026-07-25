@@ -37,6 +37,16 @@ import { distributeFee, getFeeSplitBalances } from "./fee-split.js";
 import { runTreasuryReconciliation } from "./treasury-reconciliation.js";
 import logger from '../logger.js';
 
+// Citation registration is consent-gated (see lib/consent.js#canCiteDtu and
+// the CLAUDE.md "Citation requires consent" invariant) — registerCitation()
+// queries the real `user_consent` table (created by migration 032) unless
+// the caller passes `parentDtu`/`hasPurchasedLicense`. We apply the real
+// migration (not a hand-rolled stub) so this suite exercises the actual
+// consent schema, and grant real consent via grantConsent() at the points
+// that need it.
+import { grantConsent } from "../lib/consent.js";
+import { up as applyConsentLayerMigration } from "../migrations/032_consent_layer.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEST_DB_PATH = path.join(__dirname, ".test_economic_system.db");
 
@@ -191,6 +201,11 @@ function setupTestDb() {
       created_at TEXT, updated_at TEXT
     );
   `);
+
+  // Apply the real consent-layer migration (user_consent, consent_audit_log,
+  // anonymized_attributions) rather than hand-stubbing the table — this is
+  // the actual schema registerCitation()'s consent gate reads against.
+  applyConsentLayerMigration(db);
 }
 
 function seedUser(userId, amount) {
@@ -324,6 +339,13 @@ describe("Concord Economic System", () => {
     });
 
     it("should register citations", () => {
+      // registerCitation() is consent-gated: the parent creator must have
+      // granted "allow_citation" (lib/consent.js#canCiteDtu), otherwise it
+      // returns citation_consent_not_granted without touching the lineage
+      // table. Grant it for real via the real consent module.
+      const consent = grantConsent(db, "creator_A", "allow_citation");
+      assert.equal(consent.ok, true);
+
       const result = registerCitation(db, {
         childId: "dtu_B",
         parentId: "dtu_A",
@@ -346,6 +368,10 @@ describe("Concord Economic System", () => {
     });
 
     it("should get ancestor chain", () => {
+      // creator_B must consent before their DTU can be cited as a parent.
+      const consent = grantConsent(db, "creator_B", "allow_citation");
+      assert.equal(consent.ok, true);
+
       // Register chain: C → B → A
       registerCitation(db, {
         childId: "dtu_C",
@@ -389,6 +415,12 @@ describe("Concord Economic System", () => {
     });
 
     it("should detect citation cycles", () => {
+      // Consent must be granted first, or registerCitation short-circuits on
+      // citation_consent_not_granted before it ever reaches the cycle check
+      // this test is trying to exercise.
+      const consent = grantConsent(db, "creator_C", "allow_citation");
+      assert.equal(consent.ok, true);
+
       // Try to create A → C (which would form cycle C → B → A → C)
       const result = registerCitation(db, {
         childId: "dtu_A",
@@ -404,14 +436,20 @@ describe("Concord Economic System", () => {
   // ── Emergent Accounts ─────────────────────────────────────────────────
   describe("Emergent Accounts", () => {
     it("should create an emergent account", () => {
+      // Stale expectation fixed: createEmergentAccount() now deliberately
+      // REJECTS any seedAmount > 0 ("Emergents must earn CC through
+      // creation. Seed funding is not permitted." — economy/emergent-
+      // accounts.js:41-43) to avoid circular revenue an auditor would flag
+      // as wash trading. Emergents start at zero and earn via
+      // creditOperatingWallet (exercised below in "should transfer from
+      // operating to reserve with fee").
       const result = createEmergentAccount(db, {
         emergentId: "emergent_alpha",
         displayName: "Alpha",
-        seedAmount: 10,
       });
       assert.equal(result.ok, true);
       assert.equal(result.account.emergentId, "emergent_alpha");
-      assert.equal(result.account.operatingBalance, 10);
+      assert.equal(result.account.operatingBalance, 0);
       assert.equal(result.account.reserveBalance, 0);
     });
 
@@ -425,6 +463,16 @@ describe("Concord Economic System", () => {
     });
 
     it("should transfer from operating to reserve with fee", () => {
+      // emergent_alpha was created with zero balance (seeding is disabled —
+      // see previous test). Fund its operating wallet the real way an
+      // emergent earns money: creditOperatingWallet from a marketplace sale.
+      const credit = creditOperatingWallet(db, {
+        emergentId: "emergent_alpha",
+        amount: 10,
+        source: "marketplace_sale",
+      });
+      assert.equal(credit.ok, true);
+
       const result = transferToReserve(db, {
         emergentId: "emergent_alpha",
         amount: 5,
@@ -439,6 +487,8 @@ describe("Concord Economic System", () => {
     });
 
     it("should reject transfer exceeding operating balance", () => {
+      // Operating balance is 5 at this point (10 credited - 5 transferred
+      // in the previous test); 100 exceeds it either way.
       const result = transferToReserve(db, {
         emergentId: "emergent_alpha",
         amount: 100,
@@ -460,7 +510,9 @@ describe("Concord Economic System", () => {
     });
 
     it("should list emergent accounts", () => {
-      createEmergentAccount(db, { emergentId: "emergent_beta", seedAmount: 10 });
+      // seedAmount omitted — seeding at creation is disabled (see above).
+      const created = createEmergentAccount(db, { emergentId: "emergent_beta" });
+      assert.equal(created.ok, true);
       const list = listEmergentAccounts(db);
       assert.ok(list.items.length >= 2);
       assert.ok(list.total >= 2);
@@ -478,16 +530,28 @@ describe("Concord Economic System", () => {
       assert.equal(account.status, "suspended");
     });
 
-    it("cold start: 10 emergents at $10 = $100 seed", () => {
+    it("cold start: seeding is disabled — emergents earn, they are not handed funds", () => {
+      // Renamed + rewritten from a stale expectation. This test used to
+      // assert that 10 emergents could be minted $10 each ($100 total) as a
+      // cold-start liquidity measure. Source policy has since deliberately
+      // closed that path (economy/emergent-accounts.js:41-43): any
+      // seedAmount > 0 is rejected with "emergent_seed_disabled" because
+      // handing emergents starting funds is indistinguishable from
+      // circular/wash-trading activity an auditor would flag. The correct,
+      // current behavior is that mass-seeding mints ZERO coins — every
+      // attempt is rejected — which is exactly what this now asserts.
       let totalSeed = 0;
+      let rejectedCount = 0;
       for (let i = 1; i <= 10; i++) {
         const result = createEmergentAccount(db, {
           emergentId: `cold_start_${i}`,
           seedAmount: 10,
         });
         if (result.ok) totalSeed += 10;
+        else if (result.error === "emergent_seed_disabled") rejectedCount++;
       }
-      assert.equal(totalSeed, 100);
+      assert.equal(totalSeed, 0);
+      assert.equal(rejectedCount, 10);
     });
   });
 
@@ -676,6 +740,10 @@ describe("Concord Economic System", () => {
       seedUser("derivative_creator", 0.01);
       seedUser("final_buyer", 500);
 
+      // creator_original must consent before their content can be cited.
+      const consent = grantConsent(db, "creator_original", "allow_citation");
+      assert.equal(consent.ok, true);
+
       // 2. Register citation chain: derivative → original
       registerCitation(db, {
         childId: "deriv_content",
@@ -760,8 +828,19 @@ describe("Concord Economic System", () => {
     });
 
     it("emergent should be able to purchase on marketplace from reserve", () => {
-      // Create emergent with funds
-      createEmergentAccount(db, { emergentId: "buying_emergent", seedAmount: 100 });
+      // Create emergent — starts at zero, seedAmount omitted (seeding at
+      // creation is disabled; see the "Emergent Accounts" suite above).
+      const created = createEmergentAccount(db, { emergentId: "buying_emergent" });
+      assert.equal(created.ok, true);
+
+      // Fund the operating wallet the real way: it earns via a marketplace
+      // sale, credited through creditOperatingWallet.
+      const credit = creditOperatingWallet(db, {
+        emergentId: "buying_emergent",
+        amount: 100,
+        source: "marketplace_sale",
+      });
+      assert.equal(credit.ok, true);
 
       // Transfer to reserve
       const transfer = transferToReserve(db, {
