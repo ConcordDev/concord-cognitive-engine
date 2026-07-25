@@ -24,7 +24,10 @@ extends Node
 ## "level not found" / any other real rejection) is forwarded verbatim via
 ## `mode_rejected` — never reinterpreted as success.
 ##
-## STATUS: parse/lint validated only — see world-lens-godot/VISUAL_QA.md.
+## STATUS: compiles and its logic is EXECUTED by a real Godot 4.4 (docs/GODOT_RUNTIME.md)
+## (tests/test_design_playtest_client.gd). Residual gap is protocol, not
+## pixels — the design:mode:ack/nack round-trip has never run against a live
+## server. See world-lens-godot/VISUAL_QA.md.
 ## This has never sent a frame to a live server or a real Godot engine.
 
 signal mode_requested(mode: String)

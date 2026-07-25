@@ -46,8 +46,11 @@ extends Node3D
 ## `wire_gateway_events()` is also provided below for a caller that prefers
 ## that shape, mirroring AerialTrafficController's own dual-path precedent.
 ##
-## STATUS: parse/lint validated only — see world-lens-godot/VISUAL_QA.md.
-## This has never rendered in a real Godot engine.
+## STATUS: compiles under a real Godot 4.4 (docs/GODOT_RUNTIME.md) and loads with the rest of the
+## project (0 parse errors). It has NO test suite of its own, so unlike its
+## sibling conkay_presence_state.gd its logic is not engine-asserted — only
+## its syntax and load are. And headless installs RasterizerDummy, so it has
+## still never RENDERED. See world-lens-godot/VISUAL_QA.md.
 
 const ConKayPresenceState := preload("res://conkay/conkay_presence_state.gd")
 const ConKayPointing := preload("res://conkay/conkay_pointing.gd")

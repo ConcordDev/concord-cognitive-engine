@@ -90,8 +90,9 @@ extends Node
 ## consults — not a scattered boolean/convention each one is trusted to
 ## remember on its own.
 ##
-## STATUS: parse/lint validated only (gdparse + gdlint) — never opened in a
-## real engine/renderer. See world-lens-godot/VISUAL_QA.md for exactly what
+## STATUS: compiles and its mode table is EXECUTED by a real Godot 4.4 (docs/GODOT_RUNTIME.md)
+## (tests/test_session_manager.gd). Rendering/feel remain unverified —
+## headless draws nothing. See world-lens-godot/VISUAL_QA.md for exactly what
 ## is genuinely unverified (do transitions feel smooth, does input routing
 ## actually block correctly in a live running scene).
 

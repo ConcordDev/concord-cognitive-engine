@@ -15,9 +15,10 @@ extends Node3D
 ## `build_list_request_body`) are static so they're unit-testable without a
 ## scene tree — see world-lens-godot/tests/test_dtu_prop_renderer.gd.
 ##
-## STATUS: like the rest of world-lens-godot (docs/GODOT_INTEGRATION.md), this
-## has only been parse/lint validated (`gdparse` + `gdlint`), never opened in
-## a real engine — see VISUAL_QA.md. It also depends on the `dtu_props`
+## STATUS: compiles and its logic is EXECUTED by a real Godot 4.4 (docs/GODOT_RUNTIME.md)
+## (tests/test_dtu_prop_renderer.gd). Appearance is still unverified —
+## headless installs RasterizerDummy and draws nothing; see VISUAL_QA.md.
+## It also depends on the `dtu_props`
 ## macro domain being wired into server.js's `register()` call table (see the
 ## honest caveat at the top of server/domains/dtu-props.js) and, separately,
 ## on the Godot gateway itself being mounted (Phase 1 status in

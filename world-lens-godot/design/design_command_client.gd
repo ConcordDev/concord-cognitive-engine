@@ -23,8 +23,11 @@ extends Node
 ## reinterpreted as success. A response missing an explicit `ok:true` is
 ## treated as a failure, not assumed successful.
 ##
-## STATUS: parse/lint validated only — see world-lens-godot/VISUAL_QA.md.
-## This has never sent a frame to a live server or a real Godot engine.
+## STATUS: compiles and its logic is EXECUTED by a real Godot 4.4 (docs/GODOT_RUNTIME.md) —
+## tests/test_design_command_client.gd runs green in the suite. The residual
+## gap here is protocol, not pixels: no frame has ever gone over a live
+## GatewayClient to a running server, so the design_command:result round-trip
+## is still unexercised end-to-end. See world-lens-godot/VISUAL_QA.md.
 
 signal command_sent(action: String, params: Dictionary)
 signal command_result(action: String, result: Dictionary)

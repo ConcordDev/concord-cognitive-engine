@@ -16,7 +16,10 @@ extends Node
 ## `interacted`/`interact_failed` — an `{ok:false, reason:...}` from the
 ## server is never reinterpreted as success.
 ##
-## STATUS: parse/lint validated only — see VISUAL_QA.md and the STATUS note
+## STATUS: compiles and its logic is EXECUTED by a real Godot 4.4 (docs/GODOT_RUNTIME.md)
+## (tests/test_dtu_prop_interaction.gd) — the Node-local meta/parent linkage
+## it used to only ARGUE would work is now empirically confirmed. Appearance
+## remains unverified; see VISUAL_QA.md and the STATUS note
 ## in dtu_prop_renderer.gd (this also needs the `dtu_props` macro domain
 ## wired server-side to do anything beyond an honest HTTP error).
 

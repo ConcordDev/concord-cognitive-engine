@@ -49,8 +49,9 @@ extends Node3D
 ## capture (`Input.MOUSE_MODE_CAPTURED`) is a small, real follow-on scoped to
 ## actual interactive use, not invented here. See VISUAL_QA.md.
 ##
-## STATUS: parse/lint validated only (gdparse + gdlint) — never opened in a
-## real engine/renderer. See world-lens-godot/VISUAL_QA.md for exactly what
+## STATUS: compiles and its math is EXECUTED by a real Godot 4.4 (docs/GODOT_RUNTIME.md)
+## (tests/test_camera_rig.gd). The unverified half IS the feature here —
+## framing cannot be asserted by arithmetic; headless draws nothing. See world-lens-godot/VISUAL_QA.md for exactly what
 ## is genuinely unverified (does the follow-cam feel smooth at real avatar
 ## speeds, does orbit read correctly under default lighting, does free-fly
 ## feel controllable).

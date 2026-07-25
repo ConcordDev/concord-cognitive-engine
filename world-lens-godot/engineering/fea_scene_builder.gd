@@ -33,8 +33,9 @@ extends Node3D
 ## needed — the same "plain REST macro call, no gateway required" posture
 ## `dtu_prop_renderer.gd` already uses for DTU props.
 ##
-## STATUS: parse/lint validated only (gdparse + gdlint) — never opened in
-## a real engine/renderer. See world-lens-godot/VISUAL_QA.md for exactly
+## STATUS: compiles and its transform is EXECUTED by a real Godot 4.4 (docs/GODOT_RUNTIME.md)
+## (tests/test_fea_scene_builder.gd). Appearance is unverified — headless
+## installs RasterizerDummy and draws nothing. See world-lens-godot/VISUAL_QA.md for exactly
 ## what's unverified (beam scale/thickness at real-world model
 ## dimensions, whether the color ramp reads correctly under default
 ## lighting).

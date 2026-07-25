@@ -4,11 +4,18 @@ This is the Godot 4 client for Concord's 3D layer. It talks to the Concord
 server over a WebSocket gateway (`/godot-ws`). The server stays authoritative;
 Godot renders + simulates locally.
 
-**Honest status:** this project has been validated by `gdparse` + `gdlint`
-(syntax/lint clean) and its server-side protocol is proven with a real
-WebSocket integration test — but it has **never been opened in a real Godot
-editor or rendered a frame** (the build container it was authored in has no
-Godot binary and no display). So the steps below are the **first real run**.
+**Honest status:** this project now runs against a **real Godot 4.4 binary**
+(`node scripts/fetch-godot.mjs`, checksum-verified — see
+`docs/GODOT_RUNTIME.md`). It imports with **0 parse errors across all 64
+scripts**, and its GDScript test suite **executes**: 26/26 suites, 574
+checks, 0 fail. Its server-side protocol is separately proven with a real
+WebSocket integration test.
+
+What is still **not** verified: headless installs `RasterizerDummy` and
+draws nothing, so **no frame has ever been rendered** and the project has
+never been opened in the Godot **editor** on a real display. Every visual,
+layout, perf and feel claim remains queued in `VISUAL_QA.md`. So the steps
+below are still the **first real rendered run**.
 Expect to hit a few runtime issues static linting can't catch (typed-array
 coercions, a missing InputMap action, etc.) — that's normal and expected for a
 first boot; note anything that breaks and it can be fixed quickly.
