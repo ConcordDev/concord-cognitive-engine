@@ -9,6 +9,7 @@
 import { randomUUID } from "crypto";
 import { anonymizeAttribution } from "./consent.js";
 import { CREDIT_ROW_PREDICATE } from "../economy/balances.js";
+import { economyAudit } from "../economy/audit.js";
 
 function uid(prefix = "al") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -77,6 +78,8 @@ export function requestAccountDeletion(db, userId, { ip, userAgent } = {}) {
       ON CONFLICT(user_id) DO UPDATE SET status = 'scheduled', balance_at_request = ?, forfeit_date = ?, requested_at = ?
     `).run(uid("del"), userId, balance, forfeitDate, now, balance, forfeitDate, now);
 
+    auditDeletionRequest(db, userId, { ip, userAgent, outcome: "scheduled", balance, forfeitDate });
+
     return {
       ok: true,
       scheduled: true,
@@ -88,7 +91,38 @@ export function requestAccountDeletion(db, userId, { ip, userAgent } = {}) {
 
   // No balance — delete immediately
   const result = executeAccountDeletion(db, userId);
+  auditDeletionRequest(db, userId, { ip, userAgent, outcome: "deleted_immediately", balance });
   return { ok: true, deletedImmediately: true, ...result };
+}
+
+/**
+ * Record who asked to delete this account, and from where.
+ *
+ * `requestAccountDeletion` accepted `ip` and `userAgent` and referenced
+ * neither (found 2026-07-25 by the unused-destructured-param detector), so an
+ * irreversible, security-relevant action left no trace of its origin —
+ * exactly the record an abuse investigation or an account-recovery dispute
+ * needs.
+ *
+ * `account_deletion_requests` (migration 033) has no ip/user_agent columns, so
+ * rather than widening that table this routes through the existing
+ * `economyAudit` sink, which already persists ip_address + user_agent into
+ * `audit_log`. Its own insert is try/catch-wrapped, and this call is wrapped
+ * again here: an audit-log failure must never block or reverse a user's
+ * deletion request.
+ */
+function auditDeletionRequest(db, userId, { ip, userAgent, outcome, balance, forfeitDate }) {
+  try {
+    economyAudit(db, {
+      action: "account_deletion_requested",
+      userId,
+      ip,
+      userAgent,
+      details: { outcome, balance, forfeitDate },
+    });
+  } catch (err) {
+    console.warn("[account-lifecycle] deletion audit failed (non-fatal)", { userId, err: err.message });
+  }
 }
 
 /**
