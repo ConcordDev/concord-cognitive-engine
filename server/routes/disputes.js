@@ -33,6 +33,15 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
     router.use(requireAuth());
   }
 
+  // Fail-closed admin gate for the two admin-only routes below. Prefer the
+  // injected middleware (server.js wires in economy/guards.js#adminOnly —
+  // role admin/owner/founder, wildcard/economy:admin scope, or AUTH_MODE=public)
+  // instead of a hand-rolled duplicate; if the caller didn't provide one,
+  // deny rather than silently falling open.
+  const requireAdminGate = typeof adminOnly === "function"
+    ? adminOnly
+    : (_req, res) => res.status(403).json({ ok: false, error: "forbidden" });
+
   // ── POST /create — Buyer creates a dispute ──────────────────────────────
 
   router.post("/create", (req, res) => {
@@ -153,14 +162,8 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
 
   // ── GET /queue — Admin: all open/escalated disputes ────────────────────
 
-  router.get("/queue", (req, res) => {
+  router.get("/queue", requireAdminGate, (req, res) => {
     try {
-      // Admin check — mandatory for queue access
-      const check = adminCheckSync(req);
-      if (!check.ok) {
-        return res.status(check.status || 403).json({ ok: false, error: check.error || "forbidden" });
-      }
-
       const openDisputes = getDisputes(db, { status: "open" });
       const escalated = getDisputes(db, { status: "escalated" });
       const underReview = getDisputes(db, { status: "under_review" });
@@ -280,14 +283,8 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
 
   // ── PUT /:id/resolve — Admin resolves dispute ─────────────────────────
 
-  router.put("/:id/resolve", (req, res) => {
+  router.put("/:id/resolve", requireAdminGate, (req, res) => {
     try {
-      // Admin check
-      const adminCheck = adminCheckSync(req);
-      if (!adminCheck.ok) {
-        return res.status(adminCheck.status || 403).json({ ok: false, error: adminCheck.error || "forbidden" });
-      }
-
       const dispute = getDispute(db, req.params.id);
       if (!dispute) {
         return res.status(404).json({ ok: false, error: "dispute_not_found" });
@@ -476,14 +473,8 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
   return router;
 }
 
-// ── Helper: synchronous admin check ─────────────────────────────────────────
-
-function adminCheckSync(req) {
-  if (process.env.AUTH_MODE === "public") return { ok: true };
-  if (!req.user) return { ok: false, error: "auth_required", status: 401 };
-  const role = req.user.role;
-  if (role === "admin" || role === "owner" || role === "founder") return { ok: true };
-  const scopes = req.user.scopes;
-  if (scopes && (scopes.includes("*") || scopes.includes("economy:admin"))) return { ok: true };
-  return { ok: false, error: "forbidden", status: 403 };
-}
+// The hand-rolled `adminCheckSync` that used to live here is gone: both of its
+// call sites now use the injected `adminOnly` middleware (economy/guards.js),
+// which server.js already passes in. It duplicated that guard's role/scope
+// logic exactly, so keeping a second copy only created room for the two to
+// drift apart — precisely the risk you don't want on an authorization check.
