@@ -54,6 +54,8 @@ import { runCommandInjectionDetector } from "./command-injection-detector.js";
 import { runAuthzCoverageDetector } from "./authz-coverage-detector.js";
 import { runFrontendUnsafeChainDetector } from "./frontend-unsafe-chain-detector.js";
 import { runAsymmetricStatusUpdateDetector } from "./asymmetric-status-update-detector.js";
+import { runUnusedDestructuredParamDetector } from "./unused-destructured-param-detector.js";
+import { runDeadEnvelopeFieldAccessDetector } from "./dead-envelope-field-access-detector.js";
 import { runDuplicateHandlerRaceDetector } from "./duplicate-handler-race-detector.js";
 import { runFabricationMechanismDetector } from "./fabrication-mechanism-detector.js";
 import { runWorkflowGateIntegrityDetector } from "./workflow-gate-integrity-detector.js";
@@ -365,6 +367,38 @@ registerDetector({
   description:
     "A state setter called on the success path but not in a sibling early-return refusal/error branch, where that state gates an idle-vs-status ternary — a refusal disguised as never-attempted.",
   run: runAsymmetricStatusUpdateDetector,
+});
+
+// Seeded by a real bug fixed this session: `analyticISI` destructured
+// V_reset + refractory and then used neither, silently ignoring two
+// caller-supplied physical parameters. Its top hit on the real tree is the
+// same shape on the money path — `mintCoins(db, { …, requestId, ip })`
+// references neither, while economy_ledger has request_id + ip columns
+// waiting for them.
+registerDetector({
+  id: "unused-destructured-param",
+  label: "UnusedDestructuredParamDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description:
+    "A function destructures an object parameter but never references one of the bound names — a caller-supplied value silently dropped on the floor.",
+  run: runUnusedDestructuredParamDetector,
+});
+
+// Seeded by the ConceptArtBoard silent-failure bug: an error branch read
+// `r.data?.result?.ok` when lensRun had already unwrapped the envelope, so
+// the branch was structurally unreachable and failures rendered as nothing.
+// Cross-references each call's actual backend handler to tell a genuinely
+// dead nested read from a live flat one — see the detector's own
+// classifyBackendMacroShapes note for why that pass is required.
+registerDetector({
+  id: "dead-envelope-field-access",
+  label: "DeadEnvelopeFieldAccessDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description:
+    "A lensRun()-sourced .result.ok/.result.error read that the macro's own backend handler proves is structurally unreachable.",
+  run: runDeadEnvelopeFieldAccessDetector,
 });
 
 // Category #2 — production resource leaks (setInterval without clear,
