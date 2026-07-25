@@ -75,9 +75,15 @@ static func _test_visual_state_busy_always_wins(t: TestUtils) -> void:
 
 
 static func _test_visual_state_tier_mapping(t: TestUtils) -> void:
-	t.check_eq(ConKayPresenceState.visual_state(false, "proven"), ConKayPresenceState.STATE_PROVEN)
-	t.check_eq(ConKayPresenceState.visual_state(false, "flagged"), ConKayPresenceState.STATE_FLAGGED)
-	t.check_eq(ConKayPresenceState.visual_state(false, "reasoned"), ConKayPresenceState.STATE_REASONED)
+	t.check_eq(
+		ConKayPresenceState.visual_state(false, "proven"), ConKayPresenceState.STATE_PROVEN,
+		"a settled 'proven' verdict maps to the Proven visual state")
+	t.check_eq(
+		ConKayPresenceState.visual_state(false, "flagged"), ConKayPresenceState.STATE_FLAGGED,
+		"a settled 'flagged' verdict maps to the Flagged visual state")
+	t.check_eq(
+		ConKayPresenceState.visual_state(false, "reasoned"), ConKayPresenceState.STATE_REASONED,
+		"a settled 'reasoned' verdict maps to the Reasoned visual state")
 
 
 static func _test_visual_state_unknown_or_empty_tier_is_unverified(t: TestUtils) -> void:

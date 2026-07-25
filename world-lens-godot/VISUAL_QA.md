@@ -1,31 +1,85 @@
 # Visual QA — Godot World Lens
 
-**This project has never been opened in a real Godot editor or renderer.**
-Validation to date is **parse-and-lint-only** (`gdtoolkit` `gdparse` + `gdlint`,
-all clean). The agent proxy blocks the Godot headless binary download, so
-engine-import validation was not possible.
+**Updated 2026-07-25 — this project HAS now been run in a real Godot engine.**
+The previous header ("has never been opened in a real Godot editor or renderer",
+"the agent proxy blocks the Godot headless binary download") is **superseded**: a
+verified **Godot 4.4.stable.official.4c311cbee** binary was acquired and run
+against this project. Full record — acquisition commands, checksums, real engine
+output, licensing, and the CAN/CANNOT-verify table — is in
+**`docs/GODOT_RUNTIME.md`**.
 
-This file is the queue of every claim that requires **eyes on a real machine**
-before it can be asserted anywhere. **No document in this repo — including
-`docs/GODOT_INTEGRATION.md` — makes any visual-quality claim. All such claims
-live only here, unverified, until checked off below.**
+What that changed:
+
+- **Engine-level validation is no longer a human-eyes item.** It is machine-checked
+  and reproducible (§ *Machine-verified* below).
+- **It immediately found real defects** that `gdlint` structurally cannot see: a
+  missing required argument that meant the whole GDScript test suite had never
+  compiled (fixed), plus — once the suite could finally run — **4 failing test
+  suites and 1 runtime type error** that remain open. See `docs/GODOT_RUNTIME.md`
+  §3.4. Those are logic bugs, not visual QA; they are not tracked in this file.
+
+**What has NOT changed:** headless Godot installs `RasterizerDummy` and draws
+nothing at all. Every *rendering, layout, performance and feel* claim below is
+still unverified and still needs eyes on a real machine with a GPU. "The project
+imports and every script compiles" and "it looks right" are different claims —
+only the first one is now settled.
+
+This file remains the queue of every claim that requires **eyes on a real
+machine**. **No document in this repo — including `docs/GODOT_INTEGRATION.md` —
+makes any visual-quality claim. All such claims live only here, unverified, until
+checked off below.**
 
 ## How to run the QA pass
 
-1. Install Godot 4.4.x (editor + export templates) on a machine with a GPU.
-2. `godot --path world-lens-godot --editor` (or open the project in the editor).
-3. First: `godot --headless --path world-lens-godot --import --quit` and fix any
-   import errors — this is the engine-import validation the CI proxy blocked.
+1. Get the engine: `node scripts/fetch-godot.mjs` (checksum-verified; writes to the
+   gitignored `.godot-runtime/bin/godot`). Then `GD=$PWD/.godot-runtime/bin/godot`.
+   For the *visual* pass you need this on a machine **with a GPU and a display**,
+   plus export templates if you intend to export.
+2. Re-run the machine checks first — they are fast and they gate everything else:
+   ```bash
+   $GD --headless --path world-lens-godot --import          # separate pass, always
+   $GD --headless --path world-lens-godot --script res://tests/run_all.gd
+   ```
+   > Never fold the import into a run with `--quit` / `--quit-after 1`
+   > ([godot#77508](https://github.com/godotengine/godot/issues/77508)) — import
+   > needs more than one iteration and quitting early leaves half-imported state.
+3. `$GD --path world-lens-godot --editor` (or open the project in the editor) for
+   everything below.
 4. Point `boot.gd`'s `gateway_url` / `auth_token` / `world_id` at a running
    Concord server **with the gateway mounted** (see the Integration TODO in
    `docs/GODOT_INTEGRATION.md` — the gateway is not mounted yet).
 
+## Machine-verified (no longer needs human eyes)
+
+Reproduce with the commands in `docs/GODOT_RUNTIME.md` §3.5. Engine:
+`4.4.stable.official.4c311cbee`.
+
+- [x] **Project imports without errors** — `--headless --import` exits 0, no
+      project-attributable errors. (The `progress_dialog.cpp` lines are engine-side
+      headless noise: a project containing zero files emits the identical block.)
+- [x] **Headless editor open is clean** — `--headless -e --quit` exits 0.
+- [x] **All 64 `.gd` files parse and compile** — per-file
+      `--headless --check-only --script`, 64/64 clean *after* fixing the `check_eq()`
+      arity defect this check found.
+- [x] **`boot.tscn` loads as the main scene and `boot.gd::_ready` runs without
+      runtime errors** — `--quit-after 60` exits 0. *(Headless caveat: this proves
+      the scene instantiates and the script executes. It proves nothing about what
+      is drawn.)*
+- [x] **No missing-resource / broken `preload` paths** — every `res://` literal in
+      every `.gd` and `.tscn` resolves on disk (0 missing). The one apparent miss,
+      `res://world/chunks/chunk_`, is the prefix of the runtime format string at
+      `world/chunk_manager.gd:32`, not a static path.
+- [x] **The GDScript test suite executes** — 26 suites / 567 checks now actually
+      run. 22 pass, **4 fail**; those 4 plus 1 runtime type error are open logic
+      bugs tracked in `docs/GODOT_RUNTIME.md` §3.4, not here.
+
 ## Checklist (all UNVERIFIED)
 
 ### Engine / project
-- [ ] Project imports without errors (`--import --quit` exits 0).
-- [ ] `boot.tscn` opens as the main scene; `boot.gd` runs `_ready` without runtime errors.
-- [ ] No missing-resource warnings for the `preload` paths in `boot.gd`.
+- [ ] Project opens in the **graphical** editor without errors or missing-resource
+      warnings (headless import passing does not prove the editor UI path).
+- [ ] Export templates install and `--export-release` produces a runnable build
+      (needs an `export_presets.cfg` — the project has none yet).
 
 ### Networking
 - [ ] `GatewayClient` connects to a live `/godot-ws` and receives `hello` after `auth`.
