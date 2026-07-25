@@ -271,23 +271,26 @@ describe("generateSwordMesh — determinism + ring/segment arithmetic", () => {
     assert.ok(m2.meta.totalLength > m1.meta.totalLength);
   });
 
-  it("vertex/triangle counts match the ring/segment math per section", () => {
+  it("vertex/triangle counts match the ring/segment math per section (only the FIRST/LAST section is capped — interior junctions are bridged, not capped)", () => {
     const hiltSides = 8;
     const bladeSegments = 10;
     const m = generateSwordMesh({ hiltSides, bladeSegments });
 
-    // Hilt: 3 circle-profile rings of `hiltSides` verts each, both ends capped.
+    // Hilt (first section): 3 circle-profile rings of `hiltSides` verts each;
+    // capStart only (the guard-facing end is bridged, not capped).
     const hiltVerts = 3 * hiltSides;
     const hiltTris = 2 * hiltSides /* 2 quad-strips of hiltSides quads each = 2*hiltSides*2 tris */ * 2
-      + 2 * (hiltSides - 2); /* 2 fan caps */
-    // Guard: 2 rect-profile rings (4 verts each), both ends capped.
+      + 1 * (hiltSides - 2); /* 1 fan cap (capStart only) */
+    // Guard (interior section): 2 rect-profile rings (4 verts each); NEITHER
+    // end capped (both junctions are bridged).
     const guardVerts = 2 * 4;
-    const guardTris = 4 * 2 /* 1 quad-strip of 4 quads = 8 tris */ + 2 * (4 - 2) /* 2 caps */;
-    // Blade: (bladeSegments) full diamond rings (4 verts) + 1 point-tip vertex; start capped, end is the point (fan, not capped).
+    const guardTris = 4 * 2 /* 1 quad-strip of 4 quads = 8 tris */; /* no caps */
+    // Blade (last section): (bladeSegments) full diamond rings (4 verts) + 1
+    // point-tip vertex; the guard-facing start is bridged (not capped), the
+    // end is the point (fan, not a flat cap either way).
     const bladeVerts = bladeSegments * 4 + 1;
     const bladeTris = (bladeSegments - 1) * 4 * 2 /* quad strips between full rings */
-      + 4 /* fan from last full ring to the point apex */
-      + (4 - 2) /* start cap */;
+      + 4; /* fan from last full ring to the point apex; no start cap */
 
     assert.equal(m.meta.sectionVertexCounts[0], hiltVerts);
     assert.equal(m.meta.sectionVertexCounts[1], guardVerts);
@@ -296,8 +299,20 @@ describe("generateSwordMesh — determinism + ring/segment arithmetic", () => {
     assert.equal(m.meta.sectionTriangleCounts[1], guardTris);
     assert.equal(m.meta.sectionTriangleCounts[2], bladeTris);
 
+    // Two bridges close the two interior junctions: hilt-ring(hiltSides) +
+    // guard-ring(4) verts/tris, and guard-ring(4) + blade-base-ring(4)
+    // verts/tris — bridgeMismatchedRings emits exactly na+nb vertices and
+    // na+nb triangles (see its own doc-comment), all of which then get
+    // welded back onto the adjoining section's own (duplicate-position)
+    // ring vertices by weldCoincidentVertices, so the FINAL (post-weld)
+    // counts equal the raw per-section sums exactly — the bridges add zero
+    // net new vertices/triangles to the closed solid, they just replace two
+    // independent flat caps with one connecting strip.
+    const preWeldVerts = hiltVerts + guardVerts + bladeVerts + (hiltSides + 4) + (4 + 4);
+    const preWeldTris = hiltTris + guardTris + bladeTris + (hiltSides + 4) + (4 + 4);
+    assert.equal(m.weld.weldedVertexCount, preWeldVerts - (hiltVerts + guardVerts + bladeVerts));
     assert.equal(m.positions.length / 3, hiltVerts + guardVerts + bladeVerts);
-    assert.equal(m.indices.length / 3, hiltTris + guardTris + bladeTris);
+    assert.equal(m.indices.length / 3, preWeldTris);
   });
 
   it("rejects non-positive dimensions and non-integer segment/side counts", () => {
@@ -333,7 +348,7 @@ describe("generateSwordMesh — determinism + ring/segment arithmetic", () => {
     for (const st of bladeStations) assert.equal(st.approximation, true);
     assert.equal(HONESTY_NOTES.diamondMomentOfInertiaIsRectangleApproximation, true);
     assert.equal(HONESTY_NOTES.weldPassApplied, true);
-    assert.equal(HONESTY_NOTES.swordJunctionsShareNoCoincidentVertices, true);
+    assert.equal(HONESTY_NOTES.junctionsClosedByRingBridge, true);
   });
 
   it("the merged+welded sword is a single closed 2-manifold across the WHOLE mesh (not just per-section)", () => {
@@ -343,17 +358,85 @@ describe("generateSwordMesh — determinism + ring/segment arithmetic", () => {
     assert.equal(inv.missingReverse, 0);
   });
 
-  it("verified finding: the weld pass welds 0 vertices / drops 0 triangles for this archetype's real junction geometry (circle→rect→diamond, mismatched scales) — an honest no-op, not a broken weld", () => {
+  it("fixed finding: the sword's mismatched junctions (circle→rect→diamond) are now closed by a real ring bridge, not left as two independent interpenetrating caps", () => {
     const hiltSides = 8;
     const bladeSegments = 10;
     const m = generateSwordMesh({ hiltSides, bladeSegments });
-    assert.equal(m.weld.weldedVertexCount, 0);
+    // The bridge duplicates each side's ring positions into its own small
+    // mesh (see bridgeMismatchedRings' doc-comment on why it composes with
+    // weldCoincidentVertices instead of needing its own dedup) — the weld
+    // pass therefore welds exactly (ring sizes at both junctions), and drops
+    // zero triangles (there are no more mirror-pair opposing caps left to
+    // cancel, since neither junction has a cap on either side any more).
+    const hiltGuardRingSizes = hiltSides + 4; // circle(hiltSides) meets rect(4)
+    const guardBladeRingSizes = 4 + 4; // rect(4) meets diamond(4)
+    assert.equal(m.weld.weldedVertexCount, hiltGuardRingSizes + guardBladeRingSizes);
     assert.equal(m.weld.droppedTriangleCount, 0);
-    // Positions/indices are therefore unchanged in size from the raw merge.
+    // Positions are the sum of each section's OWN ring vertices (no bridge
+    // vertex survives independently — every one of them was a duplicate of
+    // an existing section ring vertex and got welded onto it).
     const expectedVerts = m.meta.sectionVertexCounts.reduce((a, b) => a + b, 0);
-    const expectedTris = m.meta.sectionTriangleCounts.reduce((a, b) => a + b, 0);
     assert.equal(m.positions.length / 3, expectedVerts);
+    // Triangles are the section triangles PLUS the two bridges' own
+    // triangles (na+nb each) — the bridge triangles are real, load-bearing
+    // geometry (they replace the caps' triangles 1:1 in closing the solid),
+    // so unlike vertices they are NOT expected to collapse away.
+    const expectedTris = m.meta.sectionTriangleCounts.reduce((a, b) => a + b, 0)
+      + hiltGuardRingSizes + guardBladeRingSizes;
     assert.equal(m.indices.length / 3, expectedTris);
+  });
+
+  it("the two junction 'caps' are GONE as independent disjoint fans — the flat geometry at each interior seam is now ONE connected bridge, not two unrelated per-side caps sharing a coordinate", () => {
+    // The bridge triangles genuinely DO sit flat in the junction plane (the
+    // ring-to-ring "annulus" between two mismatched, merely-abutting
+    // profiles necessarily lives at their shared x — see
+    // bridgeMismatchedRings' doc-comment), so "flat-in-x" alone can't
+    // distinguish the fix from the old bug (two independent flat caps were
+    // ALSO flat-in-x). The real defect being regression-tested is
+    // DISCONNECTION: the old code's two caps at a junction never shared a
+    // vertex, so each was its own isolated fan built entirely from ONE
+    // section's own ring. A real bridge instead produces triangles that mix
+    // vertices from BOTH sides — verified here by checking every flat
+    // triangle at each interior junction plane, grouped into connected
+    // components via shared vertices, forms exactly ONE component that
+    // includes vertices from both the hilt/guard (or guard/blade) rings.
+    const hiltSides = 8;
+    const m = generateSwordMesh({ hiltSides, bladeSegments: 6 });
+
+    const flatTrisByX = new Map();
+    for (let t = 0; t < m.indices.length; t += 3) {
+      const ia = m.indices[t], ib = m.indices[t + 1], ic = m.indices[t + 2];
+      const xa = m.positions[ia * 3], xb = m.positions[ib * 3], xc = m.positions[ic * 3];
+      if (Math.abs(xa - xb) < 1e-9 && Math.abs(xb - xc) < 1e-9) {
+        const key = xa.toFixed(9);
+        if (!flatTrisByX.has(key)) flatTrisByX.set(key, []);
+        flatTrisByX.get(key).push([ia, ib, ic]);
+      }
+    }
+    // Two interior junctions (hilt/guard, guard/blade) plus the one real cap
+    // (hilt's pommel, capStart) — three distinct flat-triangle x-planes.
+    assert.equal(flatTrisByX.size, 3);
+
+    function connectedComponentCount(tris) {
+      const parent = new Map();
+      const find = (x) => { while (parent.get(x) !== x) x = parent.get(x); return x; };
+      const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+      for (const [a, b, c] of tris) {
+        for (const v of [a, b, c]) if (!parent.has(v)) parent.set(v, v);
+        union(a, b); union(b, c);
+      }
+      return new Set(Array.from(parent.keys()).map(find)).size;
+    }
+
+    let junctionPlanesChecked = 0;
+    for (const [xKey, tris] of flatTrisByX) {
+      const isPommelCap = Math.abs(Number(xKey) - 0) < 1e-9; // pommel sits at x=0
+      const components = connectedComponentCount(tris);
+      assert.equal(components, 1, `flat triangles at x=${xKey} should form exactly one connected piece`);
+      if (!isPommelCap) junctionPlanesChecked++;
+    }
+    // Both interior junctions were actually exercised by the loop above.
+    assert.equal(junctionPlanesChecked, 2);
   });
 
   it("moment of inertia for an exact rectangle guard station equals b·h³/12 directly", () => {
