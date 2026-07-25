@@ -78,6 +78,18 @@ export function mintPersonaDtu(db, { authorUserId, npcId, summary }) {
   return { ok: true, dtuId, sha256: ser.sha256 };
 }
 
+// NOTE (unused-destructured-param audit, 2026-07): `installerUserId` is real
+// production data (server.js's `npc_persona.install` macro passes the
+// authenticated actor) but this function does not yet do anything with it.
+// The module header claims this feature "Reuses ... the mentor royalty
+// cascade," which would mean an install should register a citation against
+// the origin persona DTU so its author earns CC per the constitutional
+// royalty-cascade invariants (server/economy/royalty-cascade.js) — but that
+// is a money-path change (citation-consent rules, royalty-cascade math) and
+// is deliberately NOT wired here without explicit authorization; see
+// CLAUDE.md's "money/auth invariants are human-escalation" rule. Left
+// unresolved rather than guessed at. Kept in the signature (not stripped)
+// so the gap stays visible instead of being silently erased.
 export function installPersona(db, { dtuId, worldId, installerUserId, x = 0, z = 0 }) {
   if (!db || !dtuId || !worldId) return { ok: false, reason: "missing_inputs" };
   const dtu = db.prepare(`SELECT data AS meta_json FROM dtus WHERE id = ?`).get(dtuId);

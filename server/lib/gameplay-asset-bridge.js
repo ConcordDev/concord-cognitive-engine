@@ -58,6 +58,19 @@ function _systemActor(id) {
   return { kind: "system", id: id ?? null };
 }
 
+// registerAsset() has two descriptor slots for free-form context: `category`
+// (a single taxonomic label — see evo-asset/source-loaders.js's convention of
+// using an affinity/kind string) and `tags` (a string[]). onPlayerCraft/
+// onLootDropped callers pass a human-readable `label` (e.g. an item name) and
+// a `payload` carrying the material profile — fold both into those two slots
+// instead of silently discarding them, matching how every other registerAsset
+// caller in this codebase populates them.
+function _descriptorFields(label, payload) {
+  const tags = Array.isArray(payload?.effect_tags) ? [...payload.effect_tags] : [];
+  if (label) tags.push(String(label));
+  return { category: payload?.affinity ?? null, tags };
+}
+
 /**
  * Register a freshly spawned creature blueprint as an asset. Each unique
  * (worldId, baselineId, topology) tuple becomes a single asset that
@@ -127,6 +140,7 @@ export function onPlayerCraft(db, { userId, recipeId, itemId, label, payload, qu
       sourceId,
       localPath: _gameplayPath(ASSET_KIND.CRAFT, sourceId),
       qualityLevel: quality,
+      ..._descriptorFields(label, payload),
     });
     if (r?.id) recordInteraction(db, r.id, { kind: "user", id: userId ?? null }, "craft", 1.2);
     return r;
@@ -143,13 +157,20 @@ export function onLootDropped(db, { lootId, killerId, victimId, label, payload }
       sourceId,
       localPath: _gameplayPath(ASSET_KIND.DROP, sourceId),
       qualityLevel: 0,
+      ..._descriptorFields(label, payload),
     });
     if (r?.id) recordInteraction(db, r.id, _systemActor(killerId), "drop", 1.0);
     return r;
   });
 }
 
-export function onCombatHit(db, { attackerId, victimId, weapon, damage, isCrit }) {
+// Callers pass the full combat-hit context (the same shape used for
+// temperament/anti-cheat elsewhere in the route); this bridge only needs the
+// attacker (who gets credited with the interaction) and the weapon. There is
+// no target-id column on evo_asset_interactions — weapon evolution scoring
+// tracks usage frequency/quality, not who was hit — so `victimId` is
+// intentionally not part of this signature.
+export function onCombatHit(db, { attackerId, weapon, damage, isCrit }) {
   if (!db || !weapon || !weapon.id) return null;
   return _safe(() => {
     // Each weapon used in combat earns interaction weight scaling with

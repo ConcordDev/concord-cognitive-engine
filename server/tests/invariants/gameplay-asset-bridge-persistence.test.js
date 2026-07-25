@@ -116,6 +116,10 @@ test("onPlayerCraft persists a 'craft' row + craft interaction", () => {
   assert.strictEqual(rows.length, 1);
   assert.strictEqual(rows[0].quality_level, 2);
   assert.strictEqual(interactionCount(r.id), 1);
+  // The caller-supplied `label` must actually be persisted (was silently
+  // dropped before the unused-destructured-param fix), not just accepted.
+  assert.ok(JSON.parse(rows[0].tags_json).includes("Iron Sword"),
+    "label must land in tags_json, not be discarded");
 });
 
 test("onLootDropped persists a 'drop' row + drop interaction", () => {
@@ -124,13 +128,19 @@ test("onLootDropped persists a 'drop' row + drop interaction", () => {
     killerId: "player-1",
     victimId: "creature-X",
     label: "Golden Antler",
-    payload: { rarity: "rare" },
+    payload: { rarity: "rare", affinity: "bio", effect_tags: ["healing"] },
   });
   assert.ok(r?.id);
   const rows = rowsOfKind("drop");
   assert.strictEqual(rows.length, 1);
   assert.strictEqual(rows[0].source, "concordia");
   assert.strictEqual(interactionCount(r.id), 1);
+  // The caller-supplied `label` + `payload` (affinity/effect_tags) must
+  // actually be persisted, not silently discarded.
+  assert.strictEqual(rows[0].category, "bio");
+  const tags = JSON.parse(rows[0].tags_json);
+  assert.ok(tags.includes("healing"), "payload.effect_tags must land in tags_json");
+  assert.ok(tags.includes("Golden Antler"), "label must land in tags_json");
 });
 
 test("onCombatHit records an interaction on the existing weapon asset", () => {

@@ -58,6 +58,15 @@ export function classify({ source = "unknown", kind = "unknown", signals = {} } 
   const reasons = [];
   const k = String(kind).toLowerCase();
 
+  // Record provenance for the audit trail. `source` never changes the
+  // severity verdict (a given kind must classify the same regardless of
+  // where it came from, for consistency across intake paths) but it was
+  // previously accepted and silently discarded — every real caller
+  // (economy-anomaly-cycle.js) passes a real source, so drop it into
+  // `reasons` where downstream consumers (error-alerting payload `fields`)
+  // can see it.
+  if (source && String(source) !== "unknown") reasons.push(`source:${source}`);
+
   // Hard escalators — any of these forces Critical regardless of kind.
   if (signals.dataLoss) reasons.push("data_loss_signal");
   if (signals.security) reasons.push("security_signal");

@@ -68,6 +68,22 @@ describe("Phase 0.5 — material profiles", () => {
     assert.equal(n1, n2);
     assert.match(n1, /\w/);
   });
+
+  it("composeMaterialName uses the caller's fallback description when both parents are unknown", () => {
+    // Was previously discarded (a real caller-supplied `fallback` string was
+    // accepted but never read) — both parents null means there's nothing
+    // distinctive to compose a name from, so the honest behavior is to use
+    // the caller's own description instead of a fully-generic composed name.
+    const n = composeMaterialName(null, null, { fallback: "boar × wolf hybrid" });
+    assert.equal(n, "boar × wolf hybrid");
+  });
+
+  it("composeMaterialName ignores fallback when a real parent profile is given", () => {
+    const a = profileFor("bear-meat");
+    const b = profileFor("wolf-meat");
+    const n = composeMaterialName(a, b, { seedKey: "p", fallback: "should not be used" });
+    assert.notEqual(n, "should not be used");
+  });
 });
 
 describe("Phase 0.5 — hybrid drop composition (empty-loot bug fix)", () => {

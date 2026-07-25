@@ -31,7 +31,12 @@ export function computeSubstrateGravity(db, { nowMs = Date.now() } = {}) {
   try {
     const totalRecords = db.prepare(`SELECT COUNT(*) AS n FROM dtus`).get().n || 0;
     const creators = db.prepare(`SELECT COUNT(DISTINCT owner_user_id) AS n FROM dtus WHERE owner_user_id IS NOT NULL`).get().n || 0;
-    const last7dRecords = db.prepare(`SELECT COUNT(*) AS n FROM dtus WHERE created_at >= datetime('now','-7 days')`).get().n || 0;
+    // Bind the 7-day cutoff off the injected `nowMs` (not SQLite's live
+    // `datetime('now')`) so callers can pass a fixed clock and get a
+    // deterministic, testable window instead of one that silently tracks
+    // the real wall clock regardless of what was injected.
+    const cutoffEpochS = Math.floor(nowMs / 1000) - 7 * 24 * 3600;
+    const last7dRecords = db.prepare(`SELECT COUNT(*) AS n FROM dtus WHERE created_at >= datetime(?, 'unixepoch')`).get(cutoffEpochS).n || 0;
     const recordsPerCreator = creators ? Math.round((totalRecords / creators) * 100) / 100 : 0;
     return { ok: true, totalRecords, creators, recordsPerCreator, last7dRecords };
   } catch (e) {

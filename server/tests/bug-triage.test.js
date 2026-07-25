@@ -55,3 +55,14 @@ test("reasons always explain the verdict", () => {
   const r = classify({ kind: "dupe" });
   assert.ok(Array.isArray(r.reasons) && r.reasons.length > 0);
 });
+
+test("a real source is recorded into reasons for the audit trail, without changing severity", () => {
+  const withSource = classify({ source: "econ_anomaly", kind: "wash_trade" });
+  assert.ok(withSource.reasons.includes("source:econ_anomaly"));
+  assert.equal(withSource.severity, SEVERITY.CRITICAL, "wash_trade is critical regardless of source");
+
+  // Same kind, no source supplied — same severity, no source reason.
+  const noSource = classify({ kind: "wash_trade" });
+  assert.equal(noSource.severity, withSource.severity);
+  assert.ok(!noSource.reasons.some((r) => r.startsWith("source:")));
+});

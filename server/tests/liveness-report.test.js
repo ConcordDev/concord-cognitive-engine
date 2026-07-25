@@ -26,6 +26,23 @@ test("substrate gravity: records, distinct creators, records-per-creator", () =>
   assert.equal(g.last7dRecords, 4);   // all just inserted
 });
 
+test("substrate gravity: last7dRecords honors the injected nowMs clock, not the live wall clock", () => {
+  // A record created "now" (real wall clock) should be excluded from the
+  // 7-day window once we inject a `nowMs` far enough in the future — proving
+  // the SQL cutoff is actually bound to the injected clock and not to
+  // SQLite's own datetime('now').
+  const db = dbWithDtus([{ owner: "u1" }]);
+  const farFutureNowMs = Date.now() + 8 * 24 * 3600 * 1000;
+  const g = computeSubstrateGravity(db, { nowMs: farFutureNowMs });
+  assert.equal(g.ok, true);
+  assert.equal(g.totalRecords, 1);
+  assert.equal(g.last7dRecords, 0, "record is >7 real days older than the injected future nowMs");
+
+  // Sanity: the same db against the real (default) clock still counts it.
+  const gReal = computeSubstrateGravity(db);
+  assert.equal(gReal.last7dRecords, 1);
+});
+
 test("gravity is graceful when the dtus table is absent", () => {
   const g = computeSubstrateGravity(new Database(":memory:"));
   assert.equal(g.ok, false);

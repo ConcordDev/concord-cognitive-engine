@@ -80,6 +80,11 @@ export function setMilestoneStatus(db, { planId, milestoneId, status } = {}) {
   if (!["pending", "done", "slipped", "abandoned"].includes(status)) return { ok: false, reason: "bad_status" };
   const ms = db.prepare(`SELECT id, plan_id FROM lh_milestones WHERE id = ?`).get(milestoneId);
   if (!ms) return { ok: false, reason: "milestone_not_found" };
+  // The caller-supplied planId scopes the write: a milestoneId that resolves
+  // but belongs to a DIFFERENT plan than claimed must not be silently
+  // updated (the earlier code accepted `planId` but never checked it against
+  // the milestone's real plan_id).
+  if (planId && ms.plan_id !== planId) return { ok: false, reason: "milestone_plan_mismatch" };
   let planDone = false;
   try {
     db.transaction(() => {
