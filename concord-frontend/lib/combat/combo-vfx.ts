@@ -14,6 +14,8 @@
  * result into the polish-pass channels. Pure; no IO.
  */
 
+import { recordAssetInteraction } from '@/lib/evo-asset/loader';
+
 export interface ComboVfx {
   particleCount:    number;          // additional ParticleEffects emit count
   shakeAmplitude:   number;          // emitScreenShake intensity (1-10)
@@ -133,20 +135,15 @@ export function dispatchComboVfx(opts: {
       detail: { opacity: vfx.flashOpacity, durationMs: 700, comboName: opts.comboName },
     }));
   }
-  // EvoAsset interaction record so high-tier combos earn promotion candidates
+  // EvoAsset interaction record so high-tier combos earn promotion
+  // candidates. Routed through the shared recordAssetInteraction (rather
+  // than a duplicated inline fetch) so repeated triggers on the same combo
+  // seed within a session share its negative-result cache + in-flight guard
+  // — see lib/evo-asset/loader.ts's "Interaction-recording noise gate" for
+  // why that gating exists (it kills the doomed-request storm the same
+  // pattern caused in BuildingRenderer3D). Same fire-and-forget contract as
+  // before: this function never awaits or surfaces the result.
   if (opts.vfxSeed) {
-    try {
-      void fetch('/api/evo-asset/interaction', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          source: 'combat_combo',
-          sourceId: opts.vfxSeed,
-          action: `combo_trigger_t${opts.tier}`,
-          weight: opts.tier * 0.5,
-        }),
-      }).catch(() => { /* fire-and-forget */ });
-    } catch { /* ignore */ }
+    recordAssetInteraction('combat_combo', opts.vfxSeed, `combo_trigger_t${opts.tier}`, opts.tier * 0.5);
   }
 }
