@@ -210,13 +210,42 @@ export async function terminateAllForTest() {
   _poolReady = false;
   const toKill = workers.splice(0, workers.length);
   await Promise.all(toKill.map((w) => new Promise((resolve) => {
-    const done = () => resolve();
-    w.once("exit", done);
-    try { w.postMessage({ type: "shutdown" }); } catch { done(); }
+    // Root-caused (2026-07-25, same investigation as workers/heartbeat-pool.js's
+    // identical `terminateAllForTest`): the worker calls `process.exit(0)`
+    // within a couple ms of the shutdown postMessage — worker-side teardown
+    // is not the slow part. The hang is main-thread-side and specific to
+    // `node --test`: with the worker AND this fallback timer both `.unref()`'d,
+    // there's nothing left ref'd once teardown starts, so the event loop can
+    // decide it has "nothing to do" and let the process wind down WITHOUT ever
+    // delivering the worker's buffered "exit" event back to this listener —
+    // leaving this Promise permanently pending until `--test-force-exit`
+    // yanks the process, which node:test reports as "Promise resolution is
+    // still pending but the event loop has already resolved" (confirmed via
+    // a minimal repro: `initPool()` + `terminateAllForTest()` alone, no task
+    // ever dispatched, reproduces the hang in <100ms under `node --test`).
+    // Re-ref the worker for this teardown-only wait so the loop stays alive
+    // long enough to observe the real exit, and make the fallback a hard
+    // resolve path (not just a `.terminate()` call relying on yet another
+    // "exit" event) so this can never hang indefinitely even if "exit" is
+    // somehow lost.
+    w.ref();
+    let fallback;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(fallback);
+      resolve();
+    };
+    w.once("exit", finish);
+    try { w.postMessage({ type: "shutdown" }); } catch { finish(); }
     // Fallback: if the worker doesn't self-exit promptly (e.g. it's mid-task
     // and the message is queued behind other work), force it after a short
     // grace period rather than hanging the test teardown itself.
-    setTimeout(() => { w.terminate().catch(() => {}); }, 2000).unref();
+    fallback = setTimeout(() => {
+      try { w.terminate(); } catch { /* already dead */ }
+      finish();
+    }, 2000);
   })));
   for (const task of queue) {
     try { task.reject(new Error("pool_shutdown")); } catch { /* listener may be gone */ }
