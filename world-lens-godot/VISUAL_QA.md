@@ -14,9 +14,15 @@ What that changed:
   and reproducible (§ *Machine-verified* below).
 - **It immediately found real defects** that `gdlint` structurally cannot see: a
   missing required argument that meant the whole GDScript test suite had never
-  compiled (fixed), plus — once the suite could finally run — **4 failing test
-  suites and 1 runtime type error** that remain open. See `docs/GODOT_RUNTIME.md`
-  §3.4. Those are logic bugs, not visual QA; they are not tracked in this file.
+  compiled, plus — once the suite could finally run — 4 failing test suites and 1
+  runtime type error. See `docs/GODOT_RUNTIME.md` §3.4. Those were logic bugs, not
+  visual QA, and are **now fixed**: the suite currently runs **26/26 suites green**
+  with no runtime type error in the engine log.
+- **Export is now machine-verified too** (2026-07-25). The project has a real
+  `export_presets.cfg` and a headless `--export-release` genuinely produces a
+  runnable Linux binary and a Web/WASM bundle. Read the limit of that claim
+  carefully: **export proves PACKAGING, not APPEARANCE.** Nothing below moved out
+  of the human-eyes queue because of it except the packaging item itself.
 
 **What has NOT changed:** headless Godot installs `RasterizerDummy` and draws
 nothing at all. Every *rendering, layout, performance and feel* claim below is
@@ -33,8 +39,12 @@ checked off below.**
 
 1. Get the engine: `node scripts/fetch-godot.mjs` (checksum-verified; writes to the
    gitignored `.godot-runtime/bin/godot`). Then `GD=$PWD/.godot-runtime/bin/godot`.
-   For the *visual* pass you need this on a machine **with a GPU and a display**,
-   plus export templates if you intend to export.
+   For the *visual* pass you need this on a machine **with a GPU and a display**.
+   To export, also fetch the matching templates (opt-in, 1.12 GiB download; the
+   subset below is 626 MB on disk vs. 1.97 GB for all platforms):
+   ```bash
+   node scripts/fetch-godot.mjs --export-templates --templates-subset linux,web
+   ```
 2. Re-run the machine checks first — they are fast and they gate everything else:
    ```bash
    $GD --headless --path world-lens-godot --import          # separate pass, always
@@ -69,17 +79,32 @@ Reproduce with the commands in `docs/GODOT_RUNTIME.md` §3.5. Engine:
       every `.gd` and `.tscn` resolves on disk (0 missing). The one apparent miss,
       `res://world/chunks/chunk_`, is the prefix of the runtime format string at
       `world/chunk_manager.gd:32`, not a static path.
-- [x] **The GDScript test suite executes** — 26 suites / 567 checks now actually
-      run. 22 pass, **4 fail**; those 4 plus 1 runtime type error are open logic
-      bugs tracked in `docs/GODOT_RUNTIME.md` §3.4, not here.
+- [x] **The GDScript test suite executes** — 26 suites now actually run, and as of
+      2026-07-25 **all 26 pass** with no runtime type error in the engine log. (The
+      4 failures + 1 runtime type error this check originally surfaced were real,
+      and were fixed; see `docs/GODOT_RUNTIME.md` §3.4.)
+- [x] **Export templates install and `--export-release` produces a runnable
+      build** — `export_presets.cfg` now exists (Linux/X11 + Web). Headless export
+      exits 0 and emits `world-lens.x86_64` + `world-lens.pck`; the **exported
+      binary was then run**, `boot.tscn` came up clean (exit 0), and the full test
+      suite was re-run *from inside the exported PCK* — 26/26 green. A Web export
+      also succeeds (41.8 MB `index.wasm` + `index.js`/`index.pck`/`index.html`).
+      ⚠️ **Scope of this claim:** it proves the project packs, links against real
+      export templates, and the packed game boots and runs its own logic. It proves
+      **nothing** about what is drawn — the exported binary was itself run
+      `--headless`, so no pixel has been rendered here either.
 
 ## Checklist (all UNVERIFIED)
 
 ### Engine / project
 - [ ] Project opens in the **graphical** editor without errors or missing-resource
       warnings (headless import passing does not prove the editor UI path).
-- [ ] Export templates install and `--export-release` produces a runnable build
-      (needs an `export_presets.cfg` — the project has none yet).
+- [ ] An exported build launches **with a window and a GPU** and draws its first
+      frame. Export packaging is verified (above); a real windowed launch is not.
+- [ ] The **Web** export actually loads in a browser. The bundle builds, but it has
+      never been served or opened — and it is exported with `thread_support=true`,
+      which requires cross-origin-isolation headers (`COOP`/`COEP`) from whatever
+      serves it, or it will fail to start at runtime. Untested.
 
 ### Networking
 - [ ] `GatewayClient` connects to a live `/godot-ws` and receives `hello` after `auth`.
@@ -208,12 +233,13 @@ process.** Nothing below is asserted anywhere else in the repo.
       this entire path is unreachable end-to-end until that mount happens.
       The pure `snapback_position` logic is unit-tested against a
       hand-constructed nack payload only, never a real one.
-- [ ] `tests/run_all.gd` and every `tests/test_*.gd` file actually execute
-      and pass under `godot --headless --path world-lens-godot --script res://tests/run_all.gd`
-      — they have only ever been `gdparse`d, never run. It is possible (if
-      unlikely, given how mechanical the mirrored math is) that a real engine
-      surfaces a runtime error (typed-array coercion, `String.join` signature
-      mismatch, etc.) that static parsing cannot catch.
+- [x] ~~`tests/run_all.gd` and every `tests/test_*.gd` file actually execute and
+      pass~~ — **DONE, and the suspicion was correct.** They now run under
+      `godot --headless --path world-lens-godot --script res://tests/run_all.gd`
+      (26/26 green), and the real engine did surface exactly the class of defect
+      predicted here that static parsing cannot catch. Also re-run from inside an
+      exported PCK, which additionally proves nothing in the suite depends on
+      loose source files being present at runtime.
 
 ### DTU props (master-spec §3.3, units B6-B9 — `world/dtu_prop_renderer.gd` / `world/dtu_prop_interaction.gd`)
 

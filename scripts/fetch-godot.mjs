@@ -24,12 +24,26 @@
  *   node scripts/fetch-godot.mjs --source oci    # force a specific source
  *   node scripts/fetch-godot.mjs --dest <dir>
  *
+ *   node scripts/fetch-godot.mjs --export-templates
+ *       Opt-in, SEPARATE, much larger fetch (1.12 GiB download) of the matching
+ *       export templates, needed only to run `--export-release`. Not part of the
+ *       default fetch: the engine alone validates import/parse/run/tests, and
+ *       templates cost ~10x the disk. See --templates-subset if disk is tight.
+ *   node scripts/fetch-godot.mjs --export-templates --check
+ *   node scripts/fetch-godot.mjs --export-templates --templates-subset linux,web
+ *   node scripts/fetch-godot.mjs --export-templates --templates-dest <dir>
+ *
  * Network is done via `curl` on purpose: Node's core https client does NOT honour
  * HTTPS_PROXY, and sandboxed/self-host environments frequently require it. curl also
  * picks up the system CA store without extra configuration.
  */
 
-import { execFileSync, execSync } from "node:child_process";
+// execFileSync ONLY — never execSync. Every external command here takes a
+// network-derived or caller-derived path/pattern, and a shell string would let
+// `$(...)`/backticks in one of them execute. Quoting is NOT a fix: JSON.stringify
+// emits double quotes, and a shell still performs command substitution inside
+// double quotes. Argv form is the fix, because no shell is involved at all.
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -74,6 +88,9 @@ function parseArgs(argv) {
     else if (a === "--dest") out.dest = path.resolve(argv[++i]);
     else if (a === "--source") out.source = argv[++i];
     else if (a === "--version") out.version = argv[++i];
+    else if (a === "--export-templates") out.exportTemplates = true;
+    else if (a === "--templates-dest") out.templatesDest = path.resolve(argv[++i]);
+    else if (a === "--templates-subset") out.templatesSubset = argv[++i];
     else if (a === "--help" || a === "-h") out.help = true;
   }
   return out;
@@ -197,7 +214,7 @@ function tryOfficial(version, workDir) {
   }
   log(`official SHA512 verified against the release's own SHA512-SUMS.txt`);
 
-  execSync(`unzip -o -q ${JSON.stringify(zipFile)} -d ${JSON.stringify(workDir)}`);
+  execFileSync("unzip", ["-o", "-q", zipFile, "-d", workDir]);
   const bin = path.join(workDir, `Godot_v${version}_linux.x86_64`);
   if (!fs.existsSync(bin)) {
     return { ok: false, source: "official", error: `zip did not contain the expected binary ${path.basename(bin)}` };
@@ -283,7 +300,7 @@ function tryOci(version, workDir) {
     }
     log(`layer sha256 matches the manifest digest (content-addressed verification OK)`);
 
-    execSync(`tar -xzf ${JSON.stringify(blobFile)} -C ${JSON.stringify(workDir)} usr/local/bin/godot`);
+    execFileSync("tar", ["-xzf", blobFile, "-C", workDir, "usr/local/bin/godot"]);
     const bin = path.join(workDir, "usr", "local", "bin", "godot");
     if (!fs.existsSync(bin)) {
       return { ok: false, source: "oci", error: "layer did not contain usr/local/bin/godot" };
@@ -293,6 +310,167 @@ function tryOci(version, workDir) {
   }
 
   return { ok: false, source: "oci", error: "all registries failed", attempts };
+}
+
+// --------------------------------------------------------------------------
+// EXPORT TEMPLATES (opt-in, --export-templates)
+//
+// Templates are what `godot --export-release` links the game against; without
+// them export cannot run at all. They are a separate, much larger artefact
+// (1.12 GiB download / 1.84 GiB extracted, all platforms) than the 57.7 MiB
+// engine, which is why this is opt-in rather than part of the default fetch.
+//
+// Same honesty contract as the engine path: the .tpz is SHA512-verified against
+// the release's own SHA512-SUMS.txt before a single byte is extracted, and an
+// unverifiable download is deleted rather than used.
+// --------------------------------------------------------------------------
+
+/**
+ * Where the engine looks for templates. Godot resolves this from its editor
+ * data dir, NOT from the project — so templates are shared across projects.
+ *
+ * NOTE ON COVERAGE: only the Linux branch has actually been executed in this
+ * repo. The darwin/win32 paths are Godot's documented locations, but they are
+ * unexercised here; pass --templates-dest explicitly on those platforms if the
+ * default turns out to be wrong.
+ */
+function godotTemplatesRoot() {
+  if (process.env.GODOT_TEMPLATE_DIR) return path.resolve(process.env.GODOT_TEMPLATE_DIR);
+  const home = os.homedir();
+  if (process.platform === "darwin") {
+    return path.join(home, "Library", "Application Support", "Godot", "export_templates");
+  }
+  if (process.platform === "win32") {
+    return path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), "Godot", "export_templates");
+  }
+  const xdg = process.env.XDG_DATA_HOME || path.join(home, ".local", "share");
+  return path.join(xdg, "godot", "export_templates");
+}
+
+/**
+ * `4.4-stable` (the release tag) is NOT the directory name Godot expects —
+ * that is `4.4.stable`, and it is authoritative inside the archive's own
+ * templates/version.txt. We read it from the archive rather than transforming
+ * the tag by hand, so a naming change upstream cannot silently misplace them.
+ */
+function readTemplateVersionFromArchive(tpz, workDir) {
+  execFileSync("unzip", ["-o", "-q", tpz, "templates/version.txt", "-d", workDir]);
+  return fs.readFileSync(path.join(workDir, "templates", "version.txt"), "utf8").trim();
+}
+
+const SUBSET_PATTERNS = {
+  linux: ["templates/linux_*"],
+  web: ["templates/web_*"],
+  windows: ["templates/windows_*"],
+  macos: ["templates/macos.zip"],
+  android: ["templates/android_*"],
+  ios: ["templates/ios.zip"],
+};
+
+function fetchExportTemplates(version, args) {
+  const root = args.templatesDest || godotTemplatesRoot();
+
+  // Resolve the on-disk version dir. If templates are already installed we can
+  // detect it without downloading 1.12 GiB, by checking the conventional name.
+  const conventional = version.replace(/-/g, ".");
+  const existingDir = path.join(root, conventional);
+  const existingVersionFile = path.join(existingDir, "version.txt");
+  if (fs.existsSync(existingVersionFile)) {
+    const installed = fs.readFileSync(existingVersionFile, "utf8").trim();
+    const present = fs.readdirSync(existingDir).filter((f) => f !== "version.txt");
+    console.log(JSON.stringify({
+      ok: true, action: "already-present", kind: "export-templates",
+      version: installed, dir: existingDir, templateCount: present.length,
+    }, null, 2));
+    return;
+  }
+  if (args.check) {
+    fail("export_templates_absent", {
+      version, expectedDir: existingDir,
+      detail: "run `node scripts/fetch-godot.mjs --export-templates` to acquire them",
+    });
+  }
+
+  const base = `https://github.com/godotengine/godot-builds/releases/download/${version}`;
+  const tpzName = `Godot_v${version}_export_templates.tpz`;
+  log(`source=official  ${base}/${tpzName}  (1.12 GiB — this is the large one)`);
+
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "fetch-godot-tpl-"));
+  try {
+    // 1. expected checksum FIRST — refuse to even keep an unverifiable archive.
+    const sumsFile = path.join(workDir, "SHA512-SUMS.txt");
+    const sumsRes = curlTo(`${base}/SHA512-SUMS.txt`, sumsFile);
+    let expected = null;
+    if (sumsRes.code === 200) {
+      const line = fs.readFileSync(sumsFile, "utf8").split("\n").find((l) => l.trim().endsWith(` ${tpzName}`));
+      if (line) expected = line.trim().split(/\s+/)[0].toLowerCase();
+    }
+    if (!expected) {
+      fail("export_templates_checksum_unavailable", {
+        version, http: sumsRes.code, host: "github.com",
+        detail: `SHA512-SUMS.txt did not yield a line for ${tpzName} — refusing to download an unverifiable 1.12 GiB archive`,
+      });
+    }
+
+    // 2. download
+    const tpz = path.join(workDir, tpzName);
+    const dl = curlTo(`${base}/${tpzName}`, tpz);
+    if (dl.code !== 200) {
+      fail("export_templates_download_failed", {
+        version, http: dl.code, host: "github.com", error: dl.error, url: `${base}/${tpzName}`,
+      });
+    }
+
+    // 3. verify before extracting anything
+    const actual = sha512File(tpz);
+    if (actual !== expected) {
+      try { fs.unlinkSync(tpz); } catch {}
+      fail("export_templates_sha512_mismatch", { version, expected, actual, detail: "archive deleted" });
+    }
+    log(`tpz SHA512 verified against the release's own SHA512-SUMS.txt`);
+
+    // 4. extract
+    const tplVersion = readTemplateVersionFromArchive(tpz, workDir);
+    const destDir = path.join(root, tplVersion);
+    fs.mkdirSync(destDir, { recursive: true });
+
+    let patterns = ["templates/*"];
+    if (args.templatesSubset) {
+      const keys = args.templatesSubset.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+      const unknown = keys.filter((k) => !SUBSET_PATTERNS[k]);
+      if (unknown.length) {
+        fail("unknown_templates_subset", { unknown, known: Object.keys(SUBSET_PATTERNS) });
+      }
+      patterns = ["templates/version.txt", ...keys.flatMap((k) => SUBSET_PATTERNS[k])];
+    }
+    log(`extracting ${args.templatesSubset ? `subset [${args.templatesSubset}]` : "all platforms"} -> ${destDir}`);
+    // argv form, no shell: `patterns` are unzip's own glob patterns and MUST reach
+    // unzip unexpanded. A shell string would let the caller's --templates-subset
+    // value reach a shell, and would also let the shell eat the globs first.
+    execFileSync("unzip", ["-o", "-q", tpz, ...patterns, "-d", workDir]);
+    const staged = path.join(workDir, "templates");
+    for (const f of fs.readdirSync(staged)) {
+      fs.renameSync(path.join(staged, f), path.join(destDir, f));
+    }
+
+    // 5. the 1.12 GiB archive has served its purpose — do not leave it on disk.
+    fs.unlinkSync(tpz);
+
+    const installed = fs.readdirSync(destDir).filter((f) => f !== "version.txt");
+    if (!installed.length) {
+      fail("export_templates_empty_after_extract", { destDir, detail: "archive extracted but no template files landed" });
+    }
+    console.log(JSON.stringify({
+      ok: true, action: "fetched", kind: "export-templates",
+      version: tplVersion, dir: destDir,
+      subset: args.templatesSubset || "all",
+      templateCount: installed.length,
+      bytesOnDisk: installed.reduce((n, f) => n + fs.statSync(path.join(destDir, f)).size, 0),
+      verifiedBy: "SHA512-SUMS.txt",
+    }, null, 2));
+  } finally {
+    try { fs.rmSync(workDir, { recursive: true, force: true }); } catch {}
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -346,6 +524,13 @@ function main() {
     });
   }
   log(`target version: ${version} (from ${args.version ? "--version" : "project.godot config/features"})`);
+
+  // Export templates are a separate artefact with its own (much larger) cost,
+  // so it gets its own subcommand rather than being folded into the engine fetch.
+  if (args.exportTemplates) {
+    fetchExportTemplates(version, args);
+    return;
+  }
 
   const destBin = path.join(args.dest, "godot");
 

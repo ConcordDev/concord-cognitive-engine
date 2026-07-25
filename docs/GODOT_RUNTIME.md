@@ -14,13 +14,21 @@ against the project. Results, in one line each:
 | All 64 `.gd` files parse/compile | **1 REAL DEFECT FOUND** (now fixed), then 64/64 clean |
 | `boot.tscn` main scene runs (`--quit-after 60`) | **PASS**, exit 0, no runtime errors |
 | Every `res://` reference resolves | **PASS** (1 apparent miss is a runtime format string, not a path) |
-| **GDScript test suite actually executed** | **26 suites / 567 checks — 22 pass, 4 FAIL** (real logic defects) |
+| **GDScript test suite actually executed** | originally **26 suites / 567 checks — 22 pass, 4 FAIL** (real logic defects); **re-measured 2026-07-25: 26/26 pass**, defects since fixed |
+| **Export packaging (`--export-release`)** | **PASS** (2026-07-25) — Linux/X11 **and** Web both export clean; exported binary boots and re-runs the suite 26/26. See §3.6. |
 | Renderer / visual / perf claims | **STILL UNVERIFIED** — headless has no rasterizer. See §6. |
 
-The 4 test failures and 1 runtime type error are **genuine findings, not noise**.
-They were invisible to `gdlint` and are exactly what has never been checkable
-before. They are reported faithfully in §3 and deliberately **not fixed** here
-(they are gameplay/logic decisions, out of scope for a runtime-acquisition pass).
+The 4 test failures and 1 runtime type error were **genuine findings, not noise**.
+They were invisible to `gdlint` and are exactly what had never been checkable
+before. They are reported faithfully in §3.4 as originally found, and were
+deliberately left unfixed by the runtime-acquisition pass itself (they are
+gameplay/logic decisions).
+
+> **Status update (2026-07-25):** all 5 have since been fixed. A re-run measured
+> **26/26 suites green, exit 0**, with no runtime type error in the engine log.
+> §3.4 is kept as the original as-found record rather than rewritten, because the
+> point of that section is *what the first real engine run surfaced*. The same
+> suite also now passes when run from inside an **exported** build (§3.6).
 
 ---
 
@@ -126,9 +134,64 @@ code-signing.
 | `Godot_v4.4-stable_export_templates.tpz` (all platforms) | 1.12 GiB | 1.84 GiB |
 | ↳ `templates/linux_release.x86_64` alone | 24.6 MiB | 66.4 MiB |
 
-Export templates were **not** installed for this pass: the project has no
-`export_presets.cfg`, so there is nothing to export. They are obtainable by the same
-routes when export verification is wanted.
+**Update 2026-07-25 — templates are now installed and export is verified.** The
+earlier note here ("not installed for this pass: the project has no
+`export_presets.cfg`, so there is nothing to export") is **superseded**. The
+project now has a real `export_presets.cfg`, and the templates were fetched by the
+same release-asset route as the engine and verified against the same published
+`SHA512-SUMS.txt`:
+
+```
+ce5801d2868f8217eb200b402918494184486dab0ea7be97f9ffab73b9283241b6e8c2e3b4ae58218b09b56743449f1d55240f9db50a045efe6186aea0fd8c2c  Godot_v4.4-stable_export_templates.tpz
+```
+
+vendor-published line vs. locally computed — **exact match**, 1,205,251,984 bytes.
+
+```bash
+# opt-in, separate from the engine fetch (it is ~20x larger)
+node scripts/fetch-godot.mjs --export-templates
+node scripts/fetch-godot.mjs --export-templates --templates-subset linux,web  # 626 MB instead of 1.97 GB
+node scripts/fetch-godot.mjs --export-templates --check                       # verify, fetch nothing
+```
+
+Real output from this repo (full, all-platform run):
+
+```json
+{
+  "ok": true,
+  "action": "fetched",
+  "kind": "export-templates",
+  "version": "4.4.stable",
+  "dir": "<templates-root>/4.4.stable",
+  "subset": "all",
+  "templateCount": 34,
+  "bytesOnDisk": 1970909877,
+  "verifiedBy": "SHA512-SUMS.txt"
+}
+```
+
+Two details worth knowing before you reimplement this by hand:
+
+- **The release tag is not the directory name.** Godot looks for `4.4.stable`, not
+  `4.4-stable`. The authoritative value is `templates/version.txt` *inside* the
+  archive; `fetch-godot.mjs` reads it from there rather than transforming the tag,
+  so an upstream naming change cannot silently misplace the templates.
+- **Templates live in the editor data dir, not the project.** On Linux that is
+  `${XDG_DATA_HOME:-~/.local/share}/godot/export_templates/4.4.stable/`. Override
+  with `GODOT_TEMPLATE_DIR` or `--templates-dest`.
+- The 1.12 GiB `.tpz` is **deleted after extraction** by the script. It is also
+  gitignored, as is every artefact discussed here (§7).
+- **`--templates-subset` saves less than you might assume.** Measured: `linux,web`
+  is **626 MB / 16 files**, not ~160 MB — `linux_*` matches all four architectures
+  (x86_64, x86_32, arm64, arm32) × debug+release, and `web_*` matches all eight
+  threading/dlink variants. Only `templates/linux_release.x86_64` (66.4 MB) is
+  needed for the Linux export verified in §3.6. Full set: **1.97 GB / 34 files**.
+- The script shells out to `unzip`/`tar` via **`execFileSync` argv form, never a
+  shell string**. This is load-bearing, not style: the paths and glob patterns are
+  network- and caller-derived, and quoting is not a fix — `JSON.stringify` emits
+  double quotes, inside which a shell still performs `$(...)` command
+  substitution. Argv form removes the shell entirely, and additionally lets the
+  glob patterns reach `unzip` unexpanded so `unzip` does its own matching.
 
 ### 2.3 Egress notes (honest record of what was blocked)
 
@@ -339,6 +402,98 @@ $GD --headless --path world-lens-godot --script res://tests/run_all.gd
 
 ---
 
+### 3.6 Export verification — first time this has ever been checkable
+
+Export had never been verified because the project had no `export_presets.cfg`.
+One now exists (`world-lens-godot/export_presets.cfg`, Linux/X11 + Web).
+
+**How the preset was written, since "do not guess at fields" matters here.** Every
+key in it was checked against the engine binary's own registered option names
+(`strings .godot-runtime/bin/godot | grep -E "^(binary_format/|texture_format/|html/|variant/|…)"`)
+rather than copied from a tutorial. Options the engine defines but that are left at
+their defaults are **omitted on purpose**: a preset that omits an option gets the
+engine's `get_export_options()` default, whereas a key the engine does not register
+is silently ignored — absent is safer than invented. One thing that genuinely
+cannot be guessed and had to be resolved empirically: the platform identifier is
+`platform="Linux"`, **not** `"Linux/X11"` (both strings exist in the 4.4 binary;
+only the former is the registered platform name — `"Linux/X11"` survives as the
+human-facing preset *name*).
+
+**Linux/X11 release export — real output, abridged only where a 102-step
+file-by-file packing log repeats:**
+
+```console
+$ GD=.godot-runtime/bin/godot
+$ $GD --headless --path world-lens-godot --import          # separate pass, always
+=== IMPORT EXIT: 0 ===
+
+$ $GD --headless --path world-lens-godot \
+      --export-release "Linux/X11" /tmp/out/world-lens.x86_64
+Godot Engine v4.4.stable.official.4c311cbee - https://godotengine.org
+first_scan_filesystem: begin: Project initialization steps: 5
+first_scan_filesystem: end
+savepack: begin: Packing steps: 102
+	savepack: step 2: Storing File: res://assets/asset_resolver.gdc
+	... (64 .gdc scripts + 64 .gd.remap + boot.scn + project.binary)
+savepack: end
+=== EXPORT EXIT: 0 ===
+
+$ ls -l /tmp/out/
+-rw-r--r--    238048  world-lens.pck
+-rwxr-xr-x  69659512  world-lens.x86_64
+```
+
+**No errors, no warnings, exit 0.** Note the pack contains `.gdc` (compiled
+bytecode) plus `.gd.remap` files — that is `script_export_mode=2` working as
+intended, not a defect.
+
+**Then the exported artefact was actually run**, which is the part that turns
+"a file was produced" into "the package works":
+
+```console
+$ ./world-lens.x86_64 --headless --version
+4.4.stable.official.4c311cbee
+
+$ ./world-lens.x86_64 --headless --quit-after 60
+Godot Engine v4.4.stable.official.4c311cbee
+[boot] disconnected: close_-1_          # the client's own honest "no gateway" log
+=== RUN EXIT: 0 ===
+
+$ ./world-lens.x86_64 --headless --script res://tests/run_all.gd
+[PASS] ChunkManager (16 checks)
+... 26 suites ...
+[PASS] WayfindingMarkers (35 checks)
+=== TESTS EXIT: 0 ===        # 26/26 green, from inside the exported PCK
+```
+
+Running the suite *from the PCK* is a distinct claim from running it from source:
+it additionally proves nothing in the project depends on loose source files being
+present at runtime, and that the `.gdc`/`.remap` compiled-script path resolves.
+
+**Web export also succeeds:**
+
+```console
+$ $GD --headless --path world-lens-godot --export-release "Web" /tmp/web/index.html
+=== WEB EXPORT EXIT: 0 ===
+
+$ ls -l /tmp/web/
+     5406  index.html          370560  index.js
+   238064  index.pck         41833007  index.wasm
+     7298  index.audio.worklet.js   +  icons
+```
+
+⚠️ **Limits of the Web result, stated plainly.** The bundle *builds*; it has never
+been *served or opened*. It is exported with `variant/thread_support=true`, which
+means whatever serves it must send cross-origin-isolation headers (`COOP`/`COEP`)
+or it will fail at runtime in the browser. That is untested here.
+
+**What export verification does and does not prove.** It proves the project packs,
+links against real export templates, and that the packed game boots and executes
+its own logic. It proves **nothing about appearance** — the exported binary was
+itself run `--headless`, so no pixel has been rendered on any path in this
+document. Every ❌ row in §6.1 stays ❌.
+
+
 ## 4. Licensing — what shipping the binary actually obliges
 
 **Godot Engine is MIT/Expat.** The operative clause in
@@ -388,23 +543,129 @@ A more robust alternative to vendoring stale text is to source it at runtime:
 `Engine.get_license_text()`, `Engine.get_license_info()`,
 `Engine.get_copyright_info()` — these can't drift across an engine bump.
 
-**Two things MIT does *not* give you:**
+### 4.1 Three separate regimes — do not conflate them
 
-- **The logo is not MIT.** `misc/logo/LICENSE.txt`: *"Godot Engine Logo — Copyright
-  (c) 2017 Andrea Calabró … licensed under CC BY 4.0 International."* Attribution
-  required, separate regime.
-- **The trademark is not MIT.** "GODOT" / "GODOT ENGINE" word marks and the logo are
-  registered to the Godot Foundation. Using them in credits or a splash screen is
-  reportedly fine; naming or branding a product after them requires written
-  authorisation. ⚠️ `godot.foundation` was blocked from the research container, so
-  the trademark-policy specifics are **secondhand and should be re-verified**
-  against <https://godot.foundation/policies-and-procedures/trademark-policy>
-  before any branding decision. The logo's CC BY 4.0 license, by contrast, was
-  fetched primary from the repo.
+The single most common licensing error with Godot is treating "it's MIT" as
+covering everything. It does not. There are **three** independent regimes:
 
-Practical read for Concord: attribution is cheap and unambiguous — ship the two
-files, add a "Powered by Godot Engine" credit line. Do not put a Godot logo or the
-Godot name in Concord's own product branding without checking the trademark policy.
+| Regime | Covers | Instrument | Sourced firsthand? |
+|---|---|---|---|
+| **Copyright — code** | the engine source and binaries | MIT/Expat, `LICENSE.txt` | ✅ yes |
+| **Copyright — logo** | the Godot logo artwork | CC BY 4.0, `LOGO_LICENSE.txt` | ✅ yes |
+| **Trademark** | the *GODOT* / *GODOT ENGINE* word marks and the logo **as marks** | Godot Foundation trademark policy | ❌ **NO — see §4.3** |
+
+MIT grants copyright permissions only. It is **not** a trademark licence, and it
+contains no trademark clause of any kind — verified by grep over the retrieved
+`LICENSE.txt`. So "the code is MIT" tells you nothing about whether you may use the
+*name*.
+
+### 4.2 The logo — CC BY 4.0 (firsthand)
+
+Retrieved verbatim from
+`https://raw.githubusercontent.com/godotengine/godot/4.4-stable/LOGO_LICENSE.txt`
+(HTTP 200):
+
+```
+Godot Engine Logo
+Copyright (c) 2017 Andrea Calabró
+
+This work is licensed under the Creative Commons Attribution 4.0 International
+license (CC BY 4.0 International): https://creativecommons.org/licenses/by/4.0/
+```
+
+> **Path correction.** An earlier revision of this document cited
+> `misc/logo/LICENSE.txt`. That path returns **404**. The file is `LOGO_LICENSE.txt`
+> at the repo root **on the `4.4-stable` tag**; note it also 404s on `master`, so
+> pin the tag when citing it.
+
+Note the CC BY copyright licence and the trademark are *both* live on the logo
+simultaneously: CC BY lets you copy the artwork with attribution; it does not let
+you use it as a brand identifier for your own product.
+
+### 4.3 The trademark — ⚠️ NOT SOURCED FIRSTHAND. NEEDS HUMAN CONFIRMATION.
+
+**This is the honest state of it: the policy's actual terms could not be
+retrieved, and nothing below should be relied on for a branding decision.**
+
+**What IS established firsthand:**
+
+1. **The marks are Foundation-owned, and ownership is separate from copyright.**
+   From `godot-website/pages/governance.html` (HTTP 200), verbatim:
+
+   > While the Godot Foundation holds assets on behalf of Godot including
+   > trademarks, contracts, and the bank account, the copyright to Godot's source
+   > is held collectively by every contributor.
+
+2. **Chain of title.** From `godot-website`'s Dec 2024 foundation update
+   (HTTP 200), verbatim:
+
+   > We registered the Godot trademark and the Godot logo trademark while still a
+   > member project of the SFC. Last year, the SFC granted the Godot Foundation
+   > ownership over the trademarks. Now we need to have a public policy that says
+   > how and when others can use the trademarks to protect them.
+   >
+   > We are working with our lawyers to craft a policy that is fair to existing
+   > users, as permissive as possible, and still able to protect our trademark.
+
+3. **There is no trademark document in any Godot Git repository.**
+   `TRADEMARK.md` and `TRADEMARKS.md` → **404** on both `4.4-stable` and `master`.
+   `LICENSE.txt`, `README.md`, `CONTRIBUTING.md` contain **zero** occurrences of
+   "trademark". An exhaustive GitHub code search across `org:godotengine` found no
+   policy text, only the website article quoted above.
+
+4. **The official compliance doc is silent on trademarks.** `grep -c trademark` over
+   the full text of
+   `godot-docs/master/about/complying_with_licenses.rst` (HTTP 200) returns **0**.
+   This is a load-bearing negative finding: Godot's own *"how do I comply when I
+   ship Godot"* document covers the copyright regime **only**. It cannot be cited
+   as trademark permission, and reading it as blanket clearance is exactly the
+   conflation error §4.1 warns about.
+
+**Why it could not be sourced.** The policy is **web-only and not in Git**, so no
+`raw.githubusercontent.com` route can reach it even in principle. Every host that
+serves it is blocked by this container's egress proxy:
+
+| Host | Result |
+|---|---|
+| `godot.foundation` (incl. `/policies-and-procedures/trademark-policy`) | `curl (56) CONNECT tunnel failed, 403` |
+| `docs.godotengine.org`, `godotengine.org`, `forum.godotengine.org` | 403 |
+| `web.archive.org` | 403 — proxy said `Host not in allowlist` |
+| `archive.ph`, `timetravel.mementoweb.org`, `r.jina.ai`, `trademarks.justia.com` | 403 |
+
+The `WebFetch` tool routes through the same proxy and returned 403 on all of them —
+no advantage over `curl`.
+
+**Secondhand only — search-index summaries, wording NEVER verified. Do not quote
+these as the policy.** A search index indicates a page titled *"GODOT TRADEMARK
+POLICY AND LICENSE"* exists at that URL (so the policy promised in Dec 2024 did
+ship), and *reportedly*: use in a game's splash screen or credits is not a
+violation; using the marks as the name of a commercial game engine (including a
+commercial fork) requires a separate licence; the marks may not be used "in
+isolation"; a non-affiliation disclaimer is recommended but not mandatory.
+**Every clause in that sentence is unverified paraphrase.**
+
+**The specific question this document exists to answer — may Concord redistribute
+an unmodified Godot binary inside its product, and what may it call it — is NOT
+answered by anything retrieved.** The nearest signal (splash/credits permitted,
+engine-naming restricted) is secondhand and does not address bundling a binary.
+
+**To close this, a human must** open
+<https://godot.foundation/policies-and-procedures/trademark-policy> from an
+unrestricted network and read the *"When can you use the trademarks?"* section, or
+get `godot.foundation` added to the proxy allowlist.
+
+### 4.4 Practical read for Concord
+
+Attribution under the two **copyright** regimes is cheap, unambiguous, and fully
+sourced: ship `LICENSE.txt` + `GODOT_COPYRIGHT.txt` next to the binary, and add a
+credit line. That much is safe today.
+
+**Trademark use is a separate decision and is NOT cleared.** Until §4.3 is closed by
+a human: do not put the Godot name or logo in Concord's own product branding,
+installer name, marketing, or anything that could imply endorsement or affiliation.
+A factual credit ("built with the Godot Engine") in credits/about is the
+conservative posture — but note that even that rests on a secondhand reading, so
+treat it as low-risk-pending-confirmation rather than verified-permitted.
 
 ---
 
@@ -475,7 +736,9 @@ networking, file I/O, resource import) runs normally.
 | Unit-test suite execution + pass/fail | ✅ **CAN** | Verified — found 4 failures. |
 | Resource import correctness (bad PNG/glTF/font) | ✅ **CAN** | Importers run CPU-side and write `.import` + `res://.godot/imported/`. **Moot for this project**: it currently contains **zero** importable binary assets — only `.gd` files and one `.tscn`. |
 | Physics, signals, networking, game logic | ✅ **CAN** | Full SceneTree lifecycle. |
-| Export packaging / PCK contents | ⚠️ **CAN, not done** | Needs export templates **and** an `export_presets.cfg`, which this project does not have. |
+| Export packaging / PCK contents | ✅ **CAN — DONE** | Both blockers are gone: `export_presets.cfg` exists and templates are SHA512-verified-fetchable. Linux/X11 **and** Web export exit 0; the exported Linux binary boots (`--quit-after`, exit 0) and re-runs the whole suite 26/26 from inside the PCK. §3.6. |
+| Exported build *launches with a window and draws a frame* | ❌ **CANNOT** | The exported binary was itself run `--headless`. Packaging ≠ appearance — do not read the row above as a rendering claim. |
+| Web export *loads in a browser* | ❌ **CANNOT** | The bundle builds (41.8 MB `index.wasm`), but was never served or opened. It ships `variant/thread_support=true`, so it additionally needs `COOP`/`COEP` cross-origin-isolation headers from the server or it will not start. |
 | **Anything rendered — geometry on screen, position/rotation/scale parity vs. the Three.js client** | ❌ **CANNOT** | `RasterizerDummy` draws nothing. |
 | **Shader compilation** | ❌ **CANNOT** | `.gdshader` never reaches a GPU compiler; custom `.glsl` *hard-fails* to import headless. Moot today — the project has **no** shader files. |
 | **Framerate, draw calls, VRAM budget** | ❌ **CANNOT** | No GPU work happens at all. |
@@ -507,6 +770,15 @@ marked ❌ above stay ❌ until a human looks at a real display.
 ## 7. Repository hygiene
 
 - `.godot-runtime/` — gitignored. The engine binary lives here; **never committed**.
+- **Export templates are never committed either.** They install to the *editor data
+  dir* (outside the repo), and the 1.12 GiB `.tpz` is deleted after extraction.
+  `.gitignore` additionally carries `*.tpz`, `export_templates/`,
+  `world-lens-godot/build/`, `world-lens-godot/*.pck` and
+  `world-lens-godot/*.x86_64` as belt-and-braces against a stray
+  `--templates-dest` or an export written into the tree.
+- `world-lens-godot/export_presets.cfg` — **tracked source, deliberately NOT
+  ignored.** Export cannot run without it; it contains no secrets and no output
+  path (`export_path=""` — the CLI supplies the destination).
 - `world-lens-godot/.godot/` — gitignored. Per-project import cache, regenerated by
   `--import`; upstream Godot docs say to ignore it.
 - `world-lens-godot/**/*.gd.uid` — **64 files generated by the import pass, left
