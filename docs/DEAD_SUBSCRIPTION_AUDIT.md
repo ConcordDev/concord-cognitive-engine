@@ -1,5 +1,19 @@
 # Dead socket-subscription audit (2026-07-25)
 
+> **STATUS: CLOSED.** All 27 are resolved — 13 WIRED with a real emitter, 14
+> RETIRED. The checker now reports `dead: 1 total, 1 allowlisted, 0 new` (the
+> remainder is the pre-existing allowlisted `social:notification`) and runs as a
+> blocking CI step in `.github/workflows/audits.yml`. **No ALLOWLIST entry was
+> added to reach green.** Per-class dispositions are recorded inline below;
+> commits `f1819adf`, `d1ae68f9`, `031dcb0b`, `4a469478`, `1f764646`.
+>
+> One finding outgrew this document and is worth reading on its own: wiring
+> `tracking:footprints-updated` (Class A) surfaced that `damage_events.x/z` were
+> added by migration 299 but never populated by either INSERT — and because
+> `THREE.Vector3.set().project()` coerces `null` to `0`, every row rendered a
+> *convincing* footprint at world origin. The overlay wasn't blank, it was
+> fabricating locations. Fixed in `031dcb0b` before the event was wired.
+
 27 frontend socket subscriptions have **no server emitter**. Found by
 `scripts/verify-client-event-contracts.mjs` (commit `f02b1c07`), the checker that
 closed the last uncovered quadrant of the frontend/backend contract seam.
@@ -123,6 +137,35 @@ World bosses have a real substrate (`world_boss_lockouts`, boss scheduler). Whet
 phase-enter event is meaningful there needs a read of the encounter state machine.
 
 ---
+
+## Outcome (2026-07-25)
+
+| Class | Count | Disposition |
+|---|---:|---|
+| A — real HUD + real substrate | 6 | **WIRED.** 5 in `f1819adf`; `tracking:footprints-updated` held back and landed in `031dcb0b` with the x/z defect fix, because wiring it alone would have shipped fabricated coordinates faster. |
+| B — SystemFeed + real substrate | 4 | **WIRED** (`d1ae68f9`), verified at exactly −4 against a clean snapshot. |
+| C/G — needed investigation | 5 | **3 WIRED** (`chat:tool_result`, `promotion:rejected`, `boss:phase-enter` — `4a469478`); **2 RETIRED** (`agent:domain_insight`, `repair:cycle_complete` — the latter confirmed a Class-D false friend). |
+| D — false friends | 4 | **RETIRED** (`1f764646`). |
+| E — no component listener | 5 | **RETIRED** (`1f764646`). |
+| F — already half-retired | 3 | **RETIRED** (`1f764646`). |
+
+Two Class-E events (`climbing:stamina-state`, `party-combat:tick`) have real
+substrates and were retired **only** because nothing consumes them. If a HUD is
+ever built for either, wiring the emit is the right move — that is why they are
+recorded here rather than silently deleted.
+
+`lib/lenses/manifest.ts` turned out to matter more than expected:
+`hooks/useTilePush.ts` does a real `socket.on()` over every name in a lens's
+`realtimeEvents`, so a dead name there is a **live** dead subscription, not an
+unused string. Three were dropped from two lenses.
+
+**Targeting, not payload shape, was the whole correctness question for Class A.**
+Every one of those listeners uses `useRealtimeRefresh`, which re-fetches on the
+event and discards the payload — so field names are irrelevant and the audience
+is everything. Two emits are deliberately gated to avoid a socket flood:
+`submarine:dive-state` fires only on an enter/exit-water transition (its writer
+runs on every player move), and `nemesis:nearby` only when the cycle actually
+changed the graph.
 
 ## Running order
 
