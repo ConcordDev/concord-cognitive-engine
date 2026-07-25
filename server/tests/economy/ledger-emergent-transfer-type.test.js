@@ -31,6 +31,7 @@ import { runMigrations } from "../../migrate.js";
 import {
   createEmergentAccount,
   creditOperatingWallet,
+  debitReserveAccount,
   transferToReserve,
   getEmergentAccount,
 } from "../../economy/emergent-accounts.js";
@@ -130,6 +131,85 @@ describe("transferToReserve works end-to-end on a real migrated DB", () => {
     const xfer = rows.find((x) => x.type === "EMERGENT_TRANSFER");
     assert.equal(xfer.request_id, "req_xfer");
     assert.equal(xfer.ip, "203.0.113.1");
+  });
+
+  it("creditOperatingWallet records a ledger row and is idempotent", () => {
+    // Before 2026-07-25 this mutated operating_balance while writing NOTHING
+    // to economy_ledger and ignoring refId entirely — no audit trail, and a
+    // retry credited the emergent twice.
+    createEmergentAccount(db, { emergentId: "e_credit", displayName: "Credit Probe", seedAmount: 0 });
+
+    const first = creditOperatingWallet(db, {
+      emergentId: "e_credit", amount: 200, source: "marketplace sale",
+      refId: "credit_ref_1", requestId: "req_credit", ip: "198.51.100.9",
+    });
+    assert.equal(first.ok, true);
+    assert.notEqual(first.idempotent, true, "the first credit must not report idempotent");
+
+    const rows = db.prepare("SELECT type, request_id, ip FROM economy_ledger WHERE ref_id = 'credit_ref_1'").all();
+    assert.equal(rows.length, 1, "exactly one ledger row for this credit");
+    assert.equal(rows[0].type, "MARKETPLACE_PURCHASE", "a 'marketplace sale' maps to its real type");
+    assert.equal(rows[0].request_id, "req_credit");
+    assert.equal(rows[0].ip, "198.51.100.9");
+
+    const balAfterFirst = getEmergentAccount(db, "e_credit").operatingBalance;
+    assert.equal(balAfterFirst, 200);
+
+    const retry = creditOperatingWallet(db, {
+      emergentId: "e_credit", amount: 200, source: "marketplace sale", refId: "credit_ref_1",
+    });
+    assert.equal(retry.ok, true);
+    assert.equal(retry.idempotent, true, "a repeated refId must short-circuit");
+    assert.equal(
+      getEmergentAccount(db, "e_credit").operatingBalance,
+      balAfterFirst,
+      "a retried credit must not mint a second time",
+    );
+  });
+
+  it("an unknown credit source falls back to ADJUSTMENT without losing the real source", () => {
+    createEmergentAccount(db, { emergentId: "e_src", displayName: "Source Probe", seedAmount: 0 });
+    creditOperatingWallet(db, {
+      emergentId: "e_src", amount: 10, source: "grant_from_operator", refId: "src_ref_1",
+    });
+    const row = db.prepare(
+      "SELECT type, metadata_json FROM economy_ledger WHERE ref_id = 'src_ref_1'",
+    ).get();
+    assert.equal(row.type, "ADJUSTMENT", "an unmapped source must not be dressed up as a sale");
+    assert.equal(
+      JSON.parse(row.metadata_json).source,
+      "grant_from_operator",
+      "the real source must survive in metadata so the conservative type loses no information",
+    );
+  });
+
+  it("debitReserveAccount records a ledger row and is idempotent", () => {
+    createEmergentAccount(db, { emergentId: "e_debit", displayName: "Debit Probe", seedAmount: 0 });
+    creditOperatingWallet(db, { emergentId: "e_debit", amount: 300, source: "sale", refId: "debit_seed" });
+    transferToReserve(db, { emergentId: "e_debit", amount: 200, refId: "debit_to_reserve" });
+
+    const reserveBefore = getEmergentAccount(db, "e_debit").reserveBalance;
+    assert.ok(reserveBefore > 0, "reserve must be funded for this test to mean anything");
+
+    const spend = Math.min(50, reserveBefore);
+    const r = debitReserveAccount(db, {
+      emergentId: "e_debit", amount: spend, refId: "debit_ref_1", requestId: "req_debit", ip: "198.51.100.10",
+    });
+    assert.equal(r.ok, true);
+
+    const row = db.prepare("SELECT type, request_id FROM economy_ledger WHERE ref_id = 'debit_ref_1'").get();
+    assert.ok(row, "the debit must leave a ledger row");
+    assert.equal(row.type, "MARKETPLACE_PURCHASE");
+    assert.equal(row.request_id, "req_debit");
+
+    const after = getEmergentAccount(db, "e_debit").reserveBalance;
+    const retry = debitReserveAccount(db, { emergentId: "e_debit", amount: spend, refId: "debit_ref_1" });
+    assert.equal(retry.idempotent, true);
+    assert.equal(
+      getEmergentAccount(db, "e_debit").reserveBalance,
+      after,
+      "a retried debit must not spend twice",
+    );
   });
 
   it("is idempotent on refId — a retry does not double-debit", () => {
