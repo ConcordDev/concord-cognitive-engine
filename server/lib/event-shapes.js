@@ -297,6 +297,7 @@ export const EVENT_SHAPES = Object.freeze({
   // `update_transform` vocabulary item in docs/GODOT_PROTOCOL.md; the
   // Godot-side consumer feeds these into the existing SnapshotBuffer the
   // same way city:positions does.
+  // @dead-event-ok: real consumer lives in the Godot client, not scanned.
   "world:aerial-traffic": {
     required: ["worldId", "entities"],
     optional: ["routeSource"],
@@ -459,11 +460,8 @@ export const EVENT_SHAPES = Object.freeze({
   // frontend classifier in) gets the identical honest classification the
   // web ConKay surface already shows per-message.
   // NOT dead: consumed by world-lens-godot/conkay/{conkay_presence,
-  // conkay_presence_state}.gd, outside the detector's SCAN_DIRS. The
-  // `@dead-event-ok` opt-out the detector documents is NOT wired to its
-  // socket-broadcast rule (ANNOTATION_OK_RE is only tested in the DOM-dispatch
-  // and listener-orphan passes), so this cannot be annotated away and stays
-  // baselined as a known FP.
+  // conkay_presence_state}.gd, outside the detector's SCAN_DIRS.
+  // @dead-event-ok: real consumer lives in the Godot client, not scanned.
   "conkay:verdict":  { required: ["runId", "domain", "action", "tier"], optional: ["verdict", "confidence"] },
 
   // ── Productivity reminders — live socket delivery (Wave 4) ────────

@@ -640,6 +640,11 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
       while ((m = re.exec(content)) != null) {
         const name = m[1];
         if (!isFullEventName(name)) continue;
+        const lineNum = lineNumberAt(content, m.index);
+        const fileLines = content.split("\n");
+        const here = fileLines[lineNum - 1] || "";
+        const prev = fileLines[lineNum - 2] || "";
+        if (ANNOTATION_OK_RE.test(here) || ANNOTATION_OK_RE.test(prev)) continue;
         if (!feDirectConsumed.has(name)) feDirectConsumed.set(name, []);
         feDirectConsumed.get(name).push(rel);
       }
@@ -727,10 +732,15 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
   for (const rel of serverFiles) {
     let content;
     try { content = await readFile(path.join(repoRoot, rel), "utf-8"); } catch { continue; }
+    const fileLines = content.split("\n");
 
     for (const re of [new RegExp(REALTIME_EMIT_RE.source, "g"), new RegExp(SOCKET_EMIT_RE.source, "g")]) {
       let m;
       while ((m = re.exec(content)) != null) {
+        const lineNum = lineNumberAt(content, m.index);
+        const here = fileLines[lineNum - 1] || "";
+        const prev = fileLines[lineNum - 2] || "";
+        if (ANNOTATION_OK_RE.test(here) || ANNOTATION_OK_RE.test(prev)) continue;
         addServerEmit(m[1], rel);
       }
     }
@@ -746,6 +756,10 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
       const callRe = new RegExp(`\\b${alias}\\s*\\??\\.?\\(\\s*['"\`]([a-zA-Z][\\w:.-]*?)['"\`]`, "g");
       let cm;
       while ((cm = callRe.exec(content)) != null) {
+        const lineNum = lineNumberAt(content, cm.index);
+        const here = fileLines[lineNum - 1] || "";
+        const prev = fileLines[lineNum - 2] || "";
+        if (ANNOTATION_OK_RE.test(here) || ANNOTATION_OK_RE.test(prev)) continue;
         addServerEmit(cm[1], rel);
       }
     }
@@ -753,7 +767,13 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
     if (rel.endsWith("event-shapes.js")) {
       const ere = new RegExp(EVENT_SHAPES_KEY_RE.source, "g");
       let em;
-      while ((em = ere.exec(content)) != null) addServerEmit(em[1], "event-shapes.js#registry");
+      while ((em = ere.exec(content)) != null) {
+        const lineNum = lineNumberAt(content, em.index);
+        const here = fileLines[lineNum - 1] || "";
+        const prev = fileLines[lineNum - 2] || "";
+        if (ANNOTATION_OK_RE.test(here) || ANNOTATION_OK_RE.test(prev)) continue;
+        addServerEmit(em[1], "event-shapes.js#registry");
+      }
     }
 
     // Loose rescue pass — suppression-only.

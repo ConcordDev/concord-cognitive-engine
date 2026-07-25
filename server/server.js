@@ -9697,18 +9697,10 @@ async function tryInitWebSockets(server) {
       // aerial_mount_controller}.gd all branch on `evt == "player:mode:nack"`
       // to roll back an optimistic client-side mode flip the server
       // rejected. Detector false positive from scan-scope, not a real dead
-      // broadcast.
-      //
-      // 2026-07-25: tried to annotate these away and found the opt-out does
-      // not exist for this rule. The detector's header documents a
-      // `@dead-event-ok` escape hatch, but ANNOTATION_OK_RE is only tested in
-      // the DOM-dispatch and listener-orphan passes — never in the
-      // socket-broadcast pass that produces these. So `dead_socket_emit`
-      // findings are UNSUPPRESSIBLE by annotation and stay baselined as known
-      // FPs. Fixing that gap means editing a PROTECTED detector, which needs
-      // explicit authorization plus a bidirectional pinning test.
-      if (result.nack) { socket.emit("player:mode:nack", result.nack); return; }
-      if (result.ack) socket.emit("player:mode:ack", result.ack);
+      // broadcast. The `@dead-event-ok` opt-out is now wired into the
+      // socket-broadcast pass too — annotated below, one per emit line.
+      if (result.nack) { socket.emit("player:mode:nack", result.nack); return; } // @dead-event-ok: real consumer is GDScript, outside SCAN_DIRS
+      if (result.ack) socket.emit("player:mode:ack", result.ack); // @dead-event-ok: real consumer is GDScript, outside SCAN_DIRS
     });
 
     // ── Player visibility (ghost / appear-offline) ─────────────────

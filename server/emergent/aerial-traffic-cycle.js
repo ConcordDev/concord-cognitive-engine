@@ -173,7 +173,7 @@ export async function runAerialTrafficCycle({ db, state, io, tickCount: _t } = {
         emitted = !!r?.ok;
       } else if (io) {
         try {
-          io.to(`world:${worldId}`).emit("world:aerial-traffic", payload); // NOT dead — same GDScript consumer as above
+          io.to(`world:${worldId}`).emit("world:aerial-traffic", payload); // NOT dead — same GDScript consumer as above @dead-event-ok
           emitted = true;
         } catch { /* realtime emit is best-effort — never blocks the tick */ }
       }

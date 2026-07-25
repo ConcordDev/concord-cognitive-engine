@@ -257,23 +257,38 @@ describe("@dead-event-ok — HONORED half (dead_event_dispatch, dead_event_liste
   });
 });
 
-describe("@dead-event-ok — KNOWN GAP: NOT wired into the socket-broadcast pass (Extension X2)", () => {
+describe("@dead-event-ok — socket-broadcast pass (Extension X2: dead_socket_emit, orphan_socket_consumer)", () => {
   // dead-event-listener-detector.js's header (line ~18) advertises
   // "@dead-event-ok annotation on the dispatch line" as the general
   // opt-out mechanism, with no carve-out mentioned for the socket
-  // direction. But `ANNOTATION_OK_RE` is only referenced at lines ~494
-  // (Pass 2, ends up gating `dead_event_dispatch`) and ~689 (Pass 3,
-  // gating `dead_event_listener`) — never inside `runExtensionX2()`
-  // (defined ~line 549), which produces `dead_socket_emit` (Pass 4,
-  // ~line 767-788) and `orphan_socket_consumer` (Pass 5, ~line 790-810).
-  // Fix belongs at two call sites inside runExtensionX2: a check before
-  // `findings.push({ id: "dead_socket_emit", ... })` (~line 776, using
-  // the same fileLines-lookup shape Pass 2/3 already use) and before
-  // `findings.push({ id: "orphan_socket_consumer", ... })` (~line 797).
-  // NOT fixed here — server/lib/detectors/** is PROTECTED; reported for
-  // human authorization.
+  // direction. `ANNOTATION_OK_RE` is now also checked inside
+  // `runExtensionX2()` (defined ~line 549) at its own collection sites:
+  // the `dead_socket_emit` (Pass 4) source loop that feeds `addServerEmit`
+  // (REALTIME_EMIT_RE/SOCKET_EMIT_RE, the one-hop alias call, and the
+  // event-shapes.js registry-key match) and the `orphan_socket_consumer`
+  // (Pass 5) source loop that feeds `feDirectConsumed`
+  // (SUBSCRIBE_RE/SOCKET_ON_RE) — same same-line-or-line-above convention
+  // Pass 2/3 already use. This used to be a KNOWN GAP (annotating either
+  // finding was completely inert); both directions are proven below.
 
-  it("dead_socket_emit STILL fires even with @dead-event-ok on the emit line (documents the real gap)", async () => {
+  it("direction 1: a server emit with no frontend consumer anywhere fires dead_socket_emit", async () => {
+    const dir = withFixture({
+      "server/lib/some-emit-source.js":
+        `export function fireIt() {\n` +
+        `  globalThis.realtimeEmit("contract:socket-emit-test", { ok: true });\n` +
+        `}\n`,
+      "concord-frontend/components/unrelated.tsx":
+        `export function Unrelated() { return null; }\n`,
+    });
+    try {
+      const r = await runDeadEventListenerDetector({ root: dir });
+      assert.equal(r.ok, true, r.x2Error);
+      const f = r.findings.find((x) => x.id === "dead_socket_emit" && x.subject?.eventName === "contract:socket-emit-test");
+      assert.ok(f, "expected dead_socket_emit to fire without the annotation");
+    } finally { teardown(dir); }
+  });
+
+  it("direction 2: @dead-event-ok on the emit line suppresses dead_socket_emit", async () => {
     const dir = withFixture({
       "server/lib/some-emit-source.js":
         `export function fireIt() {\n` +
@@ -287,12 +302,26 @@ describe("@dead-event-ok — KNOWN GAP: NOT wired into the socket-broadcast pass
       const r = await runDeadEventListenerDetector({ root: dir });
       assert.equal(r.ok, true, r.x2Error);
       const f = r.findings.find((x) => x.id === "dead_socket_emit" && x.subject?.eventName === "contract:socket-emit-test");
-      assert.ok(f, "KNOWN GAP: dead_socket_emit is not annotation-suppressible — " +
-        "if this assertion ever fails, the gap has been fixed and this test should be inverted");
+      assert.equal(f, undefined, "the annotation on the line directly above the emit call should suppress dead_socket_emit");
     } finally { teardown(dir); }
   });
 
-  it("orphan_socket_consumer STILL fires even with @dead-event-ok on the subscribe line (documents the real gap)", async () => {
+  it("direction 1: a frontend subscribe with no server emit anywhere fires orphan_socket_consumer", async () => {
+    const dir = withFixture({
+      "concord-frontend/components/consumer-only.tsx":
+        `import { subscribe } from '@/lib/realtime/socket';\n` +
+        `export function C() { subscribe('contract:orphan-consumer-test', () => {}); return null; }\n`,
+      "server/lib/unrelated.js": `export function noop() { return 1; }\n`,
+    });
+    try {
+      const r = await runDeadEventListenerDetector({ root: dir });
+      assert.equal(r.ok, true, r.x2Error);
+      const f = r.findings.find((x) => x.id === "orphan_socket_consumer" && x.subject?.eventName === "contract:orphan-consumer-test");
+      assert.ok(f, "expected orphan_socket_consumer to fire without the annotation");
+    } finally { teardown(dir); }
+  });
+
+  it("direction 2: @dead-event-ok on the subscribe line suppresses orphan_socket_consumer", async () => {
     const dir = withFixture({
       "concord-frontend/components/consumer-only.tsx":
         `import { subscribe } from '@/lib/realtime/socket';\n` +
@@ -304,8 +333,7 @@ describe("@dead-event-ok — KNOWN GAP: NOT wired into the socket-broadcast pass
       const r = await runDeadEventListenerDetector({ root: dir });
       assert.equal(r.ok, true, r.x2Error);
       const f = r.findings.find((x) => x.id === "orphan_socket_consumer" && x.subject?.eventName === "contract:orphan-consumer-test");
-      assert.ok(f, "KNOWN GAP: orphan_socket_consumer is not annotation-suppressible — " +
-        "if this assertion ever fails, the gap has been fixed and this test should be inverted");
+      assert.equal(f, undefined, "the annotation on the line directly above the subscribe call should suppress orphan_socket_consumer");
     } finally { teardown(dir); }
   });
 });
