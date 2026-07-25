@@ -297,7 +297,7 @@ export default function SpectatorWorldPage() {
                 ) : (
                   <ul className="space-y-3">
                     {markets.map((m) => (
-                      <MarketCard key={m.id} market={m} worldId={worldId} onPlaced={() => refreshSpectacle(false)} />
+                      <MarketCard key={m.id} market={m} onPlaced={() => refreshSpectacle(false)} />
                     ))}
                   </ul>
                 )}
@@ -314,7 +314,12 @@ export default function SpectatorWorldPage() {
   );
 }
 
-function MarketCard({ market, worldId, onPlaced }: { market: Market; worldId: string; onPlaced: () => void }) {
+// Note: `spectate.bet` (server/domains/spectate.js) only needs `marketId` —
+// markets are looked up by their own id, not scoped by world — so this
+// component never needed a `worldId` prop. Confirmed against the macro
+// before dropping it (was destructured here and passed by the caller above,
+// but never read).
+function MarketCard({ market, onPlaced }: { market: Market; onPlaced: () => void }) {
   const [side, setSide] = useState<'yes' | 'no'>('yes');
   const [stake, setStake] = useState<string>('10');
   const [busy, setBusy] = useState(false);

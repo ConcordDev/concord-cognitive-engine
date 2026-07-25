@@ -133,6 +133,24 @@ export default function registerOAuthRoutes(app, {
   /**
    * Create a new user account for OAuth sign-up.
    * Generates a unique username from the user's name or email.
+   *
+   * NOTE (unused-destructured-param audit): `avatarUrl` is accepted here and
+   * both call sites below pass it (googleUser.picture), but it is NOT
+   * persisted onto the created user row — the `users` table (migration 001,
+   * confirmed no later migration adds an avatar column) has no place to put
+   * it. It IS captured, just one hop over: both call sites also call
+   * `createOAuthConnection({ ..., avatarUrl })` right after this, which
+   * writes to `oauth_connections.avatar_url` (migration 026). So the photo
+   * isn't lost, but a user's own profile object has no `avatarUrl` sourced
+   * from OAuth sign-in, which means frontend surfaces that read
+   * `user.avatarUrl` directly (e.g. components/social/StoriesBar.tsx,
+   * components/dtu/CreatorBadge.tsx) can't show an OAuth user's photo
+   * without a join through oauth_connections that nothing currently does.
+   * Not fixed here: doing so safely needs a `users.avatar_url` column
+   * (migration) plus updating wherever user objects are serialized for the
+   * frontend — both out of scope for a param cleanup pass. Left the param
+   * in place rather than deleting it, since deleting would erase the one
+   * remaining signal that this data is expected to flow somewhere.
    */
   function createOAuthUser({ email, name, avatarUrl }) {
     // Generate a username from name or email prefix

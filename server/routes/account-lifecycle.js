@@ -40,6 +40,16 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
   // All routes require auth unless noted
   const auth = typeof requireAuth === "function" ? requireAuth() : (_req, _res, next) => next();
 
+  // Fail-closed admin gate for the dispute-resolution route below. Prefer the
+  // injected middleware (server.js wires in economy/guards.js#adminOnly —
+  // role admin/owner/founder, wildcard/economy:admin scope, or AUTH_MODE=public)
+  // instead of a hand-rolled duplicate; if the caller didn't provide one, deny
+  // rather than silently falling open. See routes/disputes.js for the sibling
+  // fix — same duplicate-check pattern, same resolution.
+  const requireAdminGate = typeof adminOnly === "function"
+    ? adminOnly
+    : (_req, res) => res.status(403).json({ ok: false, error: "forbidden" });
+
   // ── Legal Documents (public) ─────────────────────────────────────────
 
   router.get("/legal/terms", (_req, res) => {
@@ -210,12 +220,7 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
   });
 
   // Admin: resolve disputes
-  router.post("/disputes/:id/resolve", auth, (req, res) => {
-    // Check admin
-    if (req.user?.role !== "admin") {
-      return res.status(403).json({ ok: false, error: "admin_required" });
-    }
-
+  router.post("/disputes/:id/resolve", auth, requireAdminGate, (req, res) => {
     const { resolution, partialAmount, notes } = req.body || {};
     const result = resolveDispute(db, {
       disputeId: req.params.id,
