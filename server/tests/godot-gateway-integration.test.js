@@ -386,12 +386,124 @@ test("an event with no inbound dispatch gets an honest unsupported_evt, not a fa
     sendMsg(ws, "auth", { token });
     await nextFrame(ws); // hello
 
-    sendMsg(ws, "combat:attack", { targetId: "nope" });
+    // `combat:attack` USED to be the example cited here (before this unit
+    // wired it — see the combat:attack test block below), which is exactly
+    // why a genuinely-unhandled event name is used now instead of a stale
+    // one: this test's job is proving the fallback branch still exists for
+    // whatever the NEXT unwired event turns out to be, not pinning
+    // combat:attack forever as "the unsupported one."
+    sendMsg(ws, "totally:unhandled-evt-for-this-test", { targetId: "nope" });
     const frame = await nextFrame(ws);
     assert.equal(frame.evt, "error");
     assert.equal(frame.data.reason, "unsupported_evt");
-    assert.equal(frame.data.evt, "combat:attack");
+    assert.equal(frame.data.evt, "totally:unhandled-evt-for-this-test");
   } finally { ws.close(); }
+});
+
+// ── combat:attack (this unit, 2026-07-25) ──────────────────────────────────
+// Proves `combat:attack` frames sent BY the Godot client dispatch through the
+// REAL server-authoritative combat resolution (cityPresence.applyAttack +
+// the shared lib/combat-limits.js clamps) — not a fabricated hit, and not a
+// parallel/laxer reimplementation of the anti-cheat math the socket.io PvP
+// path and the HTTP NPC route both already enforce.
+
+test("combat:attack in melee range reaches the real cityPresence.applyAttack resolution", async () => {
+  const { token: attackerToken, userId: attackerId } = await registerUser(`godotit_${TS}_atk1`);
+  const { token: targetToken, userId: targetId } = await registerUser(`godotit_${TS}_tgt1`);
+  const attackerWs = await connect(WS_URL);
+  const targetWs = await connect(WS_URL);
+  try {
+    sendMsg(attackerWs, "auth", { token: attackerToken });
+    await nextFrame(attackerWs); // hello
+    sendMsg(targetWs, "auth", { token: targetToken });
+    await nextFrame(targetWs); // hello
+
+    const cityId = `godot-it-combat-world-${TS}`;
+
+    // Establish real cityPresence positions for BOTH combatants — applyAttack
+    // requires the target to be a live entry in cityPresence's own state
+    // (either _userPositions or _npcState), so a real player:move round trip
+    // is the honest way to set this up, not a test-only backdoor.
+    sendMsg(attackerWs, "player:move", { cityId, x: 0, y: 0, z: 0, direction: 0 });
+    await waitForEvt(attackerWs, "player:move:ack");
+    sendMsg(targetWs, "player:move", { cityId, x: 2, y: 0, z: 0, direction: 0 }); // 2m away — inside melee range
+    await waitForEvt(targetWs, "player:move:ack");
+
+    sendMsg(attackerWs, "combat:attack", { targetId, baseDamage: 20, range: 5, weapon: "sword" });
+    const ack = await waitForEvt(attackerWs, "combat:attack:ack");
+
+    assert.equal(ack.data.ok, true, `expected a successful hit: ${JSON.stringify(ack.data)}`);
+    assert.equal(typeof ack.data.damage, "number");
+    assert.ok(ack.data.damage > 0, "a real applyAttack hit should deal non-zero damage");
+    assert.equal(typeof ack.data.targetHealth, "number");
+    assert.ok(ack.data.targetHealth < ack.data.targetMaxHealth, "target health should be reduced by the real hit");
+    // Never a fabricated number: computed damage must respect the shared
+    // hard cap (no skillId → COMBAT_DAMAGE_HARD_CAP = 500) even though this
+    // request declared a modest baseDamage of 20.
+    assert.ok(ack.data.damage <= 500, "damage must respect the shared hard cap");
+  } finally { attackerWs.close(); targetWs.close(); }
+});
+
+test("combat:attack out of reach is rejected by the real server-side reach check, not silently allowed", async () => {
+  const { token: attackerToken, userId: attackerId } = await registerUser(`godotit_${TS}_atk2`);
+  const { token: targetToken, userId: targetId } = await registerUser(`godotit_${TS}_tgt2`);
+  const attackerWs = await connect(WS_URL);
+  const targetWs = await connect(WS_URL);
+  try {
+    sendMsg(attackerWs, "auth", { token: attackerToken });
+    await nextFrame(attackerWs); // hello
+    sendMsg(targetWs, "auth", { token: targetToken });
+    await nextFrame(targetWs); // hello
+
+    const cityId = `godot-it-combat-reach-world-${TS}`;
+
+    sendMsg(attackerWs, "player:move", { cityId, x: 0, y: 0, z: 0, direction: 0 });
+    await waitForEvt(attackerWs, "player:move:ack");
+    // 500m away — the client declares a `range` of 5m (clamped range would
+    // allow it if honored), but the REAL distance is what applyAttack checks
+    // against, so a modified client can't just claim a bigger range to hit
+    // from across the map.
+    sendMsg(targetWs, "player:move", { cityId, x: 500, y: 0, z: 0, direction: 0 });
+    await waitForEvt(targetWs, "player:move:ack");
+
+    sendMsg(attackerWs, "combat:attack", { targetId, baseDamage: 20, range: 5 });
+    const ack = await waitForEvt(attackerWs, "combat:attack:ack");
+
+    assert.equal(ack.data.ok, false, `expected an out-of-range rejection: ${JSON.stringify(ack.data)}`);
+    assert.equal(ack.data.error, "out_of_range");
+    assert.equal(typeof ack.data.distance, "number");
+    assert.ok(ack.data.distance > 100, "the rejected distance should reflect the real 500m gap, not a fabricated small one");
+  } finally { attackerWs.close(); targetWs.close(); }
+});
+
+test("combat:attack with an absurd client-declared baseDamage is still bounded by the shared hard cap", async () => {
+  const { token: attackerToken, userId: attackerId } = await registerUser(`godotit_${TS}_atk3`);
+  const { token: targetToken, userId: targetId } = await registerUser(`godotit_${TS}_tgt3`);
+  const attackerWs = await connect(WS_URL);
+  const targetWs = await connect(WS_URL);
+  try {
+    sendMsg(attackerWs, "auth", { token: attackerToken });
+    await nextFrame(attackerWs); // hello
+    sendMsg(targetWs, "auth", { token: targetToken });
+    await nextFrame(targetWs); // hello
+
+    const cityId = `godot-it-combat-cap-world-${TS}`;
+
+    sendMsg(attackerWs, "player:move", { cityId, x: 0, y: 0, z: 0, direction: 0 });
+    await waitForEvt(attackerWs, "player:move:ack");
+    sendMsg(targetWs, "player:move", { cityId, x: 1, y: 0, z: 0, direction: 0 });
+    await waitForEvt(targetWs, "player:move:ack");
+
+    // A modified client declaring an absurd baseDamage (no skillId, so the
+    // ceiling is the shared 500 hard cap) must still resolve at or below the
+    // cap — proof clampBaseDamage/resolvedDamageCap actually gate this path,
+    // not just the HTTP route and the socket.io path.
+    sendMsg(attackerWs, "combat:attack", { targetId, baseDamage: 999999999, range: 5 });
+    const ack = await waitForEvt(attackerWs, "combat:attack:ack");
+
+    assert.equal(ack.data.ok, true, `expected a resolved (capped) hit: ${JSON.stringify(ack.data)}`);
+    assert.ok(ack.data.damage <= 500, `damage should never exceed the shared hard cap: got ${ack.data.damage}`);
+  } finally { attackerWs.close(); targetWs.close(); }
 });
 
 // ── design_command (Phase 4 / D17 first slice) ────────────────────────────────

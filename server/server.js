@@ -67064,6 +67064,189 @@ function _godotFakeReqFor(userId) {
   };
 }
 
+// Godot Integration Phase 4 (this unit, 2026-07-25) — `combat:attack` inbound
+// dispatch. Closes the gap docs/GODOT_INTEGRATION.md's Honest caveats section
+// names verbatim: "combat:attack has no gateway-side dispatch" — a Godot
+// client attacking previously got the honest-but-inert `unsupported_evt`
+// fallback (never a fabricated hit).
+//
+// Deliberately calls the SAME real, already-shared primitives the socket.io
+// `combat:attack` handler (server.js, the `_attackCd`/`_combatSocketLimiter`
+// region above `tryInitWebSockets`) resolves through — this is NOT a second
+// copy of the damage/anti-cheat math:
+//   - `lib/combat-limits.js` (clampBaseDamage / clampAttackRange /
+//     resolvedDamageCap) — its own header calls itself out as "Single source
+//     of truth for the HTTP combat route (routes/worlds.js) AND the socket
+//     PvP path (server.js), so the two can't drift." This is that same
+//     module, called a third time so a Godot client can't get a laxer cap
+//     than either existing path.
+//   - `lib/combat/glyph-spell-cap.js#lookupGlyphSpellMaxDamage` — an attack
+//     naming a MINTED glyph spell the caller owns is capped at the spell's
+//     real stored `max_damage`, never a client-declared number. Owner-scoped;
+//     unknown/foreign id degrades to 0 (the shared hard cap).
+//   - `cityPresence.applyAttack` — the actual resolution function. It runs
+//     its OWN server-side reach check (live attacker/target cityPresence
+//     distance vs. the clamped `range`) and bounds the resolved hit to the
+//     clamped `maxDamage` ceiling passed in below. This IS the real combat
+//     entry point the socket path also calls — reused, not reimplemented.
+//   - `_combatSocketLimiter` — the SAME per-userId token bucket the socket.io
+//     path gates on (module-scoped, keyed by userId, declared once above
+//     `BRAIN`), so a user can't double their effective attack rate by
+//     running a browser tab and a Godot client at once.
+//
+// Cap-then-amplify ordering: `resolvedDamageCap` is passed as `maxDamage`
+// INTO `applyAttack`, so the cap is enforced as part of resolution itself —
+// there is no downstream env-amplification step on this PvP path (Layer 7.5
+// env boost only exists on the HTTP NPC route, routes/worlds.js) for a cap
+// to be bypassed by. Nothing here multiplies `result.damage` after the fact.
+//
+// Honest residual (matches the documented player:move/player:mode gap in
+// docs/GODOT_INTEGRATION.md's "Per-client rate limiting" section): this does
+// NOT reproduce the socket path's per-action-class cooldown gate
+// (`_newAttackCooldownState`/`_checkAttackCooldown`), stealth-backstab
+// perception gate, refusal-field / Mass-Raid friendly-fire checks, or
+// companion-assist XP grant — those are presentation/fairness/progression
+// layers on top of authoritative resolution, not the anti-cheat contract
+// this unit closes. Flagged here rather than silently omitted; a future unit
+// can extend this function without touching the socket.io handler.
+//
+// Returns the plain descriptor the switch case below sends verbatim as
+// `combat:attack:ack` (mirrors the socket.io path, which always emits
+// `combat:attack:ack` with the raw `applyAttack` result whether ok or not —
+// there is no separate nack event on this channel).
+async function _dispatchGodotCombatAttack(userId, data) {
+  if (!userId) return { ok: false, error: "not_authenticated" };
+  if (!data || typeof data !== "object") return { ok: false, error: "invalid_payload" };
+
+  const targetId = String(data.targetId || "").slice(0, 128);
+  if (!targetId) return { ok: false, error: "missing_target" };
+
+  if (process.env.CONCORD_SOCKET_RATELIMIT !== "0" && !_combatSocketLimiter.tryConsume(userId, 1, Date.now())) {
+    return { ok: false, error: "rate_limited" };
+  }
+
+  // Glyph-spell damage authority (mirrors the socket.io path's identical
+  // block) — owner-scoped lookup; best-effort, never blocks the attack.
+  let spellMaxDamage = 0;
+  try {
+    if (data.skillId) {
+      const { lookupGlyphSpellMaxDamage } = await import("./lib/combat/glyph-spell-cap.js");
+      spellMaxDamage = lookupGlyphSpellMaxDamage(db, userId, String(data.skillId));
+    }
+  } catch { /* glyph-spell cap optional — neutral pass-through to hard cap */ }
+
+  const { clampBaseDamage, clampAttackRange, resolvedDamageCap } = await import("./lib/combat-limits.js");
+
+  const result = cityPresence.applyAttack({
+    attackerId: userId,
+    targetId,
+    baseDamage: clampBaseDamage(data.baseDamage, spellMaxDamage),
+    range: clampAttackRange(data.range),
+    armorPierce: Number(data.armorPierce) || 0,
+    maxDamage: resolvedDamageCap(spellMaxDamage),
+  });
+
+  if (!result.ok) return result;
+
+  // Sequential combo playback — records this hit into the SAME
+  // combat_flows substrate the socket.io path feeds (lib/combat/flow-
+  // recorder.js), so the procedural combo-evolution engine (flow-engine.js)
+  // sees Godot-originated attacks exactly like browser ones. Best-effort;
+  // never blocks the ack the player is waiting on.
+  try {
+    const { detectCombatContext } = await import("./lib/combat/context-engine.js");
+    const { recordCombatFlow } = await import("./lib/combat/flow-recorder.js");
+    const pos = cityPresence.getUserPosition?.(userId) || { x: 0, y: 0, z: 0 };
+    const ctx = detectCombatContext({
+      position: pos,
+      groundY: 0,
+      inVehicle: !!data.inVehicle,
+      hackerMode: !!data.hackerMode,
+      grounded: data.grounded !== false,
+    });
+    const resolvedAction = (typeof data.actionOverride === "string" && data.actionOverride.length < 24)
+      ? data.actionOverride
+      : (data.heavy ? "attack-heavy" : "attack-light");
+    recordCombatFlow(db, {
+      fighterId: userId,
+      fighterKind: "player",
+      context: ctx.context,
+      style: data.style || ctx.styleHints?.[0] || null,
+      action: resolvedAction,
+      actionMeta: {
+        weapon: data.weapon || "fist",
+        hand: data.hand || "right",
+        chain: data.chainId,
+        step: data.stepIndex || 0,
+        modifier: !!data.modifier,
+        finisher: !!data.finisher,
+      },
+      targetId,
+      hit: result.damage > 0,
+      damage: Number(result.damage || 0),
+      isCrit: !!result.isCrit,
+      chainId: data.chainId || null,
+      stepIndex: Number(data.stepIndex || 0),
+    });
+  } catch { /* combo/flow recording best-effort — never blocks combat */ }
+
+  // Broadcast combat:hit + combat:impact through the world room exactly like
+  // the socket.io PvP path, so a browser spectator and a Godot spectator in
+  // the same world see the identical hit + feel — reuses the SAME
+  // `buildImpactPayload`/`derivePvpSeverity`/`pvpMomentumFromDamage` the NPC
+  // HTTP route and the socket path both already share (closes the "PvP
+  // combat has no server-authoritative feel" gap on THIS transport too).
+  try {
+    let hitWorldId = "concordia-hub";
+    try { hitWorldId = cityPresence.getUserPosition?.(userId)?.worldId ?? "concordia-hub"; } catch { /* world lookup best-effort */ }
+    let targetPos = null, attackerPos = null;
+    try {
+      targetPos = cityPresence.getPositionFor?.(targetId) || cityPresence.getUserPosition?.(targetId) || null;
+      attackerPos = cityPresence.getUserPosition?.(userId) || null;
+    } catch { /* position lookup best-effort */ }
+
+    realtimeEmit("combat:hit", {
+      attackerId: userId,
+      targetId,
+      damage: result.damage,
+      isCrit: result.isCrit,
+      targetHealth: result.targetHealth,
+      targetMaxHealth: result.targetMaxHealth,
+      targetKilled: result.targetKilled,
+      targetPosition: targetPos,
+      attackerPosition: attackerPos,
+      worldId: hitWorldId,
+      element: data.element || "physical",
+      skillId: data.skillId || data.skill || null,
+      weapon: data.weapon || "fist",
+      tier: Math.max(1, Math.min(5, Number(data.tier) || 2)),
+      style: data.style || null,
+    }, { worldId: hitWorldId });
+
+    const dmg = Number(result.damage) || 0;
+    const kill = !!result.targetKilled;
+    if (dmg > 0 || kill) {
+      const { buildImpactPayload, derivePvpSeverity, pvpMomentumFromDamage } = await import("./lib/combat/impact-feel.js");
+      const heavy = data.heavy === true || data.style === "attack-heavy";
+      realtimeEmit("combat:impact", buildImpactPayload({
+        worldId: hitWorldId,
+        attackerId: userId,
+        targetId,
+        targetKind: "player",
+        severity: derivePvpSeverity({ damage: dmg, crit: !!result.isCrit, kill, heavy }),
+        momentum: pvpMomentumFromDamage(dmg),
+        element: data.element || "physical",
+        damage: dmg,
+        isKill: kill,
+        targetPosition: targetPos,
+        attackerPosition: attackerPos,
+      }), { worldId: hitWorldId });
+    }
+  } catch { /* combat:hit/combat:impact broadcast best-effort — never fails the ack */ }
+
+  return result;
+}
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
   switch (evt) {
@@ -67165,11 +67348,30 @@ function _onGodotClientMessage(client, evt, data) {
         });
       return;
     }
+    case "combat:attack": {
+      // Phase 4 (this unit, 2026-07-25) — see _dispatchGodotCombatAttack's
+      // own header comment for the full reuse rationale. Always emits
+      // `combat:attack:ack` with the raw resolution result (ok:true or
+      // ok:false) — mirrors the socket.io path exactly, which has no
+      // separate nack event on this channel.
+      _dispatchGodotCombatAttack(userId, data)
+        .then((result) => {
+          _godotGatewaySend(client, "combat:attack:ack", result);
+        })
+        .catch((e) => {
+          _godotGatewaySend(client, "combat:attack:ack", {
+            ok: false, error: "handler_error", message: String(e?.message || e),
+          });
+        });
+      return;
+    }
     default:
       // Honest, specific fallback — NOT the gateway's own blanket
-      // "unknown_evt". Names the exact gap (e.g. `combat:attack` has no
-      // gateway-side dispatch yet — see docs/GODOT_INTEGRATION.md) instead of
+      // "unknown_evt". Names the exact gap for whatever event still has no
+      // gateway-side dispatch (see docs/GODOT_INTEGRATION.md) instead of
       // implying every unrecognized frame is equally unsupported.
+      // `combat:attack` no longer falls through to this branch — it's
+      // handled above.
       _godotGatewaySend(client, "error", { reason: "unsupported_evt", evt });
   }
 }
