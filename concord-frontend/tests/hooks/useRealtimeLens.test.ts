@@ -34,6 +34,7 @@ vi.mock('@/hooks/useSocket', () => ({
 }));
 
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useSocket } from '@/hooks/useSocket';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -94,13 +95,66 @@ describe('useRealtimeLens', () => {
       expect(result.current.insights).toEqual([]);
     });
 
-    it('returns isLive as false before receiving data', () => {
+    // 2026-07-25: this assertion previously encoded the pessimistic-lie
+    // bug directly — "isLive requires both isConnected AND
+    // hasReceivedData" meant a connected domain that had (legitimately)
+    // never received a payload reported isLive=false, which the
+    // LiveIndicator badge renders as "Disconnected" even though the
+    // socket is healthy (reproduced live on the world lens, keyed to
+    // 'world:update' — an event nobody emits). isLive is now the
+    // socket-health claim (isConnected) — see the hook's own interface
+    // comment. hasReceivedData is the separate, weaker claim, pinned
+    // below.
+    it('returns isLive as true when connected, even before any domain data arrives', () => {
       const { result } = renderHook(() => useRealtimeLens('finance'), {
         wrapper: createWrapper(),
       });
 
-      // isLive requires both isConnected AND hasReceivedData
+      // The mocked useSocket() reports isConnected: true — isLive must
+      // reflect that immediately, not wait on a domain event that may
+      // never come.
+      expect(result.current.isLive).toBe(true);
+      expect(result.current.isConnected).toBe(true);
+    });
+
+    it('returns hasReceivedData as false before receiving data (the separate, weaker claim)', () => {
+      const { result } = renderHook(() => useRealtimeLens('finance'), {
+        wrapper: createWrapper(),
+      });
+
+      expect(result.current.hasReceivedData).toBe(false);
+    });
+
+    it('never reports isLive as true when the socket is disconnected (the safety rail)', () => {
+      vi.mocked(useSocket).mockReturnValue({
+        socket: mockSocket,
+        isConnected: false,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        emit: vi.fn(),
+        on: vi.fn(),
+        off: vi.fn(),
+      } as unknown as ReturnType<typeof useSocket>);
+
+      const { result } = renderHook(() => useRealtimeLens('finance'), {
+        wrapper: createWrapper(),
+      });
+
       expect(result.current.isLive).toBe(false);
+      expect(result.current.isConnected).toBe(false);
+    });
+
+    it('keeps isLive true for a domain whose mapped event never fires (world-lens regression)', () => {
+      // 'never-emits-domain' has no DOMAIN_EVENTS entry, so it falls back
+      // to a `${domain}:update` event that (like the real 'world:update')
+      // nothing server-side ever dispatches. Pre-fix this reported
+      // isLive=false forever — the exact bug from the world lens.
+      const { result } = renderHook(() => useRealtimeLens('never-emits-domain'), {
+        wrapper: createWrapper(),
+      });
+
+      expect(result.current.isLive).toBe(true);
+      expect(result.current.hasReceivedData).toBe(false);
     });
 
     it('returns null lastUpdated initially', () => {
@@ -118,10 +172,17 @@ describe('useRealtimeLens', () => {
         wrapper: createWrapper(),
       });
 
-      // Finance should subscribe to finance:ticker, finance:market_update, finance:alert
+      // Finance subscribes to finance:ticker (a real, server-emitted
+      // event — server/emergent/realtime-feeds.js#tickFinancialFeeds).
+      // 'finance:market_update' and 'finance:alert' were removed from
+      // DOMAIN_EVENTS 2026-07-25: verified dead (no realtimeEmit/socket
+      // emit anywhere in server/, not in event-shapes.js's LENIENT_EVENTS
+      // registry either) — subscribing to an event nobody ever dispatches
+      // is dead weight, not a real capability. See
+      // server/tests/invariants/realtime-lens-event-liveness.test.js.
       expect(mockSocket.on).toHaveBeenCalledWith('finance:ticker', expect.any(Function));
-      expect(mockSocket.on).toHaveBeenCalledWith('finance:market_update', expect.any(Function));
-      expect(mockSocket.on).toHaveBeenCalledWith('finance:alert', expect.any(Function));
+      expect(mockSocket.on).not.toHaveBeenCalledWith('finance:market_update', expect.any(Function));
+      expect(mockSocket.on).not.toHaveBeenCalledWith('finance:alert', expect.any(Function));
     });
 
     it('subscribes to fallback domain:update for unknown domains', () => {
@@ -196,13 +257,24 @@ describe('useRealtimeLens', () => {
   });
 
   describe('alerts', () => {
+    // 'finance:alert' was removed from DOMAIN_EVENTS 2026-07-25 (verified
+    // dead — no realtimeEmit/socket emit anywhere in server/, see the
+    // removal comment on DOMAIN_EVENTS and
+    // server/tests/invariants/realtime-lens-event-liveness.test.js). The
+    // generic alert-capture mechanism (filter events for ':alert'/
+    // ':breaking' substrings) is still real code and still deserves
+    // coverage, so these tests exercise it through a domain string whose
+    // computed `${domain}:update` fallback event happens to contain the
+    // ':alert' substring the filter looks for — this drives the actual,
+    // unmodified filter/handler logic through the public hook API without
+    // depending on a dead literal event name.
     it('captures alerts from alert-type events', () => {
-      const { result } = renderHook(() => useRealtimeLens('finance'), {
+      const { result } = renderHook(() => useRealtimeLens('custom:alert'), {
         wrapper: createWrapper(),
       });
 
       act(() => {
-        emitSocketEvent('finance:alert', {
+        emitSocketEvent('custom:alert:update', {
           message: 'Market crash detected',
           severity: 'critical',
         });
@@ -215,13 +287,13 @@ describe('useRealtimeLens', () => {
     });
 
     it('caps alerts at 20', () => {
-      const { result } = renderHook(() => useRealtimeLens('finance'), {
+      const { result } = renderHook(() => useRealtimeLens('custom:alert'), {
         wrapper: createWrapper(),
       });
 
       for (let i = 0; i < 25; i++) {
         act(() => {
-          emitSocketEvent('finance:alert', {
+          emitSocketEvent('custom:alert:update', {
             message: `Alert ${i}`,
             severity: 'info',
           });
@@ -234,12 +306,12 @@ describe('useRealtimeLens', () => {
 
   describe('clearAlerts', () => {
     it('clears all alerts', () => {
-      const { result } = renderHook(() => useRealtimeLens('finance'), {
+      const { result } = renderHook(() => useRealtimeLens('custom:alert'), {
         wrapper: createWrapper(),
       });
 
       act(() => {
-        emitSocketEvent('finance:alert', { message: 'Test', severity: 'info' });
+        emitSocketEvent('custom:alert:update', { message: 'Test', severity: 'info' });
       });
 
       expect(result.current.alerts).toHaveLength(1);
