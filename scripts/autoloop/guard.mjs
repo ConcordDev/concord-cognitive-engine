@@ -8,6 +8,10 @@
 // Usage: node scripts/autoloop/guard.mjs            (inspects the working diff vs HEAD)
 // Exit 0 = clean to commit. Exit 1 = blocked (reason printed).
 
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { REPO, run, changedFiles, ok, bad, warn } from "./lib.mjs";
 
 // 1) Files the loop must NEVER modify — graders, honesty guards, ratchet baselines,
@@ -59,9 +63,33 @@ const ASSERT_RE = /\b(assert(?:\.\w+)?|expect|\.toBe|\.toEqual|\.toThrow|t\.ok|t
 const stripTsDirectives = (s) => s.replace(/@ts-expect-error/g, '');
 const testFiles = files.filter((f) => /\.(test|behavior|spec)\.(js|mjs|cjs|ts|tsx)$/.test(f) || /\/tests?\//.test(f) && /\.(js|mjs|ts|tsx)$/.test(f));
 for (const f of testFiles) {
-  const head = run(`git show HEAD:${JSON.stringify(f).slice(1, -1)}`, { allowFail: true });
-  if (!head.ok) continue; // new test file — fine
-  const cur = run(`cat ${JSON.stringify(f)}`).out;
+  // Shell-injection fix (command-injection detector, authorized 2026-07-25).
+  // These two reads used to go through `run()`, which passes a STRING to
+  // execSync — i.e. a shell. `f` comes from `git diff --name-only`, so a file
+  // committed with a name like `$(...)` or containing backticks would have
+  // EXECUTED on the next guard run. The old quoting made it worse than it
+  // looked: `JSON.stringify(f).slice(1,-1)` stripped the quotes back off, so
+  // the git path interpolated completely unquoted; and `"..."` around the
+  // `cat` arg stops word-splitting but NOT `$(...)`/backtick expansion, which
+  // bash performs inside double quotes.
+  //
+  // Both now avoid a shell entirely: execFileSync takes an argv array (the
+  // path is one argument, never parsed), and the working-tree read is plain
+  // fs — shelling out to `cat` bought nothing. Ironic bug to leave in the
+  // anti-gaming gate itself, which is exactly why it's fixed rather than
+  // annotated.
+  let head;
+  try {
+    head = { ok: true, out: execFileSync("git", ["show", `HEAD:${f}`], { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) };
+  } catch {
+    continue; // new test file (not in HEAD) — fine
+  }
+  let cur;
+  try {
+    cur = readFileSync(resolve(REPO, f), "utf8");
+  } catch {
+    continue; // deleted in the working tree — nothing to compare
+  }
   const before = (stripTsDirectives(head.out).match(ASSERT_RE) || []).length;
   const after = (stripTsDirectives(cur).match(ASSERT_RE) || []).length;
   if (after < before) violations.push(`TEST WEAKENED: ${f} assertions ${before}→${after} (removing/weakening assertions is gaming — add, don't subtract)`);

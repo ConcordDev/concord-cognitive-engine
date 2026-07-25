@@ -10,8 +10,25 @@
 // Default-FAIL: missing preGate, missing evidence, or a metric that did not move
 // the right way all yield NEEDS_WORK (exit 1).
 
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+
+// Shell-free `node --test <file>` (command-injection fix, authorized
+// 2026-07-25). `run()` passes a STRING to execSync — a shell — so any path
+// interpolated into it is an injection sink. These paths come from the
+// generated backlog rather than directly from user input, but the class is
+// the same one that was live in guard.mjs, and an argv array costs nothing.
+// Returns the same `{ ok, out }` shape `run()` does so call sites are
+// unchanged; a non-zero exit is a normal outcome here (a failing test), not
+// an error, hence the catch returning the captured output.
+function nodeTest(file) {
+  try {
+    return { ok: true, out: execFileSync("node", ["--test", file], { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) };
+  } catch (e) {
+    return { ok: false, out: String(e?.stdout || "") + String(e?.stderr || "") };
+  }
+}
 import { REPO, run, readJson, loadBacklog, saveBacklog, ok, bad, warn } from "./lib.mjs";
 
 const [unitId, mode] = process.argv.slice(2);
@@ -31,7 +48,7 @@ function metric(u) {
       const hasTest = existsSync(testFile);
       // Honesty guard must be clean for THIS file, and the test must actually pass.
       const guard = hasTest ? run("node scripts/check-depth-tests.mjs", { allowFail: true }) : { ok: false };
-      const t = hasTest ? run(`node --test ${JSON.stringify(testFile)}`, { allowFail: true }) : { ok: false, out: "" };
+      const t = hasTest ? nodeTest(testFile) : { ok: false, out: "" };
       const testsPass = /# fail 0\b/.test(t.out) || (t.ok && !/# fail [1-9]/.test(t.out));
       return { value: j.weightedScore ?? null, target: "rise", evidence: hasTest && guard.ok && testsPass, note: `floor=${j.weightedScore} hasTest=${hasTest} guardClean=${guard.ok} testsPass=${testsPass}` };
     }
@@ -51,6 +68,12 @@ function metric(u) {
       return { value: -orphan, target: "hold", evidence: orphan === 0 && touchedTest, note: `orphan=${orphan} touchedTest=${touchedTest}` };
     }
     case "connector": {
+      // Left on `run()` deliberately: this one needs a real shell for the
+      // glob expansion and the 2>/dev/null redirect, neither of which an
+      // argv array provides. `u.target` is a connector-domain slug from the
+      // generated backlog (matched against server/domains/<target>.js just
+      // below), not free-form external input. Converting it would mean
+      // hand-rolling glob expansion for no security gain here.
       const t = run(`node --test server/tests/${u.target}-*.test.js 2>/dev/null`, { allowFail: true });
       const broken = run("node scripts/lens-broken-calls.mjs --ci 0", { allowFail: true });
       const pass = t.ok && broken.ok && existsSync(resolve(REPO, `server/domains/${u.target}.js`));
@@ -64,7 +87,7 @@ function metric(u) {
     }
     case "repair": {
       if (u.meta?.test) {
-        const t = run(`node --test ${JSON.stringify(u.meta.test)}`, { allowFail: true });
+        const t = nodeTest(u.meta.test);
         const fails = (t.out.match(/# fail (\d+)/) || [])[1];
         const passing = fails !== undefined ? parseInt(fails, 10) === 0 : t.ok;
         return { value: passing ? 1 : 0, target: "rise", evidence: passing, note: `test=${u.meta.test} fails=${fails ?? "?"}` };
