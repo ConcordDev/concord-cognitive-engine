@@ -228,6 +228,22 @@ export function getPlayerSkillLevel(db, userId, skillType) {
 export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {}) {
   const MAX_LEVEL = 100;
 
+  // DEAD-SUBSCRIPTION Class B — `system:skill-acquired`. SystemFeed.tsx:78
+  // (components/world/) renders a POWER ACQUIRED System window off this event
+  // and reads `name` (falling back to `skill`), but nothing ever emitted it.
+  // The honest moment is right here: the FIRST time this user gets any
+  // player_skill_levels row for this skill_type — i.e. they did not have the
+  // skill before this grant and do now. Checked across every
+  // native_world_type on purpose: a second row for a skill the player already
+  // has is a world variant, not a new power. Read before the upsert below,
+  // because the upsert itself creates the row.
+  let firstAcquisition = false;
+  try {
+    firstAcquisition = !db.prepare(
+      'SELECT 1 FROM player_skill_levels WHERE user_id = ? AND skill_type = ? LIMIT 1'
+    ).get(userId, skillType);
+  } catch { firstAcquisition = false; }
+
   // Upsert the row
   const existingId = crypto.randomUUID();
   db.prepare(`
@@ -242,6 +258,24 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
   ).get(userId, skillType, worldType);
 
   if (!row) return { leveled: false, newLevel: 0, newXp: 0 };
+
+  // The acquisition beat fires once the row genuinely exists (see the
+  // firstAcquisition read above). Scoped to the acquiring user's own
+  // `user:<id>` room — a personal progression beat, never a broadcast.
+  if (firstAcquisition) {
+    try {
+      const emitFn = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+      if (typeof emitFn === "function") {
+        emitFn("system:skill-acquired", {
+          userId,
+          name: skillType,   // SystemFeed reads `name` first…
+          skill: skillType,  // …then falls back to `skill`
+          level: row.level,
+          worldType,
+        }, { userId });
+      }
+    } catch { /* realtime is best-effort — never break the XP grant */ }
+  }
 
   let { level, xp, xp_to_next } = row;
 
@@ -291,6 +325,26 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
         emitFn("character:updated", { userId, skillType, newLevel: level }, { userId });
       }
     } catch { /* realtime is best-effort */ }
+
+    // DEAD-SUBSCRIPTION Class B — `system:level-up`. SystemFeed.tsx:77 renders
+    // the LEVEL UP System window off this event and reads `detail` (falling
+    // back to `skill`). This is the real level-up site for System A
+    // (player_skill_levels); the separate `skill:xp-awarded` beat SystemFeed
+    // also listens for belongs to the OTHER progression system
+    // (dtus.skill_level via skill-progression.js), so the two don't double-fire
+    // for the same level-up. Own try/catch so a realtime hiccup on the
+    // character:updated emit above can't swallow this one (or vice versa).
+    try {
+      const emitFn = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+      if (typeof emitFn === "function") {
+        emitFn("system:level-up", {
+          userId,
+          skill: skillType,
+          level,
+          detail: `${skillType} reached Lv ${level}`,
+        }, { userId });
+      }
+    } catch { /* realtime is best-effort — never break the XP grant */ }
   }
 
   // Award character levels for every skill level gained — upgrade points follow

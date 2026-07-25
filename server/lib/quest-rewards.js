@@ -277,6 +277,37 @@ export function grantQuestRewards(db, userId, questId, rewards = {}) {
     }
   } catch { /* realtime best-effort */ }
 
+  // DEAD-SUBSCRIPTION Class B — `system:notice`. SystemFeed.tsx:86
+  // (concord-frontend/components/world/) renders a generic System window off
+  // this event, reading `title` and `detail`; nothing ever emitted it. A quest
+  // payout is exactly that kind of addressed-to-the-player notice. The detail
+  // string is built ONLY from what was actually granted above (the same `gold`
+  // / `sparks` / `grantedItems` / `skillXP` values written to
+  // quest_reward_grants), so it can never announce a reward that didn't land —
+  // and the emit is skipped entirely when nothing was granted. Scoped to the
+  // earning user's own `user:<id>` room, never a global broadcast.
+  try {
+    const parts = [];
+    if (gold > 0) parts.push(`${gold} CC`);
+    if (sparks > 0) parts.push(`${sparks} sparks`);
+    if (grantedItems.length === 1) parts.push(grantedItems[0].name);
+    else if (grantedItems.length > 1) parts.push(`${grantedItems.length} items`);
+    const xpSkills = Object.keys(skillXP);
+    if (xpSkills.length > 0) parts.push(`XP: ${xpSkills.join(", ")}`);
+
+    if (parts.length > 0) {
+      const realtimeEmit = globalThis.realtimeEmit || globalThis._concordRealtimeEmit;
+      if (typeof realtimeEmit === "function") {
+        realtimeEmit("system:notice", {
+          userId,
+          questId,
+          title: "QUEST REWARD",
+          detail: parts.join(" · "),
+        }, { userId });
+      }
+    }
+  } catch { /* realtime best-effort — never break a granted reward */ }
+
   logger.info(
     { userId, questId, gold, sparks, items: grantedItems.length, skillXP: Object.keys(skillXP).length },
     "quest_rewards_granted",
