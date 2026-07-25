@@ -66,7 +66,10 @@ export function ArticleDetailModal({ onMutated }: { onMutated?: () => void } = {
     if (r.data?.ok && r.data.result?.article) {
       setArticle(r.data.result.article as FullArticle);
     } else {
-      setError(r.data?.result?.error || r.data?.error || 'Article not found.');
+      // `r.data.result` is null on lensRun's error path (it returns
+      // { ok:false, result:null, error }), so a `.result.error` read here is
+      // structurally dead — the live error is `r.data.error`.
+      setError(r.data?.error || 'Article not found.');
     }
     setLoading(false);
   }, []);
@@ -155,8 +158,11 @@ export function ArticleDetailModal({ onMutated }: { onMutated?: () => void } = {
     setDeleteError(null);
     const r = await lensRun('news', 'article-delete', { id: article.id });
     setBusy(null);
-    if (r.data?.ok === false || r.data?.result?.ok === false) {
-      setDeleteError(r.data?.result?.error || r.data?.error || 'Could not remove this article.');
+    // Only `r.data.ok` / `r.data.error` are live: lensRun returns
+    // { ok:false, result:null, error } on failure, so the `.result.*` reads
+    // that used to sit beside these could never fire.
+    if (r.data?.ok === false) {
+      setDeleteError(r.data?.error || 'Could not remove this article.');
       return;
     }
     stopAudio();

@@ -62,7 +62,10 @@ export function MutualAidPactsPanel({ className }: { className?: string }) {
     setBusyId(id); setError(null);
     try {
       const r = await lensRun('insurance', action, params);
-      if (r?.data?.error || r?.data?.result?.error) setError(String(r.data.error || r.data.result.error));
+      // lensRun returns { ok:false, result:null, error } on the failure path,
+      // so `r.data.result.error` could never fire — `r.data.error` is the
+      // only live read here.
+      if (r?.data?.error) setError(String(r.data.error));
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Action failed');
@@ -82,7 +85,7 @@ export function MutualAidPactsPanel({ className }: { className?: string }) {
         durationDays: Number(form.durationDays) || 30,
         premiumFrequency: form.premiumFrequency,
       });
-      if (r?.data?.error || r?.data?.result?.error) { setError(String(r.data.error || r.data.result.error)); return; }
+      if (r?.data?.error) { setError(String(r.data.error)); return; }
       setShowForm(false);
       setForm({ beneficiaryUserId: '', payoutSparks: '100', premiumSparks: '10', durationDays: '30', premiumFrequency: 'upfront' });
       await load();
