@@ -621,3 +621,57 @@ detector: 7 e2e suites spawn real servers against `mkdtemp` dirs (each
 migrating a ~118MB SQLite DB) and never removed them — ~800MB stranded per
 full suite run, measured at 63 leftover dirs / 1.3GB. Fixed in `0cf1f5a9`,
 verified by running two of the suites and confirming zero dirs remained.
+
+---
+
+## 2026-07-25 — BASELINE.json v2 refresh: REVIEWED, **NOT APPLIED** (awaiting human authorization)
+
+The refresh was generated and every finding reviewed, but it is **not committed**.
+`scripts/autoloop/guard.mjs` correctly BLOCKED it: `BASELINE.json` is a
+PROTECTED file and this repo requires a baseline refresh to be an explicitly
+authorized step, never an agent-applied edit — precisely so an agent cannot
+quiet its own checks. The regenerated file is preserved out-of-tree pending
+that authorization; the review below is the input to that decision.
+
+Regenerating would move it: **119 → 102 fingerprints**
+(medium 53→42, low 8→0, info 51→53, high 7→7). The drop is this session's
+fixes landing — it is NOT a loosened rubric; no detector, budget or threshold
+was touched (all are PROTECTED and editing them is a hard stop).
+
+A refresh blesses whatever is currently found, so every remaining **high** was
+individually read before committing. Blessing a real high would silently
+disarm the ratchet — the exact "move the goalpost instead of clearing it"
+failure this repo names as its #1 risk. All 7 are false positives, in three
+classes:
+
+**Class 1 — try/catch schema fallback (same INSERT twice, one executes).**
+The `try` runs an INSERT including `ref_id`; the `catch` re-runs the *same*
+INSERT without it, for DBs predating that column. Two static writes, one
+runtime write, no atomicity gap.
+- `economy/ledger.js:51` `recordTransaction()`
+- `server.js:74220` `creditWallet()`
+- `server.js:74280` `debitWallet()`
+
+**Class 2 — mutually-exclusive branches / factory attribution.**
+- `lib/account-lifecycle.js:42` `requestAccountDeletion()` — the direct INSERT
+  is in the `balance > 0.01` branch, the delegated write in the `else`. Never
+  both. (The reported "tables: balance_at_request" is a *column* name, not a
+  table — the detector's table extraction misfiring, further FP evidence.)
+- `economy/stripe.js:188` `handleWebhook()` — writes sit in mutually-exclusive
+  event-type branches behind guarded early-returns, and the handler is already
+  idempotent via `isEventProcessed`.
+- `routes/wagers.js:12` `createWagersRouter()` — a router FACTORY. Its 5
+  "delegated writes" live in 5 separate route handlers, each its own request
+  lifecycle; attributing them to the factory is an artifact.
+
+**Class 3 — reviewed + security-tested, previously documented.**
+- `server.js:7331` `authz-coverage` on `/api/welding/portal/`.
+
+CLAUDE.md already records that the detector's own source names the
+mutually-exclusive-branch pattern verbatim as its noise class, so classes 1-2
+are the documented FP shape rather than a new judgement call.
+
+Net effect IF APPLIED: the ratchet (`--diff --ci`) would go from RED at 3 to
+green — by triage and a reviewed refresh, not by softening a checker. Until a
+human authorizes it, the ratchet stays RED at 3 and that is the honest state.
+Reproduce with `cd server && node scripts/run-detectors.js --rewrite-baseline`.
