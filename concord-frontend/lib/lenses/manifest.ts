@@ -784,7 +784,11 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['trade', 'analyze', 'alert', 'simulate', 'generate_report', 'portfolio_rebalance', 'risk_assessment'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
-    realtimeEvents: ['finance:ticker', 'finance:market_update', 'finance:alert', 'economy:update'],
+    // 'finance:market_update' + 'finance:alert' dropped 2026-07-25 (dead-
+    // subscription audit, Class F): hooks/useTilePush.ts does a real
+    // socket.on() over every name here, so a name with no server emitter is
+    // a live dead subscription, not just an unused string.
+    realtimeEvents: ['finance:ticker', 'economy:update'],
     emptyState: {
       headline: 'No tracked assets.',
       caption: 'Track stocks (S&P 500 / NASDAQ / DOW), crypto (CoinGecko top 10), or set rate alerts (FRED). Live ticker updates every 60s.',
@@ -807,7 +811,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['buy', 'sell', 'review', 'verify_artifact_hash', 'issue_license', 'distribute_royalties', 'validate_listing', 'provenance_check'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
-    realtimeEvents: ['marketplace:purchase', 'market:listing', 'market:trade', 'creative_registry:update'],
+    // 'market:trade' dropped 2026-07-25 (dead-subscription audit, Class D):
+    // DTU-bridge type tag, never emitted over a socket — and useTilePush
+    // subscribes to every name here for real.
+    realtimeEvents: ['marketplace:purchase', 'market:listing', 'creative_registry:update'],
     emptyState: {
       headline: 'No listings yet.',
       caption: 'List a DTU you minted, or browse what creators have published. Royalty cascade pays ancestors automatically.',

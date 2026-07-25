@@ -378,7 +378,6 @@ export type SocketEvent =
   | 'qualia:policy'
   // Repair cortex
   | 'repair:dtu_logged'
-  | 'repair:cycle_complete'
   // Meta-derivation
   | 'lattice:meta:derived'
   | 'lattice:meta:convergence'
@@ -396,8 +395,13 @@ export type SocketEvent =
   | 'council:proposal'
   | 'council:vote'
   // Marketplace
+  // 'market:trade' retired 2026-07-25 (dead-subscription audit, Class D):
+  // the string exists in server/ ONLY as an event-to-DTU-bridge `type` tag
+  // (emergent/realtime-feeds.js#tickFinanceFeeds -> _bridgeEvent, and
+  // lib/feed-manager.js#mapDomainToEventType). event-to-dtu-bridge.js has
+  // zero socket emits, so it can never reach a browser. The real socket
+  // channel for that same feed is 'finance:ticker'.
   | 'market:listing'
-  | 'market:trade'
   // Collaboration
   | 'collab:change'
   | 'collab:lock'
@@ -451,8 +455,10 @@ export type SocketEvent =
   | 'quality:approved'
   | 'quality:shadowed'
   // MEGA SPEC: Entity & pipeline events
-  | 'entity:production_mode'
-  | 'pipeline:triggered'
+  // 'entity:production_mode' and 'pipeline:triggered' retired 2026-07-25
+  // (dead-subscription audit, Class D): both appear in server/ only inside
+  // emergent/event-to-dtu-bridge.js's EVENT_DOMAIN_MAP / weight tables — a
+  // DTU-bridge `type` tag, not a socket channel. Neither was ever emitted.
   // 12 NEW CAPABILITIES events
   | 'pipeline:started'
   | 'pipeline:step_started'
@@ -475,15 +481,20 @@ export type SocketEvent =
   | 'shared-session:dtu-shared'
   | 'shared-session:ended'
   // Real-time data feed events (Phase 3)
+  // 'finance:market_update', 'finance:alert' and 'news:breaking' retired
+  // 2026-07-25 (dead-subscription audit, Class F): removed from
+  // useRealtimeLens's DOMAIN_EVENTS in daac9787 as the documented residual;
+  // nothing in server/ ever emitted them. The live feed channels are
+  // 'finance:ticker' / 'crypto:ticker' / 'news:update'.
   | 'finance:ticker'
-  | 'finance:market_update'
-  | 'finance:alert'
   | 'crypto:ticker'
   | 'crypto:alert'
   | 'news:update'
-  | 'news:breaking'
   | 'weather:update'
-  | 'weather:alert'
+  // 'weather:alert' retired 2026-07-25 (dead-subscription audit, Class D):
+  // its 6 hits under server/ are all DTU-bridge `type` tags / scoping-table
+  // keys (event-to-dtu-bridge.js, event-scoping.js,
+  // feed-manager.js#mapDomainToEventType) — never a socket emit.
   | 'research:update'
   | 'health:update'
   | 'legal:update'
@@ -500,7 +511,6 @@ export type SocketEvent =
   | 'government:update'
   | 'insurance:update'
   | 'lens:dtu_generated'
-  | 'agent:domain_insight'
   // Per-user tick events
   | 'user:tick'
   // Spontaneous initiative events (proactive messages from Concord)
@@ -562,7 +572,10 @@ export type SocketEvent =
   | 'skill:evolution-available'
   | 'coop:raid:progress'
   | 'coop:raid:completed'
-  | 'coop:build:edit'
+  // 'coop:build:edit' retired 2026-07-25 (dead-subscription audit, Class E):
+  // the server-side broadcast was already retired in the DET-C batch 9/11
+  // sweep (see server.js's POST /api/coop/build/edit comment) because there
+  // is no coop-build UI anywhere to receive it. The REST surface stays live.
   | 'coop:stash:withdraw'
   | 'reputation:badge-earned'
   | 'reputation:rank-up'
@@ -625,18 +638,27 @@ export type SocketEvent =
   | 'system:level-up'
   | 'system:skill-acquired'
   | 'system:skill-evolved'
-  | 'system:danger-band'
+  // 'system:danger-band' retired 2026-07-25 (dead-subscription audit, Class
+  // E): no server emit and no component ever read it — the union entry was
+  // its entire footprint.
   | 'system:notice'
   // Game-mode HUD realtime push (replacing per-mode polling).
   | 'horde:state'
   | 'party-combat:state'
-  | 'party-combat:tick'
+  // 'party-combat:tick' retired 2026-07-25 (dead-subscription audit, Class
+  // E). NOTE the substrate is real (server/lib/party-combat.js#resolveTick),
+  // but nothing was ever emitted and no component read it — PartyCombatHUD
+  // consumes 'party-combat:state' instead. If a per-tick push is ever wanted,
+  // wire the emit alongside a real consumer; don't re-add the bare type.
   | 'mahjong:state'
   | 'submarine:dive-state'
   | 'extraction:state'
   | 'extraction:zones'
   | 'time-loop:state'
-  | 'climbing:stamina-state'
+  // 'climbing:stamina-state' retired 2026-07-25 (dead-subscription audit,
+  // Class E). Substrate is real (server/lib/climbing.js + player-stamina.js)
+  // but there was never an emit and never a consumer; ClimbingTracker polls.
+  // Wire an emit + a consumer together if a push is ever wanted.
   | 'restaurant:state'
   | 'horror:state'
   | 'theme-park:state'
@@ -690,7 +712,9 @@ export type SocketEvent =
   | 'kingdom:contested'
   | 'kingdom:fallen'
   // Fishing (Phase D)
-  | 'fishing:cast'
+  // 'fishing:cast' retired 2026-07-25 (dead-subscription audit, Class E):
+  // the server emit was already removed in the DET-C batch 9 sweep and is
+  // pinned as absent by server/tests/fishing-route-realtime-scope.test.js.
   | 'fishing:bite'
   | 'fishing:caught'
   // Minigames (Phase E)
