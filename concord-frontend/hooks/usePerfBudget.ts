@@ -126,6 +126,37 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+/**
+ * Value-equality across every field that is actually part of the budget.
+ *
+ * `reportFrame` runs once per real frame in its callers' render loops, so
+ * without this an unchanged budget would still hand React a brand-new object
+ * ~60x/second and re-render every consuming lens on every frame — including at
+ * the 'minimal' tier, whose whole point is that the loop's cost is cut. That
+ * made the advertised "frozen at minimal" cost cut only partly real.
+ *
+ * This compares the ROUNDED values that are actually stored (`round1`-ed fps /
+ * frameMs), not the raw averages, because those rounded values are what a
+ * consumer can observe — two frames whose raw averages differ in the 4th
+ * decimal are, to every consumer, the same budget.
+ *
+ * This is a cost cut only, never a hold or a smooth: `reportFrame` still
+ * computes the full budget from real samples on EVERY frame, and any genuine
+ * difference in any field — a tier transition, a 0.1fps move, the warm-up
+ * `sampleCount` filling, the `warmedUp` flip — is a mismatch here and
+ * propagates on that very same frame. Nothing is ever deferred to a later one.
+ */
+function budgetEquals(a: PerfBudgetState, b: PerfBudgetState): boolean {
+  return (
+    a.fps === b.fps &&
+    a.frameMs === b.frameMs &&
+    a.warmedUp === b.warmedUp &&
+    a.overBudget === b.overBudget &&
+    a.tier === b.tier &&
+    a.sampleCount === b.sampleCount
+  );
+}
+
 export function usePerfBudget(options: UsePerfBudgetOptions = {}): UsePerfBudgetResult {
   const fullFpsFloor = options.fullFpsFloor ?? DEFAULTS.fullFpsFloor;
   const reducedFpsFloor = options.reducedFpsFloor ?? DEFAULTS.reducedFpsFloor;
@@ -186,14 +217,20 @@ export function usePerfBudget(options: UsePerfBudgetOptions = {}): UsePerfBudget
       }
 
       const tier = tierRef.current;
-      setBudget({
+      const next: PerfBudgetState = {
         fps: round1(avgFps),
         frameMs: round1(avgFrameMs),
         warmedUp,
         overBudget: tier !== 'full',
         tier,
         sampleCount,
-      });
+      };
+      // Bail out by VALUE when this frame measured exactly what the last one
+      // did. Returning the previous object unchanged lets React skip the
+      // re-render entirely (Object.is bailout); returning `next` propagates
+      // immediately. See `budgetEquals` — suppression requires every field to
+      // match, so no real change can be swallowed.
+      setBudget(prev => (budgetEquals(prev, next) ? prev : next));
     },
     [bufferSize, warmupSamples, fullFpsFloor, reducedFpsFloor, hysteresisSamples]
   );
