@@ -11,7 +11,7 @@
 // the right way all yield NEEDS_WORK (exit 1).
 
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 // Shell-free `node --test <file>` (command-injection fix, authorized
@@ -29,7 +29,7 @@ function nodeTest(file) {
     return { ok: false, out: String(e?.stdout || "") + String(e?.stderr || "") };
   }
 }
-import { REPO, run, readJson, loadBacklog, saveBacklog, ok, bad, warn } from "./lib.mjs";
+import { REPO, run, runArgv, readJson, loadBacklog, saveBacklog, ok, bad, warn } from "./lib.mjs";
 
 const [unitId, mode] = process.argv.slice(2);
 if (!unitId) { console.error("usage: verify.mjs <unitId> [--capture]"); process.exit(2); }
@@ -68,13 +68,27 @@ function metric(u) {
       return { value: -orphan, target: "hold", evidence: orphan === 0 && touchedTest, note: `orphan=${orphan} touchedTest=${touchedTest}` };
     }
     case "connector": {
-      // Left on `run()` deliberately: this one needs a real shell for the
-      // glob expansion and the 2>/dev/null redirect, neither of which an
-      // argv array provides. `u.target` is a connector-domain slug from the
-      // generated backlog (matched against server/domains/<target>.js just
-      // below), not free-form external input. Converting it would mean
-      // hand-rolling glob expansion for no security gain here.
-      const t = run(`node --test server/tests/${u.target}-*.test.js 2>/dev/null`, { allowFail: true });
+      // Migrated off `run()` 2026-07-25 (authorized). This was the loop's last
+      // site interpolating a computed value into a shell string. `u.target` is
+      // only ever a connector-domain slug from the generated backlog, so it was
+      // not exploitable in practice — but "not exploitable by today's callers"
+      // is a property of the callers, not of the code, and it silently becomes
+      // false the moment someone widens the backlog source.
+      //
+      // The two things the shell was needed for are done in Node instead:
+      // the `*` glob becomes a readdir+filter, and the `2>/dev/null` redirect
+      // is unnecessary because runArgv already pipes stderr rather than
+      // inheriting it. No shell is spawned, so no interpolation can be parsed.
+      const testDir = resolve(REPO, "server/tests");
+      const matches = (existsSync(testDir) ? readdirSync(testDir) : [])
+        .filter(f => f.startsWith(`${u.target}-`) && f.endsWith(".test.js"))
+        .map(f => `server/tests/${f}`);
+      const t = matches.length
+        ? runArgv("node", ["--test", ...matches], { allowFail: true })
+        // Honest no-op result when the glob matches nothing — previously the
+        // shell would have run `node --test` against an unexpanded literal and
+        // failed; neither outcome is a real signal, so say so explicitly.
+        : { ok: false, code: 0, out: `no test files matched ${u.target}-*.test.js` };
       const broken = run("node scripts/lens-broken-calls.mjs --ci 0", { allowFail: true });
       const pass = t.ok && broken.ok && existsSync(resolve(REPO, `server/domains/${u.target}.js`));
       return { value: pass ? 1 : 0, target: "rise", evidence: pass, note: `domainExists=${existsSync(resolve(REPO, `server/domains/${u.target}.js`))} brokenCallsClean=${broken.ok}` };

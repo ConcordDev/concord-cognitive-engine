@@ -4,8 +4,8 @@
 // the existing rankers (depth-backlog, grade-macro-depth, grade-ux-polish,
 // audit-emergent-wiring, …) which these helpers only INVOKE and parse.
 
-import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { execSync, execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,6 +19,29 @@ export const STEER_PATH = resolve(REPO, "STEER.md");
 export function run(cmd, { timeoutMs = 600000, allowFail = true } = {}) {
   try {
     const out = execSync(cmd, { cwd: REPO, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024 });
+    return { ok: true, code: 0, out };
+  } catch (e) {
+    if (!allowFail) throw e;
+    return { ok: false, code: e.status ?? 1, out: String(e.stdout || "") + String(e.stderr || "") };
+  }
+}
+
+/**
+ * Run a command WITHOUT a shell — argv form, so no interpolation can ever
+ * reach a shell parser. Prefer this over `run()` whenever a caller needs to
+ * pass a computed value (a filename, a slug, anything derived rather than
+ * typed literally). `run()` above keeps shell semantics for the literal
+ * commands that genuinely need globs/redirects; this is its safe sibling.
+ *
+ * Added 2026-07-25 (authorized edit to a PROTECTED path) alongside migrating
+ * the loop's last interpolating call site off `run()`.
+ */
+export function runArgv(file, args = [], { timeoutMs = 600000, allowFail = true } = {}) {
+  try {
+    const out = execFileSync(file, args, {
+      cwd: REPO, encoding: "utf8", timeout: timeoutMs,
+      stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024,
+    });
     return { ok: true, code: 0, out };
   } catch (e) {
     if (!allowFail) throw e;
