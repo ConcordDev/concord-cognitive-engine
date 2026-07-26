@@ -206,6 +206,7 @@ import sim from './sim.js';
 import srs from './srs.js';
 import studioDomain from './studio.js';
 import thread from './thread.js';
+import vault from './vault.js';
 import voice from './voice.js';
 import wallet from './wallet.js';
 import welding from './welding.js';
@@ -452,6 +453,7 @@ export default [
   srs,
   studioDomain,
   thread,
+  vault,
   voice,
   wallet,
   welding,
