@@ -29701,6 +29701,10 @@ register("synth", "combine", async (ctx, input) => {
   return { ok:true, dtu: created.dtu };
 }, { description: "Combine DTUs into a new synthesized DTU (local-first, optional LLM)." });
 
+// Permanent-record protection predicate. ESM imports are hoisted, so this
+// sits next to its only consumer below rather than in a distant import block.
+import { isDtuProtected } from "./lib/dtu-protection.js";
+
 register("evolution", "dedupe", async (ctx, input) => {
   try {
   // merge near-duplicates by title+tags similarity; keep lineage
@@ -29708,16 +29712,34 @@ register("evolution", "dedupe", async (ctx, input) => {
   const items = dtusArray();
   const used = new Set();
   let merged = 0;
+  // Near-duplicate pairs skipped because one side is an explicitly protected
+  // (permanent-record) DTU. Reported so a caller can see that the sweep
+  // declined work rather than silently finding nothing.
+  let skippedProtected = 0;
 
   for (let i=0;i<items.length;i++){
     const a = items[i];
     if (used.has(a.id)) continue;
     const aTok = simpleTokens((a.title||"") + " " + (a.tags||[]).join(" "));
+    // A protected keeper is IMMUTABLE, not just undeletable: merging would
+    // rewrite its tags + lineage and invalidate the content hash stamped at
+    // protection time. Skip it as a keeper entirely.
+    const aProtected = isDtuProtected(a);
     for (let j=i+1;j<items.length;j++){
       const b = items[j];
       if (used.has(b.id)) continue;
       const bTok = simpleTokens((b.title||"") + " " + (b.tags||[]).join(" "));
       if (jaccard(aTok, bTok) >= threshold) {
+        // PROTECTION GATE (was missing entirely). `STATE.dtus.delete()` is a
+        // write-through HARD DELETE — it issues a real `DELETE FROM dtu_store`
+        // (lib/dtu-store.js) with no tombstone and no archive copy. Two
+        // similarly-titled permanent records could be merged and one of them
+        // destroyed forever. Never touch either side of the pair when either
+        // is protected.
+        if (aProtected || isDtuProtected(b)) {
+          skippedProtected++;
+          continue;
+        }
         // merge b into a
         a.lineage = Array.from(new Set([...(a.lineage||[]), b.id, ...(b.lineage||[])]));
         a.tags = Array.from(new Set([...(a.tags||[]), ...(b.tags||[]), "deduped"])).slice(0, 40);
@@ -29727,13 +29749,16 @@ register("evolution", "dedupe", async (ctx, input) => {
         merged++;
       }
     }
-    if (merged) await pipelineCommitDTU(ctx, a, { op: 'evolution.dedupe', allowRewrite: true });
+    // `merged` is a RUNNING TOTAL (pre-existing behaviour), so this re-commits
+    // keepers that this iteration didn't actually change. Left as-is except
+    // for protected keepers, which must not be rewritten at all.
+    if (merged && !aProtected) await pipelineCommitDTU(ctx, a, { op: 'evolution.dedupe', allowRewrite: true });
   }
 
-  ctx.log("evolution.dedupe", "Deduped DTUs", { merged, threshold });
-  return { ok:true, merged, total: STATE.dtus.size };
+  ctx.log("evolution.dedupe", "Deduped DTUs", { merged, threshold, skippedProtected });
+  return { ok:true, merged, skippedProtected, total: STATE.dtus.size };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-}, { description: "Merge near-duplicate DTUs, preserving lineage." });
+}, { description: "Merge near-duplicate DTUs, preserving lineage. Explicitly protected (permanent-record) DTUs are never merged or deleted." });
 
 register("heartbeat", "tick", async (ctx, input) => {
   try {
