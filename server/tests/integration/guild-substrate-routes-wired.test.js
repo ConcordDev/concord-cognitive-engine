@@ -29,6 +29,7 @@ import Database from "better-sqlite3";
 
 import createWorldOrgsExtendedRouter from "../../routes/world-orgs-extended.js";
 import { up as upGuild } from "../../migrations/238_guild_substrate.js";
+import { up as upOrgs } from "../../migrations/383_world_organizations.js";
 import * as orgs from "../../lib/world-organizations.js";
 
 function freshDb() {
@@ -50,6 +51,7 @@ function freshDb() {
     );
   `);
   upGuild(db);
+  upOrgs(db);
   return db;
 }
 
@@ -79,10 +81,10 @@ describe("guild-substrate is reachable through real HTTP routes (Wave 4 gap-clos
     db = freshDb();
     leaderId = "leader-1";
     memberId = "member-1";
-    const created = orgs.createOrganization({ name: "The Iron Circle", leaderId, type: "guild" });
+    const created = orgs.createOrganization(db, { name: "The Iron Circle", leaderId, type: "guild" });
     assert.ok(created.ok, "org creation must succeed for the test setup");
     orgId = created.organization.id;
-    const joined = orgs.joinOrganization(orgId, memberId, "member");
+    const joined = orgs.joinOrganization(db, orgId, memberId, "member");
     assert.ok(joined.ok, "member join must succeed for the test setup");
   });
 
@@ -217,7 +219,7 @@ describe("guild-substrate is reachable through real HTTP routes (Wave 4 gap-clos
   });
 
   it("an officer withdrawal over the level-scaled cap is rejected; a within-cap withdrawal moves the item back into player_inventory", async () => {
-    orgs.setMemberRole(orgId, memberId, "officer", leaderId);
+    orgs.setMemberRole(db, orgId, memberId, "officer", leaderId);
     const app = await startApp(db, memberId);
     try {
       // cap is 100 at level 2 (from the earlier test) — 150 must be rejected

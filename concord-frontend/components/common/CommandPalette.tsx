@@ -16,7 +16,8 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles, LayoutPanelLeft,
-  Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, Skull,
+  Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, Skull, Wrench,
+  ScrollText, Ruler, Layers, Radar, Coins, Eye, Link2,
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import {
@@ -265,7 +266,130 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         keywords: ['mode', 'dungeon', 'raid', 'boss', 'instance'],
       },
     ];
-    return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries];
+    // System-surface deep links — pseudo-entries `system:<id>` that navigate
+    // to a lens and then scroll/focus a specific in-page anchor, for real
+    // surfaces that already exist but are easy to miss buried in a longer
+    // page (see `system:repair-cortex` handling in navigateToLens below).
+    const systemEntries: LensEntry[] = [
+      {
+        id: 'system:repair-cortex',
+        name: 'Repair Cortex — status',
+        icon: Wrench,
+        description: 'Self-healing loop status + force a repair cycle (Attention lens).',
+        category: 'system',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '/lenses/attention',
+        order: 920,
+        keywords: ['repair', 'cortex', 'self-healing', 'prophet-check', 'fix', 'attention'],
+      },
+    ];
+    // Wave-continuation dead-event-listener fix (DET-C batch 2) — these six
+    // world HUDs each already listen for a `concordia:open-*` / `*-toggle`
+    // window event (StatusWindowHUD's own header comment says so
+    // explicitly: "Discoverable via the command palette, matching the
+    // concordia:open-* dispatch idiom other palette-launched HUDs (e.g.
+    // DungeonHUD) use") but the palette-side half of that idiom was never
+    // added for any of them — verified via the runtime dead-event-listener
+    // detector (dead_event_listener findings), not grep. RogueliteUnlockShop
+    // had ZERO other way to open it (no button, no keybind) — a fully
+    // unreachable feature; the other five already have a fallback (a
+    // visible button, or a keybind: V for link-scan, K for the curtain) so
+    // this closes the discoverability gap the code comments promised for
+    // all of them, following `mode:dungeon`'s exact dispatch shape.
+    const hudEntries: LensEntry[] = [
+      {
+        id: 'hud:roguelite-shop',
+        name: 'Roguelite Shop — spend meta-currency',
+        icon: Coins,
+        description: 'Permanent unlocks bought with banked roguelite_meta_currency gems.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 930,
+        keywords: ['roguelite', 'shop', 'unlock', 'meta-currency', 'gems'],
+      },
+      {
+        id: 'hud:status-window',
+        name: 'Status Window',
+        icon: ScrollText,
+        description: 'Isekai-style stat/skill/title panel (worlds with the Foundry system enabled).',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 931,
+        keywords: ['status', 'window', 'stats', 'titles', 'foundry'],
+      },
+      {
+        id: 'hud:size-scaling',
+        name: 'Size Scaling',
+        icon: Ruler,
+        description: 'Ant-Man/Giant-style size systems (worlds with the Foundry system enabled).',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 932,
+        keywords: ['size', 'scaling', 'giant', 'shrink', 'foundry'],
+      },
+      {
+        id: 'hud:skill-affinity',
+        name: 'Skill Affinity',
+        icon: Layers,
+        description: 'Per-player skill affinity panel (worlds with the Foundry system enabled).',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 933,
+        keywords: ['skill', 'affinity', 'foundry'],
+      },
+      {
+        id: 'hud:link-scan',
+        name: 'Concord Link — scan surroundings',
+        icon: Radar,
+        description: 'Reveal the embodied-signal substrate at your position (temp/humidity/light/noise). Keybind: V.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 934,
+        keywords: ['link', 'scan', 'environment', 'signals'],
+      },
+      {
+        id: 'hud:curtain',
+        name: 'The Curtain — declassified secrets dossier',
+        icon: Eye,
+        description: 'The world’s secret catalog, redacted until investigated. Keybind: K.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 935,
+        keywords: ['curtain', 'secrets', 'dossier', 'declassify'],
+      },
+      // DET-C batch 4 — LinkShell (components/world/concord-link/LinkShell.tsx,
+      // the Status/Inventory/Effects "Concord Link" summon shell — distinct
+      // from the cross-world-messaging ConcordLinkPanel) is mounted bare with
+      // no `open` prop and its ONLY toggle (`concordia:concord-link-summon`)
+      // had zero dispatchers anywhere — a fully unreachable feature, same
+      // shape as RogueliteUnlockShop above before DET-C batch 2 fixed it.
+      {
+        id: 'hud:concord-link-shell',
+        name: 'Concord Link — status, inventory & effects',
+        icon: Link2,
+        description: 'Live resource bars, personal-locker inventory, and active effects for your current world.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 936,
+        keywords: ['concord', 'link', 'status', 'inventory', 'effects', 'bars'],
+      },
+    ];
+    return [conkay, ...getCommandPaletteLenses(expertiseLevel, userRole), ...panelEntries, ...modeEntries, ...systemEntries, ...hudEntries];
   }, [expertiseLevel, userRole]);
 
   // Filtered + scored results
@@ -379,6 +503,24 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         window.dispatchEvent(new Event('concordia:open-dungeon-hud'));
         return;
       }
+      // `hud:<id>` entries (DET-C batch 2) each dispatch the exact window
+      // event that HUD's own useEffect already listens for — same shape as
+      // `mode:dungeon` above, just table-driven since there's no per-entry
+      // special casing needed (every one is a bare toggle/open, none take
+      // a detail payload).
+      const HUD_DISPATCH_EVENTS: Record<string, string> = {
+        'hud:roguelite-shop': 'concordia:open-roguelite-shop',
+        'hud:status-window': 'concordia:open-status-window',
+        'hud:size-scaling': 'concordia:open-size-scaling',
+        'hud:skill-affinity': 'concordia:open-skill-affinity',
+        'hud:link-scan': 'concordia:link-scan-toggle',
+        'hud:curtain': 'concordia:open-curtain',
+        'hud:concord-link-shell': 'concordia:concord-link-summon',
+      };
+      if (HUD_DISPATCH_EVENTS[lens.id] && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(HUD_DISPATCH_EVENTS[lens.id]));
+        return;
+      }
       // A `mode:<id>` entry (DA4 run modes) dispatches the same
       // `concordia:start-mode` event the hotbar's own buttons trigger
       // (GameModesHotbarGroup.tsx) instead of navigating away.
@@ -392,6 +534,33 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
       // (operates the host lens' real macros) rather than navigating away.
       if (lens.id === 'conkay' && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('conkay:summon'));
+        return;
+      }
+      // `system:<id>` entries navigate to a lens, then scroll to + focus a
+      // specific in-page anchor (`id="<anchorId>"`) rather than just landing
+      // on the lens generically. Mirrors the precedent in
+      // `components/mobile/MobileSectionJump.tsx` (getElementById +
+      // scrollIntoView), retried briefly since the anchor may not be
+      // mounted yet immediately after a client-side navigation.
+      if (lens.id.startsWith('system:') && typeof window !== 'undefined') {
+        const anchorId = lens.id.slice('system:'.length);
+        const focusAnchor = (attempt = 0) => {
+          const el = document.getElementById(anchorId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (typeof (el as HTMLElement).focus === 'function') {
+              (el as HTMLElement).focus({ preventScroll: true });
+            }
+          } else if (attempt < 20) {
+            setTimeout(() => focusAnchor(attempt + 1), 100);
+          }
+        };
+        if (window.location.pathname === lens.path) {
+          focusAnchor();
+        } else {
+          router.push(lens.path);
+          focusAnchor();
+        }
         return;
       }
       // Paths carrying a query (e.g. a deep link) use a full navigation so the

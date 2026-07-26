@@ -82,6 +82,18 @@ export function RfEntryDetailModal({
 
   useEffect(() => { void load(); }, [load]);
 
+  // Escape closes the modal — keyboard focus normally lives on a field or
+  // button inside the dialog, never on the backdrop, so a document-level
+  // listener is the real path; the backdrop/panel onKeyDown below is a
+  // second path for the rare case the backdrop itself is focused.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   async function save() {
     if (!entry) return;
     setSaving(true);
@@ -122,10 +134,12 @@ export function RfEntryDetailModal({
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 pt-10"
       role="dialog" aria-modal="true" aria-label="Entry detail"
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
     >
       <div
         className="w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { if (e.key === 'Escape') onClose(); else e.stopPropagation(); }}
       >
         <header className="flex items-center gap-2 border-b border-zinc-800 px-4 py-3">
           <span className="text-sm font-semibold text-zinc-100">

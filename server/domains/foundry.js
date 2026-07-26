@@ -27,6 +27,9 @@ import {
   validateWorldspec,
 } from "../lib/foundry/worldspec.js";
 import { compileWorldspec, buildConcordLinkAnchor } from "../lib/foundry/compiler.js";
+import {
+  buildPromotedContent, validatePromotedContent, writePromotedContent,
+} from "../lib/foundry/promote.js";
 import { listTemplates, getTemplate } from "../lib/foundry/templates.js";
 import {
   composeRuleDeterministic, validateRule, buildRulePrompt, parseRuleFromLLM,
@@ -488,6 +491,97 @@ export default function registerFoundryMacros(register) {
 
     const updated = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
     return { ok: true, disposition, formerWorldId: worldId, world: rowToWorld(updated) };
+  });
+
+  /**
+   * foundry.promote — OPT-IN. Turns a published Foundry world's
+   * overlay-only `worlds` row into a full first-class world node by
+   * generating a real content/world/<publishedWorldId>/{meta,npcs,
+   * factions,lore}.json directory that content-seeder.js's
+   * discoverSubWorlds() will pick up on the next boot. This closes the
+   * gap noted in compiler.js's header comment ("'Promotion' to a full
+   * first-class world node ... is a later flag") — that flag is this macro.
+   *
+   * NEVER automatic — publish/compile/preview/marketplace behavior is
+   * completely unaffected by this macro's existence; a creator must
+   * call this explicitly, and only after publishing. Content generation
+   * reuses scripts/scaffold-world.mjs's template functions (genre
+   * flavor drawn from the worldspec's theme.universeType where a real
+   * scaffold-world archetype corresponds — see server/lib/foundry/
+   * promote.js's header for the honest mapping, generic placeholder
+   * otherwise) plus the worldspec's actually-activated systems. Every
+   * generated record is validated through the real content-seeder.js
+   * validators before anything is written; a failure aborts cleanly
+   * with no partial write.
+   *
+   * Idempotent-by-refusal: re-promoting an already-promoted world is
+   * rejected unless `force` is passed, so a creator's manual edits to
+   * the generated files are never silently clobbered by a second call.
+   *
+   * input: { id, force? }
+   * output: { ok, worldId, directory, scaffoldTemplate, activatedSystems }
+   */
+  register("foundry", "promote", (ctx, input = {}) => {
+    try {
+      const db = ctx?.db;
+      if (!db) return { ok: false, reason: "no_db" };
+      const creatorId = ctx?.actor?.userId || ctx?.actor?.id;
+      if (!creatorId) return { ok: false, reason: "no_actor" };
+      const id = String((input && input.id) || "");
+      if (!id) return { ok: false, reason: "missing_id" };
+
+      const row = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
+      if (!row) return { ok: false, reason: "not_found" };
+      if (row.creator_id !== creatorId) return { ok: false, reason: "not_owner" };
+      if (row.status !== "published" || !row.published_world_id) {
+        return { ok: false, reason: "not_published", hint: "publish before promoting" };
+      }
+      const force = !!(input && input.force);
+      if (row.promoted && !force) {
+        return { ok: false, reason: "already_promoted", worldId: row.published_world_id };
+      }
+
+      let rawSpec;
+      try { rawSpec = JSON.parse(row.worldspec_json); }
+      catch { rawSpec = emptyWorldspec(); }
+      const worldspec = normalizeWorldspec(rawSpec);
+      if (worldspec.systems.length === 0) return { ok: false, reason: "no_systems" };
+
+      _beat(ctx, "generating_content");
+      const worldId = row.published_world_id;
+      const content = buildPromotedContent({
+        worldId, worldName: row.name, worldspec, description: row.description,
+      });
+
+      const problems = validatePromotedContent(content);
+      if (problems.length > 0) return { ok: false, reason: "generated_content_invalid", problems };
+
+      _beat(ctx, "writing_content");
+      // Test-only injection point — production ctx never sets this, so
+      // writePromotedContent falls back to the real content/world/ root.
+      // Mirrors scaffold-world.mjs's own --root flag for the same reason:
+      // tests must never touch the real repo's content/world/ directory.
+      const writeOpts = { worldId };
+      if (ctx && typeof ctx.contentWorldRoot === "string" && ctx.contentWorldRoot) {
+        writeOpts.worldRoot = ctx.contentWorldRoot;
+      }
+      let writeResult;
+      try {
+        writeResult = writePromotedContent(content, writeOpts);
+      } catch (e) {
+        return { ok: false, reason: "write_failed", error: String(e?.message || e) };
+      }
+
+      db.prepare(`UPDATE foundry_worlds SET promoted = 1, updated_at = ? WHERE id = ?`).run(Date.now(), id);
+
+      return {
+        ok: true,
+        worldId,
+        directory: writeResult.dir,
+        scaffoldTemplate: content.scaffoldTemplate,
+        activatedSystems: content.activatedSystems,
+      };
+    } catch (e) { return { ok: false, reason: "promote_failed", error: String(e?.message || e) }; }
   });
 
   // ===== Phase 5 — Live 3D preview ===========================================

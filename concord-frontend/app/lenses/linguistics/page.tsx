@@ -694,7 +694,7 @@ export default function LinguisticsLensPage() {
                     <div className="p-3 rounded-lg bg-pink-400/5 border border-pink-400/20">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] uppercase tracking-wide text-pink-300 font-semibold">Analysis</span>
-                        <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-white"><X className="w-3 h-3" /></button>
+                        <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-white" aria-label="Dismiss analysis"><X className="w-3 h-3" aria-hidden="true" /></button>
                       </div>
                       <p className="text-xs text-gray-300 whitespace-pre-wrap max-h-40 overflow-auto">{actionResult.content}</p>
                     </div>

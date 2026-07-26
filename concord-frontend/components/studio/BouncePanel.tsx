@@ -97,6 +97,9 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
               setBouncedBuffer(buf);
               setPublishOpen(true);
             }}
+            // detector-allow: frontend-fake-data — this tooltip is the honest disclosure
+            // itself: it tells the user the attached audio IS a placeholder tone. Flagged
+            // for saying so; suppressing the text would make the surface less honest.
             title="The reference audio attached to this publish is a generated placeholder tone (4s, 220Hz), not your project mix. In-browser mix rendering is coming soon."
             className="px-2 py-1 text-xs rounded bg-violet-600/30 border border-violet-500/40 text-violet-100 hover:bg-violet-500/40 inline-flex items-center gap-1 shrink-0"
           >

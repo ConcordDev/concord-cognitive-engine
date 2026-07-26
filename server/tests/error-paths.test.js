@@ -75,8 +75,18 @@ before(async () => {
   throw new Error("Server failed to start within 60 seconds");
 });
 
+// Resource-leak fix (2026-07-25): see tests/adversarial-critical-endpoints.test.js
+// for the full root-cause (server.js's gracefulShutdown() sleeps an
+// unconditional 10s+ before exiting on SIGTERM; a fire-and-forget kill here
+// leaves that full server monolith running as an orphan for 10-15s after
+// this file's own tests report done). Await actual exit, SIGKILL fallback.
 after(() => {
-  serverProcess?.kill("SIGTERM");
+  if (!serverProcess || serverProcess.killed) return Promise.resolve();
+  return new Promise((resolve) => {
+    serverProcess.kill("SIGTERM");
+    const t = setTimeout(() => { serverProcess.kill("SIGKILL"); resolve(); }, 3000);
+    serverProcess.on("exit", () => { clearTimeout(t); resolve(); });
+  });
 });
 
 async function api(method, path, body = null, { token } = {}) {

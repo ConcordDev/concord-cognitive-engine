@@ -54,7 +54,7 @@ export function FashionAIStylistPanel({ onChange }: { onChange: () => void }) {
         if (dd[0]) setSelectedDate(dd[0].date);
       },
       () => { setLoadingWeather(false); setError('Location denied — enter a temperature manually below.'); },
-      { timeout: 10000 },
+      { timeout: 10000 }, // @env-config-ok: PositionOptions.timeout — a W3C Geolocation API argument (how long to wait for a GPS fix before the error callback fires), not deployment config.
     );
   }, []);
 

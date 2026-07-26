@@ -2,17 +2,20 @@
 //
 // Phase BC1 — guild bank + guild XP + guild hall.
 //
-// world-organizations.js stays as the in-memory social graph
-// (createOrganization, joinOrganization, members map, treasury coin
-// counter). This module is a DB-backed companion layer keyed by
-// org_id, so guilds get:
+// world-organizations.js is the org/roster substrate (createOrganization,
+// joinOrganization, members, treasury coin counter) — DB-backed since the
+// migration-383 durability fix (world_organizations + org_members tables;
+// see that file's header comment). This module is a companion layer ALSO
+// keyed by org_id, so guilds get:
 //   - persisted XP + level (org_progression)
 //   - shared item inventory (org_inventory, role-gated withdraw)
 //   - audit log (org_inventory_log)
 //   - hall claim (hall_building_id on the same row as XP)
+// The org id format is unchanged by the durability fix, so org_progression
+// rows keyed by an existing org id continue to resolve correctly.
 //
 // Role gating is via a caller-supplied `isOfficer(userId)` predicate
-// because the role lookup lives in world-organizations.js (in-memory).
+// because the role lookup lives in world-organizations.js, not here.
 
 import crypto from "node:crypto";
 import logger from "../logger.js";

@@ -205,10 +205,27 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
       if (tableUses.has(t)) continue;
       // Already retired by a later DROP migration — don't flag.
       if (droppedTables.has(t)) continue;
-      // `_fix` staging tables — created in a migration that ALSO renames
-      // or drops them in the same file (mig 107 pattern). Skip.
-      if (t.endsWith("_fix")) {
-        const base = t.slice(0, -"_fix".length);
+      // Rebuild-staging tables — created in a migration that ALSO renames them
+      // back to their base name (or drops them) within the SAME file.
+      //
+      // `_fix` is migration 107's pattern. `_new`/`_old` are the newer
+      // CHECK-widening rebuild convention (SQLite cannot ALTER a CHECK, so the
+      // migration creates `<base>_new`, copies rows across, drops `<base>`, and
+      // renames `<base>_new` -> `<base>`; `down()` does the mirror via
+      // `<base>_old`). Verified in migrations 372 and 379, which produced three
+      // findings that were pure noise: the staging tables ARE fully referenced,
+      // just only inside their own migration file — and the orphan rule only
+      // scans for table references OUTSIDE migrations, so it can never see them.
+      //
+      // Generalised 2026-07-25 (authorized detector edit). The same-file
+      // rename-or-drop proof below is unchanged and still required — this
+      // widens WHICH suffixes are eligible for that proof, it does not weaken
+      // the proof itself. A table ending in one of these suffixes that is NOT
+      // renamed/dropped in its own migration still gets flagged.
+      const STAGING_SUFFIXES = ["_fix", "_new", "_old"];
+      const suffix = STAGING_SUFFIXES.find(s => t.endsWith(s));
+      if (suffix) {
+        const base = t.slice(0, -suffix.length);
         const migrationsContent = Array.from(tableMigrations.get(t) || []);
         const renamesOrDrops = migrationsContent.some(mc =>
           new RegExp(`ALTER\\s+TABLE\\s+${t}\\s+RENAME\\s+TO\\s+${base}\\b`, "i").test(mc) ||

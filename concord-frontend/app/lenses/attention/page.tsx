@@ -992,9 +992,16 @@ export default function AttentionLensPage() {
           <ForgettingPanel />
         </div>
 
-        {/* Repair Cortex */}
-        <div className="panel p-4">
-          <h2 className="font-semibold mb-3 flex items-center gap-2">
+        {/* Repair Cortex — system-level self-healing loop. Given its own
+            labeled anchor (distinct from the Dream/Forgetting panels above)
+            so it's directly reachable via Ctrl+K → "Repair Cortex" instead
+            of being buried in this panel stack. */}
+        <div className="panel p-4 border border-orange-500/20">
+          <h2
+            id="repair-cortex"
+            tabIndex={-1}
+            className="font-semibold mb-3 flex items-center gap-2 scroll-mt-20 focus:outline-none"
+          >
             <Zap className="w-4 h-4 text-neon-green" /> Repair Cortex
           </h2>
           <RepairPanel />

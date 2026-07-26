@@ -14,8 +14,13 @@
  *    tinted by terrain material.
  *  - per-frame → calls cold-breath tick at the player's head position
  *    if the active world's ambient temperature is below the visibility
- *    threshold (read from the existing `concordia:embodied-signal`
- *    window event that the environment-sensor heartbeat publishes).
+ *    threshold (read from the `concordia:embodied-signal` window event
+ *    this bridge itself polls-and-broadcasts below, backed by the real
+ *    `embodied.signals_for_player` macro over `embodied_signal_log` —
+ *    the same substrate `LinkScanOverlay` reads on-demand. Ambient
+ *    temperature moves slowly (the environment-sensor heartbeat writes
+ *    baselines every ~75s), so a 20s client poll is honest, not a
+ *    fabricated fast-path).
  */
 
 import { useEffect, useRef } from 'react';
@@ -145,6 +150,32 @@ export default function EmbodiedParticlesBridge() {
       if (typeof detail?.level === 'number') exertionRef.current = detail.level;
     }
 
+    // Real embodied-signal producer: poll the same macro LinkScanOverlay
+    // uses on-demand, and broadcast the result as the window event the
+    // handler above already consumes. Ambient temperature is a slow
+    // signal (heartbeat baseline ~75s) so a 20s client poll is honest
+    // freshness, not wasted-network churn.
+    let signalTimer: ReturnType<typeof setInterval> | null = null;
+    async function pollEmbodiedSignal() {
+      if (disposed) return;
+      try {
+        const worldId = (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) || 'concordia-hub';
+        const r = await fetch('/api/lens/run', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain: 'embodied', name: 'signals_for_player', input: { worldId } }),
+        });
+        if (!r.ok || disposed) return;
+        const j = await r.json();
+        const payload = (j.result || j) as { ok?: boolean; signals?: EmbodiedSignalDetail };
+        if (payload?.ok && payload.signals) {
+          window.dispatchEvent(new CustomEvent('concordia:embodied-signal', { detail: payload.signals }));
+        }
+      } catch { /* offline — keep last reading, never fabricate */ }
+    }
+    pollEmbodiedSignal();
+    signalTimer = setInterval(pollEmbodiedSignal, 20000);
+
     window.addEventListener('concordia:scene-ready', onSceneReady as EventListener);
     if ((window as unknown as { __concordiaScene?: unknown }).__concordiaScene) {
       onSceneReady(new CustomEvent('concordia:scene-ready', {
@@ -158,6 +189,7 @@ export default function EmbodiedParticlesBridge() {
 
     return () => {
       disposed = true;
+      if (signalTimer) clearInterval(signalTimer);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       window.removeEventListener('concordia:scene-ready',      onSceneReady as EventListener);
       window.removeEventListener('concordia:foot-plant',       onFootPlant as EventListener);

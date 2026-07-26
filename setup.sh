@@ -190,6 +190,88 @@ else
   ok ".env already exists — skipping copy."
 fi
 
+# ── 10b. Auto-generate required secrets (zero-touch self-host) ──────────
+# .env.example ships several REQUIRED values empty (JWT_SECRET, ADMIN_PASSWORD,
+# SESSION_SECRET) and docker-compose.yml hard-fails via `${GRAFANA_PASSWORD:?...}`
+# (see the "MONITORING (Required for docker-compose)" block for GRAFANA_USER/
+# GRAFANA_PASSWORD) if GRAFANA_PASSWORD is unset. Without this step a fresh
+# clone can copy .env.example -> .env and still be unable to `docker-compose up`
+# (or run the server in production, which itself requires JWT_SECRET) until a
+# human hand-edits .env. We close that gap here with strong random values,
+# but ONLY when the current value is empty/placeholder — a secret the user
+# already set for real is never touched (idempotent, safe to re-run).
+if [ -f "${ROOT_DIR}/.env" ]; then
+  info "Checking required secrets in .env..."
+
+  # _env_get FILE KEY -> prints the current value (empty if unset/blank)
+  _env_get() {
+    grep -E "^${2}=" "$1" 2>/dev/null | head -1 | cut -d'=' -f2-
+  }
+
+  # _env_is_placeholder FILE KEY -> 0 (true) if empty or an example placeholder
+  _env_is_placeholder() {
+    val="$(_env_get "$1" "$2")"
+    if [ -z "$val" ]; then
+      return 0
+    fi
+    case "$val" in
+      *REPLACE_ME*|*your-*|*change-me*|*CHANGE_ME*|*change_me*|*example*) return 0 ;;
+    esac
+    return 1
+  }
+
+  # _env_set FILE KEY VALUE -> rewrites KEY= in place via a temp file
+  # (avoids the macOS/BSD vs GNU `sed -i` incompatibility entirely).
+  _env_set() {
+    envfile="$1"; key="$2"; value="$3"
+    tmpfile="$(mktemp "${envfile}.XXXXXX")"
+    awk -v k="$key" -v v="$value" '
+      BEGIN { done = 0 }
+      $0 ~ "^" k "=" { print k "=" v; done = 1; next }
+      { print }
+      END { if (!done) print k "=" v }
+    ' "$envfile" > "$tmpfile"
+    mv "$tmpfile" "$envfile"
+  }
+
+  if command -v openssl &>/dev/null; then
+    if _env_is_placeholder "${ROOT_DIR}/.env" "JWT_SECRET"; then
+      _env_set "${ROOT_DIR}/.env" "JWT_SECRET" "$(openssl rand -hex 64)"
+      ok "Generated JWT_SECRET"
+    else
+      ok "JWT_SECRET already set — leaving as-is."
+    fi
+
+    if _env_is_placeholder "${ROOT_DIR}/.env" "SESSION_SECRET"; then
+      _env_set "${ROOT_DIR}/.env" "SESSION_SECRET" "$(openssl rand -hex 32)"
+      ok "Generated SESSION_SECRET"
+    else
+      ok "SESSION_SECRET already set — leaving as-is."
+    fi
+
+    if _env_is_placeholder "${ROOT_DIR}/.env" "ADMIN_PASSWORD"; then
+      ADMIN_PW="$(openssl rand -base64 24 | tr -d '=+/\n' | cut -c1-20)"
+      _env_set "${ROOT_DIR}/.env" "ADMIN_PASSWORD" "$ADMIN_PW"
+      ok "Generated ADMIN_PASSWORD (save this — shown once): ${ADMIN_PW}"
+    else
+      ok "ADMIN_PASSWORD already set — leaving as-is."
+    fi
+
+    if _env_is_placeholder "${ROOT_DIR}/.env" "GRAFANA_PASSWORD"; then
+      GRAFANA_PW="$(openssl rand -base64 24 | tr -d '=+/\n' | cut -c1-20)"
+      _env_set "${ROOT_DIR}/.env" "GRAFANA_PASSWORD" "$GRAFANA_PW"
+      ok "Generated GRAFANA_PASSWORD (save this — shown once): ${GRAFANA_PW}"
+    else
+      ok "GRAFANA_PASSWORD already set — leaving as-is."
+    fi
+  else
+    warn "openssl not found — cannot auto-generate JWT_SECRET/SESSION_SECRET/ADMIN_PASSWORD/GRAFANA_PASSWORD."
+    warn "Install openssl, then re-run setup.sh, or set them manually in .env before docker-compose up."
+  fi
+
+  unset -f _env_get _env_is_placeholder _env_set 2>/dev/null || true
+fi
+
 # ── 11. Generate VAPID keys for web-push (Phase 12 / Item C1) ────────────
 # Web push subscriptions require a stable VAPID keypair on the server.
 # If the .env already has both keys we leave them alone; otherwise we
@@ -268,12 +350,10 @@ echo "============================================"
 echo ""
 echo "Next steps:"
 echo ""
-echo "  1. Edit .env and fill in the REQUIRED values:"
-echo ""
-echo "     JWT_SECRET        — generate with: openssl rand -hex 64"
-echo "     SESSION_SECRET    — generate with: openssl rand -hex 32"
-echo "     ADMIN_PASSWORD    — choose a strong password (12+ chars)"
-echo "     GRAFANA_PASSWORD  — choose a strong password for Grafana"
+echo "  1. JWT_SECRET / SESSION_SECRET / ADMIN_PASSWORD / GRAFANA_PASSWORD were"
+echo "     auto-generated into .env above (unless already set) — docker-compose up"
+echo "     and production boot no longer need manual secret editing. The generated"
+echo "     ADMIN_PASSWORD and GRAFANA_PASSWORD are printed once above — save them."
 echo ""
 echo "  2. (Optional) Set OPENAI_API_KEY if you want cloud LLM features."
 echo "     (Optional) The VAPID keys for web-push were auto-generated above;"

@@ -249,6 +249,15 @@ describe('Codex lens — deep link (?id=…) resolves via lore.get', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close entry detail' }));
     await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/lenses/codex', { scroll: false }));
   });
+
+  it('pressing Escape closes the deep-link dialog (keyboard equivalent of the backdrop click)', async () => {
+    mockDeepLinkId = 'lore_founding_compact';
+    routeLensRun(LIST_OK, GET_OK);
+    render(<CodexLensPage />);
+    await screen.findByRole('dialog', { name: 'Codex entry detail' });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/lenses/codex', { scroll: false }));
+  });
 });
 
 describe('Codex lens — copy permalink', () => {

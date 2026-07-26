@@ -50,7 +50,42 @@ module.exports = {
       // calculated estimate, not live telemetry from the real pod — verify
       // with `free -h` / `ps aux --sort=-rss` under real traffic and adjust
       // if Ollama's actual steady-state footprint differs materially.
-      max_memory_restart: '20G',
+      // 2026-07-25: LOWERED 20G -> 6G, because at 20G this net could never
+      // fire for the failure mode we actually have.
+      //
+      // pm2 triggers max_memory_restart on RSS. V8 fatally aborts when the
+      // MAIN-THREAD OLD SPACE hits its own ceiling — 8192MB, set in node_args
+      // below — which is a per-isolate limit independent of process RSS. At
+      // that moment RSS is roughly 9-11GB (heap + external + array buffers +
+      // code space + the worker ceilings this file budgets: 4x512MB heartbeat
+      // + 2x1024MB macro). All of that is BELOW 20G, so the process always
+      // died of a V8 abort before pm2 ever saw a reason to intervene. The
+      // "graceful pre-emptive restart" was decorative.
+      //
+      // Why 6G specifically, from measurement rather than taste
+      // (docs/HEAP_GROWTH_MEASUREMENT.md — 46min real run, 87 samples):
+      //   - idle RSS settles at ~1.15GB and peaked at 1.45GB
+      //   - a confirmed leak raises the heap floor ~300MB/hr at ZERO load,
+      //     and the crash that started this hit 6,029MB heap in ~75min under
+      //     light load
+      //   - 6G RSS lands well above anything observed in normal operation and
+      //     well below the ~9-11GB V8-abort point
+      // So it fires during a leak run and not during healthy operation.
+      //
+      // A graceful restart here is materially better than the abort it
+      // replaces: pm2 sends SIGINT, so gracefulShutdown() (server.js) flushes
+      // STATE, drains in-flight requests over its 5s window, and lets WAL
+      // checkpoint. A V8 abort skips all of that and drops up to 2 minutes of
+      // in-memory STATE (the periodic save interval).
+      //
+      // This does NOT trip the max_restarts: 10 crash-loop guard below — that
+      // only counts restarts where the process failed to stay up for
+      // min_uptime (30s). A memory restart hours apart resets the counter.
+      //
+      // If this fires OFTEN, that is signal, not noise: it means the leak is
+      // running faster than the measured idle rate and the underlying
+      // retention path still needs fixing. It buys uptime; it is not a fix.
+      max_memory_restart: '6G',
       node_args: '--max-old-space-size=8192 --expose-gc',
       env: {
         // Default (Docker / docker-compose)

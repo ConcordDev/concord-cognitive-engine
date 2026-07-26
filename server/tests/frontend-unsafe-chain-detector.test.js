@@ -273,3 +273,125 @@ describe("FrontendUnsafeChainDetector — report shape + robustness", () => {
     } finally { teardown(dir); }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// Optional-chained guard recognition (2026-07-24 correctness fix)
+//
+// `hasPrecedingPrefixGuard` used to build its prefix pattern with literal
+// dots, so the canonical house idiom
+//     if (r.data?.result?.session) { …r.data.result.session… }
+// never matched a prefix recorded as `r.data.result.session`. 26 of the
+// detector's 27 live findings were that single blind spot — correctly
+// guarded code reported as unguarded.
+//
+// These tests are deliberately BIDIRECTIONAL: the fix is only a correctness
+// fix if the guarded shapes go quiet AND the genuinely unguarded shape they
+// differ from still trips. A detector that stopped flagging the second case
+// would be a softened checker, which is the thing this repo forbids.
+// ─────────────────────────────────────────────────────────────────────────
+
+const OPTIONAL_GUARD_IF_FIXTURE = `'use client';
+import { lensRun } from '@/lib/api/client';
+
+export default function Sessions() {
+  async function load() {
+    const r = await lensRun('mentorship', 'session-list', {});
+    if (r.data?.result?.sessions) {
+      return r.data.result.sessions.map((s: any) => s.id);
+    }
+    return [];
+  }
+  return null;
+}
+`;
+
+const OPTIONAL_GUARD_TERNARY_FIXTURE = `'use client';
+import { lensRun } from '@/lib/api/client';
+
+export default function ZoneBadge() {
+  async function load() {
+    const envelope = await lensRun('world', 'zone-at', {});
+    const data = envelope?.result ?? envelope;
+    return data?.zone ? { name: data.zone.name, kind: data.zone.kind } : null;
+  }
+  return null;
+}
+`;
+
+// The control: same depth, same shape, but the ONLY `?.` sits one link too
+// late — `r.data` is a plain access evaluated before any optional link, and
+// nothing guards `.result` before `.sessions` is read off it. This is the
+// real historical bug shape and MUST still be flagged.
+const UNGUARDED_CONTROL_FIXTURE = `'use client';
+import { lensRun } from '@/lib/api/client';
+
+export default function Unguarded() {
+  async function load() {
+    const r = await lensRun('mentorship', 'session-list', {});
+    return r.data.result.sessions.map((s: any) => s.id);
+  }
+  return null;
+}
+`;
+
+describe("FrontendUnsafeChainDetector — optional-chained guards are real guards", () => {
+  it("does NOT flag `if (r.data?.result?.sessions) r.data.result.sessions.map(...)`", async () => {
+    const dir = withFixture({ "concord-frontend/components/mentorship/Sessions.tsx": OPTIONAL_GUARD_IF_FIXTURE });
+    try {
+      const r = await runFrontendUnsafeChainDetector({ root: dir });
+      assert.equal(r.ok, true);
+      assert.equal(
+        realFindings(r).length, 0,
+        `an optional-chained if-guard proves the path; got: ${JSON.stringify(realFindings(r))}`,
+      );
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag the ternary form `data?.zone ? { ...data.zone.name } : null`", async () => {
+    const dir = withFixture({ "concord-frontend/components/world/ZoneBadge.tsx": OPTIONAL_GUARD_TERNARY_FIXTURE });
+    try {
+      const r = await runFrontendUnsafeChainDetector({ root: dir });
+      assert.equal(r.ok, true);
+      assert.equal(
+        realFindings(r).length, 0,
+        `a ternary guard on the same path is still a guard; got: ${JSON.stringify(realFindings(r))}`,
+      );
+    } finally { teardown(dir); }
+  });
+
+  it("STILL flags the genuinely unguarded control (`r.data.result.sessions.map(...)`, no guard anywhere)", async () => {
+    const dir = withFixture({ "concord-frontend/components/mentorship/Unguarded.tsx": UNGUARDED_CONTROL_FIXTURE });
+    try {
+      const r = await runFrontendUnsafeChainDetector({ root: dir });
+      const hit = realFindings(r).find((f) => f.id === "unsafe_chain_no_guard");
+      assert.ok(
+        hit,
+        "the guard-recognition fix must not blind the detector to a real unguarded deep chain",
+      );
+    } finally { teardown(dir); }
+  });
+
+  it("does not treat a CONTINUING optional chain (`x?.a?.b?.c`) as a ternary guard for itself", async () => {
+    // Regression guard for the `\\?(?!\\.)` lookahead: without it, the `?` in
+    // `r.data?.result` would read as a ternary test and mark the chain safe.
+    const dir = withFixture({
+      "concord-frontend/components/x/Chain.tsx": `'use client';
+import { lensRun } from '@/lib/api/client';
+export default function Chain() {
+  async function load() {
+    const r = await lensRun('x', 'y', {});
+    return r.data.result.items.map((i: any) => i.id);
+  }
+  return null;
+}
+`,
+    });
+    try {
+      const r = await runFrontendUnsafeChainDetector({ root: dir });
+      assert.ok(
+        realFindings(r).some((f) => f.id === "unsafe_chain_no_guard"),
+        "an unguarded chain must not be silenced by the ternary-guard branch",
+      );
+    } finally { teardown(dir); }
+  });
+});

@@ -21,6 +21,7 @@ import {
 } from "../lib/terrain-deformation.js";
 import { solveFlowStep, totalWater, setWater, tickWaterFlow, waterDepthAt } from "../lib/terrain-water.js";
 import { debitBuildBill, canAfford, billFor } from "../lib/build-bill.js";
+import { renderedElevationAt, RENDERED_TERRAIN_CONSTANTS } from "../lib/world-terrain.js";
 
 const W = "w1";
 function db281() {
@@ -64,6 +65,44 @@ describe("Phase 0.6 — terrain deformation", () => {
     const r = craterAt(db, W, 700, 700, 4);
     assert.equal(r.ok, true);
     assert.equal(deformationsForWorld(db, W)[0].kind, "crater");
+  });
+});
+
+describe("Phase 0.6 — baseElevation is the single canonical elevation truth", () => {
+  // Compute-don't-guess (CLAUDE.md): the expected value comes from running
+  // the CANONICAL engine itself (world-terrain.js#renderedElevationAt — the
+  // verbatim port of TerrainRenderer.tsx#generatePoughkeepsieHeightmap, the
+  // formula the Three.js client actually renders) as the oracle, not from
+  // hand/LLM arithmetic. baseElevation must now be a pure delegation to it
+  // (same non-centred nx=wx/WORLD_SIZE convention this module always used),
+  // so the two must agree EXACTLY at every sample point — not approximately.
+  const WORLD_SIZE = RENDERED_TERRAIN_CONSTANTS.terrainSizeMeters;
+
+  it("equals renderedElevationAt(wx/WORLD_SIZE, wz/WORLD_SIZE) exactly across a grid of sample points", () => {
+    const samples = [
+      [0, 0], [50, 0], [0, 50], [199, 383],           // river zone (nx < 0.1)
+      [300, 700], [350, 1200],                         // bluff rise (0.1 <= nx < 0.2)
+      [800, 400], [1100, 900],                         // central plateau (0.2 <= nx < 0.6)
+      [1400, 250], [1900, 1500], [1999, 999],          // eastern hills (nx >= 0.6)
+      [700, 100], [720, 1800],                         // near the Fall Kill Creek depression
+      [1000, 1000],                                    // centre
+    ];
+    for (const [wx, wz] of samples) {
+      const expected = renderedElevationAt(wx / WORLD_SIZE, wz / WORLD_SIZE);
+      const actual = baseElevation(wx, wz);
+      assert.equal(actual, expected, `baseElevation(${wx},${wz}) diverged from the canonical formula`);
+    }
+  });
+
+  it("stays clamped to [0, maxElevation] via the canonical formula's own clamp", () => {
+    for (const [wx, wz] of [[0, 0], [1000, 1000], [1999, 1999], [0, 1999]]) {
+      const v = baseElevation(wx, wz);
+      assert.ok(v >= 0 && v <= RENDERED_TERRAIN_CONSTANTS.maxElevation, `${v} out of [0,80] at (${wx},${wz})`);
+    }
+  });
+
+  it("is deterministic — same (wx, wz) always returns the same value", () => {
+    assert.equal(baseElevation(842, 173), baseElevation(842, 173));
   });
 });
 

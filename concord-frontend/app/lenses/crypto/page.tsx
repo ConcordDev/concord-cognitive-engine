@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CoinGeckoTicker } from '@/components/crypto/CoinGeckoTicker';
+import { PortfolioBalanceHero } from '@/components/crypto/PortfolioBalanceHero';
 import { CryptoActionPanel } from '@/components/crypto/CryptoActionPanel';
 import { AddressBookPanel } from '@/components/crypto/AddressBookPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -23,8 +24,8 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Coins, TrendingUp, Lock, RefreshCw, ArrowRightLeft,
   Wallet, Loader2, Plus, Send, ArrowDownLeft, ArrowUpRight,
-  Eye, EyeOff, Copy, Check, X, Settings, BarChart3, Layers, ChevronDown,
-  ShieldCheck, TrendingDown, ArrowUp, ArrowDown, XCircle
+  Copy, Check, X, Settings, BarChart3, Layers, ChevronDown,
+  ShieldCheck, TrendingDown, XCircle
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -34,7 +35,6 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { useUIStore } from '@/store/ui';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -611,39 +611,26 @@ export default function CryptoLensPage() {
         <ExchangeSection />
       </div>
     <div data-lens-theme="crypto" className="p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500/30 to-emerald-500/30 border border-green-500/30 flex items-center justify-center">
-            <Coins className="w-5 h-5 text-green-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold">Crypto Lens</h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-            </div>
-            <p className="text-sm text-gray-400">
-              Portfolio management, transactions, and wallet controls
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <DTUExportButton domain="crypto" data={{}} compact />
-          <button
-            onClick={() => setShowBalances(!showBalances)}
-            className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-            title={showBalances ? 'Hide balances' : 'Show balances'}
-          >
-            {showBalances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => { refetch(); refetch2(); refetch3(); }}
-            className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-            title="Refresh"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
+      {/* Portfolio hero — the Coinbase/WalletShell "big balance up top"
+          tell. Replaces the generic icon+title lens header: this is the
+          one number a wallet app leads with, computed from the same real
+          chains/price data as the rest of the page (never a second,
+          re-fabricated figure). Extracted to its own component so the
+          flash-on-real-change interaction is independently testable. */}
+      <PortfolioBalanceHero
+        totalValue={totalPortfolioValue}
+        netFlow={netFlow}
+        totalEarned={totalEarned}
+        chainCount={chains.length}
+        walletCount={wallets.length}
+        showBalances={showBalances}
+        onToggleBalances={() => setShowBalances(!showBalances)}
+        onRefresh={() => { refetch(); refetch2(); refetch3(); }}
+        isLoading={isLoading}
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        extraActions={<DTUExportButton domain="crypto" data={{}} compact />}
+      />
 
 
       <RealtimeDataPanel domain="crypto" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
@@ -652,9 +639,9 @@ export default function CryptoLensPage() {
       <UniversalActions domain="crypto" artifactId={chainItems[0]?.id} compact />
       {isLoading ? (
         <div className="space-y-6" aria-busy="true">
-          {/* Summary tiles skeleton — matches the 4-up KPI grid below */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
+          {/* Summary tiles skeleton — matches the 3-up KPI grid below */}
+          <div className="grid grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="lens-card space-y-2">
                 <Skeleton variant="avatar" width={20} height={20} />
                 <Skeleton width="70%" height="1.75rem" />
@@ -670,39 +657,10 @@ export default function CryptoLensPage() {
         </div>
       ) : (
         <>
-          {/* Portfolio Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="lens-card">
-              <Wallet className="w-5 h-5 text-neon-green mb-2" />
-              <p
-                className="text-2xl font-bold font-mono tabular-nums"
-                style={{
-                  animation: 'portfolioGlow 3s ease-in-out infinite',
-                }}
-              >
-                {showBalances ? `$${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '••••••'}
-              </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-sm text-gray-400">Total Portfolio Value</p>
-                {netFlow >= 0 ? (
-                  <span className="flex items-center gap-0.5 text-xs text-neon-green font-mono">
-                    <ArrowUp className="w-3 h-3" />
-                    {totalEarned > 0 ? `+${((netFlow / (totalEarned || 1)) * 100).toFixed(1)}%` : '—'}
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-0.5 text-xs text-neon-pink font-mono">
-                    <ArrowDown className="w-3 h-3" />
-                    {totalEarned > 0 ? `${((netFlow / (totalEarned || 1)) * 100).toFixed(1)}%` : '—'}
-                  </span>
-                )}
-              </div>
-              <style>{`
-                @keyframes portfolioGlow {
-                  0%, 100% { text-shadow: 0 0 6px rgba(0,255,136,0.3); }
-                  50% { text-shadow: 0 0 18px rgba(0,255,136,0.8), 0 0 32px rgba(0,255,136,0.4); }
-                }
-              `}</style>
-            </div>
+          {/* Secondary stats — the total-value figure now lives once, in
+              the hero above; this row doesn't repeat it. Three real
+              counts, no decorative always-on glow tied to nothing. */}
+          <div className="grid grid-cols-3 gap-4">
             <div className="lens-card">
               <BarChart3 className="w-5 h-5 text-neon-blue mb-2" />
               <p className="text-2xl font-bold font-mono tabular-nums">{chains.length}</p>

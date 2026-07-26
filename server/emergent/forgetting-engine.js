@@ -16,6 +16,11 @@
 import crypto from "crypto";
 import logger from '../logger.js';
 import { feltPeakBonus } from '../lib/felt-per.js';
+import {
+  isDtuProtected,
+  protectDtuInStore,
+  unprotectDtuInStore,
+} from '../lib/dtu-protection.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +75,13 @@ const PROTECTION_RULES = [
   (dtu) => dtu.tags?.includes("repair_cortex"),
   (dtu) => (dtu.lineage?.children?.length || 0) > 5,
   (dtu) => dtu._pinned === true,
+  // Explicit "permanent record" assertion. `isDtuProtected` unions the flag
+  // vocabularies that were previously incompatible: this file honored only
+  // `_pinned`, while server.js#demoteToArchive honored only
+  // `protected`/`immutable`/`seedOrigin`. A DTU protected through either one
+  // (or through the archive tags, or the structured `dtu.protection` record)
+  // is now honored by both. See lib/dtu-protection.js.
+  (dtu) => isDtuProtected(dtu),
 ];
 
 function isProtected(dtu) {
@@ -193,6 +205,18 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
 
   try {
     const STATE = getSTATE();
+    // ⚠️ HONEST NOTE — this guard makes the forgetting cycle INERT AT RUNTIME.
+    // At boot, server.js (~:11457) replaces STATE.dtus with the write-through
+    // store returned by `createDTUStore()`, which is a PLAIN OBJECT, not a Map
+    // (verified by running it: `store instanceof Map === false`). So on the
+    // live server this early-returns every time and nothing is ever forgotten.
+    // Only tests, which install a real `Map`, reach the body below.
+    //
+    // Deliberately NOT "fixed" here: relaxing this guard would immediately
+    // start tombstoning DTUs platform-wide, which is a separate,
+    // human-authorized decision — not a side effect of a protection unit.
+    // Recorded so the next reader doesn't mistake "protection works" for
+    // "the cycle runs".
     if (!STATE?.dtus || !(STATE.dtus instanceof Map)) {
       return { ok: false, error: "STATE not available" };
     }
@@ -441,6 +465,9 @@ export function reviewDtu(db, dtuId, now = Date.now()) {
 export async function runReviewSchedulingPass(db, opts = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const STATE = getSTATE();
+  // Same inertness caveat as runForgettingCycle's guard above: the live
+  // STATE.dtus is the write-through store object (not a Map), so this pass
+  // early-returns on the running server and only executes under tests.
   if (!STATE?.dtus || !(STATE.dtus instanceof Map)) return { ok: false, reason: "state_not_available" };
 
   const now = opts.now ?? Date.now();
@@ -499,22 +526,38 @@ export function getCandidates() {
   return runForgettingCycle(true);
 }
 
-export function protectDTU(dtuId) {
+// Pin a DTU so no retention/consolidation/dedupe path may remove it.
+//
+// This used to mutate `dtu._pinned` on the in-memory object and stop there.
+// `STATE.dtus` is a write-through store whose `set()` is the ONLY code path
+// that writes SQLite (lib/dtu-store.js), so a pin made that way was lost on
+// the next restart — the exact opposite of what "pinned" claims. It now goes
+// through `protectDtuInStore`, which writes both legacy flags plus a
+// full-payload SHA-256 integrity anchor and then persists via `set()`.
+export function protectDTU(dtuId, opts = {}) {
   const STATE = getSTATE();
   if (!STATE?.dtus) return { ok: false, error: "STATE not available" };
-  const dtu = STATE.dtus.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
-  dtu._pinned = true;
-  return { ok: true, dtuId, pinned: true };
+  const r = protectDtuInStore(STATE.dtus, dtuId, {
+    reason: opts.reason || "pinned",
+    source: opts.source || "forgetting-engine",
+    ...opts,
+  });
+  if (!r.ok) {
+    return { ok: false, error: r.reason === "dtu_not_found" ? "DTU not found" : "STATE not available" };
+  }
+  return { ok: true, dtuId, pinned: true, contentSha256: r.contentSha256, persisted: true };
 }
 
 export function unprotectDTU(dtuId) {
   const STATE = getSTATE();
   if (!STATE?.dtus) return { ok: false, error: "STATE not available" };
-  const dtu = STATE.dtus.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
-  dtu._pinned = false;
-  return { ok: true, dtuId, pinned: false };
+  const r = unprotectDtuInStore(STATE.dtus, dtuId);
+  if (!r.ok) {
+    return { ok: false, error: r.reason === "dtu_not_found" ? "DTU not found" : "STATE not available" };
+  }
+  // `r.protected` stays true for a DTU that is ALSO immutable/seed-origin —
+  // releasing an explicit pin never overrides those.
+  return { ok: true, dtuId, pinned: false, stillProtected: r.protected, persisted: true };
 }
 
 export function setThreshold(value) {
@@ -577,7 +620,10 @@ export function handleForgettingCommand(parts) {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-export function init({ STATE, helpers } = {}) {
+// `helpers` was destructured here and never referenced — the signature
+// implied a dependency this module does not have. STATE is genuinely used
+// below. Callers still pass both; extra arguments are ignored.
+export function init({ STATE } = {}) {
   if (STATE) globalThis._concordSTATE = STATE;
 
   setTimeout(() => {

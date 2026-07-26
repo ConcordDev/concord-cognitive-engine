@@ -99,7 +99,7 @@ export function StravaSegmentsPanel() {
         lon: pos.coords.longitude.toFixed(5),
       })),
       (err) => setError(`GPS error: ${err.message}`),
-      { enableHighAccuracy: true, timeout: 15000 },
+      { enableHighAccuracy: true, timeout: 15000 }, // @env-config-ok: PositionOptions.timeout — a W3C Geolocation API argument (how long to wait for a GPS fix before the error callback fires), not deployment config.
     );
   };
 

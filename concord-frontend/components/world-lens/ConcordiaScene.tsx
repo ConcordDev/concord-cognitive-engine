@@ -94,6 +94,270 @@ export interface PerformanceBudget {
   frameTime: number;
 }
 
+// NPC-context-menu dispatch — pulled out of the raycaster click handler
+// below as a small, real, exported testability seam. The raycaster hit
+// test itself (deciding WHEN this fires) needs a live THREE.js scene graph
+// jsdom can't provide; this function is the actual runtime call the hit
+// test invokes once it decides an NPC was clicked, so a test can drive the
+// real dispatch path (CustomEvent name + detail shape, including
+// screenX/screenY) without needing WebGL. No behavior changed — this is
+// the exact same try/dispatch that used to be written inline.
+export interface NpcContextMenuDetail {
+  npcId: string;
+  npcName: string;
+  occupation: string | null;
+  screenX: number;
+  screenY: number;
+}
+
+export function dispatchNpcContextMenuEvent(detail: NpcContextMenuDetail): void {
+  try {
+    window.dispatchEvent(new CustomEvent('concordia:npc-context-menu', { detail }));
+  } catch { /* dispatch best-effort */ }
+}
+
+// Resource-leak-fix testability seams (runtime-health-capability-map.md
+// finding #4 + the ConcordiaScene.tsx portion of finding #6) — pulled the
+// teardown logic itself out of the mount effect's giant cleanup closure so
+// it's directly callable with fake ref-shaped objects (`{ current: ... }`)
+// carrying `vi.fn()` dispose/destroy spies, rather than only verifiable by
+// reading the cleanup closure's source text. No behavior changed — these
+// are the exact same statements that used to be written inline, in the
+// same relative order.
+
+/**
+ * Disposes the post-processing composer (invoking its stashed
+ * `_dofCleanup` hook first, then `dispose()`) followed by the WebGL
+ * renderer and the physics world — the same synchronous cleanup pass,
+ * exactly as they sit adjacent in the unmount effect.
+ */
+export function disposeComposerAndRendererResources(
+  composerRef: { current: ({ dispose?: () => void } & { _dofCleanup?: () => void }) | null },
+  rendererRef: { current: { dispose: () => void } | null },
+  physicsRef: { current: { destroy: () => void } | null },
+): void {
+  try {
+    (composerRef.current as unknown as { _dofCleanup?: () => void } | null)?._dofCleanup?.();
+  } catch { /* idempotent */ }
+  try {
+    composerRef.current?.dispose?.();
+  } catch { /* idempotent */ }
+  composerRef.current = null;
+
+  if (rendererRef.current) {
+    (rendererRef.current as { dispose: () => void }).dispose();
+  }
+  physicsRef.current?.destroy();
+  physicsRef.current = null;
+}
+
+/**
+ * Commits the ragdoll bridge's `detach()` handle once `attachRagdollBridge`
+ * resolves. The effect's cleanup may have already run while the dynamic
+ * `import('@/lib/concordia/ragdoll-bridge')` was in flight (a fast
+ * district/quality switch) — if so, detach immediately instead of stashing
+ * a handle nothing will ever call, which would leak the
+ * concordia:lethal-hit listener.
+ */
+export function commitRagdollBridgeDetach(
+  detach: () => void,
+  disposed: boolean,
+  ragdollBridgeCleanupRef: { current: (() => void) | null },
+): void {
+  if (disposed) {
+    detach();
+  } else {
+    ragdollBridgeCleanupRef.current = detach;
+  }
+}
+
+/**
+ * Invokes and nulls the dome-barrier and ragdoll-bridge cleanup refs
+ * together — the same adjacent pair in the unmount effect's teardown.
+ */
+export function disposeDomeAndRagdollBridge(
+  domeCleanupRef: { current: (() => void) | null },
+  ragdollBridgeCleanupRef: { current: (() => void) | null },
+): void {
+  try { domeCleanupRef.current?.(); } catch { /* ignore */ }
+  domeCleanupRef.current = null;
+  try { ragdollBridgeCleanupRef.current?.(); } catch { /* ignore */ }
+  ragdollBridgeCleanupRef.current = null;
+}
+
+// World Lens plan Phase 3 ("Fix Ultra") testability seam — the per-frame
+// render-path selection (SSGI-into-offscreen-target + composer chain vs.
+// SSGI-only vs. composer-only vs. plain renderer) pulled out of the
+// animate() closure so the real branch logic (not just its source text)
+// can be driven with fake ref-shaped render()/setSize() spies.
+export function renderSceneFrame(
+  refs: {
+    ssgiPassRef: { current: { render: (t: unknown) => void } | null };
+    composerRef: { current: { render: (delta: number) => void } | null };
+    ssgiOutputTargetRef: { current: unknown | null };
+  },
+  renderer: { render: (scene: unknown, camera: unknown) => void },
+  scene: unknown,
+  camera: unknown,
+  delta: number,
+): void {
+  if (refs.ssgiPassRef.current && refs.composerRef.current && refs.ssgiOutputTargetRef.current) {
+    refs.ssgiPassRef.current.render(refs.ssgiOutputTargetRef.current);
+    refs.composerRef.current.render(delta);
+  } else if (refs.ssgiPassRef.current) {
+    refs.ssgiPassRef.current.render(null);
+  } else if (refs.composerRef.current) {
+    refs.composerRef.current.render(delta);
+  } else {
+    renderer.render(scene, camera);
+  }
+}
+
+// World Lens plan Phase 5 ("Auto-exposure timing + render resilience")
+// testability seam.
+//
+// Two fixes live here, both aimed at the same symptom class ("the 3D canvas
+// goes dark/frozen while the rest of the app keeps updating"):
+//
+// 1. ORDERING. createAutoExposure() (post-auto-exposure.ts) drives
+//    renderer.toneMappingExposure off a `gl.readPixels()` sample of the
+//    canvas's own drawing buffer. This WebGLRenderer is constructed WITHOUT
+//    `preserveDrawingBuffer: true` (the default), so per the WebGL spec the
+//    drawing buffer's contents are only well-defined for the SAME task that
+//    rendered them — once control returns to the browser and it
+//    composites/presents the frame, a later read is implementation-defined
+//    (commonly cleared to transparent black; some software rasterizers do
+//    this more eagerly than hardware/ANGLE paths). The auto-exposure tick
+//    previously ran BEFORE renderSceneFrame() in the animate() loop, so its
+//    readPixels sampled whatever was left in the buffer from the PRIOR
+//    frame, across a full browser compositor boundary — exactly the
+//    "readback outside a rAF frame" trap: unreliable by construction,
+//    independent of what actually rendered. Calling it immediately AFTER
+//    renderSceneFrame(), in the same synchronous turn, samples the buffer
+//    THIS frame's render() call just wrote, before the browser has any
+//    chance to composite or clear it — the one timing that's guaranteed
+//    valid regardless of preserveDrawingBuffer or GL backend.
+//
+// 2. RESILIENCE. The animate() loop's `gameLoop()` function has no outer
+//    try/catch, and it re-arms itself with `requestAnimationFrame(gameLoop)`
+//    as its OWN LAST STATEMENT. Previously renderSceneFrame() (composer /
+//    SSGI / plain-render dispatch) was called completely unguarded: any
+//    exception it throws — a shader compile failure, a lost/reset WebGL
+//    context, an EffectComposer render-target error, all more likely to
+//    surface under a stressed software (SwiftShader) rasterizer than on
+//    real hardware — propagates out of gameLoop, so the re-arm call is
+//    never reached and the ENTIRE render loop stops forever on whatever
+//    was last painted. Since React-driven HUD overlays are on a separate
+//    render path, they keep updating normally while the WebGL canvas is
+//    frozen or (once the browser reclaims the un-preserved backbuffer on a
+//    resize/visibility change) goes black — a live, data-driven HUD next to
+//    a dead 3D canvas is exactly this failure mode. Wrapping the render
+//    call and falling back to the simplest possible `renderer.render(scene,
+//    camera)` (skipping composer/SSGI/post-FX, far less likely to fail
+//    itself) means one bad frame degrades visual quality for that frame
+//    instead of killing the loop outright — the caller's `requestAnimationFrame`
+//    re-arm is reached either way.
+//
+// Pulled into its own seam (mirroring renderSceneFrame above) so both the
+// render-then-sample ORDER and the never-throw contract are pinned by real
+// tests, not just documented in a comment two closures away from where they
+// can be verified.
+export function renderFrameAndSampleExposure(
+  refs: {
+    ssgiPassRef: { current: { render: (t: unknown) => void } | null };
+    composerRef: { current: { render: (delta: number) => void } | null };
+    ssgiOutputTargetRef: { current: unknown | null };
+  },
+  renderer: { render: (scene: unknown, camera: unknown) => void },
+  scene: unknown,
+  camera: unknown,
+  delta: number,
+  autoExposure: { tick: (renderer: unknown, w: number, h: number) => void } | null | undefined,
+  canvasWidth: number,
+  canvasHeight: number,
+  onError?: (err: unknown) => void,
+): void {
+  try {
+    renderSceneFrame(refs, renderer, scene, camera, delta);
+    if (autoExposure) autoExposure.tick(renderer, canvasWidth, canvasHeight);
+  } catch (err) {
+    onError?.(err);
+    // Fall back to the simplest possible render path so a transient
+    // composer/SSGI/auto-exposure failure degrades this frame's visual
+    // quality instead of freezing every future frame. Guarded too — if the
+    // context is genuinely gone, three.js can still throw; swallow it so
+    // the caller's requestAnimationFrame re-arm is ALWAYS reached and a
+    // later 'webglcontextrestored' event has a running loop to resume into.
+    try {
+      renderer.render(scene, camera);
+    } catch (fallbackErr) {
+      onError?.(fallbackErr);
+    }
+  }
+}
+
+// World Lens plan Phase 4 ("Camera") testability seam — the per-frame
+// cinematic-shot interpolation (position/lookAt/tilt eased from the shot's
+// start framing toward its computed target) pulled out of the render
+// loop's animate() closure so the real interpolation math + the real
+// camera.position.set/lookAt/rotation.z calls are directly testable with a
+// fake camera object, instead of only verified by reading source text.
+export interface CinematicShotState {
+  startPos: { x: number; y: number; z: number };
+  startLook: { x: number; y: number; z: number };
+  startTilt: number;
+  target: ShotFraming;
+  startTime: number;
+  durationMs: number;
+  easing?: string;
+}
+
+export function applyCinematicShotFrame(
+  camera: {
+    position: { set: (x: number, y: number, z: number) => void };
+    lookAt: (x: number, y: number, z: number) => void;
+    rotation: { z: number };
+  },
+  cs: CinematicShotState,
+  nowMs: number,
+): void {
+  const elapsedMs = nowMs - cs.startTime;
+  const t = applyEasing(cs.easing, elapsedMs / cs.durationMs);
+  const px = cs.startPos.x + (cs.target.position.x - cs.startPos.x) * t;
+  const py = cs.startPos.y + (cs.target.position.y - cs.startPos.y) * t;
+  const pz = cs.startPos.z + (cs.target.position.z - cs.startPos.z) * t;
+  camera.position.set(px, py, pz);
+  const lx = cs.startLook.x + (cs.target.lookAt.x - cs.startLook.x) * t;
+  const ly = cs.startLook.y + (cs.target.lookAt.y - cs.startLook.y) * t;
+  const lz = cs.startLook.z + (cs.target.lookAt.z - cs.startLook.z) * t;
+  camera.lookAt(lx, ly, lz);
+  camera.rotation.z = cs.startTilt + (cs.target.tiltRad - cs.startTilt) * t;
+}
+
+// World Lens plan Phase 7a testability seam — the cloud-raymarch
+// volumetric layer mount, pulled out of the async init() so the real
+// eligibility gate (quality high/ultra) + the real createCloudLayer() call
+// + the real scene.add/__concordClouds wiring can be driven directly
+// rather than only verified by reading source text.
+export async function mountCloudLayerIfEligible(
+  THREEmod: unknown,
+  scene: { add: (o: unknown) => void },
+  quality: string,
+): Promise<{ mesh: unknown; dispose: () => void; setWeatherDensity: (d: number) => void } | null> {
+  if (quality !== 'high' && quality !== 'ultra') return null;
+  try {
+    const { createCloudLayer } = await import('@/lib/world-lens/cloud-raymarch');
+    const clouds = createCloudLayer(THREEmod as Parameters<typeof createCloudLayer>[0], { radius: 1600 });
+    clouds.setWeatherDensity(0.55);
+    scene.add(clouds.mesh);
+    (scene as unknown as { __concordClouds?: unknown }).__concordClouds = clouds;
+    return clouds;
+  } catch (cloudErr) {
+    console.warn('[ConcordiaScene] Clouds unavailable:', cloudErr);
+    return null;
+  }
+}
+
 export interface ConcordiaSceneAPI {
   scene: unknown; // THREE.Scene
   camera: unknown; // THREE.PerspectiveCamera
@@ -271,7 +535,13 @@ export default function ConcordiaScene({
   districtId,
   quality: initialQuality = 'medium',
   theme: themeProp = 'neon-punk',
-  renderStyle = 'pbr',
+  // Default = TOON, matching BuildingRenderer3D's default and the locked
+  // anti-photoreal direction. This knob only drives POST-FX here (bloom off,
+  // Sobel ink pass on); leaving it at 'pbr' while buildings defaulted to toon
+  // would give the omit-the-prop callers (Foundry / ConKay preview adapters)
+  // toon buildings under a bloom-on, ink-off scene — the half-committed look
+  // docs/CONCORDIA_PLAN.md diagnoses at :1049-1051.
+  renderStyle = 'toon',
   questObjectives = [],
   onBuildingClick,
   onTerrainClick,
@@ -615,14 +885,11 @@ export default function ConcordiaScene({
         const { attachRagdollBridge } = await import('@/lib/concordia/ragdoll-bridge');
         const detach = attachRagdollBridge(physicsWorld as unknown as { spawnRagdoll: (id: string, p: { x: number; y: number; z: number }, imp?: { x: number; y: number; z: number }) => unknown; removeRagdoll?: (id: string) => void; removeCharacter?: (id: string) => void });
         // The effect's cleanup may have already run while the dynamic
-        // import above was in flight (fast district/quality switch) — if
-        // so, detach immediately instead of stashing a handle nothing will
-        // ever call, which would leak the concordia:lethal-hit listener.
-        if (disposed) {
-          detach();
-        } else {
-          ragdollBridgeCleanupRef.current = detach;
-        }
+        // import above was in flight (fast district/quality switch) —
+        // commitRagdollBridgeDetach() handles the race: detach immediately
+        // instead of stashing a handle nothing will ever call, which would
+        // leak the concordia:lethal-hit listener.
+        commitRagdollBridgeDetach(detach, disposed, ragdollBridgeCleanupRef);
       } catch { /* ragdoll bridge optional */ }
 
       // Listen for terrain-ready to register heightfield collider
@@ -1219,17 +1486,7 @@ export default function ConcordiaScene({
       // duplicate of anything `SkyWeatherRenderer` does (that component
       // only darkens the sky shader's own color by a cloud-cover uniform;
       // it doesn't render actual 3D cloud geometry) — kept as-is.
-      if (quality === 'high' || quality === 'ultra') {
-        try {
-          const { createCloudLayer } = await import('@/lib/world-lens/cloud-raymarch');
-          const clouds = createCloudLayer(THREE, { radius: 1600 });
-          clouds.setWeatherDensity(0.55);
-          scene.add(clouds.mesh);
-          (scene as unknown as { __concordClouds?: unknown }).__concordClouds = clouds;
-        } catch (cloudErr) {
-          console.warn('[ConcordiaScene] Clouds unavailable:', cloudErr);
-        }
-      }
+      await mountCloudLayerIfEligible(THREE, scene as unknown as { add: (o: unknown) => void }, quality);
 
       // ── I3: procedural per-world landmarks (stylized canon identity) ──
       // Real CC0 GLB/PBR drops would mount through the same group; until then
@@ -1686,18 +1943,7 @@ export default function ConcordiaScene({
         // last-reached framing between shots (no active shot ref) rather
         // than snapping back anywhere — the director drives the next shot.
         if (mode === 'cinematic' && cinematicShotRef.current) {
-          const cs = cinematicShotRef.current;
-          const elapsedMs = performance.now() - cs.startTime;
-          const t = applyEasing(cs.easing, elapsedMs / cs.durationMs);
-          const px = cs.startPos.x + (cs.target.position.x - cs.startPos.x) * t;
-          const py = cs.startPos.y + (cs.target.position.y - cs.startPos.y) * t;
-          const pz = cs.startPos.z + (cs.target.position.z - cs.startPos.z) * t;
-          camera.position.set(px, py, pz);
-          const lx = cs.startLook.x + (cs.target.lookAt.x - cs.startLook.x) * t;
-          const ly = cs.startLook.y + (cs.target.lookAt.y - cs.startLook.y) * t;
-          const lz = cs.startLook.z + (cs.target.lookAt.z - cs.startLook.z) * t;
-          camera.lookAt(lx, ly, lz);
-          camera.rotation.z = cs.startTilt + (cs.target.tiltRad - cs.startTilt) * t;
+          applyCinematicShotFrame(camera, cinematicShotRef.current, performance.now());
         }
 
         // ── World Lens Phase 4 — context-sensitive FOV ────────────────
@@ -1870,7 +2116,10 @@ export default function ConcordiaScene({
           if (clouds) clouds.tick(delta);
         } catch { /* noop */ }
 
-        // ── Visual-polish Wave 5: drive motion-blur matrices + chromAb tick + auto-exposure
+        // ── Visual-polish Wave 5: drive motion-blur matrices + chromAb tick ──
+        // (auto-exposure moved below — it reads the framebuffer, so it must
+        // sample AFTER this frame's render, not before it; see
+        // renderFrameAndSampleExposure's doc comment.)
         try {
           const polish = polishPassesRef.current;
           if (polish?.motionBlur && cameraRef.current) {
@@ -1882,13 +2131,6 @@ export default function ConcordiaScene({
             polishMatRef.current.prev = curVP.clone();
           }
           if (polish?.chromAb) polish.chromAb.tick(globalThis.performance.now());
-          if (polish?.autoExposure) {
-            polish.autoExposure.tick(
-              renderer as unknown as Parameters<typeof polish.autoExposure.tick>[0],
-              canvas!.clientWidth,
-              canvas!.clientHeight,
-            );
-          }
         } catch { /* polish passes optional */ }
 
         // Render: SSGI feeds the composer's spliced pass 0 > EffectComposer
@@ -1898,17 +2140,31 @@ export default function ConcordiaScene({
         // offscreen target the composer's TexturePass reads from, then run
         // the full composer chain on top of it so bloom/vignette/grade/DoF/
         // volumetric fog still apply. Only bypass the composer entirely if
-        // it genuinely failed to construct (ppErr path).
-        if (ssgiPassRef.current && composerRef.current && ssgiOutputTargetRef.current) {
-          ssgiPassRef.current.render(ssgiOutputTargetRef.current);
-          composerRef.current.render(delta);
-        } else if (ssgiPassRef.current) {
-          ssgiPassRef.current.render(null);
-        } else if (composerRef.current) {
-          composerRef.current.render(delta);
-        } else {
-          renderer.render(scene, camera);
-        }
+        // it genuinely failed to construct (ppErr path). Branch logic lives
+        // in renderSceneFrame() (exported above) so it's directly testable.
+        //
+        // Auto-exposure samples the drawing buffer via readPixels immediately
+        // AFTER this render — see renderFrameAndSampleExposure's doc comment
+        // (World Lens plan Phase 5) for why the order is load-bearing, and
+        // why the function guards its own render + fallback internally (a
+        // throw here must never skip the requestAnimationFrame re-arm below
+        // — that would freeze the 3D canvas forever while HUD overlays keep
+        // updating on their own, separate render path).
+        renderFrameAndSampleExposure(
+          {
+            ssgiPassRef: ssgiPassRef as unknown as { current: { render: (t: unknown) => void } | null },
+            composerRef,
+            ssgiOutputTargetRef,
+          },
+          renderer as unknown as { render: (scene: unknown, camera: unknown) => void },
+          scene,
+          camera,
+          delta,
+          polishPassesRef.current?.autoExposure as unknown as Parameters<typeof renderFrameAndSampleExposure>[5],
+          canvas!.clientWidth,
+          canvas!.clientHeight,
+          (err) => console.warn('[ConcordiaScene] render frame failed, falling back to bare render:', err),
+        );
 
         // Phase AA — feed perf-monitor (Stats.js + budget snapshot).
         try {
@@ -2136,17 +2392,13 @@ export default function ConcordiaScene({
             // the cursor; the menu's "Talk" action forwards to dialogue.
             // Backward compat: legacy listeners on concordia:open-dialogue
             // still work via the menu's onTalk callback.
-            try {
-              window.dispatchEvent(new CustomEvent('concordia:npc-context-menu', {
-                detail: {
-                  npcId:      ud.avatarId,
-                  npcName:    ud.name ?? ud.avatarId,
-                  occupation: ud.occupation ?? null,
-                  screenX:    e.clientX,
-                  screenY:    e.clientY,
-                },
-              }));
-            } catch { /* dispatch best-effort */ }
+            dispatchNpcContextMenuEvent({
+              npcId:      ud.avatarId,
+              npcName:    ud.name ?? ud.avatarId,
+              occupation: ud.occupation ?? null,
+              screenX:    e.clientX,
+              screenY:    e.clientY,
+            });
             return;
           }
           // Other-player click → contextual action menu (Wave / Trade /
@@ -2395,10 +2647,7 @@ export default function ConcordiaScene({
         });
       }
 
-      try { domeCleanupRef.current?.(); } catch { /* ignore */ }
-      domeCleanupRef.current = null;
-      try { ragdollBridgeCleanupRef.current?.(); } catch { /* ignore */ }
-      ragdollBridgeCleanupRef.current = null;
+      disposeDomeAndRagdollBridge(domeCleanupRef, ragdollBridgeCleanupRef);
       try { worldRenderersRef.current?.dispose(); } catch { /* ignore */ }
       worldRenderersRef.current = null;
       try { terrainDeformRef.current?.dispose(); } catch { /* ignore */ }
@@ -2424,19 +2673,11 @@ export default function ConcordiaScene({
       probeManagerRef.current = null;
       weatherSysRef.current = null;
 
-      try {
-        (composerRef.current as unknown as { _dofCleanup?: () => void } | null)?._dofCleanup?.();
-      } catch { /* idempotent */ }
-      try {
-        composerRef.current?.dispose?.();
-      } catch { /* idempotent */ }
-      composerRef.current = null;
-
-      if (rendererRef.current) {
-        (rendererRef.current as { dispose: () => void }).dispose();
-      }
-      physicsRef.current?.destroy();
-      physicsRef.current = null;
+      disposeComposerAndRendererResources(
+        composerRef,
+        rendererRef as unknown as { current: { dispose: () => void } | null },
+        physicsRef,
+      );
 
       rendererRef.current = null;
       sceneRef.current = null;

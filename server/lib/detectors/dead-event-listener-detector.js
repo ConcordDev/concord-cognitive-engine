@@ -306,6 +306,44 @@ function collectArrayIndirection(content) {
   return names;
 }
 
+// `useRealtimeRefresh(['a:b', 'c:d'], refresh, opts)` (hooks/
+// useRealtimeRefresh.ts) is a fourth real indirection pattern, distinct
+// from the "bridge array" shape above: the array is passed INLINE as a
+// call argument (not assigned to a named constant iterated in a loop
+// elsewhere), and — critically — it is frequently a SINGLE-item array
+// (`useRealtimeRefresh(['climbing:route-completed'], ...)`), so the
+// bridge-array heuristic's "2+ names" threshold (needed there to avoid
+// false-matching an unrelated array) would silently miss it. The hook's
+// own contract makes a single name just as real evidence of a live
+// subscription as two: `useRealtimeRefresh` unconditionally calls
+// `subscribe(evt, ...)` for every entry (see the hook source) — there is
+// no other array shape this call takes. Verified false positive this
+// pattern was hiding: `climbing:route-completed`
+// (concord-frontend/components/world/ClimbingTracker.tsx) previously
+// reported as a dead `dead_socket_emit`.
+const USE_REALTIME_REFRESH_RE = /\buseRealtimeRefresh\s*\(\s*\[([^[\]]{0,4000})]/g;
+
+/**
+ * Given a file's content, collect every namespaced literal passed inside
+ * a `useRealtimeRefresh([...])` call's event-list argument. No minimum
+ * count — see the note above USE_REALTIME_REFRESH_RE for why 1 is enough
+ * evidence here (unlike the generic bridge-array heuristic).
+ */
+function collectRealtimeRefreshIndirection(content) {
+  const names = [];
+  const callRe = new RegExp(USE_REALTIME_REFRESH_RE.source, "g");
+  let cm;
+  while ((cm = callRe.exec(content)) != null) {
+    const body = cm[1];
+    const strRe = new RegExp(ARRAY_STRLIT_RE.source, "g");
+    let sm;
+    while ((sm = strRe.exec(body)) != null) {
+      if (isFullEventName(sm[1])) names.push(sm[1]);
+    }
+  }
+  return names;
+}
+
 /**
  * Given a file's content, collect namespaced names referenced in an
  * `event === 'name'` (or `=== ('name' as SocketEvent)`) equality chain,
@@ -545,6 +583,12 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
       arraySuppressionNames.add(n);
     }
     for (const n of collectEqChainIndirection(content)) dispatchedIndirect.add(n);
+    // useRealtimeRefresh(['a:b', ...], refresh, opts) — see the note above
+    // USE_REALTIME_REFRESH_RE. Feeds the same Pass-4 (dead_socket_emit)
+    // suppression pool the bridge-array heuristic does; unlike that one,
+    // a single name is sufficient evidence (the hook's own contract, not
+    // an incidental array shape).
+    for (const n of collectRealtimeRefreshIndirection(content)) arraySuppressionNames.add(n);
 
     // Listener sites (window.addEventListener / useEventListener), namespaced
     // only. Also NOT gated on isInsideComment() — empirically, this
@@ -596,6 +640,11 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
       while ((m = re.exec(content)) != null) {
         const name = m[1];
         if (!isFullEventName(name)) continue;
+        const lineNum = lineNumberAt(content, m.index);
+        const fileLines = content.split("\n");
+        const here = fileLines[lineNum - 1] || "";
+        const prev = fileLines[lineNum - 2] || "";
+        if (ANNOTATION_OK_RE.test(here) || ANNOTATION_OK_RE.test(prev)) continue;
         if (!feDirectConsumed.has(name)) feDirectConsumed.set(name, []);
         feDirectConsumed.get(name).push(rel);
       }
@@ -683,10 +732,15 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
   for (const rel of serverFiles) {
     let content;
     try { content = await readFile(path.join(repoRoot, rel), "utf-8"); } catch { continue; }
+    const fileLines = content.split("\n");
 
     for (const re of [new RegExp(REALTIME_EMIT_RE.source, "g"), new RegExp(SOCKET_EMIT_RE.source, "g")]) {
       let m;
       while ((m = re.exec(content)) != null) {
+        const lineNum = lineNumberAt(content, m.index);
+        const here = fileLines[lineNum - 1] || "";
+        const prev = fileLines[lineNum - 2] || "";
+        if (ANNOTATION_OK_RE.test(here) || ANNOTATION_OK_RE.test(prev)) continue;
         addServerEmit(m[1], rel);
       }
     }
@@ -702,6 +756,10 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
       const callRe = new RegExp(`\\b${alias}\\s*\\??\\.?\\(\\s*['"\`]([a-zA-Z][\\w:.-]*?)['"\`]`, "g");
       let cm;
       while ((cm = callRe.exec(content)) != null) {
+        const lineNum = lineNumberAt(content, cm.index);
+        const here = fileLines[lineNum - 1] || "";
+        const prev = fileLines[lineNum - 2] || "";
+        if (ANNOTATION_OK_RE.test(here) || ANNOTATION_OK_RE.test(prev)) continue;
         addServerEmit(cm[1], rel);
       }
     }
@@ -709,7 +767,13 @@ async function runExtensionX2({ repoRoot, opts, files, report }) {
     if (rel.endsWith("event-shapes.js")) {
       const ere = new RegExp(EVENT_SHAPES_KEY_RE.source, "g");
       let em;
-      while ((em = ere.exec(content)) != null) addServerEmit(em[1], "event-shapes.js#registry");
+      while ((em = ere.exec(content)) != null) {
+        const lineNum = lineNumberAt(content, em.index);
+        const here = fileLines[lineNum - 1] || "";
+        const prev = fileLines[lineNum - 2] || "";
+        if (ANNOTATION_OK_RE.test(here) || ANNOTATION_OK_RE.test(prev)) continue;
+        addServerEmit(em[1], "event-shapes.js#registry");
+      }
     }
 
     // Loose rescue pass — suppression-only.

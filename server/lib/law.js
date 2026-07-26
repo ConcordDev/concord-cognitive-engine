@@ -124,11 +124,12 @@ export function commitCrime(db, { userId, worldId, crime, zoneLawfulness, worldL
 // ── Jail-as-a-verb ───────────────────────────────────────────────────────────
 
 /** Bribe out: debit sparks → a dirty guard takes them → a grievance someone holds. */
-export function bribeOut(db, detentionId, { guardNpcId = null, payerSparksBalance = null, awardSparksFn = null } = {}) {
+export function bribeOut(db, detentionId, { guardNpcId = null } = {}) {
   const det = _openDetention(db, detentionId);
   if (!det) return { ok: false, reason: "not_detained" };
-  // The bribe is the bail. (Caller verifies/debits the player's wallet — we
-  // record the corruption + free the player.)
+  // The bribe is the bail. Caller verifies/debits the player's wallet BEFORE
+  // calling this (we don't take a balance or an award callback here — this
+  // function only records the corruption + frees the player).
   try { db.prepare(`UPDATE player_detentions SET state = 'bribed_out', released_at = unixepoch(), released_via = 'bribe' WHERE id = ?`).run(detentionId); } catch { /* noop */ }
   // Phase-3 corruption: the dirty guard's bribe becomes a grievance an honest
   // party (another guard / the wronged citizen) holds against that guard.

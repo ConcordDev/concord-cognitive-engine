@@ -17,7 +17,7 @@
  * No placeholder panels — every control calls a real backend macro.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import {
@@ -131,6 +131,18 @@ function LabelPrintModal({ recordType, recordId, onClose }: {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Real modal a11y: Escape closes it, and focus moves into the dialog on
+  // mount so keyboard/screen-reader users land somewhere sensible.
+  useEffect(() => {
+    dialogRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,7 +168,12 @@ function LabelPrintModal({ recordType, recordId, onClose }: {
   }, [recordType, recordId]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+      role="presentation"
+    >
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -164,7 +181,14 @@ function LabelPrintModal({ recordType, recordId, onClose }: {
           #lab-label-print-area { position: fixed; inset: 0; margin: auto; height: max-content; }
         }
       `}</style>
-      <div onClick={(e) => e.stopPropagation()} className="panel bg-lattice-deep p-5 w-full max-w-sm space-y-3">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Print label"
+        className="panel bg-lattice-deep p-5 w-full max-w-sm space-y-3 outline-none"
+      >
         <div className="flex items-center justify-between print:hidden">
           <h4 className="font-semibold text-neon-cyan flex items-center gap-1.5">
             <Barcode className="w-4 h-4" /> Print Label

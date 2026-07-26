@@ -41,8 +41,6 @@ const SERVER_ONLY_ALLOWLIST = new Set([
   "heartbeat:tick",
   "system:reconnect",
   "queue:notifications:new", // server→server queue, surfaced to UI via different fast-path
-  // Federation outbound — consumed by other Concord nodes, not the local UI.
-  "channel:inbound",
   "beacon:check",
 ]);
 
@@ -56,17 +54,88 @@ const SERVER_ONLY_ALLOWLIST = new Set([
 // line below. To add an entry: add a same-PR fix or wire a subscriber
 // instead — the baseline isn't a hide-yet-ship pattern, it's a debt list.
 const KNOWN_DEAD_BASELINE = new Set([
-  "app:created",                    // apps lens — author flow has no realtime preview yet
-  "chat:update",                    // chat composer typing indicator — UI uses presence pulse
-  "city:npcs",                      // city-presence sync — frontend pulls via REST, not socket
+  // DET-C batch 10 (2026-07-24) corrected this entry's rationale: the
+  // prior comment ("chat composer typing indicator — UI uses presence
+  // pulse") was factually wrong — there is exactly one emit site
+  // (server/routes/chat.js) and it broadcasts the AI response preview,
+  // not a typing indicator. It's genuinely consumed, just through an
+  // indirection this static scan (and dead-event-listener-detector.js)
+  // can't trace: useRealtimeLens('chat') (concord-frontend/app/lenses/
+  // chat/page.tsx:541) falls back to `${domain}:update` for any domain
+  // without an explicit DOMAIN_EVENTS entry (hooks/useRealtimeLens.ts:71)
+  // — 'chat' has no entry, so it resolves to a literal socket.on('chat:
+  // update', ...) at runtime that this regex-based scan can't see. The
+  // chat lens renders it live (LiveIndicator isLive/lastUpdated at
+  // chat/page.tsx:3040). Kept in the baseline (not removed) because
+  // fixing collectSubscribes() to trace template-literal socket.on()
+  // calls is out of scope here — this is a documentation fix, not a
+  // wiring fix.
+  "chat:update",
+  // "city:npcs" removed (dead-event-listener follow-up, 2026-07-25): the
+  // 2026-07-24 comment that used to sit here claimed it "IS genuinely
+  // consumed... by the Godot world client instead" — that claim does not
+  // hold up under direct verification. world-lens-godot/avatar/
+  // avatar_manager.gd's `ingest_snapshot()` is shaped for this payload but
+  // is never instantiated anywhere in the world-lens-godot tree (no
+  // `AvatarManager.new()`, no `.tscn` scene reference), and boot.gd's
+  // central event dispatch table has no `city:npcs`/`city:positions` case
+  // (aerial_traffic_controller.gd's own header says outright "AvatarManager
+  // has no live caller today"). There's also no REST path exposing
+  // `getCityNpcs` client-side. So the broadcast reached no consumer on
+  // either transport; server/lib/city-presence.js#tickNpcs no longer emits
+  // it (the mechanic-spawned NPC patrol state it fed still advances
+  // internally, read by getCityNpcs/getAllNPCsForEmergence — only the
+  // broadcast into an empty room was removed). See that function's header
+  // comment for the full investigation.
   "emergent:activity",              // emergent-engine summary — replaced by activity:new
-  "graph:update",                   // knowledge graph diff — graph view pulls on-demand
-  "pain:avoidance_created",         // pain cortex internal — used for cross-module triggers
-  "qualia:policy",                  // qualia engine — internal substrate event, no UI surface
-  "timeline:post",                  // public timeline — frontend uses fast-path REST refresh
-  "world:action",                   // generic world event — superseded by typed channels
+  // "gameJuice:fanfare" + "npc:dialogue" removed (dead-event-listener sweep
+  // continuation, 2026-07-24): both event-shapes.js entries were RETIRED
+  // outright (deleted, not just left undispatched) — DET-C batch 4 had found
+  // ZERO real realtimeEmit() call sites for either, ever, so they were
+  // documented-but-never-built contracts, not live broadcasts that lost a
+  // listener. See server/lib/event-shapes.js's "── NPC ──"/"── GameJuice
+  // fanfare ──" section headers for the full retirement rationale. (Their
+  // presence in this baseline was also accidentally self-perpetuating: the
+  // explanatory comments that used to sit above each entry literally
+  // contained the text `realtimeEmit("npc:dialogue", ...)` /
+  // `realtimeEmit("gameJuice:fanfare", ...)` as part of describing why they
+  // were dead, which collectEmits() above — a raw regex with no comment
+  // awareness — matched as if they were real call sites. Deleting the
+  // comments alongside the registry entries closes that footgun too.)
+  // DET-C batch 10 (2026-07-24) corrected this entry's rationale: the prior comment
+  // ("knowledge graph diff — graph view pulls on-demand") was factually wrong — the
+  // graph lens is live, not pull-only. Same indirection class as chat:update above:
+  // useRealtimeLens('graph') (concord-frontend/app/lenses/graph/page.tsx:181) hits
+  // the same `${domain}:update` default-fallback in hooks/useRealtimeLens.ts (no
+  // 'graph' entry in DOMAIN_EVENTS), and the page renders it live (LiveIndicator +
+  // RealtimeDataPanel at graph/page.tsx:1175-1177). Kept in the baseline for the same
+  // reason as chat:update — documentation fix, not a wiring fix.
+  "graph:update",
+  // "channel:inbound" removed (DET-C batch 11, 2026-07-24): debt cleared for real —
+  // server/routes/channels.js's realtimeEmit call sites now pass { userId } so the
+  // broadcast is scoped to the recipient's own user:<id> room instead of an unscoped
+  // global emit (it had been leaking which userId received an external message to
+  // every connected socket), and concord-frontend/hooks/useChannelInboundToast.ts
+  // (mounted in AppShell alongside useSocialNotificationToast) subscribes for real and
+  // surfaces a toast. 'channel:inbound' is also now in socket.ts's SocketEvent union.
+  // The full channel-linking settings page / inbound-message inbox view is still not
+  // built — that remains a genuinely separate, larger feature — but the specific
+  // "broadcast into the void" gap this baseline entry tracked is closed.
+  "world:action",                    // generic world event — superseded by typed channels
   // "world:broadcast" + "world:loot-node" removed 2026-06-26: debt cleared — both now have real
   // frontend subscribers (wired into EmergentEventFeed during the orphan-emit wiring pass).
+  // "qualia:policy" removed (DET-C batch 10, 2026-07-24): debt cleared — this baseline entry
+  // went stale when DET-C batch 8 (2026-07-24) wired it into EmergentEventFeed.tsx's
+  // TRACKED_EVENTS array (`{ name: 'qualia:policy', channel: 'agent', ... }`) but never
+  // removed the now-redundant baseline line, which made the "entries either still need
+  // wiring OR have been wired" cleanup test fail (subs.has('qualia:policy') is true via the
+  // reArrayItem indirection match, so the entry was always dead weight after batch 8).
+  // "app:created" + "pain:avoidance_created" removed (DET-C batch 6, 2026-07-23): debt cleared
+  // — both are wired via EmergentEventFeed.tsx's channel-array indirection (verified: `grep -n
+  // "'app:created'\|'pain:avoidance_created'" concord-frontend/components/world/
+  // EmergentEventFeed.tsx`).
+  // "timeline:post" removed (DET-C batch 6, 2026-07-23): debt cleared — genuinely wired via a
+  // direct `subscribe('timeline:post', ...)` call in concord-frontend/app/lenses/feed/page.tsx:380.
   "world:notification",             // generic world toast — replaced by per-domain toasts
 ]);
 

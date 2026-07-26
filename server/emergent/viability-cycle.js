@@ -33,7 +33,12 @@ function readSubsystems(db, worldId) {
   return readings;
 }
 
-export async function runViabilityCycle({ db, state } = {}) {
+// This module self-discovers active worlds from `world_visits` and reads
+// player_world_metrics directly — it has no use for the shared heartbeat
+// STATE object (unlike e.g. social-npc-bridge, which reads STATE.shadowDtus).
+// Matches the house convention elsewhere in server/emergent/*.js of only
+// destructuring the ctx fields a handler actually reads.
+export async function runViabilityCycle({ db } = {}) {
   if (!viabilityEnabled()) return { ok: true, reason: "disabled" };
   if (!db) return { ok: false, reason: "no_db" };
   const emit = (typeof globalThis.realtimeEmit === "function") ? globalThis.realtimeEmit : () => {};

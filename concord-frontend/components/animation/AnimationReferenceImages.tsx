@@ -69,6 +69,11 @@ export function AnimationReferenceImages() {
   useEffect(() => {
     setTarget(getActiveFrameTarget());
     const handler = () => setTarget(getActiveFrameTarget());
+    // Real dispatcher: animReferenceTarget.ts#setActiveFrameTarget fires this via
+    // `new CustomEvent<ActiveFrameTarget>(ACTIVE_FRAME_EVENT, ...)`, a named-constant
+    // indirection dead-event-listener-detector.js's literal-string regexes can't
+    // trace. Confirmed live via runtime trace (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('anim:active-frame', handler);
     window.addEventListener('focus', handler);
     return () => {

@@ -1,21 +1,35 @@
 'use client';
 
 /**
- * EmptyState — generic, dependency-free "no data yet" primitive.
+ * EmptyState — the canonical "nothing to show" primitive for the whole app.
  *
- * Distinct from `components/lens/EmptyStateCTA.tsx`: EmptyStateCTA is a
- * *composed*, lens-aware component — it resolves the active lens's manifest
- * (via `useLensShell`), reads its primary artifact + `create` macro, and
- * fires `apiHelpers.lens.runDomain(...)` itself. `EmptyState` is the
- * general-purpose primitive underneath: no manifest lookup, no store access,
- * no API calls, no assumption that "empty" means "go create one via a
- * macro." It just renders whatever honest copy + actions the caller passes.
- * Use `EmptyState` for: search-returned-nothing, filtered-list-is-empty,
- * a panel with no manifest-registered artifact, or any place a raw "empty"
- * state is needed without lens plumbing. `EmptyStateCTA` could in principle
- * be rebuilt to render through this component (its manifest-driven bits stay
- * as-is; only the markup moves) — left as a follow-up so this change doesn't
- * touch a file another workstream may be editing concurrently.
+ * This is the CONSOLIDATION target for what used to be three near-duplicate
+ * implementations (2026-07-23 maturity-audit fix, item #10):
+ *   - `components/common/EmptyState.tsx` (motion-animated, `variant` enum,
+ *     plus a dozen preset wrappers like `EmptyDTUs`/`EmptyInbox`/`ErrorState`)
+ *   - `components/lens/EmptyStateCTA.tsx` (manifest-aware — resolves the
+ *     active lens's primary artifact + `create` macro and fires it itself)
+ *   - this file, which was already the general-purpose, dependency-free
+ *     primitive with no manifest lookup, no store access, no API calls.
+ *
+ * `ui/EmptyState` was picked as the canonical base (not `common/EmptyState`)
+ * because it is the ONE variant with zero framework dependencies beyond
+ * React itself (no framer-motion, no store, no manifest lookup) — the
+ * correct shape for a shared primitive that a rich, business-logic-bearing
+ * component like `EmptyStateCTA` should be able to render *through* without
+ * inheriting animation timing or lens-store coupling it doesn't want.
+ * `common/EmptyState.tsx` and `components/lens/EmptyStateCTA.tsx` are now
+ * thin shims over this component — see each file's own doc comment for its
+ * prop-mapping and the (documented) residuals that couldn't be losslessly
+ * preserved. No existing importer of either shim needed to change.
+ *
+ * The `action`/`secondaryAction` shape below is a deliberate SUPERSET of
+ * what `common/EmptyState.tsx` needed (`{ label, onClick }`) — `icon` and
+ * `className` were added specifically so `EmptyStateCTA` (which needs a
+ * loading spinner inside the button + a per-lens accent color so lenses
+ * keep their own visual identity, not a single shared cyan — see
+ * `docs/UI_QUALITY_RUBRIC.md` §3) can delegate its ENTIRE render to this
+ * component instead of hand-rolling its own button markup.
  *
  * Honest-by-construction: this is the sanctioned "nothing to show, here's
  * why / here's what to do" surface. Never fill it with sample/fabricated
@@ -32,6 +46,21 @@ export interface EmptyStateAction {
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  /**
+   * Optional leading icon rendered before the label inside the button (e.g.
+   * a spinner while an async action is in flight). Rendered as a direct
+   * sibling of the label text node — NOT wrapped in an intermediate span —
+   * so `getByText(label)` from callers/tests still resolves to exactly one
+   * element (the button itself).
+   */
+  icon?: React.ReactNode;
+  /**
+   * Full className override for the button. When present, this REPLACES the
+   * default `ds.btnSecondary` styling entirely — use it when a caller needs
+   * its own identity/accent styling instead of the shared default look
+   * (this is how `EmptyStateCTA`'s per-lens accent colors are preserved).
+   */
+  className?: string;
 }
 
 export interface EmptyStateProps {
@@ -92,13 +121,20 @@ export function EmptyState({
               type="button"
               onClick={action.onClick}
               disabled={action.disabled}
-              className={cn(ds.btnSecondary, 'px-4 py-2 text-sm')}
+              className={action.className ?? cn(ds.btnSecondary, 'px-4 py-2 text-sm')}
             >
+              {action.icon}
               {action.label}
             </button>
           )}
           {secondaryAction && (
-            <button type="button" onClick={secondaryAction.onClick} disabled={secondaryAction.disabled} className={ds.btnGhost}>
+            <button
+              type="button"
+              onClick={secondaryAction.onClick}
+              disabled={secondaryAction.disabled}
+              className={secondaryAction.className ?? ds.btnGhost}
+            >
+              {secondaryAction.icon}
               {secondaryAction.label}
             </button>
           )}

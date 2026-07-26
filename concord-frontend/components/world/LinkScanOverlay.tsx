@@ -60,6 +60,11 @@ export default function LinkScanOverlay({ worldId, enabled = true, pollMs = 1500
     };
     const onToggle = () => setOpen((o) => !o);
     window.addEventListener('keydown', onKey);
+    // Real dispatcher: CommandPalette.tsx's HUD_DISPATCH_EVENTS table maps
+    // 'hud:link-scan' -> 'concordia:link-scan-toggle', same keyed-object +
+    // dynamic-Event indirection as the other hud:* HUD listeners. Confirmed
+    // live by tests/components/CommandPalette.test.tsx (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('concordia:link-scan-toggle', onToggle);
     return () => {
       window.removeEventListener('keydown', onKey);

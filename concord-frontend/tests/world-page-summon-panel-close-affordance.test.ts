@@ -51,8 +51,8 @@ const CONVERTED_PANELS = [
   'voice', 'voiceassist',
 ];
 
-describe('Phase 5 fix — 15 panels now have a real close affordance via SummonDrawer', () => {
-  it('imports SummonDrawer', () => {
+describe('Phase 5 fix — 15 panels now have a real dismiss affordance via SummonDrawer (source-shape pins; page.tsx is too large to mount in this suite)', () => {
+  it('page.tsx source imports SummonDrawer', () => {
     expect(pageSrc).toMatch(/import \{ SummonDrawer \} from '@\/components\/lens\/SummonDrawer';/);
   });
 
@@ -63,8 +63,25 @@ describe('Phase 5 fix — 15 panels now have a real close affordance via SummonD
       // The SummonDrawer open tag should appear within a short window after
       // the branch condition (same JSX block, not some unrelated later use).
       const window_ = pageSrc.slice(branchStart, branchStart + 400);
-      expect(window_, `${key} branch does not open a SummonDrawer nearby`).toMatch(/<SummonDrawer open/);
-      expect(window_, `${key} branch's SummonDrawer does not close via setShowPanel\\('none'\\)`).toMatch(/onClose=\{\(\) => setShowPanel\('none'\)\}/);
+      // `\s+` between the tag and `open`, not a literal space: several panels
+      // (profile, among others) are formatted multi-line —
+      //     <SummonDrawer
+      //       open
+      //       title={...}
+      // — and a matcher requiring them adjacent fails on correct source. The
+      // claim being pinned is "this branch opens a SummonDrawer", which is
+      // formatting-independent; encoding one specific line break into the
+      // regex made the test brittle rather than stricter.
+      expect(window_, `${key} branch does not open a SummonDrawer nearby`).toMatch(/<SummonDrawer\s+open/);
+      // Likewise, don't demand ONE exact onClose spelling. Several panels do
+      // real extra teardown alongside the dismiss —
+      //     onClose={() => { setShowPanel('none'); clearViewedProfile(); }}
+      // — which is MORE correct than the bare form, not a deviation from it.
+      // The pinned claim is "closing this drawer returns showPanel to 'none'",
+      // so match an onClose whose body reaches setShowPanel('none'), and keep
+      // the window tight enough that it's this branch's own handler.
+      expect(window_, `${key} branch's SummonDrawer does not close via setShowPanel\\('none'\\)`)
+        .toMatch(/onClose=\{\(\)\s*=>\s*\{?[^}]*setShowPanel\('none'\)/);
     }
   });
 
@@ -80,8 +97,8 @@ describe('Phase 5 fix — 15 panels now have a real close affordance via SummonD
   });
 });
 
-describe('Phase 5 — panels correctly left unconverted already have real, working close functionality', () => {
-  it('lists the deliberately-unconverted panels and the inner component each one already handles closing itself', () => {
+describe('Phase 5 — panels correctly left unconverted already have their own real, working dismiss functionality (verified via source review, not re-tested here)', () => {
+  it('lists the deliberately-unconverted panels and the inner component each one already implements its own dismiss affordance for (structural inventory pin, not a behavioral assertion — see the body comment)', () => {
     // Not a behavioral assertion (these components live in separate files,
     // individually verified via `grep -c onClose` before this decision was
     // made) — this test exists so a future pass that DOES convert one of

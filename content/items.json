@@ -36,5 +36,103 @@
     "source_type": "verge_salvage",
     "magical_sub": "essence",
     "lore": "Sand fused to glass in an instant at The Sundered Verge when the lattice tore. Beautiful, unstable, and prone to backfire in a careless craft — a high-potency input only a steady bender should risk."
+  },
+  {
+    "item_id": "linkway_filament",
+    "name": "Linkway Filament",
+    "potency": 46,
+    "affinity": "tech",
+    "stability": 74,
+    "volume": 0.2,
+    "weight": 0.2,
+    "rarity_tier": 3,
+    "source_type": "verge_salvage",
+    "lore": "A single drawn strand of Concord Link conduit, salvaged where the frontier cabling frayed. Hold it to your ear and you can just make out the route-hum of somewhere you have never been."
+  },
+  {
+    "item_id": "tunyan_pearl",
+    "name": "Tunyan Pearl",
+    "potency": 44,
+    "affinity": "bio",
+    "stability": 82,
+    "volume": 0.15,
+    "weight": 0.3,
+    "rarity_tier": 3,
+    "source_type": "diving",
+    "lore": "Grown slow in tunya's deep beds, where the divers hold their breath longer than any surface-dweller believes possible. It is always warm to the touch, as though it kept a little of the depths' pressure inside."
+  },
+  {
+    "item_id": "hushvein_silver",
+    "name": "Hushvein Silver",
+    "potency": 50,
+    "affinity": "magic",
+    "stability": 76,
+    "volume": 0.3,
+    "weight": 1.6,
+    "rarity_tier": 3,
+    "source_type": "mining",
+    "lore": "Ore that drinks sound. A blade sheathed near it makes no whisper; a room panelled in it keeps its secrets. The Watch mirrors their signals off hushvein leaf so no listener two streets over can read the flash."
+  },
+  {
+    "item_id": "dome_condensate",
+    "name": "Dome Condensate",
+    "potency": 62,
+    "affinity": "magic",
+    "stability": 58,
+    "volume": 0.1,
+    "weight": 0.1,
+    "rarity_tier": 4,
+    "source_type": "distill",
+    "magical_sub": "aether",
+    "lore": "Dew that beads along the dome lattice in the grey hour before the world's first tick. Collected drop by drop, it holds a faint charge of the stabilisation that keeps the sky from tearing again."
+  },
+  {
+    "item_id": "sere_ledger_wax",
+    "name": "Sere Ledger-Wax",
+    "potency": 56,
+    "affinity": "tech",
+    "stability": 88,
+    "volume": 0.2,
+    "weight": 0.4,
+    "rarity_tier": 4,
+    "source_type": "ledger_seal",
+    "lore": "Seal-wax scraped from sere's contract vaults, where every promise is pressed and filed. It is said the wax remembers the shape of what it sealed — press it twice and the second impression argues with the first."
+  },
+  {
+    "item_id": "black_march_tar",
+    "name": "Black March Tar",
+    "potency": 68,
+    "affinity": "chaos",
+    "stability": 42,
+    "volume": 0.3,
+    "weight": 0.9,
+    "rarity_tier": 4,
+    "source_type": "ruins",
+    "lore": "A cold seep welling up through the floor of the sovereign-ruins. It burns without heat and leaves a rime of frost where it catches. The scavengers who work the black march learn to move quickly and touch nothing twice."
+  },
+  {
+    "item_id": "founders_quench",
+    "name": "Founder's Quench",
+    "potency": 88,
+    "affinity": "physical",
+    "stability": 94,
+    "volume": 0.4,
+    "weight": 0.6,
+    "rarity_tier": 5,
+    "source_type": "keep_forge",
+    "lore": "The residue scraped once a year from the bottom of the Refusal Keep's oath-quenching bath, where the Founder's Edge blades were first cooled. A single measure will set a temper no ordinary forge can undo."
+  },
+  {
+    "item_id": "first_dawn_amber",
+    "name": "First-Dawn Amber",
+    "potency": 94,
+    "affinity": "magic",
+    "stability": 62,
+    "volume": 0.1,
+    "weight": 0.2,
+    "rarity_tier": 5,
+    "source_type": "divine",
+    "magical_sub": "essence",
+    "lore": "Resin the Curators swear predates the first tick of the heartbeat — a bead of the world before it began to keep time. Whether that is true or merely the oldest story anyone still tells, it resolves hotter than anything else a bender can hold."
   }
 ]

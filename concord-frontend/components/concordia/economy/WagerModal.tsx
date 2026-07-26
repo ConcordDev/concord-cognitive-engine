@@ -23,6 +23,10 @@ interface IncomingWagerPromptProps {
   expiresAt: number;
   onAccept: () => void;
   onDecline: () => void;
+  /** Vertical stack position when multiple simultaneous challenges are
+   * shown (WagerInviteToast) — 0 keeps the original single-prompt
+   * position (bottom-24) byte-identical for any existing caller. */
+  stackIndex?: number;
 }
 
 export function WagerModal({ opponentId, opponentName, worldId, onClose, onProposed }: WagerModalProps) {
@@ -136,7 +140,7 @@ export function WagerModal({ opponentId, opponentName, worldId, onClose, onPropo
   );
 }
 
-export function IncomingWagerPrompt({ wagerId, proposerName, amount, currency, duelType, expiresAt, onAccept, onDecline }: IncomingWagerPromptProps) {
+export function IncomingWagerPrompt({ wagerId, proposerName, amount, currency, duelType, expiresAt, onAccept, onDecline, stackIndex = 0 }: IncomingWagerPromptProps) {
   const [loading, setLoading] = useState(false);
   const secondsLeft = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
 
@@ -150,7 +154,10 @@ export function IncomingWagerPrompt({ wagerId, proposerName, amount, currency, d
   };
 
   return (
-    <div className="fixed bottom-24 right-4 bg-black/90 border border-white/15 rounded-2xl p-4 w-72 z-50 shadow-2xl">
+    <div
+      className="fixed right-4 bg-black/90 border border-white/15 rounded-2xl p-4 w-72 z-50 shadow-2xl"
+      style={{ bottom: `${6 + stackIndex * 8}rem` }}
+    >{/* bottom-24 (6rem) for stackIndex 0 — identical to the original fixed class */}
       <div className="text-white font-bold text-sm mb-1">⚔️ Challenge from {proposerName}</div>
       <div className="text-white/50 text-xs mb-3">
         {amount} {currency === 'sparks' ? '⚡ Sparks' : '💎 CC'} · {duelType} · {secondsLeft}s to decide

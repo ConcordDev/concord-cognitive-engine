@@ -14,11 +14,89 @@
 
 import logger from "../logger.js";
 
+// `dtus.content` (migration 295) and `dtus.body_json` (migration 001) don't
+// exist on every `dtus` table this module might run against — several test
+// files (and any legacy/minimal DB) create a slimmer `dtus` shape with just
+// id/type/title/creator_id/data/lens_id/created_at. Detect presence once per
+// db handle (PRAGMA is cheap but not free — worth memoizing on the hot
+// search path) rather than assuming the column exists and letting the whole
+// query throw.
+const _dtusColumnCache = new WeakMap();
+function _dtusOptionalColumns(db) {
+  let cached = _dtusColumnCache.get(db);
+  if (cached) return cached;
+  let names = new Set();
+  try { names = new Set(db.prepare(`PRAGMA table_info(dtus)`).all().map((r) => r.name)); }
+  catch { /* leave empty — every optional column reads as absent */ }
+  cached = { hasContent: names.has("content"), hasBodyJson: names.has("body_json") };
+  _dtusColumnCache.set(db, cached);
+  return cached;
+}
+
 const MAX_RESULTS = 100;
 // Recall width for the semantic re-rank: keyword/metadata prefilter pulls this
 // many candidates, then we re-order by embedding cosine similarity. Wider recall
 // = better semantic results, bounded so the cosine pass stays sub-10ms.
 const SEMANTIC_RECALL = 100;
+
+// R8/CL3 gap fix (2026-07-24): per-result body-text cap for the `content`
+// field below. Bounded like code-retrieval.js's `maxCharsPerFile` convention
+// (default 6000, clamped [200, 50000]) and repair-brain.js's 1500-char BODY
+// slice — this is a tighter budget than either because `content` here is
+// consumed by reason.evaluate_answer's RAG-style faithfulness scoring, which
+// typically pulls in several retrieved DTUs at once (ConKay attaches up to 8
+// per skill call — see conkay-skills.ts), so per-item size has to stay modest
+// to keep that call's total payload sane.
+const CONTENT_MAX_CHARS = 1500;
+
+/**
+ * Best-effort extraction of a DTU's real, readable body text for retrieval-
+ * grounding purposes (the RAG context `reason.evaluate_answer`'s
+ * `normalizeContext` scores an answer against). DTU-creation call sites across
+ * this codebase disagree on which column carries prose — `content`
+ * (economy/dtu-pipeline.js's marketplace path), `data` (most game-systems
+ * domains; sometimes plain prose, sometimes JSON with a nested human-readable
+ * field), `body_json` (the oldest, mostly-JSON path). Try each in the order a
+ * human is most likely to have put real prose; never fabricate content when
+ * none of them has any — an empty/omitted `content` field is the honest
+ * result for a DTU that's genuinely just structured metadata.
+ *
+ * REAL GAP this closes (R8/CL3): `searchDtus`'s result shape used to carry
+ * only `{ id, kind, title, creator_id, snippet, meta_summary }` — no body
+ * field at all — so ConKay's "search" skill (the one alternate-retrieval path
+ * to the id/title/tier-only `dtuRefs` shape, per
+ * server/tests/e2e/conkay-verified-answer-loop.test.js's header) fed
+ * `reason.evaluate_answer` nothing but titles to score faithfulness against.
+ *
+ * @param {{ content?: string|null, data?: string|null, body_json?: string|null }} row
+ * @returns {string|null}
+ */
+export function extractDtuBodyText(row) {
+  const candidates = [row?.content, row?.data, row?.body_json];
+  for (const raw of candidates) {
+    if (typeof raw !== "string") continue;
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      // Structured payload — pull a human-readable field if one exists;
+      // otherwise this column is just machine metadata for this DTU, so
+      // silently move on to the next candidate rather than dumping raw JSON
+      // into a faithfulness-scoring context.
+      let parsed;
+      try { parsed = JSON.parse(trimmed); } catch { parsed = undefined; }
+      if (parsed === undefined) {
+        // Started with a brace/bracket but isn't actually valid JSON — treat
+        // as literal prose (matches the E2E test's plain-text `data` shape).
+        return trimmed.slice(0, CONTENT_MAX_CHARS);
+      }
+      const text = parsed?.human?.summary || parsed?.summary || parsed?.text || parsed?.body || null;
+      if (typeof text === "string" && text.trim()) return text.trim().slice(0, CONTENT_MAX_CHARS);
+      continue;
+    }
+    return trimmed.slice(0, CONTENT_MAX_CHARS);
+  }
+  return null;
+}
 
 /**
  * Search across all DTUs for a query string. Supports filters:
@@ -84,10 +162,13 @@ export function searchDtus(db, query, opts = {}) {
     where.push(`d.data NOT LIKE '%"scope":"personal"%'`);
   }
 
+  const { hasContent, hasBodyJson } = _dtusOptionalColumns(db);
+  const optionalCols = [hasContent ? "content" : "NULL AS content", hasBodyJson ? "body_json" : "NULL AS body_json"].join(", ");
+
   let rows = [];
   try {
     rows = db.prepare(`
-      SELECT id, type AS kind, title, creator_id, data AS meta_json, created_at
+      SELECT id, type AS kind, title, creator_id, data AS meta_json, ${optionalCols}, created_at
       FROM dtus d
       WHERE ${where.join(" AND ")}
       ORDER BY created_at DESC
@@ -119,6 +200,11 @@ export function searchDtus(db, query, opts = {}) {
       snippet,
       created_at: r.created_at,
       meta_summary: meta ? summarizeMeta(meta) : null,
+      // R8/CL3 gap fix: the DTU's real body text (bounded, best-effort — see
+      // extractDtuBodyText's doc comment), so a caller wiring this into
+      // reason.evaluate_answer's `retrievedDtus` gets real grounding content
+      // to score against, not just the (often short, label-like) title.
+      content: extractDtuBodyText({ content: r.content, data: r.meta_json, body_json: r.body_json }),
     };
   });
 

@@ -130,6 +130,7 @@ import {
   Cog,
   Fish,
   Car,
+  Radar,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -1516,6 +1517,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['money', 'investment', 'portfolio'],
   },
   {
+    id: 'frontier',
+    name: 'Frontier',
+    icon: Rocket,
+    description: 'Ten frontier compute engines — materials degradation, non-Newtonian FSI, safety-envelope compiler, QEC, ledger model checking, Byzantine consensus, economic equilibrium, constant-time analysis, homomorphic aggregation, spiking neural nets',
+    category: 'specialized',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/frontier',
+    order: 172,
+    keywords: ['frontier', 'engine', 'physics', 'materials', 'degradation', 'fsi', 'fluid', 'safety envelope', 'reachability', 'qec', 'quantum', 'consensus', 'equilibrium', 'constant-time', 'paillier', 'homomorphic', 'spiking', 'neural', 'compute', 'verify'],
+  },
+  {
     id: 'collab',
     name: 'Collab',
     icon: Users,
@@ -2774,6 +2787,51 @@ export const LENS_REGISTRY: LensEntry[] = [
     order: 91,
     keywords: ['ops', 'telemetry', 'heartbeat', 'worker', 'brain', 'concurrency', 'shard'],
     minExpertise: 'engineering', // World Lens Phase 5 (Sanctum tier)
+  },
+  {
+    id: 'world-observatory',
+    name: 'World Observatory',
+    icon: Radar,
+    description: 'Simulation-scale mission control — population, faction relations, realm legitimacy/treasury, and district density across every world (read-only).',
+    category: 'system',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/world-observatory',
+    order: 92,
+    keywords: ['world', 'observatory', 'simulation', 'faction', 'realm', 'district', 'population', 'mission control'],
+    macroDomain: 'worldstate',
+    minExpertise: 'engineering', // World Lens Phase 5 (Sanctum tier) — same posture as ops-telemetry
+  },
+  {
+    id: 'concord-link-frontier',
+    name: 'Concord Link Frontier',
+    icon: Globe,
+    description: 'The news layer of the federation — notable cross-world events and cross-world citation royalty flow, live, for logged-in players (was pre-login-only via /explore).',
+    category: 'system',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/concord-link-frontier',
+    order: 93,
+    keywords: ['concord link', 'frontier', 'cross-world', 'federation', 'royalty', 'feed', 'news'],
+    // REST-backed by design (no macro domain — /api/cross-world/feed and
+    // /api/cross-world/royalty-flow are direct HTTP routes), same posture as
+    // ops-telemetry: macroDomain intentionally omitted.
+  },
+  {
+    id: 'plugins',
+    name: 'Plugin Gallery',
+    icon: Boxes,
+    description: 'Browse, install, and rate signed plugin packages — real capability disclosure before every install (server/lib/plugin-gallery.js).',
+    category: 'system',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/plugins',
+    order: 94,
+    keywords: ['plugins', 'gallery', 'marketplace', 'install', 'sandbox', 'capability', 'signed'],
+    // REST-backed by design (no macro domain — /api/plugins/gallery/* are
+    // direct HTTP routes), same posture as concord-link-frontier. NOT the
+    // same subsystem as the older /api/plugins loader behind the "system"
+    // lens's LensPluginSystem — macroDomain intentionally omitted.
   },
   {
     id: 'quests',

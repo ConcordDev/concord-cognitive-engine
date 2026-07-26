@@ -10,7 +10,7 @@
  * Run: node --test tests/uprising.test.js
  */
 
-import { describe, it } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { up as up284 } from "../migrations/284_movements.js";
@@ -60,6 +60,45 @@ describe("Phase 6 — uprising eruption", () => {
     const r2 = eruptUprising(db, getMovement(db, mid));
     assert.equal(r2.alreadyErupted, true);
     assert.equal(db.prepare(`SELECT COUNT(*) n FROM movement_uprisings`).get().n, 1);
+  });
+
+  // DET-C dead-event fix — CinematicTriggerBridge.tsx (frontend) subscribes
+  // to 'rebellion:fired' to trigger a cinematic sequence, but nothing ever
+  // broadcast it. This is the real eruption point; pin that it fires
+  // exactly once, with the movement/world identity, and never on the
+  // idempotent re-check.
+  describe("realtime emit", () => {
+    let originalEmit;
+    let emitted;
+    beforeEach(() => {
+      originalEmit = globalThis._concordRealtimeEmit;
+      emitted = [];
+      globalThis._concordRealtimeEmit = (name, payload) => emitted.push({ name, payload });
+    });
+    afterEach(() => {
+      globalThis._concordRealtimeEmit = originalEmit;
+    });
+
+    it("emits rebellion:fired exactly once on the real eruption, not on the idempotent re-check", () => {
+      const db = mkDb();
+      const mid = seedActingMovement(db);
+      const r = eruptUprising(db, getMovement(db, mid));
+      assert.equal(r.ok, true);
+      assert.equal(emitted.length, 1);
+      assert.equal(emitted[0].name, "rebellion:fired");
+      assert.equal(emitted[0].payload.movementId, mid);
+      assert.equal(emitted[0].payload.worldId, W);
+      assert.equal(emitted[0].payload.targetId, "house_voss");
+      // 3, not 2: seedMovementFromGrievance auto-adds the founding NPC as the
+      // movement's first member ("The founder is the first member" —
+      // lib/movements.js#seedMovementFromGrievance), and seedActingMovement
+      // above recruits 2 more ("a", "b") on top of that founder.
+      assert.equal(emitted[0].payload.members, 3);
+
+      const r2 = eruptUprising(db, getMovement(db, mid));
+      assert.equal(r2.alreadyErupted, true);
+      assert.equal(emitted.length, 1, "no second emit on the idempotent re-check");
+    });
   });
 });
 

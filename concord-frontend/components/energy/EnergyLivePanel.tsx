@@ -7,13 +7,21 @@
  * current / peak / average watts.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Loader2, Plus, Zap } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
+import { cn } from '@/lib/utils';
 
 interface LiveSample { id: string; watts: number; at: string; deviceName: string }
 interface Device { id: string; name: string }
+
+// Sense/Emporia's whole identity is a power meter that visibly moves.
+// Real backend poll, not a fake ticker — every 5s while this tab is open
+// we re-call the same live-stream/device-list macros a manual refresh
+// would, so the "Now" tile reflects genuinely fresh server state.
+const POLL_MS = 5000;
 
 export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
   const [samples, setSamples] = useState<LiveSample[]>([]);
@@ -22,11 +30,14 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
   const [avgWatts, setAvgWatts] = useState(0);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
+  const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [watts, setWatts] = useState('');
   const [deviceId, setDeviceId] = useState('');
+  const isFirstLoad = useRef(true);
 
   const refresh = useCallback(async () => {
+    setPolling(true);
     const [s, d] = await Promise.all([
       lensRun('energy', 'live-stream', { minutes: 120 }),
       lensRun('energy', 'device-list', {}),
@@ -42,10 +53,17 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
     }
     setDevices((d.data?.result?.devices as Device[]) || []);
     setLoading(false);
+    setPolling(false);
+    isFirstLoad.current = false;
     onChange();
   }, [onChange]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh();
+    const id = window.setInterval(() => { void refresh(); }, POLL_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async () => {
     if (!(Number(watts) >= 0) || watts === '') { setError('Enter a wattage reading.'); return; }
@@ -71,8 +89,24 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-lime-400">{current.toLocaleString()}<span className="text-xs text-zinc-400"> W</span></p>
+        <div className="relative bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center overflow-hidden">
+          <span
+            className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[9px] uppercase tracking-wider text-lime-400"
+            title={`Polling live-stream every ${POLL_MS / 1000}s`}
+          >
+            <span className={cn('w-1.5 h-1.5 rounded-full bg-lime-400', polling && 'animate-ping')} />
+          </span>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={current}
+              initial={isFirstLoad.current ? false : { opacity: 0.3, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="text-2xl font-bold text-lime-400"
+            >
+              {current.toLocaleString()}<span className="text-xs text-zinc-400"> W</span>
+            </motion.p>
+          </AnimatePresence>
           <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Now</p>
         </div>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">

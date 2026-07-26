@@ -90,7 +90,7 @@ function ScorecardTool() {
           <div className="flex items-center gap-2">
             <input value={obj.title} onChange={(e) => setObjectives((os) => os.map((o, i) => i === oi ? { ...o, title: e.target.value } : o))} placeholder={`Objective ${oi + 1} title`} className={`${inputCls} flex-1`} />
             <input value={obj.weight} onChange={(e) => setObjectives((os) => os.map((o, i) => i === oi ? { ...o, weight: e.target.value } : o))} type="number" min={0} step={0.5} placeholder="Weight" className={`${inputCls} w-16`} />
-            <button onClick={() => setObjectives((os) => os.filter((_, i) => i !== oi))} className="text-zinc-600 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button onClick={() => setObjectives((os) => os.filter((_, i) => i !== oi))} className="text-zinc-600 hover:text-red-400" aria-label={`Remove objective${obj.title.trim() ? ` "${obj.title.trim()}"` : ` ${oi + 1}`}`}><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /></button>
           </div>
           <div className="space-y-1.5 pl-3">
             {obj.krs.map((kr, ki) => (
@@ -170,7 +170,7 @@ function DecompositionTool() {
           <select multiple value={t.deps} onChange={(e) => setTasks((ts) => ts.map((x, j) => j === i ? { ...x, deps: Array.from(e.target.selectedOptions).map((o) => o.value) } : x))} className={`${inputCls} col-span-2`}>
             {tasks.filter((o) => o.key !== t.key).map((o) => <option key={o.key} value={o.key}>{o.title || o.key}</option>)}
           </select>
-          <button onClick={() => setTasks((ts) => ts.filter((_, j) => j !== i))} className="flex items-center justify-center text-zinc-600 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+          <button onClick={() => setTasks((ts) => ts.filter((_, j) => j !== i))} className="flex items-center justify-center text-zinc-600 hover:text-red-400" aria-label={`Remove task${t.title.trim() ? ` "${t.title.trim()}"` : ` ${t.key}`}`}><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /></button>
         </div>
       ))}
       <div className="flex items-center gap-2">

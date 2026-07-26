@@ -32,6 +32,12 @@ function reject(emergentId, taskId, stages, reason, db) {
  */
 export async function runQualityPipeline({ emergentId, identity, task, result, sources, db, parentInferenceId }) {
   const stages = {};
+  // The caller (emergent/minor-agent.js) passes its full identity object for
+  // traceability; it was previously accepted and discarded. recordQualityOutcome
+  // persists `stages` verbatim as stages_json, so stamping a display name here
+  // makes the quality-history record attributable to which emergent persona
+  // produced the draft, without touching the approve/reject decision itself.
+  if (identity?.given_name) stages.identity = identity.given_name;
 
   let draft;
   try {

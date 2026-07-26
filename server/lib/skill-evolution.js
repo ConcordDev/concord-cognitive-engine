@@ -696,6 +696,35 @@ export function applyEvolution(db, entityKind, entityId, evolution, opts = {}) {
 
   try {
     const result = tx();
+
+    // DEAD-SUBSCRIPTION Class B — `system:skill-evolved`. SystemFeed.tsx:79
+    // (components/world/) renders a POWER EVOLVED System window off this event
+    // and reads `name` (falling back to `skill`), but nothing ever emitted it.
+    // This is the real evolution moment — the revision is committed and the
+    // recipe's current_name has just moved nameBefore → nameAfter. Emitted
+    // AFTER the transaction so a rolled-back apply never announces itself.
+    // Player-only: NPC evolutions run on the same substrate but have no UI
+    // (npc-skill-author.js drives thousands of them on the heartbeat).
+    // Covers both real player paths — the skill_evolution.commit macro and
+    // mentorship.js's student revision — because both land here.
+    if (entityKind === "player" && entityId) {
+      try {
+        const emitFn = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+        if (typeof emitFn === "function") {
+          const evolvedName = String(evolution.nameAfter || evolution.nameBefore || "");
+          emitFn("system:skill-evolved", {
+            userId: entityId,
+            name: evolvedName,   // SystemFeed reads `name` first…
+            skill: evolvedName,  // …then falls back to `skill`
+            previousName: evolution.nameBefore || null,
+            recipeId: result.recipeId,
+            revisionId: result.revisionId,
+            revisionNum: evolution.revisionNum,
+          }, { userId: entityId });
+        }
+      } catch { /* realtime is best-effort — never break a committed evolution */ }
+    }
+
     return { ok: true, revisionId: result.revisionId, recipeId: result.recipeId, fuel: result.fuel };
   } catch (err) {
     return { ok: false, reason: err?.message || "apply_failed" };

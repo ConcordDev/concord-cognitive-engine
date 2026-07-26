@@ -42,8 +42,10 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
+import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
 import fs from "fs";
 import path from "path";
@@ -807,80 +809,116 @@ try {
 
 // Track A — runs the code-quality/security detector suite over the repo
 // itself. Parent-only.
+//
+// OP1 note: this body used to live inline in the heartbeat's `handler`.
+// Extracted to a named function so the Repair Cortex console's manual
+// "run sweep now" route (below, `POST /api/admin/repair/detections/run`)
+// can call the SAME real logic directly — not proxied through
+// `runHeartbeatModuleNow`, which races the work against the heartbeat
+// dispatcher's `CONCORD_HEARTBEAT_MODULE_TIMEOUT_MS` (default 30s, sized
+// for "never stall the tick loop"). At Concord's real repo scale the full
+// detector suite genuinely exceeds 30s, so the periodic heartbeat's
+// internal safety net was silently truncating every scheduled sweep before
+// it ever wrote `globalThis.__CONCORD_DETECTORS__.latestReport` — the
+// stash a fresh console session reads from was live-verified to stay
+// permanently `available:false` in this repo. The scheduled heartbeat MUST
+// keep its 30s ceiling (a tick-loop safety invariant, not a bug to route
+// around); an operator-initiated manual refresh is a foreground admin
+// action and is allowed to take as long as the real sweep needs, exactly
+// like the existing "Force Repair Cycle" button already does for
+// `forceRepairCycle()`.
+async function runDetectorSweepAndStash({ db, state }) {
+  try {
+    // Force a telemetry flush before the sweep so the latest in-memory
+    // counts are visible to MacroUsageDetector.
+    await _macroTelemetry.flush().catch(() => {});
+
+    const mod = await import("./lib/detectors/index.js");
+    const baseline = await import("./lib/detectors/baseline.js");
+    // OP1 fix: `lib/detectors/heartbeat-monitor.js`'s runtime findings
+    // (`heartbeat_failing`, `heartbeat_stale_run` — the two findings the
+    // new Repair Cortex governed-remediation flow acts on) read from
+    // `state.heartbeatStats`, a field NOTHING in this codebase ever
+    // populated — so those findings could never actually fire, no matter
+    // how unhealthy a module really was. `getHeartbeatTimingStats()`
+    // (imported above) already tracks the real per-module totalErrors +
+    // lastAt this shape needs; derive it here instead of leaving the
+    // detector permanently dead. Passed via a shallow-spread `state` so
+    // the live STATE object itself is never mutated.
+    let heartbeatStats = {};
+    try {
+      for (const m of getHeartbeatTimingStats()) {
+        heartbeatStats[m.id] = { failures: m.totalErrors || 0, lastRunMs: m.lastAt || null };
+      }
+    } catch (_e) { /* best-effort — an empty object still degrades honestly */ }
+    const report = await mod.runAllDetectors({ db, state: { ...state, heartbeatStats } });
+
+    // Compute delta vs baseline for the history record.
+    let delta = null;
+    try {
+      const url = await import("node:url");
+      const here = path.dirname(url.fileURLToPath(import.meta.url));
+      const root = path.resolve(here, "..");
+      const base = await baseline.loadBaseline(root);
+      if (base?.fingerprints) delta = baseline.diffAgainstBaseline(report, base);
+      await baseline.appendHistory(root, report, { delta });
+    } catch (_e) { /* history append is best-effort */ }
+
+    // Stash latest report for HUD consumers — read-only snapshot.
+    globalThis.__CONCORD_DETECTORS__ = Object.assign(
+      globalThis.__CONCORD_DETECTORS__ || {},
+      { latestReport: report, latestRunAt: Date.now(), latestDelta: delta },
+    );
+
+    // Phase 5 hook: feed delta into repair-cortex bridge if available.
+    try {
+      const bridge = await import("./emergent/repair-cortex/detector-bridge.js").catch(() => null);
+      if (bridge?.ingestDetectorDelta) {
+        await bridge.ingestDetectorDelta(report, delta);
+      }
+    } catch (_e) { /* bridge optional */ }
+
+    // Phase 3 hook: emit world:invariant-warning for critical invariant
+    // findings so EmergentEventFeed and the goddess can surface them.
+    try {
+      const criticals = (report.reports || [])
+        .filter(r => r.id === "invariant-guardian")
+        .flatMap(r => (r.findings || []).filter(f => f.severity === "critical").map(x => ({ ...x, detector: r.id })));
+      if (criticals.length > 0 && process.env.CONCORD_WORLD_WARNINGS !== "0") {
+        if (typeof realtimeEmit === "function") {
+          for (const f of criticals) {
+            realtimeEmit("world:invariant-warning", {
+              id: f.id,
+              message: f.message,
+              location: f.location,
+              severity: f.severity,
+              generatedAt: report.generatedAt,
+            });
+          }
+        }
+        // Phase 3.3 — auto-proposal for critical invariant violations.
+        if (process.env.CONCORD_AUTO_GOVERNANCE !== "0") {
+          try {
+            const ap = await import("./lib/governance/auto-proposal.js");
+            ap.bulkPostFromFindings(db, criticals);
+          } catch (_e) { /* auto-proposal optional */ }
+        }
+      }
+    } catch (_e) { /* warning emit best-effort */ }
+
+    return { ok: true, totals: report.totals, detectorCount: report.detectorCount };
+  } catch (err) {
+    return { ok: false, reason: "detector_sweep_failed", error: err?.message };
+  }
+}
+
 registerHeartbeat("detectors-sweep", {
   frequency: 2880,
   scope: "global",
   // Track C — the code-quality/security detector suite, not gameplay/
   // request-critical; harmless to skip a ~12h-cadence tick under real load.
   lowPriority: true,
-  handler: async ({ db, state }) => {
-    try {
-      // Force a telemetry flush before the sweep so the latest in-memory
-      // counts are visible to MacroUsageDetector.
-      await _macroTelemetry.flush().catch(() => {});
-
-      const mod = await import("./lib/detectors/index.js");
-      const baseline = await import("./lib/detectors/baseline.js");
-      const report = await mod.runAllDetectors({ db, state });
-
-      // Compute delta vs baseline for the history record.
-      let delta = null;
-      try {
-        const url = await import("node:url");
-        const here = path.dirname(url.fileURLToPath(import.meta.url));
-        const root = path.resolve(here, "..");
-        const base = await baseline.loadBaseline(root);
-        if (base?.fingerprints) delta = baseline.diffAgainstBaseline(report, base);
-        await baseline.appendHistory(root, report, { delta });
-      } catch (_e) { /* history append is best-effort */ }
-
-      // Stash latest report for HUD consumers — read-only snapshot.
-      globalThis.__CONCORD_DETECTORS__ = Object.assign(
-        globalThis.__CONCORD_DETECTORS__ || {},
-        { latestReport: report, latestRunAt: Date.now(), latestDelta: delta },
-      );
-
-      // Phase 5 hook: feed delta into repair-cortex bridge if available.
-      try {
-        const bridge = await import("./emergent/repair-cortex/detector-bridge.js").catch(() => null);
-        if (bridge?.ingestDetectorDelta) {
-          await bridge.ingestDetectorDelta(report, delta);
-        }
-      } catch (_e) { /* bridge optional */ }
-
-      // Phase 3 hook: emit world:invariant-warning for critical invariant
-      // findings so EmergentEventFeed and the goddess can surface them.
-      try {
-        const criticals = (report.reports || [])
-          .filter(r => r.id === "invariant-guardian")
-          .flatMap(r => (r.findings || []).filter(f => f.severity === "critical").map(x => ({ ...x, detector: r.id })));
-        if (criticals.length > 0 && process.env.CONCORD_WORLD_WARNINGS !== "0") {
-          if (typeof realtimeEmit === "function") {
-            for (const f of criticals) {
-              realtimeEmit("world:invariant-warning", {
-                id: f.id,
-                message: f.message,
-                location: f.location,
-                severity: f.severity,
-                generatedAt: report.generatedAt,
-              });
-            }
-          }
-          // Phase 3.3 — auto-proposal for critical invariant violations.
-          if (process.env.CONCORD_AUTO_GOVERNANCE !== "0") {
-            try {
-              const ap = await import("./lib/governance/auto-proposal.js");
-              ap.bulkPostFromFindings(db, criticals);
-            } catch (_e) { /* auto-proposal optional */ }
-          }
-        }
-      } catch (_e) { /* warning emit best-effort */ }
-
-      return { ok: true, totals: report.totals, detectorCount: report.detectorCount };
-    } catch (err) {
-      return { ok: false, reason: "detector_sweep_failed", error: err?.message };
-    }
-  },
+  handler: runDetectorSweepAndStash,
 });
 
 // Layer 11: faction emergent strategy. Every 200 ticks (~50 min) advances
@@ -986,6 +1024,17 @@ registerHeartbeat("npc-routine-cycle", {
   // realtime emit AFTER the loop (not inline mid-loop), no live-STATE
   // dependency. Routes off the main thread via the worker pool.
   worker: true,
+});
+
+// BD#16 — living-hub presence. Every 10 ticks (~2.5min) each NPC's current
+// routine block picks a purpose-tagged building to inhabit and (when present)
+// a matching DTU-prop to use, so the authored hub reads as lived-in rather
+// than a static facade. Bounded per-world, honest no-op when no city-layout /
+// buildings are seeded. Kill-switch: CONCORD_NPC_BUILDING_AFFINITY=0.
+import { runNpcBuildingAffinityCycle } from "./emergent/npc-building-affinity-cycle.js";
+registerHeartbeat("npc-building-affinity-cycle", {
+  frequency: 10,
+  handler: runNpcBuildingAffinityCycle,
 });
 
 // Sprint C / Track A4 — npc schemes / plots. Every 30 ticks (~7.5min)
@@ -1198,6 +1247,17 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// V1.2 Wave D — player-influenced districts governance resolution. Every 200
+// ticks (~50min, matching Layer 11 faction-strategy-cycle's cadence): resolve
+// any district_proposals whose voting window has closed (quorum + majority ->
+// accepted, applied to the real districts table; otherwise rejected/expired).
+// Kill-switch: CONCORD_DISTRICT_GOVERNANCE=0.
+import { runDistrictGovernanceCycle } from "./emergent/district-governance-cycle.js";
+registerHeartbeat("district-governance-cycle", {
+  frequency: 200,
+  handler: runDistrictGovernanceCycle,
+});
+
 // Wire-the-unwired: goddess.compose_now (lib/goddess-broadcaster.js) had no
 // caller anywhere — no heartbeat, no frontend button — so the /lenses/
 // goddess page's "composed hourly" claim was false and the feed stayed
@@ -1253,6 +1313,36 @@ registerHeartbeat("realm-control-cycle", {
   frequency: REALM_CONTROL_FREQUENCY,
   scope: "global",
   handler: runRealmControlCycle,
+});
+
+// Grounding-audit find (2026-07-24) — kingdom-takeover.js#tickLegitimacy is a
+// fully-built decree-popularity-driven legitimacy regen/decay tick that had
+// ZERO callers anywhere in the codebase: without a schedule a realm's
+// legitimacy never organically drifted and nothing autonomously forced a
+// succession crisis when an interregnum realm just sat vacant forever. This
+// heartbeat calls the real tickLegitimacy(db) unmodified, then auto-resolves
+// (via the same npc-legacy.js#findHeirs heir-search death already uses)
+// any realm that is BOTH at the real legitimacy floor (0 — the same floor
+// tickLegitimacy's own clamp + the migration-158 CHECK constraint use) AND
+// currently ruler_kind = 'interregnum'. A player-held or player-contested
+// realm (ruler_kind = 'player') is never touched — see the module's own
+// safety-critical guard. Frequency 240 (~60min): tickLegitimacy's doc
+// comment calls it a "Daily" tick, but a literal calendar day in ticks
+// (5760) would leave a collapsed realm vacant far longer than is
+// interesting to observe; 240 matches the cadence this codebase already
+// uses for comparable slow civilizational drift (procgen-settlement-cycle,
+// lattice-breakthrough-pass) while staying safely slower than the
+// decree-issuing cycle (kingdom-decree-cycle @ 16) so each pass reacts to
+// genuinely new decree activity. scope:'global' — same reasoning as
+// realm-control-cycle/kingdom-decree-cycle immediately above: the
+// `SELECT ... FROM realms` queries here have no world_id filter, so 'world'
+// scope would re-run the same global realm set once per active shard.
+// Kill-switch: CONCORD_KINGDOM_LEGITIMACY=0.
+import { runKingdomLegitimacyCycle } from "./emergent/kingdom-legitimacy-cycle.js";
+registerHeartbeat("kingdom-legitimacy-cycle", {
+  frequency: 240,
+  scope: "global",
+  handler: runKingdomLegitimacyCycle,
 });
 
 // SL4 tail — periodic prune of expired user_active_effects (cook-engine only
@@ -1424,6 +1514,66 @@ import { runNpcConversationInitiator } from "./emergent/npc-conversation-initiat
 registerHeartbeat("npc-conversation-initiator", {
   frequency: 8,
   handler: ({ db } = {}) => runNpcConversationInitiator({ db, io: REALTIME?.io }),
+});
+
+// Sovereign Mass Raid: periodically draft a real fused-power manifestation
+// from the already-real, already-tested Refusal Archive (draftSovereign
+// Manifestation, previously reachable only via the manual admin/preview
+// route) while a raid is open, and broadcast it so the frontend's
+// SovereignManifestationToast (listening for 'world:sovereign-manifest'
+// since it was written, never triggered until now) has a real server-side
+// event to react to. Does NOT invent raid combat/damage logic — raid-
+// event.js's own header explicitly scopes that out for a later drop; this
+// only schedules the existing draft capability and broadcasts its real
+// output. Frequency 20 (~5 min) matches the module's own internal cooldown.
+import { runSovereignManifestationCycle } from "./emergent/sovereign-manifestation-cycle.js";
+registerHeartbeat("sovereign-manifestation-cycle", {
+  frequency: 20,
+  handler: ({ state } = {}) => runSovereignManifestationCycle({ state, io: REALTIME?.io }),
+});
+
+// C16 — ambient aerial traffic ("non-empty sky"). Every tick (frequency 1,
+// the tightest cadence the scheduler offers) advances a small in-memory
+// fleet of unowned background air entities per active world (real routes
+// only — landing pads or district centroids, see server/lib/
+// aerial-traffic.js's header) and broadcasts their position via the same
+// Godot-mirror-aware world-room emit combat-polish.js/routes/worlds.js use
+// (docs/GODOT_PROTOCOL.md §4/§7's `_concordEmitToWorld` pattern). Actually
+// SPAWNING a new entity is gated separately, internally, to roughly every
+// ~3 min (server/emergent/aerial-traffic-cycle.js's SPAWN_CHECK_INTERVAL_MS)
+// — the cycle runs often so positions stay fresh, the population itself
+// changes rarely. `scope: 'global'`: the handler discovers every active
+// world itself with no ctx.worldId filter (same shape `scheme-overhear-
+// cycle`/`world-zone-hazard-cycle` are marked 'global' for — see their own
+// "Track A" comments below — to avoid re-running the same worlds once per
+// shard under CONCORD_SHARD_WORLDS). Kill-switch: CONCORD_AERIAL_TRAFFIC=0.
+import { runAerialTrafficCycle } from "./emergent/aerial-traffic-cycle.js";
+registerHeartbeat("aerial-traffic-cycle", {
+  frequency: 1,
+  scope: "global",
+  handler: ({ db, state } = {}) => runAerialTrafficCycle({ db, state, io: REALTIME?.io }),
+});
+
+// V1.2 Wave A ("Society & Presence") — spontaneous gathering broadcast. The
+// real detection logic (`spontaneousGatherings`, server/lib/city-presence.js)
+// already existed and was already reachable via the `world.gatherings` macro
+// — but only as a pull: a client had to already be looking at the
+// EventsGatherings panel, and only got a snapshot once on mount. This
+// schedules that same real, tested clustering (>= N real co-located players
+// in a real 50m cell, honest-empty when nobody's actually clustered) and
+// broadcasts a genuine "gathering happening near you" signal to the room
+// for the world it was detected in — never a global broadcast, never a
+// fabricated headcount. Frequency 4 (~1 min); an internal per-gathering
+// cooldown (server/emergent/gathering-broadcast-cycle.js's
+// REBROADCAST_COOLDOWN_MS, default 3 min) throttles repeat broadcasts of a
+// still-active cluster. `scope: 'global'`: spontaneousGatherings scans the
+// whole in-memory presence map itself (same reasoning as aerial-traffic-
+// cycle just above). Kill-switch: CONCORD_GATHERING_DETECTOR=0.
+import { runGatheringBroadcastCycle } from "./emergent/gathering-broadcast-cycle.js";
+registerHeartbeat("gathering-broadcast-cycle", {
+  frequency: 4,
+  scope: "global",
+  handler: ({ db, state } = {}) => runGatheringBroadcastCycle({ db, state, io: REALTIME?.io }),
 });
 
 // Phase 11 (Item 12) — federation outbox pump. Drains pending
@@ -1621,6 +1771,7 @@ import configureMiddleware from "./middleware/index.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
+import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
@@ -1655,7 +1806,7 @@ import "./lib/vocabularies.js";
 import { BoundedMap } from "./lib/bounded-map.js";
 import { generateEntityName, migrateEntityNames as runEntityNameMigration, isFunctionLabel as isEntityFunctionLabel } from "./lib/entity-naming.js";
 import { validateSafeFetchUrl as _ssrfValidate, isUrlSafeAsync as _ssrfIsSafeAsync, fetchWithPinnedIp as _ssrfFetchPinned } from "./lib/ssrf-guard.js";
-import { registerCitation as economyRegisterCitation } from "./economy/royalty-cascade.js";
+import { registerCitation as economyRegisterCitation, getAncestorChain as _dtuLineageAncestorChain, getDescendants as _dtuLineageDescendants } from "./economy/royalty-cascade.js";
 import { checkAccess as economyCheckAccess, TIER_HIERARCHY as ECONOMY_TIER_HIERARCHY } from "./economy/rights-enforcement.js";
 // Wave 6 — plugin marketplace checkout reuses the SAME purchase primitive
 // every other creative-artifact content type (music/art/code/...) already
@@ -1670,6 +1821,15 @@ import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 import { validateParamSchema } from "./lib/macro-param-schema.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
+// V1.2 Wave A — Society & Presence: ephemeral spatially-scoped chat channel.
+// See lib/proximity-chat.js's header comment for why this is a separate,
+// deliberately non-persisted module rather than an extension of
+// lib/ambient-chat.js's district-scoped, DB-backed system.
+import * as proximityChat from "./lib/proximity-chat.js";
+// Godot Phase 3a — mount legitimacy check for the player:mode handler
+// (validates a claimed "mount:<speciesId>" mode against a real active
+// mounted_instances row before it's allowed to relax the anti-cheat speed cap).
+import { getActiveMountPayload } from "./lib/companions-mount.js";
 import * as worldMechanics from "./lib/world-mechanics.js";
 import { getDistrictByLens as _worldGetDistrictByLens, placeWorldObject as _worldPlaceObject } from "./lib/world-engine.js";
 import {
@@ -1737,6 +1897,12 @@ import { checkSpontaneousContent } from "./prompts/spontaneous.js";
 
 // ── Chat Router + Forge Pipeline ─────────────────────────────────────────
 import { routeMessage as chatRouterRoute, buildLensChain, emitResonanceSignal, shouldOfferForge, detectEmergentRoute, recordRouteMetric, getRouterMetrics, detectOracleIntent, routeThroughOracle, ACTION_TYPES as CHAT_ACTION_TYPES } from "./lib/chat-router.js";
+// RQ3 — standalone, deterministic (no-LLM-call) intent classifier. Used as
+// an additive pre-check in chat.respond's compute-preflight block below;
+// see server/lib/chat/intent-router.js for the full policy. Aliased on
+// import — server.js already has an unrelated local `classifyIntent`
+// (greeting/identity/status/command/question classifier, ~line 3413).
+import { classifyIntent as classifyChatEngineIntent } from "./lib/chat/intent-router.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
@@ -5399,14 +5565,38 @@ function initDatabase() {
   try {
     // Ensure the DB parent directory exists (handles both /data/concord.db and /data/db/concord.db)
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    // Tuning bumped for 32GB-host deployments. mmap=4GB lets SQLite
-    // memory-map large tables (DTU substrate) directly so reads bypass
-    // the page cache entirely; cache=-1024MB (1GB negative = KB count
-    // is page count) holds frequently-touched pages in RAM. Override
-    // via env on smaller boxes.
-    const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 4096;
-    const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 1024;
-    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 10000;
+    // Launch-readiness pragma pass (2026-07-25) — the mmap/cache defaults
+    // below were originally "bumped for 32GB-host deployments" (a dedicated
+    // box). The REAL target for this launch is the documented 9 vCPU / 50GB
+    // shared box (see "GPU/CPU pinning audit" elsewhere in this file's
+    // history / docker-compose.yml): ~20GB already committed to 5+ Ollama
+    // processes plus the Node heap, leaving materially less headroom than a
+    // dedicated 32GB host. Holding the old absolute 4GB mmap / 1GB cache on
+    // THIS box competes with exactly the memory headroom the memory-pressure
+    // watchdog and the new event-loop load-shedder (lib/request-admission.js)
+    // are trying to protect. Halved both, mirroring the same "correct the
+    // stale dedicated-host assumption to match the real shared box" move
+    // already made for the Ollama model tuning in this deployment. Still
+    // fully env-overridable up for a genuinely dedicated host.
+    const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 2048;
+    const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 512;
+    // wal_autocheckpoint sizing (2026-07-25 launch-readiness pass): the
+    // previous 10000-page default (~78MB of WAL, at this DB's page_size=8192)
+    // meant every automatic checkpoint had up to ~78MB of dirty pages to
+    // flush back into the main file in ONE synchronous call. better-sqlite3
+    // has no async escape hatch — that flush runs on the same single Node
+    // thread that serves every HTTP request, so a big rare checkpoint is a
+    // direct, self-inflicted contributor to the exact event-loop-lag spikes
+    // the new admission-control gate (lib/request-admission.js, 300ms
+    // default) exists to shed around. Research consensus (SQLite's own docs,
+    // and production WAL-tuning writeups) frames this as a frequency/burst-
+    // size tradeoff with production deployments typically landing between
+    // 2000-10000 pages; the previous value sat at the extreme high (bursty)
+    // end of that range. Moved to 4000 pages (~32MB) — smaller, more
+    // frequent checkpoints instead of rarer, larger ones — while staying
+    // comfortably above SQLite's own stock default (1000 pages) so this
+    // isn't checkpointing on every trivial write either. Override via env.
+    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 4000;
     // Stability audit (2026-07-20) — wal_autocheckpoint sets the checkpoint
     // CADENCE, but under checkpoint starvation (a long-running reader holding
     // the WAL open, an export, a stuck analytics query) SQLite can't reclaim
@@ -5414,10 +5604,30 @@ function initDatabase() {
     // disk fills — which then breaks writes for every user, not just the
     // slow reader. journal_size_limit is the hard backstop: once the WAL
     // exceeds this size, SQLite forcibly truncates it back down after the
-    // next checkpoint that CAN complete, instead of growing forever. 64MB
-    // default is generous headroom over the ~80MB (10000 pages × 8KB) a
-    // normal checkpoint cycle touches. Override via env on busier boxes.
+    // next checkpoint that CAN complete, instead of growing forever. With
+    // the walPages change above, 64MB default is now genuinely larger than
+    // the ~32MB (4000 pages × 8KB) a normal checkpoint cycle touches — this
+    // backstop should only ever fire during real starvation, not every
+    // normal cycle (previously it sat BELOW the ~78MB the old 10000-page
+    // cadence touched, which meant the "starvation-only" backstop and the
+    // routine cadence overlapped — corrected as a side effect of the change
+    // above). Override via env on busier boxes.
     const walSizeLimitMb = Number(process.env.CONCORD_SQLITE_WAL_SIZE_LIMIT_MB) || 64;
+    // busy_timeout (2026-07-25 launch-readiness pass) — research consensus
+    // (SQLite docs + production WAL writeups) is unanimous that this is the
+    // single highest-leverage pragma for concurrent-write survival: without
+    // enough of it, a second writer contending for the one WAL write lock
+    // fails INSTANTLY with SQLITE_BUSY instead of waiting the lock out. The
+    // writer's 10s default already exceeds the commonly-cited 5s production
+    // floor. The read-replica handle was hardcoded to 5000ms with no env
+    // override (inconsistent with every other pragma here) — bumped to
+    // match the writer's default and made overridable, since there's no
+    // principled reason a reader should get a SHORTER grace period than the
+    // writer before giving up: a reader that fails fast under any transient
+    // contention (e.g. mid-checkpoint on the writer) turns into a
+    // user-visible 500 instead of a brief, invisible wait.
+    const busyTimeoutMs = Number(process.env.CONCORD_SQLITE_BUSY_TIMEOUT_MS) || 10000;
+    const replicaBusyTimeoutMs = Number(process.env.CONCORD_SQLITE_REPLICA_BUSY_TIMEOUT_MS) || 10000;
     if (READ_REPLICA) {
       // Read-only replica: the writer owns schema + WAL journal mode. Open
       // Open WRITABLE (not readonly). The monolith has many scattered boot-time
@@ -5434,7 +5644,7 @@ function initDatabase() {
       db.pragma("journal_mode = WAL");        // already-WAL → no-op read of current mode
       db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
       db.pragma(`cache_size = -${cacheMb * 1024}`);
-      db.pragma("busy_timeout = 5000");
+      db.pragma(`busy_timeout = ${replicaBusyTimeoutMs}`);
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`);
       structuredLog?.("info", "db_readonly_replica", { dbPath: DB_PATH, mode: "writable-until-listen" });
     } else {
@@ -5445,7 +5655,7 @@ function initDatabase() {
       db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
       db.pragma(`cache_size = -${cacheMb * 1024}`);
       db.pragma("temp_store = MEMORY");       // Temp tables in RAM
-      db.pragma("busy_timeout = 10000");      // 10s retry — burst-safe under concurrent writers
+      db.pragma(`busy_timeout = ${busyTimeoutMs}`); // 10s default retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
       db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
@@ -7163,7 +7373,7 @@ function requireRole(...roles) {
 // comment on the Gate-1 bypass above). No Concord account exists to
 // authenticate, and the token itself is the access control, scoped
 // server-side to exactly one estimate/invoice.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/"]; // NOTE: /api/animation/share/ intentionally NOT here — this gate already exempts GET/HEAD/OPTIONS above, so the public GET-only share viewer needs no entry; adding the prefix would also bypass write-auth for any future POST/PUT/DELETE under it.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/"]; // NOTE: /api/animation/share/ intentionally NOT here — this gate already exempts GET/HEAD/OPTIONS above, so the public GET-only share viewer needs no entry; adding the prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection).
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -7874,6 +8084,22 @@ async function initMetrics() {
       registers: [METRICS.registry],
     });
 
+    // Launch-readiness (2026-07-25) — front-door load shedding. Counts an
+    // HTTP request rejected with a real 503+Retry-After by
+    // lib/request-admission.js's event-loop-lag admission gate, by priority
+    // class (protected/sheddable — critical/health traffic is never
+    // evaluated, so it never appears here) and reason (event_loop_lag =
+    // sheddable traffic shed at the lower bar; event_loop_lag_critical =
+    // even protected/authenticated traffic shed at the much higher bar).
+    // Sustained non-zero rate means the box is admission-limiting under
+    // real load — pair with `concord_event_loop_lag_ms` to see why.
+    METRICS.counters.requestsShed = new prom.Counter({
+      name: "concord_requests_shed_total",
+      help: "HTTP requests rejected (503) by the event-loop-lag load shedder, by priority class and reason",
+      labelNames: ["priority", "reason"],
+      registers: [METRICS.registry],
+    });
+
     // Stability audit (2026-07-20) — Socket.IO connection/room leaks are a
     // known, recurring bug class (disconnected sockets staying referenced,
     // empty rooms not getting cleaned up — github.com/socketio/socket.io
@@ -8577,6 +8803,13 @@ const REALTIME = {
   clients: new Map(), // socketId -> { socket, sessionId, orgId, userId, createdAt }
 };
 
+// Godot Integration Phase 2 — set once the gateway is mounted (~line 65605,
+// after the real http.Server exists). `let`, not `const`: realtimeEmit/
+// emitToWorld below reference it by closure and are only ever CALLED at
+// runtime, well after the mount assignment has run — never at module-eval
+// time — so this is not a TDZ hazard despite the forward reference.
+let _godotGatewayEmitter = null;
+
 // Per-user emit helper — uses the user:${userId} room joined on socket auth
 // (see io.on("connection") handler). Established in Phase 3 of polish-to-ten;
 // reused by trade, party, and any emergent system that needs to push to one
@@ -8698,13 +8931,26 @@ function emitToWorld(worldId, event, payload) {
       _evt: event,
     };
     REALTIME.io.to(`world:${worldId}`).emit(event, enriched);
+    // Godot gateway mirror — fan the same world-room event to any connected
+    // Godot clients. Best-effort: a gateway hiccup must never affect the
+    // socket.io emit above, which is why this is its own try/catch.
+    try { _godotGatewayEmitter?.emitToRoom(`world:${worldId}`, event, enriched); } catch { /* survive */ }
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: String(e?.message || e) };
   }
 }
 
-function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "" } = {}) {
+// Expose globally so lib modules that can't import server.js directly
+// (circular-import risk) can still route a world-scoped broadcast through
+// the Godot gateway mirror — same "expose so lib modules can route without
+// a circular import" pattern already used for `_concordRealtimeEmit` below.
+// Consumer: server/lib/combat-polish.js's `combat:polish` emit (previously
+// a direct `io.to(...).emit(...)` that never reached a connected Godot
+// client — see docs/GODOT_PROTOCOL.md §4 "play_effect").
+globalThis._concordEmitToWorld = emitToWorld;
+
+function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "", worldId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
     ...payload,
@@ -8767,12 +9013,36 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
       // user only sees the lifecycle of THEIR own in-flight macro runs —
       // never a global broadcast of every lens action platform-wide.
       REALTIME.io.to(`user:${userId}`).emit(event, enrichedPayload);
+      // Godot gateway mirror — same room grammar (user:<id>) the gateway
+      // supports. Best-effort; never affects the socket.io transport above.
+      try { _godotGatewayEmitter?.emitToRoom(`user:${userId}`, event, enrichedPayload); } catch { /* survive */ }
     } else if (sessionId) {
       REALTIME.io.to(`session:${sessionId}`).emit(event, enrichedPayload);
+      // No gateway mirror: the gateway's room grammar is world:*/user:* only
+      // (docs/GODOT_INTEGRATION.md) — there is no session:* room to fan into,
+      // and fabricating one would be dishonest. Honest no-op.
     } else if (orgId) {
       REALTIME.io.to(`org:${orgId}`).emit(event, enrichedPayload);
+      // Same honest no-op as sessionId above — no org:* room in the gateway.
+    } else if (worldId) {
+      // DET-C batch 6 — the missing world-scoping tier. Room-per-world
+      // events (combat:hit et al) previously fell through to the global
+      // `else` branch below and broadcast to EVERY connected socket
+      // regardless of world — a real privacy/scale bug on the single
+      // highest-traffic PvP event. This tier mirrors `emitToWorld`'s room
+      // grammar (`world:<id>`) and Godot-mirror behavior exactly, but keeps
+      // routing through `realtimeEmit` so callers keep every other side
+      // effect the plain global path already had — achievement-bridge
+      // dispatch (`achievement-bridge.js` listens for `combat:hit`),
+      // timeline persistence, and dev-mode shape validation. Using the
+      // standalone `emitToWorld` helper instead would have silently
+      // dropped all three.
+      REALTIME.io.to(`world:${worldId}`).emit(event, enrichedPayload);
+      try { _godotGatewayEmitter?.emitToRoom(`world:${worldId}`, event, enrichedPayload); } catch { /* survive */ }
     } else {
       REALTIME.io.emit(event, enrichedPayload);
+      // Godot gateway mirror — global broadcast to every authenticated client.
+      try { _godotGatewayEmitter?.broadcast(event, enrichedPayload); } catch { /* survive */ }
     }
     return { ok: true, seq: enrichedPayload._seq, transport: "socketio" };
   }
@@ -8794,6 +9064,120 @@ function enqueueNotification(item, { sessionId = "", orgId = "" } = {}) {
   // Push realtime mirror (best-effort)
   try { realtimeEmit("queue:notifications:new", item, { sessionId, orgId }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   return item;
+}
+
+// ── Shared movement/mode core — Godot gateway bidirectionality (2026-07-23) ──
+// The socket.io `player:move` / `player:mode` handlers (inside
+// tryInitWebSockets → io.on("connection")) and the Godot raw-WebSocket
+// gateway's onClientMessage dispatch (mounted later in this file via
+// mountGodotGateway) must run through the IDENTICAL server-authoritative
+// logic — same cityPresence anti-cheat nack/snapback, same mount/vehicle
+// legitimacy gates — so a Godot client can't get a laxer path than a browser
+// client. These two functions are the single shared core; each transport
+// wrapper only translates the plain descriptor they return into its own
+// emit/disconnect calls. Never duplicate this logic at either call site.
+//
+// Descriptor contract (both functions):
+//   { drop: true }                      — silently ignore (matches original
+//                                          silent-return behavior for
+//                                          unauthenticated/malformed frames
+//                                          and rate-limited moves)
+//   { nack: {...}, shouldDisconnect? }  — emit a `*:nack` (and, for move,
+//                                          honor shouldDisconnect same as the
+//                                          original anti-cheat auto-drop)
+//   { ack: {...} }                      — emit a `*:ack`
+function applyPlayerMove(userId, data) {
+  if (!userId) return { drop: true };
+  if (!data || typeof data !== "object") return { drop: true };
+  try {
+    const pos = cityPresence.updateUserPosition(userId, {
+      cityId: String(data.cityId || "concordia-central"),
+      x: Number(data.x) || 0,
+      y: Number(data.y) || 0,
+      z: Number(data.z) || 0,
+      direction: Number(data.direction) || 0,
+      rotation: Number(data.rotation) || 0,
+      action: typeof data.action === "string" ? data.action.slice(0, 32) : "idle",
+      currentAnimation: typeof data.currentAnimation === "string" ? data.currentAnimation.slice(0, 32) : "idle",
+      districtId: typeof data.districtId === "string" ? data.districtId.slice(0, 64) : null,
+    });
+    if (pos && pos.ok === false) {
+      if (pos.reason === "rate_limited") return { drop: true };
+      // H3+ anti-cheat telemetry + sustained-offender auto-drop, mirrored
+      // byte-for-byte from the original socket.io handler.
+      let shouldDisconnect = false;
+      try {
+        METRICS?.counters?.antiCheatRejected?.inc({ reason: String(pos.reason || "unknown") });
+        const verdict = _noteAntiCheatRejection(userId);
+        shouldDisconnect = !!verdict?.shouldDisconnect;
+        if (shouldDisconnect) {
+          logger.warn?.("anti-cheat", "user_dropped", { userId, reason: pos.reason, hits: verdict.threshold });
+        }
+      } catch { /* telemetry/drop best-effort */ }
+      return {
+        nack: {
+          reason: pos.reason,
+          prev: pos.prev || null,
+          observedSpeed: pos.observedSpeed,
+          maxSpeed: pos.maxSpeed,
+        },
+        shouldDisconnect,
+      };
+    }
+    return { ack: { ok: true, nearby: pos.nearby || [], chunkCrossed: !!pos.chunkCrossed } };
+  } catch (err) {
+    logger.debug?.("server", "player_move_failed", { error: err?.message });
+    return { drop: true };
+  }
+}
+
+function applyPlayerMode(userId, data) {
+  if (!userId) return { drop: true };
+  if (!data || typeof data !== "object") return { drop: true };
+  const requested = typeof data.mode === "string" ? data.mode.trim().slice(0, 64) : "";
+  if (!requested) return { nack: { reason: "missing_mode" } };
+  try {
+    if (requested === "walk" || requested === "sprint") {
+      cityPresence.setUserMovementMode(userId, requested, {});
+      return { ack: { ok: true, mode: requested } };
+    }
+
+    if (requested === "fly") {
+      cityPresence.setUserMovementMode(userId, "fly", {});
+      return { ack: { ok: true, mode: "fly" } };
+    }
+
+    if (requested.startsWith("mount:")) {
+      const speciesId = requested.slice("mount:".length);
+      if (!speciesId) return { nack: { reason: "missing_species", requested } };
+      const presenceEntry = cityPresence.getUserPosition(userId);
+      const worldId = presenceEntry?.worldId || presenceEntry?.cityId || "concordia-hub";
+      const payload = getActiveMountPayload(db, userId, worldId);
+      if (!payload || !payload.speciesId || payload.speciesId !== speciesId) {
+        return { nack: { reason: "not_mounted", requested } };
+      }
+      const rawSpeed = Number(payload.species?.baseSpeedMps);
+      const mountSpeedMps = Number.isFinite(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
+      cityPresence.setUserMovementMode(userId, requested, { mountSpeedMps });
+      return { ack: { ok: true, mode: requested, mountSpeedMps } };
+    }
+
+    if (requested.startsWith("vehicle:")) {
+      const vehicleType = requested.slice("vehicle:".length);
+      if (!vehicleType) return { nack: { reason: "missing_vehicle_type", requested } };
+      const current = cityPresence.getUserVehicle(userId);
+      if (!current.vehicleId || current.vehicleType !== vehicleType) {
+        return { nack: { reason: "not_in_vehicle", requested } };
+      }
+      cityPresence.setUserMovementMode(userId, requested, {});
+      return { ack: { ok: true, mode: requested } };
+    }
+
+    return { nack: { reason: "unknown_mode", requested } };
+  } catch (err) {
+    logger.debug?.("server", "player_mode_failed", { error: err?.message });
+    return { nack: { reason: "error" } };
+  }
 }
 
 async function tryInitWebSockets(server) {
@@ -9091,6 +9475,24 @@ async function tryInitWebSockets(server) {
     // authenticated user without the client needing to subscribe explicitly.
     if (socket.data.userId) {
       socket.join(`user:${socket.data.userId}`);
+      // V1.2 Wave A — lightweight groups: also auto-join the caller's
+      // current party room (if any) so this socket receives
+      // party:member-joined/left/disbanded scoped to that room instead of
+      // (as it was before this unit) a global broadcast to every connected
+      // socket regardless of party membership — the same class of privacy
+      // gap the DET-C batch 6 world-scoping fix closed for combat events.
+      // Best-effort + fire-and-forget: a socket that connects before its
+      // party membership can be looked up just doesn't get the room until
+      // the next party-mutating HTTP call (which also explicitly
+      // socketsJoin/socketsLeave the caller's live sockets — see
+      // /api/parties/* below), so there's no permanent gap.
+      (async () => {
+        try {
+          const { getMyParty } = await import("./lib/parties.js");
+          const party = getMyParty(db, socket.data.userId);
+          if (party?.party_id) socket.join(`party:${party.party_id}`);
+        } catch { /* best-effort */ }
+      })();
     }
 
     // Send hello
@@ -9172,13 +9574,32 @@ async function tryInitWebSockets(server) {
       }
 
       socket.join(room);
+      // DET-C batch 8 (dead-event-listener sweep, re-confirmed 2026-07-23):
+      // this still flags as `dead_socket_emit` because the detector's
+      // SCAN_DIRS only walks concord-frontend/{app,components,lib,hooks} —
+      // it structurally never sees world-lens-godot/ (a real external
+      // GDScript client in this monorepo) or concord-mobile/, and couldn't
+      // parse .gd syntax with its JS/TS regexes even if it did. The batch-2
+      // comment on the sibling room:leave handler below already named the
+      // real consumer: world-lens-godot/world/boot.gd's `_on_event` match
+      // arm for "room:joined". Detector false positive from scan-scope, not
+      // a real dead broadcast — do not remove.
       socket.emit("room:joined", { room, ts: nowISO() });
     });
 
     socket.on("room:leave", ({ room }) => {
       if (room) {
         socket.leave(room);
-        socket.emit("room:left", { room, ts: nowISO() });
+        // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): the
+        // `room:left` ack this used to fire had zero consumers — verified
+        // via a full-tree grep across concord-frontend/, concord-mobile/,
+        // and world-lens-godot/ (the room:joined counterpart genuinely IS
+        // consumed, but only by world-lens-godot/world/boot.gd, and that
+        // file has no room-leave flow to trigger this one at all yet).
+        // socket.leave(room) above is the real, load-bearing behavior;
+        // this was a pure notification nobody was listening for. Retired
+        // rather than wired, since there's no leave-flow anywhere yet to
+        // wire a listener to.
       }
     });
 
@@ -9245,58 +9666,40 @@ async function tryInitWebSockets(server) {
       const now = Date.now();
       if (now - _moveRateState.last < 33) return; // ~30Hz cap
       _moveRateState.last = now;
-      try {
-        const pos = cityPresence.updateUserPosition(userId, {
-          cityId: String(data.cityId || "concordia-central"),
-          x: Number(data.x) || 0,
-          y: Number(data.y) || 0,
-          z: Number(data.z) || 0,
-          direction: Number(data.direction) || 0,
-          rotation: Number(data.rotation) || 0,
-          action: typeof data.action === "string" ? data.action.slice(0, 32) : "idle",
-          currentAnimation: typeof data.currentAnimation === "string" ? data.currentAnimation.slice(0, 32) : "idle",
-          districtId: typeof data.districtId === "string" ? data.districtId.slice(0, 64) : null,
-        });
-        // Anti-cheat rejection: updateUserPosition returns ok:false
-        // with { reason, prev } for rate-limit / speed-hack / teleport
-        // detections. Nack back to the client so it can snap the
-        // avatar to the last good position. Rate-limit rejections are
-        // silent to avoid reflecting every dropped flood-packet.
-        if (pos && pos.ok === false) {
-          if (pos.reason !== "rate_limited") {
-            socket.emit("player:move:nack", {
-              reason: pos.reason,
-              prev: pos.prev || null,
-              observedSpeed: pos.observedSpeed,
-              maxSpeed: pos.maxSpeed,
-            });
-            // H3+ — treat a real movement rejection (speed-hack / teleport) as
-            // an anomaly data point: count it, and drop a sustained offender's
-            // socket so a live exploitation tool can't keep hammering. Telemetry
-            // + auto-drop are both best-effort and never block the move path.
-            try {
-              METRICS?.counters?.antiCheatRejected?.inc({ reason: String(pos.reason || "unknown") });
-              const verdict = _noteAntiCheatRejection(userId);
-              if (verdict.shouldDisconnect) {
-                logger.warn?.("anti-cheat", "user_dropped", { userId, reason: pos.reason, hits: verdict.threshold });
-                socket.emit("anti-cheat:dropped", { reason: "too_many_violations" });
-                socket.disconnect(true);
-              }
-            } catch { /* telemetry/drop best-effort */ }
-          }
-          return;
+      // Shared core (also used by the Godot gateway's onClientMessage —
+      // see applyPlayerMove above tryInitWebSockets). Anti-cheat rejection:
+      // updateUserPosition returns ok:false with { reason, prev } for
+      // rate-limit / speed-hack / teleport detections. Nack back to the
+      // client so it can snap the avatar to the last good position.
+      // Rate-limit rejections are silent (applyPlayerMove returns
+      // { drop: true }) to avoid reflecting every dropped flood-packet.
+      const result = applyPlayerMove(userId, data);
+      if (result.drop) return;
+      if (result.nack) {
+        socket.emit("player:move:nack", result.nack);
+        // H3+ — treat a real movement rejection (speed-hack / teleport) as
+        // an anomaly data point: count it, and drop a sustained offender's
+        // socket so a live exploitation tool can't keep hammering. Telemetry
+        // + auto-drop are both best-effort and never block the move path.
+        if (result.shouldDisconnect) {
+          // DET-C batch 8/10: previously flagged `dead_socket_emit` — the
+          // Godot gateway's own send of this same event name
+          // (`_godotGatewaySend(client, "anti-cheat:dropped", ...)`) had no
+          // real Godot-side consumer either, and the browser socket.io path
+          // here had none at all: a rejected client just silently lost its
+          // socket with no explanation. Fixed for the browser client:
+          // app/lenses/world/page.tsx's `handleAntiCheatDropped` now
+          // subscribes and logs the real reason to the combat log before
+          // the disconnect below tears the socket down.
+          socket.emit("anti-cheat:dropped", { reason: "too_many_violations" });
+          socket.disconnect(true);
         }
-        // Ack back with the nearby-users payload so the client can
-        // render remote avatars even if the broadcast tick hasn't
-        // fired yet.
-        socket.emit("player:move:ack", {
-          ok: true,
-          nearby: pos.nearby || [],
-          chunkCrossed: !!pos.chunkCrossed,
-        });
-      } catch (err) {
-        logger.debug?.("server", "player_move_failed", { error: err?.message });
+        return;
       }
+      // Ack back with the nearby-users payload so the client can
+      // render remote avatars even if the broadcast tick hasn't
+      // fired yet.
+      if (result.ack) socket.emit("player:move:ack", result.ack);
     });
 
     // Load saved state when a client asks — lets the frontend
@@ -9310,6 +9713,125 @@ async function tryInitWebSockets(server) {
       } catch (err) {
         socket.emit("player:load:ack", { ok: false, error: err?.message });
       }
+    });
+
+    // ── World Lens / Godot Phase 3a: movement-mode switch ──────────
+    // Client claims a movement mode ("walk" | "sprint" | "fly" |
+    // "mount:<speciesId>" | "vehicle:<type>"). This handler is the
+    // legitimacy gate: updateUserPosition's per-mode speed cap
+    // (city-presence.js#modeSpeedCap) only stays honest if a mode is never
+    // set on the strength of the client's say-so alone. "walk"/"sprint"
+    // need no external check (running on your own two feet isn't a
+    // capability); "mount:*" requires an active mounted_instances row for
+    // THAT species; "vehicle:*" requires the player already be validated-
+    // mounted in a vehicle of that type via POST /api/vehicles/:id/mount
+    // (which itself calls validateOwnership before flipping presence).
+    //
+    // TODO(Phase 3b): "fly" has no real capability gate yet — it is
+    // tracked (so anti-cheat can tell "legitimately airborne" apart from
+    // "walking, claiming flight speed") but any authenticated user can
+    // currently request it. Wire this to a real flight-capable-mount /
+    // glider-suit check once that substrate exists; see the honest caveat
+    // in this unit's report.
+    //
+    // Godot gateway note (2026-07-23 — resolved, was a TODO): the raw-WebSocket
+    // gateway (server/lib/godot-gateway.js, mounted later in this file via
+    // `mountGodotGateway(server, ...)`) now passes an `onClientMessage` that
+    // dispatches `player:move` / `player:mode` through the SAME shared core
+    // (`applyPlayerMove` / `applyPlayerMode`, declared above
+    // `tryInitWebSockets`) this handler calls below — so a Godot client and a
+    // browser socket.io client get byte-identical anti-cheat + legitimacy
+    // gating. See the gateway mount site + docs/GODOT_INTEGRATION.md.
+    socket.on("player:mode", (data) => {
+      const userId = socket.data?.userId;
+      // Shared core — see applyPlayerMode above tryInitWebSockets. Behavior
+      // here is unchanged from before extraction: same checks, same order,
+      // same emitted reasons.
+      const result = applyPlayerMode(userId, data);
+      if (result.drop) return;
+      // DET-C batch 8: `player:mode:ack`/`:nack` still show up as
+      // `dead_socket_emit` findings — the detector's SCAN_DIRS never walks
+      // world-lens-godot/ (nor concord-mobile/), and its JS/TS regexes
+      // couldn't parse GDScript `match` arms even if it did. Both ARE
+      // consumed for real: world-lens-godot/avatar/{mount_controller,
+      // flight_controller,ground_vehicle_controller,
+      // aerial_mount_controller}.gd all branch on `evt == "player:mode:nack"`
+      // to roll back an optimistic client-side mode flip the server
+      // rejected. Detector false positive from scan-scope, not a real dead
+      // broadcast. The `@dead-event-ok` opt-out is now wired into the
+      // socket-broadcast pass too — annotated below, one per emit line.
+      if (result.nack) { socket.emit("player:mode:nack", result.nack); return; } // @dead-event-ok: real consumer is GDScript, outside SCAN_DIRS
+      if (result.ack) socket.emit("player:mode:ack", result.ack); // @dead-event-ok: real consumer is GDScript, outside SCAN_DIRS
+    });
+
+    // ── Player visibility (ghost / appear-offline) ─────────────────
+    // BD#27: a "hidden" user vanishes from others' city:positions +
+    // getNearbyUsers, but still sees everyone (and their own local avatar
+    // renders from client-authoritative state). Ephemeral in-memory (resets
+    // to "visible" on reconnect), same pattern as movementMode.
+    socket.on("player:visibility", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const mode = data?.mode;
+      if (mode !== "visible" && mode !== "hidden") {
+        socket.emit("player:visibility:nack", { reason: "invalid_mode" });
+        return;
+      }
+      cityPresence.setUserVisibility(userId, mode);
+      socket.emit("player:visibility:ack", { mode });
+    });
+
+    // ── Player presence status (V1.2 Wave A — Society & Presence) ──
+    // A real, user-controlled activity status distinct from the ghost
+    // toggle above: "available" | "away" | "busy" | "dnd". Broadcast
+    // additively on the existing city:positions payload / getNearbyUsers
+    // results (cityPresence.js), and readable by party members regardless
+    // of distance via GET /api/parties/me/presence. Ephemeral in-memory,
+    // same lifecycle as movementMode/visibility (resets to "available" on
+    // reconnect).
+    socket.on("player:presence-status", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const status = data?.status;
+      if (!cityPresence.setUserPresenceStatus(userId, status)) {
+        socket.emit("player:presence-status:nack", { reason: "invalid_status" });
+        return;
+      }
+      socket.emit("player:presence-status:ack", { status });
+    });
+
+    // ── Proximity chat (V1.2 Wave A — Society & Presence) ───────────
+    // Ephemeral, real-time-only: reaches every OTHER user within the
+    // message's radius of the SENDER's own server-tracked position at the
+    // moment of sending. Nothing is persisted and nothing is retrievable
+    // after the fact — see lib/proximity-chat.js's header comment for the
+    // full reasoning (and why this is deliberately NOT routed through
+    // lib/ambient-chat.js's persisted, district-scoped system).
+    //
+    // Delivery is direct-to-recipient (`user:<id>` room) rather than a
+    // wider room the client would have to filter — someone outside range
+    // never receives the payload at all, matching this session's
+    // room-scoping discipline (see the DET-C batch 6 world-scoping fix on
+    // `realtimeEmit`).
+    socket.on("proximity:chat:send", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const built = proximityChat.buildProximityChatMessage(userId, data?.body, {
+        radius: data?.radius,
+        senderName: socket.data?.username || null,
+      });
+      if (!built.ok) {
+        socket.emit("proximity:chat:nack", { reason: built.error });
+        return;
+      }
+      const recipients = proximityChat.resolveProximityRecipients(userId, built.message.radiusM);
+      for (const rid of recipients) {
+        try { REALTIME?.io?.to(`user:${rid}`).emit("proximity:chat", built.message); } catch { /* best-effort */ }
+      }
+      // Echo to the sender (their own other devices, and so the sending UI
+      // renders its own message without waiting on a recipient round-trip).
+      socket.emit("proximity:chat", built.message);
+      socket.emit("proximity:chat:ack", { id: built.message.id, recipientCount: recipients.length });
     });
 
     // ── Combat: attack another entity (player or NPC) ──────────────
@@ -9457,6 +9979,23 @@ async function tryInitWebSockets(server) {
       }
       const { clampBaseDamage, resolvedDamageCap, clampAttackRange } = await globalThis._concordCombatLimits;
 
+      // Glyph-spell damage authority — when this attack names a MINTED glyph
+      // spell the caller OWNS, its stored `max_damage` becomes the ceiling for
+      // BOTH the input clamp and the resolved cap, so a modified client can't
+      // inflate a fireball past what was actually minted. Owner-scoped lookup;
+      // unknown id / missing table degrades to 0 → the shared hard cap (i.e.
+      // pre-existing behavior). Best-effort, never blocks the attack.
+      let _spellMaxDamage = 0;
+      try {
+        if (data.skillId) {
+          if (!globalThis._concordGlyphSpellCap) {
+            globalThis._concordGlyphSpellCap = import("./lib/combat/glyph-spell-cap.js");
+          }
+          const { lookupGlyphSpellMaxDamage } = await globalThis._concordGlyphSpellCap;
+          _spellMaxDamage = lookupGlyphSpellMaxDamage(db, userId, String(data.skillId));
+        }
+      } catch { /* glyph-spell cap optional — neutral pass-through to hard cap */ }
+
       // Wave 4 (Gap A/C) — this is the LIVE, socket-driven basic-attack path
       // (system-affordances.ts dispatches combat:attack for both PvP and
       // "Fight <hostile NPC>"), distinct from the DB-backed skill-cast REST
@@ -9483,7 +10022,7 @@ async function tryInitWebSockets(server) {
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: _ffTargetId,
-        baseDamage: clampBaseDamage(data.baseDamage),
+        baseDamage: clampBaseDamage(data.baseDamage, _spellMaxDamage),
         // Ranged combat wiring — this previously fed the client-supplied
         // range straight through with NO upper bound at all, so a modified
         // client could claim an arbitrary range and "hit" a target anywhere
@@ -9492,7 +10031,7 @@ async function tryInitWebSockets(server) {
         range: clampAttackRange(data.range),
         armorPierce: Number(data.armorPierce) || 0,
         contextModifiers: _contextModifiers,
-        maxDamage: resolvedDamageCap(),
+        maxDamage: resolvedDamageCap(_spellMaxDamage),
         critChanceBonus: _critChanceBonus,
       });
 
@@ -9640,6 +10179,20 @@ async function tryInitWebSockets(server) {
         // that instead. Best-effort — never blocks the hit broadcast.
         let _hitWorldId = "concordia-hub";
         try { _hitWorldId = cityPresence.getUserPosition?.(userId)?.worldId ?? "concordia-hub"; } catch { /* world lookup best-effort */ }
+        // DET-C batch 6 — this payload has carried a `worldId` field since
+        // Wave 4 (comment above), but the emit itself was still routed
+        // through realtimeEmit's global `else` branch (no sessionId/orgId/
+        // userId means every socket, in every world, received every PvP
+        // hit). `worldId` in the payload told a client which world a hit
+        // came from; it did nothing to stop the leak to clients in OTHER
+        // worlds. Passing `{ worldId: _hitWorldId }` here routes the emit
+        // through realtimeEmit's new world-room tier (`world:<id>`), which
+        // is scoped exactly like the sibling `combat:impact` emit below and
+        // the HTTP-route combat:impact in routes/worlds.js — while still
+        // preserving the achievement-bridge dispatch, timeline persistence,
+        // and dev-mode shape validation that a bare `emitToWorld` call would
+        // have silently dropped (combat:hit is in achievement-bridge.js's
+        // RELEVANT_EVENTS set).
         realtimeEmit("combat:hit", {
           attackerId: userId,
           targetId: data.targetId,
@@ -9662,7 +10215,7 @@ async function tryInitWebSockets(server) {
           style: data.style || null,
           // T3.1 — canonical catalog key for the client per-skill descriptor.
           skillKey: skillKeyForSkill({ element: data.element, weapon: data.weapon, kind: data.weapon, name: data.skillId }),
-        });
+        }, { worldId: _hitWorldId });
 
         // PvP combat FEEL — parity with the NPC HTTP route's T1.4b
         // `combat:impact` (closes POLISH_AUDIT "PvP combat has no
@@ -9680,6 +10233,10 @@ async function tryInitWebSockets(server) {
               await import("./lib/combat/impact-feel.js");
             const _heavy = data.heavy === true || data.style === "attack-heavy";
             const _world = _hitWorldId;
+            // DET-C batch 6 — same leak as combat:hit above: this carried
+            // `worldId: _world` in the payload but was never actually
+            // scoped to the world room, so it broadcast to every connected
+            // socket. Route through the same new realtimeEmit worldId tier.
             realtimeEmit("combat:impact", buildImpactPayload({
               worldId: _world,
               attackerId: userId,
@@ -9692,7 +10249,7 @@ async function tryInitWebSockets(server) {
               isKill: _kill,
               targetPosition: _hitTargetPos,
               attackerPosition: _hitAttackerPos,
-            }));
+            }), { worldId: _world });
           }
         } catch { /* combat:impact feel emit best-effort — never blocks combat */ }
 
@@ -10183,9 +10740,21 @@ async function tryInitWebSockets(server) {
       socket.join(room);
       // Tell existing peers a new one arrived
       socket.to(room).emit("voice:peer-joined", { peerId: socket.id });
-      // Tell the joining peer who's already here
-      const peers = [...(io.sockets.adapter.rooms.get(room) || [])].filter((id) => id !== socket.id);
-      socket.emit("voice:room-state", { peers });
+      // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): this used to
+      // also compute the existing-peer roster and emit it back to the
+      // joiner as `voice:room-state`. Verified via a full read of
+      // concord-frontend/components/concordia/social/ProximityVoiceChat.ts
+      // that peer discovery is NOT roster-driven at all — it's driven by
+      // spatial proximity (`updateProximity()`, fed from the world-lens's
+      // nearby-player tracking), which independently detects a new nearby
+      // player and calls `_initiateConnection(peerId)` to send a WebRTC
+      // offer directly. The file's own header comment lists
+      // `voice:peer-joined`/`voice:room-state` as consumed "in" events, but
+      // `_bindSocketEvents` only ever wires `voice:offer`/`voice:answer`/
+      // `voice:ice-candidate`/`voice:peer-left` — the comment was
+      // aspirational and never implemented. Retired the room-state emit
+      // (and its now-unused peer-roster computation) rather than wiring a
+      // consumer for a roster mechanism the real design bypassed.
     });
     socket.on("voice:offer", ({ to, sdp }) => {
       if (to && sdp) io.to(to).emit("voice:offer", { from: socket.id, sdp });
@@ -15674,15 +16243,26 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
 
   // Broadcast DTU change via WebSocket (local-first realtime)
   if (broadcast && REALTIME.ready) {
-    const eventType = isNew ? "dtu:created" : "dtu:updated";
     try {
-      realtimeEmit(eventType, {
+      // Two literal emits (not one dynamic `realtimeEmit(eventType, ...)`)
+      // so dead-event-listener-detector.js's static REALTIME_EMIT_RE can see
+      // both branches — the dynamic form made "dtu:updated" invisible to it
+      // despite a real frontend consumer (ThoughtStream.tsx's
+      // `socket.on('dtu:updated', ...)`). Same fix precedent as
+      // concordia:combat-engaged/calm (DET-C batch 3, world/page.tsx) and
+      // the sibling shadow_vault/quality:approved split below.
+      const dtuBroadcastPayload = {
         id: dtu.id,
         title: dtu.title,
         tier: dtu.tier,
         tags: dtu.tags,
         updatedAt: dtu.updatedAt
-      });
+      };
+      if (isNew) {
+        realtimeEmit("dtu:created", dtuBroadcastPayload);
+      } else {
+        realtimeEmit("dtu:updated", dtuBroadcastPayload);
+      }
       // Graph lens listens for 'graph:update' via useRealtimeLens
       // fallback; emit it so the in-memory graph visualizer can
       // hot-patch its node/edge cache when a DTU is created or
@@ -19752,11 +20332,20 @@ async function runEntityQualityGate(artifactId, entityId, lens) {
   artifact.meta.qualityCheckedAt = nowISO();
   saveStateDebounced();
 
-  // Emit quality event
+  // Emit quality event. Two literal .emit() calls (not one ternary-selected
+  // event name) so dead-event-listener-detector.js's static SOCKET_EMIT_RE
+  // can see both branches — the ternary form made "quality:approved"
+  // invisible to it despite a real frontend consumer
+  // (LevelUpJuiceBridge.tsx's `subscribe('quality:approved', ...)`). Same
+  // fix precedent as concordia:combat-engaged/calm (DET-C batch 3) and the
+  // sibling dtu:created/updated split above.
   if (REALTIME?.io) {
-    REALTIME.io.emit(artifact.meta.status === "shadow_vault" ? "quality:shadowed" : "quality:approved", {
-      artifactId, domain: lens, entityId, status: artifact.meta.status,
-    });
+    const qualityPayload = { artifactId, domain: lens, entityId, status: artifact.meta.status };
+    if (artifact.meta.status === "shadow_vault") {
+      REALTIME.io.emit("quality:shadowed", qualityPayload);
+    } else {
+      REALTIME.io.emit("quality:approved", qualityPayload);
+    }
   }
 }
 
@@ -19792,7 +20381,12 @@ function selectProductionAction(lens, entity) {
 /**
  * Build the production prompt — includes schema, exemplar, domain context.
  */
-function buildProductionPrompt({ lens, action, actionDesc, context, entity, schema, exemplar }) {
+// `entity` was destructured here and never referenced (flagged 2026-07-25).
+// The prompt is assembled entirely by TASK_PROMPTS.professionalLensSpecialist
+// from lens/action/actionDesc/schema/exemplar, so entity contributed nothing.
+// Dropped rather than threaded into the prompt: changing what context an LLM
+// prompt carries is a behavior change to generation quality, not a cleanup.
+function buildProductionPrompt({ lens, action, actionDesc, context, schema, exemplar }) {
   let prompt = TASK_PROMPTS.professionalLensSpecialist({ lens, action, actionDesc, schema, exemplar });
   // The registry function professionalLensSpecialist already folds in
   // schema + exemplar when supplied, so no separate prompt extension is
@@ -21759,7 +22353,17 @@ async function maybeRunLocalUpgrade() {
 async function pipelineCommitDTU(ctx, dtu, opts={}) {
   // DEDUP GATE: block templates and exact title dupes (system-generated only)
   if (dtu.source !== "user" && dtu.source !== "import") {
-    const firstDef = dtu.core?.definitions?.[0] || "";
+    // Real bug found by the Game Design Lens D20 unit's own test: this used
+    // to assume core.definitions[0] is always a string (the "Working
+    // definition: ..." convention some domains use). A caller supplying real
+    // structured content as {term, definition} objects (or any non-string
+    // shape) crashed here with "firstDef.startsWith is not a function" for
+    // every non-"user"/"import" source — a genuine, narrow bug, not
+    // something any domain caller was doing wrong. String()-coercing first
+    // makes the check honest for either shape without loosening what it
+    // actually blocks (an object never matched the template patterns
+    // anyway, so this changes zero currently-blocked cases).
+    const firstDef = String(dtu.core?.definitions?.[0] || "");
     if (firstDef.startsWith("Working definition:") || firstDef.includes("synthesis from")) {
       structuredLog("debug", "dedup_blocked_template_pipeline", { title: dtu.title?.slice(0, 60) });
       return { ok: false, error: "template_blocked" };
@@ -23134,6 +23738,26 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     }
   } catch (_e) { /* felt self optional */ }
 
+  // Living chat / style learning — every real user message now feeds the
+  // Conversational Initiative Engine's EMA-based style profile
+  // (server/lib/initiative-engine.js#learnStyle: message length, formality,
+  // emoji rate, vocabulary — server/routes/initiative.js's
+  // GET /api/initiative/style reads it back). Previously this only updated
+  // from INSIDE the initiative subsystem itself (generateDoubleText's call
+  // to _generateFollowUpText), or via POST /api/initiative/style/learn — a
+  // real, working endpoint with zero frontend caller. A user's own chat
+  // turns never reached it. Reuses the single engine instance
+  // registerInitiativeRoutes() already built (app._initiativeEngine, see
+  // server.js's "Initiative Engine Proactive Tick" section) instead of
+  // constructing + re-preparing a fresh engine every turn. Best-effort;
+  // never blocks the reply (same shape as the felt-self block above).
+  try {
+    const _styleUid = ctx?.actor?.userId || input?.userId || null;
+    if (_styleUid && prompt && app?._initiativeEngine) {
+      app._initiativeEngine.learnStyle(_styleUid, prompt);
+    }
+  } catch (_e) { /* style learning optional — never blocks chat */ }
+
   if (!STATE.sessions.has(sessionId)) {
     // ownerId enables defense-in-depth: assertSessionAccessible() refuses
     // session reads from anyone other than the owner (or a participant
@@ -24182,7 +24806,16 @@ let localReply = formatCrispResponse({
     // #worldVoice) injects into the system prompt. When the user is in a
     // world lens, their session carries a worldId; otherwise null is fine.
     const _worldId = input.worldId || sess_pre?.worldId || null;
-    const _composed = composeSystemPrompt("conscious", { mode, currentLens, worldId: _worldId });
+    // Style-learning wire — pass userId + db through so composeSystemPrompt
+    // can (best-effort, read-only) fold the learned style profile
+    // (initiative-engine.js#getStyleProfile) into the system prompt as
+    // functional context, the same way worldId triggers the per-world
+    // voice lookup above. Honest-empty when no profile has been learned yet.
+    const _composed = composeSystemPrompt("conscious", {
+      mode, currentLens, worldId: _worldId,
+      userId: ctx?.actor?.userId || input?.userId || null,
+      db: ctx?.db || globalThis._concordSTATE?.db || null,
+    });
     // Living chat / prompt-coloring — let the assistant's persistent felt state lightly
     // color its TONE (not its content, never its identity). A strained assistant is
     // steadier + more concise; a curious one leans in. Read-only; best-effort.
@@ -24473,6 +25106,39 @@ Rules for tool use:
         ctx,
       });
     } catch (_e) { /* never block chat on a compute failure */ }
+
+    // RQ3 — deterministic-engine intent routing (compute-don't-guess), additive
+    // only: fires ONLY when the keyword-scored preflight above found nothing,
+    // and only ever ADDS a ground-truth block — it never skips or replaces the
+    // brain call, so a misclassification degrades to "no extra context" rather
+    // than a broken reply. classifyIntent() is pure pattern matching (no LLM
+    // call, no network) — see server/lib/chat/intent-router.js.
+    if (!_computeGroundTruth) {
+      try {
+        const _intentResult = classifyChatEngineIntent(prompt);
+        if (_intentResult.intent === "deterministic-engine" && _intentResult.engineHint === "math") {
+          // math.naturalQuery is registered via registerLensAction (LENS_ACTIONS),
+          // not the plain register()/MACROS path runMacro() dispatches through —
+          // calling runMacro("math","naturalQuery",...) here would always throw
+          // "macro not found" and silently no-op under .catch(() => null). Dispatch
+          // it the same way /api/lens/run does for a LENS_ACTIONS entry: look it
+          // up directly and call it with a virtual (unpersisted) artifact.
+          const _mathHandler = LENS_ACTIONS.get("math.naturalQuery");
+          const _mathResult = _mathHandler
+            ? await Promise.resolve(
+                _mathHandler(ctx, { id: null, domain: "math", type: "domain_action", data: { query: prompt }, meta: {} }, { query: prompt })
+              ).catch(() => null)
+            : null;
+          if (_mathResult?.ok && _mathResult.result) {
+            _computeGroundTruth = {
+              groundTruthBlock: `[GROUND TRUTH from real compute engine (math CAS) — this value is authoritative, never contradict it]\n- math.naturalQuery: ${JSON.stringify(_mathResult.result).slice(0, 280)}`,
+              capabilities: [{ key: "math.naturalQuery", score: _intentResult.confidence, description: "CAS natural-language math query" }],
+              results: [_mathResult],
+            };
+          }
+        }
+      } catch (_e) { /* never block chat on an intent-routing failure */ }
+    }
 
     // Build the full conscious prompt with identity, personality, memory, and context
     const _consciousParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
@@ -26495,6 +27161,14 @@ registerMoveBuilderMacros(register);
 import { registerReasoningTraceMacros } from "./domains/reasoning.js";
 registerReasoningTraceMacros(register);
 
+// R8/CL3 gap fix — the missing on-demand trigger for Program C's generative
+// asset pipeline (evo-asset.generate; see domains/evo-asset.js header).
+// Previously generateValidatedAsset/runAssetGenerationTick were only ever
+// invoked by the fixed one-item GENERATION_TARGETS heartbeat list; there was
+// no macro/route letting a player or ConKay request a custom design.
+import registerEvoAssetMacros from "./domains/evo-asset.js";
+registerEvoAssetMacros(register);
+
 // Maintenance — the operator surface for the autonomic nervous system. Reads the
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
 import registerRepairMacros from "./domains/repair.js";
@@ -26706,6 +27380,28 @@ registerVoiceTTSMacros(register);
 // list_for_user macros for the world lens to interrogate the substrate.
 import registerLandClaimsMacros from "./domains/land-claims.js";
 registerLandClaimsMacros(register);
+
+// lattice-crucible bespoke mechanic — "player-conditional drift" (see
+// domains/crucible.js + lib/embodied/crucible-observer-drift.js).
+import registerCrucibleMacros from "./domains/crucible.js";
+registerCrucibleMacros(register);
+
+// concord-link-frontier bespoke mechanic — "the Handshake Protocol" (see
+// domains/handshake-protocol.js + lib/handshake-protocol.js).
+import registerHandshakeProtocolMacros from "./domains/handshake-protocol.js";
+registerHandshakeProtocolMacros(register);
+
+// sovereign-ruins bespoke mechanic — "Still-Running Spells" (see
+// domains/sovereign-spells.js + lib/sovereign-spells.js + migration 392).
+import registerSovereignSpellsMacros from "./domains/sovereign-spells.js";
+registerSovereignSpellsMacros(register);
+
+// V1.2 Wave D — player-influenced districts governance. propose_change /
+// vote / list_proposals macros under the "district" domain (additive to
+// domains/district.js's separate snapshot-analytics macros in the same
+// domain namespace — see that file's own header comment).
+import registerDistrictGovernanceMacros from "./domains/districts.js";
+registerDistrictGovernanceMacros(register);
 import registerGearMacros from "./domains/gear.js";
 registerGearMacros(register);
 
@@ -26843,6 +27539,14 @@ registerVideoGenMacros(register);
 // status as they happen, so the AgentModePanel renders progressively.
 import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
 // Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
+
+// Godot Integration Phase 1→2 — raw-WebSocket gateway for the native Godot 4
+// world client (docs/GODOT_INTEGRATION.md). `mountGodotGateway` needs the real
+// http.Server instance, which doesn't exist yet at this point in the file (it's
+// created later via `app.listen()`); the mount call itself is deferred to right
+// after that `server` binding + `tryInitWebSockets(server)` — see ~line 65605.
+import { mountGodotGateway, createGatewayEmitter } from "./lib/godot-gateway.js";
+import { exportScene } from "./lib/scene-export.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
   frequency: 12,
@@ -26874,6 +27578,17 @@ registerHeartbeat("initiative-cycle", {
   handler: () => runInitiativeCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
 });
 
+// Suggestion-only project continuation nudge (human-owned projects, mig 378) —
+// proposes picking a project back up through the SAME initiative-engine gate
+// as initiative-cycle above; never starts a marathon itself. scope:'global';
+// ~10 min; kill-switch CONCORD_PROJECT_CONTINUATION=0.
+import { runProjectContinuationCycle } from "./emergent/project-continuation-cycle.js";
+registerHeartbeat("project-continuation-cycle", {
+  frequency: 40,
+  scope: "global",
+  handler: () => runProjectContinuationCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
+});
+
 import { mountMcpServer, unreachableTools } from "./lib/mcp-server-host.js";
 // Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
 
@@ -26891,6 +27606,9 @@ registerDtuPortabilityMacros(register);
 // lenses with one query.
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
+// dtu_props — DTUs as tangible interactive world props (list/interact).
+import registerDtuPropsMacros from "./domains/dtu-props.js";
+registerDtuPropsMacros(register);
 // reason.verify — claim verification (citation-resolution floor + council judge).
 import registerReasonMacros from "./domains/reason.js";
 registerReasonMacros(register);
@@ -26900,6 +27618,23 @@ registerReasonMacros(register);
 // schema: migration 337. Every hit carries provenance (source DTU + license).
 import registerLiteraryMacros from "./domains/literary.js";
 registerLiteraryMacros(register);
+
+// Wiring-audit fix (2026-07-23): these 5 domain files (Phase II Waves 15-27)
+// each export a real registerXMacros(register) that delegates to a real,
+// tested lib engine, but the file itself was never imported from server.js
+// or domains/index.js — a caller-with-no-receiver dead-code gap (only their
+// own test files imported them). Wired here using the same 2-line pattern
+// as every other domain in this block. See server/tests/domain-registration-wiring.test.js.
+import registerImmersiveSimMacros from "./domains/immersive-sim.js";
+registerImmersiveSimMacros(register);
+import registerSkillTreeMacros from "./domains/skill-tree.js";
+registerSkillTreeMacros(register);
+import registerSportsMacros from "./domains/sports-careers.js";
+registerSportsMacros(register);
+import registerSurvivalMacros from "./domains/survival.js";
+registerSurvivalMacros(register);
+import registerVehicleTuningMacros from "./domains/vehicle-tuning.js";
+registerVehicleTuningMacros(register);
 
 // Private R&D Engine (#21) + Tier-0 wire-the-unwired: reaches the previously
 // unreachable FEA solver, causal-closure analyzer, and hypothesis engine, and
@@ -27082,6 +27817,24 @@ registerConkayMacros(register);
 // a consented consult of peers' brains over the real connectorFetch.
 import registerFedmeshMacros from "./domains/fedmesh.js";
 registerFedmeshMacros(register);
+
+// Wire-the-unwired (Wave E) — the fedmesh macros above had zero scheduled
+// sync: a peer pushing into `fedmesh_inbox` via `fedmesh.receive` sat
+// 'pending' forever unless a human called `fedmesh.drain` by hand. This
+// heartbeat drains the consent-gated inbox on a clock (same cadence as the
+// OTHER federation substrate's `lattice-federation-poll` below) and reports
+// peer-registry counts. See server/emergent/fedmesh-sync-cycle.js for what
+// "sync" concretely means for this push-then-drain mesh (no new protocol
+// invented — drainInbox + listPeers are the existing functions this calls).
+// Kill-switch: CONCORD_FEDMESH_SYNC=0.
+import { runFedmeshSyncCycle } from "./emergent/fedmesh-sync-cycle.js";
+registerHeartbeat("fedmesh-sync-cycle", {
+  frequency: 120, // ~30 min, matches lattice-federation-poll's cadence
+  handler: runFedmeshSyncCycle,
+  // fedmesh_peers/fedmesh_inbox (migration 348) have no world_id column —
+  // platform-wide substrate. Parent-only.
+  scope: "global",
+});
 
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
@@ -27286,6 +28039,14 @@ registerHeartbeat("cross-world-scheme-cycle", {
   scope: "global",
   handler: runCrossWorldSchemeCycle,
 });
+
+// Cross-world schemes macro surface — `lib/cross-world-schemes.js` was a
+// fully-built, tested engine (the cycle above) with zero macro/route/
+// frontend consumer. Full plotter/target parity: a real player can
+// propose a scheme against an NPC or another real player (see the
+// domain file header for the security note on plotterId scoping).
+import registerCrossWorldSchemesMacros from "./domains/cross-world-schemes.js";
+registerCrossWorldSchemesMacros(register);
 
 // T2.4 — emergent-module reconciliation: population-migration-cycle declared
 // itself a frequency-30 heartbeat in its own header but was never registered,
@@ -28430,6 +29191,288 @@ register("dtu", "confidence", (ctx, input = {}) => {
   }
 }, { description: "Read a DTU's persistent, revisable confidence score — honest-unknown when no evidence has moved it yet." });
 
+// ── DTU lineage (EC1 — user-facing "where did this come from" tab) ─────────
+// Composes two REAL graphs; nothing here is fabricated:
+//   1. The in-memory parent/child edges (dtu.lineage.parents/children —
+//      object-shape, set at dtu.create time ONLY when the caller passes the
+//      separately-named `input.parents`, and by the MEGA/HYPER consolidation
+//      pipeline) for the direct one-hop ancestors and descendants. When a
+//      caller instead only supplies `input.lineage` (the field name that
+//      actually drives the real royalty-cascade auto-citation below), dtu.create
+//      leaves `dtu.lineage` as the plain ARRAY form of that input — the two
+//      "parent" fields are non-overlapping by historical accident, not by
+//      design. Below, `parentIds` derives from the array form as a fallback
+//      so the common case (only `lineage` supplied) still populates this
+//      one-hop view instead of silently going empty — never mutates the
+//      stored DTU, so every other `dtu.lineage`-as-array consumer elsewhere
+//      in server.js is unaffected. A caller who explicitly supplies BOTH
+//      fields (and wants them to differ) still gets the object-shape
+//      `dtu.lineage.parents` taken verbatim — the fallback only fires when
+//      the object-shape parents list is empty.
+//   2. The royalty citation graph (`royalty_lineage` table) via the same
+//      getAncestorChain() the royalty cascade payout path uses, for the
+//      full multi-generation ancestor chain + the real per-generation
+//      royalty rate — so this view can never disagree with the money math.
+// Fields with no real backing on this pass (forks / citedBy / relatedIds)
+// are left as empty arrays rather than invented — an honest "no ancestors"
+// empty state is the correct UI for an original, uncited DTU.
+function _dtuLineageRef(id) {
+  const d = STATE.dtus.get(id);
+  if (!d) return { id };
+  return {
+    id: d.id,
+    title: d.title || d.human?.summary || null,
+    summary: d.summary || d.human?.summary || null,
+    tier: d.tier || "regular",
+    ownerId: d.ownerId || null,
+  };
+}
+
+register("dtu", "lineage", (ctx, input = {}) => {
+  try {
+    const id = String(input.id || input.dtuId || "");
+    if (!id) return { ok: false, error: "missing_id" };
+    const dtu = STATE.dtus.get(id);
+    if (!dtu) return { ok: false, error: "DTU not found" };
+
+    let parentIds = Array.isArray(dtu.lineage?.parents) ? dtu.lineage.parents : [];
+    // Fallback: derive from the plain-array `input.lineage` form when the
+    // object-shape `parents` never got set (see the comment above this
+    // macro). `dtu.lineage` entries may be bare id strings or `{id}` refs —
+    // normalize both, same as the auto-citation block above does.
+    if (parentIds.length === 0 && Array.isArray(dtu.lineage)) {
+      parentIds = dtu.lineage
+        .map((p) => (typeof p === "string" ? p : p?.id))
+        .filter(Boolean);
+    }
+    const childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
+    const parents = parentIds.map(_dtuLineageRef);
+    const children = childIds.map(_dtuLineageRef);
+
+    let royaltyCascade = [];
+    const db = ctx?.db || STATE?.db;
+    if (db) {
+      try {
+        const chain = _dtuLineageAncestorChain(db, id);
+        royaltyCascade = chain.map((a) => {
+          const ref = STATE.dtus.get(a.contentId);
+          return {
+            id: a.contentId,
+            title: ref?.title || null,
+            ownerId: ref?.ownerId || a.creatorId || null,
+            generation: a.generation,
+            royaltyRate: a.rate,
+            royaltyPercent: `${(a.rate * 100).toFixed(1)}%`,
+          };
+        });
+      } catch { /* honest: royalty_lineage table absent on a minimal/legacy DB */ }
+    }
+
+    return {
+      ok: true,
+      current: {
+        id: dtu.id,
+        title: dtu.title || null,
+        tier: dtu.tier || "regular",
+        type: dtu.machine?.kind || dtu.type || null,
+        ownerId: dtu.ownerId || null,
+        domain: dtu.domain || null,
+      },
+      parents,
+      children,
+      forks: [],
+      citations: [],
+      citedBy: [],
+      relatedIds: [],
+      royaltyCascade,
+    };
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Real DTU ancestor/descendant chain for the frontend Lineage tab — one-hop parent/child edges plus the royalty_lineage citation graph. Never fabricates a chain; empty arrays for a DTU with no real lineage." });
+
+// ── DTU citation graph (V1.2 Wave A — "Society & Presence" reputation +
+// citation graph capability) ────────────────────────────────────────────
+// Real node/edge projection over the SAME royalty_lineage traversal the
+// royalty cascade + dtu.lineage (EC1, above) already use —
+// getAncestorChain()/getDescendants() — not new graph-traversal SQL.
+// `dtu_citations` (migration 010) is a per-DTU aggregate COUNTER, not an
+// edge table, so it can't back a graph; `royalty_lineage` (child_id ->
+// parent_id, written by economy/royalty-cascade.js#registerCitation on
+// every consented citation, not only paid ones) is the real edge source.
+// Shaped for the shared GraphView component
+// (concord-frontend/components/atlas/GraphView.tsx):
+//   { nodes: [{ id, label, group, weight }], edges: [{ source, target, kind }] }
+//
+// Two input modes:
+//   { dtuId }  -> the citation neighborhood of one DTU: every ancestor (what
+//                 it cites) + every descendant (what cites it), walked to
+//                 MAX_CASCADE_DEPTH generations, with the REAL edges among
+//                 that node set read back from royalty_lineage so a
+//                 multi-generation chain renders as an actual chain, not a
+//                 center-only fan-out star.
+//   { userId } -> the union of citation neighborhoods across every DTU that
+//                 user authored (creator_id, falling back to owner_user_id),
+//                 capped at DTU_CITATION_GRAPH_MAX_NODES so a prolific
+//                 creator's graph stays renderable.
+// Honest empty state: no DB / no royalty_lineage table / no lineage for the
+// subject -> an empty or single-node graph, never a fabricated edge.
+const DTU_CITATION_GRAPH_MAX_NODES = 250;
+
+function _dtuCitationGraphNodeRef(db, id) {
+  // Prefer the durable `dtus` table (the table royalty_lineage/dtu_citations
+  // actually key against) for title/tier/creator; fall back to the
+  // in-memory STATE.dtus map for dev/test builds with no DB row.
+  try {
+    const row = db.prepare(`SELECT id, title, tier, creator_id AS creatorId FROM dtus WHERE id = ?`).get(id);
+    if (row) return { id: row.id, title: row.title || null, tier: row.tier || "regular", creatorId: row.creatorId || null };
+  } catch { /* honest: dtus table may lack creator_id/tier on an older schema */ }
+  const mem = STATE.dtus?.get?.(id);
+  if (mem) return { id, title: mem.title || null, tier: mem.tier || "regular", creatorId: mem.ownerId || null };
+  return { id, title: null, tier: "regular", creatorId: null };
+}
+
+register("dtu", "citation-graph", (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || STATE?.db;
+    const dtuId = input.dtuId || input.id || null;
+    const userId = input.userId || null;
+    if (!dtuId && !userId) return { ok: false, error: "missing_dtuId_or_userId" };
+    if (!db) return { ok: true, result: { nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0 } } };
+
+    let hasLineageTable = true;
+    try { db.prepare("SELECT 1 FROM royalty_lineage LIMIT 1").get(); }
+    catch { hasLineageTable = false; }
+    if (!hasLineageTable) {
+      // Honest empty graph — no royalty_lineage table on this DB.
+      if (dtuId) return { ok: true, result: { nodes: [{ id: dtuId, label: dtuId, group: "self" }], edges: [], stats: { nodeCount: 1, edgeCount: 0 } } };
+      return { ok: true, result: { nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0 } } };
+    }
+
+    // Seed DTU set: either the one requested DTU, or every DTU authored by userId.
+    let seedIds = [];
+    if (dtuId) {
+      seedIds = [dtuId];
+    } else {
+      let ownerCol = "creator_id";
+      try { db.prepare("SELECT creator_id FROM dtus LIMIT 1").get(); }
+      catch { ownerCol = "owner_user_id"; }
+      let rows = [];
+      try {
+        rows = db.prepare(`SELECT id FROM dtus WHERE ${ownerCol} = ? ORDER BY created_at DESC LIMIT 100`).all(userId);
+      } catch { rows = []; }
+      seedIds = rows.map((r) => r.id);
+    }
+    const selfIds = new Set(seedIds);
+
+    if (seedIds.length === 0) {
+      return { ok: true, result: { nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0 } } };
+    }
+
+    const nodeIds = new Set(seedIds);
+    let _citationGraphCapReached = false;
+    for (const id of seedIds) {
+      if (_citationGraphCapReached || nodeIds.size >= DTU_CITATION_GRAPH_MAX_NODES) break;
+      try {
+        for (const a of _dtuLineageAncestorChain(db, id)) {
+          nodeIds.add(a.contentId);
+          if (nodeIds.size >= DTU_CITATION_GRAPH_MAX_NODES) { _citationGraphCapReached = true; break; }
+        }
+      } catch { /* honest: royalty_lineage read failure — skip, never fabricate */ }
+      if (_citationGraphCapReached) break;
+      try {
+        for (const d of _dtuLineageDescendants(db, id)) {
+          nodeIds.add(d.contentId);
+          if (nodeIds.size >= DTU_CITATION_GRAPH_MAX_NODES) { _citationGraphCapReached = true; break; }
+        }
+      } catch { /* honest: royalty_lineage read failure — skip, never fabricate */ }
+      if (_citationGraphCapReached) break;
+    }
+
+    const idList = [...nodeIds].slice(0, DTU_CITATION_GRAPH_MAX_NODES);
+    const idSet = new Set(idList);
+
+    // Real edges among the collected node set — read directly off
+    // royalty_lineage (child_id cites parent_id) so a multi-generation
+    // chain renders as an actual chain, chunked to stay well under
+    // SQLite's default bound-parameter limit (999).
+    const edges = [];
+    const seenEdgeKeys = new Set();
+    const CHUNK = 300;
+    for (let i = 0; i < idList.length; i += CHUNK) {
+      const chunk = idList.slice(i, i + CHUNK);
+      const placeholders = chunk.map(() => "?").join(",");
+      let rows = [];
+      try {
+        rows = db.prepare(
+          `SELECT DISTINCT child_id AS childId, parent_id AS parentId FROM royalty_lineage
+           WHERE child_id IN (${placeholders}) AND parent_id IN (${placeholders})`,
+        ).all(...chunk, ...chunk);
+      } catch { rows = []; }
+      for (const r of rows) {
+        if (!idSet.has(r.childId) || !idSet.has(r.parentId)) continue;
+        const key = `${r.childId}->${r.parentId}`;
+        if (seenEdgeKeys.has(key)) continue;
+        seenEdgeKeys.add(key);
+        // Citation direction: child cites parent -> edge points child -> parent.
+        edges.push({ source: r.childId, target: r.parentId, kind: "citation" });
+      }
+    }
+
+    const nodes = idList.map((id) => {
+      const ref = _dtuCitationGraphNodeRef(db, id);
+      const inDeg = edges.filter((e) => e.target === id).length; // cited-by count
+      return {
+        id,
+        label: ref.title || id,
+        group: selfIds.has(id) ? "self" : "cited",
+        weight: Math.min(1, 0.4 + inDeg * 0.15),
+      };
+    });
+
+    return {
+      ok: true,
+      result: {
+        nodes,
+        edges,
+        stats: {
+          nodeCount: nodes.length,
+          edgeCount: edges.length,
+          truncated: nodeIds.size > DTU_CITATION_GRAPH_MAX_NODES,
+        },
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Real citation-neighborhood graph for one DTU or a user's authored corpus, built on the same royalty_lineage traversal (getAncestorChain/getDescendants) as dtu.lineage/economy.royaltyFlow — shaped for the shared GraphView component. Never fabricates nodes or edges." });
+
+// ── Royalty flow card (EC2 — "where did my royalty income come from") ─────
+// Thin macro wrapper over computeRoyaltyFlow (server/lib/creator-dashboard.js),
+// which composes the real economy_ledger ROYALTY_PAYOUT rows (via the
+// canonical CREDIT_ROW_PREDICATE from economy/balances.js) with the SAME
+// getAncestorChain() the dtu.lineage macro (EC1, above) and the actual
+// payout path (distributeRoyalties) use. See that function's doc comment
+// for the full composition. No math is duplicated here or there.
+register("economy", "royaltyFlow", async (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || STATE?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const dtuId = input.dtuId || input.id || null;
+    // Default userId to the caller ONLY for the "my own dashboard" shape
+    // (no dtuId given). A DTU-scoped call (the Lineage-tab view of a
+    // specific DTU) must show every real earner tied to that DTU, not
+    // silently narrow to the current caller's own cut of it — those are
+    // two different, both legitimate, views and must not collapse into one.
+    const userId = input.userId || input.creatorId || (!dtuId ? ctx?.actor?.userId : null) || null;
+    const limit = input.limit;
+    const cd = await import("./lib/creator-dashboard.js");
+    return cd.computeRoyaltyFlow(db, STATE, { userId, dtuId, limit });
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Real royalty-flow card for a creator or a DTU: actual historical ROYALTY_PAYOUT ledger rows (lineage -> earner -> CC) plus the real ancestor chain for structural context. Never fabricates a number; honest empty state when there's no royalty history." });
+
 // ── Unified Context Engine ─────────────────────────────────────────────────
 // Every lens, entity, and chat interaction uses this to retrieve knowledge
 // across all tiers with diversity guarantees.
@@ -28658,6 +29701,10 @@ register("synth", "combine", async (ctx, input) => {
   return { ok:true, dtu: created.dtu };
 }, { description: "Combine DTUs into a new synthesized DTU (local-first, optional LLM)." });
 
+// Permanent-record protection predicate. ESM imports are hoisted, so this
+// sits next to its only consumer below rather than in a distant import block.
+import { isDtuProtected } from "./lib/dtu-protection.js";
+
 register("evolution", "dedupe", async (ctx, input) => {
   try {
   // merge near-duplicates by title+tags similarity; keep lineage
@@ -28665,16 +29712,34 @@ register("evolution", "dedupe", async (ctx, input) => {
   const items = dtusArray();
   const used = new Set();
   let merged = 0;
+  // Near-duplicate pairs skipped because one side is an explicitly protected
+  // (permanent-record) DTU. Reported so a caller can see that the sweep
+  // declined work rather than silently finding nothing.
+  let skippedProtected = 0;
 
   for (let i=0;i<items.length;i++){
     const a = items[i];
     if (used.has(a.id)) continue;
     const aTok = simpleTokens((a.title||"") + " " + (a.tags||[]).join(" "));
+    // A protected keeper is IMMUTABLE, not just undeletable: merging would
+    // rewrite its tags + lineage and invalidate the content hash stamped at
+    // protection time. Skip it as a keeper entirely.
+    const aProtected = isDtuProtected(a);
     for (let j=i+1;j<items.length;j++){
       const b = items[j];
       if (used.has(b.id)) continue;
       const bTok = simpleTokens((b.title||"") + " " + (b.tags||[]).join(" "));
       if (jaccard(aTok, bTok) >= threshold) {
+        // PROTECTION GATE (was missing entirely). `STATE.dtus.delete()` is a
+        // write-through HARD DELETE — it issues a real `DELETE FROM dtu_store`
+        // (lib/dtu-store.js) with no tombstone and no archive copy. Two
+        // similarly-titled permanent records could be merged and one of them
+        // destroyed forever. Never touch either side of the pair when either
+        // is protected.
+        if (aProtected || isDtuProtected(b)) {
+          skippedProtected++;
+          continue;
+        }
         // merge b into a
         a.lineage = Array.from(new Set([...(a.lineage||[]), b.id, ...(b.lineage||[])]));
         a.tags = Array.from(new Set([...(a.tags||[]), ...(b.tags||[]), "deduped"])).slice(0, 40);
@@ -28684,13 +29749,16 @@ register("evolution", "dedupe", async (ctx, input) => {
         merged++;
       }
     }
-    if (merged) await pipelineCommitDTU(ctx, a, { op: 'evolution.dedupe', allowRewrite: true });
+    // `merged` is a RUNNING TOTAL (pre-existing behaviour), so this re-commits
+    // keepers that this iteration didn't actually change. Left as-is except
+    // for protected keepers, which must not be rewritten at all.
+    if (merged && !aProtected) await pipelineCommitDTU(ctx, a, { op: 'evolution.dedupe', allowRewrite: true });
   }
 
-  ctx.log("evolution.dedupe", "Deduped DTUs", { merged, threshold });
-  return { ok:true, merged, total: STATE.dtus.size };
+  ctx.log("evolution.dedupe", "Deduped DTUs", { merged, threshold, skippedProtected });
+  return { ok:true, merged, skippedProtected, total: STATE.dtus.size };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-}, { description: "Merge near-duplicate DTUs, preserving lineage." });
+}, { description: "Merge near-duplicate DTUs, preserving lineage. Explicitly protected (permanent-record) DTUs are never merged or deleted." });
 
 register("heartbeat", "tick", async (ctx, input) => {
   try {
@@ -31350,6 +32418,16 @@ app.use((req, res, next) => {
 if (unauthRateLimiter) app.use(unauthRateLimiter);
 app.use(botGuardMiddleware);
 
+// ---- Front-door load shedding (Launch-readiness, 2026-07-25) ----
+// Admission control ONLY — never touches an already-admitted, in-flight
+// request. Mounted after auth (req.user is populated) and after the bot
+// guard, before any route is reached. See lib/request-admission.js for the
+// full rationale (priority classes, threshold choices, honesty invariant).
+// Kill-switch: CONCORD_LOAD_SHED_ENABLED=0.
+app.use(createLoadSheddingMiddleware({
+  onShed: (priority, reason) => { METRICS.counters.requestsShed?.inc({ priority, reason }); },
+}));
+
 // ---- Global Async Safety Net ----
 // Wraps all async route handlers to catch unhandled promise rejections.
 // Without this, any async handler that throws without try/catch will leave
@@ -32352,10 +33430,27 @@ async function terminateCognitiveWorkerForTest() {
   const w = cognitiveWorker;
   cognitiveWorker = null;
   await new Promise((resolve) => {
-    const done = () => resolve();
+    let settled = false;
+    const done = () => { if (settled) return; settled = true; resolve(); };
+    // Same teardown defect the worker pools had, fixed the same way
+    // (2026-07-25). This site is the THIRD instance of the pattern; the other
+    // two are workers/heartbeat-pool.js and workers/macro-pool.js, whose
+    // headers carry the full root-cause writeup.
+    //
+    // Short version: the worker exits within ~1-3ms of the shutdown message —
+    // worker-side teardown is not the slow part. The hang is main-thread-side
+    // and specific to `node --test`. With the worker unref'd AND the fallback
+    // timer below unref'd, nothing is left ref'd once teardown starts, so the
+    // event loop can wind down without ever delivering the worker's buffered
+    // "exit" event, leaving this Promise pending forever until
+    // --test-force-exit yanks the process.
+    //
+    // ref() the worker for the duration of the wait, and use a REF'd fallback
+    // that hard-resolves rather than only calling terminate().
+    try { w.ref?.(); } catch { /* not all worker impls expose ref */ }
     w.once("exit", done);
     try { w.postMessage({ type: "shutdown" }); } catch { done(); }
-    setTimeout(() => { w.terminate().catch(() => {}); }, 2000).unref();
+    setTimeout(() => { w.terminate().catch(() => {}); done(); }, 2000);
   });
 }
 
@@ -33352,7 +34447,12 @@ import { startPatternDetection } from "./lib/substrate-diffusion.js";
 import { startAtrophyCycle } from "./lib/skill-atrophy.js";
 import { startCrisisWatch } from "./lib/world-crisis.js";
 import { processDisrepairTick, DISREPAIR_TICK_INTERVAL } from "./lib/npc-consequences.js";
-app.use("/api/worlds", createWorldsRouter({ requireAuth, db }));
+// emitToWorld is injected so the combat:impact NPC-route emit (below the
+// module boundary, in routes/worlds.js) can route through the same
+// room-broadcast + Godot-gateway-mirror path emitToWorld already gives every
+// in-file (server.js) emit site — see docs/GODOT_PROTOCOL.md §7 "apply_force"
+// PARTIAL gap. Same DI pattern already used for createConcordLinkRouter.
+app.use("/api/worlds", createWorldsRouter({ requireAuth, db, emitToWorld }));
 
 import createCityAssetsRouter from "./routes/city-assets.js";
 app.use("/api/city-assets", createCityAssetsRouter({ requireAuth }));
@@ -33578,33 +34678,100 @@ app.use("/api/faction-war", createFactionWarRouter({ db, requireAuth }));
 import * as _pluginGallery from "./lib/plugin-gallery.js";
 import * as _pluginSigning from "./lib/plugin-signing.js";
 
+// SDK-H — author identity/reputation for the gallery. Reuses the REAL
+// peer-visible `profile.reputation-summary` lens action (V1.2 Wave A) by
+// calling the SAME registered LENS_ACTIONS handler a human hits via
+// `/api/lens/run` with `{ domain: "profile", name: "reputation-summary",
+// targetUserId }` — never a hand-rolled duplicate query. `plugin-gallery.js`
+// only ever sees the resolved `{ ok, result }` this returns; it never touches
+// `db`/LENS_ACTIONS itself, keeping the two modules decoupled.
+//
+// Deliberately synchronous (the handler itself is a plain function, not
+// async) so `listGallery`/`getGalleryEntry` can stay synchronous too — several
+// existing tests call them without `await`.
+//
+// Referencing LENS_ACTIONS/makeCtx here is safe despite this call site sitting
+// before their `const` declarations further down the file: both are only
+// read inside this function's BODY, which only runs per-request (post-boot),
+// never at module-eval time — see the "Boot-order TDZ hazard" note in
+// CLAUDE.md. Best-effort: any failure returns null and the gallery degrades
+// to an honest "no reputation data" state (see computeAuthorReputation).
+function _pluginGalleryAuthorReputation(authorId) {
+  try {
+    if (!authorId) return null;
+    const handler = LENS_ACTIONS.get("profile.reputation-summary");
+    if (!handler) return null;
+    const ctx = makeCtx();
+    const virtualArtifact = { id: null, domain: "profile", type: "domain_action", data: { targetUserId: authorId }, meta: {} };
+    return handler(ctx, virtualArtifact, { targetUserId: authorId });
+  } catch { return null; }
+}
+
 app.get("/api/plugins/gallery", (req, res) => {
   const trustedOnly = req.query.trustedOnly === "true";
   const search = req.query.q ? String(req.query.q) : null;
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 25));
-  res.json(_pluginGallery.listGallery({ trustedOnly, search, limit }));
+  // STATE is passed so each entry carries an honest `loaded` flag (is this
+  // plugin's code actually running right now) alongside the unrelated
+  // self-attested `trusted` flag — see plugin-gallery.js's withLoadedFlag.
+  res.json(_pluginGallery.listGallery({ trustedOnly, search, limit, STATE, getAuthorReputation: _pluginGalleryAuthorReputation }));
 });
 app.get("/api/plugins/gallery/:id", (req, res) => {
-  const r = _pluginGallery.getGalleryEntry(req.params.id);
+  const r = _pluginGallery.getGalleryEntry(req.params.id, STATE, { getAuthorReputation: _pluginGalleryAuthorReputation });
   if (!r.ok) return res.status(404).json(r);
-  // Strip source from public response.
+  // Strip source from public response (getGalleryEntry already does this,
+  // this stays as belt-and-suspenders against a future change to it).
   res.json({ ok: true, plugin: { ...r.plugin, source: undefined } });
 });
 app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1mb" }), (req, res) => {
   const authorId = req.user?.id;
-  const { pluginId, name, description, version, source, signature } = req.body || {};
+  const { pluginId, name, description, version, source, signature, manifest } = req.body || {};
   res.json(_pluginGallery.publishPlugin({
-    pluginId, authorId, name, description, version, source, signature, db,
+    pluginId, authorId, name, description, version, source, signature, manifest, db,
   }));
 });
-app.post("/api/plugins/gallery/:id/install", requireAuth(), (req, res) => {
+// Installing from the gallery genuinely LOADS the plugin — same hardened
+// path (static pattern gate + PluginSandbox worker+vm isolation + full
+// 4-gate validator) as the boot-time disk scan (`loadPluginsFromDisk`
+// above, "===== PLUGIN SYSTEM ====="). A validation/sandbox failure is
+// reported honestly (4xx, `ok:false`) — it is never recorded as a fake
+// "installed" success. See plugin-gallery.js#installFromGallery.
+app.post("/api/plugins/gallery/:id/install", requireAuth(), asyncHandler(async (req, res) => {
   const userId = req.user?.id;
-  res.json(_pluginGallery.recordInstall(req.params.id, userId));
-});
+  const result = await _pluginGallery.installFromGallery(STATE, req.params.id, userId, {
+    register,
+    helpers: { uid, nowISO, log, upsertDTU, realtimeEmit, saveStateDebounced },
+    runMacro,
+  });
+  if (!result.ok) {
+    const status = result.error === "plugin_not_found" ? 404
+      : result.error === "user_required" ? 401
+      : result.error === "plugin_delisted" ? 410
+      : 400; // install_failed / no_source_available — a genuine load/validation rejection
+    return res.status(status).json(result);
+  }
+  res.json(result);
+}));
 app.post("/api/plugins/gallery/:id/rate", requireAuth(), (req, res) => {
   const userId = req.user?.id;
   const { vote } = req.body || {};
   res.json(_pluginGallery.ratePlugin(req.params.id, userId, vote));
+});
+// Admin-only takedown (2026-07-24 gallery-honesty pass, see plugin-gallery.js
+// #delistPlugin): unlike the existing unload route below (which only stops a
+// currently-RUNNING plugin), this also stops the gallery entry itself from
+// being listed/installed again — the piece that was missing. Mirrors the
+// requireRole("owner","admin") gate the legacy unload route
+// (app.delete("/api/plugins/:id", ...)) already uses.
+app.post("/api/plugins/gallery/:id/delist", requireRole("owner", "admin"), express.json({ limit: "16kb" }), (req, res) => {
+  const adminId = req.user?.id || null;
+  const { reason } = req.body || {};
+  const result = _pluginGallery.delistPlugin(req.params.id, adminId, reason ?? null, { db, STATE });
+  if (!result.ok) {
+    const status = result.error === "plugin_not_found" ? 404 : 400;
+    return res.status(status).json(result);
+  }
+  res.json(result);
 });
 // Plugin signing helpers — generate a keypair, register a trusted public key.
 app.post("/api/plugins/signing/keypair", requireAuth(), (_req, res) => {
@@ -33623,6 +34790,19 @@ app.use("/api/parties", createPartiesRouter({ requireAuth, db, emitToUser }));
 // Cooperative mechanics: coop build sites, shared party stash, cross-world
 // raids. Built on top of the parties primitive — endpoints assume the caller
 // has been verified as a party member by the route guard.
+//
+// DET-C dead-event-listener sweep (batch 9) — ENGINEERING-triage flag, not
+// fixed here: 'coop:build:edit' (emitted below) has zero frontend
+// subscribers. Checked runtime-truth: 'coop/build', 'coop-mechanics', and
+// 'CoopBuild' have no hits anywhere in concord-frontend, world-lens-godot,
+// or concord-mobile — there is no grid editor, no site-creation UI, no
+// mount point at all for this feature; it's REST + realtime-emit with a
+// backing lib (lib/coop-mechanics.js) and no client. This is bigger than a
+// missing listener — it needs a real coop-build UI (site placement, a
+// shared grid canvas, cell-edit tools) designed and built, which is a
+// product decision this sweep shouldn't make unilaterally. Flagging for a
+// human to decide build-vs-remove, same disposition as
+// 'npc:dialogue'/'gameJuice:fanfare'/'minigame:started'.
 import * as _coopMechanics from "./lib/coop-mechanics.js";
 app.post("/api/coop/build/site", requireAuth(), (req, res) => {
   const userId = req.user?.id;
@@ -33634,10 +34814,16 @@ app.post("/api/coop/build/edit", requireAuth(), (req, res) => {
   const userId = req.user?.id;
   const { siteId, dtuId, op, cell } = req.body || {};
   const r = _coopMechanics.applyCoopBuildEdit({ siteId, userId, dtuId, op, cell });
-  if (r.ok) {
-    try { REALTIME?.io?.to(`party:${r.site.partyId}`).emit("coop:build:edit", { siteId, by: userId, dtuId, op, cell }); }
-    catch { /* realtime best-effort */ }
-  }
+  // DET-C batch 9/11: the realtime broadcast this used to fire
+  // (`coop:build:edit`) is retired, not wired — verified there is
+  // genuinely no coop-build UI anywhere (concord-frontend, world-lens-godot,
+  // concord-mobile) for it to reach: no site-creation flow, no shared grid
+  // canvas, no cell-edit tools. Building that UI is a real product decision
+  // (site placement + a live-shared grid + cell tools), not a listener fix,
+  // so it's out of scope here. The REST surface stays fully functional —
+  // GET /api/coop/build/:siteId and .../party/:partyId already let any
+  // future client (or a poll-based one) read the edited state; only the
+  // now-untriggerable live-push notification was removed.
   res.json(r);
 });
 app.get("/api/coop/build/:siteId", (req, res) => {
@@ -38049,9 +39235,38 @@ register("marketplace", "installed", (_ctx, _input) => {
   return { ok: true, plugins, count: plugins.length };
 });
 
+import { readAndHydrateDtu } from "./lib/dtu-shadow-hydrate.js";
+
+// Resolve a DTU for the marketplace macros against BOTH the in-memory
+// STATE.dtus index AND (on a miss) the real SQL `dtus` table.
+//
+// Bug this closes: dozens of content types (gamedesign.js#building-publish,
+// forge-marketplace.js#mintForgeAppAsDtu, and ~20 others — grep `INSERT INTO
+// dtus` under server/) mint a DTU via a raw SQL INSERT, which is a real,
+// durable row — but only `dtu.create` populates STATE.dtus, which is the
+// ONLY thing `marketplace.list`/`purchaseWithRoyalties` used to read. A
+// SQL-only DTU was therefore invisible to the marketplace despite being
+// real. `readAndHydrateDtu` (server/lib/dtu-shadow-hydrate.js) reconstructs
+// the equivalent STATE.dtus shape from the row; we cache it into STATE.dtus
+// here (a legitimate lazy-hydration read-through cache — the SQL row is the
+// real source of truth, this just makes the in-memory index consistent
+// with it) so subsequent lookups (list → purchase, or a second purchase)
+// are O(1) Map reads like any native STATE.dtus entry, and so every
+// downstream macro that reads `STATE.dtus.get(id)` after this point (the
+// royalty cascade, `myListings`, etc.) sees the exact same object.
+function resolveMarketplaceDtu(dtuId) {
+  if (!dtuId) return null;
+  const inMemory = STATE.dtus.get(dtuId);
+  if (inMemory) return inMemory;
+  if (!db) return null;
+  const hydrated = readAndHydrateDtu(db, dtuId);
+  if (hydrated) STATE.dtus.set(dtuId, hydrated);
+  return hydrated || null;
+}
+
 register("marketplace", "list", async (ctx, input) => {
   const { dtuId, price, currency, contentType, title, description, tags, preview } = input || {};
-  const dtu = STATE.dtus.get(dtuId);
+  const dtu = resolveMarketplaceDtu(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
 
   // Ownership + scope gate. Previously ANY authenticated caller could flip
@@ -38110,6 +39325,16 @@ register("marketplace", "myListings", async (ctx, _input) => {
       downloads: dtu.marketplace.purchases || 0,
       listedAt: dtu.marketplace.listedAt || dtu.createdAt || null,
       tierPrices: dtu.marketplace.tierPrices || undefined,
+      // Real, honest verification passthrough (V1.2 Wave C) — forwards
+      // WHATEVER is actually on the DTU's `meta`, never invents a value.
+      // Only server/lib/asset-gen/asset-marketplace.js#mintGeneratedAssetAsDtu
+      // populates these today (feaVerified/feaSummary); every other content
+      // type forwards null/undefined here, which
+      // marketplace-verification.js#getListingVerification classifies as the
+      // honest "no_data" state — never a default "verified".
+      contentType: dtu.marketplace.contentType || null,
+      feaVerified: typeof dtu.meta?.feaVerified === "boolean" ? dtu.meta.feaVerified : null,
+      feaSummary: dtu.meta?.feaSummary || null,
     });
   }
   listings.sort((a, b) => new Date(b.listedAt || 0) - new Date(a.listedAt || 0));
@@ -38890,7 +40115,12 @@ register("creative", "domains", async (ctx, input) => {
 
 register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   const { dtuId } = input || {};
-  const dtu = STATE.dtus.get(dtuId);
+  // Same resolution as marketplace.list — see resolveMarketplaceDtu's doc
+  // comment. Purchasing a SQL-only DTU (e.g. a forge_app or a building-
+  // publish blueprint that was listed) needs the same hydration, since a
+  // fresh process (or a purchase attempted before any `list` call warmed
+  // STATE.dtus) would otherwise miss it too.
+  const dtu = resolveMarketplaceDtu(dtuId);
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
 
   // Federated origin: if the DTU's metadata records origin_peer_id (set
@@ -40840,7 +42070,16 @@ app.post("/api/plugins/register", asyncHandler(async (req, res) => {
   if (!["founder", "owner", "admin"].includes(role)) {
     return res.status(403).json({ ok: false, error: "admin_required" });
   }
-  const result = await runMacro("emergent", "plugin.register", { module: req.body, _runMacro: runMacro }, makeCtx(req));
+  // Fixed 2026-07 (docs/PLUGIN_AUTHORING_GUIDE.md §3): this route used to
+  // forward the parsed JSON body as `input.module` straight into the
+  // in-process `registerPlugin`/`activatePlugin` path, which can never work
+  // — JSON can't carry live functions, so `init`/`macros`/`hooks` were
+  // always plain data and activation always failed Gate 1. It now expects
+  // `{ source: "<plugin ESM source text>" }` and the macro routes that
+  // string through the hardened sandboxed loader (`loadPluginFromSource`),
+  // making this a real, working "submit plugin source over HTTP" endpoint.
+  const source = req.body?.source;
+  const result = await runMacro("emergent", "plugin.register", { source, _runMacro: runMacro }, makeCtx(req));
   res.json(result);
 }));
 
@@ -41085,12 +42324,20 @@ try {
 // the /api/lens/run dispatch (prefer LENS_ACTIONS, then MACROS) so every exposed
 // tool is actually reachable. Returns the raw { ok, ... } envelope (the MCP host
 // reads result.ok) — no unwrap, to keep the shape identical for both paths.
+//
+// The "which registry answers this pair" decision itself is delegated to
+// `resolveDualRegistry` (lib/dual-registry-resolve.js) so this exact
+// precedence ("prefer LENS_ACTIONS, then MACROS") is defined in exactly one
+// place — chat-agent.js's `run_lens_action` tool now calls the same helper,
+// so the two dispatchers can't silently drift apart again the way they had
+// (see docs/CONKAY_TOOL_AUTHORING_SPEC.md's "Corrections to the task's
+// framing" for the gap this closed).
 async function runMcpTool(domain, name, input, ctx) {
-  const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
-  if (lensHandler) {
+  const resolved = _resolveDualRegistry(domain, name, { lensActions: LENS_ACTIONS, runMacro });
+  if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
-    return await lensHandler(ctx, virtualArtifact, data);
+    return await resolved.handler(ctx, virtualArtifact, data);
   }
   return await runMacro(domain, name, input || {}, ctx);
 }
@@ -41253,14 +42500,25 @@ app.post("/api/lens/run", async (req, res) => {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
       const result = _unwrapLensEnvelope(await lensHandler(ctx, virtualArtifact, rest));
       emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      // R5/E22 — ConKay spatial mode (Godot Hub): a real, non-fabricated
+      // capability-tier fact for the two verdict-producing macros only. See
+      // lib/conkay-verdict-bridge.js's header for why this reuses the SAME
+      // userId-scoped emitMacroLife spine macro:started/completed already
+      // use (already mirrored to a connected Godot client — no new room).
+      const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
+      if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
       return res.json({ ok: true, result });
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
     // Many domains (detectors, dtu, lens, scope, agents, etc.) only register
-    // here — the legacy LENS_ACTIONS path can't see them.
+    // here — the legacy LENS_ACTIONS path can't see them. (This is also where
+    // reason.verify/reason.evaluate_answer themselves register, so this is
+    // the branch that actually fires the conkay:verdict emit below today.)
     if (MACROS.get(domain)?.get(action)) {
       const result = _unwrapLensEnvelope(await runMacro(domain, action, rest, ctx));
       emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
+      if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
       return res.json({ ok: true, result });
     }
     // No registered macro for this (domain, action).
@@ -48128,6 +49386,18 @@ function initChatSocketHandlers(io) {
           llm: true,
         }, ctx);
 
+        // Surface each executed tool call to the chat rail. `chat.respond` runs
+        // a real [TOOL_CALL:] execution loop (_executeToolCalls) and returns the
+        // per-tool outcome as `toolCalls`, but the socket handler only ever
+        // emitted chat:complete — so the rail's tool lines never rendered.
+        // Emitted on THIS socket (not broadcast): it is one user's session.
+        try {
+          const { buildChatToolResultEvents } = await import("./lib/chat/tool-result-events.js");
+          for (const ev of buildChatToolResultEvents(result, sessionId)) {
+            socket.emit("chat:tool_result", ev);
+          }
+        } catch (_e) { /* tool-result surfacing is best-effort — never blocks the reply */ }
+
         // Check for lens recommendation
         let lensRecommendation = null;
         try {
@@ -49676,6 +50946,16 @@ app.get("/api/creator/cascade/:dtuId", requireAuth(), asyncHandler(async (req, r
   const cd = await import("./lib/creator-dashboard.js");
   const maxDepth = Math.min(50, Math.max(1, Number(req.query.maxDepth) || 6));
   res.json(cd.computeCascadeTree(req.params.dtuId, STATE, { maxDepth }));
+}));
+// EC2 — royalty flow card. The real-money counterpart to /cascade above:
+// actual historical ROYALTY_PAYOUT ledger rows (lineage -> earner -> CC),
+// not a projection. Defaults to the caller's own earnings; ?dtuId=... scopes
+// to what a specific DTU has earned + its real ancestor chain.
+app.get("/api/creator/royalty-flow", requireAuth(), asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  const dtuId = typeof req.query.dtuId === "string" && req.query.dtuId ? req.query.dtuId : null;
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+  res.json(cd.computeRoyaltyFlow(db, STATE, { userId: req.user?.id, dtuId, limit }));
 }));
 
 // Federation: peer list, trust graph visualization, cross-instance search.
@@ -52502,9 +53782,16 @@ app.post("/api/wardrobe/:outfitId/equip", requireAuth(), asyncHandler(async (req
   const { equipOutfit } = await import("./lib/wardrobe.js");
   const userId = req.user?.id || req.user?.userId;
   const r = equipOutfit(db, req.params.outfitId, userId);
-  if (r.ok) {
-    try { realtimeEmit?.("wardrobe:outfit-equipped", { userId, outfitId: req.params.outfitId, slots: r.slots }); } catch { /* best-effort */ }
-  }
+  // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): this used to
+  // also fire a `wardrobe:outfit-equipped` realtime broadcast. Verified via
+  // a full-tree grep that `equipOutfit` (server/lib/wardrobe.js) has ZERO
+  // frontend callers anywhere — the whole wardrobe-equip feature is
+  // backend-complete (real DB persistence, this real HTTP route) but has
+  // no UI yet, so there was nothing anywhere that could subscribe to a
+  // "someone equipped an outfit" broadcast. The caller of this route
+  // already gets the equip result synchronously in `r` below; retired the
+  // broadcast rather than building a wardrobe UI to consume it (out of
+  // scope for a dead-event cleanup).
   res.status(r.ok ? 200 : 400).json(r);
 }));
 
@@ -53212,10 +54499,19 @@ app.get("/api/tracking/recent/:worldId", requireAuth(), asyncHandler(async (req,
     // Best-effort: damage_events table shape varies by build.
     let rows = [];
     try {
+      // x/z NOT NULL is load-bearing, not defensive tidiness. damage_events.{x,z}
+      // arrived late (migration 299) and for a long time NOTHING populated them,
+      // so legacy rows — and any future write path that genuinely has no position
+      // in scope — carry NULL. FootprintLayer feeds each row straight into a
+      // THREE.Vector3 `.set(x, 0.05, z).project(camera)`, and JS coerces null to 0
+      // in matrix arithmetic: a NULL row does NOT glitch out, it renders a
+      // convincing footprint at world ORIGIN. Serving those rows would be
+      // fabricating a location. A positionless hit is simply not a track.
       rows = db.prepare(`
         SELECT id, attacker_id, target_id, x, z, occurred_at
         FROM damage_events
         WHERE world_id = ? AND occurred_at >= ?
+          AND x IS NOT NULL AND z IS NOT NULL
         ORDER BY occurred_at DESC LIMIT 50
       `).all(req.params.worldId, since);
     } catch { rows = []; }
@@ -53548,7 +54844,25 @@ app.post("/api/extraction/:runId/die", requireAuth(), asyncHandler(async (req, r
 
 app.post("/api/extraction/zone", requireAuth(), asyncHandler(async (req, res) => {
   const { declareExtractionZone } = await import("./lib/extraction.js");
-  res.json(declareExtractionZone(db, req.body || {}));
+  const result = declareExtractionZone(db, req.body || {});
+  // A declared zone is WORLD state, not the caller's state. The generic mode
+  // middleware above only pushes extraction:state to the acting user, so every
+  // OTHER player in the world would learn about a new extraction zone solely
+  // from ExtractionRunHUD's 30s backstop poll. Emit world-scoped so their HUD
+  // re-fetches immediately. The listener (ExtractionRunHUD.tsx) subscribes via
+  // useRealtimeRefresh and re-fetches /api/extraction/zones/:worldId — it never
+  // reads this payload, so the fields here are diagnostic only.
+  // Emitted through realtimeEmit (not the standalone emitModeToWorld helper)
+  // for the reason DET-C batch 6 documents on the worldId tier: the helper
+  // would silently drop achievement-bridge dispatch, event_timeline_log
+  // persistence, dev-mode shape validation, and the Godot gateway mirror.
+  const zoneWorldId = req.body?.worldId;
+  if (result?.ok && zoneWorldId) {
+    try {
+      realtimeEmit("extraction:zones", { zoneId: result.zoneId, worldId: zoneWorldId }, { worldId: zoneWorldId });
+    } catch { /* push is best-effort; the HUD keeps a backstop poll */ }
+  }
+  res.json(result);
 }));
 
 app.get("/api/extraction/zones/:worldId", asyncHandler(async (req, res) => {
@@ -53674,7 +54988,23 @@ app.get("/api/time-loop/active/:worldId", requireAuth(), asyncHandler(async (req
 // abilities, they fire when each combatant's cooldown elapses.
 app.post("/api/party-combat/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startCombat } = await import("./lib/party-combat.js");
-  res.json(startCombat(db, req.body || {}));
+  const started = startCombat(db, req.body || {});
+  // PartyCombatHUD only backstop-polls /api/party-combat/active while NOT yet in
+  // a session (its own comment says so), so every participant except the caller
+  // sat in that degraded path until the next 1s discovery tick. Push per-player,
+  // not per-world: discovery goes through findActiveSessionForPlayer(db, userId),
+  // and that query matches `entity_id = userId AND entity_kind = 'player'` — so
+  // entityId IS the userId for player combatants, and NPC combatants have no
+  // socket to notify. The HUD re-fetches on the event and ignores this payload.
+  if (started?.ok) {
+    for (const p of (req.body?.participants || [])) {
+      if ((p?.entityKind || "player") !== "player" || !p?.entityId) continue;
+      try {
+        realtimeEmit("party-combat:state", { sessionId: started.sessionId }, { userId: p.entityId });
+      } catch { /* push is best-effort */ }
+    }
+  }
+  res.json(started);
 }));
 
 app.post("/api/party-combat/:sessionId/queue", requireAuth(), asyncHandler(async (req, res) => {
@@ -54487,11 +55817,29 @@ app.delete("/api/worlds/:worldId/markers/:markerId", requireAuth(), asyncHandler
 }));
 
 // ── Phase U5 — parties + LFG ────────────────────────────────────────────
+// V1.2 Wave A note: the party CRUD below (createParty/invite/accept/leave/
+// kick/disband, migration 070) already existed and was already fully
+// wired — this is the canonical lightweight-group model, deliberately
+// distinct from world-organizations.js's heavier guild/org machinery
+// (persistent, treasury-bearing, up to 500 members) and from that same
+// file's separate in-memory `_parties`/`_userParty` maps (an older, unrelated
+// temp-group concept used elsewhere, left untouched). What this unit adds:
+// (a) real `party:<id>` room membership so join/leave/kick/disband reach
+// ONLY that party's members instead of the global broadcast every one of
+// these emits used before (a real privacy gap — the same class DET-C batch
+// 6 closed for world-scoped combat events), and (b) a presence read so
+// members can see each other's live location/status regardless of distance
+// (getPresenceForUsers in city-presence.js — an id-based lookup, not a
+// radius one).
+function _partyRoom(partyId) { return `party:${partyId}`; }
 
 app.post("/api/parties", requireAuth(), asyncHandler(async (req, res) => {
   const { createParty } = await import("./lib/parties.js");
   const userId = req.user?.id || req.user?.userId;
   const r = createParty(db, userId, req.body || {});
+  if (r.ok && r.partyId) {
+    try { REALTIME?.io?.in(`user:${userId}`).socketsJoin(_partyRoom(r.partyId)); } catch { /* best-effort */ }
+  }
   res.status(r.ok ? 200 : 400).json(r);
 }));
 
@@ -54514,7 +55862,14 @@ app.post("/api/parties/invites/:inviteId/accept", requireAuth(), asyncHandler(as
   const userId = req.user?.id || req.user?.userId;
   const r = acceptPartyInvite(db, req.params.inviteId, userId);
   if (r.ok && r.partyId) {
-    try { realtimeEmit?.("party:member-joined", { partyId: r.partyId, userId }); } catch { /* best-effort */ }
+    const room = _partyRoom(r.partyId);
+    // Bring the new member's live socket(s) into the room FIRST so they
+    // also receive their own join broadcast (harmless — matches the
+    // room-then-emit ordering used by every other room-scoped feature in
+    // this file), then scope the notification to the party room instead of
+    // the prior global broadcast.
+    try { REALTIME?.io?.in(`user:${userId}`).socketsJoin(room); } catch { /* best-effort */ }
+    try { REALTIME?.io?.to(room).emit("party:member-joined", { partyId: r.partyId, userId, ts: nowISO() }); } catch { /* best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
 }));
@@ -54524,7 +55879,12 @@ app.post("/api/parties/:partyId/leave", requireAuth(), asyncHandler(async (req, 
   const userId = req.user?.id || req.user?.userId;
   const r = leaveParty(db, req.params.partyId, userId);
   if (r.ok) {
-    try { realtimeEmit?.("party:member-left", { partyId: req.params.partyId, userId, disbanded: !!r.disbanded }); } catch { /* best-effort */ }
+    const room = _partyRoom(req.params.partyId);
+    // Emit to the room BEFORE evicting the leaver's own sockets, so their
+    // other devices (and the confirming client itself, redundantly with the
+    // HTTP response) also observe the same event remaining members do.
+    try { REALTIME?.io?.to(room).emit("party:member-left", { partyId: req.params.partyId, userId, disbanded: !!r.disbanded, ts: nowISO() }); } catch { /* best-effort */ }
+    try { REALTIME?.io?.in(`user:${userId}`).socketsLeave(room); } catch { /* best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
 }));
@@ -54532,7 +55892,16 @@ app.post("/api/parties/:partyId/leave", requireAuth(), asyncHandler(async (req, 
 app.post("/api/parties/:partyId/kick", requireAuth(), asyncHandler(async (req, res) => {
   const { kickFromParty } = await import("./lib/parties.js");
   const userId = req.user?.id || req.user?.userId;
-  const r = kickFromParty(db, req.params.partyId, userId, req.body?.targetUserId);
+  const targetUserId = req.body?.targetUserId;
+  const r = kickFromParty(db, req.params.partyId, userId, targetUserId);
+  if (r.ok) {
+    const room = _partyRoom(req.params.partyId);
+    // Pre-this-unit this route had NO realtime notification at all — a
+    // kicked member's client only found out on its next `/api/parties/me`
+    // poll. Real-time join/leave parity with accept/leave above.
+    try { REALTIME?.io?.to(room).emit("party:member-kicked", { partyId: req.params.partyId, targetUserId, byUserId: userId, ts: nowISO() }); } catch { /* best-effort */ }
+    try { REALTIME?.io?.in(`user:${targetUserId}`).socketsLeave(room); } catch { /* best-effort */ }
+  }
   res.status(r.ok ? 200 : 400).json(r);
 }));
 
@@ -54540,7 +55909,14 @@ app.post("/api/parties/:partyId/disband", requireAuth(), asyncHandler(async (req
   const { disbandParty } = await import("./lib/parties.js");
   const userId = req.user?.id || req.user?.userId;
   const r = disbandParty(db, req.params.partyId, userId);
-  if (r.ok) { try { realtimeEmit?.("party:disbanded", { partyId: req.params.partyId }); } catch { /* best-effort */ } }
+  if (r.ok) {
+    const room = _partyRoom(req.params.partyId);
+    try { REALTIME?.io?.to(room).emit("party:disbanded", { partyId: req.params.partyId, ts: nowISO() }); } catch { /* best-effort */ }
+    // Evict every remaining socket from the now-defunct room so a stale
+    // party:<id> room doesn't silently accumulate members who can never
+    // leave it again through the normal leave/kick paths.
+    try { REALTIME?.io?.in(room).socketsLeave(room); } catch { /* best-effort */ }
+  }
   res.status(r.ok ? 200 : 400).json(r);
 }));
 
@@ -54552,6 +55928,24 @@ app.get("/api/parties/me", requireAuth(), asyncHandler(async (req, res) => {
     party: getMyParty(db, userId),
     incomingInvites: listIncomingInvites(db, userId),
   });
+}));
+
+// V1.2 Wave A — live presence for the caller's own party, regardless of raw
+// proximity (unlike getNearbyUsers/getPlayersNear, which are distance-
+// filtered, this is a pure id-based lookup over exactly the caller's own
+// party roster — cityPresence.getPresenceForUsers). No partyId path param
+// by design: the caller's party is resolved server-side from their own
+// membership row, so there is no party-id-guessing surface to authorize
+// against — a user can only ever read presence for the party they are
+// actually in.
+app.get("/api/parties/me/presence", requireAuth(), asyncHandler(async (req, res) => {
+  const { getMyParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const party = getMyParty(db, userId);
+  if (!party) return res.json({ ok: true, party: null, presence: [] });
+  const memberIds = (party.members || []).map((m) => m.userId);
+  const presence = cityPresence.getPresenceForUsers(memberIds);
+  res.json({ ok: true, partyId: party.party_id, presence });
 }));
 
 app.post("/api/parties/:partyId/share-quest", requireAuth(), asyncHandler(async (req, res) => {
@@ -59777,6 +61171,151 @@ app.get("/api/admin/repair/network-status", requireAuth(), requireRole("owner"),
   try { const m = await import("./emergent/repair-network.js"); res.json(m.getStatus()); }
   catch (e) { res.json({ ok: false, error: e.message }); }
 });
+
+// ── Repair Cortex operator console (OP1, R7 self-host proof) ────────────────
+// Deepens the Repair Cortex from a status-only readout into a real
+// detections + drift/health + governed-remediation surface. Role gate
+// matches the newer admin-telemetry convention (`/api/admin/heartbeat-stats`,
+// `/api/admin/worker-stats`, `/api/admin/world-shards`,
+// `/api/admin/brain-endpoints`) rather than the older repair-only
+// `requireRole("owner")` used just above — this also lines up the backend
+// gate with `RepairPanel.tsx`'s existing frontend admin check
+// (`role === 'admin' || 'sovereign'`), which the older owner-only repair
+// routes never actually matched.
+
+// Real detector findings, grouped — reads the SAME stash the
+// `detectors-sweep` heartbeat (server.js, registered above) already
+// populates. Reports honestly when no sweep has run yet instead of
+// fabricating a report.
+app.get("/api/admin/repair/detections", requireRole("owner", "admin", "sovereign", "founder"), async (_req, res) => {
+  try {
+    const stash = globalThis.__CONCORD_DETECTORS__;
+    const report = stash?.latestReport;
+    if (!report) {
+      return res.json({ ok: true, available: false, reason: "no_sweep_yet", sweepInFlight: _repairConsoleSweepInFlight, generatedAt: new Date().toISOString() });
+    }
+    const { getDetector } = await import("./lib/detectors/index.js");
+    const { SEVERITY_ORDER } = await import("./lib/detectors/_framework.js");
+    const bySeverity = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+    const byConsumer = {};
+    const findings = [];
+    for (const r of report.reports || []) {
+      const consumers = getDetector(r.id)?.consumers || ["code-quality"];
+      for (const f of (r.findings || [])) {
+        const sev = f.severity || "info";
+        bySeverity[sev] = (bySeverity[sev] || 0) + 1;
+        for (const c of consumers) byConsumer[c] = (byConsumer[c] || 0) + 1;
+        if (sev !== "info") {
+          findings.push({
+            detectorId: r.id,
+            id: f.id,
+            severity: sev,
+            message: f.message || "",
+            location: f.location || null,
+            subject: f.subject || null,
+            fixHint: f.fixHint || null,
+          });
+        }
+      }
+    }
+    findings.sort((a, b) => (SEVERITY_ORDER[b.severity] ?? 0) - (SEVERITY_ORDER[a.severity] ?? 0));
+    res.json({
+      ok: true,
+      available: true,
+      sweepInFlight: _repairConsoleSweepInFlight,
+      generatedAt: report.generatedAt || null,
+      latestRunAt: stash.latestRunAt || null,
+      totals: report.totals || bySeverity,
+      bySeverity,
+      byConsumer,
+      detectorCount: report.detectorCount || (report.reports || []).length,
+      findingCount: findings.length,
+      findings: findings.slice(0, 200),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Manual on-demand sweep — kicks off the SAME `runDetectorSweepAndStash`
+// logic the scheduled `detectors-sweep` heartbeat runs, but AS A BACKGROUND
+// JOB rather than blocking the HTTP response. Two real constraints rule out
+// a synchronous "await it and respond" design here: (1) the global
+// `requestTimeoutMiddleware` 503s any request past `REQUEST_TIMEOUT_MS`
+// (60s default) — live-verified against this repo's real size, a full
+// detector sweep routinely runs well past that; (2) even without that
+// middleware, holding an HTTP connection open for minutes isn't a
+// reasonable contract for a browser-driven admin console. So this route
+// starts the sweep, returns immediately with `started:true`, and the
+// console is expected to poll `GET /api/admin/repair/detections` (which
+// now also reports `sweepInFlight`) until `latestRunAt` advances — an
+// honest "in progress" state, never a fabricated "done" the instant the
+// button is clicked.
+let _repairConsoleSweepInFlight = false;
+app.post("/api/admin/repair/detections/run", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (_req, res) => {
+  if (_repairConsoleSweepInFlight) {
+    return res.json({ ok: true, started: false, alreadyRunning: true });
+  }
+  _repairConsoleSweepInFlight = true;
+  const startedAt = new Date().toISOString();
+  runDetectorSweepAndStash({ state: STATE, db: STATE.db })
+    .catch((err) => { try { logger.warn("repair-console", "manual_sweep_failed", { error: err?.message }); } catch { /* logging best-effort */ } })
+    .finally(() => { _repairConsoleSweepInFlight = false; });
+  res.json({ ok: true, started: true, startedAt });
+}));
+
+// Governed remediation queue — propose (real detector finding) → approve
+// (admin) → apply (real, already-existing `runHeartbeatModuleNow`). See
+// `lib/repair-remediation.js` for the honesty discipline: only ONE
+// well-scoped finding type (a heartbeat module a detector tagged
+// `fixHint:"restart_heartbeat_module"`) ever produces a queue entry — no
+// fabricated "apply" action for anything else.
+app.get("/api/admin/repair/remediations", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (_req, res) => {
+  const rr = await import("./lib/repair-remediation.js");
+  res.json({ ok: true, queue: rr.syncAndListQueue(), generatedAt: new Date().toISOString() });
+}));
+
+app.post("/api/admin/repair/remediations/:id/approve", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const rr = await import("./lib/repair-remediation.js");
+  const r = rr.approve(req.params.id, req.user?.id || req.user?.username || null);
+  res.status(r.ok ? 200 : (r.error === "not_found" ? 404 : 409)).json(r);
+}));
+
+app.post("/api/admin/repair/remediations/:id/reject", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const rr = await import("./lib/repair-remediation.js");
+  const r = rr.reject(req.params.id, req.user?.id || req.user?.username || null, req.body?.reason);
+  res.status(r.ok ? 200 : (r.error === "not_found" ? 404 : 409)).json(r);
+}));
+
+app.post("/api/admin/repair/remediations/:id/apply", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const rr = await import("./lib/repair-remediation.js");
+  const r = await rr.apply(req.params.id, { state: STATE, db: STATE.db });
+  res.status(r.ok ? 200 : (r.error === "not_found" ? 404 : 409)).json(r);
+}));
+
+// ── Audit export pack (OP2, R7 self-host proof) ──────────────────────────
+// One-click evidence bundle for a self-hoster or auditor: the detector
+// suite baseline, macro-depth grade (default + honest), UX-polish grade
+// (default + honest), doc-claims drift status, and repo/deploy metadata.
+// Same admin-telemetry role gate as `/api/admin/heartbeat-stats` /
+// `/api/admin/repair/detections`. See `lib/audit-export.js` for the
+// honesty discipline: every section reads an ALREADY-PERSISTED artifact
+// and reports ITS OWN generatedAt/staleness — this route never re-runs an
+// expensive detector/grader synchronously. `?download=1` sets a
+// Content-Disposition header so a browser saves it as a file instead of
+// rendering it inline; `?loc=0` skips the one live computation (a bounded
+// `count-loc` run, ~2-4s) for callers that want the fastest possible
+// response over the freshest LOC figure.
+app.get("/api/admin/audit-export", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const { buildAuditExport } = await import("./lib/audit-export.js");
+  const includeLiveLoc = req.query.loc !== "0";
+  const bundle = await buildAuditExport({ includeLiveLoc });
+  if (req.query.download === "1") {
+    const stamp = bundle.generatedAt.replace(/[:.]/g, "-");
+    res.setHeader("Content-Disposition", `attachment; filename="concord-audit-export-${stamp}.json"`);
+  }
+  res.json(bundle);
+}));
 
 // ── System Infrastructure Status Endpoints ──────────────────────────────────
 
@@ -65584,6 +67123,461 @@ try {
 // Optional: enable thin realtime mirror (WebSockets) for queues/jobs/panels.
 try { await tryInitWebSockets(server); } catch (e) {
   structuredLog("error", "websocket_init_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
+}
+
+// Godot gateway inbound dispatch (2026-07-23 — Phase 3 bidirectionality).
+// Routes client→server frames the gateway doesn't natively recognize
+// (room:join/leave, scene:request, ping, auth ARE handled inside
+// godot-gateway.js itself and never reach this fallback) through the SAME
+// shared core the socket.io player:move/player:mode handlers use
+// (applyPlayerMove / applyPlayerMode, declared above tryInitWebSockets) — so
+// a Godot client is bound by the identical server-authoritative anti-cheat,
+// never a laxer path. `client` is the gateway's internal per-connection state
+// ({ id, ws, authenticated, userId, username, rooms }); there is no exported
+// per-client `send` on the gateway handle, so this mirrors its envelope
+// shape ({ evt, data: { ...payload, ts, _evt } }) directly — `_seq` is the
+// gateway's own private monotonic counter and is intentionally omitted here.
+function _godotGatewaySend(client, evt, payload = {}) {
+  try {
+    if (client?.ws && client.ws.readyState === client.ws.OPEN) {
+      client.ws.send(JSON.stringify({ evt, data: { ...payload, ts: new Date().toISOString(), _evt: evt } }));
+    }
+  } catch { /* per-socket, survive */ }
+}
+
+// Godot Integration Phase 4 (D17 — first slice, 2026-07-23) — `design_command`
+// allow-list. docs/GODOT_PROTOCOL.md §11 named this channel PLANNED, citing
+// the real target macros in server/domains/gamedesign.js as the thing a
+// future unit would wire — this IS that unit's first slice. Deliberately a
+// curated allow-list (not "any game-design macro reachable"): every entry
+// below is a real `registerLensAction("game-design", <name>, ...)` handler
+// (see server/domains/gamedesign.js, cited per-action in the case block),
+// covering the minimal authoring round-trip a Godot design client needs —
+// create a game project, add an entity to its roster, create a level, and
+// (the one with a REAL SQLite-visible effect, not just in-memory Map state)
+// publish/spawn a building into a live 3D world's `world_buildings` table.
+// An action NOT in this set gets an honest `unsupported_action` result,
+// never silently forwarded to an arbitrary macro.
+// D20 (2026-07-24) extends this same curated allow-list — mechanically, per
+// docs/GODOT_PROTOCOL.md §11's own note that reaching more gamedesign.js
+// macros this way is "more entries", not a new pattern — with the two
+// scene-save/scene-load macros that round-trip a level design through the
+// real DTU substrate (server/domains/gamedesign.js, "D20" section).
+const DESIGN_COMMAND_ACTIONS = new Set([
+  "game-create",       // gamedesign.js:148 — creates a game project
+  "entity-add",        // gamedesign.js:296 — adds a roster entity (place-entity intent)
+  "level-create",      // gamedesign.js:346 — creates a level (tile grid + default layers)
+  "building-publish",  // gamedesign.js:1905 — mints a blueprint DTU + spawns a REAL world_buildings row
+  "scene-save",        // gamedesign.js "D20" section — snapshots a level into a real dtu.create DTU
+  "scene-load",        // gamedesign.js "D20" section — reconstructs a level from a saved DTU by id
+]);
+
+// Shared resolver — the SAME two-step lookup `/api/lens/run` uses
+// (LENS_ACTIONS first, then MACROS via runMacro), reused here instead of
+// invented afresh so a Godot design_command and an HTTP /api/lens/run call
+// for the identical (domain, action) run through identical dispatch. Never
+// falls through to the freeform-AI catchall the HTTP route has — an
+// unregistered macro is always an honest `unknown_macro`, never a brain
+// guess standing in for a real authoring action.
+//
+// Deliberately returns the handler's RAW envelope (`{ok:true, result:...}`
+// or `{ok:false, error:...}`), NOT `_unwrapLensEnvelope`'d — that helper
+// strips the top-level `ok` field on success because the HTTP route relies
+// on its own outer `res.json({ok:true, result})` to signal success instead.
+// There is no outer HTTP wrapper on the gateway path, so unwrapping here
+// would silently turn every real success into a frame with no `ok` field —
+// exactly the kind of ambiguous-looks-like-failure shape the honest-by-
+// construction rule exists to prevent. Same raw-passthrough contract as
+// `_dispatchLensRunForTest` (used by the invariant-engine test harness) for
+// the identical reason.
+async function _dispatchDesignCommand(domain, action, params, ctx) {
+  const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
+  if (lensHandler) {
+    const virtualArtifact = { id: null, domain, type: "domain_action", data: params, meta: {} };
+    return await lensHandler(ctx, virtualArtifact, params);
+  }
+  if (MACROS.get(domain)?.get(action)) {
+    return await runMacro(domain, action, params, ctx);
+  }
+  return { ok: false, error: "unknown_macro", domain, action };
+}
+
+// Shared by the `design_command` and `design:mode` cases below — a Godot
+// client only ever reaches either post-auth (godot-gateway.js rejects
+// pre-auth frames itself), so `userId` is always a real authenticated user.
+// makeCtx's `reqMeta` block calls `req.get(...)` unconditionally whenever
+// `req` is truthy, so a bare `{user:{id}}` stub would throw — this fake req
+// carries every field makeCtx dereferences (get/ip/method/path/query/
+// headers) so the REAL actor-resolution branch (`req.user.id` present) runs
+// untouched and produces the identical member-role actor shape an
+// authenticated HTTP request would get.
+function _godotFakeReqFor(userId) {
+  return {
+    user: { id: userId },
+    headers: {},
+    query: {},
+    method: "WS",
+    path: "/godot-ws",
+    originalUrl: "/godot-ws",
+    ip: "godot-gateway",
+    get: () => undefined,
+  };
+}
+
+// Godot Integration Phase 4 (this unit, 2026-07-25) — `combat:attack` inbound
+// dispatch. Closes the gap docs/GODOT_INTEGRATION.md's Honest caveats section
+// names verbatim: "combat:attack has no gateway-side dispatch" — a Godot
+// client attacking previously got the honest-but-inert `unsupported_evt`
+// fallback (never a fabricated hit).
+//
+// Deliberately calls the SAME real, already-shared primitives the socket.io
+// `combat:attack` handler (server.js, the `_attackCd`/`_combatSocketLimiter`
+// region above `tryInitWebSockets`) resolves through — this is NOT a second
+// copy of the damage/anti-cheat math:
+//   - `lib/combat-limits.js` (clampBaseDamage / clampAttackRange /
+//     resolvedDamageCap) — its own header calls itself out as "Single source
+//     of truth for the HTTP combat route (routes/worlds.js) AND the socket
+//     PvP path (server.js), so the two can't drift." This is that same
+//     module, called a third time so a Godot client can't get a laxer cap
+//     than either existing path.
+//   - `lib/combat/glyph-spell-cap.js#lookupGlyphSpellMaxDamage` — an attack
+//     naming a MINTED glyph spell the caller owns is capped at the spell's
+//     real stored `max_damage`, never a client-declared number. Owner-scoped;
+//     unknown/foreign id degrades to 0 (the shared hard cap).
+//   - `cityPresence.applyAttack` — the actual resolution function. It runs
+//     its OWN server-side reach check (live attacker/target cityPresence
+//     distance vs. the clamped `range`) and bounds the resolved hit to the
+//     clamped `maxDamage` ceiling passed in below. This IS the real combat
+//     entry point the socket path also calls — reused, not reimplemented.
+//   - `_combatSocketLimiter` — the SAME per-userId token bucket the socket.io
+//     path gates on (module-scoped, keyed by userId, declared once above
+//     `BRAIN`), so a user can't double their effective attack rate by
+//     running a browser tab and a Godot client at once.
+//
+// Cap-then-amplify ordering: `resolvedDamageCap` is passed as `maxDamage`
+// INTO `applyAttack`, so the cap is enforced as part of resolution itself —
+// there is no downstream env-amplification step on this PvP path (Layer 7.5
+// env boost only exists on the HTTP NPC route, routes/worlds.js) for a cap
+// to be bypassed by. Nothing here multiplies `result.damage` after the fact.
+//
+// Honest residual (matches the documented player:move/player:mode gap in
+// docs/GODOT_INTEGRATION.md's "Per-client rate limiting" section): this does
+// NOT reproduce the socket path's per-action-class cooldown gate
+// (`_newAttackCooldownState`/`_checkAttackCooldown`), stealth-backstab
+// perception gate, refusal-field / Mass-Raid friendly-fire checks, or
+// companion-assist XP grant — those are presentation/fairness/progression
+// layers on top of authoritative resolution, not the anti-cheat contract
+// this unit closes. Flagged here rather than silently omitted; a future unit
+// can extend this function without touching the socket.io handler.
+//
+// Returns the plain descriptor the switch case below sends verbatim as
+// `combat:attack:ack` (mirrors the socket.io path, which always emits
+// `combat:attack:ack` with the raw `applyAttack` result whether ok or not —
+// there is no separate nack event on this channel).
+async function _dispatchGodotCombatAttack(userId, data) {
+  if (!userId) return { ok: false, error: "not_authenticated" };
+  if (!data || typeof data !== "object") return { ok: false, error: "invalid_payload" };
+
+  const targetId = String(data.targetId || "").slice(0, 128);
+  if (!targetId) return { ok: false, error: "missing_target" };
+
+  if (process.env.CONCORD_SOCKET_RATELIMIT !== "0" && !_combatSocketLimiter.tryConsume(userId, 1, Date.now())) {
+    return { ok: false, error: "rate_limited" };
+  }
+
+  // Glyph-spell damage authority (mirrors the socket.io path's identical
+  // block) — owner-scoped lookup; best-effort, never blocks the attack.
+  let spellMaxDamage = 0;
+  try {
+    if (data.skillId) {
+      const { lookupGlyphSpellMaxDamage } = await import("./lib/combat/glyph-spell-cap.js");
+      spellMaxDamage = lookupGlyphSpellMaxDamage(db, userId, String(data.skillId));
+    }
+  } catch { /* glyph-spell cap optional — neutral pass-through to hard cap */ }
+
+  const { clampBaseDamage, clampAttackRange, resolvedDamageCap } = await import("./lib/combat-limits.js");
+
+  const result = cityPresence.applyAttack({
+    attackerId: userId,
+    targetId,
+    baseDamage: clampBaseDamage(data.baseDamage, spellMaxDamage),
+    range: clampAttackRange(data.range),
+    armorPierce: Number(data.armorPierce) || 0,
+    maxDamage: resolvedDamageCap(spellMaxDamage),
+  });
+
+  if (!result.ok) return result;
+
+  // Sequential combo playback — records this hit into the SAME
+  // combat_flows substrate the socket.io path feeds (lib/combat/flow-
+  // recorder.js), so the procedural combo-evolution engine (flow-engine.js)
+  // sees Godot-originated attacks exactly like browser ones. Best-effort;
+  // never blocks the ack the player is waiting on.
+  try {
+    const { detectCombatContext } = await import("./lib/combat/context-engine.js");
+    const { recordCombatFlow } = await import("./lib/combat/flow-recorder.js");
+    const pos = cityPresence.getUserPosition?.(userId) || { x: 0, y: 0, z: 0 };
+    const ctx = detectCombatContext({
+      position: pos,
+      groundY: 0,
+      inVehicle: !!data.inVehicle,
+      hackerMode: !!data.hackerMode,
+      grounded: data.grounded !== false,
+    });
+    const resolvedAction = (typeof data.actionOverride === "string" && data.actionOverride.length < 24)
+      ? data.actionOverride
+      : (data.heavy ? "attack-heavy" : "attack-light");
+    recordCombatFlow(db, {
+      fighterId: userId,
+      fighterKind: "player",
+      context: ctx.context,
+      style: data.style || ctx.styleHints?.[0] || null,
+      action: resolvedAction,
+      actionMeta: {
+        weapon: data.weapon || "fist",
+        hand: data.hand || "right",
+        chain: data.chainId,
+        step: data.stepIndex || 0,
+        modifier: !!data.modifier,
+        finisher: !!data.finisher,
+      },
+      targetId,
+      hit: result.damage > 0,
+      damage: Number(result.damage || 0),
+      isCrit: !!result.isCrit,
+      chainId: data.chainId || null,
+      stepIndex: Number(data.stepIndex || 0),
+    });
+  } catch { /* combo/flow recording best-effort — never blocks combat */ }
+
+  // Broadcast combat:hit + combat:impact through the world room exactly like
+  // the socket.io PvP path, so a browser spectator and a Godot spectator in
+  // the same world see the identical hit + feel — reuses the SAME
+  // `buildImpactPayload`/`derivePvpSeverity`/`pvpMomentumFromDamage` the NPC
+  // HTTP route and the socket path both already share (closes the "PvP
+  // combat has no server-authoritative feel" gap on THIS transport too).
+  try {
+    let hitWorldId = "concordia-hub";
+    try { hitWorldId = cityPresence.getUserPosition?.(userId)?.worldId ?? "concordia-hub"; } catch { /* world lookup best-effort */ }
+    let targetPos = null, attackerPos = null;
+    try {
+      targetPos = cityPresence.getPositionFor?.(targetId) || cityPresence.getUserPosition?.(targetId) || null;
+      attackerPos = cityPresence.getUserPosition?.(userId) || null;
+    } catch { /* position lookup best-effort */ }
+
+    realtimeEmit("combat:hit", {
+      attackerId: userId,
+      targetId,
+      damage: result.damage,
+      isCrit: result.isCrit,
+      targetHealth: result.targetHealth,
+      targetMaxHealth: result.targetMaxHealth,
+      targetKilled: result.targetKilled,
+      targetPosition: targetPos,
+      attackerPosition: attackerPos,
+      worldId: hitWorldId,
+      element: data.element || "physical",
+      skillId: data.skillId || data.skill || null,
+      weapon: data.weapon || "fist",
+      tier: Math.max(1, Math.min(5, Number(data.tier) || 2)),
+      style: data.style || null,
+    }, { worldId: hitWorldId });
+
+    const dmg = Number(result.damage) || 0;
+    const kill = !!result.targetKilled;
+    if (dmg > 0 || kill) {
+      const { buildImpactPayload, derivePvpSeverity, pvpMomentumFromDamage } = await import("./lib/combat/impact-feel.js");
+      const heavy = data.heavy === true || data.style === "attack-heavy";
+      realtimeEmit("combat:impact", buildImpactPayload({
+        worldId: hitWorldId,
+        attackerId: userId,
+        targetId,
+        targetKind: "player",
+        severity: derivePvpSeverity({ damage: dmg, crit: !!result.isCrit, kill, heavy }),
+        momentum: pvpMomentumFromDamage(dmg),
+        element: data.element || "physical",
+        damage: dmg,
+        isKill: kill,
+        targetPosition: targetPos,
+        attackerPosition: attackerPos,
+      }), { worldId: hitWorldId });
+    }
+  } catch { /* combat:hit/combat:impact broadcast best-effort — never fails the ack */ }
+
+  return result;
+}
+
+function _onGodotClientMessage(client, evt, data) {
+  const userId = client?.userId || null;
+  switch (evt) {
+    case "player:move": {
+      const result = applyPlayerMove(userId, data);
+      if (result.drop) return;
+      if (result.nack) {
+        _godotGatewaySend(client, "player:move:nack", result.nack);
+        if (result.shouldDisconnect) {
+          _godotGatewaySend(client, "anti-cheat:dropped", { reason: "too_many_violations" });
+          try { client.ws.close(4403, "too_many_violations"); } catch { /* survive */ }
+        }
+        return;
+      }
+      if (result.ack) _godotGatewaySend(client, "player:move:ack", result.ack);
+      return;
+    }
+    case "player:mode": {
+      const result = applyPlayerMode(userId, data);
+      if (result.drop) return;
+      if (result.nack) { _godotGatewaySend(client, "player:mode:nack", result.nack); return; }
+      if (result.ack) _godotGatewaySend(client, "player:mode:ack", result.ack);
+      return;
+    }
+    case "design_command": {
+      // Phase 4 (D17 first slice, D20 scene-save/scene-load) — see
+      // DESIGN_COMMAND_ACTIONS above.
+      const action = typeof data?.action === "string" ? data.action : "";
+      const params = data?.params && typeof data.params === "object" ? data.params : {};
+      if (!action) {
+        _godotGatewaySend(client, "design_command:result", { ok: false, error: "invalid_action", action });
+        return;
+      }
+      if (!DESIGN_COMMAND_ACTIONS.has(action)) {
+        _godotGatewaySend(client, "design_command:result", { ok: false, error: "unsupported_action", action });
+        return;
+      }
+      // D19 — live system preview. Any curated action whose params carry a
+      // worldId (today: building-publish) auto-joins this client into that
+      // world's REAL room — the same `world:<id>` room emitToWorld/
+      // realtimeEmit already fan every live event into (combat:impact,
+      // world:sonic-pulse, quest events, npc-conversation-bid, ...). This is
+      // additive to the existing dispatch below, not a parallel preview
+      // stream: a design-mode client that references a live world starts
+      // observing the SAME real system activity a play-mode client in that
+      // world already sees, through the SAME room. Best-effort — a failure
+      // here must never block the actual design_command dispatch.
+      if (typeof params.worldId === "string" && params.worldId) {
+        try { globalThis._concordGodotGateway?.joinRoomForClient?.(client, `world:${params.worldId}`); }
+        catch { /* survive — room-join is a bonus, not a precondition */ }
+      }
+      const ctx = makeCtx(_godotFakeReqFor(userId));
+      _dispatchDesignCommand("game-design", action, params, ctx)
+        .then((result) => {
+          _godotGatewaySend(client, "design_command:result", { action, ...result });
+        })
+        .catch((e) => {
+          _godotGatewaySend(client, "design_command:result", {
+            ok: false, error: "handler_error", action, message: String(e?.message || e),
+          });
+        });
+      return;
+    }
+    case "design:mode": {
+      // Phase 4 (D21) — the design ⇄ playtest toggle for the SAME scene.
+      // Mirrors the player:mode ack/nack descriptor discipline (see
+      // applyPlayerMode above) rather than design_command's raw {ok,result}
+      // envelope: the client gets a clean design:mode:ack / design:mode:nack
+      // frame either way. Internally this still dispatches through the SAME
+      // curated resolver design_command uses (`_dispatchDesignCommand`) —
+      // never a parallel mechanism — but only ever to one of exactly two
+      // fixed macro names (never a client-supplied action string), because
+      // "mode" only ever means "playtest" or "design" here.
+      const requested = typeof data?.mode === "string" ? data.mode.trim().slice(0, 32) : "";
+      if (requested !== "playtest" && requested !== "design") {
+        _godotGatewaySend(client, "design:mode:nack", { reason: "unknown_mode", requested });
+        return;
+      }
+      const action = requested === "playtest" ? "playtest-enter" : "playtest-exit";
+      const params = requested === "playtest"
+        ? { levelId: typeof data?.levelId === "string" ? data.levelId : "" }
+        : {};
+      const ctx = makeCtx(_godotFakeReqFor(userId));
+      _dispatchDesignCommand("game-design", action, params, ctx)
+        .then((result) => {
+          if (!result?.ok) {
+            _godotGatewaySend(client, "design:mode:nack", { reason: result?.error || "rejected", requested });
+            return;
+          }
+          _godotGatewaySend(client, "design:mode:ack", {
+            mode: result.result?.mode || requested,
+            levelId: result.result?.levelId ?? null,
+            gameId: result.result?.gameId ?? null,
+            scene: result.result?.scene ?? null,
+          });
+        })
+        .catch((e) => {
+          _godotGatewaySend(client, "design:mode:nack", { reason: "handler_error", message: String(e?.message || e) });
+        });
+      return;
+    }
+    case "combat:attack": {
+      // Phase 4 (this unit, 2026-07-25) — see _dispatchGodotCombatAttack's
+      // own header comment for the full reuse rationale. Always emits
+      // `combat:attack:ack` with the raw resolution result (ok:true or
+      // ok:false) — mirrors the socket.io path exactly, which has no
+      // separate nack event on this channel.
+      _dispatchGodotCombatAttack(userId, data)
+        .then((result) => {
+          _godotGatewaySend(client, "combat:attack:ack", result);
+        })
+        .catch((e) => {
+          _godotGatewaySend(client, "combat:attack:ack", {
+            ok: false, error: "handler_error", message: String(e?.message || e),
+          });
+        });
+      return;
+    }
+    default:
+      // Honest, specific fallback — NOT the gateway's own blanket
+      // "unknown_evt". Names the exact gap for whatever event still has no
+      // gateway-side dispatch (see docs/GODOT_INTEGRATION.md) instead of
+      // implying every unrecognized frame is equally unsupported.
+      // `combat:attack` no longer falls through to this branch — it's
+      // handled above.
+      _godotGatewaySend(client, "error", { reason: "unsupported_evt", evt });
+  }
+}
+
+// Mirrors the socket.io auth middleware's API-key branch (~line 9074) exactly:
+// iterate AuthDB.getAllApiKeys(), verify the hash via the same verifyApiKey
+// helper. Returns {userId} (godot-gateway.js's tryAuth then resolves the user
+// itself via deps.getUser) or null on any failure — never fabricates a
+// session.
+async function _godotVerifyApiKeyPair(apiKey) {
+  try {
+    for (const keyData of AuthDB.getAllApiKeys()) {
+      if (keyData.keyHash && verifyApiKey(apiKey, keyData.keyHash)) {
+        return { userId: keyData.userId };
+      }
+    }
+  } catch { /* survive — an honest invalid_api_key beats a thrown auth path */ }
+  return null;
+}
+
+// Godot Integration Phase 2 — mount the raw-WebSocket gateway for the native
+// Godot 4 world client (docs/GODOT_INTEGRATION.md). This is the TDZ-safe spot:
+// `server` (the actual http.Server) only exists once SHOULD_LISTEN created it
+// above, and `LENS_ACTIONS`/`app` were both long-since declared (~27554 /
+// ~36537). Gated on `server` being truthy — a CONCORD_NO_LISTEN=true or
+// NODE_ENV=test boot has no http.Server to attach an `upgrade` listener to,
+// so it stays unmounted there (honest: no listener means no gateway, never a
+// fabricated one). The gateway's `noServer` WSS only claims `/godot-ws`
+// upgrades (see its own `onUpgrade` path filter), so it coexists with
+// socket.io's engine.io upgrade handling attached above by `tryInitWebSockets`.
+if (server) {
+  try {
+    const godotGatewayHandle = mountGodotGateway(server, {
+      verifyToken,
+      getUser: AuthDB.getUser,
+      exportScene,
+      db: STATE?.db || db,
+      onClientMessage: _onGodotClientMessage,
+      verifyApiKeyPair: _godotVerifyApiKeyPair,
+    });
+    _godotGatewayEmitter = createGatewayEmitter(godotGatewayHandle);
+    globalThis._concordGodotGateway = godotGatewayHandle;
+    structuredLog("info", "godot_gateway_mounted", { path: "/godot-ws" });
+  } catch (e) {
+    structuredLog("warn", "godot_gateway_mount_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
+  }
 }
 
 // ── Optional extension modules (CDN, feeds, security, DTU system, etc.) ──
@@ -78223,6 +80217,54 @@ structuredLog("info", "phase7_self_improving_init", {
 import registerSandwichMacros from "./domains/sandwich.js";
 registerSandwichMacros(register, { runMacro: runMcpTool, db: STATE?.db || globalThis._concordDB });
 
+// V1.2 Wave A (Society & Presence) — shared DTU spaces. Discovery metadata
+// (create-room / list-in-district / list-mine) over MU2's real
+// 'workspace:room' Yjs CRDT room (server/lib/yjs-realtime.js +
+// concord-frontend/components/workspace/SharedWorkspaceRoom.tsx). See
+// server/lib/workspace-rooms.js and server/migrations/377_workspace_rooms.js.
+import registerWorkspaceRoomMacros from "./domains/workspace-rooms.js";
+registerWorkspaceRoomMacros(register);
+
+// V1.2 Wave B (Deep ConKay Agency) — the "project" linking layer (mig 378).
+// Ties a durable goal tree (decomp.*), its marathon session(s)
+// (agent_marathon.*), and a relevance-scoped conversation-memory pull into
+// one addressable, resumable unit. Domain named "agent_projects" (not
+// "projects" — that domain already belongs to the unrelated Linear/Asana-
+// style task tracker in server/domains/projects.js). See
+// server/lib/project-thread.js and server/migrations/378_projects.js.
+import registerAgentProjectMacros from "./domains/agent-projects.js";
+registerAgentProjectMacros(register);
+
+// V1.2 Wave D (Worlds & Simulation Depth) — read-only simulation-
+// observability aggregation. No new tables, no mutation: composes
+// world-health.js's PURE pathology detection, Layer-11 faction strategy
+// state/relations, kingdoms.js realm legitimacy/treasury, scene-export.js's
+// district building-density computation, and city-presence.js's live
+// per-world presence count into one per-world snapshot. Backend for a
+// future "observatory" frontend view (a separate, dependent unit). See
+// server/domains/world-overview.js for the full field-provenance writeup.
+import registerWorldOverviewMacros from "./domains/world-overview.js";
+registerWorldOverviewMacros(register);
+
+// V1.2 Wave E grounding audit — cross-domain reproducible notebooks. Several
+// real per-domain "lab notebook" logs already exist and stay siloed
+// (server/domains/chem.js notebook-add/list/delete, server/domains/bio.js
+// notebook-create/list/…, server/domains/science.js notebook-add/…,
+// server/domains/lab.js notebook-create/… durable-SQL variant) — none of
+// them reimplemented here. This domain composes ANY register()-based macro
+// call from ANY domain into a durable, ordered "cell" record (real
+// domain/action/input/output, executed via `ctx.macro.run` — the same
+// internal macro-invocation mechanism the rest of this codebase already
+// uses), with genuine replay-based reproducibility (re-invokes the SAME
+// call, honestly reports matched/differed — never a fabricated "reproduced"
+// claim) and real DTU lineage (an output_dtu_id captured only when the
+// underlying macro genuinely produced one; an optional, caller-declared
+// citation registration through the same royalty-cascade `registerCitation`
+// the rest of the platform uses). See server/lib/notebook.js and
+// server/migrations/384_cross_domain_notebooks.js.
+import registerNotebookMacros from "./domains/notebook.js";
+registerNotebookMacros(register);
+
 // ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
 register("federation", "inbox_receive", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -78473,12 +80515,15 @@ register("dream", "publish", async (ctx, input = {}) => {
       WHERE id = ?
     `).run(row.dream_dtu_id);
 
-    // Mint marketplace listing via existing forge-marketplace path
+    // Mint marketplace listing via existing forge-marketplace path.
+    // `listForgeAppOnMarketplace(ctx, opts)` — fixed 2026-07 to list through
+    // the real `marketplace.list` macro; `price` is in CC units (not cents),
+    // and the seller resolves from `ctx.actor.userId` (this handler's own
+    // `userId`), so no separate `userId`/`sellerId` opt is read anymore.
     const fm = await import("./lib/forge-marketplace.js");
-    const r = await fm.listForgeAppOnMarketplace(db, {
-      userId,
+    const r = await fm.listForgeAppOnMarketplace(ctx, {
       dtuId: row.dream_dtu_id,
-      priceCc: Number(priceCc),
+      price: Number(priceCc),
       title: `Dream from ${new Date().toLocaleDateString()}`,
       description: "A grounded prose record of one night's substrate state.",
     });
@@ -78654,7 +80699,20 @@ register("spectator", "subscribe", async (ctx, input = {}) => {
   const userId = ctx?.actor?.userId || null;
   try {
     const lib = await import("./lib/spectator.js");
-    return lib.startSession(db, worldId, userId);
+    const started = lib.startSession(db, worldId, userId);
+    // A new spectator changes the world's spectator COUNT, which SpectatorOverlay
+    // renders for everyone watching that world. Without this push the count only
+    // moved on its 15s backstop poll. World-scoped: the count is world state, not
+    // the joiner's. (The overlay re-runs spectator.list_for_world on the event and
+    // never reads this payload.) Departures are the 10-min idle sweep in
+    // sweepStaleSessions — that path has no io handle, so a leave still settles on
+    // the backstop; stated rather than papered over.
+    if (started?.ok) {
+      try {
+        realtimeEmit("spectator:count-updated", { worldId }, { worldId });
+      } catch { /* push is best-effort */ }
+    }
+    return started;
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Open a read-only spectator session on a world. Returns session token + WS hint." });
 
@@ -78723,8 +80781,11 @@ register("replay", "recording_for_world", async (_ctx, input = {}) => {
 }, { note: "World build-replay recording assembled from event_timeline_log." });
 
 // Spontaneous gatherings: clusters of nearby currently-present players in a
-// world (>= 2 in a 50m cell). Backs the EventsGatherings panel's gatherings
-// section. Honest-empty when nobody's clustered.
+// world (>= 2 in a 50m cell). Backs the WorldEventBoard panel's Gatherings
+// section (and the legacy EventsGatherings panel) plus WorldEventBeacons'
+// in-world markers. Each gathering carries a real x/y/z centroid derived
+// from the clustered players' own live positions (never fabricated), so a
+// client can navigate a player there. Honest-empty when nobody's clustered.
 register("world", "gatherings", async (_ctx, input = {}) => {
   const { worldId } = input || {};
   if (!worldId) return { ok: false, reason: "missing_worldId" };
@@ -78745,13 +80806,13 @@ register("firm", "chat", async (ctx, _input = {}) => {
   if (!userId) return { ok: false, reason: "unauthenticated" };
   try {
     const orgLib = await import("./lib/world-organizations.js");
-    const orgs = orgLib.getOrgsForUser(userId);
+    const orgs = orgLib.getOrgsForUser(db, userId);
     if (!orgs.length) return { ok: true, firm: null };
     const orgId = orgs[0].orgId;
-    const org = orgLib.getOrganization(orgId);
+    const org = orgLib.getOrganization(db, orgId);
     const cp = await import("./lib/city-presence.js");
     const ocLib = await import("./lib/org-chat.js");
-    const rawMembers = orgLib.getOrgMembers(orgId);
+    const rawMembers = orgLib.getOrgMembers(db, orgId);
     const messages = ocLib.listOrgChat(db, orgId, { limit: 30 });
     // Resolve display names for the roster + message authors in one lookup, so
     // the panel shows "Marcus the Healer", not a raw user id.
@@ -78771,7 +80832,7 @@ register("firm", "post", async (ctx, input = {}) => {
   if (!userId) return { ok: false, reason: "unauthenticated" };
   try {
     const orgLib = await import("./lib/world-organizations.js");
-    const orgs = orgLib.getOrgsForUser(userId);
+    const orgs = orgLib.getOrgsForUser(db, userId);
     if (!orgs.length) return { ok: false, error: "not_in_org" };
     const orgId = orgs[0].orgId;
     const ocLib = await import("./lib/org-chat.js");
@@ -78779,7 +80840,7 @@ register("firm", "post", async (ctx, input = {}) => {
       orgId,
       userId,
       body: input?.body,
-      isMember: (u) => orgLib.getOrgMembers(orgId).some((m) => m.userId === u),
+      isMember: (u) => orgLib.getOrgMembers(db, orgId).some((m) => m.userId === u),
     });
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Post a message to the caller's firm/org chat." });
@@ -79797,6 +81858,7 @@ export const __TEST__ = Object.freeze({
   ensureQueues,
   enqueueNotification,
   realtimeEmit,
+  emitToWorld,
   inLatticeReality,
   overlap_verifier,
   _defaultOrganState,
@@ -79820,6 +81882,13 @@ export const __TEST__ = Object.freeze({
   ROYALTY_RATES,
   CREATIVE_REGISTRY,
   computeRoyaltyCascade,
+  // SQL-shadow DTU hydration test surface (marketplace.list /
+  // purchaseWithRoyalties raw-INSERT-victim fix). `db` is exposed so a test
+  // can seed a raw `INSERT INTO dtus` row exactly like
+  // gamedesign.js#building-publish / forge-marketplace.js#mintForgeAppAsDtu
+  // do, then prove `resolveMarketplaceDtu` finds and hydrates it.
+  db,
+  resolveMarketplaceDtu,
   verifyCitationIntegrity,
   registerInCreativeRegistry,
   entityExploreCreativeGlobal,
@@ -79839,6 +81908,26 @@ export const __TEST__ = Object.freeze({
   // doc comments above. Call from a test file's after() hook.
   terminateAllWorkersForTest: __terminateAllWorkersForTest,
   clearActiveTimersForTest: __clearActiveTimersForTest,
+  // Godot gateway apiKey-auth integration test surface (2026-07-23). Mints a
+  // real `api_keys` row via the same AuthDB.createApiKey the (owner/admin-
+  // gated) POST /api-keys route uses, so an integration test can exercise the
+  // gateway's apiKey auth path without needing to first grant a fresh test
+  // user owner/admin role — that authz gate is a separate, correct, already-
+  // tested concern (routes/auth.js) this test isn't about.
+  mintApiKeyForTest: (userId) => {
+    const rawKey = generateApiKey();
+    AuthDB.createApiKey({
+      id: uid("apikey"),
+      userId,
+      name: "godot-gateway-test-key",
+      keyHash: hashApiKey(rawKey),
+      keyPrefix: rawKey.slice(0, 8),
+      scopes: ["read"],
+      createdAt: new Date().toISOString(),
+      lastUsedAt: null,
+    });
+    return rawKey;
+  },
   // Goal-heartbeat real-signal test surface (2026-07-16 — closing
   // docs/WAVE4_INVENTORY.md "goals" row). processGoalHeartbeat has no HTTP
   // route or macro of its own (it's called inline from governorTick every

@@ -45,6 +45,47 @@ const FLAG_COLOUR: Record<string, string> = {
 
 const KNOWN_TESTS = ['glucose','a1c','sodium','potassium','creatinine','bun','hemoglobin','hematocrit','wbc','platelets','ast','alt','tsh','ldl','hdl','troponin_i'];
 
+// Which vitals column each server-computed flag (`vitals-record` in
+// server/domains/healthcare.js) actually describes. Flags used to render
+// only as a separate pill list off to the side — a clinician scanning the
+// BP/HR/Temp/SpO2 columns themselves saw plain white text even for a
+// critical reading, the exact information they're scanning the table for.
+// Epic's real flowsheet colors the abnormal value in place; this maps each
+// flag onto the column + severity it belongs to so the cell itself matches.
+const VITAL_FLAG_COLUMN: Record<string, { column: 'bp' | 'hr' | 'temp' | 'spo2'; severity: 'critical' | 'high' }> = {
+  bp_critical: { column: 'bp', severity: 'critical' },
+  bp_high: { column: 'bp', severity: 'high' },
+  hr_critical: { column: 'hr', severity: 'critical' },
+  hypoxia: { column: 'spo2', severity: 'critical' },
+  temp_critical: { column: 'temp', severity: 'critical' },
+  fever: { column: 'temp', severity: 'high' },
+};
+
+function vitalCellSeverity(flags: string[] | undefined, column: 'bp' | 'hr' | 'temp' | 'spo2'): 'critical' | 'high' | null {
+  let sev: 'critical' | 'high' | null = null;
+  for (const f of flags || []) {
+    const m = VITAL_FLAG_COLUMN[f];
+    if (!m || m.column !== column) continue;
+    if (m.severity === 'critical') return 'critical';
+    sev = 'high';
+  }
+  return sev;
+}
+
+const VITAL_CELL_CLASS: Record<'critical' | 'high', string> = {
+  critical: 'text-rose-300 font-bold',
+  high: 'text-amber-300 font-semibold',
+};
+
+/** Simple up/down trend vs. the immediately preceding reading (Epic
+ * flowsheet idiom) — only rendered when a real prior numeric value exists
+ * to compare against, never a fabricated baseline. */
+function trendArrow(current: number | null, previous: number | null | undefined): '↑' | '↓' | null {
+  if (current === null || previous === null || previous === undefined) return null;
+  if (current === previous) return null;
+  return current > previous ? '↑' : '↓';
+}
+
 export function PatientChartPanel({ patientId }: { patientId: string }) {
   const [data, setData] = useState<ChartDetail | null>(null);
   const [tab, setTab] = useState<'problems' | 'allergies' | 'meds' | 'vitals' | 'labs' | 'immunizations' | 'encounters' | 'photos'>('problems');
@@ -468,24 +509,39 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                     <tr><th scope="col" className="text-left py-1.5">Time</th><th scope="col">BP</th><th scope="col">HR</th><th scope="col">Temp</th><th scope="col">SpO2</th><th scope="col">BMI</th><th scope="col">Pain</th><th scope="col" className="text-right">Flags</th></tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {data.vitals.slice(0, 12).map(v => (
-                      <tr key={v.id} className="hover:bg-white/[0.03]">
-                        <td className="py-1.5 text-[10px] text-gray-400 font-mono">{v.recordedAt.slice(0, 16).replace('T', ' ')}</td>
-                        <td className="font-mono text-white">{v.systolic !== null ? `${v.systolic}/${v.diastolic}` : '—'}</td>
-                        <td className="font-mono text-white">{v.heartRate ?? '—'}</td>
-                        <td className="font-mono text-white">{v.tempF ?? '—'}</td>
-                        <td className="font-mono text-white">{v.spo2 ?? '—'}{v.spo2 ? '%' : ''}</td>
-                        <td className="font-mono text-white">{v.bmi ?? '—'}</td>
-                        <td className="font-mono text-white">{v.heartRate !== null ? '' : ''}{(v as Vital & { painScore?: number }).painScore ?? '—'}</td>
-                        <td className="text-right">
-                          {v.flags?.length > 0 && (
-                            <div className="flex justify-end gap-1 flex-wrap">
-                              {v.flags.map(f => <span key={f} className="text-[9px] px-1 rounded bg-rose-500/20 text-rose-300 font-mono">{f}</span>)}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {data.vitals.slice(0, 12).map((v, i) => {
+                      const prev = data.vitals[i + 1];
+                      const bpSev = vitalCellSeverity(v.flags, 'bp');
+                      const hrSev = vitalCellSeverity(v.flags, 'hr');
+                      const tempSev = vitalCellSeverity(v.flags, 'temp');
+                      const spo2Sev = vitalCellSeverity(v.flags, 'spo2');
+                      const sysTrend = trendArrow(v.systolic, prev?.systolic);
+                      const hrTrend = trendArrow(v.heartRate, prev?.heartRate);
+                      return (
+                        <tr key={v.id} className="hover:bg-white/[0.03]">
+                          <td className="py-1.5 text-[10px] text-gray-400 font-mono">{v.recordedAt.slice(0, 16).replace('T', ' ')}</td>
+                          <td className={cn('font-mono', bpSev ? VITAL_CELL_CLASS[bpSev] : 'text-white')}>
+                            {v.systolic !== null ? `${v.systolic}/${v.diastolic}` : '—'}
+                            {sysTrend && <span className="ml-0.5 text-gray-500" title={sysTrend === '↑' ? 'higher than prior reading' : 'lower than prior reading'}>{sysTrend}</span>}
+                          </td>
+                          <td className={cn('font-mono', hrSev ? VITAL_CELL_CLASS[hrSev] : 'text-white')}>
+                            {v.heartRate ?? '—'}
+                            {hrTrend && <span className="ml-0.5 text-gray-500" title={hrTrend === '↑' ? 'higher than prior reading' : 'lower than prior reading'}>{hrTrend}</span>}
+                          </td>
+                          <td className={cn('font-mono', tempSev ? VITAL_CELL_CLASS[tempSev] : 'text-white')}>{v.tempF ?? '—'}</td>
+                          <td className={cn('font-mono', spo2Sev ? VITAL_CELL_CLASS[spo2Sev] : 'text-white')}>{v.spo2 ?? '—'}{v.spo2 ? '%' : ''}</td>
+                          <td className="font-mono text-white">{v.bmi ?? '—'}</td>
+                          <td className="font-mono text-white">{(v as Vital & { painScore?: number }).painScore ?? '—'}</td>
+                          <td className="text-right">
+                            {v.flags?.length > 0 && (
+                              <div className="flex justify-end gap-1 flex-wrap">
+                                {v.flags.map(f => <span key={f} className="text-[9px] px-1 rounded bg-rose-500/20 text-rose-300 font-mono">{f}</span>)}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

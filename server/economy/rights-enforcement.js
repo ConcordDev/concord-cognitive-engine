@@ -379,9 +379,28 @@ export function checkDerivativeRights(db, { userId, parentDtuId, parentContentTy
 // ── Marketplace listing rights check ──────────────────────────────────────
 /**
  * Check if a DTU can be listed on marketplace.
- * Validates: license compliance, derivative rights, content moderation.
+ *
+ * ⚠️ THIS ONLY CHECKS DERIVATIVE RIGHTS ON THE PARENT. It does NOT check
+ * license compliance or content moderation, and it never inspects `dtuId` —
+ * the artifact actually being listed. With no `parentDtuId` it returns
+ * `{ allowed: true }` unconditionally.
+ *
+ * The docstring here used to claim "Validates: license compliance, derivative
+ * rights, content moderation" — two-thirds of which was never implemented.
+ * Corrected 2026-07-25 after the unused-destructured-param detector flagged
+ * `dtuId` as accepted-and-ignored, which is what exposed the overclaim: a
+ * function whose signature takes the subject of the check and never looks at
+ * it cannot be doing most of what it advertises.
+ *
+ * `dtuId` is retained rather than deleted on purpose — dropping it would erase
+ * the evidence that the DTU-level checks are missing. Currently latent, NOT
+ * live: this is only re-exported from economy/index.js with no route or macro
+ * caller, so nothing ships an unchecked listing today. Anyone wiring it to a
+ * real listing path must implement the license + moderation checks first, or
+ * relabel the function to match what it actually does (e.g.
+ * `checkDerivativeListingRights`) so callers aren't misled by the name.
  */
-export function checkListingRights(db, { dtuId, sellerId, contentType, parentDtuId }) {
+export function checkListingRights(db, { dtuId, sellerId, contentType, parentDtuId }) { // @unused-param-ok — retained deliberately as the only in-code evidence the check is missing
   // If this is a derivative, check remix rights on parent
   if (parentDtuId) {
     const derivCheck = checkDerivativeRights(db, {

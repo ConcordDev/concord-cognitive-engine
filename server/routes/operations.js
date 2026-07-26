@@ -16,7 +16,6 @@ export default function registerOperationRoutes(app, {
   _withAck,
   ensureOrganRegistry,
   ensureQueues,
-  dtusArray,
   userVisibleDTUs,
   uid,
   sha256Hex,

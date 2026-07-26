@@ -14,6 +14,7 @@
 import { useMemo } from 'react';
 import { BarChart3, Database, Globe, Wrench, Network, Cpu, ShieldCheck, AlertTriangle, BadgeCheck, XOctagon } from 'lucide-react';
 import { ChartKit } from '@/components/viz/ChartKit';
+import { CapabilityBadge, type CapabilityVerdict } from '@/components/common/CapabilityBadge';
 
 export interface ConKayReplyFields {
   content: string;
@@ -42,6 +43,19 @@ export interface ConKayReplyFields {
   verifyMode?: string;
   /** The council/proof confidence [0..1] reason.verify reported, or null. */
   verifyConfidence?: number | null;
+  /**
+   * Grounded-research mode (V1.1 R3) — the REAL `reason.evaluate_answer`
+   * verdict for this reply's OWN answer text (RAGAS-shaped faithfulness /
+   * answer-relevancy / context-precision against the retrieved DTU context),
+   * adapted client-side to the exact `CapabilityVerdict` shape
+   * `components/common/CapabilityBadge.tsx` expects. Distinct from
+   * `verifyVerdict` above: that axis checks the reply's CITATIONS resolve;
+   * this one checks whether the reply's own claims are actually entailed by
+   * what was retrieved. Set only on a genuine, successful macro return —
+   * left undefined on any failure/timeout so `CapabilityBadge` renders its
+   * own honest "Unverified" tier, never a fabricated "grounded".
+   */
+  capabilityVerdict?: CapabilityVerdict;
 }
 
 // Map a raw backend source/model id to a friendly brain label. Returns null for
@@ -372,6 +386,24 @@ export function ConKayMessage({
       <ToolCalls toolCalls={fields.toolCalls} />
       <div className="mt-2 flex items-center gap-3">
         <TrustBadge fields={fields} />
+        {/*
+          Grounded-research mode (V1.1 R3) — dual-render, not a swap. TrustBadge
+          (verifyVerdict-driven) keeps its richer citation-only vocabulary
+          (Proven/Refuted/Citations resolve/Unsupported/pending-shimmer) exactly
+          as every existing caller already relies on; CapabilityBadge appears
+          ADDITIONALLY whenever a real reason.evaluate_answer verdict for this
+          reply's own answer text has come back (see ConKayOverlay.tsx's
+          verifyMessage). A swap was considered and rejected: CapabilityBadge's
+          4 generic tiers collapse distinctions TrustBadge preserves (e.g.
+          "Refuted" vs "Unverified — citation not found" both fold into a bare
+          "Flagged"), so replacing TrustBadge would be a real information loss,
+          not a clean substitution — the same conclusion CapabilityBadge's own
+          header comment already reached about ConKay's badge. Absent
+          verdict → absent badge, never a placeholder.
+        */}
+        {fields.capabilityVerdict && (
+          <CapabilityBadge verdict={fields.capabilityVerdict} size="sm" />
+        )}
         {brain && (
           <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
             <Cpu className="h-3 w-3" /> via {brain}

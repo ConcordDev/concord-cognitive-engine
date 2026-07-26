@@ -13,7 +13,7 @@
 // (NO_PROGRESS_LIMIT consecutive ticks with no newly-passed unit).
 
 import { existsSync, unlinkSync, readFileSync } from "node:fs";
-import { REPO, run, loadBacklog, saveBacklog, journal, stopRequested, STEER_PATH, ok, bad, warn, C } from "./lib.mjs";
+import { REPO, runArgv, loadBacklog, saveBacklog, journal, stopRequested, STEER_PATH, ok, bad, warn, C } from "./lib.mjs";
 
 const argv = process.argv.slice(2);
 const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? (argv[i + 1] ?? true) : null; };
@@ -54,7 +54,7 @@ if (existsSync(STEER_PATH)) {
   journal("STEER surfaced + cleared");
 }
 
-const next = JSON.parse(run("node scripts/autoloop/next.mjs --json", { allowFail: true }).out || "null");
+const next = JSON.parse(runArgv("node", ["scripts/autoloop/next.mjs", "--json"], { allowFail: true }).out || "null");
 if (!next || !next.id) {
   // no-progress / completion accounting
   const b = loadBacklog();

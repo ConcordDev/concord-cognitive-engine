@@ -24,7 +24,7 @@ function uid() {
   return crypto.randomUUID();
 }
 
-export default function createAgentsRouter({ db, requireAuth, STATE }) {
+export default function createAgentsRouter({ db, requireAuth }) {
   const router = Router();
 
   // ── Schema bootstrap ────────────────────────────────────────────────────────

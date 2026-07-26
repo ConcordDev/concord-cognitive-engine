@@ -28,9 +28,25 @@ import { brainChat, provenanceFrom } from "./byo-router.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
 import { recordInferenceSpan } from "./inference-metering.js";
 import { scanForInjection } from "./provenance-guard.js";
+import { resolveDualRegistry } from "./dual-registry-resolve.js";
+import { createInitiativeEngine } from "./initiative-engine.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
+
+// Grounding-audit gap fix (2026-07-24) — tool-preference tally. One
+// initiative-engine instance per db handle (WeakMap keyed on the db object
+// itself, same shape as prompt-registry.js's _styleEngineByDb) so recording
+// a tool call doesn't re-prepare ~20 SQL statements on every dispatch.
+const _styleEngineByDb = new WeakMap();
+function _getStyleEngine(db) {
+  let engine = _styleEngineByDb.get(db);
+  if (!engine) {
+    engine = createInitiativeEngine(db);
+    _styleEngineByDb.set(db, engine);
+  }
+  return engine;
+}
 
 const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, include a marker in your response EXACTLY like this (one per line, multiple allowed):
 [TOOL_CALL: {"tool": "tool_name", "params": {...}}]
@@ -46,6 +62,7 @@ Available tools:
 - mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
 - mcp_list: List all tools available across connected external MCP servers. Params: {}
 - browser_act: Take actions on a web page — click, fill forms, select dropdowns, screenshot. Use when read-only browse_url isn't enough (need to log in, submit forms, navigate UI). Params: {"url": "https://...", "actions": [{"kind": "fill", "selector": "input[name='q']", "value": "..."}, {"kind": "click", "selector": "button[type='submit']"}, {"kind": "screenshot"}]}
+- run_authored_tool: Invoke one of YOUR OWN previously human-approved authored tools (a saved, named DSL program or sandboxed code a human proposed and approved for autonomous use). Params: {"toolId": "...", "input": {...}}
 
 Rules:
 - Use a tool when the task genuinely requires it. Don't fabricate results.
@@ -153,25 +170,32 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       case "run_lens_action": {
         const domain = String(call.params.domain || "");
         const action = String(call.params.action || "");
-        const key = `${domain}.${action}`;
-        if (!lensActions || !lensActions.get) {
-          // Map not injected; surface a hint rather than throw.
+        const actionInput = call.params.params || {};
+        // Resolve against BOTH registries — LENS_ACTIONS first, then MACROS
+        // (runMacro) — the same precedence server.js's runMcpTool already
+        // uses for the MCP server / /api/lens/run. Before this fix, this
+        // tool checked ONLY lensActions, so any macro registered via plain
+        // register() (e.g. a loaded plugin's macro) was unreachable through
+        // ConKay's own tool-calling loop even though the identical
+        // (domain, action) pair worked through runMcpTool. See
+        // dual-registry-resolve.js for the shared resolution logic.
+        const resolved = resolveDualRegistry(domain, action, { lensActions, runMacro });
+        if (resolved.via === "none") {
+          // Neither registry usable at all (nothing injected); surface a
+          // hint rather than throw.
           return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
         }
-        const handler = lensActions.get(key);
-        if (!handler) {
-          return { tool: call.tool, ok: false, error: `unknown lens action: ${key}` };
-        }
         try {
-          const actionInput = call.params.params || {};
-          const result = await handler(ctx, null, actionInput);
+          const result = resolved.via === "lens_action"
+            ? await resolved.handler(ctx, null, actionInput)
+            : await runMacro(domain, action, actionInput, ctx);
           // Carry the input alongside domain/action so a caller can run the
           // result through the frontend's detectArtifact registry (some
           // kinds, e.g. FEA, reshape input+output together — see
           // lib/conkay/artifact-kinds.ts) — the honest artifact->interactive-3D
           // pipeline needs this for agent-triggered lens actions the same way
           // it already works for directly-run macros.
-          return { tool: call.tool, ok: true, key, domain, action, input: actionInput, result };
+          return { tool: call.tool, ok: true, key: resolved.key, domain, action, input: actionInput, result };
         } catch (err) {
           return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
         }
@@ -185,11 +209,21 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           source: "agent_tool",
         }, ctx);
         if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "create_dtu failed" };
+        // R8/CL3 gap fix: echo the real summary this DTU was just minted
+        // with as `artifact.content` — ConKayOverlay.tsx's liveDtuRefs
+        // threads this into reason.evaluate_answer's retrievedDtus so a
+        // freshly agent-created DTU carries real grounding text, not just an
+        // id/title the faithfulness scorer can't match anything against.
+        // Key is omitted entirely (not set to an empty/undefined value) when
+        // the caller supplied no summary — an absent field, not a fabricated one.
+        const _summary = String(call.params.summary || "");
+        const artifact = { kind: "dtu", id: r.id || r.dtu?.id, title: call.params.title };
+        if (_summary) artifact.content = _summary;
         return {
           tool: call.tool, ok: true,
           dtuId: r.id || r.dtu?.id,
           title: call.params.title,
-          artifact: { kind: "dtu", id: r.id || r.dtu?.id, title: call.params.title },
+          artifact,
         };
       }
       case "expert_mode": {
@@ -289,6 +323,28 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, error: `browser_act failed: ${err?.message || err}` };
         }
       }
+      case "run_authored_tool": {
+        // Dedicated tool type, dedicated dispatcher — deliberately NOT
+        // routed through the run_lens_action case above (see
+        // docs/CONKAY_TOOL_AUTHORING_SPEC.md's "Corrections to the task's
+        // framing": riding on run_lens_action would inherit whatever that
+        // registry's reachability semantics are; invokeAuthoredTool needs
+        // its own confined-ctx dispatch — a fixed, tool-owned manifest,
+        // never a caller-supplied one — regardless of how run_lens_action
+        // resolves its registries).
+        const { toolId, input } = call.params || {};
+        if (!toolId) return { tool: call.tool, ok: false, error: "run_authored_tool requires toolId" };
+        try {
+          const { invokeAuthoredTool } = await import("./conkay-tool-invoke.js");
+          const r = await invokeAuthoredTool(ctx.db, String(toolId), input || {}, {
+            runMacro, llm: ctx.llm, callerId: ctx.actor?.userId,
+          });
+          if (!r?.ok) return { tool: call.tool, ok: false, error: r?.reason || r?.error || "run_authored_tool failed" };
+          return { tool: call.tool, ok: true, toolId: String(toolId), kind: r.kind, result: r.result };
+        } catch (err) {
+          return { tool: call.tool, ok: false, error: `run_authored_tool error: ${err?.message || err}` };
+        }
+      }
       default:
         return { tool: call.tool, ok: false, error: `unknown tool: ${call.tool}` };
     }
@@ -322,6 +378,7 @@ export function formatToolResults(results) {
     if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
     if (r.tool === "mcp_call")     return _screenUntrusted(`mcp_call ${r.serverId}/${r.toolName}`, "mcp_external", (typeof r.result === "string" ? r.result : JSON.stringify(r.result)), (t) => `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${t.slice(0, 4000)}`);
     if (r.tool === "browser_act")  return _screenUntrusted(`browser_act ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browser_act ${r.url}] ${r.actionsExecuted} actions executed. finalUrl=${r.finalUrl || r.url}\n${t.slice(0, 4000)}`);
+    if (r.tool === "run_authored_tool") return `[TOOL_RESULT: run_authored_tool ${r.toolId}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 2000)}`;
   }).join("\n\n");
 }
@@ -388,8 +445,15 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     } catch { /* action memory optional */ }
   }
 
+  // Opt-in seam (marathon-plan-context.js via agent-marathon.js#tickMarathon)
+  // for grounding the system prompt against a linked goal tree's REAL
+  // current state. Absent (the ordinary chat_agent.do path never sets it),
+  // this is "" — byte-identical to the pre-existing prompt composition, so
+  // nothing here changes behavior for any caller that doesn't opt in.
+  const extraSystemBlock = typeof opts.extraSystemBlock === "string" ? opts.extraSystemBlock : "";
+
   const messages = [
-    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + actionRecallBlock }) },
+    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + actionRecallBlock + extraSystemBlock }) },
     ...history,
     { role: "user", content: message },
   ];
@@ -447,7 +511,55 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     const ctx = { db, actor: { userId } };
     const results = [];
     for (const call of calls.slice(0, 5)) {
+      // Opt-in governance hook (never set by ordinary chat_agent.do calls —
+      // only agent-marathon.js's tickMarathon supplies one, via
+      // createToolGate). Checked immediately before EVERY real tool
+      // dispatch, so a caller-supplied gate can enforce a domain allowlist
+      // / spend budget / revocation flag mid-loop, not just between turns.
+      // A thrown gate fails OPEN (never blocks on a broken governance hook)
+      // — see agent-marathon.js#createToolGate for why that's still safe.
+      let gate = null;
+      if (typeof opts.toolGate === "function") {
+        try { gate = await opts.toolGate(call); } catch { gate = null; }
+        if (gate && gate.ok === false) {
+          const refusal = { tool: call.tool, ok: false, error: gate.reason || "tool_call_blocked" };
+          results.push(refusal);
+          allToolCalls.push(refusal);
+          emit("tool_call", refusal);
+          if (gate.halt) {
+            // Stop the WHOLE tick right now (revoked / budget exhausted) —
+            // persist what we have so the caller sees the real partial
+            // state, never a silently-continued loop.
+            messages.push({ role: "assistant", content: r.text });
+            messages.push({ role: "user", content: formatToolResults(results) });
+            return {
+              ok: true,
+              answer: visibleAnswer,
+              toolCalls: allToolCalls,
+              artifacts: allArtifacts,
+              turns: turnsTaken,
+              provider: lastProvider,
+              model: lastModel,
+              halted: true,
+              haltReason: gate.reason || "halted",
+              ...provenanceFrom({ provider: lastProvider, model: lastModel }),
+            };
+          }
+          continue; // refused just this call — brain sees the error, loop continues
+        }
+      }
       const result = await executeToolCall(ctx, runMacro, lensActions, call);
+      // ConKay-E — tool-call fingerprint log (crash-forensics primitive;
+      // see agent-marathon.js#createToolGate + marathon-tick-durability.js).
+      // `gate.recordOutcome` only exists when opts.toolGate is a marathon's
+      // createToolGate AND it already wrote a 'dispatched' row for this
+      // exact call above — ordinary chat_agent.do calls never supply
+      // opts.toolGate at all, so `gate` is null there and this is a no-op.
+      // Disjoint from the toolGate governance check above (that decides
+      // whether to run the call at all; this just records that it did).
+      if (gate && typeof gate.recordOutcome === "function") {
+        try { gate.recordOutcome(result); } catch { /* best-effort forensics only */ }
+      }
       results.push(result);
       allToolCalls.push(result);
       // Real-time — fired the instant THIS tool call actually finishes, not
@@ -456,6 +568,20 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       // fake-replay with setTimeout" into genuine incremental disclosure.
       emit("tool_call", result);
       if (result.artifact) allArtifacts.push(result.artifact);
+      // Grounding-audit gap fix (2026-07-24) — tool-preference tally. Every
+      // REAL tool-call dispatch (this is the one exact site — one increment
+      // per call, regardless of ok/error, since even a failed web_search
+      // still reflects which tool the user/brain reached for) increments a
+      // per-user, per-tool counter (initiative-engine.js#recordToolUsage).
+      // prompt-registry.js#composeSystemPrompt reads it back to surface a
+      // "tends to prefer X" line once a clear majority emerges — see its
+      // MIN_TOOL_SAMPLE/DOMINANT_TOOL_SHARE thresholds. Synchronous (a
+      // single indexed upsert) but still guarded — a tally failure must
+      // never break the agent loop, same as every other optional signal
+      // here.
+      if (db && userId) {
+        try { _getStyleEngine(db).recordToolUsage(userId, call.tool); } catch { /* tool-preference tally optional */ }
+      }
       // Item 2 — record into long-term memory (fire-and-forget; never blocks).
       if (db && userId) {
         import("./agent-action-log.js").then(({ recordAction }) => recordAction(db, {

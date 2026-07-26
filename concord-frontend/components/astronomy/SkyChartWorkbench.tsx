@@ -161,7 +161,7 @@ export function SkyChartWorkbench() {
         setGeoBusy(false);
       },
       (err) => { setGeoError(`Location denied: ${err.message}`); setGeoBusy(false); },
-      { enableHighAccuracy: false, timeout: 10000 },
+      { enableHighAccuracy: false, timeout: 10000 }, // @env-config-ok: PositionOptions.timeout — a W3C Geolocation API argument (how long to wait for a GPS fix before the error callback fires), not deployment config; there is no second value a deployment could hold.
     );
   }, [commitObserver]);
 

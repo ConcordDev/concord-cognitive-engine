@@ -43,6 +43,11 @@ export default function CurtainDossier({ worldId }: { worldId?: string }) {
         setOpen((v) => !v);
       }
     };
+    // Real dispatcher: CommandPalette.tsx's HUD_DISPATCH_EVENTS table maps
+    // 'hud:curtain' -> 'concordia:open-curtain' via `new Event(HUD_DISPATCH_EVENTS[lens.id])`
+    // — a keyed-object + dynamic-Event indirection the detector doesn't model.
+    // Confirmed live by tests/components/CommandPalette.test.tsx (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('concordia:open-curtain', onOpen);
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('concordia:open-curtain', onOpen); window.removeEventListener('keydown', onKey); };

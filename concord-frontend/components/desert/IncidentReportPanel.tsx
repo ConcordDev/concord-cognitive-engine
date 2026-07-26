@@ -343,8 +343,18 @@ export function IncidentReportPanel() {
               <div
                 key={i.id}
                 data-testid={`incident-row-${i.id}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={selectedId === i.id}
+                aria-label={`Select incident: ${i.description}`}
                 onClick={() => setSelectedId(i.id)}
-                className={`cursor-pointer rounded bg-zinc-900 border px-3 py-2 ${selectedId === i.id ? 'border-amber-500/50' : 'border-zinc-800'}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedId(i.id);
+                  }
+                }}
+                className={`cursor-pointer rounded bg-zinc-900 border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${selectedId === i.id ? 'border-amber-500/50' : 'border-zinc-800'}`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm text-white font-medium truncate">{i.description}</p>

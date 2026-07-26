@@ -409,8 +409,7 @@ Mounted at `/api/emergent-skills/*` to avoid colliding with the existing `/api/s
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/combat/attack` | yes | Declare an attack swing. Body: `{ weapon?, animation?, direction?, cooldownMs? }`. Cooldown floor 200ms. Broadcasts `combat:attack` to peers within 1500m. 429 on cooldown. |
-| POST | `/api/combat/hit` | yes | Submit a damage event. Body: `{ victimId, damage, isCrit?, weapon?, hitDirection? }`. Server validates: reach (3m melee / 80m ranged), damage cap (`weapon.maxDamage * 2.5` w/ crit), cross-city, self-target. Failed validation returns 400 and is NOT broadcast. Consults victim's combat state — i-frames → `combat:miss` event, block → 0.5× damage, depleted poise → `staggered: true` in payload. |
+| POST | `/api/combat/hit` | yes | Submit a damage event. Body: `{ victimId, damage, isCrit?, weapon?, hitDirection? }`. Server validates: reach (3m melee / 80m ranged), damage cap (`weapon.maxDamage * 2.5` w/ crit), cross-city, self-target. Failed validation returns 400 and is NOT broadcast. Consults victim's combat state — i-frames → no broadcast (honest `{ delivered: 0, iframed: true }`, see below), block → 0.5× damage, depleted poise → `staggered: true` in payload. |
 | POST | `/api/combat/death` | yes | Self-report death. Body: `{ victimId?, killerId? }`. Broadcasts `combat:death` to peers. |
 | GET | `/api/combat/state/:actorId` | no | Snapshot: `{ poise, poiseMax, staggered, iframed, blocking, knockbackVel }`. |
 | POST | `/api/combat/iframes` | yes | Grant 50–800ms i-frames (post-dodge). Body: `{ durationMs }`. |
@@ -439,9 +438,7 @@ Mounted at `/api/emergent-skills/*` to avoid colliding with the existing `/api/s
 | `world:clock` | `{ phase, segment, epochMs, dayLengthMs, ts }` | Every 30s from world-clock broadcast |
 | `world:weather` | `{ worldId, type, intensity, since, windDirection, ts }` | Per-world Markov step |
 | `concord-link:delivered` | `{ messageId, ts }` | Walker journey final hop succeeded |
-| `combat:attack` | `{ attackerId, weapon, animation, direction, position, ts }` | On `/api/combat/attack` |
 | `combat:hit` | `{ attackerId, victimId, damage, isCrit, blocked, staggered, hitDirection, magnitude, position, weapon, ts }` | On validated `/api/combat/hit` |
-| `combat:miss` | `{ attackerId, victimId, missed:true, ts }` | When victim is in i-frames |
 | `combat:death` | `{ victimId, killerId, position, ts }` | On `/api/combat/death` |
 | `social:ping` | `{ from, type, position, cityId, target, text, ts }` | On `/api/social/ping` |
 | `quest:new` | `{ questId, worldId, title, description, giverNpcId, rewardJson, ts }` | Quest emergence per heartbeat |

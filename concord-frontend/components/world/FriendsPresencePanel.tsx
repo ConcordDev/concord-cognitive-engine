@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, UserPlus, Send, X, Globe, ChevronRight, AlertCircle, Check, Mail } from 'lucide-react';
+import { Users, UserPlus, Send, X, Globe, ChevronRight, AlertCircle, Check, Mail, Eye } from 'lucide-react';
 import { useWorldTravel } from '@/hooks/useWorldTravel';
 import { subscribe } from '@/lib/realtime/socket';
 
@@ -140,6 +140,23 @@ export function FriendsPresencePanel({ myWorldId }: FriendsPresencePanelProps) {
       showFlash('err', (e as Error)?.message ?? 'travel failed');
     } finally { setBusy(null); }
   }, [travelHook, showFlash]);
+
+  // DET-C dead-event-listener sweep (continuation, 2026-07-24): SpectatorOverlay.tsx
+  // has listened for 'concordia:enter-spectator-mode' since it was written, backed
+  // by the real spectator.subscribe/list_for_world macros (server.js), but nothing
+  // anywhere ever dispatched it — two prior audit passes confirmed the overlay and
+  // macros are real and fully built, the only gap was a "watch someone" entry point.
+  // This panel already has the one real datum a spectate action needs (a friend's
+  // live worldId, from GET /api/friends/presence) — spectator.subscribe only takes a
+  // worldId (world-scoped, not session-scoped), so no fabricated session/context data
+  // is needed. This IS the entry point.
+  const handleSpectateFriend = useCallback((friend: FriendPresence) => {
+    if (!friend.worldId || typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('concordia:enter-spectator-mode', {
+      detail: { worldId: friend.worldId },
+    }));
+    setOpen(false);
+  }, []);
 
   const handleInviteToMyWorld = useCallback(async (friend: FriendPresence) => {
     if (!myWorldId) { showFlash('err', 'enter a world first'); return; }
@@ -291,6 +308,17 @@ export function FriendsPresencePanel({ myWorldId }: FriendsPresencePanelProps) {
                           >
                             <ChevronRight className="h-3 w-3" />
                             Join {f.worldId.replace(/-/g, ' ')}
+                          </button>
+                        )}
+                        {f.online && f.worldId && f.worldId !== myWorldId && (
+                          <button
+                            type="button"
+                            onClick={() => handleSpectateFriend(f)}
+                            className="flex items-center gap-1 rounded bg-purple-500/20 px-2 py-0.5 text-[10px] text-purple-200 hover:bg-purple-500/30"
+                            title="Watch without traveling there"
+                          >
+                            <Eye className="h-3 w-3" />
+                            Spectate
                           </button>
                         )}
                         {f.online && myWorldId && (

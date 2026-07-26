@@ -35,6 +35,8 @@ import SettingsPanel, { loadSettings as loadCodeSettings, DEFAULT_SETTINGS as DE
 import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
 import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
+import { GitHubConnectPanel } from '@/components/code/GitHubConnectPanel';
+import { BrainStatusBadge } from '@/components/code/BrainStatusBadge';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Files as MTabFiles, Search as MTabSearch, GitBranch as MTabSC,
@@ -1797,6 +1799,7 @@ export default function CodeLensPage() {
                     onRefresh={refetchDTUs}
                   />
                 )}
+                {activity === 'github' && <GitHubConnectPanel />}
                 {activity === 'search' && (
                   <div className="p-4 text-xs text-gray-400 space-y-2">
                     <p>Use ⌘⇧F to open project search modal.</p>
@@ -2515,6 +2518,7 @@ export default function CodeLensPage() {
               <X className="w-4 h-4" />
             </button>
           </header>
+          <BrainStatusBadge />
           <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {aiChatHistory.length === 0 && (
               <div className="text-center py-8 text-xs text-gray-400 space-y-2">

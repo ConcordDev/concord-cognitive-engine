@@ -272,7 +272,11 @@ export function handleRepairNetworkCommand(parts) {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-export function init({ STATE, helpers } = {}) {
+// This hook referenced neither STATE nor helpers — it only does its own
+// local setup. Dropping the unused destructure so the signature stops
+// implying dependencies that aren't there. Callers are unaffected:
+// extra arguments are simply ignored.
+export function init() {
   if (!ENABLED) return { ok: true, enabled: false, message: "Repair network disabled" };
 
   _pushTimer = setInterval(() => { pushFixes().catch(e => console.warn('[repair-network] async op failed:', e?.message)); }, PUSH_INTERVAL);

@@ -26,13 +26,18 @@
  */
 
 import * as THREE from 'three';
+import { buildActionPoses } from './action-biomechanics';
 
 export type CombatAction =
   | 'attack-light' | 'attack-heavy'
   | 'block' | 'parry'
   | 'dodge-left' | 'dodge-right' | 'dodge-back'
   | 'hit-flinch' | 'death'
-  | 'kick' | 'grapple';
+  | 'kick' | 'grapple'
+  // Combo-step tokens (flow-engine STEP_NAME) that ride reused
+  // action-biomechanics archetypes: spell→cast_channel, ranged→firearm,
+  // throw→thrust. See buildBiomechClip.
+  | 'spell' | 'ranged' | 'throw';
 
 export type BodyType = 'slim' | 'average' | 'stocky' | 'tall';
 
@@ -460,6 +465,22 @@ function eulerToQuat(e: [number, number, number]): [number, number, number, numb
   return [q.x, q.y, q.z, q.w];
 }
 
+// Mixamo-canonical bone name → AvatarSystem3D's procedural skeleton name.
+// The pose tables above use canonical names (Hips/RightArm/RightForeArm…),
+// which match hero-GLB rigs directly; the default procedural avatar skeleton
+// (BONE_HIERARCHY in AvatarSystem3D.tsx) uses lowercase names
+// (hips/rightUpperArm/rightForearm…). When a canonical bone isn't present we
+// fall back to its procedural alias so the tiered clips actually produce
+// playable tracks on the default rig instead of zero tracks. Canonical-named
+// (hero) rigs are unaffected — they match on the first check.
+const CANONICAL_TO_PROCEDURAL_BONE: Record<string, string> = {
+  Hips: 'hips', Spine: 'spine', Chest: 'chest', Neck: 'neck', Head: 'head',
+  LeftArm: 'leftUpperArm', LeftForeArm: 'leftForearm', LeftHand: 'leftHand',
+  RightArm: 'rightUpperArm', RightForeArm: 'rightForearm', RightHand: 'rightHand',
+  LeftUpLeg: 'leftUpperLeg', LeftLeg: 'leftLowerLeg', LeftFoot: 'leftFoot',
+  RightUpLeg: 'rightUpperLeg', RightLeg: 'rightLowerLeg', RightFoot: 'rightFoot',
+};
+
 function posesToClip(name: string, poses: Pose[], skeleton: THREE.Skeleton): THREE.AnimationClip | null {
   if (poses.length < 2) return null;
   const boneSet = new Set(skeleton.bones.map((b) => b.name));
@@ -468,7 +489,14 @@ function posesToClip(name: string, poses: Pose[], skeleton: THREE.Skeleton): THR
   for (const p of poses) for (const b of Object.keys(p.bones)) touched.add(b);
 
   for (const boneName of touched) {
-    if (!boneSet.has(boneName)) continue;
+    // Resolve the actual track-target bone: the canonical name if the skeleton
+    // has it, else its procedural alias, else skip (bone genuinely absent).
+    const trackBone = boneSet.has(boneName)
+      ? boneName
+      : (CANONICAL_TO_PROCEDURAL_BONE[boneName] && boneSet.has(CANONICAL_TO_PROCEDURAL_BONE[boneName])
+          ? CANONICAL_TO_PROCEDURAL_BONE[boneName]
+          : null);
+    if (!trackBone) continue;
     const rotTimes: number[] = [];
     const rotValues: number[] = [];
     const posTimes: number[] = [];
@@ -486,16 +514,55 @@ function posesToClip(name: string, poses: Pose[], skeleton: THREE.Skeleton): THR
       }
     }
     if (rotTimes.length >= 2) {
-      tracks.push(new THREE.QuaternionKeyframeTrack(`${boneName}.quaternion`, rotTimes, rotValues));
+      tracks.push(new THREE.QuaternionKeyframeTrack(`${trackBone}.quaternion`, rotTimes, rotValues));
     }
     if (posTimes.length >= 2) {
-      tracks.push(new THREE.VectorKeyframeTrack(`${boneName}.position`, posTimes, posValues));
+      tracks.push(new THREE.VectorKeyframeTrack(`${trackBone}.position`, posTimes, posValues));
     }
   }
 
   if (tracks.length === 0) return null;
   const duration = poses[poses.length - 1].t;
   return new THREE.AnimationClip(name, duration, tracks);
+}
+
+// ── Reused action-biomechanics archetypes (spell / ranged / throw) ───────────
+//
+// The combo-step tokens `spell`/`ranged`/`throw` (flow-engine STEP_NAME) have
+// no bespoke combat pose table. Rather than invent new pose math, they REUSE
+// action-biomechanics.ts's proven archetypes (cast_channel / firearm / thrust)
+// via its exported `buildActionPoses`, remapping that module's lowercase bone
+// names onto this file's Mixamo-canonical set so they flow through the same
+// `posesToClip` (and the same canonical→procedural alias map).
+
+// action-biomechanics.ts bone name → this file's canonical (Mixamo-style) name.
+const ACTION_TO_CANONICAL_BONE: Record<string, string> = {
+  hips: 'Hips', spine: 'Spine', chest: 'Chest', neck: 'Neck', head: 'Head',
+  leftArm: 'LeftArm', leftForeArm: 'LeftForeArm', leftHand: 'LeftHand',
+  rightArm: 'RightArm', rightForeArm: 'RightForeArm', rightHand: 'RightHand',
+  leftUpLeg: 'LeftUpLeg', leftLeg: 'LeftLeg', leftFoot: 'LeftFoot',
+  rightUpLeg: 'RightUpLeg', rightLeg: 'RightLeg', rightFoot: 'RightFoot',
+};
+
+// Nominal wall-clock durations (s) for the reused archetypes — a spell channels
+// longer than a snap throw. Only the relative ordering + ascending keyframe
+// times matter for the clip.
+const REUSED_ACTION_DURATION_S: Record<string, number> = {
+  spell: 0.9, ranged: 0.6, throw: 0.5,
+};
+
+/** Convert a reused action-biomechanics archetype into this file's Pose[]. */
+function reusedActionPoses(action: 'spell' | 'ranged' | 'throw', tier: number): Pose[] {
+  const archetype = action === 'spell' ? 'cast_channel' : action === 'ranged' ? 'firearm' : 'thrust';
+  const durSec = REUSED_ACTION_DURATION_S[action] ?? 0.6;
+  const src = buildActionPoses(archetype, tier); // normalized t 0..1, amp already tier-scaled
+  return src.map((ap) => {
+    const bones: Pose['bones'] = {};
+    for (const [bone, data] of Object.entries(ap.bones)) {
+      bones[ACTION_TO_CANONICAL_BONE[bone] ?? bone] = data;
+    }
+    return { t: ap.t * durSec, bones };
+  });
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -522,6 +589,9 @@ export function buildBiomechClip(
     case 'attack-heavy': poses = generatePunchPoses(tier, body, true);  break;
     case 'kick':         poses = generateKickPoses(tier, body);         break;
     case 'grapple':      poses = generateGrapplePoses(tier, body);      break;
+    case 'spell':        poses = reusedActionPoses('spell', tier);      break;
+    case 'ranged':       poses = reusedActionPoses('ranged', tier);     break;
+    case 'throw':        poses = reusedActionPoses('throw', tier);      break;
     default:             return null;
   }
   return posesToClip(`${action}-t${tier}`, poses, skeleton);
@@ -535,7 +605,7 @@ export function buildBiomechClip(
 export function buildBiomechClipMap(
   skeleton: THREE.Skeleton,
   body: BodyType = 'average',
-  actions: CombatAction[] = ['attack-light', 'attack-heavy', 'kick', 'grapple'],
+  actions: CombatAction[] = ['attack-light', 'attack-heavy', 'kick', 'grapple', 'spell', 'ranged', 'throw'],
   tiers: number[] = [1, 2, 3, 4, 5],
 ): Record<string, THREE.AnimationClip> {
   const out: Record<string, THREE.AnimationClip> = {};

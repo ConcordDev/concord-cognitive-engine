@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { sfx, juice } from '@/lib/concordia/juice';
 import {
-  MessageCircle, Crown, Swords, Heart, Eye, ShoppingBag, Briefcase, X,
+  MessageCircle, Crown, Swords, Heart, Eye, ShoppingBag, Briefcase, X, Network,
 } from 'lucide-react';
 import type { LucideIcon } from "lucide-react";
 
@@ -85,6 +85,15 @@ export function NPCActionMenu() {
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
     setTimeout(() => setFlash(null), 2500);
+    // DET-C batch 7 — this toast was visual-only (2.5s and gone), so a
+    // screen-reader user got no feedback at all for mentor/brawl/court/
+    // inspect actions. ScreenReaderAnnouncer.tsx already ships a generic
+    // `concordia:announce` escape hatch for exactly this shape of
+    // message; it had zero real callers anywhere in the app. Real text,
+    // no fabrication — msg is the same string already shown on screen.
+    window.dispatchEvent(new CustomEvent('concordia:announce', {
+      detail: { text: msg, priority: 'polite' },
+    }));
   }, []);
 
   const onTalk = useCallback(() => {
@@ -140,8 +149,33 @@ export function NPCActionMenu() {
 
   const onInspect = useCallback(() => {
     if (!menu) return;
+    // DET-C batch 7 — NPCTraitInspector.tsx listens for BOTH names (its
+    // own header comment calls 'concordia:open-trait-inspector' the
+    // canonical one, with 'concordia:inspect-npc-traits' kept only for
+    // back-compat) but this call site — the only real trigger for the
+    // inspector in the codebase — had only ever dispatched the alias, so
+    // the "canonical" name was genuinely unfired anywhere. Dispatching
+    // both here makes that documented intent literally true rather than
+    // aspirational.
+    window.dispatchEvent(new CustomEvent('concordia:open-trait-inspector', {
+      detail: { npcId: menu.npcId, npcName: menu.npcName },
+    }));
     window.dispatchEvent(new CustomEvent('concordia:inspect-npc-traits', {
       detail: { npcId: menu.npcId, npcName: menu.npcName },
+    }));
+    setMenu(null);
+  }, [menu]);
+
+  // DET-C batch 2 — BloodlineTreeViewer.tsx has listened for this event
+  // since it was written (Phase DC13); nothing anywhere ever dispatched
+  // it, so the 3-generation ancestry viewer was a fully built, fully
+  // unreachable feature (verified via the runtime dead-event-listener
+  // detector — no other trigger, no button, no keybind exists for it).
+  // This is its natural home, right alongside the sibling Inspect action.
+  const onBloodline = useCallback(() => {
+    if (!menu) return;
+    window.dispatchEvent(new CustomEvent('concordia:open-bloodline-tree', {
+      detail: { npcId: menu.npcId },
     }));
     setMenu(null);
   }, [menu]);
@@ -207,6 +241,7 @@ export function NPCActionMenu() {
           <MenuItem icon={Heart} label="Court" onClick={onCourt} accent="pink" />
         )}
         <MenuItem icon={Eye} label="Inspect traits" onClick={onInspect} />
+        <MenuItem icon={Network} label="View bloodline" onClick={onBloodline} />
         {menu.isVendor && (
           <MenuItem icon={ShoppingBag} label="Trade" onClick={onTrade} accent="emerald" />
         )}

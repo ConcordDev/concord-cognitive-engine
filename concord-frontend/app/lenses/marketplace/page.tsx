@@ -443,6 +443,42 @@ function typeBadgeColor(type: MarketplaceItem['type']) {
 const hasPreview = (t: string) => ['template', 'component', 'dataset'].includes(t);
 
 // ---------------------------------------------------------------------------
+// Perf: deferred mount for below-the-fold / supplementary widgets
+// ---------------------------------------------------------------------------
+//
+// TrendingListings, the listing workbench, and the recent-activity/session
+// panels at the bottom of the page each fire their own backend request on
+// mount. None of them gate any visible "is this app working" content — they
+// are supplementary, always-there-regardless-of-tab widgets. Firing all of
+// them at the exact same tick as the critical browse queries makes them
+// compete for the single-threaded backend's synchronous SQLite request
+// handling (see the RENDER-section comment below for the measured evidence),
+// which measurably delays the queries that actually matter. Deferring their
+// mount by one idle tick costs nothing visible — they still render on every
+// tab, just a beat later — while giving the critical path first crack at
+// the backend.
+function useDeferredMount(timeoutMs = 500): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setReady(true);
+      return;
+    }
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(() => setReady(true), { timeout: timeoutMs });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(() => setReady(true), timeoutMs);
+    return () => clearTimeout(t);
+  }, [timeoutMs]);
+  return ready;
+}
+
+// ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
@@ -754,6 +790,9 @@ function AudioPreviewBar({
 
 export default function MarketplaceLensPage() {
   useLensNav('marketplace');
+  // Perf: gate mount of supplementary/below-the-fold widgets — see the
+  // hook's own doc comment above for why.
+  const deferredReady = useDeferredMount();
   const {
     latestData: realtimeData,
     alerts: realtimeAlerts,
@@ -885,7 +924,16 @@ export default function MarketplaceLensPage() {
   const handleAction = async (action: string) => {
     const targetId = listingItems[0]?.id;
     if (!targetId) {
-      setActionResult({ message: 'No listings found. Add a listing first to run analysis.' });
+      // Only claim "no listings" when we actually know that. A failed or
+      // still-running load is a different statement, and asserting the
+      // confident one would be a fabricated fact about the user's account.
+      setActionResult({
+        message: isListingError
+          ? "Couldn't load your listings, so there's nothing to analyse yet — retry in a moment."
+          : isListingLoading
+            ? 'Still loading your listings — try again in a second.'
+            : 'No listings found. Add a listing first to run analysis.',
+      });
       return;
     }
     setIsRunning(action);
@@ -908,31 +956,25 @@ export default function MarketplaceLensPage() {
     }
   };
 
+  // `listingItems` only feeds the "Marketplace Analysis" action buttons
+  // (handleAction) and browseData's own catch-fallback below — it is NOT
+  // part of the visible browse grid, so its loading/error state must never
+  // gate the page. (It used to: a stale `if (isLoading) return <FullPageSkeleton>`
+  // blocked the ENTIRE page — header, tabs, search, every other tab — on
+  // this one barely-used query. See the perceived-latency fix below.)
+  // isLoading/isError are still read — NOT to gate the page (that was the
+  // bug), but so `handleAction` can tell "you have no listings" apart from
+  // "we couldn't load your listings." Before the page-wide gate came out,
+  // a failed load short-circuited the whole page, so the distinction never
+  // surfaced; without it, an errored query would have silently rendered as
+  // the confident, wrong claim "No listings found."
   const {
     items: listingItems,
-    isLoading,
-    isError: isError,
-    error: error,
-    refetch: refetch,
+    isLoading: isListingLoading,
+    isError: isListingError,
   } = useLensData('marketplace', 'listing', {
     noSeed: true,
   });
-  const {
-    isError: isError2,
-    error: error2,
-    refetch: refetch2,
-  } = useLensData('marketplace', 'purchase', {
-    noSeed: true,
-  });
-  const isError3 = false as boolean;
-  const error3 = null as Error | null;
-  const refetch3 = () => {};
-  const isError4 = false as boolean;
-  const error4 = null as Error | null;
-  const refetch4 = () => {};
-  const isError6 = false as boolean;
-  const error6 = null as Error | null;
-  const refetch6 = () => {};
 
   // DTU context (v3.0 artifact support)
   const {
@@ -966,9 +1008,13 @@ export default function MarketplaceLensPage() {
 
   const marketArtifacts = marketDTUs.filter((d: DTU) => d.artifact);
 
-  // Unified marketplace browse — single query for all listing types
+  // Unified marketplace browse — single query for all listing types.
+  // `isLoading` here is the ONE query that actually feeds the visible grid
+  // (`allItems` below is built from browseData + the artistry secondary
+  // sources) — it's the correct thing to gate the item-grid skeleton on.
   const {
     data: browseData,
+    isLoading: isBrowseLoading,
     isError: isError5,
     error: error5,
     refetch: refetch5,
@@ -1422,75 +1468,50 @@ export default function MarketplaceLensPage() {
   // =========================================================================
   // RENDER
   // =========================================================================
-
-  if (isLoading) {
-    // Shaped like the real browse tab: header, category pills, search bar,
-    // then a product grid of card-shaped placeholders — so the loading
-    // state reads as "the storefront is arriving," not a generic spinner.
-    return (
-      <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
-        <div className="flex items-center gap-3">
-          <Skeleton variant="avatar" width={24} height={24} />
-          <Skeleton variant="line" width={220} height={28} />
-        </div>
-        <div className="flex items-center gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} variant="block" width={i === 0 ? 56 : 104} height={30} className="rounded-full" />
-          ))}
-        </div>
-        <Skeleton variant="block" height={38} className="max-w-md" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="panel p-0 overflow-hidden">
-              <Skeleton variant="block" height={144} className="rounded-none" />
-              <div className="p-3 space-y-2">
-                <Skeleton variant="line" width="80%" />
-                <Skeleton variant="line" width="50%" height={11} />
-                <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
-                  <Skeleton variant="line" width={60} height={14} />
-                  <Skeleton variant="block" width={54} height={22} className="rounded-lg" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (isError || isError2 || isError3 || isError4 || isError5 || isError6 || isError7) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState
-          error={
-            error?.message ||
-            error2?.message ||
-            error3?.message ||
-            error4?.message ||
-            error5?.message ||
-            error6?.message ||
-            error7?.message
-          }
-          onRetry={() => {
-            refetch();
-            refetch2();
-            refetch3();
-            refetch4();
-            refetch5();
-            refetch6();
-            refetch7();
-          }}
-        />
-      </div>
-    );
-  }
+  //
+  // Perf fix (measured 2026-07-25): this page used to gate its ENTIRE render
+  // — header, tabs, search, every other tab — behind a single `if (isLoading)
+  // return <FullPageSkeleton/>` keyed to `useLensData('marketplace','listing')`,
+  // a query whose result (`listingItems`) isn't even part of the visible
+  // browse grid (see the comment where it's declared above). The backend
+  // is a single Node process backed by synchronous `better-sqlite3` (see
+  // CLAUDE.md's Database section); firing this lens's ~30+ independent
+  // queries concurrently on mount means they all queue on that one thread,
+  // so even a fast query can be stuck behind the others for many seconds —
+  // and because this gate blocked absolutely everything, the whole page sat
+  // on a full-screen skeleton until its turn came up. Reproduced directly:
+  // firing 44 concurrent requests against a handful of this page's own
+  // endpoints (all <1.3s individually) took ~8.5s wall-clock for the last
+  // one to land — the same shape as the reported 15-18s, just at a smaller
+  // request count.
+  //
+  // Fix: never block the page shell. Render header/tabs/search always, and
+  // gate ONLY the item grid (the one region that actually depends on
+  // `browseData`) on `isBrowseLoading` — see the grid render below. Errors
+  // from the browse-critical queries render as an inline retry, not a full
+  // page replacement, so the rest of the page (cart, purchases, other tabs)
+  // stays usable even if one query hiccups.
+  const browseHasError = isError5 || isError7;
+  const showGridSkeleton = isBrowseLoading && allItems.length === 0;
   return (
     <LensShell lensId="marketplace" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="marketplace" />
       <DepthBadge lensId="marketplace" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <ShopfrontSection />
-      </div>
+      {/* Perf: ShopfrontSection is the seller dashboard (shop-get +
+          dashboard-summary + inventory-alerts + messages-threads + its
+          ShopDashboard child's analytics-summary/dashboard-summary — 6
+          backend calls). It was mounted unconditionally above the fold on
+          every tab, so visiting Browse/Cart/Purchases/Watchlist/Analytics
+          fired the whole seller dashboard's requests for data nobody asked
+          to see. It now only mounts on the My Shop tab it's actually for —
+          matching the "Seller Dashboard" button below, which already
+          navigates here. No content is removed, just no longer fetched
+          before it's relevant. */}
+      {tab === 'myshop' && (
+        <div className="px-4 mt-3">
+          <ShopfrontSection />
+        </div>
+      )}
     <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
       {/* ---- Header ---- */}
       <div className="flex items-center justify-between">
@@ -1752,37 +1773,69 @@ export default function MarketplaceLensPage() {
               </div>
             </div>
 
-            {/* Results count */}
+            {/* Results count — an honest loading affordance while the browse
+                query is in flight, never a fabricated "0 items" claim. */}
             <p className="text-xs text-gray-400">
-              {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} found
+              {showGridSkeleton
+                ? 'Loading listings...'
+                : `${filteredItems.length} item${filteredItems.length !== 1 ? 's' : ''} found`}
             </p>
 
-            {/* Item Grid / List */}
-            <div
-              className={cn(
-                viewMode === 'grid'
-                  ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
-                  : 'space-y-2'
-              )}
-            >
-              <AnimatePresence>
-                {filteredItems.map((item) => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    viewMode={viewMode}
-                    isPlaying={previewItem?.id === item.id && isPlaying}
-                    onPlay={handlePlay}
-                    onAddToCart={addToCart}
-                    onSelect={(i) => setSelectedArtifactId(i.id)}
-                    onRoyaltyClick={(id) => setRoyaltyVizDtuId(id)}
-                    isStarred={watchlist.has(item.id)}
-                    onToggleStar={toggleWatchlist}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
-            {filteredItems.length === 0 && (
+            {/* Item Grid / List — progressive fill: real structure (header,
+                tabs, filters above) is always rendered; only this region
+                waits on `browseData` (isBrowseLoading), and only this
+                region shows an error if that fetch genuinely fails. */}
+            {browseHasError ? (
+              <ErrorState
+                error={error5?.message || error7?.message}
+                onRetry={() => {
+                  refetch5();
+                  refetch7();
+                }}
+              />
+            ) : (
+              <div
+                className={cn(
+                  viewMode === 'grid'
+                    ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
+                    : 'space-y-2'
+                )}
+              >
+                {showGridSkeleton ? (
+                  Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="panel p-0 overflow-hidden">
+                      <Skeleton variant="block" height={144} className="rounded-none" />
+                      <div className="p-3 space-y-2">
+                        <Skeleton variant="line" width="80%" />
+                        <Skeleton variant="line" width="50%" height={11} />
+                        <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
+                          <Skeleton variant="line" width={60} height={14} />
+                          <Skeleton variant="block" width={54} height={22} className="rounded-lg" />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <AnimatePresence>
+                    {filteredItems.map((item) => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        viewMode={viewMode}
+                        isPlaying={previewItem?.id === item.id && isPlaying}
+                        onPlay={handlePlay}
+                        onAddToCart={addToCart}
+                        onSelect={(i) => setSelectedArtifactId(i.id)}
+                        onRoyaltyClick={(id) => setRoyaltyVizDtuId(id)}
+                        isStarred={watchlist.has(item.id)}
+                        onToggleStar={toggleWatchlist}
+                      />
+                    ))}
+                  </AnimatePresence>
+                )}
+              </div>
+            )}
+            {!showGridSkeleton && !browseHasError && filteredItems.length === 0 && (
               <div className="text-center py-16 text-gray-400">
                 <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
                 <p className="mb-1 font-medium text-gray-400">No items match your filters</p>
@@ -1839,8 +1892,12 @@ export default function MarketplaceLensPage() {
                 )}
               </div>
             </div>
-            <SocialProofFeed />
-            <TrendingDomains />
+            {deferredReady && (
+              <>
+                <SocialProofFeed />
+                <TrendingDomains />
+              </>
+            )}
           </div>
         </motion.div>
       )}
@@ -3089,20 +3146,24 @@ export default function MarketplaceLensPage() {
       lensId="marketplace"
       lensPrompt="You're inside Concord's Marketplace lens — DTU listings, royalty cascade, beat/sample marketplace. Prefer expert_mode for cited research on trends, discovery.search for listings, run_lens_action for purchases."
     />
-    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
-      <TrendingListings />
-    </section>
+    {deferredReady && (
+      <>
+        <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
+          <TrendingListings />
+        </section>
 
-    {/* Listing workbench: score / price / metrics + actions */}
-    <PipingProvider>
-      <section className="mt-6 mx-auto max-w-7xl">
-        <MarketplaceActionPanel />
-      </section>
-    </PipingProvider>
-          <SessionRail lensId="marketplace" hideWhenEmpty className="mt-4" />
-          <RecentMineCard domain="marketplace" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="marketplace" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="marketplace" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {/* Listing workbench: score / price / metrics + actions */}
+        <PipingProvider>
+          <section className="mt-6 mx-auto max-w-7xl">
+            <MarketplaceActionPanel />
+          </section>
+        </PipingProvider>
+        <SessionRail lensId="marketplace" hideWhenEmpty className="mt-4" />
+        <RecentMineCard domain="marketplace" limit={10} hideWhenEmpty className="mt-4" />
+        <AutoActionStrip domain="marketplace" hideWhenEmpty className="mt-3" title="More actions" />
+        <CrossLensRecentsPanel lensId="marketplace" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </>
+    )}
           {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
           <MobileTabBar
             tabs={[

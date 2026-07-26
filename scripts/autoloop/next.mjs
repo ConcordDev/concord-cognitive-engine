@@ -11,14 +11,14 @@
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { REPO, run, readJson, loadBacklog, saveBacklog, C, ok, warn } from "./lib.mjs";
+import { REPO, runArgv, readJson, loadBacklog, saveBacklog, C, ok, warn } from "./lib.mjs";
 
 const args = new Set(process.argv.slice(2));
 
 // ── Seed each stream from its ranker. Each returns [{ id, stream, target, leverage, prompt, gate }] ──
 
 function seedDepth() {
-  const r = run("node scripts/depth-backlog.mjs --json", { allowFail: true });
+  const r = runArgv("node", ["scripts/depth-backlog.mjs", "--json"], { allowFail: true });
   let data; try { data = JSON.parse(r.out); } catch { return []; }
   return (data.domains || []).slice(0, 60).map((d) => ({
     id: `depth:${d.domain}`,

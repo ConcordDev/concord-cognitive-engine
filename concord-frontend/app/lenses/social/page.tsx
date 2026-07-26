@@ -36,7 +36,6 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { api } from '@/lib/api/client';
@@ -45,6 +44,7 @@ import { cn } from '@/lib/utils';
 import { StoriesBar } from '@/components/social/StoriesBar';
 import { QuickPostComposer } from '@/components/social/QuickPostComposer';
 import { Discovery } from '@/components/social/Discovery';
+import { NotificationBell } from '@/components/social/NotificationBell';
 import { NotificationCenter } from '@/components/social/NotificationCenter';
 import { UserProfile } from '@/components/social/UserProfile';
 import { SuggestedFollows } from '@/components/social/SuggestedFollows';
@@ -103,13 +103,37 @@ export default function SocialHubPage() {
     if (me?.user?.id && !profileUserId) setProfileUserId(me.user.id);
   }, [me?.user?.id, profileUserId]);
 
+  // Shared unread-notification count — same query key `NotificationBell`
+  // uses internally, so both the topbar bell's badge and the Notifications
+  // tab's badge below read one cached number instead of drifting out of
+  // sync. Real count from /api/social/notifications/count (with the same
+  // full-list-count fallback NotificationBell uses), invalidated on the
+  // real `queue:notifications:new` socket event — never a fabricated value.
+  const { data: unreadData } = useQuery({
+    queryKey: ['notification-count', currentUserId],
+    queryFn: async () => {
+      try {
+        const res = await api.get<{ count: number }>('/api/social/notifications/count', { params: { userId: currentUserId } });
+        return res.data;
+      } catch {
+        try {
+          const res = await api.get<{ notifications?: unknown[] }>('/api/social/notifications', { params: { userId: currentUserId, limit: 50, unreadOnly: true } });
+          return { count: (res.data?.notifications || []).length };
+        } catch { return { count: 0 }; }
+      }
+    },
+    refetchInterval: 30_000,
+    enabled: !!currentUserId,
+  });
+  const unreadCount = unreadData?.count ?? 0;
+
   const TABS: { id: TabId; label: string; icon: typeof Globe2; badge?: number }[] = [
     { id: 'feed',          label: 'Feed',          icon: MessageSquare },
     { id: 'discover',      label: 'For You',       icon: Sparkles },
     { id: 'reels',         label: 'Reels',         icon: Play },
     { id: 'spaces',        label: 'Spaces',        icon: Radio },
     { id: 'following',     label: 'Following',     icon: Users },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
     { id: 'saved',         label: 'Saved',         icon: Bookmark },
     { id: 'analytics',     label: 'Analytics',     icon: BarChart3 },
     { id: 'moderation',    label: 'Moderation',    icon: Shield },
@@ -118,7 +142,13 @@ export default function SocialHubPage() {
   return (
     <LensShell lensId="social" asMain={false}>
       <FirstRunTour lensId="social" />
-      <ManifestActionBar />
+      {/* <ManifestActionBar/> removed (R1-2 wave 6): 9 of its 10 manifest
+          actions ('follow'/'unfollow'/'comment'/'share'/'post'/
+          'story_create'/'discover'/'notifications'/'trending') matched no
+          registered social macro at all — see lib/lenses/manifest.ts for
+          the full audit. Every real social macro already has a bespoke,
+          designed home below (FeedView, PostCard, NotificationCenter,
+          ModerationPanel, DMInbox, LiveStreams, …). */}
       <DepthBadge lensId="social" size="sm" className="ml-2" />
 
       <div className="min-h-screen bg-lattice-void text-zinc-100">
@@ -133,17 +163,13 @@ export default function SocialHubPage() {
             <div className="ml-auto flex items-center gap-2">
               <StreakIndicator userId={currentUserId} />
               <DMIndicator userId={currentUserId} />
-              <button
-                type="button"
-                onClick={() => setActiveTab('notifications')}
-                className={cn(
-                  'relative p-1.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/60',
-                  activeTab === 'notifications' && 'text-indigo-300 bg-indigo-500/10',
-                )}
-                aria-label="Notifications"
-              >
-                <Bell className="w-4 h-4" />
-              </button>
+              {/* Real unread-count badge + realtime socket invalidation +
+                  quick-preview dropdown — a fully-built component that
+                  sat unused; previously this was a bare Bell icon with no
+                  indicator at all. Full inbox still lives one click away
+                  on the Notifications tab for anyone who wants more than
+                  the quick peek. */}
+              <NotificationBell userId={currentUserId} />
             </div>
           </div>
           {/* Stories strip — 24h ephemeral activity from people you follow */}
@@ -181,6 +207,11 @@ export default function SocialHubPage() {
                   >
                     <Icon className="w-4 h-4" />
                     {t.label}
+                    {!!t.badge && (
+                      <span className="min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                        {t.badge > 99 ? '99+' : t.badge}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -264,7 +295,7 @@ export default function SocialHubPage() {
           { id: 'reels',         label: 'Reels',    icon: Play },
           { id: 'spaces',        label: 'Spaces',   icon: Radio },
           { id: 'following',     label: 'Follow',   icon: Users },
-          { id: 'notifications', label: 'Alerts',   icon: Bell },
+          { id: 'notifications', label: 'Alerts',   icon: Bell, badgeCount: unreadCount },
         ]}
         active={activeTab}
         onSelect={(id) => setActiveTab(id as TabId)}

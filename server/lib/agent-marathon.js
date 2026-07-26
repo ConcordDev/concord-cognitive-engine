@@ -19,6 +19,21 @@
 
 import crypto from "node:crypto";
 import { runAgentLoop } from "./chat-agent.js";
+// Plan-tree integration (opt-in via opts.projectId only — see tickMarathon).
+// Three tightly-scoped, independently-testable modules; none of them ever
+// touch allowed_domains_json/budget_cap on agent_marathon_sessions.
+import { buildPlanContextBlock } from "./marathon-plan-context.js";
+import { applyPlanSync } from "./marathon-plan-sync.js";
+import { shouldReplan, runReplanCheckpoint } from "./marathon-replanner.js";
+// Progress-digest companion (see marathon-digest.js) — used only to build a
+// nicer human-legible message body for the check-in nudge below. Pure
+// condensation, no brain call; safe to import with no circularity (digest
+// has no dependency back on this module).
+import { buildMarathonDigest } from "./marathon-digest.js";
+// ConKay-E — tool-call fingerprint log for crash-forensics (migration 394,
+// `agent_marathon_tool_log`). Used inside createToolGate below; see
+// marathon-tick-durability.js for the durability contract.
+import { recordToolDispatch, recordToolOutcome } from "./marathon-tick-durability.js";
 
 const DEFAULT_TICK_TURNS = 5;
 const DEFAULT_MAX_TURNS = 200;
@@ -29,14 +44,41 @@ const BLOCKED_MARKER = /\[TASK_BLOCKED:\s*([^\]]*)\]/i;
 
 export function startMarathon(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, reason: "missing_inputs" };
-  const { goal, title, maxTurns } = opts || {};
+  const { goal, title, maxTurns, allowedDomains, budgetCap } = opts || {};
   if (!goal) return { ok: false, reason: "missing_goal" };
   const id = `mar_${crypto.randomUUID().slice(0, 16)}`;
-  db.prepare(`
-    INSERT INTO agent_marathon_sessions
-      (id, user_id, title, goal, status, max_turns)
-    VALUES (?, ?, ?, ?, 'pending', ?)
-  `).run(id, userId, title || goal.slice(0, 80), goal, Math.min(2000, maxTurns || DEFAULT_MAX_TURNS));
+
+  // Governance envelope (mig 379) — both OPT-IN restrictions. Omitting
+  // either preserves the pre-existing unrestricted behavior, which matters
+  // for callers that don't know about this envelope yet: the autonomous
+  // re-goal path (emergent/agent-marathon-cycle.js#reGoalIdleAgents calls
+  // startMarathon with only { goal }), and every pre-migration 379 test/
+  // caller. MarathonPanel.tsx (the human "New marathon" UI) is the one
+  // caller expected to always pass an explicit budgetCap.
+  let allowedDomainsJson = null;
+  if (Array.isArray(allowedDomains) && allowedDomains.length > 0) {
+    const cleaned = allowedDomains.filter((d) => typeof d === "string" && d.trim()).slice(0, 500);
+    if (cleaned.length > 0) allowedDomainsJson = JSON.stringify(cleaned);
+  }
+  const cap = (Number.isFinite(budgetCap) && budgetCap > 0) ? Math.min(100_000, Math.floor(budgetCap)) : null;
+
+  try {
+    db.prepare(`
+      INSERT INTO agent_marathon_sessions
+        (id, user_id, title, goal, status, max_turns, allowed_domains_json, budget_cap)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)
+    `).run(id, userId, title || goal.slice(0, 80), goal, Math.min(2000, maxTurns || DEFAULT_MAX_TURNS), allowedDomainsJson, cap);
+  } catch {
+    // Pre-migration-379 schema (governance columns absent) — fall back to
+    // the original insert shape so an unmigrated DB still works exactly as
+    // before, rather than throwing. The envelope is simply absent (fully
+    // unrestricted), which is the correct back-compat behavior.
+    db.prepare(`
+      INSERT INTO agent_marathon_sessions
+        (id, user_id, title, goal, status, max_turns)
+      VALUES (?, ?, ?, ?, 'pending', ?)
+    `).run(id, userId, title || goal.slice(0, 80), goal, Math.min(2000, maxTurns || DEFAULT_MAX_TURNS));
+  }
   // Seed the user-goal turn so resume sees it.
   db.prepare(`
     INSERT INTO agent_marathon_turns
@@ -97,12 +139,523 @@ export function getMarathon(db, sessionId) {
  * @param {object} [args.opts]
  * @returns {Promise<{ok, status, newTurns, totalTurns, error?}>}
  */
+// Extracted so it's directly unit-testable (tickMarathon's real path runs
+// through runAgentLoop, which needs live brain infra to reach this point).
+// Scoped to the session owner's own `user:<id>` room via the 3rd realtimeEmit
+// options argument — a bare 2-arg call silently falls through to a GLOBAL
+// broadcast in server.js#realtimeEmit, leaking every user's marathon
+// session_id/title to every connected socket. Best-effort; never throws.
+export function emitMarathonStatus(session, sessionId, nextStatus, totalTurns) {
+  try {
+    const re = globalThis._concordRealtimeEmit;
+    if (typeof re === "function") {
+      re("marathon:status", {
+        actor_kind: "marathon",
+        actor_id: sessionId,
+        session_id: sessionId,
+        user_id: session.user_id,
+        status: nextStatus,
+        total_turns: totalTurns,
+        title: session.title,
+      }, { userId: session.user_id });
+    }
+  } catch { /* never block on telemetry */ }
+}
+
+// ── Periodic check-in nudge for long-running (still `running`) marathons ──
+//
+// Gap: `initiative-engine.js`'s TRIGGER_TYPES already lists "check_in" but
+// nothing in the codebase ever inserts one — a marathon can run for days
+// with no "here's where things stand" nudge unless/until it hits a
+// TERMINAL status (see the Sprint-13 terminal-status hooks further down in
+// tickMarathon). This is a SEPARATE mechanism for the opposite case: the
+// session is still genuinely `running`, just for a long time.
+//
+// Idempotency is enforced by a real query against the `initiatives` table
+// (json_extract on metadata_json.sessionId), not an in-memory flag or a
+// one-shot column on the session row — so it's correct across process
+// restarts, across multiple concurrent ticks of the same session, and
+// re-running this check on every subsequent tick of an already-nudged
+// session is a harmless no-op forever after (never re-fires for the same
+// session, matching "must never fire more than once per threshold-crossing").
+
+/** Wall-clock age (seconds) past which a still-`running` marathon session
+ *  earns a one-time "check_in" initiative nudge. Override for ops tuning
+ *  or tests via CONCORD_MARATHON_CHECKIN_AGE_S. */
+export const MARATHON_CHECKIN_AGE_S = Number(process.env.CONCORD_MARATHON_CHECKIN_AGE_S) || 24 * 60 * 60;
+
+/**
+ * Fire a one-time "check_in" initiative for a marathon session that is
+ * still `running` (not terminal) once it has been going for at least
+ * MARATHON_CHECKIN_AGE_S wall-clock seconds. Never throws; every failure
+ * mode returns `{ fired: false, reason }` instead.
+ *
+ * @param {object} db
+ * @param {object} session - the session row (must carry id, user_id, title, created_at)
+ * @param {number} [totalTurns] - this tick's post-update total_turns, for the message body
+ * @returns {{ fired: boolean, reason?: string }}
+ */
+export function maybeFireMarathonCheckIn(db, session, totalTurns) {
+  try {
+    if (!db || !session || !session.id) return { fired: false, reason: "missing_inputs" };
+    if (!Number.isFinite(session.created_at)) return { fired: false, reason: "no_created_at" };
+
+    const ageS = Math.floor(Date.now() / 1000) - session.created_at;
+    if (ageS < MARATHON_CHECKIN_AGE_S) return { fired: false, reason: "below_threshold" };
+
+    let already;
+    try {
+      already = db.prepare(`
+        SELECT id FROM initiatives
+        WHERE trigger_type = 'check_in' AND json_extract(metadata_json, '$.sessionId') = ?
+        LIMIT 1
+      `).get(session.id);
+    } catch {
+      return { fired: false, reason: "initiatives_table_missing" };
+    }
+    if (already) return { fired: false, reason: "already_fired" };
+
+    let excerpt = "";
+    try {
+      const d = buildMarathonDigest(db, session.id);
+      if (d.ok && d.text) excerpt = d.text.split("\n").slice(0, 2).join(" ");
+    } catch { /* digest is a best-effort message enhancement only */ }
+
+    const msg = excerpt
+      ? `Marathon check-in: ${excerpt}`
+      : `Marathon check-in: "${session.title}" has been running for over ${Math.floor(MARATHON_CHECKIN_AGE_S / 3600)}h (turn ${totalTurns ?? session.total_turns}). Still in progress.`;
+
+    try {
+      const initId = `init_chk_${session.id.slice(4, 16)}_${Date.now().toString(36)}`;
+      db.prepare(`
+        INSERT INTO initiatives (id, user_id, trigger_type, priority, message, status, metadata_json, created_at)
+        VALUES (?, ?, 'check_in', 'low', ?, 'pending', ?, unixepoch())
+      `).run(initId, session.user_id, msg, JSON.stringify({ sessionId: session.id, ageSeconds: ageS }));
+      return { fired: true };
+    } catch {
+      return { fired: false, reason: "insert_failed" };
+    }
+  } catch (err) {
+    // Belt-and-suspenders — this must never throw into tickMarathon.
+    return { fired: false, reason: "unexpected_error", error: err?.message };
+  }
+}
+
+/**
+ * Resolve the macro-domain a tool call targets, for allowed_domains_json
+ * enforcement. Only tool types that actually route through a macro domain
+ * get a domain tag; run_compute / browse_url / browser_act / mcp_call /
+ * mcp_list carry no macro-domain concept at all (they don't call
+ * runMacro), so allowed_domains does not — and semantically cannot —
+ * scope them. They're still counted against budget_cap by the gate below;
+ * only the domain-allowlist check is a no-op for them (returns null here).
+ */
+export function domainForToolCall(call) {
+  if (!call || typeof call.tool !== "string") return null;
+  switch (call.tool) {
+    case "run_lens_action": {
+      const d = call.params && call.params.domain;
+      return (typeof d === "string" && d.trim()) ? d.trim() : null;
+    }
+    case "web_search": return "tools"; // runMacro("tools", "web_search", ...)
+    case "create_dtu": return "dtu"; // runMacro("dtu", "create", ...)
+    case "expert_mode": return "expert_mode"; // runMacro("expert_mode", "answer", ...)
+    case "generate_image": return "multimodal"; // runMacro("multimodal", "image_generate", ...)
+    // ConKay tool-authoring first slice (docs/CONKAY_TOOL_AUTHORING_SPEC.md
+    // §7 point 5) — a synthetic domain tag so a marathon session's
+    // allowed_domains_json allowlist can explicitly permit/deny authored-
+    // tool use per session. The per-call revoked/approved/authorization
+    // checks still live in conkay-tool-invoke.js#invokeAuthoredTool
+    // regardless of this allowlist — this only gates whether the SESSION
+    // may attempt run_authored_tool calls at all.
+    case "run_authored_tool": return "conkay_tool";
+    default: return null;
+  }
+}
+
+/**
+ * Build a per-session governance gate — real-time enforcement of
+ * revocation + the domain allowlist + the spend budget, checked
+ * immediately before EVERY real tool call chat-agent.js's runAgentLoop is
+ * about to dispatch (wired via its opt-in `opts.toolGate` hook). Nothing
+ * here is decorative: every branch either lets a real call through (and
+ * durably records the spend before it runs) or returns an honest refusal
+ * the brain sees in its next turn — never a silent no-op, and never a
+ * fabricated success.
+ *
+ * Contract for the returned function:
+ *   - `{ ok: true }` — call is allowed, dispatch it.
+ *   - `{ ok: false, halt: false, reason }` — refuse THIS call only; the
+ *     brain sees a real tool error and the marathon keeps running.
+ *   - `{ ok: false, halt: true, reason }` — stop the WHOLE tick right now
+ *     (revoked, or the spend budget is exhausted); tickMarathon maps
+ *     `reason` onto a terminal session status.
+ *
+ * Fails OPEN (returns `{ ok: true }`) only when there's no session row at
+ * all, or when the governance columns don't exist yet (pre-migration-379
+ * DB / hand-rolled minimal test schema) — matching the same back-compat
+ * contract as startMarathon's insert fallback above: an unmigrated session
+ * is fully unrestricted, never silently broken.
+ *
+ * ConKay-E addition (migration 394) — every call this gate actually lets
+ * through (the `{ ok: true }` path, after revocation/domain/budget all
+ * pass) is durably logged into `agent_marathon_tool_log` for crash
+ * forensics: a 'dispatched' row is written SYNCHRONOUSLY right here,
+ * before this function returns and chat-agent.js's loop goes on to
+ * actually execute the tool. The returned `{ ok: true, ... }` object
+ * carries a bundled `recordOutcome(result)` closure (not a separate opts
+ * hook) so the matching 'completed'/'failed' write stays defined right
+ * here too, in the same closure that created the row — chat-agent.js only
+ * has to call `gate.recordOutcome(result)` once the tool call resolves; it
+ * never needs to know this is a marathon-only forensics feature. Refused
+ * calls (domain-not-allowed, budget-exhausted, revoked) are NOT logged —
+ * they were never actually dispatched, so there's nothing to have crashed
+ * mid-flight. Best-effort throughout: a logging failure never blocks or
+ * refuses a real tool call.
+ *
+ * @param {object} db
+ * @param {string} sessionId
+ * @param {number} [tickSeq] - which tickMarathon() invocation this gate
+ *   belongs to (informational only, stored on each dispatched row).
+ */
+export function createToolGate(db, sessionId, tickSeq) {
+  return async function toolGate(call) {
+    if (!db || !sessionId) return { ok: true };
+    let session;
+    try {
+      session = db.prepare(`
+        SELECT status, allowed_domains_json, budget_cap, budget_spent, revoked_at
+        FROM agent_marathon_sessions WHERE id = ?
+      `).get(sessionId);
+    } catch {
+      return { ok: true }; // governance columns absent — never block on a missing envelope
+    }
+    if (!session) return { ok: true };
+
+    // Revocation always wins. Re-read fresh from the DB on every single
+    // call (not cached), so a revoke landing mid-tick — the user hitting
+    // Revoke while several turns are still in flight — stops the very
+    // next tool dispatch, not just the next tick.
+    if (session.revoked_at) {
+      return { ok: false, halt: true, reason: "revoked" };
+    }
+
+    const domain = domainForToolCall(call);
+    if (domain) {
+      let allowed = null;
+      try {
+        allowed = session.allowed_domains_json ? JSON.parse(session.allowed_domains_json) : null;
+      } catch {
+        allowed = null;
+      }
+      if (Array.isArray(allowed) && !allowed.includes(domain)) {
+        // Refuse just THIS call — the marathon keeps running and the brain
+        // sees a real, actionable refusal (not a crash, not a silent drop).
+        return { ok: false, halt: false, reason: `domain_not_allowed:${domain}` };
+      }
+    }
+
+    if (session.budget_cap != null && session.budget_spent >= session.budget_cap) {
+      return { ok: false, halt: true, reason: "budget_exhausted" };
+    }
+
+    // This call is really about to execute — spend the budget now,
+    // atomically, BEFORE the tool runs (not after: a crash/timeout mid-call
+    // must never leave an approved call uncounted, and must never let the
+    // same slot be double-spent on retry).
+    try {
+      db.prepare(`UPDATE agent_marathon_sessions SET budget_spent = budget_spent + 1 WHERE id = ?`).run(sessionId);
+    } catch { /* budget_spent column absent — never block on it */ }
+
+    // ── ConKay-E — tool-call fingerprint log (crash-forensics) ───────────
+    // This call genuinely passed every check above and is about to
+    // execute. Write the 'dispatched' row NOW, synchronously, before
+    // returning control — chat-agent.js's loop calls executeToolCall
+    // immediately after this function resolves, so this is the last safe
+    // moment to record "this call was in flight" before a mid-tool-call
+    // crash would otherwise leave zero evidence behind. See
+    // marathon-tick-durability.js for the full durability contract.
+    let toolLogId = null;
+    try {
+      toolLogId = recordToolDispatch(db, sessionId, tickSeq, call?.tool, call?.params);
+    } catch {
+      toolLogId = null;
+    }
+
+    return {
+      ok: true,
+      ...(toolLogId != null
+        ? {
+          toolLogId,
+          recordOutcome: (result) => {
+            try {
+              recordToolOutcome(
+                db, toolLogId,
+                result?.ok ? "completed" : "failed",
+                result?.error ?? result?.result ?? result?.answer ?? null,
+              );
+            } catch { /* best-effort forensics only — never throw into the caller's loop */ }
+          },
+        }
+        : {}),
+    };
+  };
+}
+
+// ── Turn history compaction (bounds growth for very long marathon sessions) ─
+//
+// Grounding-audit gap (2026-07-24, migration 387): tickMarathon used to feed
+// EVERY prior turn into the brain call with no cap. This mirrors the
+// rolling-window pattern conversation-memory.js already uses for regular
+// chat sessions (WINDOW_THRESHOLD=50 raw messages triggers a pass that folds
+// the oldest COMPRESSION_BATCH=20 into a compact record, leaving a fixed-
+// size tail) — the same trigger/batch numbers are reused here as sensible,
+// already-battle-tested precedent rather than invented from scratch.
+//
+// Deliberate divergence from conversation-memory.js: that engine calls the
+// Utility brain to extract insights/decisions/claims because its output is
+// a searchable DTU a user might reference in a LATER, unrelated
+// conversation. A marathon checkpoint has a narrower job — keep the SAME
+// agent's own transcript coherent for itself so it can keep working — so
+// this uses a pure deterministic condensation (no brain call, no fabricated
+// content, built only from the real compacted turns' own text). That avoids
+// adding a second async LLM dependency to a governance-critical path (every
+// tick already makes one brain call via runAgentLoop) and keeps the
+// mechanism byte-testable without live brain infra.
+//
+// The checkpoint is a single `role:'system', is_checkpoint:1` turn per
+// session (migration 387). Re-compaction passes UPDATE that same row rather
+// than inserting a new one, folding the newly-aged batch's topics/excerpts
+// into the existing summary under a hard cap (MAX_CHECKPOINT_EXCERPTS /
+// MAX_CHECKPOINT_TOPICS) — so the checkpoint's own size stays bounded no
+// matter how many times a very long session re-compacts; it never grows
+// without limit the way the raw-turn-per-tick approach did. Structured
+// state (coversThroughTurnIndex, topics, excerpts) rides in the existing
+// `tool_calls_json` column — a system checkpoint turn has no real tool
+// calls, so that slot is otherwise unused. `content` is the deterministic
+// rendered text actually fed to the brain as a {role, content} message —
+// chat-agent.js's runAgentLoop needs no changes to understand it.
+
+/** Raw (uncovered) turn count that triggers a compaction pass. Matches
+ *  conversation-memory.js's WINDOW_THRESHOLD as precedent. */
+export const MARATHON_HISTORY_THRESHOLD = Number(process.env.CONCORD_MARATHON_HISTORY_THRESHOLD) || 50;
+
+/** How many of the oldest uncovered turns get folded in per pass. Matches
+ *  conversation-memory.js's COMPRESSION_BATCH as precedent — leaves a tail
+ *  of THRESHOLD - BATCH = 30 raw turns, matching ACTIVE_WINDOW there too. */
+export const MARATHON_COMPRESSION_BATCH = Number(process.env.CONCORD_MARATHON_COMPRESSION_BATCH) || 20;
+
+/** Hard cap on how many excerpt lines the rolling checkpoint ever carries —
+ *  keeps the checkpoint's own rendered size bounded across unlimited
+ *  re-compactions (bookended: oldest half + newest half kept on overflow). */
+export const MAX_CHECKPOINT_EXCERPTS = 12;
+
+/** Hard cap on distinct topics carried in the rolling checkpoint. */
+export const MAX_CHECKPOINT_TOPICS = 8;
+
+const CHECKPOINT_EXCERPT_MAX_LEN = 200;
+const CHECKPOINT_RENDER_MAX_LEN = 4000;
+
+/** Deterministic keyword-frequency topic extraction — no brain call, no
+ *  invention; every returned topic is a word that actually appears in the
+ *  compacted turns. Same technique as conversation-memory.js#extractFallback. */
+function extractCheckpointTopics(turns) {
+  const text = turns.map((t) => String(t.content || "")).join(" ").toLowerCase();
+  const words = text.split(/\W+/).filter((w) => w.length > 4);
+  const freq = new Map();
+  for (const w of words) freq.set(w, (freq.get(w) || 0) + 1);
+  return Array.from(freq.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([w]) => w);
+}
+
+function renderCheckpoint(state) {
+  const header = `[Marathon checkpoint — ${state.totalTurnsCompacted} earlier turn(s) condensed, through turn ${state.coversThroughTurnIndex}]`;
+  const topicsLine = state.topics.length ? `Topics so far: ${state.topics.join(", ")}` : "";
+  const excerptLines = state.excerpts.map((e) => `- ${e}`);
+  return [header, topicsLine, ...excerptLines].filter(Boolean).join("\n").slice(0, CHECKPOINT_RENDER_MAX_LEN);
+}
+
+/** Fold a newly-aged batch of real turns into (or onto) the prior checkpoint
+ *  state. Every excerpt/topic is derived from the batch's own real content —
+ *  never invented. Overflow is bookended (keep the earliest + most recent
+ *  excerpts) rather than simply truncated, so a checkpoint that's been
+ *  re-compacted many times still shows both "how the session started" and
+ *  "what it was doing most recently" instead of losing the start entirely. */
+function mergeCheckpointState(prevState, newBatchTurns, coversThroughTurnIndex) {
+  const newTopics = extractCheckpointTopics(newBatchTurns);
+  const newExcerpts = newBatchTurns.map((t) =>
+    `${t.role}: ${String(t.content || "").replace(/\s+/g, " ").trim().slice(0, CHECKPOINT_EXCERPT_MAX_LEN)}`
+  );
+
+  const topics = Array.from(new Set([...(prevState?.topics || []), ...newTopics])).slice(0, MAX_CHECKPOINT_TOPICS);
+
+  let excerpts = [...(prevState?.excerpts || []), ...newExcerpts];
+  if (excerpts.length > MAX_CHECKPOINT_EXCERPTS) {
+    const keepHead = Math.ceil(MAX_CHECKPOINT_EXCERPTS / 2);
+    const keepTail = MAX_CHECKPOINT_EXCERPTS - keepHead;
+    excerpts = [...excerpts.slice(0, keepHead), ...excerpts.slice(-keepTail)];
+  }
+
+  return {
+    checkpoint: true,
+    coversThroughTurnIndex,
+    totalTurnsCompacted: (prevState?.totalTurnsCompacted || 0) + newBatchTurns.length,
+    topics,
+    excerpts,
+  };
+}
+
+/**
+ * Fold the oldest MARATHON_COMPRESSION_BATCH not-yet-covered real turns of a
+ * marathon session into the session's single rolling checkpoint turn, if the
+ * uncovered count exceeds MARATHON_HISTORY_THRESHOLD. Never throws — a
+ * failure here must never stop the marathon; callers just proceed with the
+ * uncompressed history for this tick (identical to the pre-387 behavior).
+ *
+ * @returns {{ ok: boolean, compressed?: boolean, reason?: string, turnsCompacted?: number, coversThroughTurnIndex?: number }}
+ */
+export function compressMarathonHistory(db, sessionId) {
+  try {
+    if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
+
+    let cols;
+    try {
+      cols = db.prepare(`PRAGMA table_info(agent_marathon_turns)`).all().map((c) => c.name);
+    } catch {
+      return { ok: false, reason: "table_missing" };
+    }
+    if (!cols.includes("is_checkpoint")) {
+      // Pre-387 schema — no column to anchor a checkpoint on. Back-compat:
+      // behave exactly as before (uncapped history), never throw.
+      return { ok: false, reason: "pre_387_schema" };
+    }
+
+    const existingCheckpoint = db.prepare(`
+      SELECT id, tool_calls_json FROM agent_marathon_turns
+      WHERE session_id = ? AND is_checkpoint = 1
+      ORDER BY turn_index ASC LIMIT 1
+    `).get(sessionId);
+
+    let prevState = null;
+    if (existingCheckpoint?.tool_calls_json) {
+      try { prevState = JSON.parse(existingCheckpoint.tool_calls_json); } catch { prevState = null; }
+    }
+    const coveredThrough = Number.isFinite(prevState?.coversThroughTurnIndex) ? prevState.coversThroughTurnIndex : -1;
+
+    const uncovered = db.prepare(`
+      SELECT turn_index, role, content FROM agent_marathon_turns
+      WHERE session_id = ? AND role IN ('user','assistant') AND turn_index > ?
+      ORDER BY turn_index ASC
+    `).all(sessionId, coveredThrough);
+
+    if (uncovered.length <= MARATHON_HISTORY_THRESHOLD) {
+      return { ok: true, compressed: false, reason: "below_threshold" };
+    }
+
+    const toCompress = uncovered.slice(0, MARATHON_COMPRESSION_BATCH);
+    const newCoversThrough = toCompress[toCompress.length - 1].turn_index;
+    const state = mergeCheckpointState(prevState, toCompress, newCoversThrough);
+    const rendered = renderCheckpoint(state);
+    const stateJson = JSON.stringify(state);
+
+    if (existingCheckpoint) {
+      db.prepare(`
+        UPDATE agent_marathon_turns SET content = ?, tool_calls_json = ? WHERE id = ?
+      `).run(rendered, stateJson, existingCheckpoint.id);
+    } else {
+      // Anchor the checkpoint row's turn_index at the FIRST compacted turn's
+      // index, so `ORDER BY turn_index ASC` places it exactly where that
+      // batch used to sit — before the surviving tail, after anything
+      // already folded in by an earlier pass.
+      db.prepare(`
+        INSERT INTO agent_marathon_turns
+          (session_id, turn_index, role, content, tool_calls_json, is_checkpoint)
+        VALUES (?, ?, 'system', ?, ?, 1)
+      `).run(sessionId, toCompress[0].turn_index, rendered, stateJson);
+    }
+
+    return { ok: true, compressed: true, turnsCompacted: toCompress.length, coversThroughTurnIndex: newCoversThrough };
+  } catch (err) {
+    // Never let a compaction bug stop the marathon itself.
+    return { ok: false, reason: "compression_error", error: err?.message };
+  }
+}
+
+/**
+ * Build the bounded `{ history, lastMessage }` tickMarathon feeds into
+ * runAgentLoop. Runs compressMarathonHistory first (best-effort; never
+ * throws) so a very long session's oldest turns fold into the single
+ * rolling checkpoint BEFORE this tick's history is assembled. Below
+ * MARATHON_HISTORY_THRESHOLD, this reads byte-identically to the pre-387
+ * "every prior turn" query — the checkpoint filter is a strict superset
+ * that's a no-op until a checkpoint actually exists.
+ *
+ * @param {object} db
+ * @param {string} sessionId
+ * @param {string} fallbackMessage - used as lastMessage if no turns exist yet
+ * @returns {{ history: Array<{role:string, content:string}>, lastMessage: string }}
+ */
+export function buildMarathonHistory(db, sessionId, fallbackMessage) {
+  compressMarathonHistory(db, sessionId);
+
+  let cols = [];
+  try { cols = db.prepare(`PRAGMA table_info(agent_marathon_turns)`).all().map((c) => c.name); } catch { /* handled by hasCheckpointColumn below */ }
+  const hasCheckpointColumn = cols.includes("is_checkpoint");
+
+  let coveredThrough = -1;
+  if (hasCheckpointColumn) {
+    const cp = db.prepare(`
+      SELECT tool_calls_json FROM agent_marathon_turns
+      WHERE session_id = ? AND is_checkpoint = 1 ORDER BY turn_index ASC LIMIT 1
+    `).get(sessionId);
+    if (cp?.tool_calls_json) {
+      try {
+        const state = JSON.parse(cp.tool_calls_json);
+        if (Number.isFinite(state?.coversThroughTurnIndex)) coveredThrough = state.coversThroughTurnIndex;
+      } catch { /* malformed state — treat as no checkpoint coverage */ }
+    }
+  }
+
+  const rows = hasCheckpointColumn
+    ? db.prepare(`
+        SELECT turn_index, role, content FROM agent_marathon_turns
+        WHERE session_id = ? AND (
+          is_checkpoint = 1
+          OR (role IN ('user','assistant') AND turn_index > ?)
+        )
+        ORDER BY turn_index ASC
+      `).all(sessionId, coveredThrough)
+    : db.prepare(`
+        SELECT turn_index, role, content FROM agent_marathon_turns
+        WHERE session_id = ? AND role IN ('user','assistant')
+        ORDER BY turn_index ASC
+      `).all(sessionId);
+
+  const priorTurns = rows.map((t) => ({ role: t.role, content: t.content }));
+  const history = priorTurns.slice(0, -1);
+  const lastMessage = priorTurns[priorTurns.length - 1]?.content || fallbackMessage;
+  return { history, lastMessage };
+}
+
 export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }) {
   if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
   const session = db.prepare(`SELECT * FROM agent_marathon_sessions WHERE id = ?`).get(sessionId);
   if (!session) return { ok: false, reason: "session_not_found" };
-  if (["completed", "abandoned", "failed"].includes(session.status)) {
+  if (["completed", "abandoned", "failed", "revoked"].includes(session.status)) {
     return { ok: true, alreadyTerminal: true, status: session.status };
+  }
+  // Governance envelope (mig 379) — revocation checked BEFORE this tick does
+  // any work at all. `session.revoked_at` comes from the `SELECT *` above,
+  // so this is a no-op (undefined, falsy) against a pre-migration-379 /
+  // hand-rolled minimal test schema — same back-compat contract as
+  // startMarathon's insert fallback. The mid-tick gate below is the second,
+  // load-bearing check: a revoke landing WHILE this tick's runAgentLoop is
+  // still in flight (several turns/tool calls deep) is caught there too.
+  if (session.revoked_at) {
+    db.prepare(`UPDATE agent_marathon_sessions SET status = 'revoked', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
+    return { ok: true, status: "revoked", reason: "revoked" };
   }
   if (session.total_turns >= session.max_turns) {
     db.prepare(`UPDATE agent_marathon_sessions SET status = 'failed', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
@@ -140,18 +693,45 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   // Mark running.
   db.prepare(`UPDATE agent_marathon_sessions SET status = 'running', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
 
-  // Build history from prior turns.
-  const priorTurns = db.prepare(`
-    SELECT role, content FROM agent_marathon_turns
-    WHERE session_id = ? AND role IN ('user','assistant')
-    ORDER BY turn_index ASC
-  `).all(sessionId);
-
+  // Build history from prior turns — bounded via buildMarathonHistory
+  // (migration 387): once a very long session's raw turn count exceeds
+  // MARATHON_HISTORY_THRESHOLD, the oldest MARATHON_COMPRESSION_BATCH turns
+  // fold into a single rolling checkpoint turn (mirrors conversation-
+  // memory.js's rolling-window pattern), so the brain-call history stays
+  // bounded no matter how many days a marathon runs. Below the threshold
+  // this is byte-identical to the pre-387 "every prior turn" query.
   // The first user-turn is the goal; subsequent are tool-result responses.
-  const history = priorTurns.slice(0, -1).map(t => ({ role: t.role, content: t.content }));
-  const lastMessage = priorTurns[priorTurns.length - 1]?.content || session.goal;
+  const { history, lastMessage } = buildMarathonHistory(db, sessionId, session.goal);
 
   const tickTurns = Math.min(opts.tickTurns || DEFAULT_TICK_TURNS, session.max_turns - session.total_turns);
+
+  // Governance envelope (mig 379) — the real, enforced gate. Passed into
+  // runAgentLoop's opt-in `opts.toolGate` hook so it runs immediately
+  // before EVERY real tool dispatch this tick makes, not just once at the
+  // top of the tick. `opts.brainChat` passthrough is test-only (never
+  // exposed via the agent_marathon.tick macro/HTTP surface) — it lets
+  // tests script the brain's replies deterministically, matching the
+  // existing pattern in tests/agent-action-memory-wire.test.js.
+  // tickSeq (this tick's about-to-be-assigned turn index — same value
+  // `nextTurnIndex` below will compute) rides along on every dispatched
+  // tool-log row purely as forensic context (see ConKay-E addition on
+  // createToolGate above).
+  const toolGate = createToolGate(db, sessionId, session.total_turns + 1);
+
+  // Plan-grounding (read path, opt-in via opts.projectId — default
+  // undefined/off). When the caller explicitly names a linked project with
+  // a goal tree, pull nextActionable() + tree progress and hand it to
+  // runAgentLoop's opts.extraSystemBlock seam so the tick's system prompt
+  // is grounded against the REAL tree state, not a re-derived guess. Absent
+  // opts.projectId (every pre-existing caller), planCtx stays null and the
+  // prompt this tick builds is byte-identical to before this change —
+  // marathon-plan-context.js is never even invoked.
+  let planCtx = null;
+  if (opts.projectId) {
+    try {
+      planCtx = buildPlanContextBlock(db, opts.projectId);
+    } catch { /* plan context is best-effort — never blocks the tick */ }
+  }
 
   const result = await runAgentLoop({
     db,
@@ -160,7 +740,10 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     runMacro,
     lensActions,
     history,
-    opts: { maxTurns: tickTurns, slot: opts.slot, sessionId },
+    opts: {
+      maxTurns: tickTurns, slot: opts.slot, sessionId, toolGate, brainChat: opts.brainChat,
+      extraSystemBlock: planCtx?.ok ? planCtx.block : "",
+    },
   });
 
   if (!result.ok) {
@@ -186,12 +769,57 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
 
   const totalTurns = session.total_turns + result.turns;
 
-  // Check for termination markers.
+  // Tree write-back (status sync, opt-in via the SAME planCtx resolved
+  // above — never re-discovers a link on its own). Detects
+  // `[SUBGOAL_COMPLETE: nodeId]` markers in this tick's final answer and
+  // applies them through goal-decomposition.js's own `setNodeStatus` (roll-
+  // up logic lives there, not here). Honest no-op when no tree is linked.
+  if (planCtx?.ok) {
+    try {
+      applyPlanSync(db, { treeId: planCtx.goalTreeId, answerText: result.answer || "" });
+    } catch { /* plan sync is best-effort — never blocks the tick */ }
+  }
+
+  // Check for termination markers. A governance halt (revoked mid-tick, or
+  // the spend budget was exhausted mid-tick) ALWAYS wins over a
+  // COMPLETE/BLOCKED marker the brain happened to also emit this turn —
+  // the tick already stopped for real inside runAgentLoop, so the status
+  // must honestly reflect that, not whatever text came back.
   let nextStatus = "running";
-  if (COMPLETE_MARKER.test(result.answer || "")) {
+  if (result.halted) {
+    nextStatus = result.haltReason === "revoked" ? "revoked" : "failed";
+  } else if (COMPLETE_MARKER.test(result.answer || "")) {
     nextStatus = "completed";
   } else if (BLOCKED_MARKER.test(result.answer || "")) {
     nextStatus = "paused";
+  }
+
+  // Explicit replan checkpoint (opt-in via the SAME planCtx; only when the
+  // session is still actually running — a completed/blocked/halted tick has
+  // nothing left to replan). Triggered by either a `[REPLAN_NEEDED: reason]`
+  // marker in this tick's answer or a turn-count interval (see
+  // marathon-replanner.js#shouldReplan). The checkpoint's own brain call is
+  // narrowly scoped (TASK_PROMPTS.marathonReplan) and its output is applied
+  // ONLY through goal-decomposition.js's addSubgoals/setNodeStatus — it
+  // never reads or writes allowed_domains_json/budget_cap, so a replan can
+  // change what subgoals exist but never what the mandate permits.
+  if (planCtx?.ok && nextStatus === "running") {
+    try {
+      const decision = shouldReplan({
+        answerText: result.answer || "",
+        priorTotalTurns: session.total_turns,
+        newTotalTurns: totalTurns,
+      });
+      if (decision.trigger) {
+        await runReplanCheckpoint(db, {
+          treeId: planCtx.goalTreeId,
+          userId: session.user_id,
+          reason: decision.reason,
+          brain: opts.replanBrainChat || opts.brainChat,
+          slot: opts.slot,
+        });
+      }
+    } catch { /* replan checkpoint is best-effort — never blocks the tick */ }
   }
 
   const nextTickAt = nextStatus === "running"
@@ -211,26 +839,19 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   // lights up ("your marathon refactor is done" / "I'm blocked on X").
   // Best-effort; the marathon itself succeeds whether or not the
   // initiative engine is wired.
-  if (nextStatus === "completed" || nextStatus === "paused") {
+  if (nextStatus === "completed" || nextStatus === "paused" || nextStatus === "revoked" || (result.halted && nextStatus === "failed")) {
+    emitMarathonStatus(session, sessionId, nextStatus, totalTurns);
     try {
-      const re = globalThis._concordRealtimeEmit;
-      if (typeof re === "function") {
-        re("marathon:status", {
-          actor_kind: "marathon",
-          actor_id: sessionId,
-          session_id: sessionId,
-          user_id: session.user_id,
-          status: nextStatus,
-          total_turns: totalTurns,
-          title: session.title,
-        });
-      }
       // Direct insert into initiative engine table if present — the
       // bell polls /api/initiative/pending which reads from there.
       const trigger = nextStatus === "completed" ? "pending_work" : "reflective_followup";
       const msg = nextStatus === "completed"
         ? `Marathon complete: "${session.title}" finished after ${totalTurns} turns.`
-        : `Marathon paused: "${session.title}" hit a block at turn ${totalTurns}. Reason in the answer body.`;
+        : nextStatus === "revoked"
+          ? `Marathon revoked: "${session.title}" was stopped by revocation after ${totalTurns} turns.`
+          : (result.halted && nextStatus === "failed")
+            ? `Marathon halted: "${session.title}" hit its spend/action budget cap after ${totalTurns} turns.`
+            : `Marathon paused: "${session.title}" hit a block at turn ${totalTurns}. Reason in the answer body.`;
       try {
         const initId = `init_mar_${sessionId.slice(4, 16)}_${Date.now().toString(36)}`;
         db.prepare(`
@@ -239,6 +860,16 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
         `).run(initId, session.user_id, trigger, msg);
       } catch { /* initiatives table optional in test setups */ }
     } catch { /* never block on telemetry */ }
+  }
+
+  // Periodic check-in nudge (separate from the terminal-status hooks just
+  // above — this is for a session that is STILL running, just for a long
+  // time). See maybeFireMarathonCheckIn's own doc comment for the
+  // idempotency contract. Best-effort; never blocks the marathon.
+  if (nextStatus === "running") {
+    try {
+      maybeFireMarathonCheckIn(db, session, totalTurns);
+    } catch { /* never block the marathon on a check-in nudge */ }
   }
 
   return {
@@ -252,6 +883,7 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     artifacts: result.artifacts,
     provider: result.provider,
     model: result.model,
+    ...(result.halted ? { halted: true, haltReason: result.haltReason } : {}),
   };
 }
 
@@ -283,10 +915,60 @@ export function abandonMarathon(db, sessionId) {
   return { ok: true };
 }
 
+/**
+ * Owner-only, real-time stop for a marathon (mig 379 governance envelope).
+ * Distinct from `abandonMarathon` above: abandon only flips `status`, which
+ * stops FUTURE ticks (findDueMarathons filters on status='running') but
+ * does nothing about a tick that's already mid-flight — the old
+ * pause/abandon pair never checked status again once a tick's runAgentLoop
+ * call started. `revokeMarathon` additionally sets `revoked_at`, which
+ * `createToolGate` re-reads fresh from the DB before every single tool
+ * dispatch — so a revoke lands on the very next tool call even if the
+ * current tick is several turns deep, not just on the next tick.
+ *
+ * Ownership check mirrors the one real ownership check already in this
+ * file (the `agent_marathon.get` macro's `session.user_id !== userId`) —
+ * pause/abandon predate that check and don't verify ownership at the lib
+ * layer; revoke is new and gets it right from the start.
+ */
+export function revokeMarathon(db, sessionId, userId) {
+  if (!db || !sessionId || !userId) return { ok: false, reason: "missing_inputs" };
+  const session = db.prepare(`SELECT user_id, status FROM agent_marathon_sessions WHERE id = ?`).get(sessionId);
+  if (!session) return { ok: false, reason: "not_found" };
+  if (session.user_id !== userId) return { ok: false, reason: "not_owner" };
+  if (["completed", "abandoned", "revoked", "failed"].includes(session.status)) {
+    return { ok: false, reason: "already_terminal", status: session.status };
+  }
+  try {
+    db.prepare(`
+      UPDATE agent_marathon_sessions
+      SET revoked_at = unixepoch(), status = 'revoked', updated_at = unixepoch()
+      WHERE id = ?
+    `).run(sessionId);
+  } catch {
+    // Pre-migration-379 schema (no revoked_at column to enforce against) —
+    // an honest failure, never a fabricated success: the caller needs to
+    // know revocation did NOT actually get recorded/enforced.
+    return { ok: false, reason: "governance_columns_missing" };
+  }
+  return { ok: true, sessionId, status: "revoked" };
+}
+
 function safeParse(s) {
   try { return JSON.parse(s); } catch { return []; }
 }
 
+// Governance envelope (mig 379) — sane non-null default for the "New
+// marathon" UI's budget-cap field (MarathonPanel.tsx). Per-tick a marathon
+// can run up to DEFAULT_TICK_TURNS turns with up to 5 tool calls each
+// (chat-agent.js caps at `calls.slice(0, 5)`); DEFAULT_BUDGET_CAP gives a
+// long-running session real room to work (well beyond DEFAULT_MAX_TURNS'
+// own scale) while still being a REAL ceiling instead of "unrestricted" —
+// the user must explicitly opt into unrestricted, not get it by default.
+const DEFAULT_BUDGET_CAP = 150;
+
 export const MARATHON_CONSTANTS = Object.freeze({
-  DEFAULT_TICK_TURNS, DEFAULT_MAX_TURNS, DEFAULT_TICK_INTERVAL_S,
+  DEFAULT_TICK_TURNS, DEFAULT_MAX_TURNS, DEFAULT_TICK_INTERVAL_S, DEFAULT_BUDGET_CAP,
+  MARATHON_HISTORY_THRESHOLD, MARATHON_COMPRESSION_BATCH, MAX_CHECKPOINT_EXCERPTS, MAX_CHECKPOINT_TOPICS,
+  MARATHON_CHECKIN_AGE_S,
 });

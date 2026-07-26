@@ -63,11 +63,14 @@ export interface DesertOfflineMapViewProps {
 const DESERT_TILE_PROTOCOL = 'desert-tile';
 let protocolRegistered = false;
 
+// @fake-data-ok: the "placeholder" here is an honest unavailable-state graphic — a tile
+// that reads "cached tile isn't available offline". No data is fabricated.
 let placeholderBlobPromise: Promise<Blob> | null = null;
 
 /** Draws the honest "cached tile isn't available offline" placeholder once, memoized. */
 function getPlaceholderTileBlob(): Promise<Blob> {
   if (placeholderBlobPromise) return placeholderBlobPromise;
+  // @fake-data-ok: memoizes the honest "tile unavailable offline" graphic, not fake data.
   placeholderBlobPromise = new Promise((resolve, reject) => {
     try {
       const size = 256;

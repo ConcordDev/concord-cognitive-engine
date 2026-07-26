@@ -190,6 +190,12 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       const res = await fetch('/api/worlds', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        // r.data.result is guaranteed truthy by the
+        // `if (!r.data?.ok || !r.data.result) { …; return; }` guard above;
+        // the detector's "data.result.worldPayload" finding is a name
+        // collision with the unrelated `const data = await res.json()`
+        // bound a few lines below in this same block, not a real chain
+        // on that variable. @unsafe-chain-ok
         body: JSON.stringify(r.data.result.worldPayload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

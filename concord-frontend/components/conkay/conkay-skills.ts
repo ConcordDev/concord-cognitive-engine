@@ -25,8 +25,16 @@ export interface ConKaySkillResult {
   spoken: string;
   /** Optional live visualization (rendered via the conkay-viz fence). */
   viz?: ConKayVizSpec;
-  /** Archive (DTU) citations — "pulling from your archives". */
-  dtuRefs?: Array<{ id: string; title: string | null; tier: string | null }>;
+  /** Archive (DTU) citations — "pulling from your archives". `content` is the
+   *  DTU's real (bounded, best-effort) body text — R8/CL3 gap fix: without
+   *  it, ConKay's verifyMessage -> reason.evaluate_answer call had nothing
+   *  but the title to score faithfulness against (see
+   *  server/tests/e2e/conkay-verified-answer-loop.test.js's header for the
+   *  full root-cause writeup). Optional/null when no real body content is
+   *  available for a given ref (e.g. the `/api/dtus` fallback path, which
+   *  only ever returns title-level data) — an honest omission, never a
+   *  fabricated summary. */
+  dtuRefs?: Array<{ id: string; title: string | null; tier: string | null; content?: string | null }>;
   /** Research/web sources. */
   sources?: Array<{ type: string; title: string; url: string; source: string; snippet?: string }>;
   /** Ambient action chips — what Kay touched. */
@@ -332,7 +340,7 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
     },
     run: async (a, ctx) => {
       const q = a.q;
-      let items: Array<{ id: string; title: string; tier: string | null }> = [];
+      let items: Array<{ id: string; title: string; tier: string | null; content?: string | null }> = [];
       let semantic = false;
       let usedMacro = false;
       // Prefer the semantic discovery macro (embedding re-rank when the brains
@@ -345,14 +353,28 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
           usedMacro = true;
           semantic = env.semantic === true;
           items = env.results
-            .map((r) => ({ id: String(r.id ?? ''), title: String(r.title ?? 'Untitled'), tier: r.kind != null ? String(r.kind) : null }))
+            .map((r) => ({
+              id: String(r.id ?? ''),
+              title: String(r.title ?? 'Untitled'),
+              tier: r.kind != null ? String(r.kind) : null,
+              // R8/CL3 gap fix — server/lib/cross-lens-discovery.js#searchDtus
+              // now returns the DTU's real (bounded) body text under `content`,
+              // not just id/title/tier. Threaded through here so
+              // reason.evaluate_answer's faithfulness scoring has real
+              // grounding text, not just a label-like title, to check the
+              // reply against.
+              content: typeof r.content === 'string' && r.content ? r.content : null,
+            }))
             .filter((d) => d.id);
         }
       }
       // Fallback to the keyword endpoint only if the macro bridge is unavailable.
+      // Honest limitation: `/api/dtus` (the in-memory dtu.list macro) doesn't
+      // expose body text in its list shape, so `content` stays null here —
+      // never fabricated, just genuinely absent on this degrade path.
       if (!usedMacro) {
         const dtus = readDtus(await ctx.fetchJson(`/api/dtus?mine=true&q=${encodeURIComponent(q)}&limit=40`));
-        items = dtus.map((d) => ({ id: d.id, title: d.title, tier: d.tier }));
+        items = dtus.map((d) => ({ id: d.id, title: d.title, tier: d.tier, content: null }));
       }
       if (items.length === 0) {
         return { spoken: `I searched your archive for "${q}" and came up empty. Nothing there yet.`, acting: true };

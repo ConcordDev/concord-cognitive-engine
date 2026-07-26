@@ -4,7 +4,7 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import {
-  foundFaith, getFaith, listFaiths,
+  foundFaith, getFaith, listFaiths, listFaithsForWorld,
   join, leave,
   pray, sermon, convert,
   accuseHeresy, excommunicate,
@@ -28,6 +28,10 @@ before(() => { registerReligionMacros(register); });
 beforeEach(() => {
   db = new Database(":memory:");
   db.exec(`
+    CREATE TABLE users (
+      id TEXT PRIMARY KEY,
+      current_world TEXT NOT NULL DEFAULT 'concordia'
+    );
     CREATE TABLE faiths (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -37,7 +41,8 @@ beforeEach(() => {
       tenet_count INTEGER NOT NULL DEFAULT 0,
       total_worshippers INTEGER NOT NULL DEFAULT 0,
       founded_at INTEGER NOT NULL DEFAULT (unixepoch()),
-      schism_parent_id TEXT
+      schism_parent_id TEXT,
+      world_id TEXT
     );
     CREATE TABLE worshippers (
       faith_id TEXT NOT NULL,
@@ -167,6 +172,37 @@ describe("religion-engine library", () => {
     const list = listFaiths(db);
     assert.equal(list[0].name, "Big");
     void a;
+  });
+
+  it("world scoping: a faith founded while current_world='fantasy' is retrievable via listFaithsForWorld('fantasy') and NOT returned for 'cyber'", () => {
+    db.prepare(`INSERT INTO users (id, current_world) VALUES (?, ?)`).run("u1", "fantasy");
+    const f = foundFaith(db, { actorKind: "player", actorId: "u1", name: "Sandrun Faith" });
+    assert.equal(f.worldId, "fantasy");
+    const faith = getFaith(db, f.faithId);
+    assert.equal(faith.world_id, "fantasy");
+
+    const inFantasy = listFaithsForWorld(db, "fantasy");
+    assert.ok(inFantasy.some((x) => x.id === f.faithId));
+
+    const inCyber = listFaithsForWorld(db, "cyber");
+    assert.ok(!inCyber.some((x) => x.id === f.faithId));
+  });
+
+  it("zero regression: a pre-migration faith with world_id IS NULL still lists correctly under the old unscoped listFaiths call", () => {
+    // Simulate a row written before migration 389 ever ran — no world_id.
+    db.prepare(`
+      INSERT INTO faiths (id, name, founder_kind, founder_id, total_worshippers)
+      VALUES ('faith_legacy', 'The Old Concord', 'player', 'u_legacy', 1)
+    `).run();
+    const legacy = getFaith(db, "faith_legacy");
+    assert.equal(legacy.world_id, null);
+
+    const all = listFaiths(db);
+    assert.ok(all.some((x) => x.id === "faith_legacy"));
+
+    // And it's correctly excluded from any world-scoped view — NULL means
+    // world-agnostic, not "belongs to every world."
+    assert.ok(!listFaithsForWorld(db, "fantasy").some((x) => x.id === "faith_legacy"));
   });
 
   it("listRecentEvents returns events DESC by ts", () => {

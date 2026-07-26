@@ -55,3 +55,38 @@ test("reasons always explain the verdict", () => {
   const r = classify({ kind: "dupe" });
   assert.ok(Array.isArray(r.reasons) && r.reasons.length > 0);
 });
+
+test("a real source is recorded into reasons for the audit trail, without changing severity", () => {
+  const withSource = classify({ source: "econ_anomaly", kind: "wash_trade" });
+  assert.ok(withSource.reasons.includes("source:econ_anomaly"));
+  assert.equal(withSource.severity, SEVERITY.CRITICAL, "wash_trade is critical regardless of source");
+
+  // Same kind, no source supplied — same severity, no source reason.
+  const noSource = classify({ kind: "wash_trade" });
+  assert.equal(noSource.severity, withSource.severity);
+  assert.ok(!noSource.reasons.some((r) => r.startsWith("source:")));
+});
+
+test("regression: a real source alone must NOT force Critical on a non-critical kind", () => {
+  // Every real caller (client-error-intake, economy-anomaly-cycle, feedback
+  // bug_report) passes a non-"unknown" source on every call. A prior bug
+  // computed the hard-escalator flag from `reasons.length > 0` AFTER the
+  // source-provenance entry was already pushed into `reasons`, so merely
+  // supplying a source silently forced every kind to Critical. Pin the
+  // documented contract directly: source changes provenance, never severity.
+  const minor = classify({ source: "client_error", kind: "totally_unclassified" });
+  assert.equal(minor.severity, SEVERITY.MINOR, "unclassified kind + source must stay Minor");
+  assert.equal(minor.route, ROUTE.BOARD);
+  assert.ok(minor.reasons.includes("source:client_error"));
+
+  const major = classify({ source: "client_error", kind: "white_screen" });
+  assert.equal(major.severity, SEVERITY.MAJOR, "major kind + source, no escalator/blast-radius, must stay Major");
+  assert.equal(major.route, ROUTE.BOARD);
+
+  const moderate = classify({ source: "client_error", kind: "slow" });
+  assert.equal(moderate.severity, SEVERITY.MODERATE, "moderate kind + source must stay Moderate");
+
+  // Sanity: an actual escalator signal alongside a source still escalates.
+  const escalated = classify({ source: "client_error", kind: "slow", signals: { security: true } });
+  assert.equal(escalated.severity, SEVERITY.CRITICAL);
+});

@@ -90,14 +90,37 @@ async function startServer() {
   throw new Error('Test server did not start');
 }
 
-function stopServer() {
-  if (serverProcess) {
-    serverProcess.kill('SIGTERM');
-    serverProcess = null;
+// Resource-leak fix (2026-07-25): a bare fire-and-forget SIGTERM here left a
+// real, un-awaited orphan. server.js's gracefulShutdown() (server.js:2878)
+// does an UNCONDITIONAL `await new Promise(r => setTimeout(r, SHUTDOWN_TIMEOUT_MS))`
+// (default 10s) plus up to SHUTDOWN_DRAIN_MS (default 5s) before it actually
+// calls process.exit(0) — so a SIGTERM'd spawned server monolith keeps
+// running (CPU + the full boot-time memory footprint) for 10-15s AFTER this
+// file's own tests report done, purely because nothing waited for it. Mirrors
+// the already-correct tests/e2e/*.test.js pattern: SIGTERM, then SIGKILL
+// after a short grace window if it hasn't exited on its own — awaited, so
+// the caller doesn't proceed to remove the server's own data/state files
+// while a (however briefly) still-live process might still touch them.
+async function stopServer() {
+  const proc = serverProcess;
+  serverProcess = null;
+  if (proc && !proc.killed) {
+    await new Promise((resolve) => {
+      proc.kill('SIGTERM');
+      const t = setTimeout(() => { proc.kill('SIGKILL'); resolve(); }, 3000);
+      proc.on('exit', () => { clearTimeout(t); resolve(); });
+    });
   }
   // Cleanup test data
   try { fs.rmSync(join(__dirname, `../.parity-test-data-${TS}`), { recursive: true, force: true }); } catch (_e) { logger.debug('storage-parity.test', 'silent catch', { error: _e?.message }); }
-  try { fs.unlinkSync(join(__dirname, `../.parity-test-state-${TS}.json`)); } catch (_e) { logger.debug('storage-parity.test', 'silent catch', { error: _e?.message }); }
+  // Both the state file AND its atomic-write sidecar. The server writes
+  // `<name>.json.tmp` then renames; if the spawned process is killed
+  // mid-write the `.tmp` survives, and teardown only ever removed the
+  // `.json` — which is how a stray `.parity-test-state-*.json.tmp` ended up
+  // sitting untracked in the repo.
+  for (const suffix of ['.json', '.json.tmp']) {
+    try { fs.unlinkSync(join(__dirname, `../.parity-test-state-${TS}${suffix}`)); } catch (_e) { logger.debug('storage-parity.test', 'silent catch', { error: _e?.message }); }
+  }
 }
 
 async function api(method, path, body = null, headers = {}) {
@@ -115,7 +138,7 @@ async function api(method, path, body = null, headers = {}) {
 // ---- Tests ----
 
 before(async () => { await startServer(); });
-after(() => { stopServer(); });
+after(async () => { await stopServer(); });
 
 describe('Storage Parity: Auth Operations', () => {
   let tokenA = null;

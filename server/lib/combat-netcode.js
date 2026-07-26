@@ -29,6 +29,54 @@
  *   4. Damage must be within [0, weaponMaxDamage * critMultiplier].
  *
  * Failed validation is logged and the event is dropped, never broadcast.
+ *
+ * ── DET-C batch 8 investigation (dead-event-listener sweep, 2026-07-23) ──
+ * `combat:attack` and `combat:miss` were found genuinely orphaned, on both
+ * sides, and NOT a detector scan-scope false positive like the Godot-only
+ * events documented elsewhere in this sweep:
+ *   - The REST routes that triggered these broadcasts (POST /api/combat/attack,
+ *     /api/combat/hit — server/routes/combat.js, mounted at /api/combat in
+ *     server.js) were never called by concord-frontend, concord-mobile, or
+ *     world-lens-godot. Nothing exercised broadcastAttack()/broadcastHit()
+ *     outside this module's own unit tests.
+ *   - Even if they were called, broadcastAttack/broadcastHit call
+ *     `REALTIME.io.to(...).emit(...)` directly rather than going through
+ *     `realtimeEmit`/`emitToWorld`, so they'd bypass the Godot gateway's
+ *     mirror (`_godotGatewayEmitter.emitToRoom`/`.broadcast`, wired inside
+ *     those two helpers in server.js) even if a Godot client existed to
+ *     receive them.
+ *   - docs/GODOT_INTEGRATION.md independently confirmed the INBOUND
+ *     direction was unfinished too ("`combat:attack` is NOT wired" for the
+ *     Godot gateway's dispatch table) — consistent with this being a real,
+ *     never-adopted parallel combat pipeline, not a rendering gap.
+ * The LIVE combat path is a different mechanism entirely: the browser emits
+ * `combat:attack` (client→server, the SAME event name, opposite direction —
+ * see server.js's `socket.on("combat:attack", ...)`), which computes damage
+ * via `cityPresence.applyAttack()` and broadcasts `combat:hit`/`combat:impact`
+ * (server/lib/combat/impact-feel.js) — CombatInputController.tsx only ever
+ * speaks that path.
+ *
+ * ── RESOLVED (dead-event-listener follow-up, 2026-07-24) ──────────────────
+ * Wiring CombatInputController.tsx onto this REST+broadcast pipeline would
+ * have meant building a second, redundant combat-input path alongside the
+ * live socket one above — a real product/architecture decision, not a
+ * one-file fix. Retiring the specifically-orphaned pieces was the honest
+ * option that didn't require inventing a parallel system nobody asked for:
+ * `broadcastAttack()` (the sole emitter of `combat:attack`) is removed, and
+ * `broadcastHit()`'s i-frame "hit whiffs" branch no longer emits
+ * `combat:miss` — it returns `{ delivered: 0, iframed: true }` honestly
+ * instead of broadcasting an event with nobody listening. `POST
+ * /api/combat/attack` (server/routes/combat.js) is removed with it, since
+ * declaring an attack swing had no purpose once nothing broadcasts it and
+ * the route was never called by any client anyway (see above). `broadcastHit`
+ * (for the non-whiff `combat:hit` case), `broadcastDeath` (`combat:death`),
+ * `POST /api/combat/hit`, `POST /api/combat/death`, and `GET
+ * /api/combat/recent` are unchanged — out of scope for this fix (their event
+ * names aren't orphaned: `combat:hit`/`combat:death` already have real
+ * frontend consumers via the live pipeline above, and `/recent` is a genuine
+ * read endpoint over `damage_events`, unrelated to this module's broadcasts).
+ * `recordAttackSwing`/`validateHit` (pure, tested — see
+ * server/tests/combat-state-netcode.test.js) are kept as-is.
  */
 
 import logger from "../logger.js";
@@ -88,34 +136,6 @@ export function validateHit({ attacker, victim, weapon = {}, damage, isCrit = fa
 }
 
 /**
- * Broadcast an attack swing event to nearby peers.
- *
- * @param {object} REALTIME - { ready, io } from server.js
- * @param {Function} getNearbyUserIds - (cityId, position, radius) => string[]
- */
-export function broadcastAttack(REALTIME, getNearbyUserIds, args) {
-  if (!REALTIME?.ready || !REALTIME.io) return { delivered: 0 };
-  try {
-    const targets = (getNearbyUserIds?.(args.cityId, args.position, MAX_BROADCAST_RADIUS_M) ?? []).filter(id => id !== args.attackerId);
-    const payload = {
-      attackerId: args.attackerId,
-      weapon:     args.weapon ?? "fist",
-      animation:  args.animation ?? "swing",
-      direction:  args.direction ?? null,
-      position:   args.position,
-      ts:         new Date().toISOString(),
-    };
-    for (const uid of targets) {
-      REALTIME.io.to(`user:${uid}`).emit("combat:attack", payload);
-    }
-    return { delivered: targets.length };
-  } catch (err) {
-    logger?.warn?.({ err: err.message }, "combat_netcode_broadcast_attack_failed");
-    return { delivered: 0, error: err.message };
-  }
-}
-
-/**
  * Broadcast a hit event after server-side validation. Returns the number of
  * peers it was delivered to.
  */
@@ -140,13 +160,14 @@ export function broadcastHit(REALTIME, getNearbyUserIds, args) {
     const finalDamage = Math.round(args.damage * stateMod.damageMul);
 
     if (stateMod.iframed) {
-      // Hit whiffs: deliver a "hit:miss" event for FX without applying damage.
-      const targets = (getNearbyUserIds?.(args.attacker.cityId, args.victim.position, MAX_BROADCAST_RADIUS_M) ?? []);
-      const payload = { attackerId: args.attacker.id, victimId: args.victim.id, missed: true, ts: new Date().toISOString() };
-      for (const uid of new Set([args.attacker.id, args.victim.id, ...targets])) {
-        REALTIME.io.to(`user:${uid}`).emit("combat:miss", payload);
-      }
-      return { delivered: targets.length, iframed: true };
+      // Hit whiffs — i-frames absorbed it, no damage applied. This used to
+      // broadcast a 'combat:miss' event, but nothing anywhere ever
+      // subscribed to it (dead-event-listener sweep) and this whole code
+      // path is only reachable via POST /api/combat/hit, which no client
+      // calls (see the module header's RESOLVED note) — so the broadcast
+      // was firing into the void. Return honestly instead of fabricating a
+      // "delivered" count for a broadcast that never happened.
+      return { delivered: 0, iframed: true };
     }
 
     const targets = (getNearbyUserIds?.(args.attacker.cityId, args.victim.position, MAX_BROADCAST_RADIUS_M) ?? [])

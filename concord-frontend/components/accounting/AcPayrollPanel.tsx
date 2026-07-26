@@ -111,8 +111,8 @@ export function AcPayrollPanel() {
                   </select>
                   <input value={editDraft.rate} onChange={(ev) => setEditDraft({ ...editDraft, rate: ev.target.value })} inputMode="decimal" placeholder={editDraft.payType === 'hourly' ? 'Rate/hr' : 'Annual'} className={inp} />
                   <div className="flex gap-1">
-                    <button type="button" onClick={() => saveEditEmp(e.id)} className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded"><Check className="w-3.5 h-3.5" /></button>
-                    <button type="button" onClick={() => setEditingId(null)} className="flex-1 inline-flex items-center justify-center gap-1 border border-white/15 text-gray-300 hover:bg-white/5 text-xs font-medium rounded"><X className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={() => saveEditEmp(e.id)} className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded" aria-label={`Save changes to ${e.name || 'employee'}`}><Check className="w-3.5 h-3.5" aria-hidden="true" /></button>
+                    <button type="button" onClick={() => setEditingId(null)} className="flex-1 inline-flex items-center justify-center gap-1 border border-white/15 text-gray-300 hover:bg-white/5 text-xs font-medium rounded" aria-label="Cancel editing"><X className="w-3.5 h-3.5" aria-hidden="true" /></button>
                   </div>
                 </li>
               ) : (

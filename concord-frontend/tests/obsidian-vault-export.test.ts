@@ -15,9 +15,6 @@
 // environment cannot faithfully emulate for this specific check) is
 // unaffected — only this cross-realm test-runner artifact is.
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { dedupeFilenames } from '@/components/export/ObsidianVaultExport';
 
@@ -31,8 +28,6 @@ import { dedupeFilenames } from '@/components/export/ObsidianVaultExport';
 // in-memory set of {filename, content} pairs shaped exactly like what
 // export.obsidian returns, and independently verifies the raw ZIP magic
 // number on the produced bytes. No mocking of fflate anywhere in this file.
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('Obsidian vault export — real fflate zip round trip', () => {
   const sampleFiles = [
@@ -162,34 +157,17 @@ describe('dedupeFilenames — collision-safe before handing to zipSync', () => {
   });
 });
 
-describe('ObsidianVaultExport component — real backend wiring (source pin)', () => {
-  const src = readFileSync(
-    path.resolve(__dirname, '..', 'components', 'export', 'ObsidianVaultExport.tsx'),
-    'utf8',
-  );
-
-  it('imports the real fflate zip primitives (never a mock/stub library)', () => {
-    expect(src).toMatch(/import \{ zipSync, strToU8 \} from 'fflate';/);
-  });
-
-  it('calls the real export.obsidian macro via lensRun, not a hardcoded/fabricated file list', () => {
-    expect(src).toMatch(/lensRun<ObsidianExportResult>\('export', 'obsidian', \{\}\)/);
-  });
-
-  it('honestly reports an empty corpus instead of downloading a fabricated/empty archive', () => {
-    expect(src).toMatch(/files\.length === 0/);
-    expect(src).toMatch(/setStatus\('empty'\)/);
-    // The empty branch returns before reaching zipSync/triggerBlobDownload.
-    const emptyBranch = src.match(/if \(files\.length === 0\) \{[\s\S]*?\n {6}\}/);
-    expect(emptyBranch).toBeTruthy();
-    expect(emptyBranch![0]).not.toMatch(/zipSync|triggerBlobDownload/);
-  });
-
-  it('never truncates the DTU set — no slice/limit applied to the macro-returned files array', () => {
-    // export.obsidian itself has no cap (verified against server/server.js:
-    // register("export", "obsidian", ...) maps every DTU with no slice), so
-    // the frontend must not silently impose one either.
-    expect(src).not.toMatch(/files\.slice\(/);
-    expect(src).not.toMatch(/files\.filter\([^)]*index/i);
-  });
-});
+// The former "ObsidianVaultExport component — real backend wiring" describe
+// block that used to live here (source-string regex pins against the
+// component file) was a stale-lying-test-detector finding: this file is
+// pinned to `@vitest-environment node` for the fflate cross-realm reason
+// explained above, which rules out rendering the real React component (that
+// needs jsdom). Those 4 claims now live in
+// tests/obsidian-vault-export-panel.test.tsx instead, driven through a real
+// render + fireEvent + button click with `lensRun` mocked at the network
+// boundary and `fflate`'s zipSync wrapped as a pass-through spy around the
+// REAL implementation (imported via `importOriginal`) — see that file for
+// the "imports the real fflate primitives" / "calls the real export.obsidian
+// macro" / "honestly reports an empty corpus" / "never truncates the DTU
+// set" assertions, now proven at runtime rather than by regexing source
+// text.

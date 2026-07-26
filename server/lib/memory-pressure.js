@@ -265,6 +265,41 @@ export function _aggressiveEviction(STATE) {
     // engine returns `entity_not_found`/null for an evicted id and recreates it
     // on the next hook, so eviction is safe (the hooks are fire-and-forget).
     ["qualia", Number(process.env.CONCORD_MAX_QUALIA_STATES) || 50000],
+    // Idle-heap-leak audit (2026-07-25) — a read-only durability audit found
+    // ~20 STATE maps absent from this cap list. Each was verified against its
+    // writers before deciding; most turned out to hold irreplaceable user/
+    // governance data (STATE.dtus, wrappers, layers, personas, users, orgs,
+    // apiKeys, papers, lensArtifacts, userUniverses, entities, assessments,
+    // wallets, councilVotes, globalIndex — see docs note below) and are
+    // deliberately NOT added here. Two genuinely are rebuildable/discardable
+    // telemetry with no correctness dependency on their contents surviving:
+    //
+    // STATE.mlJobs — synchronous ML request tracking records (`/api/ml/infer`,
+    // `/api/ml/train`, server.js#ensureMlState). Every result is already
+    // returned to the caller in the HTTP response; the Map entry is only a
+    // historical "this ran" record, exactly the same shape as STATE.jobs
+    // (which this file already prunes above by completed/failed status).
+    // Evicting the oldest entries loses only that history, never in-flight
+    // work.
+    ["mlJobs", Number(process.env.CONCORD_MAX_ML_JOBS) || 5000],
+    // STATE.notifications — user-facing notification records
+    // (server.js /api/notifications*). Already has a ONE-TIME boot trim to
+    // 2000 entries (`_capMap(STATE.notifications, 2000)` right after STATE
+    // loads) — i.e. the codebase already decided 2000 is an acceptable
+    // ceiling for this field; that trim just never recurs after boot. This
+    // makes the same decision ongoing instead of one-shot, at the same
+    // threshold.
+    ["notifications", Number(process.env.CONCORD_MAX_NOTIFICATIONS) || 2000],
+    // STATE._rateLimits — per-user rolling call-timestamp windows for
+    // `checkRateLimit()` (server.js, "#85: RATE LIMITER & COST GOVERNOR").
+    // Already has its own periodic sweep (kernelTick, every 2000 ticks) that
+    // deletes entries whose `calls` array has aged out entirely, but that
+    // sweep only removes *empty* entries — it never bounds the number of
+    // distinct users tracked. Evicting the oldest-seen entries here just
+    // resets that user's rate-limit window early (fail-open on throttling
+    // strictness, not a data-loss or auth bug), so it's safe to LRU-trim as a
+    // hard ceiling under memory pressure.
+    ["_rateLimits", Number(process.env.CONCORD_MAX_RATE_LIMIT_ENTRIES) || 10000],
   ];
   for (const [field, cap] of mapCaps) {
     const m = STATE[field];

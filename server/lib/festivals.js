@@ -102,7 +102,7 @@ export function listFestivals(db) {
  */
 export function runFestivalTriggerPass(db, worldId, opts = {}) {
   if (!db || !worldId) return { ok: false, error: "missing_inputs" };
-  const now = opts.now || Date.now();
+  const now = opts.now ?? Date.now();
   const cal = calendarFor(now);
   let opened = [];
 

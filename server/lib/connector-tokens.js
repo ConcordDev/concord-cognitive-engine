@@ -12,10 +12,77 @@
 
 import crypto from "node:crypto";
 
-const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 // Refresh proactively well before expiry to absorb clock skew + in-flight
 // latency (OAuth 2.0 BCP guidance is a conservative buffer; ~5 min).
 const EXPIRY_SKEW_S = 300;
+
+// ── Provider-aware refresh (R1-3 hardening) ─────────────────────────────────
+// Pre-fix, EVERY connector's refresh attempt was hardcoded to POST Google's
+// token endpoint with GOOGLE_CLIENT_ID/SECRET, regardless of which provider
+// actually issued the token. That's silently wrong for any non-Google
+// connector that legitimately carries a refresh_token (e.g. Slack with token
+// rotation enabled sends its refresh_token to Slack's oauth.v2.access
+// endpoint, not Google's) — the request would reach Google, get rejected for
+// reasons that have nothing to do with the real token's validity, and the
+// connector would incorrectly read as broken (or, worse, if Google ever
+// returned literally `invalid_grant` for an unrelated reason, a perfectly
+// good Slack refresh token would be deleted).
+//
+// This table maps a connector_id (the key connector_oauth_tokens.connector_id
+// is stored under) to its provider's real refresh mechanics. Keep in sync with
+// routes/connector-oauth.js's CONNECTOR_TOKEN_KEY/PROVIDERS (that file owns the
+// authorize/code-exchange side; this table owns the refresh side reached from
+// connectorFetch's 401 retry + getValidAccessToken's proactive refresh).
+const REFRESH_PROVIDER_BY_CONNECTOR = {
+  google_calendar: "google",
+  google_gmail: "google",
+  google_sheets: "google",
+  slack: "slack",
+  // GitHub classic OAuth-app tokens never carry a refresh_token (they don't
+  // expire) and Notion integration tokens are non-expiring either — both
+  // short-circuit on the `no_refresh_token` guard below and never reach a
+  // provider config, so no entry (or a `null` mapping) is honest, not a gap.
+};
+
+const PROVIDER_REFRESH_CONFIG = {
+  google: {
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    clientId: () => process.env.GOOGLE_CLIENT_ID,
+    clientSecret: () => process.env.GOOGLE_CLIENT_SECRET,
+    buildRequest: ({ refreshToken, clientId, clientSecret }) => ({
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }).toString(),
+    }),
+    // invalid_grant (revoked/expired refresh token, password change, etc.) is
+    // TERMINAL — signal re-consent rather than a transient rejection.
+    terminalReason: (body) => (body?.error === "invalid_grant" ? "reauth_required" : null),
+  },
+  slack: {
+    tokenUrl: "https://slack.com/api/oauth.v2.access",
+    clientId: () => process.env.SLACK_CLIENT_ID,
+    clientSecret: () => process.env.SLACK_CLIENT_SECRET,
+    buildRequest: ({ refreshToken, clientId, clientSecret }) => ({
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }).toString(),
+    }),
+    // Slack's Web API returns HTTP 200 even on a logical failure (`ok:false`
+    // in the body) — the same footgun connector-client.js's slackBodyOk()
+    // guards against on the egress side; the refresh side needs the same care.
+    terminalReason: (body) =>
+      body && body.ok === false && body.error === "invalid_refresh_token" ? "reauth_required" : null,
+    bodyError: (body) => (body && body.ok === false ? body.error || "slack_refresh_error" : null),
+  },
+};
 
 function nowS() {
   return Math.floor(Date.now() / 1000);
@@ -140,55 +207,66 @@ function isExpired(row) {
 }
 
 /**
- * Refresh a Google connector token using its stored refresh_token.
+ * Refresh a connector's token using its stored refresh_token, routed to the
+ * ISSUING provider's own token endpoint (never assumed to be Google's).
  * `fetchImpl` is injectable for tests. Returns { ok, ... } — never throws on a
  * provider failure; honest reason codes instead.
  */
-export async function refreshGoogleToken(db, userId, connectorId, { fetchImpl = fetch } = {}) {
+export async function refreshConnectorToken(db, userId, connectorId, { fetchImpl = fetch } = {}) {
   const row = getConnectorToken(db, userId, connectorId);
   if (!row) return { ok: false, reason: "no_token" };
   if (!row.refresh_token) return { ok: false, reason: "no_refresh_token" };
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  const providerName = REFRESH_PROVIDER_BY_CONNECTOR[connectorId] || null;
+  const cfg = providerName ? PROVIDER_REFRESH_CONFIG[providerName] : null;
+  if (!cfg) {
+    // A refresh_token is on file but this connector has no known refresh
+    // mechanics wired (shouldn't normally happen — github/notion never store
+    // one in the first place, see the guard above). Honest non-guess rather
+    // than silently routing it through an unrelated provider's endpoint.
+    return { ok: false, reason: "refresh_not_supported" };
+  }
+  const clientId = cfg.clientId();
+  const clientSecret = cfg.clientSecret();
   if (!clientId || !clientSecret) return { ok: false, reason: "connector_not_configured" };
 
+  const reqSpec = cfg.buildRequest({ refreshToken: row.refresh_token, clientId, clientSecret });
   let res;
   try {
-    res = await fetchImpl(GOOGLE_TOKEN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: row.refresh_token,
-        grant_type: "refresh_token",
-      }).toString(),
-    });
+    res = await fetchImpl(cfg.tokenUrl, { method: "POST", headers: reqSpec.headers, body: reqSpec.body });
   } catch (e) {
     return { ok: false, reason: "refresh_request_failed", detail: String(e?.message || e) };
   }
-  if (!res?.ok) {
-    // invalid_grant (revoked/expired refresh token, password change, etc.) is
-    // TERMINAL — do not retry. Drop the dead token and signal re-consent.
-    let body = null;
-    try { body = await res.json(); } catch { body = null; }
-    if (body?.error === "invalid_grant") {
-      deleteConnectorToken(db, userId, connectorId);
-      return { ok: false, reason: "reauth_required" };
-    }
-    return { ok: false, reason: "refresh_rejected", status: res?.status };
+  let body = null;
+  try { body = await res.json(); } catch { body = null; }
+
+  const terminal = cfg.terminalReason ? cfg.terminalReason(body) : null;
+  if (terminal === "reauth_required") {
+    // TERMINAL (revoked/expired refresh token, password change, etc.) — do
+    // not retry. Drop the dead token and signal re-consent.
+    deleteConnectorToken(db, userId, connectorId);
+    return { ok: false, reason: "reauth_required" };
   }
-  const tokens = await res.json();
-  // Google refresh responses omit refresh_token (the old one stays valid).
+  const bodyError = cfg.bodyError ? cfg.bodyError(body) : null;
+  if (!res?.ok || bodyError) {
+    return { ok: false, reason: bodyError || "refresh_rejected", status: res?.status };
+  }
+  if (!body?.access_token) {
+    return { ok: false, reason: "refresh_rejected", detail: "no access_token in refresh response" };
+  }
+  // Most providers omit refresh_token on rotation (the old one stays valid).
   const updated = persistConnectorToken(db, userId, connectorId, {
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token || row.refresh_token,
-    expires_in: tokens.expires_in,
-    scope: tokens.scope || (row.scopes || []).join(" "),
-    token_type: tokens.token_type || row.token_type,
+    access_token: body.access_token,
+    refresh_token: body.refresh_token || row.refresh_token,
+    expires_in: body.expires_in,
+    scope: body.scope || (row.scopes || []).join(" "),
+    token_type: body.token_type || row.token_type,
   });
   return { ok: true, token: updated };
 }
+
+/** @deprecated back-compat alias — prefer refreshConnectorToken (provider-generic). */
+export const refreshGoogleToken = refreshConnectorToken;
 
 /**
  * Return a currently-valid access token for (user, connector), auto-refreshing
@@ -198,7 +276,7 @@ export async function getValidAccessToken(db, userId, connectorId, opts = {}) {
   const row = getConnectorToken(db, userId, connectorId);
   if (!row) return { ok: false, reason: "no_token" };
   if (!isExpired(row)) return { ok: true, accessToken: row.access_token, tokenType: row.token_type };
-  const refreshed = await refreshGoogleToken(db, userId, connectorId, opts);
+  const refreshed = await refreshConnectorToken(db, userId, connectorId, opts);
   if (!refreshed.ok) return refreshed;
   return { ok: true, accessToken: refreshed.token.access_token, tokenType: refreshed.token.token_type };
 }

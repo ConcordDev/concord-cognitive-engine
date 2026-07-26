@@ -25,12 +25,8 @@
 import { asyncHandler } from "../lib/async-handler.js";
 
 export default function registerFoundationRoutes(app, {
-  STATE,
   makeCtx,
   runMacro,
-  uiJson,
-  uid,
-  validate,
   perEndpointRateLimit,
 }) {
 

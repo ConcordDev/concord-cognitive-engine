@@ -100,6 +100,27 @@ describe('IncidentReportPanel', () => {
     expect(lensRun).toHaveBeenCalledTimes(1); // no incidentReport call fired
   });
 
+  it('the incident row is keyboard-selectable (role=button, Enter selects it)', async () => {
+    lensRun.mockResolvedValueOnce(listResponse([INCIDENT]));
+    render(<IncidentReportPanel />);
+    const row = await screen.findByRole('button', { name: /Select incident: Culvert washed out/ });
+    expect(row).toHaveAttribute('tabIndex', '0');
+    expect(row).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(await screen.findByText('Mark investigating')).toBeInTheDocument();
+    expect(row).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('the incident row also selects on Space (not just Enter/click)', async () => {
+    lensRun.mockResolvedValueOnce(listResponse([INCIDENT]));
+    render(<IncidentReportPanel />);
+    const row = await screen.findByRole('button', { name: /Select incident: Culvert washed out/ });
+
+    fireEvent.keyDown(row, { key: ' ' });
+    expect(await screen.findByText('Mark investigating')).toBeInTheDocument();
+  });
+
   it('selecting an open incident and marking investigating drives incidentUpdateStatus', async () => {
     lensRun
       .mockResolvedValueOnce(listResponse([INCIDENT]))

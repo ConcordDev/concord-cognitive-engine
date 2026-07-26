@@ -324,6 +324,14 @@ export function runFEA(input) {
     if (load.Mz) F[base + 5] += load.Mz;
   }
 
+  // Snapshot the UNCONSTRAINED system before applyBoundaryConditions mutates
+  // K (zeros constrained rows/cols, 1e30 on the diagonal) and F (zeros the
+  // constrained entries). Support reactions are recovered from the original
+  // stiffness + load below: R = K0·u − F0. Cost is a size² Float64 copy —
+  // fine at the documented ~200-member scale (solveSystem already copies K).
+  const K0 = K.slice();
+  const F0 = F.slice();
+
   // Apply boundary conditions
   const constrained = applyBoundaryConditions(K, F, nodes, supports, size);
 
@@ -347,19 +355,22 @@ export function runFEA(input) {
     ),
   }));
 
-  // Reactions at supports
+  // Reactions at supports — direct-stiffness recovery from the UNMUTATED
+  // system: at a constrained dof i, the support reaction balances the
+  // internal force minus the applied external load, R_i = (K0·u)_i − F0_i.
+  // (At free dofs this same quantity is ~0 by equilibrium — the identity the
+  // reactions test uses as its oracle.)
   const reactions = [];
   for (const i of constrained) {
     const nodeIdx = Math.floor(i / DOF_PER_NODE);
     const dofLocal = i % DOF_PER_NODE;
     const dofName = Object.keys(DOF_MAP)[dofLocal];
-    const rxnForce = 0;
+    let internal = 0;
     for (let j = 0; j < size; j++) {
-      // K_original was mutated; use u to back-compute (penalty row = large value * u[i])
-      // Since we penalized, reaction ≈ K[i*size+i] * u[i] which ≈ 0 for constrained
-      // Better: sum K_orig * u but K is already mutated; just report from F_ext
+      internal += K0[i * size + j] * u[j];
     }
-    reactions.push({ nodeId: nodes[nodeIdx].id, dof: dofName, nodeIdx, dofLocal });
+    const force = internal - F0[i];
+    reactions.push({ nodeId: nodes[nodeIdx].id, dof: dofName, nodeIdx, dofLocal, force });
   }
 
   stage('postprocess');

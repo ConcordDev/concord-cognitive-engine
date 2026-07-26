@@ -193,14 +193,53 @@ export function transferToReserve(db, { emergentId, amount, refId, requestId, ip
 }
 
 /**
+ * Map a credit's declared `source` onto a real economy_ledger type.
+ *
+ * creditOperatingWallet documents its inflows as "marketplace sale or
+ * royalties", so those two map to their existing dedicated types. Anything
+ * else falls back to ADJUSTMENT — a deliberately conservative label rather
+ * than guessing a more specific one — and the caller's actual `source` string
+ * is always preserved in the row's metadata, so the fallback loses no
+ * information and never dresses an unknown movement up as a sale.
+ */
+function ledgerTypeForCreditSource(source) {
+  const s = String(source || "").toLowerCase();
+  if (s.includes("royalt")) return "ROYALTY_PAYOUT";
+  if (s.includes("sale") || s.includes("marketplace") || s.includes("purchase")) return "MARKETPLACE_PURCHASE";
+  return "ADJUSTMENT";
+}
+
+/**
  * Credit an emergent's operating wallet (from marketplace sale or royalties).
+ *
+ * Records a real ledger row. Before 2026-07-25 this mutated operating_balance
+ * and total_earned while writing NOTHING to economy_ledger and silently
+ * ignoring refId — so the movement had no audit trail and a retry
+ * double-credited. Its sibling transferToReserve always did both; this brings
+ * the two into line.
  */
 export function creditOperatingWallet(db, { emergentId, amount, source, refId, metadata = {}, requestId, ip }) {
   if (!emergentId || !amount || amount <= 0) return { ok: false, error: "invalid_credit_params" };
 
+  // Idempotency, mirroring transferToReserve: a refId already in the ledger
+  // means this credit landed on a prior delivery. Without this, a retry
+  // silently credited the emergent a second time.
+  if (refId) {
+    const existing = checkRefIdProcessed(db, refId);
+    if (existing.exists) return { ok: true, idempotent: true, emergentId, amount, source, entries: existing.entries };
+  }
+
+  const batchId = generateTxId();
+
   const doCredit = db.transaction(() => {
     const account = getEmergentAccountInternal(db, emergentId);
     if (!account) throw new Error("emergent_not_found");
+
+    // Re-check inside the transaction to close the race the pre-check leaves.
+    if (refId) {
+      const dupe = checkRefIdProcessed(db, refId);
+      if (dupe.exists) return { idempotent: true, entries: dupe.entries };
+    }
 
     const now = nowISO();
     db.prepare(`
@@ -210,11 +249,31 @@ export function creditOperatingWallet(db, { emergentId, amount, source, refId, m
           updated_at = ?
       WHERE emergent_id = ?
     `).run(amount, amount, now, emergentId);
+
+    return recordTransactionBatch(db, [
+      {
+        id: generateTxId(),
+        type: ledgerTypeForCreditSource(source),
+        from: null, // external inflow (marketplace sale / royalty payout)
+        to: operatingAccountId(emergentId),
+        amount,
+        fee: 0,
+        net: amount,
+        status: "complete",
+        refId,
+        // The true source is always recorded even when it doesn't map to a
+        // dedicated ledger type — the row is never mislabelled to look tidier.
+        metadata: { ...metadata, batchId, role: "credit", emergentId, source: source || null },
+        requestId,
+        ip,
+      },
+    ]);
   });
 
   try {
-    doCredit();
-    return { ok: true, emergentId, amount, source };
+    const results = doCredit();
+    if (results?.idempotent) return { ok: true, idempotent: true, emergentId, amount, source, entries: results.entries };
+    return { ok: true, emergentId, amount, source, batchId, transactions: results };
   } catch (err) {
     console.error("[economy] credit_failed:", err.message);
     return { ok: false, error: "credit_failed" };
@@ -227,11 +286,23 @@ export function creditOperatingWallet(db, { emergentId, amount, source, refId, m
 export function debitReserveAccount(db, { emergentId, amount, refId, metadata = {}, requestId, ip }) {
   if (!emergentId || !amount || amount <= 0) return { ok: false, error: "invalid_debit_params" };
 
+  if (refId) {
+    const existing = checkRefIdProcessed(db, refId);
+    if (existing.exists) return { ok: true, idempotent: true, emergentId, amount, entries: existing.entries };
+  }
+
+  const batchId = generateTxId();
+
   const doDebit = db.transaction(() => {
     const account = getEmergentAccountInternal(db, emergentId);
     if (!account) throw new Error("emergent_not_found");
     if (account.reserve_balance < amount) {
       throw new Error(`insufficient_reserve:${account.reserve_balance}:${amount}`);
+    }
+
+    if (refId) {
+      const dupe = checkRefIdProcessed(db, refId);
+      if (dupe.exists) return { idempotent: true, entries: dupe.entries };
     }
 
     const now = nowISO();
@@ -242,11 +313,32 @@ export function debitReserveAccount(db, { emergentId, amount, refId, metadata = 
           updated_at = ?
       WHERE emergent_id = ?
     `).run(amount, amount, now, emergentId);
+
+    return recordTransactionBatch(db, [
+      {
+        id: generateTxId(),
+        type: "MARKETPLACE_PURCHASE", // reserve funds marketplace purchases (see the doc comment above)
+        from: reserveAccountId(emergentId),
+        to: null,
+        amount,
+        fee: 0,
+        net: amount,
+        status: "complete",
+        refId,
+        // role:'debit' opts this row into the unique partial index on
+        // (ref_id) WHERE role='debit', so a duplicate refId is rejected by the
+        // database itself, not only by the read-side check above.
+        metadata: { ...metadata, batchId, role: "debit", emergentId },
+        requestId,
+        ip,
+      },
+    ]);
   });
 
   try {
-    doDebit();
-    return { ok: true, emergentId, amount };
+    const results = doDebit();
+    if (results?.idempotent) return { ok: true, idempotent: true, emergentId, amount, entries: results.entries };
+    return { ok: true, emergentId, amount, batchId, transactions: results };
   } catch (err) {
     if (err.message?.startsWith("insufficient_reserve:")) {
       const parts = err.message.split(":");

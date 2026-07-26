@@ -21,6 +21,8 @@ vi.mock('lucide-react', async (importOriginal) => {
 });
 
 import { DTUEmbed, type DTUEmbedRecord } from '@/components/dtu/DTUEmbed';
+import { KeyboardProvider } from '@/lib/keyboard';
+import { WorkspaceBusProvider, useWorkspaceBus, type WorkspaceBusEntry } from '@/components/workspace-bus';
 
 const dtu: DTUEmbedRecord = {
   id: 'dtu-1',
@@ -76,5 +78,47 @@ describe('DTUEmbed', () => {
   it('falls back to a truncated id when title is missing', () => {
     renderDTU(<DTUEmbed dtu={{ ...dtu, title: undefined, id: 'longgggggg-id' }} mode="compact" />);
     expect(screen.getByText('longgggggg-id'.slice(0, 16))).toBeInTheDocument();
+  });
+
+  describe('Workspace Bus "send to bus" action', () => {
+    // WorkspaceBusProvider requires a KeyboardProvider ancestor (registers
+    // the mod+shift+v shortcut) — mirrors the real app's Providers.tsx nesting.
+    let latestHistory: WorkspaceBusEntry[] = [];
+    function HistoryProbe() {
+      const bus = useWorkspaceBus();
+      latestHistory = bus.history;
+      return null;
+    }
+
+    function renderWithBus(ui: React.ReactElement) {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      return render(
+        <QueryClientProvider client={qc}>
+          <KeyboardProvider>
+            <WorkspaceBusProvider>
+              {ui}
+              <HistoryProbe />
+            </WorkspaceBusProvider>
+          </KeyboardProvider>
+        </QueryClientProvider>
+      );
+    }
+
+    it('renders the "send to bus" action on a populated DTU card', () => {
+      renderWithBus(<DTUEmbed dtu={dtu} mode="full" />);
+      expect(screen.getByLabelText('Send to Workspace Bus')).toBeInTheDocument();
+    });
+
+    it('pushes the DTU onto the Workspace Bus history on click', () => {
+      latestHistory = [];
+      renderWithBus(<DTUEmbed dtu={dtu} mode="full" />);
+      expect(latestHistory).toHaveLength(0);
+
+      fireEvent.click(screen.getByLabelText('Send to Workspace Bus'));
+
+      expect(latestHistory).toHaveLength(1);
+      expect(latestHistory[0].dtu.id).toBe('dtu-1');
+      expect(latestHistory[0].dtu.title).toBe('Reasoning trace v1');
+    });
   });
 });

@@ -346,6 +346,12 @@ export async function tryComposeForUser(db, userId, opts = {}) {
   }
 
   // Phase F3.1 — surface dream composition to the player.
+  // DET-C batch 3: this omitted the realtimeEmit options arg entirely, so
+  // it fell through to the unscoped global-broadcast branch (same class of
+  // bug as the wagers.js bare-id case in batch 1, minus the bare-id — here
+  // it's a missing opts object rather than a malformed one). A dream is a
+  // personal morning-brief artifact; every connected client was getting
+  // every other player's dream-composed notification. Scope to the owner.
   try {
     const emitFn = globalThis._concordRealtimeEmit;
     if (typeof emitFn === "function") {
@@ -353,7 +359,7 @@ export async function tryComposeForUser(db, userId, opts = {}) {
         userId, dreamRowId, dreamDtuId: dtuId,
         fragmentCount: fragments.length,
         worldId: fragments[0]?.worldId ?? null,
-      });
+      }, { userId });
     }
   } catch { /* never blocks composition */ }
 

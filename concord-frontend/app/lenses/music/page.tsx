@@ -9,6 +9,8 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MusicStreamingSection } from '@/components/music/MusicStreamingSection';
+import type { SessionTrack, SessionScene, SessionClip } from '@/components/music/SessionView';
+import { SessionClipPicker } from '@/components/music/SessionClipPicker';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -89,6 +91,32 @@ const TRACKS_FALLBACK: MusicTrack[] = [];
 const ARTISTS_FALLBACK: Artist[] = [];
 
 const PLAYLISTS_FALLBACK: Playlist[] = [];
+
+// ---- Session (Ableton-shape clip launcher) arrangement ----
+// Persisted per-user via the generic per-lens artifact CRUD
+// (useLensData → /api/lens/music) — a real, saved row, not local-only
+// state. Channels/scenes are user-owned organizational labels (renamable,
+// exactly like real DAW track/scene names); every clip cell only ever
+// references a real track id from the user's own library — there is no
+// synthetic clip content anywhere in this model.
+interface SessionArrangementData {
+  channels: SessionTrack[];
+  scenes: SessionScene[];
+  clips: Record<string, SessionClip>;
+}
+
+const DEFAULT_SESSION_CHANNELS: SessionTrack[] = [
+  { id: 'ch-1', name: 'Channel 1' },
+  { id: 'ch-2', name: 'Channel 2' },
+  { id: 'ch-3', name: 'Channel 3' },
+  { id: 'ch-4', name: 'Channel 4' },
+];
+
+const DEFAULT_SESSION_SCENES: SessionScene[] = [
+  { id: 'sc-1', name: 'Scene 1' },
+  { id: 'sc-2', name: 'Scene 2' },
+  { id: 'sc-3', name: 'Scene 3' },
+];
 
 // ============================================================================
 // Music Lens Page
@@ -226,8 +254,140 @@ export default function MusicLensPage() {
 
   const displayTracks = tracks.length > 0 ? tracks : seedTracks;
 
+  const { addToQueue, nowPlaying, playTrack, addMultipleToQueue } = useMusicStore();
+
   // ---- View State ----
   const [view, setView] = useState<MusicLensView>('home');
+
+  // ---- Session (Ableton-shape clip launcher) — real, persisted arrangement ----
+  const {
+    items: sessionItems,
+    create: createSessionItem,
+    update: updateSessionItem,
+  } = useLensData<SessionArrangementData>('music', 'session-arrangement', { noSeed: true, limit: 1 });
+  const sessionRow = sessionItems[0];
+  const sessionChannels = sessionRow?.data?.channels ?? DEFAULT_SESSION_CHANNELS;
+  const sessionScenes = sessionRow?.data?.scenes ?? DEFAULT_SESSION_SCENES;
+  const sessionClips = useMemo(() => sessionRow?.data?.clips ?? {}, [sessionRow]);
+  const [assigningCell, setAssigningCell] = useState<{ trackId: string; sceneId: string } | null>(null);
+
+  const persistSession = useCallback(
+    async (patch: Partial<SessionArrangementData>) => {
+      const data: SessionArrangementData = {
+        channels: patch.channels ?? sessionChannels,
+        scenes: patch.scenes ?? sessionScenes,
+        clips: patch.clips ?? sessionClips,
+      };
+      try {
+        if (sessionRow) await updateSessionItem(sessionRow.id, { data });
+        else await createSessionItem({ title: 'My session', data });
+      } catch {
+        showToast('error', 'Could not save your session arrangement.');
+      }
+    },
+    [sessionChannels, sessionScenes, sessionClips, sessionRow, updateSessionItem, createSessionItem]
+  );
+
+  const handleSessionAssign = useCallback(
+    (track: MusicTrack) => {
+      if (!assigningCell) return;
+      const key = `${assigningCell.trackId}:${assigningCell.sceneId}`;
+      const clip: SessionClip = {
+        trackId: assigningCell.trackId,
+        sceneId: assigningCell.sceneId,
+        assetId: track.id,
+        label: track.title,
+        hasContent: true,
+      };
+      persistSession({ clips: { ...sessionClips, [key]: clip } });
+      showToast('success', `"${track.title}" added to the grid.`);
+      setAssigningCell(null);
+    },
+    [assigningCell, sessionClips, persistSession]
+  );
+
+  const handleSessionClearClip = useCallback(
+    (clip: SessionClip) => {
+      const key = `${clip.trackId}:${clip.sceneId}`;
+      const next = { ...sessionClips };
+      delete next[key];
+      persistSession({ clips: next });
+      showToast('info', 'Clip removed.');
+    },
+    [sessionClips, persistSession]
+  );
+
+  const handleSessionLaunchClip = useCallback(
+    (clip: SessionClip) => {
+      const track = displayTracks.find((t) => t.id === clip.assetId);
+      if (!track) {
+        showToast('error', 'That track is no longer in your library.');
+        return;
+      }
+      playTrack(track);
+    },
+    [displayTracks, playTrack]
+  );
+
+  const handleSessionLaunchScene = useCallback(
+    (scene: SessionScene) => {
+      const soloed = sessionChannels.filter((c) => c.soloed);
+      const activeChannelIds = new Set(
+        (soloed.length > 0 ? soloed : sessionChannels.filter((c) => !c.muted)).map((c) => c.id)
+      );
+      const tracksToPlay = sessionChannels
+        .filter((c) => activeChannelIds.has(c.id))
+        .map((c) => sessionClips[`${c.id}:${scene.id}`])
+        .filter((c): c is SessionClip => !!c?.hasContent)
+        .map((c) => displayTracks.find((t) => t.id === c.assetId))
+        .filter((t): t is MusicTrack => !!t);
+      if (tracksToPlay.length === 0) {
+        showToast('info', `"${scene.name}" has no clips yet — click an empty slot to add one.`);
+        return;
+      }
+      playTrack(tracksToPlay[0]);
+      if (tracksToPlay.length > 1) addMultipleToQueue(tracksToPlay.slice(1), { type: 'manual' });
+      showToast(
+        'success',
+        `Launched "${scene.name}" — ${tracksToPlay.length} clip${tracksToPlay.length === 1 ? '' : 's'} queued.`
+      );
+    },
+    [sessionChannels, sessionClips, displayTracks, playTrack, addMultipleToQueue]
+  );
+
+  const handleSessionToggleMute = useCallback(
+    (trackId: string) => {
+      persistSession({ channels: sessionChannels.map((c) => (c.id === trackId ? { ...c, muted: !c.muted } : c)) });
+    },
+    [sessionChannels, persistSession]
+  );
+
+  const handleSessionToggleSolo = useCallback(
+    (trackId: string) => {
+      persistSession({ channels: sessionChannels.map((c) => (c.id === trackId ? { ...c, soloed: !c.soloed } : c)) });
+    },
+    [sessionChannels, persistSession]
+  );
+
+  const handleSessionRenameTrack = useCallback(
+    (trackId: string, name: string) => {
+      persistSession({ channels: sessionChannels.map((c) => (c.id === trackId ? { ...c, name } : c)) });
+    },
+    [sessionChannels, persistSession]
+  );
+
+  const handleSessionRenameScene = useCallback(
+    (sceneId: string, name: string) => {
+      persistSession({ scenes: sessionScenes.map((s) => (s.id === sceneId ? { ...s, name } : s)) });
+    },
+    [sessionScenes, persistSession]
+  );
+
+  const sessionPlayingClipKey = useMemo(() => {
+    if (!nowPlaying.track) return undefined;
+    const hit = Object.entries(sessionClips).find(([, c]) => c.assetId === nowPlaying.track!.id);
+    return hit?.[0];
+  }, [nowPlaying.track, sessionClips]);
 
   // ---- Revenue Dashboard: real creator earnings (GET /api/creator/dashboard) ----
   // Platform-wide, not filtered to music specifically — there's no reliable
@@ -302,8 +462,6 @@ export default function MusicLensPage() {
   const [marketplaceGenre, setMarketplaceGenre] = useState('');
   const [marketplaceKey, setMarketplaceKey] = useState('');
   const [marketplaceSearch, setMarketplaceSearch] = useState('');
-
-  const { addToQueue, nowPlaying } = useMusicStore();
 
   // ---- Navigation ----
   const navigateToArtist = useCallback((artistId: string) => {
@@ -1000,28 +1158,38 @@ export default function MusicLensPage() {
               </div>
             )}
 
-            {/* ---- SESSION (Ableton-shape clip launcher) ---- */}
+            {/* ---- SESSION (Ableton-shape clip launcher) ----
+                 Every cell here is a real track from the user's own
+                 library (assigned via the empty-slot picker) or empty.
+                 Launching a clip/scene plays it through the same
+                 useMusicStore/NowPlayingBar engine as the rest of the
+                 lens — nothing here is decorative. */}
             {view === 'session' && (
-              <div className="h-[calc(100vh-12rem)]">
-                <SessionView
-                  tracks={[
-                    { id: 'drums',  name: 'Drums',  armed: false },
-                    { id: 'bass',   name: 'Bass' },
-                    { id: 'keys',   name: 'Keys' },
-                    { id: 'pads',   name: 'Pads' },
-                    { id: 'lead',   name: 'Lead',   armed: true },
-                    { id: 'fx',     name: 'FX' },
-                  ]}
-                  scenes={[
-                    { id: 'intro',  name: 'Intro' },
-                    { id: 'verse',  name: 'Verse' },
-                    { id: 'chorus', name: 'Chorus' },
-                    { id: 'bridge', name: 'Bridge' },
-                    { id: 'outro',  name: 'Outro' },
-                  ]}
-                  clips={{}}
-                  tempo={120}
-                />
+              <div className="h-[calc(100vh-12rem)] flex flex-col gap-2">
+                {Object.keys(sessionClips).length === 0 && (
+                  <div className="rounded-lg border border-neon-cyan/20 bg-neon-cyan/5 px-4 py-2 text-xs text-gray-300 flex items-center gap-2">
+                    <Music2 className="w-3.5 h-3.5 text-neon-cyan flex-shrink-0" />
+                    Click an empty slot below to load one of your own tracks into the grid, then click it to launch playback.
+                  </div>
+                )}
+                <div className="flex-1 min-h-0">
+                  <SessionView
+                    tracks={sessionChannels}
+                    scenes={sessionScenes}
+                    clips={sessionClips}
+                    tempo={120}
+                    onLaunchClip={handleSessionLaunchClip}
+                    onLaunchScene={handleSessionLaunchScene}
+                    onDoubleClickClip={handleSessionClearClip}
+                    doubleClickClipLabel="remove"
+                    onClickEmptyCell={(trackId, sceneId) => setAssigningCell({ trackId, sceneId })}
+                    onToggleMute={handleSessionToggleMute}
+                    onToggleSolo={handleSessionToggleSolo}
+                    onRenameTrack={handleSessionRenameTrack}
+                    onRenameScene={handleSessionRenameScene}
+                    playingClipKey={sessionPlayingClipKey}
+                  />
+                </div>
               </div>
             )}
 
@@ -2231,6 +2399,19 @@ export default function MusicLensPage() {
       )}
 
     </div>
+
+    <AnimatePresence>
+      {assigningCell && (
+        <SessionClipPicker
+          tracks={displayTracks}
+          channelName={sessionChannels.find((c) => c.id === assigningCell.trackId)?.name ?? 'Channel'}
+          sceneName={sessionScenes.find((s) => s.id === assigningCell.sceneId)?.name ?? 'Scene'}
+          onSelect={handleSessionAssign}
+          onClose={() => setAssigningCell(null)}
+        />
+      )}
+    </AnimatePresence>
+
     <LensAgentFab
       lensId="music"
       lensPrompt="You're inside Concord's Music lens — a marketplace + playlist + curation surface. Prefer run_lens_action for music actions, expert_mode for cited research about artists/tracks, generate_image for cover art."

@@ -205,7 +205,7 @@ export function BioResearchPanel() {
             <div key={i} className="flex gap-1.5">
               <input value={s.id} onChange={(e) => updateSeqList(phyloSeqs, setPhyloSeqs, i, 'id', e.target.value)} className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="label" />
               <input value={s.sequence} onChange={(e) => updateSeqList(phyloSeqs, setPhyloSeqs, i, 'sequence', e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white font-mono" placeholder="sequence" />
-              {phyloSeqs.length > 2 && <button type="button" onClick={() => setPhyloSeqs(phyloSeqs.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>}
+              {phyloSeqs.length > 2 && <button type="button" onClick={() => setPhyloSeqs(phyloSeqs.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400" aria-label={`Remove sequence ${s.id || i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
             </div>
           ))}
           <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export function BioResearchPanel() {
             <div key={i} className="flex gap-1.5">
               <input value={s.id} onChange={(e) => updateSeqList(motifSeqs, setMotifSeqs, i, 'id', e.target.value)} className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="label" />
               <input value={s.sequence} onChange={(e) => updateSeqList(motifSeqs, setMotifSeqs, i, 'sequence', e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white font-mono" placeholder="sequence" />
-              {motifSeqs.length > 1 && <button type="button" onClick={() => setMotifSeqs(motifSeqs.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>}
+              {motifSeqs.length > 1 && <button type="button" onClick={() => setMotifSeqs(motifSeqs.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400" aria-label={`Remove sequence ${s.id || i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
             </div>
           ))}
           <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export function BioResearchPanel() {
               <input value={s.product} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, product: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="product" />
               <div className="flex gap-1">
                 <input value={s.deltaG} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, deltaG: e.target.value } : p))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="ΔG kJ/mol" />
-                {pathwaySteps.length > 1 && <button type="button" onClick={() => setPathwaySteps(pathwaySteps.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>}
+                {pathwaySteps.length > 1 && <button type="button" onClick={() => setPathwaySteps(pathwaySteps.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400" aria-label={`Remove pathway step ${s.substrate ? `"${s.substrate}"` : i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
               </div>
             </div>
           ))}

@@ -1,6 +1,24 @@
 // server/routes/minigames.js
 //
 // REST surface for the basketball + racing minigames.
+//
+// DET-C dead-event-listener sweep (batch 9, then continuation 2026-07-24) —
+// RETIRED 'minigame:started'. Batch 9 found it had zero frontend
+// subscribers: BasketballMinigameOverlay.tsx and RacingHUD.tsx both exist,
+// are fully built, and DO subscribe to their sibling events
+// ('minigame:scored', 'minigame:complete') — so this wasn't a simple
+// missing-listener fix. The real gap was one level up: NEITHER overlay
+// component is mounted anywhere in the app (grepped app/, components/,
+// lib/ — no import of either outside their own files and tests; also
+// checked world-lens-godot/ and concord-mobile/, nothing there either).
+// There is no "start a basketball match" or "start a race" UI action
+// anywhere that would even produce a matchId/raceId to open these overlays
+// with, so wiring 'minigame:started' alone would not have made the feature
+// reachable — it needs a real invite/start flow (who do you challenge?
+// which hoop? which track?) designed first, a bigger product decision than
+// a dead-event fix. The broadcast itself was removed below; the REST
+// match-creation/scoring backend and both overlay components are untouched
+// and fully functional for a future, properly-designed entry point.
 
 import { Router } from "express";
 import {
@@ -29,10 +47,6 @@ export default function createMinigamesRouter({ requireAuth, db, realtimeEmit })
         worldId, districtId, hoopPosition,
         targetScore: Math.max(1, Math.min(99, Number(targetScore) || 21)),
       });
-      if (result.ok && realtimeEmit) {
-        try { realtimeEmit("minigame:started", { matchId: result.matchId, kind: "basketball", players: [req.user.id, opponentId] }); }
-        catch { /* ok */ }
-      }
       res.json(result);
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
@@ -89,10 +103,6 @@ export default function createMinigamesRouter({ requireAuth, db, realtimeEmit })
         lapCount: Math.max(1, Math.min(20, Number(lapCount) || 3)),
         allowedVehicleClasses: Array.isArray(allowedVehicleClasses) ? allowedVehicleClasses : ["car"],
       });
-      if (result.ok && realtimeEmit) {
-        try { realtimeEmit("minigame:started", { matchId: result.raceId, kind: "racing", trackId, players: racerIds }); }
-        catch { /* ok */ }
-      }
       res.json(result);
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });

@@ -41,6 +41,7 @@ import {
   nextPassFor,
 } from "./refinement-passes.js";
 import { submitAssetCandidateToGate } from "./quality-gate-bridge.js";
+import { runAssetGenerationTick } from "../asset-gen/generate-asset.js";
 
 const TICK_INTERVAL = 100; // every 100th heartbeat tick
 
@@ -48,8 +49,21 @@ const TICK_INTERVAL = 100; // every 100th heartbeat tick
  * @returns {Promise<{ checked: number, evolved: number, gated: number, errors: number }>}
  */
 export async function runEvolutionTick(STATE, db, deps = {}) {
-  const stats = { checked: 0, evolved: 0, gated: 0, errors: 0 };
+  const stats = { checked: 0, evolved: 0, gated: 0, errors: 0, generated: 0 };
   if (!db) return stats;
+
+  // Program C, Stage 5 hook (2026-07-23) — CREATE path, distinct from the
+  // REFINE loop below. Generates + FEA-validates + registers any missing
+  // target from lib/asset-gen/generate-asset.js's GENERATION_TARGETS, then
+  // submits it to the same quality gate the refine loop uses below. Thin,
+  // guarded, kill-switchable (CONCORD_ASSET_GEN_ENABLED=0 disables) — never
+  // touches the candidate-selection/refine loop that follows.
+  try {
+    const genStats = await runAssetGenerationTick(STATE, db, deps);
+    stats.generated = genStats.generated;
+  } catch {
+    stats.errors += 1;
+  }
 
   // Select candidates: top 3 by evolution_score, not at max quality, not archived.
   let candidates = [];
@@ -70,25 +84,25 @@ export async function runEvolutionTick(STATE, db, deps = {}) {
       const passKind = nextPassFor(asset.quality_level);
       if (!passKind) continue;
 
-      // KNOWN GAP (2026-07-21, verified by direct investigation, not fixed
-      // here): subdivision/procedural_wear/higher_lod all read local_path
-      // via fs.readFile + JSON.parse, expecting the {positions, indices}
-      // mesh-JSON format content/evo-seed/*.mesh.json seed primitives use.
-      // The real world-lens assets (bootstrapWorldLensAssets — building/
-      // tree/creature/weapon GLBs, terrain JPGs) fail JSON.parse on binary
-      // GLB data and are swallowed by each pass's own try/catch, returning
-      // null (a silent no-op, not a crash — see the `if (!result) continue`
-      // a few lines down). material_upgrade is the one pass that survives
-      // (it never reads sourcePath), but produces no file/version a
-      // consumer reads. detail_maps needs callImageGen, wired to an
-      // async()=>null stub in this build. So candidate SELECTION genuinely
-      // reaches real assets (this file, confirmed) and the frontend CAN
-      // resolve a promoted version once one exists (asset-loader.ts, fixed
-      // this pass — see bootstrapWorldLensAssets' concordia-alias rows),
-      // but no pass can currently PRODUCE one for a GLB/texture asset.
-      // Closing this needs a GLB-aware pass (or a pre-extraction step from
-      // GLB → {positions,indices}), which is new engineering, not a wiring
-      // fix — out of scope here.
+      // GLB refinement is now wired (2026-07-23): subdivision /
+      // procedural_wear / higher_lod route .glb/.gltf sources through
+      // lib/evo-asset/glb-bridge.js — extract vertex data, run the SAME pure
+      // transform (subdivideGeometry / applyProceduralWear), and pack a real
+      // .glb variant back out. The {positions, indices} mesh-JSON seed path
+      // (content/evo-seed/*.mesh.json) is byte-identical to before. And
+      // material_upgrade is no longer orphaned — it flows through the new
+      // GET /api/evo-asset/material endpoint + resolveMaterialUpgrade in the
+      // frontend loader (consumed by BuildingRenderer3D), and is excluded
+      // from the geometry channel so a promoted material JSON can't be served
+      // as a mesh.
+      //
+      // Honest residuals still open (v1 limits, not silently swallowed):
+      //   (a) multi-mesh / multi-primitive GLBs throw a named error in
+      //       extractMeshData → the pass returns null (single-primitive only).
+      //   (b) sources over 1500 input tris still refuse subdivision (the
+      //       pre-existing subdivideGeometry cap — unchanged).
+      //   (c) detail_maps still needs callImageGen, wired to an async()=>null
+      //       stub in this build — OUT OF SCOPE, deferred as before.
 
       // Compute interaction density for the wear pass.
       const interactionDensity = (() => {

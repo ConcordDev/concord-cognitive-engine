@@ -77,6 +77,11 @@ export function SkillAffinityPanel({ worldId }: Props) {
 
   useEffect(() => {
     function onOpen() { setOpen(true); }
+    // Real dispatcher: CommandPalette.tsx's HUD_DISPATCH_EVENTS table maps
+    // 'hud:skill-affinity' -> 'concordia:open-skill-affinity', same keyed-object +
+    // dynamic-Event indirection as the other hud:* HUD listeners. Confirmed live
+    // by tests/components/CommandPalette.test.tsx (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('concordia:open-skill-affinity', onOpen);
     return () => window.removeEventListener('concordia:open-skill-affinity', onOpen);
   }, []);

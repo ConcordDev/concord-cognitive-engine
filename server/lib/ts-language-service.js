@@ -302,6 +302,51 @@ export function tsAvailable(path) {
   return !!ts() && (path == null || isTsLike(path));
 }
 
+/**
+ * Single-file syntax check via `ts.transpileModule` — parses/transpiles ONE
+ * file in isolation with no cross-file module resolution and no semantic type
+ * checking, so it reports genuine parse/syntax errors only and never
+ * false-positives on an import target that happens to live outside whatever
+ * partial file set the caller assembled (e.g. a retrieval-limited manifest
+ * that only pulled in a handful of files out of a whole project). This is
+ * deliberately NOT the same call as `diagnostics()` above (which runs a full
+ * LanguageService with semantic diagnostics over the whole workspace) — this
+ * is the narrower, per-file-independent primitive
+ * `code.propose-verified-patch` uses to verify a single proposed edit without
+ * the rest of the (possibly incomplete) project in scope.
+ * @param {string} fileName
+ * @param {string} content
+ * @returns {{checked:boolean, ok:boolean, reason:string|null, errors:Array<{line?:number,column?:number,message:string,code?:number}>}}
+ */
+export function syntaxOnlyCheck(fileName, content) {
+  const compiler = ts();
+  if (!compiler) return { checked: false, ok: true, reason: "typescript unavailable", errors: [] };
+  if (!isTsLike(fileName)) return { checked: false, ok: true, reason: "no syntax checker for this file type", errors: [] };
+  try {
+    const src = String(content ?? "");
+    const result = compiler.transpileModule(src, {
+      fileName,
+      reportDiagnostics: true,
+      compilerOptions: {
+        module: compiler.ModuleKind.ESNext,
+        target: compiler.ScriptTarget.Latest,
+        jsx: compiler.JsxEmit.Preserve,
+        allowJs: true,
+        checkJs: false,
+      },
+    });
+    const errors = (result.diagnostics || [])
+      .filter((d) => d.category === compiler.DiagnosticCategory.Error)
+      .map((d) => {
+        const lc = d.start != null ? lineColOf(src, d.start) : { line: 1, column: 1 };
+        return { line: lc.line, column: lc.column, message: compiler.flattenDiagnosticMessageText(d.messageText, "\n"), code: d.code };
+      });
+    return { checked: true, ok: errors.length === 0, reason: null, errors };
+  } catch (e) {
+    return { checked: true, ok: false, reason: "transpile threw", errors: [{ message: String(e?.message || e) }] };
+  }
+}
+
 export default {
-  offsetOf, completions, hover, signature, references, definition, diagnostics, outline, tsAvailable,
+  offsetOf, completions, hover, signature, references, definition, diagnostics, outline, tsAvailable, syntaxOnlyCheck,
 };

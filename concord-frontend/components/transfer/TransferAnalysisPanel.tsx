@@ -42,13 +42,13 @@ function FieldListEditor({
         <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })} className="input-lattice text-xs">
           {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <button onClick={onAdd} disabled={!draft.name.trim()} className="btn-secondary text-xs px-2 disabled:opacity-40"><Plus className="w-3 h-3" /></button>
+        <button onClick={onAdd} disabled={!draft.name.trim()} className="btn-secondary text-xs px-2 disabled:opacity-40" aria-label={`Add field to ${title.toLowerCase()}`}><Plus className="w-3 h-3" aria-hidden="true" /></button>
       </div>
       <div className="flex flex-wrap gap-1">
         {fields.map((f) => (
           <span key={f.id} className="flex items-center gap-1 rounded bg-black/40 px-2 py-1 text-[11px] text-gray-300">
             {f.name}<span className="text-gray-500">:{f.type}</span>
-            <button onClick={() => onRemove(f.id)} className="text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button onClick={() => onRemove(f.id)} className="text-gray-500 hover:text-rose-400" aria-label={`Remove field "${f.name}" from ${title.toLowerCase()}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
           </span>
         ))}
         {fields.length === 0 && <span className="text-[11px] text-gray-600">No fields yet</span>}
@@ -284,7 +284,7 @@ export function TransferAnalysisPanel() {
                   <span className="font-medium">{e.name}</span>
                   <span className="text-gray-500">{e.size} rows · pri {e.priority}</span>
                   <span className="flex-1 text-gray-500">{e.dependencies ? `depends on ${e.dependencies}` : 'no dependencies'}</span>
-                  <button onClick={() => removeEntity(e.id)} className="text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => removeEntity(e.id)} className="text-gray-500 hover:text-rose-400" aria-label={`Remove entity "${e.name}"`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
                 </div>
               ))}
             </div>

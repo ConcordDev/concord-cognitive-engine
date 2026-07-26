@@ -93,13 +93,6 @@ export interface RepairDTULoggedPayload {
   context: string;
 }
 
-export interface RepairCycleCompletePayload {
-  cycleNumber: number;
-  errorsFound: number;
-  fixesApplied: number;
-  duration: number;
-}
-
 // ── Meta-derivation ─────────────────────────────────────────────
 
 export interface MetaDerivedPayload {
@@ -246,7 +239,6 @@ export interface SocketEventMap {
   'affect:pain_signal': AffectPainSignalPayload;
   // Repair cortex
   'repair:dtu_logged': RepairDTULoggedPayload;
-  'repair:cycle_complete': RepairCycleCompletePayload;
   // Meta-derivation
   'lattice:meta:derived': MetaDerivedPayload;
   'lattice:meta:convergence': MetaConvergencePayload;

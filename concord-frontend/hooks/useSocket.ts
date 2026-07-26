@@ -54,9 +54,12 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'pain:wound_created',
   'pain:wound_healed',
   'affect:pain_signal',
-  // Repair cortex
+  // Repair cortex. The cycle-completion beat rides on repair:dtu_logged —
+  // repair-cortex.js logs a repair DTU tagged with the completion phase and
+  // that logger is what emits. A separate colon-named cycle event was only
+  // ever an event-to-DTU-bridge tag, which reaches no browser (retired
+  // 2026-07-25, dead-subscription audit).
   'repair:dtu_logged',
-  'repair:cycle_complete',
   // Meta-derivation
   'lattice:meta:derived',
   'lattice:meta:convergence',
@@ -67,9 +70,9 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   // Council
   'council:proposal',
   'council:vote',
-  // Marketplace
+  // Marketplace ('market:trade' retired 2026-07-25 — DTU-bridge type tag,
+  // never a socket emit; see lib/realtime/socket.ts for the full reasoning)
   'market:listing',
-  'market:trade',
   // Creative Registry & Royalties
   'creative_registry:update',
   'marketplace:purchase',
@@ -97,6 +100,10 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   // presence were never forwarded to the event bus at all.
   'whiteboard:reaction',
   'whiteboard:presence',
+  // Dead-event-listener fix (DET-C batch 9 follow-up) — ops-apply's
+  // 'whiteboard:ops' broadcast (server/domains/whiteboard.js) had zero
+  // frontend caller or consumer; useWhiteboardCollab now subscribes.
+  'whiteboard:ops',
   // Message lens multi-device sync
   'message:saved',
   'message:unsaved',
@@ -119,9 +126,8 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'artifact:rendered',
   'quality:approved',
   'quality:shadowed',
-  // MEGA SPEC: Entity & pipeline events
-  'entity:production_mode',
-  'pipeline:triggered',
+  // MEGA SPEC: Entity & pipeline events ('entity:production_mode' and
+  // 'pipeline:triggered' retired 2026-07-25 — DTU-bridge type tags only)
   // 12 NEW CAPABILITIES events
   'pipeline:started',
   'pipeline:step_started',
@@ -143,14 +149,13 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'shared-session:dtu-shared',
   'shared-session:ended',
   // Real-time data feed events (Phase 3)
+  // 'finance:market_update', 'finance:alert', 'news:breaking' (Class F) and
+  // 'weather:alert' (Class D) retired 2026-07-25 — no server emitter ever
+  // existed; see lib/realtime/socket.ts for the per-event reasoning.
   'finance:ticker',
-  'finance:market_update',
-  'finance:alert',
   'crypto:ticker',
   'news:update',
-  'news:breaking',
   'weather:update',
-  'weather:alert',
   'research:update',
   'health:update',
   'legal:update',
@@ -168,8 +173,11 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'insurance:update',
   // DTU artifact generation from lenses
   'lens:dtu_generated',
-  // AI domain insights from lens-learning.js
-  'agent:domain_insight',
+  // NOTE: lens-learning.js's insight producer emits `agent:insights` (below,
+  // and rendered by EmergentEventFeed) plus a per-domain `<domain>:insight`
+  // that useRealtimeLens subscribes to. A third `agent:domain_insight` name
+  // was subscribed to here but never emitted by anything, and its handler fed
+  // a store slice no component read (retired 2026-07-25, dead-sub audit).
   // Per-user tick events
   'user:tick',
   // Spontaneous initiative events (proactive messages from Concord)
@@ -215,6 +223,20 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   // (server/lib/social-pings.js) had no bridge at all; see the rename
   // branch below, WorldMarkers.tsx listens on the namespaced name.
   'social:ping' as SocketEvent,
+  // Dead-event-listener fix (DET-C pass) — server/routes/wagers.js emits
+  // these (now correctly user-scoped, see the fix in that file) but
+  // nothing forwarded them at all. WagerInviteToast listens on the
+  // dash-namespaced window event; see the rename branch below.
+  'wager:proposed' as SocketEvent,
+  'wager:accepted' as SocketEvent,
+  'wager:declined' as SocketEvent,
+  'wager:resolved' as SocketEvent,
+  // DET-C batch 11 — V1.2 Wave A's party-room kick notification
+  // (server.js's POST /api/parties/:partyId/kick) had zero frontend
+  // consumer. PartyPanel.tsx's window.addEventListener('party:member-
+  // kicked', ...) needs the literal same-name window CustomEvent; see the
+  // rename branch below (same-name dispatch, no renaming needed here).
+  'party:member-kicked' as SocketEvent,
 ];
 
 interface UseSocketOptions {
@@ -318,7 +340,8 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
               event === ('dynasty:heir_acceded' as SocketEvent) ||
               event === ('refusal:compound-threshold' as SocketEvent) ||
               event === ('ark:archive_unlocked' as SocketEvent) ||
-              event === ('vela:reveal' as SocketEvent)
+              event === ('vela:reveal' as SocketEvent) ||
+              event === ('party:member-kicked' as SocketEvent)
             ) {
               window.dispatchEvent(new CustomEvent(event as string, { detail: data }));
             } else if (event === ('brawl-invited' as SocketEvent)) {
@@ -339,6 +362,17 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
               // which nothing listened to — the rename must swap the last
               // ':' for '-', not just prefix the namespace.
               window.dispatchEvent(new CustomEvent('concordia:social-ping', { detail: data }));
+            } else if (
+              event === ('wager:proposed' as SocketEvent) ||
+              event === ('wager:accepted' as SocketEvent) ||
+              event === ('wager:declined' as SocketEvent) ||
+              event === ('wager:resolved' as SocketEvent)
+            ) {
+              // Dead-event-listener fix (DET-C pass) — WagerInviteToast
+              // listens on the dash-namespaced window event
+              // ('concordia:wager-proposed', etc), same colon-to-dash
+              // rename convention as social:ping above.
+              window.dispatchEvent(new CustomEvent(`concordia:${event.replace(':', '-')}`, { detail: data }));
             }
           }
         });
@@ -469,11 +503,6 @@ function routeToStores(event: SocketEvent, data: unknown, qc: QueryClient) {
       // Partial update — components will refetch full stats
       break;
 
-    // Repair → system store
-    case 'repair:cycle_complete':
-      // Trigger refetch in subscribed components via event bus
-      break;
-
     // Dream → sovereign store
     case 'dream:captured':
       if (d.id) {
@@ -510,18 +539,6 @@ function routeToStores(event: SocketEvent, data: unknown, qc: QueryClient) {
           edges: (d.edges as number) ?? useLatticeStore.getState().topologyStats.edges,
           clusters: (d.clusters as number) ?? useLatticeStore.getState().topologyStats.clusters,
         });
-      }
-      break;
-
-    // Domain insight → lattice store (active domains)
-    case 'agent:domain_insight':
-      if (d.domains && Array.isArray(d.domains)) {
-        useLatticeStore.getState().setActiveDomains(d.domains as string[]);
-      } else if (d.domain && typeof d.domain === 'string') {
-        const current = useLatticeStore.getState().activeDomains;
-        if (!current.includes(d.domain as string)) {
-          useLatticeStore.getState().setActiveDomains([...current, d.domain as string]);
-        }
       }
       break;
 

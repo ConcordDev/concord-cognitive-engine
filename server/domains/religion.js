@@ -6,6 +6,7 @@ import {
   foundFaith,
   getFaith,
   listFaiths,
+  listFaithsForWorld,
   join,
   leave,
   pray,
@@ -32,16 +33,27 @@ export default function registerReligionMacros(register) {
         actorId: userId,
         name: input?.name,
         doctrine: input?.doctrine,
+        worldId: input?.worldId,
       });
     } catch (err) {
       return { ok: false, reason: "invalid_input", message: err?.message || String(err) };
     }
   });
 
-  register("religion", "list", async (ctx) => {
+  register("religion", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const worldId = input?.worldId;
+    if (worldId) return { ok: true, faiths: listFaithsForWorld(db, worldId) };
     return { ok: true, faiths: listFaiths(db) };
+  });
+
+  register("religion", "list_for_world", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const worldId = String(input?.worldId || "");
+    if (!worldId) return { ok: false, reason: "no_world" };
+    return { ok: true, worldId, faiths: listFaithsForWorld(db, worldId) };
   });
 
   register("religion", "get", async (ctx, input = {}) => {

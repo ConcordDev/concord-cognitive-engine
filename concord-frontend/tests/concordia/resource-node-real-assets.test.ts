@@ -25,8 +25,12 @@ vi.mock('@/lib/world-lens/asset-loader', () => ({
   instanceFromCache: vi.fn(),
   resolveAssetReference: vi.fn(),
 }));
+vi.mock('@/lib/evo-asset/loader', () => ({
+  resolveMaterialUpgrade: vi.fn(),
+}));
 
 import { instanceFromCache } from '@/lib/world-lens/asset-loader';
+import { resolveMaterialUpgrade } from '@/lib/evo-asset/loader';
 import { createResourceNodeRenderer } from '@/lib/world-lens/resource-node-renderer';
 
 function makeGlbGroup(height = 5): THREE.Group {
@@ -138,6 +142,83 @@ describe('resource-node-renderer — real-asset-first for tree/bush', () => {
     const renderer = createResourceNodeRenderer(parent, { worldId: 'w1', pollMs: 999999 });
     await expect(renderer.refresh()).resolves.not.toThrow();
     const found = parent.children.find((c) => (c.userData as { nodeId?: string }).nodeId === 'node-5');
+    expect(found).toBeTruthy();
+
+    renderer.dispose();
+  });
+});
+
+describe('resource-node-renderer — evo-asset material_upgrade on real-asset trees/bushes', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("applies a promoted material_upgrade's PBR params onto a real tree GLB", async () => {
+    const { loadAsset, resolveAssetReference } = await import('@/lib/world-lens/asset-loader');
+    (loadAsset as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (resolveAssetReference as ReturnType<typeof vi.fn>).mockResolvedValue('/models/vegetation/tree_01.glb');
+    (instanceFromCache as ReturnType<typeof vi.fn>).mockResolvedValue(makeGlbGroup(8));
+    (resolveMaterialUpgrade as ReturnType<typeof vi.fn>).mockResolvedValue({ roughness: 0.3, metalness: 0.6 });
+    stubFetch([{ id: 'node-mu-1', node_type: 'tree', x: 0, y: 0, z: 0, quantity_remaining: 100, max_quantity: 100 }]);
+
+    const parent = new THREE.Group();
+    const renderer = createResourceNodeRenderer(parent, { worldId: 'w1', pollMs: 999999 });
+    await renderer.refresh();
+
+    const found = parent.children.find((c) => (c.userData as { nodeId?: string }).nodeId === 'node-mu-1');
+    expect(found).toBeTruthy();
+    expect((found!.userData as { evoMaterialUpgrade?: boolean }).evoMaterialUpgrade).toBe(true);
+    let foundMesh: THREE.Mesh | null = null;
+    found!.traverse((o) => { if ((o as THREE.Mesh).isMesh) foundMesh = o as THREE.Mesh; });
+    expect(foundMesh).toBeTruthy();
+    const mat = foundMesh!.material as THREE.MeshStandardMaterial;
+    expect(mat.roughness).toBeCloseTo(0.3, 5);
+    expect(mat.metalness).toBeCloseTo(0.6, 5);
+
+    renderer.dispose();
+  });
+
+  it('is a clean no-op (real asset still renders, material left as shipped) when no promoted upgrade exists', async () => {
+    const { loadAsset, resolveAssetReference } = await import('@/lib/world-lens/asset-loader');
+    (loadAsset as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (resolveAssetReference as ReturnType<typeof vi.fn>).mockResolvedValue('/models/vegetation/tree_01.glb');
+    (instanceFromCache as ReturnType<typeof vi.fn>).mockResolvedValue(makeGlbGroup(8));
+    (resolveMaterialUpgrade as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    stubFetch([{ id: 'node-mu-2', node_type: 'tree', x: 0, y: 0, z: 0, quantity_remaining: 100, max_quantity: 100 }]);
+
+    const parent = new THREE.Group();
+    const renderer = createResourceNodeRenderer(parent, { worldId: 'w1', pollMs: 999999 });
+    await renderer.refresh();
+
+    const found = parent.children.find((c) => (c.userData as { nodeId?: string }).nodeId === 'node-mu-2');
+    expect(found).toBeTruthy();
+    expect((found!.userData as { evoMaterialUpgrade?: boolean }).evoMaterialUpgrade).toBeUndefined();
+    let foundMesh: THREE.Mesh | null = null;
+    found!.traverse((o) => { if ((o as THREE.Mesh).isMesh) foundMesh = o as THREE.Mesh; });
+    expect(foundMesh).toBeTruthy();
+    const mat = foundMesh!.material as THREE.MeshStandardMaterial;
+    expect(mat.roughness).toBe(1); // THREE.MeshStandardMaterial's own untouched default
+    expect(mat.metalness).toBe(0);
+
+    renderer.dispose();
+  });
+
+  it('does not throw when resolveMaterialUpgrade rejects (network failure) — real asset still renders', async () => {
+    const { loadAsset, resolveAssetReference } = await import('@/lib/world-lens/asset-loader');
+    (loadAsset as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (resolveAssetReference as ReturnType<typeof vi.fn>).mockResolvedValue('/models/vegetation/bush_01.glb');
+    (instanceFromCache as ReturnType<typeof vi.fn>).mockResolvedValue(makeGlbGroup(1));
+    (resolveMaterialUpgrade as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network down'));
+    stubFetch([{ id: 'node-mu-3', node_type: 'herb', x: 0, y: 0, z: 0, quantity_remaining: 100, max_quantity: 100 }]);
+
+    const parent = new THREE.Group();
+    const renderer = createResourceNodeRenderer(parent, { worldId: 'w1', pollMs: 999999 });
+    await expect(renderer.refresh()).resolves.not.toThrow();
+    const found = parent.children.find((c) => (c.userData as { nodeId?: string }).nodeId === 'node-mu-3');
     expect(found).toBeTruthy();
 
     renderer.dispose();

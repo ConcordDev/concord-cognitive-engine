@@ -240,6 +240,75 @@ describe("DeadEventListenerDetector — X2: socket both-directions", () => {
       assert.equal(r.findings.filter(f => f.id === "dead_socket_emit").length, 0);
     } finally { teardown(dir); }
   });
+
+  // DET-C batch 2 (2026-07-23) — useRealtimeRefresh(['a:b', ...], refresh, opts)
+  // is a real, widely-used (22 call sites) indirection the detector
+  // previously missed entirely: it passes the event list INLINE as a call
+  // argument (not a named constant array iterated elsewhere), and is
+  // frequently a SINGLE-item array, so the pre-existing "bridge array"
+  // heuristic's 2+-name threshold couldn't catch it. This produced a real
+  // false positive (`climbing:route-completed` in
+  // concord-frontend/components/world/ClimbingTracker.tsx flagged as a
+  // dead `dead_socket_emit` when it is genuinely subscribed). Bidirectional
+  // pin: the hook call now correctly suppresses the finding, AND an
+  // otherwise-identical server emit with no such call anywhere still
+  // fires it (the fix doesn't over-suppress).
+  it("does NOT flag a server emit consumed via a single-item useRealtimeRefresh([...]) call", async () => {
+    const dir = withFixture({
+      "server/lib/emit-source.js":
+        `export function fireIt() { realtimeEmit("test:refresh-single-event", { ok: true }); }\n`,
+      "concord-frontend/components/world/SomeTracker.tsx":
+        `import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';\n` +
+        `export function SomeTracker() {\n` +
+        `  useRealtimeRefresh(['test:refresh-single-event'], () => {}, { backstopMs: 2000 });\n` +
+        `  return null;\n` +
+        `}\n`,
+    });
+    try {
+      const r = await runDeadEventListenerDetector({ root: dir });
+      assert.equal(r.ok, true, r.x2Error);
+      assert.equal(r.findings.filter(f => f.id === "dead_socket_emit").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("also recognises a multi-item useRealtimeRefresh([...]) call", async () => {
+    const dir = withFixture({
+      "server/lib/emit-source.js":
+        `export function fireIt() {\n` +
+        `  realtimeEmit("test:refresh-multi-a", { ok: true });\n` +
+        `  realtimeEmit("test:refresh-multi-b", { ok: true });\n` +
+        `}\n`,
+      "concord-frontend/components/world/MultiTracker.tsx":
+        `import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';\n` +
+        `export function MultiTracker() {\n` +
+        `  useRealtimeRefresh(['test:refresh-multi-a', 'test:refresh-multi-b'], () => {});\n` +
+        `  return null;\n` +
+        `}\n`,
+    });
+    try {
+      const r = await runDeadEventListenerDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "dead_socket_emit" && f.subject.eventName === "test:refresh-multi-a").length, 0);
+      assert.equal(r.findings.filter(f => f.id === "dead_socket_emit" && f.subject.eventName === "test:refresh-multi-b").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("STILL flags a server emit when no useRealtimeRefresh call names it anywhere (no over-suppression)", async () => {
+    const dir = withFixture({
+      "server/lib/emit-source.js":
+        `export function fireIt() { realtimeEmit("test:refresh-unrelated-event", { ok: true }); }\n`,
+      "concord-frontend/components/world/OtherTracker.tsx":
+        `import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';\n` +
+        `export function OtherTracker() {\n` +
+        `  useRealtimeRefresh(['test:completely-different-event'], () => {});\n` +
+        `  return null;\n` +
+        `}\n`,
+    });
+    try {
+      const r = await runDeadEventListenerDetector({ root: dir });
+      const f = r.findings.find(x => x.id === "dead_socket_emit" && x.subject.eventName === "test:refresh-unrelated-event");
+      assert.ok(f, "expected dead_socket_emit finding — the hook call names a DIFFERENT event, not this one");
+    } finally { teardown(dir); }
+  });
 });
 
 describe("DeadEventListenerDetector — X2: constant-array indirection is NOT hard-flagged", () => {

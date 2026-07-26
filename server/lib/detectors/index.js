@@ -53,6 +53,9 @@ import { runUxModalNoEscapeDetector } from "./ux-modal-no-escape-detector.js";
 import { runCommandInjectionDetector } from "./command-injection-detector.js";
 import { runAuthzCoverageDetector } from "./authz-coverage-detector.js";
 import { runFrontendUnsafeChainDetector } from "./frontend-unsafe-chain-detector.js";
+import { runAsymmetricStatusUpdateDetector } from "./asymmetric-status-update-detector.js";
+import { runUnusedDestructuredParamDetector } from "./unused-destructured-param-detector.js";
+import { runDeadEnvelopeFieldAccessDetector } from "./dead-envelope-field-access-detector.js";
 import { runDuplicateHandlerRaceDetector } from "./duplicate-handler-race-detector.js";
 import { runFabricationMechanismDetector } from "./fabrication-mechanism-detector.js";
 import { runWorkflowGateIntegrityDetector } from "./workflow-gate-integrity-detector.js";
@@ -61,6 +64,9 @@ import { runRealtimeEmitSignatureDetector } from "./realtime-emit-signature-dete
 import { runStaleLyingTestDetector } from "./stale-lying-test-detector.js";
 import { runDeadMacroCallDetector } from "./dead-macro-call-detector.js";
 import { runHardcodedLiteralDataPropDetector } from "./hardcoded-literal-data-prop-detector.js";
+import { runDomainReachabilityDetector } from "./domain-reachability-detector.js";
+import { runLensManifestCapabilityDetector } from "./lens-manifest-capability-detector.js";
+import { runConstantTimeDetector } from "./constant-time-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -345,6 +351,56 @@ registerDetector({
   run: runFrontendFakeDataDetector,
 });
 
+// Sibling to frontend-fake-data, seeded by a real bug found in
+// SpikingNetworkPanel.tsx (2026-07-25): the success path called
+// `setRunCount(n => n + 1)` but the early-return refusal branch did not,
+// while the render read `runCount === 0 ? 'idle' : status` — so a real
+// backend refusal displayed to the user as "never attempted". Same honesty
+// class as fabricated data (the UI states something untrue about what the
+// system did), arrived at from the opposite direction: not inventing a
+// success, but hiding a failure.
+registerDetector({
+  id: "asymmetric-status-update",
+  label: "AsymmetricStatusUpdateDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description:
+    "A state setter called on the success path but not in a sibling early-return refusal/error branch, where that state gates an idle-vs-status ternary — a refusal disguised as never-attempted.",
+  run: runAsymmetricStatusUpdateDetector,
+});
+
+// Seeded by a real bug fixed this session: `analyticISI` destructured
+// V_reset + refractory and then used neither, silently ignoring two
+// caller-supplied physical parameters. Its top hit on the real tree is the
+// same shape on the money path — `mintCoins(db, { …, requestId, ip })`
+// references neither, while economy_ledger has request_id + ip columns
+// waiting for them.
+registerDetector({
+  id: "unused-destructured-param",
+  label: "UnusedDestructuredParamDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description:
+    "A function destructures an object parameter but never references one of the bound names — a caller-supplied value silently dropped on the floor.",
+  run: runUnusedDestructuredParamDetector,
+});
+
+// Seeded by the ConceptArtBoard silent-failure bug: an error branch read
+// `r.data?.result?.ok` when lensRun had already unwrapped the envelope, so
+// the branch was structurally unreachable and failures rendered as nothing.
+// Cross-references each call's actual backend handler to tell a genuinely
+// dead nested read from a live flat one — see the detector's own
+// classifyBackendMacroShapes note for why that pass is required.
+registerDetector({
+  id: "dead-envelope-field-access",
+  label: "DeadEnvelopeFieldAccessDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description:
+    "A lensRun()-sourced .result.ok/.result.error read that the macro's own backend handler proves is structurally unreachable.",
+  run: runDeadEnvelopeFieldAccessDetector,
+});
+
 // Category #2 — production resource leaks (setInterval without clear,
 // db.prepare in loops, listeners without remove, fs.open without close).
 registerDetector({
@@ -576,6 +632,53 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "A component is mounted with a hardcoded empty/off literal (0, false, null, [], '') passed to a prop whose name implies live/computed data — silently making a feature permanently inert.",
   run: runHardcodedLiteralDataPropDetector,
+});
+
+// OP4 (2026-07-23) — generalized, permanent version of the manual wiring
+// audit that found 5 fully-coded domain files whose registrar was never
+// imported by server.js or domains/index.js (commit 61a29cc0). Distinct from
+// `stale-code`'s "ghost module" rule, which explicitly treats every file
+// under server/domains/ as wired-by-convention and skips it — domains/ was a
+// deliberate blind spot there, closed here.
+registerDetector({
+  id: "domain-reachability",
+  label: "DomainReachabilityDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Cross-references every server/domains/*.js file against the real loader graph (server.js import+call, domains/index.js array) and flags a registrar with zero reachability path — caller-with-no-receiver dead code.",
+  run: runDomainReachabilityDetector,
+});
+
+// OP4 (2026-07-23) — the manifest half of the same "static truth drifted from
+// runtime truth" class: concord-frontend/lib/lenses/manifest.ts declares a
+// literal "domain.name" macro string per capability, but nothing previously
+// verified those strings against the real MACROS/LENS_ACTIONS registry (the
+// manifest's own `sentinel` entry documents a past MANUAL catch of exactly
+// this drift — "Phantom `lens.sentinel.*` refs replaced with the REAL
+// registered macros" — this detector is the permanent, automated version).
+registerDetector({
+  id: "lens-manifest-capability",
+  label: "LensManifestCapabilityDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Cross-references concord-frontend/lib/lenses/manifest.ts's declared macros:{...} capability claims against the real register()/registerLensAction() registry and flags any claim with no real backing macro.",
+  run: runLensManifestCapabilityDetector,
+});
+
+// W3-A (2026-07-24) — the first AST-based detector in the suite (every other
+// detector is regex/string matching over raw file text). Parses each backend
+// source file with the TypeScript compiler API's parser and runs a small,
+// intentionally-simple intra-file taint analysis to find secret-dependent
+// control flow / memory indexing — the source-level PRECONDITION for a
+// timing side channel, not proof of one. See the module header for the full
+// honest-boundary statement (microarchitectural effects are not modeled).
+registerDetector({
+  id: "constant-time",
+  label: "ConstantTimeDetector",
+  consumers: ["code-quality"],
+  dataNeeds: ["fs"],
+  description: "AST-based: flags secret-dependent branches, secret-dependent array/object indexing, and secret-dependent loop bounds/early-exits (the classic non-constant-time-compare pattern) across server/ — the timing-side-channel precondition, not a hardware-level proof.",
+  run: runConstantTimeDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same

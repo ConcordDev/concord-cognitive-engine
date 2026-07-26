@@ -483,8 +483,26 @@ function upsertWorldRow(db, meta) {
   // written). A `fiction` flag (e.g. "satire") rides inside rule_modulators so
   // the frontend can read it from the world row to show the in-world frame banner
   // and so provenance travels with the world.
+  //
+  // magic_level / tech_level / skill_affinity / material_availability are
+  // authored at the TOP LEVEL of meta.json (see content/world/*/meta.json —
+  // e.g. crime's magic_level:"none", fantasy's magic_level:"abundant"), not
+  // nested under a `rule_modulators` key. Before this fix they were silently
+  // dropped here: `worlds.rule_modulators` (what the live combat route reads
+  // via lib/cross-world-potency.js#isAvailableIn/worldAffinity) ended up
+  // missing exactly the fields those functions need, so no real seeded world
+  // could ever trigger a Pillar-2 forbid or a genuine Pillar-3 affinity scale
+  // — only registerWorldMeta()'s separate in-memory registry (used by
+  // cross-world-effectiveness.js) ever saw them. Folding them in here is what
+  // makes the DB-backed path agree with the in-memory one. `meta.rule_modulators`
+  // is spread AFTER so an explicit nested override (no real world uses one
+  // today) still wins over the top-level authored value.
   const physics = JSON.stringify(meta.physics_modulators || {});
   const rule = JSON.stringify({
+    ...(meta.magic_level != null ? { magic_level: meta.magic_level } : {}),
+    ...(meta.tech_level != null ? { tech_level: meta.tech_level } : {}),
+    ...(meta.skill_affinity ? { skill_affinity: meta.skill_affinity } : {}),
+    ...(meta.material_availability ? { material_availability: meta.material_availability } : {}),
     ...(meta.rule_modulators || {}),
     ...(meta.fiction ? { fiction: String(meta.fiction) } : {}),
   });
@@ -1177,6 +1195,36 @@ export async function seedContent({ db = null } = {}) {
       results.materialProfiles = r?.seeded ?? 0;
     } catch (err) {
       logger.warn("content_seeder", "material_profiles_seed_failed", { err: err?.message });
+    }
+
+    // Godot Phase 2 prep — districts as real 2D geometric regions (boundary
+    // polygon + palette + lighting identity; migration 374). Idempotent on
+    // district id (worldId:key), so a re-run inserts nothing new. Only
+    // concordia-hub has an authored layout today; other worlds are an
+    // honest no-op (seedDefaultDistricts never fabricates geometry).
+    try {
+      const { seedDefaultDistricts } = await import("./districts.js");
+      const r = seedDefaultDistricts(db, "concordia-hub");
+      results.districts = r?.seeded ?? 0;
+    } catch (err) {
+      logger.warn("content_seeder", "districts_seed_failed", { err: err?.message });
+    }
+
+    // Master-spec A3+A4 — purposeful-building framework ("no dead facades").
+    // Read-only diagnostic over the authored content/world/concordia-hub/
+    // city-layout.json (server/lib/building-purpose.js): validates every
+    // authored building has a real purpose + a valid district, and reports
+    // coverage against whatever world_buildings already exist. Never writes
+    // to world_buildings — that seeding stays owned by world-seeder.js.
+    try {
+      const { seedCityLayout } = await import("./building-purpose.js");
+      const r = seedCityLayout(db, "concordia-hub");
+      results.cityLayout = r?.total ?? 0;
+      if (r?.deadFacades) {
+        logger.warn("content_seeder", "city_layout_dead_facades", { count: r.deadFacades });
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "city_layout_seed_failed", { err: err?.message });
     }
 
     try {

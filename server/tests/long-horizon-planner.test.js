@@ -69,6 +69,18 @@ describe("Long-Horizon Planner (#14)", () => {
     assert.equal(p.status, "done");
   });
 
+  it("setMilestoneStatus rejects a milestoneId that belongs to a DIFFERENT plan than the claimed planId", () => {
+    const planA = draftPlan(db, { userId: "u1", title: "Plan A", horizonDays: 5, startTs: start, milestones: ["a-only"] });
+    const planB = draftPlan(db, { userId: "u1", title: "Plan B", horizonDays: 5, startTs: start, milestones: ["b-only"] });
+    // Claim planB's id but pass planA's milestone id — must be rejected, not
+    // silently applied to the mismatched milestone.
+    const out = setMilestoneStatus(db, { planId: planB.planId, milestoneId: planA.milestones[0].id, status: "done" });
+    assert.equal(out.ok, false);
+    assert.equal(out.reason, "milestone_plan_mismatch");
+    const ms = db.prepare("SELECT status FROM lh_milestones WHERE id = ?").get(planA.milestones[0].id);
+    assert.equal(ms.status, "pending", "the milestone must be left untouched");
+  });
+
   it("the heartbeat sweeps without throwing", async () => {
     const r = await runPlanHorizonCycle({ db });
     assert.equal(r.ok, true);

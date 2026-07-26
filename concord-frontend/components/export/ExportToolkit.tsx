@@ -402,7 +402,7 @@ function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
 // panel style, same busy/info state pattern. Reads the self-describing
 // { algorithm, salt, plainChecksum, ciphertextBase64 } envelope EncryptedArchive
 // downloads, so a file this lens encrypted round-trips through this lens.
-function DecryptedArchive() {
+export function DecryptedArchive() {
   const [password, setPassword] = useState('');
   const [envelope, setEnvelope] = useState<{ salt: string; plainChecksum: string; ciphertextBase64: string } | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);

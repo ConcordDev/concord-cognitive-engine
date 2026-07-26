@@ -30,6 +30,7 @@ import {
   breathingChestScaleY,
   breathPhaseFromId,
   type GaitParams,
+  type GaitPose,
   type BodyType,
 } from '@/lib/concordia/gait-synthesis';
 import {
@@ -53,7 +54,6 @@ import { physicsWorld } from '@/lib/world-lens/physics-world';
 import { sampleGroundY, outOfBounds } from '@/lib/world-lens/coord-frame';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
-import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
 import { getTimeScale, getPlayerTimeScale } from '@/lib/concordia/use-time-scale';
 import { getDischargeWorldPosition, getWeaponTipWorldPosition, DISCHARGE_ARCHETYPES, type WeaponArchetype } from '@/lib/concordia/weapon-archetypes';
 
@@ -68,12 +68,205 @@ const ALL_WEAPON_ARCHETYPES: WeaponArchetype[] = [
   'scimitar', 'greatsword', 'halberd', 'spear', 'bow', 'crossbow',
   'firearm_pistol', 'firearm_rifle', 'staff', 'wand',
 ];
+
+/** Discharge VFX preset + the real world-space muzzle/tip position it
+ *  should spawn at, plus the weapon group it was resolved from (so the
+ *  caller can branch on archetype for the firearm hit-scan tracer without
+ *  re-deriving it). */
+export interface ResolvedDischargeVfx {
+  type: 'flash' | 'flame' | 'frost' | 'spark' | 'arcane' | 'cast';
+  position: { x: number; y: number; z: number };
+  weapon: import('three').Object3D;
+}
+
+/**
+ * Extracted from `handleCombatAnim`'s discharge-flash block so the
+ * weapon-lookup (by real `weapon_<archetype>` group name, `DISCHARGE_ARCHETYPES`
+ * imported from weapon-archetypes.ts, not a local shadow copy) + the
+ * firearm/enchantment → VFX-preset mapping can be exercised directly in a
+ * unit test without mounting the full Three.js avatar scene. Returns null
+ * when the group carries none of the 4 discharge-capable archetypes, or
+ * the found weapon has no resolvable discharge point.
+ */
+export function resolveDischargeVfx(
+  playerGroup: import('three').Object3D | null | undefined,
+): ResolvedDischargeVfx | null {
+  if (!playerGroup) return null;
+  let dischargeWeapon: import('three').Object3D | null = null;
+  for (const archetype of DISCHARGE_ARCHETYPES) {
+    const found = playerGroup.getObjectByName?.(`weapon_${archetype}`);
+    if (found) { dischargeWeapon = found; break; }
+  }
+  if (!dischargeWeapon) return null;
+  const pos = getDischargeWorldPosition(dischargeWeapon);
+  if (!pos) return null;
+  const archetype = dischargeWeapon.userData?.archetype as WeaponArchetype | undefined;
+  const isFirearm = archetype === 'firearm_pistol' || archetype === 'firearm_rifle';
+  const enchantment = dischargeWeapon.userData?.enchantment as string | null | undefined;
+  const type: ResolvedDischargeVfx['type'] = isFirearm
+    ? 'flash'
+    : enchantment === 'fire' ? 'flame'
+    : enchantment === 'frost' ? 'frost'
+    : enchantment === 'lightning' ? 'spark'
+    : enchantment === 'arcane' ? 'arcane'
+    : 'cast';
+  return { type, position: { x: pos.x, y: pos.y, z: pos.z }, weapon: dischargeWeapon };
+}
+
+/**
+ * Resolves + dispatches the discharge VFX as a real `concordia:particle-effect`
+ * CustomEvent — the already-mounted world-vfx-bridge.ts channel, not a new
+ * ad-hoc one. Split from `resolveDischargeVfx` so the dispatch itself is
+ * directly testable via a real `window.addEventListener` spy rather than a
+ * source-text pin.
+ */
+export function emitDischargeVfx(
+  playerGroup: import('three').Object3D | null | undefined,
+): ResolvedDischargeVfx | null {
+  const vfx = resolveDischargeVfx(playerGroup);
+  if (vfx && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+      detail: { type: vfx.type, position: vfx.position, intensity: 1 },
+    }));
+  }
+  return vfx;
+}
+
+/**
+ * Gate for the discharge-flash block: local player only, and only on an
+ * attack-prefixed animation trigger — matching the existing weapon-trail
+ * trigger scope this block sits next to (the trail block additionally
+ * allows 'kick'; discharge does not).
+ */
+export function shouldEmitDischargeVfx(
+  detail: { entityId?: string; animation?: string },
+  playerAvatarId: string,
+  hasPlayerMesh: boolean,
+): boolean {
+  return detail.entityId === playerAvatarId && !!detail.animation?.startsWith('attack') && hasPlayerMesh;
+}
+
+/** The world-load appearance-cache hint shape read for a given avatar id. */
+export interface AvatarAppearanceHint {
+  factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
+  appearanceText?: string;
+  heroMesh?: boolean;
+  factionId?: string;
+  archetype?: string;
+  homeWorldId?: string;
+}
+
+/**
+ * Phase L — reads the world-load appearance-cache hint for `avatarId`.
+ * Centralized here so `createAvatarMeshSmart`'s hero-GLB path and its
+ * procedural-fallback path share ONE read of `window.__CONCORD_NPC_APPEARANCE_CACHE__`
+ * instead of each independently calling `cache.get(avatarId)` (the prior
+ * bug this Phase L comment refers to).
+ */
+export function readAvatarAppearanceHint(avatarId: string): AvatarAppearanceHint | undefined {
+  const cache = typeof window !== 'undefined'
+    ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__
+    : null;
+  return cache?.get(avatarId) as AvatarAppearanceHint | undefined;
+}
+
+/**
+ * Phase BA5 — derives the wear-uniform-ref shape from `useAvatarScars`'s
+ * live `{ scars, drift }` snapshot: `drift` (0..1) becomes the `u_wear`
+ * shader uniform (0 = pristine, 1 = grimy) and `scars` passes through for
+ * the per-frame render block to map onto bone-region DecalGeometry.
+ * Extracted as a pure function (real drift/scars in, real ref shape out)
+ * so it's directly testable without mounting the Three.js scene — the
+ * `useEffect` below is the only caller, and just assigns its result to
+ * `wearUniformRef.current`.
+ */
+export function buildAvatarWearState(
+  drift: number,
+  scars: AvatarScar[],
+): { u_wear: number; scars: AvatarScar[] } {
+  return { u_wear: drift, scars };
+}
+
+/**
+ * Attempts the baked hero-GLB path for a hero NPC (Phase S): computes the
+ * SAME rich appearance (armor included) a procedural-fallback build of
+ * this NPC would have gotten, then threads its `.armor` through to
+ * `loadHeroMesh` as the 4th argument so the baked mesh wears the
+ * deterministic kit instead of a second, independently-rolled one.
+ * Returns `{ group: null, rich }` when the GLB itself didn't load (caller
+ * falls through to the enhanced-avatar builder, reusing `rich` via
+ * `rich ??= ...` rather than re-rolling it) — and `{ group: null, rich: null }`
+ * when this NPC isn't hero-eligible at all, or the attempt threw before a
+ * `rich` was ever computed.
+ */
+export async function tryLoadHeroMesh(
+  avatarId: string,
+  appearance: AppearanceConfig,
+  opts: { isHero?: boolean; isLocalPlayer?: boolean; worldId?: string; factionId?: string | null; archetype?: string | null },
+  hint: AvatarAppearanceHint | undefined,
+): Promise<{ group: unknown | null; rich: import('@/lib/world-lens/character-schema').RichAppearanceConfig | null }> {
+  if (!opts.isHero || opts.isLocalPlayer) return { group: null, rich: null };
+  try {
+    const [heroMod, schemaMod] = await Promise.all([
+      import('@/lib/concordia/hero-mesh-registry'),
+      import('@/lib/world-lens/character-schema'),
+    ]);
+    const archetype = opts.archetype ?? hint?.archetype ?? 'warrior';
+    const homeWorld = hint?.homeWorldId ?? opts.worldId;
+    const rich = schemaMod.generateAppearance({
+      id: avatarId,
+      worldId: opts.worldId || 'concordia-hub',
+      factionId: opts.factionId ?? hint?.factionId ?? null,
+      archetype: opts.archetype ?? hint?.archetype ?? null,
+      themeId: 'concordia-hub',
+      heroMesh: true,
+      factionVisual: hint?.factionVisual ?? null,
+      npcAppearanceText: hint?.appearanceText ?? null,
+      override: {
+        skinColor: appearance.skinColor,
+        hairColor: appearance.hairColor,
+      },
+    });
+    const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld, rich.armor);
+    if (loaded?.group) {
+      return { group: loaded.group, rich };
+    }
+    return { group: null, rich };
+  } catch (err) {
+    if (typeof console !== 'undefined') {
+      console.warn('[AvatarSystem3D] hero GLB load failed, falling back to procedural', err);
+    }
+    return { group: null, rich: null };
+  }
+}
+
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
 import { useAvatarAnimator } from '@/hooks/useAvatarAnimator';
-import { useAvatarScars } from '@/hooks/useAvatarScars';
-import { serializableToGaitPose } from '@/lib/concordia/animator-protocol';
+import { useAvatarScars, type AvatarScar } from '@/hooks/useAvatarScars';
+import { serializableToGaitPose, type SerializableGaitPose } from '@/lib/concordia/animator-protocol';
+
+/**
+ * Phase AA2 — the worker-first / inline-fallback gait resolution shared by
+ * both the player and NPC per-frame gait blocks below: prefer the Web
+ * Worker's already-computed pose (rehydrated via `serializableToGaitPose`)
+ * when one is available, and fall back to synchronous `synthesizeGait` on
+ * the main thread when the worker hasn't returned one yet (boot warmup,
+ * worker failure, or SSR). Extracted as a pure function (real worker-pose-
+ * or-null in, real GaitPose out) so this fallback logic is directly
+ * testable without mounting the Three.js scene — the two call sites below
+ * are its only callers.
+ */
+export function resolveGaitPose(
+  workerPose: SerializableGaitPose | null,
+  fallbackParams: GaitParams,
+  fallbackPhase: number,
+): GaitPose {
+  return workerPose
+    ? serializableToGaitPose(workerPose)
+    : synthesizeGait(fallbackParams, fallbackPhase);
+}
 // Wave 4 finding #8 — the live position broadcast that 9+ world-lens
 // satellite components read via window.__concordiaPlayerPos /
 // __concordiaNpcPositions. See the module doc comment for the full list
@@ -350,7 +543,7 @@ export default function AvatarSystem3D({
   const { scars: avatarScars, drift: avatarDrift } = useAvatarScars(playerAvatar?.id);
   const wearUniformRef = useRef<{ u_wear: number; scars: typeof avatarScars }>({ u_wear: 0, scars: [] });
   useEffect(() => {
-    wearUniformRef.current = { u_wear: avatarDrift, scars: avatarScars };
+    wearUniformRef.current = buildAvatarWearState(avatarDrift, avatarScars);
   }, [avatarDrift, avatarScars]);
   // Phase B3 — flight-physics shadow state. Initialised when player
   // enters glide; ticked per frame; emitted as `concordia:flight-state`
@@ -400,6 +593,10 @@ export default function AvatarSystem3D({
   const stridePhaseRef = useRef(0);
   // Terrain elevation sampler — set when concordia:terrain-ready fires
   const elevationRef = useRef<((x: number, z: number) => number) | null>(null);
+  // Throttle for the concordia:exertion broadcast (EmbodiedParticlesBridge's
+  // cold-breath consumer) — real sprint/stamina state, dispatched at ~2Hz
+  // rather than every frame.
+  const lastExertionDispatchRef = useRef(0);
 
   // Secondary physics + facial controllers
   const secondaryPhysicsRef = useRef<SecondaryPhysicsManager | null>(null);
@@ -801,7 +998,14 @@ export default function AvatarSystem3D({
       try {
         if ((window as unknown as { __CONCORD_CEL_SHADE__?: boolean }).__CONCORD_CEL_SHADE__ !== false) {
           // Share the global outline weight so crowd + hero silhouettes read alike.
-          applyCelShade(group, THREE, { outlineScale: 1 + ART_STYLE.OUTLINE_WIDTH_M * 3 });
+          // Outline width now comes from applyCelShade's own default —
+          // ART_STYLE.OUTLINE_WIDTH_M applied as a real world-space METRE
+          // value. The old `1 + OUTLINE_WIDTH_M * 3` turned a documented metre
+          // constant into a unitless 1.054× hull grow, which made ink thickness
+          // scale with mesh size (docs/ART_DIRECTION_AUDIT.md §3.4). No palette
+          // is passed: avatars keep the neutral grayscale ramp (see the
+          // character-grounding exception in concordia-theme.ts's header).
+          applyCelShade(group, THREE);
         }
       } catch { /* cel-shade best-effort — never block mesh creation */ }
 
@@ -874,17 +1078,10 @@ export default function AvatarSystem3D({
       const wantEnhanced = true;
       if (wantEnhanced) {
         // Phase L — pull hydrated hints from the world-load cache. Read
-        // once up-front (was previously read a second time, identically,
-        // inside the procedural-fallback try-block below).
-        const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
-        const hint = cache?.get(avatarId) as {
-          factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
-          appearanceText?: string;
-          heroMesh?: boolean;
-          factionId?: string;
-          archetype?: string;
-          homeWorldId?: string;
-        } | undefined;
+        // once up-front via readAvatarAppearanceHint (was previously read
+        // a second time, identically, inside the procedural-fallback
+        // try-block below).
+        const hint = readAvatarAppearanceHint(avatarId);
 
         // Everyone-unique — the rich appearance (armor included) is now
         // computed once up front and reused by whichever path actually
@@ -894,38 +1091,17 @@ export default function AvatarSystem3D({
         let rich: import('@/lib/world-lens/character-schema').RichAppearanceConfig | null = null;
         const schemaModPromise = import('@/lib/world-lens/character-schema');
 
-        // Phase S — try the baked GLB path first for hero NPCs. The
-        // home-world archetype carries an NPC's visual identity
-        // across cross-world travel (Phase T): a courier from
-        // concord-link-frontier still looks like a concord-link
-        // courier when visiting concordia-hub.
+        // Phase S — try the baked GLB path first for hero NPCs (via
+        // tryLoadHeroMesh, which threads the computed rich.armor through
+        // to loadHeroMesh's 4th argument). The home-world archetype
+        // carries an NPC's visual identity across cross-world travel
+        // (Phase T): a courier from concord-link-frontier still looks
+        // like a concord-link courier when visiting concordia-hub.
         if (opts.isHero && !opts.isLocalPlayer) {
-          try {
-            const [heroMod, schemaMod] = await Promise.all([import('@/lib/concordia/hero-mesh-registry'), schemaModPromise]);
-            const archetype = opts.archetype ?? hint?.archetype ?? 'warrior';
-            const homeWorld = hint?.homeWorldId ?? opts.worldId;
-            rich = schemaMod.generateAppearance({
-              id: avatarId,
-              worldId: opts.worldId || 'concordia-hub',
-              factionId: opts.factionId ?? hint?.factionId ?? null,
-              archetype: opts.archetype ?? hint?.archetype ?? null,
-              themeId: 'concordia-hub',
-              heroMesh: true,
-              factionVisual: hint?.factionVisual ?? null,
-              npcAppearanceText: hint?.appearanceText ?? null,
-              override: {
-                skinColor: appearance.skinColor,
-                hairColor: appearance.hairColor,
-              },
-            });
-            const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld, rich.armor);
-            if (loaded?.group) {
-              return loaded.group as InstanceType<typeof import('three').Group>;
-            }
-          } catch (err) {
-            if (typeof console !== 'undefined') {
-              console.warn('[AvatarSystem3D] hero GLB load failed, falling back to procedural', err);
-            }
+          const heroResult = await tryLoadHeroMesh(avatarId, appearance, opts, hint);
+          rich = heroResult.rich;
+          if (heroResult.group) {
+            return heroResult.group as InstanceType<typeof import('three').Group>;
           }
         }
         try {
@@ -952,13 +1128,12 @@ export default function AvatarSystem3D({
           // (above); enhanced hero/player avatars stay PBR by default to keep their
           // SSS skin + wear detail. Opt INTO matching toon (so heroes share the
           // world's outline weight + ramp) via window.__CONCORD_HERO_CEL_SHADE__ =
-          // true — the chair A/Bs full-toon before it becomes the default. Reads the
-          // global ART_STYLE outline weight so it can't drift from the crowd.
+          // true — the chair A/Bs full-toon before it becomes the default. Takes
+          // applyCelShade's shared ART_STYLE.OUTLINE_WIDTH_M default so hero ink
+          // can't drift from the crowd's.
           try {
             if ((window as unknown as { __CONCORD_HERO_CEL_SHADE__?: boolean }).__CONCORD_HERO_CEL_SHADE__ === true) {
-              applyCelShade(result.group as unknown as Parameters<typeof applyCelShade>[0], THREE, {
-                outlineScale: 1 + ART_STYLE.OUTLINE_WIDTH_M * 3,
-              });
+              applyCelShade(result.group as unknown as Parameters<typeof applyCelShade>[0], THREE);
             }
           } catch { /* cel-shade best-effort — never block the hero build */ }
           facialControllersRef.current.set(avatarId, result.facial);
@@ -1494,48 +1669,25 @@ export default function AvatarSystem3D({
         // the same combat:attack path melee already uses (range-capped by
         // combat-limits.js#clampAttackRange); this is scoped to the visual
         // side, same as the trail is scoped to blade swings.
-        if (detail.entityId === playerAvatar.id && detail.animation.startsWith('attack') && playerMeshRef.current) {
+        if (shouldEmitDischargeVfx(detail, playerAvatar.id, !!playerMeshRef.current)) {
           try {
             const playerGroup = playerMeshRef.current as InstanceType<typeof import('three').Group>;
-            let dischargeWeapon: InstanceType<typeof import('three').Object3D> | null = null;
-            for (const archetype of DISCHARGE_ARCHETYPES) {
-              const found = (playerGroup as unknown as { getObjectByName?: (n: string) => InstanceType<typeof import('three').Object3D> | undefined })
-                .getObjectByName?.(`weapon_${archetype}`);
-              if (found) { dischargeWeapon = found; break; }
-            }
-            if (dischargeWeapon) {
-              const pos = getDischargeWorldPosition(dischargeWeapon as unknown as Parameters<typeof getDischargeWorldPosition>[0]);
-              if (pos && typeof window !== 'undefined') {
-                const archetype = dischargeWeapon.userData?.archetype as WeaponArchetype | undefined;
-                const isFirearm = archetype === 'firearm_pistol' || archetype === 'firearm_rifle';
-                const enchantment = dischargeWeapon.userData?.enchantment as string | null | undefined;
-                const vfxType = isFirearm
-                  ? 'flash'
-                  : enchantment === 'fire' ? 'flame'
-                  : enchantment === 'frost' ? 'frost'
-                  : enchantment === 'lightning' ? 'spark'
-                  : enchantment === 'arcane' ? 'arcane'
-                  : 'cast';
-                window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
-                  detail: { type: vfxType, position: { x: pos.x, y: pos.y, z: pos.z }, intensity: 1 },
-                }));
-                if (isFirearm) {
-                  const sceneRoot = playerGroup.parent;
-                  if (sceneRoot) {
-                    if (!projectileTracerRef.current) {
-                      projectileTracerRef.current = _createProjectileTracer(
-                        THREE as typeof import('three'),
-                        sceneRoot as import('three').Object3D,
-                      );
-                    }
-                    // aimHitPoint is null only before ConcordiaScene's first
-                    // raycast tick; fall back to straight along the muzzle's
-                    // own forward-ish direction so a very first shot still
-                    // draws a visible streak instead of a zero-length line.
-                    const target = cameraLookState.aimHitPoint ?? { x: pos.x, y: pos.y, z: pos.z - 40 };
-                    projectileTracerRef.current.fire({ x: pos.x, y: pos.y, z: pos.z }, target);
-                  }
+            const vfx = emitDischargeVfx(playerGroup as unknown as import('three').Object3D);
+            if (vfx && vfx.type === 'flash') {
+              const sceneRoot = playerGroup.parent;
+              if (sceneRoot) {
+                if (!projectileTracerRef.current) {
+                  projectileTracerRef.current = _createProjectileTracer(
+                    THREE as typeof import('three'),
+                    sceneRoot as import('three').Object3D,
+                  );
                 }
+                // aimHitPoint is null only before ConcordiaScene's first
+                // raycast tick; fall back to straight along the muzzle's
+                // own forward-ish direction so a very first shot still
+                // draws a visible streak instead of a zero-length line.
+                const target = cameraLookState.aimHitPoint ?? { x: vfx.position.x, y: vfx.position.y, z: vfx.position.z - 40 };
+                projectileTracerRef.current.fire({ x: vfx.position.x, y: vfx.position.y, z: vfx.position.z }, target);
               }
             }
           } catch { /* discharge flash is best-effort cosmetic, never block combat anim */ }
@@ -1544,13 +1696,28 @@ export default function AvatarSystem3D({
         if (!mixer) return;
         try {
           const root = (mixer as unknown as { getRoot?: () => unknown }).getRoot?.();
-          const skeleton = (root as { skeleton?: import('three').Skeleton } | undefined)?.skeleton;
+          // Skeleton resolution: hero-GLB rigs expose `.skeleton` on the mixer
+          // root directly; the procedural avatar stores it at
+          // `group.userData.skeleton` (which the player mesh's userData reset can
+          // wipe), so fall back to a traverse for the first SkinnedMesh's
+          // skeleton. Without this the tiered clips silently no-op on the
+          // default rig.
+          let skeleton = (root as { skeleton?: import('three').Skeleton } | undefined)?.skeleton
+            ?? (root as { userData?: { skeleton?: import('three').Skeleton } } | undefined)?.userData?.skeleton;
+          if (!skeleton && root && typeof (root as { traverse?: unknown }).traverse === 'function') {
+            (root as unknown as import('three').Object3D).traverse((o) => {
+              if (!skeleton && (o as unknown as { skeleton?: import('three').Skeleton }).skeleton) {
+                skeleton = (o as unknown as { skeleton?: import('three').Skeleton }).skeleton;
+              }
+            });
+          }
           if (!skeleton) return;
 
           // Tier-scaled biomechanics path. attack-light / heavy / kick /
-          // grapple all support 5 mastery tiers. block / parry / dodge /
-          // hit-flinch / death don't (they're reactive, not mastered).
-          const TIERED_ACTIONS = new Set(['attack-light', 'attack-heavy', 'kick', 'grapple']);
+          // grapple support 5 mastery tiers; the combo-step tokens spell /
+          // ranged / throw ride reused action-biomechanics archetypes. block /
+          // parry / dodge / hit-flinch / death don't (reactive, not mastered).
+          const TIERED_ACTIONS = new Set(['attack-light', 'attack-heavy', 'kick', 'grapple', 'spell', 'ranged', 'throw']);
           if (typeof detail.tier === 'number' && TIERED_ACTIONS.has(detail.animation)) {
             const tier = Math.max(1, Math.min(5, Math.floor(detail.tier)));
             let bMap = biomechClipMaps.get(skeleton as unknown as object);
@@ -1559,7 +1726,7 @@ export default function AvatarSystem3D({
               bMap = bmod.buildBiomechClipMap(
                 skeleton,
                 detail.body ?? 'average',
-                ['attack-light', 'attack-heavy', 'kick', 'grapple'],
+                ['attack-light', 'attack-heavy', 'kick', 'grapple', 'spell', 'ranged', 'throw'],
                 [1, 2, 3, 4, 5],
               );
               biomechClipMaps.set(skeleton as unknown as object, bMap);
@@ -2526,6 +2693,17 @@ export default function AvatarSystem3D({
         }
         onStaminaChange?.(physics.currentStamina, physics.maxStamina);
 
+        // Real exertion signal for EmbodiedParticlesBridge's cold-breath —
+        // derived from the same sprint/stamina state computed above, never
+        // a fabricated number. Throttled to ~2Hz (window events are cheap
+        // but the frame loop runs at display refresh rate).
+        if (now - lastExertionDispatchRef.current > 500) {
+          lastExertionDispatchRef.current = now;
+          const staminaRatio = physics.maxStamina > 0 ? physics.currentStamina / physics.maxStamina : 1;
+          const exertionLevel = Math.min(3, 1 + (isRunning ? 1.2 : 0) + (1 - staminaRatio) * 0.8);
+          window.dispatchEvent(new CustomEvent('concordia:exertion', { detail: { level: exertionLevel } }));
+        }
+
         let moveX = 0;
         let moveZ = 0;
         // World Lens Phase 4 — Free camera mode reuses WASD to fly the
@@ -2759,9 +2937,7 @@ export default function AvatarSystem3D({
               stridePhaseRef.current,
               delta,
             );
-            const gaitPose = workerPose
-              ? serializableToGaitPose(workerPose)
-              : synthesizeGait(gaitParams, stridePhaseRef.current);
+            const gaitPose = resolveGaitPose(workerPose, gaitParams, stridePhaseRef.current);
             applyGaitPose(gaitPose, (name) => pm.getObjectByName(name) ?? undefined);
 
             // ── FABRIK foot IK — plant feet on actual terrain ──
@@ -2948,9 +3124,7 @@ export default function AvatarSystem3D({
               newPhase,
               delta,
             );
-            const npcGaitPose = workerNpcPose
-              ? serializableToGaitPose(workerNpcPose)
-              : synthesizeGait(npcParams, newPhase);
+            const npcGaitPose = resolveGaitPose(workerNpcPose, npcParams, newPhase);
             applyGaitPose(npcGaitPose, getMesh);
           } else {
             applyGaitPose(synthesizeIdle(elapsed, npcCfg, 1), getMesh);

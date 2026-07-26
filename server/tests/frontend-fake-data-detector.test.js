@@ -140,6 +140,202 @@ describe("frontend-fake-data detector — hardcoded array rendered as live data"
   });
 });
 
+// ── 2026-07 precision pass ────────────────────────────────────────────────
+// A full manual classification of every finding this detector produced
+// against the real repo found 35 medium findings, 34 of them false
+// positives, 1 true positive (DTUDiffViewer's fabricated VERSIONS). These
+// fixtures are extracted/adapted from the real false positives (config/nav
+// arrays, external-spread arrays, a call-argument shorthand property, a
+// negated disclaimer, and an identity-key label) plus the one real true
+// positive, so this pass is pinned bidirectionally: still catches the real
+// shape, no longer fires on any of the real false-positive shapes.
+describe("frontend-fake-data detector — 2026-07 precision pass", () => {
+  let dir;
+  afterEach(async () => { if (dir) await rm(dir, { recursive: true, force: true }); });
+
+  it("STILL FIRES on the DTUDiffViewer true-positive shape (fabricated version history: author/date + measurements, no fetch hook)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/components/world-lens/DTUDiffViewer.tsx": [
+        "'use client';",
+        "const VERSIONS = [",
+        "  {",
+        "    id: 'dtu-3204-v1.0',",
+        "    version: 'v1.0',",
+        "    name: 'USB-A Beam 6m',",
+        "    material: 'USB-A',",
+        "    seismicRating: 6.2,",
+        "    windRating: '120mph',",
+        "    weight: '142kg',",
+        "    author: 'eng.martinez',",
+        "    date: '2025-08-14',",
+        "    validations: { gravity: '2.3 SF', wind: '120mph', seismic: '6.2', thermal: 'pass', fire: '2.0hr' },",
+        "  },",
+        "  {",
+        "    id: 'dtu-3204-v1.1',",
+        "    version: 'v1.1',",
+        "    name: 'USB-A Beam 6m (Draft)',",
+        "    material: 'USB-A',",
+        "    seismicRating: 6.4,",
+        "    windRating: '125mph',",
+        "    weight: '146kg',",
+        "    author: 'eng.martinez',",
+        "    date: '2025-10-02',",
+        "    validations: { gravity: '2.35 SF', wind: '125mph', seismic: '6.4', thermal: 'pass', fire: '2.0hr' },",
+        "  },",
+        "];",
+        "export function DTUDiffViewer() {",
+        "  return <div>{VERSIONS.map((v, i) => <span key={v.id}>{v.name}</span>)}</div>;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    const hits = byId(r, "hardcoded_array_rendered_as_live_data");
+    assert.ok(hits.length >= 1, `expected the true positive to still fire, got: ${JSON.stringify(nonInfo(r))}`);
+    assert.equal(hits[0].evidence.identifier, "VERSIONS");
+    assert.equal(hits[0].evidence.hasContentKey, true, "author/date are still content-shaped signals");
+  });
+
+  it("does NOT fire on a DESTINATIONS nav array using desc/description (real FP: grounding/parenting/supplychain page.tsx)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/app/lenses/grounding/page.tsx": [
+        "const DESTINATIONS = [",
+        "  { id: 'factcheck', label: 'Fact-Check Workbench', icon: ShieldCheck, desc: 'Evidence aggregation' },",
+        "  { id: 'sensors', label: 'Reality Anchor', icon: Antenna, desc: 'Sensors and readings' },",
+        "  { id: 'pulse', label: 'Real-World Pulse', icon: Radio, description: 'Live chatter' },",
+        "];",
+        "export default function GroundingLensPage() {",
+        "  return <div>{DESTINATIONS.map((d) => <button key={d.id}>{d.label}</button>)}</div>;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    assert.equal(byId(r, "hardcoded_array_rendered_as_live_data").length, 0, `got: ${JSON.stringify(nonInfo(r))}`);
+  });
+
+  it("does NOT fire on a country/locale lookup table keyed by code+name (real FP: CountryPicker/LanguageSelector)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/components/global/CountryPicker.tsx": [
+        "export const COUNTRIES = [",
+        "  { code: 'USA', name: 'United States' }, { code: 'CHN', name: 'China' },",
+        "  { code: 'IND', name: 'India' }, { code: 'BRA', name: 'Brazil' },",
+        "];",
+        "export function CountryPicker() {",
+        "  return <select>{COUNTRIES.map((c) => <option key={c.code}>{c.name}</option>)}</select>;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    assert.equal(byId(r, "hardcoded_array_rendered_as_live_data").length, 0, `got: ${JSON.stringify(nonInfo(r))}`);
+  });
+
+  it("does NOT fire when the array spreads an already-fetched/mapped external source (real FP: VehicleHistory.tsx's events)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/components/automotive/VehicleHistory.tsx": [
+        "export function VehicleHistory({ recalls, schedule, odometer }) {",
+        "  const events = [",
+        "    ...recalls.map((r) => ({ kind: 'recall', date: r.recallDate, recall: r })),",
+        "    ...(schedule?.services || []).filter((i) => i.status !== 'ok').map((i) => ({ kind: 'maintenance', item: i })),",
+        "  ];",
+        "  return <div>{events.map((e, i) => <span key={i}>{e.kind}</span>)}</div>;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    assert.equal(byId(r, "hardcoded_array_rendered_as_live_data").length, 0, `got: ${JSON.stringify(nonInfo(r))}`);
+  });
+
+  it("does NOT fire when the array spreads a live prop with a fallback plus a form-state row (real FP: ObservePlatform.tsx's routes)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/components/observe/ObservePlatform.tsx": [
+        "export function OnCallSetup({ status, routeName, channel, target, minSeverity }) {",
+        "  const addRoute = () => {",
+        "    const routes = [...(status?.routes || []), { name: routeName.trim() || channel, channel, target: target.trim(), minSeverity }];",
+        "    return routes;",
+        "  };",
+        "  return <button onClick={addRoute}>Add</button>;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    assert.equal(byId(r, "hardcoded_array_rendered_as_live_data").length, 0, `got: ${JSON.stringify(nonInfo(r))}`);
+  });
+
+  it("does NOT fire when the identifier is only used as a call-argument shorthand property, not JSX interpolation (real FP: PlanningTools.tsx's participants)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/components/questmarket/PlanningTools.tsx": [
+        "export function PlanningTools({ base, delta, achievements, lensRun }) {",
+        "  const project = async () => {",
+        "    const participants = [{",
+        "      name: 'You (projected)',",
+        "      xp: base.xp + delta,",
+        "      questsCompleted: base.completed,",
+        "      achievements,",
+        "    }];",
+        "    const r = await lensRun('questmarket', 'leaderboardRank', { participants });",
+        "    return r;",
+        "  };",
+        "  return <button onClick={project}>Project</button>;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    assert.equal(byId(r, "hardcoded_array_rendered_as_live_data").length, 0, `got: ${JSON.stringify(nonInfo(r))}`);
+  });
+
+  it("does NOT flag 'sample data' as placeholder content when the sentence is honestly DENYING it (real FP: CaseAnalytics.tsx empty state)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/components/law/CaseAnalytics.tsx": [
+        "export function CaseAnalytics() {",
+        "  return (",
+        "    <EmptyState",
+        "      description=\"Add cases in the Case Files tab — analytics runs the real caseAnalysis macro over your real matters, never sample data.\"",
+        "    />",
+        "  );",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    assert.equal(byId(r, "placeholder_content_strong").length, 0, `got: ${JSON.stringify(nonInfo(r))}`);
+  });
+
+  it("does NOT flag 'Sample Data' as placeholder content when it's a tab LABEL naming a feature (real FP: SchemaWorkbench.tsx tab config)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/components/schema/SchemaWorkbench.tsx": [
+        "const TABS = [",
+        "  { id: 'sample', label: 'Sample Data', icon: Beaker },",
+        "  { id: 'migration', label: 'Migration', icon: GitBranch },",
+        "];",
+        "export function SchemaWorkbench() {",
+        "  return <div>{TABS.map((t) => <button key={t.id}>{t.label}</button>)}</div>;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    assert.equal(byId(r, "placeholder_content_strong").length, 0, `got: ${JSON.stringify(nonInfo(r))}`);
+  });
+
+  it("STILL FIRES on a standalone title='Sample Episode' string that is NOT an id/key/label/name/tab/value (negation/identity-key fixes stay narrow)", async () => {
+    dir = await tmpRepo({
+      "concord-frontend/components/blog/EpisodeHeader.tsx": [
+        "export function EpisodeHeader() {",
+        "  return <h1 title=\"Sample Episode\">Now playing</h1>;",
+        "}",
+        "",
+      ].join("\n"),
+    });
+    const r = await runFrontendFakeDataDetector({ root: dir });
+    assert.ok(byId(r, "placeholder_content_strong").length >= 1, `expected the standalone title to still fire, got: ${JSON.stringify(nonInfo(r))}`);
+  });
+});
+
 describe("frontend-fake-data detector — Math.random() in render", () => {
   let dir;
   afterEach(async () => { if (dir) await rm(dir, { recursive: true, force: true }); });

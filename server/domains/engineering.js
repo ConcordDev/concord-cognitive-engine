@@ -15,6 +15,57 @@ import { runFEA } from '../lib/simulation/fea-solver.js';
 // structuralCheck/electricalCheck combinators already consume this module's
 // other named exports (eng.columnBuckling, eng.voltageDrop, …).
 import { boltedConnection, transformerSizing } from '../lib/compute/engineering-compute.js';
+// checkThermalGate is the thermal-stress cross-check adapter (Wave E,
+// Cross-System Multi-Physics CAD): given the SAME nodes/members/loads/
+// supports model shape this file's own `runFEA` action already accepts
+// from a caller, it feeds a temperature-swing (ΔT) load alongside the
+// mechanical one through the identical, unmodified runFEA solver — see
+// server/lib/asset-gen/thermal-gate.js for the real formula (σ_thermal =
+// E·cte·ΔT) and the honest mechanical-vs-combined labeling.
+import { checkThermalGate, DEFAULT_DELTA_T_C } from '../lib/asset-gen/thermal-gate.js';
+// solveCircuit is a genuine textbook nodal-analysis (KCL) DC circuit
+// solver (Cross-System Multi-Physics CAD, electrical leg) — a real
+// resistor/source network solve, distinct from this domain's existing
+// `voltageDrop`/electrical.js's NEC ampacity+sizing tables, neither of
+// which solves a multi-node network. See server/lib/simulation/
+// circuit-solver.js for the full method + the honest grounded-voltage-
+// source scope limitation (plain nodal analysis, not full MNA).
+import { solveCircuit } from '../lib/simulation/circuit-solver.js';
+// checkAeroGate is the aero-on-structure cross-check adapter (Cross-System
+// Multi-Physics CAD, aero leg) — sibling to checkThermalGate above: given
+// the SAME nodes/members/loads/supports model shape, it feeds a
+// quadratic free-stream drag load (q=0.5·ρ·v², F=q·Cd·A — the same
+// formula already used by physics-compute.js's dragForce/windLoad) per
+// member through the identical, unmodified runFEA solver. See
+// server/lib/asset-gen/aero-gate.js for the full honest-scope note (a
+// deliberate uniform-free-stream approximation — no wake/turbulence/
+// member-interference modeled) and the never-blended mechanical-vs-
+// combined labeling.
+import { checkAeroGate } from '../lib/asset-gen/aero-gate.js';
+// checkFsiGate is Wave W1-B's non-Newtonian fluid-structure interaction
+// gate — a SIBLING to checkThermalGate/checkAeroGate above (same
+// {nodes,members,loads,supports} beam-frame model shape, same unchanged
+// runFEA), not an extension of either: it is two-way (the wall's own
+// deflection changes the channel gap the flow sees, solved as a Picard
+// fixed-point iteration), where thermal/aero are one-way overlays. See
+// server/lib/asset-gen/fsi-gate.js for the full honest-scope note (a
+// screening-level "local pressure-gradient intensity as wall-load proxy"
+// approximation, laminar-only, and four genuinely-reachable honest
+// failure states: did_not_converge / coupling_diverged / gap_collapsed /
+// non_laminar_regime_unsupported).
+import { checkFsiGate } from '../lib/asset-gen/fsi-gate.js';
+import { powerLawPipeFlow, carreauPipeFlow, generalisedReynolds, HONEST_BOUNDARY } from '../lib/simulation/non-newtonian-flow.js';
+// runMultiPhysicsBundle is the closing leg of Cross-System Multi-Physics
+// CAD — a COMPOSITION layer over the three legs above, not a fourth
+// physics engine: it lets a caller request thermalStressCheck's and/or
+// aeroLoadCheck's checks against ONE beam-frame model in a single call
+// (plus, optionally, an entirely independent circuitSolve request), and
+// NEVER collapses different physical domains into one fabricated
+// "combined" score. See server/lib/asset-gen/multi-physics-bundle.js for
+// the full design-decision writeup (why electrical is excluded from the
+// structural bundle, and the genuine opt-in simultaneous thermal+aero
+// combined-loads solve).
+import { runMultiPhysicsBundle } from '../lib/asset-gen/multi-physics-bundle.js';
 
 // ── Material library (mechanical properties — SI + imperial) ───────────────
 // E in MPa, yield/ultimate in MPa, density in kg/m³, CTE in 1e-6/K.
@@ -188,6 +239,18 @@ const egActor = (ctx) => ctx?.actor?.userId || ctx?.userId || 'anon';
 const egId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const egList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
 const egClean = (v, max = 120) => String(v == null ? '' : v).trim().slice(0, max);
+
+// Low/moderate/high/overstressed banding for a utilization ratio — same
+// thresholds (0.4 / 0.75 / 1.0) the runFEA action's own inline `contour`
+// computation uses below, factored out here (read-only, no behavior change
+// to runFEA) so the feaScene action (R5/E23 — Godot 3D FEA visualization)
+// can reuse the identical banding without duplicating or drifting from it.
+function utilizationBand(u) {
+  if (u > 1) return 'overstressed';
+  if (u > 0.75) return 'high';
+  if (u > 0.4) return 'moderate';
+  return 'low';
+}
 
 export default function registerEngineeringActions(registerLensAction) {
   // ─── toleranceAnalysis (existing — kept) ─────────────────────────────────
@@ -784,6 +847,392 @@ export default function registerEngineeringActions(registerLensAction) {
     }
   });
 
+  // ─── thermalStressCheck — ΔT-driven thermal stress, combined with the
+  // existing mechanical FEA (Wave E, Cross-System Multi-Physics CAD) ───────
+  // Sibling to `runFEA` above: accepts the identical nodes/members/loads/
+  // supports model shape, plus a temperature swing (`deltaT`, °C) and a
+  // MATERIAL_LIBRARY key (`material`). Returns BOTH the closed-form
+  // fully-restrained thermal stress per member (a real textbook formula,
+  // hand-verifiable, no solver call) and the REAL combined-vs-mechanical-
+  // only utilization from two actual runFEA solves — never blended into a
+  // single fabricated number. See server/lib/asset-gen/thermal-gate.js for
+  // the full honesty/scope caveats (a statically-determinate free-ended
+  // model can genuinely carry less thermal stress than the fully-restrained
+  // bound — `combinedUtilization` is a conservative worst-case screening
+  // check, not a certified indeterminate thermal-FE answer).
+  registerLensAction('engineering', 'thermalStressCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      if (nodes.length === 0 || members.length === 0) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+      const rawDeltaT = params?.deltaT ?? data.deltaT;
+      const deltaT = rawDeltaT === undefined || rawDeltaT === null || rawDeltaT === ''
+        ? DEFAULT_DELTA_T_C
+        : Number(rawDeltaT);
+      const material = params?.material ?? data.material ?? 'steel-a36';
+
+      const check = checkThermalGate({ nodes, members, loads, supports }, { deltaT, material });
+      // checkThermalGate never fabricates a pass: a hard precondition
+      // failure (bad model, unknown material, non-finite ΔT, missing
+      // supports, or a solver error) always carries `reason` and no
+      // numeric utilization — surface that as an honest macro error
+      // rather than wrapping it as a successful `result`.
+      if (check.reason) {
+        return { ok: false, error: check.reason, ...(check.error ? { detail: check.error } : {}) };
+      }
+      return { ok: true, result: check };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── circuitSolve — DC nodal-analysis circuit solver (Wave E, Cross-
+  // System Multi-Physics CAD, electrical leg) ──────────────────────────────
+  // Sibling to `thermalStressCheck` above: a genuine textbook KCL nodal
+  // solve (see server/lib/simulation/circuit-solver.js for the full method)
+  // over a caller-supplied resistor/voltage-source/current-source network.
+  // Never fabricates a result — a singular matrix (floating sub-network,
+  // no ground reference), a disconnected node, an unsupported floating
+  // voltage source, or any malformed input surfaces as an honest
+  // `ok:false, error` with a real reason, not a numeric guess.
+  registerLensAction('engineering', 'circuitSolve', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const elements = Array.isArray(model.elements) ? model.elements : [];
+      const groundNodeId = params?.groundNodeId ?? data.groundNodeId ?? model.groundNodeId;
+
+      const solved = solveCircuit({ nodes, elements, groundNodeId });
+      if (!solved.ok) {
+        return { ok: false, error: solved.reason, ...(solved.nodeId ? { nodeId: solved.nodeId } : {}) };
+      }
+      return { ok: true, result: solved };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── aeroLoadCheck — quadratic free-stream drag load, combined with the
+  // existing mechanical FEA (Cross-System Multi-Physics CAD, aero leg) ─────
+  // Sibling to `thermalStressCheck` above: accepts the identical
+  // nodes/members/loads/supports model shape, plus a flow velocity
+  // (`velocity`, m/s) and direction (`direction`, a radian angle or
+  // {x,y,z} vector). Returns BOTH the dynamic pressure + per-member drag
+  // force (real formula, hand-verifiable, no solver call) and the REAL
+  // combined-vs-mechanical-only utilization from two actual runFEA
+  // solves — never blended into a single fabricated number. See
+  // server/lib/asset-gen/aero-gate.js for the full honesty/scope caveats
+  // (a deliberate uniform-free-stream approximation with no wake,
+  // turbulence, or member-to-member interference — a screening check,
+  // not a certified CFD result).
+  registerLensAction('engineering', 'aeroLoadCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      if (nodes.length === 0 || members.length === 0) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+      const velocity = params?.velocity ?? data.velocity;
+      const direction = params?.direction ?? data.direction;
+      const airDensity = params?.airDensity ?? data.airDensity;
+      const defaultCd = params?.defaultCd ?? data.defaultCd;
+      const defaultArea = params?.defaultArea ?? data.defaultArea;
+
+      const check = checkAeroGate(
+        { nodes, members, loads, supports },
+        {
+          velocity: velocity === undefined || velocity === null || velocity === '' ? undefined : Number(velocity),
+          ...(direction !== undefined && direction !== null ? { direction } : {}),
+          ...(airDensity !== undefined && airDensity !== null && airDensity !== '' ? { airDensity: Number(airDensity) } : {}),
+          ...(defaultCd !== undefined && defaultCd !== null && defaultCd !== '' ? { defaultCd: Number(defaultCd) } : {}),
+          ...(defaultArea !== undefined && defaultArea !== null && defaultArea !== '' ? { defaultArea: Number(defaultArea) } : {}),
+        }
+      );
+      // checkAeroGate never fabricates a pass: a hard precondition
+      // failure (bad model, invalid velocity/direction/air density,
+      // missing supports, missing per-member aero geometry, or a solver
+      // error) always carries `reason` and no numeric utilization —
+      // surface that as an honest macro error rather than wrapping it as
+      // a successful `result`.
+      if (check.reason) {
+        return { ok: false, error: check.reason, ...(check.error ? { detail: check.error } : {}), ...(check.memberIds ? { memberIds: check.memberIds } : {}) };
+      }
+      return { ok: true, result: check };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── fsiCheck — non-Newtonian fluid-structure interaction gate (Wave
+  // W1-B) ───────────────────────────────────────────────────────────────
+  // A wall beam model (the SAME nodes/members/loads/supports shape this
+  // file's own runFEA/thermalStressCheck/aeroLoadCheck accept — but,
+  // unlike those, every member MUST lie along global X; see
+  // fsi-gate.js's orientation-guard hazard note) plus a driving pressure
+  // drop and a non-Newtonian fluid description. Iterates a real Picard
+  // fixed-point coupling (flow on the current gap → wall load → real
+  // runFEA deflection → gap update) rather than a one-shot overlay.
+  // NEVER fabricates a pass: `did_not_converge`, `coupling_diverged`,
+  // `gap_collapsed`, and `non_laminar_regime_unsupported` are all real,
+  // reachable outcomes surfaced as honest macro errors, never silently
+  // downgraded to a fabricated success.
+  registerLensAction('engineering', 'fsiCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      if (nodes.length === 0 || members.length === 0) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+
+      const num = (v) => (v === undefined || v === null || v === '' ? undefined : Number(v));
+      const fluidModel = params?.fluidModel ?? data.fluidModel ?? 'powerLaw';
+      const check = checkFsiGate(
+        { nodes, members, loads, supports },
+        {
+          fluidModel,
+          K: num(params?.K ?? data.K),
+          n: num(params?.n ?? data.n),
+          mu0: num(params?.mu0 ?? data.mu0),
+          muInf: num(params?.muInf ?? data.muInf),
+          lambda: num(params?.lambda ?? data.lambda),
+          deltaP: num(params?.deltaP ?? data.deltaP),
+          density: num(params?.density ?? data.density),
+          nominalGap: Array.isArray(params?.nominalGap ?? data.nominalGap)
+            ? (params?.nominalGap ?? data.nominalGap)
+            : num(params?.nominalGap ?? data.nominalGap),
+          channelWidth: num(params?.channelWidth ?? data.channelWidth),
+          relaxation: num(params?.relaxation ?? data.relaxation),
+          maxIters: num(params?.maxIters ?? data.maxIters),
+          gapTolerance: num(params?.gapTolerance ?? data.gapTolerance),
+        }
+      );
+      // checkFsiGate never fabricates a pass: any hard precondition
+      // failure (bad model, unsupported member orientation, invalid
+      // fluid/pressure/density input, non-laminar regime) or coupling
+      // failure (did_not_converge / coupling_diverged / gap_collapsed)
+      // always carries `reason` and no numeric utilization — surface
+      // that as an honest macro error rather than wrapping it as a
+      // successful `result`.
+      if (check.reason) {
+        return {
+          ok: false,
+          error: check.reason,
+          ...(check.memberIds ? { memberIds: check.memberIds } : {}),
+          ...(check.residualHistory ? { residualHistory: check.residualHistory } : {}),
+          ...(check.Re !== undefined ? { Re: check.Re, regime: check.regime } : {}),
+        };
+      }
+      return { ok: true, result: check };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── nonNewtonianFlow — standalone non-Newtonian pipe-flow primitive
+  // (Wave W1-B) ───────────────────────────────────────────────────────────
+  // The FLUID side of fsiCheck above, exposed on its own: a real
+  // power-law (Rabinowitsch-Mooney closed form) or Carreau (bisection +
+  // adaptive-quadrature numeric) laminar pipe-flow computation, plus the
+  // generalized (Metzner-Reed) Reynolds number classification. Useful
+  // for a caller who wants the flow-only number without a structural
+  // model at all. See server/lib/simulation/non-newtonian-flow.js.
+  registerLensAction('engineering', 'nonNewtonianFlow', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const fluidModel = params?.fluidModel ?? data.fluidModel ?? 'powerLaw';
+      const num = (v) => (v === undefined || v === null || v === '' ? undefined : Number(v));
+      const diameter = num(params?.diameter ?? data.diameter);
+      const lengthM = num(params?.lengthM ?? data.lengthM);
+      const pressureDropPa = num(params?.pressureDropPa ?? data.pressureDropPa);
+      const n = num(params?.n ?? data.n);
+      const density = num(params?.density ?? data.density);
+
+      if (![diameter, lengthM, pressureDropPa, n].every((v) => Number.isFinite(v)) || diameter <= 0 || lengthM <= 0 || n <= 0) {
+        return { ok: false, error: 'bad_flow_input' };
+      }
+
+      let flowRate;
+      if (fluidModel === 'carreau') {
+        const mu0 = num(params?.mu0 ?? data.mu0);
+        const muInf = num(params?.muInf ?? data.muInf);
+        const lambda = num(params?.lambda ?? data.lambda);
+        if (![mu0, muInf, lambda].every((v) => Number.isFinite(v)) || mu0 <= 0 || muInf < 0 || lambda < 0) {
+          return { ok: false, error: 'bad_fluid_params' };
+        }
+        flowRate = carreauPipeFlow({ mu0, muInf, lambda, n, diameter, lengthM, pressureDropPa });
+      } else if (fluidModel === 'powerLaw') {
+        const K = num(params?.K ?? data.K);
+        if (!Number.isFinite(K) || K <= 0) return { ok: false, error: 'bad_fluid_params' };
+        flowRate = powerLawPipeFlow({ K, n, diameter, lengthM, pressureDropPa });
+      } else {
+        return { ok: false, error: 'unsupported_fluid_model', fluidModel };
+      }
+
+      const meanVelocity = flowRate / (Math.PI * (diameter / 2) * (diameter / 2));
+      let reynolds = null;
+      if (Number.isFinite(density) && density > 0) {
+        const K = params?.K ?? data.K ?? params?.mu0 ?? data.mu0; // reference viscosity index for the screening Re check
+        const re = generalisedReynolds({ K: Number(K), n, density, velocity: meanVelocity, diameter });
+        reynolds = { value: re.value, regime: re.regime };
+      }
+
+      return { ok: true, result: { flowRate, meanVelocity, reynolds, honestBoundary: HONEST_BOUNDARY } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── multiPhysicsCheck — unified multi-physics bundle over ONE beam-frame
+  // model (Cross-System Multi-Physics CAD, closing leg) ────────────────────
+  // Thin wrapper around runMultiPhysicsBundle, following the exact same
+  // registration pattern as thermalStressCheck/aeroLoadCheck/circuitSolve
+  // above. `params.legs` requests any of { thermal, aero } — each `true`
+  // (module defaults) or an options object (deltaT/material for thermal;
+  // velocity/direction/airDensity/defaultCd/defaultArea for aero) — against
+  // the SAME model this file's own runFEA/thermalStressCheck/aeroLoadCheck
+  // already accept. `params.electrical` is an entirely SEPARATE, optional
+  // circuit-network request (its own {nodes,elements,groundNodeId} model) —
+  // see multi-physics-bundle.js for why it is never folded into the
+  // structural `allPass` or any structural utilization number: a circuit
+  // solve and a beam-frame stress check are not commensurable (different
+  // model shape, different units), so blending them would be exactly the
+  // false-precision fabrication CLAUDE.md's honesty invariant forbids.
+  // `params.simultaneous:true` (requires BOTH legs.thermal and legs.aero)
+  // additionally runs a genuine simultaneous thermal+aero combined-loads
+  // solve — real superposition through one real runFEA call, reported as
+  // `simultaneous.simultaneousUtilization`, distinct from the independent
+  // per-leg `ok`s. Never fabricates a pass: each leg's own honest failure
+  // (bad model, unknown material, missing supports, missing aero geometry,
+  // solver error) surfaces under that leg's own key without aborting
+  // sibling legs that succeeded.
+  registerLensAction('engineering', 'multiPhysicsCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+      const legs = params?.legs ?? data.legs;
+      const electrical = params?.electrical ?? data.electrical;
+      const simultaneous = (params?.simultaneous ?? data.simultaneous) === true;
+
+      const needsStructuralModel = !!(legs && (legs.thermal || legs.aero));
+      if (needsStructuralModel && (nodes.length === 0 || members.length === 0)) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+
+      const bundle = runMultiPhysicsBundle(
+        { nodes, members, loads, supports },
+        { legs, electrical, simultaneous }
+      );
+      // A bad bundle REQUEST (e.g. no legs at all) is an honest top-level
+      // failure; a bad INDIVIDUAL leg still returns ok:true at the bundle
+      // level with that leg's own failure nested under legs.<name> (or
+      // under `electrical`) — see multi-physics-bundle.js.
+      if (!bundle.ok) {
+        return { ok: false, error: bundle.reason };
+      }
+      return { ok: true, result: bundle };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── feaScene — self-contained 3D-visualization payload (R5/E23) ────────
+  // runFEA's own result (above) omits the input geometry — a caller that
+  // already holds the model (the web engineering lens page, which built the
+  // nodes/members client-side) merges them back in itself. A native/stateless
+  // 3D client (the Godot world-lens-godot FEA scene builder, or any other
+  // out-of-process renderer) has no such client-held model, so it needs one
+  // JSON that carries BOTH the real geometry (node positions, member
+  // connectivity) AND the real computed results (per-member stress/
+  // utilization, reactions, displacements) in a single response.
+  //
+  // This is purely an assembly step: the SAME runFEA() call, the SAME
+  // computed numbers — never reshaped, rounded, or approximated. Nodes/
+  // members/supports/loads are echoed back verbatim from the input (the
+  // real geometry the caller sent), merged by member id with the solver's
+  // own stresses/utilization arrays (which runFEA guarantees are in 1:1
+  // order with the input `members` array — see fea-solver.js's
+  // computeMemberForces/computeStresses/checkUtilization, each a plain
+  // `.map()` over `members`).
+  registerLensAction('engineering', 'feaScene', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model || data;
+      const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+      const members = Array.isArray(model.members) ? model.members : [];
+      const loads = Array.isArray(model.loads) ? model.loads : [];
+      const supports = Array.isArray(model.supports) ? model.supports : [];
+      if (nodes.length === 0 || members.length === 0) {
+        return { ok: false, error: 'model must have at least one node and one member' };
+      }
+
+      const fea = runFEA({ nodes, members, loads, supports, onStage: ctx?.emitMacroStage });
+      if (!fea.ok) return { ok: false, error: fea.error || 'FEA solve failed' };
+
+      // Index the solver's per-member results by id (falling back to
+      // positional index — same 1:1 order guarantee runFEA's own contour
+      // block above relies on) so a member missing an id still merges.
+      const utilById = new Map((fea.utilization || []).map((u) => [String(u.id), u]));
+      const stressById = new Map((fea.stresses || []).map((s) => [String(s.id), s]));
+
+      const sceneNodes = nodes.map((n) => ({
+        id: String(n.id), x: n.x, y: n.y, z: n.z || 0,
+      }));
+
+      const sceneMembers = members.map((m, i) => {
+        const util = utilById.get(String(m.id)) || fea.utilization?.[i] || null;
+        const stress = stressById.get(String(m.id)) || fea.stresses?.[i] || null;
+        const utilization = util ? util.utilization : 0;
+        return {
+          id: String(m.id),
+          nodeI: String(m.nodeI),
+          nodeJ: String(m.nodeJ),
+          utilization,
+          band: utilizationBand(utilization),
+          pass: util ? !!util.pass : true,
+          combinedStress: stress ? stress.combinedStress : 0,
+          axialStress: stress ? stress.axialStress : 0,
+          bendingStress: stress ? stress.bendingStress : 0,
+          allowableStress: util ? util.allowableStress : null,
+        };
+      });
+
+      return {
+        ok: true,
+        result: {
+          format: 'concord-fea-scene/v1',
+          nodes: sceneNodes,
+          members: sceneMembers,
+          supports,
+          loads,
+          displacements: fea.displacements,
+          reactions: fea.reactions,
+          summary: fea.summary,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   // ─── listSimJobs — FEA run history ───────────────────────────────────────
   registerLensAction('engineering', 'listSimJobs', (ctx) => {
     try {
@@ -1018,6 +1467,37 @@ export default function registerEngineeringActions(registerLensAction) {
       });
       if (r.error) return { ok: false, error: r.error, inputs: r.inputs };
       return { ok: true, result: r };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── mint-and-list — Program C's CAS→FEA→GLB pipeline → real marketplace ──
+  // V1.2 Wave C (Creation → Economy Loop). Takes a COMPLETED, already-run
+  // asset-gen output (`generateValidatedAsset` in
+  // server/lib/asset-gen/generate-asset.js, or the equivalent fields off a
+  // promoted evo_assets row: archetype/material/glbPath/massProps/feaResult)
+  // plus a price, and does both steps every other real-money creative path
+  // already does: mint a real DTU (via dtu.create — populates both the SQL
+  // row and STATE.dtus, unlike forge-marketplace.js's raw-SQL insert), then
+  // list it on the real marketplace (marketplace.list — the same macro the
+  // Creator lens Listings tab uses, backed by purchaseWithRoyalties' 95%
+  // creator / 5% platform royalty cascade). See
+  // server/lib/asset-gen/asset-marketplace.js for the full honesty contract:
+  // an asset with no passing FEA check is refused by default, never minted
+  // with a fabricated "verified" claim.
+  registerLensAction('engineering', 'mint-and-list', async (ctx, _artifact, params = {}) => {
+    try {
+      const { assetGenResult, price, currency, title, description, allowUnverified } = params || {};
+      if (!assetGenResult || typeof assetGenResult !== 'object') {
+        return { ok: false, error: 'assetGenResult (a completed generateValidatedAsset/asset-gen output) is required' };
+      }
+      const { mintAndListGeneratedAsset } = await import('../lib/asset-gen/asset-marketplace.js');
+      const result = await mintAndListGeneratedAsset(ctx, assetGenResult, price, {
+        currency, title, description, allowUnverified: allowUnverified === true,
+      });
+      if (!result.ok) return { ok: false, error: result.reason, ...result };
+      return { ok: true, result };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

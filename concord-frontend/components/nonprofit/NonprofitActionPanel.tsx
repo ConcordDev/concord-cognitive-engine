@@ -284,7 +284,7 @@ export function NonprofitActionPanel() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div className="space-y-1">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-400 flex items-center justify-between">Deliverables <button onClick={addDeliverable} className="text-cyan-300"><Plus className="w-3 h-3 inline" /></button></div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400 flex items-center justify-between">Deliverables <button onClick={addDeliverable} className="text-cyan-300" aria-label="Add deliverable"><Plus className="w-3 h-3 inline" aria-hidden="true" /></button></div>
             {deliverables.map((d, i) => (
               <div key={i} className="flex gap-1">
                 <input value={d.name} onChange={(e) => setDeliverables((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className={cn(inp, 'flex-1')} placeholder="deliverable" />
@@ -296,7 +296,7 @@ export function NonprofitActionPanel() {
             ))}
           </div>
           <div className="space-y-1">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-400 flex items-center justify-between">Impact metrics <button onClick={addMetric} className="text-cyan-300"><Plus className="w-3 h-3 inline" /></button></div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400 flex items-center justify-between">Impact metrics <button onClick={addMetric} className="text-cyan-300" aria-label="Add impact metric"><Plus className="w-3 h-3 inline" aria-hidden="true" /></button></div>
             {metrics.map((m, i) => (
               <div key={i} className="flex gap-1">
                 <input value={m.name} onChange={(e) => setMetrics((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className={cn(inp, 'flex-1')} placeholder="metric" />

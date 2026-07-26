@@ -496,9 +496,9 @@ export default function registerCommandCenterActions(registerLensAction) {
     const userId = uid(ctx);
     const orgId = params && params.orgId ? String(params.orgId).trim().slice(0, 100) : null;
     if (!orgId) return { ok: true, key: userId, scope: "user", tier: null, userId, orgId: null };
-    const org = getOrganization(orgId);
+    const org = getOrganization(ctx?.db, orgId);
     if (!org) return { ok: false, error: "org_not_found" };
-    const members = getOrgMembers(orgId);
+    const members = getOrgMembers(ctx?.db, orgId);
     const membership = members.find((m) => m.userId === userId);
     if (!membership) return { ok: false, error: "not_a_member" };
     const tier = CC_TIER_BY_ORG_ROLE[membership.role] || "observer";
@@ -1286,7 +1286,7 @@ export default function registerCommandCenterActions(registerLensAction) {
       const userId = uid(ctx);
       const name = String(params.name || "").trim().slice(0, 160);
       if (!name) return { ok: false, error: "team_name_required" };
-      const result = createOrganization({
+      const result = createOrganization(ctx?.db, {
         name,
         type: "department",
         description: String(params.description || "").trim().slice(0, 2000),
@@ -1305,8 +1305,8 @@ export default function registerCommandCenterActions(registerLensAction) {
   registerLensAction("command-center", "teamListMine", (ctx, _artifact, _params = {}) => {
     try {
       const userId = uid(ctx);
-      const teams = getOrgsForUser(userId)
-        .map((m) => ({ membership: m, org: getOrganization(m.orgId) }))
+      const teams = getOrgsForUser(ctx?.db, userId)
+        .map((m) => ({ membership: m, org: getOrganization(ctx?.db, m.orgId) }))
         .filter((x) => !!x.org)
         .map((x) => ({
           orgId: x.org.id,
@@ -1329,8 +1329,8 @@ export default function registerCommandCenterActions(registerLensAction) {
       const userId = uid(ctx);
       const orgId = String(params.orgId || "").trim();
       if (!orgId) return { ok: false, error: "orgId_required" };
-      if (!getOrganization(orgId)) return { ok: false, error: "org_not_found" };
-      const result = joinOrganization(orgId, userId, "apprentice");
+      if (!getOrganization(ctx?.db, orgId)) return { ok: false, error: "org_not_found" };
+      const result = joinOrganization(ctx?.db, orgId, userId, "apprentice");
       if (!result.ok) return result;
       return { ok: true, result: { orgId, orgRole: result.role, tier: "observer" } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1343,7 +1343,7 @@ export default function registerCommandCenterActions(registerLensAction) {
       const userId = uid(ctx);
       const orgId = String(params.orgId || "").trim();
       if (!orgId) return { ok: false, error: "orgId_required" };
-      const result = leaveOrganization(orgId, userId);
+      const result = leaveOrganization(ctx?.db, orgId, userId);
       return result.ok ? { ok: true, result: { orgId } } : result;
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
@@ -1355,7 +1355,7 @@ export default function registerCommandCenterActions(registerLensAction) {
       const scope = ccScope(ctx, params, null);
       if (!scope.ok) return scope;
       if (!scope.orgId) return { ok: false, error: "orgId_required" };
-      const members = getOrgMembers(scope.orgId).map((m) => ({
+      const members = getOrgMembers(ctx?.db, scope.orgId).map((m) => ({
         userId: m.userId, orgRole: m.role, tier: CC_TIER_BY_ORG_ROLE[m.role] || "observer",
       }));
       return { ok: true, result: { orgId: scope.orgId, members, count: members.length, callerTier: scope.tier } };
@@ -1373,7 +1373,7 @@ export default function registerCommandCenterActions(registerLensAction) {
       if (!CC_ORG_ROLE_BY_TIER[tier]) return { ok: false, error: "tier_must_be_lead_responder_or_observer" };
       const scope = ccScope(ctx, params, WRITE_LEAD);
       if (!scope.ok) return scope;
-      const result = setMemberRole(scope.orgId, targetUserId, CC_ORG_ROLE_BY_TIER[tier], scope.userId);
+      const result = setMemberRole(ctx?.db, scope.orgId, targetUserId, CC_ORG_ROLE_BY_TIER[tier], scope.userId);
       if (!result.ok) return result;
       return { ok: true, result: { orgId: scope.orgId, userId: targetUserId, tier, orgRole: result.role } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1392,7 +1392,7 @@ export default function registerCommandCenterActions(registerLensAction) {
         ? params.members.map((m) => String(m).trim()).filter(Boolean)
         : [];
       if (members.length === 0) return { ok: false, error: "at_least_one_member_required" };
-      const roster = new Set(getOrgMembers(scope.orgId).map((m) => m.userId));
+      const roster = new Set(getOrgMembers(ctx?.db, scope.orgId).map((m) => m.userId));
       const unknown = members.filter((m) => !roster.has(m));
       if (unknown.length > 0) return { ok: false, error: "unknown_member", members: unknown };
       const shiftHours = clampNum(params.shiftHours, MIN_SHIFT_HOURS, MAX_SHIFT_HOURS, 24);

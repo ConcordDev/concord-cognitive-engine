@@ -10,7 +10,7 @@
 // fixed in the 2026-07-20 stability audit — isLensVisible() previously
 // was a stub hardcoded to always return true).
 //
-// Six entries were individually verified (not inferred from
+// Seven entries were individually verified (not inferred from
 // `category: 'system'` alone, which also holds normal account-management
 // features like Sessions/Sync/API-Keys) to have unambiguous developer/
 // admin/world-building descriptions and were gated: debug ("Debug
@@ -18,7 +18,15 @@
 // in its own description), repair-telemetry ("the autonomic nervous
 // system" ops surface), foundry ("World-builder substrate" — the plan's
 // "Builder"), world-creator ("Create a new world" — the plan's "World
-// Editor").
+// Editor"), world-observatory (read-only simulation-observability mission
+// control over live population/faction/realm/district state — the same
+// admin/ops posture as ops-telemetry, its closest sibling).
+//
+// This allowlist is deliberately small and hand-maintained — do not widen
+// it to a `category: 'system'` blanket filter. Adding a genuinely new
+// Sanctum-tier lens is a real update to this list, not gaming the check;
+// gating a lens that ISN'T unambiguously developer/admin tooling is what
+// this test guards against.
 
 import { describe, it, expect } from 'vitest';
 import {
@@ -28,7 +36,7 @@ import {
   LENS_REGISTRY,
 } from '@/lib/lens-registry';
 
-const SANCTUM_IDS = ['debug', 'admin', 'ops-telemetry', 'repair-telemetry', 'foundry', 'world-creator'];
+const SANCTUM_IDS = ['debug', 'admin', 'ops-telemetry', 'repair-telemetry', 'foundry', 'world-creator', 'world-observatory'];
 
 describe('meetsExpertiseGate', () => {
   it('an entry with no minExpertise is visible at every level', () => {
@@ -54,8 +62,8 @@ describe('meetsExpertiseGate', () => {
   });
 });
 
-describe('the 6 Sanctum-tier registry entries', () => {
-  it('all 6 are present in the registry and gated at engineering', () => {
+describe('the 7 Sanctum-tier registry entries', () => {
+  it('all 7 are present in the registry and gated at engineering', () => {
     for (const id of SANCTUM_IDS) {
       const entry = LENS_REGISTRY.find((l) => l.id === id);
       expect(entry, `${id} missing from LENS_REGISTRY`).toBeTruthy();
@@ -78,7 +86,7 @@ describe('the 6 Sanctum-tier registry entries', () => {
 });
 
 describe('getCommandPaletteLenses — Sanctum filtering', () => {
-  it('excludes all 6 Sanctum entries below engineering level', () => {
+  it('excludes all 7 Sanctum entries below engineering level', () => {
     for (const level of ['newcomer', 'standard', 'detailed'] as const) {
       const ids = getCommandPaletteLenses(level).map((l) => l.id);
       for (const sanctumId of SANCTUM_IDS) {
@@ -87,7 +95,7 @@ describe('getCommandPaletteLenses — Sanctum filtering', () => {
     }
   });
 
-  it('includes all 6 Sanctum entries at engineering level for an admin/sovereign viewer', () => {
+  it('includes all 7 Sanctum entries at engineering level for an admin/sovereign viewer', () => {
     // 'admin' is both expertise-gated (Sanctum tier) AND role-gated
     // (SOVEREIGN_LENSES, see lens-registry-sovereign-gate.test.ts) — pass
     // an admin role explicitly so this test isolates the expertise-gate

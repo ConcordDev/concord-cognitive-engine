@@ -21,19 +21,86 @@ interface UseRealtimeLensResult {
   latestData: RealtimeData | null;
   alerts: RealtimeAlert[];
   insights: Array<{ domain: string; insight: string; confidence: number; timestamp: string }>;
+  /**
+   * Socket-health claim: true whenever the realtime channel itself is
+   * connected, independent of whether this specific domain has ever
+   * pushed a payload. This is what badges (LiveIndicator et al.) should
+   * render — see the note above `isLive` below for why.
+   */
+  isConnected: boolean;
+  /**
+   * Alias for `isConnected`, kept as the primary field name for
+   * backward compatibility (~140 lens pages destructure `isLive` and
+   * feed it straight into <LiveIndicator isLive={isLive} .../>).
+   *
+   * Semantics (fixed 2026-07-25 — was `isConnected && hasReceivedData`):
+   * "connected" and "has received a domain event" are different claims.
+   * The old definition meant any domain whose mapped event(s) legitimately
+   * never fire (nothing to report, a slow cadence, a genuinely dead
+   * server-side emitter) rendered a permanent "Disconnected" badge even
+   * though the socket was healthy — reproduced live on the world lens
+   * (keyed to `world:update`, which is emitted zero times anywhere in
+   * server/). A lens keyed to an event nobody emits must not read as
+   * broken. `isLive` now reflects socket health ONLY; use
+   * `hasReceivedData` below for the separate, weaker "is this domain
+   * actually streaming data" claim, which may legitimately be false with
+   * no error (e.g. a domain on a 25–50 minute cadence between server
+   * ticks). This can never lie in the dangerous direction — it is
+   * `isConnected`, so it is false whenever the socket is actually down.
+   */
   isLive: boolean;
+  /**
+   * The weaker, separate claim: at least one of this domain's mapped
+   * events has actually fired this session. Distinct from `isLive` —
+   * see the comment there. A domain can be honestly connected
+   * (`isLive: true`) with `hasReceivedData: false` (nothing to report
+   * yet, or a genuinely dead server-side event — see the invariant test
+   * at server/tests/invariants/realtime-lens-event-liveness.test.js).
+   */
+  hasReceivedData: boolean;
   lastUpdated: string | null;
   clearAlerts: () => void;
 }
 
-// Maps lens domain to WebSocket event names
+// Maps lens domain to WebSocket event names. A domain with no entry here
+// falls back to a single computed `${domain}:update` event (see the
+// `useMemo` below) — that's how 'chat' and 'graph' get wired without an
+// explicit map line: app/lenses/chat/page.tsx and app/lenses/graph/page.tsx
+// call useRealtimeLens('chat') / useRealtimeLens('graph'), which resolves
+// to socket.on('chat:update', ...) / socket.on('graph:update', ...) at
+// runtime. Both are real, server-emitted events (server/routes/chat.js,
+// server/server.js) — but because the event name here is a template
+// literal, not a string constant, static scanners (dead-event-listener-
+// detector.js, server/tests/invariants/emit-subscribe-pairing.test.js)
+// can't trace the pairing and flag both as dead. Confirmed false positive,
+// not a real gap — DET-C batch 10 (2026-07-24).
+//
+// Every literal event name below is cross-checked against real server
+// emit sites by server/tests/invariants/realtime-lens-event-liveness.test.js
+// — that test fails if a new entry here has no corresponding
+// realtimeEmit/socket-emit call anywhere in server/, which is exactly how
+// 4 dead names (finance:market_update, finance:alert, news:breaking,
+// weather:alert — verified 2026-07-25 via direct read of
+// server/emergent/realtime-feeds.js and server/lib/event-shapes.js's
+// LENIENT_EVENTS registry: no emitter for any of the four, anywhere)
+// were caught and removed from this map. The remaining events ARE real:
+// finance:ticker/crypto:ticker/news:update/weather:update/research:update/
+// economy:update/health:update/energy:update emit via direct literal
+// `realtimeEmit("name", ...)` calls, and the 11 RSS-domain events
+// (legal/government/realestate/aviation/insurance/manufacturing/
+// logistics/retail/fitness/agriculture/education `:update`) emit via
+// `_tickRssDomain(domain, feeds, eventName, ...)` — an indirection where
+// the literal name is the 3rd call argument, not the first arg to
+// `realtimeEmit` itself (a naive literal-string scan of `realtimeEmit(`
+// misses these; the invariant test resolves this specific indirection —
+// see its own header comment).
 const DOMAIN_EVENTS: Record<string, string[]> = {
-  finance: ['finance:ticker', 'finance:market_update', 'finance:alert'],
-  trades: ['finance:ticker', 'finance:market_update'],
-  crypto: ['crypto:ticker', 'finance:alert'],
-  market: ['finance:ticker', 'finance:market_update'],
-  news: ['news:update', 'news:breaking'],
-  environment: ['weather:update', 'weather:alert'],
+  finance: ['finance:ticker'],
+  trades: ['finance:ticker'],
+  crypto: ['crypto:ticker'],
+  market: ['finance:ticker'],
+  news: ['news:update'],
+  environment: ['weather:update'],
   eco: ['weather:update', 'agriculture:update'],
   healthcare: ['health:update'],
   education: ['education:update'],
@@ -134,7 +201,13 @@ export function useRealtimeLens(domain: string): UseRealtimeLensResult {
     latestData,
     alerts,
     insights,
-    isLive: isConnected && hasReceivedData,
+    // Socket-health claim — see the interface comment above `isLive` for
+    // why this is no longer gated on `hasReceivedData`.
+    isConnected,
+    isLive: isConnected,
+    // The separate, weaker "has this domain actually streamed data"
+    // claim — may be honestly false with no error.
+    hasReceivedData,
     lastUpdated,
     clearAlerts,
   };

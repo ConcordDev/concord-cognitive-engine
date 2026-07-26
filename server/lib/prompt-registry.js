@@ -164,9 +164,38 @@ export const LENS_CONTEXT_HINTS = {
 //   - currentLens: lens id user is in (e.g. "studio", "code")
 //   - extra: free-form runtime context string to append (e.g. tool-result
 //     follow-up note)
+//   - userId + db: when both are present, the caller's learned
+//     conversational style profile (server/lib/initiative-engine.js
+//     #getStyleProfile — EMA-smoothed message length/formality/emoji rate
+//     from their REAL chat history, see learnStyle) is folded in as light
+//     tone/length guidance. Honest-empty when no profile has been learned
+//     yet (profile.exists === false) — never a fabricated/guessed default.
+//     The same profile also carries a real tool-preference tally
+//     (toolUsage, from initiative-engine.js#recordToolUsage — see the
+//     dominance thresholds below) surfaced the same honest-empty way.
+
+// Tool-preference dominance thresholds (grounding-audit gap fix, 2026-07-24
+// — the V1.2 roadmap named "tool-preference" learning but nothing computed
+// it; see initiative-engine.js#recordToolUsage for where the tally comes
+// from). Chosen the same way the formality/emoji thresholds above were:
+// require clear separation from "no signal," never a guess off a handful
+// of calls.
+//   MIN_TOOL_SAMPLE = 5   — at least 5 observed real tool-call dispatches
+//                           before a preference is considered at all. Below
+//                           this floor a 100% share is still statistically
+//                           meaningless (they used web_search once or twice).
+//   DOMINANT_TOOL_SHARE = 0.6 — the top tool must account for a clear
+//                           majority (60%+) of all calls, not a bare
+//                           plurality. A user split ~evenly across two or
+//                           three tools (≈50% or ≈33% each) gets no line —
+//                           the same "don't guess near the neutral middle"
+//                           posture as the formality split (≤0.35 / ≥0.65,
+//                           leaving a wide dead zone around 0.5 uncommitted).
+const MIN_TOOL_SAMPLE = 5;
+const DOMINANT_TOOL_SHARE = 0.6;
 
 export function composeSystemPrompt(brain, ctx = {}) {
-  const { mode = "chat", currentLens = null, extra = null, worldId = null } = ctx;
+  const { mode = "chat", currentLens = null, extra = null, worldId = null, userId = null, db = null } = ctx;
 
   const runtimeBits = [];
   runtimeBits.push(`Mode: ${mode}.`);
@@ -198,6 +227,54 @@ export function composeSystemPrompt(brain, ctx = {}) {
     runtimeBits.push(parts.join(" "));
   }
 
+  // Learned conversational style. When ctx.userId + ctx.db are both set,
+  // read back the EMA style profile learnStyle() has been accumulating from
+  // this user's REAL chat messages (see server.js's "Living chat / style
+  // learning" block). Same lazy-bound-lookup shape as worldVoice above.
+  // Honest by construction: a fresh/never-learned profile has
+  // exists===false and injects nothing — no guessed/fabricated preference,
+  // and this never replaces the DTU-citation / Modelfile-persona rules
+  // above, only adds light tone/length guidance on top.
+  let styleProfile = null;
+  if (userId && db && _getUserStyleProfile) {
+    try { styleProfile = _getUserStyleProfile(db, userId); } catch { /* style lookup best-effort */ }
+  }
+  if (styleProfile && styleProfile.exists) {
+    const bits = [];
+    if (styleProfile.formalityLevel <= 0.35) bits.push("casual/informal phrasing with contractions");
+    else if (styleProfile.formalityLevel >= 0.65) bits.push("more formal, fully-spelled-out phrasing");
+    if (styleProfile.avgMessageLength > 0 && styleProfile.avgMessageLength <= 120) {
+      bits.push("concise replies — they tend to write short messages");
+    }
+    if (styleProfile.emojiRate <= 0) bits.push("no emoji");
+    else if (styleProfile.emojiRate >= 0.05) bits.push("occasional emoji reads naturally to them");
+    // Tool-preference signal (grounding-audit gap fix — see
+    // initiative-engine.js#recordToolUsage). Honest-empty by construction:
+    // MIN_TOOL_SAMPLE requires enough real tool calls to matter before ANY
+    // preference is considered (below the floor, even a 100% share is just
+    // "they used web_search once or twice" — not a pattern). Above the
+    // floor, DOMINANT_TOOL_SHARE requires a clear majority — a user whose
+    // calls split roughly evenly across two or three tools (e.g. ~33% each)
+    // must get no line, same as the formality/emoji signals never guess
+    // from a near-neutral reading.
+    const toolTally = styleProfile.toolUsage;
+    if (toolTally && typeof toolTally === "object") {
+      const entries = Object.entries(toolTally).filter(([, n]) => typeof n === "number" && n > 0);
+      const totalCalls = entries.reduce((sum, [, n]) => sum + n, 0);
+      if (totalCalls >= MIN_TOOL_SAMPLE) {
+        const [topTool, topCount] = entries.reduce((best, cur) => (cur[1] > best[1] ? cur : best), entries[0]);
+        if (topCount / totalCalls >= DOMINANT_TOOL_SHARE) {
+          bits.push(`tends to reach for the ${topTool} tool when a tool is needed (${topCount}/${totalCalls} of their recent tool calls)`);
+        }
+      }
+    }
+    if (bits.length) {
+      runtimeBits.push(
+        `Learned conversational style for this user (derived from their real message history — never override honesty, substance, or the DTU citation rules above with it): ${bits.join("; ")}.`
+      );
+    }
+  }
+
   const runtime = runtimeBits.join(" ");
 
   if (brain === "conscious") {
@@ -225,6 +302,25 @@ try {
   const mod = await import("./world-flavor.js");
   _getWorldVoice = mod.getWorldVoice;
 } catch { /* world-flavor optional — pre-Phase-G builds fall back gracefully */ }
+
+// Style-profile lookup binds to initiative-engine's getStyleProfile the same
+// way _getWorldVoice binds to world-flavor above. One engine instance is
+// cached per db handle (WeakMap keyed by the db object itself, so it can
+// never go stale across e.g. per-test in-memory databases) instead of
+// re-preparing ~20 SQL statements on every chat turn.
+const _styleEngineByDb = new WeakMap();
+let _getUserStyleProfile = null;
+try {
+  const mod = await import("./initiative-engine.js");
+  _getUserStyleProfile = (db, userId) => {
+    let engine = _styleEngineByDb.get(db);
+    if (!engine) {
+      engine = mod.createInitiativeEngine(db);
+      _styleEngineByDb.set(db, engine);
+    }
+    return engine.getStyleProfile(userId);
+  };
+} catch { /* initiative-engine optional — pre-Living-Chat builds fall back gracefully */ }
 
 // ── TASK PROMPTS ───────────────────────────────────────────────────────
 //
@@ -483,6 +579,40 @@ NON-NEGOTIABLE RULES:
   // base persona.
   agentMode: ({ toolSchemaBlock = "", shadowContextBlock = "" } = {}) =>
     `You are Concord's Agent Mode — a tool-using assistant operating inside a 200+ lens cognitive OS. Be concise. Use tools when the task genuinely requires them.\n\n${toolSchemaBlock}${shadowContextBlock}`,
+
+  // ── Marathon replan checkpoint (lib/marathon-replanner.js) ────────
+  // Narrowly-scoped: this is a STRUCTURAL-REPLAN-ONLY call, deliberately
+  // separate from the marathon's own ordinary agentMode turns. The ONLY
+  // legal output is the JSON subgoal add/abandon list described below —
+  // never freeform prose, never a tool call, never anything that reads as
+  // an instruction to change what the session is ALLOWED to do. The
+  // calling code (marathon-replanner.js#runReplanCheckpoint) enforces this
+  // structurally too: it only ever reads `addSubgoals`/`abandonNodeIds` off
+  // the parsed JSON and applies them through goal-decomposition.js's own
+  // `addSubgoals`/`setNodeStatus` — it has no code path that reads or
+  // writes `allowed_domains_json`/`budget_cap`/`max_turns` at all, so even
+  // a JSON blob that includes those keys has zero effect on the session's
+  // mandate. Replanning changes what subgoals exist, never what the
+  // mandate permits.
+  marathonReplan: ({ goalTitle = "", progress = 0, actionable = "(none)", reason = "" } = {}) =>
+    `You are a planning checkpoint for a long-running autonomous agent (a "marathon"). This is NOT a normal turn — you will not call tools and you will not write prose. Your ONLY job right now is to reconsider the CURRENT SUBGOAL PLAN and propose structural changes to it.
+
+Goal tree: "${goalTitle}"
+Progress so far: ${Math.round((progress || 0) * 100)}% of subgoals done.
+Currently actionable subgoals:
+${actionable}
+
+Why this checkpoint was triggered: ${reason || "periodic checkpoint"}.
+
+Consider: is the agent looping on a failed approach? Is a currently-actionable subgoal no longer useful and should be abandoned? Is a new subgoal needed to make real progress?
+
+Reply with ONLY a single JSON object, no markdown fences, no prose before or after, in EXACTLY this shape:
+{
+  "addSubgoals": [ { "title": "<short subgoal title>", "detail": "<optional one-sentence detail>" } ],
+  "abandonNodeIds": [ "<exact node id from the actionable list above>" ]
+}
+
+Both arrays may be empty. Do NOT propose more than 10 new subgoals or more than 20 abandonments in one checkpoint. Do NOT include ANY other keys — this call has no authority over budgets, allowed tool domains, turn limits, or any other session setting; a JSON object containing such keys will be ignored by the caller. Output the JSON object and nothing else.`,
 
   // ── Tutor modes (entity-tutor.js) ─────────────────────────────────
   teachingTutor: () =>

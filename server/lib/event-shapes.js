@@ -26,14 +26,29 @@ const RESERVED = new Set(["ts", "_seq", "_rid", "_evt"]);
 
 export const EVENT_SHAPES = Object.freeze({
   // ── Combat ────────────────────────────────────────────────────────
-  "combat:attack": { required: ["attackerId"], optional: ["weapon", "animation", "direction", "position"] },
+  // "combat:attack" removed from this registry (dead-event-listener
+  // follow-up, 2026-07-25): this registry only pins the shape of
+  // realtimeEmit/server-to-frontend BROADCASTS, but nothing has broadcast
+  // a "combat:attack" event since combat-netcode.js's broadcastAttack()
+  // was retired (see that module's own RESOLVED note, 2026-07-24 batch).
+  // The event name `combat:attack` is still very much alive today, but in
+  // the OPPOSITE direction: the browser emits it (CombatInputController.tsx)
+  // and server.js's `socket.on("combat:attack", ...)` handler consumes it
+  // client-to-server — that inbound path is never run through
+  // validateEvent/this registry at all, so this entry described a shape
+  // nothing was validating. Confirmed zero `realtimeEmit`/`io.emit` call
+  // sites for "combat:attack" anywhere in server/ before removing.
   // Wave 4 — worldId added (optional, not required): the socket PvP path at
   // server.js's combat:attack handler now stamps a best-effort worldId
   // (cityPresence.getPlayerWorld), but the separate combat-netcode.js
   // broadcastHit path (already room-scoped to user:<id>, not global) does
   // not — so this stays optional rather than forcing that path to change.
   "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon", "targetId", "targetHealth", "targetMaxHealth", "targetKilled", "targetPosition", "attackerPosition", "element", "skillId", "tier", "style", "skillKey", "worldId"] },
-  "combat:miss":   { required: ["attackerId", "victimId"], optional: ["missed"] },
+  // "combat:miss" removed (dead-event-listener follow-up, 2026-07-24): its
+  // sole emitter (combat-netcode.js's broadcastHit i-frame-whiff branch) was
+  // retired — nothing ever subscribed to it, and the route that triggered it
+  // (POST /api/combat/hit) was never called by any client. See
+  // server/lib/combat-netcode.js's module header RESOLVED note.
   "combat:death":  { required: ["victimId"], optional: ["killerId", "position"] },
   // Sprint 1 — defensive-loop wiring. ack events carry the granted i-frame
   // window + parry result; the :perfect events drive the reward slow-mo.
@@ -69,12 +84,28 @@ export const EVENT_SHAPES = Object.freeze({
   "kingdom:fallen":          { required: ["contestId", "outcome"], optional: ["kingdomId"] },
 
   // ── Fishing (Phase D) ─────────────────────────────────────────────
-  "fishing:cast":   { required: ["userId", "sessionId"], optional: ["biteAtEpochMs"] },
+  // 'fishing:cast' entry removed (DET-C batch 9): the emit itself was
+  // retired (see server/routes/fishing.js) as genuinely redundant — zero
+  // subscribers, and the caster already gets the same sessionId/
+  // biteAtEpochMs synchronously in the cast HTTP response.
   "fishing:bite":   { required: ["userId", "sessionId"], optional: [] },
   "fishing:caught": { required: ["userId", "sessionId", "fishId"], optional: ["fishName", "qualityScore", "tier"] },
 
   // ── Minigames (Phase E) ───────────────────────────────────────────
-  "minigame:started":  { required: ["matchId", "kind"], optional: ["players", "trackId"] },
+  // "minigame:started" was RETIRED (dead-event-listener sweep continuation,
+  // 2026-07-24): routes/minigames.js really emitted it, but
+  // BasketballMinigameOverlay.tsx / RacingHUD.tsx (its only plausible
+  // consumers — both real, fully built, and already subscribe to the two
+  // siblings below) are not mounted anywhere in the app, world-lens-godot,
+  // or concord-mobile — there is no "start a match/race" UI action anywhere
+  // that would even produce a matchId to react to. Wiring the broadcast
+  // alone would not have made the feature reachable; a real challenge/
+  // matchmaking flow needs designing first (who do you challenge, where's
+  // the hoop/track) — bigger than this sweep's scope. The REST match-
+  // creation/scoring backend (lib/minigames/{basketball,racing}.js) and the
+  // two overlay components are untouched and fully functional for a future
+  // properly-designed entry point; only the dead ambient "a match started"
+  // ping was removed.
   "minigame:scored":   { required: ["matchId", "kind", "actor"], optional: ["eventKind", "points"] },
   "minigame:complete": { required: ["matchId", "kind"], optional: ["winner"] },
 
@@ -109,7 +140,19 @@ export const EVENT_SHAPES = Object.freeze({
   "player:effect-applied":  { required: ["userId", "effectId"], optional: ["expiresAt", "magnitude", "source"] },
 
   // ── NPC ───────────────────────────────────────────────────────────
-  "npc:dialogue":           { required: ["npcId", "tree"], optional: ["worldId", "questId", "phase", "userId"] },
+  // RETIRED (dead-event-listener sweep continuation, 2026-07-24): this
+  // "npc:dialogue" shape had ZERO real `realtimeEmit(...)` call sites and
+  // ZERO frontend subscribers anywhere in the repo, ever — two independent
+  // audit passes confirmed it (DET-C batch 4, then this continuation). It
+  // was a documented-but-never-built broadcast-to-nearby-players-when-an-
+  // NPC-opens-a-tree contract, not a live event with a lost listener — the
+  // real, shipped NPC dialogue path is request/response HTTP
+  // (`/api/worlds/:worldId/npcs/:npcId/dialogue`, NPCDialogue.tsx,
+  // DialoguePanel.tsx) and Layer 13's `npc:conversation-bid` (ambient
+  // NPC-initiated chatter — see CLAUDE.md). Deleted rather than left as a
+  // shape describing a feature that doesn't exist; a real "nearby players
+  // see this NPC's dialogue open" broadcast can be re-added on this exact
+  // shape if someone actually builds it.
 
   // ── Concord Link (cross-world) ────────────────────────────────────
   "concord-link:delivered": { required: ["messageId"], optional: ["fromWorld", "toWorld", "hops"] },
@@ -132,7 +175,19 @@ export const EVENT_SHAPES = Object.freeze({
   "walker:dispatched":    { required: ["walkerId"], optional: ["fromWorld", "toWorld", "messageId", "contractId", "route", "dispatchedAt"] },
 
   // ── GameJuice fanfare ─────────────────────────────────────────────
-  "gameJuice:fanfare":    { required: ["userId", "kind"], optional: ["magnitude", "tone", "label"] },
+  // RETIRED (dead-event-listener sweep continuation, 2026-07-24): this
+  // "gameJuice:fanfare" shape had ZERO real `realtimeEmit(...)` call sites
+  // and ZERO frontend subscribers, ever — two independent audit passes
+  // confirmed it (DET-C batch 4, then this continuation). The real, shipped
+  // juice/fanfare system (components/world-lens/GameJuice.tsx) is entirely
+  // LOCAL, driven by the `concordia:game-juice` window CustomEvent
+  // dispatched by whichever component observed the real milestone — never
+  // a socket broadcast. The closest real "nearby players see your moment"
+  // mechanism that exists is `skill:tier-witnessed` (routes/worlds.js),
+  // already wired into EmergentEventFeed.tsx and NPC mentorship reactions —
+  // a generic cross-player fanfare broadcast was never started, let alone
+  // built. Deleted rather than left as a shape describing a feature that
+  // doesn't exist.
 
   // ── Forge — polyglot template engine lifecycle ────────────────────
   // Emitted by emergent/forge-template-engine.js when a template is
@@ -231,6 +286,37 @@ export const EVENT_SHAPES = Object.freeze({
   "world:building-state": {
     required: ["worldId", "buildingId", "state"],
     optional: ["healthPct", "position", "structuralStress", "attackerId"],
+  },
+
+  // C16 — ambient aerial traffic ("non-empty sky"). Emitted by
+  // server/emergent/aerial-traffic-cycle.js on every due tick for a world
+  // with a real route (landing pads or, as fallback, district centroids —
+  // see server/lib/aerial-traffic.js). `entities` is a small (<= a few)
+  // array of { id, kind, x, y, z, heading } snapshots — position-over-time
+  // for unowned background traffic, never a full NPC payload. Mirrors the
+  // `update_transform` vocabulary item in docs/GODOT_PROTOCOL.md; the
+  // Godot-side consumer feeds these into the existing SnapshotBuffer the
+  // same way city:positions does.
+  // @dead-event-ok: real consumer lives in the Godot client, not scanned.
+  "world:aerial-traffic": {
+    required: ["worldId", "entities"],
+    optional: ["routeSource"],
+  },
+
+  // V1.2 Wave A — spontaneous gathering broadcast. Emitted by
+  // server/emergent/gathering-broadcast-cycle.js when real, currently
+  // co-located players cross the gathering threshold (see
+  // spontaneousGatherings, server/lib/city-presence.js). `gatherings` is the
+  // same Gathering[] shape the `world.gatherings` macro / EventsGatherings /
+  // WorldEventBoard panels already consume ({ id, location, playerCount,
+  // description, x, y, z, worldId }) — x/y/z is the real centroid of the
+  // clustered player positions that triggered detection (never fabricated),
+  // added so a client can navigate a player there. Never a fabricated
+  // headcount, never emitted when the array would be empty (the cycle skips
+  // the broadcast entirely in that case).
+  "world:gathering-detected": {
+    required: ["worldId", "gatherings"],
+    optional: [],
   },
 
   // Sprint B Phase 9 — NPC visible sentience snapshot. Emitted by the
@@ -361,6 +447,22 @@ export const EVENT_SHAPES = Object.freeze({
   "macro:started":   { required: ["runId", "domain", "action"], optional: [] },
   "macro:stage":     { required: ["runId", "stage"], optional: ["domain", "action", "detail", "index", "total"] },
   "macro:completed": { required: ["runId", "domain", "action", "ok"], optional: ["ms", "error"] },
+
+  // ── R5/E22 — ConKay spatial mode (Godot Hub) ──────────────────────
+  // Same room + gating as macro:started/completed above (user:<id>, only
+  // when the request opted in with a correlation id). Fires ONLY after a
+  // real reason.verify/reason.evaluate_answer call completes with a usable
+  // verdict (server/lib/conkay-verdict-bridge.js#deriveConkayVerdictEmit) —
+  // never a guessed/default tier. `tier` is the same four-value vocabulary
+  // concord-frontend/components/common/CapabilityBadge.tsx renders
+  // (proven/flagged/reasoned/unverified), computed server-side by
+  // server/lib/capability-tier.js so a native client (no browser to run the
+  // frontend classifier in) gets the identical honest classification the
+  // web ConKay surface already shows per-message.
+  // NOT dead: consumed by world-lens-godot/conkay/{conkay_presence,
+  // conkay_presence_state}.gd, outside the detector's SCAN_DIRS.
+  // @dead-event-ok: real consumer lives in the Godot client, not scanned.
+  "conkay:verdict":  { required: ["runId", "domain", "action", "tier"], optional: ["verdict", "confidence"] },
 
   // ── Productivity reminders — live socket delivery (Wave 4) ────────
   // Emitted by server/domains/productivity.js's productivity-reminder-sweep
@@ -513,6 +615,7 @@ export const LENIENT_EVENTS = new Set([
   "pong",
   "prediction:ready",
   "promotion:approved",
+  "promotion:rejected",
   "qualia:policy",
   "quest:completed",
   "queue:notifications:new",

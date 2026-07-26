@@ -8,6 +8,7 @@
 import { verifyClaim } from "../lib/reason-verify.js";
 import { proveClaim, classifyAmenable } from "../lib/proof-gate.js";
 import { deliberate } from "../lib/shadow-council.js";
+import { evaluateAnswer } from "../lib/research/answer-eval.js";
 
 export default function registerReasonMacros(register) {
   register("reason", "verify", async (ctx, input = {}) => {
@@ -70,4 +71,29 @@ export default function registerReasonMacros(register) {
       persist: input.persist === true,
     });
   }, { note: "five-voice shadow council deliberation with minority report; mints a citable shadow_reasoning DTU when persist:true (#12)" });
+
+  // RAGAS-shaped answer evaluation (V1.1 R3 research-competitiveness gap):
+  // atomic-claim decomposition -> entailment vs retrieved DTU context ->
+  // Faithfulness / Answer-Relevancy / Context-Precision, folding in this
+  // domain's own citation-resolution floor rather than re-scoring citations.
+  // Deterministic by default; LLM-enhanced decomposition/entailment are
+  // opt-in via useLLMDecompose/useLLMEntailment and degrade honestly.
+  register("reason", "evaluate_answer", async (ctx, input = {}) => {
+    const answer = input.answer ?? input.answerText;
+    if (!answer || !String(answer).trim()) return { ok: false, reason: "no_answer" };
+    const citationIds = input.citations || input.citationIds || input.dtuIds || [];
+    return evaluateAnswer(String(answer), input.question || null, input.retrievedDtus || input.context || [], {
+      db: ctx?.db,
+      requesterId: ctx?.actor?.userId || null,
+      citationIds: Array.isArray(citationIds)
+        ? citationIds.map((c) => (typeof c === "object" && c ? c.id : c))
+        : [],
+      useLLMDecompose: input.useLLMDecompose === true,
+      useLLMEntailment: input.useLLMEntailment === true,
+      useCitationCouncil: input.useCitationCouncil === true,
+    });
+  }, {
+    note: "RAGAS-shaped answer evaluation — atomic-claim decomposition, entailment vs retrieved DTU context, Faithfulness/Answer-Relevancy/Context-Precision, folding in reason.verify's citation-resolution floor for attribution",
+    llmHint: true,
+  });
 }

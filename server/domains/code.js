@@ -15,6 +15,15 @@ import tsLang from "../lib/ts-language-service.js";
 import { runBuildLoop } from "../lib/build-loop.js";
 // Item 6 — CaMeL: file content fed to the LLM is untrusted data, never instructions.
 import { scanForInjection } from "../lib/provenance-guard.js";
+// GH-3a — real ranked code retrieval (replaces naive @-mention-or-recency
+// selection in codebase-chat; also the file-manifest source for multi-file-plan
+// when the caller opts into useRetrieval instead of supplying an explicit list).
+import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTree } from "../lib/code-retrieval.js";
+// GH-3c — governed push: turns a propose-verified-patch result into a real,
+// human-approved commit against the user's connected GitHub repo. Logic
+// lives in the lib (mirrors repair-remediation.js's shape); these are thin
+// macro wrappers only.
+import codePushGovernance from "../lib/code-push-governance.js";
 
 const SNIPPET_KIND = "code_snippet";
 const SNAPSHOT_KIND = "code_snapshot_bundle";
@@ -22,6 +31,84 @@ const MULTI_FILE_PLAN_TIMEOUT_MS = 25_000;
 const EXEC_TIMEOUT_MS = 4_000;
 const EXEC_MEMORY_HINT_BYTES = 32 * 1024 * 1024;
 const SEARCH_RESULT_CAP = 500;
+
+// GH-3b — verify-and-retry loop helpers (module-scope: pure functions, no
+// STATE/DTU access — they operate only on the ephemeral overlay
+// `propose-verified-patch` builds per attempt). Kept outside the
+// registerCodeActions closure since they don't need any of its helpers.
+const TS_LIKE_EXT = new Set(["ts", "tsx", "js", "jsx", "mjs", "cjs", "mts", "cts"]);
+
+/**
+ * Per-edit structural + syntax verification against an ephemeral overlay
+ * (never the real virtual project, never STATE.dtus — see the
+ * `propose-verified-patch` doc comment for the full honesty rationale on why
+ * real test execution is never attempted here). Structural check: the edit
+ * actually changed something non-trivially. Syntax check: a real single-file
+ * TypeScript/JS parse via `ts.transpileModule` (`ts-language-service.js`,
+ * already a server dependency — no new package) for TS/JS-family files, a
+ * real `JSON.parse` for `.json`, and an honest "no checker for this
+ * language" for everything else — never a fabricated pass.
+ */
+function verifyEditSet(edits, { isThirdPartyRepo, requestedVerifyCommand } = {}) {
+  const files = [];
+  let allOk = true;
+  for (const e of edits) {
+    const filename = String(e?.filename || "");
+    const after = typeof e?.after === "string" ? e.after : "";
+    const before = typeof e?.before === "string" ? e.before : "";
+    const structuralOk = after.trim().length > 0 && after !== before;
+
+    const ext = (filename.split(".").pop() || "").toLowerCase();
+    let syntax = { checked: false, ok: true, reason: "no syntax checker for this file type", errors: [] };
+    if (ext === "json") {
+      try {
+        JSON.parse(after);
+        syntax = { checked: true, ok: true, reason: null, errors: [] };
+      } catch (err) {
+        syntax = { checked: true, ok: false, reason: null, errors: [{ message: String(err?.message || err) }] };
+      }
+    } else if (TS_LIKE_EXT.has(ext)) {
+      syntax = tsLang.syntaxOnlyCheck(filename, after);
+    }
+
+    const fileOk = structuralOk && syntax.ok;
+    if (!fileOk) allOk = false;
+    files.push({ filename, structuralOk, syntax, ok: fileOk });
+  }
+
+  // Real command execution is NEVER attempted — see the doc comment on
+  // `propose-verified-patch` for why (no safe sandbox exists for an arbitrary
+  // connected repo, and Concord's own virtual project is in-memory only, with
+  // nothing on disk to run a command against even under a fixed allowlist).
+  // `requestedVerifyCommand` is recorded so the caller can see it was
+  // received and honestly never run — never silently dropped, never
+  // fabricated as having executed.
+  const execution = isThirdPartyRepo
+    ? { ran: false, reason: "no_sandboxed_execution_available", requestedVerifyCommand: requestedVerifyCommand || null }
+    : {
+        ran: false,
+        reason: requestedVerifyCommand ? "verify_command_not_executed_no_safe_exec_path" : "no_verify_command_supplied",
+        requestedVerifyCommand: requestedVerifyCommand || null,
+      };
+
+  return { ok: allOk, files, execution, checkedFiles: files.length };
+}
+
+/** Turns a failed verification into concrete, per-file failure detail for the next retry prompt. */
+function buildVerifyFeedback(verification) {
+  const lines = ["The previous attempt FAILED verification. Fix these concrete issues and resubmit a full plan:"];
+  for (const f of verification.files) {
+    if (f.ok) continue;
+    const reasons = [];
+    if (!f.structuralOk) reasons.push("the proposed content was empty or identical to the original (no real change)");
+    if (f.syntax?.checked && !f.syntax.ok) {
+      const errs = (f.syntax.errors || []).slice(0, 5).map((e) => `line ${e.line ?? "?"}: ${e.message}`).join(" | ");
+      reasons.push(`syntax error(s): ${errs}`);
+    }
+    lines.push(`- ${f.filename}: ${reasons.join("; ") || "failed verification for an unspecified reason"}`);
+  }
+  return lines.join("\n");
+}
 
 // node:vm is NOT a security boundary — sandbox escapes (constructor reach-back, async
 // prototype chains, etc.) are a known class. Live code execution is therefore gated:
@@ -533,15 +620,69 @@ export default function registerCodeActions(registerLensAction) {
    * params: { prompt, files: [{ id, name, language, content }], maxEdits? }
    * Returns: { edits: [{ filename, scriptId, language, before, after, reason }] }
    *
+   * GH-3a retrieval path: params: { useRetrieval: true, taskQuery?, projectId? |
+   * repo?, ref?, retrievalLimit? } — when `useRetrieval` is true and the caller
+   * did NOT supply an explicit `files` array, the manifest is built automatically
+   * by `code-retrieval.js`'s ranked retrieval instead of trusting "whatever the
+   * caller happened to pass": `projectId` sources from Concord's own virtual
+   * project (`ensureFiles`), `repo` (+ optional `ref`) sources from a connected
+   * GitHub repo via GH-1's `github.repo-tree`/`github.file-get` macros. An
+   * explicit `files` array always wins outright — retrieval only fills the gap.
+   *
    * Strict contract: the LLM is constrained to output a JSON object matching
    * the schema; we parse, validate, and round-trip before returning. On any
    * parse failure, returns ok:false with the raw output so the caller can
    * retry with a stricter prompt.
    */
   registerLensAction("code", "multi-file-plan", async (ctx, _artifact, params = {}) => {
-    const prompt = String(params.prompt || "").trim();
-    const files = Array.isArray(params.files) ? params.files : [];
+    const promptParam = String(params.prompt || "").trim();
+    const taskQuery = String(params.taskQuery || promptParam || "").trim();
+    let files = Array.isArray(params.files) ? params.files : [];
     const maxEdits = Math.min(Math.max(Number(params.maxEdits) || 6, 1), 12);
+    let prompt = promptParam;
+    let retrievalInfo = null;
+
+    if (params.useRetrieval === true && files.length === 0) {
+      if (!taskQuery) return { ok: false, error: "taskQuery (or prompt) required for useRetrieval" };
+      const retrievalLimit = Math.min(Math.max(Number(params.retrievalLimit) || 8, 1), 20);
+      let candidates = [];
+      let source = null;
+      if (params.projectId) {
+        const s = getWorkspaceState();
+        if (!s) return { ok: false, error: "STATE unavailable" };
+        const projectFiles = ensureFiles(s, aidC(ctx), String(params.projectId));
+        candidates = candidatesFromLocalFiles(projectFiles);
+        source = "local-project";
+      } else if (params.repo) {
+        const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+        if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable for github retrieval" };
+        const treeRes = await runMacro("github", "repo-tree", { repo: params.repo, ref: params.ref }, ctx);
+        if (!treeRes?.ok) return { ok: false, error: "github repo-tree failed", detail: treeRes };
+        const tree = treeRes.result?.tree || [];
+        const fetchFile = async (path) => {
+          const fileRes = await runMacro("github", "file-get", { repo: params.repo, path, ref: params.ref }, ctx);
+          return fileRes?.ok ? (fileRes.result?.content || "") : "";
+        };
+        candidates = candidatesFromGitHubTree(tree, fetchFile);
+        source = "github";
+      } else {
+        return { ok: false, error: "useRetrieval requires projectId (local project) or repo (GitHub)" };
+      }
+      const retrieval = await retrieveRelevantFiles({
+        query: taskQuery,
+        candidates,
+        limit: retrievalLimit,
+        maxCharsPerFile: 8000,
+      });
+      files = retrieval.selected.map(f => ({ name: f.path, content: f.content, language: langFromPath(f.path) }));
+      retrievalInfo = {
+        source,
+        rankingMethod: retrieval.rankingMethod,
+        matches: retrieval.selected.map(f => ({ path: f.path, score: f.score, matchedBy: f.matchedBy, reason: f.reason })),
+        candidatesConsidered: retrieval.candidatesConsidered,
+      };
+      if (!prompt) prompt = taskQuery;
+    }
 
     if (!prompt) return { ok: false, error: "prompt required" };
     if (files.length === 0) return { ok: false, error: "no files provided as context" };
@@ -624,7 +765,14 @@ Rules:
       if (validatedEdits.length >= maxEdits) break;
     }
 
-    return { ok: true, result: { edits: validatedEdits, prompt, totalFiles: files.length, planned: parsed.edits.length, accepted: validatedEdits.length } };
+    return {
+      ok: true,
+      result: {
+        edits: validatedEdits, prompt, totalFiles: files.length,
+        planned: parsed.edits.length, accepted: validatedEdits.length,
+        retrieval: retrievalInfo,
+      },
+    };
   });
 
   /**
@@ -684,6 +832,257 @@ Rules:
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
     return { ok: true, result: { applied, skipped } };
+  });
+
+  /**
+   * propose-verified-patch — GH-3b: a plan → apply → verify → retry loop so
+   * Concord's own (weaker-than-frontier) local brains get real failure
+   * feedback instead of a single unverified guess.
+   *
+   * params: { taskQuery|prompt, projectId? | repo?+ref?, verifyCommand?,
+   *           maxRetries? (default 2, hard-capped at 3), maxEdits?, retrievalLimit? }
+   *
+   * SECURITY / HONESTY — read before changing this macro:
+   *  - `verifyCommand` is ADVISORY ONLY. This macro NEVER shells out to run a
+   *    caller-supplied command — that would be a real command-injection / RCE
+   *    surface on a multi-tenant server (see CLAUDE.md's account of PR #808's
+   *    execSync shell-injection sink, and `command-injection-detector.js`,
+   *    which exists specifically to catch this class of bug). The requested
+   *    command is recorded on the result (`verification.execution.requestedVerifyCommand`)
+   *    so the caller can see it was received — and honestly never executed —
+   *    never silently dropped, never fabricated as having run.
+   *  - There is no code-execution sandbox in this codebase capable of safely
+   *    running an arbitrary connected GitHub repo's test suite inside this
+   *    server process, so for `repo`-sourced plans real test execution is
+   *    always skipped: `verification.execution = { ran:false, reason:
+   *    "no_sandboxed_execution_available" }`.
+   *  - For `projectId`-sourced plans (Concord's own in-memory virtual
+   *    project) there is ALSO no real execution path: the virtual project
+   *    lives only as a `Map<path,{content}>` in server memory
+   *    (`ensureFiles`/`getWorkspaceState` above) — it is never materialized
+   *    to a real directory on disk, so there is nothing for a fixed
+   *    `node --test <file>`-shaped allowlist invocation to run against.
+   *    Materializing-to-disk + sandboxed-subprocess execution is a distinct,
+   *    much larger security unit and is explicitly out of scope for this one
+   *    (see the GH-3b spec) — so this path ALSO always reports `ran:false`,
+   *    honestly, rather than faking a "tests passed" result. Verification
+   *    strength instead comes from real structural checks (the edit actually
+   *    changed something) plus a real single-file TypeScript/JS syntax check
+   *    (`ts-language-service.js#syntaxOnlyCheck`, via `ts.transpileModule` —
+   *    already a server dependency, no new package added).
+   *  - Applying edits NEVER touches a real GitHub repo — that's GH-3c's
+   *    separate, governed-apply unit. Local persistence is attempted through
+   *    the existing `multi-file-apply` macro exactly as-is: it only actually
+   *    writes when an edit carries a real `scriptId` pointing at an existing
+   *    `code_script` DTU. Edits sourced via `useRetrieval` (the path this
+   *    macro drives `multi-file-plan` through) never carry one, so
+   *    `multi-file-apply` will honestly report those as `skipped` — that is
+   *    surfaced as-is on `result.apply`, never papered over. Verification
+   *    itself always runs against the edits' own before/after content (never
+   *    against real STATE.dtus or the real virtual project), so a failed
+   *    attempt can never leave any real state half-mutated.
+   *  - Returning `ok:true` REQUIRES the edits to have actually passed
+   *    verification on this call. `ok:true` for a patch that failed its own
+   *    checks is the one invariant this macro may never violate.
+   */
+  registerLensAction("code", "propose-verified-patch", async (ctx, _artifact, params = {}) => {
+    const taskQuery = String(params.taskQuery || params.prompt || "").trim();
+    if (!taskQuery) return { ok: false, error: "taskQuery (or prompt) required" };
+    if (!params.projectId && !params.repo) return { ok: false, error: "projectId or repo required" };
+
+    const isThirdPartyRepo = !!params.repo && !params.projectId;
+    const requestedVerifyCommand = params.verifyCommand ? String(params.verifyCommand).slice(0, 2000) : null;
+    const rawMaxRetries = Number(params.maxRetries);
+    const maxRetries = Math.min(Math.max(Number.isFinite(rawMaxRetries) ? rawMaxRetries : 2, 0), 3);
+    const totalAttemptsAllowed = maxRetries + 1;
+
+    const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+    if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable" };
+
+    const attempts = [];
+    let feedback = null;
+
+    for (let attemptNum = 1; attemptNum <= totalAttemptsAllowed; attemptNum++) {
+      const planParams = {
+        useRetrieval: true,
+        taskQuery: feedback ? `${taskQuery}\n\n${feedback}` : taskQuery,
+      };
+      if (params.projectId) planParams.projectId = params.projectId;
+      if (params.repo) { planParams.repo = params.repo; if (params.ref) planParams.ref = params.ref; }
+      if (params.maxEdits) planParams.maxEdits = params.maxEdits;
+      if (params.retrievalLimit) planParams.retrievalLimit = params.retrievalLimit;
+
+      let planRes;
+      try {
+        planRes = await runMacro("code", "multi-file-plan", planParams, ctx);
+      } catch (e) {
+        planRes = { ok: false, error: `multi-file-plan threw: ${e?.message || e}` };
+      }
+
+      if (!planRes?.ok || !Array.isArray(planRes.result?.edits) || planRes.result.edits.length === 0) {
+        const planError = planRes?.ok ? "plan produced zero edits" : (planRes?.error || "plan failed");
+        attempts.push({ attempt: attemptNum, stage: "plan", ok: false, error: planError });
+        if (attemptNum >= totalAttemptsAllowed) {
+          return { ok: false, reason: "retries_exhausted", lastAttempt: attempts[attempts.length - 1], attempts, attemptsUsed: attempts.length };
+        }
+        feedback = `The previous attempt failed at the planning stage: ${planError}. Produce a valid, non-empty edit plan that follows the JSON schema exactly.`;
+        continue;
+      }
+
+      const edits = planRes.result.edits;
+      const verification = verifyEditSet(edits, { isThirdPartyRepo, requestedVerifyCommand });
+
+      // Real, honest local-persistence attempt via the existing DTU-based
+      // multi-file-apply macro — see the doc comment above for why this
+      // typically reports every edit as `skipped` on the retrieval path, and
+      // why that's surfaced honestly rather than hidden.
+      let applyResult;
+      if (!isThirdPartyRepo) {
+        try {
+          const applyRes = await runMacro("code", "multi-file-apply", { edits }, ctx);
+          applyResult = {
+            ok: !!applyRes?.ok,
+            attempted: true,
+            applied: applyRes?.result?.applied || [],
+            skipped: applyRes?.result?.skipped || [],
+          };
+        } catch (e) {
+          applyResult = { ok: false, attempted: true, applied: [], skipped: [], error: String(e?.message || e) };
+        }
+      } else {
+        applyResult = { ok: false, attempted: false, applied: [], skipped: [], reason: "third_party_repo_never_written_locally_or_pushed" };
+      }
+
+      attempts.push({
+        attempt: attemptNum,
+        stage: "verify",
+        ok: verification.ok,
+        edits: edits.map((e) => ({ filename: e.filename, reason: e.reason || null })),
+        verification,
+        apply: applyResult,
+      });
+
+      if (verification.ok) {
+        return { ok: true, result: { edits, verification, apply: applyResult, attempts, attemptsUsed: attemptNum } };
+      }
+
+      if (attemptNum >= totalAttemptsAllowed) {
+        return { ok: false, reason: "retries_exhausted", lastAttempt: attempts[attempts.length - 1], attempts, attemptsUsed: attempts.length };
+      }
+      feedback = buildVerifyFeedback(verification);
+    }
+
+    // Unreachable in practice (the loop above always returns before falling
+    // through), but kept honest if the loop bounds are ever changed.
+    return { ok: false, reason: "retries_exhausted", lastAttempt: attempts[attempts.length - 1] || null, attempts, attemptsUsed: attempts.length };
+  });
+
+  // ── GH-3c — governed push proposals ────────────────────────────────────
+  // Closes the GH-1 -> GH-3 loop: propose-verified-patch (GH-3b) verifies an
+  // edit set locally; these four macros let a human review it and only on
+  // their explicit approval push it to a NEW branch on the user's real,
+  // connected GitHub repo. See server/lib/code-push-governance.js for the
+  // full honesty + conflict-handling contract; these wrappers only do
+  // params validation + call the lib.
+  const pushUid = (ctx) => {
+    const u = ctx?.actor?.userId || ctx?.userId || null;
+    return u && u !== "anon" ? u : null;
+  };
+
+  /**
+   * push-proposal-create — params: { repo, ref, branchName, patch? } where
+   * `patch` is the exact result object `code.propose-verified-patch`
+   * returns (`{ ok:true, result:{ edits, verification, ... } }`). When
+   * `patch` is omitted, this macro re-derives one itself by calling
+   * `code.propose-verified-patch` with the caller's own
+   * `taskQuery`/`prompt` (+ `projectId` or `repo`/`ref`/`maxEdits`/
+   * `retrievalLimit`/`maxRetries`) — so a caller that hasn't run GH-3b
+   * separately can still go straight to a push proposal in one call.
+   * Either way, only an actually-verified, non-empty edit set can become a
+   * proposal — an unverified or failed patch is rejected outright, never
+   * silently downgraded into a push candidate.
+   */
+  registerLensAction("code", "push-proposal-create", async (ctx, _artifact, params = {}) => {
+    const userId = pushUid(ctx);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!params.repo) return { ok: false, error: "repo required" };
+    if (!params.ref) return { ok: false, error: "ref (base branch) required" };
+    if (!params.branchName) return { ok: false, error: "branchName required" };
+    if (params.branchName === params.ref) return { ok: false, error: "branchName must differ from the base ref — never push to the base branch" };
+
+    let patch = params.patch;
+    if (!patch) {
+      const taskQuery = String(params.taskQuery || params.prompt || "").trim();
+      if (!taskQuery) return { ok: false, error: "patch (a propose-verified-patch result) or taskQuery required" };
+      const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+      if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable to derive a verified patch" };
+      const deriveParams = { taskQuery, repo: params.repo, ref: params.ref };
+      if (params.projectId) deriveParams.projectId = params.projectId;
+      if (params.maxEdits) deriveParams.maxEdits = params.maxEdits;
+      if (params.retrievalLimit) deriveParams.retrievalLimit = params.retrievalLimit;
+      if (params.maxRetries !== undefined) deriveParams.maxRetries = params.maxRetries;
+      try {
+        patch = await runMacro("code", "propose-verified-patch", deriveParams, ctx);
+      } catch (e) {
+        return { ok: false, error: `propose-verified-patch threw: ${e?.message || e}` };
+      }
+    }
+
+    if (!patch?.ok || !Array.isArray(patch.result?.edits) || patch.result.edits.length === 0) {
+      return {
+        ok: false,
+        error: "a successful, verified patch with at least one edit is required to create a push proposal",
+        detail: { patchOk: !!patch?.ok, reason: patch?.reason || null },
+      };
+    }
+    if (patch.result.verification && patch.result.verification.ok !== true) {
+      return { ok: false, error: "patch failed verification — cannot create a push proposal from an unverified patch" };
+    }
+
+    const edits = patch.result.edits
+      .map((e) => ({
+        filename: String(e?.filename || "").trim(),
+        before: typeof e?.before === "string" ? e.before : "",
+        after: typeof e?.after === "string" ? e.after : "",
+        reason: typeof e?.reason === "string" ? e.reason : null,
+      }))
+      .filter((e) => e.filename && e.after);
+    if (edits.length === 0) return { ok: false, error: "patch contained no usable edits" };
+
+    const proposal = codePushGovernance.createProposal({
+      userId, repo: params.repo, baseRef: params.ref, branchName: params.branchName, edits,
+    });
+    return { ok: true, result: { proposal } };
+  });
+
+  /** push-proposal-list — the calling user's OWN pending + resolved proposals only. */
+  registerLensAction("code", "push-proposal-list", (ctx) => {
+    const userId = pushUid(ctx);
+    if (!userId) return { ok: false, error: "no_user" };
+    return { ok: true, result: { proposals: codePushGovernance.listProposals(userId) } };
+  });
+
+  /**
+   * push-proposal-approve — THE human-in-the-loop gate. params: { id }.
+   * Never auto-approved; only fires on this explicit call. See
+   * code-push-governance.js#approveProposal for the full branch-create ->
+   * fresh-sha-refetch -> conflict-check -> commit sequence.
+   */
+  registerLensAction("code", "push-proposal-approve", async (ctx, _artifact, params = {}) => {
+    const userId = pushUid(ctx);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!params.id) return { ok: false, error: "id required" };
+    const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+    if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable" };
+    return await codePushGovernance.approveProposal(String(params.id), userId, runMacro, ctx);
+  });
+
+  /** push-proposal-reject — discards a pending proposal. Never calls GitHub. params: { id, reason? } */
+  registerLensAction("code", "push-proposal-reject", (ctx, _artifact, params = {}) => {
+    const userId = pushUid(ctx);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!params.id) return { ok: false, error: "id required" };
+    return codePushGovernance.rejectProposal(String(params.id), userId, params.reason);
   });
 
   /**
@@ -2133,6 +2532,14 @@ Rules:
   // ── Codebase-wide AI chat with @-file context ─────────────────
   // Cursor's killer feature: an AI chat where the user references
   // files with @path and the macro injects their real content.
+  //
+  // GH-3a context selection: an explicit @-mention (or an explicit
+  // `mentionedFiles` param) is a STRONGER signal than any ranking guess, so it
+  // is always honored first and exclusively — no ranked files get mixed in
+  // alongside an explicit reference. Only when the message carries NO
+  // resolvable mention does this fall back to `code-retrieval.js`'s real
+  // TF-IDF ranking against the message text, replacing the old
+  // most-recently-modified-3-files default (recency is not relevance).
   registerLensAction("code", "codebase-chat", async (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
@@ -2151,18 +2558,38 @@ Rules:
       const hit = files.has(w) ? w : Array.from(files.keys()).find(k => k.endsWith("/" + w) || k === w);
       if (hit) resolved.push(hit); else missing.push(w);
     }
-    // If no @-files referenced, attach the most-recently-modified files.
-    let contextPaths = resolved;
-    if (contextPaths.length === 0) {
-      contextPaths = Array.from(files.entries())
-        .sort((a, b) => String(b[1].modifiedAt || "").localeCompare(String(a[1].modifiedAt || "")))
-        .slice(0, 3)
-        .map(([p]) => p);
+
+    let contextPaths;
+    let ctxBlocks;
+    let retrievalInfo = null;
+    if (resolved.length > 0) {
+      // Explicit mention override — honored verbatim, no ranking involved.
+      contextPaths = resolved.slice(0, 8);
+      ctxBlocks = contextPaths.map(p => {
+        const content = files.get(p)?.content || "";
+        return `## ${p} (${langFromPath(p)})\n\`\`\`\n${content.slice(0, 6000)}\n\`\`\``;
+      }).join("\n\n");
+    } else {
+      // No explicit mention — fall back to real ranked retrieval over the
+      // whole project against the question text.
+      const candidates = candidatesFromLocalFiles(files);
+      const retrieval = await retrieveRelevantFiles({
+        query: message,
+        candidates,
+        limit: 8,
+        maxCharsPerFile: 6000,
+      });
+      contextPaths = retrieval.selected.map(f => f.path);
+      ctxBlocks = retrieval.selected.map(f =>
+        `## ${f.path} (${langFromPath(f.path)})\n\`\`\`\n${f.content}\n\`\`\``,
+      ).join("\n\n");
+      retrievalInfo = {
+        rankingMethod: retrieval.rankingMethod,
+        matches: retrieval.selected.map(f => ({ path: f.path, score: f.score, matchedBy: f.matchedBy, reason: f.reason })),
+        candidatesConsidered: retrieval.candidatesConsidered,
+      };
     }
-    const ctxBlocks = contextPaths.slice(0, 8).map(p => {
-      const content = files.get(p)?.content || "";
-      return `## ${p} (${langFromPath(p)})\n\`\`\`\n${content.slice(0, 6000)}\n\`\`\``;
-    }).join("\n\n");
+
     const history = Array.isArray(params.history)
       ? params.history.filter(m => m && (m.role === "user" || m.role === "assistant"))
           .slice(-8)
@@ -2195,6 +2622,8 @@ Rules:
         contextFiles: contextPaths,
         missingFiles: missing,
         filesIndexed: files.size,
+        usedExplicitMentions: resolved.length > 0,
+        retrieval: retrievalInfo,
       },
     };
   });

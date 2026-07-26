@@ -6,6 +6,19 @@
 // events; uses the existing `spectator.subscribe` macro to subscribe
 // to the world's spectator channel. Dismiss via the close button or
 // `concordia:exit-spectator-mode`.
+//
+// DET-C dead-event-listener sweep (continuation, 2026-07-24) — WIRED. Two
+// prior batches (9, and the earlier continuation) confirmed this component
+// and its backing `spectator.subscribe`/`spectator.list_for_world` macros
+// are real and fully built, genuinely mounted in the world lens, and
+// flagged the missing piece as "no entry point dispatches this event
+// anywhere." The entry point is now `FriendsPresencePanel.tsx`'s
+// "Spectate" button: `spectator.subscribe` is world-scoped (just a
+// worldId), and the presence panel already has a friend's real, live
+// worldId from `GET /api/friends/presence` — no fabricated session/context
+// data needed. The standalone `/lenses/spectate/[worldId]` page remains a
+// DIFFERENT, whole-world spectator view (betting markets + public ticker);
+// this overlay is the lightweight "watch a specific friend" affordance.
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';

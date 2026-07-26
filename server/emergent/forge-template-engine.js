@@ -1471,7 +1471,11 @@ export function handleForgeCommand(parts) {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-export function init({ STATE, helpers } = {}) {
+// This hook referenced neither STATE nor helpers — it only does its own
+// local setup. Dropping the unused destructure so the signature stops
+// implying dependencies that aren't there. Callers are unaffected:
+// extra arguments are simply ignored.
+export function init() {
   initPresets();
   return { ok: true, presets: _presets.size };
 }

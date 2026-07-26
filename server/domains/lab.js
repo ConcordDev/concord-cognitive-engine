@@ -600,11 +600,11 @@ export default function registerLabActions(registerLensAction) {
   // requireLabOrgAccess — the single gate every org-scoped lab macro calls
   // before touching org-shared state. Honest failures only, never throws:
   //   org_not_found / not_a_lab_org / not_a_member / insufficient_role
-  function requireLabOrgAccess(orgId, userId, capKey) {
-    const org = getOrganization(orgId);
+  function requireLabOrgAccess(db, orgId, userId, capKey) {
+    const org = getOrganization(db, orgId);
     if (!org) return { ok: false, error: "org_not_found" };
     if (org.type !== "lab") return { ok: false, error: "not_a_lab_org" };
-    const members = getOrgMembers(orgId);
+    const members = getOrgMembers(db, orgId);
     const membership = members.find(m => m.userId === userId);
     if (!membership) return { ok: false, error: "not_a_member" };
     const tier = labTierForOrgRole(membership.role) || "guest";
@@ -620,7 +620,7 @@ export default function registerLabActions(registerLensAction) {
       const userId = labActor(ctx);
       const name = labClean(params.name, 160);
       if (!name) return { ok: false, error: "lab name required" };
-      const result = createOrganization({
+      const result = createOrganization(ctx?.db, {
         name,
         type: "lab",
         description: labClean(params.description, 2000) || "",
@@ -637,8 +637,8 @@ export default function registerLabActions(registerLensAction) {
   registerLensAction("lab", "org-list-mine", (ctx, _a, _params = {}) => {
     try {
       const userId = labActor(ctx);
-      const labs = getOrgsForUser(userId)
-        .map(m => ({ membership: m, org: getOrganization(m.orgId) }))
+      const labs = getOrgsForUser(ctx?.db, userId)
+        .map(m => ({ membership: m, org: getOrganization(ctx?.db, m.orgId) }))
         .filter(x => x.org && x.org.type === "lab")
         .map(x => ({
           orgId: x.org.id,
@@ -661,10 +661,10 @@ export default function registerLabActions(registerLensAction) {
       const userId = labActor(ctx);
       const orgId = labClean(params.orgId, 64);
       if (!orgId) return { ok: false, error: "orgId required" };
-      const org = getOrganization(orgId);
+      const org = getOrganization(ctx?.db, orgId);
       if (!org) return { ok: false, error: "org_not_found" };
       if (org.type !== "lab") return { ok: false, error: "not_a_lab_org" };
-      const result = joinOrganization(orgId, userId, "apprentice");
+      const result = joinOrganization(ctx?.db, orgId, userId, "apprentice");
       if (!result.ok) return result;
       return { ok: true, result: { orgId, orgRole: result.role, tier: "guest" } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -677,7 +677,7 @@ export default function registerLabActions(registerLensAction) {
       const userId = labActor(ctx);
       const orgId = labClean(params.orgId, 64);
       if (!orgId) return { ok: false, error: "orgId required" };
-      const result = leaveOrganization(orgId, userId);
+      const result = leaveOrganization(ctx?.db, orgId, userId);
       return result.ok ? { ok: true, result: { orgId } } : result;
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -689,9 +689,9 @@ export default function registerLabActions(registerLensAction) {
       const userId = labActor(ctx);
       const orgId = labClean(params.orgId, 64);
       if (!orgId) return { ok: false, error: "orgId required" };
-      const gate = requireLabOrgAccess(orgId, userId, null);
+      const gate = requireLabOrgAccess(ctx?.db, orgId, userId, null);
       if (!gate.ok) return gate;
-      const members = getOrgMembers(orgId).map(m => ({
+      const members = getOrgMembers(ctx?.db, orgId).map(m => ({
         userId: m.userId,
         orgRole: m.role,
         tier: labTierForOrgRole(m.role) || "guest",
@@ -717,10 +717,10 @@ export default function registerLabActions(registerLensAction) {
       const tier = params.tier;
       if (!orgId || !targetUserId) return { ok: false, error: "orgId and userId required" };
       if (!LAB_ORG_ROLE_BY_TIER[tier]) return { ok: false, error: "tier must be pi, tech, or guest" };
-      const gate = requireLabOrgAccess(orgId, userId, "manageMembers");
+      const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "manageMembers");
       if (!gate.ok) return gate;
       const orgRole = LAB_ORG_ROLE_BY_TIER[tier];
-      const result = setMemberRole(orgId, targetUserId, orgRole, userId);
+      const result = setMemberRole(ctx?.db, orgId, targetUserId, orgRole, userId);
       if (!result.ok) return result;
       return { ok: true, result: { orgId, userId: targetUserId, tier, orgRole: result.role } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -739,7 +739,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "notebook", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, "editNotebook");
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "editNotebook");
         if (!gate.ok) return gate;
         store = "orgNotebook"; key = orgId;
       }
@@ -776,7 +776,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "notebook", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, null);
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, null);
         if (!gate.ok) return gate;
         store = "orgNotebook"; key = orgId;
       }
@@ -803,7 +803,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "notebook", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, "editNotebook");
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "editNotebook");
         if (!gate.ok) return gate;
         store = "orgNotebook"; key = orgId;
       }
@@ -832,7 +832,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "notebook", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, "editNotebook");
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "editNotebook");
         if (!gate.ok) return gate;
         store = "orgNotebook"; key = orgId;
       }
@@ -867,7 +867,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "reagents", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, "editInventory");
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "editInventory");
         if (!gate.ok) return gate;
         store = "orgReagents"; key = orgId;
       }
@@ -905,7 +905,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "reagents", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, null);
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, null);
         if (!gate.ok) return gate;
         store = "orgReagents"; key = orgId;
       }
@@ -945,7 +945,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "reagents", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, "editInventory");
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "editInventory");
         if (!gate.ok) return gate;
         store = "orgReagents"; key = orgId;
       }
@@ -973,7 +973,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "reagents", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, "editInventory");
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "editInventory");
         if (!gate.ok) return gate;
         store = "orgReagents"; key = orgId;
       }
@@ -1001,7 +1001,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "protocols", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, "editProtocols");
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "editProtocols");
         if (!gate.ok) return gate;
         store = "orgProtocols"; key = orgId;
       }
@@ -1041,7 +1041,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "protocols", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, null);
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, null);
         if (!gate.ok) return gate;
         store = "orgProtocols"; key = orgId;
       }
@@ -1063,7 +1063,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "protocols", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, "editProtocols");
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, "editProtocols");
         if (!gate.ok) return gate;
         store = "orgProtocols"; key = orgId;
       }
@@ -1099,7 +1099,7 @@ export default function registerLabActions(registerLensAction) {
       const orgId = params.orgId ? labClean(params.orgId, 64) : null;
       let store = "protocols", key = userId;
       if (orgId) {
-        const gate = requireLabOrgAccess(orgId, userId, null);
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, null);
         if (!gate.ok) return gate;
         store = "orgProtocols"; key = orgId;
       }

@@ -15,7 +15,16 @@ import { updateClockOffset } from '../offline/db';
 // empty-string fallback: same-origin + the nginx `/socket.io/` proxy
 // (`nginx/conf.d/default.conf`) is the correct, already-working prod
 // topology — defaulting prod to a hardcoded port would be wrong there.
-const SOCKET_URL =
+// EXPORTED because it must be the ONE place this is resolved. It wasn't, and
+// `lib/hooks/useYjsDoc.ts` consequently re-implemented the connection with a
+// bare `io({ path: '/socket.io' })` — no URL, i.e. same-origin — reintroducing
+// the exact bug the comment above describes this constant as fixing. Observed
+// live 2026-07-25 on `/lenses/world`: the `SOCKET_URL` socket connected to
+// :5050 and pumped 79 frames, while SIX same-origin sockets to :3000 each died
+// with "WebSocket is closed before the connection is established" (Next's
+// rewrites proxy HTTP but not WS upgrades), driving the "Disconnected" badge.
+// Any new socket consumer must import this rather than resolve its own.
+export const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV !== 'production' ? 'http://localhost:5050' : '');
@@ -36,6 +45,18 @@ let socket: Socket | null = null;
 // after any reconnect (the events fan out to a room this socket is no longer
 // in). Track every joined room and replay the joins on each `connect`.
 const _joinedRooms = new Set<string>();
+
+// Rooms the server has actually CONFIRMED (via `room:joined`), as opposed
+// to `_joinedRooms` above which only tracks what this client has ATTEMPTED
+// to join (optimistic, fire-and-forget `emit('room:join', ...)`). DET-C:
+// the server's `room:joined` ack previously had zero frontend subscribers
+// at all — a room-scoped feature (collab doc sync, code liveshare,
+// astronomy co-observe) had no way to tell "join request sent" apart from
+// "server actually admitted this socket to the room", so a caller racing
+// its first room-scoped emit against a slow join had no signal to wait on.
+// `isRoomJoined()` below gives real callers that signal; existing
+// call sites keep working exactly as before (this is additive).
+const _confirmedRooms = new Set<string>();
 
 // Guard so the global `online` listener is wired exactly once.
 let _onlineListenerWired = false;
@@ -165,6 +186,14 @@ export function getSocket(): Socket {
     // instead of waiting for the next backoff tick. Cheap, idempotent (connect
     // on an already-connected/connecting socket is a no-op), and the single
     // biggest UX win for "came back from sleep / tunnel and it just works".
+    // @resource-leak-ok: `socket` is a module-scope singleton (getSocket()
+    // only ever constructs it once — see the `_onlineListenerWired` guard
+    // right here) that is meant to live for the whole page session;
+    // disconnectSocket() tears down the socket.io connection but
+    // deliberately doesn't recreate `socket` or reset this flag, so there is
+    // exactly one 'online' listener for the lifetime of `window` itself —
+    // the same intentional-singleton shape as an app-wide resize/visibility
+    // listener, not a per-instance leak.
     if (typeof window !== 'undefined' && !_onlineListenerWired) {
       _onlineListenerWired = true;
       window.addEventListener('online', () => {
@@ -196,8 +225,33 @@ export function getSocket(): Socket {
       Object.keys(_lastSeq).forEach((k) => delete _lastSeq[k]);
     });
 
+    // Server ack for the room-join request above (server.js's inbound
+    // room:join handler, fired server-side after socket.join(room)
+    // succeeds). Marks the room CONFIRMED so isRoomJoined() callers get a
+    // real signal instead of having to assume the optimistic emit above
+    // landed.
+    // (Deliberately not spelling the server call as literal
+    // `socket` + `.on(` + `'room:join'` text: dead-event-listener-detector.js's
+    // socket-consumption regex isn't comment-aware by design, and that
+    // exact quoted syntax — describing the SERVER's listener — was
+    // previously misread as a FRONTEND subscription to room:join, firing
+    // a false orphan_socket_consumer finding. The real wiring is: this
+    // frontend emits room:join, the server listens for it and acks with
+    // room:joined, and this handler is the genuine subscriber to that ack.)
+    socket.on('room:joined', (data: { room?: string }) => {
+      if (data?.room) {
+        _confirmedRooms.add(data.room);
+        console.debug('[Socket] Room join confirmed:', data.room);
+      }
+    });
+
     socket.on('disconnect', (reason) => {
       console.debug('[Socket] Disconnected:', reason);
+      // A fresh connection gets a fresh, empty server-side room set (see the
+      // re-join block in the `connect` handler above) — the CONFIRMED set
+      // must be cleared in lockstep so isRoomJoined() doesn't report a stale
+      // "confirmed" for a room membership that no longer exists server-side.
+      _confirmedRooms.clear();
       // Debounced grace period (Unit F10): start (or restart) the "is the
       // backend actually gone?" timer. socket.io auto-reconnects on a brief
       // Wi-Fi flap or a server restart-in-place, so a blind disconnect→reset
@@ -297,6 +351,10 @@ export function disconnectSocket(): void {
 export type SocketEvent =
   // Resonance
   | 'resonance:update'
+  // Public timeline feed
+  | 'timeline:post'
+  // Character sheet (bars + skill levels) refresh signal
+  | 'character:updated'
   // DTU lifecycle
   | 'dtu:created'
   | 'dtu:updated'
@@ -312,22 +370,38 @@ export type SocketEvent =
   | 'pain:wound_created'
   | 'pain:wound_healed'
   | 'affect:pain_signal'
+  // Dead-event-listener fix (DET-C batch 8) — server/existential/engine.js
+  // fires this when an entity's existential-OS channel crosses an authored
+  // policy threshold (e.g. stress/loneliness). Genuinely emergent — "the
+  // world creates this on its own" — so it belongs in EmergentEventFeed's
+  // TRACKED_EVENTS, not a bespoke surface.
+  | 'qualia:policy'
   // Repair cortex
   | 'repair:dtu_logged'
-  | 'repair:cycle_complete'
   // Meta-derivation
   | 'lattice:meta:derived'
   | 'lattice:meta:convergence'
   | 'meta:committed'
   // System
   | 'system:alert'
+  // Dead-event-listener fix (DET-C batch 8) — server/emergent/repair-cortex.js's
+  // `reconnect_websocket` self-repair action (a real corrective, not informational
+  // logging) had no consumer, so a repair pass "fixing" a stale server-side socket
+  // state never actually made any connected browser reconnect. Providers.tsx now
+  // subscribes and calls reconnectSocket().
+  | 'system:reconnect'
   | 'queue:notifications:new'
   // Council
   | 'council:proposal'
   | 'council:vote'
   // Marketplace
+  // 'market:trade' retired 2026-07-25 (dead-subscription audit, Class D):
+  // the string exists in server/ ONLY as an event-to-DTU-bridge `type` tag
+  // (emergent/realtime-feeds.js#tickFinanceFeeds -> _bridgeEvent, and
+  // lib/feed-manager.js#mapDomainToEventType). event-to-dtu-bridge.js has
+  // zero socket emits, so it can never reach a browser. The real socket
+  // channel for that same feed is 'finance:ticker'.
   | 'market:listing'
-  | 'market:trade'
   // Collaboration
   | 'collab:change'
   | 'collab:lock'
@@ -349,6 +423,9 @@ export type SocketEvent =
   | 'whiteboard:scene-update'
   | 'whiteboard:cursor'
   | 'whiteboard:vote-cast'
+  // Dead-event-listener fix (DET-C batch 9 follow-up) — ops-apply's
+  // element-granular CRDT/OT broadcast, folded by useWhiteboardCollab.
+  | 'whiteboard:ops'
   // Message lens multi-device sync (server/domains/message.js, room user:${userId})
   | 'message:saved'
   | 'message:unsaved'
@@ -378,8 +455,10 @@ export type SocketEvent =
   | 'quality:approved'
   | 'quality:shadowed'
   // MEGA SPEC: Entity & pipeline events
-  | 'entity:production_mode'
-  | 'pipeline:triggered'
+  // 'entity:production_mode' and 'pipeline:triggered' retired 2026-07-25
+  // (dead-subscription audit, Class D): both appear in server/ only inside
+  // emergent/event-to-dtu-bridge.js's EVENT_DOMAIN_MAP / weight tables — a
+  // DTU-bridge `type` tag, not a socket channel. Neither was ever emitted.
   // 12 NEW CAPABILITIES events
   | 'pipeline:started'
   | 'pipeline:step_started'
@@ -387,6 +466,7 @@ export type SocketEvent =
   | 'pipeline:completed'
   | 'prediction:ready'
   | 'agent:insights'
+  | 'marathon:status'
   | 'collab:invite'
   | 'collab:accepted'
   | 'teaching:promotion_suggestion'
@@ -401,14 +481,20 @@ export type SocketEvent =
   | 'shared-session:dtu-shared'
   | 'shared-session:ended'
   // Real-time data feed events (Phase 3)
+  // 'finance:market_update', 'finance:alert' and 'news:breaking' retired
+  // 2026-07-25 (dead-subscription audit, Class F): removed from
+  // useRealtimeLens's DOMAIN_EVENTS in daac9787 as the documented residual;
+  // nothing in server/ ever emitted them. The live feed channels are
+  // 'finance:ticker' / 'crypto:ticker' / 'news:update'.
   | 'finance:ticker'
-  | 'finance:market_update'
-  | 'finance:alert'
   | 'crypto:ticker'
+  | 'crypto:alert'
   | 'news:update'
-  | 'news:breaking'
   | 'weather:update'
-  | 'weather:alert'
+  // 'weather:alert' retired 2026-07-25 (dead-subscription audit, Class D):
+  // its 6 hits under server/ are all DTU-bridge `type` tags / scoping-table
+  // keys (event-to-dtu-bridge.js, event-scoping.js,
+  // feed-manager.js#mapDomainToEventType) — never a socket emit.
   | 'research:update'
   | 'health:update'
   | 'legal:update'
@@ -425,7 +511,6 @@ export type SocketEvent =
   | 'government:update'
   | 'insurance:update'
   | 'lens:dtu_generated'
-  | 'agent:domain_insight'
   // Per-user tick events
   | 'user:tick'
   // Spontaneous initiative events (proactive messages from Concord)
@@ -466,6 +551,13 @@ export type SocketEvent =
   | 'party:leader_changed'
   | 'party:kicked'
   | 'party:chat'
+  // DET-C batch 11 — V1.2 Wave A's real, hyphen-namespaced party-room
+  // events (server.js's /api/parties/* routes, distinct from the
+  // underscore-namespaced 'party:member_joined' etc. above that the server
+  // never actually emits). 'party:member-kicked' previously had zero
+  // frontend consumer; PartyPanel.tsx now listens for it (see the
+  // FORWARDED_EVENTS same-name window-dispatch bridge in useSocket.ts).
+  | 'party:member-kicked'
   // Phase 19: retention hooks
   | 'daily:login_recorded'
   // Wave 1 deferral 3: level-up rank crossing
@@ -480,7 +572,10 @@ export type SocketEvent =
   | 'skill:evolution-available'
   | 'coop:raid:progress'
   | 'coop:raid:completed'
-  | 'coop:build:edit'
+  // 'coop:build:edit' retired 2026-07-25 (dead-subscription audit, Class E):
+  // the server-side broadcast was already retired in the DET-C batch 9/11
+  // sweep (see server.js's POST /api/coop/build/edit comment) because there
+  // is no coop-build UI anywhere to receive it. The REST surface stays live.
   | 'coop:stash:withdraw'
   | 'reputation:badge-earned'
   | 'reputation:rank-up'
@@ -543,18 +638,27 @@ export type SocketEvent =
   | 'system:level-up'
   | 'system:skill-acquired'
   | 'system:skill-evolved'
-  | 'system:danger-band'
+  // 'system:danger-band' retired 2026-07-25 (dead-subscription audit, Class
+  // E): no server emit and no component ever read it — the union entry was
+  // its entire footprint.
   | 'system:notice'
   // Game-mode HUD realtime push (replacing per-mode polling).
   | 'horde:state'
   | 'party-combat:state'
-  | 'party-combat:tick'
+  // 'party-combat:tick' retired 2026-07-25 (dead-subscription audit, Class
+  // E). NOTE the substrate is real (server/lib/party-combat.js#resolveTick),
+  // but nothing was ever emitted and no component read it — PartyCombatHUD
+  // consumes 'party-combat:state' instead. If a per-tick push is ever wanted,
+  // wire the emit alongside a real consumer; don't re-add the bare type.
   | 'mahjong:state'
   | 'submarine:dive-state'
   | 'extraction:state'
   | 'extraction:zones'
   | 'time-loop:state'
-  | 'climbing:stamina-state'
+  // 'climbing:stamina-state' retired 2026-07-25 (dead-subscription audit,
+  // Class E). Substrate is real (server/lib/climbing.js + player-stamina.js)
+  // but there was never an emit and never a consumer; ClimbingTracker polls.
+  // Wire an emit + a consumer together if a push is ever wanted.
   | 'restaurant:state'
   | 'horror:state'
   | 'theme-park:state'
@@ -570,6 +674,9 @@ export type SocketEvent =
   | 'spectator:count-updated'
   // World scheduler
   | 'world:event:scheduled'
+  // RSVP reminder — sweepEventReminders (server/lib/event-rsvp.js) fires this
+  // to user:<id> ~10min before an event the user RSVP'd to starts.
+  | 'event:reminder'
   // Tier 3 deferral 12: faction event scheduler
   | 'faction:event_started'
   | 'faction:event_ended'
@@ -605,11 +712,14 @@ export type SocketEvent =
   | 'kingdom:contested'
   | 'kingdom:fallen'
   // Fishing (Phase D)
-  | 'fishing:cast'
+  // 'fishing:cast' retired 2026-07-25 (dead-subscription audit, Class E):
+  // the server emit was already removed in the DET-C batch 9 sweep and is
+  // pinned as absent by server/tests/fishing-route-realtime-scope.test.js.
   | 'fishing:bite'
   | 'fishing:caught'
   // Minigames (Phase E)
-  | 'minigame:started'
+  // 'minigame:started' retired (dead-event-listener sweep continuation,
+  // 2026-07-24) — see server/routes/minigames.js's header comment.
   | 'minigame:scored'
   | 'minigame:complete'
   // Forge polyglot template engine
@@ -670,7 +780,59 @@ export type SocketEvent =
   // had bypassed the shared typed socket entirely and opened its own raw
   // `socket.io-client` connection just to hear it. Now routed through the
   // singleton like everything else.
-  | 'world:clock';
+  | 'world:clock'
+  // Dead-event-listener fix (DET-C pass) — server/routes/wagers.js
+  // real-money-affecting realtimeEmit calls with zero frontend consumer;
+  // WagerInviteToast now subscribes (via the concordia:wager-* window
+  // bridge below) to actually show the incoming challenge / outcome.
+  | 'wager:proposed'
+  | 'wager:accepted'
+  | 'wager:declined'
+  | 'wager:resolved'
+  // Dead-event-listener fix (DET-C batch 2) — server/server.js's EVE-style
+  // buy-order routes (POST /api/auctions/buy-orders and .../fill) already
+  // realtimeEmit these; the auction lens's open-buy-orders board only
+  // refreshed on the bidder's own actions + a 5s poll, never live off
+  // another player's order. Same unscoped-broadcast shape as the sibling
+  // auction:bid-placed/auction:settled events above (a market ticker, not
+  // a bare-id-as-options-object bug — verified via server/lib/detectors/
+  // realtime-emit-signature-detector.js: 0 flagged instances repo-wide).
+  | 'auction:buy-order-placed'
+  | 'auction:buy-order-filled'
+  // Dead-event-listener fix (DET-C batch 8) — server.js's "player:visibility"
+  // socket handler (BD#27, ghost/appear-offline mode) has ack'd/nack'd since
+  // it shipped, but nothing ever emitted the request OR subscribed to the
+  // reply: the existing Settings > Privacy "World Visible to Others" toggle
+  // was localStorage-only decoration with no live effect. Now wired
+  // end-to-end from app/settings/page.tsx.
+  | 'player:visibility:ack'
+  | 'player:visibility:nack'
+  // V1.2 Wave A — Society & Presence: user-controlled world-presence status
+  // (available/away/busy/dnd), distinct from the visibility ghost toggle
+  // above. Wired end-to-end from app/settings/page.tsx, same ack/nack +
+  // timeout-fallback shape as player:visibility.
+  | 'player:presence-status:ack'
+  | 'player:presence-status:nack'
+  // DET-C batch 10 — server/routes/channels.js's Telegram/Discord/email
+  // inbound-webhook bridge (server/channels/{telegram,discord,email}.js)
+  // realtimeEmit'd this on every routed inbound message with zero frontend
+  // consumer anywhere (there was no channel-linking or inbox UI at all).
+  // Now scoped to the recipient's user:<id> room (see the fix on the
+  // realtimeEmit call sites in channels.js) and surfaced as a toast via
+  // useSocialNotificationToast's sibling hook, useChannelInboundToast.
+  | 'channel:inbound'
+  // V1.2 Wave A — ephemeral spatially-scoped proximity chat
+  // (server/lib/proximity-chat.js, server.js's 'proximity:chat:send'
+  // socket handler). DET-C batch 11: 'proximity:chat' (the delivered
+  // message, direct-to-recipient on their own user:<id> room, including
+  // an echo back to the sender) plus the 'proximity:chat:ack'/':nack'
+  // send-confirmation pair had zero frontend consumer at all — the whole
+  // feature had no UI. concord-frontend/components/world/
+  // ProximityChatPanel.tsx now provides a minimal-but-real send/receive
+  // surface, mounted in the world lens.
+  | 'proximity:chat'
+  | 'proximity:chat:ack'
+  | 'proximity:chat:nack';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {
@@ -733,6 +895,24 @@ export function joinRoom(room: string): void {
 export function leaveRoom(room: string): void {
   _joinedRooms.delete(room);
   emit('room:leave', { room });
+  // room:leave has no server ack (see server.js's room:leave handler —
+  // socket.leave(room) is the real behavior; the retired ack had zero
+  // consumers) so there's nothing to await here. Drop the confirmed flag
+  // optimistically; a stale leave/rejoin race self-heals on the next
+  // room:joined ack.
+  _confirmedRooms.delete(room);
+}
+
+/**
+ * True once the server has ACKed this socket's membership in `room` via
+ * `room:joined` — as opposed to merely having attempted to join it (see
+ * `_joinedRooms` vs `_confirmedRooms` above). Room-scoped features (collab
+ * doc sync, code liveshare, astronomy co-observe) that emit a room-scoped
+ * event immediately after `joinRoom()` can use this to avoid racing the
+ * join itself, or to render a "connecting…" vs "live" indicator.
+ */
+export function isRoomJoined(room: string): boolean {
+  return _confirmedRooms.has(room);
 }
 
 // ---- Correlation ID Helper (Category 5: Observability) ----

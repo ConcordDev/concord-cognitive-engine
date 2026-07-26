@@ -11,6 +11,15 @@
  * `params.combinator` for the macro's new multi-field path. This is
  * opt-in — the default surface stays the original single-field quick
  * search (`query`/`field`), unchanged in shape and behavior.
+ *
+ * @env-config-ok: the two hardcoded URLs below (search.patentsview.org,
+ * patents.google.com) are not deployment config. `apiUrl` is a citation
+ * string stamped onto the saved DTU's provenance (`server/domains/law.js`
+ * already hardcodes the same `search.patentsview.org/api/v1` base for the
+ * real server-side fetch — this frontend string just documents which
+ * request produced the data, it never issues a network call itself) and
+ * `patents.google.com` is a fixed "open on Google Patents" deep link, the
+ * same class as the already-exempted `google.com/maps` link.
  */
 
 import { useEffect, useState } from 'react';

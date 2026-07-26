@@ -58,8 +58,26 @@ before(async () => {
   throw new Error("Server failed to start within 60 seconds");
 });
 
+// Resource-leak fix (2026-07-25): a bare fire-and-forget SIGTERM here left
+// a real, un-awaited orphan. server.js's gracefulShutdown() (server.js:2878)
+// does an UNCONDITIONAL `await new Promise(r => setTimeout(r, SHUTDOWN_TIMEOUT_MS))`
+// (default 10s) plus up to SHUTDOWN_DRAIN_MS (default 5s) before it actually
+// calls process.exit(0) — so a SIGTERM'd spawned server monolith keeps
+// running (CPU + the full boot-time memory footprint) for 10-15s AFTER this
+// file's own tests report done, purely because nothing waited for it. The
+// child handle is already `.unref()`'d above so this never blocked THIS
+// file's own exit — the cost lands on whatever else the full suite is
+// running concurrently. Mirrors the already-correct tests/e2e/*.test.js
+// `stopServer` pattern: SIGTERM, then SIGKILL after a short grace window if
+// it hasn't exited on its own — awaited, so `after()` doesn't return until
+// the process is actually gone.
 after(() => {
-  serverProcess?.kill("SIGTERM");
+  if (!serverProcess || serverProcess.killed) return Promise.resolve();
+  return new Promise((resolve) => {
+    serverProcess.kill("SIGTERM");
+    const t = setTimeout(() => { serverProcess.kill("SIGKILL"); resolve(); }, 3000);
+    serverProcess.on("exit", () => { clearTimeout(t); resolve(); });
+  });
 });
 
 async function api(method, path, body = null, { token, noAuth } = {}) {

@@ -64,6 +64,43 @@ const nextConfig = {
         ],
       },
       {
+        // Launch edge-offload (docs/LAUNCH_EDGE_OFFLOAD.md) — explicit reinforcement of
+        // Next.js's own built-in immutable-caching behavior for hashed build output.
+        // Next's standalone server already emits this Cache-Control for /_next/static/*
+        // (the filename embeds a content hash, so a stale cached copy can never be
+        // served under a URL a new build would use), but stating it here makes the
+        // contract explicit for the CDN layer in front of it and survives any future
+        // change to Next's internal static-file server. Do not lower this — it's the
+        // single largest edge-cacheable win for this deployment (see the doc).
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        // Root-level /public assets (favicon, logos, PWA icons) are NOT content-hashed
+        // (unlike /_next/static), so they must NOT be marked immutable — a logo swap at
+        // the same URL needs to actually propagate. A moderate cache + SWR still lets
+        // both the browser and the Cloudflare edge skip re-fetching on every load,
+        // without the multi-year staleness risk immutable would carry for these paths.
+        //
+        // LATENT RISK, checked and currently clear: this matcher keys on the
+        // EXTENSION, not the prefix, so it would also match an API path ending in
+        // one — e.g. a future authenticated `/api/avatar/:id.png`. A `public`
+        // directive on an authenticated response is cacheable by SHARED caches,
+        // which is a cache-poisoning shape. Verified 2026-07-25 that no route
+        // under `server/routes/` serves any of these extensions today, so nothing
+        // is exposed. Two things keep it that way: the Cloudflare Cache Rule in
+        // docs/LAUNCH_EDGE_OFFLOAD.md §4 bypasses `/api/*` at highest priority,
+        // and this note. If you ever add an authenticated image/font endpoint
+        // under `/api/`, scope this rule to exclude it rather than assuming the
+        // edge rule alone will save you — browsers cache too.
+        source: '/:path*.(svg|ico|png|jpg|jpeg|webp|woff|woff2|ttf)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
+      },
+      {
         // Allow service worker to control the entire scope
         source: '/sw.js',
         headers: [

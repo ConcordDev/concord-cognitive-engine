@@ -15,7 +15,7 @@
 import {
   Wallet, Calculator, HeartPulse, Scale, FolderKanban, BarChart3, ShoppingBag,
   Hammer, Music, PenSquare, Megaphone, Coins, BookOpen, FlaskConical,
-  CalendarDays, Bot, Mail, Users, Landmark, type LucideIcon,
+  CalendarDays, Bot, Mail, Users, Landmark, Rocket, type LucideIcon,
 } from 'lucide-react';
 
 export type DestinationGroup = 'work' | 'create' | 'knowledge' | 'comms';
@@ -68,6 +68,13 @@ export const DESTINATIONS: DestinationDef[] = [
     absorbs: ['paper', 'science', 'philosophy', 'linguistics', 'history', 'mentorship', 'debate', 'answers', 'reasoning', 'grounding'] },
   { id: 'lab', name: 'Lab', icon: FlaskConical, group: 'knowledge',
     absorbs: ['physics', 'chem', 'quantum', 'materials', 'math', 'engineering', 'robotics', 'astronomy', 'space', 'geology', 'ocean', 'environment', 'energy', 'aviation', 'mining', 'forestry', 'agriculture', 'landscaping'] },
+  // Frontier's ten engines (lib/frontier-engines.ts) are workspace TABS
+  // switched in-place inside the destination page (FrontierEngineTabs),
+  // not separate lens routes — so, unlike every other destination here,
+  // it has no `absorbs` list (there is nothing for DestinationNav to
+  // resolve; the tab strip lives inside app/lenses/frontier/page.tsx
+  // itself).
+  { id: 'frontier', name: 'Frontier', icon: Rocket, group: 'knowledge' },
   { id: 'calendar', name: 'Calendar', icon: CalendarDays, group: 'knowledge',
     absorbs: ['events', 'event-timeline', 'sessions'] },
   { id: 'agents', name: 'Agents', icon: Bot, group: 'knowledge',

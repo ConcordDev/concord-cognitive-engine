@@ -65,7 +65,7 @@ export function SkyMap() {
         setError(`Location denied: ${e.message}`);
         setLoading(false);
       },
-      { timeout: 10000 },
+      { timeout: 10000 }, // @env-config-ok: PositionOptions.timeout — a W3C Geolocation API argument (how long to wait for a GPS fix before the error callback fires), not deployment config.
     );
   }, [compute]);
 

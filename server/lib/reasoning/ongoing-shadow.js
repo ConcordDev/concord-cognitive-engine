@@ -36,7 +36,7 @@ function _pruneOldSessions() {
 /**
  * Build the shadow DTU data object (does not commit; caller does).
  */
-function buildShadowDTU({ sessionId, generation, summary, insights, pendingQuestions, userId, lineage }) {
+function buildShadowDTU({ sessionId, generation, summary, insights, pendingQuestions, userId, lineage, stepCount = 0 }) {
   const id = `shadow_rs_${crypto.randomBytes(8).toString('hex')}`;
   return {
     id,
@@ -59,6 +59,7 @@ function buildShadowDTU({ sessionId, generation, summary, insights, pendingQuest
       sessionId,
       generation,
       pendingQuestions,
+      stepCount,
       createdAt: new Date().toISOString(),
     },
     ongoing_reasoning_session: sessionId,
@@ -153,7 +154,7 @@ export function createCrystallizer({
    * @param {{ steps: object[], workingMessages: object[] }} state
    * @returns {Promise<{ summaryText: string, continuationMessages: object[] }>}
    */
-  async function onCrystallize({ steps, workingMessages }) {
+  async function onCrystallize({ steps = [], workingMessages }) {
     generation++;
     if (generation > MAX_GENERATIONS) {
       logger.warn('reasoning:ongoing-shadow', 'Max generations hit', { sessionId, generation });
@@ -199,6 +200,7 @@ export function createCrystallizer({
       pendingQuestions: parsed.pendingQuestions,
       userId,
       lineage: [...shadowLineage],
+      stepCount: Array.isArray(steps) ? steps.length : 0,
     });
 
     try {

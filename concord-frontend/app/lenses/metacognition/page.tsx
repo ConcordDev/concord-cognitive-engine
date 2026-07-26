@@ -1254,6 +1254,8 @@ export default function MetacognitionLensPage() {
               />
               <button
                 onClick={() => {
+                  // detector-allow: frontend-fake-data — "placeholder" here is part of a
+                  // CSS attribute selector used to find the input above, not rendered content.
                   const input = document.querySelector<HTMLInputElement>(
                     'input[placeholder*="Domain to assess"]'
                   );

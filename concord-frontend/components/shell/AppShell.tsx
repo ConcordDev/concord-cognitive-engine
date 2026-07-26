@@ -15,7 +15,7 @@ import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { CookieConsent } from '@/components/common/CookieConsent';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
-import { OfflineFallback } from '@/components/pwa/OfflineFallback';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import SyncIndicator from '@/components/pwa/SyncIndicator';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
 import { MobileNav } from '@/components/shell/MobileNav';
@@ -33,6 +33,7 @@ import { useSessionStore } from '@/store/sessions';
 import { useMusicStore } from '@/lib/music/store';
 import { useEventRouter } from '@/lib/event-router';
 import { useSocialNotificationToast } from '@/hooks/useSocialNotificationToast';
+import { useChannelInboundToast } from '@/hooks/useChannelInboundToast';
 import { api } from '@/lib/api/client';
 
 /**
@@ -72,6 +73,15 @@ const HelpButton = dynamic(
 );
 const LegalFooter = dynamic(
   () => import('@/components/legal/LegalFooter').then((m) => ({ default: m.LegalFooter })),
+  { ssr: false }
+);
+// ConKay widget shell (V1.1 unit CK1) — ambient, always-present, dismissible
+// ConKay presence above lens content. Unconditionally mounted like the five
+// above (its own internal hidden-state check, not this gate, governs
+// visibility) but code-split the same way so it doesn't cost anything on
+// pages nobody ever interacts with it from.
+const ConKayWidgetLayer = dynamic(
+  () => import('@/components/conkay/widget/ConKayWidgetLayer').then((m) => ({ default: m.ConKayWidgetLayer })),
   { ssr: false }
 );
 
@@ -123,6 +133,11 @@ export function AppShell({ children }: AppShellProps) {
   // follows / shares / mentions / DMs surface within ~500ms instead
   // of waiting on the NotificationBell 60s poll.
   useSocialNotificationToast();
+
+  // DET-C batch 10 — Telegram/Discord/email inbound-webhook bridge
+  // (server/routes/channels.js) toast; see the hook's own header for the
+  // full "this had zero frontend consumer" history.
+  useChannelInboundToast();
 
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen);
@@ -325,6 +340,11 @@ export function AppShell({ children }: AppShellProps) {
       <SystemGuidePanel />
       <FirstWinWizard />
       <HelpButton />
+      {/* CK1 — ambient ConKay widget, top-right (the one corner not already
+          claimed by SystemStatus/FirstWinWizard/CookieConsent bottom-left or
+          HelpButton/SyncIndicator/InstallPrompt/ConKayOverlay's own summon
+          button bottom-right — see ConKayWidgetLayer.tsx's position note). */}
+      <ConKayWidgetLayer />
       {onboardingEverNeeded && (
         <OnboardingWizard
           // Don't hijack the world lens with the abstract platform tour — a new
@@ -347,7 +367,7 @@ export function AppShell({ children }: AppShellProps) {
           }}
         />
       )}
-      <OfflineFallback />
+      <OfflineBanner />
       <InstallPrompt />
       <SyncIndicator />
       <CookieConsent />

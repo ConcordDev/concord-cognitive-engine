@@ -243,7 +243,7 @@ export function endSeason() {
 /**
  * Record a season contribution.
  */
-export function recordSeasonContribution(userId, { xp = 0, type = "general" } = {}) {
+export function recordSeasonContribution(userId, { xp = 0 } = {}) {
   const season = seasonState.current;
   if (!season) return { ok: false, reason: "no_active_season" };
 

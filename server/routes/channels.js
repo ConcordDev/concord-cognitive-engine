@@ -89,13 +89,25 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
       });
     }
 
-    // Emit WebSocket event for real-time UI updates
-    if (realtimeEmit && routeResult.ok) {
+    // Emit WebSocket event for real-time UI updates.
+    // DET-C batch 10 (2026-07-24, resolved): this broadcast (and its
+    // Discord/email siblings below) previously had zero frontend
+    // consumers — there was no channel-linking or inbound-message UI
+    // anywhere in concord-frontend for the external Telegram/Discord/
+    // email bridge. Fixed minimally-but-really: scoped to the recipient's
+    // own `user:<id>` room (it was an unscoped global broadcast before,
+    // which also leaked which userId got an external message to every
+    // connected socket) and surfaced as a toast via
+    // hooks/useChannelInboundToast.ts (mounted in AppShell alongside its
+    // sibling useSocialNotificationToast). Full linking/inbox UI is still
+    // out of scope for this fix — this closes the "broadcast into the
+    // void" gap, not the whole feature.
+    if (realtimeEmit && routeResult.ok && routeResult.userId) {
       realtimeEmit("channel:inbound", {
         channel: "telegram",
         userId: routeResult.userId,
         actionType: routeResult.route?.actionType,
-      });
+      }, { userId: routeResult.userId });
     }
 
     // Telegram requires 200 OK acknowledgment
@@ -157,12 +169,12 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
         });
       }
 
-      if (realtimeEmit && routeResult.ok) {
+      if (realtimeEmit && routeResult.ok && routeResult.userId) {
         realtimeEmit("channel:inbound", {
           channel: "discord",
           userId: routeResult.userId,
           actionType: routeResult.route?.actionType,
-        });
+        }, { userId: routeResult.userId });
       }
     }
   }));
@@ -207,12 +219,12 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
       });
     }
 
-    if (realtimeEmit && routeResult.ok) {
+    if (realtimeEmit && routeResult.ok && routeResult.userId) {
       realtimeEmit("channel:inbound", {
         channel: "email",
         userId: routeResult.userId,
         actionType: routeResult.route?.actionType,
-      });
+      }, { userId: routeResult.userId });
     }
 
     // SendGrid expects 200 OK

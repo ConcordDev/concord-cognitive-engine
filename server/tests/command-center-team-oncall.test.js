@@ -19,7 +19,9 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import registerCommandCenterActions from "../domains/commandcenter.js";
+import { up as upWorldOrgs } from "../migrations/383_world_organizations.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -31,17 +33,24 @@ function call(name, ctx, params = {}, data = {}) {
 
 before(() => { registerCommandCenterActions(register); });
 
+// Organizations are now DB-backed (durability fix — see
+// lib/world-organizations.js's header comment); the macros read/write
+// through `ctx.db`. One in-memory db for the whole file — every test mints
+// a fresh org id via teamCreate so there's no cross-test bleed.
+const _orgDb = new Database(":memory:");
+upWorldOrgs(_orgDb);
+
 beforeEach(() => {
   // Fresh STATE per test so per-operator AND org-shared Maps don't leak
   // between cases (org membership itself lives in world-organizations.js's
-  // module-scope Maps, which are NOT reset here — every test mints a fresh
+  // DB-backed tables, which are NOT reset here — every test mints a fresh
   // org id via teamCreate so there's no cross-test bleed there either).
   globalThis._concordSTATE = {};
   globalThis._concordSaveStateDebounced = () => {};
   globalThis._concordRealtimeEmit = undefined;
 });
 
-const ctxOf = (userId) => ({ actor: { userId }, userId });
+const ctxOf = (userId) => ({ actor: { userId }, userId, db: _orgDb });
 const lead = ctxOf("cc_lead");
 const responder = ctxOf("cc_responder");
 const observer = ctxOf("cc_observer");

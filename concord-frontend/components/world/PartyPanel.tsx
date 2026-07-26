@@ -67,11 +67,16 @@ export function PartyPanel() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handler = () => refresh();
-    for (const ev of ['party:invite-received', 'party:member-joined', 'party:member-left', 'party:disbanded', 'lfg:matched']) {
+    // DET-C batch 11: 'party:member-kicked' added — hooks/useSocket.ts's
+    // FORWARDED_EVENTS now bridges the real socket.io broadcast (server.js's
+    // POST /api/parties/:partyId/kick) to this same-name window CustomEvent,
+    // so a kicked member's panel (and every other member's) refreshes
+    // immediately instead of waiting on the 10s poll below.
+    for (const ev of ['party:invite-received', 'party:member-joined', 'party:member-left', 'party:member-kicked', 'party:disbanded', 'lfg:matched']) {
       window.addEventListener(ev, handler);
     }
     return () => {
-      for (const ev of ['party:invite-received', 'party:member-joined', 'party:member-left', 'party:disbanded', 'lfg:matched']) {
+      for (const ev of ['party:invite-received', 'party:member-joined', 'party:member-left', 'party:member-kicked', 'party:disbanded', 'lfg:matched']) {
         window.removeEventListener(ev, handler);
       }
     };

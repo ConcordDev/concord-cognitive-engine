@@ -234,6 +234,19 @@ export function runNemesisCycle({ db, worldId } = {}) {
 
     if (total > 0 || decayed > 0) {
       logger.info?.("nemesis-cycle", "tick", { worldId, processed: total, decayed });
+      // The nemesis graph just changed for this world. NemesisGlyphLayer renders
+      // it and previously only saw changes on its (deliberately slow, 2x) backstop
+      // poll. Gated on a real change so a quiet tick emits nothing, and world-
+      // scoped because the graph is world state. globalThis._concordRealtimeEmit
+      // is the escape hatch server.js stashes for emergent modules (no circular
+      // import). The layer re-fetches on the event and ignores this payload.
+      try {
+        globalThis._concordRealtimeEmit?.(
+          "nemesis:nearby",
+          { worldId, processed: total, decayed },
+          { worldId },
+        );
+      } catch { /* push is best-effort */ }
     }
     return { ok: true, world: worldId, processed: total, decayed };
   } catch (err) {

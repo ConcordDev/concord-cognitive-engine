@@ -9,6 +9,7 @@ import { EarthEventsLive } from '@/components/world/EarthEventsLive';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useViewedPlayerProfile } from '@/hooks/useViewedPlayerProfile';
 import { useTilePush } from '@/hooks/useTilePush';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
@@ -48,6 +49,7 @@ import {
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { DEFAULT_CAMERA_ZOOM } from '@/lib/world-lens/camera-zoom';
 import { hudCornerStyle } from '@/lib/world-lens/hud-corner-registry';
+import { shouldTogglePhotoMode, resolvePhotoModeCanvas } from '@/lib/world-lens/photo-mode-key';
 import { weatherTypeToIcon } from '@/lib/world-lens/weather-icon';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
@@ -69,6 +71,7 @@ import { ShardHealthBadge } from '@/components/hud/ShardHealthBadge';
 import { FriendsPresencePanel } from '@/components/world/FriendsPresencePanel';
 import { AchievementToast } from '@/components/world/AchievementToast';
 import { PartyPanel } from '@/components/world/PartyPanel';
+import { ProximityChatPanel } from '@/components/world/ProximityChatPanel';
 import { MapPingLayer } from '@/components/world/MapPingLayer';
 import { KillFeed } from '@/components/world/KillFeed';
 import { DiseaseStatusHUD } from '@/components/world/DiseaseStatusHUD';
@@ -156,6 +159,16 @@ const AmbientChatPanel = dynamic(
     })),
   { ssr: false }
 );
+// V1.2 Wave A — shared DTU spaces. Discovery (create/browse/join) for
+// MU2's real workspace:room Yjs CRDT room; see the component's own header
+// for why the content/presence engine itself is untouched.
+const WorkspaceRoomsPanel = dynamic(
+  () =>
+    import('@/components/workspace/WorkspaceRoomsPanel').then((m) => ({
+      default: m.WorkspaceRoomsPanel,
+    })),
+  { ssr: false }
+);
 const FestivalBanner = dynamic(
   () =>
     import('@/components/world/FestivalBanner').then((m) => ({
@@ -240,10 +253,24 @@ const BrawlInviteToast = dynamic(
     })),
   { ssr: false }
 );
+const EventReminderToast = dynamic(
+  () =>
+    import('@/components/world/EventReminderToast').then((m) => ({
+      default: m.EventReminderToast,
+    })),
+  { ssr: false }
+);
 const BrawlActiveHUD = dynamic(
   () =>
     import('@/components/world/BrawlInviteToast').then((m) => ({
       default: m.BrawlActiveHUD,
+    })),
+  { ssr: false }
+);
+const WagerInviteToast = dynamic(
+  () =>
+    import('@/components/world/WagerInviteToast').then((m) => ({
+      default: m.WagerInviteToast,
     })),
   { ssr: false }
 );
@@ -1199,6 +1226,7 @@ import {
   ScrollText,
   Backpack,
   Gavel,
+  Share2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -1206,6 +1234,7 @@ import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 // Wave 1 deferral 5: reads the player's stored quality preset (set via /lenses/settings)
 import { getStoredQualityPreset } from '@/lib/world-lens/quality-preset';
+import { dispatchBuildingInteractEvent } from '@/lib/world-lens/building-interact-dispatch';
 import WorldEntryOverlay from '@/components/world-lens/WorldEntryOverlay';
 import { emitHitNumber, emitScreenShake, emitHitStop } from '@/components/world/ImpactFeedback';
 import type { LimbState, LimbArmorState } from '@/components/concordia/hud/CombatHUD';
@@ -2211,7 +2240,12 @@ export default function WorldLensPage() {
   // 'concordia-hub') — reuse it here instead.
   const currentWorldDisplayName =
     CONCORDIA_THEMES[concordiaTheme]?.label || activeDistrict.name;
-  const [concordiaRenderStyle, setConcordiaRenderStyle] = useState<'pbr' | 'toon'>('pbr');
+  // Default = TOON. docs/ART_STYLE_GUIDE.md is an explicitly LOCKED anti-photoreal
+  // thesis ("Photoreal invites comparison to $200M productions; a stylized look sets
+  // its own standard"), yet this defaulted to 'pbr' until 2026-07-25 — so the locked
+  // direction shipped only to players who found and clicked a toggle. PBR stays
+  // reachable through that toggle; it is now the opt-in, not the default.
+  const [concordiaRenderStyle, setConcordiaRenderStyle] = useState<'pbr' | 'toon'>('toon');
   const [showPanel, setShowPanel] = useState<
     | 'none'
     | 'inventory'
@@ -2245,7 +2279,14 @@ export default function WorldLensPage() {
     | 'lore'
     | 'timeline'
     | 'character'
+    | 'workspace-rooms'
   >('none');
+  // Which OTHER player's profile is currently open in the 'profile' panel
+  // (null = the caller's own). Fed by the `concordia:view-player-profile`
+  // event PlayerPresence's "View Profile" button dispatches — previously
+  // dead-wired (nothing captured the target id, so the panel always showed
+  // the caller's own profile regardless of which player was clicked).
+  const { viewedProfileUserId, clearViewedProfile } = useViewedPlayerProfile();
   // Local player avatar — mutable so moves update it in place. On
   // first mount we ask the server for saved state (via player:load)
   // and land back wherever the user logged off.
@@ -2995,6 +3036,39 @@ export default function WorldLensPage() {
     }
   }, [playerAvatar.position, rawWorldNPCs]);
 
+  // [System] contextual prompter feed — publishes the player's REAL current
+  // context (SystemPrompter.tsx listens for this; see that file's header).
+  // Every field below is read from state this page already tracks for other
+  // real purposes (nearbyNPC from the proximity effect above, worldBuildings
+  // from the buildings fetch, combatState.target from the same expression
+  // CombatHUD's own `inCombat` prop uses, isSwimming from the swim-state
+  // effect) — no invented signal. Fields with no real source in this file
+  // (nearMount/nearVehicle/nearNode/airborne/hasUnspentSkillPoint/
+  // hasUnreadStake) are left undefined; resolveAffordances() treats an
+  // absent optional field as honestly "unknown", never as false.
+  useEffect(() => {
+    const pos = playerAvatar.position;
+    const BUILDING_PROXIMITY_M = 4; // matches StationInteractionRouter's own gate
+    let nearestBuilding: WorldBuildingRow | null = null;
+    let nearestBuildingDist = Infinity;
+    for (const b of worldBuildings) {
+      const d = Math.hypot(b.x - pos.x, b.y - pos.y);
+      if (d < BUILDING_PROXIMITY_M && d < nearestBuildingDist) {
+        nearestBuilding = b;
+        nearestBuildingDist = d;
+      }
+    }
+    const ctx = {
+      nearBuilding: nearestBuilding ? { id: nearestBuilding.id, type: nearestBuilding.building_type } : null,
+      nearNpc: nearbyNPC ? { id: nearbyNPC.id, name: nearbyNPC.name } : null,
+      inCombat: !!combatState.target && !combatState.isDead,
+      inWater: isSwimming,
+    };
+    try {
+      window.dispatchEvent(new CustomEvent('concordia:context-update', { detail: ctx }));
+    } catch { /* dispatch best-effort */ }
+  }, [playerAvatar.position, worldBuildings, nearbyNPC, combatState.target, combatState.isDead, isSwimming]);
+
   // E key: portal entry OR nearest NPC dialogue (portal takes priority)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -3042,18 +3116,10 @@ export default function WorldLensPage() {
   const [photoModeCanvas, setPhotoModeCanvas] = useState<HTMLCanvasElement | null>(null);
   useEffect(() => {
     function handlePhotoModeKey(e: KeyboardEvent) {
-      if (e.key !== 'p' && e.key !== 'P') return;
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      if (dialogueNPC || combatState.target) return;
+      if (!shouldTogglePhotoMode(e, { dialogueNPC, combatTarget: combatState.target })) return;
       setPhotoModeOpen((prev) => {
         const next = !prev;
-        if (next) {
-          try {
-            const renderer = (window as unknown as { __concordiaRenderer?: { domElement?: HTMLCanvasElement } }).__concordiaRenderer;
-            setPhotoModeCanvas(renderer?.domElement ?? null);
-          } catch { setPhotoModeCanvas(null); }
-        }
+        if (next) setPhotoModeCanvas(resolvePhotoModeCanvas(window));
         return next;
       });
     }
@@ -3388,6 +3454,23 @@ export default function WorldLensPage() {
       if (data.reason === 'speed_hack_detected' || data.reason === 'teleport_detected') {
         pushCombatLog(`Movement rejected: ${data.reason.replace(/_/g, ' ')}`, 'info');
       }
+    };
+
+    // DET-C: the server sends `anti-cheat:dropped` immediately before
+    // forcibly disconnecting a socket that racked up too many rejected
+    // player:move packets (see server.js's player:move handler — the
+    // Godot gateway sends the identical event to a Godot client hitting
+    // the same violation cap). Pre-this-fix the browser client had no
+    // subscriber at all: the player just silently lost their socket with
+    // no explanation, indistinguishable from a network blip. Surface the
+    // real reason in the combat log before the disconnect tears the
+    // socket down — better than a mystery drop.
+    const handleAntiCheatDropped = (msg: unknown) => {
+      const data = msg as { reason?: string } | undefined;
+      pushCombatLog(
+        `Disconnected by anti-cheat: ${(data?.reason || 'too many violations').replace(/_/g, ' ')}`,
+        'info'
+      );
     };
 
     // ── Combat ack: our attack landed (or didn't) ──────────────────
@@ -3816,6 +3899,7 @@ export default function WorldLensPage() {
     worldSocket.on('city:positions', handleCityPositions);
     worldSocket.on('player:move:ack', handleMoveAck);
     worldSocket.on('player:move:nack', handleMoveNack);
+    worldSocket.on('anti-cheat:dropped', handleAntiCheatDropped);
     const handleCombatDodgeAck = (msg: unknown) => {
       const data = msg as { userId?: string; direction?: 'left' | 'right' | 'back' };
       if (!data?.userId) return;
@@ -3831,8 +3915,28 @@ export default function WorldLensPage() {
         detail: { entityId: data.userId, animation: data.active ? 'block' : 'idle' },
       }));
     };
+    // Server-authoritative "you dodged that" feedback — routes/worlds.js's
+    // NPC-attack path emits this when the target's i-frames absorbed the
+    // hit (world-room broadcast; every nearby client receives it). Only
+    // the evading player themselves gets the billboard — DamageBillboard's
+    // 'dodge' kind existed already but nothing dispatched it until now.
+    const handleNpcAttackEvaded = (msg: unknown) => {
+      const data = msg as { userId?: string } | undefined;
+      if (!data?.userId || data.userId !== playerAvatar.id) return;
+      const pos = (window as unknown as { __concordiaPlayerPos?: { x: number; y: number; z: number } }).__concordiaPlayerPos;
+      if (!pos) return;
+      window.dispatchEvent(new CustomEvent('concordia:damage-billboard', {
+        detail: {
+          position: { x: pos.x, y: (pos.y ?? 0) + 1.6, z: pos.z },
+          value: 'DODGE',
+          kind: 'dodge',
+          ttlMs: 1000,
+        },
+      }));
+    };
     worldSocket.on('combat:attack:ack', handleCombatAck);
     worldSocket.on('combat:hit', handleCombatHit);
+    worldSocket.on('combat:npc-attack-evaded', handleNpcAttackEvaded);
     worldSocket.on('combat:dodge:ack', handleCombatDodgeAck);
     worldSocket.on('combat:block:ack', handleCombatBlockAck);
     worldSocket.on('combat:kill', handleCombatKill);
@@ -3905,6 +4009,22 @@ export default function WorldLensPage() {
       // event being live (worldSocket.on('combat:kill', handleCombatKill)
       // above already consumes it for gameplay state).
       'combat:kill',
+      // DET-C batch 3 — three real dead listeners the dead-event-listener
+      // detector's own maintainer comment names explicitly: DreamReader.tsx
+      // listens for `concordia:dream-composed`, ForwardPredictionsPanel.tsx
+      // for `concordia:prediction-realised`, NPCSchemeOverhearTip.tsx for
+      // `concordia:npc-scheme-resolved` — all three real server broadcasts
+      // (dream-engine.js#tryComposeForUser, forward-sim.js#realisePrediction,
+      // npc-schemes.js's terminal-phase transition) that were never bridged
+      // to a window CustomEvent under those exact derived names.
+      // EmergentEventFeed.tsx's TRACKED_EVENTS also subscribes to the raw
+      // socket names for its read-only activity log — that's a separate,
+      // parallel consumer, not a substitute for this bridge.
+      'dream:composed', 'prediction:realised', 'npc:scheme-resolved',
+      // CharacterSheetPanel.tsx listens for 'concordia:character-updated';
+      // skill-engine.js#gainSkillXP now emits 'character:updated' (scoped
+      // to the leveling user) on every real player_skill_levels level bump.
+      'character:updated',
     ];
     const srBridges: Array<[string, (...a: unknown[]) => void]> = SR_BRIDGE_EVENTS.map((kind) => {
       const winName = `concordia:${kind.replace(/:/g, '-')}`;
@@ -3921,8 +4041,10 @@ export default function WorldLensPage() {
       worldSocket.off('city:positions', handleCityPositions);
       worldSocket.off('player:move:ack', handleMoveAck);
       worldSocket.off('player:move:nack', handleMoveNack);
+      worldSocket.off('anti-cheat:dropped', handleAntiCheatDropped);
       worldSocket.off('combat:attack:ack', handleCombatAck);
       worldSocket.off('combat:hit', handleCombatHit);
+      worldSocket.off('combat:npc-attack-evaded', handleNpcAttackEvaded);
       worldSocket.off('combat:dodge:ack', handleCombatDodgeAck);
       worldSocket.off('combat:block:ack', handleCombatBlockAck);
       worldSocket.off('combat:kill', handleCombatKill);
@@ -3976,14 +4098,36 @@ export default function WorldLensPage() {
   useEffect(() => {
     let rafId: number;
     let lastT = performance.now();
+    // DET-C batch 3 — AdaptiveMusicEngine.tsx has listened for
+    // 'concordia:combat-engaged' / 'concordia:calm' since it was written
+    // (multi-stem crossfade), but nothing ever dispatched either name; this
+    // frame loop already computes the exact `inCombat` boolean the two
+    // states hinge on (it drives the older single-track CombatMusicSystem
+    // below), so an edge-detected dispatch is the honest minimal wire — no
+    // new combat-detection logic invented. 'concordia:stealth' /
+    // 'concordia:discovery' are left dead: there is no current gameplay
+    // concept of a continuous "in stealth" or "just discovered something"
+    // state to derive them from (the closest real signal, the `stealth`
+    // control-scheme selection, only affects available combat moves, not a
+    // sneaking/detection posture) — wiring those would mean inventing the
+    // mechanic, not fixing a missed wire.
+    let wasInCombat = false;
 
     function musicFrame(now: number) {
       const delta = Math.min((now - lastT) / 1000, 0.1); // cap at 100 ms
       lastT = now;
       const cms = combatMusicRef.current;
+      const inCombat = !!(combatStateRef.current.target && !combatStateRef.current.isDead);
       if (cms) {
-        const inCombat = !!(combatStateRef.current.target && !combatStateRef.current.isDead);
         cms.update(delta, inCombat);
+      }
+      if (inCombat !== wasInCombat) {
+        wasInCombat = inCombat;
+        if (inCombat) {
+          window.dispatchEvent(new CustomEvent('concordia:combat-engaged'));
+        } else {
+          window.dispatchEvent(new CustomEvent('concordia:calm'));
+        }
       }
       rafId = requestAnimationFrame(musicFrame);
     }
@@ -4204,11 +4348,18 @@ export default function WorldLensPage() {
   // emit a series of combat:attack events along the combo's step plan
   // with a shared chainId so the flow recorder groups them as one chain.
   useEffect(() => {
+    // Pending step timers for the CURRENT combo — a new trigger cancels the
+    // previous combo's un-fired steps, and effect teardown clears them.
+    let pendingTimers: ReturnType<typeof setTimeout>[] = [];
+    const clearPending = () => {
+      for (const id of pendingTimers) clearTimeout(id);
+      pendingTimers = [];
+    };
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         comboId?: string;
         comboName?: string;
-        steps?: Array<{ action: string }>;
+        steps?: Array<{ action: string; action_meta?: Record<string, unknown>; timing_ms?: number }>;
         tier?: number;
         vfxSeed?: string;
       } | undefined;
@@ -4222,37 +4373,49 @@ export default function WorldLensPage() {
           comboName: detail.comboName,
         });
       }).catch(() => { /* fallback: no special VFX */ });
-      // Tier-scaled biomechanics animation. Pick the action token from the
-      // first step of the combo (attack-light / heavy / kick / grapple)
-      // and dispatch concordia:combat-anim with tier so AvatarSystem3D
-      // plays the matching tier-N clip rather than the baseline clip.
-      const firstAction = detail.steps[0]?.action ?? 'attack-light';
-      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
-        detail: { entityId: playerAvatar.id, animation: firstAction, tier },
-      }));
-      // Emit a single combat:attack stamped with the combo id + chain.
-      // The flow-recorder records each step as it lands; the suggestion
-      // engine then knows to advance the chain.
-      const target = combatStateRef.current.target;
-      if (target && worldSocket.isConnected) {
+
+      // Sequential combo playback (Residual 1). Build a time-stamped plan from
+      // the FULL persisted steps_json and walk it: at each step's cumulative
+      // offset play its tier-scaled animation, and — for OFFENSIVE steps, when a
+      // target is engaged — fire ONE combat:attack carrying the true per-step
+      // action (actionOverride) + stepIndex under a shared chainId. Defensive
+      // steps (parry/block/dodge) animate only. Timers are driven entirely by
+      // the real persisted `timing_ms` values — no fake progress.
+      clearPending();
+      import('@/lib/combat/combo-player').then((cp) => {
+        const plan = cp.buildComboStepPlan(detail.steps);
+        if (!plan.length) return;
         const chainId = `combo:${detail.comboId}:${Date.now()}`;
-        // Fire just the first attack — the player still has to follow up
-        // manually for the remaining steps. The hotbar surfaces what comes
-        // next via the suggestion pill.
-        worldSocket.emit('combat:attack', {
-          targetId: target.id,
-          baseDamage: (combatStateRef.current.weapon?.damage ?? 10) * (1 + tier * 0.05),
-          range: 3,
-          armorPierce: tier - 1,
-          chainId,
-          stepIndex: 0,
-          heavy: detail.steps[0]?.action === 'attack-heavy',
-          style: 'evolved-combo',
-        });
-      }
+        for (const step of plan) {
+          const fire = () => {
+            window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+              detail: { entityId: playerAvatar.id, animation: step.animation, tier },
+            }));
+            const target = combatStateRef.current.target;
+            if (step.offensive && target && worldSocket.isConnected) {
+              worldSocket.emit('combat:attack', {
+                targetId: target.id,
+                baseDamage: (combatStateRef.current.weapon?.damage ?? 10) * (1 + tier * 0.05),
+                range: 3,
+                armorPierce: tier - 1,
+                chainId,
+                stepIndex: step.stepIndex,
+                heavy: step.heavy,
+                style: 'evolved-combo',
+                actionOverride: step.action,
+              });
+            }
+          };
+          if (step.atMs <= 0) fire();
+          else pendingTimers.push(setTimeout(fire, step.atMs));
+        }
+      }).catch(() => { /* combo-player optional — no sequenced playback */ });
     };
     window.addEventListener('concordia:combo-trigger', handler);
-    return () => window.removeEventListener('concordia:combo-trigger', handler);
+    return () => {
+      window.removeEventListener('concordia:combo-trigger', handler);
+      clearPending();
+    };
   }, [worldSocket, playerAvatar.id]);
 
   // SkillWheelMount + CombatFlowHotbar dispatch concordia:spell-cast when the
@@ -4273,25 +4436,41 @@ export default function WorldLensPage() {
         element?: string | null;
         tier?: number;
         costs?: unknown;
+        maxDamage?: number | null;
+        rangeM?: number | null;
       } | undefined;
       if (!detail?.spellId) return;
       const element = String(detail.element || '').toLowerCase() || 'energy';
       const tier = Math.max(1, Math.min(5, Number(detail.tier) || 2));
       // Committed cast pose (rides the tiered biomechanics clip path).
       window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
-        detail: { entityId: playerAvatar.id, animation: 'attack-heavy', tier },
+        detail: { entityId: playerAvatar.id, animation: 'spell', tier },
       }));
       // Tier-scaled cast VFX (particles + flash), keyed by the spell name.
       import('@/lib/combat/combo-vfx').then((m) => {
         m.dispatchComboVfx({ tier, comboName: detail.spellName });
       }).catch(() => { /* fallback: no special VFX */ });
-      // Land the spell on the engaged target, if any.
+      // Land the spell on the engaged target, if any. Residual 2: when the
+      // minted glyph spell carries a real max_damage / range_m (surfaced by
+      // /api/combat-flow/spells from player_glyph_spells), use them as the
+      // authoritative baseDamage / range; the server independently re-caps
+      // baseDamage at the stored max_damage, so this can only ever request
+      // ≤ what was actually minted. The weapon-derived number is a defensive
+      // fallback only when no real spell damage is known.
+      const realMax = Number(detail.maxDamage);
+      const baseDamage = Number.isFinite(realMax) && realMax > 0
+        ? realMax
+        : (combatStateRef.current.weapon?.damage ?? 12) * (1 + tier * 0.08);
+      const realRange = Number(detail.rangeM);
+      const range = Number.isFinite(realRange) && realRange > 0
+        ? Math.min(realRange, 80)
+        : 12; // ranged magic reaches further than a fist
       const target = combatStateRef.current.target;
       if (target && worldSocket.isConnected) {
         worldSocket.emit('combat:attack', {
           targetId: target.id,
-          baseDamage: (combatStateRef.current.weapon?.damage ?? 12) * (1 + tier * 0.08),
-          range: 12, // ranged magic reaches further than a fist
+          baseDamage,
+          range,
           armorPierce: tier - 1,
           element,
           skillId: detail.spellId,
@@ -4779,16 +4958,12 @@ export default function WorldLensPage() {
     const district = activeDistrictRef.current;
     const b = district.buildings.find((b) => b.id === id);
     if (b) setSelectedBuilding(b);
-    try {
-      window.dispatchEvent(new CustomEvent('concordia:building-interact', {
-        detail: {
-          buildingId: id,
-          worldId: district.id,
-          playerX: playerAvatarRef.current.position.x,
-          playerZ: playerAvatarRef.current.position.y,
-        },
-      }));
-    } catch { /* dispatch best-effort */ }
+    dispatchBuildingInteractEvent({
+      buildingId: id,
+      worldId: district.id,
+      playerX: playerAvatarRef.current.position.x,
+      playerZ: playerAvatarRef.current.position.y,
+    });
   }, []);
 
   const handleConcordiaTerrainClick = useCallback(() => {}, []);
@@ -5047,9 +5222,24 @@ export default function WorldLensPage() {
             lodCenter={TERRAIN_LOD_CENTER_ORIGIN}
             quality="medium"
           />
+          {/* ART DIRECTION — renderStyle + toonGradient are threaded here on
+              purpose. Until 2026-07-25 this call site passed NEITHER, with two
+              consequences the art audit (docs/ART_DIRECTION_AUDIT.md §3.3)
+              measured: (1) the PBR/Toon toggle above was wired to
+              ConcordiaScene but not to the buildings, so flipping it to "Toon"
+              left every building PBR — the control silently did not do what its
+              label said; (2) BuildingRenderer3D fell back to its hardcoded
+              default ramp ['#1a1a2e','#3a3a5a','#8888bb'], a blue-grey matching
+              no authored world, so all 10 worlds' toon buildings were the same
+              colour. Passing the active theme's own gradient is what makes the
+              per-world palette (concordia-theme.ts CONCORDIA_THEMES) reach
+              building pixels. Uses `concordiaTheme` (not the raw world id) so a
+              manual theme-picker override moves palette and buildings together. */}
           <BuildingRenderer3D
             buildings={buildingRendererBuildings}
             viewMode="normal"
+            renderStyle={concordiaRenderStyle}
+            toonGradient={(CONCORDIA_THEMES[concordiaTheme] ?? CONCORDIA_THEMES['neon-punk']).toonGradient}
             buildingStyle={buildingStyleForWorld(worldIdForTheme)}
           />
           {/* Phase A3 — L-system trees + procedural rocks per biome.
@@ -5212,7 +5402,17 @@ export default function WorldLensPage() {
             worldId={currentWorldId}
             playerPosition={{ x: playerAvatar.position.x, y: 0, z: playerAvatar.position.z }}
           />
-          {!hudHidden && <CurrencyHUD onClick={() => setShowPanel('profile')} />}
+          {!hudHidden && (
+            <CurrencyHUD
+              onClick={() => {
+                // Always the caller's OWN profile from this entry point —
+                // clear any previously-viewed peer so a stale target id
+                // doesn't leak into a self-view.
+                clearViewedProfile();
+                setShowPanel('profile');
+              }}
+            />
+          )}
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
             onOpenMap={() => setShowPanel('map')}
@@ -5880,7 +6080,15 @@ export default function WorldLensPage() {
 
           {/* Phase DB2 — Brawl invite toast + active brawl HUD */}
           <BrawlInviteToast />
+
+          {/* DET-C dead-event-listener fix — RSVP event:reminder toast */}
+          <EventReminderToast />
           <BrawlActiveHUD />
+
+          {/* DET-C dead-event fix — wager invite toast (incoming challenge +
+              accept/decline/resolved outcome), previously built but never
+              mounted anywhere */}
+          <WagerInviteToast />
 
           {/* Phase DB3 — Roguelite run HUD + unlock shop */}
           <RogueliteRunHUD />
@@ -5963,6 +6171,7 @@ export default function WorldLensPage() {
                 { key: 'jobs', label: 'Jobs', icon: Briefcase },
                 { key: 'lore', label: 'Lore', icon: BookOpen },
                 { key: 'timeline', label: 'Timeline', icon: History },
+                { key: 'workspace-rooms', label: 'Workspace', icon: Share2 },
               ] as const
             ).map(({ key, label, icon: Icon }) => (
               <button
@@ -6208,13 +6417,28 @@ export default function WorldLensPage() {
             </SummonDrawer>
           )}
           {showPanel === 'profile' && (
-            <SummonDrawer open title="Profile" onClose={() => setShowPanel('none')}>
-              <PlayerProfile isOwnProfile />
+            <SummonDrawer
+              open
+              title={viewedProfileUserId ? 'Player Profile' : 'Profile'}
+              onClose={() => { setShowPanel('none'); clearViewedProfile(); }}
+            >
+              <PlayerProfile
+                isOwnProfile={!viewedProfileUserId}
+                targetUserId={viewedProfileUserId ?? undefined}
+              />
             </SummonDrawer>
           )}
           {showPanel === 'collaboration' && (
             <SummonDrawer open title="Collaboration Tools" onClose={() => setShowPanel('none')}>
               <CollaborationTools />
+            </SummonDrawer>
+          )}
+          {/* V1.2 Wave A — shared DTU spaces: create/browse/join MU2's real
+              workspace:room Yjs CRDT rooms (see WorkspaceRoomsPanel's own
+              header for the full design). */}
+          {showPanel === 'workspace-rooms' && (
+            <SummonDrawer open title="Shared Workspace Rooms" onClose={() => setShowPanel('none')} widthClassName="w-[28rem]">
+              <WorkspaceRoomsPanel worldId={currentWorldId} districtId={currentWorldId} />
             </SummonDrawer>
           )}
           {showPanel === 'livecollab' && (
@@ -6828,7 +7052,9 @@ export default function WorldLensPage() {
                   )}
                   {activeTool === 'dsl' && <ConcordDSLEditor />}
                   {activeTool === 'terminal' && <ConcordTerminal />}
-                  {activeTool === 'diff' && <DTUDiffViewer />}
+                  {activeTool === 'diff' && (
+                    <DTUDiffViewer dtuId={selectedBuilding?.dtuId ?? null} />
+                  )}
                   {activeTool === 'standards' && <StandardsLibrary />}
                   {activeTool === 'fabrication' && <FabricationExportPanel />}
                   {activeTool === 'embed' && (
@@ -6973,6 +7199,9 @@ export default function WorldLensPage() {
 
       {/* Phase U5 — party panel (bottom-right next to friends). */}
       <PartyPanel />
+
+      {/* V1.2 Wave A — ephemeral proximity chat (bottom-left). */}
+      <ProximityChatPanel />
 
       {/* Phase U6 — world marker overlay (top-left). */}
       <MapPingLayer worldId={currentWorldId} />

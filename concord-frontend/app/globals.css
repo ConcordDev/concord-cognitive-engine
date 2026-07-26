@@ -905,3 +905,209 @@ html.a11y-reduce-motion *::after {
   color: transparent;
   animation: ck-shimmer 1.6s linear infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEVAULT — paper substrate, letterpress, and still motion
+   ───────────────────────────────────────────────────────────────────────────
+   A self-contained LIGHT island. Everything above this block assumes the dark
+   lattice surface; nothing here may leak into it, so EVERY class is namespaced
+   `.vault-*` and every override is scoped under `.vault-surface`.
+
+   Why an island rather than platform light mode: platform light mode is inert
+   (tailwind.config.js hardcodes the lattice hexes instead of reading the CSS
+   variables, globals.css pins `bg-lattice-void text-white` on `body`, and every
+   token in lib/design-system.ts bakes in `text-white`). Fixing that is a
+   different, much larger job. LensShell is explicitly headless — it imposes no
+   background, padding, or min-height — so a lens legitimately owns 100% of its
+   own visible surface. This block is that surface.
+
+   Texture is CSS/SVG only — no binary assets. It stays crisp at any DPI, costs
+   no extra network payload, and can be tuned by editing one number.
+
+   ⚠ EXPLICIT THEMING EXEMPTION — DO NOT "FIX" THIS IN A THEME PASS.
+   TheVault is intentionally the one destination that does NOT follow the
+   shell's dark-dominant theme. The visual commitment is load-bearing: museums
+   aren't black, archives aren't black, paper is light, and a dark-mode Vault
+   is a different product. Black appears in the Vault ONLY as the ceremonial
+   induction surface, never as general chrome. If a future theming pass makes
+   the platform genuinely theme-aware, this block must be left alone or
+   ported deliberately — it is a divergence on purpose, recorded here so it
+   reads as a decision rather than an oversight.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── The wall: warm paper base + ink default ─────────────────────────────── */
+.vault-surface {
+  background-color: #FAF8F4;
+  color: #1A1815;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Paper grain ─────────────────────────────────────────────────────────────
+   An feTurbulence fractalNoise field, desaturated, laid over the surface by a
+   ::before overlay at very low opacity and multiplied into the paper color so
+   it reads as tooth in the stock rather than as a gray film on top of it.
+   Subtle is the brief's own word: 0.032 is at the edge of perceptible on a
+   calibrated display and vanishes entirely in print, which is correct — paper
+   grain is felt, not seen. `pointer-events: none` keeps it non-interactive;
+   the host needs `position: relative` (`.vault-paper` sets it). */
+.vault-paper {
+  position: relative;
+  background-color: #FAF8F4;
+  isolation: isolate;
+}
+.vault-paper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.032;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+/* Content must sit above the grain overlay. */
+.vault-paper > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Card stock — the label itself: brighter, tighter tooth than the wall. */
+.vault-paper-card { background-color: #FFFFFF; }
+.vault-paper-card::before { opacity: 0.024; }
+
+/* Drawer interior / recessed well. */
+.vault-paper-sunk { background-color: #F1EDE5; }
+.vault-paper-sunk::before { opacity: 0.042; }
+
+/* ── Letterpress: type pressed INTO the sheet ────────────────────────────────
+   Light source above, so the impression's lower edge catches light (white
+   highlight below the glyph) and the upper edge holds shadow. This is the only
+   honest way to do it in CSS — a text-shadow pair, no images. */
+.vault-letterpress {
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85),
+    0 -1px 0 rgba(26, 24, 21, 0.09);
+}
+/* Deeper strike for the one or two display lines that carry a page. */
+.vault-letterpress-deep {
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95),
+    0 -1px 0 rgba(26, 24, 21, 0.16),
+    0 2px 1px rgba(26, 24, 21, 0.05);
+}
+
+/* ── Emboss: a plate raised off the wall (museum label, certificate) ─────── */
+.vault-emboss {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 -1px 0 rgba(26, 24, 21, 0.05),
+    0 1px 2px rgba(26, 24, 21, 0.05),
+    0 8px 20px -14px rgba(26, 24, 21, 0.18);
+}
+
+/* ── Deboss: pressed in — a well, a drawer, an inset field ──────────────── */
+.vault-deboss {
+  box-shadow:
+    inset 0 1px 3px rgba(26, 24, 21, 0.10),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* ── Hairlines ──────────────────────────────────────────────────────────────
+   `.vault-rule` is DECORATIVE ONLY (1.34:1 against paper). It must never be
+   the sole border of an interactive control — use `.vault-rule-strong`
+   (brass at 3.72:1, clearing the 3:1 WCAG 1.4.11 non-text minimum) there. */
+.vault-rule { border-color: #DED8CE; }
+.vault-rule-strong { border-color: #9A7B4F; }
+.vault-hairline-b { border-bottom: 1px solid #DED8CE; }
+.vault-hairline-t { border-top: 1px solid #DED8CE; }
+
+/* ── Composed plate: card stock + hairline + raised ──────────────────────── */
+.vault-plate {
+  background-color: #FFFFFF;
+  border: 1px solid #DED8CE;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 -1px 0 rgba(26, 24, 21, 0.05),
+    0 1px 2px rgba(26, 24, 21, 0.05),
+    0 8px 20px -14px rgba(26, 24, 21, 0.18);
+}
+
+/* ── Motion: still. Very still. ──────────────────────────────────────────────
+   Nothing bounces, spins, or slides dramatically. The curve is the expo-out
+   already used by the Concordia HUDs — cubic-bezier(0.16, 1, 0.3, 1), zero
+   overshoot — at longer durations and shorter travel, so a panel settles
+   rather than arrives.
+
+     .vault-reveal    420ms  — a page turns / a label settles (6px)
+     .vault-drawer    520ms  — a drawer opens: content wipes down under a
+                               clip-path edge instead of sliding as a block
+     .vault-ceremonial 880ms — the vault unlocks. Reserved for the induction
+                               moment; do not use it for routine surfaces. */
+@keyframes vault-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes vault-drawer {
+  from { opacity: 0; clip-path: inset(0 0 100% 0); }
+  to   { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+.vault-reveal     { animation: vault-reveal 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.vault-drawer     { animation: vault-drawer 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.vault-ceremonial { animation: vault-reveal 880ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Stillness override. globals.css applies a blanket
+   `button, a, input, textarea, select { transition-all duration-150 }`, which
+   animates TRANSFORM and makes controls twitch on hover — wrong for a museum.
+   Re-declaring an explicit property list (no `transform`, no `all`) at higher
+   specificity means Vault controls change color and never move. */
+.vault-surface button,
+.vault-surface a,
+.vault-surface input,
+.vault-surface textarea,
+.vault-surface select {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Focus: brass on paper ───────────────────────────────────────────────────
+   The global ring is neon cyan on lattice-void — invisible-adjacent and
+   tonally wrong on paper. Tailwind's ring is box-shadow based, so clearing
+   `box-shadow` + the ring custom property is required, not just setting an
+   outline. Brass measures 5.37:1 against paper / 5.70:1 against card, well
+   past the 3:1 WCAG 1.4.11 focus-indicator minimum. */
+.vault-surface :focus-visible,
+.vault-surface button:focus-visible,
+.vault-surface a:focus-visible,
+.vault-surface input:focus-visible,
+.vault-surface textarea:focus-visible,
+.vault-surface select:focus-visible {
+  outline: 2px solid #7E6234;
+  outline-offset: 2px;
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────────
+   `html.a11y-reduce-motion *` above already covers the in-app toggle, but that
+   is a class hook, not the OS-level signal. This is the real media query, so a
+   visitor whose system asks for less motion gets a still Vault without ever
+   touching Concord's settings. */
+@media (prefers-reduced-motion: reduce) {
+  .vault-reveal,
+  .vault-drawer,
+  .vault-ceremonial {
+    animation: none !important;
+  }
+  .vault-surface button,
+  .vault-surface a,
+  .vault-surface input,
+  .vault-surface textarea,
+  .vault-surface select {
+    transition-duration: 0.001ms !important;
+  }
+}

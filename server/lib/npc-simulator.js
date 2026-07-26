@@ -41,8 +41,16 @@ import { LruMap, LruSet } from "./lru-map.js";
 // { state, target, startPosition, helpCalled, alertedAt, _lastAttack }
 const _npcCombatState = new LruMap();
 
-// Aggression profiles per archetype
-const AGGRO_PROFILE = {
+// Aggression profiles per archetype.
+// Covers every archetype defined in npc-archetypes.js#UNIVERSE_ARCHETYPES
+// (all 8 universes × enemies/civilians/bosses) plus the GENERIC fallbacks.
+// Civilians are intentionally passive: aggro 0.0 + pursuitRadius 0 + melee 0
+// routes them onto the flee path (farmer pattern). Ranges: alertRadius 6–18,
+// pursuitRadius 0–30, melee 0–3, aggro 0.0–0.95. Boss archetypes get entries
+// even though conscious/immortal agents skip updateNPCCombatAI — cheap, and
+// covers procedurally-spawned killable variants + keeps coverage simple.
+// Exported for the coverage test (npc-aggro-coverage.test.js).
+export const AGGRO_PROFILE = {
   guard:     { alertRadius: 15, pursuitRadius: 25, melee: 2, aggro: 0.8, canCallHelp: true },
   soldier:   { alertRadius: 12, pursuitRadius: 20, melee: 2, aggro: 0.9, canCallHelp: true },
   bandit:    { alertRadius: 10, pursuitRadius: 18, melee: 2, aggro: 0.7, canCallHelp: false },
@@ -53,13 +61,137 @@ const AGGRO_PROFILE = {
   wraith:      { alertRadius: 12, pursuitRadius: 22, melee: 2, aggro: 0.85, canCallHelp: false },
   drift_eater: { alertRadius: 18, pursuitRadius: 30, melee: 3, aggro: 0.95, canCallHelp: true },
   shard_husk:  { alertRadius: 15, pursuitRadius: 25, melee: 2, aggro: 0.8,  canCallHelp: false },
+
+  // ── superhero ──────────────────────────────────────────────────────────────
+  henchman:         { alertRadius: 10, pursuitRadius: 16, melee: 2, aggro: 0.6,  canCallHelp: true },
+  mutant_brute:     { alertRadius: 8,  pursuitRadius: 20, melee: 3, aggro: 0.9,  canCallHelp: false },
+  tech_villain:     { alertRadius: 14, pursuitRadius: 18, melee: 2, aggro: 0.65, canCallHelp: true },
+  alien_soldier:    { alertRadius: 12, pursuitRadius: 22, melee: 2, aggro: 0.85, canCallHelp: true },
+  corrupted_hero:   { alertRadius: 14, pursuitRadius: 24, melee: 2, aggro: 0.8,  canCallHelp: false },
+  robot_enforcer:   { alertRadius: 12, pursuitRadius: 20, melee: 2, aggro: 0.75, canCallHelp: true },
+  vigilante:        { alertRadius: 12, pursuitRadius: 18, melee: 2, aggro: 0.5,  canCallHelp: false },
+  journalist:       { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  scientist:        { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  politician:       { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  crime_lord:       { alertRadius: 12, pursuitRadius: 20, melee: 2, aggro: 0.75, canCallHelp: true },
+  dimension_ruler:  { alertRadius: 16, pursuitRadius: 26, melee: 3, aggro: 0.85, canCallHelp: false },
+  shadow_government:{ alertRadius: 8,  pursuitRadius: 12, melee: 2, aggro: 0.4,  canCallHelp: true },
+
+  // ── fantasy ────────────────────────────────────────────────────────────────
+  goblin:           { alertRadius: 8,  pursuitRadius: 14, melee: 2, aggro: 0.75, canCallHelp: true },
+  orc_warrior:      { alertRadius: 10, pursuitRadius: 18, melee: 2, aggro: 0.85, canCallHelp: true },
+  dark_wizard:      { alertRadius: 17, pursuitRadius: 20, melee: 1, aggro: 0.7,  canCallHelp: false },
+  undead:           { alertRadius: 8,  pursuitRadius: 16, melee: 2, aggro: 0.8,  canCallHelp: false },
+  dragon_cultist:   { alertRadius: 10, pursuitRadius: 18, melee: 2, aggro: 0.8,  canCallHelp: true },
+  troll:            { alertRadius: 6,  pursuitRadius: 14, melee: 3, aggro: 0.95, canCallHelp: false },
+  blacksmith:       { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  bard:             { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  lich_king:        { alertRadius: 18, pursuitRadius: 28, melee: 2, aggro: 0.9,  canCallHelp: true },
+  dragon_lord:      { alertRadius: 18, pursuitRadius: 30, melee: 3, aggro: 0.9,  canCallHelp: false },
+  dark_jarl:        { alertRadius: 12, pursuitRadius: 20, melee: 2, aggro: 0.8,  canCallHelp: true },
+
+  // ── scifi ──────────────────────────────────────────────────────────────────
+  rogue_android:    { alertRadius: 12, pursuitRadius: 20, melee: 2, aggro: 0.8,  canCallHelp: false },
+  alien_scout:      { alertRadius: 16, pursuitRadius: 24, melee: 2, aggro: 0.6,  canCallHelp: true },
+  pirate:           { alertRadius: 10, pursuitRadius: 16, melee: 2, aggro: 0.65, canCallHelp: true },
+  corporate_enforcer:{ alertRadius: 12, pursuitRadius: 20, melee: 2, aggro: 0.75, canCallHelp: true },
+  combat_drone:     { alertRadius: 15, pursuitRadius: 25, melee: 2, aggro: 0.85, canCallHelp: true },
+  engineer:         { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  medic:            { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  pilot:            { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  hacker:           { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  ai_overlord:      { alertRadius: 18, pursuitRadius: 30, melee: 2, aggro: 0.9,  canCallHelp: true },
+  alien_queen:      { alertRadius: 14, pursuitRadius: 26, melee: 3, aggro: 0.9,  canCallHelp: true },
+  mega_corp_ceo:    { alertRadius: 8,  pursuitRadius: 10, melee: 1, aggro: 0.3,  canCallHelp: true },
+
+  // ── cyberpunk ──────────────────────────────────────────────────────────────
+  street_gang:      { alertRadius: 9,  pursuitRadius: 15, melee: 2, aggro: 0.65, canCallHelp: true },
+  cyborg_enforcer:  { alertRadius: 12, pursuitRadius: 20, melee: 2, aggro: 0.8,  canCallHelp: true },
+  netrunner:        { alertRadius: 14, pursuitRadius: 14, melee: 1, aggro: 0.5,  canCallHelp: false },
+  corpo_assassin:   { alertRadius: 15, pursuitRadius: 25, melee: 2, aggro: 0.9,  canCallHelp: false },
+  fixer:            { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  street_doc:       { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  techie:           { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  gang_warlord:     { alertRadius: 12, pursuitRadius: 22, melee: 3, aggro: 0.85, canCallHelp: true },
+  corp_chairman:    { alertRadius: 8,  pursuitRadius: 10, melee: 1, aggro: 0.3,  canCallHelp: true },
+
+  // ── horror ─────────────────────────────────────────────────────────────────
+  zombie:           { alertRadius: 7,  pursuitRadius: 20, melee: 2, aggro: 0.9,  canCallHelp: false },
+  cultist:          { alertRadius: 10, pursuitRadius: 16, melee: 2, aggro: 0.7,  canCallHelp: true },
+  demon:            { alertRadius: 14, pursuitRadius: 26, melee: 3, aggro: 0.95, canCallHelp: false },
+  possessed:        { alertRadius: 10, pursuitRadius: 18, melee: 2, aggro: 0.85, canCallHelp: false },
+  survivor:         { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  priest:           { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  hunter:           { alertRadius: 13, pursuitRadius: 18, melee: 2, aggro: 0.45, canCallHelp: false },
+  elder_god:        { alertRadius: 18, pursuitRadius: 30, melee: 3, aggro: 0.9,  canCallHelp: false },
+  cult_leader:      { alertRadius: 12, pursuitRadius: 18, melee: 2, aggro: 0.7,  canCallHelp: true },
+
+  // ── western ────────────────────────────────────────────────────────────────
+  outlaw:           { alertRadius: 10, pursuitRadius: 17, melee: 2, aggro: 0.7,  canCallHelp: true },
+  bounty_hunter:    { alertRadius: 15, pursuitRadius: 24, melee: 2, aggro: 0.55, canCallHelp: false },
+  bandit_gang:      { alertRadius: 10, pursuitRadius: 16, melee: 2, aggro: 0.7,  canCallHelp: true },
+  sheriff:          { alertRadius: 14, pursuitRadius: 22, melee: 2, aggro: 0.6,  canCallHelp: true },
+  saloon_keeper:    { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  miner:            { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  doctor:           { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  outlaw_king:      { alertRadius: 12, pursuitRadius: 22, melee: 2, aggro: 0.8,  canCallHelp: true },
+  railroad_baron:   { alertRadius: 7,  pursuitRadius: 8,  melee: 1, aggro: 0.2,  canCallHelp: true },
+
+  // ── medieval ───────────────────────────────────────────────────────────────
+  knight_rogue:     { alertRadius: 11, pursuitRadius: 18, melee: 2, aggro: 0.75, canCallHelp: false },
+  mercenary:        { alertRadius: 10, pursuitRadius: 18, melee: 2, aggro: 0.7,  canCallHelp: true },
+  plague_bearer:    { alertRadius: 8,  pursuitRadius: 14, melee: 2, aggro: 0.75, canCallHelp: false },
+  assassin:         { alertRadius: 16, pursuitRadius: 24, melee: 2, aggro: 0.9,  canCallHelp: false },
+  knight:           { alertRadius: 13, pursuitRadius: 20, melee: 2, aggro: 0.6,  canCallHelp: true },
+  innkeeper:        { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  monk:             { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  dark_king:        { alertRadius: 14, pursuitRadius: 24, melee: 2, aggro: 0.85, canCallHelp: true },
+  assassin_master:  { alertRadius: 17, pursuitRadius: 26, melee: 2, aggro: 0.9,  canCallHelp: false },
+
+  // ── modern ─────────────────────────────────────────────────────────────────
+  crime_syndicate:  { alertRadius: 9,  pursuitRadius: 15, melee: 2, aggro: 0.6,  canCallHelp: true },
+  corrupt_officer:  { alertRadius: 12, pursuitRadius: 18, melee: 2, aggro: 0.65, canCallHelp: true },
+  hitman:           { alertRadius: 15, pursuitRadius: 24, melee: 2, aggro: 0.9,  canCallHelp: false },
+  detective:        { alertRadius: 13, pursuitRadius: 18, melee: 2, aggro: 0.4,  canCallHelp: true },
+  mechanic:         { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  godfather:        { alertRadius: 10, pursuitRadius: 14, melee: 2, aggro: 0.5,  canCallHelp: true },
+  intelligence_chief:{ alertRadius: 10, pursuitRadius: 12, melee: 1, aggro: 0.35, canCallHelp: true },
+
+  // ── generic fallbacks (npc-archetypes.js GENERIC_ARCHETYPES) ─────────────────
+  wanderer:         { alertRadius: 8,  pursuitRadius: 12, melee: 2, aggro: 0.25, canCallHelp: false },
+  citizen:          { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+  elder:            { alertRadius: 7,  pursuitRadius: 0,  melee: 0, aggro: 0.0,  canCallHelp: false },
+
   default:   { alertRadius: 8,  pursuitRadius: 12, melee: 2, aggro: 0.3, canCallHelp: false },
 };
 
-// Base NPC attack damage by archetype (added on top of 8-15 base roll)
-const ARCHETYPE_DAMAGE_BONUS = {
+// Base NPC attack damage by archetype (added on top of 8-15 base roll).
+// Passive civilians + low-threat authority figures carry no bonus (they fall
+// back to the base roll on the rare occasion they ever attack). Exported for
+// the coverage test — every key here must have a matching AGGRO_PROFILE entry.
+export const ARCHETYPE_DAMAGE_BONUS = {
   guard: 5, soldier: 8, bandit: 4,
   wraith: 6, drift_eater: 12, shard_husk: 8,
+  // superhero
+  henchman: 3, mutant_brute: 10, tech_villain: 6, alien_soldier: 8,
+  corrupted_hero: 9, robot_enforcer: 7, vigilante: 5, crime_lord: 8, dimension_ruler: 12,
+  // fantasy
+  goblin: 2, orc_warrior: 7, dark_wizard: 9, undead: 3, dragon_cultist: 5,
+  troll: 12, lich_king: 14, dragon_lord: 15, dark_jarl: 10,
+  // scifi
+  rogue_android: 7, alien_scout: 4, pirate: 4, corporate_enforcer: 6,
+  combat_drone: 6, ai_overlord: 14, alien_queen: 13,
+  // cyberpunk
+  street_gang: 3, cyborg_enforcer: 8, netrunner: 5, corpo_assassin: 11, gang_warlord: 11,
+  // horror
+  zombie: 2, cultist: 3, demon: 12, possessed: 6, hunter: 6, elder_god: 15, cult_leader: 8,
+  // western
+  outlaw: 4, bounty_hunter: 7, bandit_gang: 4, sheriff: 6, outlaw_king: 9,
+  // medieval
+  knight_rogue: 8, mercenary: 6, plague_bearer: 4, assassin: 10, knight: 7,
+  dark_king: 12, assassin_master: 12,
+  // modern
+  crime_syndicate: 3, corrupt_officer: 5, hitman: 10, detective: 4, godfather: 6,
 };
 
 // Rate-limit: minimum ms between NPC attacks on same target
@@ -100,11 +232,140 @@ function _dist2d(a, b) {
   return Math.sqrt(dx * dx + dz * dz);
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Line-of-sight — a defensive occlusion gate on target ACQUISITION only.
+// An NPC can't be alerted to (or begin pursuing) a player it can't see through
+// a standing building. Once engaged (pursuing/attacking/retreating) the NPC
+// keeps target memory — no LOS re-check there, by design. Fail-open: any DB or
+// geometry error returns true (radius-only behavior), so a defensive feature
+// can never make combat *worse* than before it existed.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Per-world building geometry cache: worldId → { at: ms, rows: [...] }
+const _losBuildingsCache = new Map();
+const _LOS_CACHE_TTL_MS = 5000;
+
+/**
+ * Pure 2D segment-vs-axis-aligned-AABB (building footprint) intersection test.
+ * The footprint is the rect centred on (bld.x, bld.z) spanning ±width/2 × ±depth/2.
+ * Rotation is intentionally ignored (axis-aligned approximation) — a coarse but
+ * cheap occluder good enough for an alert gate.
+ *
+ * If either endpoint is INSIDE the rect, returns false — an NPC or player
+ * standing in a building's interior/doorway should not be blinded by that
+ * building's own walls. Returns false for a degenerate (zero-area) footprint.
+ *
+ * Uses the slab method (Liang–Barsky style) for the segment a→b against the box.
+ *
+ * @param {{x:number,z:number}} a  segment endpoint (e.g. NPC position)
+ * @param {{x:number,z:number}} b  segment endpoint (e.g. player position)
+ * @param {{x:number,z:number,width:number,depth:number}} bld  building footprint
+ * @returns {boolean} true if the segment crosses the footprint (i.e. blocks LOS)
+ */
+export function segmentIntersectsFootprint(a, b, bld) {
+  if (!a || !b || !bld) return false;
+  const ax = Number(a.x), az = Number(a.z);
+  const bx = Number(b.x), bz = Number(b.z);
+  const cx = Number(bld.x), cz = Number(bld.z);
+  const w  = Number(bld.width), d = Number(bld.depth);
+  if (![ax, az, bx, bz, cx, cz, w, d].every(Number.isFinite)) return false;
+  if (w <= 0 || d <= 0) return false; // degenerate footprint occludes nothing
+
+  const minX = cx - w / 2, maxX = cx + w / 2;
+  const minZ = cz - d / 2, maxZ = cz + d / 2;
+
+  const inside = (px, pz) => px >= minX && px <= maxX && pz >= minZ && pz <= maxZ;
+  // Either endpoint inside → not treated as an occluder (see doc above).
+  if (inside(ax, az) || inside(bx, bz)) return false;
+
+  // Liang–Barsky clip of the parametric segment p(t)=a+t*(b-a), t∈[0,1].
+  const dx = bx - ax;
+  const dz = bz - az;
+  let t0 = 0, t1 = 1;
+  const clip = (p, q) => {
+    // For p*t <= q along one boundary.
+    if (p === 0) return q >= 0; // parallel to slab: inside iff q>=0
+    const r = q / p;
+    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+    else       { if (r < t0) return false; if (r < t1) t1 = r; }
+    return true;
+  };
+  if (!clip(-dx, ax - minX)) return false;
+  if (!clip( dx, maxX - ax)) return false;
+  if (!clip(-dz, az - minZ)) return false;
+  if (!clip( dz, maxZ - az)) return false;
+  // A crossing exists if the clipped interval is non-empty within [0,1].
+  return t0 <= t1;
+}
+
+/**
+ * Load (and cache, ~5s TTL) the standing/damaged building footprints for a
+ * world. Mirrors skill-environment.js#shouldStaggerOnTerrain's query convention
+ * (state IN ('standing','damaged'), try/catch). Capped at 300 rows. Returns
+ * null on any DB error so hasLineOfSight can fail open.
+ */
+function _getWorldBuildings(db, worldId) {
+  const cached = _losBuildingsCache.get(worldId);
+  const now = Date.now();
+  if (cached && (now - cached.at) < _LOS_CACHE_TTL_MS) return cached.rows;
+  let rows;
+  try {
+    rows = db.prepare(`
+      SELECT id, x, z, width, depth
+        FROM world_buildings
+       WHERE world_id = ?
+         AND state IN ('standing', 'damaged')
+       LIMIT 300
+    `).all(worldId);
+  } catch {
+    return null;
+  }
+  _losBuildingsCache.set(worldId, { at: now, rows });
+  return rows;
+}
+
+/**
+ * True if `from` can see `to` in world `worldId` — i.e. no standing/damaged
+ * building footprint sits across the sight segment. Fail-open: returns true on
+ * any DB/query/geometry failure (radius-only fallback), so LOS never blinds an
+ * NPC more than the pre-existing distance gate did.
+ */
+export function hasLineOfSight(db, worldId, from, to) {
+  try {
+    if (!from || !to) return true;
+    const rows = _getWorldBuildings(db, worldId);
+    if (!rows || rows.length === 0) return true;
+    for (const bld of rows) {
+      if (segmentIntersectsFootprint(from, to, bld)) return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Test-only helper — clears the per-world building geometry cache so back-to-back
+ * scenarios sharing a worldId aren't served a stale snapshot.
+ */
+export function _losCacheClear() {
+  _losBuildingsCache.clear();
+}
+
+/**
+ * Test-only helper — read the private combat-state entry for an NPC id so the
+ * LOS/FSM test can assert transitions without reaching into module internals.
+ */
+export function _combatStateFor(npcId) {
+  return _npcCombatState.get(npcId) || null;
+}
+
 /**
  * Core combat AI function — runs once per NPC per tick.
  * Accesses io lazily via globalThis._concordREALTIME.
+ * Exported (additive) so the LOS test can drive the real FSM.
  */
-function updateNPCCombatAI(npc, worldId, db) {
+export function updateNPCCombatAI(npc, worldId, db) {
   // Graceful skip if NPC has no position
   if (!npc || !npc.location) return;
 
@@ -219,8 +480,11 @@ function updateNPCCombatAI(npc, worldId, db) {
   // ── State machine transitions ──────────────────────────────────────────────
 
   if (cs.state === 'idle') {
-    // idle → alerted: player within alert radius AND conditions met
-    if (nearestPlayer && nearestDist <= profile.alertRadius && effectiveAggro > 0) {
+    // idle → alerted: player within alert radius AND conditions met AND visible.
+    // LOS is an ADDITIONAL conjunct on acquisition — a wall between NPC and
+    // player keeps the NPC idle (fail-open on DB error, see hasLineOfSight).
+    if (nearestPlayer && nearestDist <= profile.alertRadius && effectiveAggro > 0
+        && hasLineOfSight(db, worldId, npc.location, nearestPlayer)) {
       cs.state     = 'alerted';
       cs.target    = nearestPlayer;
       cs.alertedAt = now;
@@ -228,8 +492,10 @@ function updateNPCCombatAI(npc, worldId, db) {
     }
 
   } else if (cs.state === 'alerted') {
-    // alerted → pursuing: target confirmed within pursuit radius
-    if (nearestPlayer && nearestDist <= profile.pursuitRadius) {
+    // alerted → pursuing: target confirmed within pursuit radius AND still
+    // visible. No-LOS falls through to the 10s alertedAt timeout back to idle.
+    if (nearestPlayer && nearestDist <= profile.pursuitRadius
+        && hasLineOfSight(db, worldId, npc.location, nearestPlayer)) {
       cs.target = nearestPlayer;
       if (profile.pursuitRadius > 0) {
         cs.state = 'pursuing';
@@ -492,6 +758,12 @@ function _performNPCAttack(npc, target, worldId, db, archetype) {
     const damageResult = computeDamage(attackerStats, defenderStats, {});
     const { kill } = applyDamageToPlayer(db, worldId, npc.id, 'npc', target.userId, damageResult, {
       element: 'none', bar_used: 'hp', bar_cost: damageResult.finalDamage,
+      // Hit position → the attacking NPC's live simulated location. This is the
+      // same `npc.location` the simulator pathfinds, checks line-of-sight, and
+      // range-gates this very attack from, and the same value it already ships
+      // on its own socket events — i.e. the authoritative "where this creature
+      // is", not a reconstruction. Feeds damage_events.{x,z} → footprint feed.
+      x: npc.location?.x, z: npc.location?.z,
     });
 
     // Wave 4 (Gap C) — autonomous NPC heartbeat attacks are a second real

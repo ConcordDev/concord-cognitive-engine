@@ -20,6 +20,7 @@
 
 import { recordSignal, decaySweep } from "../lib/embodied/signals.js";
 import { getClimateOverride } from "../lib/world-flavor.js";
+import { worldDayConfig, resolveDayPhase } from "../lib/world-calendar.js";
 import logger from "../logger.js";
 
 const SECONDS_PER_DAY = 86400;
@@ -28,11 +29,17 @@ const SENSOR_TTL_S    = 600; // 10 min — must outlive the 75s tick interval
 /**
  * Compute a 0..1 daylight factor from the world's time-of-day.
  * Worlds without a `time_of_day_s` row default to noon.
+ *
+ * `secondsPerDay` defaults to the standard 86400 (24h); a world with a
+ * `calendar.json` declaring a non-24h `hours_per_day` passes its scaled
+ * cycle length here so the sun curve peaks/troughs over that world's
+ * actual day length, not a generic 24h one.
  */
-function daylightFactor(secondsOfDay) {
-  const s = ((Number(secondsOfDay) || 43200) + SECONDS_PER_DAY) % SECONDS_PER_DAY;
-  // sin curve peaks at noon (s = 43200), troughs at midnight.
-  const phase = (s / SECONDS_PER_DAY) * 2 * Math.PI - Math.PI / 2;
+function daylightFactor(secondsOfDay, secondsPerDay = SECONDS_PER_DAY) {
+  const spd = secondsPerDay > 0 ? secondsPerDay : SECONDS_PER_DAY;
+  const s = ((Number(secondsOfDay) || spd / 2) + spd) % spd;
+  // sin curve peaks at "noon" (s = spd / 2), troughs at "midnight".
+  const phase = (s / spd) * 2 * Math.PI - Math.PI / 2;
   return Math.max(0, Math.sin(phase));
 }
 
@@ -95,13 +102,20 @@ export function runEnvironmentSensor({ db, state: _state, tickCount: _tickCount 
         peakLight:   (flavorClimate.illumination != null) ? (flavorClimate.illumination * 100_000) : (rules.climate?.peakLight ?? 100_000),
       } : (rules.climate ?? {});
 
+      // Per-world day config: a `content/world/<id>/calendar.json`
+      // (world-kit-templates.js#calendarTemplate) can declare a non-24h
+      // `hours_per_day` + authored `day_phases`; worlds without one get
+      // the standard 24h/no-override config (byte-identical to before
+      // this was wired in).
+      const dayConfig = worldDayConfig(worldId);
+
       // Time-of-day: prefer worlds.time_of_day_s if the column exists; fall
       // back to wall-clock UTC seconds-of-day. Tests can pin either.
       let secondsOfDay = todByWorld.get(worldId);
       if (!Number.isFinite(secondsOfDay)) {
-        secondsOfDay = (Math.floor(Date.now() / 1000)) % SECONDS_PER_DAY;
+        secondsOfDay = (Math.floor(Date.now() / 1000)) % dayConfig.secondsPerDay;
       }
-      const dayF = daylightFactor(secondsOfDay);
+      const dayF = daylightFactor(secondsOfDay, dayConfig.secondsPerDay);
 
       const temperature = Number(climate.temperature ?? 15);
       const humidity    = Number(climate.humidity ?? 50);
@@ -118,9 +132,15 @@ export function runEnvironmentSensor({ db, state: _state, tickCount: _tickCount 
       // the DB is the canonical source other systems (and the embodied sensor's
       // weather_state/time_of_day read) can query. Guarded for pre-303 builds.
       try {
-        const hourOfDay = (secondsOfDay / 3600) % 24;
-        const todLabel = hourOfDay < 5 || hourOfDay >= 21 ? "night"
-          : hourOfDay < 8 ? "dawn" : hourOfDay < 18 ? "day" : "dusk";
+        const hourOfDay = (secondsOfDay / 3600) % dayConfig.hoursPerDay;
+        // A calendar-declared day_phases list wins when present (matched by
+        // its authored `id`, e.g. cyber's "neon_dawn"/"dark_hours"); worlds
+        // without one keep the original generic 24h night/dawn/day/dusk
+        // brackets exactly as before.
+        const todLabel = dayConfig.phases
+          ? (resolveDayPhase(hourOfDay, dayConfig.hoursPerDay, dayConfig.phases)?.id
+              ?? (hourOfDay < 5 || hourOfDay >= 21 ? "night" : hourOfDay < 8 ? "dawn" : hourOfDay < 18 ? "day" : "dusk"))
+          : (hourOfDay < 5 || hourOfDay >= 21 ? "night" : hourOfDay < 8 ? "dawn" : hourOfDay < 18 ? "day" : "dusk");
         const weatherState = humidity >= 80 ? "rain" : airQuality < 0.6 ? "smog" : "clear";
         db.prepare(`UPDATE worlds SET time_of_day_s = ?, time_of_day = ?, weather_state = ? WHERE id = ?`)
           .run(secondsOfDay, todLabel, weatherState, worldId);

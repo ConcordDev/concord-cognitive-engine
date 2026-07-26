@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { SOCKET_URL } from '@/lib/realtime/socket';
 
 interface AdoptionEvent {
   id: string;
@@ -38,7 +39,10 @@ export function MentorshipNotifier() {
     (async () => {
       try {
         const { io } = await import('socket.io-client');
-        socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+                // Same-origin `io({...})` never connects: Next's rewrites proxy HTTP
+        // but not WebSocket upgrades, so `mentorship:npc-adopted` could never
+        // arrive. Use the one resolved SOCKET_URL (see lib/realtime/socket.ts).
+        socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
         socket.on('mentorship:npc-adopted', (payload: Omit<AdoptionEvent, 'id'>) => {
           const id = `adopt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
           setEvents((cur) => [...cur, { ...payload, id }].slice(-MAX_TOASTS));

@@ -149,6 +149,20 @@ function CodexLensInner() {
     router.replace(pathname, { scroll: false });
   }, [router, pathname]);
 
+  // Escape closes the deep-link modal — keyboard focus lives inside the
+  // dialog (the Close button, the Copy permalink button), never on the
+  // backdrop itself, so a document-level listener is the only way Escape
+  // reaches the handler; the modal's own onKeyDown below is a redundant
+  // second path for the rare case the backdrop itself is focused.
+  useEffect(() => {
+    if (!deepLinkId) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDeepLink();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [deepLinkId, closeDeepLink]);
+
   // Copy-permalink: the producing side of the deep-link feature. Every entry
   // (list row + the deep-link modal itself) can generate its own shareable URL.
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -222,10 +236,12 @@ function CodexLensInner() {
           aria-label="Codex entry detail"
           style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.6)' }}
           onClick={closeDeepLink}
+          onKeyDown={(e) => { if (e.key === 'Escape') closeDeepLink(); }}
         >
           <div
             style={{ maxWidth: 640, width: '100%', maxHeight: '82vh', overflowY: 'auto', borderRadius: 12, padding: 20, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }}
             onClick={(ev) => ev.stopPropagation()}
+            onKeyDown={(ev) => { if (ev.key === 'Escape') closeDeepLink(); else ev.stopPropagation(); }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
               <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{deepLink.event?.title ?? 'Codex entry'}</h2>

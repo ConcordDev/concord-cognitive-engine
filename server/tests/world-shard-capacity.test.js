@@ -5,10 +5,13 @@
 // matching this session's heartbeat-pool-e2e.test.js precedent.
 //
 // SHARD_MAX_ACTIVE is a module-level const read once at import time (same
-// pattern as this file's other SHARD_* tunables) — CONCORD_MAX_ACTIVE_SHARDS
-// MUST be set as a real process env var before node starts (see this file's
-// package.json test script / CI invocation), not assigned at runtime inside
-// a test hook, which would run after the module has already evaluated it.
+// pattern as this file's other SHARD_* tunables) — so this file sets
+// CONCORD_MAX_ACTIVE_SHARDS itself, in before(), BEFORE dynamically
+// importing world-shard-manager.js for the first time. A static top-level
+// import would evaluate the module (and its SHARD_MAX_ACTIVE const) before
+// before() ever runs, which is why this file is self-sufficient via
+// dynamic import rather than relying on an external env var being set
+// ahead of the node invocation.
 
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -17,26 +20,31 @@ import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { runMigrations } from "../migrate.js";
-import {
-  initWorldShards,
-  ensureWorldActive,
-  markWorldUserCount,
-  getShardHealth,
-  shutdownShards,
-  _resetShardManagerForTests,
-} from "../lib/world-shard-manager.js";
 
 describe("world-shard-manager — capacity cap + LRU-idle eviction (real workers)", () => {
   let dbPath;
   let db;
+  let initWorldShards;
+  let ensureWorldActive;
+  let markWorldUserCount;
+  let getShardHealth;
+  let shutdownShards;
+  let _resetShardManagerForTests;
 
   before(async () => {
     process.env.NODE_ENV = "test";
     process.env.CONCORD_SHARD_WORLDS = "true";
-    assert.equal(
-      process.env.CONCORD_MAX_ACTIVE_SHARDS, "2",
-      "CONCORD_MAX_ACTIVE_SHARDS=2 must be set as a real shell env var before this file's node --test invocation — the module reads it once at import time",
-    );
+    process.env.CONCORD_MAX_ACTIVE_SHARDS = "2";
+
+    ({
+      initWorldShards,
+      ensureWorldActive,
+      markWorldUserCount,
+      getShardHealth,
+      shutdownShards,
+      _resetShardManagerForTests,
+    } = await import("../lib/world-shard-manager.js"));
+
     dbPath = path.join(os.tmpdir(), `concord-shard-cap-${process.pid}-${Date.now()}.db`);
     db = new Database(dbPath);
     await runMigrations(db);

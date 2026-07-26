@@ -38,7 +38,7 @@ describe('ConcordiaScene — resource-node click raycast', () => {
 });
 
 describe('world/page.tsx — click-to-gather consumer', () => {
-  it('gatherFromNode is a stable useCallback (not a fresh closure every render)', () => {
+  it('page.tsx\'s source declares gatherFromNode via useCallback (memoization-identity source-shape pin — proves the declaration shape, not runtime stability of the closure identity)', () => {
     expect(pageSrc).toContain('const gatherFromNode = useCallback(async (nodeId: string) => {');
   });
 

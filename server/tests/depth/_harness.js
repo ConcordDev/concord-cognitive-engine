@@ -20,6 +20,11 @@ import { after } from "node:test";
 
 let _t = null;
 let _afterHookRegistered = false;
+// Set ONLY when this harness minted its own throwaway DB_PATH below. A caller
+// that supplied DB_PATH (e.g. `npm run test:depth:raw`, which deliberately
+// shares one across files) owns that file and we must never delete it.
+let _ownedDbPath = null;
+let _ownedStatePath = null;
 export async function load() {
   if (!_afterHookRegistered) {
     _afterHookRegistered = true;
@@ -121,6 +126,36 @@ export async function load() {
         const handles = process._getActiveHandles ? process._getActiveHandles() : [];
         for (const h of handles) { if (h && typeof h.unref === "function") h.unref(); }
       } catch { /* best-effort teardown */ }
+      // Delete the throwaway DB this harness minted. Every depth file that
+      // boots the server leaves a migrated SQLite DB plus its -wal/-shm
+      // sidecars in tmpdir — measured at ~40MB of WAL alone per file, and 108
+      // stray `concord-*.db` files were found accumulating during a single
+      // full-suite run. Nothing removed them, which is one of the two leaks
+      // that filled the disk mid-run this session (the other, e2e mkdtemp
+      // dirs, was fixed separately).
+      //
+      // Unlinking here is safe even though the DB may still be open: on POSIX
+      // this drops the directory entry and the kernel reclaims the space when
+      // the last handle closes, which the watchdog's exit() below guarantees
+      // moments later. Guarded by `_ownedDbPath` so a caller-supplied
+      // DB_PATH is never touched.
+      //
+      // The STATE_PATH dump is the BIGGER of the two by an order of
+      // magnitude: ~8MB of serialized STATE per file, measured at 1,164
+      // stray `concord-depth-state-*.json` totalling 9.0GB. `.tmp` is
+      // included because STATE is persisted atomically (write sidecar, then
+      // rename), so an interrupted run strands that instead.
+      if (_ownedDbPath || _ownedStatePath) {
+        try {
+          const fs = await import("node:fs");
+          const targets = [];
+          if (_ownedDbPath) targets.push(_ownedDbPath, `${_ownedDbPath}-wal`, `${_ownedDbPath}-shm`);
+          if (_ownedStatePath) targets.push(_ownedStatePath, `${_ownedStatePath}.tmp`);
+          for (const t of targets) {
+            try { fs.rmSync(t, { force: true }); } catch { /* best-effort */ }
+          }
+        } catch { /* best-effort teardown */ }
+      }
       const watchdog = setTimeout(() => { process.exit(process.exitCode ?? 0); }, 200);
       watchdog.unref();
     });
@@ -133,11 +168,26 @@ export async function load() {
     // pre-seeds the per-user lens stores (e.g. STATE.accountingLens) and the
     // fixed-label depthCtx users collide with that data, so behavioral round-trips
     // read DOUBLED/accumulated values. Point STATE_PATH at a throwaway file unless
-    // the caller already pinned one. (DB_PATH is already isolated by the runner.)
+    // the caller already pinned one.
     if (!process.env.STATE_PATH) {
       const os = await import("node:os");
       const path = await import("node:path");
       process.env.STATE_PATH = path.join(os.tmpdir(), `concord-depth-state-${process.pid}-${Date.now()}.json`);
+      _ownedStatePath = process.env.STATE_PATH;
+    }
+    // Isolate DB_PATH the same way. The no-egress.mjs preload DOES set a
+    // per-process DB_PATH — but only when NODE_ENV==="test" AT PRELOAD TIME,
+    // which is BEFORE this harness sets NODE_ENV=test above. So for depth files
+    // that boot through this harness, the runner's guard is skipped and server.js
+    // would otherwise hydrate the shared on-disk data/concord.db (cross-file +
+    // cross-run row accumulation → intermittent count-assertion failures, e.g.
+    // education courses/cohorts). Pin a throwaway DB unless the caller already
+    // did (e.g. test:depth:raw deliberately shares one).
+    if (!process.env.DB_PATH) {
+      const os = await import("node:os");
+      const path = await import("node:path");
+      process.env.DB_PATH = path.join(os.tmpdir(), `concord-depth-db-${process.pid}-${Date.now()}.db`);
+      _ownedDbPath = process.env.DB_PATH;
     }
     _t = (await import("../../server.js")).__TEST__;
   }

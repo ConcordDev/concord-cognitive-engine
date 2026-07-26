@@ -14,9 +14,13 @@ vi.mock('next/navigation', () => ({
 // Mock modules
 const mockConnectSocket = vi.fn();
 const mockDisconnectSocket = vi.fn();
+const mockReconnectSocket = vi.fn();
+const mockSubscribe = vi.fn(() => () => {});
 vi.mock('@/lib/realtime/socket', () => ({
   connectSocket: () => mockConnectSocket(),
   disconnectSocket: () => mockDisconnectSocket(),
+  reconnectSocket: () => mockReconnectSocket(),
+  subscribe: (...args: unknown[]) => mockSubscribe(...args),
 }));
 
 const mockApiGet = vi.fn();
@@ -224,6 +228,43 @@ describe('Providers', () => {
 
     unmount();
     expect(mockDisconnectSocket).toHaveBeenCalled();
+  });
+
+  it('subscribes to system:reconnect and calls reconnectSocket when it fires (DET-C batch 8)', async () => {
+    (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue('true');
+
+    render(
+      <Providers>
+        <div>Content</div>
+      </Providers>
+    );
+
+    await waitFor(() => {
+      expect(mockSubscribe).toHaveBeenCalledWith('system:reconnect', expect.any(Function));
+    });
+
+    const [, handler] = mockSubscribe.mock.calls.find((c) => c[0] === 'system:reconnect')!;
+    (handler as () => void)();
+    expect(mockReconnectSocket).toHaveBeenCalled();
+  });
+
+  it('unsubscribes from system:reconnect on unmount', async () => {
+    (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue('true');
+    const offSpy = vi.fn();
+    mockSubscribe.mockReturnValueOnce(offSpy);
+
+    const { unmount } = render(
+      <Providers>
+        <div>Content</div>
+      </Providers>
+    );
+
+    await waitFor(() => {
+      expect(mockSubscribe).toHaveBeenCalledWith('system:reconnect', expect.any(Function));
+    });
+
+    unmount();
+    expect(offSpy).toHaveBeenCalled();
   });
 
   it('handles failed auth/me gracefully', async () => {

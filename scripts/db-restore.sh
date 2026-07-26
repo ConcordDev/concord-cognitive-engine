@@ -59,15 +59,40 @@ if [ ! -f "$RESTORED_DB" ]; then
   exit 1
 fi
 
+# Integrity check — never restore a corrupt snapshot over a good DB.
+# NOTE: this used to be silently skipped whenever the sqlite3 CLI binary
+# wasn't installed (no warning, no failure — just no check ever ran).
+# Verified live on a box without sqlite3: db-backup.sh's own "integrity: ok"
+# line never printed and nothing said why. Fall back to the better-sqlite3
+# the server already depends on (same fallback pattern db-backup.sh uses
+# for the snapshot step itself) instead of leaving that gap silent.
+echo "[db-restore] Verifying backup integrity..."
+INTEGRITY=""
+INTEGRITY_CHECKED=false
 if command -v sqlite3 &>/dev/null; then
-  echo "[db-restore] Verifying backup integrity..."
   INTEGRITY=$(sqlite3 "$RESTORED_DB" "PRAGMA integrity_check;" 2>&1)
+  INTEGRITY_CHECKED=true
+elif command -v node &>/dev/null; then
+  INTEGRITY=$(node -e "
+    const Database = require('$PROJECT_ROOT/server/node_modules/better-sqlite3');
+    const db = new Database('$RESTORED_DB', { readonly: true });
+    const rows = db.pragma('integrity_check');
+    db.close();
+    process.stdout.write(rows.length === 1 && rows[0].integrity_check === 'ok' ? 'ok' : JSON.stringify(rows));
+  " 2>&1)
+  INTEGRITY_CHECKED=true
+fi
+
+if [ "$INTEGRITY_CHECKED" = true ]; then
   if [ "$INTEGRITY" != "ok" ]; then
     echo "[db-restore] INTEGRITY CHECK FAILED: $INTEGRITY"
     echo "[db-restore] Aborting restore. Current database is unchanged."
     exit 1
   fi
   echo "[db-restore] Integrity check: OK"
+else
+  echo "[db-restore] WARN: neither sqlite3 nor node available — SKIPPING integrity check."
+  echo "[db-restore] WARN: restoring an unverified snapshot. Install sqlite3 or node to close this gap."
 fi
 
 # --- Safety backup of the current database ---

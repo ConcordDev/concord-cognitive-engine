@@ -147,4 +147,23 @@ describe('AuctionLensPage — four UX states', () => {
     emitSocket('auction:settled', { auctionId: 'auc_test1', sellerUserId: 'seller', buyerUserId: 'b2' });
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterBid));
   });
+
+  it('realtime: auction:buy-order-placed and auction:buy-order-filled socket events refetch (DET-C batch 2 — were dead server broadcasts)', async () => {
+    const fetchMock = makeFetch((url) => {
+      if (url.includes('/api/auctions/active')) return jsonResponse({ ok: true, auctions: [] });
+      if (url.includes('/api/auctions/buy-orders')) return jsonResponse({ ok: true, buyOrders: [] });
+      return jsonResponse(EMPTY);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AuctionLensPage />);
+    await screen.findByText(/no active auctions/i);
+
+    const callsAfterMount = fetchMock.mock.calls.length;
+    emitSocket('auction:buy-order-placed', { buyOrderId: 'bo_1', buyerUserId: 'b3', escrowCc: 50 });
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterMount));
+
+    const callsAfterPlaced = fetchMock.mock.calls.length;
+    emitSocket('auction:buy-order-filled', { buyOrderId: 'bo_1', sellerUserId: 'b4', fillQty: 1, payment: 50, newStatus: 'filled' });
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterPlaced));
+  });
 });

@@ -13,9 +13,13 @@
 // node --test'able without a live world.
 
 import crypto from "node:crypto";
+import { renderedElevationAt, RENDERED_TERRAIN_CONSTANTS } from "./world-terrain.js";
 
 export const CELL_SIZE = Number(process.env.CONCORD_TERRAIN_CELL_M) || 10; // metres per deformation cell
-const WORLD_SIZE = 2000;
+// Sourced from world-terrain.js's RENDERED_TERRAIN_CONSTANTS (not a local
+// literal) so this module can never silently drift from the canonical
+// formula's own notion of world size again.
+const WORLD_SIZE = RENDERED_TERRAIN_CONSTANTS.terrainSizeMeters; // 2000
 const MAX_DIG_DEPTH = Number(process.env.CONCORD_MAX_DIG_DEPTH) || 30; // metres below base a cell can be dug
 const MAX_RAISE = Number(process.env.CONCORD_MAX_RAISE) || 20;
 
@@ -23,24 +27,51 @@ export function cellOf(wx, wz) {
   return { cx: Math.floor(wx / CELL_SIZE), cz: Math.floor(wz / CELL_SIZE) };
 }
 
-// ── Base heightmap (the seed) — MUST match the client Simplex + the prior
-// world-gathering sin-wave shape so existing nodes/pathing don't jump. This is
-// the canonical server elevation; world-gathering now delegates here. ─────────
+// ── Base heightmap (the seed) ─────────────────────────────────────────────
+// Delegates to world-terrain.js#renderedElevationAt — the CANONICAL port of
+// TerrainRenderer.tsx#generatePoughkeepsieHeightmap (the formula the
+// Three.js client actually renders). This module previously carried an
+// independent sine-series APPROXIMATION of that shape (same qualitative
+// river/bluff/plateau/hills/creek structure, different numeric values —
+// a structural approximation, not the same function) that had silently
+// diverged from the real rendered terrain; world-gathering.js (node
+// elevation) and terrain-water.js (flow) both consume `baseElevation`
+// directly, so that divergence was live, not theoretical. Delegating here
+// makes this THE single elevation truth end-to-end: render, gathering, and
+// hydrology all sample the identical formula.
+//
+// Coordinate convention: `nx = wx / WORLD_SIZE`, `nz = wz / WORLD_SIZE` —
+// i.e. wx/wz are expected in the same [0, WORLD_SIZE] (non-centred) range
+// this module always used, matching `renderedElevationAt`'s own
+// documented raw-grid convention (`x/width`, NOT the centred-origin
+// `sampleRenderedHeight` convenience wrapper world-terrain.js also
+// exports, which offsets by size/2 to match TerrainRenderer.tsx's mesh
+// *placement* math). Do NOT swap in `sampleRenderedHeight` here without
+// re-deriving every caller's coordinate space — it is not a drop-in.
+//
+// `renderedElevationAt` already returns metres, clamped to
+// [0, RENDERED_TERRAIN_CONSTANTS.maxElevation] (80) — no additional
+// scaling or clamping needed; the old `Math.max(0, Math.min(80, elev))`
+// clamp this function used to do itself is now performed inside
+// `renderedElevationAt`.
+//
+// CAVEATS (documented, not fixed here — out of scope for this change):
+//   - The Three.js client (`TerrainRenderer.tsx`) has its OWN in-language
+//     copy of this formula (it can't import server ESM); that copy must be
+//     hand-kept-in-sync with `world-terrain.js#renderedElevationAt` by
+//     whoever touches either side. This file no longer contributes a THIRD
+//     divergent copy, but the client/server duplication itself remains.
+//   - Any world with PERSISTED deformation deltas (`world_terrain_deformations`)
+//     will see a step-change in its cells' ABSOLUTE base elevation the
+//     first time this runs (the old sine-series baseline vs. the real
+//     rendered baseline differ at most points). Deltas are stored as
+//     RELATIVE offsets (`getElevationAt` = base + delta), so a previously
+//     dug pit or raised mound keeps the same offset from the new, more
+//     correct base — gameplay (pit depth, mound height) is unaffected —
+//     but the ABSOLUTE elevation at a deformed cell will jump to match
+//     the real terrain instead of the old approximation.
 export function baseElevation(wx, wz) {
-  const nx = wx / WORLD_SIZE, nz = wz / WORLD_SIZE;
-  let elev = 0;
-  if (nx < 0.1)      elev = 2 + nx * 30;
-  else if (nx < 0.2) elev = 5 + Math.pow((nx - 0.1) / 0.1, 2) * 35;
-  else if (nx < 0.6) elev = 40 + Math.sin(nx * Math.PI * 3) * 5;
-  else {
-    elev = 45 + (nx - 0.6) * 80;
-    elev += Math.sin(nx * 12 + nz * 8) * 6 + Math.sin(nx * 7 - nz * 5) * 4;
-  }
-  const creekX = 0.35 + nz * 0.15;
-  const dc = Math.abs(nx - creekX);
-  if (dc < 0.04) elev -= 12 * (1 - dc / 0.04);
-  elev += Math.sin(nx * 47.3 + nz * 31.7) * 0.5 + Math.sin(nx * 97.1 + nz * 73.3) * 0.3;
-  return Math.max(0, Math.min(80, elev));
+  return renderedElevationAt(wx / WORLD_SIZE, wz / WORLD_SIZE);
 }
 
 /** Total delta accumulated at a cell (sum is a single row, so this is a read). */

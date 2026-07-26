@@ -4,6 +4,21 @@
 // Per research dispatched 2026-05-16: options chains with greeks, futures
 // continuous contracts, FX major pairs, simulated L2 depth, alerts/scanner.
 // Per-user state, BSM-derived greeks, CME-symbol-native futures.
+//
+// W2-D — game-theoretic equilibrium macros (2026-07-24). Makes
+// lib/game-theory/{normal-form,mixed-nash,replicator,market-equilibrium}.js
+// load-bearing: normal-form.js previously had ZERO production callers. These
+// macros surface mixed-strategy Nash equilibria, replicator-dynamics ESS
+// convergence, and the real-ledger cartel/competitive-equilibrium analysis to
+// the frontend/agent surface. `markets.equilibriumAnalysis` is OBSERVE-ONLY —
+// it never mutates the ledger and never blocks a trade (see
+// lib/game-theory/market-equilibrium.js's header for the full honest
+// boundary: PPAD-completeness, support-enumeration's exponential cost, and
+// why "consistent with a cartel" is not proof of intent).
+
+import { mixedNashEquilibria } from "../lib/game-theory/mixed-nash.js";
+import { replicatorDynamics } from "../lib/game-theory/replicator.js";
+import { analyzeMarketEquilibrium } from "../lib/game-theory/market-equilibrium.js";
 
 // ──────────────────────────────────────────────────────────────
 // Black-Scholes pure JS (Abramowitz & Stegun rational approx).
@@ -1110,6 +1125,78 @@ export default function registerMarketsActions(registerLensAction) {
           totalForecasters: rows.length,
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────────
+  // W2-D — game-theoretic equilibrium (normal-form.js made load-bearing)
+  // ──────────────────────────────────────────────────────────────
+
+  // ── Mixed-strategy Nash equilibria for an arbitrary bimatrix game ──
+  // params: { payoffA: number[][], payoffB: number[][], maxSupportSize?, maxCandidates? }
+  registerLensAction("markets", "mixedNash", (_ctx, _artifact, params = {}) => {
+    try {
+      const A = params.payoffA;
+      const B = params.payoffB;
+      if (!Array.isArray(A) || !Array.isArray(B) || !A.length || !B.length) {
+        return { ok: false, error: "payoffA and payoffB (matching-shape 2D payoff matrices) are required" };
+      }
+      const res = mixedNashEquilibria(A, B, {
+        maxSupportSize: params.maxSupportSize,
+        maxCandidates: params.maxCandidates,
+      });
+      if (!res.ok) return res;
+      return { ok: true, result: res };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Replicator dynamics for a symmetric population game ──
+  // params: { payoffMatrix: number[][], initialShares?: number[], dt?, tEnd?, tolerance? }
+  registerLensAction("markets", "replicatorDynamics", (_ctx, _artifact, params = {}) => {
+    try {
+      const A = params.payoffMatrix;
+      if (!Array.isArray(A) || !A.length || !Array.isArray(A[0])) {
+        return { ok: false, error: "payoffMatrix (n x n) is required" };
+      }
+      const n = A.length;
+      const x0 = Array.isArray(params.initialShares) && params.initialShares.length === n
+        ? params.initialShares
+        : new Array(n).fill(1 / n);
+      const res = replicatorDynamics(A, x0, {
+        dt: params.dt,
+        tEnd: params.tEnd,
+        tolerance: params.tolerance,
+      });
+      // Trajectory can be large; return a bounded summary plus the full
+      // sampled trajectory only when explicitly requested.
+      const { trajectory, ...summary } = res;
+      return {
+        ok: true,
+        result: params.includeTrajectory ? res : { ...summary, trajectorySamples: trajectory.length },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Real-ledger equilibrium/cartel analysis — OBSERVE-ONLY, read-only ──
+  // params: { minEdgeTrades?, minRingSize?, windowMs?, sinceMs?, minRingVolumeFraction? }
+  registerLensAction("markets", "equilibriumAnalysis", (ctx, _artifact, params = {}) => {
+    try {
+      if (!ctx?.db) return { ok: false, error: "db_unavailable" };
+      const res = analyzeMarketEquilibrium(ctx.db, {
+        minEdgeTrades: params.minEdgeTrades,
+        minRingSize: params.minRingSize,
+        windowMs: params.windowMs,
+        sinceMs: params.sinceMs,
+        minRingVolumeFraction: params.minRingVolumeFraction,
+      });
+      if (!res.ok) return res;
+      return { ok: true, result: res };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

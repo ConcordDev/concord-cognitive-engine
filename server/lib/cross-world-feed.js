@@ -22,6 +22,10 @@ const NOTABILITY_WEIGHTS = {
   "world:event:scheduled": 1.5,
   "world:crisis":       3.5,
   "lattice:meta:emerged": 4.0,
+  "cross-world-scheme:death":       4.0,
+  "cross-world-scheme:exposed":     3.0,
+  "cross-world-scheme:consequence": 2.0,
+  "population:migration-arrived":  1.5,
 };
 
 /**
@@ -117,6 +121,58 @@ export function getCrossWorldFeed(db, opts = {}) {
         summary: `${r.kind}: "${r.title}"`,
         ref: { eventId: r.id },
         notability: NOTABILITY_WEIGHTS["world:event:scheduled"] || 1.5,
+      });
+    }
+  } catch { /* table optional */ }
+
+  // Cross-world scheme phase-transitions. `cross_world_scheme_consequences`
+  // is the per-world, per-transition record `cross-world-schemes.js` writes
+  // whenever a scheme resolves/exposes (see recordConsequence + the
+  // 'moving' phase branch + applyCrossWorldResolution) — one row per
+  // affected world, already shaped like a feed entry (world, timestamp,
+  // human-readable detail). Joined back to the scheme for its kind/phase.
+  try {
+    const rows = db.prepare(`
+      SELECT c.id AS consequence_id, c.scheme_id, c.affected_world_id, c.consequence_kind,
+             c.affected_entity_kind, c.affected_entity_id, c.detail, c.applied_at,
+             s.kind AS scheme_kind, s.phase AS scheme_phase
+      FROM cross_world_scheme_consequences c
+      LEFT JOIN cross_world_schemes s ON s.id = c.scheme_id
+      WHERE c.applied_at >= ?
+      ORDER BY c.applied_at DESC
+      LIMIT 50
+    `).all(since);
+    for (const r of rows) {
+      const kind = r.consequence_kind === "death" ? "cross-world-scheme:death"
+                 : r.consequence_kind === "plot_exposed" ? "cross-world-scheme:exposed"
+                 : "cross-world-scheme:consequence";
+      events.push({
+        kind, worldId: r.affected_world_id || "concordia-hub", ts: r.applied_at,
+        summary: r.detail || `${r.scheme_kind || "a cross-world scheme"} (${r.consequence_kind}): ${r.affected_entity_kind} ${r.affected_entity_id}`,
+        ref: { schemeId: r.scheme_id, consequenceId: r.consequence_id, consequenceKind: r.consequence_kind },
+        notability: NOTABILITY_WEIGHTS[kind] || 2.0,
+      });
+    }
+  } catch { /* table optional */ }
+
+  // Population migration arrivals — `population_flow_events` rows that
+  // have flipped from 'in_transit' to 'arrived' (see arriveAtDestination
+  // in population-migration.js). Departures/in-transit aren't feed-worthy
+  // on their own; an arrival is the notable, completed event.
+  try {
+    const rows = db.prepare(`
+      SELECT id, npc_id, from_world_id, to_world_id, arrived_at, reason
+      FROM population_flow_events
+      WHERE status = 'arrived' AND arrived_at >= ?
+      ORDER BY arrived_at DESC
+      LIMIT 50
+    `).all(since);
+    for (const r of rows) {
+      events.push({
+        kind: "population:migration-arrived", worldId: r.to_world_id || "concordia-hub", ts: r.arrived_at,
+        summary: `${r.npc_id} arrived in ${r.to_world_id} from ${r.from_world_id}${r.reason ? ` (${r.reason})` : ""}`,
+        ref: { npcId: r.npc_id, fromWorld: r.from_world_id, toWorld: r.to_world_id },
+        notability: NOTABILITY_WEIGHTS["population:migration-arrived"] || 1.5,
       });
     }
   } catch { /* table optional */ }

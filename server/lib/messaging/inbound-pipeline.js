@@ -15,10 +15,16 @@ import { parseWorldIntent, routeToWorldOrChat } from "./cross-reality-bridge.js"
  * @param {object} opts.normalized       - NormalizedMessage from adapter.parseIncoming()
  * @param {object} opts.db               - better-sqlite3 instance
  * @param {Function} opts.infer          - @concord/inference infer()
- * @param {Function} opts.createDTU      - DTU creation function
  * @param {object} [opts.contentGuard]   - optional content guard module
+ *
+ * NOTE: an earlier design accepted a `createDTU` param intending to mint a
+ * DTU per exchange. No caller (route or test) ever supplied one, and message
+ * persistence is fully handled by the `messaging_messages` SQL rows below
+ * (steps 3 + 6) — so the param was removed rather than left silently unused.
+ * If per-conversation DTU minting is wanted later, wire it explicitly through
+ * createMessagingRouter() in routes/messaging.js.
  */
-export async function processInboundMessage({ adapter, normalized, db, infer, createDTU, contentGuard }) {
+export async function processInboundMessage({ adapter, normalized, db, infer, contentGuard }) {
   if (!normalized.ok || !normalized.text) return;
 
   const { platform } = adapter;

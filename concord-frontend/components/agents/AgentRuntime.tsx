@@ -960,8 +960,8 @@ function TaskDefinitionsPanel({ onChange }: { onChange: () => void }) {
               placeholder="Add a skill, press Enter"
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
             />
-            <button onClick={addSkill} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-1.5 text-[10px] text-zinc-400 hover:text-white">
-              <Plus className="h-3 w-3" />
+            <button onClick={addSkill} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-1.5 text-[10px] text-zinc-400 hover:text-white" aria-label="Add skill">
+              <Plus className="h-3 w-3" aria-hidden="true" />
             </button>
           </div>
           <p className="mt-1 text-[10px] text-zinc-400">An empty skill list is valid — routeTask then ranks agents by load/reliability alone.</p>

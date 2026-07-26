@@ -29,6 +29,7 @@
 
 import * as THREE from 'three';
 import { loadAsset, resolveAssetReference, getCachedSceneSync } from '@/lib/world-lens/asset-loader';
+import type { EvoMaterialUpgrade } from '@/lib/evo-asset/loader';
 
 export type WeaponArchetype =
   | 'shortsword' | 'longsword' | 'axe' | 'mace' | 'dagger' | 'club'
@@ -64,6 +65,15 @@ const REAL_ASSET_ARCHETYPES: WeaponArchetype[] = [
 ];
 
 const realWeaponCache = new Map<WeaponArchetype, string>(); // archetype -> resolved URL, ready to instanceFromCache
+// Evo-asset material_upgrade cache — archetype -> promoted PBR spec (or null
+// when none is promoted for this asset). Resolved eagerly alongside the
+// asset URL in warmRealWeaponAssets() so tryRealWeaponMesh() can apply it
+// with a synchronous Map lookup: createWeapon() must stay fully synchronous
+// (its 2 call sites build the avatar mesh inline, not inside a React
+// effect), so the resolveMaterialUpgrade() fetch can't happen at mesh-build
+// time the way BuildingRenderer3D.tsx does it inline — it has to be
+// pre-warmed instead, same reasoning as the asset URL itself.
+const weaponMaterialCache = new Map<WeaponArchetype, EvoMaterialUpgrade | null>();
 let warmed = false;
 let warmingPromise: Promise<void> | null = null;
 
@@ -81,6 +91,10 @@ export function warmRealWeaponAssets(): Promise<void> {
         if (loaded) {
           const url = await resolveAssetReference({ kind: 'weapon', id });
           if (url) realWeaponCache.set(id, url);
+          try {
+            const { resolveMaterialUpgrade } = await import('@/lib/evo-asset/loader');
+            weaponMaterialCache.set(id, await resolveMaterialUpgrade('concordia', id));
+          } catch { weaponMaterialCache.set(id, null); /* honest-null — no promoted upgrade */ }
         }
       } catch { /* this archetype's real asset unavailable — procedural fallback covers it */ }
     }
@@ -108,6 +122,35 @@ function tryRealWeaponMesh(archetype: WeaponArchetype): THREE.Group | null {
   const group = new THREE.Group();
   group.name = `weapon_${archetype}`;
   group.add(inst as THREE.Object3D);
+  // Evo-asset material_upgrade: same idiom as BuildingRenderer3D.tsx — if
+  // this asset has a promoted PBR spec, upgrade the loaded GLB's materials
+  // in place. roughness/metalness apply to any Standard/Physical material;
+  // clearcoat/sheen apply ONLY when the material instance can express them
+  // (MeshPhysicalMaterial), never faked onto a class that can't. Honest-null
+  // when no upgrade was ever promoted — a no-op, not a fabricated material.
+  try {
+    const matUpgrade = weaponMaterialCache.get(archetype);
+    if (matUpgrade) {
+      group.traverse((child) => {
+        const asMesh = child as InstanceType<typeof THREE.Mesh>;
+        if (!asMesh.isMesh || !asMesh.material) return;
+        const mats = Array.isArray(asMesh.material) ? asMesh.material : [asMesh.material];
+        for (const mat of mats) {
+          const m = mat as InstanceType<typeof THREE.MeshStandardMaterial> & Record<string, unknown>;
+          if (typeof matUpgrade.roughness === 'number' && 'roughness' in m) m.roughness = matUpgrade.roughness;
+          if (typeof matUpgrade.metalness === 'number' && 'metalness' in m) m.metalness = matUpgrade.metalness;
+          // clearcoat/sheen only on MeshPhysicalMaterial instances.
+          if (typeof matUpgrade.clearcoat === 'number' && 'clearcoat' in m) m.clearcoat = matUpgrade.clearcoat;
+          if (typeof matUpgrade.clearcoatRoughness === 'number' && 'clearcoatRoughness' in m) m.clearcoatRoughness = matUpgrade.clearcoatRoughness;
+          if (typeof matUpgrade.sheen === 'number' && 'sheen' in m) m.sheen = matUpgrade.sheen;
+          (m as { needsUpdate?: boolean }).needsUpdate = true;
+        }
+      });
+      group.userData.evoMaterialUpgrade = true;
+    }
+  } catch (matErr) {
+    if (typeof console !== 'undefined') console.warn('[weapon-archetypes] material_upgrade skipped, real asset still renders', matErr);
+  }
   return group;
 }
 
@@ -321,6 +364,9 @@ export function createWeapon(appearance: WeaponAppearance): THREE.Group {
   if (REAL_ASSET_ARCHETYPES.includes(appearance.archetype)) {
     const real = tryRealWeaponMesh(appearance.archetype);
     if (real) {
+      // Captured before the wholesale userData replacement below overwrites
+      // the flag tryRealWeaponMesh() stamped onto the group.
+      const hadMaterialUpgrade = !!real.userData.evoMaterialUpgrade;
       const norm = REAL_ASSET_NORMALIZATION[appearance.archetype];
       if (norm) normalizeRealAssetScale(real.children[0], norm.size, norm.pivot);
       const tipLocal = norm ? realAssetTipLocal(real.children[0], norm) : undefined;
@@ -335,6 +381,7 @@ export function createWeapon(appearance: WeaponAppearance): THREE.Group {
         realAsset: true,
         tipLocal,
         dischargeLocal,
+        evoMaterialUpgrade: hadMaterialUpgrade || undefined,
       };
       return real;
     }

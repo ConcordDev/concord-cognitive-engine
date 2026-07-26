@@ -788,7 +788,7 @@ export default function HomeImprovementLensPage() {
                 <input value={row.cost} onChange={e => setRoiRows(rows => rows.map((r, j) => j === i ? { ...r, cost: e.target.value } : r))} type="number" placeholder="Cost" className="input-lattice text-xs w-16" />
                 <input value={row.valueAdded} onChange={e => setRoiRows(rows => rows.map((r, j) => j === i ? { ...r, valueAdded: e.target.value } : r))} type="number" placeholder="Value+" className="input-lattice text-xs w-16" />
                 {roiRows.length > 1 && (
-                  <button onClick={() => setRoiRows(rows => rows.filter((_, j) => j !== i))} className="text-gray-500 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setRoiRows(rows => rows.filter((_, j) => j !== i))} className="text-gray-500 hover:text-red-400" aria-label={`Remove ROI row${row.name.trim() ? ` "${row.name.trim()}"` : ''}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>
                 )}
               </div>
             ))}

@@ -195,6 +195,48 @@ describe('WorldEventBoard', () => {
     expect(screen.getByText('4')).toBeInTheDocument();
   });
 
+  it('shows a "Head there" action for a gathering with real coordinates and fires the shared fast-travel navigation event', async () => {
+    routeGet(eventsResponse([]), festivalsResponse([]));
+    lensRun.mockResolvedValue(
+      gatheringsResponse([
+        {
+          id: 'g-with-coords', location: 'Fountain Plaza', playerCount: 5,
+          description: '5 players at the fountain', x: 120.5, y: 3, z: -40.25, worldId: 'tunya',
+        },
+      ]),
+    );
+
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    render(<WorldEventBoard worldId="tunya" />);
+
+    await waitFor(() => expect(screen.getByText('5 players at the fountain')).toBeInTheDocument());
+    const headThereBtn = screen.getByText('Head there');
+    fireEvent.click(headThereBtn);
+
+    // Reuses the exact same navigation mechanism the world-marker "Travel"
+    // button already uses (WorldAdventureKitPanel#travel) — a real,
+    // non-fabricated destination derived from the gathering's live centroid.
+    const calls = dispatchSpy.mock.calls.filter(([evt]) => (evt as Event).type === 'world:fast-travel');
+    expect(calls).toHaveLength(1);
+    const dispatched = calls[0][0] as CustomEvent<{ x: number; y: number; z: number }>;
+    expect(dispatched.detail).toEqual({ x: 120.5, y: 3, z: -40.25 });
+    dispatchSpy.mockRestore();
+  });
+
+  it('omits the "Head there" action when a gathering has no real coordinates', async () => {
+    routeGet(eventsResponse([]), festivalsResponse([]));
+    lensRun.mockResolvedValue(
+      gatheringsResponse([
+        { id: 'g-no-coords', location: 'Fountain Plaza', playerCount: 3, description: '3 players at the fountain' },
+      ]),
+    );
+
+    render(<WorldEventBoard worldId="tunya" />);
+
+    await waitFor(() => expect(screen.getByText('3 players at the fountain')).toBeInTheDocument());
+    expect(screen.queryByText('Head there')).not.toBeInTheDocument();
+  });
+
   it('shows an honest empty gatherings state when nobody is grouped up', async () => {
     routeGet(eventsResponse([]), festivalsResponse([]));
     render(<WorldEventBoard worldId="tunya" />);

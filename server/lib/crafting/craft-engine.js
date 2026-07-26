@@ -15,6 +15,7 @@ import {
 import { validateDesign, estimateStats } from './recipe-validator.js';
 import { resolveCraft } from '../craft-resolve.js';
 import { onPlayerCraft } from '../gameplay-asset-bridge.js';
+import { recordTransaction as recordWorldMarketTxn } from '../world-economy.js';
 
 // ── Living Society P0 — resource-grounded quality ────────────────────────────────
 //
@@ -253,6 +254,17 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
       } catch { /* user_active_effects absent — debuff is best-effort */ }
     }
   })();
+
+  // 9.5. Regional economy — a completed craft consumes materials, so record a
+  // 'craft' transaction per input (supply −qty, demand +qty; the type
+  // world-economy.js already defined but no caller had ever invoked). Same
+  // non-fatal shape as the 'gather' call site (routes/worlds.js:1745): a
+  // market hiccup or an absent world_market table must never break the craft.
+  try {
+    for (const req of resourceRequirements) {
+      recordWorldMarketTxn(db, worldId, req.resource_id, req.quantity, 'craft');
+    }
+  } catch { /* non-fatal — world_market may be absent on a minimal build */ }
 
   // 10. Gain XP on crafting skill
   const recipeComplexity = (recipeData.skill_requirements || []).length;

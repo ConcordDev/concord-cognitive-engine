@@ -139,6 +139,10 @@ export function realisePrediction(db, predictionId, outcome) {
        WHERE id = ? AND realised_at IS NULL
     `).run(typeof outcome === 'string' ? outcome : JSON.stringify(outcome ?? {}), predictionId);
     // Phase F3.1 — surface prediction realisation to the player.
+    // DET-C batch 3: same missing-opts-arg scoping bug as dream-engine.js —
+    // a prediction is a personal speculative-anticipation record, not a
+    // world broadcast. Without the 3rd arg this silently went out to every
+    // connected client instead of just the predicting user.
     try {
       const emitFn = globalThis._concordRealtimeEmit;
       if (typeof emitFn === "function") {
@@ -149,7 +153,7 @@ export function realisePrediction(db, predictionId, outcome) {
           subjectKind: row?.subject_kind,
           subjectId: row?.subject_id,
           outcome,
-        });
+        }, row?.user_id ? { userId: row.user_id } : {});
       }
     } catch { /* emit failure never affects the call */ }
     return { ok: true };

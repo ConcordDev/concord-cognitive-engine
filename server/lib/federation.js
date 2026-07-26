@@ -904,18 +904,28 @@ export async function federatedQuery(db, { query, originTier = "local", userLoca
 /**
  * Check whether a DTU meets the quality gates for a target tier.
  *
+ * `ageHours` and `crossRegionalPresence` are intentionally NOT read here —
+ * they belong to checkPromotionEligibility() below. Neither `regional`,
+ * `national`, nor `global`'s own top-level TIER_QUALITY_GATES entry carries
+ * an ageHours/crossRegionalPresence field directly (those live nested under
+ * `promotionToNational`/`promotionToGlobal`, which is a promotion-specific
+ * concern, not a "does this DTU qualify to LIVE at this tier" concern).
+ * `crossNationalPresence` IS read here because `global`'s own gates object
+ * defines it directly. Both functions accept the same superset envelope of
+ * DTU stats so a caller can build one input object and pass it to either
+ * (or both) — this is why checkPromotionEligibility below likewise accepts
+ * (but doesn't use) crossNationalPresence.
+ *
  * @param {object} opts
  * @param {string} opts.targetTier - "regional", "national", or "global"
  * @param {number} opts.authorityScore - DTU's authority score
  * @param {number} opts.citationCount - Number of citations
  * @param {string} opts.dtuTier - DTU content tier ("regular", "mega", "hyper", "shadow")
- * @param {number} [opts.ageHours] - Age in hours (for promotion checks)
- * @param {number} [opts.crossRegionalPresence] - Number of distinct regions citing
- * @param {number} [opts.crossNationalPresence] - Number of distinct nations citing
+ * @param {number} [opts.crossNationalPresence] - Number of distinct nations citing (global tier only)
  */
 export function checkQualityGate({
   targetTier, authorityScore = 0, citationCount = 0, dtuTier = "regular",
-  ageHours = 0, crossRegionalPresence = 0, crossNationalPresence = 0,
+  crossNationalPresence = 0,
 }) {
   const gates = TIER_QUALITY_GATES[targetTier];
   if (!gates) return { ok: false, error: "invalid_target_tier" };
@@ -940,10 +950,8 @@ export function checkQualityGate({
     failures.push({ gate: "tierAllowed", dtuTier, allowedTiers: _allowedTiers(gates) });
   }
 
-  // Check promotion-specific gates
-  if (targetTier === "national" && gates.promotionToNational) {
-    // This is checked during promotion FROM regional
-  }
+  // National's age/authority-council promotion gates are checked during
+  // promotion FROM regional — see checkPromotionEligibility().
   if (targetTier === "global") {
     if (gates.crossNationalPresence && crossNationalPresence < gates.crossNationalPresence) {
       failures.push({ gate: "crossNationalPresence", required: gates.crossNationalPresence, actual: crossNationalPresence });
@@ -961,10 +969,14 @@ export function checkQualityGate({
 
 /**
  * Check promotion eligibility from one tier to the next.
+ *
+ * `crossNationalPresence` is intentionally NOT read here — see the
+ * checkQualityGate() docstring above for why both functions share one
+ * envelope shape.
  */
 export function checkPromotionEligibility({
   fromTier, authorityScore = 0, citationCount = 0, ageHours = 0,
-  crossRegionalPresence = 0, crossNationalPresence = 0,
+  crossRegionalPresence = 0,
 }) {
   if (fromTier === "regional") {
     const promo = TIER_QUALITY_GATES.regional.promotionToNational;

@@ -113,13 +113,16 @@ export default function FishingLensPage() {
     if (w) setWorldId(w);
   }, []);
 
-  // Defensive back-compat: something elsewhere in the app (or a future
-  // world-lens deep link) may still dispatch this to request the overlay.
-  useEffect(() => {
-    const onOpen = () => setMinigameOpen(true);
-    window.addEventListener('concordia:open-fishing', onOpen);
-    return () => window.removeEventListener('concordia:open-fishing', onOpen);
-  }, []);
+  // DET-C dead-event-listener sweep (batch 9): this hub previously carried a
+  // speculative window-event "back-compat" listener for an open-the-overlay
+  // signal, with nothing anywhere dispatching it — checked the whole
+  // frontend AND world-lens-godot/concord-mobile. The real deep-link path
+  // already exists and is different: /lenses/world owns its own local
+  // `fishingOpen` state and mounts FishingMinigameOverlay directly
+  // (app/lenses/world/page.tsx, "F key: open fishing minigame"), so this
+  // hub's own Cast button (below) is the only real trigger for its copy of
+  // the overlay. Removed the phantom listener rather than keep speculative
+  // dead code around.
 
   const loadCatalog = useCallback(async () => {
     setCatalogLoading(true);

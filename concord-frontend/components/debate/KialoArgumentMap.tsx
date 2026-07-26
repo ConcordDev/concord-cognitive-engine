@@ -918,7 +918,7 @@ function SourceForm({
   busy: boolean;
   onAdd: (claimId: string, src: { title: string; url: string; kind: string; note: string }) => Promise<boolean | undefined>;
   onClose: () => void;
-}) {
+}) { // @unused-param-ok — FP: `busy` IS used on the submit button's disabled= below; the detector mis-scopes TS type annotations and stops its body scan at the type literal's brace
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [note, setNote] = useState('');

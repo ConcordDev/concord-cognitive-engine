@@ -319,7 +319,7 @@ export default function PhotographyPage() {
     if (!editMode || !lightboxPhoto?.mediaId) return;
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
-    img.src = `/api/media/stream/${lightboxPhoto.mediaId}`;
+    img.src = `/api/media/${lightboxPhoto.mediaId}/stream`;
     img.onload = () => {
       editImgRef.current = img;
       // Trigger an initial draw
@@ -490,7 +490,7 @@ export default function PhotographyPage() {
                     >
                       {photo.mediaId ? (
                         <Image
-                          src={`/api/media/stream/${photo.mediaId}`}
+                          src={`/api/media/${photo.mediaId}/stream`}
                           alt={photo.title}
                           fill
                           className="object-cover"
@@ -704,7 +704,7 @@ export default function PhotographyPage() {
                     />
                   ) : lightboxPhoto.mediaId ? (
                     <Image
-                      src={`/api/media/stream/${lightboxPhoto.mediaId}`}
+                      src={`/api/media/${lightboxPhoto.mediaId}/stream`}
                       alt={lightboxPhoto.title}
                       width={800}
                       height={600}

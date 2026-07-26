@@ -262,6 +262,28 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'Your own connector status — Connected vs Needs auth, per app',
     load: lazyNamed(() => import('@/components/conkay/panels/ConnectorStatusPanel'), 'ConnectorStatusPanel'),
   },
+  // Beyond-Denial unit #2 — persistent cross-session memory. Lists/pins/
+  // forgets the real conversation_memory / conversation_memory_hyper DTUs
+  // the rolling-window compressor (server/lib/conversation-memory.js) already
+  // writes, via the conkay.memory_list/pin/forget macros.
+  'conkay.memory': {
+    id: 'conkay.memory', label: 'Memory', scope: 'global',
+    keywords: ['conkay', 'memory', 'conversation', 'recall', 'cross-session', 'dtu'],
+    description: 'Your real cross-session conversation memory — pin or forget any of it',
+    load: lazyNamed(() => import('@/components/conkay/ConKayMemoryPanel'), 'ConKayMemoryPanel'),
+  },
+  // V1.2 Wave B (Deep ConKay Agency) — the "project" linking layer. Ties a
+  // durable goal tree, its marathon session(s), and a relevance-scoped pull
+  // from the same conversation memory `conkay.memory` above surfaces into
+  // one addressable, resumable unit (server/lib/project-thread.js, mig 378,
+  // via the agent_projects.* macros). Direct sibling of conkay.memory —
+  // same self-contained/no-required-props shape.
+  'conkay.projects': {
+    id: 'conkay.projects', label: 'Projects', scope: 'global',
+    keywords: ['conkay', 'projects', 'goal', 'marathon', 'resume', 'continuity'],
+    description: 'Named threads tying a goal tree + marathon runs + relevant memory into one resumable place',
+    load: lazyNamed(() => import('@/components/conkay/ConKayProjectPanel'), 'ConKayProjectPanel'),
+  },
 
   // The ConKay cockpit panels (F1/F4/F5/F7/F9/A4/A3) are now registered.
   // ConKayCockpit's panel slots treat an unregistered id as "render nothing"

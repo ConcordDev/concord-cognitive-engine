@@ -17,6 +17,25 @@
  *   {items.length === 0 && <EmptyStateCTA />}                              // manifest
  *   <EmptyStateCTA lensId="music" accent="emerald" buttonLabel="Add a track"
  *                  onAction={() => setShowAdd(true)} />                    // custom action
+ *
+ * Consolidation note (2026-07-23 maturity-audit fix, item #10): the RENDER
+ * below now delegates to the canonical `components/ui/EmptyState.tsx`
+ * instead of hand-rolled markup — all the business logic above the return
+ * (manifest resolution, the `create` macro call, the per-lens accent
+ * lookup, the in-flight loading state) is UNCHANGED, because none of it is
+ * presentational; it's what makes this component a manifest-aware CTA
+ * rather than a plain empty-state box, which is inherent to its purpose and
+ * not something a shared primitive should own. Only the final JSX is now a
+ * thin wrapper over the shared component.
+ *
+ * The mapping is lossless: canonical's `action.icon` + `action.className`
+ * (added to its API specifically to make this possible — see that file's
+ * doc comment) carry the loading spinner and the accent-colored button
+ * styling exactly as this component always rendered them. The one
+ * remaining, purely cosmetic residual is the description tag (a `<div>` in
+ * canonical vs. this file's original `<p>`) and the actions row picking up
+ * canonical's shared `mt-1` wrapper spacing — neither is visible in
+ * practice and neither changes any prop or behavior a caller depends on.
  */
 
 import { useState } from 'react';
@@ -26,6 +45,7 @@ import { apiHelpers } from '@/lib/api/client';
 import { getLensManifest } from '@/lib/lenses/manifest';
 import { useUIStore } from '@/store/ui';
 import { cn } from '@/lib/utils';
+import { EmptyState as CanonicalEmptyState } from '@/components/ui/EmptyState';
 import { useLensShell } from './LensShell';
 
 export type EmptyStateAccent = 'cyan' | 'fuchsia' | 'emerald' | 'amber' | 'purple' | 'pink' | 'sky';
@@ -116,34 +136,27 @@ export function EmptyStateCTA({
   const handleClick = onAction ?? handleCreate;
 
   return (
-    <div
-      className={cn(
-        'flex flex-col items-center justify-center text-center py-12 px-6',
-        'rounded-lg border border-dashed border-lattice-border/60 bg-lattice-surface/20',
-        className,
-      )}
-      role="region"
-      aria-label="Empty state"
-    >
-      <div className={cn('mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-lattice-surface/60', a.icon)}>
-        <Sparkles className="h-5 w-5" aria-hidden="true" />
-      </div>
-      <h3 className="text-base font-semibold text-white mb-1">{headline ?? 'Nothing here yet.'}</h3>
-      <p className="text-sm text-gray-400 max-w-md mb-4">{computedCaption}</p>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={creating}
-        className={cn(
+    <CanonicalEmptyState
+      className={className}
+      icon={<Sparkles className={cn('h-5 w-5', a.icon)} aria-hidden="true" />}
+      title={headline ?? 'Nothing here yet.'}
+      description={computedCaption}
+      action={{
+        label: computedButtonLabel,
+        onClick: handleClick,
+        disabled: creating,
+        icon: creating ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <Plus className="h-4 w-4" aria-hidden="true" />
+        ),
+        className: cn(
           'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium border',
           'focus:outline-none focus:ring-2 disabled:opacity-50',
           a.btn,
-        )}
-      >
-        {creating ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}
-        {computedButtonLabel}
-      </button>
-    </div>
+        ),
+      }}
+    />
   );
 }
 

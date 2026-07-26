@@ -142,9 +142,15 @@ const SUFFIX_BY_KIND = {
 
 /**
  * Compose a coherent material name from two parents (e.g. "Ember-Marrow Loin").
- * Deterministic given the seed. Falls back to the hybrid "A × B" description.
+ * Deterministic given the seed. Falls back to the caller-supplied hybrid
+ * "A × B" description when NEITHER parent profile is known (both null/absent)
+ * — in that case there is nothing distinctive to compose from (both resolve
+ * to the same generic DEFAULT_PROFILE), so a caller-supplied description
+ * (e.g. the creature blueprint's own "boar × wolf hybrid" text) reads more
+ * honestly than a fully-generic composed name.
  */
 export function composeMaterialName(a, b, { seedKey = null, fallback = null } = {}) {
+  if (!a && !b && fallback) return String(fallback);
   const pa = a || DEFAULT_PROFILE;
   const pb = b || DEFAULT_PROFILE;
   const sb = seedByte(seedKey || `${pa.affinity}:${pb.affinity}`);

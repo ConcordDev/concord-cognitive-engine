@@ -4,7 +4,7 @@
 //   node scripts/autoloop/status.mjs
 
 import { resolve } from "node:path";
-import { REPO, run, readJson, loadBacklog, C, ok, warn } from "./lib.mjs";
+import { REPO, runArgv, readJson, loadBacklog, stopRequested, C, ok, warn } from "./lib.mjs";
 
 const b = loadBacklog();
 const byStream = {};
@@ -37,8 +37,11 @@ console.log(`    depth honest floor   ${ok(honest.weightedScore ?? "?")}  (ceili
 console.log(`    ux-polish floor      ${ok(ux.weightedScore ?? "?")}  (target 1.0)`);
 console.log(`    emergent orphans     ${ok((wiring.orphan || []).length)}  (target 0)`);
 
-const stop = run("test -f AGENT_STOP && echo STOPPED || echo running").out.trim();
-console.log(`\n  control: ${stop === "STOPPED" ? warn("AGENT_STOP present — loop halts") : ok("running (no AGENT_STOP)")}`);
+// Was `test -f AGENT_STOP && echo STOPPED || echo running` through a shell;
+// `stopRequested()` is the same existsSync(STOP_PATH) check lib.mjs already
+// exposes for exactly this purpose (2026-07-25, command-injection fix).
+const stopped = stopRequested();
+console.log(`\n  control: ${stopped ? warn("AGENT_STOP present — loop halts") : ok("running (no AGENT_STOP)")}`);
 
-const log = run("git log --oneline -5").out.trim();
+const log = runArgv("git", ["log", "--oneline", "-5"]).out.trim();
 console.log(`\n  ${C.dim}recent commits:${C.rst}\n${log.split("\n").map((l) => "    " + l).join("\n")}`);

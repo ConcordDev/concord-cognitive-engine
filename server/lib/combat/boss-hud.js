@@ -47,3 +47,33 @@ export function computeBossState({ npcId, worldId, name, archetype, currentHp, m
     defeated: !!defeated,
   };
 }
+
+/**
+ * The discrete phase-transition beat that rides alongside the continuous
+ * `boss:state` HUD push. `computeBossState` already ticks the phase machine
+ * and reports whether THIS hit crossed a threshold — that transition is
+ * exactly the `boss:phase-enter` condition boss-phases.js's usage comment
+ * describes, and EmergentEventFeed has always tracked the event with nothing
+ * emitting it.
+ *
+ * Returns `null` when no transition happened, so the caller emits only on a
+ * real phase change rather than on every landed hit.
+ *
+ * Field note: EmergentEventFeed's detail extractor reads
+ * text/message/npcName/entityName/title/kind/eventType/weather/condition and
+ * then worldId/districtId/cityId — it has NO `name` case. The boss's display
+ * name therefore ships as `npcName`, or the feed row renders detail-less.
+ *
+ * @param {ReturnType<typeof computeBossState>} state
+ * @returns {{ npcId, worldId, npcName, phase, hpPct }|null}
+ */
+export function bossPhaseEnterPayload(state) {
+  if (!state || !state.phaseAdvanced || !state.phase) return null;
+  return {
+    npcId: state.npcId,
+    worldId: state.worldId,
+    npcName: state.name,
+    phase: state.phase,
+    hpPct: state.hpPct,
+  };
+}

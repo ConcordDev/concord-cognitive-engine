@@ -225,8 +225,8 @@ export function AstroCoObservePanel({ roomId }: { roomId: string }) {
             className="flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
           />
           <button type="button" onClick={postLog} disabled={!message.trim()}
-            className="flex items-center gap-1 rounded-lg bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-50">
-            <Send className="w-3.5 h-3.5" />
+            className="flex items-center gap-1 rounded-lg bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-50" aria-label="Post message to session">
+            <Send className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
         {log.length > 0 && (

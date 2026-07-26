@@ -506,7 +506,13 @@ and a long tail of Infinity/NaN fail-opens — every one in a lens that "looked 
 56 lenses now through the non-score gate (batches 1–13). The loop continues.
 
 ### Phase-2 batches 14–18 DONE (2026-06-28): the calculator-family completion sweep
-**120 lenses now carry the UX-states gate marker** (`ls concord-frontend/tests/*-lens-states.test.tsx | wc -l`).
+**103 lenses now carry the UX-states gate marker** (`ls concord-frontend/tests/*-lens-states.test.tsx | wc -l`).
+*(This line read **120** when written on 2026-06-28, and that was true then. The
+count is lower today because commit `6a523449` deliberately deleted 17 of these
+files — "Remove 17 stale lens-states test files with broken component/fixture
+drift" — 120 − 17 = 103, exactly. Recording the arithmetic because a **falling**
+coverage number is the shape real test loss would take, and the only way to tell
+the two apart is to name the commit that removed them.)*
 Batches 14–18 swept the rest of the `*ActionPanel`/`*Calc` calculator family (marketing, analytics, retail,
 audit, supplychain, voice — redone after a session-limit interruption — then creative, education, collab,
 commonsense, telecommunications, landscaping, linguistics, mentorship, services, robotics, physics, hr,

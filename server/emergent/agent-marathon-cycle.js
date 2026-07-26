@@ -14,7 +14,7 @@ import { LruMap } from "../lib/lru-map.js";
 
 const MAX_PER_PASS = 3;
 const MAX_REGOAL_PER_PASS = 2;
-const TERMINAL_STATUSES = new Set(["completed", "abandoned", "failed"]);
+const TERMINAL_STATUSES = new Set(["completed", "abandoned", "failed", "revoked"]);
 
 // Wave 7 / E2 — per-session prior affect cache so the salience gate can detect spikes
 // across ticks (a sudden FEAR jump = a reason to wake the brain). Entries are deleted

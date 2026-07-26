@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2, MapPin, CalendarDays, CloudSun, Plane, Hotel, Mail,
   Radar, Users, PieChart, ChevronLeft, RefreshCw, Plus, Trash2, X,
@@ -481,6 +482,19 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
 
   const checklistDone = checklist.filter((c) => c.done).length;
 
+  // Real per-tab status badges — every value here traces to state already
+  // loaded from a live macro call above; nothing is invented for display.
+  const tabBadges = useMemo<Partial<Record<WsTab, { text: string; tone: 'neutral' | 'warning' | 'positive' }>>>(() => ({
+    itinerary: itinerary.length > 0 ? { text: String(itinerary.length), tone: 'neutral' } : undefined,
+    agenda: unscheduled.length > 0 ? { text: String(unscheduled.length), tone: 'warning' } : undefined,
+    bookings: bookings.length > 0 ? { text: String(bookings.length), tone: 'neutral' } : undefined,
+    packing: checklist.length > 0
+      ? { text: `${checklistDone}/${checklist.length}`, tone: checklistDone === checklist.length ? 'positive' : 'neutral' }
+      : undefined,
+    share: collaborators.length > 0 ? { text: String(collaborators.length), tone: 'neutral' } : undefined,
+    budget: breakdown && breakdown.totalRemaining < 0 ? { text: '!', tone: 'warning' } : undefined,
+  }), [itinerary.length, unscheduled.length, bookings.length, checklist.length, checklistDone, collaborators.length, breakdown]);
+
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
@@ -498,13 +512,35 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
       <h3 className="text-base font-bold text-zinc-100">{trip.name}</h3>
 
       <div className="flex gap-1 flex-wrap bg-zinc-900/60 border border-zinc-800 p-1 rounded-lg">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" onClick={() => { setTab(t.id); setError(null); }}
-            className={cn('flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
-              tab === t.id ? 'bg-sky-600/20 text-sky-300' : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5')}>
-            <t.icon className="w-3.5 h-3.5" /> {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const badge = tabBadges[t.id];
+          const active = tab === t.id;
+          return (
+            <button key={t.id} type="button" onClick={() => { setTab(t.id); setError(null); }}
+              aria-current={active ? 'page' : undefined}
+              className={cn('relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
+                active ? 'text-sky-300' : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5')}>
+              {active && (
+                <motion.span
+                  layoutId="trip-tab-active"
+                  className="absolute inset-0 rounded-md bg-sky-600/20"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+              <span className="relative flex items-center gap-1.5">
+                <t.icon className="w-3.5 h-3.5" /> {t.label}
+                {badge && (
+                  <span className={cn('inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full text-[9px] font-bold tabular-nums',
+                    badge.tone === 'warning' ? 'bg-amber-500/25 text-amber-300'
+                      : badge.tone === 'positive' ? 'bg-emerald-500/25 text-emerald-300'
+                      : 'bg-white/10 text-zinc-300')}>
+                    {badge.text}
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {error && (
@@ -513,6 +549,9 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           <button type="button" onClick={() => setError(null)} aria-label="Dismiss"><X className="w-3.5 h-3.5" /></button>
         </div>
       )}
+
+      <AnimatePresence mode="wait">
+      <motion.div key={tab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
 
       {/* ── Itinerary tab ── */}
       {tab === 'itinerary' && (
@@ -924,8 +963,8 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
               <input placeholder="Category" value={ckCategory} onChange={(e) => setCkCategory(e.target.value)}
                 className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button type="button" onClick={addChecklistItem} disabled={busy || !ckItem.trim()}
-                className="px-2.5 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg">
-                <Plus className="w-3.5 h-3.5" />
+                className="px-2.5 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg" aria-label="Add packing checklist item">
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -1075,6 +1114,9 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           )}
         </div>
       )}
+
+      </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

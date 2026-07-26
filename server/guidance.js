@@ -346,6 +346,49 @@ export function registerGuidanceEndpoints(app, db) {
   });
 
   // ═══════════════════════════════════════════════════════════════
+  // DTU Version History (real diff substrate)
+  // ═══════════════════════════════════════════════════════════════
+  // The Object Inspector above already lists { id, version, created_at }
+  // for a DTU's `dtu_versions` rows (migration 001_core_tables.js —
+  // written on every `/api/dtus/guided` create/update and every
+  // `/api/dtus/durable` create, see durable.js). This route is the same
+  // real substrate but projects the per-version `body_json` snapshot too,
+  // so a caller can actually diff field values between two versions —
+  // not just list version numbers. Honest by construction: a DTU that
+  // was never created/edited through the guided/durable routes (e.g. one
+  // minted via the in-memory macro `dtu.create`/`dtu.update` path, which
+  // does not snapshot into `dtu_versions`) genuinely has no row history
+  // here, and this returns an empty `versions` array rather than
+  // fabricating one — the frontend DTUDiffViewer renders that as an
+  // explicit "no version history" state.
+  app.get("/api/dtus/:id/versions", (req, res) => {
+    try {
+      const dtuId = req.params.id;
+      const dtuRow = db.prepare("SELECT id, title, tier, owner_user_id, visibility FROM dtus WHERE id = ?").get(dtuId);
+      if (!dtuRow) return res.status(404).json({ ok: false, error: "DTU not found" });
+
+      const rows = db.prepare(
+        "SELECT id, version, body_json, created_at FROM dtu_versions WHERE dtu_id = ? ORDER BY version ASC"
+      ).all(dtuId);
+
+      const versions = rows.map((r) => ({
+        id: r.id,
+        version: r.version,
+        createdAt: r.created_at,
+        body: safeJSON(r.body_json) || {},
+      }));
+
+      res.json({
+        ok: true,
+        dtu: { id: dtuRow.id, title: dtuRow.title, tier: dtuRow.tier, ownerId: dtuRow.owner_user_id },
+        versions,
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
   // Undo System
   // ═══════════════════════════════════════════════════════════════
 

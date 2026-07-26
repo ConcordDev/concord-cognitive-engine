@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { createCreatureMesh, type CreatureTopology, type CreatureMeshResult } from './creature-mesh-builder';
 import { sampleGroundY } from './coord-frame';
 import { loadAsset, instanceFromCache, resolveAssetReference } from './asset-loader';
+import { resolveMaterialUpgrade } from '@/lib/evo-asset/loader';
 
 // Real-asset-first (CC0-sourced GLBs at /public/models/creature/{topology}_NN.glb),
 // falling back to the procedural silhouette from creature-mesh-builder for any
@@ -24,16 +25,23 @@ const REAL_ASSET_TOPOLOGIES: Partial<Record<CreatureTopology, string[]>> = {
   winged_biped: ['winged_biped_01'],
 };
 
-async function warmRealCreatureAssets(): Promise<Map<CreatureTopology, string[]>> {
-  const urls = new Map<CreatureTopology, string[]>();
+/** A real-asset candidate: its evo-asset id (used both to resolve the URL
+ *  and to look up a promoted material_upgrade) plus the resolved URL. */
+interface RealAssetVariant {
+  id: string;
+  url: string;
+}
+
+async function warmRealCreatureAssets(): Promise<Map<CreatureTopology, RealAssetVariant[]>> {
+  const urls = new Map<CreatureTopology, RealAssetVariant[]>();
   for (const [topology, ids] of Object.entries(REAL_ASSET_TOPOLOGIES) as [CreatureTopology, string[]][]) {
-    const resolved: string[] = [];
+    const resolved: RealAssetVariant[] = [];
     for (const id of ids) {
       try {
         const loaded = await loadAsset({ kind: 'creature', id }, THREE);
         if (loaded) {
           const url = await resolveAssetReference({ kind: 'creature', id });
-          if (url) resolved.push(url);
+          if (url) resolved.push({ id, url });
         }
       } catch { /* this variant unavailable — skip it */ }
     }
@@ -75,6 +83,42 @@ function wrapRealCreatureMesh(scene: THREE.Object3D, scale: number): CreatureMes
       });
     },
   };
+}
+
+/**
+ * Evo-asset material_upgrade: same idiom as BuildingRenderer3D.tsx — if this
+ * creature variant has a promoted PBR spec, upgrade the loaded GLB's
+ * materials in place. roughness/metalness apply to any Standard/Physical
+ * material; clearcoat/sheen apply ONLY when the material instance can
+ * express them (MeshPhysicalMaterial). Honest-null when no upgrade was ever
+ * promoted — a no-op, not a fabricated material. Returns whether an upgrade
+ * was applied so the caller can stamp `userData.evoMaterialUpgrade` on the
+ * wrapper group (this function only sees the raw cloned scene).
+ */
+async function applyCreatureMaterialUpgrade(scene: THREE.Object3D, variantId: string): Promise<boolean> {
+  try {
+    const matUpgrade = await resolveMaterialUpgrade('concordia', variantId);
+    if (!matUpgrade) return false;
+    scene.traverse((child) => {
+      const asMesh = child as InstanceType<typeof THREE.Mesh>;
+      if (!asMesh.isMesh || !asMesh.material) return;
+      const mats = Array.isArray(asMesh.material) ? asMesh.material : [asMesh.material];
+      for (const mat of mats) {
+        const m = mat as InstanceType<typeof THREE.MeshStandardMaterial> & Record<string, unknown>;
+        if (typeof matUpgrade.roughness === 'number' && 'roughness' in m) m.roughness = matUpgrade.roughness;
+        if (typeof matUpgrade.metalness === 'number' && 'metalness' in m) m.metalness = matUpgrade.metalness;
+        // clearcoat/sheen only on MeshPhysicalMaterial instances.
+        if (typeof matUpgrade.clearcoat === 'number' && 'clearcoat' in m) m.clearcoat = matUpgrade.clearcoat;
+        if (typeof matUpgrade.clearcoatRoughness === 'number' && 'clearcoatRoughness' in m) m.clearcoatRoughness = matUpgrade.clearcoatRoughness;
+        if (typeof matUpgrade.sheen === 'number' && 'sheen' in m) m.sheen = matUpgrade.sheen;
+        (m as { needsUpdate?: boolean }).needsUpdate = true;
+      }
+    });
+    return true;
+  } catch (matErr) {
+    if (typeof console !== 'undefined') console.warn('[creature-renderer] material_upgrade skipped, real asset still renders', matErr);
+    return false;
+  }
 }
 
 interface CreatureRow {
@@ -126,7 +170,7 @@ export function createCreatureRenderer(
   let disposed = false;
   let lastPoll = 0;
   let polling = false;
-  let realAssetUrls = new Map<CreatureTopology, string[]>();
+  let realAssetUrls = new Map<CreatureTopology, RealAssetVariant[]>();
   void warmRealCreatureAssets().then((urls) => { if (!disposed) realAssetUrls = urls; });
 
   async function refresh(): Promise<void> {
@@ -166,8 +210,13 @@ export function createCreatureRenderer(
         if (variants && variants.length > 0) {
           const pick = variants[Math.floor(hashU(row.id + ':variant') * variants.length)];
           try {
-            const inst = await instanceFromCache(pick, THREE);
-            if (inst) mesh = wrapRealCreatureMesh(inst as THREE.Object3D, scale);
+            const inst = await instanceFromCache(pick.url, THREE);
+            if (inst) {
+              const obj = inst as THREE.Object3D;
+              const hadMaterialUpgrade = await applyCreatureMaterialUpgrade(obj, pick.id);
+              mesh = wrapRealCreatureMesh(obj, scale);
+              if (hadMaterialUpgrade) mesh.group.userData.evoMaterialUpgrade = true;
+            }
           } catch { /* fall through to procedural for this one creature */ }
         }
         if (!mesh) {

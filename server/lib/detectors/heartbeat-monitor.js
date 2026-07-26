@@ -117,6 +117,13 @@ export async function runHeartbeatMonitor({ root, state, opts = {} } = {}) {
           subject: { kind: "heartbeat", id },
           message: `Heartbeat ${id} has failed ${s.failures} times since boot`,
           evidence: { lastError: s.lastError?.slice?.(0, 120) },
+          // OP1 — repair-cortex registry routing hint (see _framework.js's
+          // Finding.fixHint doc). `server/lib/repair-remediation.js` reads
+          // this to build a governed propose→approve→apply remediation
+          // (manually re-triggering the named module via the existing
+          // `runHeartbeatModuleNow`), never inventing an action for a
+          // finding shape that doesn't carry one.
+          fixHint: "restart_heartbeat_module",
         });
       }
       // Stale by wall clock — last run > 30 min ago for a non-cold heartbeat.
@@ -128,6 +135,7 @@ export async function runHeartbeatMonitor({ root, state, opts = {} } = {}) {
           kind: "heartbeat",
           subject: { kind: "heartbeat", id },
           message: `Heartbeat ${id} hasn't run in ${Math.round(lastRunAgoMs / 60000)} minutes`,
+          fixHint: "restart_heartbeat_module",
         });
       }
     }

@@ -71,6 +71,11 @@ export function SizeScalingHUD({ worldId }: Props) {
 
   useEffect(() => {
     function onOpen() { setOpen(true); }
+    // Real dispatcher: CommandPalette.tsx's HUD_DISPATCH_EVENTS table maps
+    // 'hud:size-scaling' -> 'concordia:open-size-scaling', same keyed-object +
+    // dynamic-Event indirection as the other hud:* HUD listeners. Confirmed live
+    // by tests/components/CommandPalette.test.tsx (DET-C continuation, 2026-07-24).
+    // @dead-event-ok
     window.addEventListener('concordia:open-size-scaling', onOpen);
     return () => window.removeEventListener('concordia:open-size-scaling', onOpen);
   }, []);

@@ -264,10 +264,10 @@ import {
 // ── Plugin System ───────────────────────────────────────────────────────────
 
 import {
-  loadPluginsFromDisk, validatePlugin as pluginValidate,
+  loadPluginsFromDisk, loadPluginFromSource, validatePlugin as pluginValidate,
   compileEmergentPlugin, activateApprovedPlugin, unloadPlugin,
   getPluginMetrics, hotReload as pluginHotReload,
-  registerPlugin, listPlugins, getPlugin, getPendingGovernance,
+  listPlugins, getPlugin, getPendingGovernance,
   fireHook, tickPlugins,
 } from "../plugins/loader.js";
 
@@ -1836,14 +1836,33 @@ function init({ register, STATE, helpers }) {
   // PLUGIN SYSTEM
   // ══════════════════════════════════════════════════════════════════════════
 
-  register("emergent", "plugin.register", (_ctx, input = {}) => {
-    if (!input.module) return { ok: false, error: "module_required" };
-    return registerPlugin(STATE, input.module, {
+  // NOTE (fixed 2026-07, see docs/PLUGIN_AUTHORING_GUIDE.md §3): this macro
+  // used to call the raw in-process `registerPlugin(STATE, input.module,
+  // ...)` on a JSON-parsed `input.module` object. That contract could never
+  // work over the real HTTP route (`POST /api/plugins/register`) — a JSON
+  // request body cannot carry live `init`/`macros`/`hooks` functions, so
+  // `activatePlugin`'s Gate 1 (`missing_init_function`) would always reject
+  // anything actually submitted this way. It now accepts raw plugin ESM
+  // SOURCE TEXT as a string and routes it through the same hardened,
+  // sandboxed path the boot-time disk scan uses (`loadPluginFromSource` —
+  // worker_threads + vm isolation + the full 4-gate validator run twice,
+  // see loader.js's own header), so this is a real, working "submit plugin
+  // source" endpoint for admin/founder/owner-gated internal use — not a
+  // second copy of the sandbox, just a second entry point into it.
+  register("emergent", "plugin.register", async (_ctx, input = {}) => {
+    if (typeof input.source !== "string" || !input.source.trim()) {
+      return {
+        ok: false,
+        error: "source_required",
+        message: "Send { source: '<plugin ESM source as a string>' } — a JSON module object with function-shaped fields (init/macros/hooks) can never survive HTTP/JSON transport, so this route only accepts raw source text, evaluated inside the sandboxed loader. See docs/PLUGIN_AUTHORING_GUIDE.md for the real plugin contract.",
+      };
+    }
+    return loadPluginFromSource(STATE, input.source, {
       register,
       helpers,
       runMacro: input._runMacro,
     });
-  }, { description: "Register and activate a plugin module", public: false });
+  }, { description: "Load and activate a plugin from raw source text through the sandboxed loader", public: false });
 
   register("emergent", "plugin.unload", (_ctx, input = {}) => {
     if (!input.pluginId) return { ok: false, error: "pluginId_required" };

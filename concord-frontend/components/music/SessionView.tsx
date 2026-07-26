@@ -70,6 +70,19 @@ export interface SessionViewProps {
   playingClipKey?: string;
   /** Clips queued at the next bar — visualised differently from playing. */
   queuedClipKeys?: Set<string>;
+  /** Rename a channel/scene in place (double-click the label). Omit to
+   *  keep names static — back-compat for callers that don't manage names. */
+  onRenameTrack?: (trackId: string, name: string) => void;
+  onRenameScene?: (sceneId: string, name: string) => void;
+  /** Mute/solo toggles. Rendered as discoverable M/S buttons (not a
+   *  hidden shift-click gesture) only when the caller wires them —
+   *  omit to keep the header read-only, matching prior behavior. */
+  onToggleMute?: (trackId: string) => void;
+  onToggleSolo?: (trackId: string) => void;
+  /** What double-clicking a filled clip does, for the button's tooltip
+   *  only (behavior is entirely up to the caller's onDoubleClickClip).
+   *  Defaults to the original "edit" framing for back-compat. */
+  doubleClickClipLabel?: string;
 }
 
 const TRACK_COLOR_FALLBACK = [
@@ -103,11 +116,21 @@ export function SessionView({
   onCellHover,
   playingClipKey,
   queuedClipKeys,
+  onRenameTrack,
+  onRenameScene,
+  onToggleMute,
+  onToggleSolo,
+  doubleClickClipLabel = 'edit',
 }: SessionViewProps) {
   const [transport, setTransport] = useState<'stopped' | 'playing' | 'recording'>('stopped');
   const [loop, setLoop] = useState(false);
   const [metronome, setMetronome] = useState(false);
   const [tempoLocal, setTempoLocal] = useState(tempo);
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const canRename = !!(onRenameTrack || onRenameScene);
+  const canMuteSolo = !!(onToggleMute || onToggleSolo);
 
   const trackColors = useMemo(
     () => tracks.map((t, i) => trackColor(t, i)),
@@ -123,6 +146,15 @@ export function SessionView({
   function handleStop() {
     setTransport('stopped');
     onStopAll?.();
+  }
+
+  function commitTrackRename() {
+    if (editingTrackId && editValue.trim()) onRenameTrack?.(editingTrackId, editValue.trim());
+    setEditingTrackId(null);
+  }
+  function commitSceneRename() {
+    if (editingSceneId && editValue.trim()) onRenameScene?.(editingSceneId, editValue.trim());
+    setEditingSceneId(null);
   }
 
   return (
@@ -220,15 +252,75 @@ export function SessionView({
               <div
                 key={track.id}
                 className={cn(
-                  'w-40 shrink-0 px-3 py-2 border-r border-white/10',
-                  'flex flex-col gap-1'
+                  'w-40 shrink-0 px-3 py-2 border-r border-white/10 group',
+                  'flex flex-col gap-1',
+                  track.muted && 'opacity-50'
                 )}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white truncate">{track.name}</span>
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center justify-between gap-1">
+                  {editingTrackId === track.id ? (
+                    <input
+                      autoFocus
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={commitTrackRename}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitTrackRename();
+                        if (e.key === 'Escape') setEditingTrackId(null);
+                      }}
+                      className="w-full bg-black/60 border border-cyan-400/50 rounded px-1 text-xs font-semibold text-white outline-none"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!onRenameTrack}
+                      onDoubleClick={() => {
+                        if (!onRenameTrack) return;
+                        setEditingTrackId(track.id);
+                        setEditValue(track.name);
+                      }}
+                      title={onRenameTrack ? 'Double-click to rename' : track.name}
+                      className="text-xs font-semibold text-white truncate text-left flex-1 min-w-0"
+                    >
+                      {track.name}
+                    </button>
+                  )}
+                  <div className="flex items-center gap-0.5 shrink-0">
                     {track.armed && <Mic className="w-3 h-3 text-rose-300" aria-label="Armed" />}
-                    {track.muted && <Volume2 className="w-3 h-3 text-white/30" aria-label="Muted" />}
+                    {canMuteSolo ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onToggleMute?.(track.id)}
+                          aria-pressed={!!track.muted}
+                          title={track.muted ? 'Unmute' : 'Mute'}
+                          className={cn(
+                            'w-4 h-4 rounded-sm text-[9px] font-bold leading-none flex items-center justify-center border transition-colors',
+                            track.muted
+                              ? 'bg-amber-500/80 border-amber-400 text-black'
+                              : 'border-white/15 text-white/40 opacity-0 group-hover:opacity-100 hover:text-white hover:border-white/40'
+                          )}
+                        >
+                          M
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onToggleSolo?.(track.id)}
+                          aria-pressed={!!track.soloed}
+                          title={track.soloed ? 'Unsolo' : 'Solo'}
+                          className={cn(
+                            'w-4 h-4 rounded-sm text-[9px] font-bold leading-none flex items-center justify-center border transition-colors',
+                            track.soloed
+                              ? 'bg-cyan-400/90 border-cyan-300 text-black'
+                              : 'border-white/15 text-white/40 opacity-0 group-hover:opacity-100 hover:text-white hover:border-white/40'
+                          )}
+                        >
+                          S
+                        </button>
+                      </>
+                    ) : (
+                      track.muted && <Volume2 className="w-3 h-3 text-white/30" aria-label="Muted" />
+                    )}
                   </div>
                 </div>
                 <div className={cn('h-1 rounded-full', trackColors[ti])} />
@@ -239,14 +331,34 @@ export function SessionView({
           {/* Scene rows */}
           {scenes.map((scene) => (
             <div key={scene.id} className="flex border-b border-white/5 hover:bg-white/[0.02]">
-              <button
-                onClick={() => onLaunchScene?.(scene)}
-                className="w-32 shrink-0 px-3 py-3 text-left text-xs text-amber-200 border-r border-white/10 hover:bg-amber-500/10 inline-flex items-center gap-1.5 group"
-                title="Launch entire scene"
-              >
-                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100" />
-                <span className="truncate">{scene.name}</span>
-              </button>
+              {editingSceneId === scene.id ? (
+                <input
+                  autoFocus
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={commitSceneRename}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitSceneRename();
+                    if (e.key === 'Escape') setEditingSceneId(null);
+                  }}
+                  className="w-32 shrink-0 px-3 py-3 bg-black/60 border-r border-amber-400/50 text-xs text-amber-100 outline-none"
+                />
+              ) : (
+                <button
+                  onClick={() => onLaunchScene?.(scene)}
+                  onDoubleClick={(e) => {
+                    if (!onRenameScene) return;
+                    e.stopPropagation();
+                    setEditingSceneId(scene.id);
+                    setEditValue(scene.name);
+                  }}
+                  className="w-32 shrink-0 px-3 py-3 text-left text-xs text-amber-200 border-r border-white/10 hover:bg-amber-500/10 inline-flex items-center gap-1.5 group"
+                  title={onRenameScene ? 'Click: launch scene · double-click: rename' : 'Launch entire scene'}
+                >
+                  <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100" />
+                  <span className="truncate">{scene.name}</span>
+                </button>
+              )}
               {tracks.map((track, ti) => {
                 const key = `${track.id}:${scene.id}`;
                 const clip = clips[key];
@@ -293,7 +405,7 @@ export function SessionView({
                               ? 'border-amber-400 bg-amber-500/20 text-amber-100'
                               : `${trackColors[ti]} text-white hover:brightness-125`
                         )}
-                        title={`Launch · double-click to edit · drop asset to bind`}
+                        title={`Launch · double-click to ${doubleClickClipLabel} · drop asset to bind`}
                       >
                         <Play className="w-3 h-3 flex-shrink-0 fill-current" />
                         <span className="text-[11px] truncate">{clip.label ?? clip.assetId ?? 'clip'}</span>
@@ -332,11 +444,12 @@ export function SessionView({
         </div>
       </div>
 
-      {/* Footer hint */}
-      <footer className="border-t border-white/10 bg-black/40 px-4 py-1.5 text-[10px] text-white/40 flex items-center gap-4">
-        <span>click clip → launch at next bar</span>
-        <span>shift-click track → solo</span>
+      {/* Footer hint — only claims interactions this instance actually wires */}
+      <footer className="border-t border-white/10 bg-black/40 px-4 py-1.5 text-[10px] text-white/40 flex items-center gap-4 flex-wrap">
+        <span>click clip → launch</span>
         <span>scene name → fire row</span>
+        {canMuteSolo && <span>M / S buttons → mute / solo</span>}
+        {canRename && <span>double-click name → rename</span>}
         <span className="ml-auto">{tracks.length} tracks · {scenes.length} scenes</span>
       </footer>
     </div>

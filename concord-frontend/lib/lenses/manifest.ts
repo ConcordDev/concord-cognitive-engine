@@ -784,7 +784,11 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['trade', 'analyze', 'alert', 'simulate', 'generate_report', 'portfolio_rebalance', 'risk_assessment'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
-    realtimeEvents: ['finance:ticker', 'finance:market_update', 'finance:alert', 'economy:update'],
+    // 'finance:market_update' + 'finance:alert' dropped 2026-07-25 (dead-
+    // subscription audit, Class F): hooks/useTilePush.ts does a real
+    // socket.on() over every name here, so a name with no server emitter is
+    // a live dead subscription, not just an unused string.
+    realtimeEvents: ['finance:ticker', 'economy:update'],
     emptyState: {
       headline: 'No tracked assets.',
       caption: 'Track stocks (S&P 500 / NASDAQ / DOW), crypto (CoinGecko top 10), or set rate alerts (FRED). Live ticker updates every 60s.',
@@ -807,7 +811,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['buy', 'sell', 'review', 'verify_artifact_hash', 'issue_license', 'distribute_royalties', 'validate_listing', 'provenance_check'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
-    realtimeEvents: ['marketplace:purchase', 'market:listing', 'market:trade', 'creative_registry:update'],
+    // 'market:trade' dropped 2026-07-25 (dead-subscription audit, Class D):
+    // DTU-bridge type tag, never emitted over a socket — and useTilePush
+    // subscribes to every name here for real.
+    realtimeEvents: ['marketplace:purchase', 'market:listing', 'creative_registry:update'],
     emptyState: {
       headline: 'No listings yet.',
       caption: 'List a DTU you minted, or browse what creators have published. Royalty cascade pays ancestors automatically.',
@@ -1224,9 +1231,17 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'lab',
     label: 'Lab',
     artifacts: ['experiment_notebook', 'protocol', 'run', 'result', 'reagent', 'equipment_log'],
-    macros: { list: 'lens.lab.list', get: 'lens.lab.get', create: 'lens.lab.create', update: 'lens.lab.update', delete: 'lens.lab.delete', run: 'lens.lab.run', export: 'lens.lab.export' },
+    // These were phantom `lens.lab.*` placeholder ids and an `actions` list
+    // (run_protocol/record_result/compare_runs/statistical_analysis/
+    // equipment_calibrate/generate_report) that matched zero registered
+    // `lab` macros — every ManifestActionBar quick-action on this lens
+    // called an unknown macro and errored on click. Retargeted at the real,
+    // zero-arg-safe `lab.*` macros ELNWorkbench's own tabs use (see
+    // server/domains/lab.js), so both the manifest metadata and the quick
+    // actions actually resolve (2026-07-23 UX-polish audit fix).
+    macros: { list: 'lab.notebook-list', get: 'lab.notebook-list', create: 'lab.notebook-create', update: 'lab.notebook-update', delete: 'lab.inventory-remove', run: 'lab.protocol-run', export: 'lab.label-generate' },
     exports: ['json', 'csv', 'pdf', 'xlsx'],
-    actions: ['run_protocol', 'record_result', 'compare_runs', 'statistical_analysis', 'equipment_calibrate', 'generate_report'],
+    actions: ['notebook-list', 'inventory-list', 'protocol-list', 'plate-list', 'run-list', 'construct-list'],
     category: 'knowledge',
     dataTier: 'SIM_GRADE_A',
     emptyState: {
@@ -4002,7 +4017,21 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['paper', 'dataset', 'experiment', 'citation', 'review'],
     macros: { list: 'lens.research.list', get: 'lens.research.get', create: 'lens.research.create', update: 'lens.research.update', delete: 'lens.research.delete', run: 'lens.research.run', export: 'lens.research.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
+    // Deliberately empty (R1-2 wave 6 audit, 2026-07): 'analyze'/
+    // 'validate'/'export'/'summarize' matched nothing in LENS_ACTIONS for
+    // the "research" domain — 4 of 5 <ManifestActionBar> clicks 404'd as
+    // unknown_macro. The 5th, 'generate', IS a real macro
+    // (research.generate) but requires a `hypothesis` string param the
+    // bar can never supply (fires with `{}`), so it always returned
+    // "hypothesis required" too — 0 of 5 buttons were ever usable.
+    // Removed the bar from app/lenses/research/page.tsx: the real
+    // research.generate flow already has a proper designed form (the
+    // Hypothesis Generator section on the same page), and the other 50
+    // research macros each have a bespoke home across the Zotero-shape
+    // library, the Obsidian-shape workbench, and the literature-review
+    // panel — a blind zero-parameter quick-trigger bar would only
+    // duplicate them with a worse, entirely-broken surface.
+    actions: [],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
     emptyState: {
@@ -4775,7 +4804,21 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['conversation', 'message', 'thread', 'attachment'],
     macros: { list: 'lens.message.list', get: 'lens.message.get', create: 'lens.message.create', update: 'lens.message.update', delete: 'lens.message.delete', run: 'lens.message.run', export: 'lens.message.export' },
     exports: ['json', 'md'],
-    actions: ['send_dm', 'list_threads', 'mark_read', 'archive', 'search_messages'],
+    // Deliberately empty (found + fixed in a UX-polish audit pass,
+    // 2026-07-23 — same defect class as the engineering/eco lenses'
+    // manifests, see those comments): 'send_dm'/'list_threads'/'mark_read'/
+    // 'archive'/'search_messages' matched nothing in LENS_ACTIONS or
+    // MACROS for this domain (the real macros are hyphenated —
+    // `search-messages`, `channels-archive`, `messages-mark-read` — and
+    // DM send/list isn't a macro at all, it's the `/api/social/dm/*` REST
+    // route this lens's page already calls directly). Every
+    // <ManifestActionBar> click here 404'd as unknown_macro, rendered
+    // unconditionally at the very top of the page. The real capabilities
+    // already have designed homes (InboxShell compose/reply, SlackSection,
+    // GmailSection, MessageWorkbench's search/voice/reactions,
+    // LabelManagerPanel, ThreadLabelBar) — left empty rather than
+    // duplicating them behind a broken generic bar.
+    actions: [],
     category: 'social',
     dataTier: 'REAL_LIVE',
     emptyState: {
@@ -5112,7 +5155,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['post', 'story', 'reaction', 'notification', 'follow', 'profile'],
     macros: { list: 'lens.social.list', get: 'lens.social.get', create: 'lens.social.create', update: 'lens.social.update', delete: 'lens.social.delete', run: 'lens.social.run', export: 'lens.social.export' },
     exports: ['json'],
-    actions: ['follow', 'unfollow', 'react', 'comment', 'share', 'post', 'story_create', 'discover', 'notifications', 'trending'],
+    // Deliberately empty (R1-2 wave 6 audit, 2026-07): 'follow'/'unfollow'/
+    // 'comment'/'share'/'post'/'story_create'/'discover'/'notifications'/
+    // 'trending' matched nothing in LENS_ACTIONS for the "social" domain
+    // (real macros are createPost/addReply/repost/hashtagFeed/
+    // trendingHashtags/etc. — only 'react' happened to line up) — every
+    // <ManifestActionBar> click but one 404'd as unknown_macro. Removed
+    // the bar from app/lenses/social/page.tsx entirely: all 26 social
+    // macros already have a real, bespoke, designed home (FeedView,
+    // PostCard, NotificationCenter, ModerationPanel, DMInbox, LiveStreams,
+    // …), so a blind zero-parameter quick-trigger bar would only ever
+    // duplicate them with a worse, mostly-broken surface.
+    actions: [],
     category: 'social',
     dataTier: 'REAL_LIVE',
     emptyState: {
@@ -5331,10 +5385,45 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // (observing the concurrency stack is not minting knowledge). The `metric`
   // artifact + `json` export reflect the live data the page surfaces.
   { domain: 'ops-telemetry', label: 'Ops Telemetry',      artifacts: ['metric'],      macros: {}, exports: ['json'], actions: [], category: 'operations' },
+  // Frontier is ten independent compute engines (lib/frontier-engines.ts),
+  // each with its own distinct macro set — there is no single list/get/run
+  // convention across them, so `macros` is intentionally `{}` (same posture
+  // as ops-telemetry / concord-link-frontier: the real macro calls happen
+  // per-panel via `runFrontierMacro`, not through this generic contract).
+  // `actions` is intentionally empty too — every engine's Compute cell is a
+  // bespoke structured form (CLAUDE.md's "zero generic tendencies"
+  // invariant), never a ManifestActionBar-style generic action list this
+  // field would drive.
+  { domain: 'frontier', label: 'Frontier', artifacts: ['engine_run'], macros: {}, exports: [], actions: [], category: 'knowledge' },
+  // World Observatory is a read-only simulation-observability dashboard —
+  // the population/faction/realm/district counterpart to Ops Telemetry's
+  // infra-only view. Unlike ops-telemetry it IS macro-backed: both
+  // `worldstate.overview` and `worldstate.world_detail` are real, tested
+  // macros (server/domains/world-overview.js) that perform pure composition
+  // of existing getters — no new tables, no mutation. `actions` is
+  // intentionally empty for the same reason as ops-telemetry: there is no
+  // authoring/mutation action on this surface, only observation.
+  { domain: 'world-observatory', label: 'World Observatory', artifacts: ['world_state'], macros: { list: 'worldstate.overview', get: 'worldstate.world_detail' }, exports: ['json'], actions: [], category: 'operations' },
+  // Concord Link Frontier is a read-only news/royalty-flow surface, REST-backed
+  // by design (the ops-telemetry precedent) — `/api/cross-world/feed` and
+  // `/api/cross-world/royalty-flow` (server/lib/cross-world-feed.js) are real
+  // HTTP routes, not macros, so `macros` is intentionally `{}`. Before this
+  // lens the two routes were consumed only by the pre-login `/explore` page;
+  // this surfaces the same real data to logged-in players. No authoring
+  // action exists on this surface (pure observation), so `actions` is empty.
+  { domain: 'concord-link-frontier', label: 'Concord Link Frontier', artifacts: ['world_event', 'royalty_flow'], macros: {}, exports: ['json'], actions: [], category: 'operations' },
+  // Plugin Gallery is the real frontend surface for /api/plugins/gallery/*
+  // (server/lib/plugin-gallery.js) — REST-backed by design (no macro domain),
+  // same posture as concord-link-frontier. This is NOT the older /api/plugins
+  // emergent/developer-sdk loader behind the "system" lens's
+  // LensPluginSystem — the two subsystems are unrelated. `actions` lists the
+  // real mutating HTTP verbs a user can take (install / rate); publish/delist
+  // are author/admin-only and not exposed as generic lens actions here.
+  { domain: 'plugins', label: 'Plugin Gallery', artifacts: ['gallery_plugin'], macros: {}, exports: ['json'], actions: ['install', 'rate'], category: 'operations' },
   { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'photos.list',             get: 'photos.get', create: 'photos.share' }, exports: ['json'], actions: ['share', 'world'], category: 'creative' },
   { domain: 'quests',        label: 'Quests',             artifacts: ['quest'],       macros: { list: 'quests.mine',             get: 'quests.progress' },        exports: ['json'], actions: ['accept', 'record-progress', 'claim-rewards', 'share'], category: 'lifestyle' },
   { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'spectate.list',           get: 'spectate.get',         create: 'spectate.watch',   run: 'spectate.bet' },           exports: ['json'], actions: ['watch', 'bet', 'my_positions'], category: 'social' },
-  { domain: 'training-room', label: 'Training Room',      artifacts: ['frame_data'],  macros: { list: 'lens.training-room.list_skills', get: 'lens.training-room.frame_data' }, exports: ['json'], actions: ['frame_data', 'kind_frame_data', 'list_kinds', 'list_skills'], category: 'lifestyle' },
+  { domain: 'training-room', label: 'Training Room',      artifacts: ['frame_data'],  macros: { list: 'training-room.list_skills', get: 'training-room.frame_data' }, exports: ['json'], actions: ['frame_data', 'kind_frame_data', 'list_kinds', 'list_skills'], category: 'lifestyle' },
   { domain: 'courtship',     label: 'Courtship',          artifacts: ['courtship'],   macros: { list: 'lens.courtship.list',     get: 'lens.courtship.get' },     exports: ['json'], actions: ['interact', 'propose', 'wed', 'conceive'], category: 'lifestyle' },
   { domain: 'creatures',     label: 'Creatures',          artifacts: ['creature'],    macros: { list: 'creatures.roster',        get: 'creatures.taxonomy',     create: 'creatures.breed' },     exports: ['json'], actions: ['roster', 'species', 'breed', 'lineage', 'taxonomy', 'for_world'], category: 'lifestyle' },
   { domain: 'fishing',       label: 'Fishing',            artifacts: ['catch'],       macros: { list: 'lens.fishing.list',       get: 'lens.fishing.get',       create: 'lens.fishing.create' },       exports: ['json'], actions: ['cast', 'reel'], category: 'lifestyle' },

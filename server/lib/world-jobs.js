@@ -140,7 +140,7 @@ export function getUserJob(userId) {
   return assignId ? _jobAssignments.get(assignId) : null;
 }
 
-export function recordJobActivity(userId, { dtuId, ccEarned = 0 }) {
+export function recordJobActivity(userId, { ccEarned = 0 }) {
   const assignId = _userJobs.get(userId);
   if (!assignId) return { ok: false, error: "no_job" };
   const assignment = _jobAssignments.get(assignId);
@@ -190,7 +190,7 @@ export function hireToBusiness(businessId, employeeId, { role = "staff", revenue
   return { ok: true, employees: biz.employees.length };
 }
 
-export function recordBusinessSale(businessId, { dtuId, buyerId, amount }) {
+export function recordBusinessSale(businessId, { amount }) {
   const biz = _businesses.get(businessId);
   if (!biz) return { ok: false, error: "business_not_found" };
   biz.revenue += amount;

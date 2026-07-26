@@ -65,20 +65,37 @@ function resolveDomain({ domain, skillKind } = {}) {
 }
 
 /**
+ * True when a rule_modulators magic_level/tech_level value means "this power
+ * class does not exist here". Authored worlds (content/world/<name>/meta.json)
+ * encode the level as a string enum — "none" / "trace" / "rare-bloodline" /
+ * "moderate" / "abundant" for magic, "pre-industrial" / "modern" / … for
+ * tech — never a bare number; synthetic/test worlds sometimes use a literal
+ * 0. Both mean the same thing: treat numeric 0 OR the case-insensitive
+ * string "none" as the hard-forbid floor. Any other value (including other
+ * low-but-nonzero strings like "trace") is NOT a forbid — it's Pillar 3's
+ * job to dampen those, not Pillar 2's job to block them outright.
+ */
+function isZeroLevel(level) {
+  if (level === 0) return true;
+  if (typeof level === "string") return level.trim().toLowerCase() === "none";
+  return false;
+}
+
+/**
  * Pillar 2 — can this move's power class even exist in `world`?
- * magic_level 0 forbids magic/bio; tech_level 0 forbids tech/cyber. Returns
- * { available, reason }.
+ * magic_level "none"/0 forbids magic/bio; tech_level "none"/0 forbids
+ * tech/cyber. Returns { available, reason }.
  */
 export function isAvailableIn(world, { domain, skillKind } = {}) {
   const dom = resolveDomain({ domain, skillKind });
   const mod = parseModulators(world);
   const magicLevel = mod.magic_level ?? mod.magicLevel;
   const techLevel = mod.tech_level ?? mod.techLevel;
-  if (MAGIC_DOMAINS.has(dom) && magicLevel === 0) {
-    return { available: false, reason: "world forbids magic (magic_level 0)" };
+  if (MAGIC_DOMAINS.has(dom) && isZeroLevel(magicLevel)) {
+    return { available: false, reason: "world forbids magic (magic_level none/0)" };
   }
-  if (TECH_DOMAINS.has(dom) && techLevel === 0) {
-    return { available: false, reason: "world forbids tech (tech_level 0)" };
+  if (TECH_DOMAINS.has(dom) && isZeroLevel(techLevel)) {
+    return { available: false, reason: "world forbids tech (tech_level none/0)" };
   }
   return { available: true, reason: null };
 }

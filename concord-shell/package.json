@@ -1,0 +1,14 @@
+{
+  "name": "concord-shell",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tauri desktop shell wrapper scripts for concord-shell/src-tauri. Convenience only -- the shell itself is a pure Rust/Tauri binary; nothing here is a build requirement.",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "test:supervisor": "cargo test -p concord-shell-supervisor -p concord-shell-health-probe"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

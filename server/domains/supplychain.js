@@ -81,8 +81,8 @@ export default function registerSupplychainActions(registerLensAction) {
     const userId = scActor(ctx);
     const orgId = params?.orgId ? scClean(params.orgId, 100) : null;
     if (!orgId) return { ok: true, key: userId, scope: "user", role: null };
-    if (!getOrganization(orgId)) return { ok: false, error: "org_not_found" };
-    const members = getOrgMembers(orgId);
+    if (!getOrganization(ctx?.db, orgId)) return { ok: false, error: "org_not_found" };
+    const members = getOrgMembers(ctx?.db, orgId);
     const membership = members.find(m => m.userId === userId);
     if (!membership) return { ok: false, error: "not_a_member" };
     const scRole = ORG_ROLE_TO_SC_ROLE[membership.role] || "analyst";
@@ -697,7 +697,7 @@ export default function registerSupplychainActions(registerLensAction) {
       const type = SC_ORG_TYPES.has(params?.type) ? params.type : "firm";
       const name = scClean(params?.name, 120);
       if (!name) return { ok: false, error: "name_required" };
-      const res = createOrganization({
+      const res = createOrganization(ctx?.db, {
         name, type, leaderId,
         description: scClean(params?.description, 500),
         districtId: params?.districtId ? scClean(params.districtId, 100) : null,
@@ -718,7 +718,7 @@ export default function registerSupplychainActions(registerLensAction) {
       // officer/leader (SC "planner") requires an existing planner to call
       // orgSetRole.
       const requested = params?.role === "apprentice" ? "apprentice" : "member";
-      const res = joinOrganization(orgId, userId, requested);
+      const res = joinOrganization(ctx?.db, orgId, userId, requested);
       if (!res.ok) return res;
       return { ok: true, result: { role: res.role, scRole: ORG_ROLE_TO_SC_ROLE[res.role] || "analyst" } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -729,7 +729,7 @@ export default function registerSupplychainActions(registerLensAction) {
       const userId = scActor(ctx);
       const orgId = scClean(params?.orgId, 100);
       if (!orgId) return { ok: false, error: "orgId_required" };
-      return leaveOrganization(orgId, userId);
+      return leaveOrganization(ctx?.db, orgId, userId);
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -739,8 +739,8 @@ export default function registerSupplychainActions(registerLensAction) {
       if (!orgId) return { ok: false, error: "orgId_required" };
       const scope = scScope(ctx, { orgId }, null);
       if (!scope.ok) return scope;
-      const org = getOrganization(orgId);
-      const members = getOrgMembers(orgId).map(m => ({ ...m, scRole: ORG_ROLE_TO_SC_ROLE[m.role] || "analyst" }));
+      const org = getOrganization(ctx?.db, orgId);
+      const members = getOrgMembers(ctx?.db, orgId).map(m => ({ ...m, scRole: ORG_ROLE_TO_SC_ROLE[m.role] || "analyst" }));
       return { ok: true, result: { organization: org, members, myRole: scope.role, myOrgRole: scope.orgRole } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -759,7 +759,7 @@ export default function registerSupplychainActions(registerLensAction) {
       // setMemberRole() itself enforces "only leader/officer may change
       // roles" (world-organizations.js) — i.e. only the planner class. We
       // don't duplicate that gate here, only translate the role name.
-      const res = setMemberRole(orgId, targetUserId, newRole, actorId);
+      const res = setMemberRole(ctx?.db, orgId, targetUserId, newRole, actorId);
       if (!res.ok) return res;
       return { ok: true, result: { role: res.role, scRole: ORG_ROLE_TO_SC_ROLE[res.role] || "analyst" } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -768,9 +768,9 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "orgMine", (ctx, _artifact, _params) => {
     try {
       const userId = scActor(ctx);
-      const memberships = getOrgsForUser(userId);
+      const memberships = getOrgsForUser(ctx?.db, userId);
       const orgs = memberships.map(m => {
-        const org = getOrganization(m.orgId);
+        const org = getOrganization(ctx?.db, m.orgId);
         return org ? { ...org, myRole: m.role, myScRole: ORG_ROLE_TO_SC_ROLE[m.role] || "analyst" } : null;
       }).filter(Boolean);
       return { ok: true, result: { organizations: orgs } };
@@ -780,7 +780,7 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "orgList", (ctx, _artifact, params) => {
     try {
       const type = SC_ORG_TYPES.has(params?.type) ? params.type : undefined;
-      const orgs = listOrganizations({ type, districtId: params?.districtId, limit: Math.min(scNum(params?.limit, 50), 100) })
+      const orgs = listOrganizations(ctx?.db, { type, districtId: params?.districtId, limit: Math.min(scNum(params?.limit, 50), 100) })
         .filter(o => SC_ORG_TYPES.has(o.type));
       return { ok: true, result: { organizations: orgs } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }

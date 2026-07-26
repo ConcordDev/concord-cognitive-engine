@@ -7,6 +7,13 @@
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { ELEMENTS, getElement, categoryGroup } from "../lib/periodic-table-data.js";
+import {
+  getDegradationConstants,
+  mechanismAvailable,
+  DEGRADATION_CONSTANTS,
+} from "../lib/asset-gen/degradation-constants.js";
+import { checkDurabilityGate } from "../lib/asset-gen/durability-gate.js";
+import { HONEST_BOUNDARY as DEGRADATION_HONEST_BOUNDARY } from "../lib/simulation/degradation-kinetics.js";
 
 const MP_BASE = "https://api.materialsproject.org";
 
@@ -1265,6 +1272,100 @@ export default function registerMaterialsActions(registerLensAction) {
           source: "curated-ICE-industry-averages",
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * degradationConstants
+   * W1-A — long-horizon materials degradation engine (server/lib/asset-gen/
+   * degradation-constants.js + server/lib/simulation/degradation-kinetics.js
+   * + server/lib/asset-gen/durability-gate.js). Lists which cited kinetics
+   * mechanisms ('fatigue' via Paris-law, 'thermal' via an absolute Arrhenius
+   * rate constant, 'moisture' via Fickian diffusion) are genuinely available
+   * for a given material — or for every material, if none is specified.
+   * Never fabricates a value: an unavailable mechanism is reported as
+   * `available:false` with the same reason durabilityCheck below would
+   * refuse with, never silently omitted or defaulted.
+   * params: { material? }
+   */
+  registerLensAction("materials", "degradationConstants", (ctx, artifact, params) => {
+    try {
+      const material = params?.material || artifact?.data?.material;
+      const keys = material ? [String(material)] : Object.keys(DEGRADATION_CONSTANTS);
+      const materials = keys.map((key) => {
+        const entry = getDegradationConstants(key);
+        return {
+          material: key,
+          known: !!entry,
+          label: entry?.label ?? null,
+          mechanisms: {
+            fatigue: mechanismAvailable(entry, "fatigue"),
+            thermal: mechanismAvailable(entry, "thermal"),
+            moisture: mechanismAvailable(entry, "moisture"),
+          },
+          paris: entry?.paris ?? null,
+          arrhenius: entry?.arrhenius ?? null,
+          diffusion: entry?.diffusion ?? null,
+          knockdown: entry?.knockdown ?? null,
+        };
+      });
+      return {
+        ok: true,
+        result: {
+          materials,
+          honestBoundary: DEGRADATION_HONEST_BOUNDARY,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * durabilityCheck
+   * W1-A — runs the real 50-year degradation-to-residual-capacity gate
+   * (server/lib/asset-gen/durability-gate.js#checkDurabilityGate): marches
+   * cited kinetics (Paris fatigue crack growth / Fickian moisture ingress)
+   * forward in time via server/lib/compute/numerical.js#rk4ODE, then feeds
+   * the knocked-down properties back into the UNCHANGED beam-frame solver
+   * (server/lib/simulation/fea-solver.js#runFEA) at each sampled year.
+   * NEVER fabricates a pass — an unknown material, a mechanism this
+   * material has no real cited constants for, an unsupported member
+   * orientation, or a crack that outgrows its section all come back as an
+   * honest `ok:false, reason`.
+   * artifact.data / params: {
+   *   model: {nodes, members, loads?, supports},
+   *   materialKey, mechanisms?, fatigue?, thermal?, moisture?, sampleYears?
+   * }
+   */
+  registerLensAction("materials", "durabilityCheck", (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const model = data.model;
+      if (!model || typeof model !== "object") {
+        return { ok: false, error: "missing_model", message: "durabilityCheck requires artifact.data.model = {nodes, members, loads?, supports}" };
+      }
+      const check = checkDurabilityGate(model, {
+        materialKey: data.materialKey,
+        mechanisms: Array.isArray(data.mechanisms) ? data.mechanisms : undefined,
+        fatigue: data.fatigue,
+        thermal: data.thermal,
+        moisture: data.moisture,
+        sampleYears: Array.isArray(data.sampleYears) ? data.sampleYears : undefined,
+      });
+      // checkDurabilityGate never fabricates a pass: a hard precondition
+      // failure (bad model, unsupported member orientation, unknown/
+      // uncited material, a requested mechanism with no real constants, a
+      // crack that outgrows its section, or a solver error) always
+      // carries `reason` and no per-year samples — surface that as an
+      // honest macro error, matching engineering.js's thermalStressCheck
+      // convention, rather than wrapping a refusal as a successful `result`.
+      if (check.reason) {
+        return { ok: false, error: check.reason, ...(check.memberIds ? { memberIds: check.memberIds } : {}), ...(check.mechanism ? { mechanism: check.mechanism } : {}) };
+      }
+      return { ok: true, result: check };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

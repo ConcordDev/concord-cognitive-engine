@@ -1,0 +1,433 @@
+{
+  "generatedAt": "2026-07-24T06:19:26.250Z",
+  "head": "0e7259af2757274b20da99c54e17aaebe3d95d7b",
+  "checked": 106,
+  "failed": 0,
+  "clean": 106,
+  "results": [
+    {
+      "file": "CLAUDE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/ART_STYLE_GUIDE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/AUDIT-2026-05-02.md",
+      "ok": true
+    },
+    {
+      "file": "docs/AUDIT-AFTER-2026-05-02.md",
+      "ok": true
+    },
+    {
+      "file": "docs/AUDIT-SHIP-2026-05-02.md",
+      "ok": true
+    },
+    {
+      "file": "docs/AUTONOMOUS_LOOP.md",
+      "ok": true
+    },
+    {
+      "file": "docs/BALANCE_DIALS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/BEYOND_CORRECTNESS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/BROWSER_DURABILITY_AUDIT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/BROWSER_READY_CAMPAIGN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CAUSAL_CLOSURE_EXPERIMENT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CIVIC_BONDS_SPEC.md",
+      "ok": true
+    },
+    {
+      "file": "docs/COLD_START_STRATEGY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONCORDIA_ASSET_STUDIO_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONCORDIA_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONCORD_50_CAPABILITIES_ROADMAP.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONCORD_DESTINATIONS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONCORD_LINK_BUILD_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONKAY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONKAY_HONEST_HOLOGRAM_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONKAY_SPATIAL_NEXT_GEN_SPEC.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONNECTORS_GO_LIVE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONTENT_INTEGRITY_SWEEP.md",
+      "ok": true
+    },
+    {
+      "file": "docs/CONTRACT_ENFORCEMENT_STRATEGY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DATA_PROVENANCE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DATA_SOURCING_FEEDS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DEPLOYMENT-READINESS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DEPLOYMENT_TOPOLOGY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DEPTH_BALANCE_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DEPTH_FLEET_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DEPTH_IMPORTANT_BACKLOG.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DESIGN_NORTH_STAR.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DETECTOR_GOVERNANCE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/DEVELOPER_PLATFORM_GTM.md",
+      "ok": true
+    },
+    {
+      "file": "docs/EMERGENT_WIRING_AUDIT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/FEATURE_UPGRADE_BACKLOG.md",
+      "ok": true
+    },
+    {
+      "file": "docs/FRONTEND_REBUILD_PROGRAM.md",
+      "ok": true
+    },
+    {
+      "file": "docs/FUNCTION_ASSURANCE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/FUNDING_GATED_FEEDS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/GAP_CLOSURE_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/GODOT_INTEGRATION.md",
+      "ok": true
+    },
+    {
+      "file": "docs/GODOT_PROTOCOL.md",
+      "ok": true
+    },
+    {
+      "file": "docs/GOVERNANCE_DESIGN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/GO_LIVE_CHECKLIST.md",
+      "ok": true
+    },
+    {
+      "file": "docs/IDE_INTEGRATION.md",
+      "ok": true
+    },
+    {
+      "file": "docs/INVARIANT_ENGINE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LENS_APP_PARITY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LENS_AUDIT_METHODOLOGY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LENS_BACKEND_VERIFICATION.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LENS_COMPLETION_LEDGER.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LENS_COVERAGE_AUDIT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LENS_UX_AUDIT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LICENSING.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LIVE_OPS_PUNCHLIST_2026-07-07.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LIVING_SOCIETY_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LOOT_SYSTEMS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/LORE_BIBLE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/MARKET_DEMAND_MAP.md",
+      "ok": true
+    },
+    {
+      "file": "docs/MCP_SERVER.md",
+      "ok": true
+    },
+    {
+      "file": "docs/MMO_RPG_COMPLETENESS_AUDIT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/NEXT_ARC_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/NOVELTY_INVENTORY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/OFFICIAL_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/OPERATOR.md",
+      "ok": true
+    },
+    {
+      "file": "docs/ORPHANED_SYSTEMS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PERFORMANCE_BUDGET.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PHASE12_AUDIT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PHASE_E_BALANCE_DESIGN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PLAYTEST_FINDINGS_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/POLISH_AUDIT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PREMIUM_UI_AUDIT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PRIVACY_DSAR_DELETION_INVESTIGATION.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PRIVACY_POLICY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PRODUCTION.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PROD_READINESS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PROGRESSION_MATRIX.md",
+      "ok": true
+    },
+    {
+      "file": "docs/PR_TRIAGE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/QUESTS_ENGINE_INVESTIGATION.md",
+      "ok": true
+    },
+    {
+      "file": "docs/RENDER_EVERYTHING_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/RENDER_WALKTHROUGH_FINDINGS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/RUNPOD_DEPLOY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/RUNPOD_DEPLOYMENT_RESEARCH.md",
+      "ok": true
+    },
+    {
+      "file": "docs/SCIFI_FEASIBILITY_MAP.md",
+      "ok": true
+    },
+    {
+      "file": "docs/SDK_QUICKSTART.md",
+      "ok": true
+    },
+    {
+      "file": "docs/SELF_HOST.md",
+      "ok": true
+    },
+    {
+      "file": "docs/SEMANTIC_PIPELINE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/SHIP-REFERENCE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/SHIP_READINESS.md",
+      "ok": true
+    },
+    {
+      "file": "docs/SSE_STREAMING.md",
+      "ok": true
+    },
+    {
+      "file": "docs/STATE_OF_CONCORD.md",
+      "ok": true
+    },
+    {
+      "file": "docs/STUB_UPGRADE_BACKLOG.md",
+      "ok": true
+    },
+    {
+      "file": "docs/TEMPERAMENT_BUILD_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/TEMPERAMENT_ENGINE_SPEC.md",
+      "ok": true
+    },
+    {
+      "file": "docs/TERMS_OF_SERVICE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/TOP_25_LENSES.md",
+      "ok": true
+    },
+    {
+      "file": "docs/UI_QUALITY_RUBRIC.md",
+      "ok": true
+    },
+    {
+      "file": "docs/UNIVERSAL_MOVE_SYSTEM_PLAN.md",
+      "ok": true
+    },
+    {
+      "file": "docs/USER.md",
+      "ok": true
+    },
+    {
+      "file": "docs/USERBUG_TAXONOMY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/WALKTHROUGH_TRIAGE.md",
+      "ok": true
+    },
+    {
+      "file": "docs/WAVE4_INVENTORY.md",
+      "ok": true
+    },
+    {
+      "file": "docs/WHY_CONCORD_IS_DIFFERENT.md",
+      "ok": true
+    },
+    {
+      "file": "docs/WIRING.md",
+      "ok": true
+    },
+    {
+      "file": "docs/mmo-systems.md",
+      "ok": true
+    },
+    {
+      "file": "docs/per-world-deployment.md",
+      "ok": true
+    },
+    {
+      "file": "docs/runpod-deployment.md",
+      "ok": true
+    }
+  ]
+}

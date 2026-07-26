@@ -59,8 +59,14 @@ export default function createAPIDocsRouter({
  *   POST /api/lens/{domain}/{action}
  *
  * Core REST endpoints (DTUs, auth, chat, keys, billing) are also included.
+ *
+ * `ALL_LENS_DOMAINS` (the createAPIDocsRouter dep) is intentionally not
+ * consumed here — the domain list below is derived from the live
+ * `LENS_ACTIONS` keys instead, so the spec only advertises domains that
+ * actually have a registered action, which is a more accurate spec than
+ * echoing the full domain roster including any domain with zero actions.
  */
-function buildOpenAPISpec({ LENS_ACTIONS, ALL_LENS_DOMAINS, serverVersion }) {
+function buildOpenAPISpec({ LENS_ACTIONS, serverVersion }) {
   const paths = {};
   const domainTags = new Set();
 

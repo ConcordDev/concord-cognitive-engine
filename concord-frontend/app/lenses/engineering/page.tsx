@@ -18,6 +18,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { lensRun } from '@/lib/api/client';
 import { FEAResultViewer } from '@/components/engineering/FEAResultViewer';
+import type { FeaComputationResult } from '@/components/engineering/fea-verification';
 import { MultiDisciplineCalcPanel } from '@/components/engineering/MultiDisciplineCalcPanel';
 import { SimHistoryPanel } from '@/components/engineering/SimHistoryPanel';
 import {
@@ -1164,6 +1165,7 @@ export default function EngineeringPage() {
               showDeformed={true}
               showStress={true}
               height="500px"
+              result={feaResult as unknown as FeaComputationResult | null}
             />
           )}
           <SimHistoryPanel refreshKey={historyKey} />

@@ -16,9 +16,21 @@
  *
  * Gameplay state mapping (read from window events):
  *   - 'concordia:combat-engaged' → percussion + melody at 1.0; harmony 0.6
- *   - 'concordia:stealth' → harmony at 0.4; rhythm at 0.6; everything else 0
- *   - 'concordia:discovery' → harmony + melody swell to 0.9
  *   - 'concordia:cinematic-shot' (with music_layer) → that layer to 1.0
+ *
+ * DET-C dead-event-listener sweep (continuation, 2026-07-24): this engine
+ * previously also listened for 'concordia:stealth' / 'concordia:discovery',
+ * but nothing anywhere ever dispatched either — checked runtime-truth
+ * across the whole app, not just this file. Unlike 'concordia:combat-
+ * engaged'/'concordia:calm' (which got a real edge-detected dispatch off
+ * the same inCombat boolean CombatMusicSystem already computes), there is
+ * no current gameplay concept of a continuous "in stealth" or "just
+ * discovered something" state to derive these from — the closest real
+ * signal, the `stealth` control-scheme selection, only affects available
+ * combat moves, not a sneaking/detection posture. Wiring them would mean
+ * inventing the mechanic, not fixing a missed wire, so the two listeners
+ * (and their onStealth/onDiscovery handlers) were retired rather than left
+ * as a documented no-op.
  *
  * Falls back gracefully when stem files are missing — players without the
  * audio install get the procedural SoundscapeEngine layer (already
@@ -159,8 +171,6 @@ export default function AdaptiveMusicEngine({ worldId, trackId = 'concordia_hub_
     };
 
     const onCombat = () => apply({ rhythm: 0.9, percussion: 1.0, melody: 1.0, harmony: 0.6, tension: 0.4 });
-    const onStealth = () => apply({ rhythm: 0.6, percussion: 0, melody: 0, harmony: 0.4, tension: 0 });
-    const onDiscovery = () => apply({ rhythm: 0.7, percussion: 0, melody: 0.9, harmony: 0.9, tension: 0.2 });
     const onCalm = () => apply({ rhythm: 0.8, percussion: 0, melody: 0.3, harmony: 0.7, tension: 0 });
     const onCinematicShot = (e: Event) => {
       const detail = (e as CustomEvent<{ music_layer?: string }>).detail;
@@ -171,15 +181,11 @@ export default function AdaptiveMusicEngine({ worldId, trackId = 'concordia_hub_
     const onCinematicEnd = () => onCalm();
 
     window.addEventListener('concordia:combat-engaged', onCombat);
-    window.addEventListener('concordia:stealth', onStealth);
-    window.addEventListener('concordia:discovery', onDiscovery);
     window.addEventListener('concordia:calm', onCalm);
     window.addEventListener('concordia:cinematic-shot', onCinematicShot);
     window.addEventListener('concordia:cinematic-end', onCinematicEnd);
     return () => {
       window.removeEventListener('concordia:combat-engaged', onCombat);
-      window.removeEventListener('concordia:stealth', onStealth);
-      window.removeEventListener('concordia:discovery', onDiscovery);
       window.removeEventListener('concordia:calm', onCalm);
       window.removeEventListener('concordia:cinematic-shot', onCinematicShot);
       window.removeEventListener('concordia:cinematic-end', onCinematicEnd);

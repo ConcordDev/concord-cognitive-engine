@@ -63,6 +63,61 @@ const FRAME_DISTANCE_RATIO = 16;            // single-frame ceiling = max_speed 
 const MIN_UPDATE_INTERVAL_MS = 20;          // no faster than 50Hz from any one user
 const GRACE_PERIOD_MS = 500;                // first few updates after login skip speed check
 
+// ── Locomotion classification (R5 continuation — real walk/run state) ──────
+// The anti-cheat speed check just above already computes a real,
+// server-authoritative `speedMps` from position deltas over server wall-clock
+// dt for every ACCEPTED move packet — it was previously discarded after the
+// max-speed comparison (only cached in `_lastSpeed` for the AOI radius). This
+// classifies that same speed into a discrete locomotion label so remote-
+// avatar animation (Godot's avatar_manager.gd / animation_state_machine.gd)
+// has a ground-truth signal instead of only inferring speed from noisy
+// interpolated snapshot deltas, and instead of trusting the sender's
+// self-reported `action` string (the web client hardcodes `action: 'walk'`
+// unconditionally — see AvatarSystem3D.tsx/app/lenses/world/page.tsx — and
+// the pre-this-unit Godot client only ever had idle/walk, never run).
+//
+// Thresholds are NOT invented here — they mirror the two real, only-ever-
+// produced horizontal speeds on the Three.js client
+// (AvatarSystem3D.tsx:362-363 `MOVE_SPEED = 5.0` / `RUN_SPEED = 12.0`) via
+// the same constants world-lens-godot/avatar/animation_state_machine.gd
+// already uses for its own (client-side, inference-based) classification:
+// IDLE_MAX_SPEED = 0.05 (that file's own idle/walk cutoff, itself mirrored
+// from character_controller.gd) and RUN_MIN_SPEED = 8.5 (the documented
+// "honest midpoint" between MOVE_SPEED and RUN_SPEED). Keeping the exact
+// same numbers server-side means the server's label and a Godot client's own
+// independent inference agree on the boundary even when only one of the two
+// signals is available.
+const LOCOMOTION_IDLE_MAX_SPEED_MPS = 0.05;
+const LOCOMOTION_RUN_MIN_SPEED_MPS = 8.5;
+// Hysteresis band so a speed oscillating right at the walk/run boundary
+// (packet jitter, quantization) doesn't flap the classification every
+// packet. Mirrors animation_state_machine.gd's own BLEND_BAND (1.5 m/s) —
+// same number, different purpose (crossfade band there, state-lock band
+// here): once classified "run", speed must drop a full BLEND_BAND below
+// RUN_MIN_SPEED before falling back to "walk".
+const LOCOMOTION_HYSTERESIS_MPS = 1.5;
+
+/**
+ * Classify a real, server-derived horizontal speed into a discrete
+ * locomotion label. Pure function — no map/entry access — so it is
+ * independently unit-testable.
+ *
+ * @param {number} speedMps - server-computed distance/dt for one accepted
+ *   move packet (never a client-supplied value).
+ * @param {string|null} [prevLocomotion] - the user's previously classified
+ *   label, if any. Only used to apply hysteresis at the run/walk boundary;
+ *   omit/null for a user's first classified packet.
+ * @returns {"idle"|"walk"|"run"}
+ */
+export function classifyLocomotion(speedMps, prevLocomotion = null) {
+  const s = Number.isFinite(speedMps) ? speedMps : 0;
+  if (s < LOCOMOTION_IDLE_MAX_SPEED_MPS) return "idle";
+  if (prevLocomotion === "run") {
+    return s >= (LOCOMOTION_RUN_MIN_SPEED_MPS - LOCOMOTION_HYSTERESIS_MPS) ? "run" : "walk";
+  }
+  return s >= LOCOMOTION_RUN_MIN_SPEED_MPS ? "run" : "walk";
+}
+
 /**
  * Server-authoritative max-speed lookup. Caller passes in the entry's
  * vehicle_type (already validated against DB at mount time); unknowns
@@ -72,9 +127,346 @@ export function getMaxSpeedForVehicle(vehicleType) {
   return VEHICLE_MAX_SPEED_MPS[vehicleType] ?? VEHICLE_MAX_SPEED_MPS.walk;
 }
 
-/** Single-frame teleport ceiling, scaled by vehicle type. */
-function getMaxFrameDistance(vehicleType) {
-  return getMaxSpeedForVehicle(vehicleType) * FRAME_DISTANCE_RATIO;
+// ── Godot Phase 3a — movement-mode substrate ────────────────────────────────
+// Generalizes the vehicle-only speed relaxation above into a per-user
+// "current movement mode" so a player can legitimately be walking, sprinting,
+// flying, riding a mount, or driving a vehicle — each with its own
+// server-authoritative speed envelope. The mode itself is NEVER trusted from
+// a raw client claim: callers (the player:mode socket handler in server.js,
+// or any future HTTP route) MUST validate real capability/ownership BEFORE
+// calling setUserMovementMode — exactly the same trust boundary setUserVehicle
+// already establishes for vehicles (see its doc comment). This module only
+// enforces the speed math once a mode has been legitimately set.
+export const MOVE_MODES = Object.freeze({
+  WALK: "walk",
+  SPRINT: "sprint",
+  FLY: "fly",
+});
+
+// Sprint is a distinct, faster-than-walk mode a player can request without
+// any ownership check (unlike mounts/vehicles, "run faster on your own two
+// feet" needs no external capability — matches the pre-existing design where
+// the single walk cap already covered casual movement + running). Kept as a
+// named factor so a future stamina-gated sprint can retune it without
+// touching the anti-cheat math.
+const SPRINT_SPEED_FACTOR = 1.5;             // sprint cap = walk cap * factor (16 * 1.5 = 24)
+// Named flight cap — between car (40) and glider (60). Flight legitimacy is
+// NOT yet gated (see the player:mode handler's TODO in server.js); this is
+// just the speed ceiling once a player is tracked as flying.
+const FLY_MAX_SPEED_MPS = 45;
+// Fallback mount speed when a mount mode is set but no valid per-species
+// speed was supplied (defensive — callers should always pass mountSpeedMps
+// from mount_species.base_speed_mps, which is DB-CHECK-constrained to
+// (0, 30]). Falls back to the walk ceiling, never to something faster.
+const DEFAULT_MOUNT_SPEED_MPS = MAX_SPRINT_SPEED_MPS;
+
+/**
+ * Pure, testable speed-cap lookup for a movement mode.
+ *
+ * @param {string} mode - "walk" | "sprint" | "fly" | "mount:<speciesId>" | "vehicle:<type>"
+ * @param {{ mountSpeedMps?: number }} [context] - mode-specific extra data.
+ *        For "mount:*" this MUST be the ridden species' base_speed_mps
+ *        (server-validated by the caller — never a client-supplied value).
+ * @returns {number} max horizontal speed in m/s for this mode.
+ */
+export function modeSpeedCap(mode, context = {}) {
+  const m = String(mode || MOVE_MODES.WALK);
+  if (m === MOVE_MODES.WALK) return MAX_SPRINT_SPEED_MPS; // byte-identical to the pre-Phase-3a single cap
+  if (m === MOVE_MODES.SPRINT) return MAX_SPRINT_SPEED_MPS * SPRINT_SPEED_FACTOR;
+  if (m === MOVE_MODES.FLY) return FLY_MAX_SPEED_MPS;
+  if (m.startsWith("mount:")) {
+    const cap = Number(context?.mountSpeedMps);
+    return Number.isFinite(cap) && cap > 0 ? cap : DEFAULT_MOUNT_SPEED_MPS;
+  }
+  if (m.startsWith("vehicle:")) {
+    return getMaxSpeedForVehicle(m.slice("vehicle:".length));
+  }
+  // Unrecognized mode string — never trust it; fall back to the most
+  // conservative (walking) cap rather than defaulting open.
+  return MAX_SPRINT_SPEED_MPS;
+}
+
+/** Resolve the effective mode for a presence entry, with back-compat for
+ *  entries that only ever went through the legacy setUserVehicle() path
+ *  (which sets vehicleType but, on very old in-memory entries, may not
+ *  have movementMode set explicitly). */
+function currentModeFor(entry) {
+  if (!entry) return MOVE_MODES.WALK;
+  if (entry.movementMode) return entry.movementMode;
+  if (entry.vehicleType) return `vehicle:${entry.vehicleType}`;
+  return MOVE_MODES.WALK;
+}
+
+/**
+ * Authoritative movement-mode switch. Callers MUST validate legitimacy
+ * (mount ownership, vehicle ownership, etc.) BEFORE calling this — the
+ * presence layer trusts whatever mode string it is given, exactly like
+ * setUserVehicle's existing contract. Creates a stub presence entry (walking
+ * default) if the user has no presence yet, same as setUserVehicle.
+ *
+ * @param {string} userId
+ * @param {string} mode - "walk" | "sprint" | "fly" | "mount:<speciesId>" | "vehicle:<type>"
+ * @param {{ mountSpeedMps?: number|null }} [context]
+ * @returns {boolean} true if applied.
+ */
+export function setUserMovementMode(userId, mode, { mountSpeedMps = null } = {}) {
+  if (!userId || !mode) return false;
+  const entry = _userPositions.get(userId);
+  const vehicleType = mode.startsWith("vehicle:") ? mode.slice("vehicle:".length) : null;
+  if (!entry) {
+    _userPositions.set(userId, {
+      cityId: "concordia-central",
+      districtId: null,
+      x: 0, y: 0, z: 0,
+      direction: 0, rotation: 0,
+      action: "idle", currentAnimation: "idle",
+      locomotion: "idle",
+      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
+      clientState: {},
+      vehicleId: null,
+      vehicleType,
+      movementMode: mode,
+      mountSpeedMps: Number.isFinite(mountSpeedMps) ? mountSpeedMps : null,
+      flightActive: mode === MOVE_MODES.FLY,
+      presenceStatus: PRESENCE_STATUS.AVAILABLE,
+      lastUpdate: Date.now(), createdAt: Date.now(),
+      dirty: true, avatar: null,
+    });
+    return true;
+  }
+  entry.movementMode = mode;
+  entry.mountSpeedMps = Number.isFinite(mountSpeedMps) ? mountSpeedMps : null;
+  entry.flightActive = mode === MOVE_MODES.FLY;
+  if (vehicleType) {
+    entry.vehicleType = vehicleType;
+    // vehicleId is intentionally left untouched here — the caller (the
+    // player:mode handler) only re-asserts a mode for a vehicle the player
+    // is already validated-mounted in via setUserVehicle, which already set
+    // vehicleId. A bare setUserMovementMode() call can't forge a vehicleId.
+  } else if (mode === MOVE_MODES.WALK || mode === MOVE_MODES.SPRINT || mode === MOVE_MODES.FLY) {
+    entry.vehicleType = null;
+    entry.vehicleId = null;
+  }
+  entry.dirty = true;
+  return true;
+}
+
+/** Read the effective movement mode for a user ("walk" if no presence yet). */
+export function getUserMovementMode(userId) {
+  return currentModeFor(_userPositions.get(userId));
+}
+
+// ── Presence privacy (ghost / appear-offline mode) ──────────────────────────
+// Audit item #27: the nearby-user + broadcast paths had zero visibility
+// controls. This adds a lightweight, ephemeral (in-memory only — no
+// migration, matches the rest of this file's per-entry state like
+// movementMode) `visibility` field on the presence entry: "visible" (default,
+// back-compat) or "hidden" (appear-offline / ghost mode). A hidden user is
+// excluded from what OTHER users see them as (getNearbyUsers/getPlayersNear/
+// getPlayersInCell results returned to others, and the shared city:positions
+// broadcast payload) but their own queries and their own client experience
+// are completely unaffected — hidden only changes how you're seen, never
+// what you see.
+export const PRESENCE_VISIBILITY = Object.freeze({
+  VISIBLE: "visible",
+  HIDDEN: "hidden",
+});
+
+/**
+ * Set a user's presence visibility. Mirrors setUserMovementMode's contract:
+ * creates a stub presence entry (walking default, visible-unaffected) if the
+ * user has no presence yet, so a client can toggle ghost mode before their
+ * first position update lands.
+ *
+ * @param {string} userId
+ * @param {string} mode - "visible" | "hidden". Anything else is rejected.
+ * @returns {boolean} true if applied.
+ */
+export function setUserVisibility(userId, mode) {
+  if (!userId) return false;
+  const normalized = mode === PRESENCE_VISIBILITY.HIDDEN
+    ? PRESENCE_VISIBILITY.HIDDEN
+    : mode === PRESENCE_VISIBILITY.VISIBLE
+      ? PRESENCE_VISIBILITY.VISIBLE
+      : null;
+  if (!normalized) return false;
+  const entry = _userPositions.get(userId);
+  if (!entry) {
+    _userPositions.set(userId, {
+      cityId: "concordia-central",
+      districtId: null,
+      x: 0, y: 0, z: 0,
+      direction: 0, rotation: 0,
+      action: "idle", currentAnimation: "idle",
+      locomotion: "idle",
+      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
+      clientState: {},
+      vehicleId: null,
+      vehicleType: null,
+      movementMode: MOVE_MODES.WALK,
+      mountSpeedMps: null,
+      flightActive: false,
+      visibility: normalized,
+      lastUpdate: Date.now(), createdAt: Date.now(),
+      dirty: true, avatar: null,
+    });
+    return true;
+  }
+  entry.visibility = normalized;
+  entry.dirty = true;
+  return true;
+}
+
+/** Read a user's presence visibility ("visible" if no presence yet, or the
+ *  entry predates this field). Never throws on a missing user. */
+export function getUserVisibility(userId) {
+  const entry = _userPositions.get(userId);
+  return entry?.visibility === PRESENCE_VISIBILITY.HIDDEN
+    ? PRESENCE_VISIBILITY.HIDDEN
+    : PRESENCE_VISIBILITY.VISIBLE;
+}
+
+/** True only if the entry is explicitly hidden. Missing/undefined = visible
+ *  (back-compat — every pre-existing in-memory entry has no `visibility`
+ *  field at all). */
+function _isHidden(entry) {
+  return entry?.visibility === PRESENCE_VISIBILITY.HIDDEN;
+}
+
+// ── Presence status (V1.2 Wave A — Society & Presence) ─────────────────────
+// Distinct from PRESENCE_VISIBILITY above. Visibility is a binary "can
+// anyone else perceive me at all" ghost toggle (BD#27). This is a real,
+// user-controlled activity status — "available" / "away" / "busy" /
+// "do-not-disturb" — that a VISIBLE user still broadcasts so nearby players
+// and party members know whether to expect a response. A hidden user's
+// status is moot (they're not perceivable at all), so the two compose
+// rather than overlap: `visibility` gates whether you're seen; `presenceStatus`
+// is what's shown once you are.
+//
+// Purely additive — same convention as `locomotion` (R5) and `movementMode`
+// (Godot Phase 3a): a new field on the existing entry, carried forward on
+// every plain position update, defaulted for any pre-existing entry that
+// predates this field. No existing consumer that ignores it is affected.
+//
+// Not to be confused with `server/domains/message.js`'s `status-set`/
+// `status-get` macros — those are Slack-shaped chat-workspace presence
+// (active/away/dnd + emoji/text), scoped entirely to the `message` lens's
+// own per-user state map. This is world-spatial presence: a status other
+// players physically near you (or in your party — see
+// `getPresenceForUsers` below) can see. Deliberately kept as two separate,
+// non-overlapping fields rather than one shared status, since a player
+// legitimately can be "away" from world/company activity while still
+// "active" in a chat workspace tab, or vice versa.
+export const PRESENCE_STATUS = Object.freeze({
+  AVAILABLE: "available",
+  AWAY: "away",
+  BUSY: "busy",
+  DND: "dnd",
+});
+const _PRESENCE_STATUS_VALUES = new Set(Object.values(PRESENCE_STATUS));
+
+/**
+ * Set a user's world-presence status. Mirrors setUserVisibility's contract
+ * exactly: creates a stub presence entry (walking default, visible,
+ * available) if the user has no presence yet, so a client can set a status
+ * before their first position update lands. Rejects unrecognized values —
+ * left unchanged on rejection.
+ *
+ * @param {string} userId
+ * @param {string} status - "available" | "away" | "busy" | "dnd"
+ * @returns {boolean} true if applied.
+ */
+export function setUserPresenceStatus(userId, status) {
+  if (!userId) return false;
+  if (!_PRESENCE_STATUS_VALUES.has(status)) return false;
+  const entry = _userPositions.get(userId);
+  if (!entry) {
+    _userPositions.set(userId, {
+      cityId: "concordia-central",
+      districtId: null,
+      x: 0, y: 0, z: 0,
+      direction: 0, rotation: 0,
+      action: "idle", currentAnimation: "idle",
+      locomotion: "idle",
+      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
+      clientState: {},
+      vehicleId: null,
+      vehicleType: null,
+      movementMode: MOVE_MODES.WALK,
+      mountSpeedMps: null,
+      flightActive: false,
+      visibility: PRESENCE_VISIBILITY.VISIBLE,
+      presenceStatus: status,
+      lastUpdate: Date.now(), createdAt: Date.now(),
+      dirty: true, avatar: null,
+    });
+    return true;
+  }
+  entry.presenceStatus = status;
+  entry.dirty = true;
+  return true;
+}
+
+/** Read a user's world-presence status ("available" if no presence yet, or
+ *  the entry predates this field). Never throws on a missing user. */
+export function getUserPresenceStatus(userId) {
+  const entry = _userPositions.get(userId);
+  return _PRESENCE_STATUS_VALUES.has(entry?.presenceStatus) ? entry.presenceStatus : PRESENCE_STATUS.AVAILABLE;
+}
+
+/**
+ * Look up live presence for an explicit list of userIds, WITHOUT any radius
+ * filter — the "regardless of raw proximity" read path lightweight groups
+ * (parties) need so members can see each other's status/location no matter
+ * how far apart they physically are in the world. This is the one presence
+ * read in this file that is id-based rather than distance-based; every
+ * other query (getNearbyUsers/getPlayersNear/getPlayersInCell) is
+ * intentionally radius-scoped.
+ *
+ * A hidden (ghost) user's coordinates are withheld here exactly as they are
+ * from a stranger's proximity query — party membership is not a bypass of
+ * the visibility contract ("changes how you're seen, never what you see").
+ * Only their online/status field survives, so party UI can render
+ * "in the group, location hidden" instead of the member silently
+ * vanishing from the roster.
+ *
+ * @param {string[]} userIds
+ * @returns {Array<{userId, online, hidden, x, y, z, cityId, worldId, presenceStatus}>}
+ */
+export function getPresenceForUsers(userIds) {
+  if (!Array.isArray(userIds)) return [];
+  const out = [];
+  for (const uid of userIds) {
+    const entry = _userPositions.get(uid);
+    if (!entry) {
+      out.push({ userId: uid, online: false, hidden: false, x: null, y: null, z: null, cityId: null, worldId: null, presenceStatus: PRESENCE_STATUS.AVAILABLE });
+      continue;
+    }
+    const hidden = _isHidden(entry);
+    out.push({
+      userId: uid,
+      online: true,
+      hidden,
+      x: hidden ? null : entry.x,
+      y: hidden ? null : entry.y,
+      z: hidden ? null : entry.z,
+      cityId: hidden ? null : entry.cityId,
+      worldId: hidden ? null : entry.worldId,
+      presenceStatus: _PRESENCE_STATUS_VALUES.has(entry.presenceStatus) ? entry.presenceStatus : PRESENCE_STATUS.AVAILABLE,
+    });
+  }
+  return out;
+}
+
+/**
+ * Minimal server-side flight-active flag (Godot Phase 3a). True only while
+ * the user's tracked movementMode is "fly" — set/cleared exclusively by
+ * setUserMovementMode, never by the raw position-update path. This is just
+ * enough state for anti-cheat / other systems to know "this user is
+ * legitimately tracked as airborne right now" without a dedicated table.
+ */
+export function isUserFlying(userId) {
+  return !!_userPositions.get(userId)?.flightActive;
 }
 
 // ── NPC state ──────────────────────────────────────────────────────────────
@@ -296,6 +688,12 @@ function distanceSq(a, b) {
 export function updateUserPosition(userId, { cityId, x, y, z, direction, action, rotation, currentAnimation, districtId, worldId }) {
   const prev = _userPositions.get(userId);
   const now = Date.now();
+  // Server-classified locomotion label for this packet. `null` means "not
+  // recomputed this call" (rate-limited/rejected returns bail out before
+  // reaching the entry build below; city-transition/grace/dt<=0 skip the
+  // speed math entirely) — the entry build further down carries the
+  // previous value forward in that case, same convention as `action`.
+  let computedLocomotion = null;
 
   // ── Position safety (adversarial-hardening) ──────────────────────────
   // Coerce NaN/Infinity/non-finite coords to a finite fallback, then clamp
@@ -329,28 +727,33 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       const dy = y - prev.y;
       const dz = z - prev.z;
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      // Vehicle-aware speed ceiling. The vehicle type was validated against
-      // the vehicles table at mount time and stored on the entry; we trust
-      // the server-side entry, NEVER a client-supplied vehicle hint.
-      const vehicleType = prev?.vehicleType || "walk";
+      // Mode-aware speed ceiling (Godot Phase 3a). The mode was validated by
+      // the caller (setUserVehicle at vehicle-mount time, or
+      // setUserMovementMode via the player:mode handler for mount/fly/sprint)
+      // and stored on the entry; we trust the server-side entry, NEVER a
+      // client-supplied mode/vehicle hint on the position packet itself.
+      const mode = currentModeFor(prev);
+      const vehicleType = prev?.vehicleType || "walk"; // kept for nack payload back-compat
       // Speedster S1 — on-foot, the anti-cheat ceiling rises with the player's
       // agility (movement.sprint level) instead of the static walk:16 table, so a
       // legitimately-fast runner isn't false-flagged as a speed-hacker. Derived
       // server-side from the stored skill (can't be forged). Off
       // (CONCORD_EARNED_SPEED unset) → the legacy static cap, byte-identical.
-      const _onFoot = !vehicleType || vehicleType === "walk";
+      // Only applies to plain "walk" mode — sprint/fly/mount/vehicle each have
+      // their own explicit modeSpeedCap ceiling instead.
+      const _onFoot = mode === MOVE_MODES.WALK;
       let maxSpeed, maxFrameDistance;
       if (_onFoot && process.env.CONCORD_EARNED_SPEED !== "0") {
         maxSpeed = maxFootSpeedFor(agilityLevelFor(_db, userId));
         maxFrameDistance = maxSpeed * FRAME_DISTANCE_RATIO;
       } else {
-        maxSpeed = getMaxSpeedForVehicle(vehicleType);
-        maxFrameDistance = getMaxFrameDistance(vehicleType);
+        maxSpeed = modeSpeedCap(mode, { mountSpeedMps: prev?.mountSpeedMps });
+        maxFrameDistance = maxSpeed * FRAME_DISTANCE_RATIO;
       }
 
       // Hard ceiling regardless of dt — real players can't teleport
       if (distance > maxFrameDistance) {
-        logger.debug?.("city-presence", `rejected teleport by ${userId}: ${distance.toFixed(1)}m in ${dt}ms (${vehicleType})`);
+        logger.debug?.("city-presence", `rejected teleport by ${userId}: ${distance.toFixed(1)}m in ${dt}ms (${mode})`);
         return {
           ok: false,
           reason: "teleport_detected",
@@ -359,15 +762,16 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
           chunkCrossed: false,
         };
       }
-      // Speed check: distance / dt must be under the vehicle's max
+      // Speed check: distance / dt must be under the mode's max
       const speedMps = distance / (dt / 1000);
       if (speedMps > maxSpeed) {
-        logger.debug?.("city-presence", `rejected speed hack by ${userId}: ${speedMps.toFixed(1)}m/s (${vehicleType} max ${maxSpeed})`);
+        logger.debug?.("city-presence", `rejected speed hack by ${userId}: ${speedMps.toFixed(1)}m/s (${mode} max ${maxSpeed})`);
         return {
           ok: false,
           reason: "speed_hack_detected",
           observedSpeed: speedMps,
           maxSpeed,
+          mode,
           vehicleType,
           prev: { x: prev.x, y: prev.y, z: prev.z },
           nearby: getNearbyUsers(userId),
@@ -382,6 +786,12 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       }
       // S3 — remember the mover's speed for the speed-scaled interest radius.
       if (Number.isFinite(speedMps)) _lastSpeed.set(userId, speedMps);
+      // Locomotion classification — real speed, real thresholds, hysteresis
+      // against the user's own previous label. Computed only on an ACCEPTED
+      // packet (a rejected speed-hack/teleport attempt returns above and
+      // never reaches here), same as position itself only advancing on
+      // acceptance.
+      computedLocomotion = classifyLocomotion(speedMps, prev.locomotion || null);
     }
   }
 
@@ -421,6 +831,12 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     rotation: rotation ?? prev?.rotation ?? 0,
     action: action ?? prev?.action ?? "idle",
     currentAnimation: currentAnimation ?? prev?.currentAnimation ?? "idle",
+    // Server-authoritative locomotion label (see classifyLocomotion above).
+    // `computedLocomotion` is non-null only when this call actually ran the
+    // speed math on an accepted packet; otherwise carry the previous value
+    // forward (teleport/city-transition/grace-period packets, and a user's
+    // very first packet which has no speed to derive) — never fabricated.
+    locomotion: computedLocomotion ?? prev?.locomotion ?? "idle",
     health: prev?.health ?? 100,
     maxHealth: prev?.maxHealth ?? 100,
     stamina: prev?.stamina ?? 100,
@@ -431,6 +847,20 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     // what makes vehicle anti-cheat authoritative.
     vehicleId:   prev?.vehicleId   ?? null,
     vehicleType: prev?.vehicleType ?? null,
+    // Godot Phase 3a — movement-mode state, carried over from previous entry.
+    // Only setUserMovementMode / setUserVehicle can flip these, never the
+    // position update path — same authoritative-separation contract as
+    // vehicleId/vehicleType above.
+    movementMode:  prev?.movementMode  ?? MOVE_MODES.WALK,
+    mountSpeedMps: prev?.mountSpeedMps ?? null,
+    flightActive:  prev?.flightActive  ?? false,
+    // Presence privacy — carried over from previous entry, never reset by a
+    // plain position update. Only setUserVisibility can flip it.
+    visibility: prev?.visibility ?? PRESENCE_VISIBILITY.VISIBLE,
+    // Presence status (V1.2 Wave A) — carried over from previous entry,
+    // never reset by a plain position update. Only setUserPresenceStatus
+    // can flip it. Same non-reset contract as visibility/movementMode.
+    presenceStatus: prev?.presenceStatus ?? PRESENCE_STATUS.AVAILABLE,
     lastUpdate: now,
     createdAt: prev?.createdAt ?? now,
     dirty: true, // mark for next flush
@@ -497,33 +927,27 @@ export function restorePlayerBars(userId) {
  * presence layer trusts whatever it is given, by design. Callers pass
  * vehicleType=null to dismount.
  *
+ * Godot Phase 3a — this is now a thin wrapper over setUserMovementMode
+ * (vehicleType=null → "walk", otherwise → "vehicle:<type>") kept for
+ * back-compat with every existing caller (routes/vehicles.js). Behavior is
+ * unchanged: same speed cap (modeSpeedCap("vehicle:<type>", ...) delegates to
+ * the same getMaxSpeedForVehicle table getMaxSpeedForVehicle always used),
+ * same vehicleId/vehicleType read shape via getUserVehicle.
+ *
  * @param {string} userId
  * @param {{ vehicleId: string|null, vehicleType: string|null }} args
  * @returns {boolean} true if the entry was updated, false if user has no
  *                   active presence to flip yet (mount before first move).
  */
 export function setUserVehicle(userId, { vehicleId = null, vehicleType = null } = {}) {
+  const mode = vehicleType ? `vehicle:${vehicleType}` : MOVE_MODES.WALK;
+  setUserMovementMode(userId, mode, {});
   const entry = _userPositions.get(userId);
-  if (!entry) {
-    // No presence yet — stash a stub so the next position update inherits
-    // the vehicle state. Walking is the implicit default.
-    _userPositions.set(userId, {
-      cityId: "concordia-central",
-      districtId: null,
-      x: 0, y: 0, z: 0,
-      direction: 0, rotation: 0,
-      action: "idle", currentAnimation: "idle",
-      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
-      clientState: {},
-      vehicleId, vehicleType,
-      lastUpdate: Date.now(), createdAt: Date.now(),
-      dirty: true, avatar: null,
-    });
-    return true;
+  if (entry) {
+    entry.vehicleId = vehicleId;
+    entry.vehicleType = vehicleType;
+    entry.dirty = true;
   }
-  entry.vehicleId   = vehicleId;
-  entry.vehicleType = vehicleType;
-  entry.dirty       = true;
   return true;
 }
 
@@ -568,6 +992,11 @@ export function getNearbyUsers(userId, radius = 500) {
         if (uid === userId) continue;
         const other = _userPositions.get(uid);
         if (!other || other.cityId !== pos.cityId) continue;
+        // Presence privacy — a hidden user is invisible to everyone ELSE's
+        // nearby-query, but their own self-query (uid === userId above)
+        // still returns everyone else unfiltered. "Others don't see me,"
+        // not "I don't see others."
+        if (_isHidden(other)) continue;
         if (distanceSq(pos, other) <= radiusSq) {
           results.push({
             userId: uid,
@@ -576,6 +1005,10 @@ export function getNearbyUsers(userId, radius = 500) {
             z: other.z,
             direction: other.direction,
             action: other.action,
+            // R5 continuation — see broadcastPositions' identical field.
+            locomotion: other.locomotion ?? "idle",
+            // V1.2 Wave A — additive field, see broadcastPositions' identical field.
+            presenceStatus: other.presenceStatus ?? PRESENCE_STATUS.AVAILABLE,
             avatar: other.avatar,
           });
         }
@@ -654,6 +1087,12 @@ export function getPlayersInCell(worldId, cellX, cellZ, cellSize = 50) {
   if (!worldId) return out;
   for (const [userId, pos] of _userPositions) {
     if (pos.worldId !== worldId) continue;
+    // Presence privacy — see getNearbyUsers. getPlayersInCell has no concept
+    // of a "requesting user" (it's called by cell-scoped fan-out, not a
+    // per-user query), so a hidden user is excluded unconditionally — this
+    // helper is only ever used to decide who OTHERS' events reach, never to
+    // resolve a hidden user's own view of themselves.
+    if (_isHidden(pos)) continue;
     const px = Math.floor((Number(pos.x) || 0) / cellSize);
     const pz = Math.floor((Number(pos.z) || 0) / cellSize);
     if (px === cellX && pz === cellZ) out.push(userId);
@@ -667,18 +1106,30 @@ export function getPlayersInCell(worldId, cellX, cellZ, cellSize = 50) {
 // users. Returns the Gathering shape the EventsGatherings panel renders.
 export function spontaneousGatherings(worldId, { cellSize = 50, minCount = 2, limit = 20 } = {}) {
   if (!worldId) return [];
-  const cells = new Map(); // "cx:cz" -> { count, district, cx, cz }
+  const cells = new Map(); // "cx:cz" -> { count, district, cx, cz, sumX, sumY, sumZ }
   for (const [, pos] of _userPositions) {
     // Movement paths (server.js / routes/world.js) set cityId, not worldId, so
     // pos.worldId falls back to cityId. Match on either so a client that scopes
     // by cityId still surfaces — otherwise the panel reads empty even with
     // co-located players (PR review on this helper).
     if (pos.worldId !== worldId && pos.cityId !== worldId) continue;
-    const cx = Math.floor((Number(pos.x) || 0) / cellSize);
-    const cz = Math.floor((Number(pos.z) || 0) / cellSize);
+    const px = Number(pos.x) || 0;
+    const pz = Number(pos.z) || 0;
+    const py = Number(pos.y) || 0;
+    const cx = Math.floor(px / cellSize);
+    const cz = Math.floor(pz / cellSize);
     const key = `${cx}:${cz}`;
-    const cur = cells.get(key) || { count: 0, district: pos.districtId || null, cx, cz };
+    const cur = cells.get(key) || { count: 0, district: pos.districtId || null, cx, cz, sumX: 0, sumY: 0, sumZ: 0 };
     cur.count += 1;
+    // Real cluster centroid — the running sum of the ACTUAL co-located
+    // players' live positions, not a fabricated/hashed spot. Averaged below
+    // once the cell's final membership is known. This is the same live
+    // presence data the cell-bucketing above already reads to detect the
+    // gathering exists in the first place — no new data source, just carried
+    // through instead of discarded.
+    cur.sumX += px;
+    cur.sumY += py;
+    cur.sumZ += pz;
     if (!cur.district && pos.districtId) cur.district = pos.districtId;
     cells.set(key, cur);
   }
@@ -691,6 +1142,13 @@ export function spontaneousGatherings(worldId, { cellSize = 50, minCount = 2, li
       location,
       playerCount: c.count,
       description: `${c.count} players gathering at ${location}`,
+      // Centroid of the real clustered positions — lets a client actually
+      // navigate to the gathering (WorldEventBoard "Head there" / in-world
+      // beacon), instead of just naming a district.
+      x: c.sumX / c.count,
+      y: c.sumY / c.count,
+      z: c.sumZ / c.count,
+      worldId,
     });
   }
   out.sort((a, b) => b.playerCount - a.playerCount);
@@ -709,6 +1167,11 @@ export function getPlayersNear(worldId, x, z, { cellSize = 50, radiusCells = 1 }
     // See spontaneousGatherings: match worldId OR cityId so the movement-path
     // cityId fallback doesn't strand co-located players in proximity chat.
     if (pos.worldId !== worldId && pos.cityId !== worldId) continue;
+    // Presence privacy — see getPlayersInCell. This is a point-based query
+    // with no "requesting user" concept, so a hidden user is excluded
+    // unconditionally (it's used to resolve who proximity-chat reaches, i.e.
+    // who else can perceive this location, never a hidden user's own view).
+    if (_isHidden(pos)) continue;
     const px = Math.floor((Number(pos.x) || 0) / cellSize);
     const pz = Math.floor((Number(pos.z) || 0) / cellSize);
     if (Math.abs(px - ccx) <= radiusCells && Math.abs(pz - ccz) <= radiusCells) out.push(userId);
@@ -798,6 +1261,15 @@ export function broadcastPositions(cityId, realtimeEmit) {
     for (const uid of userSet) {
       const p = _userPositions.get(uid);
       if (!p) continue;
+      // Presence privacy — a hidden user vanishes from the SHARED payload
+      // array every occupant of this chunk receives (this broadcast is one
+      // payload fanned out to everyone in the chunk, not per-recipient, so
+      // there is no per-recipient filtering point here). The hidden user's
+      // own client still renders their own avatar from local client state
+      // (their own movement input / optimistic position), same as any other
+      // client-authoritative local render — they just never appear inside
+      // anyone else's copy of this event.
+      if (_isHidden(p)) continue;
       users.push({
         userId: uid,
         x: p.x,
@@ -808,6 +1280,23 @@ export function broadcastPositions(cityId, realtimeEmit) {
         avatar: p.avatar,
         vehicleId:   p.vehicleId   ?? null,
         vehicleType: p.vehicleType ?? null,
+        // Godot Phase 3a — additive field. Existing consumers that don't
+        // read `mode` are unaffected; new (Godot) clients can render
+        // ride/fly/drive animations off it without a separate round-trip.
+        mode: currentModeFor(p),
+        // R5 continuation — additive field. Server-authoritative
+        // idle/walk/run label (classifyLocomotion, derived from real
+        // per-packet speed, never the sender's self-reported `action`).
+        // avatar_manager.gd's AnimationStateMachine prefers this over its
+        // own inferred-from-interpolation classification when present.
+        // Existing consumers that don't read `locomotion` are unaffected.
+        locomotion: p.locomotion ?? "idle",
+        // V1.2 Wave A — additive field. Existing consumers that don't read
+        // `presenceStatus` are unaffected. A hidden user never reaches this
+        // array at all (see the _isHidden filter above), so there is no
+        // separate redaction needed here the way getPresenceForUsers needs
+        // one for its id-based (not distance-based) lookup.
+        presenceStatus: p.presenceStatus ?? PRESENCE_STATUS.AVAILABLE,
         displayName: uid, // caller may enrich later
       });
     }
@@ -979,13 +1468,52 @@ export function getCityNpcs(cityId) {
 }
 
 /**
- * Advance NPC patrol paths and broadcast their new positions alongside
- * player positions. Called from the same 100ms tick as `broadcastPositions`
- * so the frontend sees them through the same pipeline.
+ * Advance NPC patrol paths (position/animation state in `_npcState`,
+ * still consumed internally by `getAllNPCsForEmergence`/`getCityNpcs`).
+ * Called from the same 100ms tick as `broadcastPositions`.
+ *
+ * ── DET-C batch 8 investigation (dead-event-listener sweep, 2026-07-23) ──
+ * found the `city:npcs` broadcast this function used to emit (this
+ * module's ONLY delivery path for these specific procedurally-spawned
+ * NPCs — the world-mechanics `spawn_npc` action in server.js,
+ * cityPresence.spawnNpc) genuinely unconsumed on BOTH transports:
+ * concord-frontend never subscribed to it (NPC rendering in
+ * app/lenses/world/page.tsx polls the DB-backed `/api/worlds/:worldId/npcs`
+ * authored-NPC table instead — a different NPC population entirely), and
+ * world-lens-godot/avatar/avatar_manager.gd has an `ingest_snapshot()`
+ * method shaped for this exact payload but — contrary to a later, INCORRECT
+ * "genuinely consumed by Godot" claim briefly recorded in
+ * tests/invariants/emit-subscribe-pairing.test.js's `city:npcs` baseline
+ * comment (2026-07-24) — was never actually instantiated anywhere:
+ * `AvatarManager.new()` / a `.tscn` scene reference does not exist in the
+ * world-lens-godot tree (re-verified directly, 2026-07-25; see also
+ * aerial_traffic_controller.gd's own header, which says outright
+ * "AvatarManager has no live caller today"). `boot.gd`'s central
+ * `_on_event` dispatch table has cases for `world:aerial-traffic`,
+ * `macro:started`/`macro:completed`/`conkay:verdict`, and `room:joined` —
+ * `city:npcs`/`city:positions` are not among them and fall through to the
+ * no-op default. There is also no REST path exposing `getCityNpcs`
+ * client-side. So these mechanic-spawned patrol NPCs have never been
+ * visible to any player through any transport, broadcast or not — retiring
+ * the emit changes zero observable behavior. Wiring a real subscriber
+ * would mean building a first render pipeline for this NPC population
+ * (browser AND/OR a from-scratch Godot AvatarManager scene wire-up) —
+ * inventing a feature, not fixing a missed wire, and not something
+ * verifiable end-to-end without a Godot runtime this environment doesn't
+ * have. Retired per the same standard the AdaptiveMusicEngine
+ * stealth/discovery listeners and combat-netcode.js's `broadcastAttack()`
+ * were retired under: an emit firing into a room nobody has ever been in
+ * is honestly removed, not left as a no-op. The underlying patrol
+ * simulation (`_npcState` position/animation advance below) is unchanged —
+ * only the broadcast that had no listener is gone. A future render pass
+ * for this NPC population starts from a clean slate: add the subscriber
+ * first, then reintroduce the broadcast.
  */
+// `realtimeEmit` is kept in the signature for call-site compatibility
+// (startNpcLoop passes it) even though the function no longer broadcasts;
+// see the header comment above.
 function tickNpcs(cityId, realtimeEmit) {
   const now = Date.now();
-  const perChunk = new Map(); // "cityId:cx:cz" -> [npc, ...]
 
   for (const npc of _npcState.values()) {
     if (npc.cityId !== cityId) continue;
@@ -1012,36 +1540,8 @@ function tickNpcs(cityId, realtimeEmit) {
         npc.lastMoveAt = now;
       }
     }
-
-    // Group by chunk so we can emit per-chunk broadcasts like players
-    const cx = toChunk(npc.x);
-    const cz = toChunk(npc.z);
-    const key = `${cityId}:${cx}:${cz}`;
-    if (!perChunk.has(key)) perChunk.set(key, []);
-    perChunk.get(key).push({
-      id: npc.id,
-      name: npc.name,
-      occupation: npc.occupation,
-      position: { x: npc.x, y: npc.y, z: npc.z },
-      rotation: npc.direction,
-      direction: npc.direction,
-      currentAnimation: npc.animation,
-      health: npc.health,
-      maxHealth: npc.maxHealth,
-      isHostile: npc.isHostile,
-      appearance: npc.appearance,
-      timestamp: now,
-    });
-  }
-
-  for (const [key, npcs] of perChunk) {
-    const parts = key.split(":");
-    realtimeEmit("city:npcs", {
-      cityId: parts[0],
-      chunk: { x: Number(parts[1]), z: Number(parts[2]) },
-      npcs,
-      timestamp: new Date().toISOString(),
-    });
+    // Position/animation state now lives only in `_npcState`, read by
+    // `getCityNpcs`/`getAllNPCsForEmergence` — no broadcast (see header).
   }
 }
 

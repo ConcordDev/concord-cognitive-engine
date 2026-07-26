@@ -332,7 +332,10 @@ export function handleAttentionCommand(parts) {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-export function init({ STATE, helpers } = {}) {
+// `helpers` was destructured here and never referenced — the signature
+// implied a dependency this module does not have. STATE is genuinely used
+// below. Callers still pass both; extra arguments are ignored.
+export function init({ STATE } = {}) {
   if (STATE) globalThis._concordSTATE = STATE;
 
   _timer = setInterval(() => {

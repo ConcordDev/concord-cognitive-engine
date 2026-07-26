@@ -187,14 +187,33 @@ const STRUCTURAL_KEY_WORDS = new Set([
   "id", "key", "label", "icon", "href", "path", "disabled", "active",
   "tab", "view", "mode", "color", "accent", "unit", "current", "target",
   "enabled", "value", "shortcut", "hotkey", "order", "index",
+  // Moved from CONTENT_KEY_WORDS (2026-07 precision pass — see the note on
+  // CONTENT_KEY_WORDS below). A full manual classification of every finding
+  // this rule produced against the real tree found `title`/`name`/`desc`/
+  // `description`/`code` are overwhelmingly identity/presentation fields on
+  // navigation-destination and settings-option arrays (TABS, DESTINATIONS,
+  // GROUPS, COUNTRIES, LOCALE_INFO, QUALITY_OPTIONS, SCOPE_OPTIONS, …) — a
+  // hardcoded tab strip's `label`/`desc` is the component's own structure,
+  // not data pretending to be live. The one confirmed true positive
+  // (DTUDiffViewer's fabricated `VERSIONS`) still fires because it also
+  // carries `author`/`date` (below) — genuinely person-like / timestamp
+  // fields that no legitimate nav-config array needs.
+  "title", "name", "desc", "description", "code",
 ]);
 
 // Content field names — the vocabulary that suggests a row of authored
 // or fetched CONTENT (an article, episode, product, review, …) rather
 // than UI chrome. Presence of one of these is the positive signal that
-// promotes a finding from "advisory" to "likely fake content".
+// promotes a finding from "advisory" to "likely fake content". Narrowed
+// (2026-07 precision pass) to fields that carry OBSERVATIONS ABOUT THE
+// WORLD — person-like names, dates/timestamps, measurements, statuses,
+// ratings — rather than identity/presentation fields. `title`/`name`/
+// `desc`/`description`/`code` moved to STRUCTURAL_KEY_WORDS above; as a
+// group they were the single largest false-positive source in this rule
+// (config/nav arrays vastly outnumber genuinely fabricated content rows
+// in this codebase).
 const CONTENT_KEY_WORDS = new Set([
-  "title", "name", "description", "desc", "summary", "body", "content",
+  "summary", "body", "content",
   "author", "episode", "post", "article", "review", "comment", "price",
   "rating", "date", "thumbnail", "image", "avatar", "email", "bio",
   "quote", "message", "excerpt", "synopsis", "username", "handle",
@@ -257,6 +276,57 @@ function extractStringLiterals(text) {
   return out;
 }
 
+// A top-level `...identifier` / `...(expr)` spread inside the array body —
+// as opposed to `...[literal]` or `...{literal}` — is strong evidence the
+// array is being BUILT FROM external/live data (a fetched prop, other
+// component state, form-input values) rather than being a self-contained
+// hardcoded literal. Real false positives found this way in the real tree:
+// `VehicleHistory.tsx`'s `events = [...recalls.map(...), ...(schedule?.
+// services || []).filter(...).map(...)]` (spreads two already-fetched,
+// already-mapped arrays) and `ObservePlatform.tsx`'s `routes = [...(status?.
+// routes || []), { name: routeName.trim() || channel, ... }]` (spreads a
+// live status field and appends a row built from React state/form input,
+// not fabricated literal values). Deliberately loose (no bracket-depth
+// tracking) — a real fake-content array spreading a hardcoded default
+// object (`{ ...DEFAULTS, title: 'Sample Episode' }`) would also be
+// exempted by this check, an accepted precision/recall trade-off.
+const EXTERNAL_SPREAD_RE = /\.\.\.\s*(?:\(|[A-Za-z_$])/;
+function hasExternalSpread(arrayBody) {
+  return EXTERNAL_SPREAD_RE.test(arrayBody);
+}
+
+/**
+ * Is `ident` actually rendered as data — `.map()`'d, or bare-interpolated
+ * as JSX content (`{ident}`) — anywhere after `fromIdx`?
+ *
+ * The bare-interpolation check excludes the identifier appearing as an
+ * object-literal SHORTHAND PROPERTY in a function-call argument
+ * (`lensRun('x', 'y', { ident })`) — real false positive found in
+ * `PlanningTools.tsx`: `participants` was built from live component state
+ * and passed as a `{ participants }` payload to `lensRun(...)`, which the
+ * old regex `\{\s*ident\s*\}` misread as JSX interpolation because it
+ * doesn't distinguish "used as a call argument" from "rendered in JSX".
+ */
+function isRenderedAsData(content, ident, fromIdx) {
+  const mapRe = new RegExp(`\\b${ident}\\s*\\.map\\s*\\(`);
+  if (mapRe.test(content.slice(fromIdx))) return true;
+
+  const braceRe = new RegExp(`\\{\\s*${ident}\\s*\\}`, "g");
+  const rest = content.slice(fromIdx);
+  let bm;
+  while ((bm = braceRe.exec(rest)) != null) {
+    const absIdx = fromIdx + bm.index;
+    let p = absIdx - 1;
+    while (p >= 0 && /\s/.test(content[p])) p--;
+    const before = content[p] || "";
+    // `(` — function-call argument; `,` — another arg/property in the same
+    // call or object literal. Neither is JSX interpolation.
+    if (before === "(" || before === ",") continue;
+    return true;
+  }
+  return false;
+}
+
 function checkHardcodedArrayRenderedAsData(rel, content, rawLines, findings) {
   ARRAY_DECL_RE.lastIndex = 0;
   let m;
@@ -266,6 +336,11 @@ function checkHardcodedArrayRenderedAsData(rel, content, rawLines, findings) {
     const arrOpenIdx = m.index + m[0].length - 1; // index of the `[`
     const arrCloseIdx = findMatchingBracket(content, arrOpenIdx);
     const arrayBody = content.slice(arrOpenIdx + 1, arrCloseIdx);
+
+    // A top-level spread of external/live data (`...recalls.map(...)`,
+    // `...(status?.routes || [])`) means this "literal" is actually built
+    // from a fetch/prop/state source elsewhere — not hardcoded fake content.
+    if (hasExternalSpread(arrayBody)) continue;
 
     const { objectCount, bestPropCount, keys } = extractArrayShape(arrayBody);
     // Require at least 1 object literal with 2+ fields, OR 2+ object
@@ -295,9 +370,9 @@ function checkHardcodedArrayRenderedAsData(rel, content, rawLines, findings) {
     if (!hasContentKey && !hasPlaceholderTerm) continue;
 
     // Must actually be rendered: `.map(` call on the identifier, or a
-    // direct `{ident}` interpolation, somewhere after the declaration.
-    const renderRe = new RegExp(`\\b${ident}\\s*\\.map\\s*\\(|\\{\\s*${ident}\\s*\\}`);
-    if (!renderRe.test(content.slice(arrCloseIdx))) continue;
+    // direct `{ident}` interpolation (NOT a function-call argument's
+    // shorthand property), somewhere after the declaration.
+    if (!isRenderedAsData(content, ident, arrCloseIdx)) continue;
 
     const lineNum = lineOf(content, m.index);
     if (hasAllowAnnotation(rawLines, lineNum - 1)) continue;
@@ -461,6 +536,38 @@ const PLACEHOLDER_ATTR_RE = /\bplaceholder\s*=/; // legit HTML/JSX attribute nam
 // since content strings don't carry identifier-style naming to check.
 const DUMMY_DOMAIN_PATH_RE = /\b(?:sandbox|arena|training|combat)\b/i;
 
+// A negation word BEFORE the matched term, in the same string, means the
+// string is DISCLAIMING fake data rather than presenting it — real false
+// positive found in `CaseAnalytics.tsx`: an empty-state message reading
+// "...analytics runs the real caseAnalysis / deadlineTracker macros over
+// your real matters, never sample data." The phrase "sample data" is
+// present only to honestly deny it, which is the opposite of the honesty
+// violation this rule exists to catch.
+const NEGATION_RE = /\b(never|not|isn't|without|instead of)\b/i;
+
+// Identity/presentation key names — when the matched term is the VALUE of
+// one of these keys (`label: 'Sample Data'`), it's naming/labeling a UI
+// element (e.g. a tab that previews sample data), not fabricated body
+// content — real false positive found in `SchemaWorkbench.tsx`'s tab
+// config `{ id: 'sample', label: 'Sample Data', icon: Beaker }`. Narrower
+// than STRUCTURAL_KEY_WORDS on purpose: `title`/`description` are left
+// OUT so a standalone `title="Sample Episode"` (not inside a nav/tab
+// array, so Rule 1 never sees it) still gets caught here.
+const IDENTITY_KEY_SKIP = new Set(["id", "key", "label", "name", "tab", "value"]);
+
+/** The lowercased `key` immediately before `line[quoteStartIdx]` in `key: '...'` — or null. */
+function precedingKeyName(line, quoteStartIdx) {
+  let j = quoteStartIdx - 1;
+  while (j >= 0 && /\s/.test(line[j])) j--;
+  if (line[j] !== ":") return null;
+  j--;
+  while (j >= 0 && /\s/.test(line[j])) j--;
+  let k = j;
+  while (k >= 0 && /[\w$]/.test(line[k])) k--;
+  const keyRaw = line.slice(k + 1, j + 1).replace(/['"`]/g, "");
+  return keyRaw ? keyRaw.toLowerCase() : null;
+}
+
 function checkPlaceholderContent(rel, content, rawLines, findings) {
   const isDummyDomainPath = DUMMY_DOMAIN_PATH_RE.test(rel);
   for (let i = 0; i < rawLines.length; i++) {
@@ -498,11 +605,20 @@ function checkPlaceholderContent(rel, content, rawLines, findings) {
     let matchedTerm = null;
     let isStrong = false;
     while ((qm = QUOTED_STR_RE.exec(line)) != null) {
+      // The value is the value of an identity/presentation key (a tab/nav
+      // config label naming a feature) — not fabricated body content.
+      if (IDENTITY_KEY_SKIP.has(precedingKeyName(line, qm.index) || "")) continue;
       const strContent = qm[2];
       const strongM = STRONG_TERMS_RE.exec(strContent);
-      if (strongM) { matchedInString = true; matchedTerm = strongM[0]; isStrong = true; break; }
+      if (strongM) {
+        if (NEGATION_RE.test(strContent.slice(0, strongM.index))) continue; // honestly DENYING fake data
+        matchedInString = true; matchedTerm = strongM[0]; isStrong = true; break;
+      }
       const weakM = WEAK_TERMS_RE.exec(strContent);
-      if (weakM) { matchedInString = true; matchedTerm = weakM[0]; isStrong = false; }
+      if (weakM) {
+        if (NEGATION_RE.test(strContent.slice(0, weakM.index))) continue;
+        matchedInString = true; matchedTerm = weakM[0]; isStrong = false;
+      }
     }
     if (!matchedInString) continue;
     if (!isStrong && matchedTerm.toLowerCase() === "dummy" && isDummyDomainPath) continue;

@@ -8,6 +8,10 @@
 // Usage: node scripts/autoloop/guard.mjs            (inspects the working diff vs HEAD)
 // Exit 0 = clean to commit. Exit 1 = blocked (reason printed).
 
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { REPO, run, changedFiles, ok, bad, warn } from "./lib.mjs";
 
 // 1) Files the loop must NEVER modify — graders, honesty guards, ratchet baselines,
@@ -32,12 +36,32 @@ const PROTECTED = [
 ];
 
 // 2) Money / auth invariant files — edits here are a HARD human-escalation, never autonomous.
+//
+// Path-rot fix (2026-07-25, authorized). This list was audited by resolving
+// every literal path in it (and in PROTECTED) against the real tree — the
+// same "a rotted proof means the invariant silently stopped being enforced"
+// discipline `verify-invariant-test-links.mjs` applies to docs, turned on the
+// guard itself. Exactly one entry did not resolve, and it was the worst
+// possible one: the coin-MINTING file. The list said
+// `server/lib/coin-service.js`; the file has always lived at
+// `server/economy/coin-service.js` (its four siblings here are already
+// `server/economy/...`, so this was a copy-paste slip, not a move).
+//
+// Consequence while it was rotted: `mintCoins`/`burnCoins` — the functions
+// that create and destroy Concord Coin against the 1:1 USD peg — were NOT
+// covered by the money/auth escalation gate this list exists to enforce. The
+// rule had never matched a single file. Verified empirically: commit
+// 7cfefba0 edits that exact file and the guard reported "clean".
+//
+// Pinned by tests/autoloop-guard-invariant-paths.test.js, which resolves
+// every literal path in both lists so this class of rot fails loudly instead
+// of silently disarming a gate.
 const INVARIANT = [
   /^server\/economy\/royalty-cascade\.js$/,
   /^server\/economy\/withdrawals\.js$/,
   /^server\/economy\/balances\.js$/,
   /^server\/lib\/creative-marketplace-constants\.js$/,
-  /^server\/lib\/coin-service\.js$/,
+  /^server\/economy\/coin-service\.js$/,
 ];
 
 const files = changedFiles();
@@ -59,9 +83,33 @@ const ASSERT_RE = /\b(assert(?:\.\w+)?|expect|\.toBe|\.toEqual|\.toThrow|t\.ok|t
 const stripTsDirectives = (s) => s.replace(/@ts-expect-error/g, '');
 const testFiles = files.filter((f) => /\.(test|behavior|spec)\.(js|mjs|cjs|ts|tsx)$/.test(f) || /\/tests?\//.test(f) && /\.(js|mjs|ts|tsx)$/.test(f));
 for (const f of testFiles) {
-  const head = run(`git show HEAD:${JSON.stringify(f).slice(1, -1)}`, { allowFail: true });
-  if (!head.ok) continue; // new test file — fine
-  const cur = run(`cat ${JSON.stringify(f)}`).out;
+  // Shell-injection fix (command-injection detector, authorized 2026-07-25).
+  // These two reads used to go through `run()`, which passes a STRING to
+  // execSync — i.e. a shell. `f` comes from `git diff --name-only`, so a file
+  // committed with a name like `$(...)` or containing backticks would have
+  // EXECUTED on the next guard run. The old quoting made it worse than it
+  // looked: `JSON.stringify(f).slice(1,-1)` stripped the quotes back off, so
+  // the git path interpolated completely unquoted; and `"..."` around the
+  // `cat` arg stops word-splitting but NOT `$(...)`/backtick expansion, which
+  // bash performs inside double quotes.
+  //
+  // Both now avoid a shell entirely: execFileSync takes an argv array (the
+  // path is one argument, never parsed), and the working-tree read is plain
+  // fs — shelling out to `cat` bought nothing. Ironic bug to leave in the
+  // anti-gaming gate itself, which is exactly why it's fixed rather than
+  // annotated.
+  let head;
+  try {
+    head = { ok: true, out: execFileSync("git", ["show", `HEAD:${f}`], { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) };
+  } catch {
+    continue; // new test file (not in HEAD) — fine
+  }
+  let cur;
+  try {
+    cur = readFileSync(resolve(REPO, f), "utf8");
+  } catch {
+    continue; // deleted in the working tree — nothing to compare
+  }
   const before = (stripTsDirectives(head.out).match(ASSERT_RE) || []).length;
   const after = (stripTsDirectives(cur).match(ASSERT_RE) || []).length;
   if (after < before) violations.push(`TEST WEAKENED: ${f} assertions ${before}→${after} (removing/weakening assertions is gaming — add, don't subtract)`);

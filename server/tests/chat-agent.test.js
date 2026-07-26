@@ -74,12 +74,66 @@ test("executeToolCall handles unknown tool", async () => {
   assert.match(result.error, /unknown tool/);
 });
 
-test("executeToolCall surfaces unknown lens action gracefully", async () => {
-  const result = await executeToolCall({}, () => null, new Map(), {
+test("executeToolCall surfaces a graceful failure when the action is in NEITHER registry", async () => {
+  // Real runMacro throws "macro not found: domain.name" for an unregistered
+  // pair (server.js:12876) — this fake mirrors that so the test reflects
+  // production behavior post-fix (run_lens_action now falls back to
+  // runMacro/MACROS, not just LENS_ACTIONS — see the dual-registry test
+  // below). A fake that just returns null (the old version of this test)
+  // no longer distinguishes "truly not found" from "found via MACROS".
+  const fakeRunMacro = async (domain, name) => {
+    throw new Error(`macro not found: ${domain}.${name}`);
+  };
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
     tool: "run_lens_action", params: { domain: "ghost", action: "noop" },
   });
   assert.equal(result.ok, false);
-  assert.match(result.error, /unknown lens action/);
+  assert.match(result.error, /not found/);
+});
+
+test("executeToolCall run_lens_action falls back to runMacro/MACROS when the pair isn't in LENS_ACTIONS (register()-only macro reachability fix)", async () => {
+  // This pins the fix for the gap docs/CONKAY_TOOL_AUTHORING_SPEC.md's
+  // "Corrections to the task's framing" section found: a macro registered
+  // via plain register() (populating MACROS) — including every loaded
+  // plugin's macros — was previously UNREACHABLE through this tool because
+  // it checked only the injected LENS_ACTIONS map. It's reachable through
+  // runMcpTool (server.js) today; this test proves run_lens_action now
+  // reaches the same macro the same way.
+  let calledWith = null;
+  const fakeRunMacro = async (domain, name, input, ctx) => {
+    calledWith = { domain, name, input, ctx };
+    return { ok: true, echoed: input };
+  };
+  const ctx = { db: null, actor: { userId: "u1" } };
+  const result = await executeToolCall(ctx, fakeRunMacro, new Map(), {
+    tool: "run_lens_action",
+    params: { domain: "plugin_demo", action: "compute", params: { x: 1 } },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.key, "plugin_demo.compute");
+  assert.deepEqual(result.result, { ok: true, echoed: { x: 1 } });
+  assert.deepEqual(calledWith, { domain: "plugin_demo", name: "compute", input: { x: 1 }, ctx });
+});
+
+test("executeToolCall run_lens_action still prefers LENS_ACTIONS over MACROS when both could resolve the pair (no regression vs runMcpTool's precedence)", async () => {
+  const lensActions = new Map();
+  lensActions.set("legal.summarize", async (_ctx, _u, params) => ({ ok: true, via: "lens_action", summary: params?.text }));
+  const fakeRunMacro = async () => ({ ok: true, via: "macro" });
+  const result = await executeToolCall({}, fakeRunMacro, lensActions, {
+    tool: "run_lens_action",
+    params: { domain: "legal", action: "summarize", params: { text: "hi" } },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.result.via, "lens_action");
+  assert.equal(result.result.summary, "hi");
+});
+
+test("executeToolCall run_lens_action reports lens_actions_unavailable only when NEITHER registry is usable", async () => {
+  const result = await executeToolCall({}, null, null, {
+    tool: "run_lens_action", params: { domain: "ghost", action: "noop" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "lens_actions_unavailable");
 });
 
 test("executeToolCall invokes a known lens action via the injected map", async () => {

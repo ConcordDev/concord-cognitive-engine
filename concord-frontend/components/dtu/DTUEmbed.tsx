@@ -31,6 +31,11 @@ import { BookmarkButton } from '@/components/social/BookmarkButton';
 import { useDtuSurface } from '@/hooks/useDtuSurface';
 // Phase P — surface the previously-orphan provenance/freshness badges.
 import { FreshnessBadge } from '@/components/common/FreshnessBadge';
+// Cross-lens Workspace Bus — "send to bus" action alongside the other
+// pan-social actions, so every embed of a DTU (chat, council, paper,
+// atlas, any creative editor) can push it onto the DTU clipboard.
+import { WorkspaceBusCopyButton } from '@/components/workspace-bus/WorkspaceBusCopyButton';
+import type { WorkspaceBusDTU } from '@/components/workspace-bus/WorkspaceBusProvider';
 
 export interface DTUEmbedRecord {
   id: string;
@@ -99,6 +104,25 @@ function formatRelative(iso?: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Normalizes an embed's (lens-local, partial) DTU record into the bus's
+ * DTU-native shape. DTUEmbedRecord doesn't carry citation/visibility
+ * fields, so `citation` ships empty — the bus/picker treat every field
+ * on it as optional. */
+function toBusDTU(dtu: DTUEmbedRecord): WorkspaceBusDTU {
+  return {
+    id: dtu.id,
+    kind: (dtu.tier as string) || 'regular',
+    title: dtu.title ?? dtu.id.slice(0, 16),
+    summary: dtu.summary,
+    domain: dtu.domain,
+    tags: dtu.tags,
+    ownerId: dtu.creator?.id,
+    creator: dtu.creator,
+    createdAt: dtu.createdAt,
+    citation: {},
+  };
 }
 
 function MediaPreview({ artifact }: { artifact: DTUEmbedRecord['artifact'] }) {
@@ -238,6 +262,7 @@ export function DTUEmbed({ dtu, mode = 'card', onOpen, recordSurfaceFromLens, cl
             <ReactionBar postId={dtu.id} compact hideWhenEmpty={!expanded} />
             <ShareButton postId={dtu.id} compact hideWhenEmpty={!expanded} />
             <BookmarkButton postId={dtu.id} compact />
+            {dtu.id && <WorkspaceBusCopyButton dtu={toBusDTU(dtu)} compact />}
           </div>
           {dtu.summary && (
             <p

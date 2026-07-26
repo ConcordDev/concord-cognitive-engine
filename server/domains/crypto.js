@@ -1,6 +1,27 @@
 // server/domains/crypto.js
 // Domain actions for crypto: portfolio analytics, transaction verification,
 // gas estimation, risk scoring, and on-chain pattern detection.
+//
+// Also: a real partially-homomorphic-encryption (Paillier) aggregation
+// substrate (paillierKeygen / paillierContribute / paillierAggregate /
+// paillierSessionStatus / paillierMultiplyCiphertexts) — see
+// server/lib/crypto/paillier.js and server/lib/crypto/encrypted-aggregate.js
+// for the actual cryptography and their doc comments for the honest
+// boundary (additive-only PHE, not FHE; encryption ≠ differential privacy).
+
+import crypto from "node:crypto";
+import {
+  generateKeypair as paillierGenerateKeypair,
+  encrypt as paillierEncrypt,
+  publicKeyToJSON,
+  publicKeyFromJSON,
+  secretKeyToJSON,
+  secretKeyFromJSON,
+  ciphertextToString,
+  ciphertextFromString,
+  multiplyCiphertexts as paillierRefuseMultiplyCiphertexts,
+} from "../lib/crypto/paillier.js";
+import { aggregate as paillierAggregateCiphertexts } from "../lib/crypto/encrypted-aggregate.js";
 
 export default function registerCryptoActions(registerLensAction) {
   /**
@@ -2339,6 +2360,284 @@ export default function registerCryptoActions(registerLensAction) {
       if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
       return { ok: true, result: { ingested, skipped, source: "coingecko-trending", dtuIds } };
     } catch (e) { return { ok: false, error: `coingecko unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  //  Partially-homomorphic encrypted aggregation (Paillier)
+  // ─────────────────────────────────────────────────────────────────
+  // A real Paillier keypair + session substrate for computing an encrypted
+  // sum/mean over multiple contributors' values without ever decrypting an
+  // individual contribution — only the session owner (whoever generated
+  // the keypair) can reveal the final aggregate, and that reveal is a
+  // single decrypt call over the combined ciphertext, not over any one
+  // person's number. See server/lib/crypto/paillier.js and
+  // server/lib/crypto/encrypted-aggregate.js for the cryptography itself;
+  // this section is just session bookkeeping + JSON-string (BigInt-free)
+  // wire shapes on top of it.
+  //
+  // Honest scope notes (see also the module docstrings):
+  //   - Only ADDITIVE aggregation is supported (sum / mean). There is no
+  //     "product" or "variance over ciphertexts" mode — Paillier can't do
+  //     that; see paillierMultiplyCiphertexts below for the explicit
+  //     refusal path.
+  //   - `paillierAggregate` requires the caller to supply `sensitivity`
+  //     whenever they ask for DP noise (`params.epsilon`). This module
+  //     deliberately does NOT invent a sensitivity heuristic from the
+  //     contributions themselves — doing so would require decrypting
+  //     individual contributions to bound their range, which defeats the
+  //     entire point of this substrate. The caller (who defined what a
+  //     "contribution" means, e.g. "a bounded rating 0-5") is the only
+  //     party who can honestly state the global sensitivity.
+  //   - Values are integers only (Paillier's plaintext space is Z_n). A
+  //     caller aggregating fractional data should scale by a fixed factor
+  //     before contributing and un-scale after reveal — this module does
+  //     not silently round/truncate on their behalf.
+
+  const PAILLIER_MACRO_DEFAULT_BITS = 1024; // responsive at macro/HTTP-request scale; see keygen doc below for the 2048 tradeoff
+  const PAILLIER_MACRO_MIN_BITS = 512;
+  const PAILLIER_MACRO_MAX_BITS = 3072;
+  const PAILLIER_MAX_CONTRIBUTIONS_PER_SESSION = 5000;
+  const PAILLIER_MAX_SESSIONS_PER_OWNER = 200;
+
+  function crUid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+
+  function getPaillierState() {
+    const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+    if (!STATE.cryptoLens) STATE.cryptoLens = {};
+    if (!(STATE.cryptoLens.paillierSessions instanceof Map)) STATE.cryptoLens.paillierSessions = new Map();
+    return STATE.cryptoLens.paillierSessions;
+  }
+  function savePaillierState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function paillierId(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+  }
+
+  /**
+   * paillierKeygen
+   * Generates a real Paillier keypair and opens an aggregation session.
+   * The secret key NEVER leaves the server in this macro's result — it is
+   * held in server-side session state and only ever used internally by
+   * `paillierAggregate`, gated to the session owner. Ciphertexts (public
+   * key + every contribution) are not secret in the same sense — Paillier's
+   * semantic security means an observed ciphertext leaks nothing about its
+   * plaintext even without hiding it.
+   * params.bits — key size (default 1024 at macro scale for responsiveness
+   *   under a synchronous request; pass bits:2048 for a production-grade
+   *   key at the cost of a slower keygen call — pure-BigInt Miller-Rabin
+   *   prime search in JS is meaningfully slower at 2048 than 1024).
+   */
+  registerLensAction("crypto", "paillierKeygen", (ctx, _artifact, params) => {
+    try {
+      const sessions = getPaillierState();
+      const ownerId = crUid(ctx);
+      const ownerSessionCount = [...sessions.values()].filter((s) => s.ownerId === ownerId).length;
+      if (ownerSessionCount >= PAILLIER_MAX_SESSIONS_PER_OWNER) {
+        return { ok: false, error: "too_many_sessions", limit: PAILLIER_MAX_SESSIONS_PER_OWNER };
+      }
+      let bits = Number(params?.bits) || PAILLIER_MACRO_DEFAULT_BITS;
+      bits = Math.min(PAILLIER_MACRO_MAX_BITS, Math.max(PAILLIER_MACRO_MIN_BITS, bits));
+      const { publicKey, secretKey } = paillierGenerateKeypair({ bits });
+      const sessionId = paillierId("phe");
+      const session = {
+        sessionId,
+        ownerId,
+        label: params?.label ? String(params.label).slice(0, 120) : null,
+        publicKey: publicKeyToJSON(publicKey),
+        secretKey: secretKeyToJSON(secretKey), // server-side only; never returned by any macro result
+        contributions: [], // [{ id, ciphertext: string, contributorId, createdAt }]
+        createdAt: Date.now(),
+      };
+      sessions.set(sessionId, session);
+      savePaillierState();
+      return {
+        ok: true,
+        result: {
+          sessionId,
+          publicKey: session.publicKey,
+          bits,
+          ownerId,
+          note: "The secret key stays server-side. Anyone with sessionId + publicKey can contribute an encrypted value; only the owner can call paillierAggregate to reveal the combined total.",
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  /**
+   * paillierContribute
+   * Encrypts params.value under the session's public key and adds it to
+   * the session's contribution list. The plaintext value is never stored —
+   * only the ciphertext. Integer values only (Paillier's plaintext space
+   * is Z_n); see the module notes above re: scaling fractional data.
+   * params.sessionId, params.value (integer, may be negative — see
+   * paillier.js's documented n-wraparound convention).
+   */
+  registerLensAction("crypto", "paillierContribute", (ctx, _artifact, params) => {
+    try {
+      const sessions = getPaillierState();
+      const session = sessions.get(String(params?.sessionId || ""));
+      if (!session) return { ok: false, error: "session_not_found" };
+      if (session.contributions.length >= PAILLIER_MAX_CONTRIBUTIONS_PER_SESSION) {
+        return { ok: false, error: "too_many_contributions", limit: PAILLIER_MAX_CONTRIBUTIONS_PER_SESSION };
+      }
+      const raw = params?.value;
+      if (raw === undefined || raw === null || raw === "") {
+        return { ok: false, error: "value_required" };
+      }
+      const num = Number(raw);
+      if (!Number.isFinite(num) || !Number.isInteger(num)) {
+        return { ok: false, error: "value_must_be_integer", message: "Paillier's plaintext space is integers mod n. Scale fractional data by a fixed factor before contributing." };
+      }
+      const pk = publicKeyFromJSON(session.publicKey);
+      const ciphertext = paillierEncrypt(pk, BigInt(num));
+      const contributionId = paillierId("phec");
+      session.contributions.push({
+        id: contributionId,
+        ciphertext: ciphertextToString(ciphertext),
+        contributorId: crUid(ctx),
+        createdAt: Date.now(),
+      });
+      savePaillierState();
+      return {
+        ok: true,
+        result: {
+          sessionId: session.sessionId,
+          contributionId,
+          contributorCount: session.contributions.length,
+          ciphertext: ciphertextToString(ciphertext),
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  /**
+   * paillierAggregate
+   * Owner-only. Homomorphically combines every contribution's ciphertext
+   * (never decrypting any single one) and decrypts the resulting aggregate
+   * exactly once — see server/lib/crypto/encrypted-aggregate.js#aggregate.
+   * params.sessionId, params.mode = "sum" | "mean" (default "sum").
+   * Optional DP release: params.epsilon + params.sensitivity — when both
+   * are supplied, the revealed scalar is passed through the REAL Laplace
+   * mechanism in server/domains/anon.js's `differentialPrivacy` macro
+   * (via the documented globalThis.__concordLensActions cross-module call
+   * path also used by chat-agent.js / hr.js / astronomy.js), so the same
+   * mechanism and the same persisted epsilon ledger apply here as
+   * everywhere else DP is used in Concord. `sensitivity` is REQUIRED for
+   * DP release and is never guessed — see the module-level honest-scope
+   * note above for why.
+   */
+  registerLensAction("crypto", "paillierAggregate", (ctx, _artifact, params) => {
+    try {
+      const sessions = getPaillierState();
+      const session = sessions.get(String(params?.sessionId || ""));
+      if (!session) return { ok: false, error: "session_not_found" };
+      const callerId = crUid(ctx);
+      if (session.ownerId !== callerId) {
+        return { ok: false, error: "forbidden", reason: "only the session owner holds the secret key required to reveal the aggregate" };
+      }
+      if (session.contributions.length === 0) {
+        return { ok: false, error: "no_contributions" };
+      }
+      const mode = params?.mode === "mean" ? "mean" : "sum";
+      const pk = publicKeyFromJSON(session.publicKey);
+      const sk = secretKeyFromJSON(session.secretKey);
+      const ciphertexts = session.contributions.map((c) => ciphertextFromString(c.ciphertext));
+      const agg = paillierAggregateCiphertexts({ pk, sk, ciphertexts, mode });
+      const rawValue = mode === "mean" ? agg.mean : Number(agg.sum);
+
+      let differentialPrivacy = null;
+      const epsilon = Number(params?.epsilon);
+      if (Number.isFinite(epsilon) && epsilon > 0) {
+        const sensitivity = Number(params?.sensitivity);
+        if (!Number.isFinite(sensitivity) || sensitivity <= 0) {
+          return {
+            ok: false,
+            error: "sensitivity_required",
+            reason: "DP release requires params.sensitivity (the max amount one contributor's value could change this aggregate) — this substrate never decrypts individual contributions, so it cannot infer sensitivity on your behalf; you must state it.",
+          };
+        }
+        const lensActions = globalThis.__concordLensActions;
+        const dpHandler = lensActions instanceof Map ? lensActions.get("anon.differentialPrivacy") : null;
+        if (!dpHandler) {
+          differentialPrivacy = { applied: false, reason: "anon.differentialPrivacy macro unavailable" };
+        } else {
+          const dpInput = {
+            queries: [{ type: mode === "mean" ? "mean" : "sum", values: [rawValue], sensitivity }],
+            purpose: params?.purpose ? String(params.purpose).slice(0, 120) : "paillierAggregate",
+          };
+          const virtualArtifact = { id: null, domain: "anon", type: "domain_action", data: dpInput, meta: {} };
+          const dpParams = { epsilon, purpose: dpInput.purpose };
+          const dpResult = dpHandler(ctx, virtualArtifact, dpParams);
+          if (dpResult?.ok) {
+            const r = dpResult.result?.results?.[0] || null;
+            differentialPrivacy = {
+              applied: true,
+              mechanism: "laplace (server/domains/anon.js differentialPrivacy macro)",
+              epsilon,
+              sensitivity,
+              noisyValue: r?.noisyAnswer ?? null,
+              noise: r?.noise ?? null,
+              confidenceInterval95: r?.confidenceInterval95 ?? null,
+              budgetTracking: dpResult.result?.budgetTracking ?? null,
+            };
+          } else {
+            differentialPrivacy = { applied: false, reason: dpResult?.error || "differentialPrivacy_call_failed" };
+          }
+        }
+      }
+
+      return {
+        ok: true,
+        result: {
+          sessionId: session.sessionId,
+          mode,
+          contributorCount: session.contributions.length,
+          rawValue,
+          differentialPrivacy,
+          note: "rawValue is the exact decrypted aggregate — Paillier gives confidentiality of individual inputs during computation, not privacy of the released output; use differentialPrivacy (params.epsilon + params.sensitivity) to bound what the release itself can leak.",
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  /**
+   * paillierSessionStatus
+   * Read-only session metadata (contributor count, public key, timestamps).
+   * Never exposes the secret key or any individual contribution's value.
+   */
+  registerLensAction("crypto", "paillierSessionStatus", (ctx, _artifact, params) => {
+    try {
+      const sessions = getPaillierState();
+      const session = sessions.get(String(params?.sessionId || ""));
+      if (!session) return { ok: false, error: "session_not_found" };
+      return {
+        ok: true,
+        result: {
+          sessionId: session.sessionId,
+          label: session.label,
+          ownerId: session.ownerId,
+          publicKey: session.publicKey,
+          contributorCount: session.contributions.length,
+          createdAt: session.createdAt,
+          isOwner: session.ownerId === crUid(ctx),
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  /**
+   * paillierMultiplyCiphertexts
+   * Always refuses — there is no ciphertext x ciphertext operation in
+   * Paillier. Exposed as a macro (rather than just a lib function) so the
+   * frontend can surface the honest "why can't I do this" explanation
+   * directly instead of a lens silently omitting the affordance. See
+   * server/lib/crypto/paillier.js#multiplyCiphertexts.
+   */
+  registerLensAction("crypto", "paillierMultiplyCiphertexts", () => {
+    return paillierRefuseMultiplyCiphertexts();
   });
 }
 

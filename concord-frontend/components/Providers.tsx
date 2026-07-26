@@ -13,7 +13,7 @@ import { KeyboardProvider } from '@/lib/keyboard';
 import { GlobalMediaController } from '@/components/media/GlobalMediaController';
 import SplashScreen from '@/components/SplashScreen';
 import { observeWebVitals } from '@/lib/perf';
-import { connectSocket, disconnectSocket } from '@/lib/realtime/socket';
+import { connectSocket, disconnectSocket, reconnectSocket, subscribe } from '@/lib/realtime/socket';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { reportClientError } from '@/hooks/useBugContext';
@@ -149,6 +149,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // Connect WebSocket with existing session cookie
     connectSocket();
 
+    // DET-C batch 8 — server/emergent/repair-cortex.js's `reconnect_websocket`
+    // self-repair action fires this to tell an already-connected client its
+    // socket state should be reset (stale auth, a detected desync, etc.). It
+    // used to have zero consumers: the repair action would "succeed" server-
+    // side while nothing on the client ever actually reconnected.
+    const offSystemReconnect = subscribe('system:reconnect', () => {
+      reconnectSocket();
+    });
+
     // Fetch CSRF token on app init (ensures POSTs work even if login was in a prior session)
     api.get('/api/auth/csrf-token').catch(() => {});
 
@@ -180,6 +189,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
+      offSystemReconnect();
       disconnectSocket();
     };
   }, []);

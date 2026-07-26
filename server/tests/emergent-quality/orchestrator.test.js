@@ -81,6 +81,37 @@ describe("runQualityPipeline", () => {
     assert.equal(result.finalDraft, null);
   });
 
+  it("stamps the caller's identity.given_name into the recorded stages, not discarding it", async () => {
+    const db = makeDb();
+    await runQualityPipeline({
+      emergentId: "e1",
+      identity: { given_name: "Vesper", emergent_id: "e1" },
+      task: baseTask,
+      result: { finalText: "" },
+      db,
+    });
+    const inserted = db._rows.find((r) => r.sql.includes("emergent_quality_history"));
+    assert.ok(inserted, "expected an emergent_quality_history insert");
+    // recordQualityOutcome's positional args: id, emergentId, taskId, artifactId,
+    // decision, qualityScore, stages_json, created_at — stages_json is index 6.
+    const stagesJson = inserted.args[6];
+    const stages = JSON.parse(stagesJson);
+    assert.equal(stages.identity, "Vesper", "identity.given_name must land in stages, not be dropped");
+  });
+
+  it("does not stamp identity when none is supplied (no throw, no bogus field)", async () => {
+    const db = makeDb();
+    await runQualityPipeline({
+      emergentId: "e1",
+      task: baseTask,
+      result: { finalText: "" },
+      db,
+    });
+    const inserted = db._rows.find((r) => r.sql.includes("emergent_quality_history"));
+    const stages = JSON.parse(inserted.args[6]);
+    assert.equal(stages.identity, undefined);
+  });
+
   it("handles null task gracefully without throwing", async () => {
     const result = await runQualityPipeline({
       emergentId: "e1",

@@ -993,6 +993,23 @@ export default function registerWhiteboardActions(registerLensAction) {
     return Array.from(byId.values()).filter(v => v.el !== null && !v.tombstone).map(v => v.el);
   }
 
+  // DET-C dead-event-listener sweep (batch 9) — RESOLVED (follow-up pass).
+  // 'ops-apply'/'ops-since' below implement a genuine, tested, fine-grained
+  // operational-transform-style collab protocol (per-element add/update/
+  // delete ops with a monotonic clock + compaction). It previously had zero
+  // frontend caller — the collab hook only ever used the simpler full-scene
+  // 'broadcast-scene' (-> 'whiteboard:scene-update') last-write-wins push.
+  // Wired additively, not as a replacement: concord-frontend/hooks/
+  // useWhiteboardCollab.ts now exposes `broadcastOps()` (POSTs to
+  // 'ops-apply') and subscribes to 'whiteboard:ops', folding incoming ops
+  // into `remoteScene` with the same LWW-per-element rule `foldOps` below
+  // applies; concord-frontend/components/whiteboard/CollabBoardSection.tsx's
+  // `onCanvasChange` diffs the shape array on every edit and calls
+  // `broadcastOps` with the changed elements, alongside (not instead of) the
+  // existing `broadcastScene` full-snapshot push. See
+  // server/tests/whiteboard-domain-parity.test.js and
+  // server/tests/depth/whiteboard-behavior.test.js for the backend contract
+  // this wiring now actually exercises end-to-end.
   registerLensAction("whiteboard", "ops-apply", (ctx, _a, params = {}) => {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);

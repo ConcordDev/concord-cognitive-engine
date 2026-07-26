@@ -2,7 +2,6 @@
 //
 // Server-authoritative combat endpoints. Mounted at /api/combat.
 //
-//   POST  /attack             — declare an attack swing (cooldown gated)
 //   POST  /hit                — submit a damage event for validation + broadcast
 //   POST  /death              — declare a victim death
 //
@@ -12,12 +11,18 @@
 //
 // Anti-cheat invariant: the server treats whatever the client claims about
 // damage and reach as a CEILING — it can only reduce, never increase.
+//
+// Dead-event-listener follow-up (2026-07-24): POST /attack (which declared
+// an attack swing and broadcast 'combat:attack' via combat-netcode.js's
+// broadcastAttack()) is retired — nothing ever called it (see
+// lib/combat-netcode.js's module header RESOLVED note) and its sole event
+// had zero frontend subscribers. `recordAttackSwing` (the cooldown gate it
+// used) stays exported from combat-netcode.js for its own tests, just no
+// longer wired to a route.
 
 import { Router } from "express";
 import {
-  recordAttackSwing,
   validateHit,
-  broadcastAttack,
   broadcastHit,
   broadcastDeath,
 } from "../lib/combat-netcode.js";
@@ -26,34 +31,6 @@ export default function createCombatRouter({ requireAuth, REALTIME, getUserPosit
   const router = Router();
   const auth = typeof requireAuth === "function" && requireAuth.length === 0 ? requireAuth() : requireAuth;
   const _userId = (req) => req.user?.id || req.headers["x-user-id"] || null;
-
-  // POST /api/combat/attack
-  router.post("/attack", auth, (req, res) => {
-    try {
-      const attackerId = _userId(req);
-      if (!attackerId) return res.status(401).json({ ok: false, error: "auth_required" });
-
-      const { weapon = "fist", animation = "swing", direction = null, cooldownMs = 200 } = req.body || {};
-
-      const swing = recordAttackSwing(attackerId, { cooldownMs });
-      if (!swing.allowed) {
-        return res.status(429).json({ ok: false, reason: swing.reason, remainingMs: swing.remainingMs });
-      }
-
-      const pos = getUserPosition?.(attackerId);
-      if (!pos) return res.status(400).json({ ok: false, error: "no_presence" });
-
-      const r = broadcastAttack(REALTIME, getNearbyUserIds, {
-        attackerId,
-        cityId:   pos.cityId,
-        position: { x: pos.x, y: pos.y, z: pos.z },
-        weapon, animation, direction,
-      });
-      res.json({ ok: true, delivered: r.delivered });
-    } catch {
-      res.status(500).json({ ok: false, error: "An unexpected error occurred" });
-    }
-  });
 
   // POST /api/combat/hit
   router.post("/hit", auth, (req, res) => {

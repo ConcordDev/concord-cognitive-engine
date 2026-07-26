@@ -1,0 +1,131 @@
+'use client';
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * CONCORD // REGRESSION FIXTURE LENS — scaffolded by scripts/scaffold-lens.mjs
+ * ─────────────────────────────────────────────────────────────────────────
+ * This is a real, minimal, WORKING page, not a generic button-wall. Per
+ * CLAUDE.md's "zero generic tendencies" hard invariant, a lens must not
+ * read as an undifferentiated pile of auto-generated macro buttons — so
+ * the primary surface below is a small bespoke component (an echo round
+ * trip + a live counter) with its own state and its own direct
+ * `lensRun(...)` calls, not just <ManifestActionBar/> alone.
+ *
+ * <ManifestActionBar/> is still mounted underneath as a secondary "quick
+ * actions" strip (the manifest-driven convenience CLAUDE.md's Per-Lens
+ * Polish sprint introduced) — but it is not the whole page.
+ *
+ * Replace everything below the header with the lens's real workflow.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+import { useCallback, useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { lensRun } from '@/lib/api/client';
+import { ds } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
+
+interface EchoResult { ok: boolean; message?: string; receivedAt?: string; reason?: string }
+interface CounterResult { ok: boolean; key?: string; count?: number; reason?: string }
+
+export default function RegressionFixtureLensLensPage() {
+  const [message, setMessage] = useState('');
+  const [echoResult, setEchoResult] = useState<EchoResult | null>(null);
+  const [echoLoading, setEchoLoading] = useState(false);
+  const [echoError, setEchoError] = useState<string | null>(null);
+
+  const [count, setCount] = useState<number | null>(null);
+  const [counterLoading, setCounterLoading] = useState(false);
+  const [counterError, setCounterError] = useState<string | null>(null);
+
+  const runEcho = useCallback(async () => {
+    setEchoLoading(true);
+    setEchoError(null);
+    const res = await lensRun<EchoResult>('regression-fixture-lens', 'echo', { message });
+    if (res.data.ok && res.data.result?.ok) {
+      setEchoResult(res.data.result);
+    } else {
+      setEchoError(res.data.result?.reason || res.data.error || 'Echo failed.');
+    }
+    setEchoLoading(false);
+  }, [message]);
+
+  const runCounter = useCallback(async () => {
+    setCounterLoading(true);
+    setCounterError(null);
+    const res = await lensRun<CounterResult>('regression-fixture-lens', 'counter', {});
+    if (res.data.ok && res.data.result?.ok) {
+      setCount(res.data.result.count ?? null);
+    } else {
+      setCounterError(res.data.result?.reason || res.data.error || 'Counter failed.');
+    }
+    setCounterLoading(false);
+  }, []);
+
+  return (
+    <LensShell lensId="regression-fixture-lens">
+      <div className={ds.pageContainer}>
+        <header className={ds.sectionHeader}>
+          <div>
+            <h1 className={ds.heading1}>Regression Fixture Lens</h1>
+            <p className={ds.textMuted}>
+              Scaffolded lens — replace this page with the real Regression Fixture Lens workflow.
+            </p>
+          </div>
+        </header>
+
+        <section className="rounded-lg border border-white/10 bg-white/5 p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Echo (server round trip)</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type a message"
+              className="min-w-[12rem] flex-1 rounded border border-white/20 bg-black/20 px-2 py-1.5 text-sm text-white placeholder:text-gray-500"
+            />
+            <button
+              type="button"
+              onClick={runEcho}
+              disabled={echoLoading}
+              className={cn(ds.btnPrimary, 'text-sm')}
+            >
+              {echoLoading ? 'Sending…' : 'Send'}
+            </button>
+          </div>
+          {echoError && <p className="text-sm text-red-400">{echoError}</p>}
+          {echoResult?.message && (
+            <p className="text-sm text-gray-300">
+              Server replied: <span className="font-mono text-white">{echoResult.message}</span>
+              {echoResult.receivedAt && (
+                <span className={cn(ds.textMuted, 'ml-2')}>at {echoResult.receivedAt}</span>
+              )}
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-white/10 bg-white/5 p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Counter (per-session macro state)</h2>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={runCounter}
+              disabled={counterLoading}
+              className={cn(ds.btnPrimary, 'text-sm')}
+            >
+              {counterLoading ? 'Incrementing…' : 'Increment'}
+            </button>
+            <span className="text-lg font-mono text-white">{count ?? '—'}</span>
+          </div>
+          {counterError && <p className="text-sm text-red-400">{counterError}</p>}
+        </section>
+
+        <section className="space-y-2">
+          <h2 className={cn(ds.textMuted, 'text-xs uppercase tracking-wide')}>Quick actions</h2>
+          <ManifestActionBar lensId="regression-fixture-lens" />
+        </section>
+      </div>
+    </LensShell>
+  );
+}

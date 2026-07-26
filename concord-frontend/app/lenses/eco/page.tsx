@@ -36,6 +36,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { cn } from '@/lib/utils';
 import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero';
+import { EcoOverviewHero } from '@/components/eco/EcoOverviewHero';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -81,14 +82,14 @@ export default function EcoLensPage() {
     setFootprintRefreshKey((k) => k + 1);
   }, []);
 
-  const tabs: { id: EcoTab; label: string; icon: React.ComponentType<{ className?: string }>; blurb: string }[] = [
-    { id: 'weather', label: 'Weather', icon: Cloud, blurb: '7-day forecast + hourly detail from Open-Meteo, live for any coordinate.' },
-    { id: 'air', label: 'Air quality', icon: Wind, blurb: 'US AQI + PM2.5/PM10/O₃/NO₂/SO₂/CO from Open-Meteo Air Quality.' },
+  const tabs: { id: EcoTab; label: string; icon: React.ComponentType<{ className?: string }>; blurb: string; shortcut?: string }[] = [
+    { id: 'weather', label: 'Weather', icon: Cloud, blurb: '7-day forecast + hourly detail from Open-Meteo, live for any coordinate.', shortcut: 'w' },
+    { id: 'air', label: 'Air quality', icon: Wind, blurb: 'US AQI + PM2.5/PM10/O₃/NO₂/SO₂/CO from Open-Meteo Air Quality.', shortcut: 'q' },
     { id: 'actions', label: 'Climate actions', icon: Leaf, blurb: 'Curated high-impact actions cited to Drawdown/IPCC/EPA — log what you do.' },
-    { id: 'species', label: 'Species ID', icon: Bug, blurb: 'Photograph an organism; LLaVA vision suggests candidate species.' },
+    { id: 'species', label: 'Species ID', icon: Bug, blurb: 'Photograph an organism; LLaVA vision suggests candidate species.', shortcut: 's' },
     { id: 'feed', label: 'Sightings feed', icon: Bird, blurb: 'Real biodiversity occurrence records near you, from GBIF.' },
     { id: 'lifelist', label: 'Life list', icon: TreeDeciduous, blurb: 'Your personal species log, with a Shannon/Simpson diversity index.' },
-    { id: 'footprint', label: 'Footprint trend', icon: LineChart, blurb: 'Compute a real carbon footprint and track it as a trend over time.' },
+    { id: 'footprint', label: 'Footprint trend', icon: LineChart, blurb: 'Compute a real carbon footprint and track it as a trend over time.', shortcut: 'f' },
     { id: 'challenges', label: 'Challenges', icon: Flame, blurb: 'Recurring sustainability habits with streaks, JouleBug-style.' },
     { id: 'alerts', label: 'Eco alerts', icon: Bell, blurb: 'Save locations; get AQI/UV/pollen alerts against published thresholds.' },
     { id: 'energy', label: 'Solar estimator', icon: Sun, blurb: 'Deterministic PVWatts-style solar production estimate for any site.' },
@@ -98,55 +99,7 @@ export default function EcoLensPage() {
   // not a person, so it's rendered as its own visually-distinct section
   // (amber, not the lens's personal-ecology green) rather than mixed into
   // the personal-tool grid where it could be mistaken for a personal score.
-  const orgTab = { id: 'org-esg' as const, label: 'Org ESG', icon: Building2, blurb: 'Corporate ESG scoring (board diversity, compliance, labor practices) for an organization or team — not a personal footprint metric.' };
-
-  const renderOverview = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {tabs.map((tab, index) => {
-          const TabIcon = tab.icon;
-          return (
-            <motion.button
-              key={tab.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03 }}
-              onClick={() => setActiveTab(tab.id)}
-              className="lens-card text-left hover:border-neon-green/40 hover:bg-lattice-elevated/40 transition-colors group"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <TabIcon className="w-4 h-4 text-neon-green group-hover:scale-110 transition-transform" />
-                <span className="font-semibold text-sm">{tab.label}</span>
-              </div>
-              <p className="text-xs text-gray-400 leading-relaxed">{tab.blurb}</p>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Deliberately separated from the personal-tool grid above — amber
-          accent + explicit "not personal" copy so it never reads as one of
-          this page's personal-footprint tools. */}
-      <div className="pt-1">
-        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">For organizations, not individuals</p>
-        <motion.button
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={() => setActiveTab('org-esg')}
-          className="w-full text-left rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-4 hover:border-amber-500/40 hover:bg-amber-500/[0.07] transition-colors group"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-            <span className="font-semibold text-sm text-amber-200">{orgTab.label}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
-              NOT PERSONAL
-            </span>
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">{orgTab.blurb}</p>
-        </motion.button>
-      </div>
-    </div>
-  );
+  const orgTab = { id: 'org-esg' as const, label: 'Org ESG', icon: Building2, blurb: 'Corporate ESG scoring (board diversity, compliance, labor practices) for an organization or team — not a personal footprint metric.', shortcut: 'g' };
 
   return (
     <LensShell lensId="eco" asMain={false}>
@@ -184,33 +137,37 @@ export default function EcoLensPage() {
       {/* AI Actions */}
       <UniversalActions domain="eco" artifactId={undefined} compact />
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation — a shared `motion.span` layoutId slides between
+          whichever button is active, driven purely by real `activeTab`
+          state (a data-driven transition, not a page-mount fade). */}
       <nav className={cn('flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap')}>
         <button
           onClick={() => setActiveTab('overview')}
           className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-            activeTab === 'overview'
-              ? 'bg-neon-green/20 text-neon-green'
-              : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
+            'relative flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap',
+            activeTab === 'overview' ? 'text-neon-green' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors'
           )}
         >
-          <Globe className="w-4 h-4" />
-          Overview
+          {activeTab === 'overview' && (
+            <motion.span layoutId="eco-tab-pill" className="absolute inset-0 rounded-lg bg-neon-green/20" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+          )}
+          <Globe className="w-4 h-4 relative" />
+          <span className="relative">Overview</span>
         </button>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-              activeTab === tab.id
-                ? 'bg-neon-green/20 text-neon-green'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
+              'relative flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap',
+              activeTab === tab.id ? 'text-neon-green' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors'
             )}
           >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
+            {activeTab === tab.id && (
+              <motion.span layoutId="eco-tab-pill" className="absolute inset-0 rounded-lg bg-neon-green/20" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+            )}
+            <tab.icon className="w-4 h-4 relative" />
+            <span className="relative">{tab.label}</span>
           </button>
         ))}
         {/* Visually separated (divider + amber accent) — an organization
@@ -220,19 +177,22 @@ export default function EcoLensPage() {
           onClick={() => setActiveTab('org-esg')}
           title="Organization ESG — not a personal footprint metric"
           className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-            activeTab === 'org-esg'
-              ? 'bg-amber-500/20 text-amber-300'
-              : 'text-amber-400/70 hover:text-amber-300 hover:bg-amber-500/10'
+            'relative flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap',
+            activeTab === 'org-esg' ? 'text-amber-300' : 'text-amber-400/70 hover:text-amber-300 hover:bg-amber-500/10 transition-colors'
           )}
         >
-          <orgTab.icon className="w-4 h-4" />
-          {orgTab.label}
+          {activeTab === 'org-esg' && (
+            <motion.span layoutId="eco-tab-pill" className="absolute inset-0 rounded-lg bg-amber-500/20" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+          )}
+          <orgTab.icon className="w-4 h-4 relative" />
+          <span className="relative">{orgTab.label}</span>
         </button>
       </nav>
 
       {/* Tab Content */}
-      {activeTab === 'overview' && renderOverview()}
+      {activeTab === 'overview' && (
+        <EcoOverviewHero tabs={tabs} orgTab={orgTab} onSelectTab={(id) => setActiveTab(id as EcoTab)} />
+      )}
       {activeTab === 'weather' && <WeatherRadar />}
       {activeTab === 'air' && <AQIPanel />}
       {activeTab === 'actions' && (

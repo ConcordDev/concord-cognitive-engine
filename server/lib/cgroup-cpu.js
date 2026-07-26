@@ -20,6 +20,17 @@
 //
 // This mirrors the shell scripts' own detection exactly so all three
 // callers get a consistent, correct core count.
+//
+// @sync-fs-ok: the readFileSync below is memoized (`_cached`) and every
+// current caller (workers/macro-pool.js, workers/heartbeat-pool.js,
+// lib/world-shard-manager.js) invokes getRealCpuCount() exactly once, at
+// module-load time, to size a top-level pool-size constant — never from
+// inside a per-request handler or heartbeat tick. It's the same "read once
+// at boot" shape the performance-hotspot detector already exempts for
+// persistence/bootstrap/seed/init/migration paths; this file just isn't
+// under one of those directory names. If a future caller ever invokes this
+// from a hot per-request path, revisit — but the cache means even that
+// would only pay the syscall cost once per process, not per call.
 
 import fs from "node:fs";
 import os from "node:os";

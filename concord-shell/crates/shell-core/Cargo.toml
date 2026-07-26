@@ -1,0 +1,11 @@
+[package]
+name = "concord-shell-core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Real process-orchestration logic for the Concord desktop shell (config resolution + std::process::Command spawning + crash/health handling) with NO dependency on tauri or any GUI/webview library. This is the layer that actually spawns/kills/watches child processes and calls into concord-shell-supervisor's pure decisions -- kept tauri-free specifically so it compiles and integration-tests in headless/no-display environments (verified in the sandboxed container this was authored in; see ../../README.md). src-tauri/src/main.rs is a thin wrapper exposing this crate's ShellState through Tauri commands/events."
+
+[dependencies]
+concord-shell-supervisor = { path = "../supervisor" }
+concord-shell-health-probe = { path = "../health-probe" }

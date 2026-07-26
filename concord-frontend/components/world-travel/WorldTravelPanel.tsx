@@ -9,9 +9,15 @@
  *   - One-click travel via POST /api/world-travel/travel
  *   - Skill-affinity readout per world (helps the player decide)
  *
- * Toggled via the `concordia:world-travel-toggle` window event so a HUD
- * key bind can pop it. Travel is FREE — sparks are only spent on the
- * Concord Link, not on world travel itself.
+ * Opens via its own "Worlds · <world>" pill button (rendered below when
+ * closed) — no window event drives it. An earlier draft listened for a
+ * `concordia:world-travel-toggle` window event so a HUD key bind could pop
+ * it, but nothing anywhere ever dispatched that event (dead-event-listener
+ * finding, DET-C batch 4 — same shape as the sibling ConcordLinkPanel's
+ * retired `concordia:concord-link-toggle`, see tests/components/concord-
+ * link-panel-toggle.test.tsx). Removed rather than wired, since the pill
+ * button already gives every caller a real way to open it. Travel is FREE —
+ * sparks are only spent on the Concord Link, not on world travel itself.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -40,13 +46,6 @@ export function WorldTravelPanel({ myUserId: _myUserId }: { myUserId: string }) 
   const [worlds, setWorlds] = useState<WorldRow[]>([]);
   const [currentWorld, setCurrentWorld] = useState('concordia');
   const [traveling, setTraveling] = useState<string | null>(null);
-
-  // Toggle via window event
-  useEffect(() => {
-    const onToggle = () => setOpen((v) => !v);
-    window.addEventListener('concordia:world-travel-toggle', onToggle);
-    return () => window.removeEventListener('concordia:world-travel-toggle', onToggle);
-  }, []);
 
   const reload = useCallback(async () => {
     try {

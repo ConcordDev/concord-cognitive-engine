@@ -587,16 +587,29 @@ function insertEvent(db, worldId, actorKind, actorId, eventKind, detail) {
   //                       perspective so we just send to both and the
   //                       frontend filters by actor_id match).
   try {
-    const io = globalThis?.__CONCORD_REALTIME__?.io;
-    if (io) {
-      const payload = {
-        id, worldId,
-        actorKind, actorId,
-        eventKind,
-        detail: detail || {},
-        ts: Date.now(),
-      };
-      io.to(`world:${worldId}`).emit("combat:polish", payload);
+    const payload = {
+      id, worldId,
+      actorKind, actorId,
+      eventKind,
+      detail: detail || {},
+      ts: Date.now(),
+    };
+    // Route through server.js#emitToWorld (stashed globally at module load —
+    // see server.js's `globalThis._concordEmitToWorld = emitToWorld;`) so
+    // this ALSO reaches the Godot gateway mirror (docs/GODOT_PROTOCOL.md §4
+    // "play_effect"). This call site used to go straight to
+    // `io.to(world:${worldId}).emit(...)`, which never passed through
+    // `_godotGatewayEmitter` — a connected Godot client received nothing on
+    // `combat:polish` even though the web client got every event. Falls
+    // back to the bare io emit when the hook isn't present (this module's
+    // own unit tests exercise combat-polish.js without booting the full
+    // server, so the fallback keeps their behavior unchanged).
+    const emitWorld = globalThis._concordEmitToWorld;
+    if (typeof emitWorld === "function") {
+      emitWorld(worldId, "combat:polish", payload);
+    } else {
+      const io = globalThis?.__CONCORD_REALTIME__?.io;
+      if (io) io.to(`world:${worldId}`).emit("combat:polish", payload);
     }
   } catch { /* socket optional */ }
 }

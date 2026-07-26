@@ -25,10 +25,11 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { armOrphanGuard } from '../lib/e2e-orphan-guard.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_JS = join(__dirname, '../../server.js');
@@ -60,11 +61,30 @@ function spawnServer(port, dataDir, extraEnv, timeoutMs) {
       ANTHROPIC_API_KEY: '',
     }, extraEnv);
 
+    // The spawned server MUST derive its own DB/state from DATA_DIR above.
+    // `Object.assign({}, process.env, ...)` inherits everything we do not
+    // explicitly override, and tests/preload/no-egress.mjs sets DB_PATH +
+    // STATE_PATH on THIS (parent) process for per-test-file isolation. Those
+    // are absolute paths that take precedence over DATA_DIR, so leaving them
+    // in the child env silently points the spawned server at the PARENT's
+    // throwaway database -- defeating the isolation this dataDir exists to
+    // provide, and making parent and child write the same file concurrently.
+    // Found 2026-07-25: cross-world-potency-routes went 6/6 -> 1/6 the moment
+    // the preload's isolation started actually taking effect, because the
+    // child booted against an empty inherited DB instead of seeding its own.
+    delete env.DB_PATH;
+    delete env.STATE_PATH;
+
     const child = spawn(process.execPath, [SERVER_JS], {
       env: env,
       cwd: SERVER_CWD,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    // The after() hook below tears this child (and dataDir) down on the happy
+    // path, but it never runs when `node --test` SIGTERMs a file that blew its
+    // --test-timeout — which orphans a real, CPU-burning server process and
+    // strands its migrated SQLite tree. See tests/lib/e2e-orphan-guard.js.
+    armOrphanGuard(child, dataDir);
 
     let resolved = false;
     const timer = setTimeout(function() {
@@ -172,12 +192,13 @@ async function getJSONAuth(base, path, headers) {
 describe('E2E — /api/time-loop/* route family', { timeout: 120000 }, function() {
   let base;
   let serverProc;
+  let dataDir;
   let authHeaders;
   const WORLD_ID = 'concordia-hub';
 
   before(async function() {
     const port = await getFreePort();
-    const dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-timeloop-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'concord-e2e-timeloop-'));
     base = 'http://127.0.0.1:' + port;
     serverProc = await spawnServer(port, dataDir, { AUTH_MODE: 'public' }, 90000);
 
@@ -198,7 +219,16 @@ describe('E2E — /api/time-loop/* route family', { timeout: 120000 }, function(
     authHeaders = { Authorization: 'Bearer ' + reg.body.token };
   });
 
-  after(function() { return stopServer(serverProc); });
+  after(function() {
+    const stopped = stopServer(serverProc);
+    // Remove the spawned server's data dir. Each of these e2e tests boots a
+    // REAL server against a fresh mkdtemp dir that migrates a full ~118MB
+    // SQLite DB. Without this the dir outlives the run, so one full suite
+    // stranded ~800MB in /tmp and twice filled the disk mid-run.
+    // force:true so a missing dir can never fail teardown.
+    rmSync(dataDir, { recursive: true, force: true });
+    return stopped;
+  });
 
   // None of these 5 assertions should ever see 404 — a 404 here is exactly
   // the "missing leading slash before a path param" defect class the audit

@@ -26,10 +26,11 @@
 // source-pinning pattern (tests/concordia-scene-resource-leak-fix.test.tsx,
 // tests/world-lens-free-camera-mode.test.ts).
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyCinematicShotFrame } from '@/components/world-lens/ConcordiaScene';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sceneSrc = readFileSync(
@@ -70,16 +71,78 @@ describe('Phase 4 fix — ConcordiaScene.tsx: cinematic-shot events drive the re
     expect(sceneSrc).toMatch(/window\.removeEventListener\('concordia:cinematic-shot', handleCinematicShot\);/);
   });
 
-  it('the render loop interpolates position/lookAt/tilt every frame while cinematic mode is active with a shot queued', () => {
-    const region = sceneSrc.match(
-      /if \(mode === 'cinematic' && cinematicShotRef\.current\) \{[\s\S]*?\n {8}\}/
-    );
-    expect(region).toBeTruthy();
-    const block = region![0];
-    expect(block).toMatch(/const t = applyEasing\(cs\.easing, elapsedMs \/ cs\.durationMs\);/);
-    expect(block).toMatch(/camera\.position\.set\(px, py, pz\);/);
-    expect(block).toMatch(/camera\.lookAt\(lx, ly, lz\);/);
-    expect(block).toMatch(/camera\.rotation\.z = cs\.startTilt \+ \(cs\.target\.tiltRad - cs\.startTilt\) \* t;/);
+});
+
+describe('Phase 4 fix — applyCinematicShotFrame: real per-frame interpolation', () => {
+  it('the render loop is wired to this real function (source pin) AND the function itself interpolates position/lookAt/tilt from the shot start toward its target, easing by elapsed/duration (real fake-camera call)', () => {
+    // The render-loop call site: `if (mode === 'cinematic' && ...) { applyCinematicShotFrame(camera, cinematicShotRef.current, performance.now()); }`.
+    // ConcordiaScene.tsx can't be mounted in jsdom (no WebGL/Rapier), so the
+    // wiring fact stays a source pin — but it sits in THIS test, alongside a
+    // real call into the exact same exported function below, rather than
+    // standing alone as an unverifiable claim.
+    expect(sceneSrc).toMatch(/if \(mode === 'cinematic' && cinematicShotRef\.current\) \{\s*\n\s*applyCinematicShotFrame\(camera, cinematicShotRef\.current, performance\.now\(\)\);\s*\n\s*\}/);
+
+    const positionSet = vi.fn();
+    const lookAt = vi.fn();
+    const camera = { position: { set: positionSet }, lookAt, rotation: { z: 0 } };
+    const cs = {
+      startPos: { x: 0, y: 0, z: 0 },
+      startLook: { x: 0, y: 0, z: -1 },
+      startTilt: 0,
+      target: { position: { x: 10, y: 20, z: 30 }, lookAt: { x: 1, y: 2, z: 3 }, tiltRad: 0.4 },
+      startTime: 1000,
+      durationMs: 1000,
+      easing: 'linear',
+    };
+
+    // Halfway through the shot (linear easing => t === 0.5).
+    applyCinematicShotFrame(camera, cs, 1500);
+
+    expect(positionSet).toHaveBeenCalledWith(5, 10, 15);
+    expect(lookAt).toHaveBeenCalledWith(0.5, 1, 1);
+    expect(camera.rotation.z).toBeCloseTo(0.2, 10);
+  });
+
+  it('reaches the exact target framing once elapsed time reaches the shot duration', () => {
+    const positionSet = vi.fn();
+    const lookAt = vi.fn();
+    const camera = { position: { set: positionSet }, lookAt, rotation: { z: 0 } };
+    const cs = {
+      startPos: { x: 0, y: 0, z: 0 },
+      startLook: { x: 0, y: 0, z: -1 },
+      startTilt: 0,
+      target: { position: { x: 10, y: 20, z: 30 }, lookAt: { x: 1, y: 2, z: 3 }, tiltRad: 0.4 },
+      startTime: 0,
+      durationMs: 1000,
+      easing: 'linear',
+    };
+
+    applyCinematicShotFrame(camera, cs, 1000);
+
+    expect(positionSet).toHaveBeenCalledWith(10, 20, 30);
+    expect(lookAt).toHaveBeenCalledWith(1, 2, 3);
+    expect(camera.rotation.z).toBeCloseTo(0.4, 10);
+  });
+
+  it('holds the start framing at elapsed === 0 (a shot that just started this frame)', () => {
+    const positionSet = vi.fn();
+    const lookAt = vi.fn();
+    const camera = { position: { set: positionSet }, lookAt, rotation: { z: 0 } };
+    const cs = {
+      startPos: { x: 5, y: 5, z: 5 },
+      startLook: { x: 0, y: 0, z: -1 },
+      startTilt: 0.1,
+      target: { position: { x: 10, y: 20, z: 30 }, lookAt: { x: 1, y: 2, z: 3 }, tiltRad: 0.4 },
+      startTime: 2000,
+      durationMs: 1000,
+      easing: 'linear',
+    };
+
+    applyCinematicShotFrame(camera, cs, 2000);
+
+    expect(positionSet).toHaveBeenCalledWith(5, 5, 5);
+    expect(lookAt).toHaveBeenCalledWith(0, 0, -1);
+    expect(camera.rotation.z).toBeCloseTo(0.1, 10);
   });
 });
 

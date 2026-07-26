@@ -17,9 +17,21 @@ import {
 } from "../domains/genesis.js";
 
 /**
- * @param {{ db: object, requireAuth?: Function, STATE: object }} opts
+ * All routes below are read-only (GET) and intentionally public — emergent
+ * identities are named autonomous agent processes, not user PII, and this
+ * router backs the public `/emergents/[name]` profile page (unauthenticated
+ * `fetch()` calls, no bearer token). Verified before dropping the `requireAuth`
+ * param that used to sit in this signature unused: (1) no route here mutates
+ * anything or reads anything sensitive; (2) Gate 1's `publicReadPaths` prefix
+ * list in server.js already treats `/api/emergents/*` as public-read (the
+ * `/api/emergent` entry there prefix-matches `/api/emergents` too). So this
+ * was genuinely dead, not an unwired auth gate — contrast with the
+ * `routes/disputes.js` / `routes/account-lifecycle.js` finding, where an
+ * unused `adminOnly`/`requireAuth` param turned out to mask a hand-rolled
+ * duplicate check on a real mutation route.
+ * @param {{ db: object, STATE: object }} opts
  */
-export function createEmergentVisibilityRouter({ db, requireAuth, STATE }) {
+export function createEmergentVisibilityRouter({ db, STATE }) {
   const router = express.Router();
 
   // ── List active named emergents ────────────────────────────────────────────

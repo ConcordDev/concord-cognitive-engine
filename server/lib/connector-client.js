@@ -12,10 +12,26 @@
 // success.
 
 import { validateSafeFetchUrl, fetchWithPinnedIp } from "./ssrf-guard.js";
-import { getValidAccessToken, refreshGoogleToken } from "./connector-tokens.js";
+import { getValidAccessToken, refreshConnectorToken } from "./connector-tokens.js";
 
 /**
  * Authenticated, SSRF-guarded fetch on behalf of a user's connector.
+ *
+ * Honest structured-failure shape (R1-3 hardening) — never a fabricated
+ * success and never a raw unhandled exception:
+ *   - `reauth_required` — refresh was attempted and the provider terminally
+ *     rejected the refresh token (revoked/expired/password-changed); the dead
+ *     token has already been dropped, so the next connector-status read will
+ *     honestly show "not connected" until the user re-authorizes.
+ *   - `auth_expired`     — the request came back 401 and either there was no
+ *     way to refresh (no refresh_token / provider not configured) or a
+ *     refreshed token STILL got 401'd. Distinct from reauth_required: retrying
+ *     later (e.g. after an operator fixes client secrets) may succeed.
+ *   - `service_unavailable` — the provider responded with a 5xx (their
+ *     outage, not an auth problem).
+ *   - `provider_error`   — any other non-2xx provider response (4xx business
+ *     logic, e.g. 404/422/403).
+ *   - `request_failed`   — the network call itself threw (DNS/timeout/reset).
  * @returns {Promise<{ok:true, status:number, data:any} | {ok:false, reason:string, ...}>}
  */
 export async function connectorFetch(db, userId, connectorId, url, init = {}, opts = {}) {
@@ -53,20 +69,38 @@ export async function connectorFetch(db, userId, connectorId, url, init = {}, op
     return { ok: false, reason: "request_failed", detail: String(e?.message || e) };
   }
 
-  // One forced-refresh retry on auth failure (token revoked / clock skew).
+  // One forced-refresh retry on auth failure (token revoked / clock skew) —
+  // never more than one: a refreshed token that still 401s is reported
+  // honestly rather than looped on.
   if (res.status === 401) {
-    const refreshed = await refreshGoogleToken(db, userId, connectorId, opts);
-    if (refreshed.ok) {
-      try {
-        res = await doFetch(refreshed.token.access_token);
-      } catch (e) {
-        return { ok: false, reason: "request_failed", detail: String(e?.message || e) };
-      }
+    const refreshed = await refreshConnectorToken(db, userId, connectorId, opts);
+    if (!refreshed.ok) {
+      // Don't fall through to the stale 401 response below labeled as a
+      // generic provider_error — surface the SPECIFIC, actionable reason the
+      // refresh attempt returned.
+      return {
+        ok: false,
+        reason: refreshed.reason === "reauth_required" ? "reauth_required" : "auth_expired",
+        detail: refreshed.detail || refreshed.reason,
+      };
+    }
+    try {
+      res = await doFetch(refreshed.token.access_token);
+    } catch (e) {
+      return { ok: false, reason: "request_failed", detail: String(e?.message || e) };
+    }
+    if (res.status === 401) {
+      // Refreshed successfully but the provider still rejects the new token —
+      // an honest, distinct state from "never had a working token at all".
+      return { ok: false, reason: "auth_expired", status: 401, detail: "still unauthorized after token refresh" };
     }
   }
 
   const data = await safeJson(res);
-  if (!res.ok) return { ok: false, reason: "provider_error", status: res.status, data };
+  if (!res.ok) {
+    const reason = res.status >= 500 ? "service_unavailable" : "provider_error";
+    return { ok: false, reason, status: res.status, data };
+  }
   return { ok: true, status: res.status, data };
 }
 
@@ -386,6 +420,133 @@ export async function createGitHubIssue(db, userId, repo, issue = {}, opts = {})
   );
   if (!res.ok) return res;
   return { ok: true, number: res.data?.number || null, url: res.data?.html_url || null };
+}
+
+// GitHub paths can contain slashes (nested directories) but each *segment*
+// must be percent-encoded individually — encodeURIComponent on the whole
+// path would also escape the slashes, corrupting the route.
+function encodeGitHubPath(path) {
+  return String(path).split("/").map(encodeURIComponent).join("/");
+}
+
+/**
+ * List the file tree at a ref (recursive). If `query.ref` is omitted, the
+ * repo's real default branch is resolved first via GET /repos/{repo} — never
+ * guessed as "main"/"master". Uses the real Git Trees API
+ * (GET /repos/{repo}/git/trees/{ref}?recursive=1).
+ */
+export async function getGitHubRepoTree(db, userId, repo, query = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  let ref = query.ref;
+  if (!ref) {
+    const repoRes = await connectorFetch(db, userId, "github", `${GITHUB_BASE}/repos/${repo}`, { method: "GET", headers: GITHUB_HEADERS }, opts);
+    if (!repoRes.ok) return repoRes;
+    ref = repoRes.data?.default_branch;
+    if (!ref) return { ok: false, reason: "no_default_branch" };
+  }
+  const params = new URLSearchParams({ recursive: "1" });
+  const res = await connectorFetch(
+    db, userId, "github",
+    `${GITHUB_BASE}/repos/${repo}/git/trees/${encodeURIComponent(ref)}?${params.toString()}`,
+    { method: "GET", headers: GITHUB_HEADERS }, opts,
+  );
+  if (!res.ok) return res;
+  const tree = (res.data?.tree || []).map((t) => ({ path: t.path, type: t.type, sha: t.sha, size: t.size ?? null, mode: t.mode }));
+  return { ok: true, ref, sha: res.data?.sha || null, truncated: !!res.data?.truncated, tree };
+}
+
+/**
+ * Get a single file's real decoded content + its blob `sha` (required by
+ * commitGitHubFile to update the same file). Real Contents API
+ * (GET /repos/{repo}/contents/{path}[?ref=]). Honest not_a_file when the path
+ * resolves to a directory (an array response) rather than a blob; 404s pass
+ * through connectorFetch's own honest provider_error/status shape.
+ */
+export async function getGitHubFileContent(db, userId, repo, path, query = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  if (!path) return { ok: false, reason: "missing_path" };
+  const params = new URLSearchParams();
+  if (query.ref) params.set("ref", String(query.ref));
+  const qs = params.toString();
+  const res = await connectorFetch(
+    db, userId, "github",
+    `${GITHUB_BASE}/repos/${repo}/contents/${encodeGitHubPath(path)}${qs ? `?${qs}` : ""}`,
+    { method: "GET", headers: GITHUB_HEADERS }, opts,
+  );
+  if (!res.ok) return res;
+  const data = res.data;
+  if (Array.isArray(data) || !data || data.type !== "file") {
+    return { ok: false, reason: "not_a_file", detail: "path does not resolve to a single file" };
+  }
+  let content = "";
+  try {
+    content = data.encoding === "base64" ? Buffer.from(data.content || "", "base64").toString("utf8") : (data.content || "");
+  } catch {
+    content = "";
+  }
+  return { ok: true, path: data.path, sha: data.sha, size: data.size || 0, content, encoding: "utf8", htmlUrl: data.html_url || null };
+}
+
+/**
+ * Create or update a file (real two-way write) — PUT
+ * /repos/{repo}/contents/{path}. `sha` is the CALLER's declared intent:
+ * present -> update the existing blob at that sha; absent -> create a new
+ * file. We never silently invent or fetch a sha on the caller's behalf (that
+ * would risk clobbering a file the caller didn't know existed) — GitHub's own
+ * 422 ("sha wasn't supplied") surfaces honestly via connectorFetch's
+ * provider_error path if the caller omits sha for a path that already exists.
+ * Content is UTF-8 -> base64 encoded per the Contents API's real requirement.
+ */
+export async function commitGitHubFile(db, userId, repo, path, params = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  if (!path) return { ok: false, reason: "missing_path" };
+  if (typeof params.content !== "string") return { ok: false, reason: "missing_content" };
+  if (!params.message) return { ok: false, reason: "missing_message" };
+  const body = {
+    message: params.message,
+    content: Buffer.from(params.content, "utf8").toString("base64"),
+    ...(params.sha ? { sha: params.sha } : {}),
+    ...(params.branch ? { branch: params.branch } : {}),
+  };
+  const res = await connectorFetch(
+    db, userId, "github", `${GITHUB_BASE}/repos/${repo}/contents/${encodeGitHubPath(path)}`,
+    { method: "PUT", headers: { ...GITHUB_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify(body) },
+    opts,
+  );
+  if (!res.ok) return res;
+  return {
+    ok: true,
+    commitSha: res.data?.commit?.sha || null,
+    fileSha: res.data?.content?.sha || null,
+    path: res.data?.content?.path || path,
+    htmlUrl: res.data?.content?.html_url || null,
+  };
+}
+
+/**
+ * Create a branch (real Git Refs API — POST /repos/{repo}/git/refs) pointing
+ * at `fromRef`'s current tip commit. `fromRef` is resolved to a real commit
+ * sha first via GET /repos/{repo}/commits/{ref} (accepts a branch name, tag,
+ * or sha uniformly — no assumption about ref shape). Never guesses a sha.
+ */
+export async function createGitHubBranch(db, userId, repo, params = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  if (!params.branchName) return { ok: false, reason: "missing_branch_name" };
+  if (!params.fromRef) return { ok: false, reason: "missing_from_ref" };
+  const commitRes = await connectorFetch(
+    db, userId, "github", `${GITHUB_BASE}/repos/${repo}/commits/${encodeURIComponent(params.fromRef)}`,
+    { method: "GET", headers: GITHUB_HEADERS }, opts,
+  );
+  if (!commitRes.ok) return commitRes;
+  const baseSha = commitRes.data?.sha;
+  if (!baseSha) return { ok: false, reason: "ref_resolution_failed" };
+  const res = await connectorFetch(
+    db, userId, "github", `${GITHUB_BASE}/repos/${repo}/git/refs`,
+    { method: "POST", headers: { ...GITHUB_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify({ ref: `refs/heads/${params.branchName}`, sha: baseSha }) },
+    opts,
+  );
+  if (!res.ok) return res;
+  return { ok: true, ref: res.data?.ref || `refs/heads/${params.branchName}`, sha: res.data?.object?.sha || baseSha };
 }
 
 // GitHub's commit-status API only accepts these four literal state values —

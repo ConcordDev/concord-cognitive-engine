@@ -206,7 +206,7 @@ export function PlatformAnalysisPanel() {
                   <span className="font-medium">{i.service}</span>
                   <span className="text-gray-500">{i.severity}</span>
                   <span className="flex-1 text-gray-500">{new Date(i.start).toLocaleString()} → {i.end ? new Date(i.end).toLocaleString() : 'ongoing'}</span>
-                  <button onClick={() => removeIncident(i.id)} className="text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => removeIncident(i.id)} className="text-gray-500 hover:text-rose-400" aria-label={`Remove incident for ${i.service}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
                 </div>
               ))}
             </div>
@@ -264,7 +264,7 @@ export function PlatformAnalysisPanel() {
               {metricRows.map((m, i) => (
                 <span key={m.id} className="flex items-center gap-1 rounded bg-black/30 px-2 py-1 text-[11px] text-gray-300">
                   day {i + 1}: cpu {m.cpu} · mem {m.memory} · disk {m.disk} · conn {m.connections}
-                  <button onClick={() => removeMetric(m.id)} className="text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => removeMetric(m.id)} className="text-gray-500 hover:text-rose-400" aria-label={`Remove capacity sample for day ${i + 1}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
                 </span>
               ))}
             </div>
@@ -330,7 +330,7 @@ export function PlatformAnalysisPanel() {
                   <span className="font-medium">{s.name}</span>
                   <span className="text-gray-500">{s.tier}</span>
                   <span className="flex-1 text-gray-500">{s.dependencies ? `depends on ${s.dependencies}` : 'no dependencies'}</span>
-                  <button onClick={() => removeService(s.id)} className="text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => removeService(s.id)} className="text-gray-500 hover:text-rose-400" aria-label={`Remove service "${s.name}"`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
                 </div>
               ))}
             </div>

@@ -15,9 +15,16 @@ import logger from "../logger.js";
  * Install XP hooks into the system.
  * Call once at startup, passing dependencies.
  *
- * @param {{ awardXP: Function, getXPProfile: Function, STATE: object, saveStateDebounced: Function }} deps
+ * Only `awardXP` and `STATE` are needed here: `awardXP` (server.js) already
+ * closes over its own module-scope `getXPProfile`/`saveStateDebounced` and
+ * calls both internally on every award, so re-injecting them into this
+ * installer would be pure duplication — verified by reading `awardXP`'s
+ * body (server.js), not assumed. The DTU-creation hook below only needs
+ * `STATE.dtus` to wrap and `awardXP` to call.
+ *
+ * @param {{ awardXP: Function, STATE: object }} deps
  */
-export function installXPHooks({ awardXP, getXPProfile, STATE, saveStateDebounced }) {
+export function installXPHooks({ awardXP, STATE }) {
   if (!awardXP || !STATE) {
     logger.warn("xp-hooks", "Cannot install XP hooks — missing dependencies");
     return;

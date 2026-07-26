@@ -98,6 +98,32 @@ export function momentOfInertia(shape, params = {}) {
       if (!isNum(mass) || !isNum(radius)) return err("sphere needs mass, radius", inputs);
       return ok((2 / 5) * mass * radius * radius, "mass·length²", "I = (2/5)·m·r²", inputs);
     }
+    case "rhombus":
+    case "diamond": {
+      // Centroidal second moment of area of a rhombus (diamond) section
+      // with diagonals `base` (b, in-plane width) and `height` (h,
+      // perpendicular thickness), about the centroidal axis parallel to
+      // the `base` diagonal: I = b·h³/48.
+      //
+      // Derivation: split the rhombus along its `base` diagonal (which
+      // lies ON the neutral axis) into two congruent triangles, each with
+      // base b and height h/2, one above the axis and one below. A
+      // triangle's own centroidal second moment about an axis parallel to
+      // its base is b·(h/2)³/36 = b·h³/288, and its centroid sits (h/2)/3
+      // = h/6 from that base — i.e. from the rhombus's neutral axis. By
+      // the parallel-axis theorem, this triangle's moment ABOUT the
+      // neutral axis is b·h³/288 + A·d² where A = ½·b·(h/2) = b·h/4 and
+      // d = h/6: b·h³/288 + (b·h/4)·(h²/36) = b·h³/288 + b·h³/144 =
+      // b·h³/96. The two triangles are mirror images through the same
+      // axis (equal contribution by symmetry), so the rhombus total is
+      // 2·(b·h³/96) = b·h³/48 — the standard textbook rhombus-about-
+      // centroidal-axis result, exactly 1/4 of the same b×h bounding-box
+      // RECTANGLE's I = b·h³/12 (a rhombus has half the rectangle's area,
+      // packed closer to the neutral axis).
+      const { base, height } = params;
+      if (!isNum(base) || !isNum(height)) return err("rhombus needs base, height", inputs);
+      return ok((base * Math.pow(height, 3)) / 48, "length⁴", "I = b·h³/48", inputs);
+    }
     default:
       return err(`unknown shape: ${shape}`, inputs);
   }

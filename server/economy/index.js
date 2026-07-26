@@ -59,7 +59,7 @@ export {
   getDerivativeTree, rateArtifact,
   checkArtifactPromotionEligibility, promoteArtifact,
   awardCreativeXP, completeCreativeQuest, getCreativeXP, getCreativeQuestCompletions,
-  getArtifactLicenses, getUserLicenses,
+  getArtifactLicenses, getUserLicenses, hasArtifactAccess,
   getArtifactCascadeEarnings, getCreatorCascadeEarnings,
   pauseArtifact, resumeArtifact, delistArtifact, updateArtifactPrice,
 } from "./creative-marketplace.js";

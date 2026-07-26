@@ -137,6 +137,23 @@ jobs:
           node scripts/verify-event-consumers.mjs
           node scripts/verify-event-consumers.mjs --ci 77
 
+      - name: Client-event-contract gate (no dead client subscription)
+        run: |
+          # The mirror image of the event-consumer gate above, and the last
+          # uncovered quadrant of the frontend/backend contract seam: fails if
+          # the FRONTEND subscribes to a socket event that NOTHING on the server
+          # ever emits — a HUD wired to a channel that never carries traffic, so
+          # it sits permanently in its backstop-poll path (or shows nothing).
+          #
+          # Introduced RED at 27 dead and deliberately left un-gated until the
+          # backlog was genuinely closed (docs/DEAD_SUBSCRIPTION_AUDIT.md), so
+          # that turning it on could not be achieved by blanket-allowlisting.
+          # Now green: the only remaining entry is the pre-existing allowlisted
+          # social:notification. Any NEW dead subscription fails here — wire a
+          # real emitter, or retire the listener; do not add an ALLOWLIST entry
+          # to make output pass.
+          node scripts/verify-client-event-contracts.mjs
+
       - name: Orphaned-event gate (no dead UI wiring)
         run: |
           # Fails if a CustomEvent is dispatched but nothing listens (a button
