@@ -8793,7 +8793,18 @@ if (rateLimit) {
     // pool — the 30/min anon cap would throttle a redelivery burst and lose
     // paid mints. Signature-verified + idempotent, so exempt (see
     // _STRIPE_WEBHOOK_RE declaration).
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
+    //
+    // `/api/auth/csrf-token` is in authMiddleware's `alwaysPublic` list (line
+    // ~6960), so in the default "hybrid" AUTH_MODE it returns before req.user
+    // is EVER populated — this limiter's `!!req.user?.id` check can never see
+    // a logged-in user on this one route. The frontend's root Providers.tsx
+    // calls it on every page load (every lens navigation re-issues the CSRF
+    // cookie), so a fully authenticated user browsing a handful of lenses in
+    // a minute could exhaust the 30rpm budget on this endpoint alone and get
+    // a real 429 while logged in. It's a cheap, idempotent cookie-issuance
+    // call with no scraping value, so it gets the same exemption as health
+    // probes rather than counting toward the anon-scraping deterrent.
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token",
     keyGenerator: (req) => req.ip,
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
