@@ -316,7 +316,7 @@ function ToneCurveTab({ photos, onChange }: { photos: Photo[]; onChange: () => v
       const loaded = await new Promise<boolean>((resolve) => {
         img.onload = () => resolve(true);
         img.onerror = () => resolve(false);
-        img.src = `/api/media/stream/${encodeURIComponent(photo.id)}`;
+        img.src = `/api/media/${encodeURIComponent(photo.id)}/stream`;
       });
       if (loaded && img.naturalWidth > 0) {
         const cv = document.createElement('canvas');
