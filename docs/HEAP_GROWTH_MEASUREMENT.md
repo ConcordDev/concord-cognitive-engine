@@ -86,6 +86,74 @@ That is ~50× this idle rate, so a second, faster, load-driven path very likely 
 Idle-clean-then-leaky plus a much steeper load curve points at *both* a background
 accumulation and a per-request retention path. Only the first is measured here.
 
+---
+
+# Load-phase measurement (2026-07-26) — the hypothesis above is REFUTED
+
+The "per-request retention path" this document predicted **does not exist**. Measured, not
+inferred.
+
+## Method
+
+Same server, same `--expose-gc`, same 30s sampling, scratch DB. A driver registered a real
+account, authenticated, and drove **14,072 requests across 65 distinct endpoints** (REST +
+`/api/lens/run`) for 70 minutes: 13,696 ok, 333 4xx, 43 5xx, **0 network errors**. Compare
+trough-to-trough, never peak-to-peak.
+
+## The curve — minimum heapUsed per 10-minute window (the floor)
+
+| Window | Floor (MB) |
+|---|---:|
+| 600–1200s | 217.2 |
+| 1200–1800s | 220.9 |
+| 1800–2400s | 292.5 |
+| 2400–3000s | 350.0 |
+| 3000–3600s | 369.8 |
+| 3600–4200s | **387.2** |
+
+**~250 MB/hr under sustained load, versus ~300 MB/hr at idle.**
+
+## Why this is the useful result
+
+Two independent runs, wildly different traffic (zero users vs 3.3 req/s sustained), and
+they agree on both numbers that matter:
+
+- **Same onset.** Flat for the first ~20 minutes, then growth begins. The idle run's onset
+  was t≈1200; this run's floor is still 220.9 at 1200–1800 and has clearly departed by
+  1800–2400.
+- **Same rate, if anything slightly *lower* under load.**
+
+**Traffic does not accelerate the leak.** A per-request retention path would scale with
+14,072 requests; this did not move. So the accumulation is **time-based / background** —
+the tick and heartbeat layer, or a periodic process — not the request path.
+
+That kills a whole branch of the search. Do not go hunting through route handlers,
+middleware, or per-connection state. The ~440k plain objects / ~960k strings from the idle
+snapshot diff are being produced by something on a clock.
+
+The ~20-minute onset reproducing under both conditions makes the earlier lead stronger
+rather than weaker: heartbeat frequency 80 (`embodied-dream-cycle`, ~20 min) and 100
+(`forward-sim-cycle`, ~25 min) both land in that window. Still a lead, not a conclusion —
+naming the retaining structure needs retainer-path analysis, which neither run has done.
+
+## Bearing on launch
+
+At ~250–300 MB/hr from a ~217 MB floor, the real production ceiling of 8192 MB
+(`ecosystem.config.cjs`) is roughly **a day of uptime**, with or without users. The
+`max_memory_restart: '6G'` correction gives a graceful restart before the V8 abort, so this
+is survivable — but a service that must restart daily is not "stays consistent." The fix,
+not the mitigation, is the launch gate.
+
+## Reproduce
+
+`scripts` are not committed; regenerate from this section. Boot `server.js` with
+`--expose-gc`, `CONCORD_MEM_SAMPLE_CSV` / `CONCORD_MEM_SAMPLE_INTERVAL_MS` /
+`CONCORD_HEAP_SNAPSHOT_DIR` (note the `CONCORD_` prefix — passing unprefixed names silently
+falls back to defaults and writes to `/tmp`, which cost one run), wait ~150s for the boot
+transient, then drive real authenticated traffic for **at least 40 minutes**. Anything
+shorter lands inside the flat opening and produces a false "no leak" — that mistake has now
+been made twice in this investigation.
+
 ## Bearing on `max_memory_restart`
 
 `ecosystem.config.cjs` sets `max_memory_restart: '20G'` while V8 fatally aborts at the
