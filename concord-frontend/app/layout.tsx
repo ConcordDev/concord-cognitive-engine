@@ -1,7 +1,7 @@
 import './globals.css';
 import { Providers } from '@/components/Providers';
 import type { Metadata, Viewport } from 'next';
-import { DM_Sans, JetBrains_Mono } from 'next/font/google';
+import { DM_Sans, JetBrains_Mono, Source_Serif_4 } from 'next/font/google';
 
 /**
  * Self-hosted fonts via next/font — no render-blocking @import in globals.css.
@@ -18,6 +18,43 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains-mono',
   display: 'swap',
+});
+
+/**
+ * Source Serif 4 — TheVault's serif (museum wall label / certificate stock).
+ *
+ * Chosen against the brief's "print it on paper in 2050 and it still feels
+ * appropriate" test. It is a transitional serif in the Fournier/Baskerville
+ * lineage — a historical model, so it can never read as trendy — but drawn
+ * by Frank Grießhaber for Adobe with no era-specific mannerisms, and
+ * engineered for BOTH screen text and print. Its large-ish x-height and open
+ * counters hold up at the small caption sizes real museum labels use, where
+ * a Garamond revival goes thin and antiquarian. The variable weight axis
+ * (200–900) is what lets the Vault build hierarchy out of weight and space
+ * instead of color, which is required when the palette is grayscale + one
+ * accent.
+ *
+ * Exposed as `--font-vault-serif`; tailwind maps it to `font-vault` (a
+ * distinct key — it deliberately does NOT touch `font-serif`, see
+ * tailwind.config.js). Loading it here rather than in the lens keeps it on
+ * the same self-hosted, preload-optimized next/font path as the other two.
+ */
+const sourceSerif = Source_Serif_4({
+  subsets: ['latin'],
+  variable: '--font-vault-serif',
+  display: 'swap',
+  /**
+   * `preload: false` is deliberate and load-bearing — it is the difference
+   * between this being additive and being a regression. next/font preloads by
+   * default, which would emit a `<link rel="preload">` for this face on EVERY
+   * page: 264 lenses paying download + preload-priority cost for a face that
+   * exactly one of them renders. Declaring it here (rather than inside the
+   * lens) still buys the self-hosting, the CSS-variable plumbing, and the
+   * automatic no-layout-shift fallback metrics; opting out of preload keeps
+   * the cost on the lens that actually uses it. DM Sans and JetBrains Mono
+   * keep their default preload — they ARE used platform-wide.
+   */
+  preload: false,
 });
 
 /**
@@ -91,7 +128,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`dark ${dmSans.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="en"
+      className={`dark ${dmSans.variable} ${jetbrainsMono.variable} ${sourceSerif.variable}`}
+    >
       <head>
         {/* iOS Smart App Banner — surfaces the native app on /dtu/, /quest/,
             /event/, /listing/ pages and deep-links into the matching screen. */}
