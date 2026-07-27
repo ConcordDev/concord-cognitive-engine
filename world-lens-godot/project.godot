@@ -1,5 +1,10 @@
 ; Engine configuration file for the Concord World Lens (Godot 4 native client).
-; Phase 1 skeleton — has never been opened in a real editor. See VISUAL_QA.md.
+; STATUS (corrected 2026-07-27 — was stale): this project DOES now run
+; against a real, checksum-verified Godot 4.4-stable binary (headless) --
+; see world-lens-godot/HOW_TO_RUN.md and docs/GODOT_RUNTIME.md. It has NOT
+; yet been opened in the graphical EDITOR on a real display, and no frame
+; has ever been rendered -- headless runs use RasterizerDummy. See
+; VISUAL_QA.md for what remains unverified.
 ;
 ; Format documented at https://docs.godotengine.org/en/stable/
 
@@ -15,6 +20,17 @@ config/features=PackedStringArray("4.4", "Forward Plus")
 [rendering]
 
 renderer/rendering_method="forward_plus"
+; PINNED (audit 2026-07-27): the Web export target has ALWAYS actually run
+; under Compatibility (gl_compatibility), not Forward+ -- Godot 4.x's own
+; built-in per-platform default silently substitutes it for web, and every
+; rendered pixel this project has produced (visual-qa.mjs's
+; --rendering-driver opengl3, its own goldens) was already gl_compatibility.
+; This was previously IMPLICIT (inherited from the engine default, unwritten
+; here), which is exactly the kind of thing a future engine version could
+; change silently. Pinning it explicitly makes the actual behavior visible
+; and stable instead of inherited.
+renderer/rendering_method.web="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
 
 [network]
 

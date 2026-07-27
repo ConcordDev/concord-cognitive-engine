@@ -81,7 +81,7 @@ const PINNED = {
 // tiny arg parsing
 // --------------------------------------------------------------------------
 function parseArgs(argv) {
-  const out = { dest: path.join(REPO_ROOT, ".godot-runtime", "bin"), source: "auto", check: false };
+  const out = { dest: path.join(REPO_ROOT, ".godot-runtime", "bin"), source: "auto", check: false, allowUnpinned: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--check") out.check = true;
@@ -91,6 +91,7 @@ function parseArgs(argv) {
     else if (a === "--export-templates") out.exportTemplates = true;
     else if (a === "--templates-dest") out.templatesDest = path.resolve(argv[++i]);
     else if (a === "--templates-subset") out.templatesSubset = argv[++i];
+    else if (a === "--allow-unpinned") out.allowUnpinned = true;
     else if (a === "--help" || a === "-h") out.help = true;
   }
   return out;
@@ -476,7 +477,7 @@ function fetchExportTemplates(version, args) {
 // --------------------------------------------------------------------------
 // verification of the final binary
 // --------------------------------------------------------------------------
-function verifyBinary(bin, version) {
+function verifyBinary(bin, version, allowUnpinned = false) {
   const pin = PINNED[version];
   const stat = fs.statSync(bin);
   const sha = sha256File(bin);
@@ -491,9 +492,22 @@ function verifyBinary(bin, version) {
   const result = { sha256: sha, bytes: stat.size, versionString };
 
   if (!pin) {
-    // Honest: we ran it, but we have no recorded pin to compare against.
+    // FIXED (audit 2026-07-27): this used to unconditionally return
+    // `{ok:true, pinned:false, note:...}` for any version with no recorded
+    // checksum — a real, silent reproducibility hole. The single most
+    // likely way to hit this: opening the project in a NEWER Godot editor
+    // rewrites project.godot's `config/features` in place (e.g. "4.4" ->
+    // "4.5"), detectVersion() then derives a version this script has never
+    // pinned, and every downstream guarantee (checksum-verified binary,
+    // known-good export templates, the whole "one pinned Godot version"
+    // story) silently evaporates with an exit code of 0. Now a hard
+    // failure by default — pass --allow-unpinned to explicitly accept an
+    // unrecorded version (e.g. while deliberately bumping the pin).
     result.pinned = false;
     result.note = `no pinned checksum recorded for ${version}; the binary runs and self-reports "${versionString}", but this run did not compare it to a previously trusted value`;
+    if (!allowUnpinned) {
+      return { ok: false, reason: "unpinned_version_rejected", ...result };
+    }
     return { ok: true, ...result };
   }
 
@@ -535,7 +549,7 @@ function main() {
   const destBin = path.join(args.dest, "godot");
 
   if (fs.existsSync(destBin)) {
-    const v = verifyBinary(destBin, version);
+    const v = verifyBinary(destBin, version, args.allowUnpinned);
     if (v.ok) {
       log("existing binary verified — nothing to do");
       console.log(JSON.stringify({ ok: true, action: "already-present", path: destBin, version, ...v }));
@@ -571,7 +585,7 @@ function main() {
     fs.copyFileSync(got.binary, destBin);
     fs.chmodSync(destBin, 0o755);
 
-    const v = verifyBinary(destBin, version);
+    const v = verifyBinary(destBin, version, args.allowUnpinned);
     if (!v.ok) {
       fs.unlinkSync(destBin);
       fail(v.reason, { version, source: got.source, ...v, detail: "binary removed; refusing to leave an unverified engine on disk" });

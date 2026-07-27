@@ -6,10 +6,11 @@ Godot renders + simulates locally.
 
 **Honest status:** this project now runs against a **real Godot 4.4 binary**
 (`node scripts/fetch-godot.mjs`, checksum-verified — see
-`docs/GODOT_RUNTIME.md`). It imports with **0 parse errors across all 64
-scripts**, and its GDScript test suite **executes**: 26/26 suites, 574
-checks, 0 fail. Its server-side protocol is separately proven with a real
-WebSocket integration test.
+`docs/GODOT_RUNTIME.md`). It imports with **0 parse errors across all 69
+scripts** (`find world-lens-godot -name "*.gd" | wc -l` — verify before
+trusting this number, it has drifted before), and its GDScript test suite
+**executes**: 26/26 suites, 574 checks, 0 fail. Its server-side protocol is
+separately proven with a real WebSocket integration test.
 
 What is still **not** verified: headless installs `RasterizerDummy` and
 draws nothing, so **no frame has ever been rendered** and the project has
@@ -27,9 +28,15 @@ first boot; note anything that breaks and it can be fixed quickly.
 A "binary" is just the runnable Godot app itself. Download it — it's free, no
 installer, no admin rights:
 
-1. Go to **https://godotengine.org/download**
-2. Download **Godot 4.4** (or newer 4.x) for your OS. Pick the **standard**
+1. Go to **https://godotengine.org/download/archive/4.4-stable/**
+2. Download **exactly Godot 4.4-stable** for your OS. Pick the **standard**
    build, **NOT** the ".NET / C#" build — this project is GDScript.
+   **Do not use a newer version** ("4.4+" or "or newer 4.x") — opening the
+   project in a newer editor rewrites `project.godot`'s `config/features` in
+   place, and `docs/GODOT_RUNTIME.md` documents that a project imported by a
+   newer Godot will not open in 4.4 again. `scripts/fetch-godot.mjs` fetches
+   and checksum-verifies this exact build for you if you'd rather not do it
+   by hand (`node scripts/fetch-godot.mjs`).
 3. Unzip it. You get a single Godot app. Double-click to launch.
 
 > The cloud container that built this project can't download Godot (its egress
