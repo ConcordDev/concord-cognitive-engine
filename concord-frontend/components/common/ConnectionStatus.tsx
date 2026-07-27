@@ -22,10 +22,11 @@
  * lost." /health is a cheap in-memory liveness probe.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Z_INDEX } from '@/lib/ui/z-index';
 import { useClientConfig } from '@/hooks/useClientConfig';
 import { onConnectionLost, onReconnected } from '@/lib/realtime/socket';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 export function ConnectionStatus() {
   // Shell-diet: this mounts on every page for every user, so the cadence is
@@ -65,24 +66,24 @@ export function ConnectionStatus() {
     };
   }, []);
 
-  // Secondary: stale-data header + fallback liveness.
-  useEffect(() => {
-    const check = async () => {
-      try {
-        const res = await fetch('/health', {
-          signal: AbortSignal.timeout(5000),
-        });
-        setHealthOk(res.ok);
-        setStale(res.headers.get('X-Concord-Stale') === 'true');
-      } catch {
-        setHealthOk(false);
-      }
-    };
+  // Secondary: stale-data header + fallback liveness. Audit fix
+  // (2026-07-27): this mounts on every page for every user — useSmartPolling
+  // pauses it while the tab is hidden (a backgrounded tab was still pinging
+  // /health forever) and jitters against other components sharing the same
+  // server-tuned poll.connectionStatusMs.
+  const check = useCallback(async () => {
+    try {
+      const res = await fetch('/health', {
+        signal: AbortSignal.timeout(5000),
+      });
+      setHealthOk(res.ok);
+      setStale(res.headers.get('X-Concord-Stale') === 'true');
+    } catch {
+      setHealthOk(false);
+    }
+  }, []);
 
-    check();
-    const interval = setInterval(check, poll.connectionStatusMs);
-    return () => clearInterval(interval);
-  }, [poll.connectionStatusMs]);
+  useSmartPolling(check, poll.connectionStatusMs);
 
   const online = !socketDown && healthOk;
   if (online && !stale) return null;
