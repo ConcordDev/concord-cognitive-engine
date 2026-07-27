@@ -5,6 +5,12 @@
 // timeout, priority, and concurrency limit. The repair brain always runs
 // at highest priority (0). Conscious (user-facing) beats subconscious (autonomous).
 
+// Private/High Power Mode, concurrency item (b) — pickBrainEndpoint's
+// opt-in cloud pool candidates (see that function's own header comment
+// below). No cycle risk: platform-providers.js -> byo-providers.js /
+// platform-providers-budget.js, neither of which imports this file.
+import { platformProviderIdForSlot } from "./platform-providers.js";
+
 // Phase D — multi-endpoint scale-out.
 // If BRAIN_<NAME>_URLS is set (comma-separated), it overrides the singular
 // BRAIN_<NAME>_URL and a round-robin picker spreads requests across the
@@ -249,11 +255,32 @@ const _endpointLastHealthy = new Map();
 /** @type {Map<string, number>} brain name → round-robin cursor */
 const _rrCursor = new Map();
 
-function _candidatesForBrain(brainName) {
+function _candidatesForBrain(brainName, { includeCloud = false } = {}) {
   const cfg = getActiveBrainConfig()[brainName];
-  if (!cfg) return [];
-  if (Array.isArray(cfg.urls) && cfg.urls.length) return cfg.urls;
-  return cfg.url ? [cfg.url] : [];
+  const local = cfg
+    ? (Array.isArray(cfg.urls) && cfg.urls.length ? cfg.urls : (cfg.url ? [cfg.url] : []))
+    : [];
+  if (!includeCloud) return local;
+  // Concurrency item (b) (Private/High Power Mode plan) — opt-in cloud
+  // pool candidate. Only ever appended when a caller explicitly passes
+  // `includeCloud: true`, which must only ever come from an
+  // already-mode-gated High-Power-Mode call site (this function has no
+  // mode awareness of its own — see the header note on pickBrainEndpoint
+  // below). A sentinel string, never a real URL — real endpoints always
+  // start with a URL scheme (http://...), so a caller distinguishes a
+  // cloud pick with `candidate.startsWith("cloud:")` and dispatches it
+  // via server/lib/platform-providers.js#platformProviderChat instead of
+  // fetching it directly. Guarded with try/catch (not that a static ESM
+  // import can meaningfully fail at this call site, but the platform-
+  // providers.js call itself reads process.env and is defensive-coded to
+  // never throw either way) so this optional path can never take down
+  // the base local-only picker.
+  let cloud = [];
+  try {
+    const providerId = platformProviderIdForSlot(brainName);
+    if (providerId) cloud = [`cloud:${providerId}`];
+  } catch { /* platform-providers.js unavailable or not configured — local-only */ }
+  return [...local, ...cloud];
 }
 
 /**
@@ -261,9 +288,26 @@ function _candidatesForBrain(brainName) {
  *   1. Choose the endpoint with the fewest inflight calls.
  *   2. Tiebreak by round-robin cursor so multiple equal endpoints share load.
  *   3. Endpoints with ≥3 consecutive failures are deprioritised.
+ *
+ * `opts.includeCloud` (default false): when true, a configured High Power
+ * Mode platform provider for this slot joins the pool as a `cloud:<id>`
+ * sentinel candidate and competes on the SAME least-inflight + failure-
+ * penalty + round-robin scoring as the local Ollama endpoints — so under
+ * load, a call that would otherwise queue behind a busy local instance can
+ * instead land on an operator-funded external endpoint with headroom.
+ * NEVER pass `includeCloud: true` from a Private-Mode call site — this
+ * function has no brain_mode awareness of its own; the caller is
+ * responsible for having already gated on `mode !== 'private'` (the exact
+ * same responsibility platform-providers.js#platformProviderChat's own
+ * header already documents for itself). This primitive is not yet wired
+ * into any live dispatch call site's precedence order (byo-router.js
+ * #brainChat's BYO -> platform -> Ollama sequence stays as-is, tested and
+ * unchanged) — it exists so a future caller CAN use pool-based selection
+ * instead of the sequential fallback chain, without needing to touch this
+ * function again.
  */
-export function pickBrainEndpoint(brainName) {
-  const candidates = _candidatesForBrain(brainName);
+export function pickBrainEndpoint(brainName, opts = {}) {
+  const candidates = _candidatesForBrain(brainName, opts);
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return candidates[0];
 

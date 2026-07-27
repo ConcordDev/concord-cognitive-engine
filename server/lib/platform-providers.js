@@ -62,6 +62,19 @@ export function platformProviderConfigured(slot = null) {
 }
 
 /**
+ * The provider id (e.g. "google", "groq") that WOULD serve this slot if
+ * it's actually configured (has a usable operator key) — null otherwise.
+ * Used by brain-config.js#pickBrainEndpoint's opt-in `includeCloud`
+ * candidate pool so it can label a cloud candidate with the real provider
+ * id instead of guessing at the slot's default.
+ */
+export function platformProviderIdForSlot(slot) {
+  if (!slot) return null;
+  const provider = providerForSlot(slot);
+  return provider && apiKeyFor(provider) ? provider : null;
+}
+
+/**
  * Dispatch a High-Power-Mode call to this slot's configured platform
  * provider. Caller (byo-router.js#brainChat, ctx.llm.chat, the streaming
  * chat path) is responsible for having already gated on brain_mode !==
