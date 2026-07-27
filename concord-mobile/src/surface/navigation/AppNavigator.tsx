@@ -13,6 +13,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { ChatScreen } from '../screens/ChatScreen';
+import { DashboardScreen } from '../screens/DashboardScreen';
 import { LensesScreen } from '../screens/LensesScreen';
 import { MarketplaceScreen } from '../screens/MarketplaceScreen';
 import { WalletScreen } from '../screens/WalletScreen';
@@ -42,6 +43,7 @@ import { EmergentEventFeedScreen } from '../screens/EmergentEventFeedScreen';
 import { PersonalBeatScreen } from '../screens/PersonalBeatScreen';
 
 export type RootTabParamList = {
+  Dashboard: undefined;
   Chat: undefined;
   Lenses: undefined;
   Marketplace: undefined;
@@ -93,6 +95,11 @@ function MainTabs() {
       }}
     >
       <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{ tabBarLabel: 'Dashboard' }}
+      />
+      <Tab.Screen
         name="Chat"
         component={ChatScreen}
         options={{ tabBarLabel: 'Chat' }}
@@ -131,6 +138,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Main: {
         screens: {
           Wallet: 'checkout-complete',
+          Dashboard: 'dashboard',
           Lenses: 'lenses',
           Marketplace: {
             path: 'listing/:listingId',

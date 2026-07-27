@@ -8,6 +8,9 @@ import { AppNavigator, type RootTabParamList, type RootStackParamList } from '..
 jest.mock('../../surface/screens/ChatScreen', () => ({
   ChatScreen: () => 'ChatScreen',
 }));
+jest.mock('../../surface/screens/DashboardScreen', () => ({
+  DashboardScreen: () => 'DashboardScreen',
+}));
 jest.mock('../../surface/screens/LensesScreen', () => ({
   LensesScreen: () => 'LensesScreen',
 }));
@@ -122,6 +125,7 @@ describe('AppNavigator', () => {
   it('registers all expected tab screens', () => {
     render(<AppNavigator />);
     const expectedTabs: Array<keyof RootTabParamList> = [
+      'Dashboard',
       'Chat',
       'Lenses',
       'Marketplace',
@@ -161,9 +165,9 @@ describe('AppNavigator', () => {
     }
   });
 
-  it('registers exactly 5 tab screens', () => {
+  it('registers exactly 6 tab screens', () => {
     render(<AppNavigator />);
-    expect(registeredTabScreens).toHaveLength(5);
+    expect(registeredTabScreens).toHaveLength(6);
   });
 
   it('registers exactly 17 stack screens', () => {
@@ -192,13 +196,14 @@ describe('AppNavigator', () => {
     // Type-level check: ensure the param list type is correct.
     // If these types don't match, TypeScript compilation fails.
     const tabKeys: Record<keyof RootTabParamList, true> = {
+      Dashboard: true,
       Chat: true,
       Lenses: true,
       Marketplace: true,
       Wallet: true,
       Mesh: true,
     };
-    expect(Object.keys(tabKeys)).toHaveLength(5);
+    expect(Object.keys(tabKeys)).toHaveLength(6);
   });
 
   it('exports RootStackParamList type with expected keys', () => {
