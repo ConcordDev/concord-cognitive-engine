@@ -1,0 +1,51 @@
+{
+  // This is a monorepo with two independent ESLint flat-config roots
+  // (server/eslint.config.js, concord-frontend/eslint.config.mjs) and no
+  // config at the repo root. Without explicit workingDirectories, the
+  // ESLint extension's cwd (and therefore relative path/project
+  // resolution inside each flat config, notably concord-frontend's
+  // next/typescript preset which needs to resolve its own tsconfig) can
+  // end up wrong for whichever subtree isn't "closest" to the first file
+  // you opened — producing spurious parse/resolution errors instead of
+  // the real 0-warning result `npm run lint` gets from each subtree.
+  "eslint.workingDirectories": [
+    { "directory": "server" },
+    { "directory": "concord-frontend" }
+  ],
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+
+  // concord-frontend/tsconfig.json is the only real TS project in the
+  // repo (strict:true, path aliases). Point the TS server at its
+  // TypeScript install so version/behavior matches `npm run type-check`.
+  "typescript.tsdk": "concord-frontend/node_modules/typescript/lib",
+
+  // server/ is ~680 lib files + an 81k-line server.js with no
+  // tsconfig/jsconfig anywhere. Every one of those .js files falls back
+  // to VS Code's built-in TS/JS language service "implicit project" mode,
+  // which still runs full semantic checks (module resolution, implicit
+  // any, etc.) with no real typing context — the actual source of
+  // "hundreds of problems with no corresponding lint/build error".
+  // server/ already has its own correctness tool (ESLint, unaffected by
+  // this setting); turn off the built-in JS diagnostics that have no
+  // real project to check against. concord-frontend's .ts/.tsx files are
+  // untouched (governed by typescript.validate.enable, default on, and
+  // their real tsconfig).
+  "javascript.validate.enable": false,
+
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "server/data": true,
+    "audit/cartograph": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "server/data/**": true
+  }
+}
