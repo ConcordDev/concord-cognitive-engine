@@ -25,7 +25,7 @@ declare -A PORT=(  [conscious]=11434 [subconscious]=11435 [utility]=11436 [repai
 declare -A MODEL=( [conscious]="${BRAIN_CONSCIOUS_MODEL:-concord-conscious:latest}" \
                    [subconscious]="${BRAIN_SUBCONSCIOUS_MODEL:-qwen2.5:7b-instruct-q4_K_M}" \
                    [utility]="${BRAIN_UTILITY_MODEL:-qwen2.5:3b}" \
-                   [repair]="${BRAIN_REPAIR_MODEL:-qwen2.5:0.5b}" \
+                   [repair]="${BRAIN_REPAIR_MODEL:-qwen2.5:1.5b}" \
                    [vision]="${BRAIN_VISION_MODEL:-qwen2.5vl:7b}" )
 # Single A40 GPU (this deploy target) → every brain shares GPU 0 (VRAM is the budget, not GPU count).
 declare -A GPU=(   [conscious]="${BRAIN_CONSCIOUS_GPU:-0}" [subconscious]="${BRAIN_SUBCONSCIOUS_GPU:-0}" \
@@ -148,10 +148,15 @@ declare -A FLASHATTN=( [vision]="${BRAIN_VISION_FLASH_ATTENTION:-0}" )
 # a literal render/physics budget. The real guarantee is the pre-boot fit check
 # (verify-resource-allocation.mjs) + BRAIN_VISION_KEEP_ALIVE to shed ~6.9GB on demand —
 # NOT this env var. We still set it (it helps when honored), just don't trust it as a fence.
-# Bumped to 16GB (was 6GB) — the 48GB A40 has real headroom past the 5 brains' ~26GB
-# resident footprint (~22GB free), so this uses some of that margin without threatening
-# the fit; verify-resource-allocation.mjs still gates on the real total before boot.
-CONCORD_WORLD_VRAM_MB="${CONCORD_WORLD_VRAM_MB:-16384}"
+# CORRECTED 2026-07-27: was bumped to 16GB on a "~22GB free" estimate that assumed the
+# resident KV cache was near-zero — true only because server.js used to never send
+# `num_ctx` to Ollama, so every call silently ran at Ollama's tiny default regardless of
+# the configured context window. That's fixed now (server.js sends real num_ctx per call),
+# so KV legitimately consumes VRAM proportional to context — the real free margin is closer
+# to ~8GB, not ~22GB. Restored to 8GB (matches .env.runpod's CONCORD_WORLD_VRAM_MB, which
+# should be the source of truth — this default only applies if that's unset).
+# verify-resource-allocation.mjs still gates on the real (now KV-honest) total before boot.
+CONCORD_WORLD_VRAM_MB="${CONCORD_WORLD_VRAM_MB:-8192}"
 export OLLAMA_GPU_OVERHEAD=$(( CONCORD_WORLD_VRAM_MB * 1024 * 1024 ))
 export CONCORD_WORLD_GPU="${CONCORD_WORLD_GPU:-0}"
 LOG_DIR="${LOG_DIR:-/tmp/concord-brains}"; mkdir -p "$LOG_DIR"

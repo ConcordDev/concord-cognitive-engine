@@ -207,3 +207,59 @@ describe("LLM Queue — Drain", () => {
     assert.ok(true);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 9. CRITICAL reservation (audit 2026-07-27)
+// ═══════════════════════════════════════════════════════════════════════════════
+// Priority ordering alone only governs DEQUEUE order — it does nothing for items
+// already inflight. Without a reservation, a burst of slow background/vision work
+// can fill every concurrency slot before a live-chat CRITICAL request ever arrives,
+// and there is no preemption, so that request queues behind up to the full timeout
+// of unrelated work. These pin the fix: a slot is held open for CRITICAL.
+
+describe("LLM Queue — CRITICAL reservation", () => {
+  it("reserves 1 slot by default when concurrency > 1: a LOW-priority burst fills concurrency-1, not concurrency", async () => {
+    const q = createLLMQueue({ concurrency: 5 });
+    const lows = Array.from({ length: 6 }, () => q.enqueue(slowFn(200), PRIORITY.LOW));
+    await delay(20); // let the burst get admitted
+    const m = q.getMetrics();
+    assert.equal(m.inflight, 4, "non-CRITICAL work must not fill the reserved slot");
+    await Promise.all(lows);
+  });
+
+  it("a CRITICAL request lands immediately despite a full LOW-priority burst", async () => {
+    const q = createLLMQueue({ concurrency: 5 });
+    const lows = Array.from({ length: 6 }, () => q.enqueue(slowFn(300), PRIORITY.LOW));
+    await delay(20);
+    const start = Date.now();
+    const result = await q.enqueue(immediateFn("crit"), PRIORITY.CRITICAL);
+    const latencyMs = Date.now() - start;
+    assert.equal(result, "crit");
+    assert.ok(latencyMs < 50, `CRITICAL request should be near-instant, got ${latencyMs}ms`);
+    await Promise.all(lows);
+  });
+
+  it("reservation is 0 when concurrency is 1 (nothing to reserve)", async () => {
+    const q = createLLMQueue({ concurrency: 1 });
+    // A single-slot queue cannot reserve without deadlocking non-critical work
+    // entirely — LOW must still be able to run when nothing higher is queued.
+    const result = await q.enqueue(immediateFn("low-on-single-slot"), PRIORITY.LOW);
+    assert.equal(result, "low-on-single-slot");
+  });
+
+  it("reserveForCritical is explicitly configurable", async () => {
+    const q = createLLMQueue({ concurrency: 5, reserveForCritical: 2 });
+    const lows = Array.from({ length: 6 }, () => q.enqueue(slowFn(200), PRIORITY.LOW));
+    await delay(20);
+    const m = q.getMetrics();
+    assert.equal(m.inflight, 3, "explicit reserveForCritical:2 must hold 2 slots open");
+    await Promise.all(lows);
+  });
+
+  it("an idle reserved slot does not block queue drain when no CRITICAL work ever arrives", async () => {
+    const q = createLLMQueue({ concurrency: 5 });
+    const lows = Array.from({ length: 4 }, () => q.enqueue(slowFn(30), PRIORITY.LOW));
+    const results = await Promise.all(lows);
+    assert.deepEqual(results, ["ok", "ok", "ok", "ok"]);
+  });
+});

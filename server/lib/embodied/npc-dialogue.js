@@ -132,14 +132,15 @@ async function _llmOpener(a, b, ctx) {
     const { ollamaChat } = await import("../inference/ollama-client.js");
     const sys = `You write a single short opening line of ambient dialogue between two NPCs who are about to talk. One sentence, in the format: ${a}: "..." Grounded in their factions if given; never invent plot facts beyond what's provided. No narration, no quotes around the whole line, just the line itself.`;
     const userMsg = `${a} (faction: ${ctx.factionA || "none"}) meets ${b} (faction: ${ctx.factionB || "none"}), same faction: ${!!ctx.sameFaction}.`;
-    const timeout = new Promise((_r, reject) => setTimeout(() => reject(new Error("llm_timeout")), 6000));
-    const result = await Promise.race([
-      ollamaChat("subconscious", [
-        { role: "system", content: sys },
-        { role: "user", content: userMsg },
-      ]),
-      timeout,
-    ]);
+    // Abort the underlying fetch at the timeout (audit 2026-07-27): the old
+    // Promise.race timer rejected the CALLER at 6s but never cancelled the
+    // request — ollamaChat's own 30s default kept the subconscious brain's
+    // single NUM_PARALLEL slot occupied for up to 24 more seconds per
+    // "timed out" opener, starving real work on that instance.
+    const result = await ollamaChat("subconscious", [
+      { role: "system", content: sys },
+      { role: "user", content: userMsg },
+    ], { signal: AbortSignal.timeout(6000) });
     if (!result?.ok || typeof result.text !== "string") return null;
     const text = result.text.trim();
     if (text.length < 5 || text.length > 300) return null;

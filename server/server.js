@@ -15773,27 +15773,53 @@ function makeCtx(req=null) {
         // ===== END BYO KEY ROUTING =====
 
         // ===== OLLAMA-ONLY ROUTING =====
-        // Sovereignty principle: only the local conscious brain.
-        // Cloud LLM fallbacks were removed — this deployment is
-        // Ollama (qwen2.5) + LLaVA per CLAUDE.md.
-        const consciousAvailable = BRAIN.conscious && BRAIN.conscious.enabled;
-        if (!consciousAvailable) {
+        // Sovereignty principle: local brains only. Cloud LLM fallbacks were
+        // removed — this deployment is Ollama (qwen2.5) + vision per CLAUDE.md.
+        //
+        // SLOT ROUTING (audit 2026-07-27): `slot` used to be honored ONLY by
+        // the BYO branch above — the local path hardcoded "conscious", so
+        // callers that explicitly asked for utility/subconscious work (e.g.
+        // provenance-guard's slot:"utility", shadow-council's
+        // slot:"subconscious") burned the 14B flagship on it, and BYOK vs
+        // local behaved differently for the same call. The requested slot is
+        // now honored when that brain is up, with an honest fallback to
+        // conscious when it isn't.
+        const _validSlots = ["conscious", "subconscious", "utility", "repair"];
+        const _requestedSlot = _validSlots.includes(slot) ? slot : "conscious";
+        let _useBrainName = (BRAIN[_requestedSlot] && BRAIN[_requestedSlot].enabled)
+          ? _requestedSlot
+          : "conscious";
+        const _brain = BRAIN[_useBrainName];
+        if (!_brain || !_brain.enabled) {
           return { ok: false, reason: "LLM not configured: conscious brain offline. Set BRAIN_CONSCIOUS_URL and ensure Ollama is reachable." };
         }
 
         // Phase D wiring — prefer the load-balanced endpoint from
-        // brain-config.js's multi-endpoint picker (BRAIN_CONSCIOUS_URLS) when
-        // configured; falls back to the singular BRAIN.conscious.url
-        // unchanged when no plural env var is set (the common single-
-        // endpoint deployment).
-        const brainUrl = pickBrainEndpoint("conscious") || BRAIN.conscious.url;
-        const brainModel = model || BRAIN.conscious.model;
+        // brain-config.js's multi-endpoint picker (BRAIN_<SLOT>_URLS) when
+        // configured; falls back to the singular BRAIN.<slot>.url unchanged
+        // when no plural env var is set (the common single-endpoint deploy).
+        const brainUrl = pickBrainEndpoint(_useBrainName) || _brain.url;
+        const brainModel = model || _brain.model;
         const ollamaMessages = [
           ...(system ? [{ role: "system", content: system }] : []),
           ...(messages || [])
         ];
-        // Local models need more time than cloud — 120s for first call, 90s steady state
-        const ollamaTimeout = Math.max(timeoutMs, 120000);
+        // Local models need more time than cloud. Floor is env-tunable:
+        // behind Cloudflare (100s origin cap) set
+        // CONCORD_LLM_TIMEOUT_FLOOR_MS=90000 so an HTTP-bound macro's LLM
+        // call errors honestly instead of the client seeing a CF 524 while
+        // the GPU keeps working.
+        const ollamaTimeout = Math.max(timeoutMs, Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000));
+        // num_ctx: Ollama defaults to a SMALL context (2k/4k) unless told
+        // otherwise — while token-budget-assembler.js builds prompts against
+        // BRAIN_CONFIG.contextWindow (32k for conscious). Without sending
+        // num_ctx, everything past Ollama's default was silently truncated
+        // ("the brain forgot what I told it"). Cap is env-tunable for VRAM
+        // control (KV cache scales with num_ctx).
+        const _numCtx = Math.min(
+          Number(process.env.CONCORD_NUM_CTX_CAP || 32768),
+          BRAIN_CONFIG[_useBrainName]?.contextWindow || 8192
+        );
 
         // Track A/B/C (event-loop + GPU unblocking audit) — a brain-wiring
         // audit found ctx.llm.chat() (this function — the primary USER-FACING
@@ -15802,10 +15828,14 @@ function makeCtx(req=null) {
         // callBrain() was fixed to use. On a fixed-VRAM single-GPU box this
         // was the highest-volume unguarded path to the Ollama endpoints —
         // exactly the traffic "thousands of concurrent users" produces.
-        // Priority CRITICAL (llm-queue.js's own documented scheme: "0 —
-        // CRITICAL: user-facing chat / ask responses") so live chat jumps
-        // ahead of NORMAL-priority background/heartbeat brain calls under
-        // load, rather than competing with them on equal footing.
+        // Priority: CRITICAL for the conscious slot (llm-queue.js's own
+        // documented scheme: "0 — CRITICAL: user-facing chat / ask
+        // responses") so live chat jumps ahead of background brain calls;
+        // explicit utility/subconscious/repair slot requests are
+        // supporting work and ride at NORMAL so they can't starve chat.
+        const _chatPriority = _useBrainName === "conscious"
+          ? _llmQueue.PRIORITY.CRITICAL
+          : _llmQueue.PRIORITY.NORMAL;
         return await _llmQueue.enqueue(async () => {
           const ac = new AbortController();
           const t = setTimeout(() => ac.abort(), ollamaTimeout);
@@ -15816,58 +15846,58 @@ function makeCtx(req=null) {
             const res = await fetch(`${brainUrl}/api/chat`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens } }),
+              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens, num_ctx: _numCtx } }),
               signal: ac.signal
             }).finally(() => clearTimeout(t));
             const json = await res.json().catch(() => ({}));
             const elapsed = Date.now() - startMs;
-            BRAIN.conscious.stats.requests++;
-            BRAIN.conscious.stats.totalMs += elapsed;
-            BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
+            _brain.stats.requests++;
+            _brain.stats.totalMs += elapsed;
+            _brain.stats.lastCallAt = new Date().toISOString();
             if (res.ok && json.message?.content) {
               const content = json.message.content ?? "";
               _epOk = true;
-              structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
+              structuredLog("info", "llm_ollama_primary", { brain: _useBrainName, model: brainModel, elapsed, tokens: json.eval_count || 0 });
               // Real per-call metering — prompt_eval_count/eval_count are
               // Ollama's own reported token counts for this exact completion.
               _meterLlmChat(db, {
-                spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+                spanType: "chat", brainUsed: _useBrainName, modelUsed: brainModel,
                 callerId: resolvedActor?.userId, latencyMs: elapsed,
                 tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
               });
-              return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
+              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama" };
             }
-            BRAIN.conscious.stats.errors++;
+            _brain.stats.errors++;
             structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
             // A real HTTP round-trip happened and came back non-OK — honest
             // error span, no fabricated token count.
             _meterLlmChat(db, {
-              spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+              spanType: "chat", brainUsed: _useBrainName, modelUsed: brainModel,
               callerId: resolvedActor?.userId, latencyMs: elapsed,
               error: json?.error || `ollama_error_${res.status}`,
             });
-            return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: "conscious", source: "ollama" };
+            return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: _useBrainName, source: "ollama" };
           } catch (err) {
-            BRAIN.conscious.stats.errors++;
+            _brain.stats.errors++;
             const elapsed = Date.now() - startMs;
             structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
             _meterLlmChat(db, {
-              spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+              spanType: "chat", brainUsed: _useBrainName, modelUsed: brainModel,
               callerId: resolvedActor?.userId, latencyMs: elapsed,
               error: String(err?.message || err),
             });
-            return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
+            return { ok: false, error: String(err?.message || err), brain: _useBrainName, source: "ollama" };
           } finally {
             noteEndpointFinish(brainUrl, { ok: _epOk });
           }
-        }, _llmQueue.PRIORITY.CRITICAL).catch((err) => {
+        }, _chatPriority).catch((err) => {
           // Queue-level rejection (full/shed) — never let it throw out of
           // ctx.llm.chat(); every existing caller expects a resolved
           // { ok, ... } object, matching the resilience contract the BYO
           // and offline-brain branches above already uphold.
           const msg = String(err?.message || err);
           structuredLog("warn", "llm_queue_reject_chat", { error: msg });
-          return { ok: false, error: msg, brain: "conscious", source: "ollama", queueRejected: true };
+          return { ok: false, error: msg, brain: _useBrainName, source: "ollama", queueRejected: true };
         });
       }
     }
@@ -17544,6 +17574,16 @@ function initLLMPipeline() {
   });
 }
 
+// num_ctx resolver — Ollama defaults to a small context (2k/4k) unless the
+// request says otherwise, silently truncating long prompts while
+// token-budget-assembler.js budgets against BRAIN_CONFIG.contextWindow.
+// Every Ollama call path sends this. CONCORD_NUM_CTX_CAP bounds KV-cache
+// VRAM growth (KV scales with num_ctx).
+function _ollamaNumCtx(brainName = "conscious") {
+  const win = BRAIN_CONFIG[brainName]?.contextWindow || 8192;
+  return Math.min(Number(process.env.CONCORD_NUM_CTX_CAP || 32768), win);
+}
+
 // Call Ollama (local) — uses /api/chat with system message when provided
 async function callOllama(prompt, options = {}) {
   const { url, model } = LLM_PIPELINE.providers.ollama;
@@ -17561,20 +17601,20 @@ async function callOllama(prompt, options = {}) {
             { role: "user", content: prompt },
           ],
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500 },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx("conscious") },
         }
       : {
           model: useModel,
           prompt,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500 },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx("conscious") },
         };
 
     const response = await fetch(`${url}/api/${useChat ? "chat" : "generate"}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(options.timeout || 120000)
+      signal: AbortSignal.timeout(options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000))
     });
 
     if (!response.ok) {
@@ -17610,11 +17650,15 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
     options: {
       temperature: options.temperature || 0.7,
       num_predict: options.maxTokens || 1500,
+      // Streaming chat runs on the conscious brain unless the caller says
+      // otherwise — without num_ctx the assembled 32k-budget prompt was
+      // silently truncated at Ollama's small default.
+      num_ctx: options.numCtx || _ollamaNumCtx(options.brainName || "conscious"),
     },
   };
 
   const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), options.timeout || 120000);
+  const timeout = setTimeout(() => ac.abort(), options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000));
 
   try {
     const response = await fetch(`${brainUrl}/api/chat`, {
@@ -17723,7 +17767,10 @@ _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 // this queue exists specifically to prevent.
 const _llmQueue = createLLMQueue({
   concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
-  maxQueueDepth: 200,
+  // Was hardcoded 200, which always won over llm-queue.js's own
+  // `opts.maxQueueDepth || CONCORD_LLM_QUEUE_DEPTH || 1000` fallback —
+  // silently making CONCORD_LLM_QUEUE_DEPTH dead (audit 2026-07-27).
+  maxQueueDepth: parseInt(process.env.CONCORD_LLM_QUEUE_DEPTH || "200", 10),
   onReject: (priority, reason) => {
     structuredLog("warn", "llm_queue_reject", { priority, reason });
   },
@@ -18000,6 +18047,45 @@ if (!_brainsDisabled) {
       structuredLog("warn", "brain_preload_failed", { error: e.message });
     }
   }, 30000);
+
+  // ── Ongoing brain health loop (audit 2026-07-27) ──────────────────────
+  // Before this, brains were probed exactly twice (T+3s, T+30s) and the
+  // ONLY code that could flip a brain back to enabled lived inside
+  // GET /api/brain/health — a PULL endpoint. If a brain crashed and its
+  // supervisor respawned it, `brain.enabled` stayed false (chat degraded,
+  // ctx.llm.enabled false) until some frontend happened to poll that
+  // endpoint. The server now re-probes on its own clock: a cheap
+  // /api/tags fetch per brain, same threshold/recovery semantics as the
+  // endpoint (3 consecutive failures to disable, one success to
+  // re-enable). Interval env-tunable; 0 disables.
+  const _brainHealthLoopMs = Number(process.env.CONCORD_BRAIN_HEALTH_INTERVAL_MS || 60_000);
+  if (_brainHealthLoopMs > 0) {
+    const _brainHealthLoop = setInterval(async () => {
+      for (const [name, brain] of Object.entries(BRAIN)) {
+        try {
+          const probe = await fetch(`${brain.url}/api/tags`, { signal: AbortSignal.timeout(5000) });
+          if (probe.ok) {
+            _brainHealthFailures[name] = 0;
+            if (!brain.enabled) {
+              brain.enabled = true;
+              _refreshLlmReady();
+              structuredLog("info", "brain_health_recovered", { brain: name, source: "health_loop" });
+            }
+          } else {
+            _brainHealthFailures[name] = (_brainHealthFailures[name] || 0) + 1;
+          }
+        } catch {
+          _brainHealthFailures[name] = (_brainHealthFailures[name] || 0) + 1;
+        }
+        if (brain.enabled && (_brainHealthFailures[name] || 0) >= BRAIN_HEALTH_FAILURE_THRESHOLD) {
+          brain.enabled = false;
+          _refreshLlmReady();
+          structuredLog("warn", "brain_health_offline", { brain: name, consecutiveFailures: _brainHealthFailures[name], source: "health_loop" });
+        }
+      }
+    }, _brainHealthLoopMs);
+    _brainHealthLoop.unref();
+  }
 }
 
 // ── Repair Cortex Runtime Loop ────────────────────────────────────────────
@@ -19241,6 +19327,7 @@ ${_sharedToolRules}` : "";
       options: {
         temperature: options.temperature || 0.7,
         num_predict: options.maxTokens || 500,
+        num_ctx: _ollamaNumCtx(brainName),
       },
     };
 
@@ -19248,7 +19335,7 @@ ${_sharedToolRules}` : "";
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(options.timeout || 120000),
+      signal: AbortSignal.timeout(options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000)),
     });
 
     brain.stats.requests++;
@@ -19512,7 +19599,7 @@ ${_sharedToolRules}` : "";
           model: brain.model,
           messages: _followUpMessages,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500 },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx(brainName) },
         };
 
         try {
@@ -19520,7 +19607,7 @@ ${_sharedToolRules}` : "";
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(_followUpPayload),
-            signal: AbortSignal.timeout(options.timeout || 120000),
+            signal: AbortSignal.timeout(options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000)),
           });
           if (_fuResponse.ok) {
             const _fuData = await _fuResponse.json();
@@ -49403,8 +49490,17 @@ function initChatSocketHandlers(io) {
             try {
               const userMsg = (prompt || '').toLowerCase();
               const relevantDtus = [];
+              // Bound the scan (audit 2026-07-27): this loop used to walk the
+              // ENTIRE DTU map synchronously, lowercasing every title+content,
+              // on every chat message — a multi-hundred-ms main-thread stall
+              // on a large substrate (stalls socket pings + the world tick).
+              // Cap the number of DTUs examined per message; the semantic
+              // path for deep retrieval is discovery.search, not this loop.
+              const _scanMax = Number(process.env.CONCORD_CHAT_DTU_SCAN_MAX || 5000);
+              let _scanned = 0;
               for (const [, dtu] of STATE.dtus) {
                 if (relevantDtus.length >= 15) break;
+                if (++_scanned > _scanMax) break;
                 const title = (dtu.title || '').toLowerCase();
                 const content = (dtu.content || '').toLowerCase();
                 const tags = (dtu.tags || []).join(' ').toLowerCase();
@@ -49450,21 +49546,68 @@ function initChatSocketHandlers(io) {
               { role: "user", content: String(prompt) },
             ];
 
-            // Stream tokens to client
-            let _streamSeq = 0;
-            const streamResult = await callOllamaStreaming(
-              _streamBrainUrl,
-              _streamBrainModel,
-              _streamMessages,
-              _streamSystem,
-              (token) => {
-                socket.emit("chat:token", { token, sessionId, seq: _streamSeq++ });
-              },
-              {
-                temperature: _streamConsciousParams.temperature || 0.75,
-                maxTokens: _streamConsciousParams.maxTokens || 1500,
+            // ===== BYO KEY ROUTING (streaming path) =====
+            // Audit 2026-07-27: this path used to ignore BYO overrides
+            // entirely — a user who plugged in their own provider key still
+            // got local Ollama on the DEFAULT chat surface (only the HTTP
+            // ctx.llm.chat path honored it). BYO providers are called
+            // non-streaming here; the full response is delivered as one
+            // token event + chat:complete. Honest trade: no token-by-token
+            // animation on BYOK, but the user's chosen model actually runs.
+            let _streamByo = null;
+            const _streamUserId = socket.data?.userId || null;
+            if (db && _streamUserId) {
+              let _ov = null;
+              try { _ov = byoGetOverride(db, _streamUserId, "conscious"); } catch { _ov = null; }
+              if (_ov?.provider && _ov.provider !== "concord_default" && _ov.provider !== "ollama") {
+                try {
+                  const byo = await byoBrainChat({
+                    db, userId: _streamUserId, slot: "conscious",
+                    messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
+                    opts: {
+                      temperature: _streamConsciousParams.temperature || 0.75,
+                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                    },
+                  });
+                  if (byo?.ok && byo.content) {
+                    _streamByo = byo;
+                  }
+                  // ok:false → fall through to local streaming below (same
+                  // BYO-outage-never-blocks contract as ctx.llm.chat).
+                } catch (_byoErr) {
+                  structuredLog("warn", "llm_byo_stream_exception", { error: String(_byoErr?.message || _byoErr) });
+                }
               }
-            );
+            }
+
+            // Stream tokens to client. The local call now runs INSIDE
+            // _llmQueue at CRITICAL priority — before this, streaming chat
+            // (the highest-volume brain path) bypassed the queue entirely,
+            // so the queue-position UX above described a queue this request
+            // never entered, and background brain work competed with live
+            // chat for the same Ollama slots un-arbitrated.
+            let _streamSeq = 0;
+            const streamResult = _streamByo
+              ? (() => {
+                  socket.emit("chat:token", { token: _streamByo.content, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _streamByo.content, model: _streamByo.model || "byo", source: "byo" };
+                })()
+              : await _llmQueue.enqueue(
+                  () => callOllamaStreaming(
+                    _streamBrainUrl,
+                    _streamBrainModel,
+                    _streamMessages,
+                    _streamSystem,
+                    (token) => {
+                      socket.emit("chat:token", { token, sessionId, seq: _streamSeq++ });
+                    },
+                    {
+                      temperature: _streamConsciousParams.temperature || 0.75,
+                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                    }
+                  ),
+                  _llmQueue.PRIORITY.CRITICAL
+                ).catch((qErr) => ({ ok: false, error: String(qErr?.message || qErr), queueRejected: true }));
 
             if (streamResult.ok && streamResult.content) {
               // Store assistant response in session

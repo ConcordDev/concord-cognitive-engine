@@ -32,6 +32,8 @@ const PRIORITY_LABELS = ["critical", "high", "normal", "low"];
  * @param {Object} opts
  * @param {number} [opts.concurrency=2] - Max inflight LLM calls
  * @param {number} [opts.maxQueueDepth=200] - Max pending items; LOW priority rejected first
+ * @param {number} [opts.reserveForCritical] - Slots non-CRITICAL work may never fill (audit
+ *   2026-07-27 — see below)
  * @param {Function} [opts.onReject] - Called when a request is rejected (priority, reason)
  * @returns {LLMQueue}
  */
@@ -42,6 +44,20 @@ export function createLLMQueue(opts = {}) {
   // Bumped default 200 → 1000 for 32GB-heap deployments. Override via opts
   // or env CONCORD_LLM_QUEUE_DEPTH.
   const maxQueueDepth = opts.maxQueueDepth || Number(process.env.CONCORD_LLM_QUEUE_DEPTH) || 1000;
+  // Reservation for CRITICAL (live chat) traffic. WITHOUT this, priority
+  // ordering only governs the order items are DEQUEUED — it does nothing
+  // for items already inflight. On a small bare-metal concurrency budget
+  // (LLM_CONCURRENCY=5 on the real 5-Ollama-process deploy), a burst of
+  // background/vision work (up to a 120s timeout each) can fill every slot
+  // before a live chat request ever arrives, and there is no preemption —
+  // that CRITICAL request then queues behind up to 120s of unrelated work.
+  // Reserving 1 slot (when concurrency allows it) means a non-CRITICAL item
+  // is never admitted into the LAST free slot, so CRITICAL work always has
+  // somewhere to land immediately. Default: 1 slot when concurrency > 1.
+  const reserveForCritical = Math.max(0, Math.min(
+    concurrency - 1,
+    Number.isFinite(opts.reserveForCritical) ? opts.reserveForCritical : (concurrency > 1 ? 1 : 0)
+  ));
   const onReject = opts.onReject || (() => {});
 
   // Priority buckets: array of arrays, index = priority level
@@ -62,10 +78,16 @@ export function createLLMQueue(opts = {}) {
   }
 
   /**
-   * Dequeue next item by priority order.
+   * Dequeue next item by priority order. When `capacity` is given (fewer
+   * than the full concurrency — used to enforce the CRITICAL reservation),
+   * non-CRITICAL buckets are skipped once admitting them would exceed it,
+   * but CRITICAL is still checked and returned since it always gets the
+   * full concurrency ceiling in pump() below.
    */
-  function dequeue() {
-    for (let p = 0; p < buckets.length; p++) {
+  function dequeue(capacity = concurrency) {
+    if (buckets[PRIORITY.CRITICAL].length > 0) return buckets[PRIORITY.CRITICAL].shift();
+    if (capacity <= 0) return null;
+    for (let p = 1; p < buckets.length; p++) {
       if (buckets[p].length > 0) return buckets[p].shift();
     }
     return null;
@@ -76,7 +98,11 @@ export function createLLMQueue(opts = {}) {
    */
   function pump() {
     while (inflight < concurrency) {
-      const item = dequeue();
+      // Non-CRITICAL work may only fill up to (concurrency - reserveForCritical)
+      // slots; CRITICAL can always use the full concurrency. This is what
+      // keeps the reservation live rather than decorative.
+      const capacityForNonCritical = Math.max(0, concurrency - reserveForCritical - inflight);
+      const item = dequeue(capacityForNonCritical);
       if (!item) break;
 
       inflight++;
