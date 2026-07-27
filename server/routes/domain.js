@@ -32,7 +32,8 @@ export default function registerDomainRoutes(app, {
   ensureExperienceLearning,
   ensureAttentionManager,
   ensureReflectionEngine,
-  validate
+  validate,
+  requireOwner
 }) {
 
   // ---- Cognitive Status ----
@@ -288,8 +289,21 @@ export default function registerDomainRoutes(app, {
   }));
 
   // ---- Settings ----
+  // GET is genuinely public-safe: global cognitive-tuning knobs only
+  // (heartbeatMs, heartbeatEnabled, autogenEnabled, ...), no PII, no
+  // per-user data.
   app.get("/api/settings", asyncHandler(async (req,res)=> res.json(await runMacro("settings","get", {}, makeCtx(req)))));
-  app.post("/api/settings", asyncHandler(async (req,res)=> res.json(await runMacro("settings","set", req.body||{}, makeCtx(req)))));
+  // Audit fix 2026-07-27: this POST had NO gate at all — any authenticated
+  // (non-owner) caller could mutate GLOBAL system settings (disable the
+  // heartbeat, autogen, dream, evolution, synth for every user). server.js
+  // registers its OWN requireOwner-gated "/api/settings" POST (line
+  // ~42628 at the time of this fix), but because this file's registerDomainRoutes()
+  // call runs first at boot, Express's first-match routing meant THIS
+  // ungated handler was the one that actually executed — the later
+  // "gated" duplicate was dead code. Fixed here (the handler that really
+  // runs); the server.js duplicate should be treated as intentionally
+  // redundant defense-in-depth, not the active gate.
+  app.post("/api/settings", requireOwner, asyncHandler(async (req,res)=> res.json(await runMacro("settings","set", req.body||{}, makeCtx(req)))));
 
   // ---- System: dream/autogen/evolution/synthesize ----
   app.post("/api/dream", asyncHandler(async (req,res)=> res.json(await runMacro("system","dream", req.body||{}, makeCtx(req)))));

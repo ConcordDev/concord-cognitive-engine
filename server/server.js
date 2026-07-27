@@ -7021,10 +7021,15 @@ function authMiddleware(req, res, next) {
     "/api/dtus", "/api/dtu", "/api/lenses", "/api/lens", "/api/lens-actions", "/api/emergent", "/api/knowledge",
     "/api/search", "/api/species", "/api/events", "/api/schema",
     // Settings, metrics & context
-    // "/api/settings" removed (audit follow-up): no live GET handler exists
-    // under this prefix at all (only a requireOwner-gated POST) — this
-    // entry was pure fail-open risk with zero functional benefit.
-    "/api/growth", "/api/metrics", "/api/context",
+    // CORRECTION (audit 2026-07-27): the earlier "no live GET handler"
+    // removal here was wrong — routes/domain.js:291 registers a real,
+    // genuinely public-safe GET (global cognitive-tuning knobs only, no
+    // PII), found via a full-suite test run (storage-parity.test.js) after
+    // a plain grep of server.js alone missed the route living in a
+    // separate routes/*.js file. Restored. The POST side had a REAL bug
+    // this same investigation uncovered — see routes/domain.js's own
+    // comment on that handler.
+    "/api/settings", "/api/growth", "/api/metrics", "/api/context",
     // Phase N — public spectator counts. No PII; the world picker reads
     // this anonymously to render "N watching" badges.
     "/api/worlds/spectator-counts",
@@ -7093,6 +7098,13 @@ function authMiddleware(req, res, next) {
     // instead of reaching the handler. /api/intelligence's 4 sub-paths are
     // all global/aggregate system stats with no per-user data — verified
     // safe, narrowed anyway per this pass's own "future route" rationale.
+    // CORRECTION (same-day re-audit): the bare /api/analytics path (no
+    // sub-path) was dropped by this narrowing even though it has its own
+    // real, live, genuinely-public-safe handler (routes/analytics.js) —
+    // identity there comes only from req.user/req.session, never from
+    // query/body, and an anonymous caller with no session gets empty
+    // personal stats plus real global/world aggregates. Restored.
+    "/api/analytics",
     "/api/analytics/dashboard", "/api/analytics/growth", "/api/analytics/citations",
     "/api/analytics/marketplace", "/api/analytics/density", "/api/analytics/atlas-domains",
     "/api/intelligence/knowledge-weather", "/api/intelligence/drift-radar",
@@ -13030,8 +13042,8 @@ async function runMacro(domain, name, input, ctx) {
     "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
     "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
     "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
-    // "/api/settings" removed (audit follow-up): no live GET handler
-    // exists under this prefix — see Gate 1's matching removal.
+    // "/api/settings" restored — see Gate 1's matching correction comment.
+    "/api/settings",
     "/api/status", "/api/dtus", "/api/dtu", "/api/lens",
     "/api/goals", "/api/growth", "/api/metrics", "/api/resonance", "/api/lattice",
     "/api/emergent", "/api/plugins", "/api/scope", "/api/events", "/api/guidance",
@@ -13046,8 +13058,11 @@ async function runMacro(domain, name, input, ctx) {
     // routes/agents.js's requireAuth()+ownership fixes.
     // The analytics prefix was narrowed and the personas prefix verified —
     // see Gate 1's matching audit-follow-up comment (analytics' personal
-    // sub-path had a real bug, now fixed + excluded).
+    // sub-path had a real bug, now fixed + excluded). The bare "/api/analytics"
+    // path was restored here too (see Gate 1's matching correction comment) —
+    // it has its own genuinely public-safe handler in routes/analytics.js.
     "/api/council", "/api/hypothesis",
+    "/api/analytics",
     "/api/analytics/dashboard", "/api/analytics/growth", "/api/analytics/citations",
     "/api/analytics/marketplace", "/api/analytics/density", "/api/analytics/atlas-domains",
     "/api/intelligence/knowledge-weather", "/api/intelligence/drift-radar",
@@ -33539,7 +33554,7 @@ registerDomainRoutes(app, {
   STATE, makeCtx, runMacro, _withAck, kernelTick, uiJson, listDomains, listMacros,
   dtusArray, normalizeText, clamp, nowISO, saveStateDebounced, retrieveDTUs,
   isShadowDTU, fs, ensureExperienceLearning, ensureAttentionManager, ensureReflectionEngine,
-  validate
+  validate, requireOwner
 });
 
 // ---- Shield Routes (extracted to routes/shield.js) ----
@@ -42624,24 +42639,13 @@ function requireOwner(req, res, next) {
   next();
 }
 
-// Settings update (individual key-value pairs)
-app.post("/api/settings", requireOwner, asyncHandler(async (req, res) => {
-  const updates = req.body;
-  if (!updates || typeof updates !== "object") {
-    return res.status(400).json({ ok: false, error: "object_required" });
-  }
-
-  const changes = [];
-  for (const [key, value] of Object.entries(updates)) {
-    const before = STATE.settings[key];
-    STATE.settings[key] = value;
-    changes.push({ key, before, after: value });
-  }
-  saveStateDebounced();
-
-  log("settings.update", `Settings updated: ${changes.map(c => c.key).join(", ")}`, { changes });
-  res.json({ ok: true, changes });
-}));
+// Settings update (individual key-value pairs) — REMOVED (audit fix
+// 2026-07-27): this handler could never execute. registerDomainRoutes()
+// (server.js ~line 33538) registers its own "/api/settings" POST first at
+// boot, and Express's first-match routing means that earlier registration
+// always won — this requireOwner-gated version was dead code, and the
+// REAL, executing handler in routes/domain.js had NO gate at all (now
+// fixed there: requireOwner added to the handler that actually runs).
 
 // Force state save
 app.post("/api/admin/save-state", requireOwner, asyncHandler(async (req, res) => {

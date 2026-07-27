@@ -370,6 +370,54 @@ describe("Personal analytics — cross-user read blocked", () => {
   });
 });
 
+// Audit fix 2026-07-27: this session's own publicReadPaths/_safeReadPaths
+// narrowing pass briefly dropped the bare "/api/analytics" path (only its
+// sub-paths like /dashboard were kept), even though it has its own real,
+// live, genuinely public-safe handler (routes/analytics.js) whose identity
+// comes only from req.user/req.session — never query/body — so an
+// unauthenticated caller gets empty personal stats plus real aggregate
+// global/world stats, no leak. Caught by a full-suite storage-parity.test.js
+// run, fixed, pinned here so it can't silently regress again.
+describe("Analytics summary — bare path is public-safe (audit 2026-07-27)", () => {
+  it("GET /api/analytics (no auth) returns 200 with aggregate stats and no personal data leak", async () => {
+    const res = await api("GET", "/api/analytics", null, { noAuth: true });
+    assert.equal(res._status, 200);
+    assert.ok(res.globalStats, "expected globalStats on the anonymous summary");
+    assert.equal(res.personalStats?.totalCitations, 0, "anonymous caller must not see any real user's personal stats");
+    assert.equal(res.personalStats?.totalRoyalties, 0, "anonymous caller must not see any real user's personal stats");
+  });
+
+  it("GET /api/analytics (authenticated) returns the caller's own personal stats, not a stranger's", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token) return;
+    const res = await api("GET", "/api/analytics", null, { token: actor.token });
+    assert.equal(res._status, 200);
+    assert.ok(res.personalStats, "expected personalStats for an authenticated caller");
+  });
+});
+
+// Audit fix 2026-07-27: routes/domain.js's POST /api/settings handler had
+// NO gate at all — any authenticated non-owner could mutate GLOBAL system
+// settings (disable the heartbeat, autogen, dream, evolution, synth for
+// every user on the platform). server.js registered its own requireOwner-
+// gated duplicate, but registerDomainRoutes() mounts first at boot, so
+// Express's first-match routing meant the UNGATED routes/domain.js handler
+// was the one that actually executed — the "gated" server.js duplicate was
+// dead code. Fixed by threading requireOwner into routes/domain.js itself
+// (the handler that really runs) and deleting the dead duplicate.
+describe("Settings mutation — privilege escalation fix (audit 2026-07-27)", () => {
+  it("POST /api/settings returns 401/403 without auth", async () => {
+    await assert401("POST", "/api/settings", { heartbeatEnabled: false });
+  });
+
+  it("POST /api/settings is blocked (404, not-found-shaped) for an authenticated non-owner", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token) return;
+    const res = await api("POST", "/api/settings", { heartbeatEnabled: false }, { token: actor.token });
+    assert.equal(res._status, 404, "a non-owner/founder caller must not be able to mutate global settings");
+  });
+});
+
 describe("Collab workspaces — private workspace roster no longer leaks", () => {
   it("GET /api/collab/workspaces returns 401 without auth", async () => {
     await assert401("GET", "/api/collab/workspaces");
