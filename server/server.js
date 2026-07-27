@@ -49954,15 +49954,30 @@ function initChatSocketHandlers(io) {
 // ============================================================================
 const COLLAB_LOCKS = new BoundedMap(1000, "COLLAB_LOCKS");
 
+// Audit fix 2026-07-27 (Gate-2 publicReadDomains sweep): every one of these
+// four collab-session macros used input.userId — a caller-supplied request
+// field — as the acting identity, the same "identity from the request body"
+// footgun dtu.create was already hardened against (see that macro's own
+// "SECURITY" comment). Combined with join()/edit()/merge() never checking
+// session participation at all, this let ANY caller (a) impersonate an
+// arbitrary userId while joining/editing a session they never created, and
+// (b) merge a stranger's live editing session's pending changes into a real
+// DTU with zero membership check. Real identity now always comes from
+// ctx.actor; edit/merge now require the caller to already be a participant.
+function _collabActorId(ctx) {
+  return ctx?.actor?.userId || ctx?.actor?.id || "anonymous";
+}
+
 register("collab", "createSession", (ctx, input) => {
-  const { dtuId, userId, mode } = input;
+  const { dtuId, mode } = input;
   if (!dtuId) return { ok: false, error: "DTU ID required" };
+  const userId = _collabActorId(ctx);
   const session = {
     id: uid("collab"),
     dtuId,
-    creatorId: userId || "anonymous",
+    creatorId: userId,
     mode: mode || "edit",
-    participants: [{ userId: userId || "anonymous", joinedAt: nowISO(), role: "owner" }],
+    participants: [{ userId, joinedAt: nowISO(), role: "owner" }],
     changes: [],
     createdAt: nowISO(),
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -49974,22 +49989,27 @@ register("collab", "createSession", (ctx, input) => {
 });
 
 register("collab", "join", (ctx, input) => {
-  const { sessionId, userId } = input;
+  const { sessionId } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
-  if (!session.participants.find(p => p.userId === userId)) session.participants.push({ userId: userId || "anonymous", joinedAt: nowISO(), role: "collaborator" });
+  const userId = _collabActorId(ctx);
+  if (!session.participants.find(p => p.userId === userId)) session.participants.push({ userId, joinedAt: nowISO(), role: "collaborator" });
   realtimeEmit("collab:user:joined", { sessionId, userId }, { sessionId: ctx.reqMeta?.sessionId });
   return { ok: true, session };
 });
 
 register("collab", "edit", (ctx, input) => {
-  const { sessionId, userId, operation, path, value, previousValue } = input;
+  const { sessionId, operation, path, value, previousValue } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
+  const userId = _collabActorId(ctx);
+  if (!session.participants.find(p => p.userId === userId)) {
+    return { ok: false, error: "not_a_participant", hint: "join the session before editing" };
+  }
   const lockKey = `${session.dtuId}:${path}`;
   const existingLock = COLLAB_LOCKS.get(lockKey);
   if (existingLock && existingLock.userId !== userId && Date.now() - new Date(existingLock.lockedAt).getTime() < 30000) return { ok: false, error: "Path locked by another user", lockedBy: existingLock.userId };
-  const change = { id: uid("change"), userId: userId || "anonymous", operation: operation || "update", path, value, previousValue, timestamp: nowISO(), status: "pending" };
+  const change = { id: uid("change"), userId, operation: operation || "update", path, value, previousValue, timestamp: nowISO(), status: "pending" };
   session.changes.push(change);
   realtimeEmit("collab:change", { sessionId, change }, { sessionId: ctx.reqMeta?.sessionId });
   return { ok: true, change, session };
@@ -49999,6 +50019,10 @@ register("collab", "merge", (ctx, input) => {
   const { sessionId } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
+  const userId = _collabActorId(ctx);
+  if (!session.participants.find(p => p.userId === userId)) {
+    return { ok: false, error: "not_a_participant", hint: "join the session before merging" };
+  }
   if (session.councilGated) {
     STATE.queues.macroProposals.push({ type: "collab_merge", sessionId, dtuId: session.dtuId, changeCount: session.changes.length, participants: session.participants.map(p => p.userId), proposedAt: nowISO() });
     saveStateDebounced();
