@@ -293,6 +293,278 @@ export function unprotectDtuInStore(store, dtuId) {
   return { ok: true, dtuId, protected: isDtuProtected(dtu) };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// THE `dtus` TABLE PATH — the OTHER substrate
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Everything above operates on runtime DTU OBJECTS living in `STATE.dtus` —
+// the write-through store (`lib/dtu-store.js`) whose durable half is the
+// `dtu_store` table. That is not the only place a DTU can live, and treating
+// it as though it were is a real integration hole:
+//
+//   `server/domains/vault.js#admit` mints an archive record with a raw
+//   `INSERT INTO dtus (id, type, title, creator_id, data, world_id, …)`.
+//   It never writes `dtu_store` and never touches `STATE.dtus`. So
+//   `protectDtuInStore(store, id)` — which begins with `store.get(id)` —
+//   misses on 100% of Vault records and honestly reports `dtu_not_found`.
+//   The archive whose entire product promise is permanence was the one
+//   record class the permanence system could not reach.
+//
+// The functions below are the SAME protection concept applied to that other
+// substrate. They reuse `stampDtuProtection` / `computeDtuContentHash` /
+// `verifyDtuIntegrity` verbatim — there is no second hash, no second flag
+// vocabulary, and no new crypto. What differs is only WHERE the record is
+// read from and written back to: a `dtus` row's JSON payload column
+// (`data`, falling back to migration 001's `body_json`) instead of
+// `store.set()`.
+//
+// ── WHAT THE ROW PROJECTION HASHES, AND THE ONE DELIBERATE OMISSION ────────
+//
+// `dtuRowToRecord` maps table columns onto the runtime field names in
+// `HASHED_FIELDS` (`type`/`title`/`creator_id`/`created_at` from columns,
+// `human`/`core`/`machine`/`content`/… from the JSON payload). It
+// deliberately does NOT populate `ownerUserId`, even though that field IS in
+// `HASHED_FIELDS` and IS a real column, for exactly the reason the
+// module header gives for excluding `tier` and `lineage`: a legitimate,
+// non-tampering system path rewrites it. Two of them, in fact —
+// `lib/account-lifecycle.js#executeAccountDeletion` anonymizes a retained
+// record's attribution on account closure, and migration 001 declares
+// `owner_user_id … ON DELETE SET NULL`. Hashing it would make a lawful GDPR
+// erasure look identical to tampering, which would make the signal useless.
+// `creator` (the `creator_id` column) IS hashed and IS stable: the
+// anonymization path explicitly leaves it alone ("not the actual creator
+// field — needed for wallet routing", `lib/consent.js#anonymizeAttribution`).
+//
+// This asymmetry with the store path is principled, not accidental: a
+// `STATE.dtus` object's `ownerUserId` is not rewritten by any of those paths,
+// so it stays inside that path's hash.
+
+/** Columns this path reads when present. Absent ones are simply not selected. */
+const DTU_ROW_COLUMNS = Object.freeze([
+  "id", "type", "title", "creator_id", "owner_user_id",
+  "data", "body_json", "tags_json", "created_at",
+]);
+
+function parseJsonObject(str) {
+  if (!str || typeof str !== "string") return null;
+  try {
+    const v = JSON.parse(str);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : null;
+  } catch { return null; }
+}
+
+function parseJsonArray(str) {
+  if (!str || typeof str !== "string") return null;
+  try {
+    const v = JSON.parse(str);
+    return Array.isArray(v) ? v : null;
+  } catch { return null; }
+}
+
+// Column set per-db handle. Migrations run at boot, before any protection
+// call, so a cached set cannot go stale in production; a test that ALTERs
+// `dtus` after a protection call on the same handle would need a fresh handle.
+const _dtuColumnCache = new WeakMap();
+
+/** Available `dtus` columns, or null when the table is absent/unreadable. */
+function dtuTableColumns(db) {
+  if (!db || typeof db.prepare !== "function") return null;
+  const cached = _dtuColumnCache.get(db);
+  if (cached) return cached;
+  let cols;
+  try {
+    cols = new Set(db.prepare("PRAGMA table_info(dtus)").all().map((r) => r.name));
+  } catch { return null; }
+  if (!cols.size) return null;
+  _dtuColumnCache.set(db, cols);
+  return cols;
+}
+
+function availableRowColumns(cols) {
+  return DTU_ROW_COLUMNS.filter((c) => cols.has(c));
+}
+
+/** Read one `dtus` row with whatever of DTU_ROW_COLUMNS this schema has. */
+function selectDtuRow(db, dtuId) {
+  const cols = dtuTableColumns(db);
+  if (!cols || !cols.has("id")) return null;
+  const list = availableRowColumns(cols);
+  try {
+    return db.prepare(`SELECT ${list.join(", ")} FROM dtus WHERE id = ?`).get(String(dtuId)) || null;
+  } catch { return null; }
+}
+
+/**
+ * Which JSON payload column this schema stores a DTU's body in. `data` is the
+ * modern convention (migration 087, what `vault.js` and
+ * `cross-lens-discovery.js` use); `body_json` is migration 001's original.
+ */
+function payloadColumn(cols) {
+  if (cols.has("data")) return "data";
+  if (cols.has("body_json")) return "body_json";
+  return null;
+}
+
+/**
+ * Project a `dtus` table row into the runtime-DTU shape the hashing +
+ * predicate functions above already understand. Pure; never touches the DB.
+ *
+ * Both JSON columns are merged (`body_json` first, `data` last so it wins) so
+ * a row that carries its payload in either — or splits protection into one
+ * and content into the other — projects to the same complete record.
+ *
+ * @param {object} row
+ * @returns {object|null}
+ */
+export function dtuRowToRecord(row) {
+  if (!row || typeof row !== "object") return null;
+  const rec = { ...(parseJsonObject(row.body_json) || {}), ...(parseJsonObject(row.data) || {}) };
+
+  rec.id = row.id;
+  if (row.type != null) rec.type = row.type;
+  if (row.title != null) rec.title = row.title;
+  if (row.creator_id != null) rec.creator = row.creator_id;
+  if (row.created_at != null) rec.createdAt = row.created_at;
+  // NOTE: ownerUserId is deliberately NOT projected — see the section header.
+
+  // Tags may live at the payload root, under `machine.tags` (the shape
+  // `vault.js#admit` writes), or in the `tags_json` column. First one that is
+  // really an array wins, so `PROTECTED_TAGS` and the hash see the same list.
+  const candidates = [rec.tags, rec.machine && rec.machine.tags, parseJsonArray(row.tags_json)];
+  const tags = candidates.find((t) => Array.isArray(t));
+  if (tags) rec.tags = tags;
+
+  return rec;
+}
+
+/**
+ * Protect a DTU that lives in the `dtus` TABLE, durably.
+ *
+ * Reads the row, stamps it with the same `stampDtuProtection` used by the
+ * store path, and writes ONLY the protection keys back into the row's JSON
+ * payload column — the content is never rewritten, so the hash the stamp just
+ * computed stays valid. `updated_at` is deliberately left alone: protecting a
+ * record is not an edit to it.
+ *
+ * @param {object} db  better-sqlite3 handle
+ * @param {string} dtuId
+ * @param {object} [opts] forwarded to stampDtuProtection
+ * @returns {{ok:boolean, dtuId?:string, protected?:boolean, column?:string, contentSha256?:string, protectedAt?:string, reason?:string, detail?:string}}
+ */
+export function protectDtuRow(db, dtuId, opts = {}) {
+  if (!db || typeof db.prepare !== "function") return { ok: false, reason: "no_db" };
+  if (!dtuId) return { ok: false, reason: "missing_dtu_id" };
+  const cols = dtuTableColumns(db);
+  if (!cols) return { ok: false, reason: "dtus_table_unavailable" };
+  const jsonCol = payloadColumn(cols);
+  if (!jsonCol) return { ok: false, reason: "no_payload_column" };
+
+  const row = selectDtuRow(db, dtuId);
+  if (!row) return { ok: false, reason: "dtu_not_found", dtuId: String(dtuId) };
+
+  const record = dtuRowToRecord(row);
+  stampDtuProtection(record, { source: "dtu-protection:row", ...opts });
+
+  const payload = parseJsonObject(row[jsonCol]) || {};
+  payload.protected = true;   // honored by server.js#demoteToArchive
+  payload._pinned = true;     // honored by forgetting-engine.js#PROTECTION_RULES
+  payload.protection = record.protection;
+
+  try {
+    db.prepare(`UPDATE dtus SET ${jsonCol} = ? WHERE id = ?`).run(JSON.stringify(payload), String(dtuId));
+  } catch (e) {
+    return { ok: false, reason: "persist_failed", detail: String(e?.message || e) };
+  }
+
+  return {
+    ok: true,
+    dtuId: String(dtuId),
+    protected: true,
+    column: jsonCol,
+    contentSha256: record.protection.contentSha256,
+    protectedAt: record.protection.protectedAt,
+  };
+}
+
+/**
+ * Release an explicit protection on a `dtus`-table record, durably. Mirrors
+ * `unprotectDtuInStore`: the integrity record is retained (with
+ * `protected:false` + a `releasedAt` stamp) rather than deleted, and
+ * `immutable`/`seedOrigin`/archive tags are deliberately NOT cleared.
+ */
+export function unprotectDtuRow(db, dtuId) {
+  if (!db || typeof db.prepare !== "function") return { ok: false, reason: "no_db" };
+  const cols = dtuTableColumns(db);
+  if (!cols) return { ok: false, reason: "dtus_table_unavailable" };
+  const jsonCol = payloadColumn(cols);
+  if (!jsonCol) return { ok: false, reason: "no_payload_column" };
+
+  const row = selectDtuRow(db, dtuId);
+  if (!row) return { ok: false, reason: "dtu_not_found", dtuId: String(dtuId) };
+
+  const payload = parseJsonObject(row[jsonCol]) || {};
+  payload.protected = false;
+  payload._pinned = false;
+  if (payload.protection && typeof payload.protection === "object") {
+    payload.protection.protected = false;
+    payload.protection.releasedAt = new Date().toISOString();
+  }
+  try {
+    db.prepare(`UPDATE dtus SET ${jsonCol} = ? WHERE id = ?`).run(JSON.stringify(payload), String(dtuId));
+  } catch (e) {
+    return { ok: false, reason: "persist_failed", detail: String(e?.message || e) };
+  }
+  return { ok: true, dtuId: String(dtuId), protected: isDtuRowProtected(db, dtuId) };
+}
+
+/** `isDtuProtected` for a record that lives in the `dtus` table. */
+export function isDtuRowProtected(db, dtuId) {
+  const row = selectDtuRow(db, dtuId);
+  if (!row) return false;
+  return isDtuProtected(dtuRowToRecord(row));
+}
+
+/** `verifyDtuIntegrity` for a record that lives in the `dtus` table. */
+export function verifyDtuRowIntegrity(db, dtuId) {
+  const row = selectDtuRow(db, dtuId);
+  if (!row) return { ok: false, verified: false, reason: "dtu_not_found", dtuId: String(dtuId) };
+  return verifyDtuIntegrity(dtuRowToRecord(row));
+}
+
+/**
+ * Every `dtus`-table record owned by `userId` that `isDtuProtected` calls
+ * permanent. This is what a deletion path asks before it deletes.
+ *
+ * Deliberately a full scan of that ONE user's rows (index `idx_dtus_owner`)
+ * with the JS predicate as the sole authority, rather than a SQL predicate
+ * over `json_extract`/`LIKE`. A SQL approximation that drifts even slightly
+ * from `isDtuProtected` — a new flag, a new entry in `PROTECTED_TAGS` — fails
+ * in the direction of permanently destroying a record that claimed to be
+ * permanent. Rows are streamed with `.iterate()`, so a prolific creator's
+ * payloads are never all resident at once, and this runs once per account
+ * closure. Correctness over a micro-optimization, on purpose.
+ *
+ * @returns {string[]} dtu ids (empty when the schema has no owner column)
+ */
+export function listProtectedDtuIdsForOwner(db, userId) {
+  if (!db || typeof db.prepare !== "function" || !userId) return [];
+  const cols = dtuTableColumns(db);
+  if (!cols || !cols.has("owner_user_id") || !cols.has("id")) return [];
+  const list = availableRowColumns(cols);
+  const out = [];
+  try {
+    const stmt = db.prepare(`SELECT ${list.join(", ")} FROM dtus WHERE owner_user_id = ?`);
+    for (const row of stmt.iterate(String(userId))) {
+      if (isDtuProtected(dtuRowToRecord(row))) out.push(row.id);
+    }
+  } catch {
+    // An unreadable `dtus` table yields no retention claims — the caller's
+    // existing behaviour is unchanged rather than silently made stricter.
+    return out;
+  }
+  return out;
+}
+
 export default {
   HASHED_FIELDS,
   PROTECTED_TAGS,
@@ -303,4 +575,11 @@ export default {
   verifyDtuIntegrity,
   protectDtuInStore,
   unprotectDtuInStore,
+  // `dtus` table path
+  dtuRowToRecord,
+  protectDtuRow,
+  unprotectDtuRow,
+  isDtuRowProtected,
+  verifyDtuRowIntegrity,
+  listProtectedDtuIdsForOwner,
 };

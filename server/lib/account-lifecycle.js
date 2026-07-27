@@ -8,6 +8,7 @@
 
 import { randomUUID } from "crypto";
 import { anonymizeAttribution } from "./consent.js";
+import { listProtectedDtuIdsForOwner } from "./dtu-protection.js";
 import { CREDIT_ROW_PREDICATE } from "../economy/balances.js";
 import { economyAudit } from "../economy/audit.js";
 
@@ -186,18 +187,72 @@ export function executeAccountDeletion(db, userId) {
       }
     } catch (err) { console.error('[account-lifecycle] failed to anonymize cited DTUs', { userId, err: err.message }); errors.push({ step: 'anonymize_cited_dtus', err }); }
 
-    // 2. Delete uncited DTUs — excludes exactly the pre-mutation snapshot from step 1 (via
-    // json_each, not a re-query of the now-mutated royalty_lineage table, and not a parameter
-    // list, which would risk SQLite's bound-parameter limit for a prolific creator).
+    // 1b. PROTECTED / PERMANENT RECORDS — anonymize + RETAIN, exactly like step 1's cited
+    // DTUs, and for the same reason: the record is load-bearing for someone other than its
+    // submitter, so erasing personal attribution is the right remedy and destroying the record
+    // is not.
+    //
+    // The concrete case is TheVault (`server/domains/vault.js`), a curated archive whose entire
+    // product promise is that an admitted work is PERMANENT — a human curator vouched for it in
+    // prose that re-derives from nothing. `admit()` writes its record straight into the `dtus`
+    // table, and until this step the promise held only by accident: that INSERT omits
+    // `owner_user_id`, so it happened to be NULL and this function's `WHERE owner_user_id = ?`
+    // happened not to match. The moment anyone sets that column for correctness (which
+    // `lib/dtu-props.js#isVisibleToRequester`'s ownership check genuinely wants), every admitted
+    // record in the archive would have become deletable on account closure. Permanence is now a
+    // stated guarantee rather than a coincidence of a missing column.
+    //
+    // NOT a refusal to delete. GDPR erasure is still honoured on the personal-data dimension via
+    // the same `anonymizeAttribution` step 1 uses: the archive keeps the work and the curator's
+    // statement; the submitter's attribution is anonymized like any other retained DTU.
+    //
+    // `isDtuProtected` (lib/dtu-protection.js) is the single authority for "permanent", shared
+    // with the forgetting engine and `evolution.dedupe` — this path cannot drift from theirs.
+    let protectedDtuIds = [];
+    try {
+      // Snapshotted BEFORE the anonymize loop for the same pre-mutation reason step 1 documents,
+      // and de-duplicated against step 1 so a DTU that is both cited AND protected is anonymized
+      // once and counted once.
+      protectedDtuIds = listProtectedDtuIdsForOwner(db, userId);
+      const alreadyAnonymized = new Set(citedDtuIds);
+      for (const dtuId of protectedDtuIds) {
+        if (alreadyAnonymized.has(dtuId)) continue;
+        anonymizeAttribution(db, dtuId, userId);
+        stats.anonymized++;
+      }
+    } catch (err) { console.error('[account-lifecycle] failed to anonymize protected DTUs', { userId, err: err.message }); errors.push({ step: 'anonymize_protected_dtus', err }); }
+
+    // The full retain set for step 2: cited (step 1) + protected (step 1b).
+    const retainedDtuIds = Array.from(new Set([...citedDtuIds, ...protectedDtuIds]));
+    stats.retainedProtected = protectedDtuIds.length;
+
+    // 2. Delete uncited, unprotected DTUs — excludes exactly the pre-mutation snapshots from
+    // steps 1 and 1b (via json_each, not a re-query of the now-mutated royalty_lineage table,
+    // and not a parameter list, which would risk SQLite's bound-parameter limit for a prolific
+    // creator).
     try {
       const result = db.prepare(
         "DELETE FROM dtus WHERE owner_user_id = ? AND id NOT IN (SELECT value FROM json_each(?))"
-      ).run(userId, JSON.stringify(citedDtuIds));
+      ).run(userId, JSON.stringify(retainedDtuIds));
       stats.deleted += result.changes;
     } catch (err) {
       console.warn('[account-lifecycle] failed to delete uncited DTUs with lineage check, falling back', { userId, err: err.message });
+      // The fallback used to be an unqualified `DELETE FROM dtus WHERE owner_user_id = ?`, which
+      // would destroy the very records steps 1 and 1b just decided to keep — a retention
+      // guarantee that silently evaporates on the error path is not a guarantee. A TEMP table
+      // carries the retain set instead: it costs one bounded insert per retained id, has no
+      // bound-parameter ceiling, and (unlike chunking a NOT IN across several DELETEs, which is
+      // simply wrong) preserves the set semantics the guarantee depends on.
       try {
-        db.prepare("DELETE FROM dtus WHERE owner_user_id = ?").run(userId);
+        db.exec("CREATE TEMP TABLE IF NOT EXISTS _account_deletion_retain (id TEXT PRIMARY KEY)");
+        db.exec("DELETE FROM _account_deletion_retain");
+        const insRetain = db.prepare("INSERT OR IGNORE INTO _account_deletion_retain (id) VALUES (?)");
+        for (const id of retainedDtuIds) insRetain.run(id);
+        const r2 = db.prepare(
+          "DELETE FROM dtus WHERE owner_user_id = ? AND id NOT IN (SELECT id FROM _account_deletion_retain)"
+        ).run(userId);
+        stats.deleted += r2.changes;
+        db.exec("DELETE FROM _account_deletion_retain");
       } catch (err2) { console.error('[account-lifecycle] failed to delete DTUs (fallback)', { userId, err: err2.message }); errors.push({ step: 'delete_dtus', err: err2 }); }
     }
 

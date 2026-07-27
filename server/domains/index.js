@@ -206,7 +206,8 @@ import sim from './sim.js';
 import srs from './srs.js';
 import studioDomain from './studio.js';
 import thread from './thread.js';
-import vault from './vault.js';
+import vault, { setAdmissionProtectionHandler } from './vault.js';
+import { protectDtuRow } from '../lib/dtu-protection.js';
 import voice from './voice.js';
 import wallet from './wallet.js';
 import welding from './welding.js';
@@ -264,7 +265,58 @@ import registerCobuildActions from './cobuild.js';
 import registerCompanionActions from './companion.js';
 import hub from './hub.js';
 
+// ── TheVault ⇄ DTU-permanence handshake ───────────────────────────────────
+//
+// `domains/vault.js` exposes `setAdmissionProtectionHandler` and, until this
+// entry existed, NOTHING registered against it — so every admission reported
+// `protection: { applied:false, reason:'no_handler_registered' }`. Honest, but
+// the archive's permanence promise was unbacked.
+//
+// The handler lives HERE, at the seam, rather than inside either unit:
+// `lib/dtu-protection.js` stays generic (it knows nothing about curation), and
+// `domains/vault.js` keeps its admission state machine untouched — importantly
+// including its unit tests, which drive the seam directly and would become
+// order-dependent if `registerVaultActions` installed a global handler as a
+// side effect. This array is invoked exactly once, at boot
+// (`server.js`: `domainModules.forEach(mod => mod(registerLensAction))`), so
+// the handler is installed exactly once. It registers no macro of its own and
+// ignores the registrar argument.
+//
+// Why `protectDtuRow` and not `protectDtuInStore`: a Vault record is minted by
+// a raw `INSERT INTO dtus`, never through `STATE.dtus`/`dtu_store`, so the
+// store path misses it and would honestly-but-uselessly return
+// `dtu_not_found` on 100% of admissions. See the `dtus`-table section of
+// `lib/dtu-protection.js`.
+const registerVaultAdmissionProtection = () => {
+  setAdmissionProtectionHandler(({ db, recordDtuId, curatorId }) => {
+    const r = protectDtuRow(db, recordDtuId, {
+      reason: "vault_admission",
+      source: "vault",
+      signer: curatorId || null,
+      sourceId: recordDtuId,
+    });
+    // `applyAdmissionProtection` persists this object VERBATIM into
+    // `vault_submissions.protection_flags_json` and never rolls the admission
+    // back. So a failure returns real flags carrying the real reason —
+    // durable and readable — rather than throwing (which would discard it as
+    // an opaque `handler_threw`) or returning null (which would discard it as
+    // `handler_returned_no_flags`). `protected` is the field to trust; it is
+    // never `true` unless the row was really stamped and persisted.
+    if (!r.ok) return { protected: false, reason: r.reason, recordDtuId: recordDtuId || null };
+    return {
+      protected: true,
+      recordDtuId: r.dtuId,
+      algo: "sha256",
+      contentSha256: r.contentSha256,
+      protectedAt: r.protectedAt,
+      protectedBy: curatorId || null,
+      source: "vault_admission",
+    };
+  });
+};
+
 export default [
+  registerVaultAdmissionProtection,
   healthcare,
   answers,
   trades,
