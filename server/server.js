@@ -7051,8 +7051,15 @@ function authMiddleware(req, res, next) {
     // Governance & lattice
     "/api/lattice", "/api/guidance", "/api/graph", "/api/scope",
     "/api/inspect", "/api/worldmodel", "/api/council", "/api/resonance",
-    // Chat & AI
-    "/api/chat", "/api/ask", "/api/forge",
+    // Chat & AI (audit follow-up 2026-07-27): the ask-domain prefix was
+    // removed — no live GET handler exists under it at all (routes/chat.js:423
+    // registers only a POST). The chat prefix was narrowed to its one
+    // genuinely public-aggregate sub-path below — its sessions/messages
+    // sub-paths already self-gate via their own requireAuth() regardless of
+    // this list, so excluding them changes nothing for a real
+    // (auth-header-carrying) caller, only closes the future-unaudited-route
+    // fail-open risk.
+    "/api/chat/web-metrics", "/api/forge",
     // WebRTC ICE-server config — short-lived TURN creds minted per request.
     "/api/webrtc/ice-servers",
     // Atlas & Signal Cortex
@@ -7077,11 +7084,44 @@ function authMiddleware(req, res, next) {
     // Growth & entities
     "/api/entity-growth", "/api/entity-exploration", "/api/goals",
     "/api/hypothesis",
-    // Analytics & metrics
-    "/api/analytics", "/api/intelligence", "/api/precompute",
+    // Analytics & metrics (audit follow-up 2026-07-27 — narrowed;
+    // /api/analytics/personal/:userId had a real bug fixed at the handler
+    // level: getPersonalAnalytics() returned private DTU list + marketplace
+    // revenue for any userId with zero ownership check, no confirmed
+    // frontend cross-user use. Now requires auth + gates cross-user lookups;
+    // excluded from this list so it 401s immediately for anon callers
+    // instead of reaching the handler. /api/intelligence's 4 sub-paths are
+    // all global/aggregate system stats with no per-user data — verified
+    // safe, narrowed anyway per this pass's own "future route" rationale.
+    "/api/analytics/dashboard", "/api/analytics/growth", "/api/analytics/citations",
+    "/api/analytics/marketplace", "/api/analytics/density", "/api/analytics/atlas-domains",
+    "/api/intelligence/knowledge-weather", "/api/intelligence/drift-radar",
+    "/api/intelligence/continuity-diary", "/api/intelligence/dashboard",
+    "/api/precompute",
     "/api/perf", "/api/distillation",
-    // Collaboration
-    "/api/collab", "/api/social",
+    // Collaboration (audit follow-up 2026-07-27 — narrowed from blanket
+    // domain prefixes to specific verified-safe sub-paths; see the matching
+    // comment near /api/economy/marketplace above for the "future GET route
+    // silently inherits public-read" rationale). Real bugs found + fixed at
+    // the handler level: /api/social/{bookmarks,feed,feed/foryou,
+    // feed/following,stories,reactions,mention-search} all trusted a
+    // caller-supplied req.query.userId with no ownership check (false
+    // "safe: public-filter" comments); /api/collab/workspace/:id returned
+    // full private-workspace rosters with no visibility/membership check;
+    // /api/collab/workspaces now requires auth. /api/collab/active,
+    // /api/collab/workspaces, and /api/collab/sessions are deliberately
+    // excluded — the first two already require auth, and sessions
+    // (listSessions) enumerated every live collab session's id/dtuId to a
+    // fully anonymous caller with zero filtering (closed here; the deeper
+    // "any authenticated user can join/edit/merge any other user's session"
+    // gap is a separate finding tracked for the Gate-2 macro audit).
+    "/api/collab/workspace", "/api/collab/comments", "/api/collab/revisions", "/api/collab/metrics",
+    "/api/social/profile", "/api/social/followers", "/api/social/following",
+    "/api/social/feed", "/api/social/trending", "/api/social/analytics",
+    "/api/social/topics", "/api/social/discover", "/api/social/cited-by",
+    "/api/social/metrics", "/api/social/post", "/api/social/reactions",
+    "/api/social/comments", "/api/social/shares", "/api/social/mention-search",
+    "/api/social/bookmarks", "/api/social/stories", "/api/social/poll",
     // Content pipelines
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
     "/api/ingest", "/api/digest", "/api/daily",
@@ -7105,6 +7145,10 @@ function authMiddleware(req, res, next) {
     // this prefix is a private per-user management surface, not a public
     // catalog (see routes/agents.js, now also requireAuth()+ownership-
     // scoped at the handler level as defense in depth).
+    // "/api/personas" audited 2026-07-27: the only registered GET is the
+    // exact "/api/personas" route itself (a global persona roster, no
+    // per-user data, no bug found) — already the narrowest prefix this
+    // startsWith-based list can express for a single unnested route.
     "/api/personas", "/api/automations",
     // Specialized domains
     "/api/affect", "/api/attention", "/api/commonsense",
@@ -12991,15 +13035,36 @@ async function runMacro(domain, name, input, ctx) {
     "/api/status", "/api/dtus", "/api/dtu", "/api/lens",
     "/api/goals", "/api/growth", "/api/metrics", "/api/resonance", "/api/lattice",
     "/api/emergent", "/api/plugins", "/api/scope", "/api/events", "/api/guidance",
-    "/api/graph", "/api/system", "/api/inspect", "/api/worldmodel", "/api/chat",
+    "/api/graph", "/api/system", "/api/inspect", "/api/worldmodel",
+    // The chat prefix was narrowed to match Gate 1's audit-follow-up fix:
+    // its sessions/messages sub-paths already self-gate via requireAuth()
+    // regardless.
+    "/api/chat/web-metrics",
     "/api/brain", "/api/species", "/api/atlas", "/api/atlas/signals", "/api/atlas/privacy", "/api/knowledge", "/api/search",
     // "/api/agents" removed (audit follow-up): private per-user surface,
     // no public-catalog concept — see Gate 1's matching removal +
     // routes/agents.js's requireAuth()+ownership fixes.
-    "/api/council", "/api/hypothesis", "/api/analytics", "/api/personas",
+    // The analytics prefix was narrowed and the personas prefix verified —
+    // see Gate 1's matching audit-follow-up comment (analytics' personal
+    // sub-path had a real bug, now fixed + excluded).
+    "/api/council", "/api/hypothesis",
+    "/api/analytics/dashboard", "/api/analytics/growth", "/api/analytics/citations",
+    "/api/analytics/marketplace", "/api/analytics/density", "/api/analytics/atlas-domains",
+    "/api/intelligence/knowledge-weather", "/api/intelligence/drift-radar",
+    "/api/intelligence/continuity-diary", "/api/intelligence/dashboard",
+    "/api/personas",
     "/api/affect", "/api/attention", "/api/metacognition", "/api/metalearning",
     "/api/reasoning", "/api/reflection", "/api/temporal", "/api/inference",
-    "/api/collab", "/api/social",
+    // Collaboration + social narrowed to match Gate 1's audit-follow-up list
+    // (see the matching comment there for the real bugs found + fixed and
+    // why /api/collab/{active,workspaces,sessions} are excluded).
+    "/api/collab/workspace", "/api/collab/comments", "/api/collab/revisions", "/api/collab/metrics",
+    "/api/social/profile", "/api/social/followers", "/api/social/following",
+    "/api/social/feed", "/api/social/trending", "/api/social/analytics",
+    "/api/social/topics", "/api/social/discover", "/api/social/cited-by",
+    "/api/social/metrics", "/api/social/post", "/api/social/reactions",
+    "/api/social/comments", "/api/social/shares", "/api/social/mention-search",
+    "/api/social/bookmarks", "/api/social/stories", "/api/social/poll",
     // Economy & marketplace narrowed to match Gate 1's audit-follow-up list
     // (see the matching comment there): "/api/credits" removed entirely (no
     // live GET handler exists under it), "/api/economy/balance" and
@@ -13026,10 +13091,14 @@ async function runMacro(domain, name, input, ctx) {
     "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/creative-commerce", "/api/rbac",
     "/api/compliance", "/api/voice", "/api/visual", "/api/autocrawl",
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
-    "/api/utility", "/api/swarm", "/api/forge", "/api/ask",
+    "/api/utility", "/api/swarm", "/api/forge",
     // "/api/stripe" removed (audit follow-up): no live GET handler exists
     // under this prefix — see Gate 1's matching removal.
-    "/api/intelligence",
+    // The ask-domain prefix was removed too (audit follow-up): no live GET
+    // handler exists under it either (routes/chat.js registers only a
+    // POST) — see Gate 1's matching removal.
+    // The intelligence prefix was narrowed to its 4 specific sub-paths
+    // above (moved next to the analytics prefix — see that comment).
     // Extended paths (three-gate audit)
     "/api/ai", "/api/federation", "/api/quests", "/api/physics",
     "/api/heartbeat", "/api/entity-economy",
@@ -59197,9 +59266,11 @@ app.get("/api/social/following/:userId", (req, res) => {
 });
 
 app.get("/api/social/feed", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  try { res.json(getFeed(STATE, req.user?.id || req.query.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: public-filter
+  // Audit fix 2026-07-27: matches /api/social/bookmarks above — getFeed()
+  // builds from the caller's private follow-graph, so a spoofed userId
+  // leaks who that user follows. Neither frontend call site
+  // (lib/api/client.ts, lib/api/helpers-extended.ts) ever passes one.
+  try { res.json(getFeed(STATE, req.user?.id || "anon", { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/social/trending", (req, res) => {
@@ -59356,9 +59427,12 @@ app.post("/api/social/react", requireAuth(), (req, res) => {
 
 app.get("/api/social/reactions/:postId", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const currentUserId = req.user?.id || req.query.userId || null; // safe: public-filter
+    // Audit fix 2026-07-27: currentUserId only gates the returned
+    // `userReacted` boolean per reaction type on this (already-public) post
+    // — low severity, but still an unnecessary IDOR (reveals whether a
+    // spoofed userId reacted to a specific post). ReactionBar.tsx never
+    // passes an explicit userId; drop the query fallback.
+    const currentUserId = req.user?.id || null;
     res.json(socialGetReactions(STATE, req.params.postId, currentUserId));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -59414,9 +59488,13 @@ app.post("/api/social/bookmark", requireAuth(), (req, res) => {
 // citation-weighted), empty when no matches — no fake suggestions.
 app.get("/api/social/mention-search", (req, res) => {
   try {
-
-     
-    const viewerId = req.user?.id || req.query.viewerId || "anon";
+    // Audit fix 2026-07-27: searchUsersByPrefix() returns isFollowing/
+    // isFollower booleans per matched profile computed against viewerId —
+    // a spoofed viewerId leaks arbitrary users' follow-graph across many
+    // profiles per query (broader than the single-post reaction leak
+    // above). MentionAutocomplete.tsx (the only real caller) never passes
+    // an explicit viewerId.
+    const viewerId = req.user?.id || "anon";
     const q = String(req.query.q || "");
     const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));
     res.json(socialSearchUsersByPrefix(STATE, q, viewerId, limit));
@@ -59499,9 +59577,16 @@ app.post("/api/push/unregister", requireAuth(), async (req, res) => {
 
 app.get("/api/social/bookmarks", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Audit fix 2026-07-27: this used to fall back to req.query.userId with
+    // a false "safe: public-filter" comment — bookmarks are per-user private
+    // data (which posts someone saved), never a public-viewable list, and
+    // the frontend (BookmarkButton.tsx, BookmarksList.tsx, profile/page.tsx)
+    // never passes an explicit userId — confirming zero legitimate use for
+    // the query-param path. Dropped: any caller could read any user's saved
+    // bookmarks by guessing/spoofing their id. req.user?.id-only still
+    // returns an honest empty list for a logged-out visitor (unchanged
+    // behavior for the one real use case).
+    const userId = req.user?.id || "anon";
     res.json(socialGetUserBookmarks(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -59509,18 +59594,22 @@ app.get("/api/social/bookmarks", (req, res) => {
 // ---- Social Feeds (For-You, Following, Explore) ----
 app.get("/api/social/feed/foryou", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Audit fix 2026-07-27: see /api/social/bookmarks above — same false
+    // "safe: public-filter" pattern. A for-you feed is inherently
+    // self-scoped (personalized recommendations); the frontend
+    // (app/lenses/feed/page.tsx) never passes an explicit userId.
+    const userId = req.user?.id || "anon";
     res.json(getForYouFeed(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/social/feed/following", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Audit fix 2026-07-27: see /api/social/bookmarks above. A following
+    // feed both is self-scoped AND, worse, its selection reveals the
+    // caller's private follow-graph if spoofed to another userId — the
+    // frontend (app/lenses/feed/page.tsx) never passes an explicit userId.
+    const userId = req.user?.id || "anon";
     res.json(getFollowingFeed(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -59577,9 +59666,13 @@ app.post("/api/social/dm/:conversationId/read", requireAuth(), (req, res) => {
 // ---- Social Stories ----
 app.get("/api/social/stories", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Audit fix 2026-07-27: matches /api/social/feed above — getActiveStories()
+    // filters by the caller's follow-graph, so a spoofed userId leaks who
+    // that user follows. StoriesBar.tsx passes its own logged-in user's id
+    // as `currentUserId`, which is already what req.user?.id resolves to
+    // server-side when actually authenticated — the query param added
+    // nothing but a spoofing vector for a caller hitting the API directly.
+    const userId = req.user?.id || "anon";
     res.json(getActiveStories(STATE, userId));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -59686,13 +59779,30 @@ app.post("/api/collab/workspace", requireAuth(), (req, res) => {
 });
 
 app.get("/api/collab/workspace/:id", (req, res) => {
-  try { res.json(collabGetWorkspace(STATE, req.params.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const result = collabGetWorkspace(STATE, req.params.id);
+    // Audit fix 2026-07-27: getWorkspace() returned full member lists + DTU
+    // ids regardless of `visibility` ("private"/"org"/"public") or caller
+    // identity — any caller who knew/guessed a workspace id could read a
+    // private workspace's roster. Non-public workspaces now require the
+    // caller to be a member; unauthorized/anonymous callers get the same
+    // not_found shape as a genuinely missing workspace (no existence oracle).
+    if (result.ok && result.workspace?.visibility !== "public") {
+      const callerId = req.user?.id;
+      const isMember = !!callerId && result.workspace.members?.some(m => m.userId === callerId);
+      if (!isMember) return res.status(404).json({ ok: false, error: "Workspace not found" });
+    }
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.get("/api/collab/workspaces", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  try { res.json(collabListWorkspaces(STATE, req.user?.id || req.query.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: public-filter
+app.get("/api/collab/workspaces", requireAuth(), (req, res) => {
+  // Audit fix 2026-07-27: listWorkspaces() returns the given user's private
+  // workspace memberships (names, roles, DTU counts) — used to fall back to
+  // a caller-supplied req.query.userId with no ownership check. No frontend
+  // call site (lib/api/client.ts's listWorkspaces()) ever passes one. Now
+  // requires auth and only ever lists the caller's own memberships.
+  try { res.json(collabListWorkspaces(STATE, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.post("/api/collab/workspace/:id/member", (req, res) => {
@@ -59827,8 +59937,24 @@ app.get("/api/analytics/dashboard", (req, res) => {
   try { res.json(getDashboardSummary(STATE)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.get("/api/analytics/personal/:userId", (req, res) => {
-  try { res.json(getPersonalAnalytics(STATE, req.params.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+app.get("/api/analytics/personal/:userId", requireAuth(), (req, res) => {
+  try {
+    // Audit fix 2026-07-27: getPersonalAnalytics() returns the target
+    // user's private/personal-scope DTU titles + marketplace revenue/sales
+    // — real financial + content-privacy data — with no ownership check at
+    // all (not even a query-param spoof; the route param went straight to
+    // the handler). No confirmed frontend call site passes another user's
+    // id. Now requires auth and gates cross-user lookups the same way as
+    // /api/economy/balance.
+    const callerId = req.user?.id;
+    if (req.params.userId !== callerId) {
+      const role = String(req.user?.role || "");
+      if (!["owner", "admin", "sovereign", "founder"].includes(role)) {
+        return res.status(403).json({ ok: false, error: "forbidden" });
+      }
+    }
+    res.json(getPersonalAnalytics(STATE, req.params.userId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/analytics/growth", (req, res) => {

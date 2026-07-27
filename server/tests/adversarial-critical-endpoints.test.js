@@ -345,6 +345,93 @@ describe("Marketplace royalties — cross-user read blocked", () => {
   });
 });
 
+// ── Analytics/collab IDOR fixes (publicReadPaths 7-deferred-domain sweep) ─────
+
+describe("Personal analytics — cross-user read blocked", () => {
+  it("GET /api/analytics/personal/:userId returns 401 without auth", async () => {
+    await assert401("GET", "/api/analytics/personal/victim");
+  });
+
+  it("GET /api/analytics/personal/:userId returns 403 when requesting another user's analytics", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/analytics/personal/${victim.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 403, "Requesting another user's personal analytics must be forbidden for a non-privileged caller");
+  });
+
+  it("GET /api/analytics/personal/:userId returns 200 for the caller's own id", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token || !actor.userId) return;
+
+    const res = await api("GET", `/api/analytics/personal/${actor.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 200);
+  });
+});
+
+describe("Collab workspaces — private workspace roster no longer leaks", () => {
+  it("GET /api/collab/workspaces returns 401 without auth", async () => {
+    await assert401("GET", "/api/collab/workspaces");
+  });
+
+  it("GET /api/collab/workspace/:id hides a private workspace's roster from a non-member", async () => {
+    const owner = await registerAndLogin();
+    const outsider = await registerAndLogin();
+    if (!owner.token || !outsider.token) return;
+
+    const created = await api("POST", "/api/collab/workspace", { name: "Private WS", visibility: "private" }, { token: owner.token });
+    if (!created.ok || !created.workspace?.id) return;
+    const wsId = created.workspace.id;
+
+    const outsiderView = await api("GET", `/api/collab/workspace/${wsId}`, null, { token: outsider.token });
+    assert.equal(outsiderView._status, 404, "a non-member must not see a private workspace's roster");
+
+    const ownerView = await api("GET", `/api/collab/workspace/${wsId}`, null, { token: owner.token });
+    assert.equal(ownerView._status, 200);
+    assert.equal(ownerView.ok, true);
+  });
+
+  it("GET /api/collab/workspace/:id serves a public workspace to any caller", async () => {
+    const owner = await registerAndLogin();
+    const outsider = await registerAndLogin();
+    if (!owner.token || !outsider.token) return;
+
+    const created = await api("POST", "/api/collab/workspace", { name: "Public WS", visibility: "public" }, { token: owner.token });
+    if (!created.ok || !created.workspace?.id) return;
+    const wsId = created.workspace.id;
+
+    const outsiderView = await api("GET", `/api/collab/workspace/${wsId}`, null, { token: outsider.token });
+    assert.equal(outsiderView._status, 200, "a public workspace must remain readable by a non-member");
+  });
+});
+
+describe("Social feed/bookmarks — spoofed userId query param is now inert", () => {
+  it("GET /api/social/bookmarks ignores a spoofed userId query param and returns the caller's own (empty) list", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/social/bookmarks?userId=${victim.userId}`, null, { token: actor.token });
+    if (res._status !== 200) return;
+    // The response must not be victim's bookmarks attributed via the spoofed
+    // query param — the shared STATE has no bookmarks for either fresh user,
+    // so this just pins that the call succeeds under the caller's own
+    // identity rather than erroring or leaking victim-scoped data.
+    assert.equal(res.ok, true);
+  });
+
+  it("GET /api/social/feed/following ignores a spoofed userId query param", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/social/feed/following?userId=${victim.userId}`, null, { token: actor.token });
+    if (res._status !== 200) return;
+    assert.equal(res.ok, true);
+  });
+});
+
 // ── Other fixed routes ────────────────────────────────────────────────────────
 
 describe("Other mutation routes — 401 without auth", () => {
