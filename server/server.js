@@ -67189,30 +67189,53 @@ function bridgeLog(action, data) {
 }
 
 // --- Pattern A: Organism submits DTU for emergent governance validation ---
+//
+// Concurrency item (c) (Private/High Power Mode plan, 2026-07-27): critic/
+// ethicist/auditor each take ONLY `dtu` as input and never reference each
+// other's output (confirmed by reading TASK_PROMPTS.emergentCritic/
+// emergentEthicist/emergentAuditor in prompt-registry.js — none of the
+// three templates interpolate another role's result), so the three
+// previously-sequential callBrain calls below run concurrently via
+// Promise.all instead. This is NOT the same shape as the CHALLENGER ->
+// ENGINEER -> SYNTHESIZER debate chain a few hundred lines down (in the
+// debate/challenge bridge path) — that chain explicitly threads each
+// stage's output into the next stage's prompt
+// (emergentEngineer's challengerContent, emergentSynthesizer's
+// engineerContent) and MUST stay sequential; do not parallelize it by
+// analogy to this one. Each branch keeps its own independent try/catch
+// (a repair-brain hiccup on the critic call must not affect the ethicist
+// or auditor call, and vice versa) and the final array order stays
+// [critic, ethicist, auditor] — unchanged from the prior sequential
+// version — since Promise.all preserves input-array order regardless of
+// resolution order.
 async function validateOrganismDTU(dtu, submitterId) {
-  const validations = [];
   const ctx = typeof _governorCtx === "function" ? _governorCtx() : {};
 
-  // Critic: Is this falsifiable?
-  try {
-    const criticResult = await callBrain("repair", TASK_PROMPTS.emergentCritic({ dtu }), { temperature: 0.3, maxTokens: 200 });
-    const parsed = safeJSONParse(criticResult?.content || "{}");
-    validations.push({ role: "critic", pass: parsed.pass !== false, reason: parsed.reason || criticResult?.content?.slice(0, 200) || "evaluated" });
-  } catch (e) { validations.push({ role: "critic", pass: true, reason: "Evaluation unavailable, defaulting to pass" }); }
+  const runCritic = async () => {
+    try {
+      const criticResult = await callBrain("repair", TASK_PROMPTS.emergentCritic({ dtu }), { temperature: 0.3, maxTokens: 200 });
+      const parsed = safeJSONParse(criticResult?.content || "{}");
+      return { role: "critic", pass: parsed.pass !== false, reason: parsed.reason || criticResult?.content?.slice(0, 200) || "evaluated" };
+    } catch (e) { return { role: "critic", pass: true, reason: "Evaluation unavailable, defaulting to pass" }; }
+  };
 
-  // Ethicist: Constitutional principles check
-  try {
-    const ethicistResult = await callBrain("repair", TASK_PROMPTS.emergentEthicist({ dtu }), { temperature: 0.3, maxTokens: 200 });
-    const parsed = safeJSONParse(ethicistResult?.content || "{}");
-    validations.push({ role: "ethicist", pass: parsed.pass !== false, reason: parsed.reason || ethicistResult?.content?.slice(0, 200) || "evaluated" });
-  } catch (e) { validations.push({ role: "ethicist", pass: true, reason: "Evaluation unavailable, defaulting to pass" }); }
+  const runEthicist = async () => {
+    try {
+      const ethicistResult = await callBrain("repair", TASK_PROMPTS.emergentEthicist({ dtu }), { temperature: 0.3, maxTokens: 200 });
+      const parsed = safeJSONParse(ethicistResult?.content || "{}");
+      return { role: "ethicist", pass: parsed.pass !== false, reason: parsed.reason || ethicistResult?.content?.slice(0, 200) || "evaluated" };
+    } catch (e) { return { role: "ethicist", pass: true, reason: "Evaluation unavailable, defaulting to pass" }; }
+  };
 
-  // Auditor: Provenance check
-  try {
-    const auditorResult = await callBrain("utility", TASK_PROMPTS.emergentAuditor({ dtu }), { temperature: 0.3, maxTokens: 200 });
-    const parsed = safeJSONParse(auditorResult?.content || "{}");
-    validations.push({ role: "auditor", pass: parsed.pass !== false, reason: parsed.reason || auditorResult?.content?.slice(0, 200) || "evaluated" });
-  } catch (e) { validations.push({ role: "auditor", pass: true, reason: "Evaluation unavailable, defaulting to pass" }); }
+  const runAuditor = async () => {
+    try {
+      const auditorResult = await callBrain("utility", TASK_PROMPTS.emergentAuditor({ dtu }), { temperature: 0.3, maxTokens: 200 });
+      const parsed = safeJSONParse(auditorResult?.content || "{}");
+      return { role: "auditor", pass: parsed.pass !== false, reason: parsed.reason || auditorResult?.content?.slice(0, 200) || "evaluated" };
+    } catch (e) { return { role: "auditor", pass: true, reason: "Evaluation unavailable, defaulting to pass" }; }
+  };
+
+  const validations = await Promise.all([runCritic(), runEthicist(), runAuditor()]);
 
   const allPassed = validations.every(v => v.pass);
   const result = {
@@ -82747,6 +82770,12 @@ export const __TEST__ = Object.freeze({
   // Phase D endpoint-routing wiring test surface (brain-endpoint-wiring.test.js)
   callBrain,
   BRAIN,
+  // Governance-cluster concurrency test surface (Private/High Power Mode
+  // plan, concurrency item (c), 2026-07-27) — lets a test call the
+  // critic/ethicist/auditor Promise.all directly (and via the real
+  // POST /api/bridge/submit route) to prove genuine concurrent dispatch,
+  // not just that the refactored code parses.
+  validateOrganismDTU,
   // Money-hygiene atomicity test surface (verification-audit campaign —
   // tests/economy/credit-debit-wallet-atomicity.test.js)
   creditWallet,
