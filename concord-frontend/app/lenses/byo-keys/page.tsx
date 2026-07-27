@@ -31,6 +31,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
+import { BrainModePanel } from '@/components/byo-keys/BrainModePanel';
 import { UsageSpendPanel } from '@/components/byo-keys/UsageSpendPanel';
 import { BudgetPanel } from '@/components/byo-keys/BudgetPanel';
 import { RateLimitPanel } from '@/components/byo-keys/RateLimitPanel';
@@ -95,6 +96,7 @@ export default function ByoKeysLens() {
   const [testResult, setTestResult] = useState<{ slot: string; ok: boolean; error?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [modelPicker, setModelPicker] = useState<{ slot: string; provider: string; modelId: string | null } | null>(null);
+  const [brainMode, setBrainMode] = useState<'private' | 'high_power'>('private');
 
   const refresh = useCallback(async () => {
     const [list, prov] = await Promise.all([
@@ -190,7 +192,20 @@ export default function ByoKeysLens() {
             </p>
           </header>
 
-          <ul className="space-y-3">
+          <BrainModePanel onModeChange={setBrainMode} />
+
+          {brainMode === 'private' && (
+            <p className="mb-3 text-xs text-emerald-400/90 bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2">
+              Private Mode is active — the slot cards below are inert. Concord never checks a BYO key
+              at inference time while Private Mode is on. Switch to High Power above to use one.
+            </p>
+          )}
+
+          <ul
+            className={`space-y-3 transition-opacity ${brainMode === 'private' ? 'opacity-40 pointer-events-none select-none' : ''}`}
+            aria-disabled={brainMode === 'private'}
+            data-testid="byo-keys-slot-list"
+          >
             {SLOTS.map(({ id: slot, label }) => {
               const existing = overridesBySlot.get(slot);
               const isEditing = editing === slot;
