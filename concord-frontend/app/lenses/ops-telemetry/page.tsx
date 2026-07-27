@@ -23,6 +23,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LivenessPanel } from '@/components/admin/LivenessPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { lensRun } from '@/lib/api/client';
 import { Activity, Cpu, Brain, Globe, RefreshCcw, AlertTriangle, Layers, Radar, ShieldAlert, ArrowUpRight, Share2 } from 'lucide-react';
 
@@ -231,15 +232,15 @@ export default function OpsTelemetryPage() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        refresh();
-        setLivenessTick((t) => t + 1);
-      }
-    }, 5000);
-    return () => clearInterval(id);
-  }, [refresh]);
+  // Background refresh — tab-visibility-paused + jittered (see
+  // hooks/useSmartPolling.ts; it already skips the tick while the tab is
+  // hidden, so the manual `document.visibilityState` check the raw interval
+  // used to do here is no longer needed). `immediate: false` since the
+  // effect above already covers the mount-time call.
+  useSmartPolling(() => {
+    refresh();
+    setLivenessTick((t) => t + 1);
+  }, 5000, { immediate: false });
 
   const restartShard = useCallback(async (worldId: string) => {
     try {

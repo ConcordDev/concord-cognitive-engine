@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Users2, Filter, RefreshCcw, Send, Plus, Check, AlertCircle, Loader2, X } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 type Role = 'tank' | 'healer' | 'dps' | 'support' | 'any';
 type LoadState = 'loading' | 'error' | 'ready';
@@ -82,10 +83,10 @@ export default function LfgLensPage() {
   }, [filterWorld, filterRole, requests.length]);
 
   useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => {
-    const id = setInterval(refresh, 8_000);
-    return () => clearInterval(id);
-  }, [refresh]);
+  // Background refresh — tab-visibility-paused + jittered (see
+  // hooks/useSmartPolling.ts). `immediate: false` since the effect above
+  // already covers the mount-time / filter-change call.
+  useSmartPolling(refresh, 8_000, { immediate: false });
 
   const handlePost = useCallback(async () => {
     setBusy('post');

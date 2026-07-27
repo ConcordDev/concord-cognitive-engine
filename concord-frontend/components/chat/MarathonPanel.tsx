@@ -19,6 +19,7 @@ import {
   Plus, ShieldAlert, ShieldOff, FileText,
 } from 'lucide-react';
 import { subscribe } from '@/lib/realtime/socket';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface Session {
   id: string;
@@ -136,11 +137,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
     if (r?.ok) setSessions(r.sessions || []);
   }, []);
 
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 15_000);
-    return () => clearInterval(id);
-  }, [refresh]);
+  useSmartPolling(refresh, 15_000);
 
   // Real, live macro-domain list (not a hardcoded/fake array) — the same
   // public endpoint the macro registry itself exposes (`listDomains()` in
@@ -182,11 +179,14 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
     setDigestText(r?.ok ? (r.text || null) : null);
   };
 
-  useEffect(() => {
-    if (!selectedId) return;
-    const id = setInterval(() => loadDetail(selectedId), 10_000);
-    return () => clearInterval(id);
-  }, [selectedId, loadDetail]);
+  // immediate:false preserves prior behavior — loadDetail is already invoked
+  // directly by the selection action (click / start / etc.) that sets
+  // selectedId, so an immediate poll here would be a duplicate fetch.
+  useSmartPolling(
+    () => { if (selectedId) loadDetail(selectedId); },
+    10_000,
+    { enabled: !!selectedId, immediate: false },
+  );
 
   // Real 'marathon:status' consumer — server.js#realtimeEmit now scopes
   // this to the session owner's own room (agent-marathon.js's completion/

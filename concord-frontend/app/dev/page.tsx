@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, KeyboardEvent, FormEvent } from 'react';
 import { api } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface LogEntry {
   type: 'input' | 'output' | 'error' | 'system' | 'success';
@@ -135,16 +136,17 @@ export default function DevConsolePage() {
         setHasAccess(false);
         setAccessChecked(true);
       });
-
-    const interval = setInterval(() => {
-      api
-        .get('/api/sovereign/pulse')
-        .then((r) => setPulse(r.data))
-        .catch((e) => console.error('[Dev] Failed to fetch pulse:', e));
-    }, 15000);
-
-    return () => clearInterval(interval);
   }, []);
+
+  // Periodic pulse refresh — tab-visibility-paused + jittered (see
+  // hooks/useSmartPolling.ts). `immediate: false` because the initial fetch
+  // above already covers the mount-time call.
+  useSmartPolling(() => {
+    api
+      .get('/api/sovereign/pulse')
+      .then((r) => setPulse(r.data))
+      .catch((e) => console.error('[Dev] Failed to fetch pulse:', e));
+  }, 15000, { immediate: false });
 
   const addLog = useCallback((type: LogEntry['type'], text: string) => {
     setLog((prev) => [...prev, { type, text, timestamp: new Date().toISOString() }]);
