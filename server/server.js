@@ -1778,6 +1778,7 @@ import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-route
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
 import { brainChat as byoBrainChat, getOverride as byoGetOverride } from "./lib/byo-router.js";
+import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
 import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
@@ -5916,8 +5917,20 @@ const AuthDB = {
 
   getUser(userId) {
     if (db) {
-      const stmt = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE id = ? AND is_active = 1");
-      const row = stmt.get(userId);
+      // brain_mode: Private/High Power Mode per-account routing preference
+      // (migration 397). Read here — not via a separate targeted query —
+      // so it rides on req.user for free on every authenticated request,
+      // reaching ctx.actor.brainMode via makeCtx's resolvedActor with zero
+      // extra DB round trips. Many test fixtures hand-roll a minimal
+      // `users` table without running the full migration chain, so the
+      // brain_mode column may not exist — fall back to the plain
+      // column list and default to 'private' rather than throwing.
+      let row;
+      try {
+        row = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at, brain_mode FROM users WHERE id = ? AND is_active = 1").get(userId);
+      } catch {
+        row = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE id = ? AND is_active = 1").get(userId);
+      }
       if (row) {
         return {
           id: row.id,
@@ -5927,7 +5940,8 @@ const AuthDB = {
           role: row.role,
           scopes: JSON.parse(row.scopes),
           createdAt: row.created_at,
-          lastLoginAt: row.last_login_at
+          lastLoginAt: row.last_login_at,
+          brainMode: row.brain_mode === "high_power" ? "high_power" : "private"
         };
       }
       return null;
@@ -5937,8 +5951,12 @@ const AuthDB = {
 
   getUserByUsername(username) {
     if (db) {
-      const stmt = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE username = ? AND is_active = 1");
-      const row = stmt.get(username);
+      let row;
+      try {
+        row = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at, brain_mode FROM users WHERE username = ? AND is_active = 1").get(username);
+      } catch {
+        row = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE username = ? AND is_active = 1").get(username);
+      }
       if (row) {
         return {
           id: row.id,
@@ -5948,7 +5966,8 @@ const AuthDB = {
           role: row.role,
           scopes: JSON.parse(row.scopes),
           createdAt: row.created_at,
-          lastLoginAt: row.last_login_at
+          lastLoginAt: row.last_login_at,
+          brainMode: row.brain_mode === "high_power" ? "high_power" : "private"
         };
       }
       return null;
@@ -15751,6 +15770,12 @@ function makeCtx(req=null) {
       orgId: req.user.orgId || "default",
       role: req.user.role || "member",
       scopes: Array.isArray(req.user.scopes) ? req.user.scopes : ["read", "write"],
+      // Private/High Power Mode (migration 397) — carried here so
+      // ctx.actor.brainMode is available to every macro/handler for free,
+      // with zero extra DB round trips (AuthDB.getUser already reads it).
+      // Defaults to 'private' if absent (pre-migration DB, or a req.user
+      // that didn't come through AuthDB.getUser) — the safe default.
+      brainMode: req.user.brainMode === "high_power" ? "high_power" : "private",
     };
   } else {
     const isPublicMode = AUTH_MODE === "public";
@@ -15759,6 +15784,7 @@ function makeCtx(req=null) {
       orgId: "public",
       role: isPublicMode ? "member" : "viewer",
       scopes: isPublicMode ? ["read", "write"] : ["read"],
+      brainMode: "private",
     };
   }
   return {
@@ -15859,6 +15885,15 @@ function makeCtx(req=null) {
     llm: {
       enabled: BRAIN.conscious && BRAIN.conscious.enabled,
       async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+        // Private/High Power Mode (migration 397). Private is the
+        // whole-account "no exceptions" guarantee — skip BOTH the BYO
+        // override branch below AND the platform-provider attempt
+        // entirely, straight to local Ollama, even if this account has its
+        // own BYO key configured for this slot. Already on resolvedActor
+        // for free (AuthDB.getUser reads it, makeCtx's resolvedActor
+        // carries it) — no extra DB round trip here.
+        const _brainMode = resolvedActor?.brainMode === "high_power" ? "high_power" : "private";
+
         // ===== BYO KEY ROUTING =====
         // If this request's user has plugged their own provider key
         // into this brain slot, route inference through it. The cheap
@@ -15867,7 +15902,7 @@ function makeCtx(req=null) {
         // real active override. Any failure falls through to the
         // default brain below; a BYO outage never blocks the user.
         const _byoUserId = resolvedActor?.userId;
-        if (db && _byoUserId && _byoUserId !== "anon") {
+        if (_brainMode !== "private" && db && _byoUserId && _byoUserId !== "anon") {
           let _byoOverride = null;
           try { _byoOverride = byoGetOverride(db, _byoUserId, slot); } catch { _byoOverride = null; }
           if (_byoOverride?.provider && _byoOverride.provider !== "concord_default" && _byoOverride.provider !== "ollama") {
@@ -15929,6 +15964,55 @@ function makeCtx(req=null) {
           }
         }
         // ===== END BYO KEY ROUTING =====
+
+        // ===== PLATFORM PROVIDER ROUTING (High Power Mode) =====
+        // Reached only when _brainMode === 'high_power' AND the BYO branch
+        // above didn't already return (no override for this slot, or the
+        // override just failed). Operator-funded Groq/Gemini/Mistral key
+        // per server/lib/platform-providers.js's slot registry — same
+        // "never block the user" contract as BYO: any failure falls
+        // through to local Ollama below.
+        if (_brainMode === "high_power" && platformProviderConfigured(slot)) {
+          const _pgStartMs = Date.now();
+          try {
+            const pg = await platformProviderChat({
+              slot,
+              messages: [
+                ...(system ? [{ role: "system", content: system }] : []),
+                ...(messages || []),
+              ],
+              opts: { temperature, maxTokens, timeoutMs },
+            });
+            if (pg.ok) {
+              structuredLog("info", "llm_platform_routed", { slot, provider: pg.provider, model: pg.model });
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: slot, modelUsed: pg.model,
+                callerId: _byoUserId, latencyMs: Date.now() - _pgStartMs,
+                tokensIn: pg.tokensIn, tokensOut: pg.tokensOut,
+              });
+              return {
+                ok: true,
+                content: pg.text || "",
+                raw: pg,
+                brain: slot,
+                source: "platform",
+                provider: pg.provider,
+                model: pg.model,
+              };
+            }
+            structuredLog("warn", "llm_platform_failed", { slot, provider: pg.provider, error: pg.error || "platform_provider_error" });
+            _meterLlmChat(db, {
+              spanType: "chat", brainUsed: slot, modelUsed: pg.model,
+              callerId: _byoUserId, latencyMs: Date.now() - _pgStartMs,
+              tokensIn: pg.tokensIn, tokensOut: pg.tokensOut,
+              error: pg.error || "platform_provider_error",
+            });
+          } catch (_pgErr) {
+            structuredLog("warn", "llm_platform_exception", { slot, error: String(_pgErr?.message || _pgErr) });
+            // fall through to the default conscious brain below
+          }
+        }
+        // ===== END PLATFORM PROVIDER ROUTING =====
 
         // ===== OLLAMA-ONLY ROUTING =====
         // Sovereignty principle: local brains only. Cloud LLM fallbacks were
