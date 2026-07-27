@@ -122,8 +122,26 @@ const nextConfig = {
     ignoreDuringBuilds: process.env.CI_SKIP_LINT_IN_BUILD === '1',
   },
   // Proxy API and socket requests to the backend server in production.
-  // The Cloudflare tunnel routes to the frontend (port 3000); these rewrites
-  // forward /api/* and /socket.io/* to the backend on port 5050.
+  //
+  // Topology note (audit 2026-07-27 — reconciles an apparent contradiction
+  // with docs/DEPLOYMENT_TOPOLOGY.md, which was never actually wrong, just
+  // describing a DIFFERENT one of this repo's two real topologies):
+  //   - BARE METAL (pm2/startup.sh, the current primary A40 target — no
+  //     nginx container at all): a `cloudflared` binary on the host tunnels
+  //     directly to this frontend on :3000 (infra/cloudflare/cloudflared.yml.example's
+  //     "BARE METAL" block). Its ingress rules already route /api/*,
+  //     /socket.io/*, and /godot-ws straight to the backend on :5050 at the
+  //     edge (one hop, avoids double-proxying and keeps TRUST_PROXY hop-count
+  //     correct) — so THESE rewrites mostly serve local `next dev`/`next start`
+  //     without a tunnel, or as a safety net for any request that reaches
+  //     the frontend anyway.
+  //   - DOCKER COMPOSE (nginx service in docker-compose.yml, matches
+  //     docs/DEPLOYMENT_TOPOLOGY.md's diagram): nginx terminates 80/443 and
+  //     does its own reverse-proxying (nginx/conf.d/default.conf) to both
+  //     frontend :3000 and backend :5050; an optional Cloudflare tunnel in
+  //     that mode points at nginx, not directly at this frontend.
+  // Both topologies are real and coexist in the repo; this file's rewrites
+  // are harmless in either since they forward to the same BACKEND_URL.
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:5050';
     return [
