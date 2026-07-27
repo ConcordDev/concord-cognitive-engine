@@ -6,9 +6,10 @@
  * escalations; crisis.acknowledge_alert clears them.
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { BellRing, Loader2, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface Alert {
   alertId: string;
@@ -55,11 +56,7 @@ export function AlertsPanel({ worldId }: { worldId: string }) {
     setLoading(false);
   }, [worldId]);
 
-  useEffect(() => {
-    poll();
-    const t = setInterval(poll, POLL_MS);
-    return () => clearInterval(t);
-  }, [poll]);
+  useSmartPolling(poll, POLL_MS);
 
   const acknowledge = useCallback(async (alertId: string) => {
     const r = await lensRun('crisis', 'acknowledge_alert', { alertId });
