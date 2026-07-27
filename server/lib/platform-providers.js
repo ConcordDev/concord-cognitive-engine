@@ -8,13 +8,32 @@
 // operator's key comes from, and (c) the global budget gate
 // (platform-providers-budget.js).
 //
-// Provider mix and WHY (see docs/PLAN or CLAUDE.md for the full record of
-// this decision): Groq trains on nothing regardless of tier (verified
-// against its own Services Agreement) — the default for the higher-volume
-// slots. Gemini and Mistral free tiers DO train on submitted data — used
-// knowingly for the slot(s) where raw capability matters most, and always
-// disclosed to the user before they can opt into High Power Mode (see the
-// onboarding/settings copy in server/routes/auth.js and
+// Provider mix and WHY, per-slot rationale chosen deliberately (operator
+// decision, 2026-07-27) rather than one provider blanket-applied to every
+// slot — each provider's actual strength routed to the slot that benefits:
+//   - conscious: Gemini. The user-facing slot (chat, deep reasoning,
+//     council debates) gets the strongest all-around reasoning model of
+//     the three, and the only one with real vision support (relevant if
+//     a conscious-slot call ever carries an image).
+//   - subconscious: Mistral. Background autogen/dream/synthesis runs
+//     unattended with no live user watching — Mistral's higher-volume
+//     free tier (~1B tokens/month) fits that always-on workload better
+//     than Gemini's tighter free-tier RPM.
+//   - repair: Mistral, specifically routed to Codestral (see
+//     byo-providers.js#DEFAULT_MODELS.mistral.repair) — Mistral is the
+//     only one of the three with a dedicated CODE model in its free
+//     catalog, and repair (error detection/auto-fix) is exactly the
+//     code-adjacent task that model is built for.
+//   - utility: Groq. Fast lens actions/formatting want low latency, not
+//     depth — Groq's LPU hardware is built for exactly that, and it
+//     trains on nothing regardless of tier (verified against its own
+//     Services Agreement) — the one provider here with zero tradeoff.
+//   - vision: Gemini. Same reasoning as conscious — the only one of the
+//     three with real multimodal support in its free tier.
+// Gemini and Mistral free tiers DO train on submitted data — used
+// knowingly for the slots where capability/volume matters most, and
+// always disclosed to the user before they can opt into High Power Mode
+// (see the onboarding/settings copy in server/routes/auth.js and
 // server/domains/byo-keys.js). This module makes no judgment about that
 // tradeoff — it only routes; the disclosure is enforced at the UI/consent
 // layer, not here.
@@ -24,14 +43,14 @@ import { consumePlatformToken, recordPlatformSpendEstimate } from "./platform-pr
 const VALID_SLOTS = ["conscious", "subconscious", "utility", "repair", "vision"];
 
 // Default provider per slot. Operator-overridable per slot via
-// CONCORD_PLATFORM_PROVIDER_<SLOT>=groq|google|mistral (e.g. to move
-// `conscious` onto Mistral instead of Gemini, or vice versa) — this is a
-// deployment-time config choice, not something a user ever sets.
+// CONCORD_PLATFORM_PROVIDER_<SLOT>=groq|google|mistral — a deployment-time
+// config choice, not something a user ever sets. See the rationale block
+// above for why each slot is assigned the provider it is.
 const DEFAULT_SLOT_PROVIDER = Object.freeze({
   conscious: "google",
-  subconscious: "groq",
+  subconscious: "mistral",
   utility: "groq",
-  repair: "groq",
+  repair: "mistral",
   vision: "google",
 });
 

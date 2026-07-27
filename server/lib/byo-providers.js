@@ -46,7 +46,12 @@ const DEFAULT_MODELS = Object.freeze({
   // into Mistral's data-training program to unlock it (not a per-user
   // choice). Model ids follow Mistral's own "-latest" alias convention;
   // override via modelId if the deployment pins specific versions.
-  mistral:   { conscious: "mistral-large-latest", subconscious: "mistral-large-latest", utility: "mistral-small-latest", repair: "mistral-small-latest", vision: "pixtral-large-latest" },
+  // repair -> codestral-latest deliberately (not mistral-small): Codestral
+  // is Mistral's dedicated CODE model, and repair (error detection /
+  // auto-fix) is exactly the code-adjacent task it's built for — the only
+  // one of the three platform providers with a specialized code model in
+  // its free catalog, matched to the slot that benefits from it.
+  mistral:   { conscious: "mistral-large-latest", subconscious: "mistral-large-latest", utility: "mistral-small-latest", repair: "codestral-latest", vision: "pixtral-large-latest" },
 });
 
 const DEFAULT_TIMEOUT_MS = 60_000;

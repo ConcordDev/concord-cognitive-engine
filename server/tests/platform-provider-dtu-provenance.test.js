@@ -122,3 +122,43 @@ describe("platform-provider calls carry a distinct _platform provenance tag", ()
     assert.equal(prov.minted_by_model, "ollama");
   });
 });
+
+describe("default per-slot provider lineup (operator decision, 2026-07-27)", () => {
+  // Pins the BAKED-IN defaults (no CONCORD_PLATFORM_PROVIDER_<SLOT>
+  // override needed) so a fresh deployment gets the intended lineup for
+  // free just by setting the 3 API keys -- conscious/vision -> Gemini,
+  // subconscious/repair -> Mistral, utility -> Groq.
+  it("subconscious defaults to mistral without any override", async () => {
+    process.env.CONCORD_PLATFORM_MISTRAL_API_KEY = "test-operator-key";
+    stubGroqSuccess();
+    const r = await platformProviderChat({ slot: "subconscious", messages: [{ role: "user", content: "hi" }] });
+    assert.equal(r.ok, true);
+    assert.equal(r.provider, "mistral_platform");
+    assert.equal(r.model, "mistral-large-latest");
+  });
+
+  it("repair defaults to mistral AND resolves to codestral-latest (the code-specialized model), not the general chat model", async () => {
+    process.env.CONCORD_PLATFORM_MISTRAL_API_KEY = "test-operator-key";
+    stubGroqSuccess();
+    const r = await platformProviderChat({ slot: "repair", messages: [{ role: "user", content: "hi" }] });
+    assert.equal(r.ok, true);
+    assert.equal(r.provider, "mistral_platform");
+    assert.equal(r.model, "codestral-latest");
+  });
+
+  it("conscious and vision still default to google (unchanged) after the lineup update", async () => {
+    process.env.CONCORD_PLATFORM_GOOGLE_API_KEY = "test-operator-key";
+    stubGoogleSuccess();
+    const rConscious = await platformProviderChat({ slot: "conscious", messages: [{ role: "user", content: "hi" }] });
+    assert.equal(rConscious.provider, "google_platform");
+    const rVision = await platformProviderChat({ slot: "vision", messages: [{ role: "user", content: "hi" }] });
+    assert.equal(rVision.provider, "google_platform");
+  });
+
+  it("utility still defaults to groq (unchanged) after the lineup update", async () => {
+    process.env.CONCORD_PLATFORM_GROQ_API_KEY = "test-operator-key";
+    stubGroqSuccess();
+    const r = await platformProviderChat({ slot: "utility", messages: [{ role: "user", content: "hi" }] });
+    assert.equal(r.provider, "groq_platform");
+  });
+});
