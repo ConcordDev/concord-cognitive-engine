@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import {
   Activity,
   AlertTriangle,
@@ -314,11 +315,11 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
     setLoading(false);
   }, [fetchStatus, fetchPredictions, fetchHistory, fetchKnowledge]);
 
-  useEffect(() => {
-    fetchAll();
-    const interval = setInterval(fetchAll, 30000);
-    return () => clearInterval(interval);
-  }, [fetchAll]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+  // Background refresh — tab-visibility-paused + jittered (see
+  // hooks/useSmartPolling.ts). `immediate: false` since the effect above
+  // already covers the mount-time call.
+  useSmartPolling(fetchAll, 30000, { immediate: false });
 
   // -- Diagnose handler --
 

@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { lensRun } from '@/lib/api/client';
 import { subscribe, joinRoom, leaveRoom } from '@/lib/realtime/socket';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface FlavorBlock {
   description?: string;
@@ -90,12 +91,12 @@ export default function SpectatorWorldPage() {
     }
   }, [worldId]);
 
-  useEffect(() => {
-    let cancelled = false;
-    refreshSpectacle(true);
-    const id = setInterval(() => { if (!cancelled) refreshSpectacle(false); }, 8_000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [refreshSpectacle]);
+  useEffect(() => { refreshSpectacle(true); }, [refreshSpectacle]);
+  // Background refresh — tab-visibility-paused + jittered (see
+  // hooks/useSmartPolling.ts). `immediate: false` since the effect above
+  // already covers the mount-time call; its own cleanup (clearing the
+  // scheduled timeout) supersedes the old `cancelled` guard.
+  useSmartPolling(() => refreshSpectacle(false), 8_000, { immediate: false });
 
   // Open a read-only spectator session on mount (spectate.watch → persists a
   // real spectator_sessions row, surfaced by /api/admin telemetry and the
