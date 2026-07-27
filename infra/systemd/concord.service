@@ -1,0 +1,39 @@
+# Concord Cognitive Engine — boot-persistence unit (bare metal).
+#
+# Why this exists: `pm2 resurrect` restores the pm2-managed apps
+# (backend, frontend, godot client, tunnel) but structurally CANNOT
+# restore the 5 Ollama brain processes — they are launched by
+# scripts/runpod-cognition.sh as supervised wrapper loops, not pm2
+# apps. Re-running startup.sh on boot is the one path that brings the
+# whole stack (brains included) back after a reboot.
+#
+# Install (as root):
+#   cp infra/systemd/concord.service /etc/systemd/system/concord.service
+#   # Edit WorkingDirectory + User below if your checkout/user differ.
+#   systemctl daemon-reload
+#   systemctl enable --now concord
+#
+# Logs: journalctl -u concord -f   (startup.sh also logs to logs/startup.log)
+#
+# Mode: change --cloudflare to --runpod if you don't use a CF tunnel.
+
+[Unit]
+Description=Concord Cognitive Engine (backend + frontend + 5 Ollama brains + tunnel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# ADJUST to your checkout path:
+WorkingDirectory=/opt/concord-cognitive-engine
+# ADJUST if you run as a non-root service user (needs ollama + pm2 on PATH):
+User=root
+Environment=HOME=/root
+ExecStart=/bin/bash ./startup.sh --cloudflare
+# startup.sh is idempotent — safe to re-run; restart = re-run.
+ExecReload=/bin/bash ./startup.sh --cloudflare
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target

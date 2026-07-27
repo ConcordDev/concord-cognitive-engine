@@ -233,6 +233,23 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     echo "${NEXT_PUBLIC_API_URL:-}" > "$BUILD_STAMP"
   fi
 
+  # ── Standalone static assets (P0 — unstyled-site fix) ─────────────────────
+  # Next's `output: 'standalone'` does NOT bundle `.next/static` or `public/`
+  # into the standalone dir — Next's own docs require copying them in. The
+  # Docker path does this in concord-frontend/Dockerfile; the pm2 path runs
+  # `node .next/standalone/server.js` directly, so without this copy every
+  # /_next/static/* asset 404s and the site renders as bare unstyled HTML.
+  # Runs unconditionally (not just after a fresh build) so a box carrying an
+  # older build without the assets self-heals on the next boot. Idempotent:
+  # stale copies are removed first so `cp -a` never nests dir-into-dir.
+  if [ -d concord-frontend/.next/standalone ]; then
+    rm -rf concord-frontend/.next/standalone/public concord-frontend/.next/standalone/.next/static
+    mkdir -p concord-frontend/.next/standalone/.next
+    cp -a concord-frontend/public concord-frontend/.next/standalone/public
+    cp -a concord-frontend/.next/static concord-frontend/.next/standalone/.next/static
+    log "Copied public/ + .next/static into the standalone bundle"
+  fi
+
   # ── Godot engine runtime (self-heal check, every boot) ────────────────────
   # setup.sh does the first-time fetch; this is the cheap re-verification so
   # a box that skipped setup.sh, or whose binary went missing/corrupt between

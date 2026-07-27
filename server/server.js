@@ -19020,12 +19020,21 @@ _unrefInTest(setTimeout(async () => {
 // Initialize after brains come online (embeddings use Ollama)
 _unrefInTest(setTimeout(async () => {
   try {
-    // Gather all Ollama URLs (three brains + default)
+    // Gather candidate Ollama URLs for the embedding model. ORDER MATTERS:
+    // initEmbeddings binds to the FIRST instance that can serve the model.
+    // CONCORD_EMBED_OLLAMA_URL (the operator's explicit choice) goes first,
+    // then UTILITY — its instance runs OLLAMA_MAX_LOADED_MODELS=2 on bare
+    // metal precisely so the embed model co-resides with the small 3B model
+    // (scripts/runpod-cognition.sh). The CONSCIOUS instance goes LAST: with
+    // MAX_LOADED_MODELS=1 there, binding embeddings to it made every embed
+    // call evict the resident ~9GB 14B model, and every subsequent chat
+    // message paid a multi-second cold reload — the "constant drops" bug.
     const ollamaUrls = [
-      BRAIN.conscious.url,
-      BRAIN.subconscious.url,
+      process.env.CONCORD_EMBED_OLLAMA_URL,
       BRAIN.utility.url,
+      BRAIN.subconscious.url,
       process.env.OLLAMA_URL || process.env.OLLAMA_HOST || "http://ollama:11434",
+      BRAIN.conscious.url,
     ].filter(Boolean);
 
     // Initialize embeddings

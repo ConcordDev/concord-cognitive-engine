@@ -165,8 +165,15 @@ npm install -g pm2
 ### Start Services
 
 ```bash
-# Start backend + frontend
-pm2 start ecosystem.config.cjs
+# Recommended: use the startup script — it also launches the 5 Ollama brains,
+# builds the frontend (and copies standalone static assets), installs the
+# health/backup crons, and starts the Cloudflare tunnel:
+./startup.sh --runpod        # or: ./startup.sh --cloudflare
+
+# PM2 alone (no brains). --env runpod is REQUIRED on bare metal — the default
+# env block points brain URLs at Docker hostnames (ollama-conscious:11434 etc.)
+# that only resolve inside docker-compose:
+pm2 start ecosystem.config.cjs --env runpod
 
 # Check status
 pm2 status
