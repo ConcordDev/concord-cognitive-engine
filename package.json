@@ -18,6 +18,8 @@
     "gen-art-style": "node scripts/gen-art-style-spec.mjs",
     "gen-art-style:check": "node scripts/gen-art-style-spec.mjs --check",
     "check-doc-claims": "node scripts/check-doc-claims.mjs",
+    "extract-macro-hints": "node scripts/extract-macro-input-hints.mjs",
+    "extract-macro-hints:check": "node scripts/extract-macro-input-hints.mjs --check",
     "audit:adversarial": "node scripts/adversarial-audit.mjs",
     "audit:invariants": "node scripts/macro-assassin.mjs",
     "contracts:derive": "node scripts/contracts/derive-contracts.mjs",
