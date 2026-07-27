@@ -1777,7 +1777,7 @@ import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickB
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
-import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode } from "./lib/byo-router.js";
+import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode, resolveDispatchTarget as byoResolveDispatchTarget } from "./lib/byo-router.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
@@ -25324,10 +25324,23 @@ let localReply = formatCrispResponse({
     // (initiative-engine.js#getStyleProfile) into the system prompt as
     // functional context, the same way worldId triggers the per-world
     // voice lookup above. Honest-empty when no profile has been learned yet.
+    const _composeUserId = ctx?.actor?.userId || input?.userId || null;
+    const _composeDb = ctx?.db || globalThis._concordSTATE?.db || null;
+    // Persona portability (Private/High Power Mode) — predict, without
+    // dispatching, whether THIS user's conscious-brain call will land
+    // locally or externally (BYO override / platform provider), so the
+    // composed prompt inlines the full Modelfile persona on an external
+    // dispatch instead of just the functional-only local-dispatch text.
+    // See prompt-registry.js's CONSCIOUS_MODELFILE_PERSONA header comment.
+    let _dispatchTarget = "local";
+    try {
+      _dispatchTarget = byoResolveDispatchTarget(_composeDb, _composeUserId, "conscious");
+    } catch { /* best-effort — default to local persona text on any failure */ }
     const _composed = composeSystemPrompt("conscious", {
       mode, currentLens, worldId: _worldId,
-      userId: ctx?.actor?.userId || input?.userId || null,
-      db: ctx?.db || globalThis._concordSTATE?.db || null,
+      userId: _composeUserId,
+      db: _composeDb,
+      dispatchTarget: _dispatchTarget,
     });
     // Living chat / prompt-coloring — let the assistant's persistent felt state lightly
     // color its TONE (not its content, never its identity). A strained assistant is

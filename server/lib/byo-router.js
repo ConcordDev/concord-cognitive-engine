@@ -62,6 +62,29 @@ export function getBrainMode(db, userId) {
 }
 
 /**
+ * Predict, WITHOUT actually dispatching, whether a call for this (user,
+ * slot) will land locally (Ollama) or externally (BYO override or a
+ * configured High Power Mode platform provider). Callers that build a
+ * system prompt BEFORE the real dispatch decision (e.g.
+ * prompt-registry.js#composeSystemPrompt's conscious-brain persona
+ * portability logic) use this to pick the right persona text ahead of
+ * time — brainChat() itself doesn't need this, it makes the real
+ * decision inline as it goes.
+ *
+ * @returns {'local'|'external'}
+ */
+export function resolveDispatchTarget(db, userId, slot) {
+  const mode = getBrainMode(db, userId);
+  if (mode === "private") return "local";
+  const override = userId ? getOverride(db, userId, slot) : null;
+  if (override && override.provider && override.provider !== "concord_default" && override.provider !== "ollama") {
+    return "external";
+  }
+  if (platformProviderConfigured(slot)) return "external";
+  return "local";
+}
+
+/**
  * Bump the last_used_at timestamp so the settings UI can show
  * "last used 5m ago" without us logging the prompt itself.
  */
