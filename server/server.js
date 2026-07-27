@@ -1919,7 +1919,7 @@ import { initializeIdentity, getIdentityMetrics, getIdentity as identityGetNode,
 import { initializeEnergy, getEnergyMetrics, getEnergyMap, getGridHealth, getRecentEnergyReadings } from "./lib/foundation-energy.js";
 import { initializeSpectrum, getSpectrumMetrics, getAvailableChannels as spectrumGetChannels, getSpectrumMap } from "./lib/foundation-spectrum.js";
 import { initializeEmergency, getEmergencyMetrics, triggerEmergency, resolveEmergency, getEmergencyStatus, getActiveEmergencies, getRecentAlerts as emergencyGetAlerts } from "./lib/foundation-emergency.js";
-import { applyShadowVault } from "./lib/artifact-store.js";
+import { applyShadowVault, deleteArtifact } from "./lib/artifact-store.js";
 import { initializeMarket, getMarketMetrics, getRecentEarnings as marketGetEarnings, getRelayTopology as marketGetTopology, getNodeBalance as marketGetBalance } from "./lib/foundation-market.js";
 import { initializeArchive, getArchiveMetrics, getFossils, getDecoded as archiveGetDecoded } from "./lib/foundation-archive.js";
 import { initializeSynthesis, getSynthesisMetrics, getCorrelations as synthesisGetCorrelations } from "./lib/foundation-synthesis.js";
@@ -19306,6 +19306,19 @@ _unrefInTest(setTimeout(async () => {
   }
 }, 12000));
 
+// ── Photo Garbage Collection Timer (weekly) ─────────────────────────────
+// Storage audit fix (2026-07-27): data/photos/ had no orphan sweep at all —
+// see server/lib/photo-gc.js's header comment for the exact leak it closes.
+_unrefInTest(setTimeout(async () => {
+  try {
+    const { initPhotoGarbageCollectionTimer: _initPhotoGC } = await import("./lib/photo-gc.js");
+    _initPhotoGC(db);
+    structuredLog("info", "photo_gc_timer_started", {});
+  } catch (e) {
+    structuredLog("warn", "photo_gc_timer_init_failed", { error: String(e?.message || e) });
+  }
+}, 12500));
+
 // ── LLM Fallback Initialization ─────────────────────────────────────────
 // Wire fallback layers into the LLM fallback chain
 _unrefInTest(setTimeout(async () => {
@@ -23596,6 +23609,19 @@ register("dtu", "delete", async (ctx, input) => {
   SEARCH_INDEX.dirty = true;
   EMBEDDINGS.store.delete(id); // Remove from embedding index
   saveStateDebounced();
+
+  // Storage audit fix (2026-07-27): clean up the per-DTU legacy artifact
+  // directory (ARTIFACT_ROOT/{dtuId}/ — symlinked/copied original file +
+  // generated thumbnail.jpg/waveform.json/text_preview.txt). These files
+  // are namespaced by dtuId, not content-hash, so they never match
+  // artifact-gc.js's hash-pattern scan and were leaking forever on every
+  // delete — deleteArtifact() existed but was never called from anywhere.
+  // Safe to always remove: it does not touch the shared content-addressed
+  // hash file in ARTIFACT_ROOT (that stays reference-counted and is only
+  // reclaimed by the weekly orphan GC once no DTU references its hash).
+  if (dtu.artifact) {
+    try { deleteArtifact(id); } catch (e) { log("artifact.warn", `deleteArtifact(${id}): ${e?.message}`); }
+  }
 
   // Fire plugin after-delete hooks
   try { fireHook(STATE, "dtu:afterDelete", { id, title: dtu.title }); } catch (e) { log("hook.warn", `dtu:afterDelete: ${e?.message}`); }
@@ -61174,6 +61200,13 @@ import { getOrphanCount, initGarbageCollectionTimer } from "./lib/artifact-gc.js
 app.get("/api/admin/artifact-gc/orphan-count", requireAuth(), requireOwner, asyncHandler(async (_req, res) => {
   const count = await getOrphanCount(STATE, db);
   res.json({ ok: true, orphanCount: count });
+}));
+
+// Photo GC admin endpoint (storage audit fix, 2026-07-27) — mirrors the
+// artifact-gc endpoint above; see server/lib/photo-gc.js.
+import { getPhotoDiskUsage } from "./lib/photo-gc.js";
+app.get("/api/admin/photo-gc/disk-usage", requireAuth(), requireOwner, asyncHandler(async (_req, res) => {
+  res.json({ ok: true, diskUsageBytes: getPhotoDiskUsage() });
 }));
 
 // ---- Entity Growth, Exploration & Hive APIs ----
