@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { Loader2, Plus, Trash2, RotateCcw, Save, LayoutDashboard } from 'lucide-react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 type PanelKind = 'metric' | 'alerts' | 'heartbeats' | 'traces';
 type MetricKey = 'heapUsedMB' | 'heapTotalMB' | 'rssMB' | 'cpuPct' | 'requestRate' | 'heapPct' | 'loadAvg1';
@@ -91,11 +92,9 @@ export function CustomDashboard({ live }: { live: boolean }) {
     loadLive();
   }, [loadLayout, loadLive]);
 
-  useEffect(() => {
-    if (!live) return;
-    const t = setInterval(loadLive, 15_000);
-    return () => clearInterval(t);
-  }, [live, loadLive]);
+  // Repeating refresh while `live` (visibility-paused + jittered via
+  // useSmartPolling); the initial load happens in the effect above.
+  useSmartPolling(loadLive, 15_000, { enabled: live, immediate: false });
 
   const save = useCallback(async () => {
     setSaving(true);

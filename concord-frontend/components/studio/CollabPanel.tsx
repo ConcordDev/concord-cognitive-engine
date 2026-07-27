@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Users, Loader2, Play, LogIn, LogOut } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface Collaborator {
   userId: string;
@@ -31,7 +32,6 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
   const [displayName, setDisplayName] = useState('');
   const [joined, setJoined] = useState(false);
   const sinceSeqRef = useRef(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadSession = useCallback(async () => {
     if (!projectId) { setSession(null); setLoading(false); return; }
@@ -48,25 +48,22 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
   useEffect(() => { void loadSession(); }, [loadSession]);
 
   // Poll for new edits + presence while joined.
-  useEffect(() => {
-    if (!joined || !projectId) return;
-    const poll = async () => {
-      try {
-        await lensRun('studio', 'collab-presence', { projectId });
-        const res = await lensRun('studio', 'collab-since', { projectId, sinceSeq: sinceSeqRef.current });
-        const r = res.data?.result as { entries?: EditEntry[]; latestSeq?: number; collaborators?: Collaborator[] } | undefined;
-        if (r) {
-          if (r.entries && r.entries.length > 0) {
-            setEntries((prev) => [...prev, ...r.entries!].slice(-200));
-            sinceSeqRef.current = r.latestSeq ?? sinceSeqRef.current;
-          }
-          if (r.collaborators) setCollaborators(r.collaborators);
+  const pollCollab = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      await lensRun('studio', 'collab-presence', { projectId });
+      const res = await lensRun('studio', 'collab-since', { projectId, sinceSeq: sinceSeqRef.current });
+      const r = res.data?.result as { entries?: EditEntry[]; latestSeq?: number; collaborators?: Collaborator[] } | undefined;
+      if (r) {
+        if (r.entries && r.entries.length > 0) {
+          setEntries((prev) => [...prev, ...r.entries!].slice(-200));
+          sinceSeqRef.current = r.latestSeq ?? sinceSeqRef.current;
         }
-      } catch (e) { console.error('[Collab] poll', e); }
-    };
-    pollRef.current = setInterval(poll, 4000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [joined, projectId]);
+        if (r.collaborators) setCollaborators(r.collaborators);
+      }
+    } catch (e) { console.error('[Collab] poll', e); }
+  }, [projectId]);
+  useSmartPolling(pollCollab, 4000, { enabled: joined && !!projectId, immediate: false });
 
   async function startSession() {
     if (!projectId) return;
