@@ -30,6 +30,8 @@
 // scope, never logged, never returned. The HTTPS endpoint is the
 // provider's official API — never proxied through concord-os.org.
 
+import { scanMessagesForLeaks } from "./outbound-content-guard.js";
+
 const DEFAULT_MODELS = Object.freeze({
   openai:    { conscious: "gpt-4o",         subconscious: "gpt-4o-mini",  utility: "gpt-4o-mini", repair: "gpt-4o-mini", vision: "gpt-4o" },
   anthropic: { conscious: "claude-opus-4-7", subconscious: "claude-sonnet-4-6", utility: "claude-haiku-4-5-20251001", repair: "claude-haiku-4-5-20251001", vision: "claude-opus-4-7" },
@@ -287,6 +289,19 @@ export async function providerChat({ provider, apiKey, slot, modelId, messages, 
   const resolvedModel = pickModel(provider, slot, modelId);
   if (!resolvedModel) {
     return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: `no_default_model_for_${provider}_${slot}` };
+  }
+  // Outbound leak guard — this is the SINGLE enforcement point for both
+  // BYO and platform-provider calls (both flow through providerChat()), so
+  // wiring it here covers every one of the 4 LLM dispatch chokepoints for
+  // free rather than needing 4 separate call sites. Not a privacy feature
+  // — see server/lib/outbound-content-guard.js's header — just a backstop
+  // against a live credential leaving the box toward a third party.
+  const leak = scanMessagesForLeaks(messages);
+  if (leak.blocked) {
+    return {
+      ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0,
+      error: `blocked_secret_detected:${leak.patternId}`,
+    };
   }
   return adapter({ apiKey, modelId: resolvedModel, messages, opts });
 }
