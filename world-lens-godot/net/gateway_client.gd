@@ -10,6 +10,16 @@ extends Node
 ## The envelope codec is exposed as PURE STATIC funcs (encode_envelope /
 ## decode_envelope) so it can be unit-tested without a scene tree or a live
 ## socket. Everything engine-dependent stays in the _process poll loop.
+##
+## Real-machine finding (2026-07-26): calling a static func of THIS SAME
+## class via its own `class_name` prefix (e.g. `GatewayClient.encode_envelope(...)`
+## from inside gateway_client.gd itself) reproduced "Identifier not found"
+## at GDScript::reload on a real windowed boot with an existing
+## `.godot/` cache (an incremental-reload path a fresh `--import` never
+## exercises, which is why headless CI validation missed it). Call same-class
+## static funcs by their bare name instead (encode_envelope(...), not
+## GatewayClient.encode_envelope(...)) — functionally identical, and immune
+## to this reload ordering issue.
 
 signal connected
 signal authenticated(user_id: String)
@@ -91,7 +101,7 @@ func _process(_delta: float) -> void:
 
 
 func _send_auth() -> void:
-	send_event("auth", GatewayClient.build_auth_payload(api_key, auth_token))
+	send_event("auth", build_auth_payload(api_key, auth_token))
 
 
 ## Pure static so it's unit-testable without a live socket (same rationale
@@ -106,11 +116,11 @@ static func build_auth_payload(p_api_key: String, p_auth_token: String) -> Dicti
 func send_event(evt: String, data: Dictionary) -> void:
 	if _peer == null or _peer.get_ready_state() != WebSocketPeer.STATE_OPEN:
 		return
-	_peer.send_text(GatewayClient.encode_envelope(evt, data))
+	_peer.send_text(encode_envelope(evt, data))
 
 
 func _handle_text(text: String) -> void:
-	var msg := GatewayClient.decode_envelope(text)
+	var msg := decode_envelope(text)
 	if msg.is_empty():
 		return
 	var evt: String = msg.get("evt", "")
