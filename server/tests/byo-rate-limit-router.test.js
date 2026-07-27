@@ -20,6 +20,14 @@
 //
 // No DB_PATH needed — better-sqlite3(':memory:'), same pattern as
 // server/tests/byo-keys.test.js.
+//
+// Every brainChat() call here passes `brainMode: "high_power"` explicitly.
+// This file's fixture DB has no `users` table, so brainChat's own
+// brain_mode lookup would fail-closed to 'private' and skip the BYO
+// override path entirely (see server/tests/brain-mode-router.test.js for
+// that gate's own dedicated coverage) — this file is specifically about
+// the rate limiter, not the mode gate, so it supplies the mode directly
+// to keep exercising exactly what it always tested.
 
 import { describe, it, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
@@ -67,7 +75,7 @@ describe("brainChat() enforces the per-slot rate limit before touching the netwo
     });
     setRateLimit("user_a", "conscious", 2);
 
-    const r = await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi" }] });
+    const r = await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi" }], brainMode: "high_power" });
 
     // Gate let it through: it reached the (stubbed) provider fetch, so
     // the failure is a network error, never "rate_limited".
@@ -87,11 +95,11 @@ describe("brainChat() enforces the per-slot rate limit before touching the netwo
     });
     setRateLimit("user_a", "conscious", 1);
 
-    const first = await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi" }] });
+    const first = await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi" }], brainMode: "high_power" });
     assert.notEqual(first.error, "rate_limited");
     assert.equal(fetchCallCount, 1);
 
-    const second = await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi again" }] });
+    const second = await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi again" }], brainMode: "high_power" });
     assert.equal(second.ok, false);
     assert.equal(second.error, "rate_limited");
     assert.equal(second.provider, "anthropic");
@@ -108,7 +116,7 @@ describe("brainChat() enforces the per-slot rate limit before touching the netwo
     });
     // No setRateLimit call for this slot.
     for (let i = 0; i < 5; i++) {
-      const r = await brainChat({ db, userId: "user_a", slot: "utility", messages: [{ role: "user", content: "hi" }] });
+      const r = await brainChat({ db, userId: "user_a", slot: "utility", messages: [{ role: "user", content: "hi" }], brainMode: "high_power" });
       assert.notEqual(r.error, "rate_limited");
     }
     assert.equal(fetchCallCount, 5);
@@ -121,12 +129,12 @@ describe("brainChat() enforces the per-slot rate limit before touching the netwo
     setRateLimit("user_a", "conscious", 1);
     setRateLimit("user_b", "conscious", 1);
 
-    await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi" }] });
-    const aBlocked = await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi" }] });
+    await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi" }], brainMode: "high_power" });
+    const aBlocked = await brainChat({ db, userId: "user_a", slot: "conscious", messages: [{ role: "user", content: "hi" }], brainMode: "high_power" });
     assert.equal(aBlocked.error, "rate_limited");
 
     // User B's own bucket is untouched by user A's exhaustion.
-    const bAllowed = await brainChat({ db, userId: "user_b", slot: "conscious", messages: [{ role: "user", content: "hi" }] });
+    const bAllowed = await brainChat({ db, userId: "user_b", slot: "conscious", messages: [{ role: "user", content: "hi" }], brainMode: "high_power" });
     assert.notEqual(bAllowed.error, "rate_limited");
   });
 
@@ -136,7 +144,7 @@ describe("brainChat() enforces the per-slot rate limit before touching the netwo
     // straight through to the Ollama default path, which doesn't touch
     // the BYO rate limiter (there's no BYO key to protect).
     setRateLimit("ghost_user", "conscious", 1); // configured but irrelevant — no override exists
-    const r = await brainChat({ db, userId: "ghost_user", slot: "conscious", messages: [{ role: "user", content: "hi" }] });
+    const r = await brainChat({ db, userId: "ghost_user", slot: "conscious", messages: [{ role: "user", content: "hi" }], brainMode: "high_power" });
     assert.notEqual(r.error, "rate_limited");
     assert.equal(r.provider, "concord_default");
     // The BYO provider fetch stub was never hit — ollamaChat targets a
