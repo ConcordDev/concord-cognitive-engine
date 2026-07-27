@@ -12,6 +12,19 @@
 //   - anthropic   → /v1/messages
 //   - xai         → /v1/chat/completions (OpenAI-compatible)
 //   - google      → v1beta/models/{model}:generateContent
+//   - groq        → /openai/v1/chat/completions (OpenAI-compatible) — PLATFORM-ONLY today
+//   - mistral     → /v1/chat/completions (OpenAI-compatible) — PLATFORM-ONLY today
+//
+// groq/mistral exist here so server/lib/platform-providers.js (the
+// operator-funded High Power Mode path) can dispatch to them through the
+// same providerChat() used by BYO. They are deliberately NOT added to
+// BYO_PROVIDERS.list below — a user's own BYO key setup (byo-keys.js#setKey)
+// validates against that list, and the underlying user_brain_overrides
+// table's `provider` CHECK constraint (migration 170) does not yet include
+// 'groq'/'mistral' — adding them to the user-facing list without a matching
+// CHECK-widening migration would let validation pass and the DB insert fail.
+// Letting users BYO their own Groq/Mistral key is a reasonable future
+// addition; it needs its own migration, not a side effect of this one.
 //
 // Privacy: the key is passed in per-request; never stored in module
 // scope, never logged, never returned. The HTTPS endpoint is the
@@ -22,6 +35,16 @@ const DEFAULT_MODELS = Object.freeze({
   anthropic: { conscious: "claude-opus-4-7", subconscious: "claude-sonnet-4-6", utility: "claude-haiku-4-5-20251001", repair: "claude-haiku-4-5-20251001", vision: "claude-opus-4-7" },
   xai:       { conscious: "grok-3",         subconscious: "grok-3-fast",  utility: "grok-3-fast", repair: "grok-3-fast", vision: "grok-3" },
   google:    { conscious: "gemini-2.5-pro", subconscious: "gemini-2.5-flash", utility: "gemini-2.5-flash", repair: "gemini-2.5-flash", vision: "gemini-2.5-pro" },
+  // Groq — no training on inputs/outputs regardless of tier (verified against
+  // Groq's own Services Agreement), so this is the one platform provider with
+  // no privacy tradeoff. Free-tier catalog is text-only today, no vision
+  // default; pickModel() falls back to .conscious for an unlisted slot.
+  groq:      { conscious: "llama-3.3-70b-versatile", subconscious: "llama-3.3-70b-versatile", utility: "llama-3.1-8b-instant", repair: "llama-3.1-8b-instant" },
+  // Mistral — free tier requires the OPERATOR to opt the platform account
+  // into Mistral's data-training program to unlock it (not a per-user
+  // choice). Model ids follow Mistral's own "-latest" alias convention;
+  // override via modelId if the deployment pins specific versions.
+  mistral:   { conscious: "mistral-large-latest", subconscious: "mistral-large-latest", utility: "mistral-small-latest", repair: "mistral-small-latest", vision: "pixtral-large-latest" },
 });
 
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -128,6 +151,18 @@ async function xaiChat({ apiKey, modelId, messages, opts = {} }) {
   return openaiCompatibleChat("https://api.x.ai/v1/chat/completions", { apiKey, modelId, messages, opts, providerName: "xai" });
 }
 
+// ── Groq (OpenAI-compatible) ──────────────────────────────────────
+
+async function groqChat({ apiKey, modelId, messages, opts = {} }) {
+  return openaiCompatibleChat("https://api.groq.com/openai/v1/chat/completions", { apiKey, modelId, messages, opts, providerName: "groq" });
+}
+
+// ── Mistral (OpenAI-compatible) ───────────────────────────────────
+
+async function mistralChat({ apiKey, modelId, messages, opts = {} }) {
+  return openaiCompatibleChat("https://api.mistral.ai/v1/chat/completions", { apiKey, modelId, messages, opts, providerName: "mistral" });
+}
+
 async function openaiCompatibleChat(url, { apiKey, modelId, messages, opts = {}, providerName }) {
   const body = {
     model: modelId,
@@ -223,13 +258,18 @@ const ADAPTERS = {
   anthropic: anthropicChat,
   xai:       xaiChat,
   google:    googleChat,
+  groq:      groqChat,
+  mistral:   mistralChat,
 };
 
 /**
- * Dispatch a chat call to the user's chosen provider.
+ * Dispatch a chat call to a provider. Used by both the per-user BYO path
+ * (server/lib/byo-router.js) and the operator-funded platform-provider path
+ * (server/lib/platform-providers.js) — the same adapters serve both; only
+ * where the apiKey comes from differs.
  * @param {object} args
- * @param {string} args.provider     'openai' | 'anthropic' | 'xai' | 'google'
- * @param {string} args.apiKey       plaintext key (decrypted just before this call)
+ * @param {string} args.provider     'openai' | 'anthropic' | 'xai' | 'google' | 'groq' | 'mistral'
+ * @param {string} args.apiKey       plaintext key (decrypted just before this call, or an operator-configured platform key)
  * @param {string} args.slot         brain slot (conscious|subconscious|utility|repair|vision)
  * @param {string} [args.modelId]    override model id; falls back to provider default for slot
  * @param {Array<{role,content}>} args.messages
