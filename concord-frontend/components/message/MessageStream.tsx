@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Loader2, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, Pin, ListChecks, Mic, Square, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { cn } from '@/lib/utils';
 import { ChannelIcon } from './SlackShell';
 import { ChannelExtrasBar } from './ChannelExtrasBar';
@@ -103,11 +104,7 @@ export function MessageStream({
     } catch { /* poll best-effort */ }
   }, [channel]);
 
-  useEffect(() => {
-    if (!channel) return;
-    const t = setInterval(() => { void pollLive(); }, 4000);
-    return () => clearInterval(t);
-  }, [channel, pollLive]);
+  useSmartPolling(pollLive, 4000, { enabled: !!channel, immediate: false });
 
   // Emit typing-start (debounced via a sent-flag) and typing-stop on idle.
   function signalTyping() {

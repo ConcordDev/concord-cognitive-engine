@@ -12,6 +12,7 @@ import { Loader2, Users, Radio, Send, DoorOpen, DoorClosed, Copy, Check } from '
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface LevelMeta { id: string; name: string }
 interface Participant { id: string; joinedAt: string; lastSeen: string }
@@ -34,7 +35,6 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
   const [copied, setCopied] = useState(false);
   const [opDraft, setOpDraft] = useState({ kind: 'note', note: '' });
   const cursorRef = useRef(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -71,14 +71,7 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
   }, []);
 
   // Poll loop while a session is active.
-  useEffect(() => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    if (!sessionId || !open) return;
-    pollRef.current = setInterval(() => { void poll(sessionId); }, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [sessionId, open, poll]);
-
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+  useSmartPolling(() => { void poll(sessionId); }, 3000, { enabled: !!sessionId && open, immediate: false });
 
   const openSession = async () => {
     if (!levelId) return;

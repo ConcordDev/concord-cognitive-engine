@@ -12,6 +12,7 @@ import { Loader2, Plus, Trash2, Monitor, Play, Pause, Send, MessageSquare } from
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface Party {
   id: string; title: string; code: string; versionId: string | null;
@@ -80,11 +81,7 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
   useEffect(() => { void loadState(); }, [loadState]);
 
   // Live sync poll — keeps the projected position fresh while a party plays.
-  useEffect(() => {
-    if (!activeParty) return;
-    const t = setInterval(() => { void loadState(); }, 3000);
-    return () => clearInterval(t);
-  }, [activeParty, loadState]);
+  useSmartPolling(loadState, 3000, { enabled: !!activeParty, immediate: false });
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chat.length]);
 
