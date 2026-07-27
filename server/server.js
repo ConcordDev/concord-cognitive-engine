@@ -18007,6 +18007,38 @@ _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 // shared the 5 Ollama endpoints with real user chat traffic under zero
 // application-level concurrency limit — a real self-DoS risk at scale that
 // this queue exists specifically to prevent.
+// Concurrency headroom review (Private/High Power Mode plan, concurrency
+// item (a) — 2026-07-27, doc-only, no code change): checked whether
+// LLM_CONCURRENCY's default of 32 has real room to grow on the deployed
+// A40 box before recommending High Power Mode's platform-provider pool
+// registration (item (b), below) as the primary new concurrency lever
+// instead. Verified directly against docker-compose.yml rather than
+// assumed:
+//   - The 7 Ollama containers' OLLAMA_NUM_PARALLEL values sum to 42
+//     (4 conscious + 6 subconscious + 8+8 utility×2 + 6+6 repair+vision +
+//     4 the extra utility instance — see docker-compose.yml's own "Four-
+//     Brain Cognitive Architecture" block for the live values). 32 is
+//     already close to that ceiling, not far under it.
+//   - That same docker-compose.yml comment block states the box's real
+//     constraint plainly: "the scarce resource on this box is CPU, since
+//     7 Ollama containers plus the rest of the stack (backend/frontend/
+//     nginx/redis/qdrant) share only 9 cores total" — VRAM has ~7.7GB of
+//     headroom in 48GB, but CPU does not have comparable slack once you
+//     count every non-Ollama service's own reservation.
+// Conclusion: LEAVE AS-IS. Raising LLM_CONCURRENCY past 32 would not
+// convert into more real completed work — the bottleneck this box
+// actually has is CPU contention across 9 cores shared by 7 GPU-bound
+// Ollama processes plus the rest of the stack, not an under-used queue
+// slot budget. (Separately, `_CONCURRENCY.limits.llm_call` below — a much
+// older, different gate from Tier-2 rate-limit hardening, default 64 via
+// LLM_CONCURRENCY_LIMIT — was tuned for the prior 32GB-heap/RTX-PRO-4500
+// target and is worth revisiting in its own pass; it's a distinct
+// subsystem from this queue and out of scope for this comment.) The real
+// lever for more effective throughput is item (b): registering High
+// Power Mode's platform providers (Groq/Gemini/Mistral) as additional
+// `pickBrainEndpoint` candidates so load that would otherwise queue for
+// a local Ollama slot can spill to an operator-funded external endpoint
+// instead of competing for the same 9 cores.
 const _llmQueue = createLLMQueue({
   concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
   // Was hardcoded 200, which always won over llm-queue.js's own
