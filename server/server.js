@@ -33290,27 +33290,70 @@ let _heartbeatCount = 0;
 
 // ── Cognitive Worker: snapshot builder ────────────────────────────────────────
 // Serializes only what the pipeline needs — never the full STATE.
+// Cache for the expensive half of buildCognitiveSnapshot() — see below.
+let _cognitiveDtuEntriesCache = null;
+let _cognitiveDtuEntriesCacheVersion = -1;
+
 function buildCognitiveSnapshot() {
-  const dtuEntries = [];
-  for (const [id, dtu] of STATE.dtus) {
-    dtuEntries.push([id, {
-      id: dtu.id,
-      title: dtu.title,
-      tags: dtu.tags,
-      tier: dtu.tier,
-      lineage: dtu.lineage,
-      core: dtu.core,
-      human: dtu.human,
-      machine: dtu.machine,
-      meta: dtu.meta,
-      source: dtu.source,
-      createdAt: dtu.createdAt,
-      updatedAt: dtu.updatedAt,
-      authority: dtu.authority,
-      hash: dtu.hash,
-      creti: dtu.creti,
-      cretiHuman: dtu.cretiHuman,
-    }]);
+  // Measured 2026-07-26 (docs/HEAP_GROWTH_MEASUREMENT.md): this function is
+  // called from the ~60s heartbeat tick whenever the cognitive worker is
+  // ready and any of autogen/dream/evolution/synth is enabled — which is
+  // every one of them, by default. It was NOT gated by
+  // CONCORD_DISABLE_HEARTBEAT (that switch only short-circuits the
+  // unrelated governor/registry heartbeat), so it ran, unconditionally, in
+  // BOTH arms of the bisect that measured no difference between them —
+  // meaning this loop had never actually been isolated as a leak candidate.
+  //
+  // It rebuilds a full copy of every DTU's core/human/machine/meta payload
+  // into a fresh array, then hands it to the worker via postMessage, which
+  // structured-clones it on THIS (main) thread before the worker thread ever
+  // sees it. That is the same shape as the state-snapshot bug fixed
+  // alongside this: an unconditional full-corpus deep copy on a timer,
+  // architecturally identical, just with a shorter (60s) period and no
+  // debounce — so it fires roughly 20x more often than the periodic state
+  // save did.
+  //
+  // Skipping the rebuild outright when nothing changed would be a BEHAVIOR
+  // change here (unlike the state-save case): dream/autogen/evolution/synth
+  // are generative — they should still run, and should still see a fresh
+  // corpus, when nothing has changed but the pipeline hasn't run in a while.
+  // So this does NOT skip the tick. It only skips the O(n) REBUILD of the
+  // dtuEntries array — the part that is provably redundant, since the store's
+  // own getVersion() is bumped inside its set()/delete() (dtu-store.js), the
+  // one place all DTU commits genuinely funnel through, so an unchanged
+  // version means the array would be byte-identical to last time.
+  // shadowDtus stays a cheap unconditional rebuild — it's typically a small
+  // subset and mutated through more call sites than are worth centralizing.
+  const dtuStoreVersion = typeof STATE.dtus?.getVersion === "function" ? STATE.dtus.getVersion() : null;
+  let dtuEntries;
+  if (dtuStoreVersion !== null && dtuStoreVersion === _cognitiveDtuEntriesCacheVersion && _cognitiveDtuEntriesCache) {
+    dtuEntries = _cognitiveDtuEntriesCache;
+  } else {
+    dtuEntries = [];
+    for (const [id, dtu] of STATE.dtus) {
+      dtuEntries.push([id, {
+        id: dtu.id,
+        title: dtu.title,
+        tags: dtu.tags,
+        tier: dtu.tier,
+        lineage: dtu.lineage,
+        core: dtu.core,
+        human: dtu.human,
+        machine: dtu.machine,
+        meta: dtu.meta,
+        source: dtu.source,
+        createdAt: dtu.createdAt,
+        updatedAt: dtu.updatedAt,
+        authority: dtu.authority,
+        hash: dtu.hash,
+        creti: dtu.creti,
+        cretiHuman: dtu.cretiHuman,
+      }]);
+    }
+    if (dtuStoreVersion !== null) {
+      _cognitiveDtuEntriesCache = dtuEntries;
+      _cognitiveDtuEntriesCacheVersion = dtuStoreVersion;
+    }
   }
 
   const shadowEntries = [];
