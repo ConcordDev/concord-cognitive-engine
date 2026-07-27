@@ -637,6 +637,17 @@ export class KnowledgeGenome {
 
 // ── Factory + cached singletons ────────────────────────────────────────────
 
+// Keyed per userId with no prior cap — one full KnowledgeGenome instance
+// (its own nodes/edges Maps + trajectory array) held forever per distinct
+// user who ever called getKnowledgeGenome(). Real growth risk under
+// production multi-user load, invisible to lib/memory-pressure.js's mapCaps
+// sweep since this is a module-private Map, not a STATE field. LRU-capped
+// to match the pattern already used elsewhere (artifact-store.js
+// _previewCache, server.js _rehydrationCache/_globalQueryCache) — an
+// evicted user's genome just reloads from the db on next access, so
+// eviction is safe.
+const GENOME_CACHE_MAX = 1000;
+
 /** @type {Map<string, KnowledgeGenome>} */
 const _genomeCache = new Map();
 
@@ -663,11 +674,21 @@ export async function getKnowledgeGenome(userId, deps = {}) {
   try {
     const key = String(userId || 'anonymous');
     let genome = _genomeCache.get(key);
-    if (genome) return genome;
+    if (genome) {
+      // LRU touch: re-insert so insertion order tracks recency, not just
+      // first-access time.
+      _genomeCache.delete(key);
+      _genomeCache.set(key, genome);
+      return genome;
+    }
     genome = new KnowledgeGenome(key, deps);
     try {
       await genome.load();
     } catch (_e) { /* swallow */ }
+    if (_genomeCache.size >= GENOME_CACHE_MAX && !_genomeCache.has(key)) {
+      const oldest = _genomeCache.keys().next().value;
+      _genomeCache.delete(oldest);
+    }
     _genomeCache.set(key, genome);
     return genome;
   } catch (_e) {
