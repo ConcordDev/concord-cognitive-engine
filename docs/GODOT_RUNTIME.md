@@ -483,9 +483,23 @@ $ ls -l /tmp/web/
 ```
 
 ⚠️ **Limits of the Web result, stated plainly.** The bundle *builds*; it has never
-been *served or opened*. It is exported with `variant/thread_support=true`, which
-means whatever serves it must send cross-origin-isolation headers (`COOP`/`COEP`)
-or it will fail at runtime in the browser. That is untested here.
+been *served or opened* by a real browser in this environment (this sandbox's
+egress is policy-locked to godotengine.org, so an end-to-end serve-and-load
+check cannot be run here — see `scripts/export-godot-web.mjs`, which
+reproduces this export into `concord-frontend/public/godot-client/`, a
+location the frontend already serves with no new infra required).
+
+**Update (audit 2026-07-27):** `export_presets.cfg`'s Web preset now sets
+`variant/thread_support=false` (was `true`) — the fastest path to an
+actually-loadable browser build. `thread_support=true` requires the server to
+send `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy:
+require-corp` on every response serving the bundle (SharedArrayBuffer's
+browser requirement) or the build refuses to start in *any* browser; nothing
+in this repo emitted those headers, so `true` was a real, load-bearing
+blocker, not a theoretical one. `false` costs single-threaded WASM
+performance but has zero server-header dependency. Flip back to `true`
+together with adding COOP/COEP headers wherever the bundle is served
+(`infra/cloudflare/` + `nginx/conf.d/`), not before.
 
 **What export verification does and does not prove.** It proves the project packs,
 links against real export templates, and that the packed game boots and executes

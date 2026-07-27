@@ -84,6 +84,13 @@ world-lens-godot/build/
 world-lens-godot/*.pck
 world-lens-godot/*.x86_64
 
+# Web export output (scripts/export-godot-web.mjs / `npm run export:web`).
+# Regenerated on demand from world-lens-godot/ + export_presets.cfg's "Web"
+# preset; a build artefact (~42MB .wasm alone), never committed. Lands in
+# concord-frontend/public/ so it's servable with zero new infra — see that
+# script's header for why nothing else needed to change.
+concord-frontend/public/godot-client/
+
 # Visual-QA harness output (scripts/visual-qa.mjs). Full-resolution 1152x648
 # captures + the engine log for one run; regenerated on every run and never
 # committed. The DOWNSAMPLED golden baselines it compares against
