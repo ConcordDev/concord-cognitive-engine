@@ -9,11 +9,19 @@
 // or a reconnect gap still self-heals. Net effect: instant updates, ~10–30x less
 // network than the old tight polls, and resilient to dropped sockets.
 //
+// The backstop poll runs through useSmartPolling (not a raw setInterval) so it
+// inherits Page Visibility pausing (a backgrounded tab stops polling entirely —
+// this hook has 22 real callers today, so a hidden tab with several of them
+// mounted was still generating a steady drip of backstop requests for nobody)
+// and jitter (many callers share the same default 30s backstopMs, so without
+// jitter they'd tend toward firing in lockstep). See hooks/useSmartPolling.ts.
+//
 // Usage:
 //   useRealtimeRefresh(['world:drift-alert'], refresh, { backstopMs: 30000 });
 
 import { useEffect, useRef } from 'react';
 import { subscribe, type SocketEvent } from '@/lib/realtime/socket';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 export interface RealtimeRefreshOpts {
   /** Slow safety-net poll interval in ms (0 disables the backstop). Default 30s. */
@@ -41,18 +49,24 @@ export function useRealtimeRefresh(
     // Push: instant refresh on any of the subscribed events.
     const unsubs = events.map((evt) => subscribe(evt, () => fire()));
 
-    // Backstop: a slow poll so missed events / reconnect gaps self-heal.
-    let timer: ReturnType<typeof setInterval> | null = null;
-    if (backstopMs > 0) timer = setInterval(fire, backstopMs);
-
     return () => {
       for (const u of unsubs) u();
-      if (timer) clearInterval(timer);
     };
     // events is intentionally spread into the dep list so a changed event set
     // re-subscribes; refresh is read via ref so it doesn't churn subscriptions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, immediate, backstopMs, events.join('|')]);
+  }, [enabled, immediate, events.join('|')]);
+
+  // Backstop: a slow, visibility-paused, jittered poll so missed events /
+  // reconnect gaps self-heal (see useSmartPolling's own doc comment). Its own
+  // `immediate: false` is deliberate — the effect above already fires once on
+  // mount when `immediate` is true, so a second immediate fire here would be
+  // a duplicate on every mount.
+  useSmartPolling(
+    () => { try { refreshRef.current(); } catch { /* swallow */ } },
+    backstopMs,
+    { enabled: enabled && backstopMs > 0, immediate: false }
+  );
 }
 
 export default useRealtimeRefresh;
