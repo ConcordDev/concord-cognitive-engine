@@ -7,6 +7,7 @@
 // (falls back to DEMO_KEY rate-limited 1000/hr per IP).
 
 import { fetchJsonWithTimeout } from "../lib/external-fetch.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { callVision, callVisionUrl } from "../lib/vision-inference.js";
 
 const FDC_BASE = "https://api.nal.usda.gov/fdc/v1";
@@ -806,10 +807,25 @@ export default function registerCookingActions(registerLensAction) {
     if (!/^https?:\/\/.+/i.test(url)) return { ok: false, error: "valid http(s) url required" };
     let html;
     try {
-      const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 ConcordCooking/1.0" }, signal: AbortSignal.timeout(12000) });
+      // SSRF fix (2026-07-27): `url` is caller-supplied and this used a bare
+      // fetch() behind nothing but the scheme regex above — so
+      // http://169.254.169.254/ (cloud metadata), http://127.0.0.1:11434/
+      // (the local Ollama brains), RFC1918, and decimal/IPv6-mapped encodings
+      // all passed, with the response body parsed and partially reflected.
+      // Routed through the SSRF-guarded keyless fetch (public-fetch.js), which
+      // validates scheme + blocks private IPs + pins the connection to the
+      // validated IP (defeating DNS rebinding). Same pattern as
+      // food.js#recipe-import-url. On rejection it throws with
+      // `.code === "SSRF_BLOCKED"`, surfaced below as an honest failure that
+      // does not leak the guard's internal reason.
+      const r = await fetchPublicUrl(url, {
+        headers: { "User-Agent": "Mozilla/5.0 ConcordCooking/1.0" },
+        signal: AbortSignal.timeout(12000),
+      });
       if (!r.ok) return { ok: false, error: `fetch failed: HTTP ${r.status}` };
       html = await r.text();
     } catch (e) {
+      if (e?.code === "SSRF_BLOCKED") return { ok: false, error: "url not allowed" };
       return { ok: false, error: `page unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
     // Extract every <script type="application/ld+json"> block.
