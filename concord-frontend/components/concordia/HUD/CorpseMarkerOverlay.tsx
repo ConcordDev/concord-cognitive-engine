@@ -11,10 +11,11 @@
 // reads camera state — this overlay is the "just gets the job done"
 // version that ships now.
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { Skull, Loader2, Sparkles } from 'lucide-react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 const ButcheringMinigame = dynamic(() => import('@/components/concordia/crafting/ButcheringMinigame'), { ssr: false });
 
@@ -45,11 +46,7 @@ export default function CorpseMarkerOverlay({ worldId = 'concordia-hub', toolTie
     } catch { /* offline-tolerant */ }
   }, [worldId]);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, 8_000); // 8s polling — corpses last ~30 min
-    return () => clearInterval(t);
-  }, [refresh]);
+  useSmartPolling(refresh, 8_000); // ~8s polling — corpses last ~30 min
 
   async function complete(qualityMultiplier: number) {
     if (!active) return;
