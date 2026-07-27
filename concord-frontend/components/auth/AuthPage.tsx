@@ -91,9 +91,12 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
       // hasn't completed onboarding (no region/nation/primary lens),
       // route them through the onboarding flow before anything else.
       // Sign-in users who already have all three just go to the
-      // requested destination.
+      // requested destination. New signups hit the brain-mode choice
+      // (Private vs High Power) FIRST, before universe-seeding, since
+      // it governs whether anything after it can ever touch a cloud
+      // LLM provider.
       if (mode === 'signup') {
-        window.location.href = '/onboarding';
+        window.location.href = '/onboarding/brain-mode';
         return;
       }
       try {

@@ -69,9 +69,12 @@ export default function RegisterPage() {
       // and bounces to /login ("I registered but I'm not logged in"). Require the token.
       const realSuccess = res.data?.ok && (res.data?.token || (res.data?.user?.id && res.data?.user?.id !== 'ok'));
       if (realSuccess) {
-        // Registration auto-logged you in (cookies set) — go straight to onboarding.
+        // Registration auto-logged you in (cookies set) — go straight to
+        // onboarding. Brain-mode choice (Private vs High Power) runs
+        // FIRST, before the universe-seeding step, since it governs
+        // whether anything after it can ever touch a cloud LLM provider.
         localStorage.setItem('concord_entered', 'true');
-        router.push('/onboarding');
+        router.push('/onboarding/brain-mode');
       } else if (res.data?.ok) {
         // Silently rejected by a bot-defense (most often: form submitted too fast).
         setError('Registration could not be completed. Please wait a moment, then try again.');
