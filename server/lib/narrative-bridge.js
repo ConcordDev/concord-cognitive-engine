@@ -31,6 +31,20 @@ const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
 const QUEST_TTL_MS      = 10 * 60 * 1000;  // 10 minutes
 const LORE_TTL_MS       = 10 * 60 * 1000;
 
+// The header comment above has always claimed "in-memory LRU" — the cache
+// was never actually size-bounded, only lazily TTL-expired on re-lookup. A
+// key that's never looked up again (e.g. the dialogue cacheKey includes a
+// faction policyKey that changes on every referendum, so every pre-referendum
+// entry is permanently orphaned) sat in the Map forever. Real growth risk
+// under production multi-user load, invisible to lib/memory-pressure.js's
+// mapCaps sweep since these are module-private, not STATE fields. Capped to
+// match the LRU pattern already used elsewhere (artifact-store.js
+// _previewCache, server.js _rehydrationCache/_globalQueryCache) so the header
+// comment's claim is now actually true.
+const DIALOGUE_CACHE_MAX = 2000;
+const QUEST_CACHE_MAX    = 2000;
+const LORE_CACHE_MAX     = 200; // keyed by worldId; small by nature, capped for safety
+
 // ── In-Memory Caches ─────────────────────────────────────────────────────────
 
 const _dialogueCache = new Map();   // key → { result, generatedAt }
@@ -44,10 +58,18 @@ function cacheGet(map, key, ttlMs) {
     map.delete(key);
     return null;
   }
+  // LRU touch: re-insert so insertion order (which eviction relies on) tracks
+  // recency, not just creation time.
+  map.delete(key);
+  map.set(key, entry);
   return entry.result;
 }
 
-function cacheSet(map, key, result) {
+function cacheSet(map, key, result, max) {
+  if (map.size >= max && !map.has(key)) {
+    const oldest = map.keys().next().value;
+    map.delete(oldest);
+  }
   map.set(key, { result, generatedAt: Date.now() });
 }
 
@@ -579,7 +601,7 @@ export async function generateAuthoredDialogue(npcId, questId = null, playerRela
     // (which carry handAuthored:true above). Authored trees always win when
     // one exists; this only fires when no tree is on disk for the context.
     const enriched = { ...result, authored, handAuthored: false, improvised: true };
-    cacheSet(_dialogueCache, cacheKey, enriched);
+    cacheSet(_dialogueCache, cacheKey, enriched, DIALOGUE_CACHE_MAX);
     return enriched;
   }
 
@@ -616,7 +638,7 @@ export async function generateArcQuestChain(npcId, playerLevel = 1, db = null) {
 
   if (result.ok) {
     const enriched = { ...result, authored };
-    cacheSet(_questCache, cacheKey, enriched);
+    cacheSet(_questCache, cacheKey, enriched, QUEST_CACHE_MAX);
     return enriched;
   }
 
@@ -643,7 +665,7 @@ export async function synthesizeArcLore(worldId = "concordia-hub") {
   const result = await synthesizeLore(worldEvents, []);
 
   if (result.ok) {
-    cacheSet(_loreCache, worldId, result);
+    cacheSet(_loreCache, worldId, result, LORE_CACHE_MAX);
     logger.info({ worldId, eventCount: worldEvents.length }, "narrative_bridge_lore_synthesized");
     return result;
   }
@@ -671,7 +693,10 @@ export function invalidateNPCDialogue(npcId) {
 export function getBridgeStats() {
   return {
     dialogueCacheSize: _dialogueCache.size,
+    dialogueCacheMax:  DIALOGUE_CACHE_MAX,
     questCacheSize:    _questCache.size,
+    questCacheMax:     QUEST_CACHE_MAX,
     loreCacheSize:     _loreCache.size,
+    loreCacheMax:      LORE_CACHE_MAX,
   };
 }

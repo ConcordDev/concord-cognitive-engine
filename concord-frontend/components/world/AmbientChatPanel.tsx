@@ -7,8 +7,9 @@
 // Posts go to /api/ambient-chat/post and fan out to the per-district
 // Socket.IO room so other players in the same district see them.
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { MessageSquare, ChevronUp, ChevronDown, Send } from 'lucide-react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface AmbientMessage {
   id: string;
@@ -46,12 +47,7 @@ export function AmbientChatPanel({ worldId, districtId, currentUserId }: Ambient
       .catch(() => {});
   }, [worldId, districtId]);
 
-  useEffect(() => {
-    if (!expanded) return;
-    refresh();
-    const t = setInterval(refresh, 10_000);
-    return () => clearInterval(t);
-  }, [expanded, refresh]);
+  useSmartPolling(refresh, 10_000, { enabled: expanded });
 
   const handlePost = useCallback(async () => {
     if (!draft.trim()) return;

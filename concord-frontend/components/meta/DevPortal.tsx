@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { ChartKit, TimelineView, TreeDiagram } from '@/components/viz';
 import type { TimelineEvent, TreeNode } from '@/components/viz';
 import {
@@ -785,9 +786,8 @@ function HealthRollupPanel() {
 
   useEffect(() => {
     void load();
-    const id = setInterval(() => void load(), 30000);
-    return () => clearInterval(id);
   }, [load]);
+  useSmartPolling(load, 30000, { immediate: false });
 
   return (
     <div className="space-y-4">
@@ -1090,9 +1090,8 @@ function AlertSurfacePanel() {
 
   useEffect(() => {
     void load();
-    const id = setInterval(() => void load(), 30000);
-    return () => clearInterval(id);
   }, [load]);
+  useSmartPolling(load, 30000, { immediate: false });
 
   const raise = useCallback(async () => {
     if (!form.title.trim()) return;

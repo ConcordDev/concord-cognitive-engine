@@ -15,6 +15,7 @@ import {
   Unlock, Upload,
 } from 'lucide-react';
 import { lensRun, api } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 // ── shared types ────────────────────────────────────────────────────
 interface Dtu { id?: string; title?: string; tier?: string; tags?: string[]; updatedAt?: string; createdAt?: string; [k: string]: unknown }
@@ -120,9 +121,8 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
   useEffect(() => {
     refresh();
     runDue();
-    const iv = setInterval(runDue, 60_000);
-    return () => clearInterval(iv);
   }, [refresh, runDue]);
+  useSmartPolling(runDue, 60_000, { immediate: false });
 
   const create = async () => {
     setBusy(true);
@@ -569,9 +569,8 @@ function ExportHistory() {
   }, []);
   useEffect(() => {
     refresh();
-    const iv = setInterval(refresh, 30_000);
-    return () => clearInterval(iv);
   }, [refresh]);
+  useSmartPolling(refresh, 30_000, { immediate: false });
 
   const redownload = async (run: RunRecord) => {
     const r = await lensRun('export', 'history-download', { id: run.id });

@@ -11,6 +11,7 @@ import { Box, ArrowRight, Cog, Loader2 } from 'lucide-react';
 import type { LucideIcon } from "lucide-react";
 import { StationOverlayShell } from './_StationOverlayShell';
 import { playActionAtPlayer } from '@/lib/concordia/play-action';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import type { OverlayProps } from './StationInteractionRouter';
 
 const GRID_W = 10;
@@ -68,12 +69,7 @@ export function FactoryEditor({ building, onClose, worldId }: OverlayProps) {
     } catch { /* swallow */ }
   }, [claimId]);
 
-  useEffect(() => {
-    if (!claimId) return;
-    refresh();
-    const t = setInterval(refresh, 1000);
-    return () => clearInterval(t);
-  }, [claimId, refresh]);
+  useSmartPolling(refresh, 1000, { enabled: !!claimId });
 
   const entityMap = new Map<string, Entity>();
   for (const e of entities) entityMap.set(`${e.tile_x}:${e.tile_y}`, e);

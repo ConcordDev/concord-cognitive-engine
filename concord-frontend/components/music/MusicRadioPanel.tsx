@@ -14,6 +14,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface Track { id: string; title: string; artist: string; genre: string; durationSec: number }
 interface Genre { genre: string; trackCount: number; totalPlays: number; liked: number }
@@ -70,13 +71,10 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   // Live countdown for the sleep timer.
-  useEffect(() => {
-    if (!timer?.active) return;
-    const iv = setInterval(() => {
-      void lensRun('music', 'sleep-timer-get', {}).then((r) => setTimer(r.data?.result || null));
-    }, 15000);
-    return () => clearInterval(iv);
-  }, [timer?.active]);
+  const refreshSleepTimer = useCallback(() => {
+    void lensRun('music', 'sleep-timer-get', {}).then((r) => setTimer(r.data?.result || null));
+  }, []);
+  useSmartPolling(refreshSleepTimer, 15000, { enabled: !!timer?.active, immediate: false });
 
   const runDj = async (playlistId?: string) => {
     setDjBusy(true);

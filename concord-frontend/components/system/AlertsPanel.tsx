@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { AlertTriangle, BellOff, CheckCircle2, Loader2, Bell } from 'lucide-react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface Rule {
   name: string;
@@ -54,10 +55,11 @@ export function AlertsPanel({ live }: { live: boolean }) {
 
   useEffect(() => {
     load();
-    if (!live) return;
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
   }, [live, load]);
+
+  // Repeating refresh while `live` (visibility-paused + jittered via
+  // useSmartPolling); the initial/every-`live`-change load happens above.
+  useSmartPolling(load, 30_000, { enabled: live, immediate: false });
 
   const toggleAck = useCallback(async (rule: Rule) => {
     setBusy(rule.name);

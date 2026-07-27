@@ -61,6 +61,7 @@ export function createDTUStore(db, memoryMap, opts = {}) {
   const log = opts.log || (() => {});
   let _stmts = null;
   let _migrated = false;
+  let _version = 0;
 
   // Prepare SQLite statements (lazy, cached)
   function stmts() {
@@ -163,7 +164,9 @@ export function createDTUStore(db, memoryMap, opts = {}) {
       // Write to SQLite first (source of truth)
       persistToSQLite(dtu);
       // Then update memory cache
-      return memoryMap.set(id, dtu);
+      const r = memoryMap.set(id, dtu);
+      _version++;
+      return r;
     },
 
     /**
@@ -192,7 +195,24 @@ export function createDTUStore(db, memoryMap, opts = {}) {
       if (s) {
         try { s.delete.run(id); } catch (_e) { logger.debug('dtu-store', 'silent catch', { error: _e?.message }); }
       }
-      return memoryMap.delete(id);
+      const r = memoryMap.delete(id);
+      if (r) _version++;
+      return r;
+    },
+
+    /**
+     * Monotonic counter bumped on every real set()/delete() (skipped for a
+     * delete() that found nothing to remove). Centralized here rather than
+     * relying on callers to separately signal "something changed" — every
+     * commit path funnels through this store's own set()/delete(), so there
+     * is no scattered-call-site trust required. Used by callers that build
+     * an expensive full-corpus copy on a timer (see server.js
+     * buildCognitiveSnapshot) to skip the rebuild when nothing changed since
+     * their last build.
+     * @returns {number}
+     */
+    getVersion() {
+      return _version;
     },
 
     /**
@@ -287,6 +307,7 @@ export function createDTUStore(db, memoryMap, opts = {}) {
 
       insertMany(Array.from(memoryMap.values()));
       _migrated = true;
+      if (migrated > 0) _version++;
       log("info", "dtu_store_migration_complete", { migrated, errors, total: memoryMap.size });
       return { migrated, errors };
     },
@@ -319,6 +340,7 @@ export function createDTUStore(db, memoryMap, opts = {}) {
         log("error", "dtu_store_rehydrate_failed", { error: e.message });
       }
 
+      if (loaded > 0) _version++;
       log("info", "dtu_store_rehydrated", { loaded, errors });
       return { loaded, errors };
     },

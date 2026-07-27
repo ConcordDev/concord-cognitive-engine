@@ -113,6 +113,51 @@ export function _authRefreshState() {
   return { blockedUntil: _refreshBlockedUntil, inFlight: _refreshInFlight !== null };
 }
 
+// ---- Global read-poll backoff on 429 ---------------------------------------
+//
+// The auth-refresh storm above (fixed 2026-07-25) was one instance of a
+// broader gap: ~255 frontend files run their own independent setInterval/
+// POLL_MS background poller (HUDs, presence, guidance, notifications, world
+// feeds — one lens alone can have a dozen mounted at once), and NONE of them
+// back off when the server 429s. The 429 handler below only logged a
+// console.warn and showed a toast — it never told any poller to slow down.
+//
+// That matters specifically for whichever bucket a given request lands in
+// (server.js's unauthRateLimiter: 30 req/min per IP for anyone not
+// authenticated — e.g. a cookie not attaching cross-origin, an expired
+// session, or a `land_claims.claim`-style per-macro limiter as low as 4-6/
+// min). Once ANY bucket is exhausted, every poller sharing it keeps firing
+// on its own schedule, keeps getting 429'd, and keeps re-triggering the
+// (throttled) error toast — a self-sustaining storm with no exit, which is
+// exactly "every button on the frontend throws too-many-requests errors."
+//
+// Fix: a single shared "back off reads" signal, set from the 429 response
+// handler and checked by the request interceptor for GET requests only.
+// GETs are safe to silently skip during backoff (the next poll tick tries
+// again for free); user-initiated mutations (POST/PUT/PATCH/DELETE) are
+// deliberately still sent through — a genuinely rate-limited write still
+// fails honestly with the existing 429 toast, it's just no longer competing
+// with a background-poll storm for the same bucket.
+const DEFAULT_READ_BACKOFF_MS = 15_000;
+let _globalReadBackoffUntil = 0;
+
+function _noteRateLimited(error: AxiosError): void {
+  const data = error.response?.data as { retryAfter?: number } | undefined;
+  const headerRetryAfter = error.response?.headers?.['retry-after'];
+  const retryAfterS =
+    (typeof data?.retryAfter === 'number' && data.retryAfter > 0 ? data.retryAfter : undefined) ??
+    (headerRetryAfter ? Number(headerRetryAfter) : undefined);
+  const backoffMs = Number.isFinite(retryAfterS) && (retryAfterS as number) > 0
+    ? (retryAfterS as number) * 1000
+    : DEFAULT_READ_BACKOFF_MS;
+  _globalReadBackoffUntil = Math.max(_globalReadBackoffUntil, Date.now() + backoffMs);
+}
+
+/** Introspection for tests — never used to make control-flow decisions. */
+export function _readBackoffState() {
+  return { blockedUntil: _globalReadBackoffUntil, active: Date.now() < _globalReadBackoffUntil };
+}
+
 /**
  * Refresh the session at most once concurrently, and not at all while a recent
  * failure is still cooling down. Rejects (rather than silently resolving) when
@@ -186,6 +231,19 @@ function generateIdempotencyKey(): string {
 // This prevents XSS attacks from stealing credentials
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // Global read-poll backoff — see _noteRateLimited's doc comment above.
+    // Only ever skips GETs (background polls); mutations always go through
+    // so a real user action still gets an honest, visible result.
+    const isGet = (config.method || 'get').toLowerCase() === 'get';
+    if (isGet && Date.now() < _globalReadBackoffUntil) {
+      // Single-arg form only: CanceledError's runtime constructor takes
+      // (message, config, request), but its .d.ts inherits AxiosError's
+      // (message, code, config, ...) typing, so passing config positionally
+      // here would type-check against `code: string` and fail tsc. Not
+      // attaching config costs nothing — axios.isCancel() below only needs
+      // the instance type, not its config.
+      return Promise.reject(new axios.CanceledError('rate_limit_backoff'));
+    }
     if (typeof window !== 'undefined') {
       // SECURITY: Add CSRF token for state-changing requests
       // Credentials are handled by httpOnly cookies (withCredentials: true)
@@ -239,6 +297,12 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
+    // A request we deliberately skipped in the interceptor above (read
+    // backoff, active rate limit) — it never reached the network, so it
+    // must never be logged as a real failure or surfaced as a toast.
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
     if (error.response) {
       const status = error.response.status;
 
@@ -328,6 +392,7 @@ api.interceptors.response.use(
       }
       if (status === 429) {
         console.warn('Rate limited. Please slow down requests.');
+        _noteRateLimited(error);
       }
       if (status >= 500) {
         console.error('Server error:', error.response.data);

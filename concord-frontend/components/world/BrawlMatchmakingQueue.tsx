@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Swords, X, Loader2 } from 'lucide-react';
 import { successJuice, sfx } from '@/lib/concordia/juice';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface QueueStatus { ok: boolean; size?: number; inQueue?: boolean; joinedAt?: number | null; }
 
@@ -32,13 +33,14 @@ export function BrawlMatchmakingQueue() {
     } catch { /* swallow */ }
   }, []);
 
+  useSmartPolling(refresh, 3000, { enabled: open });
+
+  // Local 1s wait-clock ticker — not a network call, left as a raw interval.
   useEffect(() => {
     if (!open) return;
-    refresh();
-    const t = setInterval(refresh, 3000);
     const w = setInterval(() => setWaitSec((s) => s + 1), 1000);
-    return () => { clearInterval(t); clearInterval(w); };
-  }, [open, refresh]);
+    return () => clearInterval(w);
+  }, [open]);
 
   // Reset wait clock when in/out state flips.
   useEffect(() => { if (!status?.inQueue) setWaitSec(0); }, [status?.inQueue]);

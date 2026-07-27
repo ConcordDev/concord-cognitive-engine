@@ -17,7 +17,7 @@
  * CoinGecko prices / public RPC reads.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Loader2, Plus, RefreshCw, Radio, Link2, PiggyBank, Upload,
   Scale, BellRing, TrendingUp, TrendingDown,
@@ -27,6 +27,7 @@ import { ChartKit } from '@/components/viz/ChartKit';
 import { cn } from '@/lib/utils';
 import { subscribe } from '@/lib/realtime/socket';
 import { showToast } from '@/components/common/Toasts';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -237,18 +238,19 @@ export function PortfolioWorkbench() {
     return off;
   }, [loadDeliveries]);
 
-  // Live price stream — polls price-stream every 30s while enabled.
-  useEffect(() => {
-    if (!streaming) return;
-    let cancelled = false;
-    const tick = async () => {
-      const r = await lensRun<StreamResult>('crypto', 'price-stream', {});
-      if (!cancelled && r.data?.ok && r.data.result) setStream(r.data.result);
-    };
-    tick();
-    const iv = setInterval(tick, 30_000);
-    return () => { cancelled = true; clearInterval(iv); };
-  }, [streaming]);
+  // Live price stream — polls price-stream every 30s while streaming is
+  // enabled. useSmartPolling pauses this while the tab is hidden and
+  // jitters the interval; the streamingRef guard preserves the original
+  // "ignore a response that lands after streaming was turned off" behavior.
+  const streamingRef = useRef(streaming);
+  useEffect(() => { streamingRef.current = streaming; }, [streaming]);
+
+  const tickStream = useCallback(async () => {
+    const r = await lensRun<StreamResult>('crypto', 'price-stream', {});
+    if (streamingRef.current && r.data?.ok && r.data.result) setStream(r.data.result);
+  }, []);
+
+  useSmartPolling(tickStream, 30_000, { enabled: streaming });
 
   // ── Actions ────────────────────────────────────────────────────────────────
 

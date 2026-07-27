@@ -3190,6 +3190,11 @@ export const LENS_REGISTRY: LensEntry[] = [
   { id: 'psyops', name: 'PsyOps', icon: Brain, description: 'Influence operations', category: 'governance', showInSidebar: false, showInCommandPalette: true, path: '/lenses/psyops', order: 90, keywords: ['psyops', 'influence', 'propaganda', 'ops'] },
   { id: 'sandbox', name: 'Sandbox', icon: Boxes, description: 'Experimentation sandbox', category: 'system', showInSidebar: false, showInCommandPalette: true, path: '/lenses/sandbox', order: 90, keywords: ['sandbox', 'experiment', 'test', 'play'] },
   { id: 'saved', name: 'Saved', icon: FileText, description: 'Saved items', category: 'core', showInSidebar: false, showInCommandPalette: true, path: '/lenses/saved', order: 90, keywords: ['saved', 'bookmark', 'favorite', 'pin'] },
+  // TheVault — a curated archive. Open submission, closed admission: work is
+  // admitted by a named human curator with a written statement, or not at all.
+  // Distinct from `gallery`, which is a viewer over OTHER institutions' images
+  // (Met/AIC/CMA IIIF); TheVault is a canon of admitted works with provenance.
+  { id: 'vault', name: 'TheVault', icon: Landmark, description: 'A curated archive of work that outlives trends', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/vault', order: 90, keywords: ['vault', 'archive', 'curated', 'canon', 'preservation', 'recognition', 'museum', 'induction'] },
   { id: 'self', name: 'Self', icon: User, description: 'Your self model', category: 'progression', showInSidebar: false, showInCommandPalette: true, path: '/lenses/self', order: 90, keywords: ['self', 'profile', 'identity', 'model'] },
   { id: 'sentinel', name: 'Sentinel', icon: Shield, description: 'Security sentinel', category: 'system', showInSidebar: false, showInCommandPalette: true, path: '/lenses/sentinel', order: 90, keywords: ['sentinel', 'security', 'guard', 'watch'] },
   { id: 'sessions', name: 'Sessions', icon: Clock, description: 'Active sessions', category: 'system', showInSidebar: false, showInCommandPalette: true, path: '/lenses/sessions', order: 90, keywords: ['session', 'active', 'login', 'device'] },

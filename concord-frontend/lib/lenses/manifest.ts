@@ -207,6 +207,29 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // ═══════════════════════════════════════════════════════════════
 
   {
+    domain: 'vault',
+    label: 'TheVault',
+    artifacts: ['vault_record', 'submission'],
+    // Real vault.* macros, registered via registerLensAction in
+    // server/domains/vault.js. `create` maps to vault.submit — anyone may
+    // submit; only a named human curator may admit, which is the product.
+    // There is deliberately no `update` or `delete`: an admitted record is a
+    // permanent record, and a decline is private and final.
+    macros: { list: 'vault.browse', get: 'vault.record', create: 'vault.submit' },
+    exports: ['json'],
+    actions: ['submit', 'withdraw', 'queue', 'openReview', 'admit', 'decline', 'curators'],
+    category: 'creative',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      // The archive genuinely opens empty — zero admitted records, by design.
+      // This is the day-one screen, so it states the standard rather than
+      // apologising for the absence.
+      headline: 'The Vault is empty.',
+      caption: 'Nothing has been admitted yet. Work enters only when a curator writes down why it belongs — judged on originality, craft, influence, cultural relevance, longevity and documentation. Not on popularity.',
+      firstActionLabel: 'Submit work',
+    },
+  },
+  {
     domain: 'saved',
     label: 'Saved',
     artifacts: ['bookmark', 'collection'],

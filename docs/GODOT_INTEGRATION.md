@@ -252,6 +252,60 @@ capped by the generic 20/sec-sustained bucket rather than a move-specific
   so the functions are also safe to call directly from the gateway path, which
   has no equivalent pre-check.
 
+## One-command bare-metal boot (`scripts/launch-godot-client.sh`)
+
+**Distinct from `concord-shell/` below** — that's a Tauri *desktop* package
+for an end-user's own machine. This is the plain bare-metal **server** path
+(`startup.sh` / `ecosystem.config.cjs`, the same one `pm2 start
+ecosystem.config.cjs --env runpod` already boots backend + frontend with):
+running `pm2 start ecosystem.config.cjs` now also starts a
+`concord-godot-client` app that decides, at runtime, whether to launch a
+connected Godot instance — so a single command gets Concord AND (where it
+makes sense) a live Godot client, with no second manual step.
+
+**`CONCORD_LAUNCH_GODOT`** (default `auto`):
+- `auto` — launches only if a display is present (`$DISPLAY` or
+  `$WAYLAND_DISPLAY` set). A headless GPU compute box with no monitor
+  attached (the real A40 production target — see CLAUDE.md's GPU/CPU
+  pinning audit) correctly does nothing here, rather than failing loudly.
+- `1` / `true` / `on` — force-launches with `--headless` even with no
+  display. Draws nothing (`RasterizerDummy` — docs/GODOT_RUNTIME.md §6),
+  but proves the engine/project/gateway/auth pipeline is genuinely live
+  end-to-end. A connectivity smoke test, not a rendering solution.
+- `0` / `false` / `off` — never launches.
+
+When the script decides not to launch, it idles via `sleep infinity` rather
+than exiting — pm2 sees a stable "up" process instead of treating a correct
+no-op as a crash-loop.
+
+**Godot binary resolution** (honors an existing install per
+docs/GODOT_RUNTIME.md §5.2 point 3): `$GODOT_BIN` if set and executable →
+`godot` on `PATH` only if its `--version` matches the project's pinned
+major.minor (version skew silently opens a project built for a different
+engine version) → `.godot-runtime/bin/godot` (fetched by
+`scripts/fetch-godot.mjs`, now wired into both `setup.sh` — first-time — and
+`startup.sh` — a cheap `--check`/self-heal on every boot).
+
+**Auth** — `net/gateway_client.gd` gained a second credential path
+alongside the original bearer `auth_token`: `api_key`, sent as
+`{"apiKey": ...}` (server/lib/godot-gateway.js#tryAuth already accepted this
+shape; nothing on the client ever sent it). `world/boot.gd` now reads
+`CONCORD_GATEWAY_URL` / `CONCORD_GODOT_API_KEY` / `CONCORD_GODOT_AUTH_TOKEN`
+/ `CONCORD_WORLD_ID` from the environment at `_ready()` and overrides the
+`@export` defaults when set — the only way to configure a non-interactive
+launch before this, since those were editor-inspector-only fields. **This
+script deliberately does not auto-provision a credential** — minting an
+API key is an authz-relevant decision left to the operator (create one in
+the app, then set `CONCORD_GODOT_API_KEY` in `.env`). Without one, the
+client still launches (proving the engine/project are ready) but logs an
+honest warning instead of a fabricated "connected".
+
+Both `resolve_runtime_config` (boot.gd) and `build_auth_payload`
+(gateway_client.gd) are pure static functions, unit-tested without a scene
+tree or live socket — `world-lens-godot/tests/test_boot_runtime_config.gd`
+(10 checks) and `test_gateway_client_auth.gd` (6 checks), registered in
+`tests/run_all.gd`.
+
 ## Reproduction commands
 
 ```bash
@@ -265,6 +319,19 @@ cd server && node --test tests/godot-gateway-integration.test.js
 
 # GDScript parse + lint (requires: pip install gdtoolkit):
 cd world-lens-godot && for f in $(find . -name '*.gd'); do gdparse "$f"; done && gdlint .
+
+# Real engine execution (requires node scripts/fetch-godot.mjs first — see
+# docs/GODOT_RUNTIME.md): full pure-logic test suite, incl. the two new
+# one-command-boot suites above.
+GD=$PWD/.godot-runtime/bin/godot
+$GD --headless --path world-lens-godot --import
+$GD --headless --path world-lens-godot --script res://tests/run_all.gd
+
+# Exercise the one-command boot decision logic directly (no Godot binary
+# needed for these three — pure bash branch checks):
+CONCORD_LAUNCH_GODOT=0 bash scripts/launch-godot-client.sh            # idles immediately
+env -u DISPLAY -u WAYLAND_DISPLAY bash scripts/launch-godot-client.sh  # auto + no display -> idles
+CONCORD_LAUNCH_GODOT=1 bash scripts/launch-godot-client.sh             # forces --headless launch
 
 # Desktop shell process-lifecycle tests (real, no display/GUI/Godot binary
 # required — see the "Desktop packaging" section below):

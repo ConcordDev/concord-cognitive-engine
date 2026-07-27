@@ -30,6 +30,14 @@ const PING_TYPES = Object.freeze(new Set([
 const PINGS_PER_MINUTE       = 12;
 const SAME_TYPE_COOLDOWN_MS  = 4000;
 const BROADCAST_RADIUS_M     = 800;
+// Keyed per userId with no prior cap — grows by one entry per distinct user
+// who has ever pinged, forever (module-private, invisible to
+// lib/memory-pressure.js's mapCaps sweep, which only watches STATE fields).
+// LRU-capped like the other unbounded per-user caches found in the same
+// audit. Evicting a user's rate-limit state just resets their window early
+// (fail-open on throttling strictness), matching the same reasoning
+// memory-pressure.js already uses for STATE._rateLimits.
+const PING_HISTORY_MAX       = 10_000;
 
 const _userPingHistory = new Map(); // userId -> { count, windowStart, lastByType: Map<type, ts> }
 
@@ -38,6 +46,14 @@ function _checkRate(userId, type) {
   let h = _userPingHistory.get(userId);
   if (!h) {
     h = { count: 0, windowStart: now, lastByType: new Map() };
+    if (_userPingHistory.size >= PING_HISTORY_MAX) {
+      const oldest = _userPingHistory.keys().next().value;
+      _userPingHistory.delete(oldest);
+    }
+    _userPingHistory.set(userId, h);
+  } else {
+    // LRU touch: re-insert so insertion order tracks recency.
+    _userPingHistory.delete(userId);
     _userPingHistory.set(userId, h);
   }
   // Slide the 60s window

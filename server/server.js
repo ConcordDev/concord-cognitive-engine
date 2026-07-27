@@ -8347,11 +8347,28 @@ if (String(process.env.AUTO_BACKUP || "true").toLowerCase() === "true") {
 
 // Periodic state save safety net — catches mutations if debounced save somehow missed
 // Runs every 5 minutes, no-op if no changes since last save
+// Bumped by saveStateDebounced() — the funnel every mutation path already
+// uses. Declared here (before the periodic saver below and before
+// saveStateDebounced's first call) so neither consumer hits the TDZ.
+let _stateMutationSeq = 0;
 let _lastPeriodicSaveHash = "";
+let _lastPeriodicSaveSeq = -1;
 trackedSetInterval(() => {
   try {
+    // Skip entirely when nothing has requested a save since last time.
+    //
+    // This check used to sit AFTER `JSON.stringify(_serializeState())`, using
+    // `data.length` as "cheap change detection" — so the full ~28 MB
+    // serialization was paid on every tick even when the answer was "nothing
+    // changed", and the comparison was downstream of the entire expense.
+    // _stateMutationSeq is bumped by saveStateDebounced(), which every one of
+    // the ~291 mutation call sites already goes through, so an unchanged seq
+    // means no mutation path ran at all.
+    if (_stateMutationSeq === _lastPeriodicSaveSeq) return;
+    _lastPeriodicSaveSeq = _stateMutationSeq;
+
     const data = JSON.stringify(_serializeState());
-    const hash = data.length.toString(); // cheap change detection
+    const hash = data.length.toString(); // second-line guard, now rarely reached
     if (hash === _lastPeriodicSaveHash) return; // no changes
     _lastPeriodicSaveHash = hash;
     if (USE_SQLITE_STATE && db) {
@@ -10990,10 +11007,31 @@ function _serializeState() {
     const arr = toArr(m);
     return arr.length > max ? arr.slice(-max) : arr;
   };
+  // DTUs are omitted from the snapshot when the write-through store is active.
+  //
+  // Measured 2026-07-26 (docs/HEAP_GROWTH_MEASUREMENT.md): this function is
+  // called from 291 debounced call sites plus a 2-min and a 5-min timer, and
+  // each call produced a ~28 MB JSON string. The serialized size was FLAT
+  // (28,055 KB -> 28,164 KB over 50 min) while the heap floor climbed
+  // 201 -> 355 MB, i.e. ~4.5 MB retained per save. Nothing was accumulating;
+  // the cost was minting 28 MB strings (large-object space) plus the live
+  // intermediate object graph, repeatedly, forever.
+  //
+  // DTUs are the bulk of that payload AND are already durably persisted:
+  // STATE.dtus is a write-through store whose set() writes `dtu_store` in
+  // SQLite before touching the memory cache (lib/dtu-store.js). Serializing
+  // them into the snapshot as well was double persistence.
+  //
+  // The guard is a runtime capability check rather than a boot flag: if the
+  // store is active it owns durability, so we skip. If STATE.dtus is still a
+  // plain Map (no SQLite / minimal build), we MUST keep serializing them or a
+  // restart loses every DTU. Restoring the omitted DTUs is the paired
+  // rehydrateFromSQLite() call at boot — do not remove one without the other.
+  const dtuStoreActive = typeof STATE.dtus?.rehydrateFromSQLite === "function";
   return {
     version: VERSION,
     savedAt: nowISO(),
-    dtus: toArr(STATE.dtus),
+    ...(dtuStoreActive ? {} : { dtus: toArr(STATE.dtus) }),
     shadowDtus: toArr(STATE.shadowDtus),
     wrappers: toArr(STATE.wrappers),
     layers: toArr(STATE.layers),
@@ -11292,6 +11330,11 @@ function loadStateFromDisk() {
 }
 
 function saveStateDebounced() {
+  // Monotonic mutation counter. Every mutation path in the server funnels
+  // through here, so this is the cheapest honest "has anything changed?"
+  // signal available — the 5-min periodic safety-net reads it to skip a full
+  // ~28 MB serialization when no mutation has occurred since its last pass.
+  _stateMutationSeq++;
   // Expose to modules that can't reach this lexical scope (domain files
   // loaded from server/domains/*.js write directly to STATE.dtus for
   // snippets / snapshots; they need a save trigger).
@@ -11453,6 +11496,20 @@ if (_DTU_STORE_READY && db) {
   // Migrate any DTUs loaded from state snapshot into the row-level table
   const migResult = dtuStore.migrateMemoryToSQLite();
   structuredLog("info", "dtu_store_boot_migration", migResult);
+  // Then load the FULL corpus back out of SQLite into the memory cache.
+  //
+  // This is what makes `dtu_store` genuinely the source of truth its own
+  // header claims it is, and it is the paired half of omitting `dtus` from
+  // the state snapshot (see _serializeState). rehydrateFromSQLite() already
+  // existed and was already tested, but had ZERO production callers — the
+  // cache was only ever populated from the snapshot, which is why the
+  // snapshot could not simply drop them.
+  //
+  // Order matters: migrate first so anything present only in the snapshot
+  // reaches SQLite, then hydrate so anything present only in SQLite reaches
+  // memory. The result is the union, and it is idempotent.
+  const hydrateResult = dtuStore.rehydrateFromSQLite();
+  structuredLog("info", "dtu_store_boot_hydrate", hydrateResult);
   // Replace STATE.dtus with the write-through store
   STATE.dtus = dtuStore;
 }
@@ -33233,27 +33290,70 @@ let _heartbeatCount = 0;
 
 // ── Cognitive Worker: snapshot builder ────────────────────────────────────────
 // Serializes only what the pipeline needs — never the full STATE.
+// Cache for the expensive half of buildCognitiveSnapshot() — see below.
+let _cognitiveDtuEntriesCache = null;
+let _cognitiveDtuEntriesCacheVersion = -1;
+
 function buildCognitiveSnapshot() {
-  const dtuEntries = [];
-  for (const [id, dtu] of STATE.dtus) {
-    dtuEntries.push([id, {
-      id: dtu.id,
-      title: dtu.title,
-      tags: dtu.tags,
-      tier: dtu.tier,
-      lineage: dtu.lineage,
-      core: dtu.core,
-      human: dtu.human,
-      machine: dtu.machine,
-      meta: dtu.meta,
-      source: dtu.source,
-      createdAt: dtu.createdAt,
-      updatedAt: dtu.updatedAt,
-      authority: dtu.authority,
-      hash: dtu.hash,
-      creti: dtu.creti,
-      cretiHuman: dtu.cretiHuman,
-    }]);
+  // Measured 2026-07-26 (docs/HEAP_GROWTH_MEASUREMENT.md): this function is
+  // called from the ~60s heartbeat tick whenever the cognitive worker is
+  // ready and any of autogen/dream/evolution/synth is enabled — which is
+  // every one of them, by default. It was NOT gated by
+  // CONCORD_DISABLE_HEARTBEAT (that switch only short-circuits the
+  // unrelated governor/registry heartbeat), so it ran, unconditionally, in
+  // BOTH arms of the bisect that measured no difference between them —
+  // meaning this loop had never actually been isolated as a leak candidate.
+  //
+  // It rebuilds a full copy of every DTU's core/human/machine/meta payload
+  // into a fresh array, then hands it to the worker via postMessage, which
+  // structured-clones it on THIS (main) thread before the worker thread ever
+  // sees it. That is the same shape as the state-snapshot bug fixed
+  // alongside this: an unconditional full-corpus deep copy on a timer,
+  // architecturally identical, just with a shorter (60s) period and no
+  // debounce — so it fires roughly 20x more often than the periodic state
+  // save did.
+  //
+  // Skipping the rebuild outright when nothing changed would be a BEHAVIOR
+  // change here (unlike the state-save case): dream/autogen/evolution/synth
+  // are generative — they should still run, and should still see a fresh
+  // corpus, when nothing has changed but the pipeline hasn't run in a while.
+  // So this does NOT skip the tick. It only skips the O(n) REBUILD of the
+  // dtuEntries array — the part that is provably redundant, since the store's
+  // own getVersion() is bumped inside its set()/delete() (dtu-store.js), the
+  // one place all DTU commits genuinely funnel through, so an unchanged
+  // version means the array would be byte-identical to last time.
+  // shadowDtus stays a cheap unconditional rebuild — it's typically a small
+  // subset and mutated through more call sites than are worth centralizing.
+  const dtuStoreVersion = typeof STATE.dtus?.getVersion === "function" ? STATE.dtus.getVersion() : null;
+  let dtuEntries;
+  if (dtuStoreVersion !== null && dtuStoreVersion === _cognitiveDtuEntriesCacheVersion && _cognitiveDtuEntriesCache) {
+    dtuEntries = _cognitiveDtuEntriesCache;
+  } else {
+    dtuEntries = [];
+    for (const [id, dtu] of STATE.dtus) {
+      dtuEntries.push([id, {
+        id: dtu.id,
+        title: dtu.title,
+        tags: dtu.tags,
+        tier: dtu.tier,
+        lineage: dtu.lineage,
+        core: dtu.core,
+        human: dtu.human,
+        machine: dtu.machine,
+        meta: dtu.meta,
+        source: dtu.source,
+        createdAt: dtu.createdAt,
+        updatedAt: dtu.updatedAt,
+        authority: dtu.authority,
+        hash: dtu.hash,
+        creti: dtu.creti,
+        cretiHuman: dtu.cretiHuman,
+      }]);
+    }
+    if (dtuStoreVersion !== null) {
+      _cognitiveDtuEntriesCache = dtuEntries;
+      _cognitiveDtuEntriesCacheVersion = dtuStoreVersion;
+    }
   }
 
   const shadowEntries = [];

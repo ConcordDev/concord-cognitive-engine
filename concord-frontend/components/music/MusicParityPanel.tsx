@@ -10,7 +10,7 @@
  * `music` macro via lensRun().
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, Download, Smartphone, Mic, Radio, ListMusic, Calendar,
   Sparkles, Users, Share2, BarChart3, Palette, Globe, Plug, Music2,
@@ -20,6 +20,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { getPlayer } from '@/lib/music/player';
 import { ErrorState } from '@/components/ui';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 // ── shared types ────────────────────────────────────────────────────
 interface Track {
@@ -590,26 +591,26 @@ function SocialTab({ onChange }: { onChange: () => void }) {
   // Keep the jam's shared playback position synchronized while a session is
   // active. The host pushes its live now-playing position; participants pull
   // the synced state. `jam-sync` gates host-only writes server-side, so it is
-  // always safe to send. Polls every 6s; tears down on leave/unmount.
+  // always safe to send. Polls every 6s (visibility-paused + jittered via
+  // useSmartPolling); tears down on leave/unmount.
   const jamId = jam?.id ?? null;
+  const jamSyncCancelledRef = useRef(false);
   useEffect(() => {
-    if (!jamId) return;
-    let cancelled = false;
-    const sync = async () => {
-      const np = await lensRun('music', 'now-playing', {});
-      const cur = (np.data?.result?.nowPlaying as { track: { id: string }; positionSec: number } | null) || null;
-      const payload: Record<string, unknown> = cur
-        ? { currentTrackId: cur.track.id, positionSec: cur.positionSec, playbackState: 'playing' }
-        : {};
-      const r = await lensRun('music', 'jam-sync', payload);
-      if (!cancelled && r.data?.ok && r.data.result?.jam) {
-        setJam((prev) => (prev ? { ...prev, ...(r.data!.result!.jam as JamState) } : prev));
-      }
-    };
-    void sync();
-    const t = setInterval(() => { void sync(); }, 6000);
-    return () => { cancelled = true; clearInterval(t); };
+    jamSyncCancelledRef.current = false;
+    return () => { jamSyncCancelledRef.current = true; };
   }, [jamId]);
+  const jamSync = useCallback(async () => {
+    const np = await lensRun('music', 'now-playing', {});
+    const cur = (np.data?.result?.nowPlaying as { track: { id: string }; positionSec: number } | null) || null;
+    const payload: Record<string, unknown> = cur
+      ? { currentTrackId: cur.track.id, positionSec: cur.positionSec, playbackState: 'playing' }
+      : {};
+    const r = await lensRun('music', 'jam-sync', payload);
+    if (!jamSyncCancelledRef.current && r.data?.ok && r.data.result?.jam) {
+      setJam((prev) => (prev ? { ...prev, ...(r.data!.result!.jam as JamState) } : prev));
+    }
+  }, []);
+  useSmartPolling(jamSync, 6000, { enabled: !!jamId });
 
   const createJam = async () => {
     const r = await lensRun('music', 'jam-create', { name: jamName.trim() || 'Listening Jam' });

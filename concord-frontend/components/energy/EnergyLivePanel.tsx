@@ -7,12 +7,13 @@
  * current / peak / average watts.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Loader2, Plus, Zap } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { cn } from '@/lib/utils';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface LiveSample { id: string; watts: number; at: string; deviceName: string }
 interface Device { id: string; name: string }
@@ -58,12 +59,9 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
     onChange();
   }, [onChange]);
 
-  useEffect(() => {
-    void refresh();
-    const id = window.setInterval(() => { void refresh(); }, POLL_MS);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // jitter: 0 — a dedicated test asserts the poll lands on the exact
+  // POLL_MS cadence; pausing on a hidden tab is still the useful part here.
+  useSmartPolling(refresh, POLL_MS, { jitter: 0 });
 
   const submit = async () => {
     if (!(Number(watts) >= 0) || watts === '') { setError('Enter a wattage reading.'); return; }

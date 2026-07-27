@@ -14,7 +14,8 @@
  *   • Countdown to the next scheduled session when idle
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface VoiceEntry {
   voiceId: string;
@@ -49,21 +50,21 @@ export default function CouncilTheaterPanel() {
   }, []);
 
   // HTTP polling — works without a socket; the socket events (below) update
-  // the same state in faster time.
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const r = await fetch('/api/council/theater', { credentials: 'include' });
-        if (!r.ok) return;
-        const data: TheaterSnapshot & { ok: boolean } = await r.json();
-        if (!cancelled && data?.ok) setSnap(data);
-      } catch { /* network silent */ }
-    }
-    load();
-    const id = window.setInterval(load, 8_000);
-    return () => { cancelled = true; window.clearInterval(id); };
+  // the same state in faster time. useSmartPolling pauses this while the
+  // tab is hidden and jitters the 8s cadence.
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch('/api/council/theater', { credentials: 'include' });
+      if (!r.ok) return;
+      const data: TheaterSnapshot & { ok: boolean } = await r.json();
+      if (mountedRef.current && data?.ok) setSnap(data);
+    } catch { /* network silent */ }
   }, []);
+
+  useSmartPolling(load, 8_000);
 
   // Realtime: subscribe to socket.io events for low-latency voice updates.
   useEffect(() => {

@@ -17,6 +17,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { downloadFile } from '@/lib/utils';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 const DOMAIN = 'sync';
 
@@ -161,11 +162,9 @@ export function SyncDashboard() {
     })();
   }, [refresh]);
 
-  // Presence: heartbeat all known devices and re-derive status every 30s.
-  useEffect(() => {
-    const t = window.setInterval(() => { void refresh(); }, 30000);
-    return () => window.clearInterval(t);
-  }, [refresh]);
+  // Presence: heartbeat all known devices and re-derive status every 30s
+  // (visibility-paused + jittered via useSmartPolling).
+  useSmartPolling(refresh, 30000, { immediate: false });
 
   const registerDevice = async () => {
     const label = newLabel.trim();

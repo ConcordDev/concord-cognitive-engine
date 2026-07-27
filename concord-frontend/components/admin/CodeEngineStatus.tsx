@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import {
   Code2,
   GitBranch,
@@ -113,11 +114,11 @@ function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
     setLoading(false);
   }, [fetchStats]);
 
-  useEffect(() => {
-    refresh();
-    const interval = setInterval(fetchStats, 30_000);
-    return () => clearInterval(interval);
-  }, [refresh, fetchStats]);
+  useEffect(() => { refresh(); }, [refresh]);
+  // Background refresh — tab-visibility-paused + jittered (see
+  // hooks/useSmartPolling.ts). `immediate: false` since the effect above
+  // already covers the mount-time call.
+  useSmartPolling(fetchStats, 30_000, { immediate: false });
 
   // ── Actions ────────────────────────────────────────────────────────
 

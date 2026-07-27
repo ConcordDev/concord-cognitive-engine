@@ -14,8 +14,9 @@
  * pending initiatives so the user can read / dismiss / respond.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Bell, X, Check, Sparkles } from 'lucide-react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface Initiative {
   id: string;
@@ -64,11 +65,7 @@ export default function InitiativeBell() {
     } catch { /* silent */ }
   }, []);
 
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 30_000);
-    return () => clearInterval(id);
-  }, [refresh]);
+  useSmartPolling(refresh, 30_000);
 
   const dismiss = async (id: string) => {
     try {

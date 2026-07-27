@@ -6,8 +6,9 @@
  * marks dispatches seen so each notification fires exactly once.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { Bell, BellRing, Loader2, X } from 'lucide-react';
 import {
   TONE_COLOR, KNOWN_TONES,
@@ -39,12 +40,7 @@ export function ToneSubscriptions({
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    let alive = true;
-    void (async () => { if (alive) await refresh(); })();
-    const interval = window.setInterval(() => { void refresh(); }, 60_000);
-    return () => { alive = false; window.clearInterval(interval); };
-  }, [refresh]);
+  useSmartPolling(refresh, 60_000);
 
   const subscribe = async () => {
     setError(null);

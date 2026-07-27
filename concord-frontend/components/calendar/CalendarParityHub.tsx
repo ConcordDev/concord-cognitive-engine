@@ -20,6 +20,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 // ── Shared types ──────────────────────────────────────────────────────
 interface Calendar { id: string; name: string; color: string; isDefault: boolean }
@@ -376,11 +377,7 @@ function RemindersPanel() {
     }
     setLoading(false);
   }, []);
-  useEffect(() => {
-    void check();
-    const t = setInterval(() => { void check(); }, 60_000);
-    return () => clearInterval(t);
-  }, [check]);
+  useSmartPolling(() => { void check(); }, 60_000);
 
   async function ack(id: string) {
     await lensRun('calendar', 'reminders-acknowledge', { id });

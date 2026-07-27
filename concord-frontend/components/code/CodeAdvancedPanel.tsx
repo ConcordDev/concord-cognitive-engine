@@ -15,6 +15,7 @@
 // per-user persisted extensions / layouts / sessions. No mock data.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
 import { useYjsAwareness } from '@/hooks/useYjsAwareness';
 import { useAuth } from '@/hooks/useAuth';
@@ -798,7 +799,6 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const sinceRef = useRef(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Yjs CRDT: bind each file's content to a per-file Y.Text inside the
   // session's Y.Doc. Concurrent overlapping edits merge structurally
@@ -869,10 +869,6 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
     });
   }, []);
 
-  const stopPoll = useCallback(() => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-  }, []);
-
   const poll = useCallback(async (code: string) => {
     try {
       const r = await lensRun('code', 'liveshare-poll', { code, since: sinceRef.current });
@@ -907,13 +903,24 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
     socketRef.current = null;
   }, []);
 
-  const startPoll = useCallback((code: string) => {
-    stopPoll();
-    pollRef.current = setInterval(() => void poll(code), 3000);
-    void startSocket(code);
-  }, [poll, stopPoll, startSocket]);
-
-  useEffect(() => () => { stopPoll(); stopSocket(); }, [stopPoll, stopSocket]);
+  // Declarative Live Share lifecycle: session.code IS the source of truth
+  // (set by start()/join(), cleared by end()), so the poll + socket both
+  // key off it directly instead of imperative startPoll()/stopPoll() calls.
+  // Poll: tab-visibility-paused + jittered (see hooks/useSmartPolling.ts).
+  // `immediate: false` preserves the original's behavior of never firing a
+  // poll before the first 3s tick.
+  useSmartPolling(
+    () => { if (session?.code) void poll(session.code); },
+    3000,
+    { enabled: !!session?.code, immediate: false }
+  );
+  // Socket push stays a plain effect (not a poll) - starts the instant a
+  // session is live, stops on session end or unmount.
+  useEffect(() => {
+    if (!session?.code) return;
+    void startSocket(session.code);
+    return () => { stopSocket(); };
+  }, [session?.code, startSocket, stopSocket]);
 
   const start = useCallback(async () => {
     setBusy(true); setErr(null);
@@ -922,12 +929,11 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
       if (r.data?.ok) {
         const s = r.data.result?.session as Session;
         setSession(s); setOps([]); sinceRef.current = 0;
-        startPoll(s.code);
       } else setErr(r.data?.error || 'could not start session');
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'start failed');
     } finally { setBusy(false); }
-  }, [projectId, sessionName, startPoll]);
+  }, [projectId, sessionName]);
 
   const join = useCallback(async () => {
     if (!joinCode.trim()) return;
@@ -937,12 +943,11 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
       if (r.data?.ok) {
         const s = r.data.result?.session as Session;
         setSession(s); setOps([]); sinceRef.current = 0;
-        startPoll(s.code);
       } else setErr(r.data?.error || 'could not join session');
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'join failed');
     } finally { setBusy(false); }
-  }, [joinCode, startPoll]);
+  }, [joinCode]);
 
   const broadcast = useCallback(async () => {
     if (!session || !editPath.trim()) return;
@@ -958,10 +963,9 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
     setBusy(true);
     try {
       await lensRun('code', 'liveshare-end', { code: session.code });
-      stopPoll();
       setSession(null); setOps([]);
     } finally { setBusy(false); }
-  }, [session, stopPoll]);
+  }, [session]);
 
   if (!session) {
     return (
