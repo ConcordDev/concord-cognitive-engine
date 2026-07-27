@@ -26,6 +26,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface PlayerPos { x: number; y: number; z: number }
 
@@ -124,25 +125,39 @@ export default function CombatFlowHotbar({
   const lastFetchAtRef = useRef(0);
 
   // ── Poll context every ~700ms while in combat ───────────────────────────────
+  // Split into two concerns, both keyed off the same stable `fetchContext`
+  // (a fresh closure per render, so it always reads current props/state —
+  // no staleness risk from useSmartPolling's ref-captured callback):
+  //   1. An immediate refetch the INSTANT combat-relevant context could have
+  //      changed (moved, entered/left a vehicle, toggled hacker mode) - this
+  //      is what makes combat feel responsive, not the steady tick.
+  //   2. A steady 700ms backstop cadence while in combat, tab-visibility-
+  //      paused + jittered (see hooks/useSmartPolling.ts) - you can't be
+  //      meaningfully "in combat" on a hidden tab, so pausing there is safe.
+  // requestIdRef discards a response that isn't from the most recent
+  // request, matching (and generalizing) the original single-effect
+  // `cancelled` flag's stale-response guard.
+  const requestIdRef = useRef(0);
+  const fetchContext = useCallback(async () => {
+    const myRequestId = ++requestIdRef.current;
+    const params = new URLSearchParams({
+      x: String(playerPos.x), y: String(playerPos.y), z: String(playerPos.z),
+      inVehicle: inVehicle ? '1' : '0',
+      hackerMode: hackerMode ? '1' : '0',
+    });
+    try {
+      const r = await fetch(`/api/combat-flow/context?${params}`, { credentials: 'same-origin' });
+      const j = await r.json();
+      if (requestIdRef.current === myRequestId && j?.ok) setContext(j as ContextResult);
+    } catch { /* network silent */ }
+  }, [playerPos.x, playerPos.y, playerPos.z, inVehicle, hackerMode]);
+
   useEffect(() => {
     if (!inCombat) return;
-    let cancelled = false;
-    async function fetchContext() {
-      const params = new URLSearchParams({
-        x: String(playerPos.x), y: String(playerPos.y), z: String(playerPos.z),
-        inVehicle: inVehicle ? '1' : '0',
-        hackerMode: hackerMode ? '1' : '0',
-      });
-      try {
-        const r = await fetch(`/api/combat-flow/context?${params}`, { credentials: 'same-origin' });
-        const j = await r.json();
-        if (!cancelled && j?.ok) setContext(j as ContextResult);
-      } catch { /* network silent */ }
-    }
-    fetchContext();
-    const id = setInterval(fetchContext, 700);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [inCombat, playerPos.x, playerPos.y, playerPos.z, inVehicle, hackerMode]);
+    void fetchContext();
+  }, [inCombat, fetchContext]);
+
+  useSmartPolling(fetchContext, 700, { enabled: inCombat, immediate: false });
 
   // ── Fetch combos + spells once per context change ───────────────────────────
   useEffect(() => {
