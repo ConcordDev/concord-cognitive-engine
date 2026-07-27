@@ -375,6 +375,20 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
       && log "Initial DB backup taken" || log "NOTE: initial backup skipped (DB not found yet — cron will catch the next one)"
   fi
 
+  # ── Disk cleanup cron (audit fix 2026-07-27) ──────────────────────────────
+  # scripts/disk-cleanup.sh existed and was documented (docs/DEPLOYMENT-
+  # READINESS.md, docs/SHIP-REFERENCE.md) but was never actually installed
+  # anywhere — nothing rotated the ever-growing logs/*.log files this same
+  # startup.sh appends to forever, and nothing pruned docker/ollama/qdrant
+  # bloat on a long-running box. Same 6-hourly cadence + idempotent-install
+  # pattern as the health-check/backup crons above.
+  if command -v crontab &>/dev/null; then
+    DISK_CLEANUP_CRON="0 */6 * * * cd $SCRIPT_DIR && ARTIFACT_DIR='${ARTIFACT_DIR:-}' DATA_DIR='${DATA_DIR:-}' bash scripts/disk-cleanup.sh >> $SCRIPT_DIR/logs/disk-cleanup.log 2>&1"
+    ( crontab -l 2>/dev/null | grep -v "disk-cleanup\.sh" ; echo "$DISK_CLEANUP_CRON" ) | crontab - 2>/dev/null \
+      && log "Disk cleanup cron installed (every 6 hours)" \
+      || log "WARNING: Could not install disk-cleanup cron — add it manually: $DISK_CLEANUP_CRON"
+  fi
+
   # ── pm2 startup (survive pod reboot) ──────────────────────────────────────
   # Save PM2 process list so it auto-restarts after a pod reboot.
   # `pm2 startup` prints a command to run as root to register the init script;
