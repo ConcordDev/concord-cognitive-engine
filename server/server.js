@@ -7020,7 +7020,10 @@ function authMiddleware(req, res, next) {
     "/api/dtus", "/api/dtu", "/api/lenses", "/api/lens", "/api/lens-actions", "/api/emergent", "/api/knowledge",
     "/api/search", "/api/species", "/api/events", "/api/schema",
     // Settings, metrics & context
-    "/api/settings", "/api/growth", "/api/metrics", "/api/context",
+    // "/api/settings" removed (audit follow-up): no live GET handler exists
+    // under this prefix at all (only a requireOwner-gated POST) — this
+    // entry was pure fail-open risk with zero functional benefit.
+    "/api/growth", "/api/metrics", "/api/context",
     // Phase N — public spectator counts. No PII; the world picker reads
     // this anonymously to render "N watching" badges.
     "/api/worlds/spectator-counts",
@@ -7081,11 +7084,27 @@ function authMiddleware(req, res, next) {
     // Content pipelines
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
     "/api/ingest", "/api/digest", "/api/daily",
-    // Economy & marketplace
-    "/api/economy", "/api/marketplace", "/api/credits",
-    "/api/distribution", "/api/stripe",
+    // Economy & marketplace (audit follow-up — narrowed from blanket
+    // domain prefixes to specific verified-safe sub-paths, closing the
+    // "any future GET route under this prefix silently inherits
+    // public-read" fail-open risk for exactly the domains found to have
+    // real bugs. "/api/credits" and "/api/stripe" removed entirely — no
+    // live GET handler exists under either (only requireAuth-gated POSTs).
+    // "/api/economy/balance" and "/api/marketplace/royalties/:userId" are
+    // deliberately excluded — both had real ownership-check bugs, now
+    // fixed at the handler level to require auth regardless of this list.
+    "/api/economy/status", "/api/economy/fees", "/api/economy/transactions",
+    "/api/marketplace/browse", "/api/marketplace/dtu_browse",
+    "/api/marketplace/installed", "/api/marketplace/listings",
+    "/api/marketplace/dream-promoted",
+    "/api/distribution",
     // Agent systems
-    "/api/agents", "/api/personas", "/api/automations",
+    // "/api/agents" removed (audit follow-up): the agents table has no
+    // public/private visibility column — every registered route under
+    // this prefix is a private per-user management surface, not a public
+    // catalog (see routes/agents.js, now also requireAuth()+ownership-
+    // scoped at the handler level as defense in depth).
+    "/api/personas", "/api/automations",
     // Specialized domains
     "/api/affect", "/api/attention", "/api/commonsense",
     "/api/explanation", "/api/grounding", "/api/hive",
@@ -12966,15 +12985,30 @@ async function runMacro(domain, name, input, ctx) {
     "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
     "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
     "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
-    "/api/status", "/api/dtus", "/api/dtu", "/api/settings", "/api/lens",
+    // "/api/settings" removed (audit follow-up): no live GET handler
+    // exists under this prefix — see Gate 1's matching removal.
+    "/api/status", "/api/dtus", "/api/dtu", "/api/lens",
     "/api/goals", "/api/growth", "/api/metrics", "/api/resonance", "/api/lattice",
     "/api/emergent", "/api/plugins", "/api/scope", "/api/events", "/api/guidance",
     "/api/graph", "/api/system", "/api/inspect", "/api/worldmodel", "/api/chat",
     "/api/brain", "/api/species", "/api/atlas", "/api/atlas/signals", "/api/atlas/privacy", "/api/knowledge", "/api/search",
-    "/api/council", "/api/hypothesis", "/api/analytics", "/api/agents", "/api/personas",
+    // "/api/agents" removed (audit follow-up): private per-user surface,
+    // no public-catalog concept — see Gate 1's matching removal +
+    // routes/agents.js's requireAuth()+ownership fixes.
+    "/api/council", "/api/hypothesis", "/api/analytics", "/api/personas",
     "/api/affect", "/api/attention", "/api/metacognition", "/api/metalearning",
     "/api/reasoning", "/api/reflection", "/api/temporal", "/api/inference",
-    "/api/collab", "/api/social", "/api/economy", "/api/marketplace", "/api/credits",
+    "/api/collab", "/api/social",
+    // Economy & marketplace narrowed to match Gate 1's audit-follow-up list
+    // (see the matching comment there): "/api/credits" removed entirely (no
+    // live GET handler exists under it), "/api/economy/balance" and
+    // "/api/marketplace/royalties/:userId" deliberately excluded (real
+    // ownership-check bugs, now fixed at the handler level regardless of
+    // this list).
+    "/api/economy/status", "/api/economy/fees", "/api/economy/transactions",
+    "/api/marketplace/browse", "/api/marketplace/dtu_browse",
+    "/api/marketplace/installed", "/api/marketplace/listings",
+    "/api/marketplace/dream-promoted",
     "/api/hive", "/api/heal", "/api/grounding", "/api/commonsense", "/api/explanation",
     "/api/ingest", "/api/jobs", "/api/queue", "/api/cache", "/api/cognitive",
     "/api/onboarding", "/api/tutorial", "/api/srs", "/api/skill", "/api/schema", "/api/daily",
@@ -12992,7 +13026,9 @@ async function runMacro(domain, name, input, ctx) {
     "/api/compliance", "/api/voice", "/api/visual", "/api/autocrawl",
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
     "/api/utility", "/api/swarm", "/api/forge", "/api/ask",
-    "/api/intelligence", "/api/stripe",
+    // "/api/stripe" removed (audit follow-up): no live GET handler exists
+    // under this prefix — see Gate 1's matching removal.
+    "/api/intelligence",
     // Extended paths (three-gate audit)
     "/api/ai", "/api/federation", "/api/quests", "/api/physics",
     "/api/heartbeat", "/api/entity-economy",
@@ -40804,7 +40840,23 @@ app.post("/api/scope/royaltyPreview", asyncHandler(async (req, res) => res.json(
 app.post("/api/creative/registry", asyncHandler(async (req, res) => res.json(await runMacro("creative", "registry", req.body, makeCtx(req)))));
 app.get("/api/creative/domains", asyncHandler(async (req, res) => res.json(await runMacro("creative", "domains", {}, makeCtx(req)))));
 app.post("/api/marketplace/purchaseWithRoyalties", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "purchaseWithRoyalties", req.body, makeCtx(req)))));
-app.get("/api/marketplace/royalties/:userId", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "royalties", { userId: req.params.userId }, makeCtx(req)))));
+// SECURITY (fixed — audit follow-up): the macro accepts an explicit
+// `userId` in input and used it with no ownership check, so this route
+// let ANY caller (anonymous, before publicReadPaths was narrowed to
+// exclude it) read any user's creator earnings/royalty totals by ID. The
+// no-:userId variant below was already safe (it falls back to
+// ctx.actor.userId, which is empty/anonymous for an unauthenticated
+// caller and the macro itself rejects with "userId required").
+app.get("/api/marketplace/royalties/:userId", requireAuth(), asyncHandler(async (req, res) => {
+  const callerId = req.user?.id;
+  if (req.params.userId !== callerId) {
+    const role = String(req.user?.role || "");
+    if (!["owner", "admin", "sovereign", "founder"].includes(role)) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
+  }
+  res.json(await runMacro("marketplace", "royalties", { userId: req.params.userId }, makeCtx(req)));
+}));
 app.get("/api/marketplace/royalties", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "royalties", {}, makeCtx(req)))));
 
 structuredLog("info", "module_loaded", { module: "Wave 1.5: Dual Global System, Creative Pipeline, Royalty Cascade" });
@@ -57884,11 +57936,29 @@ app.get("/api/economy/status", (req, res) => {
 });
 
 // GET /api/economy/balance — return wallet balance for current user (marketplace)
-app.get("/api/economy/balance", (req, res) => {
+//
+// SECURITY (fixed — audit follow-up): this fell through to
+// `req.query.user_id` (fully caller-controlled) whenever `req.user` was
+// unset, with a `// safe: admin-only` comment that was simply false — no
+// admin/role check existed anywhere in this handler. Since this path is
+// also reachable anonymously via publicReadPaths (narrowed elsewhere to
+// exclude /balance), any caller could read ANY user's wallet balance/tier
+// by supplying an arbitrary user_id. Now requires a real authenticated
+// identity and ignores the query param entirely; requesting another
+// user's balance needs an explicit owner/admin role.
+app.get("/api/economy/balance", requireAuth(), (req, res) => {
   ensureEconomicState();
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const userId = req.user?.id || req.query.user_id || "default"; // safe: admin-only
+  const requestedUserId = req.query.user_id;
+  const callerId = req.user?.id;
+  if (!callerId) return res.status(401).json({ ok: false, error: "unauthorized" });
+  let userId = callerId;
+  if (requestedUserId && requestedUserId !== callerId) {
+    const role = String(req.user?.role || "");
+    if (!["owner", "admin", "sovereign", "founder"].includes(role)) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
+    userId = requestedUserId;
+  }
   const wallet = STATE.economic?.wallets?.get(userId);
   res.json({ ok: true, balance: wallet?.balance || 0, tier: wallet?.tier || "free" });
 });

@@ -293,6 +293,58 @@ describe("Economy mutations — 401 without auth", () => {
   });
 });
 
+// ── Economy/marketplace IDOR fixes (publicReadPaths audit follow-up) ──────────
+// Both were previously readable by ANY caller for ANY user_id/userId — the
+// first via a caller-supplied query param with no ownership check, the
+// second via a route param with no auth at all.
+
+describe("Economy balance — cross-user read blocked", () => {
+  it("GET /api/economy/balance returns 401 without auth", async () => {
+    await assert401("GET", "/api/economy/balance?user_id=victim");
+  });
+
+  it("GET /api/economy/balance?user_id=<other user> returns 403 for a non-privileged caller", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/economy/balance?user_id=${victim.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 403, "Requesting another user's balance must be forbidden for a non-privileged caller");
+  });
+
+  it("GET /api/economy/balance with no user_id returns the caller's own balance", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token) return;
+
+    const res = await api("GET", "/api/economy/balance", null, { token: actor.token });
+    assert.equal(res._status, 200);
+    assert.equal(res.ok, true);
+  });
+});
+
+describe("Marketplace royalties — cross-user read blocked", () => {
+  it("GET /api/marketplace/royalties/:userId returns 401 without auth", async () => {
+    await assert401("GET", "/api/marketplace/royalties/victim");
+  });
+
+  it("GET /api/marketplace/royalties/:userId returns 403 when requesting another user's royalties", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/marketplace/royalties/${victim.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 403, "Requesting another user's royalties must be forbidden for a non-privileged caller");
+  });
+
+  it("GET /api/marketplace/royalties/:userId returns 200 for the caller's own id", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token || !actor.userId) return;
+
+    const res = await api("GET", `/api/marketplace/royalties/${actor.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 200);
+  });
+});
+
 // ── Other fixed routes ────────────────────────────────────────────────────────
 
 describe("Other mutation routes — 401 without auth", () => {
