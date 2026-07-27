@@ -25,6 +25,10 @@
 #                     rendering solution.
 #   0 / false / off — never launch.
 #
+# This decision is made BEFORE any binary resolution/fetch below, on purpose:
+# a headless box that's going to idle anyway (auto + no display) must never
+# pay for a ~58MB engine download it's not going to use.
+#
 # Credentials: CONCORD_GODOT_API_KEY (preferred — long-lived, matches
 # net/gateway_client.gd's api_key auth path) or CONCORD_GODOT_AUTH_TOKEN (a
 # bearer token) must be set in .env for auth to succeed. This script does
@@ -34,12 +38,23 @@
 # ready) but logs an honest warning rather than a fabricated "connected".
 #
 # Godot binary resolution honors an existing install before falling back to
-# the fetched one (docs/GODOT_RUNTIME.md §5.2 point 3):
+# an auto-fetch (docs/GODOT_RUNTIME.md §5.2 point 3):
 #   1. $GODOT_BIN, if set and executable
 #   2. `godot` on PATH, only if its --version matches the project's pinned
 #      major.minor (version skew silently opens a project built for a
 #      different engine version — see that doc's §5.1 option (e) warning)
-#   3. .godot-runtime/bin/godot (fetched by scripts/fetch-godot.mjs)
+#   3. .godot-runtime/bin/godot, fetching it via `node scripts/fetch-godot.mjs`
+#      first if it isn't already there — this is what makes "boot Concord"
+#      alone sufficient; nobody has to remember a separate fetch step.
+#      Gated by CONCORD_FETCH_GODOT (default 1), matching setup.sh/startup.sh's
+#      own gate, and is itself non-fatal — a failed fetch idles honestly
+#      rather than crash-looping.
+#
+# Once a binary is resolved, this also runs a real `--import` pass before the
+# actual launch (idempotent — Godot's own import cache makes a repeat run
+# cheap; see docs/GODOT_RUNTIME.md's own "never fold import into a --quit run"
+# landmine for why this is a SEPARATE full pass, not combined with the launch
+# below) so the very first real boot doesn't race a half-imported project.
 #
 # Run under pm2 (ecosystem.config.cjs's concord-godot-client app) so it is
 # supervised the same way as backend/frontend/tunnel. When this script
@@ -57,6 +72,7 @@ log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [godot-client] $*"; }
 
 PORT="${PORT:-5050}"
 LAUNCH_MODE="${CONCORD_LAUNCH_GODOT:-auto}"
+FETCH_GODOT="${CONCORD_FETCH_GODOT:-1}"
 
 case "$LAUNCH_MODE" in
   0|false|off)
@@ -65,7 +81,25 @@ case "$LAUNCH_MODE" in
     ;;
 esac
 
-# ── Resolve the Godot binary ─────────────────────────────────────────────────
+# ── Decide headless vs windowed vs idle FIRST (before touching the binary) ──
+HEADLESS_ARGS=()
+case "$LAUNCH_MODE" in
+  1|true|on)
+    log "CONCORD_LAUNCH_GODOT=$LAUNCH_MODE — forcing launch with no display assumed -> --headless (connectivity-only, draws nothing)."
+    HEADLESS_ARGS=(--headless)
+    ;;
+  *)
+    if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+      log "Display detected (DISPLAY=${DISPLAY:-<unset>} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-<unset>}) — launching windowed."
+    else
+      log "No display detected and CONCORD_LAUNCH_GODOT=auto — expected on a headless compute box (no monitor)."
+      log "Set CONCORD_LAUNCH_GODOT=1 to force a headless connectivity-only launch instead. Idling."
+      exec sleep infinity
+    fi
+    ;;
+esac
+
+# ── Resolve the Godot binary, fetching it automatically if none is found ───
 GODOT_PROJECT_VERSION="$(grep -m1 'config/features' world-lens-godot/project.godot | grep -oE '4\.[0-9]+' | head -1)"
 
 resolve_godot_bin() {
@@ -88,29 +122,34 @@ resolve_godot_bin() {
 
 GD="$(resolve_godot_bin)"
 if [ -z "$GD" ]; then
-  log "No Godot engine binary found (checked \$GODOT_BIN, PATH, .godot-runtime/bin/godot)."
-  log "Fetch one with: node scripts/fetch-godot.mjs — idling until the next restart."
+  if [ "$FETCH_GODOT" = "1" ]; then
+    log "No Godot engine binary found — fetching one now (node scripts/fetch-godot.mjs)..."
+    if node scripts/fetch-godot.mjs; then
+      GD="$(resolve_godot_bin)"
+    else
+      log "WARNING: Godot engine fetch failed. Retry manually with: node scripts/fetch-godot.mjs"
+      log "         Idling until the next restart (pm2 will retry this script)."
+      exec sleep infinity
+    fi
+  else
+    log "No Godot engine binary found and CONCORD_FETCH_GODOT=0 — not fetching. Idling."
+    exec sleep infinity
+  fi
+fi
+if [ -z "$GD" ]; then
+  log "WARNING: fetch reported success but no usable binary was found afterward — idling until the next restart."
   exec sleep infinity
 fi
 log "Using Godot binary: $GD ($("$GD" --version 2>/dev/null | head -1))"
 
-# ── Decide headless vs windowed ─────────────────────────────────────────────
-HEADLESS_ARGS=()
-case "$LAUNCH_MODE" in
-  1|true|on)
-    log "CONCORD_LAUNCH_GODOT=$LAUNCH_MODE — forcing launch with no display assumed -> --headless (connectivity-only, draws nothing)."
-    HEADLESS_ARGS=(--headless)
-    ;;
-  *)
-    if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-      log "Display detected (DISPLAY=${DISPLAY:-<unset>} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-<unset>}) — launching windowed."
-    else
-      log "No display detected and CONCORD_LAUNCH_GODOT=auto — expected on a headless compute box (no monitor)."
-      log "Set CONCORD_LAUNCH_GODOT=1 to force a headless connectivity-only launch instead. Idling."
-      exec sleep infinity
-    fi
-    ;;
-esac
+# ── Import pass (idempotent) — avoids racing a half-imported project on the
+# very first real boot. A SEPARATE full pass, never folded into the launch
+# below (docs/GODOT_RUNTIME.md's own landmine: --quit/--quit-after during
+# import leaves .godot/imported/ half-written).
+log "Running project import (idempotent; fast if already up to date)..."
+if ! "$GD" --headless --path world-lens-godot --import >/tmp/concord-godot-import.log 2>&1; then
+  log "WARNING: project import reported a non-zero exit — continuing anyway; see /tmp/concord-godot-import.log. The real launch below will surface any genuine failure honestly."
+fi
 
 # ── Wait for the Concord backend to be healthy before connecting ───────────
 log "Waiting for Concord backend on port $PORT..."
