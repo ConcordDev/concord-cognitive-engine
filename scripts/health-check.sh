@@ -7,7 +7,20 @@
 #
 # Environment:
 #   CONCORD_PORT            (default: 5050)
-#   CONCORD_ALERT_WEBHOOK   (optional: Discord/Slack/Teams webhook URL)
+#   ALERT_WEBHOOK_URL       (Discord/Slack webhook — the SAME var
+#                            server/lib/error-alerting.js and
+#                            monitoring/synthetic/critical-paths.js already
+#                            use for application-level alerts. Set this ONE
+#                            var in .env and both infra-level checks here
+#                            AND application error alerts go to it.)
+#   CONCORD_ALERT_WEBHOOK   (optional override — only needed if you want
+#                            THIS script's infra alerts routed to a
+#                            DIFFERENT webhook than ALERT_WEBHOOK_URL.
+#                            Consolidated 2026-07-27: this used to be the
+#                            ONLY name this script read, undocumented in
+#                            .env.example/.env.runpod, and easy to miss —
+#                            the effective default is now "reuse the var
+#                            you already set for application alerts.")
 #   CLOUDFLARE_TUNNEL_TOKEN (set in .env — enables tunnel health check)
 
 set -euo pipefail
@@ -21,7 +34,7 @@ fi
 PORT="${CONCORD_PORT:-5050}"
 BASE_URL="http://localhost:$PORT"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-ALERT_WEBHOOK="${CONCORD_ALERT_WEBHOOK:-}"
+ALERT_WEBHOOK="${CONCORD_ALERT_WEBHOOK:-${ALERT_WEBHOOK_URL:-}}"
 
 check_endpoint() {
   local name="$1" url="$2" expected_status="${3:-200}"
@@ -91,19 +104,96 @@ print(match[0]['pm2_env']['status'] if match else 'not_found')
   fi
 }
 
+# ── Force-restart a HUNG-BUT-ONLINE process (audit 2026-07-27) ──────────────
+# pm2_restart_if_stopped only restarts when pm2's OWN status is stopped/
+# errored — but the real failure mode this box hits is event-loop-blocked-
+# while-still-online (a slow SQLite checkpoint, a >30s heartbeat module): the
+# process never crashes, so pm2 reports "online" forever and nothing ever
+# restarts it, even though the caller already knows the HTTP health check
+# just failed. This function is called ONLY from a context that already
+# confirmed the endpoint is unresponsive — so a still-"online" pm2 status
+# here is exactly the hang this exists to catch, not a reason to skip.
+#
+# Two safety rails against restart storms / false positives:
+#   1. GRACE PERIOD — skip if pm2 reports the process started within the
+#      last CONCORD_HEALTH_RESTART_GRACE_S (default 600s/10min). A fresh
+#      install's first boot runs ~396 migrations serially against a cold
+#      DB — a health check firing mid-migration must not kill the process
+#      that's doing the migrating.
+#   2. COOLDOWN — skip if this function already force-restarted the SAME
+#      process within CONCORD_HEALTH_RESTART_COOLDOWN_S (default 300s),
+#      tracked via a timestamp file. Without this, a persistently-degraded
+#      (not hung, just slow) backend gets force-restarted every 5-minute
+#      cron tick forever instead of once, discarding up to the periodic
+#      save interval's worth of in-memory state each time.
+CONCORD_HEALTH_RESTART_GRACE_S="${CONCORD_HEALTH_RESTART_GRACE_S:-600}"
+CONCORD_HEALTH_RESTART_COOLDOWN_S="${CONCORD_HEALTH_RESTART_COOLDOWN_S:-300}"
+pm2_force_restart_if_unresponsive() {
+  local name="$1"
+  command -v pm2 &>/dev/null || return 0
+  local info
+  info=$(pm2 jlist 2>/dev/null | python3 -c "
+import sys,json
+procs=json.load(sys.stdin)
+match=[p for p in procs if p.get('name','') == '$name']
+if not match:
+    print('not_found 0')
+else:
+    env = match[0].get('pm2_env', {})
+    print(env.get('status','unknown'), env.get('pm_uptime', 0))
+" 2>/dev/null || echo "unknown 0")
+  local status uptime_ms now_ms uptime_s
+  status=$(echo "$info" | awk '{print $1}')
+  uptime_ms=$(echo "$info" | awk '{print $2}')
+
+  if [ "$status" = "stopped" ] || [ "$status" = "errored" ] || [ "$status" = "not_found" ]; then
+    # Already handled by pm2_restart_if_stopped's own path — nothing extra to do here.
+    return 0
+  fi
+  if [ "$status" != "online" ]; then
+    echo "[$TIMESTAMP] WARN: PM2 $name status '$status' — not force-restarting (not a recognized hung state)"
+    return 0
+  fi
+
+  now_ms=$(($(date +%s) * 1000))
+  uptime_s=$(( (now_ms - ${uptime_ms:-0}) / 1000 ))
+  if [ "$uptime_s" -lt "$CONCORD_HEALTH_RESTART_GRACE_S" ]; then
+    echo "[$TIMESTAMP] INFO: $name online but unresponsive — within grace period (up ${uptime_s}s < ${CONCORD_HEALTH_RESTART_GRACE_S}s), not force-restarting yet (may still be migrating/booting)"
+    return 0
+  fi
+
+  local cooldown_file="$SCRIPT_DIR/logs/.force-restart-${name}"
+  local last_restart=0
+  [ -f "$cooldown_file" ] && last_restart=$(cat "$cooldown_file" 2>/dev/null || echo 0)
+  local since_last=$(( $(date +%s) - ${last_restart:-0} ))
+  if [ "$since_last" -lt "$CONCORD_HEALTH_RESTART_COOLDOWN_S" ]; then
+    echo "[$TIMESTAMP] WARN: $name online but unresponsive — already force-restarted ${since_last}s ago (cooldown ${CONCORD_HEALTH_RESTART_COOLDOWN_S}s), skipping"
+    return 1
+  fi
+
+  echo "[$TIMESTAMP] AUTO-RESTART: $name reports 'online' but failed its HTTP health check (up ${uptime_s}s) — this is a HUNG process, force-restarting"
+  date +%s > "$cooldown_file" 2>/dev/null || true
+  pm2 restart "$name" 2>/dev/null || true
+  return 1
+}
+
 FAILURES=0
 
 # ── Core API health ─────────────────────────────────────────────────────────
 check_endpoint "Backend /health" "$BASE_URL/health" || {
   ((FAILURES++)) || true
-  echo "[$TIMESTAMP] AUTO-RESTART: backend did not respond — restarting PM2 concord-backend"
   pm2_restart_if_stopped "concord-backend" || true
+  pm2_force_restart_if_unresponsive "concord-backend" || true
 }
 check_endpoint "API status" "$BASE_URL/api/status" || ((FAILURES++)) || true
 
 # ── Frontend health ─────────────────────────────────────────────────────────
 check_endpoint "Frontend" "http://localhost:3000/" 200 2>/dev/null \
-  || { ((FAILURES++)) || true; pm2_restart_if_stopped "concord-frontend" || true; }
+  || {
+    ((FAILURES++)) || true
+    pm2_restart_if_stopped "concord-frontend" || true
+    pm2_force_restart_if_unresponsive "concord-frontend" || true
+  }
 
 # ── PM2 process inventory ───────────────────────────────────────────────────
 if command -v pm2 &>/dev/null; then
@@ -172,14 +262,32 @@ if command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep -q "^│ ollama "; 
 fi
 
 # ── Disk space (warn if >85%, fail if >95%) ──────────────────────────────────
-DISK_USAGE=$(df / | awk 'NR==2 {gsub(/%/,""); print $5}' 2>/dev/null || echo "0")
-if [ "$DISK_USAGE" -gt 95 ]; then
-  echo "[$TIMESTAMP] CRITICAL: Disk usage at ${DISK_USAGE}% — service may crash"
-  ((FAILURES++)) || true
-elif [ "$DISK_USAGE" -gt 85 ]; then
-  echo "[$TIMESTAMP] WARN: Disk usage at ${DISK_USAGE}%"
-else
-  echo "[$TIMESTAMP] OK: Disk ${DISK_USAGE}% used"
+check_disk() {
+  local label="$1" path="$2"
+  [ -e "$path" ] || return 0
+  local usage
+  usage=$(df "$path" 2>/dev/null | awk 'NR==2 {gsub(/%/,""); print $5}' || echo "0")
+  usage="${usage:-0}"
+  if [ "$usage" -gt 95 ]; then
+    echo "[$TIMESTAMP] CRITICAL: Disk usage on $label ($path) at ${usage}% — service may crash"
+    ((FAILURES++)) || true
+  elif [ "$usage" -gt 85 ]; then
+    echo "[$TIMESTAMP] WARN: Disk usage on $label ($path) at ${usage}%"
+  else
+    echo "[$TIMESTAMP] OK: Disk $label ${usage}% used"
+  fi
+}
+check_disk "/" "/"
+# DATA_DIR/DB_PATH may live on a SEPARATE mount from root (a data volume) —
+# `df /` alone is blind to that filling up while root reports fine. Check it
+# too when it resolves to a different mount than root.
+DATA_MOUNT_TARGET="${DB_PATH:-${DATA_DIR:-}}"
+if [ -n "$DATA_MOUNT_TARGET" ] && [ -e "$DATA_MOUNT_TARGET" ]; then
+  ROOT_DEV=$(df --output=source / 2>/dev/null | tail -1)
+  DATA_DEV=$(df --output=source "$DATA_MOUNT_TARGET" 2>/dev/null | tail -1)
+  if [ -n "$DATA_DEV" ] && [ "$DATA_DEV" != "$ROOT_DEV" ]; then
+    check_disk "data volume" "$DATA_MOUNT_TARGET"
+  fi
 fi
 
 # ── Memory (warn if >90%) ────────────────────────────────────────────────────

@@ -2242,7 +2242,15 @@ await tryLoadDotenv();
 // ============================================================================
 
 // ---- Environment Validation ----
-const REQUIRED_ENV_PRODUCTION = ["JWT_SECRET", "ADMIN_PASSWORD"];
+// SESSION_SECRET added (audit 2026-07-27): code further down this file
+// fatal-exits in production when it's missing or short regardless of
+// whether it's listed here — but this list is what actually POPULATES the
+// "Missing required environment variable" error message. Without it here,
+// an operator with SESSION_SECRET entirely unset got no early, clear error
+// from this check (it only validates LENGTH when the var is present — see
+// the length check below) and hit a bare "[FATAL] SESSION_SECRET must be
+// set" much later in boot instead.
+const REQUIRED_ENV_PRODUCTION = ["JWT_SECRET", "ADMIN_PASSWORD", "SESSION_SECRET"];
 const RECOMMENDED_ENV = ["ALLOWED_ORIGINS"];
 
 function validateEnvironment() {
@@ -2290,8 +2298,17 @@ function validateEnvironment() {
     errors.push("JWT_SECRET should be at least 32 characters for security");
   }
 
-  // SESSION_SECRET (cookie sessions) gets the same strength floor as JWT_SECRET —
-  // a short session secret is just as forgeable. Only checked when present.
+  // SESSION_SECRET: there is no express-session in this codebase — auth is
+  // JWT-in-httpOnly-cookie, and CSRF tokens use EFFECTIVE_JWT_SECRET, not
+  // this var. The real (and only) consumer is
+  // lib/connector-tokens.js's THIRD-priority fallback wrapping key (after
+  // CONCORD_CONNECTOR_TOKEN_KEY and JWT_SECRET) — a prior "(cookie
+  // sessions)" comment here was wrong. Still gets the same strength floor
+  // as JWT_SECRET since it wraps secrets when it's the active fallback.
+  // Threshold MUST match the other SESSION_SECRET gate below (near
+  // `[FATAL] SESSION_SECRET must be set in production`) — they used to
+  // disagree (32 here, 16 there), so a 16-31 char secret would die at
+  // THIS gate while that message implied 16 was sufficient.
   if (process.env.SESSION_SECRET && process.env.SESSION_SECRET.length < 32) {
     errors.push("SESSION_SECRET should be at least 32 characters for security");
   }
@@ -2304,8 +2321,18 @@ function validateEnvironment() {
     errors.push("PORT must be a valid positive number");
   }
 
-  // Report findings
-  if (warnings.length > 0 && !isProduction) {
+  // Report findings.
+  //
+  // FIXED (audit 2026-07-27): this used to gate on `!isProduction` —
+  // printing config warnings ONLY in dev, suppressing them in production,
+  // exactly backwards from what matters. Two concrete things this silenced
+  // on every prod boot: (1) a missing ALLOWED_ORIGINS (CORS misconfigured,
+  // invisible), and (2) "better-sqlite3 not available in production —
+  // falling back to JSON persistence" — if the native module ever fails to
+  // build on a fresh box, the server silently degrades to writing a ~28MB
+  // JSON file via fs.writeFileSync every save cycle, and nothing told the
+  // operator. Warnings now print in every environment.
+  if (warnings.length > 0) {
     console.warn("[Config] Warnings:");
     warnings.forEach(w => console.warn(`  - ${w}`));
   }
@@ -5580,38 +5607,37 @@ function initDatabase() {
     // fully env-overridable up for a genuinely dedicated host.
     const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 2048;
     const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 512;
-    // wal_autocheckpoint sizing (2026-07-25 launch-readiness pass): the
-    // previous 10000-page default (~78MB of WAL, at this DB's page_size=8192)
-    // meant every automatic checkpoint had up to ~78MB of dirty pages to
-    // flush back into the main file in ONE synchronous call. better-sqlite3
-    // has no async escape hatch — that flush runs on the same single Node
-    // thread that serves every HTTP request, so a big rare checkpoint is a
-    // direct, self-inflicted contributor to the exact event-loop-lag spikes
-    // the new admission-control gate (lib/request-admission.js, 300ms
-    // default) exists to shed around. Research consensus (SQLite's own docs,
-    // and production WAL-tuning writeups) frames this as a frequency/burst-
-    // size tradeoff with production deployments typically landing between
-    // 2000-10000 pages; the previous value sat at the extreme high (bursty)
-    // end of that range. Moved to 4000 pages (~32MB) — smaller, more
-    // frequent checkpoints instead of rarer, larger ones — while staying
-    // comfortably above SQLite's own stock default (1000 pages) so this
-    // isn't checkpointing on every trivial write either. Override via env.
-    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 4000;
-    // Stability audit (2026-07-20) — wal_autocheckpoint sets the checkpoint
-    // CADENCE, but under checkpoint starvation (a long-running reader holding
-    // the WAL open, an export, a stuck analytics query) SQLite can't reclaim
-    // the WAL file even at that cadence, and it grows unbounded until the
-    // disk fills — which then breaks writes for every user, not just the
-    // slow reader. journal_size_limit is the hard backstop: once the WAL
-    // exceeds this size, SQLite forcibly truncates it back down after the
-    // next checkpoint that CAN complete, instead of growing forever. With
-    // the walPages change above, 64MB default is now genuinely larger than
-    // the ~32MB (4000 pages × 8KB) a normal checkpoint cycle touches — this
-    // backstop should only ever fire during real starvation, not every
-    // normal cycle (previously it sat BELOW the ~78MB the old 10000-page
-    // cadence touched, which meant the "starvation-only" backstop and the
-    // routine cadence overlapped — corrected as a side effect of the change
-    // above). Override via env on busier boxes.
+    // wal_autocheckpoint sizing (2026-07-25 launch-readiness pass, corrected
+    // 2026-07-27): the previous 10000-page default was described as "~78MB
+    // of WAL, at this DB's page_size=8192" — but `db.pragma("page_size =
+    // 8192")` further down this function runs AFTER `journal_mode = WAL` on
+    // an already-open/existing database file, which SQLite defines as a
+    // NO-OP (page_size can only be changed on a fresh DB before its first
+    // write, or via VACUUM, neither of which happens here). The real,
+    // always-has-been page size on this DB is SQLite's compiled default,
+    // 4096 bytes — so every byte figure in this comment block was off by
+    // 2×. The actual REASONING (checkpoint flush is synchronous and
+    // untraceable on the main thread, smaller/more-frequent beats rarer/
+    // larger) still holds; only the page-size assumption was wrong. Pages
+    // recomputed against the real 4096: 8192 pages = 32MB — the SAME byte
+    // target the original comment intended, now actually achieved. Override
+    // via env if you've verified a different real page_size (PRAGMA
+    // page_size on the live DB).
+    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 8192;
+    // Stability audit (2026-07-20, page-size math corrected 2026-07-27) —
+    // wal_autocheckpoint sets the checkpoint CADENCE, but under checkpoint
+    // starvation (a long-running reader holding the WAL open, an export, a
+    // stuck analytics query) SQLite can't reclaim the WAL file even at that
+    // cadence, and it grows unbounded until the disk fills — which then
+    // breaks writes for every user, not just the slow reader.
+    // journal_size_limit is the hard backstop: once the WAL exceeds this
+    // size, SQLite forcibly truncates it back down after the next
+    // checkpoint that CAN complete, instead of growing forever. With the
+    // real page_size (4096, not the 8192 an earlier version of this file
+    // wrongly assumed — see walPages above), 64MB is genuinely 2× the ~32MB
+    // (8192 pages × 4KB) a normal checkpoint cycle touches — this backstop
+    // should only fire during real starvation, not every normal cycle.
+    // Override via env on busier boxes.
     const walSizeLimitMb = Number(process.env.CONCORD_SQLITE_WAL_SIZE_LIMIT_MB) || 64;
     // busy_timeout (2026-07-25 launch-readiness pass) — research consensus
     // (SQLite docs + production WAL writeups) is unanimous that this is the
@@ -5658,7 +5684,18 @@ function initDatabase() {
       db.pragma(`busy_timeout = ${busyTimeoutMs}`); // 10s default retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
-      db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
+      // REMOVED (audit 2026-07-27): `db.pragma("page_size = 8192")` used to
+      // sit here. SQLite's own docs are explicit that page_size "cannot be
+      // changed while in WAL journal mode... not even on an empty
+      // database" — and journal_mode=WAL is set two lines above this, so
+      // the pragma was a guaranteed no-op on every boot, on every DB, ever.
+      // The real (and only) page size this database has ever had is
+      // SQLite's compiled default, 4096 bytes. wal_autocheckpoint /
+      // journal_size_limit above are sized against that real number, not
+      // the stale 8192 assumption. Changing page_size for real would
+      // require setting it BEFORE journal_mode=WAL on a genuinely fresh
+      // (pre-existing-file) database, or a VACUUM on an existing one —
+      // out of scope for what was a minor I/O-amortization tweak.
       db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
     }
 
@@ -32576,9 +32613,16 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
     console.warn("[WARN] JWT_SECRET is missing or too short — using an insecure default for development. Generate with: openssl rand -hex 32");
   }
 }
-if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 16) {
+// Threshold (32) matches the earlier SESSION_SECRET gate in
+// validateEnvironment() above — audit 2026-07-27 fixed a real
+// inconsistency (this used to say 16, that said 32), which meant a
+// 16-31 char secret died at the OTHER gate while THIS message implied 16
+// was sufficient. Also note: SESSION_SECRET has no express-session
+// consumer in this codebase — see the other gate's comment for the real
+// (connector-token wrapping) usage.
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
   if (process.env.NODE_ENV === "production") {
-    console.error("[FATAL] SESSION_SECRET must be set in production. Generate with: openssl rand -hex 32");
+    console.error("[FATAL] SESSION_SECRET must be set in production (>= 32 characters). Generate with: openssl rand -hex 32");
     process.exit(1);
   }
 }
