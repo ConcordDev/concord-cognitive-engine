@@ -15,6 +15,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { registerHandleLeakGuard } from "./lib/handle-leak-guard.js";
+
+// This file imports all 231 server/emergent/*.js modules (listEmergentModules
+// below) purely to check shape — several are heartbeat modules that start a
+// real setInterval as a module-level or first-call side effect (the same
+// class of leak root-caused in coverage-smoke.test.js/
+// coverage-smoke-routes-lib.test.js — correct for a real single-boot
+// production process, but leaked here since this file only imports them
+// once for a structural check and never tears anything down). See
+// tests/lib/handle-leak-guard.js for the full writeup.
+registerHandleLeakGuard();
 
 const HERE = new URL(".", import.meta.url).pathname;
 const EMERGENT_DIR = join(HERE, "..", "emergent");

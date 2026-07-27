@@ -23,6 +23,18 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { registerHandleLeakGuard } from "./lib/handle-leak-guard.js";
+
+// city-presence.js's startNpcLoop/startPresenceBroadcast (called during
+// probing) and emergent/developer-sdk.js's two module-level setInterval
+// calls (fired at import time alone) each leak a real, persistent interval
+// — correct in production (meant to run for the process's lifetime after a
+// single real boot), but a genuine leak here since this file only imports/
+// calls them once for c8 coverage credit and never stops them. Left
+// unswept, the file-level wrapper hits its 300s timeout waiting for an
+// event loop that never empties, well after every declared subtest already
+// reported `ok`. See tests/lib/handle-leak-guard.js for the full writeup.
+registerHandleLeakGuard();
 
 const MODULES = [
   // Batch 1: ranks 1-10 (228 exports combined)
