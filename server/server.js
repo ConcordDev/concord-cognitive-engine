@@ -19502,6 +19502,29 @@ async function callBrain(brainName, prompt, options = {}) {
     return { ok: false, error: `Brain ${brainName} offline and no fallback`, source: brainName };
   }
 
+  // Private/High Power Mode (migration 397) — callBrain has NO cloud path
+  // today (it only ever dispatches to a local Ollama endpoint, per the
+  // "Sovereignty principle" fallback above), so this is a no-op guard
+  // against a FUTURE platform-provider branch being added here, not a
+  // behavior change now. What IS load-bearing today: reusing the
+  // already-existing-but-previously-unpopulated options._userId field
+  // (read below by checkRateLimit/recordCost) — callers that have a real
+  // user's request on the stack now thread it through, so those two
+  // existing mechanisms get real per-user attribution instead of always
+  // seeing "default". See the plan's rubric: user-scoped call sites (a
+  // specific user's own request/content on the stack) pass options._userId;
+  // system-scoped ones (dream/autogen cycles over the whole corpus,
+  // cross-user governance) correctly pass nothing — there is no single
+  // account's data in them, so nothing to attribute.
+  const _cbUserId = options._userId || null;
+  const _cbMode = options._brainMode || (STATE?.db && _cbUserId ? (function _lookupMode() {
+    try {
+      const row = STATE.db.prepare("SELECT brain_mode FROM users WHERE id = ?").get(_cbUserId);
+      return row?.brain_mode === "high_power" ? "high_power" : "private";
+    } catch { return "private"; }
+  })() : "private");
+  void _cbMode; // no cloud branch to gate yet — see comment above
+
   // Phase D wiring — prefer the load-balanced endpoint from brain-config.js's
   // multi-endpoint picker (BRAIN_<NAME>_URLS) when configured; falls back to
   // the singular BRAIN[brainName].url unchanged when no plural env var is
@@ -19756,7 +19779,7 @@ ${_sharedToolRules}` : "";
               const classifyBy = String(tc.params.classifyBy || "domain");
               // Use utility brain for classification (but NOT with tools to prevent recursion)
               try {
-                const cr = await callBrain("utility", `Classify the following ${classifyBy}. Return ONLY a JSON object with keys "label" and "confidence" (0-1). Content:\n${content}`, { maxTokens: 100, temperature: 0.1 });
+                const cr = await callBrain("utility", `Classify the following ${classifyBy}. Return ONLY a JSON object with keys "label" and "confidence" (0-1). Content:\n${content}`, { maxTokens: 100, temperature: 0.1, _userId: options._userId });
                 _brainToolResults.push({ tool: "classify_content", ok: true, result: (cr.content || "").slice(0, MAX_TOOL_RESULT_LEN) });
               } catch (_ce) {
                 _brainToolResults.push({ tool: "classify_content", ok: false, error: String(_ce?.message || _ce) });
@@ -20118,6 +20141,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
         maxTokens: 500,
         timeout: 15000,
         enableTools: true,
+        _userId: userId,
       });
 
       if (result.ok && result.content) {
@@ -20187,7 +20211,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
     try {
       const queryPrompt = buildQueryGenerationPrompt(userMessage, lens);
       const queryResult = await callBrain("utility", queryPrompt, {
-        temperature: 0.3, maxTokens: 200, timeout: 10000,
+        temperature: 0.3, maxTokens: 200, timeout: 10000, _userId: userId,
       });
       if (queryResult.ok && queryResult.content) {
         const parsed = JSON.parse(queryResult.content.match(/\{[\s\S]*\}/)?.[0] || "{}");
@@ -20210,7 +20234,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
       };
       const evalPrompt = buildEvaluationPrompt(userMessage, contextSummary, lens);
       const evalResult = await callBrain("utility", evalPrompt, {
-        temperature: 0.2, maxTokens: 300, timeout: 10000,
+        temperature: 0.2, maxTokens: 300, timeout: 10000, _userId: userId,
       });
       if (evalResult.ok && evalResult.content) {
         const parsed = JSON.parse(evalResult.content.match(/\{[\s\S]*\}/)?.[0] || "{}");
@@ -20263,6 +20287,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
     temperature: options.temperature || consciousParams.temperature,
     maxTokens: options.maxTokens || consciousParams.maxTokens,
     timeout: options.timeout || 60000,
+    _userId: userId,
   });
 
   // ── Metrics ──
@@ -49360,6 +49385,7 @@ app.post("/api/shared-session/:id/chat", requireAuth(), validate("sharedSessionC
       system: systemPrompt,
       temperature: 0.7,
       maxTokens: 1000,
+      _userId: userId,
     });
 
     const aiText = response?.text || response?.content || response?.reply || (typeof response === "string" ? response : JSON.stringify(response));
