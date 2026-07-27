@@ -12,6 +12,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FolderPlus, Trash2, Loader2, Save, Sparkles, MessageSquare, Download, ChevronRight, ChevronDown, Plus, Copy, Timer, Square } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { WhiteboardCollabPanel } from './WhiteboardCollabPanel';
 import { WhiteboardWorkspaceSummary } from './WhiteboardWorkspaceSummary';
@@ -518,12 +519,10 @@ function BoardTimer({ boardId }: { boardId: string }) {
     } catch { /* keep last state */ }
   }, [boardId]);
 
-  // Server sync on board change + every 15s; local 1s countdown in between.
+  // Server sync on board change + every 15s (tab-visibility-aware, jittered
+  // via useSmartPolling); local 1s countdown in between.
   useEffect(() => { void sync(); setMenuOpen(false); }, [boardId, sync]);
-  useEffect(() => {
-    const poll = setInterval(() => { void sync(); }, 15000);
-    return () => clearInterval(poll);
-  }, [sync]);
+  useSmartPolling(() => { void sync(); }, 15000, { immediate: false });
   const countingDown = remaining != null;
   useEffect(() => {
     if (!countingDown) return;

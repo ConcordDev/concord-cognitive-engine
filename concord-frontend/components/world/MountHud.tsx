@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Rabbit, Loader2, LogOut, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { cn } from '@/lib/utils';
 
 // ── Backend shapes (verified against server/domains/mounts.js + mount-care.js) ──
@@ -98,10 +99,7 @@ export function MountHud({ worldId, pollMs = 20_000 }: Props) {
   }, [worldId]);
 
   useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => {
-    const id = setInterval(refresh, pollMs);
-    return () => clearInterval(id);
-  }, [refresh, pollMs]);
+  useSmartPolling(refresh, pollMs, { immediate: false });
 
   const summon = useCallback(async (companionId: string) => {
     setBusy(true);
