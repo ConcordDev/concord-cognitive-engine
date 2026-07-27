@@ -30,6 +30,7 @@ type BrainMode = 'private' | 'high_power';
 interface BrainModeResult {
   brainMode: BrainMode;
   brainModeSetAt: number | null;
+  highPowerAllowed?: boolean;
 }
 
 interface Props {
@@ -44,11 +45,19 @@ export function BrainModePanel({ onModeChange }: Props = {}) {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Rollout gate (CONCORD_HIGH_POWER_ALLOWLIST, server/lib/
+  // high-power-allowlist.js) — independent of brain_mode. Defaults
+  // permissive so the panel doesn't flash a disabled state before the
+  // real value loads; the write path (byo_keys.set_brain_mode) re-checks
+  // it server-side regardless, so this default is display-only, never
+  // the enforcement point.
+  const [highPowerAllowed, setHighPowerAllowed] = useState(true);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<BrainModeResult>('byo_keys', 'get_brain_mode', {});
     if (r.data?.ok && r.data.result) {
       setMode(r.data.result.brainMode);
+      if (typeof r.data.result.highPowerAllowed === 'boolean') setHighPowerAllowed(r.data.result.highPowerAllowed);
       onModeChange?.(r.data.result.brainMode);
       setError(null);
     } else if (r.data && r.data.ok === false) {
@@ -64,6 +73,7 @@ export function BrainModePanel({ onModeChange }: Props = {}) {
 
   const choose = async (next: BrainMode) => {
     if (next === mode) return;
+    if (next === 'high_power' && !highPowerAllowed) return;
     setBusy(true);
     setError(null);
     const r = await lensRun<BrainModeResult>('byo_keys', 'set_brain_mode', { brainMode: next });
@@ -133,7 +143,7 @@ export function BrainModePanel({ onModeChange }: Props = {}) {
         <button
           type="button"
           onClick={() => choose('high_power')}
-          disabled={busy}
+          disabled={busy || !highPowerAllowed}
           aria-pressed={!isPrivate}
           data-testid="brain-mode-select-high-power"
           className={`text-left rounded-lg border p-3 transition-all disabled:opacity-60 ${
@@ -157,6 +167,9 @@ export function BrainModePanel({ onModeChange }: Props = {}) {
             <strong className="text-amber-300">Some of these providers may use your messages to improve their own AI models</strong> — Groq does
             not, Gemini and Mistral&apos;s free tiers do.
           </p>
+          {!highPowerAllowed && (
+            <p className="mt-1 text-[10px] text-zinc-500" data-testid="brain-mode-high-power-gated">Not available on your account yet.</p>
+          )}
         </button>
       </div>
 

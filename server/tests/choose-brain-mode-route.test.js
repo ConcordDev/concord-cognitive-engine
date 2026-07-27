@@ -189,4 +189,68 @@ describe("GET /api/auth/me — brainMode + needsBrainModeChoice surfacing", () =
     assert.equal(r.body.user.brainMode, "high_power");
     assert.equal(r.body.user.needsBrainModeChoice, false);
   });
+
+  it("surfaces highPowerAllowed: true when CONCORD_HIGH_POWER_ALLOWLIST is unset", async () => {
+    delete process.env.CONCORD_HIGH_POWER_ALLOWLIST;
+    const r = await get("/api/auth/me");
+    assert.equal(r.body.user.highPowerAllowed, true);
+  });
+});
+
+describe("choose-brain-mode — CONCORD_HIGH_POWER_ALLOWLIST rollout gate", () => {
+  const ORIGINAL_ALLOWLIST = process.env.CONCORD_HIGH_POWER_ALLOWLIST;
+  before(() => {
+    // A prior describe block in this same file already left user 'u1' at
+    // brain_mode='high_power' — reset to a known 'private' baseline so
+    // this block's own write/no-write assertions are meaningful.
+    db.prepare("UPDATE users SET brain_mode = 'private', brain_mode_set_at = NULL WHERE id = ?").run("u1");
+  });
+  after(() => {
+    if (ORIGINAL_ALLOWLIST === undefined) delete process.env.CONCORD_HIGH_POWER_ALLOWLIST;
+    else process.env.CONCORD_HIGH_POWER_ALLOWLIST = ORIGINAL_ALLOWLIST;
+  });
+
+  it("rejects 'high_power' with 403 when the allowlist is a hard lockout (empty string)", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "";
+    const r = await post("/api/auth/choose-brain-mode", { brainMode: "high_power" });
+    assert.equal(r.status, 403);
+    assert.equal(r.body.error, "high_power_not_available");
+    // Must not have been written — re-fetch and confirm unchanged.
+    const row = db.prepare("SELECT brain_mode FROM users WHERE id = ?").get("u1");
+    assert.notEqual(row.brain_mode, "high_power");
+  });
+
+  it("'private' is NEVER gated — always succeeds even under a hard lockout", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "";
+    const r = await post("/api/auth/choose-brain-mode", { brainMode: "private" });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.brainMode, "private");
+  });
+
+  it("rejects 'high_power' with 403 when the caller's id is not on a restrictive list", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "someone_else,another_user";
+    const r = await post("/api/auth/choose-brain-mode", { brainMode: "high_power" });
+    assert.equal(r.status, 403);
+    assert.equal(r.body.error, "high_power_not_available");
+  });
+
+  it("succeeds when the caller's id IS on the allowlist", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "u1,someone_else";
+    const r = await post("/api/auth/choose-brain-mode", { brainMode: "high_power" });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.brainMode, "high_power");
+  });
+
+  it("succeeds when the allowlist is '*' (explicit open)", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "*";
+    const r = await post("/api/auth/choose-brain-mode", { brainMode: "high_power" });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.brainMode, "high_power");
+  });
+
+  it("GET /api/auth/me's highPowerAllowed reflects a restrictive allowlist honestly", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "someone_else";
+    const r = await get("/api/auth/me");
+    assert.equal(r.body.user.highPowerAllowed, false);
+  });
 });

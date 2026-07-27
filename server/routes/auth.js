@@ -13,6 +13,7 @@ import {
   consumeResetToken,
   getEmailServiceStatus,
 } from "../lib/email-service.js";
+import { isHighPowerModeAllowed } from "../lib/high-power-allowlist.js";
 
 // ── Auth rate limiters (defense-in-depth) ────────────────────────────────────
 // Two independent buckets:
@@ -421,6 +422,11 @@ export default function createAuthRouter({
         // asked") — the frontend uses this, not brainMode itself, to
         // decide whether to show the ChooseYourBrain onboarding step.
         needsBrainModeChoice: !brainModeSetAt,
+        // Rollout gate (CONCORD_HIGH_POWER_ALLOWLIST) — independent of
+        // brain_mode. The frontend uses this to decide whether to show
+        // the High Power card/toggle at all; Private is never gated by
+        // it. See lib/high-power-allowlist.js for the full contract.
+        highPowerAllowed: isHighPowerModeAllowed(req.user.id),
         // Convenience: frontend gate for the onboarding screen.
         needsOnboarding: !declaredRegional && !declaredNational && !primaryLens,
       }
@@ -533,9 +539,11 @@ export default function createAuthRouter({
   // configured BYO key, so choosing 'private' here is a hard guarantee,
   // not a preference.
   //
-  // NOTE: visibility/allowlist gating for High Power Mode
-  // (CONCORD_HIGH_POWER_ALLOWLIST) is a separate, later hardening pass —
-  // this endpoint accepts either value for any authenticated user today.
+  // Rollout gate: CONCORD_HIGH_POWER_ALLOWLIST (lib/high-power-allowlist.js).
+  // Re-checked HERE, server-side, not just hidden in the frontend UI — a
+  // client that skips (or never loads) the visibility check can't bypass
+  // it by calling this endpoint directly. Private is NEVER gated by this;
+  // only an attempt to set 'high_power' can be rejected.
   router.post("/choose-brain-mode", (req, res) => {
     if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
     const { brainMode } = req.body || {};
@@ -545,6 +553,9 @@ export default function createAuthRouter({
         error: "invalid_brain_mode",
         allowed: ["private", "high_power"],
       });
+    }
+    if (brainMode === "high_power" && !isHighPowerModeAllowed(req.user.id)) {
+      return res.status(403).json({ ok: false, error: "high_power_not_available" });
     }
 
     try {

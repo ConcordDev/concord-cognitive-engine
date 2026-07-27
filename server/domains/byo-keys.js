@@ -22,6 +22,7 @@ import {
 import { BYO_PROVIDERS } from "../lib/byo-providers.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { setRateLimit, getRateLimitStatus, ensureByoKeysLensState } from "../lib/byo-rate-limit.js";
+import { isHighPowerModeAllowed } from "../lib/high-power-allowlist.js";
 
 const VALID_SLOTS = new Set(["conscious", "subconscious", "utility", "repair", "vision"]);
 
@@ -584,8 +585,11 @@ export default function registerByoKeysMacros(register) {
         brainModeSetAt = row.brain_mode_set_at || null;
       }
     } catch { /* migration 397 not applied — fail closed to 'private' */ }
-    return { ok: true, result: { brainMode, brainModeSetAt } };
-  }, { note: "Read the caller's account-wide brain_mode ('private'|'high_power')." });
+    // Rollout gate (CONCORD_HIGH_POWER_ALLOWLIST) — independent of
+    // brain_mode. BrainModePanel.tsx uses this to decide whether to show
+    // the High Power option at all; Private is never gated by it.
+    return { ok: true, result: { brainMode, brainModeSetAt, highPowerAllowed: isHighPowerModeAllowed(userId) } };
+  }, { note: "Read the caller's account-wide brain_mode ('private'|'high_power') and rollout-gate visibility." });
 
   register("byo_keys", "set_brain_mode", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -594,6 +598,12 @@ export default function registerByoKeysMacros(register) {
     const { brainMode } = input;
     if (brainMode !== "private" && brainMode !== "high_power") {
       return { ok: false, reason: "invalid_brain_mode", allowed: ["private", "high_power"] };
+    }
+    // Re-checked HERE, server-side — not just hidden in BrainModePanel's
+    // UI — so a caller that skips the visibility check can't bypass it
+    // via a direct macro call.
+    if (brainMode === "high_power" && !isHighPowerModeAllowed(userId)) {
+      return { ok: false, reason: "high_power_not_available" };
     }
     try {
       try {

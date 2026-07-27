@@ -1,7 +1,8 @@
 /// <reference types="@testing-library/jest-dom/vitest" />
 // ChooseYourBrain — Private Mode / High Power Mode onboarding screen.
 //
-// Task #28 of the Private Mode / High Power Mode plan. Pins:
+// Task #28 of the Private Mode / High Power Mode plan (plus task #33's
+// rollout-gate wiring). Pins:
 //   1. Private is pre-selected by default.
 //   2. Both disclosure blocks actually render the approved copy verbatim
 //      -- not just "the toggle works" but that the plain-and-specific
@@ -10,6 +11,8 @@
 //   3. Submitting posts the selected mode to /api/auth/choose-brain-mode.
 //   4. onComplete fires on success; the default fallback navigates to
 //      /onboarding (the universe-seeding step that runs after this one).
+//   5. The rollout gate (highPowerAllowed from GET /api/auth/me) disables
+//      the High Power card when the account isn't allowlisted.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -17,8 +20,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const post = vi.fn();
+const get = vi.fn();
 vi.mock('@/lib/api/client', () => ({
-  api: { post: (...a: unknown[]) => post(...a) },
+  api: { post: (...a: unknown[]) => post(...a), get: (...a: unknown[]) => get(...a) },
 }));
 
 const pushMock = vi.fn();
@@ -40,6 +44,7 @@ function renderWithClient(props: Parameters<typeof ChooseYourBrain>[0] = {}) {
 describe('ChooseYourBrain', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    get.mockResolvedValue({ data: { user: { highPowerAllowed: true } } });
   });
 
   it('pre-selects Private by default', () => {
@@ -65,8 +70,9 @@ describe('ChooseYourBrain', () => {
     expect(screen.getByText(/Some of these providers may use your messages to improve their own AI models/)).toBeInTheDocument();
   });
 
-  it('selecting High Power flips aria-pressed and the continue-button label', () => {
+  it('selecting High Power flips aria-pressed and the continue-button label', async () => {
     renderWithClient();
+    await waitFor(() => expect(get).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /High Power — faster, more capable, not private/ }));
     expect(screen.getByRole('button', { name: /High Power — faster, more capable, not private/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /Private — local only/ })).toHaveAttribute('aria-pressed', 'false');
@@ -113,5 +119,44 @@ describe('ChooseYourBrain', () => {
 
     await waitFor(() => expect(screen.getByText('network down')).toBeInTheDocument());
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  describe('rollout gate (CONCORD_HIGH_POWER_ALLOWLIST via GET /api/auth/me)', () => {
+    it('disables the High Power card when highPowerAllowed is false', async () => {
+      get.mockResolvedValue({ data: { user: { highPowerAllowed: false } } });
+      renderWithClient();
+
+      const highPowerCard = await screen.findByTestId('brain-mode-onboarding-high-power');
+      await waitFor(() => expect(highPowerCard).toBeDisabled());
+      expect(screen.getByTestId('brain-mode-onboarding-high-power-gated')).toBeInTheDocument();
+    });
+
+    it('clicking a disabled High Power card does not change the selection', async () => {
+      get.mockResolvedValue({ data: { user: { highPowerAllowed: false } } });
+      renderWithClient();
+
+      const highPowerCard = await screen.findByTestId('brain-mode-onboarding-high-power');
+      await waitFor(() => expect(highPowerCard).toBeDisabled());
+      fireEvent.click(highPowerCard);
+      expect(highPowerCard).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByRole('button', { name: /Private — local only/ })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('a fetch failure on /api/auth/me defaults to permissive (High Power stays selectable)', async () => {
+      get.mockRejectedValue(new Error('network down'));
+      renderWithClient();
+
+      await waitFor(() => expect(get).toHaveBeenCalled());
+      const highPowerCard = screen.getByRole('button', { name: /High Power — faster, more capable, not private/ });
+      expect(highPowerCard).not.toBeDisabled();
+    });
+
+    it('when allowed, the card is enabled and carries no gated note', async () => {
+      renderWithClient();
+      const highPowerCard = await screen.findByTestId('brain-mode-onboarding-high-power');
+      await waitFor(() => expect(get).toHaveBeenCalled());
+      expect(highPowerCard).not.toBeDisabled();
+      expect(screen.queryByTestId('brain-mode-onboarding-high-power-gated')).toBeNull();
+    });
   });
 });

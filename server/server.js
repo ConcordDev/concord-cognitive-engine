@@ -57210,6 +57210,37 @@ app.get("/api/admin/brain-endpoints", requireRole("owner", "admin", "sovereign",
   }
 });
 
+// Private/High Power Mode diagnostic (task #33 of the plan) — lets an
+// operator watch real platform-provider spend/volume on a small
+// allowlisted group (CONCORD_HIGH_POWER_ALLOWLIST) before removing the
+// rollout gate. Reports, per (provider, slot): whether a key is
+// configured, the live rate-limit bucket state (never a token/message
+// count — no user content), and the rolling daily spend estimate. Never
+// exposes the allowlist's actual membership (that's operator config, not
+// runtime state worth leaking over an API) — only its MODE (open / closed
+// / list-restricted) and size when list-restricted.
+app.get("/api/admin/platform-providers-status", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { platformProviderConfigured } = await import("./lib/platform-providers.js");
+    const { getPlatformBudgetStatus } = await import("./lib/platform-providers-budget.js");
+    const { describeAllowlistMode } = await import("./lib/high-power-allowlist.js");
+    const SLOTS = ["conscious", "subconscious", "utility", "repair", "vision"];
+    const configured = Object.fromEntries(SLOTS.map((s) => [s, platformProviderConfigured(s)]));
+    const budget = getPlatformBudgetStatus();
+    const allowlist = describeAllowlistMode();
+
+    res.json({
+      ok: true,
+      allowlist,
+      configuredBySlot: configured,
+      budget,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // Per-brain ACTIVITY readout — aggregate counters only (requests / errors / avg latency /
 // last-active), NEVER message content. Lets an operator watch the division of labor live:
 // is the subconscious actually thinking, is conscious handling chat, utility the tools, etc.

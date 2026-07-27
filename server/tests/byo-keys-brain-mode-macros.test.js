@@ -10,7 +10,7 @@
 // byo-router.js#getBrainMode helper regardless of which surface wrote
 // it last.
 
-import { describe, it, before, beforeEach } from "node:test";
+import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 
@@ -108,5 +108,56 @@ describe("byo_keys.set_brain_mode", () => {
     const { getBrainMode } = await import("../lib/byo-router.js");
     await call("set_brain_mode", ctxA, { brainMode: "high_power" });
     assert.equal(getBrainMode(db, "user_a"), "high_power");
+  });
+});
+
+describe("byo_keys.set_brain_mode / get_brain_mode — CONCORD_HIGH_POWER_ALLOWLIST rollout gate", () => {
+  const ORIGINAL_ALLOWLIST = process.env.CONCORD_HIGH_POWER_ALLOWLIST;
+  after(() => {
+    if (ORIGINAL_ALLOWLIST === undefined) delete process.env.CONCORD_HIGH_POWER_ALLOWLIST;
+    else process.env.CONCORD_HIGH_POWER_ALLOWLIST = ORIGINAL_ALLOWLIST;
+  });
+
+  it("rejects set_brain_mode('high_power') under a hard lockout (empty allowlist)", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "";
+    const r = await call("set_brain_mode", ctxA, { brainMode: "high_power" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "high_power_not_available");
+    const row = db.prepare("SELECT brain_mode FROM users WHERE id = 'user_a'").get();
+    assert.equal(row.brain_mode, "private");
+  });
+
+  it("'private' is never gated, even under a hard lockout", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "";
+    const r = await call("set_brain_mode", ctxA, { brainMode: "private" });
+    assert.equal(r.ok, true);
+  });
+
+  it("rejects set_brain_mode('high_power') when the caller isn't on a restrictive list", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "user_z";
+    const r = await call("set_brain_mode", ctxA, { brainMode: "high_power" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "high_power_not_available");
+  });
+
+  it("succeeds when the caller IS on the allowlist", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "user_a";
+    const r = await call("set_brain_mode", ctxA, { brainMode: "high_power" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.brainMode, "high_power");
+  });
+
+  it("get_brain_mode surfaces highPowerAllowed honestly per-user", async () => {
+    process.env.CONCORD_HIGH_POWER_ALLOWLIST = "user_a";
+    const rA = await call("get_brain_mode", ctxA);
+    const rB = await call("get_brain_mode", ctxB);
+    assert.equal(rA.result.highPowerAllowed, true);
+    assert.equal(rB.result.highPowerAllowed, false);
+  });
+
+  it("get_brain_mode reports highPowerAllowed: true for everyone when the allowlist is unset", async () => {
+    delete process.env.CONCORD_HIGH_POWER_ALLOWLIST;
+    const rA = await call("get_brain_mode", ctxA);
+    assert.equal(rA.result.highPowerAllowed, true);
   });
 });

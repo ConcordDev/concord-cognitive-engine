@@ -21,9 +21,20 @@
  * server/lib/byo-router.js#getBrainMode — see that file's header for
  * the full precedence contract). The backend's /api/auth/me then
  * returns needsBrainModeChoice: false so this screen stops re-appearing.
+ *
+ * Rollout gate: /api/auth/me also returns `highPowerAllowed`
+ * (CONCORD_HIGH_POWER_ALLOWLIST, see server/lib/high-power-allowlist.js)
+ * — independent of brain_mode, a separate operator-controlled visibility
+ * switch for the High Power option while its real-world spend/volume is
+ * being watched. When false, the High Power card is disabled (not
+ * hidden — the disclosure copy and the fact that the feature exists stay
+ * honest) and the choice defaults to Private. This is checked here for
+ * DISPLAY only; the write path (POST /api/auth/choose-brain-mode)
+ * re-checks it server-side regardless, so this is a UX nicety, not the
+ * enforcement point.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -41,6 +52,17 @@ export function ChooseYourBrain({ onComplete }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<BrainMode>('private');
   const [error, setError] = useState<string | null>(null);
+  const [highPowerAllowed, setHighPowerAllowed] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/auth/me').then(({ data }) => {
+      if (!cancelled && data?.user && typeof data.user.highPowerAllowed === 'boolean') {
+        setHighPowerAllowed(data.user.highPowerAllowed);
+      }
+    }).catch(() => { /* best-effort — default stays permissive on a fetch failure */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const mutation = useMutation({
     mutationFn: async (brainMode: BrainMode) => {
@@ -58,6 +80,7 @@ export function ChooseYourBrain({ onComplete }: Props) {
   });
 
   const handleContinue = () => mutation.mutate(selected);
+  const selectHighPower = () => { if (highPowerAllowed) setSelected('high_power'); };
 
   return (
     <div className="min-h-screen bg-lattice-void flex items-center justify-center p-6">
@@ -106,18 +129,22 @@ export function ChooseYourBrain({ onComplete }: Props) {
           {/* High Power */}
           <button
             type="button"
-            onClick={() => setSelected('high_power')}
+            onClick={selectHighPower}
+            disabled={!highPowerAllowed}
             aria-pressed={selected === 'high_power'}
+            data-testid="brain-mode-onboarding-high-power"
             className={cn(
               'text-left rounded-2xl border-2 p-6 transition-all',
-              selected === 'high_power'
+              !highPowerAllowed
+                ? 'border-lattice-border bg-lattice-deep opacity-50 cursor-not-allowed'
+                : selected === 'high_power'
                 ? 'border-amber-400 bg-amber-400/10 ring-2 ring-amber-400/40'
                 : 'border-lattice-border bg-lattice-deep hover:border-amber-400/30',
             )}
           >
             <div className="flex items-center justify-between mb-3">
               <Zap className="w-7 h-7 text-amber-400" />
-              {selected === 'high_power' && (
+              {selected === 'high_power' && highPowerAllowed && (
                 <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-amber-400">
                   <Check className="w-3 h-3" /> Selected
                 </span>
@@ -128,7 +155,11 @@ export function ChooseYourBrain({ onComplete }: Props) {
               Your messages are sent to third-party AI providers (<strong className="text-white">Google Gemini, Mistral, and Groq</strong>) to give you stronger responses.{' '}
               <strong className="text-amber-300">Some of these providers may use your messages to improve their own AI models</strong> — Groq does not, Gemini and Mistral&rsquo;s free tiers do. Private Mode never shares your data with anyone.
             </p>
-            <p className="text-[11px] text-amber-400/80 mt-3 font-medium">You can switch back at any time in Settings.</p>
+            {highPowerAllowed ? (
+              <p className="text-[11px] text-amber-400/80 mt-3 font-medium">You can switch back at any time in Settings.</p>
+            ) : (
+              <p className="text-[11px] text-gray-400 mt-3 font-medium" data-testid="brain-mode-onboarding-high-power-gated">Not available on your account yet.</p>
+            )}
           </button>
         </div>
 

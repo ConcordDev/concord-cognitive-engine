@@ -137,4 +137,46 @@ describe('BrainModePanel', () => {
     // The badge must NOT have flipped on a failed write.
     expect(screen.getByTestId('brain-mode-current')).toHaveTextContent('PRIVATE');
   });
+
+  describe('rollout gate (CONCORD_HIGH_POWER_ALLOWLIST, highPowerAllowed from get_brain_mode)', () => {
+    it('disables the High Power button and shows a gated note when highPowerAllowed is false', async () => {
+      lensRunMock.mockResolvedValue({
+        data: { ok: true, result: { brainMode: 'private', brainModeSetAt: null, highPowerAllowed: false }, error: null },
+      });
+      render(<BrainModePanel />);
+      await waitFor(() => expect(screen.getByTestId('brain-mode-select-high-power')).toBeDisabled());
+      expect(screen.getByTestId('brain-mode-high-power-gated')).toBeInTheDocument();
+    });
+
+    it('clicking a gated High Power button never calls set_brain_mode', async () => {
+      lensRunMock.mockResolvedValue({
+        data: { ok: true, result: { brainMode: 'private', brainModeSetAt: null, highPowerAllowed: false }, error: null },
+      });
+      render(<BrainModePanel />);
+      await waitFor(() => expect(lensRunMock).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByTestId('brain-mode-select-high-power'));
+      await new Promise((r) => setTimeout(r, 10));
+      expect(lensRunMock).toHaveBeenCalledTimes(1); // only the initial get_brain_mode load
+    });
+
+    it('is enabled and shows no gated note when highPowerAllowed is true', async () => {
+      lensRunMock.mockResolvedValue({
+        data: { ok: true, result: { brainMode: 'private', brainModeSetAt: null, highPowerAllowed: true }, error: null },
+      });
+      render(<BrainModePanel />);
+      await waitFor(() => expect(screen.getByTestId('brain-mode-current')).toBeInTheDocument());
+      expect(screen.getByTestId('brain-mode-select-high-power')).not.toBeDisabled();
+      expect(screen.queryByTestId('brain-mode-high-power-gated')).toBeNull();
+    });
+
+    it('defaults permissive (not disabled) when the backend omits highPowerAllowed', async () => {
+      lensRunMock.mockResolvedValue({
+        data: { ok: true, result: { brainMode: 'private', brainModeSetAt: null }, error: null },
+      });
+      render(<BrainModePanel />);
+      await waitFor(() => expect(screen.getByTestId('brain-mode-current')).toBeInTheDocument());
+      expect(screen.getByTestId('brain-mode-select-high-power')).not.toBeDisabled();
+    });
+  });
 });
