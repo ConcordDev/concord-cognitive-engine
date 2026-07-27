@@ -67,19 +67,20 @@ export default function CouncilTheaterPanel() {
   useSmartPolling(load, 8_000);
 
   // Realtime: subscribe to socket.io events for low-latency voice updates.
+  // Uses the SHARED singleton from lib/realtime/socket — the previous
+  // `io('/')` same-origin socket connected to the Next.js server (:3000),
+  // whose rewrites proxy HTTP but NOT WebSocket upgrades, so in the tunnel
+  // topology it died on every mount (documented live failure — see
+  // lib/realtime/socket.ts header). Listeners are removed on unmount; the
+  // shared socket stays up for the rest of the app.
   useEffect(() => {
     let mounted = true;
-    type SocketLike = {
-      on: (e: string, h: (p: unknown) => void) => void;
-      off: (e: string, h: (p: unknown) => void) => void;
-      disconnect?: () => void;
-    };
-    let socket: SocketLike | null = null;
+    let cleanup: (() => void) | null = null;
     (async () => {
       try {
-        const { io } = await import('socket.io-client');
+        const { getSocket } = await import('@/lib/realtime/socket');
         if (!mounted) return;
-        socket = io('/', { withCredentials: true, transports: ['websocket', 'polling'] }) as unknown as SocketLike;
+        const socket = getSocket();
 
         const onVoice = (payload: unknown) => {
           const v = payload as VoiceEntry & { eventId: string };
@@ -136,16 +137,22 @@ export default function CouncilTheaterPanel() {
             };
           });
         };
-        socket?.on('council:theater:voice', onVoice);
-        socket?.on('council:theater:started', onStarted);
-        socket?.on('council:theater:scheduled', onScheduled);
-        socket?.on('council:theater:complete', onComplete);
+        socket.on('council:theater:voice', onVoice);
+        socket.on('council:theater:started', onStarted);
+        socket.on('council:theater:scheduled', onScheduled);
+        socket.on('council:theater:complete', onComplete);
         wsRef.current = socket as unknown as WebSocket;
+        cleanup = () => {
+          socket.off('council:theater:voice', onVoice);
+          socket.off('council:theater:started', onStarted);
+          socket.off('council:theater:scheduled', onScheduled);
+          socket.off('council:theater:complete', onComplete);
+        };
       } catch { /* socket library not available — HTTP polling carries the load */ }
     })();
     return () => {
       mounted = false;
-      try { (socket as unknown as { disconnect?: () => void })?.disconnect?.(); } catch { /* ok */ }
+      try { cleanup?.(); } catch { /* ok */ }
     };
   }, []);
 

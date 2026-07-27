@@ -242,18 +242,23 @@ const FORWARDED_EVENTS: SocketEvent[] = [
 interface UseSocketOptions {
   /** Connect automatically on mount (default: false — opt-in to reduce idle connections) */
   autoConnect?: boolean;
-  reconnection?: boolean;
-  reconnectionAttempts?: number;
-  reconnectionDelay?: number;
+  // NOTE: reconnection/reconnectionAttempts/reconnectionDelay options were
+  // REMOVED (audit 2026-07-27). They were dead code: this hook wraps the
+  // singleton from lib/realtime/socket.ts, which hardcodes its own
+  // reconnection config (attempts: Infinity) — the options were never
+  // applied, but sat in the effect dependency array, so passing an inline
+  // options object re-ran the whole effect every render.
 }
 
 interface UseSocketReturn {
   socket: Socket | null;
   isConnected: boolean;
   /**
-   * Honest connection status with a terminal state: 'offline' once the
-   * socket.io manager exhausts its reconnectionAttempts (reconnect_failed) —
-   * consumers must stop showing "Connecting…" at that point.
+   * Connection status. 'offline' is defined for reconnect_failed, but the
+   * singleton retries with attempts: Infinity, so in practice status cycles
+   * between connecting/connected/reconnecting — confirmed outage UX comes
+   * from lib/realtime/socket.ts onConnectionLost (grace-debounced), not from
+   * a terminal state here.
    */
   status: ConnectionStatus;
   connect: () => void;
@@ -266,9 +271,6 @@ interface UseSocketReturn {
 export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
   const {
     autoConnect = false, // FE-011: default false to prevent idle connections
-    reconnection = true,
-    reconnectionAttempts = 5,
-    reconnectionDelay = 1000,
   } = options;
 
   const socketRef = useRef<Socket | null>(null);
@@ -294,10 +296,12 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
       setIsConnected(false);
       setStatus((prev) => nextConnectionStatus(prev, 'connect_error'));
     };
-    // Manager-level (socket.io) reconnection lifecycle — the ONLY honest
-    // source for the terminal Offline state: after `reconnectionAttempts`
-    // (socket.ts: 5) are exhausted the manager emits `reconnect_failed` and
-    // stops trying, so "Connecting…" would otherwise show forever.
+    // Manager-level (socket.io) reconnection lifecycle. NOTE: the singleton
+    // (lib/realtime/socket.ts) sets reconnectionAttempts: Infinity, so
+    // `reconnect_failed` never fires in practice — the terminal Offline
+    // state is unreachable by design (the socket retries forever, and
+    // ConnectionStatus surfaces confirmed loss via onConnectionLost).
+    // Handler kept for completeness should the singleton ever cap retries.
     const onReconnectFailed = () => {
       setStatus((prev) => nextConnectionStatus(prev, 'reconnect_failed'));
     };
@@ -396,7 +400,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
       listeners.clear();
       setIsConnected(false);
     };
-  }, [autoConnect, reconnection, reconnectionAttempts, reconnectionDelay, qc]);
+  }, [autoConnect, qc]);
 
   const connect = useCallback(() => {
     if (socketRef.current && !socketRef.current.connected) {

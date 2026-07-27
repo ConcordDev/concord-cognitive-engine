@@ -222,7 +222,23 @@ export default function registerSystemRoutes(app, {
   app.get("/api/health/brain", (req, res) => res.redirect(307, "/api/brain/health"));
 
   app.get("/metrics", asyncHandler(async (req, res) => {
-    // Prometheus-compatible plain text metrics for Concord system
+    // Prometheus-compatible plain text metrics for Concord system.
+    //
+    // AUTH (audit 2026-07-27): in production this endpoint is token-gated.
+    // It exposes entity counts, DTU counts, and brain state — operational
+    // telemetry, not public data — and on the bare-metal path nothing
+    // scrapes it, so serving it unauthenticated was pure attack surface.
+    // Set CONCORD_METRICS_TOKEN and configure the scraper with
+    // `authorization: Bearer <token>` (Prometheus `bearer_token`). When the
+    // var is unset in production, /metrics returns 404 (invisible) rather
+    // than an honest-but-advertising 401. Dev/test stay open for local
+    // tooling.
+    if (process.env.NODE_ENV === "production") {
+      const token = process.env.CONCORD_METRICS_TOKEN || "";
+      if (!token) return res.status(404).end();
+      const auth = String(req.headers.authorization || "");
+      if (auth !== `Bearer ${token}`) return res.status(401).json({ ok: false, error: "metrics_token_required" });
+    }
     const lines = [];
     try {
       // Entity metrics

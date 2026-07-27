@@ -8400,7 +8400,19 @@ export { createBackup, restoreBackup, listBackups };
 // /api/brain/health); without them a no-browser-UA monitor (curl/wget/k8s probe) got a
 // 403 bot_access_denied on the very endpoints meant to report liveness.
 const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health)(\b|\/)/;
-const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
+// Stripe webhooks must never be 429'd: Stripe retries from a rotating IP
+// pool and bursts on redelivery — a rate-limited webhook means a PAID
+// TOKEN_PURCHASE never mints. Safe to exempt: the handler verifies the
+// Stripe signature against STRIPE_WEBHOOK_SECRET before doing anything and
+// is idempotent on event id, so unauthenticated junk hitting these paths
+// costs one signature check and is rejected.
+const _STRIPE_WEBHOOK_RE = /^\/api\/(stripe|economy|economic)\/webhook$/;
+// CI-only escape hatch. HARD-DISABLED in production (audit 2026-07-27):
+// a single env var that switches off every rate limiter is too much power
+// to leave reachable on a prod box — a copied CI env file or a stray
+// export would silently remove all abuse protection.
+const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1"
+  && process.env.NODE_ENV !== "production";
 
 // Track C (rate-limit audit) — this limiter is mounted BEFORE both
 // cookieParserMiddleware and authMiddleware (see middleware/index.js's
@@ -8451,7 +8463,7 @@ if (rateLimit) {
     keyGenerator: _rateLimitKey,
     // Health probes must never be 429'd, and CI suites hammer the server
     // from one IP — exempt both.
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path),
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
   });
   // Stricter rate limiting for auth endpoints (5 attempts per 15 minutes)
   authRateLimiter = rateLimit({
@@ -8470,9 +8482,9 @@ if (rateLimit) {
     // single suite legitimately does many register/login calls (real-creds
     // fixtures plus invalid-credential specs) and would otherwise trip the
     // 5-attempt cap, 429-ing later specs (e.g. playthrough's login). Unit
-    // tests don't set the var; production never sets it. Mirrors the skip
-    // on unauthRateLimiter below.
-    skip: () => process.env.CONCORD_RATE_LIMIT_BYPASS === "1",
+    // tests don't set the var. Uses _RATE_LIMIT_BYPASS_ENV, which is
+    // hard-disabled in production (see its declaration).
+    skip: () => _RATE_LIMIT_BYPASS_ENV,
     skipSuccessfulRequests: true // Don't count successful logins
   });
 }
@@ -8491,7 +8503,10 @@ if (rateLimit) {
 }
 
 // ---- Unauthenticated Request Throttle ----------------------------------------
-// Authenticated users get RATE_LIMIT_MAX (300) RPM.
+// Authenticated users get RATE_LIMIT_MAX RPM (default 6000 — deliberately
+// coarse; see the RATE_LIMIT_MAX declaration comment. The granular
+// per-endpoint buckets in rateLimit.js do the fine-grained shaping; this
+// global cap only catches runaway/abusive traffic).
 // Unauthenticated requests are capped at 30 RPM per IP to deter scraping.
 // Applied AFTER authMiddleware so req.user is already populated.
 let unauthRateLimiter = null;
@@ -8502,7 +8517,11 @@ if (rateLimit) {
   unauthRateLimiter = rateLimit({
     windowMs: 60000,
     max: 30,
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path),
+    // Stripe webhooks are unauthenticated POSTs from Stripe's rotating IP
+    // pool — the 30/min anon cap would throttle a redelivery burst and lose
+    // paid mints. Signature-verified + idempotent, so exempt (see
+    // _STRIPE_WEBHOOK_RE declaration).
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
     keyGenerator: (req) => req.ip,
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
@@ -11329,6 +11348,16 @@ function loadStateFromDisk() {
   }
 }
 
+// Coalescing window for the debounced full-state save. The serialize is
+// ~28 MB of synchronous main-thread work, so its FREQUENCY is the latency
+// budget: at the old 250ms trailing debounce, the heartbeat tick's mutations
+// alone triggered a full serialize ~4×/minute forever — each one a
+// multi-hundred-ms event-loop stall that stacked with socket pings and
+// in-flight requests (the "connection keeps dropping" mechanism). 5s
+// leading-window coalescing bounds worst-case unsaved-mutation age at 5s
+// while cutting steady-state serializes ~20×.
+const STATE_SAVE_COALESCE_MS = Math.max(250, Number(process.env.CONCORD_STATE_SAVE_DEBOUNCE_MS || 5000));
+
 function saveStateDebounced() {
   // Monotonic mutation counter. Every mutation path in the server funnels
   // through here, so this is the cheapest honest "has anything changed?"
@@ -11342,10 +11371,18 @@ function saveStateDebounced() {
     globalThis._concordSaveStateDebounced = saveStateDebounced;
   }
   try {
-    clearTimeout(_saveTimer);
+    // LEADING-window coalescing, not trailing debounce: if a save is already
+    // scheduled, this mutation rides along with it. The old
+    // clearTimeout+reschedule pattern pushed the save further away on every
+    // mutation — under sustained mutation the save could starve until the
+    // periodic safety net. With a fixed window, the save fires at most
+    // STATE_SAVE_COALESCE_MS after the FIRST unsaved mutation, always.
+    if (_saveTimer) return;
     _saveTimer = setTimeout(() => {
+      _saveTimer = null;
       try {
         // Always use compact JSON (no pretty-print) to halve string memory
+        const savedSeq = _stateMutationSeq;
         const data = JSON.stringify(_serializeState());
 
         if (USE_SQLITE_STATE) {
@@ -11358,8 +11395,14 @@ function saveStateDebounced() {
           fs.writeFileSync(tmpPath, data, "utf-8");
           fs.renameSync(tmpPath, STATE_PATH);
         }
-        // Nudge GC to reclaim the temporary JSON string faster
-        if (global.gc) global.gc();
+        // Tell the 5-min periodic safety net this state is already on disk
+        // so it doesn't re-serialize an unchanged 28 MB two minutes later.
+        _lastPeriodicSaveSeq = savedSeq;
+        // NOTE: no forced global.gc() here. A full synchronous GC right
+        // after allocating a 28 MB string was the worst possible timing —
+        // it doubled the stall on the exact hot path this coalescing exists
+        // to protect. The memory-pressure watchdog (lib/memory-pressure.js)
+        // already runs rate-limited GC when the heap actually needs it.
       } catch (e) {
         structuredLog("error", "state_save_failed", { error: String(e?.message || e) });
         STATE._saveFailures = (STATE._saveFailures || 0) + 1;
@@ -11370,7 +11413,7 @@ function saveStateDebounced() {
           try { fs.unlinkSync(STATE_PATH + ".tmp"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
         }
       }
-    }, 250);
+    }, STATE_SAVE_COALESCE_MS);
   } catch (e) {
     structuredLog("error", "save_state_debounce_failed", { error: String(e?.message || e) });
   }
@@ -11387,6 +11430,8 @@ globalThis._concordSaveStateDebounced = saveStateDebounced;
 function saveStateSync() {
   try {
     clearTimeout(_saveTimer);
+    _saveTimer = null; // leading-window coalescing checks truthiness — must reset
+    const savedSeq = _stateMutationSeq;
     const data = JSON.stringify(_serializeState());
     if (USE_SQLITE_STATE && db) {
       const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
@@ -11396,7 +11441,12 @@ function saveStateSync() {
       fs.writeFileSync(tmpPath, data, "utf-8");
       fs.renameSync(tmpPath, STATE_PATH);
     }
-    if (global.gc) global.gc();
+    // Keep the 5-min periodic safety net's bookkeeping honest: this state
+    // is on disk now, so an unchanged seq must not trigger a re-serialize.
+    _lastPeriodicSaveSeq = savedSeq;
+    _lastSyncSaveAt = Date.now();
+    // No forced global.gc() — see saveStateDebounced. The memory-pressure
+    // watchdog handles GC on a rate limit when the heap actually needs it.
   } catch (e) {
     structuredLog("error", "state_sync_save_failed", { error: String(e?.message || e) });
     STATE._saveFailures = (STATE._saveFailures || 0) + 1;
@@ -11407,33 +11457,50 @@ function saveStateSync() {
 }
 
 /**
- * Critical state save — for economy transactions, auth mutations,
- * DTU creation, and other operations that must not be lost.
- * Bypasses the 250ms debounce window entirely.
+ * Critical state save — for operations that must not sit in the coalescing
+ * window (in-memory market transactions, auth bootstrap).
+ *
+ * Rate-limited: the save is a ~28 MB synchronous serialize, so a burst of
+ * critical writes (e.g. rapid marketplace purchases) doing one full
+ * serialize EACH would stall the event loop for seconds — the exact
+ * "connection dropping" failure mode. Within the rate window the mutation
+ * still gets a fast-tracked save via a short trailing timer, bounding the
+ * durability window at CRITICAL_SAVE_MIN_INTERVAL_MS instead of zero.
+ * Note the durable stores for money/DTUs are the SQLite tables written by
+ * their own code paths — this snapshot is the in-memory STATE's recovery
+ * net, not the ledger of record.
  */
+const CRITICAL_SAVE_MIN_INTERVAL_MS = Math.max(0, Number(process.env.CONCORD_CRITICAL_SAVE_MIN_INTERVAL_MS || 2000));
+let _lastSyncSaveAt = 0;
+let _criticalCatchupTimer = null;
 function saveStateCritical() {
-  saveStateSync();
+  const sinceLast = Date.now() - _lastSyncSaveAt;
+  if (sinceLast >= CRITICAL_SAVE_MIN_INTERVAL_MS) {
+    saveStateSync();
+    return;
+  }
+  // Inside the rate window: schedule one catch-up sync save at window end.
+  _stateMutationSeq++;
+  if (_criticalCatchupTimer) return;
+  _criticalCatchupTimer = setTimeout(() => {
+    _criticalCatchupTimer = null;
+    saveStateSync();
+  }, Math.max(50, CRITICAL_SAVE_MIN_INTERVAL_MS - sinceLast));
+  if (typeof _criticalCatchupTimer?.unref === "function") _criticalCatchupTimer.unref();
 }
 
-// ---- Periodic Safety-Net Save (crash protection) ----
-// Ensures state is persisted periodically even if the debounce
-// timer already fired and silent mutations accumulated (e.g. tick loops).
-const PERIODIC_SAVE_INTERVAL_MS = 120_000; // 2 min — debounced save handles immediate needs
-const _periodicSaveTimer = _unrefInTest(setInterval(() => {
-  try {
-    saveStateSync();
-    structuredLog("debug", "periodic_state_save", { interval: PERIODIC_SAVE_INTERVAL_MS });
-  } catch (e) {
-    structuredLog("error", "periodic_save_failed", { error: String(e?.message || e) });
-  }
-}, PERIODIC_SAVE_INTERVAL_MS));
-_periodicSaveTimer.unref(); // Don't keep process alive just for saves
+// ---- Periodic Safety-Net Save ----
+// REMOVED (audit 2026-07-27): a second, UNCONDITIONAL 2-minute
+// setInterval(saveStateSync) used to live here. It fully defeated the
+// mutation-seq guard on the 5-minute periodic saver above (search
+// "_lastPeriodicSaveSeq") — a full ~28 MB serialize + SQLite row rewrite +
+// WAL checkpoint every 120s on an IDLE box, ~40GB/day of disk writes and a
+// guaranteed recurring event-loop stall. The guarded 5-minute saver is the
+// safety net; saveStateDebounced/saveStateSync cover everything else.
 
 // ---- beforeExit handler (supplements SIGTERM/SIGINT) ----
 process.on("beforeExit", () => {
   try {
-    clearTimeout(_saveTimer);
-    clearInterval(_periodicSaveTimer);
     saveStateSync();
     structuredLog("info", "before_exit_state_saved", {});
   } catch (e) {
@@ -33086,9 +33153,39 @@ async function runJob(j) {
   j.updatedAt = nowISO();
   saveStateDebounced();
 
-  const ctx = makeInternalCtx("job_runner");
-  // adopt actor context if present; default to system actor for internal jobs
-  if (j.actor) { ctx.actor = { ...j.actor, internal: true }; }
+  // SECURITY (audit 2026-07-27): jobs.enqueue is a user-reachable macro that
+  // accepts an ARBITRARY `domain.name` kind — and this runner used to execute
+  // every job inside makeInternalCtx (ctx.internal=true, owner-grade actor)
+  // and then stamp the adopted actor `internal: true` on top. That let any
+  // authenticated user route any macro through the job queue to pick up
+  // internal-context privileges it would never have when called directly
+  // (e.g. the council-gate skip accepts ctx.actor.internal, and runMacro is
+  // invoked here directly so the HTTP-layer gates never apply to deferred
+  // execution). A user-enqueued job must run with EXACTLY the user's own
+  // authority. Only jobs enqueued by genuine system actors (or with no actor
+  // at all — internal maintenance enqueues) keep the internal context.
+  const actorRole = String(j.actor?.role || "");
+  const isSystemJob = !j.actor
+    || j.actor.internal === true
+    || actorRole === "system"
+    || actorRole === "owner"
+    || actorRole === "founder";
+  let ctx;
+  if (isSystemJob) {
+    ctx = makeInternalCtx("job_runner");
+    if (j.actor) { ctx.actor = { ...j.actor, internal: true }; }
+  } else {
+    ctx = makeCtx(null);
+    ctx.internal = false;
+    ctx.actor = { ...j.actor, internal: false };
+    // Inner macro calls from a user job inherit the SAME user authority —
+    // never a fresh internal context.
+    ctx.macro = {
+      run: (domain, name, input) => runMacro(domain, name, input, ctx),
+      listDomains,
+      listMacros,
+    };
+  }
 
   try {
     const [domain, name] = String(j.kind).split(".");
@@ -68086,7 +68183,7 @@ registerShutdownCallback(() => {
   if (typeof heartbeatTimer !== "undefined" && heartbeatTimer) clearInterval(heartbeatTimer);
   if (typeof weeklyTimer !== "undefined" && weeklyTimer) clearInterval(weeklyTimer);
   if (typeof globalTickTimer !== "undefined" && globalTickTimer) clearInterval(globalTickTimer);
-  clearInterval(_periodicSaveTimer);
+  if (_criticalCatchupTimer) clearTimeout(_criticalCatchupTimer);
   stopAllIntervals();
   stopSync();
   _memoryWatchdog.stop();
