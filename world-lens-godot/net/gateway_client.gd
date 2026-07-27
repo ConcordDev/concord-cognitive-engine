@@ -23,6 +23,14 @@ const BACKOFF_MAX_S: float = 30.0
 
 @export var gateway_url: String = "ws://127.0.0.1:5050/godot-ws"
 @export var auth_token: String = ""
+## Long-lived API-key auth, for non-interactive launches (bare-metal boot,
+## CI smoke) where a short-lived bearer token isn't practical to mint ahead
+## of time. server/lib/godot-gateway.js#tryAuth accepts EITHER data.token OR
+## data.apiKey in the same auth frame (checking token first if both happen
+## to be present) — this client only ever sends one, preferring api_key
+## when set since it's the intentional long-lived credential for automated
+## launches; see _send_auth below.
+@export var api_key: String = ""
 @export var auto_reconnect: bool = true
 
 var _peer: WebSocketPeer = null
@@ -83,7 +91,16 @@ func _process(_delta: float) -> void:
 
 
 func _send_auth() -> void:
-	send_event("auth", {"token": auth_token})
+	send_event("auth", GatewayClient.build_auth_payload(api_key, auth_token))
+
+
+## Pure static so it's unit-testable without a live socket (same rationale
+## as the envelope codec below). Prefers api_key over auth_token when both
+## are configured — see the api_key export's doc comment for why.
+static func build_auth_payload(p_api_key: String, p_auth_token: String) -> Dictionary:
+	if not p_api_key.is_empty():
+		return {"apiKey": p_api_key}
+	return {"token": p_auth_token}
 
 
 func send_event(evt: String, data: Dictionary) -> void:

@@ -49,6 +49,8 @@ const TestDistrictStreamingPolicy := preload("res://tests/test_district_streamin
 const TestRooftopAccessController := preload("res://tests/test_rooftop_access_controller.gd")
 const TestWayfindingMarkers := preload("res://tests/test_wayfinding_markers.gd")
 const TestArtStyle := preload("res://tests/test_art_style.gd")
+const TestGatewayClientAuth := preload("res://tests/test_gateway_client_auth.gd")
+const TestBootRuntimeConfig := preload("res://tests/test_boot_runtime_config.gd")
 
 
 func _init() -> void:
@@ -80,6 +82,8 @@ func _init() -> void:
 		"RooftopAccessController": TestRooftopAccessController.run(),
 		"WayfindingMarkers": TestWayfindingMarkers.run(),
 		"ArtStyle": TestArtStyle.run(),
+		"GatewayClientAuth": TestGatewayClientAuth.run(),
+		"BootRuntimeConfig": TestBootRuntimeConfig.run(),
 	}
 
 	var all_ok := true

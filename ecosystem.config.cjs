@@ -274,6 +274,36 @@ module.exports = {
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     },
+    {
+      // ── Native Godot client (bare-metal one-command boot) ────────────────
+      // Godot is a CLIENT that connects to Concord's /godot-ws gateway over
+      // WebSocket (docs/GODOT_INTEGRATION.md), NOT a server-side sidecar
+      // Concord's own operation depends on — so this app is supervised the
+      // same way as backend/frontend, but is allowed to correctly do nothing.
+      // scripts/launch-godot-client.sh decides at runtime whether to launch
+      // (CONCORD_LAUNCH_GODOT=auto/1/0, display detection, Godot-binary
+      // resolution honoring an existing install) and idles via `sleep
+      // infinity` rather than exiting when it decides not to — so pm2 sees
+      // a stable "up" process instead of treating a correct no-op (e.g. a
+      // headless A40 compute box with no monitor) as a crash-loop.
+      name: 'concord-godot-client',
+      script: 'bash',
+      args: 'scripts/launch-godot-client.sh',
+      cwd: __dirname,
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      autorestart: true,
+      max_restarts: 20,
+      min_uptime: '10s',
+      restart_delay: 5000,
+      max_memory_restart: '1G',
+      kill_timeout: 5000,
+      error_file: 'logs/godot-client-error.log',
+      out_file: 'logs/godot-client-out.log',
+      merge_logs: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    },
     // Stability audit (2026-07-20) — REMOVED the legacy single-instance
     // "ollama" app that used to live here (name: 'ollama', script: 'ollama',
     // args: 'serve', OLLAMA_HOST: '0.0.0.0:11434', a stale RTX-4500/28-vCPU

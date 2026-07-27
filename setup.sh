@@ -342,6 +342,24 @@ if [ -f "${ROOT_DIR}/.env" ]; then
   fi
 fi
 
+# ── Godot engine runtime (optional, non-fatal) ────────────────────────────
+# docs/GODOT_RUNTIME.md §5.2 names this exact wiring as the recommended path
+# and it was previously left undone ("setup.sh was outside the permitted
+# edit scope"). The Godot native client (world-lens-godot/) is not required
+# to run the Concord server itself, so a failed fetch warns, never aborts.
+if [ "${CONCORD_FETCH_GODOT:-1}" = "1" ]; then
+  info "Fetching the Godot engine runtime for world-lens-godot/ (set CONCORD_FETCH_GODOT=0 to skip)..."
+  if node scripts/fetch-godot.mjs; then
+    ok "Godot engine ready — see docs/GODOT_RUNTIME.md."
+  else
+    warn "Godot engine fetch failed — world-lens-godot/ validation and the native"
+    warn "  client (scripts/launch-godot-client.sh) will be unavailable until you"
+    warn "  retry manually: node scripts/fetch-godot.mjs"
+  fi
+else
+  info "CONCORD_FETCH_GODOT=0 — skipping Godot engine fetch."
+fi
+
 # ── Done ──────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"
@@ -359,7 +377,7 @@ echo "  2. (Optional) Set OPENAI_API_KEY if you want cloud LLM features."
 echo "     (Optional) The VAPID keys for web-push were auto-generated above;"
 echo "     edit VAPID_SUBJECT in .env to point at a real ops email."
 echo ""
-echo "  3. Start with PM2:"
+echo "  3. Start with PM2 (boots backend + frontend + the Godot client together):"
 echo "     pm2 start ecosystem.config.cjs"
 echo ""
 echo "  4. Or start manually:"
@@ -367,4 +385,12 @@ echo "     cd server && node server.js"
 echo "     cd concord-frontend && npm start"
 echo ""
 echo "  5. Open http://localhost:3000 in your browser."
+echo ""
+echo "  6. (Optional) The native Godot client (scripts/launch-godot-client.sh,"
+echo "     pm2 app 'concord-godot-client') launches automatically alongside the"
+echo "     backend/frontend above — CONCORD_LAUNCH_GODOT controls it: 'auto'"
+echo "     (default) launches only when a display is present, '1' forces a"
+echo "     headless connectivity-only launch, '0' disables it. Set"
+echo "     CONCORD_GODOT_API_KEY in .env (create the key in the app first) for"
+echo "     it to actually authenticate — see docs/GODOT_INTEGRATION.md."
 echo ""

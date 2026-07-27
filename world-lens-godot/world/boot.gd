@@ -45,8 +45,14 @@ const DesignPlaytestClient := preload("res://design/design_playtest_client.gd")
 const FeaSceneBuilder := preload("res://engineering/fea_scene_builder.gd")
 
 ## Runtime config — override via project settings or env at integration time.
+## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
+## CONCORD_GODOT_AUTH_TOKEN / CONCORD_WORLD_ID) is what actually makes this
+## usable from a non-interactive launch (bare-metal boot script, CI) — the
+## @export defaults alone only ever changed via the editor inspector. See
+## resolve_runtime_config below and scripts/launch-godot-client.sh.
 @export var gateway_url: String = "ws://127.0.0.1:5050/godot-ws"
 @export var auth_token: String = ""
+@export var api_key: String = ""
 @export var world_id: String = "concordia-hub"
 
 var _gateway: GatewayClient
@@ -59,7 +65,43 @@ var _design_playtest: DesignPlaytestClient
 var _fea_scene: FeaSceneBuilder
 
 
+## Pure static so it's unit-testable without a scene tree (same rationale as
+## GatewayClient.build_auth_payload). `env` is the already-read environment
+## values — real callers pass real OS.get_environment() results, tests pass
+## a fake Dictionary — which keeps this resolution logic decoupled from the
+## engine API it reads from. Only a non-empty env value overrides its
+## matching default; an unset/blank env var leaves the export-default (or
+## editor-inspector value) untouched.
+static func resolve_runtime_config(env: Dictionary, defaults: Dictionary) -> Dictionary:
+	var resolved := defaults.duplicate()
+	if not String(env.get("CONCORD_GATEWAY_URL", "")).is_empty():
+		resolved["gateway_url"] = env["CONCORD_GATEWAY_URL"]
+	if not String(env.get("CONCORD_GODOT_API_KEY", "")).is_empty():
+		resolved["api_key"] = env["CONCORD_GODOT_API_KEY"]
+	if not String(env.get("CONCORD_GODOT_AUTH_TOKEN", "")).is_empty():
+		resolved["auth_token"] = env["CONCORD_GODOT_AUTH_TOKEN"]
+	if not String(env.get("CONCORD_WORLD_ID", "")).is_empty():
+		resolved["world_id"] = env["CONCORD_WORLD_ID"]
+	return resolved
+
+
 func _ready() -> void:
+	var _env := {
+		"CONCORD_GATEWAY_URL": OS.get_environment("CONCORD_GATEWAY_URL"),
+		"CONCORD_GODOT_API_KEY": OS.get_environment("CONCORD_GODOT_API_KEY"),
+		"CONCORD_GODOT_AUTH_TOKEN": OS.get_environment("CONCORD_GODOT_AUTH_TOKEN"),
+		"CONCORD_WORLD_ID": OS.get_environment("CONCORD_WORLD_ID"),
+	}
+	var _defaults := {
+		"gateway_url": gateway_url, "api_key": api_key,
+		"auth_token": auth_token, "world_id": world_id,
+	}
+	var _cfg := resolve_runtime_config(_env, _defaults)
+	gateway_url = _cfg["gateway_url"]
+	api_key = _cfg["api_key"]
+	auth_token = _cfg["auth_token"]
+	world_id = _cfg["world_id"]
+
 	_bootstrap = SceneBootstrap.new()
 	add_child(_bootstrap)
 
@@ -84,6 +126,7 @@ func _ready() -> void:
 	_gateway.name = "Gateway"
 	_gateway.gateway_url = gateway_url
 	_gateway.auth_token = auth_token
+	_gateway.api_key = api_key
 	add_child(_gateway)
 
 	# R5/E24 — the FEA overlay's real geometry, mounted hidden. Opened only

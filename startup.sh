@@ -233,6 +233,22 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     echo "${NEXT_PUBLIC_API_URL:-}" > "$BUILD_STAMP"
   fi
 
+  # ── Godot engine runtime (self-heal check, every boot) ────────────────────
+  # setup.sh does the first-time fetch; this is the cheap re-verification so
+  # a box that skipped setup.sh, or whose binary went missing/corrupt between
+  # boots, still self-heals here — closing docs/GODOT_RUNTIME.md §5.2's
+  # "wire it into the boot path" gap. Non-fatal: the Godot client
+  # (concord-godot-client, started by pm2 below) already degrades to an
+  # honest idle state on its own if the binary truly isn't available.
+  if [ "${CONCORD_FETCH_GODOT:-1}" = "1" ]; then
+    if node scripts/fetch-godot.mjs --check >/dev/null 2>&1; then
+      log "Godot engine present and verified."
+    else
+      log "Godot engine missing or unverified — fetching..."
+      node scripts/fetch-godot.mjs || log "WARNING: Godot engine fetch failed — the Godot client will idle until this is retried (node scripts/fetch-godot.mjs)."
+    fi
+  fi
+
   # ── Ollama brains (Vector 8 — the real 5-process architecture) ────────────
   # Stability audit (2026-07-20) — FIXED a real gap: this script never called
   # scripts/runpod-cognition.sh, so a plain `./startup.sh` run only ever got
@@ -383,6 +399,7 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
   log "  Frontend: http://localhost:3000"
   [ -n "${RUNPOD_PUBLIC_URL:-}" ] && log "  Public:   ${RUNPOD_PUBLIC_URL}"
   [ -n "${TUNNEL_PUBLIC_URL:-}" ]  && log "  Tunnel:   ${TUNNEL_PUBLIC_URL}"
+  log "  Godot:    pm2 logs concord-godot-client (CONCORD_LAUNCH_GODOT=${CONCORD_LAUNCH_GODOT:-auto}; idles honestly with no display / no CONCORD_GODOT_API_KEY)"
   log ""
   log "  pm2 status:  pm2 list"
   log "  pm2 logs:    pm2 logs"
