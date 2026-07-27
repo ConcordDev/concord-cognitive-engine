@@ -1777,7 +1777,7 @@ import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickB
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
-import { brainChat as byoBrainChat, getOverride as byoGetOverride } from "./lib/byo-router.js";
+import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode } from "./lib/byo-router.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
@@ -49868,9 +49868,17 @@ function initChatSocketHandlers(io) {
             // non-streaming here; the full response is delivered as one
             // token event + chat:complete. Honest trade: no token-by-token
             // animation on BYOK, but the user's chosen model actually runs.
+            //
+            // Private/High Power Mode: Private skips this ENTIRE block
+            // (BYO override AND platform provider) — even if this account
+            // has its own BYO key configured, straight to local streaming
+            // below. Mirrors the same gate already wired into
+            // byo-router.js#brainChat and ctx.llm.chat.
             let _streamByo = null;
+            let _streamPlatform = null;
             const _streamUserId = socket.data?.userId || null;
-            if (db && _streamUserId) {
+            const _streamMode = byoGetBrainMode(db, _streamUserId);
+            if (_streamMode !== "private" && db && _streamUserId) {
               let _ov = null;
               try { _ov = byoGetOverride(db, _streamUserId, "conscious"); } catch { _ov = null; }
               if (_ov?.provider && _ov.provider !== "concord_default" && _ov.provider !== "ollama") {
@@ -49883,13 +49891,40 @@ function initChatSocketHandlers(io) {
                       maxTokens: _streamConsciousParams.maxTokens || 1500,
                     },
                   });
-                  if (byo?.ok && byo.content) {
+                  // Bug fix (found while wiring High Power Mode alongside
+                  // this): byoBrainChat()/providerChat() return `text`, never
+                  // `content` — every adapter in byo-providers.js returns
+                  // `{ok, text, ...}`. Checking `byo.content` here meant this
+                  // truthy check was ALWAYS false whenever byo.ok was true,
+                  // so `_streamByo` could never actually be set — the "BYO
+                  // KEY ROUTING (streaming path)" fix silently never
+                  // activated despite looking wired. Fixed to read `.text`.
+                  if (byo?.ok && byo.text) {
                     _streamByo = byo;
                   }
                   // ok:false → fall through to local streaming below (same
                   // BYO-outage-never-blocks contract as ctx.llm.chat).
                 } catch (_byoErr) {
                   structuredLog("warn", "llm_byo_stream_exception", { error: String(_byoErr?.message || _byoErr) });
+                }
+              }
+              // Platform provider (High Power Mode) — only when the BYO
+              // attempt above didn't already produce a result.
+              if (!_streamByo && platformProviderConfigured("conscious")) {
+                try {
+                  const pg = await platformProviderChat({
+                    slot: "conscious",
+                    messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
+                    opts: {
+                      temperature: _streamConsciousParams.temperature || 0.75,
+                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                    },
+                  });
+                  if (pg?.ok && pg.text) {
+                    _streamPlatform = pg;
+                  }
+                } catch (_pgErr) {
+                  structuredLog("warn", "llm_platform_stream_exception", { error: String(_pgErr?.message || _pgErr) });
                 }
               }
             }
@@ -49903,8 +49938,17 @@ function initChatSocketHandlers(io) {
             let _streamSeq = 0;
             const streamResult = _streamByo
               ? (() => {
-                  socket.emit("chat:token", { token: _streamByo.content, sessionId, seq: _streamSeq++ });
-                  return { ok: true, content: _streamByo.content, model: _streamByo.model || "byo", source: "byo" };
+                  // _streamByo.text is the real field (see the bug-fix note
+                  // above) — normalize to `.content` here so the downstream
+                  // consumer (which expects callOllamaStreaming's shape) sees
+                  // the same field name regardless of which branch produced it.
+                  socket.emit("chat:token", { token: _streamByo.text, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _streamByo.text, model: _streamByo.model || "byo", source: "byo" };
+                })()
+              : _streamPlatform
+              ? (() => {
+                  socket.emit("chat:token", { token: _streamPlatform.text, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _streamPlatform.text, model: _streamPlatform.model || "platform", source: "platform" };
                 })()
               : await _llmQueue.enqueue(
                   () => callOllamaStreaming(
@@ -49979,6 +50023,20 @@ function initChatSocketHandlers(io) {
         } catch (_e) { /* web search is best-effort */ }
 
         // Run through the existing chat.respond macro (non-streaming fallback)
+        //
+        // Audit fix: this used to be its own ~50-line ad hoc `llm.chat`
+        // reimplementation — a raw fetch straight to the local Ollama
+        // endpoint with ZERO BYO/mode awareness, a THIRD separate
+        // reimplementation of "call the conscious brain" alongside
+        // byo-router.js#brainChat and makeCtx's ctx.llm.chat. A Private-Mode
+        // user landing here (after the primary stream attempt above failed)
+        // was harmlessly still local-only by coincidence — Ollama is always
+        // the fallback regardless of mode — but a High-Power-Mode user's own
+        // BYO/platform routing silently vanished on this leg. Replaced with
+        // a direct call to the now mode-aware, now platform-aware
+        // byo-router.js#brainChat, which already handles Private/BYO/
+        // platform/Ollama in one place — closing the gap outright instead of
+        // patching a fourth reimplementation.
         const ctx = {
           state: STATE,
           log: (...args) => structuredLog("info", "chat:socket", ...args),
@@ -49987,55 +50045,31 @@ function initChatSocketHandlers(io) {
           llm: {
             enabled: LLM_READY,
             chat: async (opts) => {
-              // Phase D wiring — prefer the load-balanced endpoint from
-              // brain-config.js (BRAIN_CONSCIOUS_URLS) when configured;
-              // falls back to the singular BRAIN.conscious.url unchanged.
-              const brainUrl = pickBrainEndpoint("conscious") || BRAIN.conscious?.url || process.env.OLLAMA_HOST || process.env.BRAIN_CONSCIOUS_URL;
-              if (!brainUrl) return { ok: false, error: 'no_llm' };
-              noteEndpointStart(brainUrl);
-              let _epOk = false;
               const _socketChatStartMs = Date.now();
-              const _model = opts.model || BRAIN.conscious?.model || 'llama3';
-              try {
-                const _messages = [
-                  ...(opts.system ? [{ role: 'system', content: opts.system }] : []),
-                  ...(opts.messages || [])
-                ];
-                const _ac = new AbortController();
-                const _timeout = setTimeout(() => _ac.abort(), 120000);
-                const _res = await fetch(`${brainUrl}/api/chat`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ model: _model, messages: _messages, stream: false, options: { temperature: opts.temperature || 0.7, num_predict: opts.maxTokens || 700 } }),
-                  signal: _ac.signal,
-                }).finally(() => clearTimeout(_timeout));
-                const _json = await _res.json().catch(() => ({}));
-                if (_res.ok && _json.message?.content) {
-                  _epOk = true;
-                  // Real per-call metering — Ollama's own prompt_eval_count/
-                  // eval_count for this exact completion. No fallback estimate.
-                  _meterLlmChat(db, {
-                    spanType: "chat", brainUsed: "conscious", modelUsed: _model,
-                    callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
-                    tokensIn: _json.prompt_eval_count, tokensOut: _json.eval_count,
-                  });
-                  return { ok: true, content: _json.message.content };
-                }
+              const _messages = [
+                ...(opts.system ? [{ role: 'system', content: opts.system }] : []),
+                ...(opts.messages || [])
+              ];
+              const br = await byoBrainChat({
+                db, userId: _rlKey, slot: "conscious",
+                messages: _messages,
+                opts: { temperature: opts.temperature || 0.7, maxTokens: opts.maxTokens || 700, timeout: opts.timeout },
+              });
+              if (br.ok && br.text) {
                 _meterLlmChat(db, {
-                  spanType: "chat", brainUsed: "conscious", modelUsed: _model,
+                  spanType: "chat", brainUsed: "conscious", modelUsed: br.model,
                   callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
-                  error: _json?.error || `status ${_res.status}`,
+                  tokensIn: br.tokensIn, tokensOut: br.tokensOut,
                 });
-                return { ok: false, error: _json?.error || `status ${_res.status}` };
-              } catch (e) {
-                _meterLlmChat(db, {
-                  spanType: "chat", brainUsed: "conscious", modelUsed: _model,
-                  callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
-                  error: e.message,
-                });
-                return { ok: false, error: e.message };
+                return { ok: true, content: br.text };
               }
-              finally { noteEndpointFinish(brainUrl, { ok: _epOk }); }
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: "conscious", modelUsed: br.model,
+                callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
+                tokensIn: br.tokensIn, tokensOut: br.tokensOut,
+                error: br.error || "no_content",
+              });
+              return { ok: false, error: br.error || "no_content" };
             },
           },
         };
