@@ -357,8 +357,31 @@ export function buildMissingFeatures(STATE, log) {
     userUniverses: Map, styleVectors: Map,
   };
 
+  // A write-through store satisfies the Map CONTRACT without being
+  // `instanceof Map` — `lib/dtu-store.js#createDTUStore` returns a plain object
+  // with Map-shaped methods. A bare instanceof test therefore treated the
+  // freshly-hydrated DTU store as a "missing Map" and replaced it with an EMPTY
+  // one, on every boot, while cheerfully reporting `created missing Map`.
+  //
+  // Found by tracing (2026-07-28): this was the LAST of three independent
+  // places doing the same thing to the same object — server.js's `_ensureMap`
+  // and `_hydrateState`'s `put()` were the other two. Net effect was that the
+  // DTU store had never survived boot: `STATE.dtus.rehydrateFromSQLite` was
+  // undefined at runtime, so `_serializeState`'s omission check saw no store
+  // and wrote all 8.17 MB of DTUs into every snapshot.
+  //
+  // `STATE.lensArtifacts` was unaffected throughout only because
+  // LensArtifactStore extends Map.
+  //
+  // Test the capability for Map specifically; any other Ctor keeps the exact
+  // instanceof semantics it had, so this stays a narrow fix.
+  const isMapLike = (v) => !!v && typeof v.get === "function" && typeof v.set === "function"
+    && typeof v.has === "function" && typeof v.delete === "function"
+    && typeof v.values === "function" && typeof v.size === "number";
+
   for (const [key, Ctor] of Object.entries(requiredMaps)) {
-    if (!(STATE[key] instanceof Ctor)) {
+    const present = Ctor === Map ? isMapLike(STATE[key]) : STATE[key] instanceof Ctor;
+    if (!present) {
       STATE[key] = new Ctor();
       results.push(ok(`build:${key}`, `created missing ${Ctor.name}`));
       built++;

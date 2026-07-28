@@ -11305,9 +11305,29 @@ function _serializeState() {
 
 function _hydrateState(obj) {
   if (!obj || typeof obj !== "object") return;
+  // The absent-key check is load-bearing, not defensive tidiness.
+  //
+  // `_serializeState` OMITS a collection when a write-through store owns it
+  // (`dtus` when the DTU store is active, `lensArtifacts` when the artifact
+  // store is). For those, the snapshot legitimately has no key at all and
+  // SQLite is the source of truth. The previous unconditional `map.clear()`
+  // then ran against a store that had just hydrated from SQLite, wiped every
+  // entry, and restored nothing — because the very same missing key that made
+  // the clear wrong also skipped the repopulate loop.
+  //
+  // Measured: with the DTU store attached, this emptied STATE.dtus to 0 while
+  // dtu_store still held 2,290 rows. That is almost certainly WHY the DTU
+  // store's omission has never been able to stay on — enabling it emptied
+  // DTUs, so `dtus` kept getting written into every snapshot (8.17 MB of a
+  // 9.4 MB file) and the store sat detached.
+  //
+  // Correct in both directions: a snapshot that CARRIES the collection still
+  // replaces it wholesale (unchanged behaviour); a snapshot that omits it
+  // leaves the store's hydrated contents alone.
   const put = (map, arr) => {
+    if (!Array.isArray(arr)) return;
     map.clear();
-    if (Array.isArray(arr)) for (const x of arr) if (x && x.id) map.set(x.id, x);
+    for (const x of arr) if (x && x.id) map.set(x.id, x);
   };
   put(STATE.dtus, obj.dtus);
   put(STATE.shadowDtus, obj.shadowDtus);
@@ -11985,7 +12005,31 @@ try {
 // Ensures every field accessed by any route handler exists BEFORE routes mount.
 // Prevents TypeErrors from empty/missing state on fresh installs or partial hydration.
 {
-  const _ensureMap = (key) => { if (!(STATE[key] instanceof Map)) STATE[key] = new Map(); };
+  // 🔴 This ran AFTER the write-through stores attach (STATE.dtus is replaced
+  // at ~11864, this block is ~12016), and `dtu-store.js#createDTUStore`
+  // returns a plain OBJECT with Map-shaped methods — not a Map. So the bare
+  // `instanceof Map` test failed and this line replaced the freshly-hydrated
+  // DTU store with an EMPTY Map on every single boot.
+  //
+  // Consequences, both measured: `STATE.dtus.rehydrateFromSQLite` was
+  // undefined at runtime, so `_serializeState`'s omission check saw no store
+  // and wrote all 8.17 MB of DTUs into every snapshot (of a 9.4 MB file); and
+  // the write-through store — the thing that makes DTUs durable at row level —
+  // was detached for the entire life of the process despite its own boot logs
+  // reporting a successful migrate + hydrate.
+  //
+  // `STATE.lensArtifacts` was immune only because LensArtifactStore extends
+  // Map; that was a deliberate choice made for `domains/astronomy.js:817`'s
+  // identical guard, and it turns out to have dodged this one too.
+  //
+  // The guard's real intent is "this must be a working Map-like collection",
+  // not "this must be literally a Map" — so test the CAPABILITY. A store that
+  // provides the Map surface is left alone; anything else is still replaced,
+  // so the hydration-edge-case protection this line exists for is unchanged.
+  const _isMapLike = (v) => !!v && typeof v.get === "function" && typeof v.set === "function"
+    && typeof v.has === "function" && typeof v.delete === "function"
+    && typeof v.values === "function" && typeof v.size === "number";
+  const _ensureMap = (key) => { if (!_isMapLike(STATE[key])) STATE[key] = new Map(); };
   const _ensureArr = (key) => { if (!Array.isArray(STATE[key])) STATE[key] = []; };
   const _ensureObj = (key, def) => { if (!STATE[key] || typeof STATE[key] !== "object") STATE[key] = def; };
 
