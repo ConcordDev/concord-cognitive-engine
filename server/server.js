@@ -49,6 +49,7 @@ import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from ".
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
+import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
@@ -11218,6 +11219,7 @@ function _serializeState() {
   // restart loses every DTU. Restoring the omitted DTUs is the paired
   // rehydrateFromSQLite() call at boot — do not remove one without the other.
   const dtuStoreActive = typeof STATE.dtus?.rehydrateFromSQLite === "function";
+  const artifactStoreActive = typeof STATE.lensArtifacts?.rehydrateFromSQLite === "function";
   return {
     version: VERSION,
     savedAt: nowISO(),
@@ -11249,7 +11251,21 @@ function _serializeState() {
     entitlements: capArr(STATE.entitlements, 5000),
     transactions: capArr(STATE.transactions, 10000),
     papers: toArr(STATE.papers),
-    lensArtifacts: toArr(STATE.lensArtifacts),
+    // Omitted for the same reason as `dtus` above, and under the same paired
+    // contract: `lensArtifacts` is skipped ONLY when the write-through store
+    // is active, because that store's rehydrateFromSQLite() at boot is what
+    // puts artifacts back. Remove one without the other and every artifact is
+    // lost on restart.
+    //
+    // This was the largest key in the snapshot — 9.86 MB of 19 MB, measured on
+    // 11,517 live artifacts — so dropping it roughly halves what every
+    // debounced save has to serialize.
+    //
+    // The guard is a runtime capability check, not a boot flag: if the store
+    // never attached (no db, or migrations not yet at 398), STATE.lensArtifacts
+    // is still a plain Map and we MUST keep serializing it or artifacts have
+    // nowhere to live.
+    ...(artifactStoreActive ? {} : { lensArtifacts: toArr(STATE.lensArtifacts) }),
     _scopeSeparation: STATE._scopeSeparation || null,
     _autogenPipeline: STATE._autogenPipeline || null,
     // Entity growth profiles (persist across restarts)
@@ -11384,9 +11400,28 @@ function _hydrateState(obj) {
   STATE.papers.clear();
   if (Array.isArray(obj.papers)) for (const p of obj.papers) if (p && p.id) STATE.papers.set(p.id, p);
 
-  // Lens artifacts
-  STATE.lensArtifacts.clear();
-  if (Array.isArray(obj.lensArtifacts)) for (const a of obj.lensArtifacts) if (a && a.id) STATE.lensArtifacts.set(a.id, a);
+  // Lens artifacts.
+  //
+  // The clear() is INSIDE the presence check on purpose — moving it back out
+  // is a data-loss bug. Once the write-through store is active,
+  // `_serializeState` omits `lensArtifacts` entirely (SQLite is the source of
+  // truth), so `obj.lensArtifacts` is undefined. The previous unconditional
+  // clear() would then wipe memory AND, because the store's clear() writes
+  // through, TRUNCATE lens_artifact_store — and the restore loop that should
+  // repopulate it is skipped by the very same missing key. Every artifact,
+  // gone, from a snapshot that was correct.
+  //
+  // At boot this is currently masked by ordering (restore runs before the
+  // store attaches, so clear() hits a plain Map), but any post-boot restore
+  // path — an operator "restore backup" action — would hit it for real.
+  //
+  // Correct in both directions: a snapshot that CARRIES artifacts still
+  // replaces them wholesale; a snapshot that omits them leaves the durable
+  // store untouched.
+  if (Array.isArray(obj.lensArtifacts)) {
+    STATE.lensArtifacts.clear();
+    for (const a of obj.lensArtifacts) if (a && a.id) STATE.lensArtifacts.set(a.id, a);
+  }
   // Rebuild domain index
   _rebuildLensDomainIndex();
 
@@ -11820,6 +11855,44 @@ if (_DTU_STORE_READY && db) {
   structuredLog("info", "dtu_store_boot_hydrate", hydrateResult);
   // Replace STATE.dtus with the write-through store
   STATE.dtus = dtuStore;
+}
+
+// ── Lens-artifact write-through store ──────────────────────────────────────
+//
+// Same migrate-then-hydrate pairing as the DTU block above, for the same
+// reason. Measured 2026-07-28: STATE.lensArtifacts held 11,517 artifacts /
+// 9.86 MB — the LARGEST key in the ~19 MB state snapshot, bigger than `dtus`,
+// with neither a `capArr` cap nor a durable store. Its only persistence was
+// the snapshot, so every debounced save re-serialized all of it, and a
+// truncated snapshot lost every artifact ever created.
+//
+// Order matters and mirrors the DTU block exactly: migrate first so anything
+// present only in an older snapshot reaches SQLite, then hydrate so anything
+// present only in SQLite reaches memory. The result is the union, idempotent.
+//
+// Gated on the table existing rather than a boot flag: on a build whose
+// migrations have not reached 398, we must keep the plain Map AND keep
+// serializing artifacts into the snapshot, or they would have no home at all.
+if (db) {
+  try {
+    const hasTable = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='lens_artifact_store'")
+      .get();
+    if (hasTable) {
+      const artifactStore = createLensArtifactStore(db, STATE.lensArtifacts, { log: structuredLog });
+      structuredLog("info", "lens_artifact_store_boot_migration", artifactStore.migrateMemoryToSQLite());
+      structuredLog("info", "lens_artifact_store_boot_hydrate", artifactStore.rehydrateFromSQLite());
+      STATE.lensArtifacts = artifactStore;
+    } else {
+      structuredLog("warn", "lens_artifact_store_unavailable", {
+        reason: "lens_artifact_store table missing — artifacts stay snapshot-only",
+      });
+    }
+  } catch (e) {
+    // Never fatal: a failure here must leave the plain Map in place, which is
+    // exactly today's behaviour, rather than taking down boot.
+    structuredLog("error", "lens_artifact_store_init_failed", { error: String(e?.message || e) });
+  }
 }
 
 // ── Post-load memory optimization ────────────────────────────────────────
