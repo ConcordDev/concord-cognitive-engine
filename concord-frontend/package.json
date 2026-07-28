@@ -78,7 +78,7 @@
     "lightweight-charts": "^5.2.0",
     "lucide-react": "^0.309.0",
     "maplibre-gl": "^4.7.1",
-    "monaco-editor": "^0.55.1",
+    "monaco-editor": "^0.56.0",
     "nanoid": "^5.0.4",
     "next": "^15.5.15",
     "qrcode": "^1.5.4",
