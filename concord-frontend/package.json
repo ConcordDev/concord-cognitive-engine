@@ -8,7 +8,7 @@
     "build:ci": "NODE_OPTIONS='--max-old-space-size=12288' next build",
     "start": "next start",
     "start:ci": "NODE_OPTIONS='--max-old-space-size=4096' next start -p 3000",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint .",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage --exclude='**/tests/smoke/**'",
