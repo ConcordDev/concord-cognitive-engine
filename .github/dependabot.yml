@@ -48,6 +48,19 @@ updates:
       - "dependencies"
       - "ci"
 
+  # VS Code extension. Ships to end users and carries real runtime deps
+  # (socket.io-client, vscode-languageclient), but had no lockfile at all until
+  # 2026-07-27 -- so published .vsix builds were neither reproducible nor
+  # scannable. Lockfile added and un-ignored; this keeps it current.
+  - package-ecosystem: "npm"
+    directory: "/concord-vscode"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+
   # Rust / Cargo.
   #
   # concord-shell is a real 4-crate Tauri v2 workspace (src-tauri + supervisor,

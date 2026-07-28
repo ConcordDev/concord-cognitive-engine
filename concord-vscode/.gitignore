@@ -1,4 +1,9 @@
 node_modules/
 out/
 *.vsix
-package-lock.json
+# package-lock.json is deliberately TRACKED (2026-07-27 security triage).
+# This extension ships to end users, and an ignored lockfile means the
+# published build is neither reproducible nor scannable -- no tool can
+# tell which transitive versions a .vsix was built from. The line that
+# used to ignore it was VS Code extension boilerplate, not a decision
+# about this package.
