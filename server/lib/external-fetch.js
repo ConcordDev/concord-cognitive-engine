@@ -14,6 +14,31 @@
 //     return cachedFetchJson(`https://api.open-meteo.com/...`);
 //   });
 
+// SECURITY (2026-07-27): every fetch below goes through the SSRF guard.
+//
+// This module is imported by 38 files and its docstring above says it is for
+// "free public APIs" — but it used a bare `fetch(url)`, so any caller that
+// passed a URL derived from user input reached whatever that URL named,
+// including cloud metadata (169.254.169.254), the loopback Ollama brains, and
+// RFC1918. Two such callers were live and REFLECTED (the response body comes
+// back to the caller, so it is exfiltration, not just a blind probe):
+//
+//   • domains/importdomain.js — the `rest_api` and `csv_url` connector kinds
+//     fetch `cfg.url`, which is `params.url` straight off the macro input,
+//     and return the parsed body to the caller as `rows`.
+//   • domains/custom.js#bindingTest — fetches a user-authored REST binding's
+//     `target.url` and returns a sample of the response plus its field names.
+//
+// Guarding HERE rather than at those two call sites is deliberate: it closes
+// the class for all 38 importers at once, including any added later, instead
+// of leaving the next caller to rediscover the same hole. Checked before
+// making it a chokepoint — no importer legitimately fetches a private or
+// loopback address, which is consistent with the module's stated purpose.
+//
+// Callers that need to bypass the guard for tests inject `opts.fetchImpl`,
+// exactly as connectorFetch and fetchPublicUrl already allow.
+import { fetchPublicUrl } from "./public-fetch.js";
+
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
@@ -28,7 +53,15 @@ export async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = DEFAULT_T
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const r = await fetch(url, { ...opts, signal: ctrl.signal });
+    // `fetchImpl` is pulled out of opts so it reaches fetchPublicUrl's
+    // transport-override channel rather than being passed down as a fetch
+    // init field, where it would be silently ignored.
+    const { fetchImpl, ...init } = opts || {};
+    const r = await fetchPublicUrl(
+      url,
+      { ...init, signal: ctrl.signal },
+      fetchImpl ? { fetchImpl } : {}
+    );
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return await r.json();
   } finally {
