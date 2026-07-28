@@ -4,6 +4,7 @@
 // Requires: WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_WEBHOOK_SECRET
 
 import crypto from "node:crypto";
+import { timingSafeCompare } from "../../constant-time-compare.js";
 
 const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN || "";
@@ -25,7 +26,10 @@ export function verifyIncoming(req) {
     .createHmac("sha256", WEBHOOK_SECRET)
     .update(JSON.stringify(req.body))
     .digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  // timingSafeCompare, not a bare timingSafeEqual: the latter THROWS on a
+  // length mismatch, so a wrong-length signature raised instead of returning
+  // false. This adapter had no try/catch to absorb it.
+  return timingSafeCompare(signature, expected);
 }
 
 /** Parse a WhatsApp Cloud API inbound webhook body */
@@ -93,7 +97,9 @@ export function handleVerificationChallenge(query) {
   const mode = query["hub.mode"];
   const token = query["hub.verify_token"];
   const challenge = query["hub.challenge"];
-  if (mode === "subscribe" && token === WEBHOOK_SECRET) {
+  // `mode` is not secret, so a plain === is correct for it; the verify token
+  // is, so it goes through the constant-time path.
+  if (mode === "subscribe" && timingSafeCompare(String(token), WEBHOOK_SECRET)) {
     return { ok: true, challenge };
   }
   return { ok: false };

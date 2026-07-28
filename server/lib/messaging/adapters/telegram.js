@@ -4,6 +4,7 @@
 // Requires: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET (optional)
 
 import crypto from "node:crypto";
+import { timingSafeCompare } from "../../constant-time-compare.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || "";
@@ -19,7 +20,8 @@ export function isConfigured() {
 export function verifyIncoming(req) {
   if (!WEBHOOK_SECRET) return true;
   const token = req.headers?.["x-telegram-bot-api-secret-token"] || "";
-  return token === WEBHOOK_SECRET;
+  // Constant-time: a raw === leaks how much of the secret was guessed.
+  return timingSafeCompare(String(token), WEBHOOK_SECRET);
 }
 
 /** Parse Telegram Update object */

@@ -10,6 +10,7 @@
 
 import crypto from "crypto";
 import logger from "../logger.js";
+import { timingSafeCompare } from "./constant-time-compare.js";
 
 // ── Webhook Secret Management ──────────────────────────────────────────────
 
@@ -129,7 +130,11 @@ export function verifyWebhook(req, STATE, domain) {
       .update(bodyStr, "utf8")
       .digest("hex");
 
-    if (crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    // timingSafeCompare, not a bare crypto.timingSafeEqual on the two buffers:
+    // timingSafeEqual THROWS on a length mismatch, so a caller sending a
+    // wrong-length signature turned an auth failure into an unhandled
+    // exception (a 500 instead of this function's clean negative result).
+    if (timingSafeCompare(String(signature), expected)) {
       return { authenticated: true, method: "hmac-sha256" };
     }
     // Signature present but invalid
@@ -139,10 +144,10 @@ export function verifyWebhook(req, STATE, domain) {
   // Method 2: Bearer token
   if (authHeader) {
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    if (domainSecret && token === domainSecret) {
+    if (domainSecret && timingSafeCompare(token, domainSecret)) {
       return { authenticated: true, method: "bearer-token" };
     }
-    if (GLOBAL_SECRET && token === GLOBAL_SECRET) {
+    if (GLOBAL_SECRET && timingSafeCompare(token, GLOBAL_SECRET)) {
       return { authenticated: true, method: "global-secret" };
     }
     return { authenticated: false, method: "bearer-invalid" };
@@ -150,10 +155,10 @@ export function verifyWebhook(req, STATE, domain) {
 
   // Method 3: Query param secret
   if (req.query?.secret) {
-    if (domainSecret && req.query.secret === domainSecret) {
+    if (domainSecret && timingSafeCompare(String(req.query.secret), domainSecret)) {
       return { authenticated: true, method: "query-secret" };
     }
-    if (GLOBAL_SECRET && req.query.secret === GLOBAL_SECRET) {
+    if (GLOBAL_SECRET && timingSafeCompare(String(req.query.secret), GLOBAL_SECRET)) {
       return { authenticated: true, method: "global-secret" };
     }
     return { authenticated: false, method: "query-invalid" };
