@@ -82,7 +82,7 @@ jobs:
         # against an unwarmed instance. The report still uploads; we
         # just don't fail the job on infrastructure-class flake.
         continue-on-error: true
-        uses: zaproxy/action-baseline@v0.13.0
+        uses: zaproxy/action-baseline@0619037bb784a56e2e06b104f0ebe157e076f075 # v0.13.0
         with:
           target: ${{ inputs.target || 'http://localhost:5050' }}
           rules_file_name: '.zap/rules.tsv'
