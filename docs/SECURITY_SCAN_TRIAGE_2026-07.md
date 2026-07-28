@@ -106,6 +106,7 @@ Each was checked against the code, not assumed.
 | **Godot binary fetch unverified** | Already exemplary — `godot-client.yml` asserts the pin exists *before* fetching, then SHA-512 verifies. This is the model the k6 fix copied. |
 | **Rust `Command::arg` injection** | Only spawn site is `process_supervisor.rs`; all inputs come from operator env vars with hardcoded defaults, selected via a fixed `match`. No shell interpolation, no `sh -c`. |
 | **k8s images on `:latest`** | Moot: `deploy.yml` follows every `kubectl apply` with `kubectl set image ...:${IMAGE_TAG}` using the commit short-SHA. Pinning the manifests would be cosmetic and could break a pull. |
+| **Missing Gradle dependency locking** (`concord-jetbrains`) | Technically accurate, practically empty. `concord-jetbrains` is a 984-byte scaffold with no wrapper, no `settings.gradle`, no version catalog — and **no workflow builds it**; it is referenced only from docs and its own README, which calls it "a thin shell". Adding `dependencyLocking` to a module nothing builds produces configuration no one exercises and no lockfile (generating one needs a working Gradle build). Left alone deliberately. If it ever becomes a real, built, shipped plugin, locking should land *with* the wrapper and a CI build, not before them. |
 
 **On the repo being public:** `ConcordDev/concord-cognitive-engine` is public
 and has two third-party forks (`netzkontrast`, `5mhyjt8mk8-cyber`). History
