@@ -185,10 +185,28 @@ out the attacker.
 
 ## Middleware and Transport Security
 
-### Security Headers (Helmet.js + nginx)
+### Security Headers (Helmet.js + nginx + Next.js)
 
-All responses include the following headers, enforced at both the application layer
-(Helmet.js) and the reverse proxy layer (nginx):
+Headers are set at THREE layers, and which one a browser actually sees depends on
+the deployment topology -- this distinction matters and was previously glossed:
+
+- **Express API** (`server/middleware/index.js`, Helmet) -- covers `/api/*`.
+- **nginx** (`nginx/conf.d/default.conf`) -- covers everything, *when nginx is in
+  the path*.
+- **Next.js** (`concord-frontend/next.config.js` `headers()`) -- covers the HTML
+  document. On the Cloudflare-tunnel topology root traffic goes straight to the
+  Next server on `127.0.0.1:3000`, so **nginx and the API may both be bypassed for
+  the document itself**. HSTS was missing at this layer until 2026-07-27; the
+  header table below describes the API/nginx layers, and the Next layer now sets
+  HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and
+  `Permissions-Policy` to match.
+
+One honest exception: **CSP is not set at the Next.js layer.** Per-request nonces
+were removed there because they blocked Next.js inline scripts, and a real Next CSP
+needs middleware nonce plumbing. The CSP row below applies to the API/nginx layers.
+
+All API responses include the following headers, enforced at both the application
+layer (Helmet.js) and the reverse proxy layer (nginx):
 
 | Header                    | Value                                    | Purpose                           |
 |---------------------------|------------------------------------------|-----------------------------------|
@@ -636,7 +654,10 @@ In this configuration, no data leaves the host machine.
 | Measure                  | Implementation                                    |
 |--------------------------|---------------------------------------------------|
 | Non-root execution       | Containers run as UID 1001 (`concord` user)       |
-| No privilege escalation  | `security_opt: no-new-privileges:true`            |
+| No privilege escalation  | `security_opt: no-new-privileges:true` on **all 16** compose services (was 3 of 16 before 2026-07-27) |
+| Capability drop          | `cap_drop: [ALL]` on 14 services. **nginx and certbot are excluded on purpose** -- nginx binds :80/:443 and certbot rewrites cert ownership; both need a tested `cap_add` set. The exclusion and its reason are recorded inline in `docker-compose.yml`. |
+| Base-image pinning       | Both Dockerfiles pin `node:20-bookworm-slim` by SHA256 digest; compose services pin concrete versions (no `:latest`, no untagged). Kept current by the `docker` Dependabot ecosystem -- pinning without that would trade drift for silent staleness. |
+| Read-only root FS        | **Not applied.** Every remaining service writes somewhere (model blobs, TSDB, dashboards, RDB snapshots, collections); it needs a per-service tmpfs audit. Stated rather than implied. |
 | tmpfs with restrictions  | `/tmp` mounted as `tmpfs` with `noexec,nosuid`    |
 | Production-only deps     | `npm ci --omit=dev` excludes dev dependencies     |
 | Build-time tests         | Docker build fails if any test fails              |
