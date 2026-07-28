@@ -42,6 +42,13 @@ on:
   # PR; only k6 has the schedule-only `if:` guard.
   workflow_dispatch:
 
+# Least-privilege token scope. Without this the workflow inherits the
+# repository default, which is broader than anything here needs: these
+# jobs only check out code and upload artifacts -- no GITHUB_TOKEN use,
+# no gh CLI, no SARIF upload, no PR/issue writes, no pushes.
+permissions:
+  contents: read
+
 jobs:
   # ════════════════════════════════════════════════════════════════════
   # Shared frontend build (Sprint 35 v2)

@@ -25,6 +25,13 @@ on:
       - 'scripts/launch-godot-client.sh'
       - '.github/workflows/godot-client.yml'
 
+# Least-privilege token scope. Without this the workflow inherits the
+# repository default, which is broader than anything here needs: these
+# jobs only check out code and upload artifacts -- no GITHUB_TOKEN use,
+# no gh CLI, no SARIF upload, no PR/issue writes, no pushes.
+permissions:
+  contents: read
+
 jobs:
   godot-client:
     name: Fetch, import, parse, run, test
