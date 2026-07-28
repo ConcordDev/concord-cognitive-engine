@@ -362,7 +362,7 @@ services:
 
   # Certbot for SSL certificates
   certbot:
-    image: certbot/certbot
+    image: certbot/certbot:v5.7.0
     container_name: concord-certbot
     volumes:
       - ./certbot/conf:/etc/letsencrypt
@@ -384,7 +384,7 @@ services:
 
   # Prometheus — scrapes /metrics from backend
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.13.1
     container_name: concord-prometheus
     restart: unless-stopped
     volumes:
@@ -411,7 +411,7 @@ services:
 
   # Grafana — dashboards for Concord metrics
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.1.1
     container_name: concord-grafana
     restart: unless-stopped
     environment:
@@ -466,7 +466,7 @@ services:
 
   # Qdrant — vector search engine for embedding similarity
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.18.3
     container_name: concord-qdrant
     restart: unless-stopped
     environment:
@@ -517,7 +517,7 @@ services:
   #
   # Brain 1: Conscious — chat and deep reasoning (32B-q4_K_M on GPU, ~18GB VRAM)
   ollama-conscious:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
     container_name: concord-ollama-conscious
     restart: unless-stopped
     environment:
@@ -560,7 +560,7 @@ services:
   # Brain 2: Subconscious — autogen, dream, evolution, synthesis, birth (7B on GPU, ~4.5GB VRAM)
   # THE big win: 1.5B → 7B means every DTU Concord creates is fundamentally smarter
   ollama-subconscious:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
     container_name: concord-ollama-subconscious
     restart: unless-stopped
     environment:
@@ -598,7 +598,7 @@ services:
   # Brain 3: Utility — lens interactions, entity actions, quick domain tasks (3B on GPU, ~2GB VRAM)
   # Speed matters more than depth here — 3B stays the same, fast turnaround
   ollama-utility:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
     container_name: concord-ollama-utility
     restart: unless-stopped
     environment:
@@ -641,7 +641,7 @@ services:
   # latency. Backend reads BRAIN_UTILITY_URLS (plural, comma-separated) and
   # picks the less-loaded endpoint per call (lib/brain-config.js).
   ollama-utility-2:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
     container_name: concord-ollama-utility-2
     restart: unless-stopped
     environment:
@@ -679,7 +679,7 @@ services:
   # batches dominate the subconscious queue at night; a second endpoint
   # halves the wait.
   ollama-subconscious-2:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
     container_name: concord-ollama-subconscious-2
     restart: unless-stopped
     environment:
@@ -716,7 +716,7 @@ services:
   # Brain 4: Repair — error detection, auto-fix (1.5B on GPU, ~1GB VRAM)
   # 3x upgrade from 0.5B — can actually parse error messages now
   ollama-repair:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
     container_name: concord-ollama-repair
     restart: unless-stopped
     environment:
@@ -759,7 +759,7 @@ services:
   # needs image understanding. Separate from the four cognitive brains
   # so vision queries don't compete with chat for KV cache.
   ollama-vision:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
     container_name: concord-ollama-vision
     restart: unless-stopped
     environment:

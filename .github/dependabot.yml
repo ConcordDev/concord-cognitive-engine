@@ -47,3 +47,45 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+
+  # Container images.
+  #
+  # Added alongside the image-pinning pass: base images and compose services
+  # were moved off :latest / untagged onto concrete versions, and both
+  # Dockerfiles onto a SHA256 digest. Pinning WITHOUT this ecosystem would be
+  # a net loss — the images would stop drifting, but they would also stop
+  # receiving security patches, and nothing would ever tell us. Dependabot
+  # understands both `image:tag` and `image:tag@sha256:...` and rewrites them,
+  # so the pins stay current instead of silently rotting.
+  #
+  # One entry per directory containing a Dockerfile; `docker-compose` files are
+  # picked up by the docker ecosystem at the directory they live in.
+  - package-ecosystem: "docker"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/concord-frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
