@@ -129,6 +129,40 @@ promoted into the blocking gate.
   user record.
 - **CSP at the Next.js layer** — nonces were removed because they broke inline
   scripts; a real Next CSP needs middleware nonce plumbing.
-- **Dependency work** — `next` 15→16 and `uuid` 9→14 are majors needing
-  individual verification; `@xenova/transformers` pins `onnxruntime-web` to
-  exactly `1.14.0` and needs an `overrides` entry.
+- **`next` 15→16 and `uuid` 9→14** — majors needing individual verification.
+  `uuid` in particular: v3/v5/v6 signatures changed and the OOB fix added
+  bounds checks that *throw* `RangeError` where callers previously got silent
+  corruption, so every call site needs reading first.
+
+### `@xenova/transformers` — 4 flagged CVEs, and why an `overrides` entry is the wrong fix
+
+This one subtree accounts for four flagged packages: `sharp` 0.32.6 and
+`onnxruntime-{node,web,common}` 1.14.0. The obvious move is an npm `overrides`
+entry forcing newer versions. **Don't** — the situation is worse and simpler
+than that:
+
+- `@xenova/transformers` is at **2.17.2, its final release**. The package was
+  renamed; the maintained successor is `@huggingface/transformers` (now 4.2.0).
+  It will therefore *never* ship a fix for its dependencies.
+- It **pins `onnxruntime-web` to exactly `1.14.0`**. Forcing 1.2x under a
+  package built against the 1.14 API risks silently breaking inference rather
+  than failing loudly — trading a known CVE for an unknown correctness bug.
+
+What it actually is, in this codebase (`server.js:17265`): an **optional
+dependency**, used only as the **CPU fallback** for embeddings when the Ollama
+embedding backend fails, imported as
+`await import("@xenova/transformers").catch(() => ({}))` and degrading to an
+honest `{ ok:false, reason:"package_not_installed" }`. The deployed box uses
+Ollama for embeddings (`CONCORD_EMBED_OLLAMA_URL`), so this path is not the
+production one.
+
+**Recommended fix, in order:** migrate the single call site to
+`@huggingface/transformers` (same `pipeline("feature-extraction", ...)` API
+family), which drops the whole stale subtree at once. Failing that, drop the
+optional dependency entirely — the fallback already degrades honestly without
+it.
+
+**Not executed here** deliberately: swapping an ML runtime cannot be verified
+in this environment (no model downloads, no egress), and an unverified swap of
+an inference backend is a worse outcome than a documented one. The exposure
+while it waits is bounded — an optional package on a non-default code path.
