@@ -71,7 +71,39 @@ export async function saveBaseline(rootDir, report) {
   return { ok: true, fingerprintCount: fps.size, path: p };
 }
 
-/** Compute new vs. retired vs. unchanged findings against the baseline. */
+/**
+ * Strip the `:line` (and optional `:col`) suffix off a location, leaving the
+ * file. `server/server.js:75506` -> `server/server.js`.
+ */
+function locationFile(loc) {
+  return String(loc || "").replace(/:\d+(?::\d+)?$/, "");
+}
+
+/**
+ * Identity of a finding IGNORING its line number.
+ *
+ * The fingerprint is sha256(detector|rule|location|severity) and `location`
+ * carries the line, so ANY commit that shifts lines re-fingerprints findings
+ * that did not change — they then present as "added" and, if high/critical,
+ * redden the ratchet. That is not a hypothetical: a +1061-line diff in
+ * server.js re-fingerprinted `creditWallet` (74445 -> 75506), `debitWallet`
+ * (74505 -> 75566) and `requestAccountDeletion` (42 -> 43), all with byte-
+ * identical messages, and CLAUDE.md already documents the property as "the
+ * reason a red ratchet carries less signal than it looks like it does".
+ *
+ * A gate that fires on non-events trains people to re-baseline past it, which
+ * is the exact goalpost-moving this whole subsystem exists to prevent. So a
+ * moved finding is now recognised as moved rather than new. Note this does NOT
+ * relax what counts as new: the message and the FILE must both still match, so
+ * a genuinely new finding — new file, new rule, or changed message — is
+ * unaffected.
+ */
+function movedKey(detector, id, severity, location, message) {
+  // Baseline stores message truncated to 200; truncate both sides to compare.
+  return [detector, id || "", severity || "", locationFile(location), String(message || "").slice(0, 200)].join("|");
+}
+
+/** Compute new vs. retired vs. moved vs. unchanged findings against the baseline. */
 export function diffAgainstBaseline(report, baseline) {
   const current = reportFingerprints(report);
   const baseFps = new Set(Object.keys(baseline.fingerprints || {}));
@@ -79,13 +111,44 @@ export function diffAgainstBaseline(report, baseline) {
   const added = []; // findings in current that weren't in baseline
   const removed = []; // fingerprints in baseline that aren't in current
   const unchanged = [];
+  const moved = []; // same finding, different line — NOT new
 
+  const pendingCurrent = [];
   for (const [fp, v] of current.entries()) {
     if (baseFps.has(fp)) unchanged.push({ fp, ...v });
-    else added.push({ fp, ...v });
+    else pendingCurrent.push({ fp, ...v });
   }
+  const pendingBase = [];
   for (const fp of baseFps) {
-    if (!current.has(fp)) removed.push({ fp, ...baseline.fingerprints[fp] });
+    if (!current.has(fp)) pendingBase.push({ fp, ...baseline.fingerprints[fp] });
+  }
+
+  // Second pass over the leftovers only: pair a current finding with a
+  // baseline finding that is identical apart from its line. Matching is
+  // STRICTLY ONE-TO-ONE (each baseline entry is consumed at most once), so if
+  // the baseline held one occurrence and the tree now has two, exactly one is
+  // "moved" and the other is correctly still "added".
+  const baseByKey = new Map();
+  for (const b of pendingBase) {
+    const k = movedKey(b.detector, b.id, b.severity, b.location, b.message);
+    if (!baseByKey.has(k)) baseByKey.set(k, []);
+    baseByKey.get(k).push(b);
+  }
+  for (const c of pendingCurrent) {
+    const k = movedKey(c.detector, c.finding?.id, c.finding?.severity, c.finding?.location, c.finding?.message);
+    const bucket = baseByKey.get(k);
+    if (bucket && bucket.length) {
+      const from = bucket.shift();
+      moved.push({ ...c, fromFingerprint: from.fp, fromLocation: from.location });
+    } else {
+      added.push(c);
+    }
+  }
+  // A baseline entry that got paired is not "removed" — it is still present,
+  // just at a new line. Only genuinely-gone entries remain.
+  const movedFrom = new Set(moved.map((m) => m.fromFingerprint));
+  for (const b of pendingBase) {
+    if (!movedFrom.has(b.fp)) removed.push(b);
   }
 
   // Severity-bucketed summaries for quick CLI output
@@ -95,10 +158,11 @@ export function diffAgainstBaseline(report, baseline) {
     addedBySeverity[s] = (addedBySeverity[s] || 0) + 1;
   }
   return {
-    added, removed, unchanged,
+    added, removed, unchanged, moved,
     addedCount: added.length,
     removedCount: removed.length,
     unchangedCount: unchanged.length,
+    movedCount: moved.length,
     addedBySeverity,
   };
 }
