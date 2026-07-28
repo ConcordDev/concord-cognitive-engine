@@ -250,34 +250,47 @@ jobs:
           GITLEAKS_CONFIG: .gitleaks.toml
 
   container-scan:
-    name: Container — Trivy image scan
+    name: Container — Trivy image scan (${{ matrix.name }})
     runs-on: ubuntu-latest
-    # hashFiles() is only valid in `cache.key`-context expressions, not
-    # in step/job `if:` conditions. Replaced with a runtime check
-    # inside the build step that skips silently when Dockerfile is
-    # absent. Sprint 34 fix — this job had been failing every push
-    # since PR #330 merged because of the unrecognized-function error.
+    #
+    # 2026-07-27 security triage: this job HAD NEVER SCANNED ANYTHING.
+    #
+    # It gated every step on `if [ -f Dockerfile ]` at the repo root, and no
+    # root Dockerfile has ever existed — the real ones are server/Dockerfile
+    # and concord-frontend/Dockerfile. So the check took the else branch on
+    # every run, emitted `::notice::No Dockerfile at repo root`, and the job
+    # went green without building or scanning an image, while the comment on
+    # the Trivy step below described itself as "the actual CVE gate".
+    #
+    # This is the same silently-disarmed-gate failure mode that
+    # scripts/autoloop/guard.mjs records as a past incident (a wrong
+    # coin-service.js path left coin minting ungated). A gate whose skip path
+    # is indistinguishable from a pass is worse than no gate, because it is
+    # counted as coverage.
+    #
+    # Now a matrix over the two real images, each built from its own service
+    # directory as build context — matching how docker-compose.yml builds them
+    # (`context: ./server` / `context: ./concord-frontend`). Removing the
+    # presence check entirely is deliberate: if a Dockerfile path stops
+    # resolving, the build must FAIL loudly rather than skip quietly.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: server
+          - name: frontend
+            context: concord-frontend
     steps:
       - uses: actions/checkout@v6
-      - name: Check for Dockerfile
-        id: dockerfile_check
-        run: |
-          if [ -f Dockerfile ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No Dockerfile at repo root — skipping container scan"
-          fi
       - name: Build image
-        if: steps.dockerfile_check.outputs.present == 'true'
-        run: docker build -t concord:scan .
+        run: docker build -t "concord-${{ matrix.name }}:scan" "${{ matrix.context }}"
       - name: Trivy scan
-        if: steps.dockerfile_check.outputs.present == 'true'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'concord:scan'
+          image-ref: 'concord-${{ matrix.name }}:scan'
           format: 'sarif'
-          output: 'trivy-results.sarif'
+          output: 'trivy-results-${{ matrix.name }}.sarif'
           severity: 'CRITICAL,HIGH'
           # `exit-code: 1` keeps THIS step the actual CVE gate — if
           # Trivy finds a CRITICAL or HIGH-severity CVE this fails the
@@ -294,7 +307,8 @@ jobs:
         # uploads results to GitHub's Security dashboard for
         # visualization, so a 429 here shouldn't gate merges.
         continue-on-error: true
-        if: always() && steps.dockerfile_check.outputs.present == 'true'
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: 'trivy-results-${{ matrix.name }}.sarif'
+          category: 'trivy-${{ matrix.name }}'
