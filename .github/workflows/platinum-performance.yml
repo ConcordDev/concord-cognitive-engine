@@ -255,9 +255,32 @@ jobs:
           echo "Warmup done; launching k6"
       - name: Install k6
         if: steps.k6_check.outputs.present == 'true'
+        env:
+          K6_VERSION: v0.50.0
+          # SHA-256 of k6-v0.50.0-linux-amd64.tar.gz, taken from the release's
+          # own k6-v0.50.0-checksums.txt and independently re-verified by
+          # hashing the downloaded artifact (25,351,059 bytes). Bumping
+          # K6_VERSION REQUIRES updating this digest in the same commit --
+          # a stale digest fails the build loudly, which is the intended
+          # behaviour, not a nuisance to work around.
+          K6_SHA256: d950a2408d0be2dc81aef397a7c984a1d84271d7ae94ff7a47d08371904f0800
         run: |
-          curl -L https://github.com/grafana/k6/releases/download/v0.50.0/k6-v0.50.0-linux-amd64.tar.gz | tar xz
-          sudo mv k6-v0.50.0-linux-amd64/k6 /usr/local/bin/
+          # Previously this piped `curl -L ... | tar xz` straight into the
+          # shell with no verification, then installed the result into
+          # /usr/local/bin -- so anything that could tamper with the download
+          # (a compromised release asset, a MITM on the runner, a hijacked
+          # redirect) got arbitrary code execution on a CI runner. Download,
+          # verify, THEN extract. Modelled on scripts/fetch-godot.mjs, which
+          # already does exactly this correctly.
+          set -euo pipefail
+          asset="k6-${K6_VERSION}-linux-amd64"
+          curl -fsSL --retry 3 --retry-delay 2 \
+            -o "${asset}.tar.gz" \
+            "https://github.com/grafana/k6/releases/download/${K6_VERSION}/${asset}.tar.gz"
+          echo "${K6_SHA256}  ${asset}.tar.gz" | sha256sum -c -
+          tar xzf "${asset}.tar.gz"
+          sudo mv "${asset}/k6" /usr/local/bin/
+          k6 version
       - name: Run k6 smoke
         if: steps.k6_check.outputs.present == 'true'
         run: k6 run tests/k6/smoke.js
