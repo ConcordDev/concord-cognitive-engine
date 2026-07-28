@@ -29,6 +29,24 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           {
+            // HSTS. The Express API sets this via Helmet
+            // (server/middleware/index.js) and nginx sets it too
+            // (nginx/conf.d/default.conf), but NEITHER is necessarily in the
+            // browser's path for the HTML document: the Cloudflare tunnel
+            // routes root traffic to this Next.js server on 127.0.0.1:3000,
+            // so on that topology the document shipped with no HSTS at all.
+            //
+            // The existing test (server/tests/platinum-security-headers.test.js)
+            // could not catch this — it greps server.js/middleware for an HSTS
+            // config, so it passes on the API's header while the frontend has
+            // none.
+            //
+            // Two years, subdomains included, preload-eligible — matching what
+            // Helmet already sends on the API so the two layers agree.
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },

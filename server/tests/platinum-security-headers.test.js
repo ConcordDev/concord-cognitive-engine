@@ -64,3 +64,49 @@ test("helmet middleware is actually applied (app.use(helmet(...)))", () => {
   const applied = /app\.use\(helmet\(/i.test(SOURCES);
   assert.ok(applied, "helmet() is imported but never wired into the middleware chain via app.use()");
 });
+
+// ── Frontend layer (added 2026-07-27, Aikido triage) ────────────────────────
+//
+// Every test above scans server.js + middleware/index.js — the EXPRESS API.
+// That is a real gap, not a stylistic one: the Cloudflare tunnel routes root
+// traffic straight to the Next.js server on 127.0.0.1:3000, so on the
+// deployed topology the HTML document is served by a layer none of the above
+// assertions can see. HSTS was genuinely missing there while every test here
+// passed on the API's Helmet config.
+//
+// These scan concord-frontend/next.config.js so the frontend cannot silently
+// drop a document-level header either.
+
+const FRONTEND_CONFIG = readFileSync(
+  join(HERE, "..", "..", "concord-frontend", "next.config.js"),
+  "utf-8"
+);
+
+test("frontend serves Strict-Transport-Security on the document", () => {
+  assert.match(
+    FRONTEND_CONFIG, /Strict-Transport-Security/,
+    "next.config.js headers() does not set HSTS — on the tunnel->:3000 topology " +
+    "the HTML document ships without it, regardless of what the API sends"
+  );
+});
+
+test("frontend HSTS has a meaningful max-age and covers subdomains", () => {
+  const m = FRONTEND_CONFIG.match(/max-age=(\d+)/);
+  assert.ok(m, "HSTS present but no max-age");
+  assert.ok(
+    Number(m[1]) >= 31536000,
+    `HSTS max-age ${m[1]} is under one year, too short to be meaningful`
+  );
+  assert.match(FRONTEND_CONFIG, /includeSubDomains/);
+});
+
+test("frontend still sets the other document-level headers", () => {
+  for (const h of [
+    "X-Content-Type-Options",
+    "X-Frame-Options",
+    "Referrer-Policy",
+    "Permissions-Policy",
+  ]) {
+    assert.match(FRONTEND_CONFIG, new RegExp(h), `frontend dropped ${h}`);
+  }
+});
