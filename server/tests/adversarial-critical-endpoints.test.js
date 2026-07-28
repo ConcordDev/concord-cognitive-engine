@@ -42,7 +42,40 @@ before(async () => {
 
   serverProcess = spawn("node", ["server.js"], {
     cwd: serverDir,
-    env: { ...process.env, PORT: port, NODE_ENV: "test", AUTH_MODE: "", CONCORD_FORCE_LISTEN: "true" },
+    env: {
+      ...process.env,
+      PORT: port,
+      NODE_ENV: "test",
+      AUTH_MODE: "",
+      CONCORD_FORCE_LISTEN: "true",
+      // Isolate the thing under test (2026-07-28). Three tests here
+      // ("Personal analytics", "Analytics summary", "Collab workspaces") had
+      // been failing for a long time, and the reason was NOT the
+      // authorization behaviour they assert:
+      //
+      //   • CONCORD_LOAD_SHED_ENABLED=0 — lib/request-admission.js sheds
+      //     requests with an immediate 503+Retry-After when event-loop lag
+      //     exceeds 300ms. Boot work (content seeding, macro registration,
+      //     the first governorTick) keeps lag over that bar for roughly the
+      //     first 20 seconds, so requests landing in that window are shed
+      //     BEFORE routing. Measured directly: a 503 in 4ms at +13.1s, with
+      //     the same request returning 401 in 82ms at +8.3s and again at
+      //     +19.2s. A 4ms 503 is the shedder, not the 60s request timeout --
+      //     which is what made this look like a slow endpoint for so long.
+      //
+      //   • CONCORD_RATE_LIMIT_BYPASS=1 — unauthenticated requests are capped
+      //     at 30/min per IP (server.js#unauthRateLimiter). This file is
+      //     ~53 anonymous requests from 127.0.0.1, so it blows the cap
+      //     partway through and later tests get 429.
+      //
+      // Neither weakens an assertion. The tests still require 401/403; they
+      // simply now reach the auth gate instead of being answered by an
+      // admission control that has nothing to do with authorization. A 503 or
+      // 429 is not evidence the endpoint is protected -- it is evidence the
+      // test never got to find out.
+      CONCORD_LOAD_SHED_ENABLED: "0",
+      CONCORD_RATE_LIMIT_BYPASS: "1",
+    },
     stdio: ["ignore", "ignore", "inherit"],
   });
   serverProcess.on("error", (err) => { process.stderr.write(`Server error: ${err.message}\n`); });
