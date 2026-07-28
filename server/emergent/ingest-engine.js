@@ -207,7 +207,25 @@ async function fetchContent(url, tier) {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), limits.timeoutMs);
-    const response = await fetch(url, {
+    // SECURITY (2026-07-27): validateDomain() above is a NAME check only —
+    // it compares hostnames against an allowlist/blocklist and never resolves
+    // them, so it cannot see where a name actually points. Three things
+    // stacked into a real SSRF here:
+    //   1. DOMAIN_BLOCKLIST holds two example.com placeholders, so the
+    //      blocklist blocks nothing real.
+    //   2. Only the FREE tier is allowlist-gated; paid/researcher are
+    //      blocklist-only and sovereign skips both.
+    //   3. routes/operations.js reads the tier straight off the request body
+    //      (`req.body?.tier || "free"`), so a caller can simply declare
+    //      itself sovereign and skip every name check.
+    // The fix is at the transport, not the name check: fetchPublicUrl
+    // validates the scheme, rejects private/link-local/loopback addresses,
+    // and pins the connection to the validated IP (so a name that passes the
+    // allowlist cannot then resolve to an internal address, and cannot be
+    // re-resolved between check and connect). This holds for every tier,
+    // including a spoofed one.
+    const { fetchPublicUrl } = await import("../lib/public-fetch.js");
+    const response = await fetchPublicUrl(url, {
       headers: { 'User-Agent': 'Concord/1.0 (Research Bot; +https://concord.app/bot)' },
       signal: controller.signal,
     });
@@ -270,6 +288,16 @@ async function fetchContent(url, tier) {
       fetchSuccess: true,
     };
   } catch (e) {
+    // SSRF rejections get a generic message so the guard's internal reason
+    // ("resolves to a private/reserved IP" vs "cloud metadata endpoint
+    // blocked") isn't handed back as a probing oracle. Still an honest
+    // failure — fetchSuccess stays false, nothing is fabricated.
+    if (e?.code === "SSRF_BLOCKED") {
+      return {
+        url, hostname, fetchedAt: nowISO(), fetchSuccess: false,
+        error: "url not allowed",
+      };
+    }
     return {
       url, hostname, fetchedAt: nowISO(), fetchSuccess: false,
       error: e.name === 'AbortError' ? `Timeout after ${limits.timeoutMs}ms` : e.message,
