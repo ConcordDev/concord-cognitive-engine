@@ -67,12 +67,35 @@ const consumable = new Set();
   if (blk) for (const m of blk[1].matchAll(/'([a-zA-Z0-9:_-]+)'/g)) consumable.add(m[1]);
 }
 // (b)+(c) TRACKED_EVENTS names, subscribe()/socket.on()/.on() literals, anywhere in FE
-const subRe = /(?:subscribe|\.on|useSocketEvent)\(\s*['"`]([a-zA-Z0-9:_-]+)['"`]/g;
+//
+// `\s*<[^>(]*>` is the TypeScript type-argument slot. Without it,
+// `subscribe<{ price: number }>('marketplace:sale', ...)` in
+// hooks/useWalletBalance.ts does not match and the event is reported SILENT
+// while a live consumer sits right there. This is the same regex bug class
+// already recorded in CLAUDE.md for `verify-lens-backends.mjs` ("no TS-generic
+// match"), which under-detected until it was fixed — the fix simply never
+// propagated to this verifier.
+const subRe = /(?:subscribe|\.on|useSocketEvent)\s*(?:<[^>(]*>)?\s*\(\s*['"`]([a-zA-Z0-9:_-]+)['"`]/g;
 const trackedRe = /name:\s*'([a-zA-Z0-9:_-]+)'(?:\s+as SocketEvent)?\s*,\s*channel:/g;
+
+// (d) Array-of-events subscription hooks. The single-literal regex above sees
+// only a FIRST-argument string, so a hook taking a LIST of event names — e.g.
+// `useRealtimeRefresh(['quest:new', 'quest:completed'], reload, ...)` in
+// components/world/QuestTracker.tsx — registered zero of its events. Same
+// abstraction-defeats-a-literal-scan failure as the `_tickRssDomain` lesson in
+// CLAUDE.md section 1: the names are real and live, just not where the scan looked.
+//
+// Scoped deliberately: only the array literal in the FIRST argument position of
+// a known realtime-subscription hook is read, so an unrelated array of strings
+// elsewhere in a file cannot inflate the consumable set.
+const arrayHookRe = /(?:useRealtimeRefresh|useRealtimeLens|useSocketEvents|subscribeMany)\s*(?:<[^>(]*>)?\s*\(\s*\[([^\]]*)\]/g;
 for (const f of walk(FE, ['.ts', '.tsx'])) {
   const src = fs.readFileSync(f, 'utf8');
   for (const m of src.matchAll(subRe)) consumable.add(m[1]);
   for (const m of src.matchAll(trackedRe)) consumable.add(m[1]);
+  for (const m of src.matchAll(arrayHookRe)) {
+    for (const lit of m[1].matchAll(/['"`]([a-zA-Z0-9:_-]+)['"`]/g)) consumable.add(lit[1]);
+  }
 }
 
 // ── 3. Classify ──────────────────────────────────────────────────────────────
