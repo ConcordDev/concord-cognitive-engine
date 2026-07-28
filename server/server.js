@@ -51094,6 +51094,26 @@ app.get("/api/observability/health", (req, res) => {
     dtuCount: STATE.dtus.size,
     shadowDtuCount: STATE.shadowDtus.size,
     artifactCount: STATE.lensArtifacts.size,
+    // Write-through store health + the growth signal that decides whether
+    // artifacts ever need bounding in memory.
+    //
+    // Measured 2026-07-28 in isolation (parse the real rows, monotonic
+    // allocation — an in-process drop-and-GC attempt produced a bogus
+    // "-0.0 MB" and was discarded): 12,647 artifacts retain 15.3 MB, i.e.
+    // ~1,209 bytes each and only 1.43x their serialized size. Against the
+    // 8192 MB production ceiling that is 0.2%; even 1,000,000 artifacts would
+    // be ~1.2 GB (14.8%).
+    //
+    // So LRU eviction with lazy load-back was deliberately NOT built: it would
+    // have meant touching ~20 whole-collection iteration sites (which do
+    // `Array.from(STATE.lensArtifacts.values()).filter(...)`) to reclaim a
+    // fraction of a percent. This figure is exposed instead so the decision
+    // can be revisited on evidence rather than re-estimated. Revisit if
+    // `estimatedHeapMb` approaches a few hundred MB.
+    artifactStore: typeof STATE.lensArtifacts?.stats === "function"
+      ? { ...STATE.lensArtifacts.stats(), estimatedHeapMb: +(STATE.lensArtifacts.size * 1209 / 1e6).toFixed(1) }
+      : { backed: false, note: "plain Map — write-through store not attached" },
+    dtuStoreBacked: typeof STATE.dtus?.rehydrateFromSQLite === "function",
     wsConnections: REALTIME.clients?.size || 0,
     eventSeq: _eventSeqCounter,
     idempotencyEntries: _IDEMPOTENCY.store.size,
