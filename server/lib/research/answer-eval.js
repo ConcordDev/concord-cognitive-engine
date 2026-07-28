@@ -129,7 +129,10 @@ async function llmDecompose(answerText, { db, requesterId, timeoutMs = 8000 } = 
       `commentary, no markdown). Respond with ONLY a JSON array of strings.\n\n` +
       `Answer:\n"""${String(answerText || "").slice(0, 4000)}"""`;
     const call = brainChat({ db, userId: requesterId, slot: "subconscious", messages: [{ role: "user", content: prompt }] });
-    const timeout = new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs));
+    // Braced so the executor does not RETURN setTimeout's handle
+    // (no-promise-executor-return): the return value is meaningless to the
+    // promise and reading it is a common source of confusion.
+    const timeout = new Promise((resolve) => { setTimeout(() => resolve(null), timeoutMs); });
     const result = await Promise.race([call, timeout]);
     if (!result) return null; // honest timeout — never fabricate a decomposition
     const text = String(result?.text || "");
@@ -345,7 +348,8 @@ export async function evaluateAnswer(answerText, question, retrievedDtus = [], o
 
   const entailments = [];
   for (const claim of claimTexts) {
-    // eslint-disable-next-line no-await-in-loop -- per-claim, order-independent but cheap; sequential keeps LLM calls (when enabled) rate-friendly
+    // Sequential on purpose: per-claim and order-independent, but serializing
+    // keeps LLM calls (when enabled) rate-friendly.
     const e = await scoreEntailment(claim, retrievedDtus, { useLLM: !!opts.useLLMEntailment, db: opts.db });
     if (opts.useLLMEntailment && e.method === "llm-judge") anyLLM.entailment = true;
     entailments.push({ text: claim, ...e });

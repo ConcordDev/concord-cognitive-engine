@@ -58300,6 +58300,14 @@ app.get("/api/economy/status", (req, res) => {
 // user's balance needs an explicit owner/admin role.
 app.get("/api/economy/balance", requireAuth(), (req, res) => {
   ensureEconomicState();
+  // safe: admin-only. The param is READ here but never trusted -- the
+  // ownership/role check just below rejects any requestedUserId !== callerId
+  // unless the caller holds owner/admin/sovereign/founder.
+  //
+  // NOTE: the rule's own message suggests adding a `// safe:` comment, but
+  // no-restricted-syntax has no such mechanism -- only a disable directive
+  // suppresses it, and it must sit on the line IMMEDIATELY above the code.
+  // eslint-disable-next-line no-restricted-syntax
   const requestedUserId = req.query.user_id;
   const callerId = req.user?.id;
   if (!callerId) return res.status(401).json({ ok: false, error: "unauthorized" });

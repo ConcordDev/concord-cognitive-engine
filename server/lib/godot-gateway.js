@@ -27,7 +27,7 @@
 import { WebSocketServer } from "ws";
 import { makeSocketRateLimiter } from "./socket-rate-limit.js";
 
-const ROOM_RE = /^(world|user):[A-Za-z0-9_.\-]{1,64}$/;
+const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
 let _clientCounter = 0;
 const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter).toString(36)}`;
@@ -355,7 +355,6 @@ export function mountGodotGateway(httpServer, deps = {}) {
           return;
         }
         send(client.ws, "error", { reason: "unknown_evt", evt });
-        return;
       }
     }
   }

@@ -193,6 +193,41 @@ export default [
       'no-lone-blocks': 'off',
     },
   },
+  // ── eslint 9 -> 10 migration (2026-07-28) ────────────────────────────────
+  //
+  // The bump to eslint 10 was taken for its SECURITY fixes: it clears five
+  // high advisories in the dev toolchain (eslint, @eslint/config-array,
+  // @eslint/eslintrc, brace-expansion, minimatch).
+  //
+  // eslint 10 also turns on two NEW rules in its recommended set, which
+  // together account for 341 of the 345 errors the bump surfaced on this tree:
+  //
+  //   no-useless-assignment  334 occurrences
+  //   preserve-caught-error    7 occurrences
+  //
+  // These are NEW OPINIONS, not regressions — nothing about this code got
+  // worse, and neither rule was ever part of this repo's standard. Adopting a
+  // security patch is a separate decision from adopting 341 new style
+  // findings, so they are explicitly deferred here rather than either
+  // (a) blocking the security fix behind a 341-site cleanup, or (b) being
+  // silently absorbed by loosening something broader.
+  //
+  // This is a DEFERRAL WITH A COUNT, not a permanent exemption: both rules are
+  // worth adopting (no-useless-assignment in particular finds real dead
+  // stores). Turn one on, fix its sites, delete the line. The counts above are
+  // the yardstick — if they grow before someone gets to this, the deferral is
+  // being abused.
+  //
+  // The other 4 errors the bump surfaced were genuine and were fixed in the
+  // same commit rather than suppressed here (a useless regex escape, a
+  // promise-executor return, a two-space regex literal, and one missing
+  // `// safe:` marker on the repo's own req.query.user_id rule).
+  {
+    rules: {
+      'no-useless-assignment': 'off',
+      'preserve-caught-error': 'off',
+    },
+  },
   {
     ignores: ['node_modules/', '*.min.js', 'dist/', 'build/'],
   },

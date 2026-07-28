@@ -149,7 +149,7 @@ describe("RBAC role update — field allowlist replaces the blanket merge", () =
 describe("sanitizeRoleFields — intended semantics", () => {
   // Extract and evaluate the real function body so this tests the shipped code,
   // not a paraphrase of it.
-  const fnSrc = SRC.match(/function sanitizeRoleFields\(body\) \{[\s\S]*?\n  \}/)?.[0];
+  const fnSrc = SRC.match(/function sanitizeRoleFields\(body\) \{[\s\S]*?\n {2}\}/)?.[0];
   const allowSrc = SRC.match(/const ROLE_ASSIGNABLE_FIELDS = \[[^\]]*\];/)?.[0];
   assert.ok(fnSrc && allowSrc, "could not extract sanitizeRoleFields from source");
   // eslint-disable-next-line no-new-func
