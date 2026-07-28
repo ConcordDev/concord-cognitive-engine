@@ -451,7 +451,23 @@ export default function registerHelpersExtendedRoutes(app, {
     ]});
   });
 
-  app.post("/api/rbac/assign", requireAuth(), (req, res) => {
+  // SECURITY (2026-07-27 triage): every MUTATING endpoint in this RBAC block
+  // is admin-only. They previously carried `requireAuth()` alone, meaning any
+  // authenticated account could assign/revoke roles and author custom roles
+  // with arbitrary permission lists.
+  //
+  // Honest severity note, so nobody over- or under-reads this: the escalation
+  // was NOT live at the time of the fix. `globalThis._assignRole`/`_revokeRole`
+  // do not exist anywhere in the tree (the optional-chaining makes each call a
+  // silent no-op), and `STATE.rbacCustomRoles` is write-only — no authorization
+  // path anywhere reads it. So a self-authored `permissions: ["*"]` role granted
+  // nothing today. The gap is a *latent* one: the moment either helper gets
+  // wired, or `rbacCustomRoles` becomes load-bearing for a permission check,
+  // this turns into real privilege escalation with no further code change.
+  // Gate it now while it is free to do so.
+  const requireRbacAdmin = requireRole("owner", "admin", "sovereign", "founder");
+
+  app.post("/api/rbac/assign", requireRbacAdmin, (req, res) => {
     const { userId, roleId, orgId } = req.body;
     try {
       const result = globalThis._assignRole?.(orgId || "default", userId, roleId);
@@ -459,7 +475,7 @@ export default function registerHelpersExtendedRoutes(app, {
     } catch (e) { res.json({ ok: false, error: e?.message }); }
   });
 
-  app.post("/api/rbac/revoke", requireAuth(), (req, res) => {
+  app.post("/api/rbac/revoke", requireRbacAdmin, (req, res) => {
     const { userId, roleId, orgId } = req.body;
     try {
       const result = globalThis._revokeRole?.(orgId || "default", userId, roleId);
@@ -485,24 +501,55 @@ export default function registerHelpersExtendedRoutes(app, {
     res.status(404).json({ ok: false, error: "Role not found" });
   });
 
-  app.post("/api/rbac/roles", requireAuth(), (req, res) => {
-    const { name, description, permissions } = req.body || {};
-    if (!name) return res.status(400).json({ ok: false, error: "name required" });
+  // Only these fields are caller-assignable on a custom role. `id`, `createdAt`
+  // and anything else a client invents stay server-owned. The previous handler
+  // merged the raw request body straight onto the role object, which let a
+  // caller graft arbitrary keys onto STATE — and STATE is serialized into the
+  // persisted snapshot. (Deliberately described in prose: a test greps this
+  // file for that merge pattern, so spelling it out here would retrigger the
+  // very check it is explaining.)
+  const ROLE_ASSIGNABLE_FIELDS = ["name", "description", "permissions"];
+
+  function sanitizeRoleFields(body) {
+    const out = {};
+    if (!body || typeof body !== "object") return out;
+    for (const key of ROLE_ASSIGNABLE_FIELDS) {
+      if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
+      const v = body[key];
+      if (key === "permissions") {
+        if (!Array.isArray(v)) continue;
+        out.permissions = v.filter((p) => typeof p === "string").slice(0, 100);
+      } else if (typeof v === "string") {
+        out[key] = v.slice(0, 200);
+      }
+    }
+    return out;
+  }
+
+  app.post("/api/rbac/roles", requireRbacAdmin, (req, res) => {
+    const fields = sanitizeRoleFields(req.body);
+    if (!fields.name) return res.status(400).json({ ok: false, error: "name required" });
     if (!STATE.rbacCustomRoles) STATE.rbacCustomRoles = [];
-    const role = { id: `role_${Date.now()}`, name, description: description || "", permissions: permissions || [], createdAt: new Date().toISOString() };
+    const role = {
+      id: `role_${Date.now()}`,
+      name: fields.name,
+      description: fields.description || "",
+      permissions: fields.permissions || [],
+      createdAt: new Date().toISOString(),
+    };
     STATE.rbacCustomRoles.push(role);
     res.json({ ok: true, role });
   });
 
-  app.put("/api/rbac/roles/:id", requireAuth(), (req, res) => {
+  app.put("/api/rbac/roles/:id", requireRbacAdmin, (req, res) => {
     if (!STATE.rbacCustomRoles) STATE.rbacCustomRoles = [];
     const role = STATE.rbacCustomRoles.find(r => r.id === req.params.id);
     if (!role) return res.status(404).json({ ok: false, error: "Role not found or built-in" });
-    Object.assign(role, req.body, { id: role.id });
+    Object.assign(role, sanitizeRoleFields(req.body));
     res.json({ ok: true, role });
   });
 
-  app.delete("/api/rbac/roles/:id", requireAuth(), (req, res) => {
+  app.delete("/api/rbac/roles/:id", requireRbacAdmin, (req, res) => {
     if (!STATE.rbacCustomRoles) STATE.rbacCustomRoles = [];
     const idx = STATE.rbacCustomRoles.findIndex(r => r.id === req.params.id);
     if (idx === -1) return res.status(404).json({ ok: false, error: "Role not found or built-in" });
