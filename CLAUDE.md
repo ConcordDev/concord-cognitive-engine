@@ -125,6 +125,18 @@ The narrative layer rots fastest and misleads worst. Numbers and structural clai
 ### 7. When the plan is big: audit → research → re-audit → execute
 For substantial gap-closure, the proven loop is: (a) parallel **read-only** audits of the claims (they will be wrong in *both* directions — items already done, and real gaps you didn't list); (b) **web-research** the external standard (WCAG ratios, Node handle doctrine, living-docs practice) so decisions are grounded in fact not vibes; (c) a **synthesized re-audit** cross-checking findings against the standard; (d) execute with honest, pre-agreed **stop-points** (e.g. "if the async_hooks trace can't name the sockets, ship the safe subset + document"). This is how the W/G/H-series ran — the audit repeatedly *prevented* regressions and corrected the plan's own assumptions.
 
+### 8. "Pre-existing" is an explanation, never an excuse (owner directive, 2026-07-28)
+**Establishing that a defect predates your change does not close it — it reclassifies it as debt that still has to be paid.** Determining "pre-existing" is genuinely valuable and you should keep doing it: it stops you attributing someone else's breakage to your diff, and it stops you "fixing" a symptom that was never yours. But that determination is the START of the work, not the end of it. A red test, a failing gate, or a CVE that was red before you arrived is still red *after* you leave, and the repo does not care who introduced it.
+
+Concretely, the following are all **incomplete**, not done:
+- "The 7 failures are pre-existing" → then fix the 7, or say precisely why each one can't be fixed yet.
+- "That CVE came in transitively / predates this branch" → it still ships to users.
+- "That gate was already red on main" → then it has been providing zero protection this whole time, which is worse, not better.
+
+The honest report shape is **"pre-existing AND here is the fix / here is the specific blocker"** — never "pre-existing, therefore out of scope." Scoping something down is the owner's call, not yours: if you genuinely can't fix it in this pass, name it, name what it would take, and hand it back explicitly rather than filing it under someone else's problem.
+
+This is the same instinct as §4's anti-cheat, pointed at triage instead of metrics: "not my fault" is as much a way of making a red thing look acceptable as moving a goalpost is.
+
 ---
 
 ## Commands
