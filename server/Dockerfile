@@ -10,7 +10,18 @@ FROM node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d
 # z3 is the SMT checker for reason.verify's formal-proof gate (lib/proof-gate.js);
 # it's optional at runtime (the gate degrades to verdict:"unavailable" without it)
 # but baking it into the image makes the proof gate live out of the box.
-RUN apt-get update && apt-get install -y \
+# `apt-get upgrade` is deliberate, not boilerplate. The FROM above is
+# digest-pinned, which freezes the base at the exact bits it had when built —
+# so Debian security patches published AFTERWARDS never reach the image, and
+# the pinned layer only accumulates CVEs over time. Verified 2026-07-28 that
+# the pin is NOT merely stale: querying Docker Hub for the current
+# `node:20-bookworm-slim` returns this same digest
+# (sha256:2cf067cf...), so there is no newer base to move to and upgrading
+# packages in-layer is the only way to pick up fixed CVEs.
+#
+# This is what makes the Trivy gate's `ignore-unfixed: true` honest: we apply
+# every fix that exists, then decline to fail on the ones that don't.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     curl \
     ca-certificates \
     python3 \

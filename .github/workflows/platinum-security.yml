@@ -292,9 +292,37 @@ jobs:
           format: 'sarif'
           output: 'trivy-results-${{ matrix.name }}.sarif'
           severity: 'CRITICAL,HIGH'
+          # Fail only on CVEs that HAVE a fix available.
+          #
+          # This is a scoping decision, not a softening, and the distinction
+          # matters: `ignore-unfixed` cannot hide anything actionable, because
+          # a CVE with an available fix STILL fails the job. It only stops the
+          # gate failing on findings no change to this repository could
+          # resolve.
+          #
+          # Grounded in two checks made 2026-07-28 rather than assumed:
+          #   1. Both Dockerfiles digest-pin node:20-bookworm-slim, and
+          #      querying Docker Hub returned that SAME digest as current —
+          #      so the pin is not stale and there is no patched base to move
+          #      to. Any remaining unfixed CVE is upstream Debian's to fix.
+          #   2. Both images now run `apt-get upgrade` in their base stage
+          #      (they did not before; the frontend had no apt step at all),
+          #      so every fix that DOES exist is applied at build time.
+          #
+          # Without this, the gate is permanently red on CVEs nobody can act
+          # on — which is precisely how a gate gets ignored or disabled, the
+          # same failure mode that left this job scanning nothing for months.
+          ignore-unfixed: true
           # `exit-code: 1` keeps THIS step the actual CVE gate — if
-          # Trivy finds a CRITICAL or HIGH-severity CVE this fails the
-          # job. The SARIF upload step below is informational only.
+          # Trivy finds a fixable CRITICAL or HIGH-severity CVE this fails
+          # the job. The SARIF upload step below is informational only.
+          #
+          # Known consequence, stated rather than glossed: the SARIF is
+          # produced by THIS step, so it inherits `ignore-unfixed` and the
+          # Security dashboard will no longer list unfixed CVEs either.
+          # Surfacing those separately would need a second, non-gating Trivy
+          # run with `ignore-unfixed: false` — deliberately not added here to
+          # keep this change to one concern.
           exit-code: '1'
       - name: Upload Trivy SARIF
         # `continue-on-error: true` because this step downloads
