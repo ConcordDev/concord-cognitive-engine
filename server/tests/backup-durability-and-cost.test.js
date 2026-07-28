@@ -148,7 +148,23 @@ describe("createBackup — size and cadence", () => {
       !CREATE_BACKUP.includes("JSON.stringify(backup, null, 2)"),
       "createBackup still pretty-prints (measured 1.30x inflation)",
     );
-    assert.match(CREATE_BACKUP, /fs\.writeFileSync\(backupPath, JSON\.stringify\(backup\)\)/);
+  });
+
+  it("serializes chunked and writes async, like runBackup", () => {
+    // Compact + daily cut this path's SIZE and FREQUENCY but left each run one
+    // uninterrupted ~8.7MB stringify plus a synchronous multi-MB write — a
+    // rarer blocking site, not an absent one. Every large serialize in
+    // server.js goes through the chunked helper now; this was the last holdout.
+    assert.match(CREATE_BACKUP, /await fs\.promises\.writeFile\(backupPath, await stringifyChunked\(backup\)\)/);
+    assert.ok(
+      !/fs\.writeFileSync\(backupPath/.test(CREATE_BACKUP),
+      "createBackup still writes synchronously",
+    );
+  });
+
+  it("is async and its interval caller handles the promise", () => {
+    assert.match(SRC, /async function createBackup\(/);
+    assert.match(SRC, /Promise\.resolve\(createBackup\(`auto-\$\{Date\.now\(\)\}`\)\)\.catch\(/);
   });
 
   it("defaults to a daily interval", () => {

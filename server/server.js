@@ -8385,7 +8385,7 @@ function _stateBackupRetentionCount() {
   return Math.min(24, Math.max(3, perDay * _STATE_BACKUP_RETENTION_DAYS));
 }
 
-function createBackup(name = null) {
+async function createBackup(name = null) {
   try {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -8416,7 +8416,12 @@ function createBackup(name = null) {
     // the `backup.data?.dtus` path, never opened by hand. The main state saver
     // already documents "always use compact JSON to halve string memory"; this
     // path simply never got the same treatment.
-    fs.writeFileSync(backupPath, JSON.stringify(backup));
+    // Chunked + async, matching runBackup. Making this compact and daily cut
+    // its FREQUENCY (12x/day -> 1) and its SIZE (1.30x), but left each run a
+    // single uninterrupted ~8.7MB stringify plus a synchronous multi-MB write
+    // — a residual blocking site, just a rarer one. Same treatment as every
+    // other large serialize in this file: yield between top-level keys.
+    await fs.promises.writeFile(backupPath, await stringifyChunked(backup));
 
     // Rotate. Retention is expressed in DAYS of coverage rather than a raw file
     // count, because the count only ever made sense against the old 2h cadence
@@ -8510,7 +8515,12 @@ let _autoBackupTimer = null;
 function startAutoBackup(intervalHours = 24) {
   if (_autoBackupTimer) clearInterval(_autoBackupTimer);
   const ms = intervalHours * 60 * 60 * 1000;
-  _autoBackupTimer = setInterval(() => createBackup(`auto-${Date.now()}`), ms);
+  // `.catch` because createBackup is async — a rejection here would otherwise
+  // surface as an unhandled rejection rather than a logged backup failure.
+  _autoBackupTimer = setInterval(() => {
+    Promise.resolve(createBackup(`auto-${Date.now()}`)).catch((e) =>
+      structuredLog("error", "auto_backup_failed", { error: String(e?.message || e) }));
+  }, ms);
   structuredLog("info", "autobackup_enabled", { intervalHours });
 }
 if (String(process.env.AUTO_BACKUP || "true").toLowerCase() === "true") {
