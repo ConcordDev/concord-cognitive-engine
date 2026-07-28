@@ -33905,6 +33905,13 @@ allowMacro("council", "reviewGlobal", _ACL_MEMBER);
 allowMacro("council", "credibility", _ACL_MEMBER);
 allowMacro("council", "proposePromotion", _ACL_MEMBER);
 
+// Auth: whoami just echoes the caller's own actor/user/org back to them —
+// no other user's data, nothing sensitive. Overrides the domain-level
+// _ACL_OWNER so any authenticated (or public-read) request can call it;
+// found via a full lens crawl — world-observatory/world-creator/worldmodel
+// call it on mount and were getting a real 403 for every non-owner user.
+allowMacro("auth", "whoami", _ACL_PUB);
+
 // Global corpus: members can propose content and publish to global timeline.
 // Overrides the domain-level _ACL_OWNER for these user-facing operations.
 allowMacro("global", "propose", _ACL_MEMBER);
