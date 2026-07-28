@@ -8356,6 +8356,34 @@ _unrefInTest(setInterval(() => {
 // ---- Backup & Restore ----
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(DATA_DIR, "backups");
 
+// How often the rolling JSON state backup runs, and how many to keep.
+//
+// The interval default moved 2h -> 24h. At 2h this path ran 12x/day, each run
+// a synchronous multi-MB stringify + writeFileSync on the main thread, and it
+// duplicates coverage that already exists twice over: the debounced state
+// snapshot (5s coalescing window) and `runBackup` (daily, date-keyed, 7-day
+// retention). A 2-hour RPO from a THIRD mechanism bought little and cost a
+// recurring event-loop stall plus ~127MB/day of writes.
+//
+// Still fully tunable — set BACKUP_INTERVAL_HOURS to restore a tighter RPO.
+const _STATE_BACKUP_INTERVAL_HOURS = Math.max(1, Number(process.env.BACKUP_INTERVAL_HOURS || 24));
+const _STATE_BACKUP_RETENTION_DAYS = Math.max(1, Number(process.env.CONCORD_STATE_BACKUP_RETENTION_DAYS || 7));
+
+/**
+ * Files to retain, derived from the interval so retention means a fixed span
+ * of TIME rather than a raw count.
+ *
+ * The old hardcoded 24 was written against a 2h cadence ("~48 hours"). Left
+ * alone it would have become 24 DAYS once the interval moved to 24h — a 12x
+ * disk increase caused by a constant whose comment nobody re-read. The upper
+ * clamp keeps a deliberately tight interval (e.g. BACKUP_INTERVAL_HOURS=2)
+ * from ballooning the count past what it used to be.
+ */
+function _stateBackupRetentionCount() {
+  const perDay = Math.max(1, Math.round(24 / _STATE_BACKUP_INTERVAL_HOURS));
+  return Math.min(24, Math.max(3, perDay * _STATE_BACKUP_RETENTION_DAYS));
+}
+
 function createBackup(name = null) {
   try {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -8381,11 +8409,21 @@ function createBackup(name = null) {
       }
     };
 
-    fs.writeFileSync(backupPath, JSON.stringify(backup, null, 2));
+    // COMPACT, not pretty-printed. This was `JSON.stringify(backup, null, 2)`,
+    // which inflated every backup by 1.30x (measured on the real corpus: 8.7MB
+    // -> 11.4MB) for indentation nobody reads — these are machine-restored by
+    // the `backup.data?.dtus` path, never opened by hand. The main state saver
+    // already documents "always use compact JSON to halve string memory"; this
+    // path simply never got the same treatment.
+    fs.writeFileSync(backupPath, JSON.stringify(backup));
 
-    // Rotate: keep only the 24 most recent JSON state backups (~48 hours at 2h interval)
+    // Rotate. Retention is expressed in DAYS of coverage rather than a raw file
+    // count, because the count only ever made sense against the old 2h cadence
+    // ("24 backups ~= 48 hours"). With the interval now defaulting to 24h, that
+    // same 24 would have silently become 24 DAYS of retention — a 12x increase
+    // in disk from a constant nobody re-read. Derive it instead.
     try {
-      const MAX_STATE_BACKUPS = 24;
+      const MAX_STATE_BACKUPS = _stateBackupRetentionCount();
       const allBackups = fs.readdirSync(BACKUP_DIR)
         .filter(f => f.endsWith(".json") && !f.startsWith("."))
         .sort();
@@ -8475,7 +8513,7 @@ function startAutoBackup(intervalHours = 24) {
   structuredLog("info", "autobackup_enabled", { intervalHours });
 }
 if (String(process.env.AUTO_BACKUP || "true").toLowerCase() === "true") {
-  startAutoBackup(Number(process.env.BACKUP_INTERVAL_HOURS || 2));
+  startAutoBackup(_STATE_BACKUP_INTERVAL_HOURS);
 }
 
 // Periodic state save safety net — catches mutations if debounced save somehow missed
@@ -79891,7 +79929,7 @@ app.get("/api/search", (req, res) => {
 const _BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const _BACKUP_RETENTION_DAYS = 7;
 
-function runBackup() {
+async function runBackup() {
   try {
     const timestamp = new Date().toISOString().split("T")[0];
     const backupDir = `${BACKUP_DIR}/${timestamp}`;
@@ -79899,10 +79937,17 @@ function runBackup() {
     try { if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
     try { if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
-    // Backup main state
+    // Backup main state.
+    //
+    // Chunked + async: this is the same ~19MB payload the debounced saver
+    // writes, and as one atomic stringify it was measured at 185-317ms of
+    // uninterrupted event-loop block — after the debounced path was chunked,
+    // THIS became the worst single blocking site in the process. Same
+    // treatment: yield between top-level keys (longest block becomes the
+    // largest single key, ~9.9MB) and write without blocking.
     try {
-      const stateData = JSON.stringify(_serializeState());
-      fs.writeFileSync(`${backupDir}/state.json`, stateData);
+      const stateData = await stringifyChunked(_serializeState());
+      await fs.promises.writeFile(`${backupDir}/state.json`, stateData);
     } catch (e) { console.error("[Backup] State backup failed:", String(e?.message || e)); }
 
     // Backup council queue
@@ -79912,14 +79957,40 @@ function runBackup() {
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
     // Backup SQLite DB if exists — gzip compressed to avoid ballooning pod storage
+    // 🔴 This backed up NOTHING for its entire existence. The path was
+    // hardcoded to "/data/db/concord.db" — a Docker-shaped location that does
+    // not exist on the bare-metal deploy, where the database lives at
+    // DB_PATH (`process.env.DB_PATH || <DATA_DIR>/concord.db`). So
+    // `existsSync` returned false every run, the block was skipped, and the
+    // only trace was a DEBUG-level "silent catch" that never fired because
+    // nothing threw. The daily backup reported `ok: true` while the actual
+    // database — the ledger of record for money, DTUs and auth — was never
+    // captured. Same silently-disarmed shape as the Trivy gate that scanned
+    // nothing and the state saver whose GC call no-oped.
+    //
+    // Now uses the real DB_PATH, compresses off-thread (zlib's async form
+    // runs on the libuv threadpool, where the sync form blocked the event
+    // loop for the whole gzip of a 33MB+ file), and reports a MISSING
+    // database at warn level instead of vanishing.
     try {
-      const dbPath = "/data/db/concord.db";
-      if (fs.existsSync(dbPath)) {
-        const raw = fs.readFileSync(dbPath);
-        const compressed = zlib.gzipSync(raw, { level: 6 });
-        fs.writeFileSync(`${backupDir}/concord.db.gz`, compressed);
+      if (fs.existsSync(DB_PATH)) {
+        const raw = await fs.promises.readFile(DB_PATH);
+        const compressed = await new Promise((resolve, reject) =>
+          zlib.gzip(raw, { level: 6 }, (err, buf) => (err ? reject(err) : resolve(buf))),
+        );
+        await fs.promises.writeFile(`${backupDir}/concord.db.gz`, compressed);
+        structuredLog("info", "backup_db_captured", {
+          source: DB_PATH, bytes: raw.length, compressedBytes: compressed.length,
+        });
+      } else {
+        structuredLog("warn", "backup_db_missing", {
+          expectedAt: DB_PATH,
+          note: "database not backed up — verify DB_PATH",
+        });
       }
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    } catch (e) {
+      structuredLog("error", "backup_db_failed", { error: String(e?.message || e), source: DB_PATH });
+    }
 
     // Clean old backups (keep BACKUP_RETENTION_DAYS)
     try {
@@ -79940,8 +80011,18 @@ function runBackup() {
 }
 
 // Run backup on startup (delayed) and periodically
-_unrefInTest(setTimeout(() => { try { runBackup(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }, 60000)); // 1 min after start
-_unrefInTest(setInterval(() => { try { runBackup(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }, _BACKUP_INTERVAL_MS));
+// `.catch` rather than try/catch: runBackup is async now, so a rejection is
+// NOT caught by a synchronous try block around the call — it would surface as
+// an unhandled rejection instead. runBackup already returns `{ok:false}` on
+// internal failure, so this only guards against an unexpected throw.
+const _backupTick = () => {
+  try {
+    Promise.resolve(runBackup()).catch((e) =>
+      structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
+  } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+};
+_unrefInTest(setTimeout(_backupTick, 60000)); // 1 min after start
+_unrefInTest(setInterval(_backupTick, _BACKUP_INTERVAL_MS));
 
 register("admin", "backup", (ctx, _input = {}) => {
   const denied = requireAdminRole(ctx); if (denied) return denied;
