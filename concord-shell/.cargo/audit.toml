@@ -1,0 +1,48 @@
+# cargo-audit configuration for concord-shell.
+#
+# Read by `cargo audit` (run in CI by .github/workflows/rust-audit.yml with
+# `--deny warnings`, so INFORMATIONAL advisories — `unmaintained`, `unsound` —
+# fail the gate too, not just `vulnerability` ones).
+#
+# The bar for adding an entry here, per that workflow's own failure message:
+# an advisory is recorded ONLY when it is genuinely not actionable from this
+# repository, WITH the reason written down. It is not a way to quiet a finding
+# we simply have not fixed yet. Every entry below is transitive through
+# `tauri`'s Linux webview stack with no first-party call site and no version
+# we can pick that resolves it — bumping is upstream Tauri's move, and
+# Dependabot's cargo ecosystem (added in the same pass as this file) will
+# propose it automatically when one lands.
+#
+# When Tauri ships a GTK4 / updated gtk-rs generation, DELETE the corresponding
+# line and let the gate re-verify rather than assuming it is still needed.
+
+[advisories]
+ignore = [
+    # ── RUSTSEC-2024-0429 — glib 0.18.5, `unsound` ────────────────────────────
+    # "Unsoundness in `Iterator` and `DoubleEndedIterator` impls for
+    # `glib::VariantStrIter`."
+    #
+    # Reached ONLY transitively: atk, cairo-rs, gdk, gdk-pixbuf, gdkx11, gio,
+    # gtk, javascriptcore-rs, libappindicator, pango, soup3 and webkit2gtk all
+    # depend on glib 0.18.x, and every one of those arrives under `tauri`.
+    # concord-shell has no direct glib dependency and does not construct or
+    # iterate a `VariantStrIter` anywhere.
+    #
+    # Linux-only by construction (it is the GTK webview backend). Also note
+    # `concord-shell/src-tauri` has never successfully compiled in this
+    # environment (missing libwebkit2gtk-4.1-dev and friends), so this is
+    # tracked as upstream-Tauri debt rather than something to hand-patch.
+    "RUSTSEC-2024-0429",
+
+    # ── RUSTSEC-2025-0100 — unic-ucd-ident 0.9.0, `unmaintained` ──────────────
+    # Not a vulnerability: the crate is flagged as no longer maintained.
+    # Dependency path is `urlpattern 0.3.0 -> unic-ucd-ident`, and urlpattern
+    # is itself pulled in by the Tauri stack. No first-party use.
+    "RUSTSEC-2025-0100",
+
+    # ── RUSTSEC-2025-0098 — unic-ucd-version 0.9.0, `unmaintained` ────────────
+    # Same root cause one level deeper: `unic-ucd-ident -> unic-ucd-version`.
+    # Resolves together with RUSTSEC-2025-0100 when urlpattern migrates off the
+    # unic-* family; nothing to do here until it does.
+    "RUSTSEC-2025-0098",
+]
