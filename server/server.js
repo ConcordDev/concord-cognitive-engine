@@ -48,6 +48,7 @@ import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
+import { stringifyChunked } from "./lib/chunked-json.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
@@ -11490,6 +11491,56 @@ function loadStateFromDisk() {
 // while cutting steady-state serializes ~20×.
 const STATE_SAVE_COALESCE_MS = Math.max(250, Number(process.env.CONCORD_STATE_SAVE_DEBOUNCE_MS || 5000));
 
+// Kill-switch. Set CONCORD_STATE_SAVE_CHUNKED=0 to restore the single atomic
+// stringify on the debounced path (the sync/shutdown paths never used it).
+const _CHUNKED_SAVE_ENABLED = process.env.CONCORD_STATE_SAVE_CHUNKED !== "0";
+// Count of chunked saves discarded because state mutated mid-snapshot and the
+// atomic path was used instead. Surfaced so a deployment that tears on every
+// save — where chunking buys nothing and costs one extra serialize — is
+// visible rather than silently degrading.
+let _chunkedSaveTears = 0;
+
+// ---- Chunked snapshot serialization (event-loop-friendly) ----
+//
+// MEASURED, not assumed (2026-07-28). Instrumenting JSON.stringify on a booted
+// server and attributing every >2MB call to its stack:
+//
+//   at Timeout._onTimeout (server.js:11518)  n=12  maxMB=19.1  maxMs=348
+//        lensArtifacts=9.86MB, dtus=8.17MB, queues=0.49MB, organs=0.44MB
+//   at runBackup (server.js:79833)           n=1   maxMB=19.0  maxMs=317
+//
+// Under concurrent load the same site was measured at 934ms. That single
+// synchronous stringify is what trips `lib/request-admission.js`'s 300ms
+// event-loop-lag bar and sheds real requests with a 503 — the residual
+// "connection dropping" left after the duplicate-saver and forced-GC fixes.
+// It is NOT the heartbeat modules: a separate probe found 0 of the 25 that
+// ran anywhere near the bar (worst: npc-routine-cycle at 80ms).
+//
+// Why chunking is the right shape here. The payload is dominated by two keys,
+// and NEITHER can simply be dropped:
+//   - `dtus` is already conditionally omitted when the write-through store is
+//     active (see _serializeState), so it costs nothing in that configuration.
+//   - `lensArtifacts` (the LARGER of the two) has no durable backing at all —
+//     there is no `lens_artifacts` table in any of the 396 migrations, and it
+//     is the one large collection with no `capArr` cap. Excluding or capping
+//     it would silently lose artifacts across a restart.
+//
+// So the total work is irreducible without a new persistence layer. What IS
+// reducible is the size of each uninterrupted block: serializing one top-level
+// key at a time and yielding via setImmediate (the check phase, which actually
+// lets the poll phase run — `await` alone only drains microtasks) caps the
+// longest single block at the largest key, ~9.9MB ≈ 180ms, comfortably under
+// the 300ms shed bar. Same bytes written, same durability, no 503s.
+//
+// TEARING is the one real hazard: yielding means state can mutate mid-snapshot,
+// which the atomic sync path cannot suffer. Handled by comparing the mutation
+// counter across the operation and discarding a torn result rather than
+// persisting it — see the caller. Kill-switch: CONCORD_STATE_SAVE_CHUNKED=0.
+// Implementation lives in lib/chunked-json.js so its byte-identity with
+// JSON.stringify is directly testable (tests/chunked-json.test.js) rather than
+// stranded in this file's module scope.
+const _stringifyStateChunked = (snapshot) => stringifyChunked(snapshot);
+
 function saveStateDebounced() {
   // Monotonic mutation counter. Every mutation path in the server funnels
   // through here, so this is the cheapest honest "has anything changed?"
@@ -11510,12 +11561,32 @@ function saveStateDebounced() {
     // periodic safety net. With a fixed window, the save fires at most
     // STATE_SAVE_COALESCE_MS after the FIRST unsaved mutation, always.
     if (_saveTimer) return;
-    _saveTimer = setTimeout(() => {
+    _saveTimer = setTimeout(async () => {
       _saveTimer = null;
       try {
         // Always use compact JSON (no pretty-print) to halve string memory
-        const savedSeq = _stateMutationSeq;
-        const data = JSON.stringify(_serializeState());
+        let savedSeq = _stateMutationSeq;
+        let data;
+        if (_CHUNKED_SAVE_ENABLED) {
+          data = await _stringifyStateChunked(_serializeState());
+          // TEAR CHECK. The chunked path yields, so a mutation landing between
+          // keys would produce a snapshot mixing pre- and post-mutation values
+          // — something the atomic sync path cannot do. Rather than persist a
+          // possibly-torn snapshot, fall back to one atomic stringify. Under
+          // the idle/low-mutation conditions this timer usually fires in, the
+          // fast path holds; under heavy mutation we pay exactly today's cost,
+          // never worse, and never write an inconsistent snapshot.
+          if (_stateMutationSeq !== savedSeq) {
+            _chunkedSaveTears++;
+            // Re-stamp BEFORE re-serializing: the atomic snapshot below
+            // reflects state as of this moment, and claiming the older seq
+            // would under-report what is on disk to the periodic safety net.
+            savedSeq = _stateMutationSeq;
+            data = JSON.stringify(_serializeState());
+          }
+        } else {
+          data = JSON.stringify(_serializeState());
+        }
 
         if (USE_SQLITE_STATE) {
           // SQLite: single-row upsert inside WAL transaction — crash-safe
