@@ -77,12 +77,12 @@ export default function createOracleRoutes({ STATE, requireAuth, dtuStore, domai
     }
   });
 
-  // POST /api/oracle/recent — recent oracle answers
-  router.post('/recent', requireAuth, async (req, res) => {
+  // GET /api/oracle/recent — recent oracle answers (read-only listing)
+  router.get('/recent', requireAuth, async (req, res) => {
     try {
-      const limit = Math.min(req.body?.limit || 10, 50);
+      const limit = Math.min(Number(req.query?.limit) || 10, 50);
       const dtus = STATE.dtus?.list ? STATE.dtus.list({ type: 'oracle_answer', limit }) : [];
-      res.json({ ok: true, answers: dtus });
+      res.json({ ok: true, items: dtus });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
