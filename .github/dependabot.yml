@@ -48,6 +48,24 @@ updates:
       - "dependencies"
       - "ci"
 
+  # Rust / Cargo.
+  #
+  # concord-shell is a real 4-crate Tauri v2 workspace (src-tauri + supervisor,
+  # health-probe, shell-core) with a 422-package Cargo.lock, and it was
+  # ENTIRELY unscanned: no cargo ecosystem here and no cargo-audit in any
+  # workflow. That is why advisories against its transitive tree (glib, the
+  # gtk-rs stack) only ever surfaced from an external scanner -- nothing in
+  # this repo was looking.
+  - package-ecosystem: "cargo"
+    directory: "/concord-shell"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+
   # Container images.
   #
   # Added alongside the image-pinning pass: base images and compose services

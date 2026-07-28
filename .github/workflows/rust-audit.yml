@@ -1,0 +1,65 @@
+name: Rust — cargo audit (concord-shell)
+
+# 2026-07-27 security triage.
+#
+# concord-shell is a real 4-crate Tauri v2 workspace (src-tauri + supervisor,
+# health-probe, shell-core) with a 422-package Cargo.lock, and NOTHING in this
+# repo scanned it: no cargo ecosystem in dependabot.yml (added in the same
+# pass) and no advisory check in any workflow. Rust advisories against its
+# transitive tree only ever surfaced from an external scanner, because no
+# in-house gate was looking.
+#
+# Scope is deliberately the LOCKFILE, not a build. `cargo audit` reads
+# Cargo.lock and needs no system libraries — which matters here, because
+# src-tauri has never successfully compiled in CI (it needs
+# libwebkit2gtk-4.1-dev and friends). A gate that requires a working Tauri
+# build would be a gate that never runs, which is the failure mode this
+# triage has already found twice elsewhere in this repo.
+
+on:
+  pull_request:
+    paths:
+      - 'concord-shell/**/Cargo.toml'
+      - 'concord-shell/Cargo.lock'
+      - '.github/workflows/rust-audit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'concord-shell/**/Cargo.toml'
+      - 'concord-shell/Cargo.lock'
+  schedule:
+    # Advisories land against unchanged lockfiles, so a paths-filtered trigger
+    # alone would go quiet for months. Weekly catches those.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-audit:
+    name: cargo audit (advisory scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Audit concord-shell lockfile
+        working-directory: concord-shell
+        run: cargo audit --deny warnings
+
+      - name: Explain on failure
+        if: failure()
+        run: |
+          echo "::error::cargo audit found an advisory against concord-shell's dependency tree."
+          echo ""
+          echo "Reproduce locally:"
+          echo "  cd concord-shell && cargo audit"
+          echo ""
+          echo "Fix by bumping the affected crate (Dependabot's cargo ecosystem"
+          echo "also proposes these weekly). If an advisory is genuinely not"
+          echo "applicable, record it in concord-shell/audit.toml with a reason"
+          echo "rather than removing this gate."
