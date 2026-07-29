@@ -6,7 +6,7 @@
 
 **Proves what it claims. Refuses what it can't. Remembers everything — and pays you when your work gets built on.**
 
-[**🌐 Live at concord-os.org**](https://concord-os.org) &nbsp;·&nbsp; [**Why it's different →**](docs/WHY_CONCORD_IS_DIFFERENT.md) &nbsp;·&nbsp; [**The 326 novelties →**](docs/NOVELTY_INVENTORY.md) &nbsp;·&nbsp; [**Verified snapshot →**](docs/STATE_OF_CONCORD.md)
+[**🌐 deployment will be on concord-os.org**](https://concord-os.org) &nbsp;·&nbsp; [**Why it's different →**](docs/WHY_CONCORD_IS_DIFFERENT.md) &nbsp;·&nbsp; [**The 326 novelties →**](docs/NOVELTY_INVENTORY.md) &nbsp;·&nbsp; [**Verified snapshot →**](docs/STATE_OF_CONCORD.md)
 
 ![lenses](https://img.shields.io/badge/lenses-260-22d3ee)
 ![macros](https://img.shields.io/badge/macros-~9,600-22c55e)
