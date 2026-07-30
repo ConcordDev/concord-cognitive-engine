@@ -96,11 +96,17 @@ export function postBounty(db, {
 
   const doPost = db.transaction(() => {
     // Escrow: transfer from poster to escrow holding account
+    // Fee-drain fix (2026-07-30, migration 399): BOUNTY_ESCROW is fee-exempt
+    // (absent from fees.js's FEES map, same as STAKE_ESCROW) — using
+    // "TRANSFER" here charged FEES.TRANSFER on the way into __ESCROW__, so
+    // the escrow account never held the full bounty.amount claimBounty
+    // later tries to release, and every real claim failed with
+    // insufficient_balance regardless of identity.
     const escrowResult = executeTransfer(db, {
       from: posterId,
       to: "__ESCROW__",
       amount,
-      type: "TRANSFER",
+      type: "BOUNTY_ESCROW",
       metadata: { subtype: "BOUNTY_ESCROW", bountyId },
       refId,
       requestId,
@@ -146,12 +152,14 @@ export function claimBounty(db, {
   const now = nowISO();
 
   const doClaim = db.transaction(() => {
-    // Release escrow to claimer
+    // Release escrow to claimer. BOUNTY_CLAIM is fee-exempt (migration 399,
+    // see postBounty's escrow move above) — the claimer gets the full
+    // originally-posted amount, not a fee-shrunk fraction of it.
     const releaseResult = executeTransfer(db, {
       from: "__ESCROW__",
       to: claimerId,
       amount: bounty.amount,
-      type: "TRANSFER",
+      type: "BOUNTY_CLAIM",
       metadata: { subtype: "BOUNTY_CLAIM", bountyId, solutionDtuId },
       refId,
       requestId,

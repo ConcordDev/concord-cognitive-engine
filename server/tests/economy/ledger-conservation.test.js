@@ -95,4 +95,39 @@ describe("ledger conservation (no money printing)", () => {
     assert.ok(inv.treasury.totalUsd >= inv.circulation.circulatingCoins,
       `circulating ${inv.circulation.circulatingCoins} exceeds USD ${inv.treasury.totalUsd}`);
   });
+
+  // BOUNTY_ESCROW / BOUNTY_CLAIM (migration 399, 2026-07-30): these go
+  // through executeTransfer's SAME split debit+credit-row shape TRANSFER
+  // uses, so they need the identical CREDIT_ROW_PREDICATE exclusion or the
+  // escrow/claimant would be double-credited exactly like the bug this
+  // whole file guards against. They're also fee-EXEMPT by design (absent
+  // from fees.js's FEES map, same precedent as STAKE_ESCROW/STAKE_RETURN) —
+  // that's the actual fix for the bug that motivated adding these two types
+  // (postBounty escrowing via a fee-charging TRANSFER left __ESCROW__
+  // permanently short of the full bounty.amount claimBounty tries to
+  // release).
+  it("BOUNTY_ESCROW: escrow account gains exactly the full amount, no fee, no double-credit", () => {
+    executePurchase(db, { userId: "poster", amount: 1000 });
+    const before = { poster: getBalance(db, "poster").balance, escrow: getBalance(db, "__ESCROW__").balance, p: getBalance(db, PLATFORM_ACCOUNT_ID).balance };
+    const t = executeTransfer(db, { from: "poster", to: "__ESCROW__", amount: 300, type: "BOUNTY_ESCROW" });
+    assert.ok(t.ok);
+    const after = { poster: getBalance(db, "poster").balance, escrow: getBalance(db, "__ESCROW__").balance, p: getBalance(db, PLATFORM_ACCOUNT_ID).balance };
+
+    assert.equal(r2(after.poster - before.poster), -300);   // poster −300 (not −304.38)
+    assert.equal(r2(after.escrow - before.escrow), 300);    // escrow +300 in FULL (not 295.62, and NOT 600 double-credited)
+    assert.equal(r2(after.p - before.p), 0);                // no platform fee on an internal escrow move
+  });
+
+  it("BOUNTY_ESCROW + BOUNTY_CLAIM round-trip: claimer receives the FULL originally-posted amount", () => {
+    executePurchase(db, { userId: "poster", amount: 1000 });
+    executeTransfer(db, { from: "poster", to: "__ESCROW__", amount: 300, type: "BOUNTY_ESCROW", refId: "bounty_escrow:b1" });
+    const before = { claimer: getBalance(db, "claimer").balance, escrow: getBalance(db, "__ESCROW__").balance };
+    const c = executeTransfer(db, { from: "__ESCROW__", to: "claimer", amount: 300, type: "BOUNTY_CLAIM", refId: "bounty_claim:b1:claimer" });
+    assert.ok(c.ok, `claim must succeed with the full escrowed amount available: ${c.error}`);
+    const after = { claimer: getBalance(db, "claimer").balance, escrow: getBalance(db, "__ESCROW__").balance };
+
+    assert.equal(r2(after.claimer - before.claimer), 300);  // claimer gets the FULL 300, not a fee-shrunk fraction
+    assert.equal(r2(after.escrow - before.escrow), -300);
+    assert.equal(getBalance(db, "__ESCROW__").balance, 0);  // escrow nets to exactly zero — no leftover, no shortfall
+  });
 });

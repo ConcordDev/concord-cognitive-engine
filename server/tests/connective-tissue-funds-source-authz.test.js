@@ -220,28 +220,25 @@ describe("POST /api/connective-tissue/bounties/:id/claim — claimer (payee) mus
     assert.equal(db.prepare("SELECT status FROM bounties WHERE id = ?").get(bountyId).status, "OPEN");
   });
 
-  it("lets a self-matching claimerId PAST the authorization gate (no functional regression)", async () => {
-    // NOT asserting body.ok === true here: this uncovered a separate,
-    // pre-existing bug in postBounty/claimBounty that is unrelated to this
-    // authorization fix and is not fixed by this commit — see the header
-    // comment. postBounty escrows via a fee-charging TRANSFER (FEES.TRANSFER
-    // = 0.0146), so "__ESCROW__" only ever receives bounty.amount * (1 -
-    // 0.0146), while claimBounty then tries to release the FULL original
-    // bounty.amount — meaning any real claim on this path fails with
-    // "insufficient_balance" regardless of who's claiming. That bug predates
-    // this fix and reproduces with requireSelf entirely removed. What this
-    // test actually pins is narrower and correct: a self-matching claimerId
-    // must reach claimBounty() at all (i.e. never get the 403 the mismatched
-    // case above gets) — proving the authorization fix itself adds no new
-    // rejection for the legitimate case.
+  it("a self-matching claimerId succeeds and pays the FULL bounty amount", async () => {
+    // This used to only be checkable as "not rejected by the auth gate" —
+    // postBounty escrowed via a fee-charging TRANSFER, so a real claim
+    // always failed downstream with insufficient_balance regardless of
+    // identity. That bug is now fixed separately (migration 399: BOUNTY_
+    // ESCROW/BOUNTY_CLAIM are fee-exempt ledger types, see
+    // economy/lens-economy-wiring.js + tests/economy/ledger-conservation.
+    // test.js), so this now asserts the real, full end-to-end success this
+    // authorization fix was always supposed to allow through.
+    const before = getBalance(db, "attacker").balance;
     const { status, body } = await post(
       app,
       `/api/connective-tissue/bounties/${bountyId}/claim`,
       { claimerId: "attacker", posterId: "poster", solutionDtuId: "d1" },
       "attacker"
     );
-    assert.equal(status, 200, "requireSelf must let a self-matching claimerId through to the handler");
-    assert.ok(!/unauthorized/.test(body.error || ""), "must not be rejected by the authorization gate");
+    assert.equal(status, 200);
+    assert.equal(body.ok, true, `claim must succeed: ${body.error}`);
+    assert.equal(Math.round((getBalance(db, "attacker").balance - before) * 100) / 100, 300, "claimer must receive the FULL posted 300, not a fee-shrunk fraction");
   });
 });
 
