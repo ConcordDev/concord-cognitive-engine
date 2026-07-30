@@ -87,7 +87,14 @@ describe('Part 1 — static pins on the production fix (source-text, matches thi
     const standaloneEffect = sceneSrc.match(/function onPerfBudget\(ev: Event\) \{[\s\S]*?\n  \}, \[\]\);/);
     expect(standaloneEffect).toBeTruthy();
     expect(standaloneEffect![0]).toMatch(/setQuality\(\(prev\) => \{/);
-    expect(standaloneEffect![0]).toMatch(/bufferLength >= 60 && fps < 50/);
+    // R7 — the combined `bufferLength >= 60 && fps < 50` guard was split
+    // into two early-return checks (`if (bufferLength < 60) return;` then
+    // `if (fps < 50)`) when the symmetric upgrade path was added, so the
+    // same buffer-warm-up gate could also apply to the new high-fps branch
+    // without duplicating it. Same invariant, new shape — assert both
+    // pieces instead of the old combined expression.
+    expect(standaloneEffect![0]).toMatch(/if \(bufferLength < 60\) return;/);
+    expect(standaloneEffect![0]).toMatch(/if \(fps < 50\) \{/);
     // The old in-loop downgrade block (which lived inside the giant
     // `quality`-dependent setup effect) must be gone.
     expect(sceneSrc).not.toMatch(/if \(fpsBuffer\.length >= 60 && avgFps < 50\) \{\s*\n\s*lowFpsCountRef\.current \+= 1;/);

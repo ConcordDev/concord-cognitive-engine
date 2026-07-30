@@ -223,7 +223,14 @@ describe('world lens page — stable callback/prop identity into child effects',
   it('declares cameraZoom state seeded from DEFAULT_CAMERA_ZOOM and passes it into ConcordiaScene', () => {
     expect(src).toMatch(/const \[cameraZoom, setCameraZoom\] = useState\(DEFAULT_CAMERA_ZOOM\);/);
     const start = src.indexOf('<ConcordiaScene\n');
-    const slice = src.slice(start, start + 400);
+    // R7 — widened from 400: the `quality` prop right after `districtId`
+    // grew a multi-line explanatory comment (why it's passed as `undefined`
+    // rather than always a concrete QualityPreset — see quality-preset.ts's
+    // hasStoredQualityPreset), pushing `cameraZoom={cameraZoom}` past the
+    // old fixed window. This is an arbitrary slice bound, not a load-bearing
+    // one — widen it rather than trim a comment that documents a real bug
+    // fix.
+    const slice = src.slice(start, start + 900);
     expect(slice).toMatch(/cameraZoom=\{cameraZoom\}/);
   });
 
