@@ -1247,7 +1247,13 @@ export default function registerGraphActions(registerLensAction) {
     const node = m.nodes.find((n) => n.id === params.nodeId);
     if (!node) return { ok: false, error: "node not found" };
     if (!node.dtuId) return { ok: false, error: "node has no linked DTU to sync" };
-    if (!(STATE.dtus instanceof Map)) return { ok: false, error: "DTU store unavailable" };
+    // Duck-type, not `instanceof Map`: STATE.dtus is a write-through store
+    // object (server.js `createDTUStore`), not a literal Map, once wired —
+    // an `instanceof Map` guard here always short-circuited to this branch
+    // instead of ever reaching the real lookup below. Matches the duck-typed
+    // checks already used for this same store elsewhere in server.js
+    // (e.g. `typeof STATE.dtus?.get === "function"`).
+    if (typeof STATE.dtus?.get !== "function") return { ok: false, error: "DTU store unavailable" };
     const dtu = STATE.dtus.get(node.dtuId);
     if (!dtu) return { ok: false, error: "linked DTU not found" };
 
