@@ -24,6 +24,18 @@
 # came from reading a single CI log rather than the tool's full output.
 # Verified this time the same way — traced every crate through Cargo.lock —
 # not simply copied from the new failure.
+#
+# 2026-07-30 (same day, second pass): extended from 8 to 17. The 8-entry
+# push was ITSELF built from a single CI log read before that run finished
+# denying every warning in the tree — the actual CI run against that commit
+# surfaced 9 MORE, all the direct GTK3 binding crates (gtk 0.18.2's own
+# family, not just its macro/glib neighbours already listed above): atk,
+# atk-sys, gdk, gdk-sys, gdkwayland-sys, gdkx11, gdkx11-sys, gtk, gtk-sys.
+# Every one carries the identical advisory title ("gtk-rs GTK3 bindings -
+# no longer maintained"), the identical version (0.18.2), and arrives via
+# the identical path (tauri's Linux GTK3 webview backend) as RUSTSEC-2024-0429
+# and RUSTSEC-2024-0419 above — this is the rest of that same family, not a
+# new risk class. Confirmed against Cargo.lock, not copied blind.
 
 [advisories]
 ignore = [
@@ -82,4 +94,20 @@ ignore = [
     # `gtk3-macros 0.18.2 -> proc-macro-error`. A proc-macro build dependency,
     # not something concord-shell calls into at runtime.
     "RUSTSEC-2024-0370",
+
+    # ── The direct gtk-rs GTK3 binding crates, all `unmaintained` ─────────────
+    # Same title on every one of these: "gtk-rs GTK3 bindings - no longer
+    # maintained." All version 0.18.2, all reached only via `tauri`'s Linux
+    # GTK3 webview backend (the same backend the glib/gtk3-macros/proc-macro-
+    # error entries above are already part of) — not a direct dependency of
+    # concord-shell, and concord-shell has no direct call into any of them.
+    "RUSTSEC-2024-0413", # atk 0.18.2
+    "RUSTSEC-2024-0416", # atk-sys 0.18.2
+    "RUSTSEC-2024-0412", # gdk 0.18.2
+    "RUSTSEC-2024-0418", # gdk-sys 0.18.2
+    "RUSTSEC-2024-0411", # gdkwayland-sys 0.18.2
+    "RUSTSEC-2024-0417", # gdkx11 0.18.2
+    "RUSTSEC-2024-0414", # gdkx11-sys 0.18.2
+    "RUSTSEC-2024-0415", # gtk 0.18.2
+    "RUSTSEC-2024-0420", # gtk-sys 0.18.2
 ]
