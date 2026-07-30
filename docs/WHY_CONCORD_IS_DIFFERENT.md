@@ -127,11 +127,27 @@ Two facts that an audit corrected — both load-bearing for a pitch:
 
 A pitch that hides these gets found out; one that names them gets believed:
 
-- **It is live, but not yet hardened at scale.** Deployed and running at
-  [concord-os.org](https://concord-os.org) with real users, and the deploy path is proven
-  and repeatable. What's still ahead is *scale* — heavy concurrent load, high-volume
-  external/Google traffic, and real money movement at volume will surface work.
-  (`docs/STATE_OF_CONCORD.md §7`.)
+- **It is live, and the scale-risk classes have been directly audited and fixed, not just flagged.**
+  Deployed and running at [concord-os.org](https://concord-os.org) with real users, deploy path
+  proven and repeatable. A 2026-07-27→30 audit pass went looking specifically for what heavy
+  concurrent load, high-volume external/Google traffic, and money movement at volume would
+  surface — and found and fixed real instances of each, rather than leaving them as a
+  hypothetical: a duplicate, unconditional 2-minute full-state saver was doing a ~28MB
+  synchronous JSON serialize + forced GC on every tick, stalling the event loop long enough to
+  trip socket.io's ping timeout and mass-disconnect everyone (`fc600e49`) — the actual root
+  cause of "connections keep dropping" under load, not a guess; three more event-loop stalls
+  ≥300ms were found and fixed the same way (`0601f254`, `140255c7`, `06da3602`). LLM traffic
+  under load was hardened — `num_ctx` sent on every call path (was silently truncating prompts),
+  a real concurrency reservation so background work can't starve live chat, streaming chat
+  routed through the priority queue + BYOK (`89e1e37d`), and platform-provider overflow lanes
+  added for high-volume traffic (`f824d6e1`, `1bd38436`). Money movement at volume surfaced —
+  and had fixed — a critical wallet-drain IDOR across `/api/connective-tissue` (`360a3a24`), a
+  matching one on `/api/artifacts/:id/purchase` (`ec7b4bba`), a bounty-escrow fee-drain
+  (`535e4817`), plus SSRF/RCE/RBAC-privesc/open-redirect/path-traversal findings closed
+  (`d54fd030`, `296609be`, `97fdc3d3`, `48108fe1`, `be3b8033`, `a58c22ac`, `354c7091`). The
+  honest residual: none of this was found by *surviving* real heavy traffic — it's audit-and-fix,
+  not a load test. A literal heavy-concurrency / high-volume-traffic run against the live
+  deployment has not been performed. (`docs/STATE_OF_CONCORD.md §7`.)
 - **A handful of systems are research-grade** — the Foundation signal-layer (signal
   tomography, EM-fingerprint identity) and some emergent-civilization systems are built
   and wired but not battle-tested against the physical world. Flagged as such in the
