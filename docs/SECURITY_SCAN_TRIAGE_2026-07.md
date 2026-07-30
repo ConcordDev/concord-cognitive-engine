@@ -42,6 +42,7 @@ Two rules governed the pass:
 | — | Wallet-drain IDOR on `/api/artifacts/:id/purchase` (creative-marketplace) | High | `ec7b4bba` |
 | — | Bounty escrow fee-drain (human-authorized `balances.js` edit) | Correctness/economy, not IDOR | `535e4817` |
 | — | 4 CVEs via abandoned `@xenova/transformers` — migrated to `@huggingface/transformers` | High (4 chained CVEs, unfixable upstream) | `c5bc54f0` |
+| — | SSRF guard's DNS-rebinding-resistant fetch path silently never ran (2 compounding bugs) | High (defense-in-depth control was fully dead) | `04600684` |
 | — | Frontend CSP — was entirely absent; now report-only with a real per-request nonce | Medium | `4f017e80` |
 
 ### SEC-1 was not in the report as an RCE
@@ -220,20 +221,45 @@ promoted into the blocking gate.
   couldn't be verified against live docs in this environment.
   (`uuid` 9→14 was already done — `0a3d70e3`.)
 - **A pre-existing, unrelated frontend test-collection failure was found
-  while verifying the Next 16 bump, and left unfixed**:
-  `concord-frontend/tests/law-tracked-changes.test.ts` fails to even
-  collect (`Failed to resolve import "undici" from
-  "../server/lib/ssrf-guard.js"`) because it reaches across into a
-  server-side file whose lazy `await import("undici")` — a package neither
-  `package.json` declares — gets statically analyzed by Vite's
-  import-analysis plugin at collect time, before the surrounding try/catch
-  that makes it safe at real Node.js runtime ever gets a chance to run.
-  Confirmed unrelated to the Next.js bump: `vite`/`vitest`'s own versions
-  are byte-identical in the lockfile diff. All other 7433 tests across
-  916/917 files pass. Needs its own fix (either add `undici` as a real
-  devDependency so Vite can resolve it, or externalize it in the vitest
-  config) — not attempted here since it's out of scope for the version bump
-  this surfaced it during.
+  while verifying the Next 16 bump — now FIXED (`04600684`), and it led to
+  a materially more important finding.** `concord-frontend/tests/
+  law-tracked-changes.test.ts` failed to even collect
+  (`Failed to resolve import "undici" from "../server/lib/ssrf-guard.js"`)
+  because `undici` — used by `fetchWithPinnedIp()`, this codebase's
+  DNS-rebinding-resistant SSRF defense, described in its own header comment
+  as "the happy path" — was never declared as a dependency anywhere and was
+  not resolvable at real Node runtime either (confirmed directly:
+  `node -e "import('undici')"` throws `Cannot find package 'undici'`). Per
+  the owner's explicit instruction that a pre-existing bug still needs
+  fixing, not just documenting, this was chased down properly rather than
+  left as a test-only curiosity, and it uncovered **two independent,
+  compounding bugs that both silently defeated the pinned-IP defense on
+  every single call, in every environment**:
+  1. The missing `undici` dependency above — the try block's
+     `await import("undici")` always threw, silently falling to the weaker,
+     honestly-documented-as-imperfect unpinned fallback (re-validates the
+     URL but doesn't pin the connection, leaving a real DNS-rebinding TOCTOU
+     gap between validation and connect).
+  2. Even after adding the dependency, the `lookup` callback used the wrong
+     shape for this undici/Node combination (`cb(null, resolvedIp, family)`,
+     the older 3-arg `dns.lookup` form) — confirmed by direct reproduction
+     to throw `Invalid IP address: undefined` deep in Node's `net`
+     internals under undici 6.28.0 + Node 22. The correct shape is the
+     `{all:true}` array form: `cb(err, [{ address, family }])`.
+  A bare `catch {}` (no error binding) made bug (2) indistinguishable from
+  the expected "undici not installed" case, so a real internal bug hid
+  behind an intentional graceful-degradation pattern for who knows how
+  long. Fixed both; added a distinguishing log line so a future regression
+  here is observable instead of silently eating the stronger defense again.
+  New test `ssrf-guard-pinned-ip.test.js` (3/3) proves the fix itself, not
+  just the absence of a crash — building a `check` object whose hostname
+  cannot resolve via real DNS at all, confirming the request only succeeds
+  because the connection is genuinely pinned to the validated IP. As a
+  direct consequence (Node resolves a bare specifier relative to the
+  *importing* file's own directory, so `server/node_modules/undici` is
+  visible even to a frontend test reaching across the boundary), this also
+  fixed the original test-collection failure with zero frontend-side
+  change needed.
 
 ### `@xenova/transformers` — 4 flagged CVEs — DONE (`c5bc54f0`, 2026-07-30)
 
