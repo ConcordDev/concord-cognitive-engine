@@ -491,6 +491,10 @@ function _getAllDtus(STATE) {
   if (STATE?.dtus) {
     if (STATE.dtus instanceof Map) return [...STATE.dtus.values()];
     if (Array.isArray(STATE.dtus)) return STATE.dtus;
+    // Duck-type BEFORE the generic Object.values() fallback: STATE.dtus is a
+    // write-through store (has .values()) once wired — Object.values(store)
+    // would return the store's own methods/getters as fake DTUs, not throw.
+    if (typeof STATE.dtus.values === "function") { try { return [...STATE.dtus.values()]; } catch { return []; } }
     return Object.values(STATE.dtus);
   }
   return [];

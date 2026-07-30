@@ -795,7 +795,10 @@ export function createSandbox(pluginId, type = "readonly") {
     try {
       if (STATE.dtus) {
         const dtuSnapshot = [];
-        const source = STATE.dtus instanceof Map ? STATE.dtus.values() : (Array.isArray(STATE.dtus) ? STATE.dtus : []);
+        // Duck-type: STATE.dtus is a write-through store (has .values(), not
+        // a literal Map) once wired — the old Map/Array-only fallback fell
+        // through to [] for the store case.
+        const source = typeof STATE.dtus.values === "function" ? STATE.dtus.values() : (Array.isArray(STATE.dtus) ? STATE.dtus : []);
         for (const dtu of source) {
           dtuSnapshot.push({
             id: dtu.id,

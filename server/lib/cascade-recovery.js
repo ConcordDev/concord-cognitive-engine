@@ -186,7 +186,11 @@ export function auditDataPipelines(STATE, log) {
 
   // DTU pipeline: every DTU should have id, tier, createdAt
   let dtuCount = 0, dtuMissing = 0;
-  if (STATE.dtus instanceof Map) {
+  // Duck-type, not `instanceof Map`: STATE.dtus is a write-through store
+  // object (server.js createDTUStore) once wired, not a literal Map — it
+  // still implements [Symbol.iterator] (delegates to the underlying memory
+  // Map), so the for-of loop below works unchanged once this guard passes.
+  if (typeof STATE.dtus?.get === "function") {
     for (const [id, dtu] of STATE.dtus) {
       dtuCount++;
       if (!dtu) { dtuMissing++; continue; }
