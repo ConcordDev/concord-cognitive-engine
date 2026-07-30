@@ -135,10 +135,13 @@ const nextConfig = {
     // Keep strict checks by default; allow CI Docker build to opt out explicitly.
     ignoreBuildErrors: process.env.CI_SKIP_TYPECHECK === '1',
   },
-  eslint: {
-    // Keep strict checks by default; allow CI Docker build to opt out explicitly.
-    ignoreDuringBuilds: process.env.CI_SKIP_LINT_IN_BUILD === '1',
-  },
+  // Next.js 16 removed build-time ESLint integration entirely (the `eslint`
+  // key here is now silently ignored with an "Unrecognized key(s)" warning —
+  // confirmed via a real `next build` run). The CI_SKIP_LINT_IN_BUILD gate
+  // it implemented did nothing under Next 15 either in a way that mattered
+  // here: `.github/workflows/ci.yml` already runs `npm run lint` as its own
+  // independent step, not relying on next build's internal ESLint pass, so
+  // removing this dead config changes no real CI coverage.
   // Proxy API and socket requests to the backend server in production.
   //
   // Topology note (audit 2026-07-27 — reconciles an apparent contradiction
