@@ -155,21 +155,35 @@ export default function registerHelpersExtendedRoutes(app, {
     res.json({ ok: true, tiers, total: safeDtuSize() });
   }));
 
-  app.post("/api/atlas/tiers/promote/:dtuId", requireAuth(), asyncHandler(async (req, res) => {
+  // Security audit 2026-07-30: both routes below used to be requireAuth()
+  // only (any authenticated user, no ownership check, no admin check) AND
+  // read the NEW tier value straight off req.body.tier with no allowlist —
+  // so any logged-in caller could set ANY OTHER user's DTU to an arbitrary
+  // string in the same `tier` field the DTU-consolidation pipeline uses for
+  // regular/mega/hyper classification (see CLAUDE.md's DTU substrate
+  // section) — a trust-marking + data-corruption bug, not just a
+  // permissions gap. This is a moderation action (marking a DTU's editorial
+  // trust tier), so it's now gated the same way SEC-3 gated RBAC mutations:
+  // sovereign-family roles only. The endpoint name already declares the
+  // direction, so the handler no longer accepts a client-supplied override —
+  // promote always sets "verified", demote always sets "regular".
+  const requireAtlasTierAdmin = requireRole("owner", "admin", "sovereign", "founder");
+
+  app.post("/api/atlas/tiers/promote/:dtuId", requireAtlasTierAdmin, asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.dtuId);
     if (!dtu) return res.status(404).json({ ok: false, error: "not_found" });
     const oldTier = dtu.tier;
-    dtu.tier = req.body.tier || "verified";
+    dtu.tier = "verified";
     dtu.updatedAt = new Date().toISOString();
     saveStateDebounced();
     res.json({ ok: true, id: dtu.id, oldTier, newTier: dtu.tier });
   }));
 
-  app.post("/api/atlas/tiers/demote/:dtuId", requireAuth(), asyncHandler(async (req, res) => {
+  app.post("/api/atlas/tiers/demote/:dtuId", requireAtlasTierAdmin, asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.dtuId);
     if (!dtu) return res.status(404).json({ ok: false, error: "not_found" });
     const oldTier = dtu.tier;
-    dtu.tier = req.body.tier || "regular";
+    dtu.tier = "regular";
     dtu.updatedAt = new Date().toISOString();
     saveStateDebounced();
     res.json({ ok: true, id: dtu.id, oldTier, newTier: dtu.tier });
@@ -565,16 +579,41 @@ export default function registerHelpersExtendedRoutes(app, {
   });
 
   // ── DTU Extended ───────────────────────────────────────────────────────
+  // Security audit 2026-07-30: this route had zero per-item ownership check
+  // — any authenticated user could pass ANY other user's DTU ids and
+  // bulk-delete, bulk-retag, or bulk-promote them, up to 100 at a time.
+  // "delete" is the same destructive action dtu.delete (server.js) gates on
+  // ownership; reuse that exact field convention (ownerId/createdBy/
+  // createdByUser/authorId/source, admin-role bypass, permissive only for
+  // genuinely unowned legacy DTUs). "promote" is additionally an editorial
+  // trust-tier action (see the atlas/tiers/promote fix just above) so it's
+  // admin-only regardless of ownership, and no longer accepts a
+  // client-supplied tier override — it always sets "verified".
   app.post("/api/dtus/bulk", requireAuth(), asyncHandler(async (req, res) => {
     const { action, ids, data } = req.body;
     if (!ids?.length) return res.status(400).json({ ok: false, error: "ids required" });
+    const userId = req.user?.id;
+    const role = req.user?.role;
+    const isAdmin = ["owner", "admin", "sovereign", "founder"].includes(role);
     const results = [];
     for (const id of ids.slice(0, 100)) {
       const dtu = STATE.dtus?.get(id);
       if (!dtu) { results.push({ id, ok: false, error: "not_found" }); continue; }
-      if (action === "tag") { dtu.tags = [...new Set([...(dtu.tags || []), ...(data?.tags || [])])]; }
-      else if (action === "delete") { STATE.dtus.delete(id); }
-      else if (action === "promote") { dtu.tier = data?.tier || "verified"; }
+
+      const isOwner = userId && (dtu.ownerId === userId || dtu.createdBy === userId || dtu.createdByUser === userId || dtu.authorId === userId || dtu.source === userId || dtu.author === userId);
+      const hasOwner = dtu.ownerId || dtu.createdBy || dtu.createdByUser || dtu.authorId || dtu.author;
+
+      if (action === "promote") {
+        if (!isAdmin) { results.push({ id, ok: false, error: "unauthorized: promote requires an admin role" }); continue; }
+        dtu.tier = "verified";
+      } else if (hasOwner && !isOwner && !isAdmin) {
+        results.push({ id, ok: false, error: "unauthorized: you can only modify your own DTUs" });
+        continue;
+      } else if (action === "tag") {
+        dtu.tags = [...new Set([...(dtu.tags || []), ...(data?.tags || [])])];
+      } else if (action === "delete") {
+        STATE.dtus.delete(id);
+      }
       dtu.updatedAt = new Date().toISOString();
       results.push({ id, ok: true });
     }
