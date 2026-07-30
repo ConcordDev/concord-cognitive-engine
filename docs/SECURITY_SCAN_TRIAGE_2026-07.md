@@ -40,6 +40,8 @@ Two rules governed the pass:
 | — | Admin-gated DTU tier mutation + bulk-route IDOR in `helpers-extended.js` | High (arbitrary delete of another user's DTUs) | `f9a3c03a` |
 | — | **Wallet-drain IDOR across `/api/connective-tissue`** (tip/bounty/claim/purchase) | Critical | `360a3a24` |
 | — | Wallet-drain IDOR on `/api/artifacts/:id/purchase` (creative-marketplace) | High | `ec7b4bba` |
+| — | Bounty escrow fee-drain (human-authorized `balances.js` edit) | Correctness/economy, not IDOR | `535e4817` |
+| — | Frontend CSP — was entirely absent; now report-only with a real per-request nonce | Medium | `4f017e80` |
 
 ### SEC-1 was not in the report as an RCE
 
@@ -206,8 +208,6 @@ promoted into the blocking gate.
   this branch (present on `origin/main`). Clearing it requires a deliberate
   BASELINE refresh, which is human-authorized by design — not something to do
   as a side effect of a triage pass.
-- **CSP at the Next.js layer** — nonces were removed because they broke inline
-  scripts; a real Next CSP needs middleware nonce plumbing.
 - **`next` 15→16** — major needing individual verification (full production
   build + `tsc --noEmit` + vitest run, not just a version bump). Still open.
   (`uuid` 9→14 is done — `0a3d70e3` bumped it after auditing every call site
