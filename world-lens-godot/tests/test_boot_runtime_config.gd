@@ -13,6 +13,7 @@ const DEFAULTS := {
 	"api_key": "",
 	"auth_token": "",
 	"world_id": "concordia-hub",
+	"spectator_mode": false,
 }
 
 
@@ -22,6 +23,10 @@ static func run() -> TestUtils:
 	_test_overrides_only_the_set_vars(t)
 	_test_blank_env_value_does_not_override(t)
 	_test_all_four_overridden(t)
+	_test_spectator_true_enables_spectator_mode(t)
+	_test_spectator_one_enables_spectator_mode(t)
+	_test_spectator_unset_leaves_default_false(t)
+	_test_spectator_typo_does_not_enable(t)
 	return t
 
 
@@ -59,3 +64,29 @@ static func _test_all_four_overridden(t: TestUtils) -> void:
 	t.check_eq(resolved["api_key"], "sk_live_xyz", "api_key overridden")
 	t.check_eq(resolved["auth_token"], "jwt.should.be.unused", "auth_token overridden")
 	t.check_eq(resolved["world_id"], "tunya", "world_id overridden")
+
+
+static func _test_spectator_true_enables_spectator_mode(t: TestUtils) -> void:
+	var env := {"CONCORD_GODOT_SPECTATOR": "true"}
+	var resolved := Boot.resolve_runtime_config(env, DEFAULTS)
+	t.check_eq(resolved["spectator_mode"], true, "\"true\" enables spectator_mode")
+
+
+static func _test_spectator_one_enables_spectator_mode(t: TestUtils) -> void:
+	var env := {"CONCORD_GODOT_SPECTATOR": "1"}
+	var resolved := Boot.resolve_runtime_config(env, DEFAULTS)
+	t.check_eq(resolved["spectator_mode"], true, "\"1\" also enables spectator_mode")
+
+
+static func _test_spectator_unset_leaves_default_false(t: TestUtils) -> void:
+	var resolved := Boot.resolve_runtime_config({}, DEFAULTS)
+	t.check_eq(resolved["spectator_mode"], false, "unset env leaves spectator_mode at its default")
+
+
+static func _test_spectator_typo_does_not_enable(t: TestUtils) -> void:
+	# Only the exact literals "true"/"1" opt in — this is an honest-default
+	# choice (see resolve_runtime_config's own comment), not a truthiness
+	# guess, so a typo like "yes" or "TRUE" must NOT silently enable it.
+	var env := {"CONCORD_GODOT_SPECTATOR": "yes"}
+	var resolved := Boot.resolve_runtime_config(env, DEFAULTS)
+	t.check_eq(resolved["spectator_mode"], false, "an unrecognised value never enables spectator_mode")

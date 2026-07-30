@@ -40,14 +40,23 @@ extends Node3D
 ## — no InputMap actions, since none are bound in project.godot yet (see
 ## character_controller.gd's own note on why).
 ##
-## ── Honest gap: no mouse-look input yet ──────────────────────────────────────
-## FREE_FLY/ORBIT's look-around math (`free_fly_step`, `orbit_transform`) is
-## real and tested, but the mouse-motion accumulator that would feed it
-## (`_read_mouse_look_delta`/`_read_mouse_drag_delta`) is not wired to a real
-## `_input`/`_unhandled_input` handler in this pass — it returns
-## `Vector2.ZERO` honestly rather than fabricating motion. Wiring real mouse
-## capture (`Input.MOUSE_MODE_CAPTURED`) is a small, real follow-on scoped to
-## actual interactive use, not invented here. See VISUAL_QA.md.
+## ── R6 — mouse-look input wired (was the class doc's own "Honest gap") ──────
+## FREE_FLY captures the mouse (`Input.MOUSE_MODE_CAPTURED`) the moment it
+## becomes the active rig mode and releases it (`MOUSE_MODE_VISIBLE`) the
+## moment it stops being active; `_unhandled_input` accumulates
+## `InputEventMouseMotion.relative` while captured. ORBIT never captures the
+## mouse (a spectator/FEA-viewer still needs to click UI) — it accumulates
+## drag delta only while the left mouse button is held, and scroll wheel
+## events call the ALREADY-EXISTING (previously uncalled) `zoom_orbit()`.
+## `_read_mouse_look_delta`/`_read_mouse_drag_delta` drain-and-reset their
+## respective accumulator each `_process` tick, same pattern
+## `_read_free_fly_move_input` already used for raw keys. Still genuinely
+## unverified: headless draws nothing and generates no real mouse events, so
+## whether this FEELS right (sensitivity, whether captured-mouse UX is
+## correct) is unexercised here — see VISUAL_QA.md. The math it feeds
+## (`free_fly_step`, `orbit_transform`) was already real and tested before
+## this unit; only the input source changed from "always zero" to "real
+## accumulated motion."
 ##
 ## STATUS: compiles and its math is EXECUTED by a real Godot 4.4 (docs/GODOT_RUNTIME.md)
 ## (tests/test_camera_rig.gd). The unverified half IS the feature here —
@@ -88,6 +97,13 @@ var _orbit_yaw: float = 0.0
 var _orbit_pitch: float = 0.3
 var _orbit_distance: float = 5.0
 
+## R6 — real mouse input accumulators, drained by
+## _read_mouse_look_delta/_read_mouse_drag_delta each `_process` tick (see
+## class doc's "mouse-look input wired" section).
+var _mouse_look_accum: Vector2 = Vector2.ZERO
+var _mouse_drag_accum: Vector2 = Vector2.ZERO
+var _orbit_dragging: bool = false
+
 
 func _ready() -> void:
 	_camera = Camera3D.new()
@@ -112,6 +128,15 @@ func set_rig_mode(mode: int) -> void:
 		_free_fly_pitch = euler.x
 	elif mode == RigMode.ORBIT:
 		_orbit_distance = orbit_default_distance
+		_orbit_dragging = false
+	# R6 — FREE_FLY is the only mode that captures the mouse (continuous
+	# mouse-look, matching a first-person/spectator fly camera's usual
+	# convention); ORBIT/FOLLOW leave the cursor free so UI/click-to-drag
+	# still work. `Input` is a real engine singleton — a headless run with no
+	# display server may no-op this harmlessly, but nothing here depends on
+	# that; it's exercised only when a live SessionManager actually pushes a
+	# rig-mode change, never during --import/--script compilation.
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if mode == RigMode.FREE_FLY else Input.MOUSE_MODE_VISIBLE
 
 
 ## FOLLOW target — a real Node3D (typically the local player's
@@ -171,16 +196,40 @@ func _process_orbit() -> void:
 		_orbit_focus, _orbit_yaw, _orbit_pitch, _orbit_distance)
 
 
-## Real mouse-look would consume accumulated `InputEventMouseMotion.relative`
-## from an `_unhandled_input` handler; no such accumulator is wired in this
-## pass (see class doc's "Honest gap"). Returns zero rather than fabricating
-## motion — the pure math this feeds is real and tested regardless.
+## R6 — real accumulator drain-and-reset (see class doc). Same "read once
+## per tick, then zero it" shape `_read_free_fly_move_input` already uses
+## for keys, just fed by `_unhandled_input`'s mouse-motion accumulation
+## instead of a per-frame poll (mouse deltas arrive as discrete events, not
+## a held-key state `Input.is_*_pressed` could sample directly).
 func _read_mouse_look_delta() -> Vector2:
-	return Vector2.ZERO
+	var delta := _mouse_look_accum
+	_mouse_look_accum = Vector2.ZERO
+	return delta
 
 
 func _read_mouse_drag_delta() -> Vector2:
-	return Vector2.ZERO
+	var delta := _mouse_drag_accum
+	_mouse_drag_accum = Vector2.ZERO
+	return delta
+
+
+## R6 — accumulates real mouse input for whichever rig mode is currently
+## active; a no-op for FOLLOW (nothing reads mouse deltas in that mode).
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		if rig_mode == RigMode.FREE_FLY and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			_mouse_look_accum += event.relative
+		elif rig_mode == RigMode.ORBIT and _orbit_dragging:
+			_mouse_drag_accum += event.relative
+	elif event is InputEventMouseButton:
+		if rig_mode != RigMode.ORBIT:
+			return
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_orbit_dragging = event.pressed
+		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			zoom_orbit(-1.0)
+		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			zoom_orbit(1.0)
 
 
 func _read_free_fly_move_input() -> Vector3:

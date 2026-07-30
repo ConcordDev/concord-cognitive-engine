@@ -18,7 +18,7 @@ extends Node
 ## (design ⇄ playtest, via an injected DesignPlaytestClient's real
 ## `design:mode` ack/nack round trip).
 ##
-## ── Why three Mode states, not four ─────────────────────────────────────────
+## ── Why three Mode states, not four (R5/E24) — now FOUR as of R6 ───────────
 ## Reading each mode's actual protocol surface (docs/GODOT_PROTOCOL.md) shows
 ## they are NOT symmetric — treating all four as equal peers in one state
 ## machine would be dishonest about what the server actually tracks:
@@ -51,6 +51,24 @@ extends Node
 ##     `is_input_owner`/`current_input_owner` have no ConKay case because
 ##     ConKay never asks to be an input owner — see world/boot.gd, which
 ##     mounts ConKayPresence directly, entirely outside this manager.
+##
+##   - SPECTATE (R6, first-shippable-milestone unit) is a fourth real Mode,
+##     not a reuse of DESIGN_EDIT's free-fly camera. It NEEDS the same
+##     camera-only, no-character-input shape DESIGN_EDIT already has, but
+##     labeling a read-only viewer as "DESIGN_EDIT" would be dishonest (it
+##     would also incidentally make `request_mode(PLAYTEST)` a legal edge
+##     from it, and imply design-authoring capability a spectator must never
+##     have — design authoring is gated by which client objects exist
+##     (DesignCommandClient/DesignPlaytestClient), not by input ownership
+##     alone, but the MODE NAME itself should still tell the truth about
+##     what the client is doing). WORLD<->SPECTATE is local-only, exactly
+##     like WORLD<->DESIGN_EDIT — there is no server-side "spectator session"
+##     concept on the Godot gateway to ack/nack (the separate, pre-existing
+##     socket.io `server/lib/spectator.js` subsystem is unrelated: it is a
+##     spectator-of-a-*match* concept for browser clients, not a Godot
+##     camera/input mode). See `input_owner_for`/`camera_rig_mode_for` below
+##     for what SPECTATE actually grants: FREE_FLY input ownership and
+##     camera-rig mode — same camera behavior as DESIGN_EDIT, distinct name.
 ##
 ## ── Legal Mode transitions ───────────────────────────────────────────────────
 ## WORLD <-> DESIGN_EDIT: local, client-side only. There is no wire message
@@ -103,7 +121,7 @@ signal fea_overlay_closed()
 signal fea_overlay_rejected(reason: String)
 signal input_owner_changed(owner: int)
 
-enum Mode { WORLD, DESIGN_EDIT, PLAYTEST }
+enum Mode { WORLD, DESIGN_EDIT, PLAYTEST, SPECTATE }
 enum InputOwner { CHARACTER, FREE_FLY, ORBIT }
 
 const CameraRig := preload("res://session/camera_rig.gd")
@@ -162,11 +180,18 @@ func request_mode(target_mode: int, level_id: String = "") -> void:
 		mode_transition_rejected.emit(target_mode, "transition_pending")
 		return
 
-	# WORLD<->DESIGN_EDIT is local-only — no server round trip exists for it.
+	# WORLD<->DESIGN_EDIT and WORLD<->SPECTATE are both local-only — no
+	# server round trip exists for either (see class doc's SPECTATE section).
 	if mode == Mode.WORLD and target_mode == Mode.DESIGN_EDIT:
 		_apply_mode(Mode.DESIGN_EDIT)
 		return
 	if mode == Mode.DESIGN_EDIT and target_mode == Mode.WORLD:
+		_apply_mode(Mode.WORLD)
+		return
+	if mode == Mode.WORLD and target_mode == Mode.SPECTATE:
+		_apply_mode(Mode.SPECTATE)
+		return
+	if mode == Mode.SPECTATE and target_mode == Mode.WORLD:
 		_apply_mode(Mode.WORLD)
 		return
 
@@ -261,7 +286,12 @@ func _push_camera_rig_mode() -> void:
 
 ## The full legal-transition table for `Mode`. See class doc's "Legal Mode
 ## transitions" section for the reasoning behind each edge (and each
-## deliberate omission — WORLD<->PLAYTEST is never legal).
+## deliberate omission — WORLD<->PLAYTEST is never legal). R6 adds
+## WORLD<->SPECTATE, local-only exactly like WORLD<->DESIGN_EDIT (no server
+## round trip exists for either). SPECTATE never connects to DESIGN_EDIT or
+## PLAYTEST directly — a spectator becomes an author/player only by leaving
+## SPECTATE back to WORLD first, same two-step discipline PLAYTEST already
+## requires for reaching WORLD.
 static func is_legal_mode_transition(from: int, to: int) -> bool:
 	if from == to:
 		return false
@@ -273,25 +303,31 @@ static func is_legal_mode_transition(from: int, to: int) -> bool:
 		return true
 	if from == Mode.PLAYTEST and to == Mode.DESIGN_EDIT:
 		return true
+	if from == Mode.WORLD and to == Mode.SPECTATE:
+		return true
+	if from == Mode.SPECTATE and to == Mode.WORLD:
+		return true
 	return false
 
 
-## FEA overlay may open from WORLD or DESIGN_EDIT, never PLAYTEST — see
-## class doc's "FEA overlay legality" section.
+## FEA overlay may open from WORLD, DESIGN_EDIT, or SPECTATE, never
+## PLAYTEST — see class doc's "FEA overlay legality" section. A spectator
+## inspecting a structure is exactly as legitimate a caller as a player or
+## an author; only real-time PLAYTEST refuses the interruption.
 static func can_open_fea_overlay(mode: int) -> bool:
 	return mode != Mode.PLAYTEST
 
 
 ## Pure derivation of who owns the shared camera/movement input right now.
 ## The FEA overlay always wins when active (it is a modal viewer layered on
-## top of whatever Mode is active) — otherwise DESIGN_EDIT is the one Mode
-## with a free-fly authoring camera, and both WORLD and PLAYTEST play like
-## ordinary third-person movement (PLAYTEST is, after all, actually playing
-## the level being designed).
+## top of whatever Mode is active) — otherwise DESIGN_EDIT and SPECTATE are
+## the two Modes with a free-fly (no character body) camera, and both WORLD
+## and PLAYTEST play like ordinary third-person movement (PLAYTEST is, after
+## all, actually playing the level being designed).
 static func input_owner_for(mode: int, fea_overlay_active: bool) -> int:
 	if fea_overlay_active:
 		return InputOwner.ORBIT
-	if mode == Mode.DESIGN_EDIT:
+	if mode == Mode.DESIGN_EDIT or mode == Mode.SPECTATE:
 		return InputOwner.FREE_FLY
 	return InputOwner.CHARACTER
 
@@ -302,6 +338,6 @@ static func input_owner_for(mode: int, fea_overlay_active: bool) -> int:
 static func camera_rig_mode_for(mode: int, fea_overlay_active: bool) -> int:
 	if fea_overlay_active:
 		return CameraRig.RigMode.ORBIT
-	if mode == Mode.DESIGN_EDIT:
+	if mode == Mode.DESIGN_EDIT or mode == Mode.SPECTATE:
 		return CameraRig.RigMode.FREE_FLY
 	return CameraRig.RigMode.FOLLOW

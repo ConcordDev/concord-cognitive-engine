@@ -51,6 +51,8 @@ const TestWayfindingMarkers := preload("res://tests/test_wayfinding_markers.gd")
 const TestArtStyle := preload("res://tests/test_art_style.gd")
 const TestGatewayClientAuth := preload("res://tests/test_gateway_client_auth.gd")
 const TestBootRuntimeConfig := preload("res://tests/test_boot_runtime_config.gd")
+const TestGatewayClientSeq := preload("res://tests/test_gateway_client_seq.gd")
+const TestBootResync := preload("res://tests/test_boot_resync.gd")
 
 
 func _init() -> void:
@@ -84,6 +86,8 @@ func _init() -> void:
 		"ArtStyle": TestArtStyle.run(),
 		"GatewayClientAuth": TestGatewayClientAuth.run(),
 		"BootRuntimeConfig": TestBootRuntimeConfig.run(),
+		"GatewayClientSeq": TestGatewayClientSeq.run(),
+		"BootResync": TestBootResync.run(),
 	}
 
 	var all_ok := true

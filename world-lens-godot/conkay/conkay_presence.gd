@@ -113,6 +113,20 @@ func handle_event(evt: String, data: Dictionary) -> void:
 		_refresh()
 
 
+## R6 — called by world/boot.gd on every successful (re)auth. A
+## `macro:completed` missed while this client was disconnected would
+## otherwise leave `_inflight_run_ids` permanently non-empty — a busy/
+## thinking indicator with nothing left to ever clear it, since
+## `apply_macro_event` only removes an id on the completion event it never
+## received. Resetting to the same unverified/idle state a fresh boot starts
+## in is the honest choice on reconnect: a guessed "probably fine now" state
+## would be a fabrication the rest of this class's honesty rules forbid.
+func reset() -> void:
+	_inflight_run_ids = {}
+	_tier = ""
+	_refresh()
+
+
 func _refresh() -> void:
 	var busy := ConKayPresenceState.is_busy(_inflight_run_ids)
 	_visual_state = ConKayPresenceState.visual_state(busy, _tier)

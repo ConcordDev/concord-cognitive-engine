@@ -25,11 +25,48 @@ signal connected
 signal authenticated(user_id: String)
 signal disconnected(reason: String)
 signal event_received(evt: String, data: Dictionary)
+## R6 — `_seq` anomaly (duplicate/out-of-order frame delivery within THIS
+## connection, or a shared server-side counter that reset mid-connection —
+## e.g. a server restart). See the class doc section below for why this is
+## a diagnostic signal only, never the resync trigger.
+signal sequence_anomaly(seq: int, last_seen: int)
 
 enum State { DISCONNECTED, CONNECTING, AUTHENTICATING, READY }
 
 const BACKOFF_MIN_S: float = 1.0
 const BACKOFF_MAX_S: float = 30.0
+
+## ── R6 — `_seq` gap detection, and why it is NOT the resync trigger ─────────
+## server/lib/godot-gateway.js stamps `_seq` from a single module-instance-
+## global counter (`gatewaySeq`), incremented once per `send()` CALL — not
+## once per logical event. A broadcast to N clients in a room, or N clients
+## sharing one process, burns N sequence numbers for what is logically one
+## event instant, and different event types interleave on the same counter.
+## So `_seq` is real, monotonically increasing for the process's lifetime,
+## but genuinely NON-CONTIGUOUS from any single client's point of view —
+## a client cannot assume the next frame's `_seq` is `last + 1`, and large
+## jumps are the NORMAL case, not evidence of a missed frame. There is also
+## no server-side "give me everything since seq N" verb to request even if
+## a gap size could be computed (it can't, from a shared counter alone).
+##
+## What `_seq` genuinely IS good for: a per-connection monotonicity check.
+## Within one open WebSocket connection, delivery is already ordered and
+## reliable — so a frame arriving with `_seq <= _last_seq_seen` is a real
+## protocol anomaly (duplicate delivery, a misbehaving intermediary, or the
+## server process having restarted — resetting its counter to 0 — while this
+## socket happened to stay open across the restart). `sequence_anomaly` is
+## emitted purely for observability/telemetry on that case; nothing in this
+## client gates behavior on it, because it is expected to fire rarely if
+## ever and provides no "how much did I miss" information regardless.
+##
+## The one genuinely actionable resync trigger is the RECONNECT itself — see
+## world/boot.gd's `_on_authenticated`, which already re-requests a full
+## scene snapshot (`scene:request`) on every successful auth including
+## reconnects, and (R6) now also replays every room this client had joined
+## and resets any one-shot-derived state (ConKay) that has no periodic
+## self-heal. `city:positions`'s own ~100ms broadcast cadence self-heals
+## without any client action at all — see boot.gd's `_on_event` for that
+## wiring.
 
 @export var gateway_url: String = "ws://127.0.0.1:5050/godot-ws"
 @export var auth_token: String = ""
@@ -48,12 +85,20 @@ var _state: int = State.DISCONNECTED
 var _backoff_s: float = BACKOFF_MIN_S
 var _reconnect_at_ms: int = -1
 
+## Highest `_seq` seen THIS connection. Reset on every new socket open
+## (`_open_socket`) — a previous connection's counter context is meaningless
+## after a reconnect, and the server's own counter may itself have reset (a
+## server restart). `-1` means "no frame received yet this connection,"
+## which is never treated as an anomaly.
+var _last_seq_seen: int = -1
+
 
 func connect_to_gateway() -> void:
 	_open_socket()
 
 
 func _open_socket() -> void:
+	_last_seq_seen = -1
 	_peer = WebSocketPeer.new()
 	var err := _peer.connect_to_url(gateway_url)
 	if err != OK:
@@ -126,6 +171,15 @@ func _handle_text(text: String) -> void:
 	var evt: String = msg.get("evt", "")
 	var data: Dictionary = msg.get("data", {})
 
+	# R6 — per-connection `_seq` monotonicity check (see class doc above).
+	# `data.get("_seq", -1)` degrades honestly to "no seq present" (-1,
+	# never an anomaly) rather than assuming 0 for a malformed/older frame.
+	if data.has("_seq"):
+		var seq := int(data["_seq"])
+		if GatewayClient.detect_seq_anomaly(_last_seq_seen, seq):
+			sequence_anomaly.emit(seq, _last_seq_seen)
+		_last_seq_seen = maxi(_last_seq_seen, seq)
+
 	match evt:
 		"hello":
 			_state = State.READY
@@ -144,6 +198,18 @@ func _schedule_reconnect(_reason: String) -> void:
 	var wait := _backoff_s + jitter
 	_reconnect_at_ms = Time.get_ticks_msec() + int(wait * 1000.0)
 	_backoff_s = minf(_backoff_s * 2.0, BACKOFF_MAX_S)
+
+
+# ── Pure static seq-anomaly detection (see class doc's R6 section) ──────────
+
+## `last_seen == -1` means "no frame received yet this connection" — never
+## an anomaly (there is nothing to compare against). Otherwise, a `seq` that
+## is not strictly greater than the highest one already seen is genuinely
+## out of order/duplicated for THIS connection, regardless of how large or
+## small the gap to the previous value was (large gaps are normal — see
+## class doc; only non-increasing is an anomaly).
+static func detect_seq_anomaly(last_seen: int, seq: int) -> bool:
+	return last_seen >= 0 and seq <= last_seen
 
 
 # ── Pure static envelope codec (engine-independent; JSON only) ────────────────

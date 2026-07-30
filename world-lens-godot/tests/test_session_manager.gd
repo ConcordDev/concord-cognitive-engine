@@ -35,6 +35,8 @@ static func run() -> TestUtils:
 	_test_can_open_fea_overlay_gating(t)
 	_test_input_owner_derivation(t)
 	_test_camera_rig_mode_derivation(t)
+	_test_world_spectate_is_bidirectional_and_local(t)
+	_test_spectate_never_connects_directly_to_design_or_playtest(t)
 	return t
 
 
@@ -93,6 +95,9 @@ static func _test_can_open_fea_overlay_gating(t: TestUtils) -> void:
 		SessionManager.can_open_fea_overlay(SessionManager.Mode.DESIGN_EDIT),
 		"FEA overlay may open while in DESIGN_EDIT")
 	t.check(
+		SessionManager.can_open_fea_overlay(SessionManager.Mode.SPECTATE),
+		"FEA overlay may open while SPECTATE-ing (a spectator inspecting a structure is legitimate)")
+	t.check(
 		not SessionManager.can_open_fea_overlay(SessionManager.Mode.PLAYTEST),
 		"FEA overlay refuses to open during PLAYTEST — real-time play owns the camera/input")
 
@@ -110,6 +115,10 @@ static func _test_input_owner_derivation(t: TestUtils) -> void:
 		SessionManager.input_owner_for(SessionManager.Mode.DESIGN_EDIT, false),
 		SessionManager.InputOwner.FREE_FLY,
 		"DESIGN_EDIT with no overlay -> FREE_FLY owns input")
+	t.check_eq(
+		SessionManager.input_owner_for(SessionManager.Mode.SPECTATE, false),
+		SessionManager.InputOwner.FREE_FLY,
+		"SPECTATE with no overlay -> FREE_FLY owns input (no character body to control)")
 	t.check_eq(
 		SessionManager.input_owner_for(SessionManager.Mode.WORLD, true),
 		SessionManager.InputOwner.ORBIT,
@@ -134,6 +143,44 @@ static func _test_camera_rig_mode_derivation(t: TestUtils) -> void:
 		CameraRig.RigMode.FREE_FLY,
 		"DESIGN_EDIT with no overlay -> FREE_FLY rig")
 	t.check_eq(
+		SessionManager.camera_rig_mode_for(SessionManager.Mode.SPECTATE, false),
+		CameraRig.RigMode.FREE_FLY,
+		"SPECTATE with no overlay -> FREE_FLY rig (same camera behavior as DESIGN_EDIT, distinct mode name)")
+	t.check_eq(
 		SessionManager.camera_rig_mode_for(SessionManager.Mode.PLAYTEST, true),
 		CameraRig.RigMode.ORBIT,
 		"the FEA overlay always wins the rig mode when active, regardless of underlying mode")
+
+
+static func _test_world_spectate_is_bidirectional_and_local(t: TestUtils) -> void:
+	t.check(
+		SessionManager.is_legal_mode_transition(
+			SessionManager.Mode.WORLD, SessionManager.Mode.SPECTATE),
+		"WORLD -> SPECTATE is legal (entering the read-only spectator viewer)")
+	t.check(
+		SessionManager.is_legal_mode_transition(
+			SessionManager.Mode.SPECTATE, SessionManager.Mode.WORLD),
+		"SPECTATE -> WORLD is legal (leaving the spectator viewer)")
+
+
+static func _test_spectate_never_connects_directly_to_design_or_playtest(t: TestUtils) -> void:
+	t.check(
+		not SessionManager.is_legal_mode_transition(
+			SessionManager.Mode.SPECTATE, SessionManager.Mode.DESIGN_EDIT),
+		"SPECTATE -> DESIGN_EDIT is ILLEGAL directly — must return to WORLD first")
+	t.check(
+		not SessionManager.is_legal_mode_transition(
+			SessionManager.Mode.DESIGN_EDIT, SessionManager.Mode.SPECTATE),
+		"DESIGN_EDIT -> SPECTATE is ILLEGAL directly — must return to WORLD first")
+	t.check(
+		not SessionManager.is_legal_mode_transition(
+			SessionManager.Mode.SPECTATE, SessionManager.Mode.PLAYTEST),
+		"SPECTATE -> PLAYTEST is ILLEGAL directly")
+	t.check(
+		not SessionManager.is_legal_mode_transition(
+			SessionManager.Mode.PLAYTEST, SessionManager.Mode.SPECTATE),
+		"PLAYTEST -> SPECTATE is ILLEGAL directly")
+	t.check(
+		not SessionManager.is_legal_mode_transition(
+			SessionManager.Mode.SPECTATE, SessionManager.Mode.SPECTATE),
+		"a mode never legally transitions to itself (SPECTATE)")
