@@ -183,10 +183,10 @@ describe('AvatarSystem3D.tsx — discharge flash: best-effort, never blocks comb
 
 // Stability audit (2026-07-21) — the weapon-swing trail fix. Previously
 // this per-frame block sampled `userData.boneMap.get('rightHand')`, a
-// bone map ONLY the legacy procedural avatar builder sets — but the real
-// local player is always built via the enhanced-avatar path (see
+// bone map ONLY the legacy procedural avatar builder sets — but the local
+// player never used that builder even before R7's hero-mesh change (see
 // createAvatarMeshSmart's `wantEnhanced` a few hundred lines up, always
-// true when `isLocalPlayer` is set), which never sets that boneMap. The
+// true), so it never set that boneMap either way. The
 // .sample() call site was real (my own earlier claim that it was "never
 // invoked anywhere" was wrong and is corrected in CREDITS.md), but
 // `tipBone` silently resolved to undefined for the one avatar this block

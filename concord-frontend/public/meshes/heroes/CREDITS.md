@@ -1,5 +1,26 @@
 # Hero mesh asset credits
 
+## R7 — the local player now actually uses these (2026-07-30)
+
+Every asset below existed and was fully wired for hero NPCs before this
+pass — but `components/world-lens/AvatarSystem3D.tsx` explicitly excluded
+the LOCAL PLAYER from this path (`if (!opts.isHero || opts.isLocalPlayer)
+return null`), so a player's own body always rendered as the enhanced-
+avatar-builder's primitive sphere/box/cylinder geometry regardless of how
+much real content sat unused right here. Fixed: the player is now eligible
+for the same real-GLB path, via a new heuristic
+(`archetypeForPlayerAppearance`) that maps the character-customizer's
+body/clothing choices onto the closest of the 7 archetypes below.
+
+**Known, honest limitation**: `loadHeroMesh` never applies
+`appearance.skinColor`/`hairColor`/clothing colors onto the loaded GLB's
+own baked materials — only the primitive/enhanced builder respects those.
+So the player gets a real, professionally modeled body instead of a
+primitive one, but not (yet) in the exact skin tone/hair color/clothing
+color their customizer selections chose. Recoloring a real scanned/rigged
+mesh per-option is a separate, larger content task (per-archetype texture
+variants, or a shader-based tint pass) — not done in this pass.
+
 ## Universal archetype slots (current)
 
 Six of the 7 base archetype slots now use **Microsoft Rocketbox** avatars —
