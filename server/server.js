@@ -7016,7 +7016,21 @@ function authMiddleware(req, res, next) {
   // Skip auth for always-public endpoints (any method). /api/stripe/webhook is
   // authenticated by Stripe's signature (verified in handleWebhook), never a
   // cookie/JWT — it must skip auth or webhooks are rejected and coins never mint.
-  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/chat", "/api/brain/conscious", "/api/stripe/webhook"];
+  // Security audit 2026-07-30: "/api/chat" was removed from this array.
+  // Being method-agnostic AND header-blind (bare `return next()`, no
+  // identity-resolution attempt at all, unlike the GET publicReadPaths
+  // bypass below), it silently exempted the ENTIRE chat prefix —
+  // including GET /api/chat/conversations (dumped every user's session
+  // titles/summaries/last-message text to anonymous callers, confirmed
+  // live) and every requireAuth()-gated route under /api/chat/* (sessions,
+  // messages, sovereignty-resolve), which could never populate req.user
+  // for ANYONE — even a request carrying a genuinely valid JWT — because
+  // this bypass ran before authMiddleware ever got a chance to decode it.
+  // The two genuinely-anonymous entry points (POST /api/chat, POST
+  // /api/chat/stream) get precise, header-aware replacements below instead
+  // (same _hasAuthHeader discipline as the GET publicReadPaths bypass),
+  // so a credentialed caller still gets req.user populated correctly.
+  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/brain/conscious", "/api/stripe/webhook"];
   if (alwaysPublic.some(p => req.path.startsWith(p))) return next();
 
   // Sovereign-only route protection
@@ -7301,6 +7315,14 @@ function authMiddleware(req, res, next) {
   const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
                             req.cookies?.concord_auth || req.cookies?.concord_refresh);
   if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => req.path.startsWith(p))) return next();
+  // Gate 1 POST bypass (security audit 2026-07-30, replaces the removed
+  // blanket "/api/chat" alwaysPublic entry above): the two genuinely
+  // anonymous-guest chat entry points, gated by !_hasAuthHeader exactly
+  // like the GET publicReadPaths bypass just above — a caller with a
+  // real JWT/cookie falls through to the normal auth pipeline instead,
+  // so req.user actually gets populated for logged-in users on this
+  // prefix (the bug this replaces silently never did).
+  if (req.method === "POST" && !_hasAuthHeader && (req.path === "/api/chat" || req.path === "/api/chat/stream")) return next();
   // Gate 1 POST bypass: allow /api/repair POST without auth (frontend error fallback path)
   if (req.method === "POST" && req.path.startsWith("/api/repair")) return next();
   // Gate 1 POST bypass: allow creative registry POST without auth (public discovery)
