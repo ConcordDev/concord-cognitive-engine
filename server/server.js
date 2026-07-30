@@ -17519,8 +17519,18 @@ async function initLocalEmbeddings() {
   }
 
   // CPU fallback — kept for offline dev / deployments without a GPU.
+  // Security audit 2026-07-30: migrated off @xenova/transformers (final
+  // release 2.17.2, abandoned — the package was renamed and folded into
+  // Hugging Face's own @huggingface/transformers, which is the maintained
+  // successor with an identical pipeline() API; only the npm package name
+  // changed). The old package pinned onnxruntime-web to exactly 1.14.0,
+  // dragging 4 unfixable CVEs (sharp + onnxruntime-{node,web,common}) that
+  // could never be patched upstream. Model id ("Xenova/all-MiniLM-L6-v2")
+  // is unchanged — that's a Hugging Face Hub repo name, independent of
+  // which npm package loads it, and Xenova's ONNX-converted models remain
+  // hosted there under the same org.
   try {
-    const { pipeline } = await import("@xenova/transformers").catch(() => ({}));
+    const { pipeline } = await import("@huggingface/transformers").catch(() => ({}));
     if (!pipeline) {
       structuredLog("warn", "embeddings_unavailable", { reason: "transformers not installed" });
       return { ok: false, reason: "package_not_installed" };

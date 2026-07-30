@@ -96,14 +96,15 @@
     "typescript": "^5.9.3"
   },
   "optionalDependencies": {
-    "@xenova/transformers": "^2.15.0",
+    "@huggingface/transformers": "^4.2.0",
     "meilisearch": "^0.37.0",
     "pg": "^8.11.3",
     "redis": "^4.6.12"
   },
   "overrides": {
     "protobufjs": "^7.5.5",
-    "sharp": "^0.35.0"
+    "sharp": "^0.35.0",
+    "adm-zip": "^0.6.0"
   },
   "engines": {
     "node": ">=18.0.0"
