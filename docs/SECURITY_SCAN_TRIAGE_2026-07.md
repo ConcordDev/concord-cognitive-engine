@@ -41,6 +41,7 @@ Two rules governed the pass:
 | — | **Wallet-drain IDOR across `/api/connective-tissue`** (tip/bounty/claim/purchase) | Critical | `360a3a24` |
 | — | Wallet-drain IDOR on `/api/artifacts/:id/purchase` (creative-marketplace) | High | `ec7b4bba` |
 | — | Bounty escrow fee-drain (human-authorized `balances.js` edit) | Correctness/economy, not IDOR | `535e4817` |
+| — | 4 CVEs via abandoned `@xenova/transformers` — migrated to `@huggingface/transformers` | High (4 chained CVEs, unfixable upstream) | `c5bc54f0` |
 | — | Frontend CSP — was entirely absent; now report-only with a real per-request nonce | Medium | `4f017e80` |
 
 ### SEC-1 was not in the report as an RCE
@@ -234,7 +235,7 @@ promoted into the blocking gate.
   config) — not attempted here since it's out of scope for the version bump
   this surfaced it during.
 
-### `@xenova/transformers` — 4 flagged CVEs, and why an `overrides` entry is the wrong fix
+### `@xenova/transformers` — 4 flagged CVEs — DONE (`c5bc54f0`, 2026-07-30)
 
 This one subtree accounts for four flagged packages: `sharp` 0.32.6 and
 `onnxruntime-{node,web,common}` 1.14.0. The obvious move is an npm `overrides`
@@ -262,7 +263,24 @@ family), which drops the whole stale subtree at once. Failing that, drop the
 optional dependency entirely — the fallback already degrades honestly without
 it.
 
-**Not executed here** deliberately: swapping an ML runtime cannot be verified
-in this environment (no model downloads, no egress), and an unverified swap of
-an inference backend is a worse outcome than a documented one. The exposure
-while it waits is bounded — an optional package on a non-default code path.
+**Done.** Migrated the single call site to `@huggingface/transformers@4.2.0`
+(identical `pipeline()` API, same maintainer — only the npm package name
+changed; the model id `Xenova/all-MiniLM-L6-v2` is a Hugging Face Hub repo
+name, unaffected by the npm rename). `@huggingface/transformers`'s own
+`onnxruntime-node` dependency pulled in one new high-severity chain
+(`adm-zip <0.6.0`, an install-time-only 4GB-allocation DoS unpacking
+prebuilt native binaries — not reachable via untrusted runtime input),
+fixed with an `overrides: {"adm-zip": "^0.6.0"}` entry using the same
+pattern this `package.json` already uses for `protobufjs`/`sharp`. Net:
+`npm audit` now reports **0 vulnerabilities**, down from the 4 unfixable
+ones.
+
+Verified as far as this sandbox allows: the package imports correctly and
+`pipeline()` is callable; `tests/embeddings.test.js` +
+`tests/circuit-breaker.test.js` pass unchanged (28/28). Full model download
+from huggingface.co could **not** be verified end-to-end here — egress to
+that host is blocked in this environment (confirmed the exact "Forbidden
+access" error is a generic sandbox network restriction, reproducible
+independent of which npm package does the fetching, not a defect
+introduced by this change). The deployed production box uses Ollama for
+embeddings as the primary path regardless; this is only the CPU fallback.
