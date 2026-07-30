@@ -273,6 +273,21 @@ jobs:
     # (`context: ./server` / `context: ./concord-frontend`). Removing the
     # presence check entirely is deliberate: if a Dockerfile path stops
     # resolving, the build must FAIL loudly rather than skip quietly.
+    #
+    # 2026-07-30 — made non-blocking (`continue-on-error: true` on the job),
+    # per an explicit owner decision, NOT a re-disarm of the bug above. The
+    # distinction: the bug above made the job pass WITHOUT scanning anything —
+    # a false green. This makes the job build the image, run Trivy for real,
+    # and upload findings to the Security tab exactly as before; it simply no
+    # longer fails the PR when it finds a fixable CRITICAL/HIGH CVE. Reason:
+    # this repo's actual production target is bare-metal (pm2 + startup.sh,
+    # see CLAUDE.md), not Docker — `server/Dockerfile` /
+    # `concord-frontend/Dockerfile` and `docker-compose.yml` are a parallel,
+    # unshipped path (local dev / an alternate operator's deployment choice).
+    # Blocking every PR on CVEs in an image nobody runs in production is the
+    # same "ignored/disabled gate" failure mode the Dockerfile's own
+    # `ignore-unfixed` comment warns about, just from the other direction. If
+    # Docker ever becomes a real deployment target, flip this back to blocking.
     strategy:
       fail-fast: false
       matrix:
@@ -281,6 +296,7 @@ jobs:
             context: server
           - name: frontend
             context: concord-frontend
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
       - name: Build image
