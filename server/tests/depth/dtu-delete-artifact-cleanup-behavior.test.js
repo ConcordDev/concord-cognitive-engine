@@ -42,6 +42,7 @@ describe("dtu.delete — cleans up the per-DTU legacy artifact directory", () =>
     const result = await runMacro("dtu", "delete", { id }, ctx);
     assert.equal(result.ok, true, "delete should succeed");
     assert.equal(fs.existsSync(legacyDir), false, "the legacy per-DTU artifact directory must be removed on delete");
+    assert.equal([...STATE.dtus.keys()].includes(id), false, "the DTU record itself must be removed from STATE.dtus");
 
     // The shared content-addressed hash file must NOT be removed by this —
     // it's dedup'd storage that other DTUs may still reference; only the
@@ -57,7 +58,9 @@ describe("dtu.delete — cleans up the per-DTU legacy artifact directory", () =>
       createdBy: ctx.actor.userId,
       ownerId: ctx.actor.userId,
     });
+    assert.equal([...STATE.dtus.keys()].includes(id), true, "sanity: DTU must exist before delete");
     const result = await runMacro("dtu", "delete", { id }, ctx);
     assert.equal(result.ok, true);
+    assert.equal([...STATE.dtus.keys()].includes(id), false, "the DTU record must be removed from STATE.dtus even with no artifact to clean up");
   });
 });
