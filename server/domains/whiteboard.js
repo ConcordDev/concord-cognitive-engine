@@ -12,6 +12,7 @@ import * as fsp from "node:fs/promises";
 import path from "node:path";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { registerAsset } from "../lib/evo-asset/registry.js";
+import { isSafePathSegment, isWithinRoot } from "../lib/safe-path.js";
 
 const BLUEPRINT_ARCHETYPES = new Set(["tavern", "archive", "forge", "market", "tower"]);
 const SNAPSHOT_FORMATS = new Set(["json-snap", "svg-raster"]);
@@ -274,7 +275,17 @@ export default function registerWhiteboardActions(registerLensAction) {
     const s = getWhiteboardState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
+    // A board id becomes a FILENAME downstream (publish-as-blueprint writes
+    // `<boardId>.blueprint.json` / `<boardId>.preview.svg`), so an id is a
+    // path segment whether or not this handler thinks of it that way. Taking
+    // `params.id` verbatim here was the first half of a traversal: an id of
+    // `../../../x` was stored happily, satisfied the board-exists lookup on
+    // the way back out, and escaped the blueprint root on write. Ids minted
+    // by nextWbId are `board_<base36>_<base36>`, which passes cleanly.
     const id = params.id ? String(params.id) : nextWbId("board");
+    if (!isSafePathSegment(id)) {
+      return { ok: false, error: "board id must contain only letters, digits, '.', '_' or '-'" };
+    }
     const title = String(params.title || "Untitled board").slice(0, 80);
     const scene = params.scene && typeof params.scene === "object" ? params.scene : { elements: [], appState: {} };
     if (!s.boards.has(userId)) s.boards.set(userId, new Map());
@@ -1677,6 +1688,13 @@ export default function registerWhiteboardActions(registerLensAction) {
     }
     const boardId = params.boardId ? String(params.boardId).slice(0, 64) : null;
     if (!boardId) return { ok: false, error: "boardId required" };
+    // Second half of the traversal guard. `board-save` now rejects unsafe ids
+    // at creation, but this handler must not DEPEND on that: boards persisted
+    // before the fix, or reached by any future write path, would otherwise
+    // still flow into a filename here. A length cap is not a path check.
+    if (!isSafePathSegment(boardId, { maxLength: 64 })) {
+      return { ok: false, error: "boardId must contain only letters, digits, '.', '_' or '-'" };
+    }
 
     // Locate the board in user state
     const s = getWhiteboardState();
@@ -1707,6 +1725,18 @@ export default function registerWhiteboardActions(registerLensAction) {
     const svgName  = `${boardId}.preview.svg`;
     const jsonPath = path.join(dir, jsonName);
     const svgPath  = path.join(dir, svgName);
+
+    // Third layer, and the only one that is structural rather than
+    // input-shaped: verify the RESOLVED targets actually land inside the
+    // blueprint root. `path.join` does not contain — `path.join(root, "../x")`
+    // resolves outside it — so this catches any future path component
+    // (archetype, userId, a new suffix) that stops being safe without anyone
+    // remembering to re-check it here.
+    for (const p of [jsonPath, svgPath]) {
+      if (!isWithinRoot(LENS_BLUEPRINT_ROOT, p)) {
+        return { ok: false, error: "resolved blueprint path escapes the blueprint root" };
+      }
+    }
 
     try {
       // Async fs — blueprint JSON + ≤5 MB SVG writes must not block the event loop.

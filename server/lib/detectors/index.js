@@ -261,10 +261,27 @@ registerDetector({
   description: "Reports heartbeat registry health, frequency anomalies, stale ticks.",
   run: runHeartbeatMonitor,
 });
+// `security` added 2026-07-27: this detector was NOT in the blocking
+// security gate, which is the directly-relevant prevention for a
+// committed-credential incident — the exact thing the gate should catch on the
+// PR rather than after merge. Measured before promoting, not assumed: it
+// currently reports 1 finding at `info` (its own scan-summary row) and 0
+// high/critical, so it cannot change today's gate result; and its pattern
+// table does emit `critical`/`high` for real hits (AWS/Stripe/private-key
+// shapes), so it can genuinely block a future one. Cost measured in isolation:
+// 3.4s over 9,245 files -- negligible in the gate. (The full-sweep report's
+// per-detector column showed 236s for it; that is wall-clock under contention
+// with ~30 other detectors, NOT this detector's own cost. Measure a detector
+// alone before sizing a timeout around it.)
+//
+// `constant-time` was evaluated for the same promotion and deliberately NOT
+// added: it only ever emits `info` severity, and the gate fails only on new
+// high/critical — so adding it would run for 13s on every PR and could never
+// block anything. That is coverage theatre, not coverage.
 registerDetector({
   id: "secret-leak",
   label: "SecretLeakDetector",
-  consumers: ["code-quality", "repair-cortex"],
+  consumers: ["code-quality", "repair-cortex", "security"],
   dataNeeds: ["fs"],
   description: "Scans the codebase for hardcoded API keys, tokens, credentials.",
   run: runSecretLeakDetector,

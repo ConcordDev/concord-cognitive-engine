@@ -43,6 +43,7 @@ const ALLOWLIST = new Map([
   ["concordia:scene-request-ready", "Startup-readiness signal superseded by other readiness events."],
   ["concordia:visibility-shader", "Horror-mode shader hook (consumer is future work)."],
   ["concordia:interaction-recorded", "Intentional click telemetry (WorldInteractionSink); no functional consumer by design."],
+  ["concordia:${event.replace(", "Regex parsing artifact, not a real event name — DISPATCH_RE's `[^'\"`]+` capture stops at the first quote it meets, and hooks/useSocket.ts:362's `new CustomEvent(`concordia:${event.replace(':', '-')}`, ...)` has one inside the template-literal expression. The real substituted names (concordia:wager-proposed/accepted/declined/resolved) DO have live addEventListener consumers in components/world/WagerInviteToast.tsx — confirmed by direct grep, not assumed."],
 ]);
 
 // Strip // line + /* */ block comments so example dispatches inside JSDoc (e.g.

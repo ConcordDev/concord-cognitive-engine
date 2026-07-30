@@ -39,7 +39,10 @@ const MAX_HISTORY = 288;
 
 function discoverDomains(STATE) {
   const domains = new Set();
-  if (STATE?.dtus instanceof Map) {
+  // Duck-type (not `instanceof Map`): STATE.dtus is a write-through store
+  // object once wired (server.js createDTUStore), not a literal Map — every
+  // `STATE?.dtus instanceof Map` guard in this file silently returned empty.
+  if (typeof STATE?.dtus?.get === "function") {
     for (const dtu of STATE.dtus.values()) {
       if (dtu.tags?.length) {
         for (const tag of dtu.tags) {
@@ -61,7 +64,7 @@ function discoverDomains(STATE) {
 
 function countKnowledgeGaps(domain, STATE) {
   let count = 0;
-  if (STATE?.dtus instanceof Map) {
+  if (typeof STATE?.dtus?.get === "function") {
     for (const dtu of STATE.dtus.values()) {
       if (dtu.tags?.includes("gap") && (dtu.tags?.includes(`domain:${domain}`) || dtu.machine?.domain === domain)) {
         count++;
@@ -73,7 +76,7 @@ function countKnowledgeGaps(domain, STATE) {
 
 function countActiveHypotheses(domain, STATE) {
   let count = 0;
-  if (STATE?.dtus instanceof Map) {
+  if (typeof STATE?.dtus?.get === "function") {
     for (const dtu of STATE.dtus.values()) {
       if (dtu.machine?.kind === "hypothesis" &&
           (dtu.machine?.status === "proposed" || dtu.machine?.status === "testing") &&
@@ -96,7 +99,7 @@ function getLastSovereignQuery(domain, STATE) {
 
 function getLastDTUTime(domain, STATE) {
   let latest = 0;
-  if (STATE?.dtus instanceof Map) {
+  if (typeof STATE?.dtus?.get === "function") {
     for (const dtu of STATE.dtus.values()) {
       if (dtu.tags?.includes(`domain:${domain}`) || dtu.machine?.domain === domain) {
         const t = new Date(dtu.createdAt || 0).getTime();

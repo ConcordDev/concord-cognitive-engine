@@ -42,11 +42,14 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
+import { stringifyChunked } from "./lib/chunked-json.js";
+import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
@@ -1776,7 +1779,8 @@ import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickB
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
-import { brainChat as byoBrainChat, getOverride as byoGetOverride } from "./lib/byo-router.js";
+import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode, resolveDispatchTarget as byoResolveDispatchTarget } from "./lib/byo-router.js";
+import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
 import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
@@ -1918,7 +1922,7 @@ import { initializeIdentity, getIdentityMetrics, getIdentity as identityGetNode,
 import { initializeEnergy, getEnergyMetrics, getEnergyMap, getGridHealth, getRecentEnergyReadings } from "./lib/foundation-energy.js";
 import { initializeSpectrum, getSpectrumMetrics, getAvailableChannels as spectrumGetChannels, getSpectrumMap } from "./lib/foundation-spectrum.js";
 import { initializeEmergency, getEmergencyMetrics, triggerEmergency, resolveEmergency, getEmergencyStatus, getActiveEmergencies, getRecentAlerts as emergencyGetAlerts } from "./lib/foundation-emergency.js";
-import { applyShadowVault } from "./lib/artifact-store.js";
+import { applyShadowVault, deleteArtifact } from "./lib/artifact-store.js";
 import { initializeMarket, getMarketMetrics, getRecentEarnings as marketGetEarnings, getRelayTopology as marketGetTopology, getNodeBalance as marketGetBalance } from "./lib/foundation-market.js";
 import { initializeArchive, getArchiveMetrics, getFossils, getDecoded as archiveGetDecoded } from "./lib/foundation-archive.js";
 import { initializeSynthesis, getSynthesisMetrics, getCorrelations as synthesisGetCorrelations } from "./lib/foundation-synthesis.js";
@@ -2242,7 +2246,15 @@ await tryLoadDotenv();
 // ============================================================================
 
 // ---- Environment Validation ----
-const REQUIRED_ENV_PRODUCTION = ["JWT_SECRET", "ADMIN_PASSWORD"];
+// SESSION_SECRET added (audit 2026-07-27): code further down this file
+// fatal-exits in production when it's missing or short regardless of
+// whether it's listed here — but this list is what actually POPULATES the
+// "Missing required environment variable" error message. Without it here,
+// an operator with SESSION_SECRET entirely unset got no early, clear error
+// from this check (it only validates LENGTH when the var is present — see
+// the length check below) and hit a bare "[FATAL] SESSION_SECRET must be
+// set" much later in boot instead.
+const REQUIRED_ENV_PRODUCTION = ["JWT_SECRET", "ADMIN_PASSWORD", "SESSION_SECRET"];
 const RECOMMENDED_ENV = ["ALLOWED_ORIGINS"];
 
 function validateEnvironment() {
@@ -2290,8 +2302,17 @@ function validateEnvironment() {
     errors.push("JWT_SECRET should be at least 32 characters for security");
   }
 
-  // SESSION_SECRET (cookie sessions) gets the same strength floor as JWT_SECRET —
-  // a short session secret is just as forgeable. Only checked when present.
+  // SESSION_SECRET: there is no express-session in this codebase — auth is
+  // JWT-in-httpOnly-cookie, and CSRF tokens use EFFECTIVE_JWT_SECRET, not
+  // this var. The real (and only) consumer is
+  // lib/connector-tokens.js's THIRD-priority fallback wrapping key (after
+  // CONCORD_CONNECTOR_TOKEN_KEY and JWT_SECRET) — a prior "(cookie
+  // sessions)" comment here was wrong. Still gets the same strength floor
+  // as JWT_SECRET since it wraps secrets when it's the active fallback.
+  // Threshold MUST match the other SESSION_SECRET gate below (near
+  // `[FATAL] SESSION_SECRET must be set in production`) — they used to
+  // disagree (32 here, 16 there), so a 16-31 char secret would die at
+  // THIS gate while that message implied 16 was sufficient.
   if (process.env.SESSION_SECRET && process.env.SESSION_SECRET.length < 32) {
     errors.push("SESSION_SECRET should be at least 32 characters for security");
   }
@@ -2304,8 +2325,18 @@ function validateEnvironment() {
     errors.push("PORT must be a valid positive number");
   }
 
-  // Report findings
-  if (warnings.length > 0 && !isProduction) {
+  // Report findings.
+  //
+  // FIXED (audit 2026-07-27): this used to gate on `!isProduction` —
+  // printing config warnings ONLY in dev, suppressing them in production,
+  // exactly backwards from what matters. Two concrete things this silenced
+  // on every prod boot: (1) a missing ALLOWED_ORIGINS (CORS misconfigured,
+  // invisible), and (2) "better-sqlite3 not available in production —
+  // falling back to JSON persistence" — if the native module ever fails to
+  // build on a fresh box, the server silently degrades to writing a ~28MB
+  // JSON file via fs.writeFileSync every save cycle, and nothing told the
+  // operator. Warnings now print in every environment.
+  if (warnings.length > 0) {
     console.warn("[Config] Warnings:");
     warnings.forEach(w => console.warn(`  - ${w}`));
   }
@@ -5580,38 +5611,37 @@ function initDatabase() {
     // fully env-overridable up for a genuinely dedicated host.
     const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 2048;
     const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 512;
-    // wal_autocheckpoint sizing (2026-07-25 launch-readiness pass): the
-    // previous 10000-page default (~78MB of WAL, at this DB's page_size=8192)
-    // meant every automatic checkpoint had up to ~78MB of dirty pages to
-    // flush back into the main file in ONE synchronous call. better-sqlite3
-    // has no async escape hatch — that flush runs on the same single Node
-    // thread that serves every HTTP request, so a big rare checkpoint is a
-    // direct, self-inflicted contributor to the exact event-loop-lag spikes
-    // the new admission-control gate (lib/request-admission.js, 300ms
-    // default) exists to shed around. Research consensus (SQLite's own docs,
-    // and production WAL-tuning writeups) frames this as a frequency/burst-
-    // size tradeoff with production deployments typically landing between
-    // 2000-10000 pages; the previous value sat at the extreme high (bursty)
-    // end of that range. Moved to 4000 pages (~32MB) — smaller, more
-    // frequent checkpoints instead of rarer, larger ones — while staying
-    // comfortably above SQLite's own stock default (1000 pages) so this
-    // isn't checkpointing on every trivial write either. Override via env.
-    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 4000;
-    // Stability audit (2026-07-20) — wal_autocheckpoint sets the checkpoint
-    // CADENCE, but under checkpoint starvation (a long-running reader holding
-    // the WAL open, an export, a stuck analytics query) SQLite can't reclaim
-    // the WAL file even at that cadence, and it grows unbounded until the
-    // disk fills — which then breaks writes for every user, not just the
-    // slow reader. journal_size_limit is the hard backstop: once the WAL
-    // exceeds this size, SQLite forcibly truncates it back down after the
-    // next checkpoint that CAN complete, instead of growing forever. With
-    // the walPages change above, 64MB default is now genuinely larger than
-    // the ~32MB (4000 pages × 8KB) a normal checkpoint cycle touches — this
-    // backstop should only ever fire during real starvation, not every
-    // normal cycle (previously it sat BELOW the ~78MB the old 10000-page
-    // cadence touched, which meant the "starvation-only" backstop and the
-    // routine cadence overlapped — corrected as a side effect of the change
-    // above). Override via env on busier boxes.
+    // wal_autocheckpoint sizing (2026-07-25 launch-readiness pass, corrected
+    // 2026-07-27): the previous 10000-page default was described as "~78MB
+    // of WAL, at this DB's page_size=8192" — but `db.pragma("page_size =
+    // 8192")` further down this function runs AFTER `journal_mode = WAL` on
+    // an already-open/existing database file, which SQLite defines as a
+    // NO-OP (page_size can only be changed on a fresh DB before its first
+    // write, or via VACUUM, neither of which happens here). The real,
+    // always-has-been page size on this DB is SQLite's compiled default,
+    // 4096 bytes — so every byte figure in this comment block was off by
+    // 2×. The actual REASONING (checkpoint flush is synchronous and
+    // untraceable on the main thread, smaller/more-frequent beats rarer/
+    // larger) still holds; only the page-size assumption was wrong. Pages
+    // recomputed against the real 4096: 8192 pages = 32MB — the SAME byte
+    // target the original comment intended, now actually achieved. Override
+    // via env if you've verified a different real page_size (PRAGMA
+    // page_size on the live DB).
+    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 8192;
+    // Stability audit (2026-07-20, page-size math corrected 2026-07-27) —
+    // wal_autocheckpoint sets the checkpoint CADENCE, but under checkpoint
+    // starvation (a long-running reader holding the WAL open, an export, a
+    // stuck analytics query) SQLite can't reclaim the WAL file even at that
+    // cadence, and it grows unbounded until the disk fills — which then
+    // breaks writes for every user, not just the slow reader.
+    // journal_size_limit is the hard backstop: once the WAL exceeds this
+    // size, SQLite forcibly truncates it back down after the next
+    // checkpoint that CAN complete, instead of growing forever. With the
+    // real page_size (4096, not the 8192 an earlier version of this file
+    // wrongly assumed — see walPages above), 64MB is genuinely 2× the ~32MB
+    // (8192 pages × 4KB) a normal checkpoint cycle touches — this backstop
+    // should only fire during real starvation, not every normal cycle.
+    // Override via env on busier boxes.
     const walSizeLimitMb = Number(process.env.CONCORD_SQLITE_WAL_SIZE_LIMIT_MB) || 64;
     // busy_timeout (2026-07-25 launch-readiness pass) — research consensus
     // (SQLite docs + production WAL writeups) is unanimous that this is the
@@ -5658,7 +5688,18 @@ function initDatabase() {
       db.pragma(`busy_timeout = ${busyTimeoutMs}`); // 10s default retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
       db.pragma(`journal_size_limit = ${walSizeLimitMb * 1024 * 1024}`); // hard cap — see comment above
-      db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
+      // REMOVED (audit 2026-07-27): `db.pragma("page_size = 8192")` used to
+      // sit here. SQLite's own docs are explicit that page_size "cannot be
+      // changed while in WAL journal mode... not even on an empty
+      // database" — and journal_mode=WAL is set two lines above this, so
+      // the pragma was a guaranteed no-op on every boot, on every DB, ever.
+      // The real (and only) page size this database has ever had is
+      // SQLite's compiled default, 4096 bytes. wal_autocheckpoint /
+      // journal_size_limit above are sized against that real number, not
+      // the stale 8192 assumption. Changing page_size for real would
+      // require setting it BEFORE journal_mode=WAL on a genuinely fresh
+      // (pre-existing-file) database, or a VACUUM on an existing one —
+      // out of scope for what was a minor I/O-amortization tweak.
       db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
     }
 
@@ -5878,8 +5919,20 @@ const AuthDB = {
 
   getUser(userId) {
     if (db) {
-      const stmt = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE id = ? AND is_active = 1");
-      const row = stmt.get(userId);
+      // brain_mode: Private/High Power Mode per-account routing preference
+      // (migration 397). Read here — not via a separate targeted query —
+      // so it rides on req.user for free on every authenticated request,
+      // reaching ctx.actor.brainMode via makeCtx's resolvedActor with zero
+      // extra DB round trips. Many test fixtures hand-roll a minimal
+      // `users` table without running the full migration chain, so the
+      // brain_mode column may not exist — fall back to the plain
+      // column list and default to 'private' rather than throwing.
+      let row;
+      try {
+        row = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at, brain_mode FROM users WHERE id = ? AND is_active = 1").get(userId);
+      } catch {
+        row = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE id = ? AND is_active = 1").get(userId);
+      }
       if (row) {
         return {
           id: row.id,
@@ -5889,7 +5942,8 @@ const AuthDB = {
           role: row.role,
           scopes: JSON.parse(row.scopes),
           createdAt: row.created_at,
-          lastLoginAt: row.last_login_at
+          lastLoginAt: row.last_login_at,
+          brainMode: row.brain_mode === "high_power" ? "high_power" : "private"
         };
       }
       return null;
@@ -5899,8 +5953,12 @@ const AuthDB = {
 
   getUserByUsername(username) {
     if (db) {
-      const stmt = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE username = ? AND is_active = 1");
-      const row = stmt.get(username);
+      let row;
+      try {
+        row = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at, brain_mode FROM users WHERE username = ? AND is_active = 1").get(username);
+      } catch {
+        row = db.prepare("SELECT id, username, email, password_hash, role, scopes, created_at, last_login_at FROM users WHERE username = ? AND is_active = 1").get(username);
+      }
       if (row) {
         return {
           id: row.id,
@@ -5910,7 +5968,8 @@ const AuthDB = {
           role: row.role,
           scopes: JSON.parse(row.scopes),
           createdAt: row.created_at,
-          lastLoginAt: row.last_login_at
+          lastLoginAt: row.last_login_at,
+          brainMode: row.brain_mode === "high_power" ? "high_power" : "private"
         };
       }
       return null;
@@ -6957,7 +7016,21 @@ function authMiddleware(req, res, next) {
   // Skip auth for always-public endpoints (any method). /api/stripe/webhook is
   // authenticated by Stripe's signature (verified in handleWebhook), never a
   // cookie/JWT — it must skip auth or webhooks are rejected and coins never mint.
-  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/chat", "/api/brain/conscious", "/api/stripe/webhook"];
+  // Security audit 2026-07-30: "/api/chat" was removed from this array.
+  // Being method-agnostic AND header-blind (bare `return next()`, no
+  // identity-resolution attempt at all, unlike the GET publicReadPaths
+  // bypass below), it silently exempted the ENTIRE chat prefix —
+  // including GET /api/chat/conversations (dumped every user's session
+  // titles/summaries/last-message text to anonymous callers, confirmed
+  // live) and every requireAuth()-gated route under /api/chat/* (sessions,
+  // messages, sovereignty-resolve), which could never populate req.user
+  // for ANYONE — even a request carrying a genuinely valid JWT — because
+  // this bypass ran before authMiddleware ever got a chance to decode it.
+  // The two genuinely-anonymous entry points (POST /api/chat, POST
+  // /api/chat/stream) get precise, header-aware replacements below instead
+  // (same _hasAuthHeader discipline as the GET publicReadPaths bypass),
+  // so a credentialed caller still gets req.user populated correctly.
+  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/brain/conscious", "/api/stripe/webhook"];
   if (alwaysPublic.some(p => req.path.startsWith(p))) return next();
 
   // Sovereign-only route protection
@@ -6983,6 +7056,14 @@ function authMiddleware(req, res, next) {
     "/api/dtus", "/api/dtu", "/api/lenses", "/api/lens", "/api/lens-actions", "/api/emergent", "/api/knowledge",
     "/api/search", "/api/species", "/api/events", "/api/schema",
     // Settings, metrics & context
+    // CORRECTION (audit 2026-07-27): the earlier "no live GET handler"
+    // removal here was wrong — routes/domain.js:291 registers a real,
+    // genuinely public-safe GET (global cognitive-tuning knobs only, no
+    // PII), found via a full-suite test run (storage-parity.test.js) after
+    // a plain grep of server.js alone missed the route living in a
+    // separate routes/*.js file. Restored. The POST side had a REAL bug
+    // this same investigation uncovered — see routes/domain.js's own
+    // comment on that handler.
     "/api/settings", "/api/growth", "/api/metrics", "/api/context",
     // Phase N — public spectator counts. No PII; the world picker reads
     // this anonymously to render "N watching" badges.
@@ -7010,8 +7091,15 @@ function authMiddleware(req, res, next) {
     // Governance & lattice
     "/api/lattice", "/api/guidance", "/api/graph", "/api/scope",
     "/api/inspect", "/api/worldmodel", "/api/council", "/api/resonance",
-    // Chat & AI
-    "/api/chat", "/api/ask", "/api/forge",
+    // Chat & AI (audit follow-up 2026-07-27): the ask-domain prefix was
+    // removed — no live GET handler exists under it at all (routes/chat.js:423
+    // registers only a POST). The chat prefix was narrowed to its one
+    // genuinely public-aggregate sub-path below — its sessions/messages
+    // sub-paths already self-gate via their own requireAuth() regardless of
+    // this list, so excluding them changes nothing for a real
+    // (auth-header-carrying) caller, only closes the future-unaudited-route
+    // fail-open risk.
+    "/api/chat/web-metrics", "/api/forge",
     // WebRTC ICE-server config — short-lived TURN creds minted per request.
     "/api/webrtc/ice-servers",
     // Atlas & Signal Cortex
@@ -7036,19 +7124,79 @@ function authMiddleware(req, res, next) {
     // Growth & entities
     "/api/entity-growth", "/api/entity-exploration", "/api/goals",
     "/api/hypothesis",
-    // Analytics & metrics
-    "/api/analytics", "/api/intelligence", "/api/precompute",
+    // Analytics & metrics (audit follow-up 2026-07-27 — narrowed;
+    // /api/analytics/personal/:userId had a real bug fixed at the handler
+    // level: getPersonalAnalytics() returned private DTU list + marketplace
+    // revenue for any userId with zero ownership check, no confirmed
+    // frontend cross-user use. Now requires auth + gates cross-user lookups;
+    // excluded from this list so it 401s immediately for anon callers
+    // instead of reaching the handler. /api/intelligence's 4 sub-paths are
+    // all global/aggregate system stats with no per-user data — verified
+    // safe, narrowed anyway per this pass's own "future route" rationale.
+    // CORRECTION (same-day re-audit): the bare /api/analytics path (no
+    // sub-path) was dropped by this narrowing even though it has its own
+    // real, live, genuinely-public-safe handler (routes/analytics.js) —
+    // identity there comes only from req.user/req.session, never from
+    // query/body, and an anonymous caller with no session gets empty
+    // personal stats plus real global/world aggregates. Restored.
+    "/api/analytics",
+    "/api/analytics/dashboard", "/api/analytics/growth", "/api/analytics/citations",
+    "/api/analytics/marketplace", "/api/analytics/density", "/api/analytics/atlas-domains",
+    "/api/intelligence/knowledge-weather", "/api/intelligence/drift-radar",
+    "/api/intelligence/continuity-diary", "/api/intelligence/dashboard",
+    "/api/precompute",
     "/api/perf", "/api/distillation",
-    // Collaboration
-    "/api/collab", "/api/social",
+    // Collaboration (audit follow-up 2026-07-27 — narrowed from blanket
+    // domain prefixes to specific verified-safe sub-paths; see the matching
+    // comment near /api/economy/marketplace above for the "future GET route
+    // silently inherits public-read" rationale). Real bugs found + fixed at
+    // the handler level: /api/social/{bookmarks,feed,feed/foryou,
+    // feed/following,stories,reactions,mention-search} all trusted a
+    // caller-supplied req.query.userId with no ownership check (false
+    // "safe: public-filter" comments); /api/collab/workspace/:id returned
+    // full private-workspace rosters with no visibility/membership check;
+    // /api/collab/workspaces now requires auth. /api/collab/active,
+    // /api/collab/workspaces, and /api/collab/sessions are deliberately
+    // excluded — the first two already require auth, and sessions
+    // (listSessions) enumerated every live collab session's id/dtuId to a
+    // fully anonymous caller with zero filtering (closed here; the deeper
+    // "any authenticated user can join/edit/merge any other user's session"
+    // gap is a separate finding tracked for the Gate-2 macro audit).
+    "/api/collab/workspace", "/api/collab/comments", "/api/collab/revisions", "/api/collab/metrics",
+    "/api/social/profile", "/api/social/followers", "/api/social/following",
+    "/api/social/feed", "/api/social/trending", "/api/social/analytics",
+    "/api/social/topics", "/api/social/discover", "/api/social/cited-by",
+    "/api/social/metrics", "/api/social/post", "/api/social/reactions",
+    "/api/social/comments", "/api/social/shares", "/api/social/mention-search",
+    "/api/social/bookmarks", "/api/social/stories", "/api/social/poll",
     // Content pipelines
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
     "/api/ingest", "/api/digest", "/api/daily",
-    // Economy & marketplace
-    "/api/economy", "/api/marketplace", "/api/credits",
-    "/api/distribution", "/api/stripe",
+    // Economy & marketplace (audit follow-up — narrowed from blanket
+    // domain prefixes to specific verified-safe sub-paths, closing the
+    // "any future GET route under this prefix silently inherits
+    // public-read" fail-open risk for exactly the domains found to have
+    // real bugs. "/api/credits" and "/api/stripe" removed entirely — no
+    // live GET handler exists under either (only requireAuth-gated POSTs).
+    // "/api/economy/balance" and "/api/marketplace/royalties/:userId" are
+    // deliberately excluded — both had real ownership-check bugs, now
+    // fixed at the handler level to require auth regardless of this list.
+    "/api/economy/status", "/api/economy/fees", "/api/economy/transactions",
+    "/api/marketplace/browse", "/api/marketplace/dtu_browse",
+    "/api/marketplace/installed", "/api/marketplace/listings",
+    "/api/marketplace/dream-promoted",
+    "/api/distribution",
     // Agent systems
-    "/api/agents", "/api/personas", "/api/automations",
+    // "/api/agents" removed (audit follow-up): the agents table has no
+    // public/private visibility column — every registered route under
+    // this prefix is a private per-user management surface, not a public
+    // catalog (see routes/agents.js, now also requireAuth()+ownership-
+    // scoped at the handler level as defense in depth).
+    // "/api/personas" audited 2026-07-27: the only registered GET is the
+    // exact "/api/personas" route itself (a global persona roster, no
+    // per-user data, no bug found) — already the narrowest prefix this
+    // startsWith-based list can express for a single unnested route.
+    "/api/personas", "/api/automations",
     // Specialized domains
     "/api/affect", "/api/attention", "/api/commonsense",
     "/api/explanation", "/api/grounding", "/api/hive",
@@ -7167,6 +7315,14 @@ function authMiddleware(req, res, next) {
   const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
                             req.cookies?.concord_auth || req.cookies?.concord_refresh);
   if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => req.path.startsWith(p))) return next();
+  // Gate 1 POST bypass (security audit 2026-07-30, replaces the removed
+  // blanket "/api/chat" alwaysPublic entry above): the two genuinely
+  // anonymous-guest chat entry points, gated by !_hasAuthHeader exactly
+  // like the GET publicReadPaths bypass just above — a caller with a
+  // real JWT/cookie falls through to the normal auth pipeline instead,
+  // so req.user actually gets populated for logged-in users on this
+  // prefix (the bug this replaces silently never did).
+  if (req.method === "POST" && !_hasAuthHeader && (req.path === "/api/chat" || req.path === "/api/chat/stream")) return next();
   // Gate 1 POST bypass: allow /api/repair POST without auth (frontend error fallback path)
   if (req.method === "POST" && req.path.startsWith("/api/repair")) return next();
   // Gate 1 POST bypass: allow creative registry POST without auth (public discovery)
@@ -8223,7 +8379,35 @@ _unrefInTest(setInterval(() => {
 // ---- Backup & Restore ----
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(DATA_DIR, "backups");
 
-function createBackup(name = null) {
+// How often the rolling JSON state backup runs, and how many to keep.
+//
+// The interval default moved 2h -> 24h. At 2h this path ran 12x/day, each run
+// a synchronous multi-MB stringify + writeFileSync on the main thread, and it
+// duplicates coverage that already exists twice over: the debounced state
+// snapshot (5s coalescing window) and `runBackup` (daily, date-keyed, 7-day
+// retention). A 2-hour RPO from a THIRD mechanism bought little and cost a
+// recurring event-loop stall plus ~127MB/day of writes.
+//
+// Still fully tunable — set BACKUP_INTERVAL_HOURS to restore a tighter RPO.
+const _STATE_BACKUP_INTERVAL_HOURS = Math.max(1, Number(process.env.BACKUP_INTERVAL_HOURS || 24));
+const _STATE_BACKUP_RETENTION_DAYS = Math.max(1, Number(process.env.CONCORD_STATE_BACKUP_RETENTION_DAYS || 7));
+
+/**
+ * Files to retain, derived from the interval so retention means a fixed span
+ * of TIME rather than a raw count.
+ *
+ * The old hardcoded 24 was written against a 2h cadence ("~48 hours"). Left
+ * alone it would have become 24 DAYS once the interval moved to 24h — a 12x
+ * disk increase caused by a constant whose comment nobody re-read. The upper
+ * clamp keeps a deliberately tight interval (e.g. BACKUP_INTERVAL_HOURS=2)
+ * from ballooning the count past what it used to be.
+ */
+function _stateBackupRetentionCount() {
+  const perDay = Math.max(1, Math.round(24 / _STATE_BACKUP_INTERVAL_HOURS));
+  return Math.min(24, Math.max(3, perDay * _STATE_BACKUP_RETENTION_DAYS));
+}
+
+async function createBackup(name = null) {
   try {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -8248,11 +8432,26 @@ function createBackup(name = null) {
       }
     };
 
-    fs.writeFileSync(backupPath, JSON.stringify(backup, null, 2));
+    // COMPACT, not pretty-printed. This was `JSON.stringify(backup, null, 2)`,
+    // which inflated every backup by 1.30x (measured on the real corpus: 8.7MB
+    // -> 11.4MB) for indentation nobody reads — these are machine-restored by
+    // the `backup.data?.dtus` path, never opened by hand. The main state saver
+    // already documents "always use compact JSON to halve string memory"; this
+    // path simply never got the same treatment.
+    // Chunked + async, matching runBackup. Making this compact and daily cut
+    // its FREQUENCY (12x/day -> 1) and its SIZE (1.30x), but left each run a
+    // single uninterrupted ~8.7MB stringify plus a synchronous multi-MB write
+    // — a residual blocking site, just a rarer one. Same treatment as every
+    // other large serialize in this file: yield between top-level keys.
+    await fs.promises.writeFile(backupPath, await stringifyChunked(backup));
 
-    // Rotate: keep only the 24 most recent JSON state backups (~48 hours at 2h interval)
+    // Rotate. Retention is expressed in DAYS of coverage rather than a raw file
+    // count, because the count only ever made sense against the old 2h cadence
+    // ("24 backups ~= 48 hours"). With the interval now defaulting to 24h, that
+    // same 24 would have silently become 24 DAYS of retention — a 12x increase
+    // in disk from a constant nobody re-read. Derive it instead.
     try {
-      const MAX_STATE_BACKUPS = 24;
+      const MAX_STATE_BACKUPS = _stateBackupRetentionCount();
       const allBackups = fs.readdirSync(BACKUP_DIR)
         .filter(f => f.endsWith(".json") && !f.startsWith("."))
         .sort();
@@ -8338,11 +8537,16 @@ let _autoBackupTimer = null;
 function startAutoBackup(intervalHours = 24) {
   if (_autoBackupTimer) clearInterval(_autoBackupTimer);
   const ms = intervalHours * 60 * 60 * 1000;
-  _autoBackupTimer = setInterval(() => createBackup(`auto-${Date.now()}`), ms);
+  // `.catch` because createBackup is async — a rejection here would otherwise
+  // surface as an unhandled rejection rather than a logged backup failure.
+  _autoBackupTimer = setInterval(() => {
+    Promise.resolve(createBackup(`auto-${Date.now()}`)).catch((e) =>
+      structuredLog("error", "auto_backup_failed", { error: String(e?.message || e) }));
+  }, ms);
   structuredLog("info", "autobackup_enabled", { intervalHours });
 }
 if (String(process.env.AUTO_BACKUP || "true").toLowerCase() === "true") {
-  startAutoBackup(Number(process.env.BACKUP_INTERVAL_HOURS || 2));
+  startAutoBackup(_STATE_BACKUP_INTERVAL_HOURS);
 }
 
 // Periodic state save safety net — catches mutations if debounced save somehow missed
@@ -8400,7 +8604,19 @@ export { createBackup, restoreBackup, listBackups };
 // /api/brain/health); without them a no-browser-UA monitor (curl/wget/k8s probe) got a
 // 403 bot_access_denied on the very endpoints meant to report liveness.
 const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health)(\b|\/)/;
-const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
+// Stripe webhooks must never be 429'd: Stripe retries from a rotating IP
+// pool and bursts on redelivery — a rate-limited webhook means a PAID
+// TOKEN_PURCHASE never mints. Safe to exempt: the handler verifies the
+// Stripe signature against STRIPE_WEBHOOK_SECRET before doing anything and
+// is idempotent on event id, so unauthenticated junk hitting these paths
+// costs one signature check and is rejected.
+const _STRIPE_WEBHOOK_RE = /^\/api\/(stripe|economy|economic)\/webhook$/;
+// CI-only escape hatch. HARD-DISABLED in production (audit 2026-07-27):
+// a single env var that switches off every rate limiter is too much power
+// to leave reachable on a prod box — a copied CI env file or a stray
+// export would silently remove all abuse protection.
+const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1"
+  && process.env.NODE_ENV !== "production";
 
 // Track C (rate-limit audit) — this limiter is mounted BEFORE both
 // cookieParserMiddleware and authMiddleware (see middleware/index.js's
@@ -8451,7 +8667,7 @@ if (rateLimit) {
     keyGenerator: _rateLimitKey,
     // Health probes must never be 429'd, and CI suites hammer the server
     // from one IP — exempt both.
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path),
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
   });
   // Stricter rate limiting for auth endpoints (5 attempts per 15 minutes)
   authRateLimiter = rateLimit({
@@ -8470,9 +8686,9 @@ if (rateLimit) {
     // single suite legitimately does many register/login calls (real-creds
     // fixtures plus invalid-credential specs) and would otherwise trip the
     // 5-attempt cap, 429-ing later specs (e.g. playthrough's login). Unit
-    // tests don't set the var; production never sets it. Mirrors the skip
-    // on unauthRateLimiter below.
-    skip: () => process.env.CONCORD_RATE_LIMIT_BYPASS === "1",
+    // tests don't set the var. Uses _RATE_LIMIT_BYPASS_ENV, which is
+    // hard-disabled in production (see its declaration).
+    skip: () => _RATE_LIMIT_BYPASS_ENV,
     skipSuccessfulRequests: true // Don't count successful logins
   });
 }
@@ -8491,7 +8707,10 @@ if (rateLimit) {
 }
 
 // ---- Unauthenticated Request Throttle ----------------------------------------
-// Authenticated users get RATE_LIMIT_MAX (300) RPM.
+// Authenticated users get RATE_LIMIT_MAX RPM (default 6000 — deliberately
+// coarse; see the RATE_LIMIT_MAX declaration comment. The granular
+// per-endpoint buckets in rateLimit.js do the fine-grained shaping; this
+// global cap only catches runaway/abusive traffic).
 // Unauthenticated requests are capped at 30 RPM per IP to deter scraping.
 // Applied AFTER authMiddleware so req.user is already populated.
 let unauthRateLimiter = null;
@@ -8502,7 +8721,11 @@ if (rateLimit) {
   unauthRateLimiter = rateLimit({
     windowMs: 60000,
     max: 30,
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path),
+    // Stripe webhooks are unauthenticated POSTs from Stripe's rotating IP
+    // pool — the 30/min anon cap would throttle a redelivery burst and lose
+    // paid mints. Signature-verified + idempotent, so exempt (see
+    // _STRIPE_WEBHOOK_RE declaration).
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
     keyGenerator: (req) => req.ip,
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
@@ -11028,6 +11251,7 @@ function _serializeState() {
   // restart loses every DTU. Restoring the omitted DTUs is the paired
   // rehydrateFromSQLite() call at boot — do not remove one without the other.
   const dtuStoreActive = typeof STATE.dtus?.rehydrateFromSQLite === "function";
+  const artifactStoreActive = typeof STATE.lensArtifacts?.rehydrateFromSQLite === "function";
   return {
     version: VERSION,
     savedAt: nowISO(),
@@ -11059,7 +11283,21 @@ function _serializeState() {
     entitlements: capArr(STATE.entitlements, 5000),
     transactions: capArr(STATE.transactions, 10000),
     papers: toArr(STATE.papers),
-    lensArtifacts: toArr(STATE.lensArtifacts),
+    // Omitted for the same reason as `dtus` above, and under the same paired
+    // contract: `lensArtifacts` is skipped ONLY when the write-through store
+    // is active, because that store's rehydrateFromSQLite() at boot is what
+    // puts artifacts back. Remove one without the other and every artifact is
+    // lost on restart.
+    //
+    // This was the largest key in the snapshot — 9.86 MB of 19 MB, measured on
+    // 11,517 live artifacts — so dropping it roughly halves what every
+    // debounced save has to serialize.
+    //
+    // The guard is a runtime capability check, not a boot flag: if the store
+    // never attached (no db, or migrations not yet at 398), STATE.lensArtifacts
+    // is still a plain Map and we MUST keep serializing it or artifacts have
+    // nowhere to live.
+    ...(artifactStoreActive ? {} : { lensArtifacts: toArr(STATE.lensArtifacts) }),
     _scopeSeparation: STATE._scopeSeparation || null,
     _autogenPipeline: STATE._autogenPipeline || null,
     // Entity growth profiles (persist across restarts)
@@ -11089,9 +11327,29 @@ function _serializeState() {
 
 function _hydrateState(obj) {
   if (!obj || typeof obj !== "object") return;
+  // The absent-key check is load-bearing, not defensive tidiness.
+  //
+  // `_serializeState` OMITS a collection when a write-through store owns it
+  // (`dtus` when the DTU store is active, `lensArtifacts` when the artifact
+  // store is). For those, the snapshot legitimately has no key at all and
+  // SQLite is the source of truth. The previous unconditional `map.clear()`
+  // then ran against a store that had just hydrated from SQLite, wiped every
+  // entry, and restored nothing — because the very same missing key that made
+  // the clear wrong also skipped the repopulate loop.
+  //
+  // Measured: with the DTU store attached, this emptied STATE.dtus to 0 while
+  // dtu_store still held 2,290 rows. That is almost certainly WHY the DTU
+  // store's omission has never been able to stay on — enabling it emptied
+  // DTUs, so `dtus` kept getting written into every snapshot (8.17 MB of a
+  // 9.4 MB file) and the store sat detached.
+  //
+  // Correct in both directions: a snapshot that CARRIES the collection still
+  // replaces it wholesale (unchanged behaviour); a snapshot that omits it
+  // leaves the store's hydrated contents alone.
   const put = (map, arr) => {
+    if (!Array.isArray(arr)) return;
     map.clear();
-    if (Array.isArray(arr)) for (const x of arr) if (x && x.id) map.set(x.id, x);
+    for (const x of arr) if (x && x.id) map.set(x.id, x);
   };
   put(STATE.dtus, obj.dtus);
   put(STATE.shadowDtus, obj.shadowDtus);
@@ -11194,9 +11452,28 @@ function _hydrateState(obj) {
   STATE.papers.clear();
   if (Array.isArray(obj.papers)) for (const p of obj.papers) if (p && p.id) STATE.papers.set(p.id, p);
 
-  // Lens artifacts
-  STATE.lensArtifacts.clear();
-  if (Array.isArray(obj.lensArtifacts)) for (const a of obj.lensArtifacts) if (a && a.id) STATE.lensArtifacts.set(a.id, a);
+  // Lens artifacts.
+  //
+  // The clear() is INSIDE the presence check on purpose — moving it back out
+  // is a data-loss bug. Once the write-through store is active,
+  // `_serializeState` omits `lensArtifacts` entirely (SQLite is the source of
+  // truth), so `obj.lensArtifacts` is undefined. The previous unconditional
+  // clear() would then wipe memory AND, because the store's clear() writes
+  // through, TRUNCATE lens_artifact_store — and the restore loop that should
+  // repopulate it is skipped by the very same missing key. Every artifact,
+  // gone, from a snapshot that was correct.
+  //
+  // At boot this is currently masked by ordering (restore runs before the
+  // store attaches, so clear() hits a plain Map), but any post-boot restore
+  // path — an operator "restore backup" action — would hit it for real.
+  //
+  // Correct in both directions: a snapshot that CARRIES artifacts still
+  // replaces them wholesale; a snapshot that omits them leaves the durable
+  // store untouched.
+  if (Array.isArray(obj.lensArtifacts)) {
+    STATE.lensArtifacts.clear();
+    for (const a of obj.lensArtifacts) if (a && a.id) STATE.lensArtifacts.set(a.id, a);
+  }
   // Rebuild domain index
   _rebuildLensDomainIndex();
 
@@ -11329,6 +11606,66 @@ function loadStateFromDisk() {
   }
 }
 
+// Coalescing window for the debounced full-state save. The serialize is
+// ~28 MB of synchronous main-thread work, so its FREQUENCY is the latency
+// budget: at the old 250ms trailing debounce, the heartbeat tick's mutations
+// alone triggered a full serialize ~4×/minute forever — each one a
+// multi-hundred-ms event-loop stall that stacked with socket pings and
+// in-flight requests (the "connection keeps dropping" mechanism). 5s
+// leading-window coalescing bounds worst-case unsaved-mutation age at 5s
+// while cutting steady-state serializes ~20×.
+const STATE_SAVE_COALESCE_MS = Math.max(250, Number(process.env.CONCORD_STATE_SAVE_DEBOUNCE_MS || 5000));
+
+// Kill-switch. Set CONCORD_STATE_SAVE_CHUNKED=0 to restore the single atomic
+// stringify on the debounced path (the sync/shutdown paths never used it).
+const _CHUNKED_SAVE_ENABLED = process.env.CONCORD_STATE_SAVE_CHUNKED !== "0";
+// Count of chunked saves discarded because state mutated mid-snapshot and the
+// atomic path was used instead. Surfaced so a deployment that tears on every
+// save — where chunking buys nothing and costs one extra serialize — is
+// visible rather than silently degrading.
+let _chunkedSaveTears = 0;
+
+// ---- Chunked snapshot serialization (event-loop-friendly) ----
+//
+// MEASURED, not assumed (2026-07-28). Instrumenting JSON.stringify on a booted
+// server and attributing every >2MB call to its stack:
+//
+//   at Timeout._onTimeout (server.js:11518)  n=12  maxMB=19.1  maxMs=348
+//        lensArtifacts=9.86MB, dtus=8.17MB, queues=0.49MB, organs=0.44MB
+//   at runBackup (server.js:79833)           n=1   maxMB=19.0  maxMs=317
+//
+// Under concurrent load the same site was measured at 934ms. That single
+// synchronous stringify is what trips `lib/request-admission.js`'s 300ms
+// event-loop-lag bar and sheds real requests with a 503 — the residual
+// "connection dropping" left after the duplicate-saver and forced-GC fixes.
+// It is NOT the heartbeat modules: a separate probe found 0 of the 25 that
+// ran anywhere near the bar (worst: npc-routine-cycle at 80ms).
+//
+// Why chunking is the right shape here. The payload is dominated by two keys,
+// and NEITHER can simply be dropped:
+//   - `dtus` is already conditionally omitted when the write-through store is
+//     active (see _serializeState), so it costs nothing in that configuration.
+//   - `lensArtifacts` (the LARGER of the two) has no durable backing at all —
+//     there is no `lens_artifacts` table in any of the 396 migrations, and it
+//     is the one large collection with no `capArr` cap. Excluding or capping
+//     it would silently lose artifacts across a restart.
+//
+// So the total work is irreducible without a new persistence layer. What IS
+// reducible is the size of each uninterrupted block: serializing one top-level
+// key at a time and yielding via setImmediate (the check phase, which actually
+// lets the poll phase run — `await` alone only drains microtasks) caps the
+// longest single block at the largest key, ~9.9MB ≈ 180ms, comfortably under
+// the 300ms shed bar. Same bytes written, same durability, no 503s.
+//
+// TEARING is the one real hazard: yielding means state can mutate mid-snapshot,
+// which the atomic sync path cannot suffer. Handled by comparing the mutation
+// counter across the operation and discarding a torn result rather than
+// persisting it — see the caller. Kill-switch: CONCORD_STATE_SAVE_CHUNKED=0.
+// Implementation lives in lib/chunked-json.js so its byte-identity with
+// JSON.stringify is directly testable (tests/chunked-json.test.js) rather than
+// stranded in this file's module scope.
+const _stringifyStateChunked = (snapshot) => stringifyChunked(snapshot);
+
 function saveStateDebounced() {
   // Monotonic mutation counter. Every mutation path in the server funnels
   // through here, so this is the cheapest honest "has anything changed?"
@@ -11342,11 +11679,39 @@ function saveStateDebounced() {
     globalThis._concordSaveStateDebounced = saveStateDebounced;
   }
   try {
-    clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(() => {
+    // LEADING-window coalescing, not trailing debounce: if a save is already
+    // scheduled, this mutation rides along with it. The old
+    // clearTimeout+reschedule pattern pushed the save further away on every
+    // mutation — under sustained mutation the save could starve until the
+    // periodic safety net. With a fixed window, the save fires at most
+    // STATE_SAVE_COALESCE_MS after the FIRST unsaved mutation, always.
+    if (_saveTimer) return;
+    _saveTimer = setTimeout(async () => {
+      _saveTimer = null;
       try {
         // Always use compact JSON (no pretty-print) to halve string memory
-        const data = JSON.stringify(_serializeState());
+        let savedSeq = _stateMutationSeq;
+        let data;
+        if (_CHUNKED_SAVE_ENABLED) {
+          data = await _stringifyStateChunked(_serializeState());
+          // TEAR CHECK. The chunked path yields, so a mutation landing between
+          // keys would produce a snapshot mixing pre- and post-mutation values
+          // — something the atomic sync path cannot do. Rather than persist a
+          // possibly-torn snapshot, fall back to one atomic stringify. Under
+          // the idle/low-mutation conditions this timer usually fires in, the
+          // fast path holds; under heavy mutation we pay exactly today's cost,
+          // never worse, and never write an inconsistent snapshot.
+          if (_stateMutationSeq !== savedSeq) {
+            _chunkedSaveTears++;
+            // Re-stamp BEFORE re-serializing: the atomic snapshot below
+            // reflects state as of this moment, and claiming the older seq
+            // would under-report what is on disk to the periodic safety net.
+            savedSeq = _stateMutationSeq;
+            data = JSON.stringify(_serializeState());
+          }
+        } else {
+          data = JSON.stringify(_serializeState());
+        }
 
         if (USE_SQLITE_STATE) {
           // SQLite: single-row upsert inside WAL transaction — crash-safe
@@ -11358,8 +11723,14 @@ function saveStateDebounced() {
           fs.writeFileSync(tmpPath, data, "utf-8");
           fs.renameSync(tmpPath, STATE_PATH);
         }
-        // Nudge GC to reclaim the temporary JSON string faster
-        if (global.gc) global.gc();
+        // Tell the 5-min periodic safety net this state is already on disk
+        // so it doesn't re-serialize an unchanged 28 MB two minutes later.
+        _lastPeriodicSaveSeq = savedSeq;
+        // NOTE: no forced global.gc() here. A full synchronous GC right
+        // after allocating a 28 MB string was the worst possible timing —
+        // it doubled the stall on the exact hot path this coalescing exists
+        // to protect. The memory-pressure watchdog (lib/memory-pressure.js)
+        // already runs rate-limited GC when the heap actually needs it.
       } catch (e) {
         structuredLog("error", "state_save_failed", { error: String(e?.message || e) });
         STATE._saveFailures = (STATE._saveFailures || 0) + 1;
@@ -11370,7 +11741,7 @@ function saveStateDebounced() {
           try { fs.unlinkSync(STATE_PATH + ".tmp"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
         }
       }
-    }, 250);
+    }, STATE_SAVE_COALESCE_MS);
   } catch (e) {
     structuredLog("error", "save_state_debounce_failed", { error: String(e?.message || e) });
   }
@@ -11387,6 +11758,8 @@ globalThis._concordSaveStateDebounced = saveStateDebounced;
 function saveStateSync() {
   try {
     clearTimeout(_saveTimer);
+    _saveTimer = null; // leading-window coalescing checks truthiness — must reset
+    const savedSeq = _stateMutationSeq;
     const data = JSON.stringify(_serializeState());
     if (USE_SQLITE_STATE && db) {
       const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
@@ -11396,7 +11769,12 @@ function saveStateSync() {
       fs.writeFileSync(tmpPath, data, "utf-8");
       fs.renameSync(tmpPath, STATE_PATH);
     }
-    if (global.gc) global.gc();
+    // Keep the 5-min periodic safety net's bookkeeping honest: this state
+    // is on disk now, so an unchanged seq must not trigger a re-serialize.
+    _lastPeriodicSaveSeq = savedSeq;
+    _lastSyncSaveAt = Date.now();
+    // No forced global.gc() — see saveStateDebounced. The memory-pressure
+    // watchdog handles GC on a rate limit when the heap actually needs it.
   } catch (e) {
     structuredLog("error", "state_sync_save_failed", { error: String(e?.message || e) });
     STATE._saveFailures = (STATE._saveFailures || 0) + 1;
@@ -11407,33 +11785,50 @@ function saveStateSync() {
 }
 
 /**
- * Critical state save — for economy transactions, auth mutations,
- * DTU creation, and other operations that must not be lost.
- * Bypasses the 250ms debounce window entirely.
+ * Critical state save — for operations that must not sit in the coalescing
+ * window (in-memory market transactions, auth bootstrap).
+ *
+ * Rate-limited: the save is a ~28 MB synchronous serialize, so a burst of
+ * critical writes (e.g. rapid marketplace purchases) doing one full
+ * serialize EACH would stall the event loop for seconds — the exact
+ * "connection dropping" failure mode. Within the rate window the mutation
+ * still gets a fast-tracked save via a short trailing timer, bounding the
+ * durability window at CRITICAL_SAVE_MIN_INTERVAL_MS instead of zero.
+ * Note the durable stores for money/DTUs are the SQLite tables written by
+ * their own code paths — this snapshot is the in-memory STATE's recovery
+ * net, not the ledger of record.
  */
+const CRITICAL_SAVE_MIN_INTERVAL_MS = Math.max(0, Number(process.env.CONCORD_CRITICAL_SAVE_MIN_INTERVAL_MS || 2000));
+let _lastSyncSaveAt = 0;
+let _criticalCatchupTimer = null;
 function saveStateCritical() {
-  saveStateSync();
+  const sinceLast = Date.now() - _lastSyncSaveAt;
+  if (sinceLast >= CRITICAL_SAVE_MIN_INTERVAL_MS) {
+    saveStateSync();
+    return;
+  }
+  // Inside the rate window: schedule one catch-up sync save at window end.
+  _stateMutationSeq++;
+  if (_criticalCatchupTimer) return;
+  _criticalCatchupTimer = setTimeout(() => {
+    _criticalCatchupTimer = null;
+    saveStateSync();
+  }, Math.max(50, CRITICAL_SAVE_MIN_INTERVAL_MS - sinceLast));
+  if (typeof _criticalCatchupTimer?.unref === "function") _criticalCatchupTimer.unref();
 }
 
-// ---- Periodic Safety-Net Save (crash protection) ----
-// Ensures state is persisted periodically even if the debounce
-// timer already fired and silent mutations accumulated (e.g. tick loops).
-const PERIODIC_SAVE_INTERVAL_MS = 120_000; // 2 min — debounced save handles immediate needs
-const _periodicSaveTimer = _unrefInTest(setInterval(() => {
-  try {
-    saveStateSync();
-    structuredLog("debug", "periodic_state_save", { interval: PERIODIC_SAVE_INTERVAL_MS });
-  } catch (e) {
-    structuredLog("error", "periodic_save_failed", { error: String(e?.message || e) });
-  }
-}, PERIODIC_SAVE_INTERVAL_MS));
-_periodicSaveTimer.unref(); // Don't keep process alive just for saves
+// ---- Periodic Safety-Net Save ----
+// REMOVED (audit 2026-07-27): a second, UNCONDITIONAL 2-minute
+// setInterval(saveStateSync) used to live here. It fully defeated the
+// mutation-seq guard on the 5-minute periodic saver above (search
+// "_lastPeriodicSaveSeq") — a full ~28 MB serialize + SQLite row rewrite +
+// WAL checkpoint every 120s on an IDLE box, ~40GB/day of disk writes and a
+// guaranteed recurring event-loop stall. The guarded 5-minute saver is the
+// safety net; saveStateDebounced/saveStateSync cover everything else.
 
 // ---- beforeExit handler (supplements SIGTERM/SIGINT) ----
 process.on("beforeExit", () => {
   try {
-    clearTimeout(_saveTimer);
-    clearInterval(_periodicSaveTimer);
     saveStateSync();
     structuredLog("info", "before_exit_state_saved", {});
   } catch (e) {
@@ -11512,6 +11907,44 @@ if (_DTU_STORE_READY && db) {
   structuredLog("info", "dtu_store_boot_hydrate", hydrateResult);
   // Replace STATE.dtus with the write-through store
   STATE.dtus = dtuStore;
+}
+
+// ── Lens-artifact write-through store ──────────────────────────────────────
+//
+// Same migrate-then-hydrate pairing as the DTU block above, for the same
+// reason. Measured 2026-07-28: STATE.lensArtifacts held 11,517 artifacts /
+// 9.86 MB — the LARGEST key in the ~19 MB state snapshot, bigger than `dtus`,
+// with neither a `capArr` cap nor a durable store. Its only persistence was
+// the snapshot, so every debounced save re-serialized all of it, and a
+// truncated snapshot lost every artifact ever created.
+//
+// Order matters and mirrors the DTU block exactly: migrate first so anything
+// present only in an older snapshot reaches SQLite, then hydrate so anything
+// present only in SQLite reaches memory. The result is the union, idempotent.
+//
+// Gated on the table existing rather than a boot flag: on a build whose
+// migrations have not reached 398, we must keep the plain Map AND keep
+// serializing artifacts into the snapshot, or they would have no home at all.
+if (db) {
+  try {
+    const hasTable = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='lens_artifact_store'")
+      .get();
+    if (hasTable) {
+      const artifactStore = createLensArtifactStore(db, STATE.lensArtifacts, { log: structuredLog });
+      structuredLog("info", "lens_artifact_store_boot_migration", artifactStore.migrateMemoryToSQLite());
+      structuredLog("info", "lens_artifact_store_boot_hydrate", artifactStore.rehydrateFromSQLite());
+      STATE.lensArtifacts = artifactStore;
+    } else {
+      structuredLog("warn", "lens_artifact_store_unavailable", {
+        reason: "lens_artifact_store table missing — artifacts stay snapshot-only",
+      });
+    }
+  } catch (e) {
+    // Never fatal: a failure here must leave the plain Map in place, which is
+    // exactly today's behaviour, rather than taking down boot.
+    structuredLog("error", "lens_artifact_store_init_failed", { error: String(e?.message || e) });
+  }
 }
 
 // ── Post-load memory optimization ────────────────────────────────────────
@@ -11594,7 +12027,31 @@ try {
 // Ensures every field accessed by any route handler exists BEFORE routes mount.
 // Prevents TypeErrors from empty/missing state on fresh installs or partial hydration.
 {
-  const _ensureMap = (key) => { if (!(STATE[key] instanceof Map)) STATE[key] = new Map(); };
+  // 🔴 This ran AFTER the write-through stores attach (STATE.dtus is replaced
+  // at ~11864, this block is ~12016), and `dtu-store.js#createDTUStore`
+  // returns a plain OBJECT with Map-shaped methods — not a Map. So the bare
+  // `instanceof Map` test failed and this line replaced the freshly-hydrated
+  // DTU store with an EMPTY Map on every single boot.
+  //
+  // Consequences, both measured: `STATE.dtus.rehydrateFromSQLite` was
+  // undefined at runtime, so `_serializeState`'s omission check saw no store
+  // and wrote all 8.17 MB of DTUs into every snapshot (of a 9.4 MB file); and
+  // the write-through store — the thing that makes DTUs durable at row level —
+  // was detached for the entire life of the process despite its own boot logs
+  // reporting a successful migrate + hydrate.
+  //
+  // `STATE.lensArtifacts` was immune only because LensArtifactStore extends
+  // Map; that was a deliberate choice made for `domains/astronomy.js:817`'s
+  // identical guard, and it turns out to have dodged this one too.
+  //
+  // The guard's real intent is "this must be a working Map-like collection",
+  // not "this must be literally a Map" — so test the CAPABILITY. A store that
+  // provides the Map surface is left alone; anything else is still replaced,
+  // so the hydration-edge-case protection this line exists for is unchanged.
+  const _isMapLike = (v) => !!v && typeof v.get === "function" && typeof v.set === "function"
+    && typeof v.has === "function" && typeof v.delete === "function"
+    && typeof v.values === "function" && typeof v.size === "number";
+  const _ensureMap = (key) => { if (!_isMapLike(STATE[key])) STATE[key] = new Map(); };
   const _ensureArr = (key) => { if (!Array.isArray(STATE[key])) STATE[key] = []; };
   const _ensureObj = (key, def) => { if (!STATE[key] || typeof STATE[key] !== "object") STATE[key] = def; };
 
@@ -12862,15 +13319,54 @@ async function runMacro(domain, name, input, ctx) {
     "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
     "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
     "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
-    "/api/status", "/api/dtus", "/api/dtu", "/api/settings", "/api/lens",
+    // "/api/settings" restored — see Gate 1's matching correction comment.
+    "/api/settings",
+    "/api/status", "/api/dtus", "/api/dtu", "/api/lens",
     "/api/goals", "/api/growth", "/api/metrics", "/api/resonance", "/api/lattice",
     "/api/emergent", "/api/plugins", "/api/scope", "/api/events", "/api/guidance",
-    "/api/graph", "/api/system", "/api/inspect", "/api/worldmodel", "/api/chat",
+    "/api/graph", "/api/system", "/api/inspect", "/api/worldmodel",
+    // The chat prefix was narrowed to match Gate 1's audit-follow-up fix:
+    // its sessions/messages sub-paths already self-gate via requireAuth()
+    // regardless.
+    "/api/chat/web-metrics",
     "/api/brain", "/api/species", "/api/atlas", "/api/atlas/signals", "/api/atlas/privacy", "/api/knowledge", "/api/search",
-    "/api/council", "/api/hypothesis", "/api/analytics", "/api/agents", "/api/personas",
+    // "/api/agents" removed (audit follow-up): private per-user surface,
+    // no public-catalog concept — see Gate 1's matching removal +
+    // routes/agents.js's requireAuth()+ownership fixes.
+    // The analytics prefix was narrowed and the personas prefix verified —
+    // see Gate 1's matching audit-follow-up comment (analytics' personal
+    // sub-path had a real bug, now fixed + excluded). The bare "/api/analytics"
+    // path was restored here too (see Gate 1's matching correction comment) —
+    // it has its own genuinely public-safe handler in routes/analytics.js.
+    "/api/council", "/api/hypothesis",
+    "/api/analytics",
+    "/api/analytics/dashboard", "/api/analytics/growth", "/api/analytics/citations",
+    "/api/analytics/marketplace", "/api/analytics/density", "/api/analytics/atlas-domains",
+    "/api/intelligence/knowledge-weather", "/api/intelligence/drift-radar",
+    "/api/intelligence/continuity-diary", "/api/intelligence/dashboard",
+    "/api/personas",
     "/api/affect", "/api/attention", "/api/metacognition", "/api/metalearning",
     "/api/reasoning", "/api/reflection", "/api/temporal", "/api/inference",
-    "/api/collab", "/api/social", "/api/economy", "/api/marketplace", "/api/credits",
+    // Collaboration + social narrowed to match Gate 1's audit-follow-up list
+    // (see the matching comment there for the real bugs found + fixed and
+    // why /api/collab/{active,workspaces,sessions} are excluded).
+    "/api/collab/workspace", "/api/collab/comments", "/api/collab/revisions", "/api/collab/metrics",
+    "/api/social/profile", "/api/social/followers", "/api/social/following",
+    "/api/social/feed", "/api/social/trending", "/api/social/analytics",
+    "/api/social/topics", "/api/social/discover", "/api/social/cited-by",
+    "/api/social/metrics", "/api/social/post", "/api/social/reactions",
+    "/api/social/comments", "/api/social/shares", "/api/social/mention-search",
+    "/api/social/bookmarks", "/api/social/stories", "/api/social/poll",
+    // Economy & marketplace narrowed to match Gate 1's audit-follow-up list
+    // (see the matching comment there): "/api/credits" removed entirely (no
+    // live GET handler exists under it), "/api/economy/balance" and
+    // "/api/marketplace/royalties/:userId" deliberately excluded (real
+    // ownership-check bugs, now fixed at the handler level regardless of
+    // this list).
+    "/api/economy/status", "/api/economy/fees", "/api/economy/transactions",
+    "/api/marketplace/browse", "/api/marketplace/dtu_browse",
+    "/api/marketplace/installed", "/api/marketplace/listings",
+    "/api/marketplace/dream-promoted",
     "/api/hive", "/api/heal", "/api/grounding", "/api/commonsense", "/api/explanation",
     "/api/ingest", "/api/jobs", "/api/queue", "/api/cache", "/api/cognitive",
     "/api/onboarding", "/api/tutorial", "/api/srs", "/api/skill", "/api/schema", "/api/daily",
@@ -12887,8 +13383,14 @@ async function runMacro(domain, name, input, ctx) {
     "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/creative-commerce", "/api/rbac",
     "/api/compliance", "/api/voice", "/api/visual", "/api/autocrawl",
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
-    "/api/utility", "/api/swarm", "/api/forge", "/api/ask",
-    "/api/intelligence", "/api/stripe",
+    "/api/utility", "/api/swarm", "/api/forge",
+    // "/api/stripe" removed (audit follow-up): no live GET handler exists
+    // under this prefix — see Gate 1's matching removal.
+    // The ask-domain prefix was removed too (audit follow-up): no live GET
+    // handler exists under it either (routes/chat.js registers only a
+    // POST) — see Gate 1's matching removal.
+    // The intelligence prefix was narrowed to its 4 specific sub-paths
+    // above (moved next to the analytics prefix — see that comment).
     // Extended paths (three-gate audit)
     "/api/ai", "/api/federation", "/api/quests", "/api/physics",
     "/api/heartbeat", "/api/entity-economy",
@@ -15526,6 +16028,12 @@ function makeCtx(req=null) {
       orgId: req.user.orgId || "default",
       role: req.user.role || "member",
       scopes: Array.isArray(req.user.scopes) ? req.user.scopes : ["read", "write"],
+      // Private/High Power Mode (migration 397) — carried here so
+      // ctx.actor.brainMode is available to every macro/handler for free,
+      // with zero extra DB round trips (AuthDB.getUser already reads it).
+      // Defaults to 'private' if absent (pre-migration DB, or a req.user
+      // that didn't come through AuthDB.getUser) — the safe default.
+      brainMode: req.user.brainMode === "high_power" ? "high_power" : "private",
     };
   } else {
     const isPublicMode = AUTH_MODE === "public";
@@ -15534,6 +16042,7 @@ function makeCtx(req=null) {
       orgId: "public",
       role: isPublicMode ? "member" : "viewer",
       scopes: isPublicMode ? ["read", "write"] : ["read"],
+      brainMode: "private",
     };
   }
   return {
@@ -15634,6 +16143,15 @@ function makeCtx(req=null) {
     llm: {
       enabled: BRAIN.conscious && BRAIN.conscious.enabled,
       async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+        // Private/High Power Mode (migration 397). Private is the
+        // whole-account "no exceptions" guarantee — skip BOTH the BYO
+        // override branch below AND the platform-provider attempt
+        // entirely, straight to local Ollama, even if this account has its
+        // own BYO key configured for this slot. Already on resolvedActor
+        // for free (AuthDB.getUser reads it, makeCtx's resolvedActor
+        // carries it) — no extra DB round trip here.
+        const _brainMode = resolvedActor?.brainMode === "high_power" ? "high_power" : "private";
+
         // ===== BYO KEY ROUTING =====
         // If this request's user has plugged their own provider key
         // into this brain slot, route inference through it. The cheap
@@ -15642,7 +16160,7 @@ function makeCtx(req=null) {
         // real active override. Any failure falls through to the
         // default brain below; a BYO outage never blocks the user.
         const _byoUserId = resolvedActor?.userId;
-        if (db && _byoUserId && _byoUserId !== "anon") {
+        if (_brainMode !== "private" && db && _byoUserId && _byoUserId !== "anon") {
           let _byoOverride = null;
           try { _byoOverride = byoGetOverride(db, _byoUserId, slot); } catch { _byoOverride = null; }
           if (_byoOverride?.provider && _byoOverride.provider !== "concord_default" && _byoOverride.provider !== "ollama") {
@@ -15705,28 +16223,103 @@ function makeCtx(req=null) {
         }
         // ===== END BYO KEY ROUTING =====
 
+        // ===== PLATFORM PROVIDER ROUTING (High Power Mode) =====
+        // Reached only when _brainMode === 'high_power' AND the BYO branch
+        // above didn't already return (no override for this slot, or the
+        // override just failed). Operator-funded Groq/Gemini/Mistral key
+        // per server/lib/platform-providers.js's slot registry — same
+        // "never block the user" contract as BYO: any failure falls
+        // through to local Ollama below.
+        if (_brainMode === "high_power" && platformProviderConfigured(slot)) {
+          const _pgStartMs = Date.now();
+          try {
+            const pg = await platformProviderChat({
+              slot,
+              messages: [
+                ...(system ? [{ role: "system", content: system }] : []),
+                ...(messages || []),
+              ],
+              opts: { temperature, maxTokens, timeoutMs },
+            });
+            if (pg.ok) {
+              structuredLog("info", "llm_platform_routed", { slot, provider: pg.provider, model: pg.model });
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: slot, modelUsed: pg.model,
+                callerId: _byoUserId, latencyMs: Date.now() - _pgStartMs,
+                tokensIn: pg.tokensIn, tokensOut: pg.tokensOut,
+              });
+              return {
+                ok: true,
+                content: pg.text || "",
+                raw: pg,
+                brain: slot,
+                source: "platform",
+                provider: pg.provider,
+                model: pg.model,
+              };
+            }
+            structuredLog("warn", "llm_platform_failed", { slot, provider: pg.provider, error: pg.error || "platform_provider_error" });
+            _meterLlmChat(db, {
+              spanType: "chat", brainUsed: slot, modelUsed: pg.model,
+              callerId: _byoUserId, latencyMs: Date.now() - _pgStartMs,
+              tokensIn: pg.tokensIn, tokensOut: pg.tokensOut,
+              error: pg.error || "platform_provider_error",
+            });
+          } catch (_pgErr) {
+            structuredLog("warn", "llm_platform_exception", { slot, error: String(_pgErr?.message || _pgErr) });
+            // fall through to the default conscious brain below
+          }
+        }
+        // ===== END PLATFORM PROVIDER ROUTING =====
+
         // ===== OLLAMA-ONLY ROUTING =====
-        // Sovereignty principle: only the local conscious brain.
-        // Cloud LLM fallbacks were removed — this deployment is
-        // Ollama (qwen2.5) + LLaVA per CLAUDE.md.
-        const consciousAvailable = BRAIN.conscious && BRAIN.conscious.enabled;
-        if (!consciousAvailable) {
+        // Sovereignty principle: local brains only. Cloud LLM fallbacks were
+        // removed — this deployment is Ollama (qwen2.5) + vision per CLAUDE.md.
+        //
+        // SLOT ROUTING (audit 2026-07-27): `slot` used to be honored ONLY by
+        // the BYO branch above — the local path hardcoded "conscious", so
+        // callers that explicitly asked for utility/subconscious work (e.g.
+        // provenance-guard's slot:"utility", shadow-council's
+        // slot:"subconscious") burned the 14B flagship on it, and BYOK vs
+        // local behaved differently for the same call. The requested slot is
+        // now honored when that brain is up, with an honest fallback to
+        // conscious when it isn't.
+        const _validSlots = ["conscious", "subconscious", "utility", "repair"];
+        const _requestedSlot = _validSlots.includes(slot) ? slot : "conscious";
+        let _useBrainName = (BRAIN[_requestedSlot] && BRAIN[_requestedSlot].enabled)
+          ? _requestedSlot
+          : "conscious";
+        const _brain = BRAIN[_useBrainName];
+        if (!_brain || !_brain.enabled) {
           return { ok: false, reason: "LLM not configured: conscious brain offline. Set BRAIN_CONSCIOUS_URL and ensure Ollama is reachable." };
         }
 
         // Phase D wiring — prefer the load-balanced endpoint from
-        // brain-config.js's multi-endpoint picker (BRAIN_CONSCIOUS_URLS) when
-        // configured; falls back to the singular BRAIN.conscious.url
-        // unchanged when no plural env var is set (the common single-
-        // endpoint deployment).
-        const brainUrl = pickBrainEndpoint("conscious") || BRAIN.conscious.url;
-        const brainModel = model || BRAIN.conscious.model;
+        // brain-config.js's multi-endpoint picker (BRAIN_<SLOT>_URLS) when
+        // configured; falls back to the singular BRAIN.<slot>.url unchanged
+        // when no plural env var is set (the common single-endpoint deploy).
+        const brainUrl = pickBrainEndpoint(_useBrainName) || _brain.url;
+        const brainModel = model || _brain.model;
         const ollamaMessages = [
           ...(system ? [{ role: "system", content: system }] : []),
           ...(messages || [])
         ];
-        // Local models need more time than cloud — 120s for first call, 90s steady state
-        const ollamaTimeout = Math.max(timeoutMs, 120000);
+        // Local models need more time than cloud. Floor is env-tunable:
+        // behind Cloudflare (100s origin cap) set
+        // CONCORD_LLM_TIMEOUT_FLOOR_MS=90000 so an HTTP-bound macro's LLM
+        // call errors honestly instead of the client seeing a CF 524 while
+        // the GPU keeps working.
+        const ollamaTimeout = Math.max(timeoutMs, Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000));
+        // num_ctx: Ollama defaults to a SMALL context (2k/4k) unless told
+        // otherwise — while token-budget-assembler.js builds prompts against
+        // BRAIN_CONFIG.contextWindow (32k for conscious). Without sending
+        // num_ctx, everything past Ollama's default was silently truncated
+        // ("the brain forgot what I told it"). Cap is env-tunable for VRAM
+        // control (KV cache scales with num_ctx).
+        const _numCtx = Math.min(
+          Number(process.env.CONCORD_NUM_CTX_CAP || 32768),
+          BRAIN_CONFIG[_useBrainName]?.contextWindow || 8192
+        );
 
         // Track A/B/C (event-loop + GPU unblocking audit) — a brain-wiring
         // audit found ctx.llm.chat() (this function — the primary USER-FACING
@@ -15735,10 +16328,14 @@ function makeCtx(req=null) {
         // callBrain() was fixed to use. On a fixed-VRAM single-GPU box this
         // was the highest-volume unguarded path to the Ollama endpoints —
         // exactly the traffic "thousands of concurrent users" produces.
-        // Priority CRITICAL (llm-queue.js's own documented scheme: "0 —
-        // CRITICAL: user-facing chat / ask responses") so live chat jumps
-        // ahead of NORMAL-priority background/heartbeat brain calls under
-        // load, rather than competing with them on equal footing.
+        // Priority: CRITICAL for the conscious slot (llm-queue.js's own
+        // documented scheme: "0 — CRITICAL: user-facing chat / ask
+        // responses") so live chat jumps ahead of background brain calls;
+        // explicit utility/subconscious/repair slot requests are
+        // supporting work and ride at NORMAL so they can't starve chat.
+        const _chatPriority = _useBrainName === "conscious"
+          ? _llmQueue.PRIORITY.CRITICAL
+          : _llmQueue.PRIORITY.NORMAL;
         return await _llmQueue.enqueue(async () => {
           const ac = new AbortController();
           const t = setTimeout(() => ac.abort(), ollamaTimeout);
@@ -15749,58 +16346,58 @@ function makeCtx(req=null) {
             const res = await fetch(`${brainUrl}/api/chat`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens } }),
+              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens, num_ctx: _numCtx } }),
               signal: ac.signal
             }).finally(() => clearTimeout(t));
             const json = await res.json().catch(() => ({}));
             const elapsed = Date.now() - startMs;
-            BRAIN.conscious.stats.requests++;
-            BRAIN.conscious.stats.totalMs += elapsed;
-            BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
+            _brain.stats.requests++;
+            _brain.stats.totalMs += elapsed;
+            _brain.stats.lastCallAt = new Date().toISOString();
             if (res.ok && json.message?.content) {
               const content = json.message.content ?? "";
               _epOk = true;
-              structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
+              structuredLog("info", "llm_ollama_primary", { brain: _useBrainName, model: brainModel, elapsed, tokens: json.eval_count || 0 });
               // Real per-call metering — prompt_eval_count/eval_count are
               // Ollama's own reported token counts for this exact completion.
               _meterLlmChat(db, {
-                spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+                spanType: "chat", brainUsed: _useBrainName, modelUsed: brainModel,
                 callerId: resolvedActor?.userId, latencyMs: elapsed,
                 tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
               });
-              return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
+              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama" };
             }
-            BRAIN.conscious.stats.errors++;
+            _brain.stats.errors++;
             structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
             // A real HTTP round-trip happened and came back non-OK — honest
             // error span, no fabricated token count.
             _meterLlmChat(db, {
-              spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+              spanType: "chat", brainUsed: _useBrainName, modelUsed: brainModel,
               callerId: resolvedActor?.userId, latencyMs: elapsed,
               error: json?.error || `ollama_error_${res.status}`,
             });
-            return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: "conscious", source: "ollama" };
+            return { ok: false, status: res.status, error: json?.error || "ollama_error", brain: _useBrainName, source: "ollama" };
           } catch (err) {
-            BRAIN.conscious.stats.errors++;
+            _brain.stats.errors++;
             const elapsed = Date.now() - startMs;
             structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
             _meterLlmChat(db, {
-              spanType: "chat", brainUsed: "conscious", modelUsed: brainModel,
+              spanType: "chat", brainUsed: _useBrainName, modelUsed: brainModel,
               callerId: resolvedActor?.userId, latencyMs: elapsed,
               error: String(err?.message || err),
             });
-            return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
+            return { ok: false, error: String(err?.message || err), brain: _useBrainName, source: "ollama" };
           } finally {
             noteEndpointFinish(brainUrl, { ok: _epOk });
           }
-        }, _llmQueue.PRIORITY.CRITICAL).catch((err) => {
+        }, _chatPriority).catch((err) => {
           // Queue-level rejection (full/shed) — never let it throw out of
           // ctx.llm.chat(); every existing caller expects a resolved
           // { ok, ... } object, matching the resilience contract the BYO
           // and offline-brain branches above already uphold.
           const msg = String(err?.message || err);
           structuredLog("warn", "llm_queue_reject_chat", { error: msg });
-          return { ok: false, error: msg, brain: "conscious", source: "ollama", queueRejected: true };
+          return { ok: false, error: msg, brain: _useBrainName, source: "ollama", queueRejected: true };
         });
       }
     }
@@ -16922,8 +17519,18 @@ async function initLocalEmbeddings() {
   }
 
   // CPU fallback — kept for offline dev / deployments without a GPU.
+  // Security audit 2026-07-30: migrated off @xenova/transformers (final
+  // release 2.17.2, abandoned — the package was renamed and folded into
+  // Hugging Face's own @huggingface/transformers, which is the maintained
+  // successor with an identical pipeline() API; only the npm package name
+  // changed). The old package pinned onnxruntime-web to exactly 1.14.0,
+  // dragging 4 unfixable CVEs (sharp + onnxruntime-{node,web,common}) that
+  // could never be patched upstream. Model id ("Xenova/all-MiniLM-L6-v2")
+  // is unchanged — that's a Hugging Face Hub repo name, independent of
+  // which npm package loads it, and Xenova's ONNX-converted models remain
+  // hosted there under the same org.
   try {
-    const { pipeline } = await import("@xenova/transformers").catch(() => ({}));
+    const { pipeline } = await import("@huggingface/transformers").catch(() => ({}));
     if (!pipeline) {
       structuredLog("warn", "embeddings_unavailable", { reason: "transformers not installed" });
       return { ok: false, reason: "package_not_installed" };
@@ -17477,6 +18084,16 @@ function initLLMPipeline() {
   });
 }
 
+// num_ctx resolver — Ollama defaults to a small context (2k/4k) unless the
+// request says otherwise, silently truncating long prompts while
+// token-budget-assembler.js budgets against BRAIN_CONFIG.contextWindow.
+// Every Ollama call path sends this. CONCORD_NUM_CTX_CAP bounds KV-cache
+// VRAM growth (KV scales with num_ctx).
+function _ollamaNumCtx(brainName = "conscious") {
+  const win = BRAIN_CONFIG[brainName]?.contextWindow || 8192;
+  return Math.min(Number(process.env.CONCORD_NUM_CTX_CAP || 32768), win);
+}
+
 // Call Ollama (local) — uses /api/chat with system message when provided
 async function callOllama(prompt, options = {}) {
   const { url, model } = LLM_PIPELINE.providers.ollama;
@@ -17494,20 +18111,20 @@ async function callOllama(prompt, options = {}) {
             { role: "user", content: prompt },
           ],
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500 },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx("conscious") },
         }
       : {
           model: useModel,
           prompt,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500 },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx("conscious") },
         };
 
     const response = await fetch(`${url}/api/${useChat ? "chat" : "generate"}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(options.timeout || 120000)
+      signal: AbortSignal.timeout(options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000))
     });
 
     if (!response.ok) {
@@ -17543,11 +18160,15 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
     options: {
       temperature: options.temperature || 0.7,
       num_predict: options.maxTokens || 1500,
+      // Streaming chat runs on the conscious brain unless the caller says
+      // otherwise — without num_ctx the assembled 32k-budget prompt was
+      // silently truncated at Ollama's small default.
+      num_ctx: options.numCtx || _ollamaNumCtx(options.brainName || "conscious"),
     },
   };
 
   const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), options.timeout || 120000);
+  const timeout = setTimeout(() => ac.abort(), options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000));
 
   try {
     const response = await fetch(`${brainUrl}/api/chat`, {
@@ -17654,9 +18275,44 @@ _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 // shared the 5 Ollama endpoints with real user chat traffic under zero
 // application-level concurrency limit — a real self-DoS risk at scale that
 // this queue exists specifically to prevent.
+// Concurrency headroom review (Private/High Power Mode plan, concurrency
+// item (a) — 2026-07-27, doc-only, no code change): checked whether
+// LLM_CONCURRENCY's default of 32 has real room to grow on the deployed
+// A40 box before recommending High Power Mode's platform-provider pool
+// registration (item (b), below) as the primary new concurrency lever
+// instead. Verified directly against docker-compose.yml rather than
+// assumed:
+//   - The 7 Ollama containers' OLLAMA_NUM_PARALLEL values sum to 42
+//     (4 conscious + 6 subconscious + 8+8 utility×2 + 6+6 repair+vision +
+//     4 the extra utility instance — see docker-compose.yml's own "Four-
+//     Brain Cognitive Architecture" block for the live values). 32 is
+//     already close to that ceiling, not far under it.
+//   - That same docker-compose.yml comment block states the box's real
+//     constraint plainly: "the scarce resource on this box is CPU, since
+//     7 Ollama containers plus the rest of the stack (backend/frontend/
+//     nginx/redis/qdrant) share only 9 cores total" — VRAM has ~7.7GB of
+//     headroom in 48GB, but CPU does not have comparable slack once you
+//     count every non-Ollama service's own reservation.
+// Conclusion: LEAVE AS-IS. Raising LLM_CONCURRENCY past 32 would not
+// convert into more real completed work — the bottleneck this box
+// actually has is CPU contention across 9 cores shared by 7 GPU-bound
+// Ollama processes plus the rest of the stack, not an under-used queue
+// slot budget. (Separately, `_CONCURRENCY.limits.llm_call` below — a much
+// older, different gate from Tier-2 rate-limit hardening, default 64 via
+// LLM_CONCURRENCY_LIMIT — was tuned for the prior 32GB-heap/RTX-PRO-4500
+// target and is worth revisiting in its own pass; it's a distinct
+// subsystem from this queue and out of scope for this comment.) The real
+// lever for more effective throughput is item (b): registering High
+// Power Mode's platform providers (Groq/Gemini/Mistral) as additional
+// `pickBrainEndpoint` candidates so load that would otherwise queue for
+// a local Ollama slot can spill to an operator-funded external endpoint
+// instead of competing for the same 9 cores.
 const _llmQueue = createLLMQueue({
   concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
-  maxQueueDepth: 200,
+  // Was hardcoded 200, which always won over llm-queue.js's own
+  // `opts.maxQueueDepth || CONCORD_LLM_QUEUE_DEPTH || 1000` fallback —
+  // silently making CONCORD_LLM_QUEUE_DEPTH dead (audit 2026-07-27).
+  maxQueueDepth: parseInt(process.env.CONCORD_LLM_QUEUE_DEPTH || "200", 10),
   onReject: (priority, reason) => {
     structuredLog("warn", "llm_queue_reject", { priority, reason });
   },
@@ -17933,6 +18589,45 @@ if (!_brainsDisabled) {
       structuredLog("warn", "brain_preload_failed", { error: e.message });
     }
   }, 30000);
+
+  // ── Ongoing brain health loop (audit 2026-07-27) ──────────────────────
+  // Before this, brains were probed exactly twice (T+3s, T+30s) and the
+  // ONLY code that could flip a brain back to enabled lived inside
+  // GET /api/brain/health — a PULL endpoint. If a brain crashed and its
+  // supervisor respawned it, `brain.enabled` stayed false (chat degraded,
+  // ctx.llm.enabled false) until some frontend happened to poll that
+  // endpoint. The server now re-probes on its own clock: a cheap
+  // /api/tags fetch per brain, same threshold/recovery semantics as the
+  // endpoint (3 consecutive failures to disable, one success to
+  // re-enable). Interval env-tunable; 0 disables.
+  const _brainHealthLoopMs = Number(process.env.CONCORD_BRAIN_HEALTH_INTERVAL_MS || 60_000);
+  if (_brainHealthLoopMs > 0) {
+    const _brainHealthLoop = setInterval(async () => {
+      for (const [name, brain] of Object.entries(BRAIN)) {
+        try {
+          const probe = await fetch(`${brain.url}/api/tags`, { signal: AbortSignal.timeout(5000) });
+          if (probe.ok) {
+            _brainHealthFailures[name] = 0;
+            if (!brain.enabled) {
+              brain.enabled = true;
+              _refreshLlmReady();
+              structuredLog("info", "brain_health_recovered", { brain: name, source: "health_loop" });
+            }
+          } else {
+            _brainHealthFailures[name] = (_brainHealthFailures[name] || 0) + 1;
+          }
+        } catch {
+          _brainHealthFailures[name] = (_brainHealthFailures[name] || 0) + 1;
+        }
+        if (brain.enabled && (_brainHealthFailures[name] || 0) >= BRAIN_HEALTH_FAILURE_THRESHOLD) {
+          brain.enabled = false;
+          _refreshLlmReady();
+          structuredLog("warn", "brain_health_offline", { brain: name, consecutiveFailures: _brainHealthFailures[name], source: "health_loop" });
+        }
+      }
+    }, _brainHealthLoopMs);
+    _brainHealthLoop.unref();
+  }
 }
 
 // ── Repair Cortex Runtime Loop ────────────────────────────────────────────
@@ -18995,6 +19690,19 @@ _unrefInTest(setTimeout(async () => {
   }
 }, 12000));
 
+// ── Photo Garbage Collection Timer (weekly) ─────────────────────────────
+// Storage audit fix (2026-07-27): data/photos/ had no orphan sweep at all —
+// see server/lib/photo-gc.js's header comment for the exact leak it closes.
+_unrefInTest(setTimeout(async () => {
+  try {
+    const { initPhotoGarbageCollectionTimer: _initPhotoGC } = await import("./lib/photo-gc.js");
+    _initPhotoGC(db);
+    structuredLog("info", "photo_gc_timer_started", {});
+  } catch (e) {
+    structuredLog("warn", "photo_gc_timer_init_failed", { error: String(e?.message || e) });
+  }
+}, 12500));
+
 // ── LLM Fallback Initialization ─────────────────────────────────────────
 // Wire fallback layers into the LLM fallback chain
 _unrefInTest(setTimeout(async () => {
@@ -19020,12 +19728,21 @@ _unrefInTest(setTimeout(async () => {
 // Initialize after brains come online (embeddings use Ollama)
 _unrefInTest(setTimeout(async () => {
   try {
-    // Gather all Ollama URLs (three brains + default)
+    // Gather candidate Ollama URLs for the embedding model. ORDER MATTERS:
+    // initEmbeddings binds to the FIRST instance that can serve the model.
+    // CONCORD_EMBED_OLLAMA_URL (the operator's explicit choice) goes first,
+    // then UTILITY — its instance runs OLLAMA_MAX_LOADED_MODELS=2 on bare
+    // metal precisely so the embed model co-resides with the small 3B model
+    // (scripts/runpod-cognition.sh). The CONSCIOUS instance goes LAST: with
+    // MAX_LOADED_MODELS=1 there, binding embeddings to it made every embed
+    // call evict the resident ~9GB 14B model, and every subsequent chat
+    // message paid a multi-second cold reload — the "constant drops" bug.
     const ollamaUrls = [
-      BRAIN.conscious.url,
-      BRAIN.subconscious.url,
+      process.env.CONCORD_EMBED_OLLAMA_URL,
       BRAIN.utility.url,
+      BRAIN.subconscious.url,
       process.env.OLLAMA_URL || process.env.OLLAMA_HOST || "http://ollama:11434",
+      BRAIN.conscious.url,
     ].filter(Boolean);
 
     // Initialize embeddings
@@ -19084,6 +19801,29 @@ async function callBrain(brainName, prompt, options = {}) {
     }
     return { ok: false, error: `Brain ${brainName} offline and no fallback`, source: brainName };
   }
+
+  // Private/High Power Mode (migration 397) — callBrain has NO cloud path
+  // today (it only ever dispatches to a local Ollama endpoint, per the
+  // "Sovereignty principle" fallback above), so this is a no-op guard
+  // against a FUTURE platform-provider branch being added here, not a
+  // behavior change now. What IS load-bearing today: reusing the
+  // already-existing-but-previously-unpopulated options._userId field
+  // (read below by checkRateLimit/recordCost) — callers that have a real
+  // user's request on the stack now thread it through, so those two
+  // existing mechanisms get real per-user attribution instead of always
+  // seeing "default". See the plan's rubric: user-scoped call sites (a
+  // specific user's own request/content on the stack) pass options._userId;
+  // system-scoped ones (dream/autogen cycles over the whole corpus,
+  // cross-user governance) correctly pass nothing — there is no single
+  // account's data in them, so nothing to attribute.
+  const _cbUserId = options._userId || null;
+  const _cbMode = options._brainMode || (STATE?.db && _cbUserId ? (function _lookupMode() {
+    try {
+      const row = STATE.db.prepare("SELECT brain_mode FROM users WHERE id = ?").get(_cbUserId);
+      return row?.brain_mode === "high_power" ? "high_power" : "private";
+    } catch { return "private"; }
+  })() : "private");
+  void _cbMode; // no cloud branch to gate yet — see comment above
 
   // Phase D wiring — prefer the load-balanced endpoint from brain-config.js's
   // multi-endpoint picker (BRAIN_<NAME>_URLS) when configured; falls back to
@@ -19165,6 +19905,7 @@ ${_sharedToolRules}` : "";
       options: {
         temperature: options.temperature || 0.7,
         num_predict: options.maxTokens || 500,
+        num_ctx: _ollamaNumCtx(brainName),
       },
     };
 
@@ -19172,7 +19913,7 @@ ${_sharedToolRules}` : "";
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(options.timeout || 120000),
+      signal: AbortSignal.timeout(options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000)),
     });
 
     brain.stats.requests++;
@@ -19338,7 +20079,7 @@ ${_sharedToolRules}` : "";
               const classifyBy = String(tc.params.classifyBy || "domain");
               // Use utility brain for classification (but NOT with tools to prevent recursion)
               try {
-                const cr = await callBrain("utility", `Classify the following ${classifyBy}. Return ONLY a JSON object with keys "label" and "confidence" (0-1). Content:\n${content}`, { maxTokens: 100, temperature: 0.1 });
+                const cr = await callBrain("utility", `Classify the following ${classifyBy}. Return ONLY a JSON object with keys "label" and "confidence" (0-1). Content:\n${content}`, { maxTokens: 100, temperature: 0.1, _userId: options._userId });
                 _brainToolResults.push({ tool: "classify_content", ok: true, result: (cr.content || "").slice(0, MAX_TOOL_RESULT_LEN) });
               } catch (_ce) {
                 _brainToolResults.push({ tool: "classify_content", ok: false, error: String(_ce?.message || _ce) });
@@ -19436,7 +20177,7 @@ ${_sharedToolRules}` : "";
           model: brain.model,
           messages: _followUpMessages,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500 },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx(brainName) },
         };
 
         try {
@@ -19444,7 +20185,7 @@ ${_sharedToolRules}` : "";
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(_followUpPayload),
-            signal: AbortSignal.timeout(options.timeout || 120000),
+            signal: AbortSignal.timeout(options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000)),
           });
           if (_fuResponse.ok) {
             const _fuData = await _fuResponse.json();
@@ -19700,6 +20441,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
         maxTokens: 500,
         timeout: 15000,
         enableTools: true,
+        _userId: userId,
       });
 
       if (result.ok && result.content) {
@@ -19769,7 +20511,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
     try {
       const queryPrompt = buildQueryGenerationPrompt(userMessage, lens);
       const queryResult = await callBrain("utility", queryPrompt, {
-        temperature: 0.3, maxTokens: 200, timeout: 10000,
+        temperature: 0.3, maxTokens: 200, timeout: 10000, _userId: userId,
       });
       if (queryResult.ok && queryResult.content) {
         const parsed = JSON.parse(queryResult.content.match(/\{[\s\S]*\}/)?.[0] || "{}");
@@ -19792,7 +20534,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
       };
       const evalPrompt = buildEvaluationPrompt(userMessage, contextSummary, lens);
       const evalResult = await callBrain("utility", evalPrompt, {
-        temperature: 0.2, maxTokens: 300, timeout: 10000,
+        temperature: 0.2, maxTokens: 300, timeout: 10000, _userId: userId,
       });
       if (evalResult.ok && evalResult.content) {
         const parsed = JSON.parse(evalResult.content.match(/\{[\s\S]*\}/)?.[0] || "{}");
@@ -19845,6 +20587,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
     temperature: options.temperature || consciousParams.temperature,
     maxTokens: options.maxTokens || consciousParams.maxTokens,
     timeout: options.timeout || 60000,
+    _userId: userId,
   });
 
   // ── Metrics ──
@@ -23276,6 +24019,19 @@ register("dtu", "delete", async (ctx, input) => {
   EMBEDDINGS.store.delete(id); // Remove from embedding index
   saveStateDebounced();
 
+  // Storage audit fix (2026-07-27): clean up the per-DTU legacy artifact
+  // directory (ARTIFACT_ROOT/{dtuId}/ — symlinked/copied original file +
+  // generated thumbnail.jpg/waveform.json/text_preview.txt). These files
+  // are namespaced by dtuId, not content-hash, so they never match
+  // artifact-gc.js's hash-pattern scan and were leaking forever on every
+  // delete — deleteArtifact() existed but was never called from anywhere.
+  // Safe to always remove: it does not touch the shared content-addressed
+  // hash file in ARTIFACT_ROOT (that stays reference-counted and is only
+  // reclaimed by the weekly orphan GC once no DTU references its hash).
+  if (dtu.artifact) {
+    try { deleteArtifact(id); } catch (e) { log("artifact.warn", `deleteArtifact(${id}): ${e?.message}`); }
+  }
+
   // Fire plugin after-delete hooks
   try { fireHook(STATE, "dtu:afterDelete", { id, title: dtu.title }); } catch (e) { log("hook.warn", `dtu:afterDelete: ${e?.message}`); }
 
@@ -24868,10 +25624,23 @@ let localReply = formatCrispResponse({
     // (initiative-engine.js#getStyleProfile) into the system prompt as
     // functional context, the same way worldId triggers the per-world
     // voice lookup above. Honest-empty when no profile has been learned yet.
+    const _composeUserId = ctx?.actor?.userId || input?.userId || null;
+    const _composeDb = ctx?.db || globalThis._concordSTATE?.db || null;
+    // Persona portability (Private/High Power Mode) — predict, without
+    // dispatching, whether THIS user's conscious-brain call will land
+    // locally or externally (BYO override / platform provider), so the
+    // composed prompt inlines the full Modelfile persona on an external
+    // dispatch instead of just the functional-only local-dispatch text.
+    // See prompt-registry.js's CONSCIOUS_MODELFILE_PERSONA header comment.
+    let _dispatchTarget = "local";
+    try {
+      _dispatchTarget = byoResolveDispatchTarget(_composeDb, _composeUserId, "conscious");
+    } catch { /* best-effort — default to local persona text on any failure */ }
     const _composed = composeSystemPrompt("conscious", {
       mode, currentLens, worldId: _worldId,
-      userId: ctx?.actor?.userId || input?.userId || null,
-      db: ctx?.db || globalThis._concordSTATE?.db || null,
+      userId: _composeUserId,
+      db: _composeDb,
+      dispatchTarget: _dispatchTarget,
     });
     // Living chat / prompt-coloring — let the assistant's persistent felt state lightly
     // color its TONE (not its content, never its identity). A strained assistant is
@@ -32413,9 +33182,16 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
     console.warn("[WARN] JWT_SECRET is missing or too short — using an insecure default for development. Generate with: openssl rand -hex 32");
   }
 }
-if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 16) {
+// Threshold (32) matches the earlier SESSION_SECRET gate in
+// validateEnvironment() above — audit 2026-07-27 fixed a real
+// inconsistency (this used to say 16, that said 32), which meant a
+// 16-31 char secret died at the OTHER gate while THIS message implied 16
+// was sufficient. Also note: SESSION_SECRET has no express-session
+// consumer in this codebase — see the other gate's comment for the real
+// (connector-token wrapping) usage.
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
   if (process.env.NODE_ENV === "production") {
-    console.error("[FATAL] SESSION_SECRET must be set in production. Generate with: openssl rand -hex 32");
+    console.error("[FATAL] SESSION_SECRET must be set in production (>= 32 characters). Generate with: openssl rand -hex 32");
     process.exit(1);
   }
 }
@@ -33077,9 +33853,39 @@ async function runJob(j) {
   j.updatedAt = nowISO();
   saveStateDebounced();
 
-  const ctx = makeInternalCtx("job_runner");
-  // adopt actor context if present; default to system actor for internal jobs
-  if (j.actor) { ctx.actor = { ...j.actor, internal: true }; }
+  // SECURITY (audit 2026-07-27): jobs.enqueue is a user-reachable macro that
+  // accepts an ARBITRARY `domain.name` kind — and this runner used to execute
+  // every job inside makeInternalCtx (ctx.internal=true, owner-grade actor)
+  // and then stamp the adopted actor `internal: true` on top. That let any
+  // authenticated user route any macro through the job queue to pick up
+  // internal-context privileges it would never have when called directly
+  // (e.g. the council-gate skip accepts ctx.actor.internal, and runMacro is
+  // invoked here directly so the HTTP-layer gates never apply to deferred
+  // execution). A user-enqueued job must run with EXACTLY the user's own
+  // authority. Only jobs enqueued by genuine system actors (or with no actor
+  // at all — internal maintenance enqueues) keep the internal context.
+  const actorRole = String(j.actor?.role || "");
+  const isSystemJob = !j.actor
+    || j.actor.internal === true
+    || actorRole === "system"
+    || actorRole === "owner"
+    || actorRole === "founder";
+  let ctx;
+  if (isSystemJob) {
+    ctx = makeInternalCtx("job_runner");
+    if (j.actor) { ctx.actor = { ...j.actor, internal: true }; }
+  } else {
+    ctx = makeCtx(null);
+    ctx.internal = false;
+    ctx.actor = { ...j.actor, internal: false };
+    // Inner macro calls from a user job inherit the SAME user authority —
+    // never a fresh internal context.
+    ctx.macro = {
+      run: (domain, name, input) => runMacro(domain, name, input, ctx),
+      listDomains,
+      listMacros,
+    };
+  }
 
   try {
     const [domain, name] = String(j.kind).split(".");
@@ -33196,7 +34002,7 @@ registerDomainRoutes(app, {
   STATE, makeCtx, runMacro, _withAck, kernelTick, uiJson, listDomains, listMacros,
   dtusArray, normalizeText, clamp, nowISO, saveStateDebounced, retrieveDTUs,
   isShadowDTU, fs, ensureExperienceLearning, ensureAttentionManager, ensureReflectionEngine,
-  validate
+  validate, requireOwner
 });
 
 // ---- Shield Routes (extracted to routes/shield.js) ----
@@ -40567,7 +41373,23 @@ app.post("/api/scope/royaltyPreview", asyncHandler(async (req, res) => res.json(
 app.post("/api/creative/registry", asyncHandler(async (req, res) => res.json(await runMacro("creative", "registry", req.body, makeCtx(req)))));
 app.get("/api/creative/domains", asyncHandler(async (req, res) => res.json(await runMacro("creative", "domains", {}, makeCtx(req)))));
 app.post("/api/marketplace/purchaseWithRoyalties", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "purchaseWithRoyalties", req.body, makeCtx(req)))));
-app.get("/api/marketplace/royalties/:userId", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "royalties", { userId: req.params.userId }, makeCtx(req)))));
+// SECURITY (fixed — audit follow-up): the macro accepts an explicit
+// `userId` in input and used it with no ownership check, so this route
+// let ANY caller (anonymous, before publicReadPaths was narrowed to
+// exclude it) read any user's creator earnings/royalty totals by ID. The
+// no-:userId variant below was already safe (it falls back to
+// ctx.actor.userId, which is empty/anonymous for an unauthenticated
+// caller and the macro itself rejects with "userId required").
+app.get("/api/marketplace/royalties/:userId", requireAuth(), asyncHandler(async (req, res) => {
+  const callerId = req.user?.id;
+  if (req.params.userId !== callerId) {
+    const role = String(req.user?.role || "");
+    if (!["owner", "admin", "sovereign", "founder"].includes(role)) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
+  }
+  res.json(await runMacro("marketplace", "royalties", { userId: req.params.userId }, makeCtx(req)));
+}));
 app.get("/api/marketplace/royalties", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "royalties", {}, makeCtx(req)))));
 
 structuredLog("info", "module_loaded", { module: "Wave 1.5: Dual Global System, Creative Pipeline, Royalty Cascade" });
@@ -42265,24 +43087,13 @@ function requireOwner(req, res, next) {
   next();
 }
 
-// Settings update (individual key-value pairs)
-app.post("/api/settings", requireOwner, asyncHandler(async (req, res) => {
-  const updates = req.body;
-  if (!updates || typeof updates !== "object") {
-    return res.status(400).json({ ok: false, error: "object_required" });
-  }
-
-  const changes = [];
-  for (const [key, value] of Object.entries(updates)) {
-    const before = STATE.settings[key];
-    STATE.settings[key] = value;
-    changes.push({ key, before, after: value });
-  }
-  saveStateDebounced();
-
-  log("settings.update", `Settings updated: ${changes.map(c => c.key).join(", ")}`, { changes });
-  res.json({ ok: true, changes });
-}));
+// Settings update (individual key-value pairs) — REMOVED (audit fix
+// 2026-07-27): this handler could never execute. registerDomainRoutes()
+// (server.js ~line 33538) registers its own "/api/settings" POST first at
+// boot, and Express's first-match routing means that earlier registration
+// always won — this requireOwner-gated version was dead code, and the
+// REAL, executing handler in routes/domain.js had NO gate at all (now
+// fixed there: requireOwner added to the handler that actually runs).
 
 // Force state save
 app.post("/api/admin/save-state", requireOwner, asyncHandler(async (req, res) => {
@@ -46490,6 +47301,13 @@ app.get("/api/lens-actions/:domain", (req, res) => {
   const aiMeta = new Map(aiManifest.map(a => [a.action, a]));
   const actions = all.map(name => {
     const ai = aiMeta.get(name);
+    // Additive: server/lib/macro-input-hints.js (generated by
+    // scripts/extract-macro-input-hints.mjs from the informal
+    // `input: { field1, field2? }` doc-comment convention) supplies a
+    // labeled-field hint for the subset of macros that documented their
+    // shape this way. Absent for the rest — AutoActionStrip falls back to
+    // its raw-JSON editor when `fields` is undefined.
+    const fields = MACRO_INPUT_HINTS[`${domain}.${name}`];
     return {
       action: name,
       desc: ai?.desc || null,
@@ -46499,6 +47317,7 @@ app.get("/api/lens-actions/:domain", (req, res) => {
       isAnalysis: /^(analyze|detect|validate|check|assess|compare|score|audit)/i.test(name),
       isLive: /^live_/.test(name),
       isCompute: !ai && !/^live_/.test(name),
+      ...(fields ? { fields } : {}),
     };
   });
   res.json({ ok: true, domain, total: actions.length, actions });
@@ -48879,6 +49698,7 @@ app.post("/api/shared-session/:id/chat", requireAuth(), validate("sharedSessionC
       system: systemPrompt,
       temperature: 0.7,
       maxTokens: 1000,
+      _userId: userId,
     });
 
     const aiText = response?.text || response?.content || response?.reply || (typeof response === "string" ? response : JSON.stringify(response));
@@ -49297,8 +50117,17 @@ function initChatSocketHandlers(io) {
             try {
               const userMsg = (prompt || '').toLowerCase();
               const relevantDtus = [];
+              // Bound the scan (audit 2026-07-27): this loop used to walk the
+              // ENTIRE DTU map synchronously, lowercasing every title+content,
+              // on every chat message — a multi-hundred-ms main-thread stall
+              // on a large substrate (stalls socket pings + the world tick).
+              // Cap the number of DTUs examined per message; the semantic
+              // path for deep retrieval is discovery.search, not this loop.
+              const _scanMax = Number(process.env.CONCORD_CHAT_DTU_SCAN_MAX || 5000);
+              let _scanned = 0;
               for (const [, dtu] of STATE.dtus) {
                 if (relevantDtus.length >= 15) break;
+                if (++_scanned > _scanMax) break;
                 const title = (dtu.title || '').toLowerCase();
                 const content = (dtu.content || '').toLowerCase();
                 const tags = (dtu.tags || []).join(' ').toLowerCase();
@@ -49344,21 +50173,112 @@ function initChatSocketHandlers(io) {
               { role: "user", content: String(prompt) },
             ];
 
-            // Stream tokens to client
-            let _streamSeq = 0;
-            const streamResult = await callOllamaStreaming(
-              _streamBrainUrl,
-              _streamBrainModel,
-              _streamMessages,
-              _streamSystem,
-              (token) => {
-                socket.emit("chat:token", { token, sessionId, seq: _streamSeq++ });
-              },
-              {
-                temperature: _streamConsciousParams.temperature || 0.75,
-                maxTokens: _streamConsciousParams.maxTokens || 1500,
+            // ===== BYO KEY ROUTING (streaming path) =====
+            // Audit 2026-07-27: this path used to ignore BYO overrides
+            // entirely — a user who plugged in their own provider key still
+            // got local Ollama on the DEFAULT chat surface (only the HTTP
+            // ctx.llm.chat path honored it). BYO providers are called
+            // non-streaming here; the full response is delivered as one
+            // token event + chat:complete. Honest trade: no token-by-token
+            // animation on BYOK, but the user's chosen model actually runs.
+            //
+            // Private/High Power Mode: Private skips this ENTIRE block
+            // (BYO override AND platform provider) — even if this account
+            // has its own BYO key configured, straight to local streaming
+            // below. Mirrors the same gate already wired into
+            // byo-router.js#brainChat and ctx.llm.chat.
+            let _streamByo = null;
+            let _streamPlatform = null;
+            const _streamUserId = socket.data?.userId || null;
+            const _streamMode = byoGetBrainMode(db, _streamUserId);
+            if (_streamMode !== "private" && db && _streamUserId) {
+              let _ov = null;
+              try { _ov = byoGetOverride(db, _streamUserId, "conscious"); } catch { _ov = null; }
+              if (_ov?.provider && _ov.provider !== "concord_default" && _ov.provider !== "ollama") {
+                try {
+                  const byo = await byoBrainChat({
+                    db, userId: _streamUserId, slot: "conscious",
+                    messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
+                    opts: {
+                      temperature: _streamConsciousParams.temperature || 0.75,
+                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                    },
+                  });
+                  // Bug fix (found while wiring High Power Mode alongside
+                  // this): byoBrainChat()/providerChat() return `text`, never
+                  // `content` — every adapter in byo-providers.js returns
+                  // `{ok, text, ...}`. Checking `byo.content` here meant this
+                  // truthy check was ALWAYS false whenever byo.ok was true,
+                  // so `_streamByo` could never actually be set — the "BYO
+                  // KEY ROUTING (streaming path)" fix silently never
+                  // activated despite looking wired. Fixed to read `.text`.
+                  if (byo?.ok && byo.text) {
+                    _streamByo = byo;
+                  }
+                  // ok:false → fall through to local streaming below (same
+                  // BYO-outage-never-blocks contract as ctx.llm.chat).
+                } catch (_byoErr) {
+                  structuredLog("warn", "llm_byo_stream_exception", { error: String(_byoErr?.message || _byoErr) });
+                }
               }
-            );
+              // Platform provider (High Power Mode) — only when the BYO
+              // attempt above didn't already produce a result.
+              if (!_streamByo && platformProviderConfigured("conscious")) {
+                try {
+                  const pg = await platformProviderChat({
+                    slot: "conscious",
+                    messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
+                    opts: {
+                      temperature: _streamConsciousParams.temperature || 0.75,
+                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                    },
+                  });
+                  if (pg?.ok && pg.text) {
+                    _streamPlatform = pg;
+                  }
+                } catch (_pgErr) {
+                  structuredLog("warn", "llm_platform_stream_exception", { error: String(_pgErr?.message || _pgErr) });
+                }
+              }
+            }
+
+            // Stream tokens to client. The local call now runs INSIDE
+            // _llmQueue at CRITICAL priority — before this, streaming chat
+            // (the highest-volume brain path) bypassed the queue entirely,
+            // so the queue-position UX above described a queue this request
+            // never entered, and background brain work competed with live
+            // chat for the same Ollama slots un-arbitrated.
+            let _streamSeq = 0;
+            const streamResult = _streamByo
+              ? (() => {
+                  // _streamByo.text is the real field (see the bug-fix note
+                  // above) — normalize to `.content` here so the downstream
+                  // consumer (which expects callOllamaStreaming's shape) sees
+                  // the same field name regardless of which branch produced it.
+                  socket.emit("chat:token", { token: _streamByo.text, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _streamByo.text, model: _streamByo.model || "byo", source: "byo" };
+                })()
+              : _streamPlatform
+              ? (() => {
+                  socket.emit("chat:token", { token: _streamPlatform.text, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _streamPlatform.text, model: _streamPlatform.model || "platform", source: "platform" };
+                })()
+              : await _llmQueue.enqueue(
+                  () => callOllamaStreaming(
+                    _streamBrainUrl,
+                    _streamBrainModel,
+                    _streamMessages,
+                    _streamSystem,
+                    (token) => {
+                      socket.emit("chat:token", { token, sessionId, seq: _streamSeq++ });
+                    },
+                    {
+                      temperature: _streamConsciousParams.temperature || 0.75,
+                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                    }
+                  ),
+                  _llmQueue.PRIORITY.CRITICAL
+                ).catch((qErr) => ({ ok: false, error: String(qErr?.message || qErr), queueRejected: true }));
 
             if (streamResult.ok && streamResult.content) {
               // Store assistant response in session
@@ -49416,6 +50336,20 @@ function initChatSocketHandlers(io) {
         } catch (_e) { /* web search is best-effort */ }
 
         // Run through the existing chat.respond macro (non-streaming fallback)
+        //
+        // Audit fix: this used to be its own ~50-line ad hoc `llm.chat`
+        // reimplementation — a raw fetch straight to the local Ollama
+        // endpoint with ZERO BYO/mode awareness, a THIRD separate
+        // reimplementation of "call the conscious brain" alongside
+        // byo-router.js#brainChat and makeCtx's ctx.llm.chat. A Private-Mode
+        // user landing here (after the primary stream attempt above failed)
+        // was harmlessly still local-only by coincidence — Ollama is always
+        // the fallback regardless of mode — but a High-Power-Mode user's own
+        // BYO/platform routing silently vanished on this leg. Replaced with
+        // a direct call to the now mode-aware, now platform-aware
+        // byo-router.js#brainChat, which already handles Private/BYO/
+        // platform/Ollama in one place — closing the gap outright instead of
+        // patching a fourth reimplementation.
         const ctx = {
           state: STATE,
           log: (...args) => structuredLog("info", "chat:socket", ...args),
@@ -49424,55 +50358,31 @@ function initChatSocketHandlers(io) {
           llm: {
             enabled: LLM_READY,
             chat: async (opts) => {
-              // Phase D wiring — prefer the load-balanced endpoint from
-              // brain-config.js (BRAIN_CONSCIOUS_URLS) when configured;
-              // falls back to the singular BRAIN.conscious.url unchanged.
-              const brainUrl = pickBrainEndpoint("conscious") || BRAIN.conscious?.url || process.env.OLLAMA_HOST || process.env.BRAIN_CONSCIOUS_URL;
-              if (!brainUrl) return { ok: false, error: 'no_llm' };
-              noteEndpointStart(brainUrl);
-              let _epOk = false;
               const _socketChatStartMs = Date.now();
-              const _model = opts.model || BRAIN.conscious?.model || 'llama3';
-              try {
-                const _messages = [
-                  ...(opts.system ? [{ role: 'system', content: opts.system }] : []),
-                  ...(opts.messages || [])
-                ];
-                const _ac = new AbortController();
-                const _timeout = setTimeout(() => _ac.abort(), 120000);
-                const _res = await fetch(`${brainUrl}/api/chat`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ model: _model, messages: _messages, stream: false, options: { temperature: opts.temperature || 0.7, num_predict: opts.maxTokens || 700 } }),
-                  signal: _ac.signal,
-                }).finally(() => clearTimeout(_timeout));
-                const _json = await _res.json().catch(() => ({}));
-                if (_res.ok && _json.message?.content) {
-                  _epOk = true;
-                  // Real per-call metering — Ollama's own prompt_eval_count/
-                  // eval_count for this exact completion. No fallback estimate.
-                  _meterLlmChat(db, {
-                    spanType: "chat", brainUsed: "conscious", modelUsed: _model,
-                    callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
-                    tokensIn: _json.prompt_eval_count, tokensOut: _json.eval_count,
-                  });
-                  return { ok: true, content: _json.message.content };
-                }
+              const _messages = [
+                ...(opts.system ? [{ role: 'system', content: opts.system }] : []),
+                ...(opts.messages || [])
+              ];
+              const br = await byoBrainChat({
+                db, userId: _rlKey, slot: "conscious",
+                messages: _messages,
+                opts: { temperature: opts.temperature || 0.7, maxTokens: opts.maxTokens || 700, timeout: opts.timeout },
+              });
+              if (br.ok && br.text) {
                 _meterLlmChat(db, {
-                  spanType: "chat", brainUsed: "conscious", modelUsed: _model,
+                  spanType: "chat", brainUsed: "conscious", modelUsed: br.model,
                   callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
-                  error: _json?.error || `status ${_res.status}`,
+                  tokensIn: br.tokensIn, tokensOut: br.tokensOut,
                 });
-                return { ok: false, error: _json?.error || `status ${_res.status}` };
-              } catch (e) {
-                _meterLlmChat(db, {
-                  spanType: "chat", brainUsed: "conscious", modelUsed: _model,
-                  callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
-                  error: e.message,
-                });
-                return { ok: false, error: e.message };
+                return { ok: true, content: br.text };
               }
-              finally { noteEndpointFinish(brainUrl, { ok: _epOk }); }
+              _meterLlmChat(db, {
+                spanType: "chat", brainUsed: "conscious", modelUsed: br.model,
+                callerId: _rlKey, latencyMs: Date.now() - _socketChatStartMs,
+                tokensIn: br.tokensIn, tokensOut: br.tokensOut,
+                error: br.error || "no_content",
+              });
+              return { ok: false, error: br.error || "no_content" };
             },
           },
         };
@@ -49531,15 +50441,30 @@ function initChatSocketHandlers(io) {
 // ============================================================================
 const COLLAB_LOCKS = new BoundedMap(1000, "COLLAB_LOCKS");
 
+// Audit fix 2026-07-27 (Gate-2 publicReadDomains sweep): every one of these
+// four collab-session macros used input.userId — a caller-supplied request
+// field — as the acting identity, the same "identity from the request body"
+// footgun dtu.create was already hardened against (see that macro's own
+// "SECURITY" comment). Combined with join()/edit()/merge() never checking
+// session participation at all, this let ANY caller (a) impersonate an
+// arbitrary userId while joining/editing a session they never created, and
+// (b) merge a stranger's live editing session's pending changes into a real
+// DTU with zero membership check. Real identity now always comes from
+// ctx.actor; edit/merge now require the caller to already be a participant.
+function _collabActorId(ctx) {
+  return ctx?.actor?.userId || ctx?.actor?.id || "anonymous";
+}
+
 register("collab", "createSession", (ctx, input) => {
-  const { dtuId, userId, mode } = input;
+  const { dtuId, mode } = input;
   if (!dtuId) return { ok: false, error: "DTU ID required" };
+  const userId = _collabActorId(ctx);
   const session = {
     id: uid("collab"),
     dtuId,
-    creatorId: userId || "anonymous",
+    creatorId: userId,
     mode: mode || "edit",
-    participants: [{ userId: userId || "anonymous", joinedAt: nowISO(), role: "owner" }],
+    participants: [{ userId, joinedAt: nowISO(), role: "owner" }],
     changes: [],
     createdAt: nowISO(),
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -49551,22 +50476,27 @@ register("collab", "createSession", (ctx, input) => {
 });
 
 register("collab", "join", (ctx, input) => {
-  const { sessionId, userId } = input;
+  const { sessionId } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
-  if (!session.participants.find(p => p.userId === userId)) session.participants.push({ userId: userId || "anonymous", joinedAt: nowISO(), role: "collaborator" });
+  const userId = _collabActorId(ctx);
+  if (!session.participants.find(p => p.userId === userId)) session.participants.push({ userId, joinedAt: nowISO(), role: "collaborator" });
   realtimeEmit("collab:user:joined", { sessionId, userId }, { sessionId: ctx.reqMeta?.sessionId });
   return { ok: true, session };
 });
 
 register("collab", "edit", (ctx, input) => {
-  const { sessionId, userId, operation, path, value, previousValue } = input;
+  const { sessionId, operation, path, value, previousValue } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
+  const userId = _collabActorId(ctx);
+  if (!session.participants.find(p => p.userId === userId)) {
+    return { ok: false, error: "not_a_participant", hint: "join the session before editing" };
+  }
   const lockKey = `${session.dtuId}:${path}`;
   const existingLock = COLLAB_LOCKS.get(lockKey);
   if (existingLock && existingLock.userId !== userId && Date.now() - new Date(existingLock.lockedAt).getTime() < 30000) return { ok: false, error: "Path locked by another user", lockedBy: existingLock.userId };
-  const change = { id: uid("change"), userId: userId || "anonymous", operation: operation || "update", path, value, previousValue, timestamp: nowISO(), status: "pending" };
+  const change = { id: uid("change"), userId, operation: operation || "update", path, value, previousValue, timestamp: nowISO(), status: "pending" };
   session.changes.push(change);
   realtimeEmit("collab:change", { sessionId, change }, { sessionId: ctx.reqMeta?.sessionId });
   return { ok: true, change, session };
@@ -49576,6 +50506,10 @@ register("collab", "merge", (ctx, input) => {
   const { sessionId } = input;
   const session = COLLAB_SESSIONS.get(sessionId);
   if (!session) return { ok: false, error: "Session not found" };
+  const userId = _collabActorId(ctx);
+  if (!session.participants.find(p => p.userId === userId)) {
+    return { ok: false, error: "not_a_participant", hint: "join the session before merging" };
+  }
   if (session.councilGated) {
     STATE.queues.macroProposals.push({ type: "collab_merge", sessionId, dtuId: session.dtuId, changeCount: session.changes.length, participants: session.participants.map(p => p.userId), proposedAt: nowISO() });
     saveStateDebounced();
@@ -50192,6 +51126,26 @@ app.get("/api/observability/health", (req, res) => {
     dtuCount: STATE.dtus.size,
     shadowDtuCount: STATE.shadowDtus.size,
     artifactCount: STATE.lensArtifacts.size,
+    // Write-through store health + the growth signal that decides whether
+    // artifacts ever need bounding in memory.
+    //
+    // Measured 2026-07-28 in isolation (parse the real rows, monotonic
+    // allocation — an in-process drop-and-GC attempt produced a bogus
+    // "-0.0 MB" and was discarded): 12,647 artifacts retain 15.3 MB, i.e.
+    // ~1,209 bytes each and only 1.43x their serialized size. Against the
+    // 8192 MB production ceiling that is 0.2%; even 1,000,000 artifacts would
+    // be ~1.2 GB (14.8%).
+    //
+    // So LRU eviction with lazy load-back was deliberately NOT built: it would
+    // have meant touching ~20 whole-collection iteration sites (which do
+    // `Array.from(STATE.lensArtifacts.values()).filter(...)`) to reclaim a
+    // fraction of a percent. This figure is exposed instead so the decision
+    // can be revisited on evidence rather than re-estimated. Revisit if
+    // `estimatedHeapMb` approaches a few hundred MB.
+    artifactStore: typeof STATE.lensArtifacts?.stats === "function"
+      ? { ...STATE.lensArtifacts.stats(), estimatedHeapMb: +(STATE.lensArtifacts.size * 1209 / 1e6).toFixed(1) }
+      : { backed: false, note: "plain Map — write-through store not attached" },
+    dtuStoreBacked: typeof STATE.dtus?.rehydrateFromSQLite === "function",
     wsConnections: REALTIME.clients?.size || 0,
     eventSeq: _eventSeqCounter,
     idempotencyEntries: _IDEMPOTENCY.store.size,
@@ -56544,6 +57498,37 @@ app.get("/api/admin/brain-endpoints", requireRole("owner", "admin", "sovereign",
   }
 });
 
+// Private/High Power Mode diagnostic (task #33 of the plan) — lets an
+// operator watch real platform-provider spend/volume on a small
+// allowlisted group (CONCORD_HIGH_POWER_ALLOWLIST) before removing the
+// rollout gate. Reports, per (provider, slot): whether a key is
+// configured, the live rate-limit bucket state (never a token/message
+// count — no user content), and the rolling daily spend estimate. Never
+// exposes the allowlist's actual membership (that's operator config, not
+// runtime state worth leaking over an API) — only its MODE (open / closed
+// / list-restricted) and size when list-restricted.
+app.get("/api/admin/platform-providers-status", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { platformProviderConfigured } = await import("./lib/platform-providers.js");
+    const { getPlatformBudgetStatus } = await import("./lib/platform-providers-budget.js");
+    const { describeAllowlistMode } = await import("./lib/high-power-allowlist.js");
+    const SLOTS = ["conscious", "subconscious", "utility", "repair", "vision"];
+    const configured = Object.fromEntries(SLOTS.map((s) => [s, platformProviderConfigured(s)]));
+    const budget = getPlatformBudgetStatus();
+    const allowlist = describeAllowlistMode();
+
+    res.json({
+      ok: true,
+      allowlist,
+      configuredBySlot: configured,
+      budget,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // Per-brain ACTIVITY readout — aggregate counters only (requests / errors / avg latency /
 // last-active), NEVER message content. Lets an operator watch the division of labor live:
 // is the subconscious actually thinking, is conscious handling chat, utility the tools, etc.
@@ -57591,11 +58576,37 @@ app.get("/api/economy/status", (req, res) => {
 });
 
 // GET /api/economy/balance — return wallet balance for current user (marketplace)
-app.get("/api/economy/balance", (req, res) => {
+//
+// SECURITY (fixed — audit follow-up): this fell through to
+// `req.query.user_id` (fully caller-controlled) whenever `req.user` was
+// unset, with a `// safe: admin-only` comment that was simply false — no
+// admin/role check existed anywhere in this handler. Since this path is
+// also reachable anonymously via publicReadPaths (narrowed elsewhere to
+// exclude /balance), any caller could read ANY user's wallet balance/tier
+// by supplying an arbitrary user_id. Now requires a real authenticated
+// identity and ignores the query param entirely; requesting another
+// user's balance needs an explicit owner/admin role.
+app.get("/api/economy/balance", requireAuth(), (req, res) => {
   ensureEconomicState();
-   
+  // safe: admin-only. The param is READ here but never trusted -- the
+  // ownership/role check just below rejects any requestedUserId !== callerId
+  // unless the caller holds owner/admin/sovereign/founder.
+  //
+  // NOTE: the rule's own message suggests adding a `// safe:` comment, but
+  // no-restricted-syntax has no such mechanism -- only a disable directive
+  // suppresses it, and it must sit on the line IMMEDIATELY above the code.
   // eslint-disable-next-line no-restricted-syntax
-  const userId = req.user?.id || req.query.user_id || "default"; // safe: admin-only
+  const requestedUserId = req.query.user_id;
+  const callerId = req.user?.id;
+  if (!callerId) return res.status(401).json({ ok: false, error: "unauthorized" });
+  let userId = callerId;
+  if (requestedUserId && requestedUserId !== callerId) {
+    const role = String(req.user?.role || "");
+    if (!["owner", "admin", "sovereign", "founder"].includes(role)) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
+    userId = requestedUserId;
+  }
   const wallet = STATE.economic?.wallets?.get(userId);
   res.json({ ok: true, balance: wallet?.balance || 0, tier: wallet?.tier || "free" });
 });
@@ -58825,9 +59836,11 @@ app.get("/api/social/following/:userId", (req, res) => {
 });
 
 app.get("/api/social/feed", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  try { res.json(getFeed(STATE, req.user?.id || req.query.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: public-filter
+  // Audit fix 2026-07-27: matches /api/social/bookmarks above — getFeed()
+  // builds from the caller's private follow-graph, so a spoofed userId
+  // leaks who that user follows. Neither frontend call site
+  // (lib/api/client.ts, lib/api/helpers-extended.ts) ever passes one.
+  try { res.json(getFeed(STATE, req.user?.id || "anon", { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/social/trending", (req, res) => {
@@ -58835,11 +59848,20 @@ app.get("/api/social/trending", (req, res) => {
 });
 
 // Social analytics + trending extensions
-app.get("/api/social/analytics/creator", (req, res) => {
+app.get("/api/social/analytics/creator", requireAuth(), (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Security audit 2026-07-30: matches the fix already applied to
+    // /api/social/feed/bookmarks above — this used to accept a
+    // client-supplied req.query.userId fallback with a false "safe:
+    // public-filter" claim, but dtusArray() returns EVERY DTU regardless
+    // of visibility, so this leaked a target user's total DTU count
+    // (private included) and summed views/votes. Confirmed live: an
+    // anonymous caller with ?userId=<any-user-id> got a 200 with real
+    // data. Every real frontend call site (CreatorAnalytics.tsx,
+    // app/lenses/{analytics,social}/page.tsx, app/profile/page.tsx) only
+    // ever passes the CALLER'S OWN id, so this is a pure hardening fix
+    // with zero legitimate-usage impact.
+    const userId = req.user?.id;
     const profile = getProfile(STATE, userId);
     const dtus = dtusArray().filter(d => d.createdBy === userId || d.userId === userId);
     res.json({ ok: true, creator: { userId, totalDTUs: dtus.length, profile, engagement: { views: dtus.reduce((s, d) => s + (d.views || 0), 0), votes: dtus.reduce((s, d) => s + (d.votes || 0), 0) } } });
@@ -58926,12 +59948,15 @@ app.get("/api/social/discover/:userId", (req, res) => {
   try { res.json(discoverUsers(STATE, req.params.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.post("/api/social/publish/:dtuId", (req, res) => {
+// Security audit 2026-07-30: both routes lacked requireAuth() and (below)
+// publishDtu/unpublishDtu never actually checked ownership — any
+// authenticated user could publish/unpublish any other user's DTU.
+app.post("/api/social/publish/:dtuId", requireAuth(), (req, res) => {
   try { res.json(publishDtu(STATE, req.params.dtuId, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.post("/api/social/unpublish/:dtuId", (req, res) => {
-  try { res.json(unpublishDtu(STATE, req.params.dtuId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+app.post("/api/social/unpublish/:dtuId", requireAuth(), (req, res) => {
+  try { res.json(unpublishDtu(STATE, req.params.dtuId, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.post("/api/social/cite", (req, res) => {
@@ -58984,9 +60009,12 @@ app.post("/api/social/react", requireAuth(), (req, res) => {
 
 app.get("/api/social/reactions/:postId", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const currentUserId = req.user?.id || req.query.userId || null; // safe: public-filter
+    // Audit fix 2026-07-27: currentUserId only gates the returned
+    // `userReacted` boolean per reaction type on this (already-public) post
+    // — low severity, but still an unnecessary IDOR (reveals whether a
+    // spoofed userId reacted to a specific post). ReactionBar.tsx never
+    // passes an explicit userId; drop the query fallback.
+    const currentUserId = req.user?.id || null;
     res.json(socialGetReactions(STATE, req.params.postId, currentUserId));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -59042,9 +60070,13 @@ app.post("/api/social/bookmark", requireAuth(), (req, res) => {
 // citation-weighted), empty when no matches — no fake suggestions.
 app.get("/api/social/mention-search", (req, res) => {
   try {
-
-     
-    const viewerId = req.user?.id || req.query.viewerId || "anon";
+    // Audit fix 2026-07-27: searchUsersByPrefix() returns isFollowing/
+    // isFollower booleans per matched profile computed against viewerId —
+    // a spoofed viewerId leaks arbitrary users' follow-graph across many
+    // profiles per query (broader than the single-post reaction leak
+    // above). MentionAutocomplete.tsx (the only real caller) never passes
+    // an explicit viewerId.
+    const viewerId = req.user?.id || "anon";
     const q = String(req.query.q || "");
     const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));
     res.json(socialSearchUsersByPrefix(STATE, q, viewerId, limit));
@@ -59127,9 +60159,16 @@ app.post("/api/push/unregister", requireAuth(), async (req, res) => {
 
 app.get("/api/social/bookmarks", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Audit fix 2026-07-27: this used to fall back to req.query.userId with
+    // a false "safe: public-filter" comment — bookmarks are per-user private
+    // data (which posts someone saved), never a public-viewable list, and
+    // the frontend (BookmarkButton.tsx, BookmarksList.tsx, profile/page.tsx)
+    // never passes an explicit userId — confirming zero legitimate use for
+    // the query-param path. Dropped: any caller could read any user's saved
+    // bookmarks by guessing/spoofing their id. req.user?.id-only still
+    // returns an honest empty list for a logged-out visitor (unchanged
+    // behavior for the one real use case).
+    const userId = req.user?.id || "anon";
     res.json(socialGetUserBookmarks(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -59137,18 +60176,22 @@ app.get("/api/social/bookmarks", (req, res) => {
 // ---- Social Feeds (For-You, Following, Explore) ----
 app.get("/api/social/feed/foryou", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Audit fix 2026-07-27: see /api/social/bookmarks above — same false
+    // "safe: public-filter" pattern. A for-you feed is inherently
+    // self-scoped (personalized recommendations); the frontend
+    // (app/lenses/feed/page.tsx) never passes an explicit userId.
+    const userId = req.user?.id || "anon";
     res.json(getForYouFeed(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/social/feed/following", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Audit fix 2026-07-27: see /api/social/bookmarks above. A following
+    // feed both is self-scoped AND, worse, its selection reveals the
+    // caller's private follow-graph if spoofed to another userId — the
+    // frontend (app/lenses/feed/page.tsx) never passes an explicit userId.
+    const userId = req.user?.id || "anon";
     res.json(getFollowingFeed(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -59205,9 +60248,13 @@ app.post("/api/social/dm/:conversationId/read", requireAuth(), (req, res) => {
 // ---- Social Stories ----
 app.get("/api/social/stories", (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Audit fix 2026-07-27: matches /api/social/feed above — getActiveStories()
+    // filters by the caller's follow-graph, so a spoofed userId leaks who
+    // that user follows. StoriesBar.tsx passes its own logged-in user's id
+    // as `currentUserId`, which is already what req.user?.id resolves to
+    // server-side when actually authenticated — the query param added
+    // nothing but a spoofing vector for a caller hitting the API directly.
+    const userId = req.user?.id || "anon";
     res.json(getActiveStories(STATE, userId));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -59314,13 +60361,30 @@ app.post("/api/collab/workspace", requireAuth(), (req, res) => {
 });
 
 app.get("/api/collab/workspace/:id", (req, res) => {
-  try { res.json(collabGetWorkspace(STATE, req.params.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const result = collabGetWorkspace(STATE, req.params.id);
+    // Audit fix 2026-07-27: getWorkspace() returned full member lists + DTU
+    // ids regardless of `visibility` ("private"/"org"/"public") or caller
+    // identity — any caller who knew/guessed a workspace id could read a
+    // private workspace's roster. Non-public workspaces now require the
+    // caller to be a member; unauthorized/anonymous callers get the same
+    // not_found shape as a genuinely missing workspace (no existence oracle).
+    if (result.ok && result.workspace?.visibility !== "public") {
+      const callerId = req.user?.id;
+      const isMember = !!callerId && result.workspace.members?.some(m => m.userId === callerId);
+      if (!isMember) return res.status(404).json({ ok: false, error: "Workspace not found" });
+    }
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.get("/api/collab/workspaces", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  try { res.json(collabListWorkspaces(STATE, req.user?.id || req.query.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: public-filter
+app.get("/api/collab/workspaces", requireAuth(), (req, res) => {
+  // Audit fix 2026-07-27: listWorkspaces() returns the given user's private
+  // workspace memberships (names, roles, DTU counts) — used to fall back to
+  // a caller-supplied req.query.userId with no ownership check. No frontend
+  // call site (lib/api/client.ts's listWorkspaces()) ever passes one. Now
+  // requires auth and only ever lists the caller's own memberships.
+  try { res.json(collabListWorkspaces(STATE, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.post("/api/collab/workspace/:id/member", (req, res) => {
@@ -59455,8 +60519,24 @@ app.get("/api/analytics/dashboard", (req, res) => {
   try { res.json(getDashboardSummary(STATE)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.get("/api/analytics/personal/:userId", (req, res) => {
-  try { res.json(getPersonalAnalytics(STATE, req.params.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+app.get("/api/analytics/personal/:userId", requireAuth(), (req, res) => {
+  try {
+    // Audit fix 2026-07-27: getPersonalAnalytics() returns the target
+    // user's private/personal-scope DTU titles + marketplace revenue/sales
+    // — real financial + content-privacy data — with no ownership check at
+    // all (not even a query-param spoof; the route param went straight to
+    // the handler). No confirmed frontend call site passes another user's
+    // id. Now requires auth and gates cross-user lookups the same way as
+    // /api/economy/balance.
+    const callerId = req.user?.id;
+    if (req.params.userId !== callerId) {
+      const role = String(req.user?.role || "");
+      if (!["owner", "admin", "sovereign", "founder"].includes(role)) {
+        return res.status(403).json({ ok: false, error: "forbidden" });
+      }
+    }
+    res.json(getPersonalAnalytics(STATE, req.params.userId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/analytics/growth", (req, res) => {
@@ -60648,6 +61728,13 @@ import { getOrphanCount, initGarbageCollectionTimer } from "./lib/artifact-gc.js
 app.get("/api/admin/artifact-gc/orphan-count", requireAuth(), requireOwner, asyncHandler(async (_req, res) => {
   const count = await getOrphanCount(STATE, db);
   res.json({ ok: true, orphanCount: count });
+}));
+
+// Photo GC admin endpoint (storage audit fix, 2026-07-27) — mirrors the
+// artifact-gc endpoint above; see server/lib/photo-gc.js.
+import { getPhotoDiskUsage } from "./lib/photo-gc.js";
+app.get("/api/admin/photo-gc/disk-usage", requireAuth(), requireOwner, asyncHandler(async (_req, res) => {
+  res.json({ ok: true, diskUsageBytes: getPhotoDiskUsage() });
 }));
 
 // ---- Entity Growth, Exploration & Hive APIs ----
@@ -66441,30 +67528,53 @@ function bridgeLog(action, data) {
 }
 
 // --- Pattern A: Organism submits DTU for emergent governance validation ---
+//
+// Concurrency item (c) (Private/High Power Mode plan, 2026-07-27): critic/
+// ethicist/auditor each take ONLY `dtu` as input and never reference each
+// other's output (confirmed by reading TASK_PROMPTS.emergentCritic/
+// emergentEthicist/emergentAuditor in prompt-registry.js — none of the
+// three templates interpolate another role's result), so the three
+// previously-sequential callBrain calls below run concurrently via
+// Promise.all instead. This is NOT the same shape as the CHALLENGER ->
+// ENGINEER -> SYNTHESIZER debate chain a few hundred lines down (in the
+// debate/challenge bridge path) — that chain explicitly threads each
+// stage's output into the next stage's prompt
+// (emergentEngineer's challengerContent, emergentSynthesizer's
+// engineerContent) and MUST stay sequential; do not parallelize it by
+// analogy to this one. Each branch keeps its own independent try/catch
+// (a repair-brain hiccup on the critic call must not affect the ethicist
+// or auditor call, and vice versa) and the final array order stays
+// [critic, ethicist, auditor] — unchanged from the prior sequential
+// version — since Promise.all preserves input-array order regardless of
+// resolution order.
 async function validateOrganismDTU(dtu, submitterId) {
-  const validations = [];
   const ctx = typeof _governorCtx === "function" ? _governorCtx() : {};
 
-  // Critic: Is this falsifiable?
-  try {
-    const criticResult = await callBrain("repair", TASK_PROMPTS.emergentCritic({ dtu }), { temperature: 0.3, maxTokens: 200 });
-    const parsed = safeJSONParse(criticResult?.content || "{}");
-    validations.push({ role: "critic", pass: parsed.pass !== false, reason: parsed.reason || criticResult?.content?.slice(0, 200) || "evaluated" });
-  } catch (e) { validations.push({ role: "critic", pass: true, reason: "Evaluation unavailable, defaulting to pass" }); }
+  const runCritic = async () => {
+    try {
+      const criticResult = await callBrain("repair", TASK_PROMPTS.emergentCritic({ dtu }), { temperature: 0.3, maxTokens: 200 });
+      const parsed = safeJSONParse(criticResult?.content || "{}");
+      return { role: "critic", pass: parsed.pass !== false, reason: parsed.reason || criticResult?.content?.slice(0, 200) || "evaluated" };
+    } catch (e) { return { role: "critic", pass: true, reason: "Evaluation unavailable, defaulting to pass" }; }
+  };
 
-  // Ethicist: Constitutional principles check
-  try {
-    const ethicistResult = await callBrain("repair", TASK_PROMPTS.emergentEthicist({ dtu }), { temperature: 0.3, maxTokens: 200 });
-    const parsed = safeJSONParse(ethicistResult?.content || "{}");
-    validations.push({ role: "ethicist", pass: parsed.pass !== false, reason: parsed.reason || ethicistResult?.content?.slice(0, 200) || "evaluated" });
-  } catch (e) { validations.push({ role: "ethicist", pass: true, reason: "Evaluation unavailable, defaulting to pass" }); }
+  const runEthicist = async () => {
+    try {
+      const ethicistResult = await callBrain("repair", TASK_PROMPTS.emergentEthicist({ dtu }), { temperature: 0.3, maxTokens: 200 });
+      const parsed = safeJSONParse(ethicistResult?.content || "{}");
+      return { role: "ethicist", pass: parsed.pass !== false, reason: parsed.reason || ethicistResult?.content?.slice(0, 200) || "evaluated" };
+    } catch (e) { return { role: "ethicist", pass: true, reason: "Evaluation unavailable, defaulting to pass" }; }
+  };
 
-  // Auditor: Provenance check
-  try {
-    const auditorResult = await callBrain("utility", TASK_PROMPTS.emergentAuditor({ dtu }), { temperature: 0.3, maxTokens: 200 });
-    const parsed = safeJSONParse(auditorResult?.content || "{}");
-    validations.push({ role: "auditor", pass: parsed.pass !== false, reason: parsed.reason || auditorResult?.content?.slice(0, 200) || "evaluated" });
-  } catch (e) { validations.push({ role: "auditor", pass: true, reason: "Evaluation unavailable, defaulting to pass" }); }
+  const runAuditor = async () => {
+    try {
+      const auditorResult = await callBrain("utility", TASK_PROMPTS.emergentAuditor({ dtu }), { temperature: 0.3, maxTokens: 200 });
+      const parsed = safeJSONParse(auditorResult?.content || "{}");
+      return { role: "auditor", pass: parsed.pass !== false, reason: parsed.reason || auditorResult?.content?.slice(0, 200) || "evaluated" };
+    } catch (e) { return { role: "auditor", pass: true, reason: "Evaluation unavailable, defaulting to pass" }; }
+  };
+
+  const validations = await Promise.all([runCritic(), runEthicist(), runAuditor()]);
 
   const allPassed = validations.every(v => v.pass);
   const result = {
@@ -68077,7 +69187,7 @@ registerShutdownCallback(() => {
   if (typeof heartbeatTimer !== "undefined" && heartbeatTimer) clearInterval(heartbeatTimer);
   if (typeof weeklyTimer !== "undefined" && weeklyTimer) clearInterval(weeklyTimer);
   if (typeof globalTickTimer !== "undefined" && globalTickTimer) clearInterval(globalTickTimer);
-  clearInterval(_periodicSaveTimer);
+  if (_criticalCatchupTimer) clearTimeout(_criticalCatchupTimer);
   stopAllIntervals();
   stopSync();
   _memoryWatchdog.stop();
@@ -79010,7 +80120,7 @@ app.get("/api/search", (req, res) => {
 const _BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const _BACKUP_RETENTION_DAYS = 7;
 
-function runBackup() {
+async function runBackup() {
   try {
     const timestamp = new Date().toISOString().split("T")[0];
     const backupDir = `${BACKUP_DIR}/${timestamp}`;
@@ -79018,10 +80128,17 @@ function runBackup() {
     try { if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
     try { if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
-    // Backup main state
+    // Backup main state.
+    //
+    // Chunked + async: this is the same ~19MB payload the debounced saver
+    // writes, and as one atomic stringify it was measured at 185-317ms of
+    // uninterrupted event-loop block — after the debounced path was chunked,
+    // THIS became the worst single blocking site in the process. Same
+    // treatment: yield between top-level keys (longest block becomes the
+    // largest single key, ~9.9MB) and write without blocking.
     try {
-      const stateData = JSON.stringify(_serializeState());
-      fs.writeFileSync(`${backupDir}/state.json`, stateData);
+      const stateData = await stringifyChunked(_serializeState());
+      await fs.promises.writeFile(`${backupDir}/state.json`, stateData);
     } catch (e) { console.error("[Backup] State backup failed:", String(e?.message || e)); }
 
     // Backup council queue
@@ -79031,14 +80148,40 @@ function runBackup() {
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
     // Backup SQLite DB if exists — gzip compressed to avoid ballooning pod storage
+    // 🔴 This backed up NOTHING for its entire existence. The path was
+    // hardcoded to "/data/db/concord.db" — a Docker-shaped location that does
+    // not exist on the bare-metal deploy, where the database lives at
+    // DB_PATH (`process.env.DB_PATH || <DATA_DIR>/concord.db`). So
+    // `existsSync` returned false every run, the block was skipped, and the
+    // only trace was a DEBUG-level "silent catch" that never fired because
+    // nothing threw. The daily backup reported `ok: true` while the actual
+    // database — the ledger of record for money, DTUs and auth — was never
+    // captured. Same silently-disarmed shape as the Trivy gate that scanned
+    // nothing and the state saver whose GC call no-oped.
+    //
+    // Now uses the real DB_PATH, compresses off-thread (zlib's async form
+    // runs on the libuv threadpool, where the sync form blocked the event
+    // loop for the whole gzip of a 33MB+ file), and reports a MISSING
+    // database at warn level instead of vanishing.
     try {
-      const dbPath = "/data/db/concord.db";
-      if (fs.existsSync(dbPath)) {
-        const raw = fs.readFileSync(dbPath);
-        const compressed = zlib.gzipSync(raw, { level: 6 });
-        fs.writeFileSync(`${backupDir}/concord.db.gz`, compressed);
+      if (fs.existsSync(DB_PATH)) {
+        const raw = await fs.promises.readFile(DB_PATH);
+        const compressed = await new Promise((resolve, reject) => {
+          zlib.gzip(raw, { level: 6 }, (err, buf) => (err ? reject(err) : resolve(buf)));
+        });
+        await fs.promises.writeFile(`${backupDir}/concord.db.gz`, compressed);
+        structuredLog("info", "backup_db_captured", {
+          source: DB_PATH, bytes: raw.length, compressedBytes: compressed.length,
+        });
+      } else {
+        structuredLog("warn", "backup_db_missing", {
+          expectedAt: DB_PATH,
+          note: "database not backed up — verify DB_PATH",
+        });
       }
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    } catch (e) {
+      structuredLog("error", "backup_db_failed", { error: String(e?.message || e), source: DB_PATH });
+    }
 
     // Clean old backups (keep BACKUP_RETENTION_DAYS)
     try {
@@ -79059,8 +80202,18 @@ function runBackup() {
 }
 
 // Run backup on startup (delayed) and periodically
-_unrefInTest(setTimeout(() => { try { runBackup(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }, 60000)); // 1 min after start
-_unrefInTest(setInterval(() => { try { runBackup(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }, _BACKUP_INTERVAL_MS));
+// `.catch` rather than try/catch: runBackup is async now, so a rejection is
+// NOT caught by a synchronous try block around the call — it would surface as
+// an unhandled rejection instead. runBackup already returns `{ok:false}` on
+// internal failure, so this only guards against an unexpected throw.
+const _backupTick = () => {
+  try {
+    Promise.resolve(runBackup()).catch((e) =>
+      structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
+  } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+};
+_unrefInTest(setTimeout(_backupTick, 60000)); // 1 min after start
+_unrefInTest(setInterval(_backupTick, _BACKUP_INTERVAL_MS));
 
 register("admin", "backup", (ctx, _input = {}) => {
   const denied = requireAdminRole(ctx); if (denied) return denied;
@@ -81999,6 +83152,12 @@ export const __TEST__ = Object.freeze({
   // Phase D endpoint-routing wiring test surface (brain-endpoint-wiring.test.js)
   callBrain,
   BRAIN,
+  // Governance-cluster concurrency test surface (Private/High Power Mode
+  // plan, concurrency item (c), 2026-07-27) — lets a test call the
+  // critic/ethicist/auditor Promise.all directly (and via the real
+  // POST /api/bridge/submit route) to prove genuine concurrent dispatch,
+  // not just that the refactored code parses.
+  validateOrganismDTU,
   // Money-hygiene atomicity test surface (verification-audit campaign —
   // tests/economy/credit-debit-wallet-atomicity.test.js)
   creditWallet,

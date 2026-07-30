@@ -13,6 +13,7 @@ import { getDB, isOnline } from '@/lib/offline/db';
 import { downloadArtifact, isCloudConnected } from '@/lib/offline/cloud-bridge';
 import type { ExternalRef } from '@/lib/offline/cloud-bridge';
 import { touchDTU } from '@/lib/offline/storage-manager';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 // ── Types ─────────────────────────────────────────────────
 
@@ -287,37 +288,33 @@ export function useSyncStatus() {
   const [pending, setPending] = useState(0);
   const [online, setOnline] = useState(isOnline());
 
-  useEffect(() => {
-    // Check pending actions count
-    const check = async () => {
-      try {
-        const db = getDB();
-        const count = await db.pendingActions.filter(a => !a.quarantined).count();
-        setPending(count);
-      } catch {
-        // IDB not available
-      }
-    };
-
-    check();
-    const interval = setInterval(check, 5000);
-
-    const cleanup = (() => {
-      const onOnline = () => { setOnline(true); check(); };
-      const onOffline = () => setOnline(false);
-      window.addEventListener('online', onOnline);
-      window.addEventListener('offline', onOffline);
-      return () => {
-        window.removeEventListener('online', onOnline);
-        window.removeEventListener('offline', onOffline);
-      };
-    })();
-
-    return () => {
-      clearInterval(interval);
-      cleanup();
-    };
+  // Check pending actions count. This mounts globally (SyncIndicator, part
+  // of AppShell) on every page for every user — audit fix 2026-07-27:
+  // useSmartPolling pauses this while the tab is hidden instead of running
+  // an IndexedDB query every 5s forever in the background, and jitters it
+  // against the many other components sharing common poll intervals.
+  const check = useCallback(async () => {
+    try {
+      const db = getDB();
+      const count = await db.pendingActions.filter(a => !a.quarantined).count();
+      setPending(count);
+    } catch {
+      // IDB not available
+    }
   }, []);
+
+  useSmartPolling(check, 5000);
+
+  useEffect(() => {
+    const onOnline = () => { setOnline(true); check(); };
+    const onOffline = () => setOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [check]);
 
   return { pending, online, syncing: false };
 }

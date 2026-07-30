@@ -42,10 +42,28 @@ import { readSafe, makeReport, makeError, relPath } from "./_framework.js";
 import { stripComments } from "./command-injection-detector.js";
 
 const DEFAULT_EXPORT_RE = /export\s+default\s+(?:async\s+)?function\s*(\w*)|export\s+default\s+(\w+)\s*;/;
+
+// A default import may carry a companion clause before `from`:
+//   import vault from './vault.js';                          // bare
+//   import vault, { setAdmissionProtectionHandler } from ...  // + named
+//   import vault, * as ns from './vault.js';                  // + namespace
+// Requiring the bare form made this detector report a LIVE, wired domain as
+// unreachable dead code: `domains/index.js:209` imports `vault` exactly the
+// second way, and `:508` includes it in the `export default [...]` array that
+// `server.js:45270` drains via `domainModules.forEach(mod => mod(...))`. The
+// finding's own message ("imported by NEITHER server.js NOR domains/index.js")
+// was therefore false on both halves. Same failure mode as the `_tickRssDomain`
+// lesson in CLAUDE.md §1 — a syntactic variation defeats a literal scan — so
+// the companion clause is now optional rather than forbidden.
+// NB: the trailing `\s+from` is deliberately still MANDATORY whitespace, as it
+// was before. Relaxing it to `\s*` would let a malformed `import xfrom "..."`
+// match by splitting the identifier — a correctness fix must not smuggle in a
+// loosening that makes the detector easier to satisfy.
+const DEFAULT_BINDING = String.raw`([A-Za-z_$][\w$]*)(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+[A-Za-z_$][\w$]*))?`;
 const IMPORT_FROM_DOMAINS_RE = (stem) =>
-  new RegExp(String.raw`import\s+([A-Za-z_$][\w$]*)\s+from\s+["'\`]\.\/domains\/${stem}\.js["'\`]`);
+  new RegExp(String.raw`import\s+${DEFAULT_BINDING}\s+from\s+["'\`]\.\/domains\/${stem}\.js["'\`]`);
 const IMPORT_FROM_DOT_RE = (stem) =>
-  new RegExp(String.raw`import\s+([A-Za-z_$][\w$]*)\s+from\s+["'\`]\.\/${stem}\.js["'\`]`);
+  new RegExp(String.raw`import\s+${DEFAULT_BINDING}\s+from\s+["'\`]\.\/${stem}\.js["'\`]`);
 
 function escapeStem(stem) {
   return stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

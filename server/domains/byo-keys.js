@@ -22,6 +22,7 @@ import {
 import { BYO_PROVIDERS } from "../lib/byo-providers.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { setRateLimit, getRateLimitStatus, ensureByoKeysLensState } from "../lib/byo-rate-limit.js";
+import { isHighPowerModeAllowed } from "../lib/high-power-allowlist.js";
 
 const VALID_SLOTS = new Set(["conscious", "subconscious", "utility", "repair", "vision"]);
 
@@ -557,6 +558,70 @@ export default function registerByoKeysMacros(register) {
     orgs.sort((a, b) => b.createdAt - a.createdAt);
     return { ok: true, result: { orgs } };
   }, { note: "List every org key group the caller is a member of, with the caller's role." });
+
+  // ── Private Mode / High Power Mode ──────────────────────────────
+  //
+  // These two macros are thin reads/writes on users.brain_mode
+  // (migration 397) — the account-wide guarantee every LLM dispatch
+  // chokepoint gates on via server/lib/byo-router.js#getBrainMode.
+  // The onboarding flow (ChooseYourBrain.tsx) hits the dedicated
+  // POST /api/auth/choose-brain-mode REST route instead of these
+  // macros; BrainModePanel.tsx (Settings, this lens) uses these
+  // instead, reusing the lens's existing authenticated /api/lens/run
+  // path rather than adding a second REST route for the same write.
+  // Both paths write the exact same column with the exact same
+  // semantics — there is only one brain_mode per account, read by one
+  // helper, regardless of which surface changed it last.
+  register("byo_keys", "get_brain_mode", async (ctx) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db || !userId) return { ok: false, reason: "no_actor" };
+    let brainMode = "private";
+    let brainModeSetAt = null;
+    try {
+      const row = db.prepare("SELECT brain_mode, brain_mode_set_at FROM users WHERE id = ?").get(userId);
+      if (row) {
+        brainMode = row.brain_mode === "high_power" ? "high_power" : "private";
+        brainModeSetAt = row.brain_mode_set_at || null;
+      }
+    } catch { /* migration 397 not applied — fail closed to 'private' */ }
+    // Rollout gate (CONCORD_HIGH_POWER_ALLOWLIST) — independent of
+    // brain_mode. BrainModePanel.tsx uses this to decide whether to show
+    // the High Power option at all; Private is never gated by it.
+    return { ok: true, result: { brainMode, brainModeSetAt, highPowerAllowed: isHighPowerModeAllowed(userId) } };
+  }, { note: "Read the caller's account-wide brain_mode ('private'|'high_power') and rollout-gate visibility." });
+
+  register("byo_keys", "set_brain_mode", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db || !userId) return { ok: false, reason: "no_actor" };
+    const { brainMode } = input;
+    if (brainMode !== "private" && brainMode !== "high_power") {
+      return { ok: false, reason: "invalid_brain_mode", allowed: ["private", "high_power"] };
+    }
+    // Re-checked HERE, server-side — not just hidden in BrainModePanel's
+    // UI — so a caller that skips the visibility check can't bypass it
+    // via a direct macro call.
+    if (brainMode === "high_power" && !isHighPowerModeAllowed(userId)) {
+      return { ok: false, reason: "high_power_not_available" };
+    }
+    try {
+      try {
+        const cols = db.prepare("PRAGMA table_info(users)").all();
+        if (!cols.some((c) => c.name === "brain_mode")) {
+          db.exec(`ALTER TABLE users ADD COLUMN brain_mode TEXT NOT NULL DEFAULT 'private' CHECK (brain_mode IN ('private','high_power'))`);
+        }
+        if (!cols.some((c) => c.name === "brain_mode_set_at")) {
+          db.exec(`ALTER TABLE users ADD COLUMN brain_mode_set_at INTEGER`);
+        }
+      } catch { /* best-effort */ }
+      const now = Math.floor(Date.now() / 1000);
+      db.prepare(`UPDATE users SET brain_mode = ?, brain_mode_set_at = ? WHERE id = ?`).run(brainMode, now, userId);
+      return { ok: true, result: { brainMode, brainModeSetAt: now } };
+    } catch (e) {
+      return { ok: false, reason: "write_failed", error: String(e?.message || e) };
+    }
+  }, { note: "Set the caller's account-wide brain_mode. Private overrides any BYO/platform routing everywhere." });
 }
 
 // ── Spend alerts (Wave 4 gap-closure, docs/lens-specs/byo-keys-

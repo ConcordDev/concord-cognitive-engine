@@ -57,55 +57,80 @@ TOKEN MODE — what to do in Cloudflare's dashboard first:
   3. Pick "Cloudflared" connector
   4. Name it (e.g. "concord-runpod"), Save
   5. On the next screen, copy the LONG token string (starts with "ey...")
-     — that's your CF_TUNNEL_TOKEN.
-  6. Click "Next", then on the "Public Hostnames" tab add a route:
-       Subdomain: concord
-       Domain:    <your-domain>.com
-       Service:   HTTP   http://concord-backend:5050
-     Add a second route for socket.io if your client uses real-time:
-       Subdomain: concord
-       Domain:    <your-domain>.com
+     — that's your CLOUDFLARE_TUNNEL_TOKEN.
+  6. Click "Next", then on the "Public Hostnames" tab add THREE routes,
+     in this order (path rules first — Cloudflare matches top-down).
+     Use 127.0.0.1 targets on bare metal / pm2 (the A40 path); on
+     docker-compose use service names (backend:5050 / frontend:3000).
+
+     a) socket.io realtime — straight to the BACKEND (WebSocket
+        upgrades do not survive the frontend's rewrites):
+       Subdomain: concord    Domain: <your-domain>.com
        Path:      /socket.io/.*
-       Service:   HTTP   http://concord-backend:5050
+       Service:   HTTP   http://127.0.0.1:5050
+     b) Godot client gateway — also straight to the backend:
+       Subdomain: concord    Domain: <your-domain>.com
+       Path:      /godot-ws.*
+       Service:   HTTP   http://127.0.0.1:5050
+     c) API + health — straight to the backend (keeps backend traffic
+        at ONE proxy hop so per-IP rate limiting sees real client IPs):
+       Subdomain: concord    Domain: <your-domain>.com
+       Path:      /api/.*
+       Service:   HTTP   http://127.0.0.1:5050
+     d) Everything else — the Next.js FRONTEND:
+       Subdomain: concord    Domain: <your-domain>.com
+       Service:   HTTP   http://127.0.0.1:3000
   7. Save.
 
 STEPS
 
-  read -r -p "Paste your CF_TUNNEL_TOKEN: " CF_TOKEN
+  read -r -p "Paste your CLOUDFLARE_TUNNEL_TOKEN: " CF_TOKEN
   if [ -z "$CF_TOKEN" ]; then
     err "Token cannot be empty"
     exit 1
   fi
 
-  # Append (or replace) CF_TUNNEL_TOKEN in .env
+  # Append (or replace) CLOUDFLARE_TUNNEL_TOKEN in .env.
+  # NOTE: the var name is CLOUDFLARE_TUNNEL_TOKEN — that is what
+  # startup.sh and ecosystem.config.cjs read. (This script previously
+  # wrote CF_TUNNEL_TOKEN, which nothing consumed — the tunnel then
+  # silently never started. Migrate any old CF_TUNNEL_TOKEN line.)
   if [ -f "$ENV_FILE" ] && grep -q "^CF_TUNNEL_TOKEN=" "$ENV_FILE"; then
-    # Replace existing line
-    sed -i.bak "s|^CF_TUNNEL_TOKEN=.*|CF_TUNNEL_TOKEN=${CF_TOKEN}|" "$ENV_FILE"
+    sed -i.bak "s|^CF_TUNNEL_TOKEN=.*|CLOUDFLARE_TUNNEL_TOKEN=${CF_TOKEN}|" "$ENV_FILE"
     rm -f "${ENV_FILE}.bak"
-    ok "Updated CF_TUNNEL_TOKEN in $ENV_FILE"
+    ok "Migrated legacy CF_TUNNEL_TOKEN → CLOUDFLARE_TUNNEL_TOKEN in $ENV_FILE"
+  elif [ -f "$ENV_FILE" ] && grep -q "^CLOUDFLARE_TUNNEL_TOKEN=" "$ENV_FILE"; then
+    sed -i.bak "s|^CLOUDFLARE_TUNNEL_TOKEN=.*|CLOUDFLARE_TUNNEL_TOKEN=${CF_TOKEN}|" "$ENV_FILE"
+    rm -f "${ENV_FILE}.bak"
+    ok "Updated CLOUDFLARE_TUNNEL_TOKEN in $ENV_FILE"
   else
     {
       echo ""
       echo "# Cloudflare Tunnel (added by setup-tunnel.sh)"
-      echo "CF_TUNNEL_TOKEN=${CF_TOKEN}"
+      echo "CLOUDFLARE_TUNNEL_TOKEN=${CF_TOKEN}"
     } >> "$ENV_FILE"
-    ok "Appended CF_TUNNEL_TOKEN to $ENV_FILE"
+    ok "Appended CLOUDFLARE_TUNNEL_TOKEN to $ENV_FILE"
   fi
 
   echo ""
   ok "Token mode configured."
   cat <<'NEXT'
 
-Now run:
+Now start (or restart) Concord:
 
-  docker compose \
-    -f docker-compose.yml \
-    -f infra/cloudflare/docker-compose.cloudflared.yml \
-    up -d
+  BARE METAL (pm2 / the A40 path):
+    ./startup.sh --cloudflare
+  (startup.sh reads CLOUDFLARE_TUNNEL_TOKEN from .env and supervises
+   cloudflared under pm2 as "concord-tunnel". Also set
+   TUNNEL_PUBLIC_URL=https://concord.<your-domain>.com in .env so the
+   frontend build bakes the right public URL.)
 
-Verify the tunnel:
-
-  docker logs -f concord-cloudflared
+  DOCKER COMPOSE:
+    docker compose \
+      -f docker-compose.yml \
+      -f infra/cloudflare/docker-compose.cloudflared.yml \
+      up -d
+    docker logs -f concord-cloudflared
 
 You should see "Registered tunnel connection" within ~5 seconds.
 Then visit https://concord.<your-domain>.com — it should show your

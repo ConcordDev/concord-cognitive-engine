@@ -14,7 +14,20 @@
 #     for an off-box copy (S3/R2 via rclone or aws) to close that last gap.
 #
 # Resolution order for the source DB:
-#   DB_PATH env  →  $DATA_DIR/db/concord.db  →  $DATA_DIR/concord.db
+#   DB_PATH env  →  $DATA_DIR/concord.db  →  $DATA_DIR/db/concord.db (legacy)
+#
+# The $DATA_DIR/db/ layout IS real for docker-compose (docker-compose.yml
+# sets DB_PATH=/data/db/concord.db explicitly for both services) — so
+# Docker always hits the first branch (DB_PATH env) regardless of ordering
+# below. Bare metal (server.js) has NEVER had a db/ subdir: its own
+# resolution is DB_PATH env, else path.join(DATA_DIR, "concord.db") — no
+# db/ layer, ever. Checking the direct path BEFORE the legacy one (audit
+# 2026-07-27, was reversed) matters specifically for bare metal with
+# DB_PATH unset: the old order meant any stray file ever left at the
+# decoy $DATA_DIR/db/ path (e.g. a box that once ran the docker-compose
+# branch before switching to bare metal) got silently backed up INSTEAD
+# of the real live DB — passing its own integrity check and reporting
+# success on the wrong file.
 # Resolution order for the backup dir:
 #   $1 arg  →  CONCORD_BACKUP_DIR env  →  $DATA_DIR/backups
 #
@@ -33,8 +46,11 @@ DATA_DIR="${DATA_DIR:-$PROJECT_ROOT/data}"
 # --- Resolve the live DB path (respect the real DB_PATH the server uses) ---
 if [ -n "${DB_PATH:-}" ]; then
   SRC_DB="$DB_PATH"
+elif [ -f "$DATA_DIR/concord.db" ]; then
+  SRC_DB="$DATA_DIR/concord.db"                    # the REAL server default (server.js)
 elif [ -f "$DATA_DIR/db/concord.db" ]; then
-  SRC_DB="$DATA_DIR/db/concord.db"
+  SRC_DB="$DATA_DIR/db/concord.db"                  # legacy fallback only — see comment above
+  echo "WARNING: backing up legacy path $SRC_DB — the server has never written here by default. Set DB_PATH explicitly to remove this ambiguity." >&2
 else
   SRC_DB="$DATA_DIR/concord.db"
 fi

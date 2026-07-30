@@ -27,6 +27,34 @@ try {
   // Will be handled below
 }
 
+// List migration files with their NUMERIC version, correctly ordered.
+//
+// FIXED (audit 2026-07-27) — this used to be `^\d{3}_.*\.js$` + `.sort()` +
+// `parseInt(file.slice(0, 3), 10)` at both call sites. That combination
+// silently breaks once migration numbers pass 3 digits (this tree is at
+// 396, 4 migrations of headroom at the time of this fix):
+//   - The regex still MATCHES a 4-digit file (`\d{3}` consumes the first 3
+//     digits, `.*` consumes the rest) — so it isn't excluded, it's just
+//     mis-parsed.
+//   - `file.slice(0, 3)` on "1000_foo.js" yields "100", not 1000.
+//   - `parseInt("100") <= currentVersion` (396) is true, so migration 1000
+//     is SILENTLY SKIPPED — no error, no warning, it just never runs.
+//   - `.sort()` is lexicographic on the filename STRING, so "1000_foo.js"
+//     also sorts BEFORE "397_bar.js" — ordering breaks before the skip
+//     even matters.
+// Fixed with a variable-width capture + a stable numeric sort, so this is
+// correct for any future migration count, not just the next 4.
+function listMigrationFiles() {
+  return fs
+    .readdirSync(MIGRATIONS_DIR)
+    .map((f) => {
+      const m = f.match(/^(\d+)_.*\.js$/);
+      return m ? { file: f, version: parseInt(m[1], 10) } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.version - b.version);
+}
+
 /**
  * Run all pending migrations against the given database instance.
  * If no db is provided, opens the default database.
@@ -63,16 +91,13 @@ export async function runMigrations(existingDb = null) {
     const row = db.prepare("SELECT MAX(version) as v FROM schema_version").get();
     const currentVersion = row?.v || 0;
 
-    // Read migration files (format: 001_name.js)
-    const migrationFiles = fs
-      .readdirSync(MIGRATIONS_DIR)
-      .filter((f) => f.match(/^\d{3}_.*\.js$/))
-      .sort();
+    // Read migration files (format: 001_name.js — see listMigrationFiles
+    // for why this must NOT be a fixed-3-digit regex + lexicographic sort).
+    const migrationFiles = listMigrationFiles();
 
     let appliedCount = 0;
 
-    for (const file of migrationFiles) {
-      const version = parseInt(file.slice(0, 3), 10);
+    for (const { file, version } of migrationFiles) {
       if (version <= currentVersion) continue;
 
       const migrationPath = path.join(MIGRATIONS_DIR, file);
@@ -89,7 +114,7 @@ export async function runMigrations(existingDb = null) {
         migration.up(db);
         db.prepare(
           "INSERT INTO schema_version (version, name) VALUES (?, ?)"
-        ).run(version, file.replace(/^\d{3}_/, "").replace(/\.js$/, ""));
+        ).run(version, file.replace(/^\d+_/, "").replace(/\.js$/, ""));
       });
       tx();
 
@@ -178,19 +203,16 @@ export async function rollbackMigrations(targetVersion = null, existingDb = null
       .prepare("SELECT version, name FROM schema_version WHERE version > ? ORDER BY version DESC")
       .all(target);
 
-    // Read migration files for down() functions
-    const migrationFiles = fs
-      .readdirSync(MIGRATIONS_DIR)
-      .filter((f) => f.match(/^\d{3}_.*\.js$/))
-      .sort();
+    // Read migration files for down() functions (see listMigrationFiles for
+    // why this must NOT be a fixed-3-digit regex + slice(0,3)/parseInt).
+    const migrationFiles = listMigrationFiles();
 
     let rolledBack = 0;
 
     // @sql-loop-ok: migration runner — boot-time only, iterates fixed migration-files list
     for (const migration of applied) {
-      const file = migrationFiles.find(
-        (f) => parseInt(f.slice(0, 3), 10) === migration.version
-      );
+      const found = migrationFiles.find((mf) => mf.version === migration.version);
+      const file = found?.file;
 
       if (!file) {
         console.warn(`[Migrate] Migration file for version ${migration.version} not found. Skipping.`);

@@ -175,10 +175,17 @@ export default function registerChatRoutes(app, {
   }));
 
   // GET /api/chat/conversations — list chat sessions for thread view
-  app.get("/api/chat/conversations", (req, res) => {
+  // Scoped to the caller's own sessions only (security audit 2026-07-30):
+  // this used to dump every session on the server with no ownership
+  // filter — an anonymous caller could read any user's chat titles/
+  // summaries/last-message text. assertSessionAccessible's legacy-session
+  // fallback (no ownerId = permissive) still applies for pre-ownership
+  // sessions, matching every other gated session read in this file.
+  app.get("/api/chat/conversations", auth, (req, res) => {
     try {
       const limit = Math.min(Number(req.query.limit) || 50, 200);
       const conversations = Array.from(STATE.sessions?.entries?.() || [])
+        .filter(([, sess]) => assertSessionAccessible(sess, req.user?.id))
         .map(([id, sess]) => {
           const msgs = sess.messages || [];
           const lastMsg = msgs[msgs.length - 1];
@@ -321,6 +328,13 @@ export default function registerChatRoutes(app, {
     try {
       const sessionId = String(req.query.sessionId || "default");
       const lens = String(req.query.lens || "chat");
+      // Security audit 2026-07-30: this returned another user's assembled
+      // working-set context for any supplied sessionId with no ownership
+      // check at all — same owner/participant gate as /api/session/optin.
+      const sess = STATE.sessions?.get?.(sessionId);
+      if (sess && !assertSessionAccessible(sess, req.user?.id)) {
+        return res.status(403).json({ ok: false, error: "session_forbidden" });
+      }
       const out = await runMacro("chat", "context", { sessionId, lens }, makeCtx(req));
       return res.json(out);
     } catch (e) {
@@ -342,6 +356,12 @@ export default function registerChatRoutes(app, {
   app.get("/api/chat/summary/:sessionId", asyncHandler(async (req, res) => {
     try {
       const sessionId = String(req.params.sessionId || "default");
+      // Security audit 2026-07-30: same missing-ownership-check bug as
+      // /api/chat/context above.
+      const sess = STATE.sessions?.get?.(sessionId);
+      if (sess && !assertSessionAccessible(sess, req.user?.id)) {
+        return res.status(403).json({ ok: false, error: "session_forbidden" });
+      }
       const out = await runMacro("chat", "summary", { sessionId }, makeCtx(req));
       return res.json(out);
     } catch (e) {

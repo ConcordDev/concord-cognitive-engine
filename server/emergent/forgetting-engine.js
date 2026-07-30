@@ -205,19 +205,17 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
 
   try {
     const STATE = getSTATE();
-    // ⚠️ HONEST NOTE — this guard makes the forgetting cycle INERT AT RUNTIME.
-    // At boot, server.js (~:11457) replaces STATE.dtus with the write-through
-    // store returned by `createDTUStore()`, which is a PLAIN OBJECT, not a Map
-    // (verified by running it: `store instanceof Map === false`). So on the
-    // live server this early-returns every time and nothing is ever forgotten.
-    // Only tests, which install a real `Map`, reach the body below.
-    //
-    // Deliberately NOT "fixed" here: relaxing this guard would immediately
-    // start tombstoning DTUs platform-wide, which is a separate,
-    // human-authorized decision — not a side effect of a protection unit.
-    // Recorded so the next reader doesn't mistake "protection works" for
-    // "the cycle runs".
-    if (!STATE?.dtus || !(STATE.dtus instanceof Map)) {
+    // Duck-type, not `instanceof Map`: STATE.dtus is a write-through store
+    // object (server.js createDTUStore) once wired, not a literal Map — this
+    // guard used to make the forgetting cycle silently inert at runtime
+    // (only tests, which install a real Map, ever reached the body below).
+    // Activating this cycle for real — i.e. fixing this guard — was an
+    // explicit, separate, owner-authorized decision (not a side effect of a
+    // mechanical type-check fix): the retention scoring, hard protections
+    // (axioms/mega/sovereign/constitutional/breakthrough/pain/repair/
+    // highly-cited/pinned), 3-cycle grace window, and 50-per-cycle rate cap
+    // above are the real safety rails this now runs under.
+    if (!STATE?.dtus || typeof STATE.dtus.get !== "function") {
       return { ok: false, error: "STATE not available" };
     }
 
@@ -465,10 +463,8 @@ export function reviewDtu(db, dtuId, now = Date.now()) {
 export async function runReviewSchedulingPass(db, opts = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const STATE = getSTATE();
-  // Same inertness caveat as runForgettingCycle's guard above: the live
-  // STATE.dtus is the write-through store object (not a Map), so this pass
-  // early-returns on the running server and only executes under tests.
-  if (!STATE?.dtus || !(STATE.dtus instanceof Map)) return { ok: false, reason: "state_not_available" };
+  // Duck-type, matching runForgettingCycle's guard fix above.
+  if (!STATE?.dtus || typeof STATE.dtus.get !== "function") return { ok: false, reason: "state_not_available" };
 
   const now = opts.now ?? Date.now();
 

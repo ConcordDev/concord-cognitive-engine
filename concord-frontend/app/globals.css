@@ -120,7 +120,14 @@
 
 @layer base {
   body {
-    @apply bg-lattice-void text-white antialiased;
+    /* FIXED (audit 2026-07-27): was `text-white` — a hardcoded Tailwind
+       utility that stays white regardless of theme, so light mode rendered
+       white-on-near-white body text (the [data-theme="light"] block above
+       only ever touched the lattice-* and neon-* vars, never this). The
+       --foreground-rgb var already existed and already correctly flips
+       (255,255,255 dark -> 10,10,15 light) but body never read it. */
+    @apply bg-lattice-void antialiased;
+    color: rgb(var(--foreground-rgb));
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -1111,3 +1118,179 @@ html.a11y-reduce-motion *::after {
     transition-duration: 0.001ms !important;
   }
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT-THEME READABILITY OVERRIDE (audit 2026-07-27)
+
+   Only lattice-* and neon-* tokens above are CSS-var-based and flip with the
+   theme. The zinc-* and gray-* Tailwind palettes and the bare text-white utility
+   used across ~241/269 lens directories are NOT var-based -- Tailwind compiles
+   them to literal hex values with no runtime hook, so the [data-theme="light"]
+   block above never touched them. Result: ThemeToggle.tsx (shipped, mounted
+   in AppShell) produced a broken screen -- body text stayed literally
+   text-white against a near-white background, and every zinc-800 dark-surface
+   card/panel stayed dark-on-light with no readable contrast anywhere.
+
+   This block retrofits theming onto those hardcoded utilities WITHOUT editing
+   the hundreds of component files that use them: an attribute-selector rule
+   ([data-theme="light"] .text-zinc-500) has higher specificity (0,2,0) than
+   Tailwind's own plain class rule (0,1,0) and so wins the cascade with no
+   !important needed, regardless of source order. Written as flat (non-nested)
+   selectors deliberately -- this project's postcss.config.js has no CSS-nesting
+   plugin, so nested syntax would either fail to compile or depend on browser-
+   native nesting support with no fallback; flat selectors work everywhere.
+
+   The mapping flips each shade across the midpoint of the neutral ramp
+   (50<->950, 100<->900, ..., 500 stays) -- the standard "invert the neutral
+   scale" technique for adapting a dark-authored palette to light mode: a
+   zinc-900 surface (near-black, authored for a dark background) becomes
+   zinc-100 (near-white, appropriate for a light background), and a zinc-200
+   dim-text color (authored to read on dark) becomes zinc-800 (dark, readable
+   on light).
+
+   This is a pragmatic retrofit, not a substitute for properly re-theming each
+   lens onto the lattice-* and neon-* token system (Wave 3 of the codebase audit,
+   docs/UI_QUALITY_RUBRIC.md) -- but it takes light mode from completely
+   unreadable to genuinely usable without touching component code.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="light"] .text-zinc-50, .light .text-zinc-50 { color: #09090b; }
+[data-theme="light"] .bg-zinc-50, .light .bg-zinc-50 { background-color: #09090b; }
+[data-theme="light"] .border-zinc-50, .light .border-zinc-50 { border-color: #09090b; }
+[data-theme="light"] .ring-zinc-50, .light .ring-zinc-50 { --tw-ring-color: #09090b; }
+[data-theme="light"] .divide-zinc-50 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-50 > :not([hidden]) ~ :not([hidden]) { border-color: #09090b; }
+[data-theme="light"] .placeholder-zinc-50::placeholder, .light .placeholder-zinc-50::placeholder { color: #09090b; }
+[data-theme="light"] .text-zinc-100, .light .text-zinc-100 { color: #18181b; }
+[data-theme="light"] .bg-zinc-100, .light .bg-zinc-100 { background-color: #18181b; }
+[data-theme="light"] .border-zinc-100, .light .border-zinc-100 { border-color: #18181b; }
+[data-theme="light"] .ring-zinc-100, .light .ring-zinc-100 { --tw-ring-color: #18181b; }
+[data-theme="light"] .divide-zinc-100 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-100 > :not([hidden]) ~ :not([hidden]) { border-color: #18181b; }
+[data-theme="light"] .placeholder-zinc-100::placeholder, .light .placeholder-zinc-100::placeholder { color: #18181b; }
+[data-theme="light"] .text-zinc-200, .light .text-zinc-200 { color: #27272a; }
+[data-theme="light"] .bg-zinc-200, .light .bg-zinc-200 { background-color: #27272a; }
+[data-theme="light"] .border-zinc-200, .light .border-zinc-200 { border-color: #27272a; }
+[data-theme="light"] .ring-zinc-200, .light .ring-zinc-200 { --tw-ring-color: #27272a; }
+[data-theme="light"] .divide-zinc-200 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-200 > :not([hidden]) ~ :not([hidden]) { border-color: #27272a; }
+[data-theme="light"] .placeholder-zinc-200::placeholder, .light .placeholder-zinc-200::placeholder { color: #27272a; }
+[data-theme="light"] .text-zinc-300, .light .text-zinc-300 { color: #3f3f46; }
+[data-theme="light"] .bg-zinc-300, .light .bg-zinc-300 { background-color: #3f3f46; }
+[data-theme="light"] .border-zinc-300, .light .border-zinc-300 { border-color: #3f3f46; }
+[data-theme="light"] .ring-zinc-300, .light .ring-zinc-300 { --tw-ring-color: #3f3f46; }
+[data-theme="light"] .divide-zinc-300 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-300 > :not([hidden]) ~ :not([hidden]) { border-color: #3f3f46; }
+[data-theme="light"] .placeholder-zinc-300::placeholder, .light .placeholder-zinc-300::placeholder { color: #3f3f46; }
+[data-theme="light"] .text-zinc-400, .light .text-zinc-400 { color: #52525b; }
+[data-theme="light"] .bg-zinc-400, .light .bg-zinc-400 { background-color: #52525b; }
+[data-theme="light"] .border-zinc-400, .light .border-zinc-400 { border-color: #52525b; }
+[data-theme="light"] .ring-zinc-400, .light .ring-zinc-400 { --tw-ring-color: #52525b; }
+[data-theme="light"] .divide-zinc-400 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-400 > :not([hidden]) ~ :not([hidden]) { border-color: #52525b; }
+[data-theme="light"] .placeholder-zinc-400::placeholder, .light .placeholder-zinc-400::placeholder { color: #52525b; }
+[data-theme="light"] .text-zinc-500, .light .text-zinc-500 { color: #71717a; }
+[data-theme="light"] .bg-zinc-500, .light .bg-zinc-500 { background-color: #71717a; }
+[data-theme="light"] .border-zinc-500, .light .border-zinc-500 { border-color: #71717a; }
+[data-theme="light"] .ring-zinc-500, .light .ring-zinc-500 { --tw-ring-color: #71717a; }
+[data-theme="light"] .divide-zinc-500 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-500 > :not([hidden]) ~ :not([hidden]) { border-color: #71717a; }
+[data-theme="light"] .placeholder-zinc-500::placeholder, .light .placeholder-zinc-500::placeholder { color: #71717a; }
+[data-theme="light"] .text-zinc-600, .light .text-zinc-600 { color: #a1a1aa; }
+[data-theme="light"] .bg-zinc-600, .light .bg-zinc-600 { background-color: #a1a1aa; }
+[data-theme="light"] .border-zinc-600, .light .border-zinc-600 { border-color: #a1a1aa; }
+[data-theme="light"] .ring-zinc-600, .light .ring-zinc-600 { --tw-ring-color: #a1a1aa; }
+[data-theme="light"] .divide-zinc-600 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-600 > :not([hidden]) ~ :not([hidden]) { border-color: #a1a1aa; }
+[data-theme="light"] .placeholder-zinc-600::placeholder, .light .placeholder-zinc-600::placeholder { color: #a1a1aa; }
+[data-theme="light"] .text-zinc-700, .light .text-zinc-700 { color: #d4d4d8; }
+[data-theme="light"] .bg-zinc-700, .light .bg-zinc-700 { background-color: #d4d4d8; }
+[data-theme="light"] .border-zinc-700, .light .border-zinc-700 { border-color: #d4d4d8; }
+[data-theme="light"] .ring-zinc-700, .light .ring-zinc-700 { --tw-ring-color: #d4d4d8; }
+[data-theme="light"] .divide-zinc-700 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-700 > :not([hidden]) ~ :not([hidden]) { border-color: #d4d4d8; }
+[data-theme="light"] .placeholder-zinc-700::placeholder, .light .placeholder-zinc-700::placeholder { color: #d4d4d8; }
+[data-theme="light"] .text-zinc-800, .light .text-zinc-800 { color: #e4e4e7; }
+[data-theme="light"] .bg-zinc-800, .light .bg-zinc-800 { background-color: #e4e4e7; }
+[data-theme="light"] .border-zinc-800, .light .border-zinc-800 { border-color: #e4e4e7; }
+[data-theme="light"] .ring-zinc-800, .light .ring-zinc-800 { --tw-ring-color: #e4e4e7; }
+[data-theme="light"] .divide-zinc-800 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) { border-color: #e4e4e7; }
+[data-theme="light"] .placeholder-zinc-800::placeholder, .light .placeholder-zinc-800::placeholder { color: #e4e4e7; }
+[data-theme="light"] .text-zinc-900, .light .text-zinc-900 { color: #f4f4f5; }
+[data-theme="light"] .bg-zinc-900, .light .bg-zinc-900 { background-color: #f4f4f5; }
+[data-theme="light"] .border-zinc-900, .light .border-zinc-900 { border-color: #f4f4f5; }
+[data-theme="light"] .ring-zinc-900, .light .ring-zinc-900 { --tw-ring-color: #f4f4f5; }
+[data-theme="light"] .divide-zinc-900 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-900 > :not([hidden]) ~ :not([hidden]) { border-color: #f4f4f5; }
+[data-theme="light"] .placeholder-zinc-900::placeholder, .light .placeholder-zinc-900::placeholder { color: #f4f4f5; }
+[data-theme="light"] .text-zinc-950, .light .text-zinc-950 { color: #fafafa; }
+[data-theme="light"] .bg-zinc-950, .light .bg-zinc-950 { background-color: #fafafa; }
+[data-theme="light"] .border-zinc-950, .light .border-zinc-950 { border-color: #fafafa; }
+[data-theme="light"] .ring-zinc-950, .light .ring-zinc-950 { --tw-ring-color: #fafafa; }
+[data-theme="light"] .divide-zinc-950 > :not([hidden]) ~ :not([hidden]), .light .divide-zinc-950 > :not([hidden]) ~ :not([hidden]) { border-color: #fafafa; }
+[data-theme="light"] .placeholder-zinc-950::placeholder, .light .placeholder-zinc-950::placeholder { color: #fafafa; }
+
+[data-theme="light"] .text-gray-50, .light .text-gray-50 { color: #030712; }
+[data-theme="light"] .bg-gray-50, .light .bg-gray-50 { background-color: #030712; }
+[data-theme="light"] .border-gray-50, .light .border-gray-50 { border-color: #030712; }
+[data-theme="light"] .ring-gray-50, .light .ring-gray-50 { --tw-ring-color: #030712; }
+[data-theme="light"] .divide-gray-50 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: #030712; }
+[data-theme="light"] .placeholder-gray-50::placeholder, .light .placeholder-gray-50::placeholder { color: #030712; }
+[data-theme="light"] .text-gray-100, .light .text-gray-100 { color: #111827; }
+[data-theme="light"] .bg-gray-100, .light .bg-gray-100 { background-color: #111827; }
+[data-theme="light"] .border-gray-100, .light .border-gray-100 { border-color: #111827; }
+[data-theme="light"] .ring-gray-100, .light .ring-gray-100 { --tw-ring-color: #111827; }
+[data-theme="light"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #111827; }
+[data-theme="light"] .placeholder-gray-100::placeholder, .light .placeholder-gray-100::placeholder { color: #111827; }
+[data-theme="light"] .text-gray-200, .light .text-gray-200 { color: #1f2937; }
+[data-theme="light"] .bg-gray-200, .light .bg-gray-200 { background-color: #1f2937; }
+[data-theme="light"] .border-gray-200, .light .border-gray-200 { border-color: #1f2937; }
+[data-theme="light"] .ring-gray-200, .light .ring-gray-200 { --tw-ring-color: #1f2937; }
+[data-theme="light"] .divide-gray-200 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #1f2937; }
+[data-theme="light"] .placeholder-gray-200::placeholder, .light .placeholder-gray-200::placeholder { color: #1f2937; }
+[data-theme="light"] .text-gray-300, .light .text-gray-300 { color: #374151; }
+[data-theme="light"] .bg-gray-300, .light .bg-gray-300 { background-color: #374151; }
+[data-theme="light"] .border-gray-300, .light .border-gray-300 { border-color: #374151; }
+[data-theme="light"] .ring-gray-300, .light .ring-gray-300 { --tw-ring-color: #374151; }
+[data-theme="light"] .divide-gray-300 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-300 > :not([hidden]) ~ :not([hidden]) { border-color: #374151; }
+[data-theme="light"] .placeholder-gray-300::placeholder, .light .placeholder-gray-300::placeholder { color: #374151; }
+[data-theme="light"] .text-gray-400, .light .text-gray-400 { color: #4b5563; }
+[data-theme="light"] .bg-gray-400, .light .bg-gray-400 { background-color: #4b5563; }
+[data-theme="light"] .border-gray-400, .light .border-gray-400 { border-color: #4b5563; }
+[data-theme="light"] .ring-gray-400, .light .ring-gray-400 { --tw-ring-color: #4b5563; }
+[data-theme="light"] .divide-gray-400 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-400 > :not([hidden]) ~ :not([hidden]) { border-color: #4b5563; }
+[data-theme="light"] .placeholder-gray-400::placeholder, .light .placeholder-gray-400::placeholder { color: #4b5563; }
+[data-theme="light"] .text-gray-500, .light .text-gray-500 { color: #6b7280; }
+[data-theme="light"] .bg-gray-500, .light .bg-gray-500 { background-color: #6b7280; }
+[data-theme="light"] .border-gray-500, .light .border-gray-500 { border-color: #6b7280; }
+[data-theme="light"] .ring-gray-500, .light .ring-gray-500 { --tw-ring-color: #6b7280; }
+[data-theme="light"] .divide-gray-500 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-500 > :not([hidden]) ~ :not([hidden]) { border-color: #6b7280; }
+[data-theme="light"] .placeholder-gray-500::placeholder, .light .placeholder-gray-500::placeholder { color: #6b7280; }
+[data-theme="light"] .text-gray-600, .light .text-gray-600 { color: #9ca3af; }
+[data-theme="light"] .bg-gray-600, .light .bg-gray-600 { background-color: #9ca3af; }
+[data-theme="light"] .border-gray-600, .light .border-gray-600 { border-color: #9ca3af; }
+[data-theme="light"] .ring-gray-600, .light .ring-gray-600 { --tw-ring-color: #9ca3af; }
+[data-theme="light"] .divide-gray-600 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-600 > :not([hidden]) ~ :not([hidden]) { border-color: #9ca3af; }
+[data-theme="light"] .placeholder-gray-600::placeholder, .light .placeholder-gray-600::placeholder { color: #9ca3af; }
+[data-theme="light"] .text-gray-700, .light .text-gray-700 { color: #d1d5db; }
+[data-theme="light"] .bg-gray-700, .light .bg-gray-700 { background-color: #d1d5db; }
+[data-theme="light"] .border-gray-700, .light .border-gray-700 { border-color: #d1d5db; }
+[data-theme="light"] .ring-gray-700, .light .ring-gray-700 { --tw-ring-color: #d1d5db; }
+[data-theme="light"] .divide-gray-700 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-700 > :not([hidden]) ~ :not([hidden]) { border-color: #d1d5db; }
+[data-theme="light"] .placeholder-gray-700::placeholder, .light .placeholder-gray-700::placeholder { color: #d1d5db; }
+[data-theme="light"] .text-gray-800, .light .text-gray-800 { color: #e5e7eb; }
+[data-theme="light"] .bg-gray-800, .light .bg-gray-800 { background-color: #e5e7eb; }
+[data-theme="light"] .border-gray-800, .light .border-gray-800 { border-color: #e5e7eb; }
+[data-theme="light"] .ring-gray-800, .light .ring-gray-800 { --tw-ring-color: #e5e7eb; }
+[data-theme="light"] .divide-gray-800 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-800 > :not([hidden]) ~ :not([hidden]) { border-color: #e5e7eb; }
+[data-theme="light"] .placeholder-gray-800::placeholder, .light .placeholder-gray-800::placeholder { color: #e5e7eb; }
+[data-theme="light"] .text-gray-900, .light .text-gray-900 { color: #f3f4f6; }
+[data-theme="light"] .bg-gray-900, .light .bg-gray-900 { background-color: #f3f4f6; }
+[data-theme="light"] .border-gray-900, .light .border-gray-900 { border-color: #f3f4f6; }
+[data-theme="light"] .ring-gray-900, .light .ring-gray-900 { --tw-ring-color: #f3f4f6; }
+[data-theme="light"] .divide-gray-900 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-900 > :not([hidden]) ~ :not([hidden]) { border-color: #f3f4f6; }
+[data-theme="light"] .placeholder-gray-900::placeholder, .light .placeholder-gray-900::placeholder { color: #f3f4f6; }
+[data-theme="light"] .text-gray-950, .light .text-gray-950 { color: #f9fafb; }
+[data-theme="light"] .bg-gray-950, .light .bg-gray-950 { background-color: #f9fafb; }
+[data-theme="light"] .border-gray-950, .light .border-gray-950 { border-color: #f9fafb; }
+[data-theme="light"] .ring-gray-950, .light .ring-gray-950 { --tw-ring-color: #f9fafb; }
+[data-theme="light"] .divide-gray-950 > :not([hidden]) ~ :not([hidden]), .light .divide-gray-950 > :not([hidden]) ~ :not([hidden]) { border-color: #f9fafb; }
+[data-theme="light"] .placeholder-gray-950::placeholder, .light .placeholder-gray-950::placeholder { color: #f9fafb; }
+
+/* Bare white/black text+bg -- the body element's own text-white (fixed at
+   its declaration below) is the highest-traffic case, but plenty of
+   component-level text-white/bg-white/text-black/bg-black exist too. */
+[data-theme="light"] .text-white, .light .text-white { color: #18181b; }
+[data-theme="light"] .bg-white, .light .bg-white { background-color: #fafafa; }
+[data-theme="light"] .text-black, .light .text-black { color: #fafafa; }
+[data-theme="light"] .bg-black, .light .bg-black { background-color: #18181b; }

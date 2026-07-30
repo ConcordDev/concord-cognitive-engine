@@ -79,7 +79,8 @@
     "socket.io": "^4.7.4",
     "sqlite-vec": "^0.1.9",
     "stripe": "^17.4.0",
-    "uuid": "^9.0.1",
+    "undici": "6.28.0",
+    "uuid": "^14.0.1",
     "web-push": "^3.6.7",
     "ws": "^8.21.0",
     "y-websocket": "^3.0.0",
@@ -88,21 +89,23 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
+    "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.0",
-    "eslint": "^9.0.0",
+    "eslint": "^10.8.0",
     "globals": "^15.0.0",
     "typescript": "^5.9.3"
   },
   "optionalDependencies": {
-    "@xenova/transformers": "^2.15.0",
+    "@huggingface/transformers": "^4.2.0",
     "meilisearch": "^0.37.0",
     "pg": "^8.11.3",
     "redis": "^4.6.12"
   },
   "overrides": {
-    "protobufjs": "^7.5.5"
+    "protobufjs": "^7.5.5",
+    "sharp": "^0.35.0",
+    "adm-zip": "^0.6.0"
   },
   "engines": {
     "node": ">=18.0.0"

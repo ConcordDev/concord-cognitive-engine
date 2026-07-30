@@ -83,11 +83,11 @@ export default function createAgentsRouter({ db, requireAuth }) {
     ),
     listAgents: db.prepare(
       `SELECT agent_id, name, description, skills, status, created_by, created_at, updated_at
-       FROM agents ORDER BY created_at DESC LIMIT ?`
+       FROM agents WHERE created_by = ? ORDER BY created_at DESC LIMIT ?`
     ),
     listByStatus: db.prepare(
       `SELECT agent_id, name, description, skills, status, created_by, created_at, updated_at
-       FROM agents WHERE status = ? ORDER BY created_at DESC LIMIT ?`
+       FROM agents WHERE created_by = ? AND status = ? ORDER BY created_at DESC LIMIT ?`
     ),
     updateStatus: db.prepare(
       `UPDATE agents SET status = ?, updated_at = datetime('now') WHERE agent_id = ?`
@@ -144,14 +144,23 @@ export default function createAgentsRouter({ db, requireAuth }) {
   }
 
   // ── GET / — list agents ─────────────────────────────────────────────────────
+  // SECURITY (fixed — audit follow-up): this route had NO auth at all and
+  // returned every agent system-wide, including each agent's full
+  // caller-supplied `config` blob and `created_by` — reachable anonymously
+  // via the publicReadPaths bypass (removed there too). There is no
+  // public/private visibility column in the `agents` table (schema above
+  // has none), so there is no legitimate "public catalog" reading here —
+  // this is a private per-user management surface. Now requires auth and
+  // scopes to the caller's own agents only.
 
-  router.get("/", (req, res) => {
+  router.get("/", requireAuth(), (req, res) => {
     try {
+      const userId = resolveUserId(req);
       const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
       const status = req.query.status;
       const rows = status
-        ? stmts.listByStatus.all(status, limit)
-        : stmts.listAgents.all(limit);
+        ? stmts.listByStatus.all(userId, status, limit)
+        : stmts.listAgents.all(userId, limit);
       const agents = rows.map((r) => addTaskStats(parseAgent(r)));
       res.json({ ok: true, agents, count: agents.length });
     } catch (err) {
@@ -194,11 +203,18 @@ export default function createAgentsRouter({ db, requireAuth }) {
   });
 
   // ── GET /:agentId — get agent ───────────────────────────────────────────────
+  // SECURITY (fixed — audit follow-up): same issue as GET / above — no auth,
+  // no ownership check, full config blob returned to anyone who guesses/
+  // enumerates an agentId. Same 404 for "doesn't exist" and "not yours" so
+  // this doesn't become an existence oracle.
 
-  router.get("/:agentId", (req, res) => {
+  router.get("/:agentId", requireAuth(), (req, res) => {
     try {
+      const userId = resolveUserId(req);
       const row = stmts.getAgent.get(req.params.agentId);
-      if (!row) return res.status(404).json({ ok: false, error: "Agent not found" });
+      if (!row || row.created_by !== userId) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
       res.json({ ok: true, agent: addTaskStats(parseAgent(row)) });
     } catch (err) {
       console.error("[agents] GET /:agentId error:", err);
@@ -211,7 +227,12 @@ export default function createAgentsRouter({ db, requireAuth }) {
   router.post("/:agentId/task", requireAuth(), (req, res) => {
     try {
       const row = stmts.getAgent.get(req.params.agentId);
-      if (!row) return res.status(404).json({ ok: false, error: "Agent not found" });
+      // SECURITY (fixed — audit follow-up): this checked existence but not
+      // ownership — any authenticated user could assign tasks to ANY other
+      // user's agent by ID. Same 404 for both cases (no existence oracle).
+      if (!row || row.created_by !== resolveUserId(req)) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
       if (row.status === "terminated") {
         return res.status(400).json({ ok: false, error: "Cannot assign task to terminated agent" });
       }
@@ -239,7 +260,11 @@ export default function createAgentsRouter({ db, requireAuth }) {
   router.post("/:agentId/stop", requireAuth(), (req, res) => {
     try {
       const row = stmts.getAgent.get(req.params.agentId);
-      if (!row) return res.status(404).json({ ok: false, error: "Agent not found" });
+      // SECURITY (fixed — audit follow-up): existence-only check let any
+      // authenticated user stop ANY other user's agent by ID.
+      if (!row || row.created_by !== resolveUserId(req)) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
       stmts.updateStatus.run("stopped", req.params.agentId);
       appendLog(req.params.agentId, "info", "Agent stopped");
       res.json({ ok: true, agentId: req.params.agentId, status: "stopped" });
@@ -254,7 +279,11 @@ export default function createAgentsRouter({ db, requireAuth }) {
   router.delete("/:agentId", requireAuth(), (req, res) => {
     try {
       const row = stmts.getAgent.get(req.params.agentId);
-      if (!row) return res.status(404).json({ ok: false, error: "Agent not found" });
+      // SECURITY (fixed — audit follow-up): existence-only check let any
+      // authenticated user DELETE any other user's agent by ID.
+      if (!row || row.created_by !== resolveUserId(req)) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
       appendLog(req.params.agentId, "warn", "Agent terminated");
       stmts.deleteAgent.run(req.params.agentId);
       res.json({ ok: true, agentId: req.params.agentId, terminated: true });
@@ -266,8 +295,12 @@ export default function createAgentsRouter({ db, requireAuth }) {
 
   // ── GET /:agentId/worktrees — list emergent worktrees ──────────────────────
 
-  router.get("/:agentId/worktrees", (req, res) => {
+  router.get("/:agentId/worktrees", requireAuth(), (req, res) => {
     try {
+      const row = stmts.getAgent.get(req.params.agentId);
+      if (!row || row.created_by !== resolveUserId(req)) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
       const worktrees = listWorktrees(req.params.agentId);
       // Exclude the full operations array from the response to keep payloads small
       const summary = worktrees.map(wt => ({
@@ -287,10 +320,12 @@ export default function createAgentsRouter({ db, requireAuth }) {
 
   // ── GET /:agentId/log — execution log ──────────────────────────────────────
 
-  router.get("/:agentId/log", (req, res) => {
+  router.get("/:agentId/log", requireAuth(), (req, res) => {
     try {
       const row = stmts.getAgent.get(req.params.agentId);
-      if (!row) return res.status(404).json({ ok: false, error: "Agent not found" });
+      if (!row || row.created_by !== resolveUserId(req)) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
       const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 500);
       const rows = stmts.getLogs.all(req.params.agentId, limit);
       const logs = rows.map((r) => {

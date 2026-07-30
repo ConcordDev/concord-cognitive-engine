@@ -11,6 +11,16 @@ import assert from "node:assert/strict";
 import registerSpaceActions from "../domains/space.js";
 import { clearExternalFetchCache } from "../lib/external-fetch.js";
 
+
+// external-fetch.js routes through the SSRF guard (lib/public-fetch.js), so
+// stubbing globalThis.fetch alone no longer intercepts anything -- the guard
+// does a real DNS lookup first and fails on a fake hostname. Install
+// public-fetch's documented module-scope test transport and delegate to
+// whatever globalThis.fetch currently is, so each test's existing stub and
+// restore lifecycle keeps working unchanged. Production never calls this.
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
+__setPublicFetchTestTransport((url, init) => globalThis.fetch(url, init));
+
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
 function call(name, ctx, artifactOrParams = {}, maybeParams) {

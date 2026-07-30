@@ -1048,13 +1048,16 @@ export default function registerImportActions(registerLensAction) {
     let rows = [];
     try {
       const { cachedFetchJson, fetchJsonWithTimeout } = await import("../lib/external-fetch.js");
+      // SSRF guard for the two raw fetches below, which do not go through
+      // external-fetch.js (they need the RAW BODY, not parsed JSON).
+      const { fetchPublicUrl } = await import("../lib/public-fetch.js");
       if (kind === "google_sheets") {
         if (!cfg.sheetId) return { ok: false, error: "sheetId required for google_sheets connector" };
         const gid = cfg.gid || "0";
         const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(cfg.sheetId)}/gviz/tq?tqx=out:json&gid=${encodeURIComponent(gid)}`;
         const res = await fetchJsonWithTimeout(url, {}, 12000).catch(async () => {
           // gviz returns JS-wrapped JSON; fetchJsonWithTimeout may need raw text.
-          const r = await fetch(url);
+          const r = await fetchPublicUrl(url);
           const txt = await r.text();
           const m = txt.match(/setResponse\(([\s\S]+)\);?\s*$/);
           return m ? JSON.parse(m[1]) : null;
@@ -1079,7 +1082,10 @@ export default function registerImportActions(registerLensAction) {
         rows = Array.isArray(payload) ? payload : (payload && typeof payload === "object" ? [payload] : []);
       } else if (kind === "csv_url") {
         if (!cfg.url) return { ok: false, error: "url required for csv_url connector" };
-        const r = await fetch(cfg.url);
+        // cfg.url is params.url straight off the macro input, and the parsed
+        // body is returned to the caller as rows -- reflected SSRF without
+        // this guard.
+        const r = await fetchPublicUrl(cfg.url);
         if (!r.ok) return { ok: false, error: `CSV fetch failed: HTTP ${r.status}` };
         const text = await r.text();
         rows = parseCsv(text);

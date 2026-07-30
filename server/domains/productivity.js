@@ -3,6 +3,7 @@
 // 4 macros over task / project / focus / daily summary.
 
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 export default function registerProductivityActions(registerLensAction) {
   /**
@@ -1078,11 +1079,20 @@ export default function registerProductivityActions(registerLensAction) {
       try {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 8000);
-        const r = await fetch(url, { signal: ctrl.signal });
+        // SSRF fix (2026-07-27): `url` is caller-supplied and this used a bare
+        // fetch() behind only the scheme test above. Worse than the cooking
+        // case, this one is REFLECTED — the fetched body is parsed by parseIcs
+        // and the resulting events are returned to the caller, so an attacker
+        // could read internal endpoints (cloud metadata, 127.0.0.1 brains,
+        // RFC1918) rather than just probe them blind. Routed through the
+        // SSRF-guarded keyless fetch (public-fetch.js): scheme allowlist +
+        // private-IP block + connection pinned to the validated IP.
+        const r = await fetchPublicUrl(url, { signal: ctrl.signal });
         clearTimeout(t);
         if (!r.ok) return { ok: false, error: `feed fetch failed: HTTP ${r.status}` };
         icsText = await r.text();
       } catch (e) {
+        if (e?.code === "SSRF_BLOCKED") return { ok: false, error: "url not allowed" };
         return { ok: false, error: `feed unreachable: ${String(e?.message || e)}` };
       }
     }

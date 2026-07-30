@@ -13,6 +13,7 @@ import {
   consumeResetToken,
   getEmailServiceStatus,
 } from "../lib/email-service.js";
+import { isHighPowerModeAllowed } from "../lib/high-power-allowlist.js";
 
 // ── Auth rate limiters (defense-in-depth) ────────────────────────────────────
 // Two independent buckets:
@@ -377,6 +378,8 @@ export default function createAuthRouter({
     let declaredRegional = null;
     let declaredNational = null;
     let primaryLens = null;
+    let brainMode = "private";
+    let brainModeSetAt = null;
     try {
       if (db) {
         const row = db.prepare(
@@ -389,6 +392,17 @@ export default function createAuthRouter({
         }
       }
     } catch (_e) { /* columns may not exist on older schemas — fall through */ }
+    try {
+      if (db) {
+        const bmRow = db.prepare(
+          "SELECT brain_mode, brain_mode_set_at FROM users WHERE id = ?"
+        ).get(req.user.id);
+        if (bmRow) {
+          brainMode = bmRow.brain_mode === "high_power" ? "high_power" : "private";
+          brainModeSetAt = bmRow.brain_mode_set_at || null;
+        }
+      }
+    } catch (_e) { /* migration 397 not applied on older schemas — fail closed to 'private' */ }
 
     res.json({
       ok: true,
@@ -401,6 +415,18 @@ export default function createAuthRouter({
         declaredRegional,
         declaredNational,
         primaryLens,
+        brainMode,
+        // The user has never made an explicit choice (every account
+        // defaults to 'private' via the migration's column default, so
+        // brainMode alone can't distinguish "chose private" from "never
+        // asked") — the frontend uses this, not brainMode itself, to
+        // decide whether to show the ChooseYourBrain onboarding step.
+        needsBrainModeChoice: !brainModeSetAt,
+        // Rollout gate (CONCORD_HIGH_POWER_ALLOWLIST) — independent of
+        // brain_mode. The frontend uses this to decide whether to show
+        // the High Power card/toggle at all; Private is never gated by
+        // it. See lib/high-power-allowlist.js for the full contract.
+        highPowerAllowed: isHighPowerModeAllowed(req.user.id),
         // Convenience: frontend gate for the onboarding screen.
         needsOnboarding: !declaredRegional && !declaredNational && !primaryLens,
       }
@@ -495,6 +521,70 @@ export default function createAuthRouter({
       });
     } catch (e) {
       console.error("[auth] choose-universe failed:", e?.message);
+      return res.status(500).json({ ok: false, error: "Internal error" });
+    }
+  });
+
+  // POST /choose-brain-mode — Private Mode / High Power Mode. Private is
+  // the durable default for every account (migration 397's column
+  // default); this is the explicit opt-in surface for High Power. A
+  // dedicated endpoint rather than folding into choose-universe above —
+  // that handler's region/nation validation is unrelated, and conflating
+  // them risks a future edit to one accidentally touching the other.
+  //
+  // The written value is the WHOLE-ACCOUNT guarantee: byo-router.js
+  // #getBrainMode reads this same column and gates every one of the 4
+  // LLM dispatch chokepoints (ctx.llm.chat, callBrain, streaming chat,
+  // and its fallback) on it. Private always wins, even over a
+  // configured BYO key, so choosing 'private' here is a hard guarantee,
+  // not a preference.
+  //
+  // Rollout gate: CONCORD_HIGH_POWER_ALLOWLIST (lib/high-power-allowlist.js).
+  // Re-checked HERE, server-side, not just hidden in the frontend UI — a
+  // client that skips (or never loads) the visibility check can't bypass
+  // it by calling this endpoint directly. Private is NEVER gated by this;
+  // only an attempt to set 'high_power' can be rejected.
+  router.post("/choose-brain-mode", (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
+    const { brainMode } = req.body || {};
+    if (brainMode !== "private" && brainMode !== "high_power") {
+      return res.status(400).json({
+        ok: false,
+        error: "invalid_brain_mode",
+        allowed: ["private", "high_power"],
+      });
+    }
+    if (brainMode === "high_power" && !isHighPowerModeAllowed(req.user.id)) {
+      return res.status(403).json({ ok: false, error: "high_power_not_available" });
+    }
+
+    try {
+      // Defensive: migration 397 adds these columns, but degrade
+      // gracefully for a minimal/pre-migration schema (same convention
+      // as choose-universe's primary_lens lazy-add above) rather than
+      // 500ing a user out of the onboarding flow.
+      try {
+        const cols = db.prepare("PRAGMA table_info(users)").all();
+        if (!cols.some((c) => c.name === "brain_mode")) {
+          db.exec(`ALTER TABLE users ADD COLUMN brain_mode TEXT NOT NULL DEFAULT 'private' CHECK (brain_mode IN ('private','high_power'))`);
+        }
+        if (!cols.some((c) => c.name === "brain_mode_set_at")) {
+          db.exec(`ALTER TABLE users ADD COLUMN brain_mode_set_at INTEGER`);
+        }
+      } catch (_e) { /* best-effort */ }
+
+      const now = Math.floor(Date.now() / 1000);
+      db.prepare(`UPDATE users SET brain_mode = ?, brain_mode_set_at = ? WHERE id = ?`).run(brainMode, now, req.user.id);
+
+      auditLog("auth", "choose_brain_mode", {
+        userId: req.user.id,
+        brainMode,
+        ip: req.ip,
+      });
+
+      return res.json({ ok: true, brainMode, brainModeSetAt: now });
+    } catch (e) {
+      console.error("[auth] choose-brain-mode failed:", e?.message);
       return res.status(500).json({ ok: false, error: "Internal error" });
     }
   });

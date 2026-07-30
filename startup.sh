@@ -233,6 +233,23 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     echo "${NEXT_PUBLIC_API_URL:-}" > "$BUILD_STAMP"
   fi
 
+  # ── Standalone static assets (P0 — unstyled-site fix) ─────────────────────
+  # Next's `output: 'standalone'` does NOT bundle `.next/static` or `public/`
+  # into the standalone dir — Next's own docs require copying them in. The
+  # Docker path does this in concord-frontend/Dockerfile; the pm2 path runs
+  # `node .next/standalone/server.js` directly, so without this copy every
+  # /_next/static/* asset 404s and the site renders as bare unstyled HTML.
+  # Runs unconditionally (not just after a fresh build) so a box carrying an
+  # older build without the assets self-heals on the next boot. Idempotent:
+  # stale copies are removed first so `cp -a` never nests dir-into-dir.
+  if [ -d concord-frontend/.next/standalone ]; then
+    rm -rf concord-frontend/.next/standalone/public concord-frontend/.next/standalone/.next/static
+    mkdir -p concord-frontend/.next/standalone/.next
+    cp -a concord-frontend/public concord-frontend/.next/standalone/public
+    cp -a concord-frontend/.next/static concord-frontend/.next/standalone/.next/static
+    log "Copied public/ + .next/static into the standalone bundle"
+  fi
+
   # ── Godot engine runtime (self-heal check, every boot) ────────────────────
   # setup.sh does the first-time fetch; this is the cheap re-verification so
   # a box that skipped setup.sh, or whose binary went missing/corrupt between
@@ -356,6 +373,20 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     DB_PATH="${DB_PATH:-}" DATA_DIR="${DATA_DIR:-}" CONCORD_BACKUP_DIR="${CONCORD_BACKUP_DIR:-}" \
       bash scripts/db-backup.sh >> logs/backup.log 2>&1 \
       && log "Initial DB backup taken" || log "NOTE: initial backup skipped (DB not found yet — cron will catch the next one)"
+  fi
+
+  # ── Disk cleanup cron (audit fix 2026-07-27) ──────────────────────────────
+  # scripts/disk-cleanup.sh existed and was documented (docs/DEPLOYMENT-
+  # READINESS.md, docs/SHIP-REFERENCE.md) but was never actually installed
+  # anywhere — nothing rotated the ever-growing logs/*.log files this same
+  # startup.sh appends to forever, and nothing pruned docker/ollama/qdrant
+  # bloat on a long-running box. Same 6-hourly cadence + idempotent-install
+  # pattern as the health-check/backup crons above.
+  if command -v crontab &>/dev/null; then
+    DISK_CLEANUP_CRON="0 */6 * * * cd $SCRIPT_DIR && ARTIFACT_DIR='${ARTIFACT_DIR:-}' DATA_DIR='${DATA_DIR:-}' bash scripts/disk-cleanup.sh >> $SCRIPT_DIR/logs/disk-cleanup.log 2>&1"
+    ( crontab -l 2>/dev/null | grep -v "disk-cleanup\.sh" ; echo "$DISK_CLEANUP_CRON" ) | crontab - 2>/dev/null \
+      && log "Disk cleanup cron installed (every 6 hours)" \
+      || log "WARNING: Could not install disk-cleanup cron — add it manually: $DISK_CLEANUP_CRON"
   fi
 
   # ── pm2 startup (survive pod reboot) ──────────────────────────────────────

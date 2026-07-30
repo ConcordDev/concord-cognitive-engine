@@ -25,7 +25,7 @@ declare -A PORT=(  [conscious]=11434 [subconscious]=11435 [utility]=11436 [repai
 declare -A MODEL=( [conscious]="${BRAIN_CONSCIOUS_MODEL:-concord-conscious:latest}" \
                    [subconscious]="${BRAIN_SUBCONSCIOUS_MODEL:-qwen2.5:7b-instruct-q4_K_M}" \
                    [utility]="${BRAIN_UTILITY_MODEL:-qwen2.5:3b}" \
-                   [repair]="${BRAIN_REPAIR_MODEL:-qwen2.5:0.5b}" \
+                   [repair]="${BRAIN_REPAIR_MODEL:-qwen2.5:1.5b}" \
                    [vision]="${BRAIN_VISION_MODEL:-qwen2.5vl:7b}" )
 # Single A40 GPU (this deploy target) → every brain shares GPU 0 (VRAM is the budget, not GPU count).
 declare -A GPU=(   [conscious]="${BRAIN_CONSCIOUS_GPU:-0}" [subconscious]="${BRAIN_SUBCONSCIOUS_GPU:-0}" \
@@ -40,6 +40,15 @@ declare -A GPU=(   [conscious]="${BRAIN_CONSCIOUS_GPU:-0}" [subconscious]="${BRA
 declare -A KEEPALIVE=( [conscious]="${BRAIN_CONSCIOUS_KEEP_ALIVE:-}" [subconscious]="${BRAIN_SUBCONSCIOUS_KEEP_ALIVE:-}" \
                        [utility]="${BRAIN_UTILITY_KEEP_ALIVE:-}" [repair]="${BRAIN_REPAIR_KEEP_ALIVE:-}" \
                        [vision]="${BRAIN_VISION_KEEP_ALIVE:-}" )
+# Per-role max loaded models. Default 1 (each brain serves exactly its model).
+# UTILITY is 2: the embedding model (nomic-embed-text, ~0.3GB) co-resides with
+# qwen2.5:3b (~1.9GB) on the utility instance. It used to live on the CONSCIOUS
+# instance — with MAX_LOADED_MODELS=1 there, EVERY embed call (DTU creation,
+# semantic search, retrieval) evicted the resident ~9GB 14B model, and the next
+# chat message paid a full cold reload from disk. That ping-pong was the single
+# biggest "AI keeps dropping" cause on this box. The embed model now lives with
+# the 3B utility model, where dual-residency costs ~2.2GB total and evicts nothing.
+declare -A MAXLOADED=( [utility]="${BRAIN_UTILITY_MAX_LOADED:-2}" )
 ROLES=(conscious subconscious utility repair vision)
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Custom models that are NOT on the Ollama registry are BUILT from a Modelfile via
@@ -139,10 +148,15 @@ declare -A FLASHATTN=( [vision]="${BRAIN_VISION_FLASH_ATTENTION:-0}" )
 # a literal render/physics budget. The real guarantee is the pre-boot fit check
 # (verify-resource-allocation.mjs) + BRAIN_VISION_KEEP_ALIVE to shed ~6.9GB on demand —
 # NOT this env var. We still set it (it helps when honored), just don't trust it as a fence.
-# Bumped to 16GB (was 6GB) — the 48GB A40 has real headroom past the 5 brains' ~26GB
-# resident footprint (~22GB free), so this uses some of that margin without threatening
-# the fit; verify-resource-allocation.mjs still gates on the real total before boot.
-CONCORD_WORLD_VRAM_MB="${CONCORD_WORLD_VRAM_MB:-16384}"
+# CORRECTED 2026-07-27: was bumped to 16GB on a "~22GB free" estimate that assumed the
+# resident KV cache was near-zero — true only because server.js used to never send
+# `num_ctx` to Ollama, so every call silently ran at Ollama's tiny default regardless of
+# the configured context window. That's fixed now (server.js sends real num_ctx per call),
+# so KV legitimately consumes VRAM proportional to context — the real free margin is closer
+# to ~8GB, not ~22GB. Restored to 8GB (matches .env.runpod's CONCORD_WORLD_VRAM_MB, which
+# should be the source of truth — this default only applies if that's unset).
+# verify-resource-allocation.mjs still gates on the real (now KV-honest) total before boot.
+CONCORD_WORLD_VRAM_MB="${CONCORD_WORLD_VRAM_MB:-8192}"
 export OLLAMA_GPU_OVERHEAD=$(( CONCORD_WORLD_VRAM_MB * 1024 * 1024 ))
 export CONCORD_WORLD_GPU="${CONCORD_WORLD_GPU:-0}"
 LOG_DIR="${LOG_DIR:-/tmp/concord-brains}"; mkdir -p "$LOG_DIR"
@@ -176,6 +190,27 @@ for wf in "${LOG_DIR}"/wrapper-*.pid; do
   if [ -n "$wpid" ] && kill -0 "$wpid" 2>/dev/null; then kill "$wpid" 2>/dev/null || true; fi
   rm -f "$wf"
 done
+# ── Pre-boot VRAM fit gate ───────────────────────────────────────────────────
+# The comments in this file have always claimed "verify-resource-allocation.mjs
+# still gates on the real total before boot" — but only runpod-up.sh ever called
+# it, and startup.sh calls THIS script directly, so the gate was dead on the
+# canonical path. Run it here so the claim is true. Hard-fails on over-commit
+# (an over-commit is a hard CUDA OOM at runtime, not a graceful unload — see the
+# NUM_PARALLEL comment above). Override with CONCORD_SKIP_VRAM_GATE=1.
+if [ "${CONCORD_SKIP_VRAM_GATE:-0}" != "1" ] && [ -f "$REPO_ROOT/server/scripts/verify-resource-allocation.mjs" ]; then
+  log "Running VRAM fit gate (server/scripts/verify-resource-allocation.mjs)..."
+  if ! ( cd "$REPO_ROOT/server" && \
+      BRAIN_CONSCIOUS_MODEL="${MODEL[conscious]}" BRAIN_SUBCONSCIOUS_MODEL="${MODEL[subconscious]}" \
+      BRAIN_UTILITY_MODEL="${MODEL[utility]}" BRAIN_REPAIR_MODEL="${MODEL[repair]}" \
+      BRAIN_VISION_MODEL="${MODEL[vision]}" CONCORD_WORLD_VRAM_MB="${CONCORD_WORLD_VRAM_MB}" \
+      node scripts/verify-resource-allocation.mjs ); then
+    log "FATAL: VRAM fit gate failed — the configured models + margin exceed this GPU."
+    log "       Shrink a model (CONCORD_GPU_PROFILE / BRAIN_*_MODEL), lower CONCORD_WORLD_VRAM_MB,"
+    log "       or bypass deliberately with CONCORD_SKIP_VRAM_GATE=1."
+    exit 1
+  fi
+fi
+
 log "Stopping any existing Ollama instances..."; pkill -f "ollama serve" 2>/dev/null || true; sleep 2
 log "Cores: allowed=${NCORES} (cgroup set [$(IFS=,; echo "${ALLOWED[*]}" | cut -c1-40)…])  taskset=$HAVE_TASKSET  gpu=$HAVE_GPU  model-store=$OLLAMA_MODELS"
 
@@ -192,7 +227,7 @@ for role in "${ROLES[@]}"; do
     restarts=0
     while true; do
       env $gpuenv OLLAMA_HOST="127.0.0.1:${p}" OLLAMA_KEEP_ALIVE="$ka" OLLAMA_FLASH_ATTENTION="$fa" \
-          OLLAMA_KV_CACHE_TYPE="$kv" OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_NUM_PARALLEL="$OLLAMA_NUM_PARALLEL" \
+          OLLAMA_KV_CACHE_TYPE="$kv" OLLAMA_MAX_LOADED_MODELS="${MAXLOADED[$role]:-1}" OLLAMA_NUM_PARALLEL="$OLLAMA_NUM_PARALLEL" \
           $pin ollama serve >> "${LOG_DIR}/brain-${role}.log" 2>&1
       code=$?
       restarts=$((restarts + 1))
@@ -226,8 +261,11 @@ for role in "${ROLES[@]}"; do
     OLLAMA_HOST="127.0.0.1:${PORT[$role]}" ollama pull "${MODEL[$role]}" 2>&1 | tail -1 || log "WARN: pull failed for ${role} (registry model unreachable — check egress)"
   fi
 done
-# embeddings on the conscious instance (small, CPU, used by the substrate)
-OLLAMA_HOST="127.0.0.1:${PORT[conscious]}" ollama pull "${CONCORD_EMBED_MODEL:-nomic-embed-text}" >/dev/null 2>&1 || true
+# Embeddings live on the UTILITY instance (MAX_LOADED_MODELS=2 there — see the
+# MAXLOADED map above). Do NOT move this back to the conscious instance: with
+# MAX_LOADED_MODELS=1 there, every embed call evicted the resident 14B model.
+# Keep CONCORD_EMBED_OLLAMA_URL in .env.runpod pointed at the utility port.
+OLLAMA_HOST="127.0.0.1:${PORT[utility]}" ollama pull "${CONCORD_EMBED_MODEL:-nomic-embed-text}" >/dev/null 2>&1 || true
 
 # ── the wiring map the app needs (.env.runpod), then verify ──────────────────
 echo ""; log "Brain ⇆ endpoint wiring (set these in .env.runpod):"

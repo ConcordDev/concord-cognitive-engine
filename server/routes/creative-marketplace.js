@@ -151,6 +151,19 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
   router.post("/artifacts/:id/purchase", (req, res) => {
     const { buyerId } = req.body;
 
+    // Security audit 2026-07-30: same wallet-drain IDOR class already fixed
+    // on /api/connective-tissue/dtu/purchase — the global write-auth
+    // middleware guarantees SOME session is valid, but nothing here checked
+    // that the funds-source buyerId belonged to it, so any authenticated
+    // caller could force a victim's wallet to "purchase" an artifact that
+    // pays out to the caller. Fail-open only when req.user is genuinely
+    // absent (AUTH_MODE=public / local-first single-user mode, where the
+    // write-auth middleware itself already lets requests through unauthed
+    // — there's only one real user in that deployment).
+    if (buyerId && req.user?.id && buyerId !== req.user.id) {
+      return res.status(403).json({ ok: false, error: "unauthorized: buyerId must be your own user id" });
+    }
+
     // ── Wash Trading Detection (Category 1: Adversarial) ───────────────
     // Look up the artifact to get the seller/creator before purchase
     if (typeof detectWashTrading === "function" && buyerId) {

@@ -47,3 +47,76 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+
+  # VS Code extension. Ships to end users and carries real runtime deps
+  # (socket.io-client, vscode-languageclient), but had no lockfile at all until
+  # 2026-07-27 -- so published .vsix builds were neither reproducible nor
+  # scannable. Lockfile added and un-ignored; this keeps it current.
+  - package-ecosystem: "npm"
+    directory: "/concord-vscode"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+
+  # Rust / Cargo.
+  #
+  # concord-shell is a real 4-crate Tauri v2 workspace (src-tauri + supervisor,
+  # health-probe, shell-core) with a 422-package Cargo.lock, and it was
+  # ENTIRELY unscanned: no cargo ecosystem here and no cargo-audit in any
+  # workflow. That is why advisories against its transitive tree (glib, the
+  # gtk-rs stack) only ever surfaced from an external scanner -- nothing in
+  # this repo was looking.
+  - package-ecosystem: "cargo"
+    directory: "/concord-shell"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+
+  # Container images.
+  #
+  # Added alongside the image-pinning pass: base images and compose services
+  # were moved off :latest / untagged onto concrete versions, and both
+  # Dockerfiles onto a SHA256 digest. Pinning WITHOUT this ecosystem would be
+  # a net loss — the images would stop drifting, but they would also stop
+  # receiving security patches, and nothing would ever tell us. Dependabot
+  # understands both `image:tag` and `image:tag@sha256:...` and rewrites them,
+  # so the pins stay current instead of silently rotting.
+  #
+  # One entry per directory containing a Dockerfile; `docker-compose` files are
+  # picked up by the docker ecosystem at the directory they live in.
+  - package-ecosystem: "docker"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/concord-frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"

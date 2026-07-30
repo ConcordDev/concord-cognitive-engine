@@ -69,6 +69,110 @@ function validateExpressionAST(expr) {
   return firstViolation ? { ok: false, reason: firstViolation } : { ok: true };
 }
 
+// ── SECURITY (2026-07-27): the expression that is VALIDATED must be the exact
+// expression that is COMPILED. ──────────────────────────────────────────────
+//
+// The previous implementation validated `expr` with acorn, then built a
+// DIFFERENT string by regex-substituting resolved values into the expression
+// text, and compiled *that* with `new Function`. Because the substitution
+// regex is a raw text pass with no lexer, it also rewrote identifier-shaped
+// tokens INSIDE string literals, and string values were spliced in via
+// `JSON.stringify` — which emits its own surrounding quotes. Replacing a token
+// inside `"AAA"` therefore produced `"" + <attacker text> + ""`, i.e. valid
+// executable JS assembled from attacker-controlled state.
+//
+// Confirmed exploitable (authenticated RCE): with
+//   expression = 's === "AAA"'                        <- passes the AST whitelist
+//   state      = { s: "2", AAA: "+(Function('...')())+" }
+// the compiled source became  "2" === ""+(Function('...')())+""  and the
+// injected Function() ran. `artifact.data.{state,invariants}` are both
+// caller-supplied (see invariantCheck), and every registered macro is
+// reachable via POST /api/macros/run, so any authenticated user could reach it.
+//
+// The fix removes the textual substitution entirely. Free identifiers are
+// bound as real Function PARAMETERS and their values passed as arguments, so
+// attacker data is never concatenated into source and can never become code.
+// `new Function` is still used, but now compiles the byte-identical string the
+// AST whitelist already proved safe. Do NOT reintroduce a substitution pass.
+//
+// Pinned by server/tests/invariant-expression-injection.test.js.
+
+const RESERVED_GLOBAL_NAMES = new Set(["true", "false", "null", "undefined", "NaN", "Infinity"]);
+
+/**
+ * Collect the FREE identifiers of an already-AST-validated expression, noting
+ * for each whether it is ever used bare (as a value) and/or as the object of a
+ * member expression (`a` in `a.b`). Property names (`b` in `a.b`) and object
+ * literal keys are not free identifiers and are excluded.
+ * @returns {Map<string,{bare:boolean, member:boolean}>|null} null on parse failure
+ */
+function collectFreeIdentifiers(expr) {
+  let ast;
+  try {
+    ast = acorn.parseExpressionAt(expr, 0, { ecmaVersion: 2020 });
+  } catch {
+    return null;
+  }
+  const info = new Map();
+  function walk(node, parent, key) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) { for (const n of node) walk(n, parent, key); return; }
+    if (node.type === "Identifier") {
+      const isMemberProp = parent?.type === "MemberExpression" && key === "property" && !parent.computed;
+      const isPropKey = parent?.type === "Property" && key === "key" && !parent.computed;
+      if (!isMemberProp && !isPropKey) {
+        const asMemberObject = parent?.type === "MemberExpression" && key === "object";
+        const prev = info.get(node.name) || { bare: false, member: false };
+        if (asMemberObject) prev.member = true; else prev.bare = true;
+        info.set(node.name, prev);
+      }
+      return;
+    }
+    for (const k of Object.keys(node)) {
+      if (k === "loc" || k === "range" || k === "start" || k === "end") continue;
+      walk(node[k], node, k);
+    }
+  }
+  walk(ast, null, null);
+  return info;
+}
+
+/**
+ * Evaluate an expression that has ALREADY passed validateExpressionAST.
+ * Values are bound as parameters — never substituted into the source text.
+ */
+function evaluateValidatedExpression(expr, context) {
+  const info = collectFreeIdentifiers(expr);
+  if (!info) return { value: null, error: "parse_error" };
+
+  const names = [];
+  const values = [];
+  for (const [name, usage] of info) {
+    if (RESERVED_GLOBAL_NAMES.has(name)) continue; // real JS literals, not bindings
+    let val = context && Object.prototype.hasOwnProperty.call(context, name)
+      ? context[name]
+      : undefined;
+    // Legacy value semantics preserved: an identifier used ONLY as a bare value
+    // collapses arrays to their length and plain objects to `true`. When it is
+    // also (or only) used as `x.y`, it must stay the real object so member
+    // access still resolves.
+    if (usage.bare && !usage.member) {
+      if (Array.isArray(val)) val = val.length;
+      else if (val !== null && typeof val === "object") val = true;
+    }
+    names.push(name);
+    values.push(val);
+  }
+
+  try {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function(...names, `"use strict"; return (${expr});`);
+    return { value: fn(...values), error: null };
+  } catch (err) {
+    return { value: null, error: err.message };
+  }
+}
+
 export default function registerInvariantActions(registerLensAction) {
   /**
    * invariantCheck
@@ -93,53 +197,12 @@ export default function registerInvariantActions(registerLensAction) {
       if (expr.length > MAX_EXPR_LEN) return { value: null, error: "expression_too_long" };
       const astCheck = validateExpressionAST(expr);
       if (!astCheck.ok) return { value: null, error: `unsafe_expression:${astCheck.reason}` };
-      // Tokenize and parse a safe subset of expressions
-      // Support: field.path, numbers, strings, &&, ||, !, ==, !=, <, >, <=, >=, +, -, *, /
-      function resolve(path, obj) {
-        const parts = path.split(".");
-        let current = obj;
-        for (const part of parts) {
-          if (current == null) return undefined;
-          // Handle array access like items[0]
-          const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
-          if (arrayMatch) {
-            current = current[arrayMatch[1]];
-            if (Array.isArray(current)) current = current[parseInt(arrayMatch[2])];
-            else return undefined;
-          } else {
-            current = current[part];
-          }
-        }
-        return current;
-      }
-
+      // Values are bound as Function PARAMETERS by evaluateValidatedExpression —
+      // the AST-validated string above is compiled byte-identically, so state
+      // values can never become code. See the SECURITY block at the top of this
+      // file for the RCE this replaced; do NOT reintroduce text substitution.
       try {
-        // Replace field references with resolved values
-        // Identifiers: sequences of word chars and dots (not starting with digit)
-        const processed = expr.replace(/\b([a-zA-Z_]\w*(?:\.\w+(?:\[\d+\])?)*)\b/g, (match) => {
-          // Skip JS keywords and boolean literals
-          const reserved = new Set(["true", "false", "null", "undefined", "NaN", "Infinity", "typeof", "instanceof"]);
-          if (reserved.has(match)) return match;
-          const val = resolve(match, context);
-          if (val === undefined) return "undefined";
-          if (val === null) return "null";
-          if (typeof val === "string") return JSON.stringify(val);
-          if (typeof val === "boolean" || typeof val === "number") return String(val);
-          if (Array.isArray(val)) return `${val.length}`; // array evaluates to its length
-          if (typeof val === "object") return "true"; // object is truthy
-          return String(val);
-        });
-
-        // Evaluate using Function constructor with no global access.
-        // The expression has been AST-validated above by acorn — every
-        // call/identifier/member-access has been whitelisted before this
-        // line. See validateExpressionAST() at the top of this file.
-        // This file is excluded from Semgrep's concord-eval-or-function-ctor
-        // rule via .semgrep.yml paths.exclude (the AST whitelist is a
-        // stricter guard than the lexical pattern match).
-        // eslint-disable-next-line no-new-func
-        const fn = new Function(`"use strict"; return (${processed});`);
-        return { value: fn(), error: null };
+        return evaluateValidatedExpression(expr, context);
       } catch (err) {
         return { value: null, error: err.message };
       }
@@ -516,38 +579,13 @@ export default function registerInvariantActions(registerLensAction) {
     if (expr.length > MAX_EXPR_LEN) return { value: null, error: "expression_too_long" };
     const astCheck = validateExpressionAST(expr);
     if (!astCheck.ok) return { value: null, error: `unsafe_expression:${astCheck.reason}` };
-    function resolve(path, obj) {
-      const parts = String(path).split(".");
-      let current = obj;
-      for (const part of parts) {
-        if (current == null) return undefined;
-        const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
-        if (arrayMatch) {
-          current = current[arrayMatch[1]];
-          if (Array.isArray(current)) current = current[parseInt(arrayMatch[2])];
-          else return undefined;
-        } else {
-          current = current[part];
-        }
-      }
-      return current;
-    }
+    // Same fix as evaluateExpression above: bind values as Function parameters
+    // instead of substituting them into the expression text, so the string the
+    // AST whitelist validated is exactly the string that gets compiled. This
+    // path is the widely-used one (registerMonitor, counterexample, temporal,
+    // quantified), so the RCE was reachable through several macros, not one.
     try {
-      const processed = expr.replace(/\b([a-zA-Z_]\w*(?:\.\w+(?:\[\d+\])?)*)\b/g, (match) => {
-        const reserved = new Set(["true", "false", "null", "undefined", "NaN", "Infinity", "typeof", "instanceof"]);
-        if (reserved.has(match)) return match;
-        const val = resolve(match, context);
-        if (val === undefined) return "undefined";
-        if (val === null) return "null";
-        if (typeof val === "string") return JSON.stringify(val);
-        if (typeof val === "boolean" || typeof val === "number") return String(val);
-        if (Array.isArray(val)) return `${val.length}`;
-        if (typeof val === "object") return "true";
-        return String(val);
-      });
-      // eslint-disable-next-line no-new-func
-      const fn = new Function(`"use strict"; return (${processed});`);
-      return { value: fn(), error: null };
+      return evaluateValidatedExpression(expr, context);
     } catch (err) {
       return { value: null, error: err.message };
     }

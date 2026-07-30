@@ -6,36 +6,78 @@
 #
 # In TOKEN MODE the entire ingress block lives in the Cloudflare
 # dashboard instead, and you don't need this file.
+#
+# ── PICK YOUR ORIGIN NAMES BY TOPOLOGY ──────────────────────────────
+# The service targets below differ between the two deployment paths:
+#
+#   BARE METAL (pm2 / startup.sh — the A40 path):
+#     frontend  → http://127.0.0.1:3000
+#     backend   → http://127.0.0.1:5050
+#
+#   DOCKER COMPOSE (cloudflared runs as a compose sidecar):
+#     frontend  → http://frontend:3000
+#     backend   → http://backend:5050
+#
+# This template defaults to BARE METAL. For docker, swap the hosts.
+#
+# ── ROUTING MODEL ───────────────────────────────────────────────────
+# The FRONTEND (Next.js, :3000) is the root origin — it serves the app
+# and proxies /api/* to the backend via its rewrites. WebSocket traffic
+# (/socket.io, /godot-ws) MUST go straight to the backend (:5050):
+# Next's rewrites proxy HTTP but do NOT forward WebSocket upgrades
+# (observed live: same-origin sockets to :3000 die with "WebSocket is
+# closed before the connection is established").
 
 tunnel: <TUNNEL_UUID>
 credentials-file: /etc/cloudflared/credentials.json
 
-# Outbound origin connections from cloudflared → your services.
-# Cloudflared resolves these names against the docker network, so use
-# the SERVICE name (concord-backend), not localhost.
 ingress:
-  # Main app — public concord.<your-domain>
+  # socket.io realtime — MUST hit the backend directly (WS upgrade).
+  # Path rules must precede the catch-all hostname rule.
   - hostname: concord.<YOUR_DOMAIN>
-    service: http://concord-backend:5050
+    path: /socket.io/.*
+    service: http://127.0.0.1:5050
+    originRequest:
+      connectTimeout: 30s
+      keepAliveTimeout: 90s
+
+  # Godot client gateway — raw WebSocket, same reasoning as socket.io.
+  - hostname: concord.<YOUR_DOMAIN>
+    path: /godot-ws.*
+    service: http://127.0.0.1:5050
+
+  # API + health straight to the backend. The frontend's rewrites CAN
+  # proxy these, but that adds a second proxy hop — the backend then
+  # sees every request from 127.0.0.1 and per-IP rate limiting collapses
+  # into one bucket (TRUST_PROXY=1 counts exactly one hop). Routing
+  # /api directly keeps every backend-bound path at one hop.
+  - hostname: concord.<YOUR_DOMAIN>
+    path: /api/.*
+    service: http://127.0.0.1:5050
+  - hostname: concord.<YOUR_DOMAIN>
+    path: /health
+    service: http://127.0.0.1:5050
+  - hostname: concord.<YOUR_DOMAIN>
+    path: /ready
+    service: http://127.0.0.1:5050
+
+  # Main app — the Next.js frontend. Its runtime rewrites proxy
+  # /api/*, /health, /ready to the backend, so everything else
+  # (pages, /_next/static assets, API calls) flows through :3000.
+  - hostname: concord.<YOUR_DOMAIN>
+    service: http://127.0.0.1:3000
     originRequest:
       noTLSVerify: false
       connectTimeout: 30s
       keepAliveTimeout: 90s
 
-  # WebSocket / real-time — same backend, but Cloudflare needs the
-  # path so it doesn't try to upgrade unrelated traffic. Concord uses
-  # socket.io; if you're on plain WS, change accordingly.
-  - hostname: concord.<YOUR_DOMAIN>
-    path: /socket.io/.*
-    service: http://concord-backend:5050
-
   # Optional — expose Ollama brains through the tunnel only if you
   # need remote brain access (most operators do NOT — keep brains
   # private). Uncomment + customize if needed.
   # - hostname: brain.<YOUR_DOMAIN>
-  #   service: http://ollama-conscious:11434
+  #   service: http://127.0.0.1:11434
 
-  # Optional — Grafana dashboard at metrics.<YOUR_DOMAIN>.
+  # Optional — Grafana dashboard at metrics.<YOUR_DOMAIN> (docker only).
   # - hostname: metrics.<YOUR_DOMAIN>
   #   service: http://grafana:3000
 

@@ -17,6 +17,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { registerHandleLeakGuard } from "./lib/handle-leak-guard.js";
+
+// Several route factories probed below (createAuthRouter, registerChatRoutes,
+// createDisputeRouter, world-narrative.js) start a real setInterval as a
+// side effect of being called — correct for a real single-call-at-boot
+// production use, but this file calls each factory repeatedly (4 mock arg
+// shapes) purely for c8 coverage credit, leaking one live interval per call.
+// Left unswept, those leaked intervals keep the event loop non-idle well
+// past every declared subtest reporting `ok`, and the file-level wrapper
+// hits the 300s timeout waiting for a loop that never empties on its own.
+// See tests/lib/handle-leak-guard.js for the full root-cause writeup.
+registerHandleLeakGuard();
 
 const HERE = new URL(".", import.meta.url).pathname;
 const ROUTES_DIR = join(HERE, "..", "routes");

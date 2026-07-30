@@ -666,7 +666,9 @@ export async function runHeartbeatBridgeTick(STATE, opts = {}) {
         for (const work of masterworks) {
           if (work._promotedToDtu) continue; // already promoted
           // Create a DTU from the masterwork
-          if (STATE.dtus instanceof Map) {
+          // Duck-type: STATE.dtus is a write-through store (has .set()) once
+          // wired, not a literal Map.
+          if (typeof STATE.dtus?.set === "function") {
             const dtuId = `dtu_cw_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
             STATE.dtus.set(dtuId, {
               id: dtuId,

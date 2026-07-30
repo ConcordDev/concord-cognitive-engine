@@ -17,8 +17,21 @@
 // Every other both-sided single row (ROYALTY_PAYOUT, EMERGENT_TRANSFER,
 // REVERSAL) is a genuine transfer and is still counted. Pinned by
 // tests/economy/ledger-conservation.test.js.
+//
+// BOUNTY_ESCROW / BOUNTY_CLAIM (migration 399, 2026-07-30, human-authorized —
+// this predicate is a money invariant): economy/lens-economy-wiring.js's
+// postBounty/claimBounty call executeTransfer() — the SAME split-batch
+// function TRANSFER/MARKETPLACE_PURCHASE use — with these two types instead
+// of "TRANSFER", specifically so the escrow move is fee-exempt (mirrors the
+// existing STAKE_ESCROW/STAKE_RETURN precedent, both also absent from
+// fees.js's FEES map). executeTransfer's split-batch shape is unconditional
+// on `type`, so these two new types produce the identical debit+credit-row
+// split TRANSFER does, and need the identical exclusion here or a bounty
+// escrow/claim would double-credit its recipient — trading the fee-drain bug
+// this was meant to fix for a real money-printing one. Pinned by
+// tests/economy/ledger-conservation.test.js's bounty-specific cases.
 export const CREDIT_ROW_PREDICATE =
-  "NOT (from_user_id IS NOT NULL AND type IN ('TRANSFER','MARKETPLACE_PURCHASE'))";
+  "NOT (from_user_id IS NOT NULL AND type IN ('TRANSFER','MARKETPLACE_PURCHASE','BOUNTY_ESCROW','BOUNTY_CLAIM'))";
 
 /**
  * Compute balance for a user by scanning the ledger.

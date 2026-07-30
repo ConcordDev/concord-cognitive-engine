@@ -48,7 +48,11 @@ async function _loadDb() {
     _db = new Database(workerData.dbPath, { readonly: true, fileMustExist: false });
     try {
       _db.pragma("journal_mode = WAL");
-      _db.pragma("busy_timeout = 5000");
+      // Was hardcoded 5000ms with no env override — half the main writer's
+      // default (CONCORD_SQLITE_REPLICA_BUSY_TIMEOUT_MS, default 10000).
+      // Matches the same fix applied to world-shard.js's writer handle
+      // (audit 2026-07-27).
+      _db.pragma(`busy_timeout = ${Number(process.env.CONCORD_SQLITE_REPLICA_BUSY_TIMEOUT_MS) || 10000}`);
     } catch { /* pragmas best-effort */ }
     return _db;
   } catch (err) {

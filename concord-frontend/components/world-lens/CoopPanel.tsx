@@ -93,31 +93,39 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Live updates via party-room socket events.
+  // Live updates via party-room socket events. Uses the SHARED singleton
+  // from lib/realtime/socket — the previous `io('/')` same-origin socket
+  // connected to the Next.js server (:3000), whose rewrites proxy HTTP but
+  // NOT WebSocket upgrades, so in the tunnel topology this socket died with
+  // "WebSocket is closed before the connection is established" on every
+  // mount (a documented live failure — see lib/realtime/socket.ts header).
+  // Listeners are removed on unmount; the shared socket itself stays up.
   useEffect(() => {
     if (!partyId) return;
-    type SocketLike = {
-      on: (e: string, h: (p: unknown) => void) => void;
-      off: (e: string, h: (p: unknown) => void) => void;
-      disconnect?: () => void;
-    };
-    let socket: SocketLike | null = null;
     let mounted = true;
+    let cleanup: (() => void) | null = null;
     (async () => {
       try {
-        const { io } = await import('socket.io-client');
+        const { getSocket } = await import('@/lib/realtime/socket');
         if (!mounted) return;
-        socket = io('/', { withCredentials: true, transports: ['websocket', 'polling'] }) as unknown as SocketLike;
+        const socket = getSocket();
         const refreshOnEvent = () => { void refresh(); };
-        socket?.on('coop:stash:withdraw', refreshOnEvent);
-        socket?.on('coop:raid:progress', (payload: unknown) => setActiveRaid(payload as Raid));
-        socket?.on('coop:raid:completed', (payload: unknown) => {
+        const onProgress = (payload: unknown) => setActiveRaid(payload as Raid);
+        const onCompleted = (payload: unknown) => {
           setActiveRaid(payload as Raid);
           setTimeout(() => refresh(), 1500);
-        });
+        };
+        socket.on('coop:stash:withdraw', refreshOnEvent);
+        socket.on('coop:raid:progress', onProgress);
+        socket.on('coop:raid:completed', onCompleted);
+        cleanup = () => {
+          socket.off('coop:stash:withdraw', refreshOnEvent);
+          socket.off('coop:raid:progress', onProgress);
+          socket.off('coop:raid:completed', onCompleted);
+        };
       } catch { /* socket optional */ }
     })();
-    return () => { mounted = false; try { socket?.disconnect?.(); } catch { /* ok */ } };
+    return () => { mounted = false; try { cleanup?.(); } catch { /* ok */ } };
   }, [partyId, refresh]);
 
   const invite = useCallback(async () => {

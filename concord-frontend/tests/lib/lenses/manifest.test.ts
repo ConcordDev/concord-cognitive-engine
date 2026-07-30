@@ -186,7 +186,10 @@ describe('getLensesMissingMacro', () => {
   // 'concord-link-frontier' and 'plugins' were added after this allowlist was
   // last updated — both are genuinely REST-backed (no macro domain by
   // design, see their manifest.ts comments), so they belong here too.
-  const REST_DASHBOARDS = ['lattice', 'narrative-walk', 'ops-telemetry', 'concord-link-frontier', 'plugins'];
+  // 'frontier' is ten independent compute engines with no single list/get/run
+  // convention — same posture as ops-telemetry/concord-link-frontier, per its
+  // own manifest.ts comment (macros: {} by design, not an oversight).
+  const REST_DASHBOARDS = ['lattice', 'narrative-walk', 'ops-telemetry', 'frontier', 'concord-link-frontier', 'plugins'];
 
   it('returns only REST-dashboard lenses for the list macro (others all have list)', () => {
     const missing = getLensesMissingMacro('list');

@@ -4,6 +4,7 @@
 // Requires: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET
 
 import crypto from "node:crypto";
+import { timingSafeCompare } from "../../constant-time-compare.js";
 
 const BOT_TOKEN = process.env.SLACK_BOT_TOKEN || "";
 const SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || "";
@@ -27,7 +28,10 @@ export function verifyIncoming(req) {
     const rawBody = typeof req.rawBody === "string" ? req.rawBody : JSON.stringify(req.body);
     const sigBase = `v0:${timestamp}:${rawBody}`;
     const expected = "v0=" + crypto.createHmac("sha256", SIGNING_SECRET).update(sigBase).digest("hex");
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    // Same length-mismatch throw hazard as the other adapters. Here the
+    // surrounding try/catch happened to absorb it into `return false`, so it
+    // was correct by accident rather than by construction.
+    return timingSafeCompare(signature, expected);
   } catch {
     return false;
   }

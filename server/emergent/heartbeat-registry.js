@@ -171,10 +171,53 @@ export async function tickAllRegistered(ctx) {
   // One at a time, always — never Promise.all. See doc comment above.
   for (const entry of due) {
     await _runOne(entry, moduleCtx);
+    await _yieldToEventLoop();
   }
   for (const entry of dueSerial) {
     await _runOne(entry, moduleCtx);
+    await _yieldToEventLoop();
   }
+}
+
+/**
+ * Return control to the event loop's poll/check phase between modules.
+ *
+ * WHY (2026-07-28, measured): `await` on a handler whose body is synchronous
+ * CPU work does NOT let pending I/O run. `await` drains the MICROTASK queue,
+ * but an inbound HTTP request is a MACROTASK — it can only be serviced when
+ * the loop reaches the poll phase. So a chain of `await _runOne(...)` over
+ * sync-bodied modules holds the loop for the WHOLE tick, and every request
+ * that arrives meanwhile waits for all of them.
+ *
+ * Proven with a real http.Server and a real request landing mid-tick, over
+ * 8 x 100ms sync "modules":
+ *     without this yield:  tick 801ms, request served at +805ms (tick end)
+ *     with this yield:     tick 803ms, request served at +303ms (mid-tick)
+ *
+ * That mattered because `lib/request-admission.js` sheds requests with an
+ * immediate 503+Retry-After once event-loop lag passes 300ms. Polling one
+ * trivial endpoint every 2s for 110s against a real server produced NINE shed
+ * windows recurring at ~15s — governorTick's cadence. Users saw that as
+ * intermittent "connection drops": the server 503ing healthy traffic once per
+ * tick, purely because the tick never let the poll phase run.
+ *
+ * `setImmediate` (check phase) rather than `setTimeout(…, 0)`: it fires after
+ * the poll phase completes, so pending I/O callbacks are serviced first, which
+ * is exactly the goal. Cost is one macrotask per module per tick — negligible
+ * against the modules themselves.
+ *
+ * SEMANTIC NOTE, stated because it is a real change: a tick is no longer
+ * atomic with respect to HTTP handlers — request handlers can now interleave
+ * BETWEEN modules. This does not affect module ORDERING (still strictly
+ * sequential, `serial` group still last, so same-tick write-visibility between
+ * e.g. social-npc-bridge and npc-knowledge-bridge is preserved), and modules
+ * were never able to assume atomicity ACROSS ticks anyway — interleaving
+ * between modules is the same exposure as interleaving between ticks. Kill
+ * switch: CONCORD_HEARTBEAT_YIELD=0 restores the old blocking behaviour.
+ */
+function _yieldToEventLoop() {
+  if (process.env.CONCORD_HEARTBEAT_YIELD === "0") return Promise.resolve();
+  return new Promise((resolve) => { setImmediate(resolve); });
 }
 
 async function _runOne(entry, moduleCtx) {

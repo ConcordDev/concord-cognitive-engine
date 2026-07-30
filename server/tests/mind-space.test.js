@@ -22,6 +22,18 @@ import {
   CognitiveBridge, InterfaceAdapter, InterfaceType,
 } from "../mind-space/cognitive-bridge.js";
 import { MultiSpaceHandler } from "../mind-space/multi-space-handler.js";
+import { registerHandleLeakGuard } from "./lib/handle-leak-guard.js";
+
+// Root-caused 2026-07-27: every one of this file's 70 subtests reports `ok`
+// (confirmed live — none hang), yet the file-level wrapper still hit its
+// 300s timeout. Unlike the coverage-smoke files (a real leaked setInterval
+// per case), an active-handle dump here found no Timeout/Worker/TCP handle
+// at all — only the process's own stdout/stderr streams, exactly the
+// "genuinely idle by every introspection tool available, yet node:test's
+// own completion tracking still won't signal done" shape
+// tests/lib/server-clean-exit.js's doc comment already root-caused for a
+// different file. Same fix: a decoupled, unref'd last-resort exit.
+registerHandleLeakGuard();
 
 // ── Helpers ─────────────────────────────────────────────────────────
 

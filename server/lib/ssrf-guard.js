@@ -32,6 +32,7 @@
 
 import dns from "node:dns/promises";
 import net from "node:net";
+import logger from "../logger.js";
 
 // ── Scheme allowlist ────────────────────────────────────────────────────────
 const ALLOWED_SCHEMES = new Set(["http:", "https:"]);
@@ -265,16 +266,40 @@ export async function fetchWithPinnedIp(check, init = {}) {
     const resolvedIp = check.resolvedIp;
 
     // Pin DNS: every connection attempt uses our validated IP.
+    //
+    // Security audit 2026-07-30: this previously called back
+    // `cb(null, resolvedIp, family)` — the older 3-arg dns.lookup
+    // shape — which THIS undici/Node combination's connect.lookup does not
+    // accept (confirmed directly: it throws "Invalid IP address: undefined"
+    // deep in Node's net internals). Every call silently fell into the
+    // catch-fallback below — the exact same effective bug as `undici` never
+    // being installed at all (a separate issue also fixed this same audit:
+    // undici was missing from package.json entirely, so the try block
+    // ALWAYS threw "Cannot find package 'undici'" regardless of this
+    // signature bug). The correct shape for this connect.lookup — verified
+    // by direct reproduction against a local test server before and after —
+    // is the `{all: true}` dns.lookup array form:
+    // `cb(err, [{ address, family }])`.
     const dispatcher = new Agent({
       connect: {
-        lookup: (_hostname, _opts, cb) => cb(null, resolvedIp, family),
+        lookup: (_hostname, _opts, cb) => cb(null, [{ address: resolvedIp, family }]),
       },
     });
 
     const { fetch: undiciFetch } = undici;
     return await undiciFetch(check.url, { ...init, dispatcher });
-  } catch {
-    // Fall back — undici isn't available, so we can't pin the IP.
+  } catch (e) {
+    // Fall back to an unpinned (but re-validated) fetch. This is the
+    // documented, honest degraded path for when undici genuinely isn't
+    // installed — but per the audit above, a SILENT catch-all here is what
+    // let both bugs hide for as long as they did: a real internal error
+    // (not just "package missing") looked identical to the expected
+    // degraded case. Distinguish them in the log so a future regression in
+    // this path is observable instead of silently eating the stronger
+    // defense again.
+    if (e?.code !== "ERR_MODULE_NOT_FOUND") {
+      logger.warn("ssrf-guard", "pinned-IP fetch failed for a reason other than a missing undici install — falling back to the weaker unpinned path", { error: e?.message, code: e?.code });
+    }
     // Re-validate the URL INLINE here so CodeQL's taint tracker sees
     // the sanitizer adjacent to the fetch. The pinned-IP path above
     // is the happy path; this fallback only runs if `undici` is not

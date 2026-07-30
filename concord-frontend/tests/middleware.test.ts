@@ -32,6 +32,7 @@ function makeRequest(pathname: string, cookies: Record<string, string> = {}) {
   return {
     nextUrl: { pathname },
     url: `http://localhost:3000${pathname}`,
+    headers: new Headers(),
     cookies: {
       has: (name: string) => name in cookies,
       get: (name: string) => cookies[name] ? { value: cookies[name] } : undefined,
@@ -124,6 +125,47 @@ describe('Auth Middleware', () => {
     it('rejects legacy cookie names that are no longer recognised', () => {
       middleware(makeRequest('/lenses/code', { 'connect.sid': 'session-id' }));
       expect(mockRedirect).toHaveBeenCalled();
+    });
+  });
+
+  describe('CSP nonce (security audit 2026-07-30)', () => {
+    it('sets a Content-Security-Policy-Report-Only header on every response', () => {
+      const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
+      const csp = response.headers.get('Content-Security-Policy-Report-Only');
+      expect(csp).toBeDefined();
+      expect(csp).toContain(`script-src 'self'`);
+      expect(csp).toContain('strict-dynamic');
+      // Nonces can't cover the `style` HTML attribute (only <style> elements)
+      // and this codebase uses React's style={{}} prop pervasively — see the
+      // middleware.ts header comment for the full reasoning.
+      expect(csp).toContain(`style-src 'self' 'unsafe-inline'`);
+      expect(csp).toContain('frame-ancestors');
+    });
+
+    it('never sets the enforcing Content-Security-Policy header (report-only only, this rollout)', () => {
+      const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
+      expect(response.headers.get('Content-Security-Policy')).toBeUndefined();
+    });
+
+    it('embeds a matching nonce in both the CSP header and the x-nonce header', () => {
+      const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
+      const nonce = response.headers.get('x-nonce');
+      expect(nonce).toBeTruthy();
+      expect(response.headers.get('Content-Security-Policy-Report-Only')).toContain(`'nonce-${nonce}'`);
+    });
+
+    it('generates a fresh nonce per request (never reused)', () => {
+      const n1 = (middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } }).headers.get('x-nonce');
+      const n2 = (middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } }).headers.get('x-nonce');
+      expect(n1).toBeTruthy();
+      expect(n2).toBeTruthy();
+      expect(n1).not.toBe(n2);
+    });
+
+    it('sets the CSP on a redirect response too (protected route, no session)', () => {
+      const response = middleware(makeRequest('/hub')) as { headers: { get: (k: string) => string | undefined } };
+      expect(response.headers.get('Content-Security-Policy-Report-Only')).toBeTruthy();
+      expect(response.headers.get('x-nonce')).toBeTruthy();
     });
   });
 

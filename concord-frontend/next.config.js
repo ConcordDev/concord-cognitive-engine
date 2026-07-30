@@ -29,6 +29,24 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           {
+            // HSTS. The Express API sets this via Helmet
+            // (server/middleware/index.js) and nginx sets it too
+            // (nginx/conf.d/default.conf), but NEITHER is necessarily in the
+            // browser's path for the HTML document: the Cloudflare tunnel
+            // routes root traffic to this Next.js server on 127.0.0.1:3000,
+            // so on that topology the document shipped with no HSTS at all.
+            //
+            // The existing test (server/tests/platinum-security-headers.test.js)
+            // could not catch this — it greps server.js/middleware for an HSTS
+            // config, so it passes on the API's header while the frontend has
+            // none.
+            //
+            // Two years, subdomains included, preload-eligible — matching what
+            // Helmet already sends on the API so the two layers agree.
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
@@ -117,13 +135,34 @@ const nextConfig = {
     // Keep strict checks by default; allow CI Docker build to opt out explicitly.
     ignoreBuildErrors: process.env.CI_SKIP_TYPECHECK === '1',
   },
-  eslint: {
-    // Keep strict checks by default; allow CI Docker build to opt out explicitly.
-    ignoreDuringBuilds: process.env.CI_SKIP_LINT_IN_BUILD === '1',
-  },
+  // Next.js 16 removed build-time ESLint integration entirely (the `eslint`
+  // key here is now silently ignored with an "Unrecognized key(s)" warning —
+  // confirmed via a real `next build` run). The CI_SKIP_LINT_IN_BUILD gate
+  // it implemented did nothing under Next 15 either in a way that mattered
+  // here: `.github/workflows/ci.yml` already runs `npm run lint` as its own
+  // independent step, not relying on next build's internal ESLint pass, so
+  // removing this dead config changes no real CI coverage.
   // Proxy API and socket requests to the backend server in production.
-  // The Cloudflare tunnel routes to the frontend (port 3000); these rewrites
-  // forward /api/* and /socket.io/* to the backend on port 5050.
+  //
+  // Topology note (audit 2026-07-27 — reconciles an apparent contradiction
+  // with docs/DEPLOYMENT_TOPOLOGY.md, which was never actually wrong, just
+  // describing a DIFFERENT one of this repo's two real topologies):
+  //   - BARE METAL (pm2/startup.sh, the current primary A40 target — no
+  //     nginx container at all): a `cloudflared` binary on the host tunnels
+  //     directly to this frontend on :3000 (infra/cloudflare/cloudflared.yml.example's
+  //     "BARE METAL" block). Its ingress rules already route /api/*,
+  //     /socket.io/*, and /godot-ws straight to the backend on :5050 at the
+  //     edge (one hop, avoids double-proxying and keeps TRUST_PROXY hop-count
+  //     correct) — so THESE rewrites mostly serve local `next dev`/`next start`
+  //     without a tunnel, or as a safety net for any request that reaches
+  //     the frontend anyway.
+  //   - DOCKER COMPOSE (nginx service in docker-compose.yml, matches
+  //     docs/DEPLOYMENT_TOPOLOGY.md's diagram): nginx terminates 80/443 and
+  //     does its own reverse-proxying (nginx/conf.d/default.conf) to both
+  //     frontend :3000 and backend :5050; an optional Cloudflare tunnel in
+  //     that mode points at nginx, not directly at this frontend.
+  // Both topologies are real and coexist in the repo; this file's rewrites
+  // are harmless in either since they forward to the same BACKEND_URL.
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:5050';
     return [

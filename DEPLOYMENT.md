@@ -165,8 +165,15 @@ npm install -g pm2
 ### Start Services
 
 ```bash
-# Start backend + frontend
-pm2 start ecosystem.config.cjs
+# Recommended: use the startup script — it also launches the 5 Ollama brains,
+# builds the frontend (and copies standalone static assets), installs the
+# health/backup crons, and starts the Cloudflare tunnel:
+./startup.sh --runpod        # or: ./startup.sh --cloudflare
+
+# PM2 alone (no brains). --env runpod is REQUIRED on bare metal — the default
+# env block points brain URLs at Docker hostnames (ollama-conscious:11434 etc.)
+# that only resolve inside docker-compose:
+pm2 start ecosystem.config.cjs --env runpod
 
 # Check status
 pm2 status
@@ -251,6 +258,28 @@ Copy `.env.example` to `.env` and configure the following:
 | `MAX_DTUS_IN_MEMORY` | `10000` | Max DTUs held in heap |
 
 See `.env.example` for the complete list including Stripe, OAuth, voice, and vision configuration.
+
+### Stripe webhook (behind Cloudflare)
+
+The webhook route (`/api/stripe/webhook`) does raw-body signature verification
+correctly (mounted before body-parsing consumes the raw buffer, exempt from
+CSRF, exempt from both rate limiters — Stripe retries redeliveries in bursts
+from a rotating IP pool, and a 429'd webhook means a paid `TOKEN_PURCHASE`
+never mints). To wire it up end-to-end through Cloudflare:
+
+1. In the Stripe Dashboard → Developers → Webhooks, add an endpoint at
+   `https://<your-domain>/api/stripe/webhook`.
+2. Copy the signing secret into `.env` as `STRIPE_WEBHOOK_SECRET` — the
+   handler refuses to process any event without it configured.
+3. **Cloudflare WAF / Bot Fight Mode**: Stripe's webhook POSTs originate from
+   Stripe's server IPs, not a browser, and will get challenged/blocked by
+   default WAF managed rules or Bot Fight Mode. Add a WAF **Skip** rule (or a
+   Configuration Rule) scoped to `URI Path equals /api/stripe/webhook` that
+   bypasses Bot Fight Mode and the Managed Ruleset for that path — otherwise
+   webhook deliveries silently fail at the edge and never reach the backend
+   at all (no log on your side, only in the Stripe Dashboard's webhook
+   delivery-attempt history).
+4. Verify: Stripe Dashboard → Webhooks → your endpoint → "Send test webhook."
 
 ---
 

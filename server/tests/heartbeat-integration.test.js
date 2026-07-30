@@ -101,9 +101,24 @@ describe("Heartbeat Integration", () => {
   // is the sole LLM source; OpenAI cloud fallback paths were removed
   // (CLAUDE.md five-brain Ollama+LLaVA stack).
   it("should route chat LLM exclusively to the local conscious brain", () => {
-    assert.ok(source.includes("const consciousAvailable = BRAIN.conscious && BRAIN.conscious.enabled"));
-    // Negative assertion: the prior OpenAI emergency fallback string
-    // must no longer appear anywhere in server.js.
+    // The positive assertion used to grep for the EXACT source line
+    // `const consciousAvailable = BRAIN.conscious && BRAIN.conscious.enabled`.
+    // That line no longer exists — `git log -S` finds no commit that ever
+    // introduced it — so this test had been failing on a dead string while its
+    // real intent (no cloud LLM fallback) was still satisfied. Re-anchored on
+    // the idiom rather than one formatting of it.
+    //
+    // Inherent brittleness worth naming: this is a source-grep test, so it can
+    // only ever check that the gate is WRITTEN, not that it is reached. The
+    // negative assertions below are the load-bearing half.
+    assert.match(
+      source,
+      /BRAIN(\s*&&\s*BRAIN)?\.conscious\??\.?(\s*&&\s*BRAIN\.conscious)?\.?enabled/,
+      "chat readiness must still be gated on the local conscious brain being enabled"
+    );
+    // Negative assertions — the prior OpenAI emergency fallback must not
+    // reappear anywhere in server.js. These are what actually pin "no cloud
+    // fallback", and they are format-independent.
     assert.ok(!source.includes("llm_openai_emergency_fallback"), "OpenAI emergency fallback must be removed");
     assert.ok(!source.includes("api.openai.com"), "No api.openai.com references should remain in server.js");
   });

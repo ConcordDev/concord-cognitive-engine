@@ -37,7 +37,13 @@ async function _initShard(initMsg) {
     const Database = mod.default;
     _db = new Database(_dbPath);
     _db.pragma("journal_mode = WAL");
-    _db.pragma("busy_timeout = 5000");
+    // Was hardcoded 5000ms with no env override — half the main writer's
+    // default (server.js's busyTimeoutMs, CONCORD_SQLITE_BUSY_TIMEOUT_MS,
+    // default 10000). A shard write racing the main thread's periodic
+    // state save + checkpoint had less grace than the writer itself before
+    // giving up with SQLITE_BUSY (audit 2026-07-27 — matches the same fix
+    // already applied to the read-replica handle above this worker file).
+    _db.pragma(`busy_timeout = ${Number(process.env.CONCORD_SQLITE_BUSY_TIMEOUT_MS) || 10000}`);
     _db.pragma("synchronous = NORMAL");
   } catch (err) {
     _log("error", "shard_db_open_failed", { error: err?.message });

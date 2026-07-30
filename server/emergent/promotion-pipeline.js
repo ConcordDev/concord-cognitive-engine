@@ -103,7 +103,8 @@ function getItem(itemId, itemType, STATE) {
       if (apps instanceof Map) return apps.get(itemId);
     } catch (_e) { logger.debug('emergent:promotion-pipeline', 'fallback', { error: _e?.message }); }
   }
-  if (itemType === "dtu" && STATE?.dtus instanceof Map) {
+  // Duck-type: STATE.dtus is a write-through store, not a literal Map, once wired.
+  if (itemType === "dtu" && typeof STATE?.dtus?.get === "function") {
     return STATE.dtus.get(itemId);
   }
   return null;

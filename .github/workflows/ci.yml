@@ -59,7 +59,12 @@ jobs:
       - name: Typecheck frontend
         id: typecheck_frontend
         working-directory: ./concord-frontend
-        run: npm run type-check
+        # type-check:ci (not the plain script) — tsc --noEmit OOM'd on a
+        # standard runner at V8's default old-space limit (~4GB heap, exit
+        # 134) before producing any diagnostic output; this is a runner-size
+        # crash, not a real type error. Mirrors build:ci's existing
+        # --max-old-space-size pattern in package.json.
+        run: npm run type-check:ci
 
       - name: Auth bypass grep gate
         run: |
@@ -474,10 +479,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Build backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./server
           push: false
@@ -490,7 +495,7 @@ jobs:
             NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
 
       - name: Build frontend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./concord-frontend
           push: false

@@ -3,7 +3,8 @@
 // Both surfaces are public-read (mounted in publicReadPaths) so the
 // hook works for any avatar id, not just the caller's own avatar.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 export interface AvatarScar {
   id: string;
@@ -30,27 +31,24 @@ export function useAvatarScars(userId: string | null | undefined, refreshMs = 30
   const [drift, setDrift] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const fetchBoth = useCallback(async () => {
     if (!userId) return;
-    let cancelled = false;
-    const fetchBoth = async () => {
-      setLoading(true);
-      try {
-        const [scarsRes, driftRes] = await Promise.all([
-          fetch(`/api/avatars/${encodeURIComponent(userId)}/scars`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/avatars/${encodeURIComponent(userId)}/drift`).then((r) => r.ok ? r.json() : null),
-        ]);
-        if (cancelled) return;
-        if (scarsRes?.ok) setScars(scarsRes.scars || []);
-        if (driftRes?.ok) setDrift(Math.max(0, Math.min(1, driftRes.drift_score || 0)));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    fetchBoth();
-    const t = setInterval(fetchBoth, refreshMs);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [userId, refreshMs]);
+    setLoading(true);
+    try {
+      const [scarsRes, driftRes] = await Promise.all([
+        fetch(`/api/avatars/${encodeURIComponent(userId)}/scars`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/avatars/${encodeURIComponent(userId)}/drift`).then((r) => r.ok ? r.json() : null),
+      ]);
+      if (scarsRes?.ok) setScars(scarsRes.scars || []);
+      if (driftRes?.ok) setDrift(Math.max(0, Math.min(1, driftRes.drift_score || 0)));
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  // Audit fix (2026-07-27): pauses while the tab is hidden instead of
+  // polling every player's avatar in view every 30s in the background.
+  useSmartPolling(fetchBoth, refreshMs, { enabled: !!userId });
 
   return { scars, drift, loading };
 }

@@ -30,6 +30,15 @@ for an optional future tier — not a rebuild.
   `.env.runpod`, `docker-compose.yml`).
 - **Delivery:** Next.js (3000) + nginx (80/443) + Node/Express + socket.io (5050); optional Cloudflare
   tunnel → `.proxy.runpod.net` → nginx. SQLite WAL on a persistent volume.
+  **Scope note (audit 2026-07-27):** this describes the DOCKER COMPOSE topology (nginx is a
+  docker-compose service that terminates 80/443 and reverse-proxies to both frontend/backend — see
+  `nginx/conf.d/default.conf`). The current primary deploy target — bare metal via `pm2`/`startup.sh`
+  on the A40 box — runs **no nginx at all**: a `cloudflared` binary on the host tunnels directly to
+  the frontend on :3000, with its own ingress rules routing `/api/*`, `/socket.io/*`, and `/godot-ws`
+  straight to the backend on :5050 (`infra/cloudflare/cloudflared.yml.example`'s "BARE METAL" block;
+  see also the topology comment in `concord-frontend/next.config.js`'s `rewrites()`). Both topologies
+  are real and intentionally coexist — this doc's diagram below is the docker/RunPod-proxy one
+  specifically, not a claim that bare metal also runs nginx.
 - **Isolation primitives present:** per-world sharding (`server/workers/world-shard.js`,
   `CONCORD_SHARD_WORLDS`), a CPU macro worker pool (`server/workers/macro-pool.js`), a socket-disconnect
   janitor (`_sweepSocketState` in `server.js`), WebRTC signalling for telehealth/voice

@@ -11,6 +11,18 @@ name: Security Detectors — PR Gate (blocking)
 #   • authz-coverage — integrity of the global write-auth gate
 #     (productionWriteAuthMiddleware): present + mounted before routes + the
 #     write-auth bypass allowlist pinned.
+#   • secret-leak — hardcoded API keys / tokens / credentials / private keys.
+#     Promoted into this gate 2026-07-27: it had been code-quality-only, so a
+#     committed credential was caught (if at all) after merge rather than on
+#     the PR. Its real-hit patterns are critical/high, so it can genuinely
+#     block; it currently reports only its own info-tier scan summary, so the
+#     promotion did not change the gate's result on existing code.
+#
+# secret-leak costs 3.4s in isolation (9,245 files), so the gate stays fast.
+#
+# constant-time was evaluated for this gate and deliberately left out: it only
+# emits `info`, and this gate fails only on new high/critical, so including it
+# would run on every PR while being unable to block anything.
 #
 # It runs `run-detectors.js --consumer security --diff --ci`, which compares
 # against audit/detectors/BASELINE.json and FAILS (exit 1) only on a NEW
@@ -41,7 +53,7 @@ permissions:
 
 jobs:
   security-detectors:
-    name: Security detectors (command-injection + authz-coverage)
+    name: Security detectors (command-injection + authz-coverage + secret-leak)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

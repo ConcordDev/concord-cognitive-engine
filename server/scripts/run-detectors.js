@@ -198,6 +198,17 @@ async function main() {
     console.log(`  added:     ${delta.addedCount} (critical=${delta.addedBySeverity.critical}, high=${delta.addedBySeverity.high}, medium=${delta.addedBySeverity.medium}, low=${delta.addedBySeverity.low}, info=${delta.addedBySeverity.info})`);
     console.log(`  removed:   ${delta.removedCount}`);
     console.log(`  unchanged: ${delta.unchangedCount}`);
+    console.log(`  moved:     ${delta.movedCount || 0} (same finding, new line — not counted as new)`);
+    // Printed in full, never silently folded away: "moved" is the one bucket
+    // that could hide a real regression if the matching were ever too loose,
+    // so it stays as visible as "added".
+    if (delta.movedCount > 0) {
+      console.log("\nMoved findings (unchanged message, shifted line):");
+      for (const m of delta.moved.slice(0, 50)) {
+        console.log(`  [${m.finding.severity}] ${m.detector}: ${m.fromLocation} -> ${m.finding.location || "?"}`);
+      }
+      if (delta.moved.length > 50) console.log(`  …and ${delta.moved.length - 50} more`);
+    }
     if (delta.addedCount > 0) {
       console.log("\nNew findings:");
       for (const a of delta.added.slice(0, 50)) {

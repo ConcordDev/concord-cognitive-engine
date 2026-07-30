@@ -27,7 +27,7 @@
 import { WebSocketServer } from "ws";
 import { makeSocketRateLimiter } from "./socket-rate-limit.js";
 
-const ROOM_RE = /^(world|user):[A-Za-z0-9_.\-]{1,64}$/;
+const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
 let _clientCounter = 0;
 const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter).toString(36)}`;
@@ -62,7 +62,8 @@ export function mountGodotGateway(httpServer, deps = {}) {
     onClientMessage = null,
     verifyApiKeyPair = null,
     authTimeoutMs = 10_000,
-    heartbeatMs = 25_000,
+    heartbeatMs = Number(process.env.CONCORD_GODOT_HEARTBEAT_MS) || 25_000,
+    maxMissedPongs = Number(process.env.CONCORD_GODOT_MAX_MISSED_PONGS) || 2,
     maxMessageBytes = 64 * 1024,
     rateLimitPerSec = 20,
     rateLimitBurst = 30,
@@ -354,7 +355,6 @@ export function mountGodotGateway(httpServer, deps = {}) {
           return;
         }
         send(client.ws, "error", { reason: "unknown_evt", evt });
-        return;
       }
     }
   }
@@ -423,13 +423,26 @@ export function mountGodotGateway(httpServer, deps = {}) {
   }
   httpServer.on("upgrade", onUpgrade);
 
-  // ── Heartbeat reaper: ping every heartbeatMs; terminate sockets that never pong.
+  // ── Heartbeat reaper: ping every heartbeatMs; terminate after
+  // maxMissedPongs consecutive missed pongs. The old one-strike version
+  // (terminate on the FIRST missed pong ≈ 25s effective timeout) was tighter
+  // than socket.io's 60s pingTimeout on the same server, and had a false-kill
+  // mode: after a long event-loop stall, Node runs expired TIMERS before
+  // draining pending socket I/O — so the overdue reaper tick saw
+  // isAlive=false and terminated clients whose pongs were sitting unread in
+  // the socket buffer. Every Godot client dropped before any web client did,
+  // on every stall. Two strikes ≈ 50s tolerance, matching socket.io's budget.
   const heartbeat = setInterval(() => {
     for (const client of clients) {
       const ws = client.ws;
       if (client.isAlive === false) {
-        try { ws.terminate(); } catch { /* survive */ }
-        continue;
+        client.missedPongs = (client.missedPongs || 0) + 1;
+        if (client.missedPongs >= maxMissedPongs) {
+          try { ws.terminate(); } catch { /* survive */ }
+          continue;
+        }
+      } else {
+        client.missedPongs = 0;
       }
       client.isAlive = false;
       try { ws.ping(); } catch { /* survive */ }

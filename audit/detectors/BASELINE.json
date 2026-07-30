@@ -362,6 +362,14 @@
       "kind": "static",
       "location": null,
       "message": "Scanned 2366 of 4403 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
+    },
+    "378ee97a38835512": {
+      "detector": "authz-coverage",
+      "id": "authz_write_auth_bypass",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:7508",
+      "message": "\"/api/welding/portal/\" is in WRITE_AUTH_PUBLIC_PATHS — unauthenticated writes to this prefix bypass the global gate (intentional bypasses are baselined; a NEW one needs review)"
     }
   }
 }

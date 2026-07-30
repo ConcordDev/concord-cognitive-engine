@@ -64,3 +64,90 @@ test("helmet middleware is actually applied (app.use(helmet(...)))", () => {
   const applied = /app\.use\(helmet\(/i.test(SOURCES);
   assert.ok(applied, "helmet() is imported but never wired into the middleware chain via app.use()");
 });
+
+// ── Frontend layer (added 2026-07-27, Aikido triage) ────────────────────────
+//
+// Every test above scans server.js + middleware/index.js — the EXPRESS API.
+// That is a real gap, not a stylistic one: the Cloudflare tunnel routes root
+// traffic straight to the Next.js server on 127.0.0.1:3000, so on the
+// deployed topology the HTML document is served by a layer none of the above
+// assertions can see. HSTS was genuinely missing there while every test here
+// passed on the API's Helmet config.
+//
+// These scan concord-frontend/next.config.js so the frontend cannot silently
+// drop a document-level header either.
+
+const FRONTEND_CONFIG = readFileSync(
+  join(HERE, "..", "..", "concord-frontend", "next.config.js"),
+  "utf-8"
+);
+
+test("frontend serves Strict-Transport-Security on the document", () => {
+  assert.match(
+    FRONTEND_CONFIG, /Strict-Transport-Security/,
+    "next.config.js headers() does not set HSTS — on the tunnel->:3000 topology " +
+    "the HTML document ships without it, regardless of what the API sends"
+  );
+});
+
+test("frontend HSTS has a meaningful max-age and covers subdomains", () => {
+  const m = FRONTEND_CONFIG.match(/max-age=(\d+)/);
+  assert.ok(m, "HSTS present but no max-age");
+  assert.ok(
+    Number(m[1]) >= 31536000,
+    `HSTS max-age ${m[1]} is under one year, too short to be meaningful`
+  );
+  assert.match(FRONTEND_CONFIG, /includeSubDomains/);
+});
+
+test("frontend still sets the other document-level headers", () => {
+  for (const h of [
+    "X-Content-Type-Options",
+    "X-Frame-Options",
+    "Referrer-Policy",
+    "Permissions-Policy",
+  ]) {
+    assert.match(FRONTEND_CONFIG, new RegExp(h), `frontend dropped ${h}`);
+  }
+});
+
+// Security audit 2026-07-30: the frontend previously shipped NO
+// Content-Security-Policy at all — a prior nonce attempt was reportedly
+// removed for "breaking inline scripts" (the real cause was more likely a
+// naive style-src without 'unsafe-inline', which breaks React's
+// style={{}} prop — CSP nonces can't cover the style HTML attribute, only
+// <style> elements — see middleware.ts's header comment). Fixed via real
+// per-request nonce generation in middleware.ts, shipped as
+// Content-Security-Policy-Report-Only (not yet enforced — this is a
+// 260-lens app that can't be exhaustively browser-verified here; report-only
+// collects real violation data with zero functional risk, the standard way
+// to roll out a new CSP on an app this size).
+const MIDDLEWARE_SOURCE = readFileSync(
+  join(HERE, "..", "..", "concord-frontend", "middleware.ts"),
+  "utf-8"
+);
+
+test("frontend generates a per-request CSP nonce and ships a CSP header", () => {
+  assert.match(
+    MIDDLEWARE_SOURCE, /crypto\.randomUUID\(\)/,
+    "middleware.ts no longer generates a per-request nonce"
+  );
+  assert.match(
+    MIDDLEWARE_SOURCE, /Content-Security-Policy(-Report-Only)?/,
+    "middleware.ts does not set a Content-Security-Policy header (enforced or report-only)"
+  );
+});
+
+test("frontend CSP's script-src actually uses the nonce (not just 'unsafe-inline')", () => {
+  assert.match(
+    MIDDLEWARE_SOURCE, /script-src[^`]*'nonce-\$\{nonce\}'/,
+    "script-src does not reference the generated nonce — a CSP without a real nonce " +
+    "(or hash) on script-src provides no XSS protection at all"
+  );
+});
+
+test("frontend CSP restricts the high-severity directives (object-src, frame-ancestors, base-uri)", () => {
+  for (const directive of [/object-src\s+'none'/, /frame-ancestors\s+'none'/, /base-uri\s+'self'/]) {
+    assert.match(MIDDLEWARE_SOURCE, directive, `middleware.ts CSP missing/loosened: ${directive}`);
+  }
+});

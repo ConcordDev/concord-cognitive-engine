@@ -38,6 +38,11 @@ import {
   ChevronDown, ChevronUp, RefreshCw, Code2,
 } from 'lucide-react';
 
+interface ActionInputField {
+  name: string;
+  optional: boolean;
+}
+
 interface ActionMeta {
   action: string;
   desc: string | null;
@@ -47,6 +52,34 @@ interface ActionMeta {
   isAnalysis: boolean;
   isLive: boolean;
   isCompute: boolean;
+  /** Present when server/lib/macro-input-hints.js has a flat-shape hint for
+   *  this action (extracted from its `input: { field1, field2? }` doc
+   *  comment). Absent for the majority — the raw-JSON fallback covers those. */
+  fields?: ActionInputField[];
+}
+
+interface FieldRow {
+  key: string;
+  value: string;
+  /** true = this key came from a hint and isn't renamable. */
+  locked: boolean;
+  optional: boolean;
+}
+
+/** Light coercion so a field editor row doesn't force everything through
+ *  quoted-string JSON: booleans/numbers/JSON-looking values parse, everything
+ *  else stays a plain string. Returns undefined for a blank value so the
+ *  caller can drop the key entirely rather than send an empty string. */
+function coerceFieldValue(raw: string): unknown {
+  const s = raw.trim();
+  if (s === '') return undefined;
+  if (s === 'true') return true;
+  if (s === 'false') return false;
+  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+  if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
+    try { return JSON.parse(s); } catch { /* not valid JSON — treat as a literal string below */ }
+  }
+  return s;
 }
 
 interface ActionsResponse {
@@ -124,10 +157,18 @@ export function AutoActionStrip({
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
-  // Phase 8b: optional JSON input per action so callers can feed real
-  // params (not just defaults).  Stored as raw text; parsed on submit.
+  // Phase 8b (superseded by the field-row form below, kept as the "Advanced:
+  // raw JSON" fallback for the minority of macros with a nested/array input
+  // shape a flat form can't represent).
   const [paramText, setParamText] = useState<string>('');
   const [paramOpen, setParamOpen] = useState<string | null>(null);
+  // Phase 8c: real labeled fields instead of a JSON-paste textarea. Rows are
+  // pre-populated from the action's `fields` hint when one exists (locked
+  // key, labeled required/optional); ad-hoc rows (unlocked) are always
+  // available too, since ~800 macros have no hint at all and any hint might
+  // be incomplete.
+  const [fieldRows, setFieldRows] = useState<FieldRow[]>([]);
+  const [rawMode, setRawMode] = useState(false);
 
   const { data, isLoading, refetch } = useQuery<ActionsResponse | null>({
     queryKey: ['lens-actions', domain],
@@ -181,15 +222,49 @@ export function AutoActionStrip({
     }
   };
 
+  const openParamEditor = (a: ActionMeta) => {
+    if (paramOpen === a.action) { setParamOpen(null); return; }
+    setParamOpen(a.action);
+    setRawMode(false);
+    setParamText('{\n  \n}');
+    setFieldRows(
+      a.fields && a.fields.length > 0
+        ? a.fields.map(f => ({ key: f.name, value: '', locked: true, optional: f.optional }))
+        : [{ key: '', value: '', locked: false, optional: true }],
+    );
+  };
+
+  const addFieldRow = () => setFieldRows(rows => [...rows, { key: '', value: '', locked: false, optional: true }]);
+  const removeFieldRow = (idx: number) => setFieldRows(rows => rows.filter((_, i) => i !== idx));
+  const setFieldRowKey = (idx: number, key: string) => setFieldRows(rows => rows.map((r, i) => (i === idx ? { ...r, key } : r)));
+  const setFieldRowValue = (idx: number, value: string) => setFieldRows(rows => rows.map((r, i) => (i === idx ? { ...r, value } : r)));
+
+  const buildParamsFromRows = (): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    for (const row of fieldRows) {
+      const key = row.key.trim();
+      if (!key) continue;
+      const value = coerceFieldValue(row.value);
+      if (value === undefined) continue;
+      out[key] = value;
+    }
+    return out;
+  };
+
   const onRunWithParams = async (name: string) => {
     let parsed: Record<string, unknown> | undefined;
-    if (paramText.trim()) {
-      try { parsed = JSON.parse(paramText); }
-      catch (e) {
-        setError(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
-        setActiveAction(name);
-        return;
+    if (rawMode) {
+      if (paramText.trim()) {
+        try { parsed = JSON.parse(paramText); }
+        catch (e) {
+          setError(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
+          setActiveAction(name);
+          return;
+        }
       }
+    } else {
+      const built = buildParamsFromRows();
+      parsed = Object.keys(built).length ? built : undefined;
     }
     await onRun(name, parsed);
   };
@@ -226,16 +301,16 @@ export function AutoActionStrip({
                     tint,
                     runAction.isPending && 'opacity-50 cursor-wait',
                   )}
-                  onAuxClick={(e) => { e.preventDefault(); setParamOpen(a.action); setParamText('{\n  \n}'); }}
+                  onAuxClick={(e) => { e.preventDefault(); openParamEditor(a); }}
                 >
                   {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Icon className="w-3 h-3" />}
                   <span>{prettyLabel(a.action)}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setParamOpen(paramOpen === a.action ? null : a.action); if (paramOpen !== a.action) setParamText('{\n  \n}'); }}
+                  onClick={() => openParamEditor(a)}
                   disabled={runAction.isPending}
-                  title="Edit input JSON"
+                  title={a.fields?.length ? 'Edit input fields' : 'Edit input'}
                   className={cn(
                     'inline-flex items-center text-xs px-1 py-1 rounded-r border border-l-0 bg-zinc-900/40 transition-colors',
                     tint,
@@ -287,22 +362,69 @@ export function AutoActionStrip({
 
       {paramOpen && (
         <div className="border-t border-zinc-800/40 px-3 py-2 bg-zinc-900/30">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">Input JSON for {paramOpen}</span>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">Input for {paramOpen}</span>
             <button
               type="button"
-              onClick={() => { setParamOpen(null); setParamText(''); }}
+              onClick={() => { setParamOpen(null); setParamText(''); setFieldRows([]); }}
               className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200"
             >close</button>
           </div>
-          <textarea
-            value={paramText}
-            onChange={(e) => setParamText(e.target.value)}
-            spellCheck={false}
-            rows={4}
-            className="w-full text-[11px] bg-zinc-950/60 border border-zinc-800 rounded px-2 py-1 text-zinc-200 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
-            placeholder='{"key": "value"}'
-          />
+
+          {!rawMode && (
+            <div className="space-y-1.5" data-testid="auto-action-field-form">
+              {fieldRows.map((row, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  {row.locked ? (
+                    <span className="w-28 shrink-0 text-[11px] font-mono text-zinc-300 truncate" title={row.key}>
+                      {row.key}
+                      {!row.optional && <span className="text-rose-400" title="required">*</span>}
+                    </span>
+                  ) : (
+                    <input
+                      value={row.key}
+                      onChange={(e) => setFieldRowKey(idx, e.target.value)}
+                      placeholder="field"
+                      aria-label="Field name"
+                      className="w-28 shrink-0 text-[11px] font-mono bg-zinc-950/60 border border-zinc-800 rounded px-1.5 py-1 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+                    />
+                  )}
+                  <input
+                    value={row.value}
+                    onChange={(e) => setFieldRowValue(idx, e.target.value)}
+                    placeholder={row.optional ? 'optional' : 'required'}
+                    aria-label={`Value for ${row.key || 'field'}`}
+                    className="flex-1 text-[11px] bg-zinc-950/60 border border-zinc-800 rounded px-1.5 py-1 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+                  />
+                  {!row.locked && (
+                    <button
+                      type="button"
+                      onClick={() => removeFieldRow(idx)}
+                      aria-label="Remove field"
+                      className="text-zinc-500 hover:text-rose-400 text-xs px-1"
+                    >×</button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addFieldRow}
+                className="text-[10px] text-indigo-300 hover:text-indigo-200"
+              >+ Add field</button>
+            </div>
+          )}
+
+          {rawMode && (
+            <textarea
+              value={paramText}
+              onChange={(e) => setParamText(e.target.value)}
+              spellCheck={false}
+              rows={4}
+              className="w-full text-[11px] bg-zinc-950/60 border border-zinc-800 rounded px-2 py-1 text-zinc-200 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+              placeholder='{"key": "value"}'
+            />
+          )}
+
           <div className="flex items-center gap-2 mt-1.5">
             <button
               type="button"
@@ -312,7 +434,16 @@ export function AutoActionStrip({
             >
               {runAction.isPending && activeAction === paramOpen ? 'Running…' : `Run ${prettyLabel(paramOpen)}`}
             </button>
-            <span className="text-[10px] text-zinc-400 italic">Edit JSON above, then submit. Empty JSON = same as click-the-button default.</span>
+            <button
+              type="button"
+              onClick={() => setRawMode(v => !v)}
+              className="text-[10px] text-zinc-400 hover:text-zinc-200 underline"
+            >
+              {rawMode ? 'Use field form' : 'Advanced: raw JSON'}
+            </button>
+            <span className="text-[10px] text-zinc-400 italic">
+              {rawMode ? 'Empty JSON = same as click-the-button default.' : 'Leave a field blank to omit it.'}
+            </span>
           </div>
         </div>
       )}

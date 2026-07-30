@@ -42,7 +42,40 @@ before(async () => {
 
   serverProcess = spawn("node", ["server.js"], {
     cwd: serverDir,
-    env: { ...process.env, PORT: port, NODE_ENV: "test", AUTH_MODE: "", CONCORD_FORCE_LISTEN: "true" },
+    env: {
+      ...process.env,
+      PORT: port,
+      NODE_ENV: "test",
+      AUTH_MODE: "",
+      CONCORD_FORCE_LISTEN: "true",
+      // Isolate the thing under test (2026-07-28). Three tests here
+      // ("Personal analytics", "Analytics summary", "Collab workspaces") had
+      // been failing for a long time, and the reason was NOT the
+      // authorization behaviour they assert:
+      //
+      //   • CONCORD_LOAD_SHED_ENABLED=0 — lib/request-admission.js sheds
+      //     requests with an immediate 503+Retry-After when event-loop lag
+      //     exceeds 300ms. Boot work (content seeding, macro registration,
+      //     the first governorTick) keeps lag over that bar for roughly the
+      //     first 20 seconds, so requests landing in that window are shed
+      //     BEFORE routing. Measured directly: a 503 in 4ms at +13.1s, with
+      //     the same request returning 401 in 82ms at +8.3s and again at
+      //     +19.2s. A 4ms 503 is the shedder, not the 60s request timeout --
+      //     which is what made this look like a slow endpoint for so long.
+      //
+      //   • CONCORD_RATE_LIMIT_BYPASS=1 — unauthenticated requests are capped
+      //     at 30/min per IP (server.js#unauthRateLimiter). This file is
+      //     ~53 anonymous requests from 127.0.0.1, so it blows the cap
+      //     partway through and later tests get 429.
+      //
+      // Neither weakens an assertion. The tests still require 401/403; they
+      // simply now reach the auth gate instead of being answered by an
+      // admission control that has nothing to do with authorization. A 503 or
+      // 429 is not evidence the endpoint is protected -- it is evidence the
+      // test never got to find out.
+      CONCORD_LOAD_SHED_ENABLED: "0",
+      CONCORD_RATE_LIMIT_BYPASS: "1",
+    },
     stdio: ["ignore", "ignore", "inherit"],
   });
   serverProcess.on("error", (err) => { process.stderr.write(`Server error: ${err.message}\n`); });
@@ -290,6 +323,193 @@ describe("Economy mutations — 401 without auth", () => {
 
   it("POST /api/stripe/connect/onboard returns 401 without auth", async () => {
     await assert401("POST", "/api/stripe/connect/onboard", { user_id: "victim" });
+  });
+});
+
+// ── Economy/marketplace IDOR fixes (publicReadPaths audit follow-up) ──────────
+// Both were previously readable by ANY caller for ANY user_id/userId — the
+// first via a caller-supplied query param with no ownership check, the
+// second via a route param with no auth at all.
+
+describe("Economy balance — cross-user read blocked", () => {
+  it("GET /api/economy/balance returns 401 without auth", async () => {
+    await assert401("GET", "/api/economy/balance?user_id=victim");
+  });
+
+  it("GET /api/economy/balance?user_id=<other user> returns 403 for a non-privileged caller", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/economy/balance?user_id=${victim.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 403, "Requesting another user's balance must be forbidden for a non-privileged caller");
+  });
+
+  it("GET /api/economy/balance with no user_id returns the caller's own balance", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token) return;
+
+    const res = await api("GET", "/api/economy/balance", null, { token: actor.token });
+    assert.equal(res._status, 200);
+    assert.equal(res.ok, true);
+  });
+});
+
+describe("Marketplace royalties — cross-user read blocked", () => {
+  it("GET /api/marketplace/royalties/:userId returns 401 without auth", async () => {
+    await assert401("GET", "/api/marketplace/royalties/victim");
+  });
+
+  it("GET /api/marketplace/royalties/:userId returns 403 when requesting another user's royalties", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/marketplace/royalties/${victim.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 403, "Requesting another user's royalties must be forbidden for a non-privileged caller");
+  });
+
+  it("GET /api/marketplace/royalties/:userId returns 200 for the caller's own id", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token || !actor.userId) return;
+
+    const res = await api("GET", `/api/marketplace/royalties/${actor.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 200);
+  });
+});
+
+// ── Analytics/collab IDOR fixes (publicReadPaths 7-deferred-domain sweep) ─────
+
+describe("Personal analytics — cross-user read blocked", () => {
+  it("GET /api/analytics/personal/:userId returns 401 without auth", async () => {
+    await assert401("GET", "/api/analytics/personal/victim");
+  });
+
+  it("GET /api/analytics/personal/:userId returns 403 when requesting another user's analytics", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/analytics/personal/${victim.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 403, "Requesting another user's personal analytics must be forbidden for a non-privileged caller");
+  });
+
+  it("GET /api/analytics/personal/:userId returns 200 for the caller's own id", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token || !actor.userId) return;
+
+    const res = await api("GET", `/api/analytics/personal/${actor.userId}`, null, { token: actor.token });
+    assert.equal(res._status, 200);
+  });
+});
+
+// Audit fix 2026-07-27: this session's own publicReadPaths/_safeReadPaths
+// narrowing pass briefly dropped the bare "/api/analytics" path (only its
+// sub-paths like /dashboard were kept), even though it has its own real,
+// live, genuinely public-safe handler (routes/analytics.js) whose identity
+// comes only from req.user/req.session — never query/body — so an
+// unauthenticated caller gets empty personal stats plus real aggregate
+// global/world stats, no leak. Caught by a full-suite storage-parity.test.js
+// run, fixed, pinned here so it can't silently regress again.
+describe("Analytics summary — bare path is public-safe (audit 2026-07-27)", () => {
+  it("GET /api/analytics (no auth) returns 200 with aggregate stats and no personal data leak", async () => {
+    const res = await api("GET", "/api/analytics", null, { noAuth: true });
+    assert.equal(res._status, 200);
+    assert.ok(res.globalStats, "expected globalStats on the anonymous summary");
+    assert.equal(res.personalStats?.totalCitations, 0, "anonymous caller must not see any real user's personal stats");
+    assert.equal(res.personalStats?.totalRoyalties, 0, "anonymous caller must not see any real user's personal stats");
+  });
+
+  it("GET /api/analytics (authenticated) returns the caller's own personal stats, not a stranger's", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token) return;
+    const res = await api("GET", "/api/analytics", null, { token: actor.token });
+    assert.equal(res._status, 200);
+    assert.ok(res.personalStats, "expected personalStats for an authenticated caller");
+  });
+});
+
+// Audit fix 2026-07-27: routes/domain.js's POST /api/settings handler had
+// NO gate at all — any authenticated non-owner could mutate GLOBAL system
+// settings (disable the heartbeat, autogen, dream, evolution, synth for
+// every user on the platform). server.js registered its own requireOwner-
+// gated duplicate, but registerDomainRoutes() mounts first at boot, so
+// Express's first-match routing meant the UNGATED routes/domain.js handler
+// was the one that actually executed — the "gated" server.js duplicate was
+// dead code. Fixed by threading requireOwner into routes/domain.js itself
+// (the handler that really runs) and deleting the dead duplicate.
+describe("Settings mutation — privilege escalation fix (audit 2026-07-27)", () => {
+  it("POST /api/settings returns 401/403 without auth", async () => {
+    await assert401("POST", "/api/settings", { heartbeatEnabled: false });
+  });
+
+  it("POST /api/settings is blocked (404, not-found-shaped) for an authenticated non-owner", async () => {
+    const actor = await registerAndLogin();
+    if (!actor.token) return;
+    const res = await api("POST", "/api/settings", { heartbeatEnabled: false }, { token: actor.token });
+    assert.equal(res._status, 404, "a non-owner/founder caller must not be able to mutate global settings");
+  });
+});
+
+describe("Collab workspaces — private workspace roster no longer leaks", () => {
+  it("GET /api/collab/workspaces returns 401 without auth", async () => {
+    await assert401("GET", "/api/collab/workspaces");
+  });
+
+  it("GET /api/collab/workspace/:id hides a private workspace's roster from a non-member", async () => {
+    const owner = await registerAndLogin();
+    const outsider = await registerAndLogin();
+    if (!owner.token || !outsider.token) return;
+
+    const created = await api("POST", "/api/collab/workspace", { name: "Private WS", visibility: "private" }, { token: owner.token });
+    if (!created.ok || !created.workspace?.id) return;
+    const wsId = created.workspace.id;
+
+    const outsiderView = await api("GET", `/api/collab/workspace/${wsId}`, null, { token: outsider.token });
+    assert.equal(outsiderView._status, 404, "a non-member must not see a private workspace's roster");
+
+    const ownerView = await api("GET", `/api/collab/workspace/${wsId}`, null, { token: owner.token });
+    assert.equal(ownerView._status, 200);
+    assert.equal(ownerView.ok, true);
+  });
+
+  it("GET /api/collab/workspace/:id serves a public workspace to any caller", async () => {
+    const owner = await registerAndLogin();
+    const outsider = await registerAndLogin();
+    if (!owner.token || !outsider.token) return;
+
+    const created = await api("POST", "/api/collab/workspace", { name: "Public WS", visibility: "public" }, { token: owner.token });
+    if (!created.ok || !created.workspace?.id) return;
+    const wsId = created.workspace.id;
+
+    const outsiderView = await api("GET", `/api/collab/workspace/${wsId}`, null, { token: outsider.token });
+    assert.equal(outsiderView._status, 200, "a public workspace must remain readable by a non-member");
+  });
+});
+
+describe("Social feed/bookmarks — spoofed userId query param is now inert", () => {
+  it("GET /api/social/bookmarks ignores a spoofed userId query param and returns the caller's own (empty) list", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/social/bookmarks?userId=${victim.userId}`, null, { token: actor.token });
+    if (res._status !== 200) return;
+    // The response must not be victim's bookmarks attributed via the spoofed
+    // query param — the shared STATE has no bookmarks for either fresh user,
+    // so this just pins that the call succeeds under the caller's own
+    // identity rather than erroring or leaking victim-scoped data.
+    assert.equal(res.ok, true);
+  });
+
+  it("GET /api/social/feed/following ignores a spoofed userId query param", async () => {
+    const actor = await registerAndLogin();
+    const victim = await registerAndLogin();
+    if (!actor.token || !victim.userId) return;
+
+    const res = await api("GET", `/api/social/feed/following?userId=${victim.userId}`, null, { token: actor.token });
+    if (res._status !== 200) return;
+    assert.equal(res.ok, true);
   });
 });
 

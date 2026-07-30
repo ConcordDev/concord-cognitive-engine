@@ -18,6 +18,8 @@
     "gen-art-style": "node scripts/gen-art-style-spec.mjs",
     "gen-art-style:check": "node scripts/gen-art-style-spec.mjs --check",
     "check-doc-claims": "node scripts/check-doc-claims.mjs",
+    "extract-macro-hints": "node scripts/extract-macro-input-hints.mjs",
+    "extract-macro-hints:check": "node scripts/extract-macro-input-hints.mjs --check",
     "audit:adversarial": "node scripts/adversarial-audit.mjs",
     "audit:invariants": "node scripts/macro-assassin.mjs",
     "contracts:derive": "node scripts/contracts/derive-contracts.mjs",
@@ -30,7 +32,8 @@
     "lens:orphans": "node scripts/lens-orphans.mjs",
     "lens:unsurfaced": "node scripts/lens-unsurfaced.mjs",
     "lens:broken-calls": "node scripts/lens-broken-calls.mjs",
-    "lens:unloaded": "node scripts/lens-unloaded-domains.mjs"
+    "lens:unloaded": "node scripts/lens-unloaded-domains.mjs",
+    "export:web": "node scripts/export-godot-web.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

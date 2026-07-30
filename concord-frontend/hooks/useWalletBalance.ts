@@ -11,6 +11,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface BalanceResponse { ok: boolean; balance?: number; concordCoins?: number }
 
@@ -26,11 +27,10 @@ export function useWalletBalance() {
     } catch { /* network silent — keep last known balance */ }
   }, []);
 
-  useEffect(() => {
-    refreshBalance();
-    const id = window.setInterval(refreshBalance, 30_000);
-    return () => window.clearInterval(id);
-  }, [refreshBalance]);
+  // Audit fix (2026-07-27): pauses while the tab is hidden instead of
+  // polling the wallet balance every 30s in the background — this HUD is
+  // mounted for the entire time a player is in the world lens.
+  useSmartPolling(refreshBalance, 30_000);
 
   useEffect(() => {
     const offPurchase = subscribe<{ price: number }>('marketplace:purchase', () => refreshBalance());

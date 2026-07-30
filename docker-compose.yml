@@ -7,6 +7,8 @@ services:
   # see the reservation math at the "Four-Brain Cognitive Architecture"
   # section below for the full budget).
   backend:
+    cap_drop:
+      - ALL
     build:
       context: ./server
       dockerfile: Dockerfile
@@ -230,6 +232,8 @@ services:
   # and serves ONLY the vetted pure-read GET allowlist (server-side default-deny
   # gate). JWT_SECRET MUST match the writer so tokens validate across processes.
   backend-read:
+    cap_drop:
+      - ALL
     build:
       context: ./server
       dockerfile: Dockerfile
@@ -287,6 +291,10 @@ services:
 
   # Frontend Next.js App
   frontend:
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     build:
       context: ./concord-frontend
       dockerfile: Dockerfile
@@ -327,6 +335,7 @@ services:
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
+    # cap_drop intentionally omitted: binds :80/:443 -- needs NET_BIND_SERVICE plus CHOWN/SETUID/SETGID for the official image's master->worker drop; needs a tested cap_add set.
     container_name: concord-nginx
     restart: unless-stopped
     security_opt:
@@ -362,7 +371,10 @@ services:
 
   # Certbot for SSL certificates
   certbot:
-    image: certbot/certbot
+    image: certbot/certbot:v5.7.0
+    security_opt:
+      - no-new-privileges:true
+    # cap_drop intentionally omitted: rewrites certificate file ownership on the shared volume.
     container_name: concord-certbot
     volumes:
       - ./certbot/conf:/etc/letsencrypt
@@ -384,7 +396,11 @@ services:
 
   # Prometheus — scrapes /metrics from backend
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.13.1
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-prometheus
     restart: unless-stopped
     volumes:
@@ -411,7 +427,11 @@ services:
 
   # Grafana — dashboards for Concord metrics
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.1.1
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-grafana
     restart: unless-stopped
     environment:
@@ -443,6 +463,10 @@ services:
   # Redis — Socket.IO pub/sub adapter + session cache
   redis:
     image: redis:7-alpine
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
@@ -466,7 +490,11 @@ services:
 
   # Qdrant — vector search engine for embedding similarity
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.18.3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-qdrant
     restart: unless-stopped
     environment:
@@ -517,7 +545,11 @@ services:
   #
   # Brain 1: Conscious — chat and deep reasoning (32B-q4_K_M on GPU, ~18GB VRAM)
   ollama-conscious:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-ollama-conscious
     restart: unless-stopped
     environment:
@@ -560,7 +592,11 @@ services:
   # Brain 2: Subconscious — autogen, dream, evolution, synthesis, birth (7B on GPU, ~4.5GB VRAM)
   # THE big win: 1.5B → 7B means every DTU Concord creates is fundamentally smarter
   ollama-subconscious:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-ollama-subconscious
     restart: unless-stopped
     environment:
@@ -598,7 +634,11 @@ services:
   # Brain 3: Utility — lens interactions, entity actions, quick domain tasks (3B on GPU, ~2GB VRAM)
   # Speed matters more than depth here — 3B stays the same, fast turnaround
   ollama-utility:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-ollama-utility
     restart: unless-stopped
     environment:
@@ -641,7 +681,11 @@ services:
   # latency. Backend reads BRAIN_UTILITY_URLS (plural, comma-separated) and
   # picks the less-loaded endpoint per call (lib/brain-config.js).
   ollama-utility-2:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-ollama-utility-2
     restart: unless-stopped
     environment:
@@ -679,7 +723,11 @@ services:
   # batches dominate the subconscious queue at night; a second endpoint
   # halves the wait.
   ollama-subconscious-2:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-ollama-subconscious-2
     restart: unless-stopped
     environment:
@@ -716,7 +764,11 @@ services:
   # Brain 4: Repair — error detection, auto-fix (1.5B on GPU, ~1GB VRAM)
   # 3x upgrade from 0.5B — can actually parse error messages now
   ollama-repair:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-ollama-repair
     restart: unless-stopped
     environment:
@@ -759,7 +811,11 @@ services:
   # needs image understanding. Separate from the four cognitive brains
   # so vision queries don't compete with chat for KV cache.
   ollama-vision:
-    image: ollama/ollama
+    image: ollama/ollama:0.32.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     container_name: concord-ollama-vision
     restart: unless-stopped
     environment:

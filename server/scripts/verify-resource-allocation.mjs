@@ -32,7 +32,21 @@ function gpuVramMB() {
 // crude-but-honest model VRAM estimate from the tag (params × bytes-per-param + KV).
 // Custom tags with no size in the name (e.g. concord-conscious:latest) can declare their
 // size via CONCORD_<ROLE>_PARAMS_B so the budget is accurate.
-function estimateModelMB(model, role) {
+//
+// KV estimate (audit 2026-07-27): was a flat 1.0 GB, documented as "modest ctx" — but
+// server.js used to never SEND num_ctx to Ollama at all, so every call silently ran at
+// Ollama's small default (2k/4k) regardless of BRAIN_CONFIG.contextWindow. That bug is
+// now fixed (server.js sends num_ctx = min(CONCORD_NUM_CTX_CAP, contextWindow) on every
+// call), which means the RESIDENT KV cache now actually grows to the full configured
+// context — so this estimate must scale with it, or the fit gate stops being honest for
+// exactly the config it's supposed to protect. Rough q8_0 GQA rate, scaled by params and
+// NUM_PARALLEL (KV scales linearly with concurrent in-flight sequences); tune via
+// CONCORD_KV_GB_PER_1K_TOKENS if `GET <brain>/api/ps` shows a different real number.
+const KV_GB_PER_1K_TOKENS = Number(process.env.CONCORD_KV_GB_PER_1K_TOKENS) || 0.12; // per 7B-equivalent params
+const OLLAMA_NUM_PARALLEL = Number(process.env.OLLAMA_NUM_PARALLEL) || 1;
+const NUM_CTX_CAP = Number(process.env.CONCORD_NUM_CTX_CAP) || 32768;
+
+function estimateModelMB(model, role, contextWindow) {
   const name = String(model || "").toLowerCase();
   const m = name.match(/(\d+(?:\.\d+)?)\s*b\b/);
   const override = role && Number(process.env[`CONCORD_${role.toUpperCase()}_PARAMS_B`]);
@@ -43,8 +57,9 @@ function estimateModelMB(model, role) {
   if (/q2|q3/.test(name)) bpp = 0.45;
   let weightsGB = params * bpp;
   if (/vl|vision|llava/.test(name)) weightsGB += 1.5; // vision encoder
-  const kvGB = 1.0;                                   // resident KV (q8_0, modest ctx)
-  return { params, weightsMB: MB(weightsGB), kvMB: MB(kvGB), totalMB: MB(weightsGB) + MB(kvGB), assumed: !m && !declared, declared };
+  const effectiveCtx = Math.min(NUM_CTX_CAP, contextWindow || 8192);
+  const kvGB = (effectiveCtx / 1000) * (params / 7) * KV_GB_PER_1K_TOKENS * OLLAMA_NUM_PARALLEL;
+  return { params, weightsMB: MB(weightsGB), kvMB: MB(kvGB), totalMB: MB(weightsGB) + MB(kvGB), assumed: !m && !declared, declared, effectiveCtx };
 }
 
 const VRAM = gpuVramMB();
@@ -58,9 +73,9 @@ console.log(dim("─".repeat(58)));
 let brainsMB = 0;
 const ROLE_ORDER = ["conscious", "subconscious", "utility", "repair", "multimodal"];
 for (const role of ROLE_ORDER.filter((k) => BRAIN_CONFIG[k])) {
-  const e = estimateModelMB(BRAIN_CONFIG[role].model, role);
+  const e = estimateModelMB(BRAIN_CONFIG[role].model, role, BRAIN_CONFIG[role].contextWindow);
   brainsMB += e.totalMB;
-  const tag = e.assumed ? dim("(size assumed 7B — set CONCORD_" + role.toUpperCase() + "_PARAMS_B)") : e.declared ? dim(`(${e.params}B declared)`) : "";
+  const tag = e.assumed ? dim("(size assumed 7B — set CONCORD_" + role.toUpperCase() + "_PARAMS_B)") : e.declared ? dim(`(${e.params}B declared)`) : dim(`(ctx ${e.effectiveCtx}, KV ${e.kvMB} MB)`);
   console.log(`${role.padEnd(13)} ${String(BRAIN_CONFIG[role].model).slice(0, 33).padEnd(34)} ${(e.totalMB + " MB").padStart(8)} ${tag}`);
 }
 console.log(dim("─".repeat(58)));

@@ -286,7 +286,9 @@ export default function registerWorldActions(registerLensAction) {
     }
 
     // Fall back to DTU corpus — every kind='listing'-shaped DTU is a marketplace entry.
-    const dtus = STATE?.dtus instanceof Map ? Array.from(STATE.dtus.values()) : [];
+    // Duck-type: STATE.dtus is a write-through store (has .values()) once
+    // wired, not a literal Map.
+    const dtus = typeof STATE?.dtus?.get === "function" ? Array.from(STATE.dtus.values()) : [];
     const LISTABLE_DTU_KINDS = new Set(["spell_recipe", "blueprint", "fighting_style_recipe", "trade_pricebook_recipe", "forge_app", "audio_sample"]);
     const dtuListings = dtus
       .filter((d) => d && LISTABLE_DTU_KINDS.has(d.kind))

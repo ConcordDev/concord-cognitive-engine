@@ -7,7 +7,18 @@
 # To fully pin with SHA256 digest (recommended for production):
 #   docker pull node:20-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:20-bookworm-slim
 # Then replace: FROM node:20-bookworm-slim@sha256:<digest> AS base
-FROM node:20-bookworm-slim AS base
+FROM node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS base
+
+# Apply OS security patches. The FROM above is digest-pinned, which freezes the
+# base at the bits it had when built — Debian security updates published
+# afterwards never reach it, so a pinned layer only accumulates CVEs. Verified
+# 2026-07-28 against Docker Hub that this digest IS the current
+# `node:20-bookworm-slim`, so there is no newer base to move to; upgrading
+# in-layer is the only way to pick up fixed CVEs.
+#
+# Unlike the backend image this one installed no OS packages at all, so it had
+# no apt step whatsoever and shipped the base's packages untouched.
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies only when needed
 FROM base AS deps

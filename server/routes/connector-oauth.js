@@ -255,6 +255,34 @@ export async function exchangeCodeForToken(provider, { code, redirectUri, fetchI
 }
 
 /** Resolve the token connector_id for a request (explicit key wins). */
+// SECURITY: the OAuth callback 302s the browser to a caller-supplied
+// `?redirect=` value. `frontendDone` resolves it with `new URL(base,
+// FRONTEND_URL)`, and an ABSOLUTE `base` overrides the relative base entirely
+// — so an unvalidated value turned the callback into an open redirect
+// (`?redirect=https://evil.example` sent the user, mid-OAuth, to an attacker
+// host with the flow's outcome params appended).
+//
+// Only same-origin relative paths are accepted. Rejected values fall back to
+// the caller's default rather than erroring, so a malformed redirect degrades
+// to "land on the normal post-connect page" instead of breaking the flow.
+//
+// Stricter than the frontend's equivalent guard at
+// concord-frontend/app/login/page.tsx (`startsWith('/') && !startsWith('//')`)
+// on one point that matters here: a BACKSLASH second character must also be
+// rejected. WHATWG URL normalizes `\` to `/`, so `/\evil.example` parses as
+// the protocol-relative `//evil.example` and resolves to an absolute
+// attacker origin — passing a naive "starts with a single slash" check.
+export function safeRelativeRedirect(value) {
+  if (typeof value !== "string" || !value) return null;
+  // Reject control chars/whitespace outright — they are only ever present to
+  // smuggle something past a parser.
+  // eslint-disable-next-line no-control-regex
+  if (/[\s\u0000-\u001f\u007f]/.test(value)) return null;
+  if (value[0] !== "/") return null;          // absolute URLs, scheme-relative, bare paths
+  if (value[1] === "/" || value[1] === "\\") return null; // //host and /\host
+  return value;
+}
+
 export function resolveTokenKey({ tokenKey, connectorId, provider }) {
   if (tokenKey) return String(tokenKey);
   if (connectorId && CONNECTOR_TOKEN_KEY[connectorId]) return CONNECTOR_TOKEN_KEY[connectorId];
@@ -302,7 +330,12 @@ export default function registerConnectorOAuthRoutes(app, { db, structuredLog, f
     return `${redirectBase(req)}/api/oauth/${provider}/authorize/callback`;
   }
   function frontendDone(redirect, params) {
-    const base = redirect || (FRONTEND_URL ? `${FRONTEND_URL}/lenses/ingest` : "/");
+    // Defence in depth. The only caller-supplied redirect is already validated
+    // at intake (see the authorize route), so this re-check should never fire
+    // in practice — it exists so that a future call site passing an
+    // unvalidated value cannot silently reopen the redirect.
+    const base = safeRelativeRedirect(redirect)
+      || (FRONTEND_URL ? `${FRONTEND_URL}/lenses/ingest` : "/");
     try {
       const u = new URL(base, FRONTEND_URL || "http://localhost");
       for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
@@ -332,7 +365,12 @@ export default function registerConnectorOAuthRoutes(app, { db, structuredLog, f
     const scopes = String(req.query.scopes || "")
       .split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
     if (!scopes.length) return res.status(400).json({ ok: false, error: "scopes required" });
-    const redirect = req.query.redirect ? String(req.query.redirect) : null;
+    // Validated at INTAKE, not at use: a hostile value then never reaches
+    // OAUTH_STATES at all, so all six frontendDone() call sites in the
+    // callback are covered by this one check and none of them can be missed
+    // by a later edit. An invalid value degrades to null, which frontendDone
+    // resolves to the normal post-connect page.
+    const redirect = safeRelativeRedirect(req.query.redirect ? String(req.query.redirect) : null);
 
     const state = crypto.randomBytes(24).toString("hex");
     OAUTH_STATES.set(state, { userId, provider, tokenKey, connectionId, scopes, redirect, createdAt: Date.now() });

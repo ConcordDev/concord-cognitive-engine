@@ -91,8 +91,11 @@ module.exports = {
         // Default (Docker / docker-compose)
         NODE_ENV: 'production',
         PORT: 5050,
-        ALLOWED_ORIGINS: 'https://concord-os.org',
-        COOKIE_DOMAIN: 'concord-os.org',
+        // Respect the shell/.env value first — a hardcoded concord-os.org
+        // here silently overrode .env for any operator on a different
+        // domain (pm2 env wins over dotenv for keys set in both).
+        ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://concord-os.org',
+        COOKIE_DOMAIN: process.env.COOKIE_DOMAIN || 'concord-os.org',
         TRUST_PROXY: '1',
         // Docker Ollama hostnames (set by docker-compose network)
         BRAIN_CONSCIOUS_URL: 'http://ollama-conscious:11434',
@@ -226,6 +229,14 @@ module.exports = {
         CONCORD_SHARD_WORLDS: 'false',
         CONCORD_SHARD_BACKOFF_MS: '2000',
         CONCORD_SHARD_MAX_RESTARTS_PER_MIN: '5',
+        // Socket.io transport safety net: production defaults to
+        // websocket-only, but if the tunnel/proxy topology ever fails to
+        // forward a WS upgrade (e.g. traffic routed through the Next.js
+        // rewrite at :3000, which proxies HTTP but not upgrades), a
+        // websocket-only server means clients go dark with zero fallback.
+        // Long-polling still works through any HTTP proxy, so allow it as
+        // the degraded path — the client prefers websocket when it works.
+        CONCORD_SOCKET_ALLOW_POLLING_FALLBACK: 'true',
         // ALLOWED_ORIGINS and COOKIE_DOMAIN loaded from .env file
       },
       env_development: {

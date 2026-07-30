@@ -443,7 +443,9 @@ function logRepairDTU(phase, action, details) {
 
     // Store in STATE if available
     const S = _getSTATE();
-    if (S && S.dtus instanceof Map) {
+    // Duck-type: S.dtus is a write-through store (has .set()) once wired,
+    // not a literal Map.
+    if (S && typeof S.dtus?.set === "function") {
       S.dtus.set(dtuId, dtu);
     }
 
@@ -2724,7 +2726,9 @@ const GUARDIAN_MONITORS = {
         const S = _getSTATE();
         if (!S) return { healthy: true, reason: "STATE not available" };
 
-        const dtusInMap = S.dtus instanceof Map ? S.dtus.size : 0;
+        // Duck-type: S.dtus is a write-through store (has a .size getter)
+        // once wired, not a literal Map.
+        const dtusInMap = typeof S.dtus?.get === "function" ? S.dtus.size : 0;
         const dtusInIndex = Array.isArray(S.dtuIndex) ? S.dtuIndex.length : -1;
 
         // If no index exists, that's fine
@@ -2744,7 +2748,7 @@ const GUARDIAN_MONITORS = {
       try {
         if (!result.healthy) {
           const S = _getSTATE();
-          if (S && S.dtus instanceof Map && Array.isArray(S.dtuIndex)) {
+          if (S && typeof S.dtus?.keys === "function" && Array.isArray(S.dtuIndex)) {
             S.dtuIndex = Array.from(S.dtus.keys());
             logRepairDTU(REPAIR_PHASES.POST_BUILD, "state_index_rebuilt", result);
           }
@@ -3624,11 +3628,11 @@ const EXECUTORS = {
     description: "Rebuild DTU index from DTU map",
     canApply: () => {
       const S = _getSTATE();
-      return !!(S && S.dtus instanceof Map);
+      return !!(S && typeof S.dtus?.keys === "function");
     },
     execute: async () => {
       const S = _getSTATE();
-      if (!S || !(S.dtus instanceof Map)) return { success: false, reason: "no STATE" };
+      if (!S || typeof S.dtus?.keys !== "function") return { success: false, reason: "no STATE" };
       S.dtuIndex = Array.from(S.dtus.keys());
       return { success: true, newIndexSize: S.dtuIndex.length };
     },

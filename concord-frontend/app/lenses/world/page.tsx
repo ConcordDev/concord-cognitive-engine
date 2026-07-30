@@ -19,6 +19,7 @@ import {
 import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
 import { useConsolePing } from '@/hooks/useConsolePing';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useSocket } from '@/hooks/useSocket';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -1296,11 +1297,8 @@ function CityStreamingSection() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchStreams();
-    const interval = setInterval(fetchStreams, 15000);
-    return () => clearInterval(interval);
-  }, [fetchStreams]);
+  // Visibility-paused + jittered — a hidden world tab must not keep polling.
+  useSmartPolling(fetchStreams, 15000);
 
   // Socket listeners for live events
   useEffect(() => {
@@ -2721,23 +2719,21 @@ export default function WorldLensPage() {
   const [claimingBag, setClaimingBag] = useState<string | null>(null);
   const [lootNotification, setLootNotification] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadBags = () => {
-      fetch(`/api/worlds/${currentWorldId}/loot-bags`, { signal: AbortSignal.timeout(8000) })
-        .then((r) => {
-          if (!r.ok) throw new Error(`loot-bags ${r.status}`);
-          return r.json();
-        })
-        .then((d) => {
-          if (d?.bags) setLootBags(d.bags);
-          markWorldFetch('lootBags', 'ok');
-        })
-        .catch(() => markWorldFetch('lootBags', 'error'));
-    };
-    loadBags();
-    const interval = setInterval(loadBags, 8_000);
-    return () => clearInterval(interval);
+  const loadBags = useCallback(() => {
+    fetch(`/api/worlds/${currentWorldId}/loot-bags`, { signal: AbortSignal.timeout(8000) })
+      .then((r) => {
+        if (!r.ok) throw new Error(`loot-bags ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (d?.bags) setLootBags(d.bags);
+        markWorldFetch('lootBags', 'ok');
+      })
+      .catch(() => markWorldFetch('lootBags', 'error'));
   }, [currentWorldId]);
+  // Immediate fetch on mount + world change; poll pauses while tab hidden.
+  useEffect(() => { loadBags(); }, [loadBags]);
+  useSmartPolling(loadBags, 8_000, { immediate: false });
 
   const claimLootBag = useCallback(
     async (bagId: string) => {
@@ -2835,23 +2831,20 @@ export default function WorldLensPage() {
     );
   }, [currentWorldId]);
 
-  // Poll for nearby nodes every 5s based on player position
-  useEffect(() => {
-    const poll = () => {
-      // Player position is in the scene frame; the server stores nodes in the
-      // world frame — convert back on the way out so the proximity query matches.
-      const { x, z } = playerPos.current;
-      fetch(`/api/worlds/${currentWorldId}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (d?.nodes) setNearbyNodes(d.nodes);
-        })
-        .catch(() => {});
-    };
-    poll();
-    const interval = setInterval(poll, 5_000);
-    return () => clearInterval(interval);
+  // Poll for nearby nodes every 5s based on player position (visibility-paused)
+  const pollNearbyNodes = useCallback(() => {
+    // Player position is in the scene frame; the server stores nodes in the
+    // world frame — convert back on the way out so the proximity query matches.
+    const { x, z } = playerPos.current;
+    fetch(`/api/worlds/${currentWorldId}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.nodes) setNearbyNodes(d.nodes);
+      })
+      .catch(() => {});
   }, [currentWorldId]);
+  useEffect(() => { pollNearbyNodes(); }, [pollNearbyNodes]);
+  useSmartPolling(pollNearbyNodes, 5_000, { immediate: false });
 
   const gatherFromNode = useCallback(async (nodeId: string) => {
     setGatheringNode(nodeId);
@@ -2908,10 +2901,9 @@ export default function WorldLensPage() {
     }
   }, [currentWorldId, nearbyNodes]);
 
-  // Load NPCs from API and keep positions fresh every 10s
-  useEffect(() => {
-    const loadNPCs = () => {
-      fetch(`/api/worlds/${currentWorldId}/npcs`, { signal: AbortSignal.timeout(8000) })
+  // Load NPCs from API and keep positions fresh every 10s (visibility-paused)
+  const loadNPCs = useCallback(() => {
+    fetch(`/api/worlds/${currentWorldId}/npcs`, { signal: AbortSignal.timeout(8000) })
         .then((r) => {
           if (!r.ok) throw new Error(`npcs ${r.status}`);
           return r.json();
@@ -2949,11 +2941,9 @@ export default function WorldLensPage() {
           );
         })
         .catch(() => markWorldFetch('npcs', 'error'));
-    };
-    loadNPCs();
-    const interval = setInterval(loadNPCs, 10_000);
-    return () => clearInterval(interval);
   }, [currentWorldId]);
+  useEffect(() => { loadNPCs(); }, [loadNPCs]);
+  useSmartPolling(loadNPCs, 10_000, { immediate: false });
 
   // Quest waypoint markers (3D). Poll the player's active quests and turn the
   // ones with a placeable target into QuestMarker3D objectives. This closes a
@@ -2965,19 +2955,18 @@ export default function WorldLensPage() {
   // raw frame the NPC avatar renders in, so the marker sits on the NPC by
   // construction. Objectives with no fixed coordinate (kill / gather /
   // reach_location) get no marker (no invented positions).
-  useEffect(() => {
+  const loadQuestMarkers = useCallback(async () => {
     if (rawWorldNPCs.length === 0) { setQuestObjectives([]); return; }
-    let cancelled = false;
     const npcById = new Map(rawWorldNPCs.map((n) => [n.id, n]));
     const MARKER_TYPE: Record<string, 'talk' | 'delivery'> = {
       talk_to: 'talk', deliver: 'delivery',
     };
-    const loadQuestMarkers = async () => {
+    {
       try {
         const r = await fetch(`/api/worlds/${encodeURIComponent(currentWorldId)}/quests/active`, { credentials: 'include' });
         if (!r.ok) return;
         const j = await r.json();
-        if (cancelled || !Array.isArray(j?.quests)) return;
+        if (!Array.isArray(j?.quests)) return;
         const markers: import('@/components/world-lens/QuestMarker3D').QuestObjective[] = [];
         for (const q of j.quests) {
           const objs = Array.isArray(q?.progress) ? q.progress : [];
@@ -2996,13 +2985,12 @@ export default function WorldLensPage() {
             });
           }
         }
-        if (!cancelled) setQuestObjectives(markers);
+        setQuestObjectives(markers);
       } catch { /* offline — leave markers as-is */ }
-    };
-    loadQuestMarkers();
-    const iv = setInterval(loadQuestMarkers, 15_000);
-    return () => { cancelled = true; clearInterval(iv); };
+    }
   }, [currentWorldId, rawWorldNPCs]);
+  useEffect(() => { void loadQuestMarkers(); }, [loadQuestMarkers]);
+  useSmartPolling(loadQuestMarkers, 15_000, { immediate: false });
 
   // Proximity check: update nearPortalId and nearbyNPC whenever the player moves
   useEffect(() => {
@@ -3211,20 +3199,17 @@ export default function WorldLensPage() {
     return () => window.removeEventListener('keydown', handler);
   }, [inputMode, nearbyNPC, currentWorldId]);
 
-  // World quests — fetch for QuestLog panel, refresh every 45s
-  useEffect(() => {
-    const load = () => {
-      fetch(`/api/worlds/${currentWorldId}/quests?limit=30`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (d?.quests) setWorldQuests(d.quests);
-        })
-        .catch(() => {});
-    };
-    load();
-    const iv = setInterval(load, 45_000);
-    return () => clearInterval(iv);
+  // World quests — fetch for QuestLog panel, refresh every 45s (visibility-paused)
+  const loadWorldQuests = useCallback(() => {
+    fetch(`/api/worlds/${currentWorldId}/quests?limit=30`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.quests) setWorldQuests(d.quests);
+      })
+      .catch(() => {});
   }, [currentWorldId]);
+  useEffect(() => { loadWorldQuests(); }, [loadWorldQuests]);
+  useSmartPolling(loadWorldQuests, 45_000, { immediate: false });
 
   // ── MMO multiplayer wiring ──────────────────────────────────────────
   // On mount: ask the server for our last-saved position, subscribe

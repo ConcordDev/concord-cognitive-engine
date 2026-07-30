@@ -60,6 +60,12 @@
     "owner_ack": "orchestrator, 2026-07-05, per in-file comment at platinum-security.yml:287-295"
   },
   {
+    "workflow": ".github/workflows/platinum-security.yml",
+    "job_or_step": "container-scan:Trivy scan",
+    "reason": "Deliberately made non-blocking 2026-07-30: this repo's production target is bare-metal (pm2 + startup.sh, see CLAUDE.md), not Docker — server/Dockerfile / concord-frontend/Dockerfile and docker-compose.yml are a parallel, unshipped path. The scan still runs for real and still uploads SARIF to the Security tab; it just no longer blocks merges on CVEs in an image nobody runs in production. Not a re-disarm of the earlier root-Dockerfile-check bug (which made the job pass WITHOUT scanning at all) — see the in-file comment at platinum-security.yml:253-290.",
+    "owner_ack": "repo owner, 2026-07-30, explicit in-conversation decision (option 2 of 2 offered)"
+  },
+  {
     "workflow": ".github/workflows/platinum-zap-dast.yml",
     "job_or_step": "zap-baseline:ZAP Baseline Scan",
     "reason": "Catches infra-class ZAP failures (e.g. spider read timeout against an unwarmed instance under Concord's heartbeat + parallel spider load) distinct from the fail_action:false-covered scan-found-issues case. The report still uploads regardless; this only prevents infra flake from failing the job.",

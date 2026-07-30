@@ -28,9 +28,51 @@ import { validateBody, tipSchema, bountyCreateSchema, bountyClaimSchema, purchas
 export default function connectiveTissueRoutes({ db, requireAuth }) {
   const router = Router();
 
+  // Security audit 2026-07-30: every money-moving route below read the
+  // FUNDS-SOURCE identity (tipperId / posterId / claimerId / buyerId)
+  // straight off the request body, with requireAuth() only checking that
+  // *some* session was valid — never that it belonged to the id footing the
+  // bill. executeTransfer() (economy/transfer.js) has no caller-identity
+  // check of its own by design (it trusts whoever calls it), so this was
+  // the only place the check could happen, and it wasn't happening: any
+  // authenticated account could drain any OTHER user's wallet by tipping
+  // itself (tipperId: <victim>, creatorId: <attacker>), escrow a victim's
+  // funds into a bounty only the attacker could later claim (posterId:
+  // <victim>), buy a "purchase" that pays the victim's coins into the
+  // attacker's own account (buyerId: <victim>), or — worst of the four,
+  // since it needs no setup at all — claim ANY open bounty's full escrowed
+  // reward by copying its id + real posterId straight off the public GET
+  // /bounties listing and supplying an arbitrary claimerId + solutionDtuId,
+  // since claimBounty() never checked the claimer's identity or the
+  // solution at all. Fixed by requiring each of these fields equal the
+  // authenticated req.user.id — the body field stays required (some
+  // callers, e.g. future service-to-service use, may still want it
+  // explicit) but must now match, or the request is rejected before any
+  // transfer executes.
+  function requireSelf(bodyField, label) {
+    return (req, res, next) => {
+      const claimed = req.body?.[bodyField];
+      if (!claimed) return next(); // let the existing "missing field" 400 downstream handle it
+      const actual = req.user?.id;
+      // AUTH_MODE=public (local-first single-user mode) is a real,
+      // supported deployment shape where requireAuth() intentionally
+      // `next()`s without ever setting req.user — mirrors the same
+      // "skipped in AUTH_MODE=public" exception dtu.delete's ownership
+      // check documents in server.js. If requireAuth() already let the
+      // request through with no req.user, that is that mode, not a gap
+      // this middleware should override — there's only one real user in
+      // that deployment, so any claimed id is the legitimate one.
+      if (!actual) return next();
+      if (claimed !== actual) {
+        return res.status(403).json({ ok: false, error: `unauthorized: ${label} must be your own user id` });
+      }
+      next();
+    };
+  }
+
   // ── TIPPING ────────────────────────────────────────────────────────
 
-  router.post("/tip", requireAuth(), validateBody(tipSchema), async (req, res) => {
+  router.post("/tip", requireAuth(), validateBody(tipSchema), requireSelf("tipperId", "tipperId"), async (req, res) => {
     try {
       const { tipperId, creatorId, contentId, contentType, lensId, amount } = req.body;
       if (!tipperId || !creatorId || !contentId || !contentType || !lensId || amount == null) {
@@ -48,7 +90,7 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
 
   // ── BOUNTIES ───────────────────────────────────────────────────────
 
-  router.post("/bounties", requireAuth(), validateBody(bountyCreateSchema), async (req, res) => {
+  router.post("/bounties", requireAuth(), validateBody(bountyCreateSchema), requireSelf("posterId", "posterId"), async (req, res) => {
     try {
       const { posterId, title, description, lensId, amount, tags, expiresAt } = req.body;
       if (!posterId || !title || !lensId || amount == null) {
@@ -64,7 +106,7 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
     }
   });
 
-  router.post("/bounties/:bountyId/claim", requireAuth(), validateBody(bountyClaimSchema), async (req, res) => {
+  router.post("/bounties/:bountyId/claim", requireAuth(), validateBody(bountyClaimSchema), requireSelf("claimerId", "claimerId"), async (req, res) => {
     try {
       const { claimerId, posterId, solutionDtuId } = req.body;
       if (!claimerId || !posterId || !solutionDtuId) {
@@ -137,7 +179,7 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
     }
   });
 
-  router.post("/dtu/purchase", requireAuth(), validateBody(purchaseSchema), async (req, res) => {
+  router.post("/dtu/purchase", requireAuth(), validateBody(purchaseSchema), requireSelf("buyerId", "buyerId"), async (req, res) => {
     try {
       const { buyerId, dtuId, sellerId, amount, lensId } = req.body;
       if (!buyerId || !dtuId || !sellerId || amount == null || !lensId) {

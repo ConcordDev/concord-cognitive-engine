@@ -8,7 +8,7 @@ processes as one packaged app:
    web server; it manages the same process a developer would start by hand.
 2. **The Godot binary**, pointed at `world-lens-godot/project.godot` (see
    `world-lens-godot/HOW_TO_RUN.md` -- no Godot binary ships with this repo;
-   the user supplies their own Godot 4.4+ install).
+   the user supplies their own Godot 4.4-stable install — exactly 4.4, not '4.4+'; see world-lens-godot/HOW_TO_RUN.md for why a newer editor breaks the project).
 
 This is R8/CL4 of Program B's Phase 6 packaging track.
 
@@ -212,9 +212,10 @@ not playtested numbers. Override via env; don't treat them as gospel.
 
 1. Install Rust (stable) and the Tauri prerequisites for your OS:
    https://v2.tauri.app/start/prerequisites/
-2. Install a Godot 4.4+ binary and put it on `PATH` (or set
-   `CONCORD_SHELL_GODOT_BIN` to its absolute path) -- see
-   `world-lens-godot/HOW_TO_RUN.md`.
+2. Install a Godot **4.4-stable** binary (exactly 4.4, not "4.4+" or newer --
+   see `world-lens-godot/HOW_TO_RUN.md` for why a newer editor breaks the
+   project) and put it on `PATH` (or set `CONCORD_SHELL_GODOT_BIN` to its
+   absolute path).
 3. `cd concord-shell && npm install` (pulls `@tauri-apps/cli`).
 4. `npm run dev` (== `tauri dev`) -- this builds `concord-shell` for real for
    the first time and should surface exactly what (if anything) needs fixing

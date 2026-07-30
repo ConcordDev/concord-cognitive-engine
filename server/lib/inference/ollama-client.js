@@ -42,7 +42,14 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     model: config.model,
     stream: false,
     messages: messages.map(m => ({ role: m.role, content: m.content })),
-    options: { temperature, num_predict: config.maxTokens },
+    options: {
+      temperature,
+      num_predict: config.maxTokens,
+      // Without num_ctx Ollama uses its small default context and silently
+      // truncates long prompts — send the brain's configured window, capped
+      // by CONCORD_NUM_CTX_CAP for KV-cache VRAM control.
+      num_ctx: Math.min(Number(process.env.CONCORD_NUM_CTX_CAP || 32768), config.contextWindow || 8192),
+    },
   };
 
   if (opts.tools?.length) {

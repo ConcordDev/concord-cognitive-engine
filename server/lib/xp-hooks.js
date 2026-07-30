@@ -32,7 +32,10 @@ export function installXPHooks({ awardXP, STATE }) {
 
   // Hook into DTU creation via STATE event tracking
   const originalDtusSet = STATE.dtus?.set?.bind(STATE.dtus);
-  if (originalDtusSet && STATE.dtus instanceof Map) {
+  // Duck-type: STATE.dtus is a write-through store object, not a literal
+  // Map, once wired (server.js createDTUStore) — an `instanceof Map` guard
+  // here silently disabled the whole XP-on-DTU-creation hook.
+  if (originalDtusSet && typeof STATE.dtus?.get === "function") {
     const tracked = new WeakSet();
     STATE.dtus.set = function(id, dtu) {
       const isNew = !STATE.dtus.has(id);

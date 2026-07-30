@@ -101,18 +101,49 @@ esac
 
 # ── Resolve the Godot binary, fetching it automatically if none is found ───
 GODOT_PROJECT_VERSION="$(grep -m1 'config/features' world-lens-godot/project.godot | grep -oE '4\.[0-9]+' | head -1)"
+# Full expected version string (e.g. "4.4.stable.official.4c311cbee") for the
+# STRICT check below — pulled from fetch-godot.mjs's PINNED map, the single
+# source of truth, so this script never carries its own duplicate/driftable
+# copy of the pin. Empty if the derived project version has no pinned entry.
+# Plain text-match (not an import) so this works regardless of Node's ESM/
+# CJS mode in the caller's environment.
+GODOT_PROJECT_VERSION_STRING="$(node -e "
+  const fs = require('fs');
+  const src = fs.readFileSync('$SCRIPT_DIR/scripts/fetch-godot.mjs', 'utf8');
+  const m = src.match(/\"${GODOT_PROJECT_VERSION}-stable\":\s*\{[^}]*versionString:\s*\"([^\"]+)\"/);
+  if (m) process.stdout.write(m[1]);
+" 2>/dev/null || true)"
 
 resolve_godot_bin() {
   if [ -n "${GODOT_BIN:-}" ] && [ -x "${GODOT_BIN}" ]; then
     echo "$GODOT_BIN"; return 0
   fi
   if command -v godot &>/dev/null; then
-    local v
-    v="$(godot --version 2>/dev/null | grep -oE '4\.[0-9]+' | head -1)"
-    if [ -n "$v" ] && [ "$v" = "$GODOT_PROJECT_VERSION" ]; then
+    local raw v_major_minor v_full ok=0
+    raw="$(godot --version 2>/dev/null)"
+    v_major_minor="$(echo "$raw" | grep -oE '4\.[0-9]+' | head -1)"
+    v_full="$(echo "$raw" | head -1 | tr -d '\n')"
+    # FIXED (audit 2026-07-27): this used to compare ONLY major.minor
+    # ("4.4"), which accepts a 4.4.1 patch release or a Mono/.NET build of
+    # 4.4 in place of the checksum-verified standard binary fetch-godot.mjs
+    # installs — a real gap between this script's guarantee and that
+    # script's. When a full pinned version string is available for the
+    # project's derived version, require an EXACT match against it (not
+    # just a prefix — a Mono build's version string differs from the
+    # standard one even at the same numeric version). Falls back to the
+    # weaker major.minor check only when no pin is on record for this
+    # version (e.g. local dev ahead of the pinned release), with a loud
+    # note that verification is weaker in that case.
+    if [ -n "$GODOT_PROJECT_VERSION_STRING" ]; then
+      [ "$v_full" = "$GODOT_PROJECT_VERSION_STRING" ] && ok=1
+    elif [ -n "$v_major_minor" ] && [ "$v_major_minor" = "$GODOT_PROJECT_VERSION" ]; then
+      ok=1
+      log "NOTE: no pinned full version string on record for $GODOT_PROJECT_VERSION-stable — accepted 'godot' on PATH by major.minor only ($v_major_minor). This does not reject a patch release or a Mono/.NET build."
+    fi
+    if [ "$ok" = "1" ]; then
       command -v godot; return 0
     fi
-    log "NOTE: found 'godot' on PATH but its version ($v) doesn't match the project's ($GODOT_PROJECT_VERSION) — skipping it (docs/GODOT_RUNTIME.md warns version skew silently opens the wrong project)."
+    log "NOTE: found 'godot' on PATH but its version ('$v_full') doesn't match the project's pinned build — skipping it (docs/GODOT_RUNTIME.md warns version skew silently opens the wrong project)."
   fi
   if [ -x "$SCRIPT_DIR/.godot-runtime/bin/godot" ]; then
     echo "$SCRIPT_DIR/.godot-runtime/bin/godot"; return 0

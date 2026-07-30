@@ -1,0 +1,105 @@
+name: Godot Client
+
+# Added (audit 2026-07-27): world-lens-godot/ had ZERO CI before this file —
+# every guarantee in docs/GODOT_RUNTIME.md (checksum-verified engine, 0 parse
+# errors, 26/26 test suites) was a one-time manual snapshot with nothing
+# preventing regression. This mirrors docs/GODOT_RUNTIME.md § 3.5
+# "Reproduce everything" exactly, plus a drift guard on the one line
+# (project.godot's config/features) that fetch-godot.mjs and
+# launch-godot-client.sh both derive their expected version from — an
+# editor session silently rewrites it, and nothing else here would notice.
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'world-lens-godot/**'
+      - 'scripts/fetch-godot.mjs'
+      - 'scripts/launch-godot-client.sh'
+      - '.github/workflows/godot-client.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'world-lens-godot/**'
+      - 'scripts/fetch-godot.mjs'
+      - 'scripts/launch-godot-client.sh'
+      - '.github/workflows/godot-client.yml'
+
+# Least-privilege token scope. Without this the workflow inherits the
+# repository default, which is broader than anything here needs: these
+# jobs only check out code and upload artifacts -- no GITHUB_TOKEN use,
+# no gh CLI, no SARIF upload, no PR/issue writes, no pushes.
+permissions:
+  contents: read
+
+jobs:
+  godot-client:
+    name: Fetch, import, parse, run, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      # Guards the exact assumption fetch-godot.mjs's detectVersion() and
+      # launch-godot-client.sh's version check both make: project.godot's
+      # config/features must still read a version this repo has a recorded
+      # checksum pin for. If an editor session (or a stray commit) rewrites
+      # it to an unpinned version, fail loudly here instead of every
+      # downstream guarantee silently evaporating (see fetch-godot.mjs's
+      # verifyBinary — it now hard-fails on an unpinned version by default,
+      # but this check catches the drift even earlier, at the source line).
+      - name: Assert project.godot version is still pinned
+        run: |
+          set -euo pipefail
+          FEATURES_LINE="$(grep -m1 'config/features' world-lens-godot/project.godot)"
+          echo "config/features: $FEATURES_LINE"
+          VERSION="$(echo "$FEATURES_LINE" | grep -oE '"[0-9]+\.[0-9]+(\.[0-9]+)?"' | head -1 | tr -d '"')"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not parse a version out of project.godot's config/features line."
+            exit 1
+          fi
+          if ! grep -q "\"${VERSION}-stable\":" scripts/fetch-godot.mjs; then
+            echo "::error::project.godot declares Godot ${VERSION}, but scripts/fetch-godot.mjs has no PINNED checksum entry for ${VERSION}-stable. Either project.godot was opened in an unpinned editor version (revert it back to 4.4-stable), or you're deliberately bumping the pin (add a new PINNED entry with a verified checksum first — see docs/GODOT_RUNTIME.md § Provenance)."
+            exit 1
+          fi
+          echo "OK: ${VERSION}-stable has a recorded pin."
+
+      - name: Fetch + checksum-verify the pinned Godot binary
+        run: node scripts/fetch-godot.mjs
+
+      - name: Import (always a separate pass — godotengine/godot#77508)
+        run: |
+          GD="$PWD/.godot-runtime/bin/godot"
+          "$GD" --headless --path world-lens-godot --import
+
+      - name: Every .gd script parses/compiles cleanly
+        run: |
+          GD="$PWD/.godot-runtime/bin/godot"
+          cd world-lens-godot
+          fail=0
+          while IFS= read -r f; do
+            out="$("$GD" --headless --check-only --script "$f" 2>&1 || true)"
+            if echo "$out" | grep -qE "SCRIPT ERROR|Parse Error|Compile Error"; then
+              echo "::error file=world-lens-godot/${f#./}::Parse/compile error in $f"
+              echo "$out"
+              fail=1
+            fi
+          done < <(find . -name '*.gd' | sed 's|^\./|res://|')
+          exit $fail
+
+      - name: Main scene boots headlessly
+        run: |
+          GD="$PWD/.godot-runtime/bin/godot"
+          "$GD" --headless --path world-lens-godot --quit-after 60
+
+      - name: GDScript test suite (tests/run_all.gd)
+        run: |
+          GD="$PWD/.godot-runtime/bin/godot"
+          "$GD" --headless --path world-lens-godot --script res://tests/run_all.gd

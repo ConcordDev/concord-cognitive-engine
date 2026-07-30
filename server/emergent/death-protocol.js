@@ -675,7 +675,7 @@ function _generateMemorial(entityId, entityInfo, finalState, cause, deathAt, mem
     // Store memorial in global DTU lattice if available
     try {
       const STATE = _getSTATE();
-      if (STATE?.dtus instanceof Map) {
+      if (typeof STATE?.dtus?.get === "function") {
         STATE.dtus.set(memorialDtuId, {
           id: memorialDtuId,
           title: `Memorial: ${entityInfo.name}`,
@@ -794,7 +794,7 @@ async function _executeKnowledgeInheritance(entityId, bodyMod, STATE) {
     const offspringIds = [];
 
     // Check the DTU lattice for entities whose lineage.parents includes this entity
-    if (STATE.dtus instanceof Map) {
+    if (typeof STATE.dtus?.get === "function") {
       for (const [dtuId, dtu] of STATE.dtus) {
         if (dtu.lineage?.parents?.includes(entityId)) {
           offspringIds.push(dtu.id || dtuId);
@@ -824,7 +824,7 @@ async function _executeKnowledgeInheritance(entityId, bodyMod, STATE) {
 
     // Find the dead entity's top DTU contributions (by authority)
     const entityDtus = [];
-    if (STATE.dtus instanceof Map) {
+    if (typeof STATE.dtus?.get === "function") {
       for (const [, dtu] of STATE.dtus) {
         if (dtu.createdBy === entityId || dtu.authorId === entityId || dtu.proposedBy === entityId) {
           entityDtus.push(dtu);
@@ -1052,7 +1052,7 @@ function _captureContributions(entityId, storeMod, STATE) {
     if (!STATE) return result;
 
     // Count DTUs created by entity
-    if (STATE.dtus instanceof Map) {
+    if (typeof STATE.dtus?.get === "function") {
       for (const [, dtu] of STATE.dtus) {
         if (dtu.createdBy === entityId || dtu.authorId === entityId || dtu.proposedBy === entityId) {
           result.dtusCreated++;
@@ -1126,7 +1126,7 @@ export async function planSuccession(entityId) {
 
     // ── Top contributions ─────────────────────────────────────────────────
 
-    if (STATE.dtus instanceof Map) {
+    if (typeof STATE.dtus?.get === "function") {
       const entityDtus = [];
       for (const [, dtu] of STATE.dtus) {
         if (dtu.createdBy === entityId || dtu.authorId === entityId || dtu.proposedBy === entityId) {
@@ -1221,7 +1221,7 @@ export async function planSuccession(entityId) {
         }
       }
 
-      if (STATE.dtus instanceof Map) {
+      if (typeof STATE.dtus?.get === "function") {
         for (const [, dtu] of STATE.dtus) {
           if (dtu.lineage?.parents?.includes(entityId)) {
             const dtuId = dtu.id || dtu.entityId;

@@ -121,6 +121,12 @@ function _getDTUs() {
     if (!STATE) return [];
     const dtus = STATE.dtus || STATE.__dtus;
     if (dtus instanceof Map) return Array.from(dtus.values());
+    // Duck-type BEFORE the generic-object fallback below: STATE.dtus is a
+    // write-through store (has .values()) once wired, not a literal Map or
+    // plain object — Object.values(store) on it would return the store's
+    // OWN methods/getters as if they were DTUs, not throw, so this branch
+    // must be checked first, not fallen into.
+    if (dtus && typeof dtus.values === "function") { try { return Array.from(dtus.values()); } catch { return []; } }
     if (Array.isArray(dtus)) return dtus;
     if (dtus && typeof dtus === "object") return Object.values(dtus);
     return [];
@@ -686,7 +692,9 @@ export function runREMPhase(entityId) {
       try {
         const STATE = getSTATE();
         if (STATE) {
-          const store = STATE.dtus instanceof Map ? STATE.dtus : (STATE.__dtus instanceof Map ? STATE.__dtus : null);
+          // Duck-type: STATE.dtus/__dtus is a write-through store (has .set())
+          // once wired, not a literal Map.
+          const store = typeof STATE.dtus?.set === "function" ? STATE.dtus : (typeof STATE.__dtus?.set === "function" ? STATE.__dtus : null);
           if (store) store.set(dreamId, dreamDTU);
         }
       } catch (_e) { logger.debug('emergent:sleep-consolidation', 'silent', { error: _e?.message }); }

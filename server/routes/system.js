@@ -9,6 +9,8 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { validateBody, llmGenerateSchema } from "../lib/validators/mutation-schemas.js";
 import logger from '../logger.js';
 import { assertSessionAccessible } from "../lib/session-access.js";
+import { getCurrentLagMs } from "../lib/event-loop-pressure.js";
+import { getShedLagMs } from "../lib/request-admission.js";
 
 export default function registerSystemRoutes(app, {
   STATE,
@@ -162,6 +164,25 @@ export default function registerSystemRoutes(app, {
     });
   });
 
+  // Readiness must reflect ADMISSION CAPACITY, not just "the process booted"
+  // (2026-07-28). Measured gap: /health and /ready both went green at +8.2s
+  // while lib/request-admission.js was still shedding real requests with an
+  // immediate 503 at +13s — so a load balancer would route traffic to an
+  // instance that answers it with 503. Readiness that does not track whether
+  // the server can actually serve is not readiness.
+  //
+  // DEBOUNCED ON PURPOSE. Event-loop lag spikes past the shed bar transiently
+  // on the governorTick cadence (~15s), so flipping to not-ready on a single
+  // over-bar reading would deregister a healthy instance several times a
+  // minute — worse than the problem being fixed. Only SUSTAINED pressure
+  // (READY_PRESSURE_STRIKES consecutive probes over the bar) reports
+  // not-ready; a single clean probe resets the counter.
+  //
+  // The raw numbers are ALWAYS in the payload regardless of the verdict, so
+  // an operator can see pressure building before it trips.
+  const READY_PRESSURE_STRIKES = Number(process.env.CONCORD_READY_PRESSURE_STRIKES) || 3;
+  let _readyPressureStrikes = 0;
+
   app.get("/ready", (req, res) => {
     const checks = {
       state: STATE.dtus !== null,
@@ -175,10 +196,36 @@ export default function registerSystemRoutes(app, {
         checks.database = false;
       }
     }
+
+    let lagMs = 0;
+    let shedBarMs = 0;
+    try {
+      lagMs = Math.round(getCurrentLagMs() || 0);
+      shedBarMs = getShedLagMs();
+    } catch { /* pressure monitor not started — treat as no pressure */ }
+
+    const overBar = shedBarMs > 0 && lagMs > shedBarMs;
+    _readyPressureStrikes = overBar ? _readyPressureStrikes + 1 : 0;
+    // `admitting` is the honest per-probe answer: would a sheddable request
+    // be admitted RIGHT NOW. The check that gates the verdict is the
+    // debounced one, so a blip is visible without being acted on.
+    checks.admissionSustained = _readyPressureStrikes < READY_PRESSURE_STRIKES;
+
+    // `ready` is computed from `checks` BEFORE `admitting` is attached, and
+    // that ordering is load-bearing: `Object.values(checks).every(...)` would
+    // otherwise fold the INSTANTANEOUS flag into the verdict and defeat the
+    // debounce entirely — a single over-bar blip would flip the instance to
+    // not-ready, which is the flapping this was designed to avoid.
+    // `admitting` is reported for observability only.
     const ready = Object.values(checks).every(v => v === true || v === "no_db");
+    checks.admitting = !overBar;
     res.status(ready ? 200 : 503).json({
       ready,
       checks,
+      eventLoopLagMs: lagMs,
+      shedThresholdMs: shedBarMs,
+      pressureStrikes: _readyPressureStrikes,
+      pressureStrikesToNotReady: READY_PRESSURE_STRIKES,
       version: VERSION
     });
   });
@@ -222,7 +269,23 @@ export default function registerSystemRoutes(app, {
   app.get("/api/health/brain", (req, res) => res.redirect(307, "/api/brain/health"));
 
   app.get("/metrics", asyncHandler(async (req, res) => {
-    // Prometheus-compatible plain text metrics for Concord system
+    // Prometheus-compatible plain text metrics for Concord system.
+    //
+    // AUTH (audit 2026-07-27): in production this endpoint is token-gated.
+    // It exposes entity counts, DTU counts, and brain state — operational
+    // telemetry, not public data — and on the bare-metal path nothing
+    // scrapes it, so serving it unauthenticated was pure attack surface.
+    // Set CONCORD_METRICS_TOKEN and configure the scraper with
+    // `authorization: Bearer <token>` (Prometheus `bearer_token`). When the
+    // var is unset in production, /metrics returns 404 (invisible) rather
+    // than an honest-but-advertising 401. Dev/test stay open for local
+    // tooling.
+    if (process.env.NODE_ENV === "production") {
+      const token = process.env.CONCORD_METRICS_TOKEN || "";
+      if (!token) return res.status(404).end();
+      const auth = String(req.headers.authorization || "");
+      if (auth !== `Bearer ${token}`) return res.status(401).json({ ok: false, error: "metrics_token_required" });
+    }
     const lines = [];
     try {
       // Entity metrics

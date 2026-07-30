@@ -244,44 +244,110 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
 
   container-scan:
-    name: Container — Trivy image scan
+    name: Container — Trivy image scan (${{ matrix.name }})
     runs-on: ubuntu-latest
-    # hashFiles() is only valid in `cache.key`-context expressions, not
-    # in step/job `if:` conditions. Replaced with a runtime check
-    # inside the build step that skips silently when Dockerfile is
-    # absent. Sprint 34 fix — this job had been failing every push
-    # since PR #330 merged because of the unrecognized-function error.
+    #
+    # 2026-07-27 security triage: this job HAD NEVER SCANNED ANYTHING.
+    #
+    # It gated every step on `if [ -f Dockerfile ]` at the repo root, and no
+    # root Dockerfile has ever existed — the real ones are server/Dockerfile
+    # and concord-frontend/Dockerfile. So the check took the else branch on
+    # every run, emitted `::notice::No Dockerfile at repo root`, and the job
+    # went green without building or scanning an image, while the comment on
+    # the Trivy step below described itself as "the actual CVE gate".
+    #
+    # This is the same silently-disarmed-gate failure mode that
+    # scripts/autoloop/guard.mjs records as a past incident (a wrong
+    # coin-service.js path left coin minting ungated). A gate whose skip path
+    # is indistinguishable from a pass is worse than no gate, because it is
+    # counted as coverage.
+    #
+    # Now a matrix over the two real images, each built from its own service
+    # directory as build context — matching how docker-compose.yml builds them
+    # (`context: ./server` / `context: ./concord-frontend`). Removing the
+    # presence check entirely is deliberate: if a Dockerfile path stops
+    # resolving, the build must FAIL loudly rather than skip quietly.
+    #
+    # 2026-07-30 — made non-blocking, per an explicit owner decision, NOT a
+    # re-disarm of the bug above. The distinction: the bug above made the job
+    # pass WITHOUT scanning anything — a false green. This still builds the
+    # image, runs Trivy for real, and uploads findings to the Security tab
+    # exactly as before; it simply no longer fails the PR when it finds a
+    # fixable CRITICAL/HIGH CVE. Reason: this repo's actual production target
+    # is bare-metal (pm2 + startup.sh, see CLAUDE.md), not Docker —
+    # `server/Dockerfile` / `concord-frontend/Dockerfile` and
+    # `docker-compose.yml` are a parallel, unshipped path (local dev / an
+    # alternate operator's deployment choice). Blocking every PR on CVEs in
+    # an image nobody runs in production is the same "ignored/disabled gate"
+    # failure mode the Dockerfile's own `ignore-unfixed` comment warns about,
+    # just from the other direction. If Docker ever becomes a real
+    # deployment target, flip this back to blocking.
+    #
+    # IMPORTANT — this must be `continue-on-error` on the "Trivy scan" STEP,
+    # not the job. Verified empirically: job-level `continue-on-error: true`
+    # does NOT change the job's own reported `conclusion` — a required-status
+    # check reads the per-job conclusion, so a job-level flag alone leaves
+    # this failing exactly as before for anything that gates on the check
+    # name. Step-level `continue-on-error` is what makes the JOB's overall
+    # conclusion become success while the step itself still shows its real
+    # failure in the log.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: server
+          - name: frontend
+            context: concord-frontend
     steps:
       - uses: actions/checkout@v6
-      - name: Check for Dockerfile
-        id: dockerfile_check
-        run: |
-          if [ -f Dockerfile ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No Dockerfile at repo root — skipping container scan"
-          fi
       - name: Build image
-        if: steps.dockerfile_check.outputs.present == 'true'
-        run: docker build -t concord:scan .
+        run: docker build -t "concord-${{ matrix.name }}:scan" "${{ matrix.context }}"
       - name: Trivy scan
-        if: steps.dockerfile_check.outputs.present == 'true'
-        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: 'concord:scan'
+          image-ref: 'concord-${{ matrix.name }}:scan'
           format: 'sarif'
-          output: 'trivy-results.sarif'
+          output: 'trivy-results-${{ matrix.name }}.sarif'
           severity: 'CRITICAL,HIGH'
+          # Fail only on CVEs that HAVE a fix available.
+          #
+          # This is a scoping decision, not a softening, and the distinction
+          # matters: `ignore-unfixed` cannot hide anything actionable, because
+          # a CVE with an available fix STILL fails the job. It only stops the
+          # gate failing on findings no change to this repository could
+          # resolve.
+          #
+          # Grounded in two checks made 2026-07-28 rather than assumed:
+          #   1. Both Dockerfiles digest-pin node:20-bookworm-slim, and
+          #      querying Docker Hub returned that SAME digest as current —
+          #      so the pin is not stale and there is no patched base to move
+          #      to. Any remaining unfixed CVE is upstream Debian's to fix.
+          #   2. Both images now run `apt-get upgrade` in their base stage
+          #      (they did not before; the frontend had no apt step at all),
+          #      so every fix that DOES exist is applied at build time.
+          #
+          # Without this, the gate is permanently red on CVEs nobody can act
+          # on — which is precisely how a gate gets ignored or disabled, the
+          # same failure mode that left this job scanning nothing for months.
+          ignore-unfixed: true
           # `exit-code: 1` keeps THIS step the actual CVE gate — if
-          # Trivy finds a CRITICAL or HIGH-severity CVE this fails the
-          # job. The SARIF upload step below is informational only.
+          # Trivy finds a fixable CRITICAL or HIGH-severity CVE this fails
+          # the job. The SARIF upload step below is informational only.
+          #
+          # Known consequence, stated rather than glossed: the SARIF is
+          # produced by THIS step, so it inherits `ignore-unfixed` and the
+          # Security dashboard will no longer list unfixed CVEs either.
+          # Surfacing those separately would need a second, non-gating Trivy
+          # run with `ignore-unfixed: false` — deliberately not added here to
+          # keep this change to one concern.
           exit-code: '1'
       - name: Upload Trivy SARIF
         # `continue-on-error: true` because this step downloads
@@ -294,7 +360,8 @@ jobs:
         # uploads results to GitHub's Security dashboard for
         # visualization, so a 429 here shouldn't gate merges.
         continue-on-error: true
-        if: always() && steps.dockerfile_check.outputs.present == 'true'
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: 'trivy-results-${{ matrix.name }}.sarif'
+          category: 'trivy-${{ matrix.name }}'

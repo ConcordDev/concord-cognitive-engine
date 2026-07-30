@@ -269,7 +269,7 @@ describe("aerial-traffic-cycle (heartbeat)", () => {
       // real repeated-spawn behavior deterministically.
       const w = state.aerialTraffic?.get("concordia-hub");
       if (w) w.lastSpawnAttemptAt = 0;
-      // eslint-disable-next-line no-await-in-loop -- sequential by design, mirrors real tick-by-tick calls
+      // Sequential by design: mirrors real tick-by-tick calls.
       await runAerialTrafficCycle({ db: fakeDb(), state, io });
     }
     assert.equal(state.aerialTraffic.get("concordia-hub").entities.length, MAX_ACTIVE_PER_WORLD);
