@@ -7,7 +7,7 @@
 # To fully pin with SHA256 digest (recommended for production):
 #   docker pull node:20-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:20-bookworm-slim
 # Then replace: FROM node:20-bookworm-slim@sha256:<digest> AS base
-FROM node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS base
+FROM node:26-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb AS base
 
 # Apply OS security patches. The FROM above is digest-pinned, which freezes the
 # base at the bits it had when built — Debian security updates published
