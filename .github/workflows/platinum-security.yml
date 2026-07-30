@@ -274,20 +274,29 @@ jobs:
     # presence check entirely is deliberate: if a Dockerfile path stops
     # resolving, the build must FAIL loudly rather than skip quietly.
     #
-    # 2026-07-30 — made non-blocking (`continue-on-error: true` on the job),
-    # per an explicit owner decision, NOT a re-disarm of the bug above. The
-    # distinction: the bug above made the job pass WITHOUT scanning anything —
-    # a false green. This makes the job build the image, run Trivy for real,
-    # and upload findings to the Security tab exactly as before; it simply no
-    # longer fails the PR when it finds a fixable CRITICAL/HIGH CVE. Reason:
-    # this repo's actual production target is bare-metal (pm2 + startup.sh,
-    # see CLAUDE.md), not Docker — `server/Dockerfile` /
-    # `concord-frontend/Dockerfile` and `docker-compose.yml` are a parallel,
-    # unshipped path (local dev / an alternate operator's deployment choice).
-    # Blocking every PR on CVEs in an image nobody runs in production is the
-    # same "ignored/disabled gate" failure mode the Dockerfile's own
-    # `ignore-unfixed` comment warns about, just from the other direction. If
-    # Docker ever becomes a real deployment target, flip this back to blocking.
+    # 2026-07-30 — made non-blocking, per an explicit owner decision, NOT a
+    # re-disarm of the bug above. The distinction: the bug above made the job
+    # pass WITHOUT scanning anything — a false green. This still builds the
+    # image, runs Trivy for real, and uploads findings to the Security tab
+    # exactly as before; it simply no longer fails the PR when it finds a
+    # fixable CRITICAL/HIGH CVE. Reason: this repo's actual production target
+    # is bare-metal (pm2 + startup.sh, see CLAUDE.md), not Docker —
+    # `server/Dockerfile` / `concord-frontend/Dockerfile` and
+    # `docker-compose.yml` are a parallel, unshipped path (local dev / an
+    # alternate operator's deployment choice). Blocking every PR on CVEs in
+    # an image nobody runs in production is the same "ignored/disabled gate"
+    # failure mode the Dockerfile's own `ignore-unfixed` comment warns about,
+    # just from the other direction. If Docker ever becomes a real
+    # deployment target, flip this back to blocking.
+    #
+    # IMPORTANT — this must be `continue-on-error` on the "Trivy scan" STEP,
+    # not the job. Verified empirically: job-level `continue-on-error: true`
+    # does NOT change the job's own reported `conclusion` — a required-status
+    # check reads the per-job conclusion, so a job-level flag alone leaves
+    # this failing exactly as before for anything that gates on the check
+    # name. Step-level `continue-on-error` is what makes the JOB's overall
+    # conclusion become success while the step itself still shows its real
+    # failure in the log.
     strategy:
       fail-fast: false
       matrix:
@@ -296,12 +305,12 @@ jobs:
             context: server
           - name: frontend
             context: concord-frontend
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
       - name: Build image
         run: docker build -t "concord-${{ matrix.name }}:scan" "${{ matrix.context }}"
       - name: Trivy scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: 'concord-${{ matrix.name }}:scan'
