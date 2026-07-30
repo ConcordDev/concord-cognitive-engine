@@ -128,10 +128,10 @@ describe('Auth Middleware', () => {
     });
   });
 
-  describe('CSP nonce (security audit 2026-07-30)', () => {
-    it('sets a Content-Security-Policy-Report-Only header on every response', () => {
+  describe('CSP nonce (security audit 2026-07-30, flipped to enforced same day)', () => {
+    it('sets a fully-enforced Content-Security-Policy header on every response', () => {
       const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
-      const csp = response.headers.get('Content-Security-Policy-Report-Only');
+      const csp = response.headers.get('Content-Security-Policy');
       expect(csp).toBeDefined();
       expect(csp).toContain(`script-src 'self'`);
       expect(csp).toContain('strict-dynamic');
@@ -142,16 +142,22 @@ describe('Auth Middleware', () => {
       expect(csp).toContain('frame-ancestors');
     });
 
-    it('never sets the enforcing Content-Security-Policy header (report-only only, this rollout)', () => {
+    it('covers the two verified external iframe destinations via frame-src', () => {
       const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
-      expect(response.headers.get('Content-Security-Policy')).toBeUndefined();
+      const csp = response.headers.get('Content-Security-Policy');
+      expect(csp).toContain(`frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com`);
+    });
+
+    it('no longer sets the report-only header (flipped to enforced)', () => {
+      const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
+      expect(response.headers.get('Content-Security-Policy-Report-Only')).toBeUndefined();
     });
 
     it('embeds a matching nonce in both the CSP header and the x-nonce header', () => {
       const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
       const nonce = response.headers.get('x-nonce');
       expect(nonce).toBeTruthy();
-      expect(response.headers.get('Content-Security-Policy-Report-Only')).toContain(`'nonce-${nonce}'`);
+      expect(response.headers.get('Content-Security-Policy')).toContain(`'nonce-${nonce}'`);
     });
 
     it('generates a fresh nonce per request (never reused)', () => {
@@ -164,7 +170,7 @@ describe('Auth Middleware', () => {
 
     it('sets the CSP on a redirect response too (protected route, no session)', () => {
       const response = middleware(makeRequest('/hub')) as { headers: { get: (k: string) => string | undefined } };
-      expect(response.headers.get('Content-Security-Policy-Report-Only')).toBeTruthy();
+      expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
       expect(response.headers.get('x-nonce')).toBeTruthy();
     });
   });

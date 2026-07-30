@@ -18,15 +18,24 @@ import type { NextRequest } from 'next/server';
  * styled-components/emotion" — this mirrors that established, working
  * precedent for the much-more-inline-style-heavy frontend.
  *
- * Shipped as `Content-Security-Policy-Report-Only` (not enforced) for this
- * rollout: this is a 260-lens app (3D/canvas/WASM-physics/WebRTC/music/many
- * third-party embeds) that cannot be exhaustively browser-verified in this
- * environment. Report-only collects real violation data with zero
- * functional risk — the standard, textbook way to introduce a new CSP on an
- * app this size — rather than claiming "enforced" without having verified
- * it doesn't break something. See docs/SECURITY_SCAN_TRIAGE_2026-07.md for
- * the flip-to-enforce follow-up plan and the one known un-nonced `<style>`
- * tag (AmbientFeedback.tsx) this will surface as a report.
+ * Flipped to fully-enforced `Content-Security-Policy` (2026-07-30), after a
+ * dedicated pre-flight audit rather than a browser test of all 260 lenses
+ * (infeasible in this sandbox): confirmed zero raw `<script>` tags, zero
+ * `javascript:` URLs, and zero `next/script` usage anywhere in `app/` or
+ * `components/` (script-src's nonce + 'strict-dynamic' covers everything
+ * that remains — Next's own bootstrap + its chunks); confirmed style-src's
+ * `'unsafe-inline'` is unaffected by the flip (no nonce/hash competes with
+ * it in that same directive, so the one known un-nonced `<style>` tag in
+ * AmbientFeedback.tsx was never actually at risk); and traced all 13 files
+ * using `<iframe>` — Forge/AppBuilder/PreviewPane's live previews use
+ * sandboxed `srcDoc` (same-origin inline document, not a `frame-src`-gated
+ * navigation) and LensStationOverlay/ArtifactRenderer use same-origin
+ * relative paths (both already covered by 'self'), leaving exactly two real
+ * external cases — YouTube embeds for rocket-launch webcasts
+ * (LaunchCountdown.tsx) and NASA APOD's video-of-the-day entries
+ * (NasaLivePanel.tsx/NasaExplorer.tsx) — now covered by the `frame-src`
+ * directive below. See docs/SECURITY_SCAN_TRIAGE_2026-07.md for the full
+ * report-only rollout history this flip closes out.
  */
 
 function buildCsp(nonce: string): string {
@@ -53,6 +62,17 @@ function buildCsp(nonce: string): string {
     // Web Workers (avatar animator, physics offload) are blob: URLs.
     `worker-src 'self' blob:`,
     `connect-src 'self' https: wss: ws:`,
+    // Pre-flight for the enforce flip (2026-07-30): grepped every real
+    // `<iframe src={...}>` in the app. Forge/AppBuilder/PreviewPane's live
+    // previews all use `srcDoc` (inline, sandboxed, same-origin document —
+    // not a `frame-src`-gated navigation) and LensStationOverlay's src is a
+    // same-origin `/lenses/...` path — both already covered by 'self'. Two
+    // real external cases: LaunchCountdown.tsx's `ytEmbed()` always builds
+    // a `https://www.youtube.com/embed/...` URL for rocket-launch webcasts,
+    // and NASA's APOD API links its video-of-the-day entries to YouTube
+    // too (astronomy/NasaLivePanel.tsx, NasaExplorer.tsx). No other
+    // external iframe source exists in the app today.
+    `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
@@ -137,13 +157,14 @@ export function middleware(request: NextRequest) {
   const csp = buildCsp(nonce);
 
   // Propagate the nonce to Server Components via a request header (read
-  // with `(await headers()).get('x-nonce')`), and set the CSP itself as
-  // Report-Only on the response — see the header comment for why.
+  // with `(await headers()).get('x-nonce')`), and set the CSP itself as a
+  // fully-enforced header on the response — see the header comment for the
+  // pre-flight audit that justified the flip from report-only.
   const forwardedHeaders = new Headers(request.headers);
   forwardedHeaders.set('x-nonce', nonce);
 
   function withCspHeaders(response: NextResponse): NextResponse {
-    response.headers.set('Content-Security-Policy-Report-Only', csp);
+    response.headers.set('Content-Security-Policy', csp);
     response.headers.set('x-nonce', nonce);
     return response;
   }
