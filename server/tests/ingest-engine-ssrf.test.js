@@ -24,11 +24,15 @@
 // the validated IP. That holds for EVERY tier, including a spoofed one — which
 // is what these tests assert, by deliberately using the most privileged tier.
 //
-// Note on the tier-from-body issue itself: guarding the transport removes its
-// security impact on this path (the worst a spoofed tier now buys is fetching
-// a public URL, which is what the feature does anyway), but reading a
-// privilege level off the request body remains wrong on its own terms and is
-// called out in the commit rather than silently treated as fixed here.
+// Note on the tier-from-body issue itself: guarding the transport removed its
+// security impact on this path (the worst a spoofed tier ever bought was
+// fetching a public URL, which is what the feature does anyway) — but reading
+// a privilege level off the request body was wrong on its own terms, so it
+// was fixed separately: routes/operations.js now derives tier from
+// req.user?.role (sovereign-family roles only), never from the request body.
+// This test file still exercises submitUrl() directly at every tier,
+// including a spoofed sovereign, so it keeps covering the transport guard
+// regardless of how the tier was decided.
 //
 // Run: node --test server/tests/ingest-engine-ssrf.test.js
 

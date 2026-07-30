@@ -9,6 +9,15 @@ import fs from "fs";
 import { asyncHandler } from "../lib/async-handler.js";
 import { validateBody, ingestUrlSchema, ingestTextSchema, ingestSchema, ingestSubmitSchema, researchRunSchema, harnessRunSchema, apiKeyCreateSchema } from "../lib/validators/mutation-schemas.js";
 
+// Security audit 2026-07-30: the real user's role decides the ingest tier —
+// see the /api/ingest/submit route below for why a client-supplied tier is
+// never trusted. Exported standalone so it's testable without going through
+// the full HTTP route (which, at "sovereign", triggers an immediate real
+// content fetch).
+export function ingestTierForRole(role) {
+  return ["owner", "admin", "founder", "sovereign"].includes(role) ? "sovereign" : "free";
+}
+
 export default function registerOperationRoutes(app, {
   STATE,
   makeCtx,
@@ -218,10 +227,23 @@ export default function registerOperationRoutes(app, {
       const url = String(req.body?.url || "").trim();
       if (!url) return res.status(400).json({ ok: false, error: "url required" });
 
-       
+
       // eslint-disable-next-line no-restricted-syntax
       const userId = req.user?.id || req.body?.userId || "anon"; // safe: target-identifier
-      const tier = req.body?.tier || "free";
+
+      // Security audit 2026-07-30: tier used to be read straight off
+      // req.body.tier. TIERS.SOVEREIGN bypasses the ingest queue for
+      // immediate processing, waives the domain blocklist, and lifts the
+      // per-day page cap to Infinity (emergent/ingest-engine.js) — any
+      // caller (auth'd or not, since userId itself falls back to an
+      // anonymous default above) could self-declare "sovereign" and get
+      // all three. Tier must come from the real user record, never the
+      // request body. There is no paid/researcher subscription concept
+      // wired to a real user field yet, so the only two tiers with honest
+      // backing today are: real sovereign-role users get TIERS.SOVEREIGN,
+      // everyone else gets TIERS.FREE. (Matches the isSovereign role check
+      // a few routes below in this same file.)
+      const tier = ingestTierForRole(req.user?.role || "guest");
 
       const mod = await import("../emergent/ingest-engine.js").catch(() => null);
       if (!mod?.submitUrl) return res.status(501).json({ ok: false, error: "Ingest engine not available" });
