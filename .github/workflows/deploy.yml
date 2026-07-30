@@ -80,7 +80,12 @@ jobs:
         run: npm run lint:ci
       - name: Frontend type-check
         working-directory: ./concord-frontend
-        run: npm run type-check
+        # type-check:ci (not the plain script) — tsc --noEmit OOM'd on a
+        # standard runner at V8's default old-space limit (~4GB heap, exit
+        # 134) before producing any diagnostic output; this is a runner-size
+        # crash, not a real type error. Mirrors build:ci's existing
+        # --max-old-space-size pattern in package.json.
+        run: npm run type-check:ci
       - name: Prophet-check (build-blocker analysis — M5; skipped by the frontend image)
         working-directory: ./concord-frontend
         run: node ../server/scripts/prophet-check.js
