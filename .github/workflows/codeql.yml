@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4.37.3
         with:
           languages: ${{ matrix.language }}
           # build-mode: none works for interpreted languages including
@@ -204,6 +204,6 @@ jobs:
       # OOM pattern that hit ci.yml + lighthouse.yml.
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4.37.3
         with:
           category: '/language:${{ matrix.language }}'
