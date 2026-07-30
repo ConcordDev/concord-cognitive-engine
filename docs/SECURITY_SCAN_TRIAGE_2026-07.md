@@ -4,6 +4,14 @@ An external scan (Aikido) produced ~40 findings. This file records the
 **determinations**, so the same noise isn't re-triaged from scratch next
 quarter, and so the fixes have a written rationale.
 
+**2026-07-30 addendum:** after the scan's own findings were closed, a
+follow-on sweep for the exact same "identity/tier read from the request body,
+not verified against the authenticated caller" shape turned up several MORE
+real instances the original scan never flagged, including a genuine
+wallet-drain vulnerability across `/api/connective-tissue`. See the bottom of
+the "Real, fixed" table and its own subsection below — this file now covers
+both the original scan and this follow-on sweep.
+
 Two rules governed the pass:
 
 1. **Verify before fixing.** Several findings were wrong in one direction or
@@ -28,6 +36,9 @@ Two rules governed the pass:
 | — | Timing-unsafe secret comparison + `timingSafeEqual` throw-on-length | Medium | `2d11a73a` |
 | — | Frontend document served without HSTS | Medium | `63fdf7d4` |
 | — | `req.body?.tier` privilege read in `routes/operations.js` (ingest submit) | Low (impact already removed by the SSRF fix; wrong on its own terms) | `7ce35c5d` |
+| — | IDOR on `/api/social/analytics/creator` + publish/unpublish (missing ownership) | Medium | `78c671e9` |
+| — | Admin-gated DTU tier mutation + bulk-route IDOR in `helpers-extended.js` | High (arbitrary delete of another user's DTUs) | `f9a3c03a` |
+| — | **Wallet-drain IDOR across `/api/connective-tissue`** (tip/bounty/claim/purchase) | Critical | `360a3a24` |
 
 ### SEC-1 was not in the report as an RCE
 
@@ -69,6 +80,56 @@ connector id), never a credential. The open redirect is the real issue.
   blocklist contains two `example.com` placeholders, and whose tier gate reads
   `req.body?.tier`. A caller could declare itself `sovereign` and skip every
   check. Fixed at the transport, so it holds for a spoofed tier.
+
+### 2026-07-30 follow-on sweep — the same shape, found by grepping for it deliberately
+
+After closing the scan's own list, `routes/operations.js`'s ingest-tier fix
+prompted a targeted re-grep across `routes/` and `domains/` for the identical
+pattern: an identity or privilege field read from `req.body` and trusted
+without checking it against `req.user`. Three more real instances turned up,
+none in the original scan:
+
+- **`routes/helpers-extended.js`** — `POST /api/atlas/tiers/promote|demote/:dtuId`
+  had `requireAuth()` only (no ownership, no admin check) and set
+  `dtu.tier = req.body.tier || "verified"/"regular"` — a raw client override
+  on a field the DTU-consolidation pipeline reads for regular/mega/hyper
+  classification across dozens of files. `POST /api/dtus/bulk` had the same
+  `requireAuth()`-only gate with **zero per-item ownership check** — any
+  authenticated user could bulk-delete, bulk-retag, or bulk-promote up to 100
+  of *any other user's* DTUs by id. Fixed: the atlas routes are now
+  admin-gated and stopped accepting a body override (the endpoint name
+  already declares the direction); `/api/dtus/bulk` gained a per-item
+  ownership check reusing `dtu.delete`'s own field convention, plus an
+  admin-only gate on `action: "promote"`. Confirmed dead from the real
+  frontend (only the raw API client wrapper exists; the real bulk-ops UI
+  calls an unrelated macro) — zero legitimate-usage impact. `f9a3c03a`.
+- **`routes/connective-tissue.js`** — the most severe finding in this whole
+  document, in either pass. Every money-moving route
+  (`/tip`, `/bounties`, `/bounties/:id/claim`, `/dtu/purchase`) read the
+  **funds-source identity** — `tipperId`, `posterId`, `claimerId`, `buyerId`
+  — straight off the request body. `executeTransfer()` (`economy/transfer.js`)
+  has no caller-identity check of its own by design, so nothing stood between
+  an authenticated attacker and moving money out of an arbitrary victim's
+  wallet: tip yourself using the victim's `tipperId`, escrow the victim's
+  funds into a bounty only you can claim, or — worst of the four, since it
+  needs no setup — copy any open bounty's id + its real `posterId` straight
+  off the *public* `GET /bounties` listing and claim its full escrowed reward
+  with an arbitrary `claimerId`, since `claimBounty()` never checked the
+  claimer's identity or the submitted solution at all. Fixed with a shared
+  `requireSelf(bodyField)` middleware requiring the claimed identity match
+  `req.user.id`, deliberately permissive only when `req.user` is absent
+  entirely (mirrors `dtu.delete`'s own `AUTH_MODE=public` exception — that
+  deployment mode has exactly one real user). `360a3a24`.
+  - **A second, unrelated, pre-existing bug was found and deliberately NOT
+    fixed while verifying this**: `postBounty`'s escrow-in transfer is typed
+    `TRANSFER` (`FEES.TRANSFER = 0.0146`), so `__ESCROW__` only ever receives
+    `bounty.amount * (1 - 0.0146)`, while `claimBounty` tries to release the
+    full original `bounty.amount` — so a real bounty claim fails with
+    `insufficient_balance` regardless of who's claiming, independent of the
+    identity fix above (reproduces with `requireSelf` removed entirely).
+    Needs a design call — should escrow moves be fee-exempt, or should
+    `claimBounty` release `net` instead of `amount`? — recorded here rather
+    than guessed at.
 
 ---
 
