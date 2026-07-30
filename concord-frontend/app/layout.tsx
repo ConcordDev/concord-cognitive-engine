@@ -2,6 +2,7 @@ import './globals.css';
 import { Providers } from '@/components/Providers';
 import type { Metadata, Viewport } from 'next';
 import { DM_Sans, JetBrains_Mono, Source_Serif_4 } from 'next/font/google';
+import { headers } from 'next/headers';
 
 /**
  * Self-hosted fonts via next/font — no render-blocking @import in globals.css.
@@ -126,7 +127,15 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Reading the per-request CSP nonce here (set by middleware.ts) is what
+  // actually matters, independent of whether this file interpolates it
+  // into markup: calling headers() forces this layout into dynamic
+  // rendering, which a per-request nonce requires (a statically-generated
+  // page can't carry one). Next.js's own inline bootstrap scripts pick the
+  // nonce up automatically from the incoming CSP header at render time.
+  await headers();
+
   return (
     <html
       lang="en"
