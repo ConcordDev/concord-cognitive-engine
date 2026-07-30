@@ -44,7 +44,6 @@ const SRC = readFileSync(path.join(HERE, "../../scripts/verify-event-consumers.m
 function reFrom(name) {
   const m = SRC.match(new RegExp(`const ${name} = (/.*/)g;`));
   assert.ok(m, `${name} not found in verify-event-consumers.mjs`);
-  // eslint-disable-next-line no-eval
   return new RegExp(m[1].slice(1, m[1].lastIndexOf("/")), "g");
 }
 const subRe = () => reFrom("subRe");

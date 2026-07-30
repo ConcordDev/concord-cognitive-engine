@@ -80122,9 +80122,9 @@ async function runBackup() {
     try {
       if (fs.existsSync(DB_PATH)) {
         const raw = await fs.promises.readFile(DB_PATH);
-        const compressed = await new Promise((resolve, reject) =>
-          zlib.gzip(raw, { level: 6 }, (err, buf) => (err ? reject(err) : resolve(buf))),
-        );
+        const compressed = await new Promise((resolve, reject) => {
+          zlib.gzip(raw, { level: 6 }, (err, buf) => (err ? reject(err) : resolve(buf)));
+        });
         await fs.promises.writeFile(`${backupDir}/concord.db.gz`, compressed);
         structuredLog("info", "backup_db_captured", {
           source: DB_PATH, bytes: raw.length, compressedBytes: compressed.length,

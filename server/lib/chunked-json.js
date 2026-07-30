@@ -58,7 +58,7 @@ export async function stringifyChunked(obj, scheduler = setImmediate) {
     // produce invalid JSON, so mirror the drop exactly.
     if (v === undefined) continue;
     parts.push(`${JSON.stringify(k)}:${v}`);
-    await new Promise((resolve) => scheduler(resolve));
+    await new Promise((resolve) => { scheduler(resolve); });
   }
   return `{${parts.join(",")}}`;
 }
