@@ -27,6 +27,7 @@ Two rules governed the pass:
 | — | **SSRF** in `emergent/ingest-engine.js`, bypassable at any tier | High | `97fdc3d3` |
 | — | Timing-unsafe secret comparison + `timingSafeEqual` throw-on-length | Medium | `2d11a73a` |
 | — | Frontend document served without HSTS | Medium | `63fdf7d4` |
+| — | `req.body?.tier` privilege read in `routes/operations.js` (ingest submit) | Low (impact already removed by the SSRF fix; wrong on its own terms) | `7ce35c5d` |
 
 ### SEC-1 was not in the report as an RCE
 
@@ -124,10 +125,6 @@ promoted into the blocking gate.
   this branch (present on `origin/main`). Clearing it requires a deliberate
   BASELINE refresh, which is human-authorized by design — not something to do
   as a side effect of a triage pass.
-- **`req.body?.tier`** in `routes/operations.js` — reading a privilege level
-  off the request body is wrong on its own terms. Guarding the transport
-  removed its security impact on the ingest path, but tier should come from the
-  user record.
 - **CSP at the Next.js layer** — nonces were removed because they broke inline
   scripts; a real Next CSP needs middleware nonce plumbing.
 - **`next` 15→16 and `uuid` 9→14** — majors needing individual verification.
