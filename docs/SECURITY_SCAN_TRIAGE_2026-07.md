@@ -202,10 +202,11 @@ promoted into the blocking gate.
   as a side effect of a triage pass.
 - **CSP at the Next.js layer** — nonces were removed because they broke inline
   scripts; a real Next CSP needs middleware nonce plumbing.
-- **`next` 15→16 and `uuid` 9→14** — majors needing individual verification.
-  `uuid` in particular: v3/v5/v6 signatures changed and the OOB fix added
-  bounds checks that *throw* `RangeError` where callers previously got silent
-  corruption, so every call site needs reading first.
+- **`next` 15→16** — major needing individual verification (full production
+  build + `tsc --noEmit` + vitest run, not just a version bump). Still open.
+  (`uuid` 9→14 is done — `0a3d70e3` bumped it after auditing every call site
+  for the v3/v5/v6 signature changes; the line that used to list it here as
+  open was stale.)
 
 ### `@xenova/transformers` — 4 flagged CVEs, and why an `overrides` entry is the wrong fix
 
