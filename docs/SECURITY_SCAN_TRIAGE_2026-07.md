@@ -121,16 +121,22 @@ none in the original scan:
   `req.user.id`, deliberately permissive only when `req.user` is absent
   entirely (mirrors `dtu.delete`'s own `AUTH_MODE=public` exception — that
   deployment mode has exactly one real user). `360a3a24`.
-  - **A second, unrelated, pre-existing bug was found and deliberately NOT
-    fixed while verifying this**: `postBounty`'s escrow-in transfer is typed
-    `TRANSFER` (`FEES.TRANSFER = 0.0146`), so `__ESCROW__` only ever receives
-    `bounty.amount * (1 - 0.0146)`, while `claimBounty` tries to release the
-    full original `bounty.amount` — so a real bounty claim fails with
-    `insufficient_balance` regardless of who's claiming, independent of the
-    identity fix above (reproduces with `requireSelf` removed entirely).
-    Needs a design call — should escrow moves be fee-exempt, or should
-    `claimBounty` release `net` instead of `amount`? — recorded here rather
-    than guessed at.
+  - **A second, unrelated, pre-existing bug was found while verifying this
+    — now FIXED (`535e4817`)**: `postBounty`'s escrow-in transfer was typed
+    `TRANSFER` (`FEES.TRANSFER = 0.0146`), so `__ESCROW__` only ever received
+    `bounty.amount * (1 - 0.0146)`, while `claimBounty` tried to release the
+    full original `bounty.amount` — every real bounty claim failed with
+    `insufficient_balance`, independent of the identity fix above. Fixed via
+    migration 399: new fee-exempt `BOUNTY_ESCROW`/`BOUNTY_CLAIM` ledger types,
+    following the exact precedent of the existing `STAKE_ESCROW`/
+    `STAKE_RETURN` types (both absent from `fees.js`'s `FEES` map). This
+    required a **human-authorized** edit to `economy/balances.js` — one of
+    the five money-invariant files `guard.mjs` requires explicit sign-off
+    for — because `executeTransfer()`'s debit+credit-row split (the same
+    shape `TRANSFER`/`MARKETPLACE_PURCHASE` use) needed the two new types
+    added to `CREDIT_ROW_PREDICATE`'s exclusion list, or every bounty
+    escrow/claim would have double-credited its recipient. See
+    `tests/economy/ledger-conservation.test.js`'s bounty-specific cases.
 - **`routes/creative-marketplace.js`** — `POST /api/artifacts/:id/purchase`
   had the identical `buyerId`-from-body shape as `/dtu/purchase` above (the
   router's own `authForWrites` middleware guarantees some session is valid
