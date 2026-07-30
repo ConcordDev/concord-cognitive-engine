@@ -15,6 +15,15 @@
 #
 # When Tauri ships a GTK4 / updated gtk-rs generation, DELETE the corresponding
 # line and let the gate re-verify rather than assuming it is still needed.
+#
+# 2026-07-30: extended from 3 to 8 entries. A real CI run surfaced 5 more
+# advisories in the exact same two dependency chains the first pass already
+# documented (two are literally the NEXT link down from crates already listed
+# below) — the first pass's local `cargo audit` was never run standalone
+# (cargo-audit could not be installed in that sandbox), so its 3-entry list
+# came from reading a single CI log rather than the tool's full output.
+# Verified this time the same way — traced every crate through Cargo.lock —
+# not simply copied from the new failure.
 
 [advisories]
 ignore = [
@@ -42,7 +51,35 @@ ignore = [
 
     # ── RUSTSEC-2025-0098 — unic-ucd-version 0.9.0, `unmaintained` ────────────
     # Same root cause one level deeper: `unic-ucd-ident -> unic-ucd-version`.
-    # Resolves together with RUSTSEC-2025-0100 when urlpattern migrates off the
-    # unic-* family; nothing to do here until it does.
     "RUSTSEC-2025-0098",
+
+    # ── RUSTSEC-2025-0081 — unic-char-property 0.9.0, `unmaintained` ──────────
+    # Same `unic-*` family, one link further down the SAME chain as the two
+    # entries above: `urlpattern -> unic-ucd-ident -> unic-char-property`.
+    # Resolves together with RUSTSEC-2025-0100/0098 when urlpattern migrates
+    # off the unic-* family; nothing to do here until it does.
+    "RUSTSEC-2025-0081",
+
+    # ── RUSTSEC-2025-0075 — unic-char-range 0.9.0, `unmaintained` ─────────────
+    # Deeper still in the identical chain:
+    # `urlpattern -> unic-ucd-ident -> unic-char-property -> unic-char-range`.
+    "RUSTSEC-2025-0075",
+
+    # ── RUSTSEC-2025-0080 — unic-common 0.9.0, `unmaintained` ─────────────────
+    # Same shape as RUSTSEC-2025-0098's chain, one link further:
+    # `urlpattern -> unic-ucd-ident -> unic-ucd-version -> unic-common`.
+    "RUSTSEC-2025-0080",
+
+    # ── RUSTSEC-2024-0419 — gtk3-macros 0.18.2, `unmaintained` ────────────────
+    # "gtk-rs GTK3 bindings - no longer maintained." Same family as the glib
+    # entry above: `gtk 0.18.2 -> gtk3-macros`, arriving under `tauri`'s Linux
+    # GTK3 webview backend. No first-party use of gtk3-macros' proc macros.
+    "RUSTSEC-2024-0419",
+
+    # ── RUSTSEC-2024-0370 — proc-macro-error 1.0.4, `unmaintained` ────────────
+    # Reached two ways, both inside the same gtk-rs/glib family already
+    # documented above: `glib-macros 0.18.5 -> proc-macro-error` and
+    # `gtk3-macros 0.18.2 -> proc-macro-error`. A proc-macro build dependency,
+    # not something concord-shell calls into at runtime.
+    "RUSTSEC-2024-0370",
 ]
