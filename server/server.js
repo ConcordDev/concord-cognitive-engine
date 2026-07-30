@@ -59838,11 +59838,20 @@ app.get("/api/social/trending", (req, res) => {
 });
 
 // Social analytics + trending extensions
-app.get("/api/social/analytics/creator", (req, res) => {
+app.get("/api/social/analytics/creator", requireAuth(), (req, res) => {
   try {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
+    // Security audit 2026-07-30: matches the fix already applied to
+    // /api/social/feed/bookmarks above — this used to accept a
+    // client-supplied req.query.userId fallback with a false "safe:
+    // public-filter" claim, but dtusArray() returns EVERY DTU regardless
+    // of visibility, so this leaked a target user's total DTU count
+    // (private included) and summed views/votes. Confirmed live: an
+    // anonymous caller with ?userId=<any-user-id> got a 200 with real
+    // data. Every real frontend call site (CreatorAnalytics.tsx,
+    // app/lenses/{analytics,social}/page.tsx, app/profile/page.tsx) only
+    // ever passes the CALLER'S OWN id, so this is a pure hardening fix
+    // with zero legitimate-usage impact.
+    const userId = req.user?.id;
     const profile = getProfile(STATE, userId);
     const dtus = dtusArray().filter(d => d.createdBy === userId || d.userId === userId);
     res.json({ ok: true, creator: { userId, totalDTUs: dtus.length, profile, engagement: { views: dtus.reduce((s, d) => s + (d.views || 0), 0), votes: dtus.reduce((s, d) => s + (d.votes || 0), 0) } } });
@@ -59929,12 +59938,15 @@ app.get("/api/social/discover/:userId", (req, res) => {
   try { res.json(discoverUsers(STATE, req.params.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.post("/api/social/publish/:dtuId", (req, res) => {
+// Security audit 2026-07-30: both routes lacked requireAuth() and (below)
+// publishDtu/unpublishDtu never actually checked ownership — any
+// authenticated user could publish/unpublish any other user's DTU.
+app.post("/api/social/publish/:dtuId", requireAuth(), (req, res) => {
   try { res.json(publishDtu(STATE, req.params.dtuId, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.post("/api/social/unpublish/:dtuId", (req, res) => {
-  try { res.json(unpublishDtu(STATE, req.params.dtuId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+app.post("/api/social/unpublish/:dtuId", requireAuth(), (req, res) => {
+  try { res.json(unpublishDtu(STATE, req.params.dtuId, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.post("/api/social/cite", (req, res) => {

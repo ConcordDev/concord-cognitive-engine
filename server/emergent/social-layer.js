@@ -243,13 +243,20 @@ export function getFollowing(STATE, userId, limit = 50) {
 
 /**
  * Mark a DTU as public (visible in feeds and search).
+ *
+ * Security audit 2026-07-30: `_userId` used to be accepted but never
+ * checked (its underscore prefix was the JS "intentionally unused"
+ * convention, not a stub-for-later) — any authenticated user, regardless
+ * of ownership, could publish or unpublish any other user's DTU to/from
+ * the public social feed. Now enforced against the same ownership fields
+ * `dtu.delete`'s macro checks (server.js).
  */
-export function publishDtu(STATE, dtuId, _userId) {
+export function publishDtu(STATE, dtuId, userId) {
   const social = getSocialState(STATE);
 
-  // Verify ownership
   const dtu = STATE.dtus?.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
+  if (!isDtuOwner(dtu, userId)) return { ok: false, error: "unauthorized: you can only publish your own DTUs" };
 
   social.publicDtus.add(dtuId);
   social.metrics.publicDtuCount = social.publicDtus.size;
@@ -257,11 +264,31 @@ export function publishDtu(STATE, dtuId, _userId) {
   return { ok: true, dtuId, isPublic: true };
 }
 
-export function unpublishDtu(STATE, dtuId) {
+export function unpublishDtu(STATE, dtuId, userId) {
   const social = getSocialState(STATE);
+
+  const dtu = STATE.dtus?.get(dtuId);
+  if (!dtu) return { ok: false, error: "DTU not found" };
+  if (!isDtuOwner(dtu, userId)) return { ok: false, error: "unauthorized: you can only unpublish your own DTUs" };
+
   social.publicDtus.delete(dtuId);
   social.metrics.publicDtuCount = social.publicDtus.size;
   return { ok: true, dtuId, isPublic: false };
+}
+
+// A DTU with no identifiable owner field at all (system-seeded/imported
+// content) stays permissive — any authenticated caller may publish/
+// unpublish it — matching the same "no ownerId = permissive, legacy"
+// precedent already established for chat sessions
+// (lib/session-access.js#assertSessionAccessible). A DTU that DOES carry
+// an owner field is restricted to that owner only. This is what actually
+// closes the audit finding (cross-user publish/unpublish of a REAL,
+// owned DTU) without regressing the legitimate unowned-DTU case.
+function isDtuOwner(dtu, userId) {
+  const ownerFields = [dtu.author, dtu.meta?.authorId, dtu.ownerId, dtu.createdBy, dtu.createdByUser, dtu.authorId, dtu.source];
+  if (!ownerFields.some(Boolean)) return true; // unowned — permissive
+  if (!userId) return false;
+  return ownerFields.includes(userId);
 }
 
 // ── Cited-By Tracking ────────────────────────────────────────────────────
