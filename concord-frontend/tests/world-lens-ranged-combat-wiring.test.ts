@@ -87,9 +87,15 @@ describe('AvatarSystem3D.tsx — firearm discharge fires a projectile tracer', (
     const idx = avatarSystem.indexOf('Discharge flash');
     expect(idx).toBeGreaterThan(-1);
     const block = avatarSystem.slice(idx, idx + 4000);
-    expect(block).toMatch(/if \(isFirearm\) \{/);
-    expect(block).toMatch(/const target = cameraLookState\.aimHitPoint \?\? \{ x: pos\.x, y: pos\.y, z: pos\.z - 40 \};/);
-    expect(block).toMatch(/projectileTracerRef\.current\.fire\(\{ x: pos\.x, y: pos\.y, z: pos\.z \}, target\);/);
+    // Firearm gating + discharge-VFX dispatch were extracted into
+    // shouldEmitDischargeVfx()/emitDischargeVfx() — real behavioral coverage
+    // for that logic lives in tests/world-lens-discharge-flash-wiring.test.ts
+    // (calls the actual functions, not a source-text regex). This test's own
+    // job is narrower: proving the projectile tracer is wired to fire from
+    // the discharge point toward cameraLookState.aimHitPoint.
+    expect(block).toMatch(/if \(shouldEmitDischargeVfx\(detail, playerAvatar\.id, !!playerMeshRef\.current\)\) \{/);
+    expect(block).toMatch(/const target = cameraLookState\.aimHitPoint \?\? \{ x: vfx\.position\.x, y: vfx\.position\.y, z: vfx\.position\.z - 40 \};/);
+    expect(block).toMatch(/projectileTracerRef\.current\.fire\(\{ x: vfx\.position\.x, y: vfx\.position\.y, z: vfx\.position\.z \}, target\);/);
   });
 
   it('ticks the tracer every frame alongside the weapon trail', () => {
