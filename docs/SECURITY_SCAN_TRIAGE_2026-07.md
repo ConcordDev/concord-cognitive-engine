@@ -39,6 +39,7 @@ Two rules governed the pass:
 | — | IDOR on `/api/social/analytics/creator` + publish/unpublish (missing ownership) | Medium | `78c671e9` |
 | — | Admin-gated DTU tier mutation + bulk-route IDOR in `helpers-extended.js` | High (arbitrary delete of another user's DTUs) | `f9a3c03a` |
 | — | **Wallet-drain IDOR across `/api/connective-tissue`** (tip/bounty/claim/purchase) | Critical | `360a3a24` |
+| — | Wallet-drain IDOR on `/api/artifacts/:id/purchase` (creative-marketplace) | High | `ec7b4bba` |
 
 ### SEC-1 was not in the report as an RCE
 
@@ -130,6 +131,19 @@ none in the original scan:
     Needs a design call — should escrow moves be fee-exempt, or should
     `claimBounty` release `net` instead of `amount`? — recorded here rather
     than guessed at.
+- **`routes/creative-marketplace.js`** — `POST /api/artifacts/:id/purchase`
+  had the identical `buyerId`-from-body shape as `/dtu/purchase` above (the
+  router's own `authForWrites` middleware guarantees some session is valid
+  on every non-GET request, but never checked it against `buyerId` before
+  calling `purchaseArtifact()`, which debits `buyerId`'s wallet for real).
+  Fixed with the same requireSelf-shaped inline check (fail-open only when
+  `req.user` is absent). `world.js`'s `POST /businesses/:id/sale` was
+  checked for the same pattern (`buyerId` from body) and is a confirmed
+  false positive: `recordBusinessSale()` only increments an in-memory
+  `revenue`/`customersServed` game-stat counter — no real economy transfer
+  — and the route's positional call args don't even match the function's
+  actual `(businessId, { amount })` signature (a separate, non-security,
+  not-in-scope functional bug).
 
 ---
 
