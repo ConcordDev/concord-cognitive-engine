@@ -208,11 +208,31 @@ promoted into the blocking gate.
   this branch (present on `origin/main`). Clearing it requires a deliberate
   BASELINE refresh, which is human-authorized by design — not something to do
   as a side effect of a triage pass.
-- **`next` 15→16** — major needing individual verification (full production
-  build + `tsc --noEmit` + vitest run, not just a version bump). Still open.
-  (`uuid` 9→14 is done — `0a3d70e3` bumped it after auditing every call site
-  for the v3/v5/v6 signature changes; the line that used to list it here as
-  open was stale.)
+- **`next` 15→16 — done (`3f1a08f6`)**, closing 15 flagged CVEs. Full
+  production build + `type-check:ci` + the whole vitest suite (7433/7433
+  passing) all verified clean; two real Next 16 changes handled (mandatory
+  `jsx: "react-jsx"` tsconfig change, removal of the now-dead build-time
+  `eslint` config in `next.config.js` — Next 16 dropped build-time ESLint
+  integration entirely). One deprecation noted but not migrated: the
+  `middleware.ts` file convention is deprecated in favor of a `proxy.ts`
+  rename — still fully functional, left alone since the exact new API shape
+  couldn't be verified against live docs in this environment.
+  (`uuid` 9→14 was already done — `0a3d70e3`.)
+- **A pre-existing, unrelated frontend test-collection failure was found
+  while verifying the Next 16 bump, and left unfixed**:
+  `concord-frontend/tests/law-tracked-changes.test.ts` fails to even
+  collect (`Failed to resolve import "undici" from
+  "../server/lib/ssrf-guard.js"`) because it reaches across into a
+  server-side file whose lazy `await import("undici")` — a package neither
+  `package.json` declares — gets statically analyzed by Vite's
+  import-analysis plugin at collect time, before the surrounding try/catch
+  that makes it safe at real Node.js runtime ever gets a chance to run.
+  Confirmed unrelated to the Next.js bump: `vite`/`vitest`'s own versions
+  are byte-identical in the lockfile diff. All other 7433 tests across
+  916/917 files pass. Needs its own fix (either add `undici` as a real
+  devDependency so Vite can resolve it, or externalize it in the vitest
+  config) — not attempted here since it's out of scope for the version bump
+  this surfaced it during.
 
 ### `@xenova/transformers` — 4 flagged CVEs, and why an `overrides` entry is the wrong fix
 
