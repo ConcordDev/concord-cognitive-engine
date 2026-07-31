@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -10,15 +9,12 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
 import { GutendexSearch } from '@/components/creative-writing/GutendexSearch';
 import { CreativeWritingSection } from '@/components/creative-writing/CreativeWritingSection';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
-import { BookOpen, Layers, ChevronDown } from 'lucide-react';
-import { UniversalActions } from '@/components/lens/UniversalActions';
+import { BookOpen } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 // Note: the "My Works" generic CRUD system (works/editor/prompts/workshop
 // tabs backed by useLensData against a client-invented `work`/`prompt`
@@ -32,12 +28,10 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 export default function CreativeWritingPage() {
   useLensNav('creative-writing');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('creative-writing');
-  const [showFeatures, setShowFeatures] = useState(false);
 
   return (
     <LensShell lensId="creative-writing" asMain={false}>
       <FirstRunTour lensId="creative-writing" />
-      <ManifestActionBar />
       <div data-lens-theme="creative-writing" className="min-h-screen px-4 sm:px-6 pt-3 pb-8 space-y-5 max-w-7xl mx-auto">
         <header className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -61,26 +55,6 @@ export default function CreativeWritingPage() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <GutendexSearch />
         </section>
-
-        <UniversalActions domain="creative-writing" artifactId={null} compact />
-
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeatures((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-          >
-            <span className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              Lens Features & Capabilities
-            </span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-          </button>
-          {showFeatures && (
-            <div className="px-4 pb-4">
-              <LensFeaturePanel lensId="creative-writing" />
-            </div>
-          )}
-        </div>
 
         <RecentMineCard domain="creative-writing" limit={10} hideWhenEmpty />
         <AutoActionStrip domain="creative-writing" hideWhenEmpty />
