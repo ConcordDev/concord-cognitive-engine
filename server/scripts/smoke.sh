@@ -155,7 +155,11 @@ BUY_BODY='{"user_id":"smoke-user","amount":100}'
 # the anonymous probe asserts the gate is wired (401), not the
 # functionality (which a session-bearing test covers).
 check "Token purchase (auth required)" "/api/economy/buy" "POST" "$BUY_BODY" "401"
-check "Balance check" "/api/economy/balance?user_id=smoke-user"
+# /api/economy/balance now requires a real authenticated identity (fixed:
+# it used to trust a caller-supplied user_id with no ownership check, so
+# anyone could read anyone's wallet balance). The anonymous probe asserts
+# the gate is wired (401), same rationale as the token-purchase check above.
+check "Balance check (auth required)" "/api/economy/balance?user_id=smoke-user" "GET" "" "401"
 check "Economy status" "/api/economy/status"
 check "Platform balance" "/api/economy/platform-balance"
 check "Economy config" "/api/economy/config"

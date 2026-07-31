@@ -637,6 +637,15 @@ jobs:
           # Playwright pages never reach network-idle and the e2e job times out.
           # Gate at server.js:33960.
           CONCORD_DISABLE_HEARTBEAT: 'true'
+          # lib/request-admission.js sheds requests with an immediate 503 when
+          # event-loop lag exceeds 300ms — boot work (content seeding, macro
+          # registration) keeps lag over that bar for roughly the first 20s.
+          # tests/adversarial-critical-endpoints.test.js's own self-spawn path
+          # already disables this for exactly this reason (see its `before()`
+          # comment); this external-server path was missing the same env var,
+          # so anonymous requests landing in that window got 503 misread as
+          # "not gated" instead of reaching the real auth check.
+          CONCORD_LOAD_SHED_ENABLED: '0'
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           REDIS_URL: redis://localhost:6379
