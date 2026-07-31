@@ -2153,18 +2153,27 @@ let jwt = null, bcrypt = null, z = null, rateLimit = null, helmet = null, compre
 let Database = null; // better-sqlite3
 const _isProduction = (process.env.NODE_ENV || "development") === "production";
 const _securityLoadErrors = [];
+// Non-production import failures used to be silently swallowed (only pushed
+// to _securityLoadErrors, and only under _isProduction) — a bcryptjs/jwt
+// load failure in CI showed up only as a downstream 503 on /api/auth/register
+// with no way to see why. Log unconditionally so a future flake is
+// diagnosable from the server log CI already dumps on failure.
 try { jwt = (await import("jsonwebtoken")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`jsonwebtoken: ${e.message}`);
+  else logger.warn('server', 'jsonwebtoken failed to load', { error: e?.message, stack: e?.stack });
 }
 try { bcrypt = (await import("bcryptjs")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`bcryptjs: ${e.message}`);
+  else logger.warn('server', 'bcryptjs failed to load', { error: e?.message, stack: e?.stack });
 }
 try { z = (await import("zod")).z || (await import("zod")).default?.z; } catch (_e) { logger.debug('server', 'optional in all envs', { error: _e?.message }); }
 try { rateLimit = (await import("express-rate-limit")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`express-rate-limit: ${e.message}`);
+  else logger.warn('server', 'express-rate-limit failed to load', { error: e?.message, stack: e?.stack });
 }
 try { helmet = (await import("helmet")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`helmet: ${e.message}`);
+  else logger.warn('server', 'helmet failed to load', { error: e?.message, stack: e?.stack });
 }
 try { compression = (await import("compression")).default; } catch (_e) { logger.debug('server', 'optional in all envs', { error: _e?.message }); }
 try { Database = (await import("better-sqlite3")).default; } catch (_e) { logger.debug('server', 'optional - falls back to JSON', { error: _e?.message }); }
