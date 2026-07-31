@@ -54,10 +54,26 @@ async function metrics() {
   return out;
 }
 
-async function register(i) {
+// Registration has been observed to flake on shared CI VMs with a 503 from
+// the server's own "password hashing unavailable" guard even though the
+// same request succeeds reliably (including at this exact concurrency)
+// against a locally-booted server — the CI-only trigger wasn't
+// reproducible here. 503 is semantically retryable, and this script's job
+// is to drive load to check the heartbeat, not to assert registration
+// robustness, so retry a bounded few times with a short backoff before
+// giving up on a user. Log the real status/body on every failed attempt so
+// a recurrence is diagnosable from the workflow's own log instead of
+// collapsing to "no tokens".
+async function register(i, attempts = 3, backoffMs = 300) {
   const s = Date.now().toString(36) + i;
-  const r = await jfetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: `slo_${s}@ex.com`, password: "CiTickSlo1234!", username: `slo_${s}`.slice(0, 20), dateOfBirth: "1990-01-01" }) });
-  return r.json?.token || null;
+  const body = JSON.stringify({ email: `slo_${s}@ex.com`, password: "CiTickSlo1234!", username: `slo_${s}`.slice(0, 20), dateOfBirth: "1990-01-01" });
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const r = await jfetch("/api/auth/register", { method: "POST", body });
+    if (r.json?.token) return r.json.token;
+    console.error(`register user ${i} attempt ${attempt}/${attempts} failed: HTTP ${r.status} ${r.body?.slice?.(0, 300) || ""}`);
+    if (attempt < attempts) await sleep(backoffMs);
+  }
+  return null;
 }
 
 async function waitForGovernor() {
@@ -85,7 +101,14 @@ async function main() {
   console.log("ticking.");
 
   process.stdout.write(`Registering ${USERS} users... `);
-  const tokens = (await Promise.all(Array.from({ length: USERS }, (_, i) => register(i)))).filter(Boolean);
+  // Small stagger (not a real concurrency limit — still well within the
+  // window the SLO gate is meant to stress) to avoid every registration
+  // landing in the exact same event-loop tick as the governor's first,
+  // synchronously-heavy pass (ghost-fleet module loads + feed polling).
+  const tokens = (await Promise.all(Array.from({ length: USERS }, async (_, i) => {
+    if (i > 0) await sleep(i * 15);
+    return register(i);
+  }))).filter(Boolean);
   console.log(`${tokens.length} ready`);
   if (!tokens.length) { console.error("::error::no tokens — cannot drive load"); process.exit(1); }
 

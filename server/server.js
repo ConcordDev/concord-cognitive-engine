@@ -2169,7 +2169,7 @@ async function importWithRetry(specifier, attempts = 3, delayMs = 200) {
   for (let i = 0; i < attempts; i++) {
     try { return await import(specifier); } catch (e) {
       lastErr = e;
-      if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
+      if (i < attempts - 1) await new Promise((r) => { setTimeout(r, delayMs); });
     }
   }
   throw lastErr;
