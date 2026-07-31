@@ -59,7 +59,16 @@ before(async () => {
       ...process.env,
       PORT: port,
       NODE_ENV: 'development',
-      CONCORD_NO_LISTEN: ''
+      CONCORD_NO_LISTEN: '',
+      // lib/request-admission.js sheds requests with an immediate 503 when
+      // event-loop lag exceeds 300ms for roughly the first ~20s of boot,
+      // and full-suite parallelism compounds that well past isolated-run
+      // levels. "Respects rate limits on auth endpoints" asserts 401/429
+      // specifically — a 503 fails that assertion for a reason unrelated
+      // to rate limiting. Deliberately NOT bypassing
+      // CONCORD_RATE_LIMIT_BYPASS here: that's the actual behaviour this
+      // file tests.
+      CONCORD_LOAD_SHED_ENABLED: '0'
     },
     stdio: ['ignore', 'ignore', 'inherit']
   });

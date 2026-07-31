@@ -54,6 +54,15 @@ function spawnServer(port, dataDir, extraEnv, timeoutMs) {
       PORT: String(port),
       NODE_ENV: 'e2e-test',
       CONCORD_NO_LISTEN: 'false',
+      // lib/request-admission.js sheds requests with an immediate 503 when
+      // event-loop lag exceeds 300ms for roughly the first ~20s of boot, and
+      // full-suite parallelism (many test files each spawning their own
+      // server.js concurrently) compounds that well past isolated-run levels
+      // -- observed directly on this exact shared spawnServer() shape wholesale
+      // failing under full-suite contention while passing 13/13 in isolation.
+      // Disable shedding for e2e spawns; they exist to test real behaviour,
+      // not admission control.
+      CONCORD_LOAD_SHED_ENABLED: '0',
       DATA_DIR: dataDir,
       LOG_LEVEL: 'info',
       LOG_FORMAT: 'json',
