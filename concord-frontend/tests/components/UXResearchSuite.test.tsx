@@ -42,23 +42,37 @@ function mockAction(action: string): { ok: boolean; result?: unknown } {
     case 'surveyTemplates':
       return { ok: true, result: { templates: [{ id: 'nps', label: 'NPS', questionCount: 1 }] } };
     case 'listSurveys':
-      return { ok: true, result: { surveys: [] } };
+      return { ok: true, result: { surveys: [{ id: 'survey-1', name: 'CSAT check-in', template: 'nps', questions: [{ id: 'q1', kind: 'nps', prompt: 'How likely...', options: [] }], responseCount: 0 }] } };
     case 'createSurvey':
       return { ok: true, result: { survey: { id: 'survey-1' } } };
+    case 'surveyResults':
+      return { ok: true, result: { name: 'CSAT check-in', responseCount: 1, perQuestion: [{ questionId: 'q1', prompt: 'How likely...', kind: 'nps', answered: 1, nps: 50 }] } };
+    case 'surveyNext':
+      return { ok: true, result: { done: true } };
+    case 'submitSurveyResponse':
+      return { ok: true, result: { recorded: true } };
     case 'listPanel':
-      return { ok: true, result: { panel: [] } };
+      return { ok: true, result: { panel: [{ id: 'p-1', name: 'Alex Doe', email: 'alex@example.com', attributes: { role: 'designer' } }] } };
     case 'addParticipant':
-      return { ok: true, result: { participant: { id: 'p-1' } } };
+      return { ok: true, result: { participant: { id: 'p-2' } } };
     case 'screenPanel':
-      return { ok: true, result: { matched: [], qualifyRate: 0 } };
+      return { ok: true, result: { matched: [{ id: 'p-1', name: 'Alex Doe' }], qualifyRate: 1 } };
+    case 'inviteParticipants':
+      return { ok: true, result: { invited: 1 } };
     case 'listClips':
-      return { ok: true, result: { clips: [], bySentiment: {} } };
+      return { ok: true, result: { clips: [{ id: 'clip-1', runId: 'uxr_1', label: 'Confused', note: '', sentiment: 'negative', durationMs: 5000, shareToken: 'tok1' }], bySentiment: { negative: 1 } } };
     case 'createClip':
-      return { ok: true, result: { clip: { id: 'clip-1' } } };
+      return { ok: true, result: { clip: { id: 'clip-2' } } };
+    case 'buildReel':
+      return { ok: true, result: { shareUrl: '/share/reel/abc' } };
     case 'listPrototypes':
-      return { ok: true, result: { prototypes: [] } };
+      return { ok: true, result: { prototypes: [{ id: 'proto-1', name: 'Onboarding', frames: [{ id: 'f1', name: 'Welcome' }], interactionCount: 3 }] } };
     case 'createPrototype':
-      return { ok: true, result: { prototype: { id: 'proto-1' } } };
+      return { ok: true, result: { prototype: { id: 'proto-2' } } };
+    case 'prototypeAnalytics':
+      return { ok: true, result: { funnel: [{ frameId: 'f1', interactions: 3 }], hotspots: [] } };
+    case 'recordInteraction':
+      return { ok: true, result: { recorded: true } };
     default:
       return { ok: false };
   }
@@ -166,6 +180,68 @@ describe('UXResearchSuite', () => {
 
     await waitFor(() => {
       expect(lensRun).toHaveBeenCalledWith('experience', 'createPrototype', expect.objectContaining({ name: 'Onboarding flow', embedUrl: 'https://figma.com/proto/abc' }));
+    });
+  });
+
+  it('Surveys: opens an existing survey, answers its NPS question, and completes the take-flow', async () => {
+    render(<UXResearchSuite />);
+    fireEvent.click(screen.getByText('Surveys'));
+
+    fireEvent.click(await screen.findByText('CSAT check-in'));
+    await waitFor(() => {
+      expect(lensRun).toHaveBeenCalledWith('experience', 'surveyResults', { surveyId: 'survey-1' });
+    });
+
+    // NPS renders 11 number buttons (0-10); answer with 9.
+    const nine = await screen.findByText('9');
+    fireEvent.click(nine);
+
+    await waitFor(() => {
+      expect(lensRun).toHaveBeenCalledWith('experience', 'surveyNext', expect.objectContaining({ surveyId: 'survey-1', questionId: 'q1', answer: '9' }));
+    });
+    // surveyNext returned done:true, so the response is submitted and marked complete.
+    await waitFor(() => {
+      expect(lensRun).toHaveBeenCalledWith('experience', 'submitSurveyResponse', expect.objectContaining({ surveyId: 'survey-1' }));
+    });
+    expect(await screen.findByText('Complete')).toBeInTheDocument();
+  });
+
+  it('Panel: screens the panel and invites a matched participant', async () => {
+    render(<UXResearchSuite />);
+    fireEvent.click(screen.getByText('Panel'));
+
+    // Existing panel member renders from listPanel.
+    expect(await screen.findByText('Alex Doe')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('device'), { target: { value: 'role' } });
+    fireEvent.click(screen.getByText('Screen'));
+
+    await waitFor(() => {
+      expect(lensRun).toHaveBeenCalledWith('experience', 'screenPanel', expect.objectContaining({ rules: [expect.objectContaining({ attribute: 'role' })] }));
+    });
+  });
+
+  it('Highlight Reels: an existing clip can be selected and built into a reel', async () => {
+    render(<UXResearchSuite />);
+    fireEvent.click(screen.getByText('Highlight Reels'));
+
+    // Existing clip renders from listClips.
+    const checkbox = await screen.findByRole('checkbox');
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByText(/Build reel/i));
+
+    await waitFor(() => {
+      expect(lensRun).toHaveBeenCalledWith('experience', 'buildReel', expect.objectContaining({ clipIds: ['clip-1'] }));
+    });
+  });
+
+  it('Prototype: opens an existing prototype and records a frame interaction', async () => {
+    render(<UXResearchSuite />);
+    fireEvent.click(screen.getByText('Prototype'));
+
+    fireEvent.click(await screen.findByText(/Onboarding/));
+    await waitFor(() => {
+      expect(lensRun).toHaveBeenCalledWith('experience', 'prototypeAnalytics', { prototypeId: 'proto-1' });
     });
   });
 });
