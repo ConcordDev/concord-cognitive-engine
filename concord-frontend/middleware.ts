@@ -61,7 +61,41 @@ function buildCsp(nonce: string): string {
     `font-src 'self' data:`,
     // Web Workers (avatar animator, physics offload) are blob: URLs.
     `worker-src 'self' blob:`,
-    `connect-src 'self' https: wss: ws:`,
+    // 'https:'/'wss:'/'ws:' cover every real production topology (frontend
+    // and backend share an origin behind the Cloudflare tunnel there). But
+    // local dev and CI/E2E run frontend (:3000) and backend (:5050) as
+    // genuinely separate plain-http origins (NEXT_PUBLIC_API_URL is an
+    // absolute http://localhost:5050 URL there) — connect-src's scheme
+    // allowlist has no 'http:' entry, so EVERY cross-origin call was
+    // silently CSP-blocked before it even reached the network layer,
+    // independent of the backend's own CORS headers (confirmed directly: a
+    // real fetch to http://localhost:5050 logs "Refused to connect ...
+    // violates ... Content Security Policy directive" in the browser
+    // console, and a Playwright page.route() mock of the same URL never
+    // even fires, because CSP evaluates the destination before
+    // routing/interception decides how to answer it).
+    //
+    // NOT gated on NODE_ENV: `next build`/`next start` (what CI's E2E job
+    // actually runs) always bakes NODE_ENV='production' into the bundle
+    // regardless of the shell env, so a NODE_ENV check here would silently
+    // never fire in exactly the CI topology this exists to fix. Instead,
+    // derive the exact allowed origin from NEXT_PUBLIC_API_URL itself (the
+    // same env var the frontend's own API client uses to build every
+    // request) when — and only when — it's explicitly a plain-http URL;
+    // real production either omits it (same-origin) or sets it to
+    // https://..., already covered by 'https:' above, so this is inert
+    // there and precise (not a `http://localhost:*` wildcard) everywhere
+    // else.
+    `connect-src 'self' https: wss: ws:${(() => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) return '';
+      try {
+        const u = new URL(apiUrl);
+        return u.protocol === 'http:' ? ` ${u.origin}` : '';
+      } catch {
+        return '';
+      }
+    })()}`,
     // Pre-flight for the enforce flip (2026-07-30): grepped every real
     // `<iframe src={...}>` in the app. Forge/AppBuilder/PreviewPane's live
     // previews all use `srcDoc` (inline, sandboxed, same-origin document —
