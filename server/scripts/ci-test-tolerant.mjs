@@ -50,7 +50,21 @@ const MAX_ATTEMPTS = Number(process.env.CONCORD_CI_MAX_ATTEMPTS || 3);
 // HONESTLY (never mask a real bug), a small fail count triggers an ISOLATED
 // re-run of ONLY the failing files (low load → no contention): a genuine
 // failure fails again and hard-fails; a flake passes and is tolerated.
-const FLAKE_RERUN_MAX = Number(process.env.CONCORD_CI_FLAKE_RERUN_MAX || 5);
+//
+// 2026-07-31: measured across 3 consecutive real structural-audits runs on
+// the same PR (fail=71, fail=22, fail=10 as real bugs were fixed between
+// runs) — once every real bug was gone, the steady-state noise floor landed
+// at fail=10, entirely 2 files: agent-goal-heartbeat-real-signals.test.js
+// (2 subtests) and godot-gateway-integration.test.js (8 subtests, one
+// shared before() hook flaking under heavy contention cascades through the
+// whole file). Both independently confirmed passing 100% clean standalone,
+// repeatedly, across all 3 runs — this genuinely IS the flake class this
+// mechanism exists to catch, but the old default of 5 sat below the real
+// noise floor, so the isolated-rerun safety valve below never even got a
+// chance to run and prove it. Same discipline as this file's own
+// CANCEL_TOLERANCE bump (3->8, same measured-floor-plus-margin reasoning,
+// same file). Bumped to 15 — real margin above the observed max of 10.
+const FLAKE_RERUN_MAX = Number(process.env.CONCORD_CI_FLAKE_RERUN_MAX || 15);
 
 function lastInt(re, text, dflt = 0) {
   const matches = text.match(re);
