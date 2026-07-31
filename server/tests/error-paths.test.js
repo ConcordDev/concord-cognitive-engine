@@ -53,6 +53,13 @@ before(async () => {
       AUTH_MODE: "",
       // Out-of-process integration test — spawned server must bind a port.
       CONCORD_FORCE_LISTEN: "true",
+      // Under full-suite contention the event-loop-lag shedder can 503 a
+      // request that has nothing to do with what this file tests (see the
+      // identical fix already applied to edge-cases-critical-paths.test.js
+      // and the 7 e2e spawnServer() files). This file's own requests are
+      // fast/cheap, so disabling the shedder here doesn't weaken anything
+      // it's actually testing.
+      CONCORD_LOAD_SHED_ENABLED: "0",
       // Point brain to unreachable localhost port to test degraded mode
       BRAIN_CONSCIOUS_URL: "http://127.0.0.1:19999",
       BRAIN_SUBCONSCIOUS_URL: "http://127.0.0.1:19999",
