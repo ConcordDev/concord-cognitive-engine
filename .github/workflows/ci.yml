@@ -558,6 +558,13 @@ jobs:
           # smoke/integration trip the 30 RPM unauth scrape gate before
           # reaching the asserted 401. Production never sets this var.
           CONCORD_RATE_LIMIT_BYPASS: '1'
+          # Same fix as Integration Test / E2E Core / E2E Infra: the
+          # event-loop-lag admission-control shedder returns an immediate 503
+          # for roughly the first 20s of boot. This job starts firing smoke
+          # checks right after /health responds, well inside that window on a
+          # loaded runner — disable shedding so a real assertion failure is
+          # never masked by (or mistaken for) admission control.
+          CONCORD_LOAD_SHED_ENABLED: '0'
         run: |
           node server.js > server.log 2>&1 &
           echo $! > server.pid
@@ -793,6 +800,12 @@ jobs:
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           CONCORD_RATE_LIMIT_BYPASS: '1'
+          # lib/request-admission.js sheds requests with an immediate 503 when
+          # event-loop lag exceeds 300ms for roughly the first 20s of boot.
+          # playthrough.spec.ts does a REAL (unmocked) /api/auth/login — caught
+          # landing in that window with "No Set-Cookie ... status=503", the
+          # shedder misread as a broken backend rather than admission control.
+          CONCORD_LOAD_SHED_ENABLED: '0'
           NODE_OPTIONS: '--max-old-space-size=6144'
         run: |
           node server.js > server.log 2>&1 &
