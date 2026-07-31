@@ -39,6 +39,22 @@ export function isWithinRoot(root, candidate) {
 }
 
 /**
+ * Resolve `candidate` and return it only if contained by `root`; otherwise
+ * null. Callers turn null into their own domain-appropriate error.
+ *
+ * Not dead code: tests/whiteboard-blueprint-path-traversal.test.js calls
+ * this directly (a real caller a plain `grep -rn` silently misses — that
+ * file embeds a literal NUL byte in one of its adversarial fixture strings,
+ * `"ok\x00.png"`, which makes `grep` classify the whole file as binary and
+ * skip it without `-a`). Confirmed 2026-07-31 after the standing wiring
+ * gate's "zero-caller" search led to deleting this, which broke that test;
+ * restored.
+ */
+export function resolveWithin(root, candidate) {
+  return isWithinRoot(root, candidate) ? path.resolve(candidate) : null;
+}
+
+/**
  * True when `value` is safe to use as a SINGLE filename/path segment.
  *
  * Deliberately an allowlist, not a denylist of `..`/`/`: denylists in this
@@ -66,4 +82,4 @@ export function requireSafePathSegment(value, label = "path segment", opts) {
   return value;
 }
 
-export default { isWithinRoot, isSafePathSegment, requireSafePathSegment };
+export default { isWithinRoot, resolveWithin, isSafePathSegment, requireSafePathSegment };
