@@ -286,8 +286,25 @@ export async function fetchWithPinnedIp(check, init = {}) {
       },
     });
 
-    const { fetch: undiciFetch } = undici;
-    return await undiciFetch(check.url, { ...init, dispatcher });
+    // Route through globalThis.fetch (Node's built-in fetch — the same
+    // undici implementation, exposed globally) rather than a separately
+    // imported undici.fetch reference. Not cosmetic: it's the only way
+    // test-time guards apply. tests/preload/no-egress.mjs patches
+    // globalThis.fetch to reject every non-loopback URL under
+    // NODE_ENV=test (so a macro's fetch fails instantly instead of hanging
+    // on a real unreachable host), and individual tests that mock a live
+    // response (`globalThis.fetch = async () => canned`) depend on that
+    // exact global slot being what the code actually calls. Calling an
+    // isolated undici.fetch reference bypassed both: every fetch routed
+    // through this SSRF-guarded chokepoint made a REAL network connection
+    // during tests regardless of NODE_ENV, defeating no-egress's purpose
+    // and every such test's fetch mock (found 2026-07-31 chasing a cluster
+    // of ~40 failing tests across cooking/eco/agriculture/chem/custom/
+    // byo_keys — every domain that flows through fetchJsonWithTimeout ->
+    // fetchPublicUrl -> here). Passing `dispatcher` through globalThis.fetch
+    // pins the connection identically to an explicit undici.fetch call,
+    // since Node's built-in fetch IS undici's implementation.
+    return await globalThis.fetch(check.url, { ...init, dispatcher });
   } catch (e) {
     // Fall back to an unpinned (but re-validated) fetch. This is the
     // documented, honest degraded path for when undici genuinely isn't

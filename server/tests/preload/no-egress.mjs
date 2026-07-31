@@ -153,6 +153,16 @@ if (String(process.env.NODE_ENV).toLowerCase() === "test"
       /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|::1)([:/?]|$)/i.test(u) ||
       /^https?:\/\/[^/]*\.local([:/?]|$)/i.test(u);
     globalThis.fetch = function patchedFetch(input, init) {
+      // A call carrying `init.dispatcher` has already gone through
+      // lib/ssrf-guard.js#fetchWithPinnedIp: the URL was validated and the
+      // dispatcher's custom lookup() pins the TCP connection to a specific,
+      // already-resolved IP regardless of what the hostname string says —
+      // so a URL-string loopback check can't see it (a test server bound to
+      // 127.0.0.1 but addressed by a fake external-looking hostname to prove
+      // the pin bypasses real DNS, e.g. ssrf-guard-pinned-ip.test.js). Trust
+      // the guard that already ran rather than re-deriving safety from the
+      // URL text here.
+      if (init && init.dispatcher) return realFetch.call(this, input, init);
       let url = "";
       try {
         url = typeof input === "string" ? input
