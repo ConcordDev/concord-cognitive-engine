@@ -54,23 +54,52 @@ const PLACEHOLDER_RE = /path\/to\/|yourname|\.\.\.\//;
 // githubusercontent.com alone (no trailing path) is already a strong enough
 // external-source signal on its own; github.com specifically still requires
 // a path so a bare mention of "github.com" in passing doesn't over-trigger.
-// Host-anchored (CodeQL flagged the prior version — "may match anywhere,
-// arbitrary hosts may come before or after it"): a negative lookbehind for
-// `[\w-]` (NOT `.`) immediately before "github" stops a substring match
-// inside a LOOKALIKE host label like "notgithub.com/x" or
-// "evilgithubusercontent.com" (glued directly onto the real label, no
-// separator) from being read as the real github.com/githubusercontent.com
-// host, while still allowing a genuine dot-separated subdomain like
-// "raw.githubusercontent.com" (real GitHub CDN host, and a fixture this
-// detector must keep recognizing — see the doc-claim-resolution test).
-// This scanner never makes a network request or an authz decision off this
-// regex (it only classifies doc prose), but the anchor is the correct fix
-// regardless of blast radius.
-const EXTERNAL_GITHUB_URL_RE = /(?<![\w-])githubusercontent\.com\b|(?<![\w-])github\.com\/(?!concorddev\/)[\w-]+(?:\/[\w.-]+)?/i;
+// CodeQL kept flagging every lookbehind-tuned version of a regex that
+// substring-matches "github.com"/"githubusercontent.com" inside arbitrary
+// text (js/incomplete-url-substring-sanitization-family rule — "may match
+// anywhere, arbitrary hosts may come before or after it"), because no
+// amount of negative-lookbehind tuning changes the SHAPE the checker
+// pattern-matches on: a host name matched as a substring of an unbounded
+// string, with no `^`/`$` anchor at all. The actual, durable fix isn't a
+// smarter regex — it's not using a substring-scanning host regex in the
+// first place. This tokenizes the line into url/word-like chunks first,
+// then does an EXACT string comparison (`===`/`endsWith`) against the
+// isolated token's host portion. Exact comparison can't be spoofed by a
+// lookalike host no matter how it's glued together, and there is no
+// unanchored regex left for CodeQL's rule to match against.
+const TOKEN_RE = /[^\s`()<>[\]"']+/g;
 const EXTERNAL_OWNER_REPO_NEAR_GITHUB_RE = /\bGitHub\b[\s\S]{0,80}?\b(?!concorddev\/)([\w-]+)\/([\w.-]+)\b|\b([\w-]+)\/([\w.-]+)\b[\s\S]{0,80}?\bGitHub\b/i;
 
+/**
+ * True if `tok` is a github.com/githubusercontent.com reference to a
+ * DIFFERENT project than this repo's own org (ConcordDev). Splits the
+ * token into host + path manually and compares the host EXACTLY (`===` or
+ * `.endsWith(".host")` for a real subdomain) — never a regex match against
+ * the raw token. githubusercontent.com alone (no path) is already a strong
+ * enough external-source signal on its own; github.com specifically still
+ * requires a path so a bare mention of "github.com" in passing doesn't
+ * over-trigger.
+ */
+function isExternalGithubToken(tok) {
+  const rest = tok.replace(/^https?:\/\//i, "");
+  const slashIdx = rest.search(/[/?#]/);
+  const host = (slashIdx === -1 ? rest : rest.slice(0, slashIdx)).toLowerCase();
+  const pathPart = slashIdx === -1 ? "" : rest.slice(slashIdx + 1);
+  if (host === "githubusercontent.com" || host.endsWith(".githubusercontent.com")) return true;
+  if (host === "github.com" || host.endsWith(".github.com")) {
+    if (!pathPart) return false; // bare host mention, no path — not a strong signal
+    const owner = pathPart.split("/")[0].toLowerCase();
+    return owner !== "concorddev" && owner !== "";
+  }
+  return false;
+}
+
 function citesExternalRepo(line) {
-  if (EXTERNAL_GITHUB_URL_RE.test(line)) return true;
+  TOKEN_RE.lastIndex = 0;
+  let tm;
+  while ((tm = TOKEN_RE.exec(line)) != null) {
+    if (isExternalGithubToken(tm[0])) return true;
+  }
   const m = EXTERNAL_OWNER_REPO_NEAR_GITHUB_RE.exec(line);
   if (!m) return false;
   const owner = (m[1] || m[3] || "").toLowerCase();
