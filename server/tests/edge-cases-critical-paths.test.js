@@ -41,7 +41,21 @@ before(async () => {
 
   serverProcess = spawn("node", ["server.js"], {
     cwd: serverDir,
-    env: { ...process.env, PORT: port, NODE_ENV: "test", AUTH_MODE: "", CONCORD_FORCE_LISTEN: "true" },
+    env: {
+      ...process.env, PORT: port, NODE_ENV: "test", AUTH_MODE: "", CONCORD_FORCE_LISTEN: "true",
+      // lib/request-admission.js sheds requests with an immediate 503 when
+      // event-loop lag exceeds 300ms — boot work (content seeding, macro
+      // registration, the first governorTick) keeps lag over that bar for
+      // roughly the first 20s, so a request landing in that window gets a
+      // 503 instead of reaching the real validation logic this file
+      // asserts on (observed directly: "Auth — registration validation"
+      // got 503 instead of the expected 400/422). Same fix already applied
+      // in tests/adversarial-critical-endpoints.test.js for the same
+      // reason. CONCORD_RATE_LIMIT_BYPASS: this file fires enough
+      // anonymous requests to trip the 30/min unauth cap partway through.
+      CONCORD_LOAD_SHED_ENABLED: "0",
+      CONCORD_RATE_LIMIT_BYPASS: "1",
+    },
     stdio: ["ignore", "ignore", "inherit"],
   });
   serverProcess.on("error", (err) => { process.stderr.write(`Server error: ${err.message}\n`); });
