@@ -1081,6 +1081,14 @@ jobs:
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           CONCORD_RATE_LIMIT_BYPASS: '1'
+          # lib/request-admission.js sheds requests with an immediate 503 when
+          # event-loop lag exceeds 300ms — boot work keeps lag over that bar
+          # for roughly the first 20s. Same fix as the Integration Test job:
+          # auth.setup.ts's login (used by every spec in this job) can land
+          # in that window and get 503'd before it ever reaches the real
+          # auth check, which reads as "backend came up broken" rather than
+          # what it is — admission control, not an auth failure.
+          CONCORD_LOAD_SHED_ENABLED: '0'
           BRAIN_CONSCIOUS_URL: http://localhost:11434
           BRAIN_SUBCONSCIOUS_URL: http://localhost:11434
           BRAIN_UTILITY_URL: http://localhost:11434
