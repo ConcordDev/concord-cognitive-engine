@@ -39,14 +39,6 @@ export function isWithinRoot(root, candidate) {
 }
 
 /**
- * Resolve `candidate` and return it only if contained by `root`; otherwise
- * null. Callers turn null into their own domain-appropriate error.
- */
-export function resolveWithin(root, candidate) {
-  return isWithinRoot(root, candidate) ? path.resolve(candidate) : null;
-}
-
-/**
  * True when `value` is safe to use as a SINGLE filename/path segment.
  *
  * Deliberately an allowlist, not a denylist of `..`/`/`: denylists in this
@@ -74,4 +66,4 @@ export function requireSafePathSegment(value, label = "path segment", opts) {
   return value;
 }
 
-export default { isWithinRoot, resolveWithin, isSafePathSegment, requireSafePathSegment };
+export default { isWithinRoot, isSafePathSegment, requireSafePathSegment };
