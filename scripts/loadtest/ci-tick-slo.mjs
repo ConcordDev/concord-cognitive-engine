@@ -47,23 +47,29 @@ async function metrics() {
   const r = await jfetch("/metrics");
   const out = {};
   if (!r.ok) return out;
-  for (const m of ["concord_heartbeat_ticks_total", "concord_heartbeat_skipped_total", "concord_heartbeat_module_timeout_total"]) {
+  for (const m of ["concord_heartbeat_ticks_total", "concord_heartbeat_skipped_total", "concord_heartbeat_module_timeout_total", "concord_event_loop_lag_ms"]) {
     const line = r.body.split("\n").find((l) => l.startsWith(m + " "));
     if (line) out[m] = Number(line.trim().split(/\s+/).pop());
   }
   return out;
 }
 
-// Registration has been observed to flake on shared CI VMs with a 503 from
-// the server's own "password hashing unavailable" guard even though the
-// same request succeeds reliably (including at this exact concurrency)
-// against a locally-booted server — the CI-only trigger wasn't
-// reproducible here. 503 is semantically retryable, and this script's job
-// is to drive load to check the heartbeat, not to assert registration
-// robustness, so retry a bounded few times with a short backoff before
-// giving up on a user. Log the real status/body on every failed attempt so
-// a recurrence is diagnosable from the workflow's own log instead of
-// collapsing to "no tokens".
+// Registration was observed to flake here with a 503 that was initially
+// (wrongly) attributed to the server's "password hashing unavailable"
+// guard, since that's the only literal 503 in routes/auth.js and no other
+// evidence was visible at the time. Logging the real response body (below)
+// proved that guess wrong: the actual body is
+// `{"error":"service_overloaded","reason":"event_loop_lag",...,"lagMs":18874}`
+// — lib/request-admission.js's load shedder, correctly doing its job. The
+// trigger is this script's own timing: `waitForGovernor()` only waits for
+// the FIRST tick to fire, and that first tick is exactly when the governor
+// does its heaviest synchronous one-time work (ghost-fleet module loads +
+// RSS feed polling of hundreds of items), which was observed blocking the
+// event loop for seconds at a time. Firing all registrations immediately
+// after "ticked" lands squarely in that window. The real fix is
+// `waitForLagSettle()` below (wait for the shedder's own signal to clear
+// before driving load); the retry here is defense in depth for a stray
+// spike during the run, not the primary fix.
 async function register(i, attempts = 3, backoffMs = 300) {
   const s = Date.now().toString(36) + i;
   const body = JSON.stringify({ email: `slo_${s}@ex.com`, password: "CiTickSlo1234!", username: `slo_${s}`.slice(0, 20), dateOfBirth: "1990-01-01" });
@@ -87,6 +93,28 @@ async function waitForGovernor() {
   return false;
 }
 
+// The governor's first tick does its heaviest one-time synchronous work
+// (ghost-fleet module loads + RSS feed polling) and has been observed to
+// spike concord_event_loop_lag_ms into the tens of thousands of ms on a
+// shared CI runner - well past the front-door load shedder's own
+// sheddable-priority threshold (300ms, from lib/request-admission.js).
+// Wait for that same signal to actually settle before driving registration
+// load, instead of just checking that the governor ticked once. A short
+// bounded wait, not indefinite - if lag never settles that's itself a real
+// regression the caller should see (falls through and lets the subsequent
+// registration failures surface it).
+const LAG_SETTLE_THRESHOLD_MS = 250;
+async function waitForLagSettle(maxWaitS = 60) {
+  const deadline = Date.now() + maxWaitS * 1000;
+  while (Date.now() < deadline) {
+    const lag = (await metrics()).concord_event_loop_lag_ms;
+    if (lag == null || lag <= LAG_SETTLE_THRESHOLD_MS) return true;
+    process.stdout.write(`(lag ${lag.toFixed(0)}ms) `);
+    await sleep(1000);
+  }
+  return false;
+}
+
 async function main() {
   console.log(`\n=== CI tick-SLO guard ===\nTarget: ${BASE}  Users: ${USERS}  Duration: ${DURATION_S}s  Worlds: ${WORLDS.join(", ")}\n`);
 
@@ -99,6 +127,13 @@ async function main() {
     process.exit(1);
   }
   console.log("ticking.");
+
+  process.stdout.write("Waiting for event-loop lag to settle after the governor's first (heaviest) pass... ");
+  if (!(await waitForLagSettle())) {
+    console.log("\n(lag never settled - proceeding anyway; registration failures below will show the real state)");
+  } else {
+    console.log("settled.");
+  }
 
   process.stdout.write(`Registering ${USERS} users... `);
   // Small stagger (not a real concurrency limit — still well within the

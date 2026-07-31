@@ -1,8 +1,11 @@
 name: Platinum Performance (Lighthouse + bundle size + load)
 
 # Sprint 18 — runs on every PR + nightly on main.
-# Lighthouse asserts Core Web Vitals; size-limit enforces bundle
-# budgets; k6 runs a smoke load test against critical endpoints.
+# Lighthouse asserts Core Web Vitals; scripts/ci/route-bundle-size.mjs
+# enforces per-route bundle budgets (see that file's header for why this
+# replaced size-limit — Turbopack's content-hashed, flat chunk names broke
+# every size-limit glob); k6 runs a smoke load test against critical
+# endpoints.
 #
 # BATCHED ARCHITECTURE v2 (Sprint 35): matrix-with-shared-build.
 #
@@ -158,7 +161,7 @@ jobs:
               npx @lhci/cli@latest autorun --config=lighthouserc.json
               ;;
             bundle-size)
-              npx size-limit
+              node ../scripts/ci/route-bundle-size.mjs
               ;;
           esac
 
