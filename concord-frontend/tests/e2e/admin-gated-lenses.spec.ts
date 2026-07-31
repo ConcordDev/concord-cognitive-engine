@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthSuccess, gotoStable, blockUnmockedApi } from './_helpers';
+import { mockAuthSuccess, gotoStable, blockUnmockedApi, corsFulfill } from './_helpers';
 
 /**
  * Admin-gated lenses must render a friendly "Admin access required" state (not a
@@ -21,8 +21,25 @@ const ADMIN_LENSES = ['ops-telemetry', 'repair-telemetry', 'psyops', 'crisis-ops
 // the catch-all instead of a real 401 that would trip the auth-refresh
 // interceptor and bounce the whole page to /login.
 async function denyAdminData(page: import('@playwright/test').Page) {
+  // corsFulfill (not a bare route.fulfill): NEXT_PUBLIC_API_URL is an
+  // absolute cross-origin URL in CI (frontend :3000, backend :5050), and the
+  // shared axios instance (lib/api/client.ts) sends a default
+  // `Content-Type: application/json` header on every request — including
+  // lensRun's/apiHelpers' GETs — which forces a real CORS preflight. Without
+  // answering that preflight (and the actual 403) with CORS headers, the
+  // browser blocks the request as a generic network error before the real
+  // 403 status ever reaches the page's JS: `isForbidden()` only recognizes
+  // an actual 403 (or its message text), never a CORS-blocked network error,
+  // so the page falls through to a "couldn't load" state instead of the
+  // friendly Admin-required gate this spec is checking for. This was the
+  // reason 5 of the 6 lenses here failed while ops-telemetry (a raw
+  // `fetch()` probe with no custom headers — a simple request, no preflight)
+  // passed: it was never a frontend gate-detection bug, it was this helper
+  // not emulating the real backend's own CORS middleware
+  // (server/middleware/index.js's corsOptions, which the actual server
+  // answers preflight with correctly).
   const forbid = (route: import('@playwright/test').Route) =>
-    route.fulfill({
+    corsFulfill(route, {
       status: 403,
       contentType: 'application/json',
       body: JSON.stringify({ ok: false, error: 'Insufficient permissions', requiredRoles: ['admin'] }),

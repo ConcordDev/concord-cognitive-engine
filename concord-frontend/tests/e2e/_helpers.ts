@@ -13,7 +13,71 @@
 // CI), returns 401, the auth context redirects back to /login, and the
 // `expect(page).not.toHaveURL(/\/login/)` assertion times out at 30s.
 
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
+
+// The frontend's own origin under Playwright (see playwright.config.ts's
+// `use.baseURL`). Needed below because NEXT_PUBLIC_API_URL is baked into the
+// client bundle as an ABSOLUTE cross-origin URL in CI (frontend :3000,
+// backend :5050 — see ci.yml's "E2E Core" job); next.config.js's same-origin
+// `/api/*` rewrite only helps when the app calls a RELATIVE path, and the
+// shared axios instance always calls the absolute NEXT_PUBLIC_API_URL.
+const TEST_ORIGIN = process.env.BASE_URL || 'http://localhost:3000';
+
+/**
+ * CORS headers matching what the real Express `cors()` middleware
+ * (server/middleware/index.js's corsOptions) answers with for a credentialed
+ * cross-origin request from the frontend's origin.
+ *
+ * Root cause this exists to work around: the shared axios instance
+ * (lib/api/client.ts) sets a default `Content-Type: application/json` header
+ * on EVERY request it makes, GET included — verified empirically, this is
+ * NOT one of the CORS-safelisted content-type values, so it forces a real
+ * preflight OPTIONS round-trip even for plain reads. When the frontend and
+ * backend are on different origins (true in this CI topology), a
+ * `page.route()` mock that answers the OPTIONS preflight (or the real
+ * request) WITHOUT these headers fails CORS silently: the browser blocks the
+ * request as a generic network error, `error.response` is never populated,
+ * and the mocked status code/body never reaches the page's JS at all — a
+ * mocked 403 reads as a dead network instead of Insufficient permissions,
+ * and a mocked 200 never resolves the query, leaving the page stuck on
+ * whatever loading/error state it shows while a query is pending/failed.
+ * This is invisible for same-origin (local dev, no NEXT_PUBLIC_API_URL) and
+ * for the one raw `fetch()` caller in the codebase that sends no custom
+ * headers (a simple GET never needs a preflight) — which is exactly why
+ * this bug was easy to miss: most mocked calls in this suite go through
+ * axios and needed this all along.
+ */
+function corsHeaders(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': TEST_ORIGIN,
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type,Authorization,X-API-Key,X-Requested-With,X-Session-ID,X-CSRF-Token,X-XSRF-Token,X-Request-ID,Idempotency-Key',
+  };
+}
+
+/**
+ * Fulfill a route, CORS-safe. An OPTIONS preflight always gets a bare 204 +
+ * CORS headers (never the real status/body — that's not how preflight
+ * works); every other method gets the real status/body PLUS the same CORS
+ * headers (still required on the actual response for a credentialed
+ * cross-origin request to be readable by the page's JS). Use this — or a
+ * local mock helper that delegates to it — for every `page.route()` fulfill
+ * in this suite instead of a bare `route.fulfill()`. See corsHeaders()'s doc
+ * comment for the mechanism this closes.
+ */
+export async function corsFulfill(
+  route: Route,
+  init: { status: number; contentType?: string; body?: string },
+) {
+  if (route.request().method() === 'OPTIONS') {
+    return route.fulfill({ status: 204, headers: corsHeaders() });
+  }
+  const headers: Record<string, string> = { ...corsHeaders() };
+  if (init.contentType) headers['content-type'] = init.contentType;
+  return route.fulfill({ status: init.status, headers, body: init.body });
+}
 
 /**
  * Catch-all safety net: fulfills EVERY /api/** request with a benign 200 so
@@ -38,7 +102,7 @@ import type { Page } from '@playwright/test';
  */
 export async function blockUnmockedApi(page: Page) {
   await page.route('**/api/**', (route) =>
-    route.fulfill({
+    corsFulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, data: [], items: [], artifacts: [], total: 0 }),
@@ -109,7 +173,7 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
   });
   // Belt-and-suspenders for the OnboardingWizard server probe.
   await page.route('**/api/onboarding/wizard-status', (route) =>
-    route.fulfill({
+    corsFulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, completed: true }),
@@ -124,17 +188,17 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
   // 200 means that destructive real-refresh path can never fire in a mocked
   // session, no matter which background probe triggers it.
   await page.route('**/api/auth/refresh', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+    corsFulfill(route, { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
   );
 
   // CSRF token — fired before login + after login by app/login/page.tsx
   await page.route('**/api/auth/csrf-token', (route) =>
-    route.fulfill({ status: 200, body: JSON.stringify({ token: 'mock-csrf' }) })
+    corsFulfill(route, { status: 200, contentType: 'application/json', body: JSON.stringify({ token: 'mock-csrf' }) })
   );
 
   // Login POST — returns ok so the redirect fires
   await page.route('**/api/auth/login', (route) =>
-    route.fulfill({
+    corsFulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, userId }),
@@ -145,7 +209,7 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
   // Returning a real-shape user payload keeps the auth context happy and
   // prevents the redirect-back-to-/login loop that times out the test.
   await page.route('**/api/auth/me', (route) =>
-    route.fulfill({
+    corsFulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -166,7 +230,7 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
   // balance pill; failing it is non-fatal but adds 1-3s of XHR-retry
   // latency to every page mount.
   await page.route('**/api/economic/wallet/balance', (route) =>
-    route.fulfill({
+    corsFulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, balance: walletBalance, sparks: walletBalance }),
@@ -187,8 +251,8 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
  * mockAuthSuccess with an elevated role) so the identity + the data agree.
  */
 export async function grantAdminData(page: Page) {
-  const ok = (body: unknown) => (route: import('@playwright/test').Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  const ok = (body: unknown) => (route: Route) =>
+    corsFulfill(route, { status: 200, contentType: 'application/json', body: JSON.stringify(body) });
 
   // Sovereignty controls (use70Lock → /api/sovereignty/status). Shape mirrors
   // hooks/use70Lock.ts SovereigntyStatus: lockPercentage, invariants[], etc.
@@ -241,7 +305,7 @@ export async function mockSovereignAuth(page: Page, opts: AuthMockOptions = {}) 
  */
 export async function mockAuthUnauthenticated(page: Page) {
   await page.route('**/api/auth/me', (route) =>
-    route.fulfill({
+    corsFulfill(route, {
       status: 401,
       contentType: 'application/json',
       body: JSON.stringify({ ok: false, error: 'unauthenticated' }),
