@@ -66,18 +66,29 @@ async function metrics() {
 // does its heaviest synchronous one-time work (ghost-fleet module loads +
 // RSS feed polling of hundreds of items), which was observed blocking the
 // event loop for seconds at a time. Firing all registrations immediately
-// after "ticked" lands squarely in that window. The real fix is
-// `waitForLagSettle()` below (wait for the shedder's own signal to clear
-// before driving load); the retry here is defense in depth for a stray
-// spike during the run, not the primary fix.
-async function register(i, attempts = 3, backoffMs = 300) {
+// after "ticked" lands squarely in that window. `waitForLagSettle()` below
+// helps but is NOT sufficient on its own: ghost-fleet loads its ~28 modules
+// SEQUENTIALLY over up to ~57s total, each one capable of its own lag
+// spike, so a 5-consecutive-clean-sample check can pass in a lull between
+// two module loads and then race straight into the next spike a few
+// seconds later — observed directly: "settled." printed, then a fresh
+// 18975ms spike hit within 6 seconds, 503-ing every attempt because the old
+// fixed 300ms×3 backoff (~1s total patience) can't ride out a spike that
+// itself lasts up to ~19s. Fix: honor the shedder's own `retryAfterS` hint
+// from the response body (it already tells us exactly how long to back
+// off) instead of guessing, and budget enough total attempts to outlast
+// the worst observed spike with real margin.
+async function register(i, attempts = 15, minBackoffMs = 1500) {
   const s = Date.now().toString(36) + i;
   const body = JSON.stringify({ email: `slo_${s}@ex.com`, password: "CiTickSlo1234!", username: `slo_${s}`.slice(0, 20), dateOfBirth: "1990-01-01" });
   for (let attempt = 1; attempt <= attempts; attempt++) {
     const r = await jfetch("/api/auth/register", { method: "POST", body });
     if (r.json?.token) return r.json.token;
     console.error(`register user ${i} attempt ${attempt}/${attempts} failed: HTTP ${r.status} ${r.body?.slice?.(0, 300) || ""}`);
-    if (attempt < attempts) await sleep(backoffMs);
+    if (attempt < attempts) {
+      const retryAfterS = Number(r.json?.retryAfterS) || 0;
+      await sleep(Math.max(minBackoffMs, retryAfterS * 1000));
+    }
   }
   return null;
 }
