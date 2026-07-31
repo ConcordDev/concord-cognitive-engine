@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useContext, createContext } from 'react';
 import { Activity, Monitor, Settings } from 'lucide-react';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
-import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
+import { getStoredSensitivity, setStoredQualityPreset } from '@/lib/world-lens/quality-preset';
 import { decideVisible } from '@/lib/world-lens/cull';
 import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
 import { createTraumaShake, type TraumaShake } from '@/lib/concordia/screen-trauma';
@@ -533,7 +533,13 @@ const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
 export default function ConcordiaScene({
   districtId,
-  quality: initialQuality = 'medium',
+  // R7 — NO default value here (was `= 'medium'`). A default collapses
+  // "caller passed nothing, please auto-detect" and "caller explicitly
+  // wants medium" into the identical string 'medium' before either ever
+  // reaches the `initialQuality === undefined ? detectInitialQuality()`
+  // check below — silently defeating an explicit choice. Leaving this
+  // `undefined` when unset is what makes that check meaningful.
+  quality: initialQuality,
   theme: themeProp = 'neon-punk',
   // Default = TOON, matching BuildingRenderer3D's default and the locked
   // anti-photoreal direction. This knob only drives POST-FX here (bloom off,
@@ -731,19 +737,28 @@ export default function ConcordiaScene({
     onSceneReadyRef.current = onSceneReady;
   }, [onSceneReady]);
 
+  // R7 — checks `undefined` (no preference passed at all), not `=== 'medium'`
+  // (which used to be indistinguishable from an explicit "I want medium"
+  // choice — see the prop's own comment above). An explicitly-passed
+  // 'medium' now genuinely wins over hardware auto-detection instead of
+  // being silently overridden by it.
   const [quality, setQuality] = useState<QualityPreset>(() =>
-    initialQuality === 'medium' ? detectInitialQuality() : initialQuality
+    initialQuality === undefined ? detectInitialQuality() : initialQuality
   );
   const lowFpsCountRef = useRef(0); // consecutive low-FPS frames for auto-downgrade
+  const highFpsCountRef = useRef(0); // consecutive high-FPS frames for auto-upgrade (R7)
   const [showFps, setShowFps] = useState(false);
   const [showQualitySelector, setShowQualitySelector] = useState(false);
+  // R7 — reads off the already-resolved `quality` state (never the possibly-
+  // undefined raw `initialQuality` prop) so this can't index QUALITY_SETTINGS
+  // with `undefined` when no quality prop was passed at all.
   const [perfBudget, setPerfBudget] = useState<PerformanceBudget>({
     drawCalls: 0,
-    maxDrawCalls: QUALITY_SETTINGS[initialQuality].maxDrawCalls,
+    maxDrawCalls: QUALITY_SETTINGS[quality].maxDrawCalls,
     triangles: 0,
-    maxTriangles: QUALITY_SETTINGS[initialQuality].maxTriangles,
+    maxTriangles: QUALITY_SETTINGS[quality].maxTriangles,
     textureMemory: 0,
-    maxTextureMemory: QUALITY_SETTINGS[initialQuality].maxTextureMemory,
+    maxTextureMemory: QUALITY_SETTINGS[quality].maxTextureMemory,
     fps: 0,
     frameTime: 0,
   });
@@ -771,7 +786,29 @@ export default function ConcordiaScene({
   // not-yet-settled buffer right after a rebuild can't trigger a downgrade —
   // identical threshold/hysteresis (avgFps < 50 for 3 consecutive readings),
   // just relocated.
+  // R7 — this used to be one-way: a downgrade could never recover, and
+  // nothing told the player it happened. A single sustained stutter (e.g.
+  // during initial asset streaming or a district transition) permanently
+  // locked the whole session to a lower visual tier with zero indication —
+  // the only way back up was noticing the small gear icon and manually
+  // reopening it. Two fixes, both intentionally asymmetric (recover much
+  // more cautiously than we downgrade, so a session doesn't flap between
+  // tiers): a symmetric upgrade path requiring a MUCH longer sustained
+  // good-performance window (180 consecutive readings vs. downgrade's 3 —
+  // roughly 3s at the perf-budget event's ~60Hz dispatch rate vs. ~50ms),
+  // and an ambient toast (reusing the same `concordia:toast` channel
+  // WorldInteractionSink already uses) so a quality change is never
+  // silent. Neither direction writes to localStorage — an automatic,
+  // temporary adjustment must never overwrite the player's own explicit
+  // choice from the quality selector; only that manual selector (below)
+  // persists.
   useEffect(() => {
+    function toast(message: string) {
+      if (typeof window === 'undefined') return;
+      window.dispatchEvent(new CustomEvent('concordia:toast', {
+        detail: { message, kind: 'info', ttl_ms: 3200 },
+      }));
+    }
     function onPerfBudget(ev: Event) {
       const detail = (ev as CustomEvent).detail as
         | { fps?: number; bufferLength?: number }
@@ -779,18 +816,39 @@ export default function ConcordiaScene({
       if (!detail) return;
       const { fps, bufferLength } = detail;
       if (typeof fps !== 'number' || typeof bufferLength !== 'number') return;
-      if (bufferLength >= 60 && fps < 50) {
+      if (bufferLength < 60) return;
+
+      const order: QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
+
+      if (fps < 50) {
+        highFpsCountRef.current = 0;
         lowFpsCountRef.current += 1;
         if (lowFpsCountRef.current >= 3) {
           lowFpsCountRef.current = 0;
           setQuality((prev) => {
-            const order: QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
             const idx = order.indexOf(prev);
-            return idx > 0 ? order[idx - 1] : prev;
+            if (idx <= 0) return prev;
+            const next = order[idx - 1];
+            toast(`Graphics quality lowered to ${next} (frame rate was struggling)`);
+            return next;
+          });
+        }
+      } else if (fps > 55) {
+        lowFpsCountRef.current = 0;
+        highFpsCountRef.current += 1;
+        if (highFpsCountRef.current >= 180) {
+          highFpsCountRef.current = 0;
+          setQuality((prev) => {
+            const idx = order.indexOf(prev);
+            if (idx >= order.length - 1) return prev;
+            const next = order[idx + 1];
+            toast(`Graphics quality restored to ${next} (frame rate has recovered)`);
+            return next;
           });
         }
       } else {
         lowFpsCountRef.current = 0;
+        highFpsCountRef.current = 0;
       }
     }
     window.addEventListener('concordia:perf-budget', onPerfBudget);
@@ -1573,16 +1631,25 @@ export default function ConcordiaScene({
       raycasterRef.current = raycaster;
 
       // ── Ambient + default directional light ─────────────────────
+      // R7 — tagged isConcordiaDefault{Ambient,Sun} so SkyWeatherRenderer's
+      // onSceneReady handler can find and remove these once its own real
+      // time-of-day-driven rig takes over (see that file's comment for the
+      // double-exposure/night-never-dark bug this fixes). These stay the
+      // ONLY lighting for a bare ConcordiaScene mount with no
+      // SkyWeatherRenderer sibling (some embed/preview contexts) — this is
+      // a real fallback, not dead code.
       const ambient = new THREE.AmbientLight(
         activeTheme.ambientLight.color,
         activeTheme.ambientLight.intensity
       );
+      ambient.userData.isConcordiaDefaultAmbient = true;
       scene.add(ambient);
 
       const sun = new THREE.DirectionalLight(
         activeTheme.sunLight.color,
         activeTheme.sunLight.intensity
       );
+      sun.userData.isConcordiaDefaultSun = true;
       sun.position.set(100, 200, 80);
       sun.castShadow = true;
       sun.shadow.mapSize.width = settings.shadowMapSize;
@@ -2891,6 +2958,17 @@ export default function ConcordiaScene({
                     key={q}
                     onClick={() => {
                       setQuality(q);
+                      // R7 — this selector used to only call setQuality(),
+                      // never setStoredQualityPreset(). The SEPARATE
+                      // settings-page QualityPresetSelector.tsx DOES persist
+                      // (and reloads the page to apply), so a choice made
+                      // HERE was silently lost on the next reload/navigate —
+                      // the scene would fall back to whatever was last
+                      // persisted, or re-run hardware auto-detection,
+                      // overriding what the player had just picked in this
+                      // exact panel. Persisting here is what makes an
+                      // explicit choice actually stick.
+                      setStoredQualityPreset(q);
                       setShowQualitySelector(false);
                     }}
                     className={`block w-full text-left px-2 py-1 text-xs rounded transition-colors ${

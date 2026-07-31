@@ -205,7 +205,16 @@ export async function tryLoadHeroMesh(
   opts: { isHero?: boolean; isLocalPlayer?: boolean; worldId?: string; factionId?: string | null; archetype?: string | null },
   hint: AvatarAppearanceHint | undefined,
 ): Promise<{ group: unknown | null; rich: import('@/lib/world-lens/character-schema').RichAppearanceConfig | null }> {
-  if (!opts.isHero || opts.isLocalPlayer) return { group: null, rich: null };
+  // R7 — the local player is now ELIGIBLE for the same real-GLB path a hero
+  // NPC gets (Microsoft Rocketbox / Mixamo meshes already sitting in
+  // public/meshes/heroes/, see that directory's CREDITS.md). This used to
+  // hard-exclude `isLocalPlayer`, meaning the player's own body ALWAYS
+  // rendered as the enhanced-avatar-builder's box/cylinder/sphere primitive
+  // geometry regardless of how much real, professionally-modeled content
+  // already existed on disk. `isLocalPlayer` is intentionally not read here
+  // anymore — only `isHero` (now set true for the player at the call site
+  // in the player-avatar effect below) gates this path.
+  if (!opts.isHero) return { group: null, rich: null };
   try {
     const [heroMod, schemaMod] = await Promise.all([
       import('@/lib/concordia/hero-mesh-registry'),
@@ -289,6 +298,52 @@ export interface AppearanceConfig {
     bottom: { color: string; type: 'pants' | 'skirt' | 'shorts' | 'robe' };
     hat?: { color: string; type: 'cap' | 'tophat' | 'beret' | 'hood' | 'helmet' };
   };
+}
+
+/**
+ * R7 — maps the player's own character-customizer choices onto one of the
+ * 7 real hero-mesh archetypes (public/meshes/heroes/, see that directory's
+ * CREDITS.md for what each one actually is: 6 are Microsoft Rocketbox
+ * MIT-licensed professional character scans, `legend` is a Mixamo/three.js
+ * humanoid). This is a HEURISTIC, not a precise mapping — `AppearanceConfig`
+ * has no first-class "archetype" field (it was designed for the primitive
+ * builder's parametric body/clothing sliders), so this reads the closest
+ * available signals (bodyType, then clothing silhouette) the same way
+ * hero-mesh-registry.ts's OCCUPATION_KEYWORDS heuristically maps free-text
+ * NPC occupations onto archetypes. Pure function — no THREE/DOM — so it's
+ * unit-testable on its own.
+ *
+ * Known, deliberate limitation (see tryLoadHeroMesh/createAvatarMeshSmart
+ * call sites): the loaded GLB's skin tone, hair color, and clothing color
+ * are its own BAKED textures — hero-mesh-registry.ts's loadHeroMesh never
+ * applies `appearance.skinColor`/`hairColor`/clothing colors onto the real
+ * mesh's materials (only the primitive/enhanced builder respects those).
+ * So picking archetype 'mystic' gets you a real, professionally modeled
+ * human body instead of a primitive one, but not (yet) in the exact skin
+ * tone or hair color the customizer's color pickers chose. Recoloring a
+ * real scanned/rigged mesh per-option is a separate, larger content task
+ * (per-archetype texture variants, or a shader-based tint pass) — flagged
+ * honestly here rather than silently ignored or faked.
+ */
+export function archetypeForPlayerAppearance(appearance: AppearanceConfig): string {
+  if (appearance.bodyType === 'legend') return 'legend';
+  switch (appearance.clothing.top.type) {
+    case 'robe':
+      // Mystic and scholar both wear robes in the primitive builder;
+      // hairStyle is the only other signal available to break the tie —
+      // 'bun'/'long' lean mystic (the source Rocketbox pick is a female
+      // adult avatar), everything else leans scholar.
+      return appearance.hairStyle === 'bun' || appearance.hairStyle === 'long' ? 'mystic' : 'scholar';
+    case 'coat':
+      return 'scholar';
+    case 'vest':
+      return 'guard';
+    case 'apron':
+      return 'trader';
+    case 'shirt':
+    default:
+      return appearance.bodyType === 'stocky' ? 'warrior' : 'hunter';
+  }
 }
 
 export type AnimationClip =
@@ -1097,7 +1152,14 @@ export default function AvatarSystem3D({
         // carries an NPC's visual identity across cross-world travel
         // (Phase T): a courier from concord-link-frontier still looks
         // like a concord-link courier when visiting concordia-hub.
-        if (opts.isHero && !opts.isLocalPlayer) {
+        //
+        // R7 — the local player now goes through this SAME path (see
+        // tryLoadHeroMesh's own updated comment for why the old
+        // `!opts.isLocalPlayer` exclusion was removed). Falls through to
+        // buildEnhancedAvatar below exactly like an NPC whose GLB failed to
+        // load — so a missing/broken mesh degrades gracefully to the
+        // existing primitive builder instead of breaking the player.
+        if (opts.isHero) {
           const heroResult = await tryLoadHeroMesh(avatarId, appearance, opts, hint);
           rich = heroResult.rich;
           if (heroResult.group) {
@@ -2114,8 +2176,18 @@ export default function AvatarSystem3D({
       }
 
       // ── Player avatar ──────────────────────────────────────
+      // R7 — the player now attempts the SAME real hero-GLB path an NPC
+      // gets (isHero:true + a derived archetype), instead of always
+      // rendering as the primitive box/cylinder/sphere builder. See
+      // archetypeForPlayerAppearance's own doc comment for the heuristic
+      // and its known baked-texture-color limitation. If the GLB fails to
+      // load for any reason, createAvatarMeshSmart already falls through to
+      // the enhanced (primitive) builder — same graceful degradation an
+      // NPC's failed hero-mesh load already gets.
       const playerMesh = await createAvatarMeshSmart(playerAvatar.id, playerAvatar.appearance, THREE, {
         isLocalPlayer: true,
+        isHero: true,
+        archetype: archetypeForPlayerAppearance(playerAvatar.appearance),
         worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
       });
       if (disposed) return;

@@ -62,6 +62,11 @@ async function startServer() {
     // unit tests. This is an out-of-process integration test that needs
     // the spawned server to actually bind a port — explicit override.
     CONCORD_FORCE_LISTEN: 'true',
+    // Under full-suite contention the event-loop-lag shedder can 503 a
+    // request that has nothing to do with what this file tests (same fix
+    // already applied to edge-cases-critical-paths.test.js, error-paths.test.js,
+    // godot-gateway-integration.test.js, and the 7 e2e spawnServer() files).
+    CONCORD_LOAD_SHED_ENABLED: '0',
     AUTH_ENABLED: 'true',
     ADMIN_PASSWORD: 'parity_test_admin_pw',
     DATA_DIR: join(__dirname, `../.parity-test-data-${TS}`),

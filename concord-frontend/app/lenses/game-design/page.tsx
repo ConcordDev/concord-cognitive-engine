@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -9,16 +8,13 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GameDesignSection } from '@/components/game-design/GameDesignSection';
 import { GameDevRepos } from '@/components/game-design/GameDevRepos';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { Gamepad2 } from 'lucide-react';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 /**
  * Game Design lens — a Tiled + LDtk + Nuclino-shape workbench, backed by
@@ -44,7 +40,6 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 export default function GameDesignPage() {
   useLensNav('game-design');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('game-design');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   useLensCommand(
     [{ id: 'new-game', keys: 'n', description: 'New game project', category: 'actions', action: () => {
@@ -56,7 +51,6 @@ export default function GameDesignPage() {
   return (
     <LensShell lensId="game-design" asMain={false}>
       <FirstRunTour lensId="game-design" />
-      <ManifestActionBar />
       <DepthBadge lensId="game-design" size="sm" className="ml-2" />
 
       <div data-lens-theme="game-design" className="min-h-screen">
@@ -71,13 +65,10 @@ export default function GameDesignPage() {
             </div>
             <div className="flex items-center gap-2">
               <DTUExportButton domain="game-design" data={{}} compact />
-              <button onClick={() => setShowFeatures(!showFeatures)} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">Features</button>
             </div>
           </div>
 
-          {showFeatures && <LensFeaturePanel lensId="game-design" />}
           <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-          <UniversalActions domain="game-design" artifactId={null} compact />
 
           <GameDesignSection />
 

@@ -10,7 +10,7 @@
 // highlight reels, prototype analytics.
 // Every value rendered comes from a real `lensRun('experience', ...)` call.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
   Loader2, Plus, Play, MousePointerClick, FolderTree, ClipboardList,
@@ -236,7 +236,7 @@ function HeatmapPanel() {
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const [question, setQuestion] = useState('');
-  const startRef = useState(() => ({ t: Date.now() }))[0];
+  const startRef = useRef({ t: Date.now() });
 
   const create = async () => {
     if (!name.trim()) return;
@@ -256,8 +256,8 @@ function HeatmapPanel() {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
-    const durationMs = Date.now() - startRef.t;
-    startRef.t = Date.now();
+    const durationMs = Date.now() - startRef.current.t;
+    startRef.current.t = Date.now();
     await run('recordClick', { studyId: study.id, x, y, durationMs });
     const res = await run('heatmapResults', { studyId: study.id });
     if (res) setResults(res);

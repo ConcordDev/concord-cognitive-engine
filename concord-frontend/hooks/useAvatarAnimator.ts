@@ -52,6 +52,14 @@ interface InternalState {
 export function useAvatarAnimator() {
   const [mode, setMode] = useState<AvatarComputeMode>(() => readModeFromStorage());
   const [lastComputeMs, setLastComputeMs] = useState<number>(0);
+  // `isWorkerActive` below is derived from stateRef at render time — a plain
+  // ref mutation doesn't itself trigger a re-render, so worker
+  // ready/failed/spawn transitions (which previously only mutated stateRef)
+  // wouldn't be reflected until the next unrelated re-render (e.g. the
+  // first `lastComputeMs` update from an actual animate-result). Same
+  // "saved ref + manual re-render tick" idiom already used by
+  // VoiceMesh.tsx's speakLevelsRef.
+  const [, forceTick] = useState(0);
   const stateRef = useRef<InternalState>({
     worker: null,
     ready: false,
@@ -75,7 +83,7 @@ export function useAvatarAnimator() {
       );
     } catch (err) {
       stateRef.current.failed = true;
-       
+      forceTick((t) => t + 1);
       console.warn('[avatar-animator] worker spawn failed, falling back to main thread', err);
       return;
     }
@@ -84,6 +92,7 @@ export function useAvatarAnimator() {
       const msg = ev.data;
       if (msg.type === 'ready') {
         stateRef.current.ready = true;
+        forceTick((t) => t + 1);
         return;
       }
       if (msg.type === 'animate-result') {
@@ -106,7 +115,7 @@ export function useAvatarAnimator() {
 
     worker.addEventListener('error', (err) => { // @resource-leak-ok — worker.terminate() below tears the listener down with it
       stateRef.current.failed = true;
-       
+      forceTick((t) => t + 1);
       console.warn('[avatar-animator] worker error event', err);
     });
 

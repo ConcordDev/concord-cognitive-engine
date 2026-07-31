@@ -909,6 +909,53 @@ fully-booted `server.js`). Nothing about how any of it actually *looks* or
 
 ---
 
+### Reconnect resync + remote avatars + spectator viewer (R6 — `net/gateway_client.gd`, `world/boot.gd`, `avatar/avatar_manager.gd`, `session/session_manager.gd`, `session/camera_rig.gd`)
+
+Three additions, all pure/derivation logic unit-tested and engine-executed
+(`tests/test_gateway_client_seq.gd`, `tests/test_boot_resync.gd`, the
+extended `tests/test_session_manager.gd`) — nothing about how any of it
+looks or feels on a real GPU has been seen:
+
+- [ ] `AvatarManager` had zero live callers anywhere in this tree before this
+      unit (confirmed by grep, and by `aerial_traffic_controller.gd`'s own
+      header, which said so outright). It is now mounted and fed real
+      `city:positions` data end-to-end — but whether remote-player capsule
+      puppets (placeholder geometry, per `avatar_rig.gd`'s own header) read
+      as coherent moving entities rather than a jittery/glitchy mess has
+      never been observed against a live server's actual position-update
+      cadence (~100ms) and real network jitter.
+- [ ] The `city:positions`-to-world filter (`Boot.event_matches_world`,
+      matching on `cityId`) is logically correct against the server's own
+      field names, but has never been exercised against a REAL running
+      server with more than one active world/city simultaneously — whether
+      cross-world leakage is genuinely prevented in practice (not just in
+      the pure-function test) is unverified.
+- [ ] `SessionManager.Mode.SPECTATE` + `CONCORD_GODOT_SPECTATOR=true` compiles
+      and its state-machine legality is asserted (`test_session_manager.gd`),
+      but no one has actually flown the free-fly camera around a live scene
+      in spectator mode. Whether `free_fly_speed = 8.0` feels like a
+      reasonable fly-around pace for "watching a world," rather than too
+      fast to take anything in or too slow to be useful, is an unplaytested
+      design dial — same class of open question as ConKay's spin rate above.
+- [ ] **Mouse-look is wired for the first time in this unit** — was an
+      honestly-stubbed `Vector2.ZERO` before (see `camera_rig.gd`'s prior
+      class doc). `Input.MOUSE_MODE_CAPTURED` + `_unhandled_input`
+      accumulation is real GDScript, engine-parseable, but headless
+      generates no real mouse events at all — whether captured-mouse
+      FREE_FLY look-around and click-drag ORBIT rotation actually feel
+      controllable (sensitivity, whether the mouse capture UX is
+      disorienting or expected) is entirely unverified. The previously
+      built-but-uncalled `zoom_orbit()` is now wired to the scroll wheel —
+      same caveat.
+- [ ] Whether a stuck ConKay "busy" indicator was ever actually user-visible
+      before this unit's `reset()` fix (it required a `macro:completed` to
+      be missed during a real disconnect window, which needs a live server
+      + a real network interruption to reproduce) is unconfirmed either
+      way — the fix closes a real logical gap regardless of whether anyone
+      has seen the bug it prevents.
+
+---
+
 ### Desktop shell (`concord-shell/` — R8/CL4, Program B Phase 6)
 
 The Tauri desktop shell that launches + supervises both `concord-frontend`

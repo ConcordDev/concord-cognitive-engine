@@ -22,14 +22,12 @@ import { EnvAlerts } from '@/components/eco/EnvAlerts';
 import { SpeciesSuggest } from '@/components/eco/SpeciesSuggest';
 import { OrganizationESGPanel } from '@/components/eco/OrganizationESGPanel';
 import { api } from '@/lib/api/client';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import {
   Leaf, Sun, Wind, TreeDeciduous, Cloud, Bug, Globe, Bird, LineChart, Flame, Bell, Building2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -104,7 +102,6 @@ export default function EcoLensPage() {
   return (
     <LensShell lensId="eco" asMain={false}>
       <FirstRunTour lensId="eco" />
-      <ManifestActionBar />
       <DepthBadge lensId="eco" size="sm" className="ml-2" />
     <div data-lens-theme="eco" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
@@ -133,9 +130,6 @@ export default function EcoLensPage() {
       />
 
       <RealtimeDataPanel domain="eco" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-
-      {/* AI Actions */}
-      <UniversalActions domain="eco" artifactId={undefined} compact />
 
       {/* Tab Navigation — a shared `motion.span` layoutId slides between
           whichever button is active, driven purely by real `activeTab`

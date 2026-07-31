@@ -9,6 +9,22 @@ interface Pose { x: number; y: number; z: number }
 interface TrailEntry { t: string; command: string; position: Pose }
 interface TeleopResult { robotId: string; command: string; position: Pose; trail: TrailEntry[] }
 
+// Module-scope (not defined inside TeleopConsole's render body) — a
+// component redefined on every parent render gets a fresh identity each
+// time, forcing React to unmount+remount all 7 buttons every render
+// instead of just updating their props.
+function Btn({ cmd, icon: Icon, label, busy, onDrive }: {
+  cmd: string; icon: typeof import('lucide-react').ArrowUp; label: string;
+  busy: string | null; onDrive: (cmd: string) => void;
+}) {
+  return (
+    <button onClick={() => onDrive(cmd)} disabled={!!busy} aria-label={label}
+      className="p-2.5 rounded-lg bg-white/5 hover:bg-neon-cyan/20 hover:text-neon-cyan disabled:opacity-40 flex items-center justify-center transition-colors">
+      {busy === cmd ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
+    </button>
+  );
+}
+
 /**
  * TeleopConsole — manual drive / jog interface. Wires robotics.teleop;
  * integrates the robot pose and renders a top-down path trail.
@@ -45,13 +61,6 @@ export function TeleopConsole({ robot }: { robot: RobotRow | null }) {
   const trailPts = trail.map(e => toSvg(e.position));
   const cur = toSvg(pose);
 
-  const Btn = ({ cmd, icon: Icon, label }: { cmd: string; icon: typeof ArrowUp; label: string }) => (
-    <button onClick={() => drive(cmd)} disabled={!!busy} aria-label={label}
-      className="p-2.5 rounded-lg bg-white/5 hover:bg-neon-cyan/20 hover:text-neon-cyan disabled:opacity-40 flex items-center justify-center transition-colors">
-      {busy === cmd ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
-    </button>
-  );
-
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -68,13 +77,13 @@ export function TeleopConsole({ robot }: { robot: RobotRow | null }) {
             <span className="text-[11px] text-gray-400">units</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5 w-44 mx-auto">
-            <div /><Btn cmd="forward" icon={ArrowUp} label="Forward" /><div />
-            <Btn cmd="left" icon={ArrowLeft} label="Left" />
-            <Btn cmd="stop" icon={Square} label="Stop" />
-            <Btn cmd="right" icon={ArrowRight} label="Right" />
-            <Btn cmd="up" icon={ChevronsUp} label="Up" />
-            <Btn cmd="back" icon={ArrowDown} label="Back" />
-            <Btn cmd="down" icon={ChevronsDown} label="Down" />
+            <div /><Btn cmd="forward" icon={ArrowUp} label="Forward" busy={busy} onDrive={drive} /><div />
+            <Btn cmd="left" icon={ArrowLeft} label="Left" busy={busy} onDrive={drive} />
+            <Btn cmd="stop" icon={Square} label="Stop" busy={busy} onDrive={drive} />
+            <Btn cmd="right" icon={ArrowRight} label="Right" busy={busy} onDrive={drive} />
+            <Btn cmd="up" icon={ChevronsUp} label="Up" busy={busy} onDrive={drive} />
+            <Btn cmd="back" icon={ArrowDown} label="Back" busy={busy} onDrive={drive} />
+            <Btn cmd="down" icon={ChevronsDown} label="Down" busy={busy} onDrive={drive} />
           </div>
           <button onClick={() => drive('home')} disabled={!!busy}
             className="w-full px-3 py-1.5 bg-white/5 text-gray-300 rounded text-sm hover:bg-white/10 disabled:opacity-40 flex items-center justify-center gap-1.5">

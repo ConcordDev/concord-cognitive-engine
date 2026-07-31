@@ -28,6 +28,7 @@ vi.mock('@/lib/concordia/hero-mesh-registry', () => ({
 import {
   tryLoadHeroMesh,
   readAvatarAppearanceHint,
+  archetypeForPlayerAppearance,
   type AppearanceConfig,
 } from '@/components/world-lens/AvatarSystem3D';
 import { readFileSync } from 'node:fs';
@@ -113,14 +114,35 @@ describe('AvatarSystem3D — hero-GLB armor wiring', () => {
     expect(generateAppearance).toHaveBeenCalledTimes(1);
   });
 
-  it('does not attempt the hero-GLB path at all for the local player or a non-hero NPC', async () => {
-    const local = await tryLoadHeroMesh('player-1', appearance, { isHero: true, isLocalPlayer: true }, undefined);
+  it('does not attempt the hero-GLB path for a non-hero NPC, regardless of isLocalPlayer', async () => {
     const nonHero = await tryLoadHeroMesh('npc-4', appearance, { isHero: false, isLocalPlayer: false }, undefined);
 
-    expect(local).toEqual({ group: null, rich: null });
     expect(nonHero).toEqual({ group: null, rich: null });
     expect(generateAppearance).not.toHaveBeenCalled();
     expect(loadHeroMesh).not.toHaveBeenCalled();
+  });
+
+  // R7 — the local player used to be hard-excluded from the hero-GLB path
+  // here (`if (!opts.isHero || opts.isLocalPlayer) return ...`), meaning the
+  // player's own body ALWAYS rendered as the enhanced-avatar-builder's
+  // primitive geometry even though real Rocketbox/Mixamo meshes already sit
+  // in public/meshes/heroes/. Fixed: only `isHero` gates this now — a
+  // player with isHero:true (set at the call site via
+  // archetypeForPlayerAppearance) is treated exactly like a hero NPC.
+  it('DOES attempt the hero-GLB path for the local player when isHero is true', async () => {
+    const richArmor = { helmet: 'leather' };
+    generateAppearance.mockReturnValue({ armor: richArmor });
+    loadHeroMesh.mockResolvedValue({ group: { name: 'playerHeroGroup' } });
+
+    const local = await tryLoadHeroMesh(
+      'player-1',
+      appearance,
+      { isHero: true, isLocalPlayer: true, worldId: 'concordia-hub', archetype: 'warrior' },
+      undefined,
+    );
+
+    expect(local.group).toEqual({ name: 'playerHeroGroup' });
+    expect(loadHeroMesh).toHaveBeenCalledWith('player-1', 'warrior', 'concordia-hub', richArmor);
   });
 
   it('the appearance-cache hint is read via a single shared Map.get call (reused for both the hero-GLB and procedural-fallback paths)', () => {
@@ -158,5 +180,46 @@ describe('AvatarSystem3D — quality floor (no more flat-primitive default)', ()
     const wantEnhancedIdx = src.indexOf('const wantEnhanced = true;');
     const fallbackCallIdx = src.indexOf('return await createAvatarMesh(appearance, THREE);', wantEnhancedIdx);
     expect(fallbackCallIdx).toBeGreaterThan(wantEnhancedIdx);
+  });
+});
+
+// R7 — player now gets a real hero-mesh archetype instead of always being
+// primitive geometry (public/meshes/heroes/'s Rocketbox/Mixamo GLBs).
+// archetypeForPlayerAppearance is the pure heuristic that picks which of
+// the 7 archetypes a given AppearanceConfig maps to.
+describe('AvatarSystem3D — archetypeForPlayerAppearance (R7 player hero-mesh mapping)', () => {
+  const base: AppearanceConfig = {
+    skinColor: '#eeddcc',
+    hairColor: '#221100',
+    hairStyle: 'short',
+    bodyType: 'average',
+    clothing: {
+      top: { color: '#333333', type: 'shirt' },
+      bottom: { color: '#333333', type: 'pants' },
+    },
+  };
+
+  it('legend bodyType always maps to the legend archetype, regardless of clothing', () => {
+    expect(archetypeForPlayerAppearance({ ...base, bodyType: 'legend', clothing: { ...base.clothing, top: { color: '#000', type: 'robe' } } })).toBe('legend');
+  });
+
+  it('robe + long/bun hair maps to mystic', () => {
+    expect(archetypeForPlayerAppearance({ ...base, hairStyle: 'long', clothing: { ...base.clothing, top: { color: '#000', type: 'robe' } } })).toBe('mystic');
+    expect(archetypeForPlayerAppearance({ ...base, hairStyle: 'bun', clothing: { ...base.clothing, top: { color: '#000', type: 'robe' } } })).toBe('mystic');
+  });
+
+  it('robe + other hair styles maps to scholar', () => {
+    expect(archetypeForPlayerAppearance({ ...base, hairStyle: 'short', clothing: { ...base.clothing, top: { color: '#000', type: 'robe' } } })).toBe('scholar');
+  });
+
+  it('coat maps to scholar, vest to guard, apron to trader', () => {
+    expect(archetypeForPlayerAppearance({ ...base, clothing: { ...base.clothing, top: { color: '#000', type: 'coat' } } })).toBe('scholar');
+    expect(archetypeForPlayerAppearance({ ...base, clothing: { ...base.clothing, top: { color: '#000', type: 'vest' } } })).toBe('guard');
+    expect(archetypeForPlayerAppearance({ ...base, clothing: { ...base.clothing, top: { color: '#000', type: 'apron' } } })).toBe('trader');
+  });
+
+  it('shirt + stocky maps to warrior, shirt + any other bodyType maps to hunter', () => {
+    expect(archetypeForPlayerAppearance({ ...base, bodyType: 'stocky', clothing: { ...base.clothing, top: { color: '#000', type: 'shirt' } } })).toBe('warrior');
+    expect(archetypeForPlayerAppearance({ ...base, bodyType: 'slim', clothing: { ...base.clothing, top: { color: '#000', type: 'shirt' } } })).toBe('hunter');
   });
 });

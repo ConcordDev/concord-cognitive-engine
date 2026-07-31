@@ -18,7 +18,7 @@ interface P { x: number; y: number; vx: number; vy: number; r: number; }
 export function ConKaySurface({ state, className }: { state: ConKayState; className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<ConKayState>(state);
-  stateRef.current = state;
+  useEffect(() => { stateRef.current = state; }, [state]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

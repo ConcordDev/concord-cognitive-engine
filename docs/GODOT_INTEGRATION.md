@@ -223,6 +223,50 @@ capped by the generic 20/sec-sustained bucket rather than a move-specific
 7. **Cookie auth is intentionally NOT wired** — the Godot client is a native
    process, not a browser; it authenticates with a bearer token or API key.
    Unchanged, by design.
+8. **Client-side `_seq` gap detection + reconnect resync — DONE (R6).**
+   `net/gateway_client.gd` tracks the highest `_seq` seen per-connection and
+   emits `sequence_anomaly` on a genuine out-of-order/duplicate frame — but
+   this is diagnostic-only, never the resync trigger, because `_seq` is a
+   single counter shared across every client/room/event type
+   (`godot-gateway.js`'s `send()` increments it once per socket write, not
+   once per logical event), so it is real but genuinely non-contiguous per
+   connection and cannot answer "how many events did I miss." The actual
+   resync trigger is the reconnect itself: `world/boot.gd`'s
+   `_on_authenticated` now replays every room the client had joined (not
+   just the one hardcoded world room) and resets ConKay's one-shot presence
+   state on every successful auth, including a reconnect — no new server
+   protocol needed, since `scene:request` is already a full, idempotent
+   snapshot and `city:positions`/`world:aerial-traffic` already self-heal on
+   their own ~100ms/~15s broadcast cadence.
+9. **Remote player rendering — DONE (R6).** `avatar/avatar_manager.gd`
+   existed fully built and tested with **no live caller anywhere in this
+   tree** until this unit (confirmed by grep; `aerial_traffic_controller.gd`
+   itself documented the gap). Now mounted in `boot.gd` and fed from
+   `city:positions` (filtered to the client's own world — the server
+   broadcasts this globally across every active city/world, so an
+   unfiltered ingest would render players from a different world). NOT fed
+   from `city:npcs`: that broadcast was deliberately retired server-side
+   (`city-presence.js` — the emit never had a listener on any transport,
+   ever) — re-adding a client-side subscriber for an event the server no
+   longer sends would be dead code, not a fix.
+10. **First shippable milestone: read-only spectator viewer — DONE (R6).**
+    `session/session_manager.gd` gained a fourth `Mode.SPECTATE` (WORLD<->
+    SPECTATE is local-only, exactly like WORLD<->DESIGN_EDIT — there is no
+    server-side "spectator session" concept on this gateway to ack/nack;
+    the separate, pre-existing socket.io `server/lib/spectator.js` is an
+    unrelated spectator-of-a-match concept). `spectator_mode`
+    (`CONCORD_GODOT_SPECTATOR=true`) requests it the moment auth succeeds:
+    a free-fly camera with no character body, driven by already-real,
+    already-broadcast state — static geometry (`scene:request`), other
+    players moving (item 9 above), and ambient air traffic (already wired).
+    `session/camera_rig.gd`'s FREE_FLY/ORBIT mouse-look was also wired for
+    real in this unit (`Input.MOUSE_MODE_CAPTURED` + `_unhandled_input`,
+    plus scroll-wheel zoom via the already-existing but previously-uncalled
+    `zoom_orbit()`) — it had been an honestly-stubbed `Vector2.ZERO` return
+    before. Genuinely unverified, same as everything else in this project's
+    camera/rendering surface: headless draws nothing and generates no real
+    mouse events, so whether this feels right is a VISUAL_QA.md item, not
+    something asserted here.
 
 ## Honest caveats
 

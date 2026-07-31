@@ -186,9 +186,37 @@ The ConKay-as-builder + safety + distribution stack, all tested + dark-by-defaul
 Core engine ~7 · builder spine ~6 · safety ~6 · distribution wedge ~5 · connectors
 **~6** (Gmail + Google Calendar real two-way as of 2026-06-09; other connectors
 still to wire). **Deployed and live at [concord-os.org](https://concord-os.org) — deployment is
-proven and repeatable, and real users' requests drive the work.** The remaining
-hardening is about *scale*, not shipping: heavy concurrent load and high-volume
-external traffic are still ahead, and provider-gated features (e.g. some connectors)
-turn on as their secrets are provisioned — see `.env.example` go-live section. The flag posture is
+proven and repeatable, and real users' requests drive the work.** The flag posture is
 production-correct: secrets hard-required where loss = compromise, dangerous modes
 prod-blocked, features on, infra/secret-gated features off until provisioned.
+
+**Scale-risk update (2026-07-30, supersedes the earlier "heavy concurrent load and
+high-volume external traffic are still ahead" framing — that was a hypothetical
+before anyone went looking).** A dedicated audit pass (`fc600e49`, `89e1e37d`,
+`6d400638`, and the continuation work through `69b42627`) went looking specifically
+for what each of those risk classes would surface, and fixed real instances rather
+than leaving them theoretical:
+- **Concurrent load:** root-caused "connections keep dropping" to a duplicate,
+  unconditional 2-minute full-state saver doing a ~28MB synchronous serialize +
+  forced GC per tick — long enough to trip socket.io's ping timeout under load and
+  mass-disconnect everyone. Removed it; three more event-loop stalls ≥300ms found
+  and fixed the same way (chunked state-snapshot serialize, a write-through store
+  for `lensArtifacts` cutting the snapshot from 19.3MB→9.1MB, LRU-bounded memory).
+- **High-volume external/LLM traffic:** `num_ctx` now sent on every Ollama call path
+  (was silently truncating prompts under the real context window), a real
+  concurrency reservation so background/vision work can't starve live chat,
+  streaming chat routed through the priority queue + BYOK, and platform-provider
+  overflow lanes registered as endpoint-picker candidates for genuine high-volume
+  spillover.
+- **Money movement at volume:** surfaced and fixed a critical wallet-drain IDOR
+  across `/api/connective-tissue` (tip/bounty/claim/purchase) and a matching one on
+  `/api/artifacts/:id/purchase`, a bounty-escrow fee-drain bug, and (same pass) an
+  authenticated RCE, two SSRF gaps, an RBAC privilege-escalation path, an open
+  redirect, and a path-traversal write — each with a regression test.
+
+**Honest residual, stated precisely so this doesn't over-correct into a new stale
+claim:** every item above was found by *auditing* for the failure mode, not by
+*surviving* it — no literal heavy-concurrency or high-volume-traffic run has been
+executed against the live deployment. The gap that's actually closed is "these
+specific, real bugs existed and would have surfaced under load"; the gap that's
+still open is "prove it under real traffic," which remains future work.

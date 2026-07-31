@@ -45,6 +45,14 @@ interface InteractiveGraphProps {
   showMinimap?: boolean;
 }
 
+// Deterministic 0..100 spread for minimap dots when a node carries no real
+// x/y — stable per node id so dots don't jump on every re-render.
+function hashPercent(id: string, salt: number): number {
+  let h = salt;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xfffffff;
+  return h % 100;
+}
+
 const tierColors = {
   regular: { bg: '#6b7280', border: '#9ca3af', glow: 'rgba(107, 114, 128, 0.5)' },
   mega: { bg: '#22d3ee', border: '#67e8f9', glow: 'rgba(34, 211, 238, 0.5)' },
@@ -498,8 +506,8 @@ export function InteractiveGraph({
                     className="absolute w-1.5 h-1.5 rounded-full"
                     style={{
                       backgroundColor: colors.bg,
-                      left: `${((node as GraphNode & { x?: number }).x ?? Math.random() * 100) % 100}%`,
-                      top: `${((node as GraphNode & { y?: number }).y ?? Math.random() * 100) % 100}%`,
+                      left: `${((node as GraphNode & { x?: number }).x ?? hashPercent(node.id, 17)) % 100}%`,
+                      top: `${((node as GraphNode & { y?: number }).y ?? hashPercent(node.id, 41)) % 100}%`,
                     }}
                   />
                 );

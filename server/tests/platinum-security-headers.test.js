@@ -117,11 +117,13 @@ test("frontend still sets the other document-level headers", () => {
 // naive style-src without 'unsafe-inline', which breaks React's
 // style={{}} prop — CSP nonces can't cover the style HTML attribute, only
 // <style> elements — see middleware.ts's header comment). Fixed via real
-// per-request nonce generation in middleware.ts, shipped as
-// Content-Security-Policy-Report-Only (not yet enforced — this is a
-// 260-lens app that can't be exhaustively browser-verified here; report-only
-// collects real violation data with zero functional risk, the standard way
-// to roll out a new CSP on an app this size).
+// per-request nonce generation in middleware.ts. Shipped first as
+// Content-Security-Policy-Report-Only, then flipped to fully-enforced
+// Content-Security-Policy the same day after a dedicated pre-flight audit
+// (zero raw <script> tags, zero javascript: URLs, style-src's
+// 'unsafe-inline' unaffected by the flip, and all 13 real <iframe> usages
+// traced to same-origin/srcDoc or the two now-allowlisted YouTube origins
+// — see middleware.ts's header comment for the full trace).
 const MIDDLEWARE_SOURCE = readFileSync(
   join(HERE, "..", "..", "concord-frontend", "middleware.ts"),
   "utf-8"

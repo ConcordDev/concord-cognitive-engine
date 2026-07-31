@@ -196,7 +196,15 @@ function collectSubscribes() {
   const socketTs = path.join(ROOT, "concord-frontend", "lib", "realtime", "socket.ts");
   if (fs.existsSync(socketTs)) {
     const content = fs.readFileSync(socketTs, "utf8");
-    const unionMatch = content.match(/export type SocketEvent\s*=([\s\S]*?);\s*\n/);
+    // Strip comments before extracting the union type. A `//` line comment
+    // containing a semicolon (e.g. "...documented residual;") otherwise
+    // prematurely terminates the non-greedy match below, truncating the
+    // union so every member declared after that comment reads as having no
+    // subscriber. Found 2026-07-31 chasing 27 false "dead emit" failures —
+    // every one was declared after the first mid-comment semicolon in the
+    // real file, not actually unsubscribed.
+    const stripped = content.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const unionMatch = stripped.match(/export type SocketEvent\s*=([\s\S]*?);\s*\n/);
     if (unionMatch) {
       // Union members don't all carry a colon ('brawl-invited',
       // 'brawl-started' are hyphen-only) — the earlier colon-required

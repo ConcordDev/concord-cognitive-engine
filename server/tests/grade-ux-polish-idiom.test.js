@@ -9,12 +9,12 @@
 // false — so the broadening recognizes real states without handing out free
 // credit (no metric-gaming).
 
-import { describe, it, before } from "node:test";
+import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const graderPath = resolve(here, "../../scripts/grade-ux-polish.mjs");
@@ -99,14 +99,70 @@ describe("ux-polish grader — ERROR_UI_RE recognizes real error idioms (no free
 //       mounts the trio footer (agents/wallet/all/tools) — no false positives.
 // The grader is a run-on-import script, so we invoke it as a subprocess and
 // read the audit artifacts it writes (transient; git-checkout-reverted in CI).
+// Synthetic fixture lens — see the (b)-second test below for why this exists
+// instead of pointing at a real lens.
+const FIXTURE_LENS = "__ux_polish_scaffold_fixture__";
+const fixtureDir = join(repoRoot, "concord-frontend", "app", "lenses", FIXTURE_LENS);
+const fixturePage = join(fixtureDir, "page.tsx");
+// Trips every signal isGenericScaffold requires (importsGenericTrio +
+// usesGenericBody + pageLoc < BESPOKE_PAGE_LOC + no flagship component) AND
+// enough pillars (loading/empty/error/aria-or-button/responsive + an
+// animation idiom) to score 'polished' in the blind default grader — the
+// exact shape the real fixture lenses (alliance → schema → game-design) had
+// before each was rebuilt into a real bespoke page.
+const FIXTURE_SRC = `
+import { ManifestActionBar } from "@/components/lens/ManifestActionBar";
+import { AutoActionStrip } from "@/components/lens/AutoActionStrip";
+import { RecentMineCard } from "@/components/lens/RecentMineCard";
+import { UniversalActions } from "@/components/lens/UniversalActions";
+import { useState } from "react";
+
+export default function FixturePage() {
+  const [state, setState] = useState("loading");
+  const [error, setError] = useState(null);
+  const items: any[] = [];
+  return (
+    <div className="p-4 sm:p-6 md:p-8" role="main">
+      {state === "loading" && <div>Loading…</div>}
+      {error && <div role="alert">{error}</div>}
+      {items.length === 0 && <div>No items yet</div>}
+      <button className="transition-colors">Click</button>
+      <ManifestActionBar />
+      <AutoActionStrip />
+      <RecentMineCard />
+      <UniversalActions />
+    </div>
+  );
+}
+`;
+
 describe("ux-polish grader — --honest generic-scaffold demotion (bidirectional)", () => {
   let dflt, honest;
   before(() => {
+    // The Frontend Rebuild Program has now rebuilt every real lens that used
+    // to be this test's fixture (alliance → schema → game-design, each
+    // graduated in turn — see the (b)-second test's history comment) down to
+    // a genuine 0 remaining generic-scaffold lenses (CLAUDE.md's 2026-07-31
+    // "1.000 weighted, 265/265 polished, 0 generic-scaffold detections"
+    // snapshot). That's real progress, not a test problem — but it means
+    // there is no longer a real lens left to demonstrate the --honest cap
+    // against. Rather than weaken the assertion (per this file's own
+    // standing instruction) or leave a lens deliberately unrebuilt just to
+    // keep a test passing, this synthetic fixture lens is planted before the
+    // grader runs and removed in `after()` below — the same
+    // extract-and-exercise-the-real-logic idiom this file already uses for
+    // LOADING_RE/ERROR_UI_RE, applied to a full lens directory instead of a
+    // single regex.
+    mkdirSync(fixtureDir, { recursive: true });
+    writeFileSync(fixturePage, FIXTURE_SRC);
     // Default run → audit/ux-polish.json ; honest run → audit/ux-polish-honest.json.
     execFileSync(process.execPath, [graderPath], { cwd: repoRoot, stdio: "ignore" });
     execFileSync(process.execPath, [graderPath, "--honest"], { cwd: repoRoot, stdio: "ignore" });
     dflt = JSON.parse(readFileSync(resolve(repoRoot, "audit/ux-polish.json"), "utf8"));
     honest = JSON.parse(readFileSync(resolve(repoRoot, "audit/ux-polish-honest.json"), "utf8"));
+  });
+  after(() => {
+    if (existsSync(fixtureDir)) rmSync(fixtureDir, { recursive: true, force: true });
   });
 
   const byLens = (report, lens) => report.lenses.find((r) => r.lens === lens);
@@ -149,22 +205,24 @@ describe("ux-polish grader — --honest generic-scaffold demotion (bidirectional
     );
   });
 
-  it("(b) a known scaffold (game-design) is capped under --honest, polished by default", () => {
-    // Fixture lens choice: NOT a magic constant — pick any lens still on the
-    // generic scaffold per the Frontend Rebuild Program's live backlog
-    // (docs/FRONTEND_REBUILD_PROGRAM.md). This has been repointed twice as
-    // fixtures graduated: `alliance` (rebuilt 2026-07-09, commit 26ec0de2) →
-    // `schema` (rebuilt since) → `game-design`, confirmed still-scaffolded as
-    // of this edit (honest-capped scaffolds: creative-writing / eco /
-    // game-design). If this test fails again because ITS fixture lens also
-    // graduated, that's the same good failure — repoint to another lens still
-    // in the honest-capped set, don't weaken the assertion.
-    const d = byLens(dflt, "game-design");
-    const h = byLens(honest, "game-design");
-    assert.ok(d && h, "game-design lens present in both reports");
-    assert.equal(d.tier, "polished", "game-design scores polished in the blind default grader");
-    assert.equal(h.isGenericScaffold, true, "game-design is detected as the generated template shell");
-    assert.equal(h.honestCapped, true, "game-design is demoted under --honest");
+  it("(b) a known scaffold is capped under --honest, polished by default", () => {
+    // Fixture lens choice: this used to be a real lens still on the generic
+    // scaffold, repointed twice as each graduated — `alliance` (rebuilt
+    // 2026-07-09, commit 26ec0de2) → `schema` → `game-design` (rebuilt
+    // 2026-07-31, this same session's UX-polish fix). All 265 real lenses
+    // are now genuinely rebuilt (0 remaining honest-capped scaffolds — see
+    // CLAUDE.md's 2026-07-31 UX-polish snapshot), so there is no third real
+    // lens left to repoint to. Switched to the synthetic FIXTURE_LENS planted
+    // in this describe block's `before()` above, built to trip the exact
+    // same isGenericScaffold signals a real unrebuilt lens would — this is a
+    // strengthening of the test (it no longer depends on a real lens staying
+    // broken to stay green), not a weakening of the assertion.
+    const d = byLens(dflt, FIXTURE_LENS);
+    const h = byLens(honest, FIXTURE_LENS);
+    assert.ok(d && h, "fixture lens present in both reports");
+    assert.equal(d.tier, "polished", "fixture scores polished in the blind default grader");
+    assert.equal(h.isGenericScaffold, true, "fixture is detected as the generated template shell");
+    assert.equal(h.honestCapped, true, "fixture is demoted under --honest");
     assert.equal(h.tier, "functional");
   });
 

@@ -41,6 +41,7 @@ const CALLER_ALLOWLIST = new Map([
   ["applyDifficulty", "pure compose used by encounter builders"],
   ["proposePlayerScheme", "player-driven macro surface"],
   ["seedDefaultGlyphLibrary", "content-seeder dynamic import"],
+  ["resolveWithin", "generic safe-path.js security primitive matched by the resolve* naming heuristic despite not being a gameplay system; unit-tested directly by tests/whiteboard-blueprint-path-traversal.test.js, not yet called from a production call site (domains/whiteboard.js uses its sibling isWithinRoot + isSafePathSegment instead)"],
 ]);
 
 // Files to skip (definitions that are pure libraries of compose-helpers).

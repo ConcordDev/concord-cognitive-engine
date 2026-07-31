@@ -89,4 +89,8 @@ jobs:
       - name: Dump server log on failure
         if: failure()
         working-directory: ./server
-        run: tail -80 server.log || true
+        run: |
+          echo "--- boot-time dependency load lines (jsonwebtoken/bcryptjs/rate-limit/helmet) ---"
+          grep -i "failed to load\|\[FATAL\]" server.log || echo "(none found)"
+          echo "--- last 80 lines ---"
+          tail -80 server.log || true

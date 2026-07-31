@@ -9,7 +9,7 @@
 // GPU-driven (@react-three/fiber — the stack Concordia already uses), reactive
 // to ConKay's real state machine + live mic amplitude. Full-bleed.
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -373,7 +373,7 @@ export function ConKayScene({ state, amplitudeRef, className, bloom }: {
   bloom?: boolean;
 }) {
   const stateRef = useRef<ConKayState>(state);
-  stateRef.current = state;
+  useEffect(() => { stateRef.current = state; }, [state]);
   // Respect reduced-motion + allow an explicit opt-out. The Canvas itself keeps
   // its GL-crash → 2D fallback (ConKayBackdrop dynamic loader) regardless.
   const enableBloom = useMemo(() => {

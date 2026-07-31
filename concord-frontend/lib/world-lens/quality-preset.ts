@@ -28,6 +28,27 @@ export function getStoredQualityPreset(): QualityPreset {
   return DEFAULT_PRESET;
 }
 
+/**
+ * R7 — whether the player has EXPLICITLY chosen a quality preset before,
+ * as distinct from `getStoredQualityPreset()`'s DEFAULT_PRESET fallback
+ * ('medium') for "nothing stored yet." Both used to be indistinguishable
+ * once they reached ConcordiaScene, which itself defaulted its `quality`
+ * prop to 'medium' — so a call site had no way to say "I have no opinion,
+ * auto-detect from hardware" versus "the player picked medium on purpose";
+ * hardware auto-detection silently overrode an explicit medium choice on
+ * every load. Callers that want auto-detect-when-unset behavior should use
+ * `hasStoredQualityPreset() ? getStoredQualityPreset() : undefined`.
+ */
+export function hasStoredQualityPreset(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return !!stored && isValidPreset(stored);
+  } catch {
+    return false;
+  }
+}
+
 export function setStoredQualityPreset(preset: QualityPreset): void {
   if (typeof window === 'undefined') return;
   try {

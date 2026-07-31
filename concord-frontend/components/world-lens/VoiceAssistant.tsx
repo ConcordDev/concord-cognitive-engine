@@ -41,6 +41,67 @@ const LANGUAGE_OPTIONS = [
   { id: 'ja', label: 'Japanese' },
 ];
 
+// ── Waveform bars (CSS animated) ──────────────────────────────────────────────
+// Module-scope (not defined inside VoiceAssistant's render body) — a component
+// redefined on every parent render gets a fresh identity each time, forcing a
+// full unmount+remount (and CSS animation restart) instead of a prop update.
+function WaveformBars({ isRecording }: { isRecording: boolean }) {
+  return (
+    <div className="flex items-center gap-1 h-8">
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <div
+          key={i}
+          className="w-1 rounded-full bg-violet-400"
+          style={{
+            height: isRecording ? undefined : '4px',
+            animation: isRecording
+              ? `voiceBar 0.8s ease-in-out ${i * 0.1}s infinite alternate`
+              : 'none',
+            minHeight: '4px',
+            maxHeight: '32px',
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes voiceBar {
+          0% { height: 4px; }
+          100% { height: ${24 + Math.random() * 8}px; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ── Pulsing ring ───────────────────────────────────────────────────────────────
+function PulsingRing({ isRecording }: { isRecording: boolean }) {
+  return (
+    <>
+      {isRecording && (
+        <>
+          <div
+            className="absolute inset-0 rounded-full bg-violet-500/30"
+            style={{
+              animation: 'pulseRing 1.5s ease-out infinite',
+            }}
+          />
+          <div
+            className="absolute inset-0 rounded-full bg-violet-500/20"
+            style={{
+              animation: 'pulseRing 1.5s ease-out 0.5s infinite',
+            }}
+          />
+          <style>{`
+            @keyframes pulseRing {
+              0% { transform: scale(1); opacity: 1; }
+              100% { transform: scale(2); opacity: 0; }
+            }
+          `}</style>
+        </>
+      )}
+    </>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function VoiceAssistant() {
@@ -144,60 +205,6 @@ export default function VoiceAssistant() {
     const d = new Date(iso);
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
-
-  // ── Waveform bars (CSS animated) ────────────────────────────────────────────
-  const WaveformBars = () => (
-    <div className="flex items-center gap-1 h-8">
-      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-        <div
-          key={i}
-          className="w-1 rounded-full bg-violet-400"
-          style={{
-            height: isRecording ? undefined : '4px',
-            animation: isRecording
-              ? `voiceBar 0.8s ease-in-out ${i * 0.1}s infinite alternate`
-              : 'none',
-            minHeight: '4px',
-            maxHeight: '32px',
-          }}
-        />
-      ))}
-      <style>{`
-        @keyframes voiceBar {
-          0% { height: 4px; }
-          100% { height: ${24 + Math.random() * 8}px; }
-        }
-      `}</style>
-    </div>
-  );
-
-  // ── Pulsing ring ─────────────────────────────────────────────────────────────
-  const PulsingRing = () => (
-    <>
-      {isRecording && (
-        <>
-          <div
-            className="absolute inset-0 rounded-full bg-violet-500/30"
-            style={{
-              animation: 'pulseRing 1.5s ease-out infinite',
-            }}
-          />
-          <div
-            className="absolute inset-0 rounded-full bg-violet-500/20"
-            style={{
-              animation: 'pulseRing 1.5s ease-out 0.5s infinite',
-            }}
-          />
-          <style>{`
-            @keyframes pulseRing {
-              0% { transform: scale(1); opacity: 1; }
-              100% { transform: scale(2); opacity: 0; }
-            }
-          `}</style>
-        </>
-      )}
-    </>
-  );
 
   return (
     <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl text-white overflow-hidden flex flex-col h-[600px] relative">
@@ -310,7 +317,7 @@ export default function VoiceAssistant() {
           {isRecording && (
             <div className="flex justify-center py-4">
               <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20">
-                <WaveformBars />
+                <WaveformBars isRecording={isRecording} />
                 <span className="text-xs text-violet-400">Listening...</span>
               </div>
             </div>
@@ -438,7 +445,7 @@ export default function VoiceAssistant() {
       {/* Floating mic button */}
       <div className="absolute bottom-14 right-5">
         <div className="relative">
-          <PulsingRing />
+          <PulsingRing isRecording={isRecording} />
           <button
             onClick={toggleRecording}
             className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${

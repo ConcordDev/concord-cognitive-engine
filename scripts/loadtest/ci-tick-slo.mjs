@@ -47,17 +47,50 @@ async function metrics() {
   const r = await jfetch("/metrics");
   const out = {};
   if (!r.ok) return out;
-  for (const m of ["concord_heartbeat_ticks_total", "concord_heartbeat_skipped_total", "concord_heartbeat_module_timeout_total"]) {
+  for (const m of ["concord_heartbeat_ticks_total", "concord_heartbeat_skipped_total", "concord_heartbeat_module_timeout_total", "concord_event_loop_lag_ms"]) {
     const line = r.body.split("\n").find((l) => l.startsWith(m + " "));
     if (line) out[m] = Number(line.trim().split(/\s+/).pop());
   }
   return out;
 }
 
-async function register(i) {
+// Registration was observed to flake here with a 503 that was initially
+// (wrongly) attributed to the server's "password hashing unavailable"
+// guard, since that's the only literal 503 in routes/auth.js and no other
+// evidence was visible at the time. Logging the real response body (below)
+// proved that guess wrong: the actual body is
+// `{"error":"service_overloaded","reason":"event_loop_lag",...,"lagMs":18874}`
+// — lib/request-admission.js's load shedder, correctly doing its job. The
+// trigger is this script's own timing: `waitForGovernor()` only waits for
+// the FIRST tick to fire, and that first tick is exactly when the governor
+// does its heaviest synchronous one-time work (ghost-fleet module loads +
+// RSS feed polling of hundreds of items), which was observed blocking the
+// event loop for seconds at a time. Firing all registrations immediately
+// after "ticked" lands squarely in that window. `waitForLagSettle()` below
+// helps but is NOT sufficient on its own: ghost-fleet loads its ~28 modules
+// SEQUENTIALLY over up to ~57s total, each one capable of its own lag
+// spike, so a 5-consecutive-clean-sample check can pass in a lull between
+// two module loads and then race straight into the next spike a few
+// seconds later — observed directly: "settled." printed, then a fresh
+// 18975ms spike hit within 6 seconds, 503-ing every attempt because the old
+// fixed 300ms×3 backoff (~1s total patience) can't ride out a spike that
+// itself lasts up to ~19s. Fix: honor the shedder's own `retryAfterS` hint
+// from the response body (it already tells us exactly how long to back
+// off) instead of guessing, and budget enough total attempts to outlast
+// the worst observed spike with real margin.
+async function register(i, attempts = 15, minBackoffMs = 1500) {
   const s = Date.now().toString(36) + i;
-  const r = await jfetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: `slo_${s}@ex.com`, password: "CiTickSlo1234!", username: `slo_${s}`.slice(0, 20), dateOfBirth: "1990-01-01" }) });
-  return r.json?.token || null;
+  const body = JSON.stringify({ email: `slo_${s}@ex.com`, password: "CiTickSlo1234!", username: `slo_${s}`.slice(0, 20), dateOfBirth: "1990-01-01" });
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const r = await jfetch("/api/auth/register", { method: "POST", body });
+    if (r.json?.token) return r.json.token;
+    console.error(`register user ${i} attempt ${attempt}/${attempts} failed: HTTP ${r.status} ${r.body?.slice?.(0, 300) || ""}`);
+    if (attempt < attempts) {
+      const retryAfterS = Number(r.json?.retryAfterS) || 0;
+      await sleep(Math.max(minBackoffMs, retryAfterS * 1000));
+    }
+  }
+  return null;
 }
 
 async function waitForGovernor() {
@@ -67,6 +100,44 @@ async function waitForGovernor() {
     const t = (await metrics()).concord_heartbeat_ticks_total ?? 0;
     if (t > start) return true;
     await sleep(2000);
+  }
+  return false;
+}
+
+// The governor's first tick does its heaviest one-time synchronous work
+// (ghost-fleet module loads + RSS feed polling) and has been observed to
+// spike concord_event_loop_lag_ms into the tens of thousands of ms on a
+// shared CI runner - well past the front-door load shedder's own
+// sheddable-priority threshold (300ms, from lib/request-admission.js).
+// Wait for that same signal to actually settle before driving registration
+// load, instead of just checking that the governor ticked once. A short
+// bounded wait, not indefinite - if lag never settles that's itself a real
+// regression the caller should see (falls through and lets the subsequent
+// registration failures surface it).
+// A single dip below threshold is not enough - measured live, lag can
+// settle once (e.g. 954ms) and then re-spike (1029ms) and keep oscillating
+// for 90-120s+ while RSS feed polling continues well past the first tick.
+// Require several CONSECUTIVE clean samples, spaced out, before declaring
+// settled; any breach resets the streak. Also widen the wait budget to
+// match the observed real ramp-down window.
+const LAG_SETTLE_THRESHOLD_MS = 250;
+const LAG_SETTLE_REQUIRED_STREAK = 5;
+const LAG_SETTLE_SAMPLE_INTERVAL_MS = 2000;
+async function waitForLagSettle(maxWaitS = 150) {
+  const deadline = Date.now() + maxWaitS * 1000;
+  let streak = 0;
+  while (Date.now() < deadline) {
+    const lag = (await metrics()).concord_event_loop_lag_ms;
+    if (lag == null || lag <= LAG_SETTLE_THRESHOLD_MS) {
+      streak++;
+      process.stdout.write(`(ok ${streak}/${LAG_SETTLE_REQUIRED_STREAK}) `);
+      if (streak >= LAG_SETTLE_REQUIRED_STREAK) return true;
+    } else {
+      if (streak > 0) process.stdout.write(`(reset, lag ${lag.toFixed(0)}ms) `);
+      else process.stdout.write(`(lag ${lag.toFixed(0)}ms) `);
+      streak = 0;
+    }
+    await sleep(LAG_SETTLE_SAMPLE_INTERVAL_MS);
   }
   return false;
 }
@@ -84,8 +155,22 @@ async function main() {
   }
   console.log("ticking.");
 
+  process.stdout.write("Waiting for event-loop lag to settle after the governor's first (heaviest) pass... ");
+  if (!(await waitForLagSettle())) {
+    console.log("\n(lag never settled - proceeding anyway; registration failures below will show the real state)");
+  } else {
+    console.log("settled.");
+  }
+
   process.stdout.write(`Registering ${USERS} users... `);
-  const tokens = (await Promise.all(Array.from({ length: USERS }, (_, i) => register(i)))).filter(Boolean);
+  // Small stagger (not a real concurrency limit — still well within the
+  // window the SLO gate is meant to stress) to avoid every registration
+  // landing in the exact same event-loop tick as the governor's first,
+  // synchronously-heavy pass (ghost-fleet module loads + feed polling).
+  const tokens = (await Promise.all(Array.from({ length: USERS }, async (_, i) => {
+    if (i > 0) await sleep(i * 15);
+    return register(i);
+  }))).filter(Boolean);
   console.log(`${tokens.length} ready`);
   if (!tokens.length) { console.error("::error::no tokens — cannot drive load"); process.exit(1); }
 

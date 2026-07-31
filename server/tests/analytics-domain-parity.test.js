@@ -23,8 +23,23 @@ const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
 // Seed a small funnel: 3 users sign up, 2 activate, 1 purchases.
+//
+// Dates are relative to "now", not a hardcoded calendar month — analytics.js's
+// alert-evaluate computes its window as `Date.now() - windowDays*86400000`
+// (capped at 90), so a fixed anchor eventually ages out of that window as
+// wall-clock time advances. A prior hardcoded `2026-05-01` anchor broke on
+// 2026-07-31 (91 days later): the 90-day-window alert test expected 3 events
+// but got 0, because seedFunnel's events had just fallen outside the cutoff.
+// Anchoring 5 days behind "now" keeps every seeded event inside any
+// reasonable window (including short ones) indefinitely.
 function seedFunnel(ctx = ctxA) {
-  const t = (d, h) => `2026-05-${String(d).padStart(2, "0")}T${String(h).padStart(2, "0")}:00:00.000Z`;
+  const base = new Date(Date.now() - 5 * 86400000);
+  const t = (d, h) => {
+    const dt = new Date(base);
+    dt.setUTCDate(dt.getUTCDate() + (d - 1));
+    dt.setUTCHours(h, 0, 0, 0);
+    return dt.toISOString();
+  };
   for (const u of ["u1", "u2", "u3"]) call("event-track", ctx, { name: "signup", distinctId: u, at: t(1, 9) });
   for (const u of ["u1", "u2"]) call("event-track", ctx, { name: "activate", distinctId: u, at: t(1, 10), properties: { plan: "pro" } });
   call("event-track", ctx, { name: "purchase", distinctId: "u1", at: t(1, 11), properties: { plan: "pro" } });

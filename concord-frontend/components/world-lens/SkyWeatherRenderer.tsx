@@ -745,8 +745,38 @@ export default function SkyWeatherRenderer({
       let detachScene: (() => void) | null = null;
       let animId = 0;
       function onSceneReady(e: Event) {
-        const detail = (e as CustomEvent).detail as { scene?: { add: (g: unknown) => void; remove: (g: unknown) => void } } | undefined;
+        const detail = (e as CustomEvent).detail as {
+          scene?: {
+            add: (g: unknown) => void;
+            remove: (g: unknown) => void;
+            traverse?: (cb: (o: unknown) => void) => void;
+          };
+        } | undefined;
         if (!detail?.scene || disposed) return;
+
+        // R7 — ConcordiaScene mounts its own static, theme-based sun/ambient
+        // BEFORE this listener ever fires (that file's "Ambient + default
+        // directional light" block). Left alone, BOTH rigs stayed live for
+        // the whole session: at midday the two suns' intensities summed
+        // well past what either was tuned for, and — because
+        // ConcordiaScene's rig is static, never re-scaled by time of day —
+        // night never actually got dark (a full-strength fixed-direction
+        // sun kept lighting the world regardless of what the sky/stars
+        // said). This rig is the more complete one (real time-of-day-
+        // driven intensity/color + cascaded shadows), so remove the static
+        // one the moment this one takes over. Tag-matched, not a blind
+        // "remove every light" sweep — a bare ConcordiaScene mount with no
+        // SkyWeatherRenderer sibling never reaches this code at all, so
+        // that fallback path is unaffected.
+        try {
+          const toRemove: unknown[] = [];
+          detail.scene.traverse?.((obj) => {
+            const ud = (obj as { userData?: { isConcordiaDefaultSun?: boolean; isConcordiaDefaultAmbient?: boolean } }).userData;
+            if (ud?.isConcordiaDefaultSun || ud?.isConcordiaDefaultAmbient) toRemove.push(obj);
+          });
+          for (const obj of toRemove) detail.scene.remove(obj);
+        } catch { /* best-effort — never block sky/weather mounting on this */ }
+
         detail.scene.add(skyGroup);
         detachScene = () => detail.scene?.remove(skyGroup);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Palette, Info } from 'lucide-react';
 import { ArtistryFeed } from '@/components/artistry/ArtistryFeed';
@@ -30,6 +30,10 @@ export default function ArtistryPage() {
   });
   const posts: ArtistryPost[] = postItems.map(i => ({ ...(i.data as unknown as ArtistryPost), id: i.id }));
 
+  // Stable per-mount seed so discovery-mode shuffle doesn't reshuffle (flicker)
+  // on every unrelated re-render — only the id ordering it was seeded with matters.
+  const discoverySeedRef = useRef<Map<string, number>>(new Map());
+
   // ---- Filtering ----
   const filteredPosts = useMemo(() => {
     let result = posts;
@@ -58,9 +62,16 @@ export default function ArtistryPage() {
     if (feedMode === 'chronological') {
       result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
-    // Discovery mode would apply recommendations — for now, just shuffle slightly
+    // Discovery mode would apply recommendations — for now, just shuffle slightly.
+    // Each post's shuffle weight is assigned once (keyed by id) so the order stays
+    // stable across re-renders instead of jumping around every time.
     if (feedMode === 'discovery') {
-      result = [...result].sort(() => Math.random() - 0.5);
+      const seeds = discoverySeedRef.current;
+      result = [...result].sort((a, b) => {
+        if (!seeds.has(a.id)) seeds.set(a.id, Math.random());
+        if (!seeds.has(b.id)) seeds.set(b.id, Math.random());
+        return (seeds.get(a.id) as number) - (seeds.get(b.id) as number);
+      });
     }
 
     return result;

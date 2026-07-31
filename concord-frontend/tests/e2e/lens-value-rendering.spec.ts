@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthSuccess, gotoStable } from './_helpers';
+import { mockAuthSuccess, gotoStable, corsFulfill } from './_helpers';
 
 /**
  * Value-rendering E2E — closes the "correct-but-invisible" gap.
@@ -33,8 +33,22 @@ async function mockLensCalcs(page: import('@playwright/test').Page) {
   // times out. Response shape must match what use-lens-data.ts destructures:
   // `{ ok: boolean; artifacts: LensItem[]; total: number }` — an honest empty
   // list (no fabricated artifacts).
+  // corsFulfill (not a bare route.fulfill): NEXT_PUBLIC_API_URL is an
+  // absolute cross-origin URL in CI (frontend :3000, backend :5050), and the
+  // shared axios instance (lib/api/client.ts) sends a default
+  // `Content-Type: application/json` header on every request it makes —
+  // including this GET — which forces a real CORS preflight round-trip.
+  // Without answering that preflight with CORS headers, the browser blocks
+  // the request as a generic network error before the mocked 200 ever
+  // reaches the page's JS: `isLoading` never resolves via a real response,
+  // the query settles into an error, and LensPageShell renders <ErrorState>
+  // instead of children — so the tab bar (incl. "NEC Calculators") never
+  // mounts and the click times out at 120s, exactly the failure this file's
+  // own comment above already diagnosed one layer too shallow (it named the
+  // missing GET mock, but the mock alone doesn't survive a cross-origin
+  // preflight without CORS headers).
   await page.route('**/api/lens/electrical**', (route) =>
-    route.fulfill({
+    corsFulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, artifacts: [], total: 0 }),
@@ -45,7 +59,7 @@ async function mockLensCalcs(page: import('@playwright/test').Page) {
   // interceptor tries a real POST /api/auth/refresh before giving up — mocking
   // it 200 keeps that path inert rather than racing the real backend.
   await page.route('**/api/auth/refresh', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+    corsFulfill(route, { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
   );
   await page.route('**/api/lens/run', async (route) => {
     const body = (route.request().postDataJSON?.() ?? {}) as LensRunBody;
@@ -68,10 +82,10 @@ async function mockLensCalcs(page: import('@playwright/test').Page) {
     };
     const payload = action && table[action];
     if (payload) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(wrap(payload)) });
+      return corsFulfill(route, { status: 200, contentType: 'application/json', body: JSON.stringify(wrap(payload)) });
     }
     // anything else this lens loads → empty-but-ok so the page mounts cleanly
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: { ok: true, result: {} } }) });
+    return corsFulfill(route, { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: { ok: true, result: {} } }) });
   });
 }
 

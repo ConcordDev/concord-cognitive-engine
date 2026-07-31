@@ -43,7 +43,7 @@ Two rules governed the pass:
 | — | Bounty escrow fee-drain (human-authorized `balances.js` edit) | Correctness/economy, not IDOR | `535e4817` |
 | — | 4 CVEs via abandoned `@xenova/transformers` — migrated to `@huggingface/transformers` | High (4 chained CVEs, unfixable upstream) | `c5bc54f0` |
 | — | SSRF guard's DNS-rebinding-resistant fetch path silently never ran (2 compounding bugs) | High (defense-in-depth control was fully dead) | `04600684` |
-| — | Frontend CSP — was entirely absent; now report-only with a real per-request nonce | Medium | `4f017e80` |
+| — | Frontend CSP — was entirely absent; now fully enforced with a real per-request nonce | Medium | `4f017e80`, flipped to enforced `40966fd3` |
 
 ### SEC-1 was not in the report as an RCE
 
@@ -260,6 +260,46 @@ promoted into the blocking gate.
   visible even to a frontend test reaching across the boundary), this also
   fixed the original test-collection failure with zero frontend-side
   change needed.
+
+### Frontend CSP — flipped from report-only to fully enforced (`40966fd3`, 2026-07-30)
+
+The report-only rollout above (`4f017e80`) was always meant to be interim —
+this is a 260-lens app that can't be exhaustively browser-verified in this
+sandbox, so report-only was the honest way to ship the header at all rather
+than claim "enforced" without having checked. Before flipping it, a dedicated
+pre-flight audit was run instead of a browser pass across all 260 lenses:
+
+- Zero raw `<script>` tags, zero `javascript:` URLs, and zero `next/script`
+  usage anywhere in `app/` or `components/` — `script-src`'s nonce +
+  `'strict-dynamic'` covers everything that's actually there (Next's own
+  bootstrap script and the chunks it loads).
+- `style-src 'self' 'unsafe-inline'` is unaffected by the flip on its own
+  terms — CSP only disables `'unsafe-inline'` for a directive when a
+  nonce/hash competes with it in *that same directive*, and no nonce is
+  present on `style-src`. The one previously-flagged un-nonced `<style>` tag
+  in `AmbientFeedback.tsx` was never actually at risk from this change.
+- All 13 files using `<iframe>` were traced to their `src`: Forge/AppBuilder/
+  PreviewPane's live previews all use `srcDoc` (an inline, sandboxed,
+  same-origin document — not a `frame-src`-gated navigation), and
+  `LensStationOverlay`/`ArtifactRenderer` use same-origin relative paths —
+  both classes already covered by `'self'`. Two real external cases remained:
+  `LaunchCountdown.tsx`'s `ytEmbed()` (always builds a
+  `https://www.youtube.com/embed/...` URL for rocket-launch webcasts) and
+  NASA's APOD API, whose video-of-the-day entries are also YouTube-hosted
+  (`NasaLivePanel.tsx`/`NasaExplorer.tsx`). Added
+  `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com`
+  to cover both before flipping.
+
+With that audit clean, `middleware.ts`'s `withCspHeaders()` now sets
+`Content-Security-Policy` instead of `Content-Security-Policy-Report-Only`.
+`middleware.test.ts` and `platinum-security-headers.test.js` were updated to
+assert the enforced header (20/13 tests green). The residual, honestly
+stated: this was verified by static analysis and unit test, not a live
+browser pass across all 260 lenses — if a genuinely-missed inline pattern
+exists somewhere in that surface, it would now block instead of just report.
+Report-only's violation-collection value is gone now that it's enforced; if
+a real breakage surfaces post-deploy, the fastest revert is flipping the one
+header key back in `withCspHeaders()`.
 
 ### `@xenova/transformers` — 4 flagged CVEs — DONE (`c5bc54f0`, 2026-07-30)
 

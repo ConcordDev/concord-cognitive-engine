@@ -1,0 +1,9 @@
+[
+  { "name": "homepage (shared baseline)", "route": "/", "mode": "absolute", "limitKb": 800 },
+  { "name": "chat lens", "route": "/lenses/chat", "mode": "incremental", "limitKb": 450 },
+  { "name": "world lens (3D scene)", "route": "/lenses/world", "mode": "incremental", "limitKb": 500 },
+  { "name": "studio lens (DAW)", "route": "/lenses/studio", "mode": "incremental", "limitKb": 450 },
+  { "name": "code lens", "route": "/lenses/code", "mode": "incremental", "limitKb": 450 },
+  { "name": "expert-mode lens", "route": "/lenses/expert-mode", "mode": "incremental", "limitKb": 300 },
+  { "name": "byo-keys lens", "route": "/lenses/byo-keys", "mode": "incremental", "limitKb": 300 }
+]

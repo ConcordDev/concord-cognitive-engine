@@ -123,7 +123,16 @@ function AudioPlayer({
   const progressRef = useRef<HTMLDivElement>(null);
 
   const duration = audioDuration || mediaDTU.duration || 0;
-  const waveform = mediaDTU.waveform || Array.from({ length: 64 }, () => Math.random() * 80 + 20);
+  // Fallback waveform only used when the DTU carries no real one — memoized
+  // per-track so it doesn't reshuffle on every `timeupdate` re-render during
+  // playback (was regenerating fresh Math.random() bars several times a
+  // second, making the fallback waveform flicker instead of just standing
+  // in as a static placeholder shape).
+  const fallbackWaveform = useMemo(
+    () => Array.from({ length: 64 }, () => Math.random() * 80 + 20),
+    [mediaDTU.id],
+  );
+  const waveform = mediaDTU.waveform || fallbackWaveform;
   const audioSrc = useMemo(
     () => `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`,
     [mediaDTU.id],

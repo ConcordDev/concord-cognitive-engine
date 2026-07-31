@@ -37,6 +37,11 @@
 # silently. Without one, this still launches (proving the engine/project are
 # ready) but logs an honest warning rather than a fabricated "connected".
 #
+# CONCORD_GODOT_SPECTATOR=true — read-only spectator viewer milestone (R6):
+# free-fly camera, no character body, no design/playtest authoring. Needs no
+# script change here — world/boot.gd's own resolve_runtime_config reads it
+# straight from the inherited environment, same as CONCORD_WORLD_ID below.
+#
 # Godot binary resolution honors an existing install before falling back to
 # an auto-fetch (docs/GODOT_RUNTIME.md §5.2 point 3):
 #   1. $GODOT_BIN, if set and executable
@@ -205,5 +210,5 @@ if [ -z "${CONCORD_GODOT_API_KEY:-}" ] && [ -z "${CONCORD_GODOT_AUTH_TOKEN:-}" ]
   log "         Create an API key in the app and set CONCORD_GODOT_API_KEY in .env, then restart this app."
 fi
 
-log "Launching Godot (gateway=${CONCORD_GATEWAY_URL}, world=${CONCORD_WORLD_ID:-concordia-hub})..."
+log "Launching Godot (gateway=${CONCORD_GATEWAY_URL}, world=${CONCORD_WORLD_ID:-concordia-hub}, spectator=${CONCORD_GODOT_SPECTATOR:-false})..."
 exec "$GD" "${HEADLESS_ARGS[@]}" --path world-lens-godot

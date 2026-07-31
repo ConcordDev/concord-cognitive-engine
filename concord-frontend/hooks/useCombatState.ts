@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { CombatSkill, HotbarState, isOnCooldown } from '@/lib/concordia/combat/hotbar';
 import { VATSState, BodyPart, createVATSState, queueVATSShot, exitVATS, regenAP } from '@/lib/concordia/combat/vats';
 import { SPECIALStats, DEFAULT_SPECIAL } from '@/lib/concordia/player-stats';
@@ -73,7 +73,7 @@ export function useCombatState(
   }));
 
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => { stateRef.current = state; }, [state]);
 
   const recentSkillIds = useRef<string[]>([]);
 

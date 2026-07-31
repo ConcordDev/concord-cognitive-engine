@@ -71,6 +71,11 @@ before(async () => {
   // reject the 4th/5th with a genuine 429 that has nothing to do with the
   // gateway under test. This bypass exists for exactly this kind of test.
   process.env.CONCORD_RATE_LIMIT_BYPASS = "1";
+  // Under full-suite contention the event-loop-lag shedder can 503 a
+  // registration call that has nothing to do with what this file tests (same
+  // fix already applied to edge-cases-critical-paths.test.js, error-paths.test.js,
+  // and the 7 e2e spawnServer() files).
+  process.env.CONCORD_LOAD_SHED_ENABLED = "0";
 
   const mod = await import("../server.js");
   __TEST__ = mod.__TEST__;

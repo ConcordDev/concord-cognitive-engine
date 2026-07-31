@@ -33,11 +33,41 @@ extends Node3D
 ## doesn't have yet (no ground mesh under `scene_bootstrap.gd`'s placeholder
 ## boxes) — mounting one here would silently fall through the world forever,
 ## which is worse than not mounting it at all. That is separate, already
-## in-flight movement/character work, not this unit's scope.
+## in-flight movement/character work, not this unit's scope. This is also
+## exactly why a camera-only SPECTATE mode (R6, below) is a safe first
+## shippable milestone: it needs none of that missing collision geometry.
+##
+## ── R6 — reconnect resync + remote-avatar rendering + spectator mode ───────
+## Three additions, all client-side (no new server protocol needed — see
+## net/gateway_client.gd's class doc for why `_seq` itself can't drive a
+## "since-N" resync, and why the reconnect (`_on_authenticated` firing again)
+## is the real trigger instead):
+##   1. `_on_authenticated` now replays EVERY room this client had joined
+##      (not just the one hardcoded world room) and resets ConKay's one-shot
+##      presence state — a `macro:completed` missed while disconnected would
+##      otherwise leave a stuck "busy" indicator with nothing left to ever
+##      clear it.
+##   2. `AvatarManager` (avatar/avatar_manager.gd) is now mounted and fed
+##      from `city:positions` — it existed, fully built and tested, with NO
+##      live caller anywhere in this tree until this unit (see that file's
+##      own header and city-presence.js's DET-C batch 8 comment for the
+##      history). `city:npcs` is NOT wired here: that broadcast was
+##      DELIBERATELY RETIRED server-side (city-presence.js, same comment) —
+##      re-adding a client subscriber for an event the server no longer
+##      emits would be dead code, not a fix.
+##   3. `spectator_mode` (env `CONCORD_GODOT_SPECTATOR`) requests
+##      SessionManager.Mode.SPECTATE once authenticated — a free-fly,
+##      no-character-input camera anyone can point at a running world
+##      without needing a spawn point or collision geometry. This is the
+##      "first shippable milestone" read-only spectator viewer: static
+##      geometry (scene:request), other players moving (AvatarManager, this
+##      unit), and ambient air traffic (already wired) are all real,
+##      already-broadcast state — nothing here fabricates a frame of it.
 
 const GatewayClient := preload("res://net/gateway_client.gd")
 const SceneBootstrap := preload("res://world/scene_bootstrap.gd")
 const AerialTrafficController := preload("res://world/aerial_traffic_controller.gd")
+const AvatarManager := preload("res://avatar/avatar_manager.gd")
 const ConKayPresence := preload("res://conkay/conkay_presence.gd")
 const SessionManager := preload("res://session/session_manager.gd")
 const CameraRig := preload("res://session/camera_rig.gd")
@@ -54,15 +84,26 @@ const FeaSceneBuilder := preload("res://engineering/fea_scene_builder.gd")
 @export var auth_token: String = ""
 @export var api_key: String = ""
 @export var world_id: String = "concordia-hub"
+## R6 — CONCORD_GODOT_SPECTATOR. A literal "true"/"1" opts into the
+## read-only spectator viewer milestone (SessionManager.Mode.SPECTATE) the
+## moment auth succeeds; any other value (including unset/blank) leaves the
+## client in ordinary WORLD mode, matching the string/bool convention
+## resolve_runtime_config already established for the other three vars.
+@export var spectator_mode: bool = false
 
 var _gateway: GatewayClient
 var _bootstrap: SceneBootstrap
 var _aerial_traffic: AerialTrafficController
+var _avatar_manager: AvatarManager
 var _conkay: ConKayPresence
 var _session: SessionManager
 var _camera_rig: CameraRig
 var _design_playtest: DesignPlaytestClient
 var _fea_scene: FeaSceneBuilder
+
+## R6 — every room this client has asked to join, replayed in full on every
+## successful (re)auth by `_on_authenticated` (see this file's class doc).
+var _joined_rooms: Array[String] = []
 
 
 ## Pure static so it's unit-testable without a scene tree (same rationale as
@@ -82,6 +123,13 @@ static func resolve_runtime_config(env: Dictionary, defaults: Dictionary) -> Dic
 		resolved["auth_token"] = env["CONCORD_GODOT_AUTH_TOKEN"]
 	if not String(env.get("CONCORD_WORLD_ID", "")).is_empty():
 		resolved["world_id"] = env["CONCORD_WORLD_ID"]
+	# R6 — a literal "true" or "1" only; anything else (including unset,
+	# blank, or a typo like "yes") leaves `spectator_mode` at its default
+	# rather than guessing at truthiness, matching the honest-default
+	# convention every other override here already follows.
+	var spectator_env := String(env.get("CONCORD_GODOT_SPECTATOR", ""))
+	if spectator_env == "true" or spectator_env == "1":
+		resolved["spectator_mode"] = true
 	return resolved
 
 
@@ -91,16 +139,19 @@ func _ready() -> void:
 		"CONCORD_GODOT_API_KEY": OS.get_environment("CONCORD_GODOT_API_KEY"),
 		"CONCORD_GODOT_AUTH_TOKEN": OS.get_environment("CONCORD_GODOT_AUTH_TOKEN"),
 		"CONCORD_WORLD_ID": OS.get_environment("CONCORD_WORLD_ID"),
+		"CONCORD_GODOT_SPECTATOR": OS.get_environment("CONCORD_GODOT_SPECTATOR"),
 	}
 	var _defaults := {
 		"gateway_url": gateway_url, "api_key": api_key,
 		"auth_token": auth_token, "world_id": world_id,
+		"spectator_mode": spectator_mode,
 	}
 	var _cfg := resolve_runtime_config(_env, _defaults)
 	gateway_url = _cfg["gateway_url"]
 	api_key = _cfg["api_key"]
 	auth_token = _cfg["auth_token"]
 	world_id = _cfg["world_id"]
+	spectator_mode = _cfg["spectator_mode"]
 
 	_bootstrap = SceneBootstrap.new()
 	add_child(_bootstrap)
@@ -111,6 +162,15 @@ func _ready() -> void:
 	_aerial_traffic = AerialTrafficController.new()
 	_aerial_traffic.world_id = world_id
 	add_child(_aerial_traffic)
+
+	# R6 — remote player avatars (avatar/avatar_manager.gd's own class doc
+	# explains why this had never been mounted anywhere before this unit).
+	# `base_url` isn't consulted for `city:positions`-driven puppets today
+	# (only used by AvatarRig's optional GLB-asset resolution), set for
+	# parity with the other REST-touching nodes mounted below regardless.
+	_avatar_manager = AvatarManager.new()
+	_avatar_manager.base_url = "http://127.0.0.1:5050"
+	add_child(_avatar_manager)
 
 	# R5/E22 — ConKay spatial mode. Same identity as the web widget, given a
 	# presence here; see conkay/conkay_presence.gd's class doc. `user:<id>`
@@ -170,6 +230,7 @@ func _ready() -> void:
 	_gateway.authenticated.connect(_on_authenticated)
 	_gateway.disconnected.connect(_on_disconnected)
 	_gateway.event_received.connect(_on_event)
+	_gateway.sequence_anomaly.connect(_on_sequence_anomaly)
 
 	_gateway.connect_to_gateway()
 
@@ -180,12 +241,37 @@ func _on_connected() -> void:
 
 func _on_authenticated(user_id: String) -> void:
 	print("[boot] authenticated as ", user_id)
-	_gateway.send_event("room:join", {"room": "world:%s" % world_id})
+	# R6 — every successful auth (including a reconnect, since `authenticated`
+	# fires again on each one) is treated as a full resync point: re-join
+	# every room this client had joined (not just the world room this method
+	# used to hardcode), re-request the world's full scene snapshot, and let
+	# ConKay's one-shot-derived presence state start clean rather than risk
+	# showing a stuck "busy" indicator from a macro:completed that was missed
+	# entirely while offline. `city:positions`/`world:aerial-traffic` need no
+	# equivalent action here — their own ~100ms/~15s broadcast cadence
+	# self-heals on the very next tick with no special-casing (see
+	# net/gateway_client.gd's class doc for the full reasoning on why `_seq`
+	# itself cannot drive this instead).
+	var world_room := "world:%s" % world_id
+	if not _joined_rooms.has(world_room):
+		_joined_rooms.append(world_room)
+	for room in _joined_rooms:
+		_gateway.send_event("room:join", {"room": room})
 	_gateway.send_event("scene:request", {"worldId": world_id})
+	_conkay.reset()
+	if spectator_mode:
+		_session.request_mode(SessionManager.Mode.SPECTATE)
 
 
 func _on_disconnected(reason: String) -> void:
 	print("[boot] disconnected: ", reason)
+
+
+func _on_sequence_anomaly(seq: int, last_seen: int) -> void:
+	# R6 — diagnostic only, see gateway_client.gd's class doc: this can only
+	# fire on genuine out-of-order/duplicate delivery, never on an ordinary
+	# large jump (which is the normal case for this shared counter).
+	print("[boot] gateway _seq anomaly: got ", seq, " after ", last_seen)
 
 
 func _on_event(evt: String, data: Dictionary) -> void:
@@ -194,6 +280,22 @@ func _on_event(evt: String, data: Dictionary) -> void:
 			_bootstrap.apply_scene(data)
 		"world:aerial-traffic":
 			_aerial_traffic.apply_snapshot(data, Time.get_ticks_msec())
+		"city:positions":
+			# R6 — see avatar/avatar_manager.gd's own header for why this had
+			# no live caller before this unit. Filters to THIS world only:
+			# the server broadcasts city:positions globally across every
+			# active city/world (city-presence.js#broadcastPositions has no
+			# room/world scoping), so an unfiltered ingest would spawn
+			# puppets for players in a completely different world. Uses
+			# `cityId` (server's own fallback name for worldId when a
+			# movement path only ever set the former — see
+			# city-presence.js's updateUserPosition). `city:npcs` is
+			# deliberately NOT handled here — that broadcast was retired
+			# server-side (no listener existed anywhere, ever); see this
+			# file's own class doc.
+			if event_matches_world(data, world_id):
+				_avatar_manager.ingest_snapshot(
+					Time.get_ticks_msec(), users_array_to_dict(data.get("users", [])), "player")
 		"macro:started", "macro:completed", "conkay:verdict":
 			# R5/E22 — ConKay spatial mode. Real facts only: an in-flight
 			# macro call (busy) and the last verdict's capability tier. See
@@ -206,6 +308,35 @@ func _on_event(evt: String, data: Dictionary) -> void:
 		_:
 			# Unhandled events are logged, not fatal.
 			pass
+
+
+## R6 — pure translation, no engine calls, so it's testable without a scene
+## tree (same rationale as resolve_runtime_config above).
+## `city:positions.users` ships as an ARRAY of {userId, x, y, z, ...}
+## (server/lib/city-presence.js#broadcastPositions) but
+## AvatarManager.ingest_snapshot expects a Dictionary keyed by id — the shape
+## `city:npcs` used to ship before it was retired server-side. Any entry
+## missing/blank `userId`, or that isn't itself a Dictionary, is dropped
+## rather than guessed at.
+static func users_array_to_dict(users: Array) -> Dictionary:
+	var out := {}
+	for u in users:
+		if typeof(u) != TYPE_DICTIONARY:
+			continue
+		var uid := String(u.get("userId", ""))
+		if uid.is_empty():
+			continue
+		out[uid] = u
+	return out
+
+
+## R6 — pure predicate, testable without a scene tree. `city:positions`
+## carries `cityId` (see users_array_to_dict's doc); falls back to a
+## `worldId` field too in case a future server revision ever sends one
+## directly, matching city-presence.js's own `worldId ?? cityId` fallback
+## convention.
+static func event_matches_world(data: Dictionary, expected_world_id: String) -> bool:
+	return String(data.get("cityId", data.get("worldId", ""))) == expected_world_id
 
 
 ## Real trigger for the FEA overlay — call with a real `{nodes, members,

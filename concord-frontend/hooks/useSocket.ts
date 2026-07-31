@@ -274,6 +274,16 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
   } = options;
 
   const socketRef = useRef<Socket | null>(null);
+  // Mirrors socketRef for the RETURNED `socket` value only — internal
+  // methods (emit/on/off/etc below) keep reading socketRef directly, since
+  // they want the always-current value without triggering a re-render on
+  // every read. Without this, a fresh (not-yet-connected) mount returns
+  // `socket: null` from this render even after the effect below has already
+  // assigned socketRef.current, because a ref write alone doesn't schedule
+  // a re-render — callers destructuring `socket` (useYjsAwareness,
+  // useRealtimeLens) would see null until some unrelated state change
+  // happened to re-render them.
+  const [socketState, setSocketState] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const listenersRef = useRef<Set<string>>(new Set());
@@ -384,6 +394,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
     }
 
     socketRef.current = socket;
+    setSocketState(socket);
     if (autoConnect && !socket.connected) socket.connect();
     if (socket.connected) setIsConnected(true);
 
@@ -397,6 +408,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
       manager?.off?.('reconnect_failed', onReconnectFailed);
       manager?.off?.('reconnect_attempt', onReconnectAttempt);
       socketRef.current = null;
+      setSocketState(null);
       listeners.clear();
       setIsConnected(false);
     };
@@ -439,7 +451,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
   }, []);
 
   return {
-    socket: socketRef.current,
+    socket: socketState,
     isConnected,
     status,
     connect,

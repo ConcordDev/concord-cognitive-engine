@@ -1234,7 +1234,7 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 // Wave 1 deferral 5: reads the player's stored quality preset (set via /lenses/settings)
-import { getStoredQualityPreset } from '@/lib/world-lens/quality-preset';
+import { getStoredQualityPreset, hasStoredQualityPreset } from '@/lib/world-lens/quality-preset';
 import { dispatchBuildingInteractEvent } from '@/lib/world-lens/building-interact-dispatch';
 import WorldEntryOverlay from '@/components/world-lens/WorldEntryOverlay';
 import { emitHitNumber, emitScreenShake, emitHitStop } from '@/components/world/ImpactFeedback';
@@ -5144,7 +5144,14 @@ export default function WorldLensPage() {
           >
           <ConcordiaScene
             districtId={currentWorldId}
-            quality={getStoredQualityPreset()}
+            // R7 — `undefined` (not getStoredQualityPreset()'s 'medium'
+            // default) when the player has never explicitly chosen a
+            // preset, so ConcordiaScene's own `initialQuality === undefined`
+            // check can tell "no preference, auto-detect from hardware"
+            // apart from "explicitly chose medium" — see that prop's own
+            // comment for why collapsing both into the string 'medium' was
+            // silently letting auto-detection override an explicit choice.
+            quality={hasStoredQualityPreset() ? getStoredQualityPreset() : undefined}
             theme={concordiaTheme}
             renderStyle={concordiaRenderStyle}
             cameraMode={cameraMode}
