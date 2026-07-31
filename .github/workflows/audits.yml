@@ -35,10 +35,17 @@ permissions:
 jobs:
   structural-audits:
     runs-on: ubuntu-latest
-    # Bumped 30→45: the step also runs the full server test suite incl. the
-    # behavior smoke suite (~8min local / longer on CI runners). 30min could
-    # clip a slow run mid-behavior; 45 leaves margin under the heavier load.
-    timeout-minutes: 45
+    # Bumped 30→45→65 (2026-07-31): 45 was still too tight. CLAUDE.md's own
+    # measured baseline for `test:main` ALONE on a real CI runner is 38m23s
+    # (server/tests, flagless); this job also runs `test:behavior` after it
+    # (whose one big file has its own 900s/15min --test-timeout) plus several
+    # earlier audit steps (value-assertion harnesses, macro-depth/ux-polish
+    # grading, content census) before `test:ci` even starts. Those durations
+    # alone sum past 45min under real CI contention — observed directly: a
+    # run cancelled at 45m13s with `npm run test:behavior` still an orphaned,
+    # unfinished child process, not a real failure. 65 leaves real margin
+    # over the documented worst case instead of matching the optimistic one.
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
