@@ -67,6 +67,11 @@ import { runHardcodedLiteralDataPropDetector } from "./hardcoded-literal-data-pr
 import { runDomainReachabilityDetector } from "./domain-reachability-detector.js";
 import { runLensManifestCapabilityDetector } from "./lens-manifest-capability-detector.js";
 import { runConstantTimeDetector } from "./constant-time-detector.js";
+import { runPublicReadWriteVerbDetector } from "./public-read-write-verb-detector.js";
+import { runWorldShardWriteBoundaryDetector } from "./world-shard-write-boundary-detector.js";
+import { runInternalActorStampDetector } from "./internal-actor-stamp-detector.js";
+import { runCheckerSelfCoverageDetector } from "./checker-self-coverage-detector.js";
+import { runDocClaimResolutionDetector } from "./doc-claim-resolution-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -696,6 +701,64 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "AST-based: flags secret-dependent branches, secret-dependent array/object indexing, and secret-dependent loop bounds/early-exits (the classic non-constant-time-compare pattern) across server/ — the timing-side-channel precondition, not a hardware-level proof.",
   run: runConstantTimeDetector,
+});
+
+// ── "What other bugs could there even be" wave (2026-07-31) ────────────────
+// Five detectors for the five specific bug categories identified while
+// debugging PR #875's CI: (1) an auth surface trusted to self-police that
+// might not, matching the exact shape of the SEC-3 RBAC bug; (2) a
+// production write happening from the wrong process boundary, a class
+// invisible in every normal test run because CONCORD_SHARD_WORLDS defaults
+// off; (3) the exact `{ ...actor, internal: true }` shape that let
+// jobs.enqueue grant privileges it shouldn't have (fixed 2026-07-27; this is
+// the permanent regression guard for the pattern, not a re-check of that one
+// site); (4) a meta-detector for checkers with no test proving they work in
+// either direction — seeded by two real instances found this same session
+// (the ssrf-guard/no-egress bypass, the emit-subscribe-pairing regex bug);
+// (5) a doc claiming something is fixed/closed while referencing a file or
+// symbol that no longer resolves, seeded by a stale external-fetch.js claim
+// found this session. Security-relevant but NOT tagged consumer:"security"
+// pending a measured false-positive pass on the real tree, same promotion
+// discipline documented above for secret-leak/constant-time.
+registerDetector({
+  id: "public-read-write-verb",
+  label: "PublicReadWriteVerbDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "A write-shaped macro name (create/update/delete/transfer/...) sitting in publicReadDomains (Gate 2, anonymous-callable) whose handler shows no ownership-check idiom.",
+  run: runPublicReadWriteVerbDetector,
+});
+registerDetector({
+  id: "world-shard-write-boundary",
+  label: "WorldShardWriteBoundaryDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "A route or scope:'global' heartbeat writing directly to a PER_WORLD_WRITE_TABLES table — invisible with CONCORD_SHARD_WORLDS off, a real race once sharding is enabled.",
+  run: runWorldShardWriteBoundaryDetector,
+});
+registerDetector({
+  id: "internal-actor-stamp",
+  label: "InternalActorStampDetector",
+  consumers: ["code-quality", "repair-cortex", "security"],
+  dataNeeds: ["fs"],
+  description: "`{ ...var, internal: true }` or `x.internal = true` on a non-literal target — the jobs.enqueue privilege-escalation shape (fixed 2026-07-27; permanent regression guard).",
+  run: runInternalActorStampDetector,
+});
+registerDetector({
+  id: "checker-self-coverage",
+  label: "CheckerSelfCoverageDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "A detector or gate script with no test anywhere referencing it — nothing proves it's correct in either direction (false-positive or false-negative).",
+  run: runCheckerSelfCoverageDetector,
+});
+registerDetector({
+  id: "doc-claim-resolution",
+  label: "DocClaimResolutionDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "A 'fixed/closed/resolved' doc claim naming a specific file or symbol that no longer exists in the tree.",
+  run: runDocClaimResolutionDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same
