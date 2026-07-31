@@ -108,7 +108,7 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
   const selectedIdRef = useRef<string | null>(null);
   const neighborIdsRef = useRef<Set<string> | null>(null);
   const mousePos = useRef({ x: -1, y: -1 });
-  selectedIdRef.current = selectedId;
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
 
   // Build the simulation state. Restart whenever the node list changes
   // identity; edges alone don't reseed because we keep positions.
@@ -148,7 +148,7 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
     }
     return s;
   }, [selectedId, sim]);
-  neighborIdsRef.current = neighborIds;
+  useEffect(() => { neighborIdsRef.current = neighborIds; }, [neighborIds]);
 
   // Escape clears the local-graph focus.
   useEffect(() => {

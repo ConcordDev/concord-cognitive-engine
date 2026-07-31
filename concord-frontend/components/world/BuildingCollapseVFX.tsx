@@ -14,7 +14,7 @@
  * where the building actually was.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 interface BuildingStateEvent {
   worldId?: string;
@@ -48,8 +48,6 @@ const PUFF_DURATION_MS = 600;
 
 export default function BuildingCollapseVFX({ worldId, getCamera }: Props) {
   const [items, setItems] = useState<VFXItem[]>([]);
-  const itemsRef = useRef<VFXItem[]>([]);
-  itemsRef.current = items;
 
   const handle = useCallback((e: Event) => {
     const ce = e as CustomEvent<BuildingStateEvent>;

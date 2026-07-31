@@ -80,7 +80,9 @@ export function CombatPolishHUD({ userId }: { userId: string | null }) {
   const [parryGlintAt, setParryGlintAt] = useState(0);
   const [rockedTick, setRockedTick] = useState(0);
   const stateRef = useRef<CombatActorState | null>(null);
-  stateRef.current = state;
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // ── Bootstrap state on mount ──
   useEffect(() => {

@@ -128,7 +128,6 @@ export default function RootLens() {
   const [opB, setOpB] = useState('');
   const [op, setOp] = useState('+');
   const [showSemantic, setShowSemantic] = useState(true);
-  const [glyphError, setGlyphError] = useState('');
 
   /* Decimal → glyph */
   const dec2glyph = useMemo(() => {
@@ -139,9 +138,15 @@ export default function RootLens() {
 
   /* Glyph → decimal */
   const glyph2dec = useMemo(() => {
-    if (!glyphInput.trim()) { setGlyphError(''); return null; }
-    try { const v = glyphsToDecimal(glyphInput.trim()); setGlyphError(''); return v; }
-    catch (e) { setGlyphError(e instanceof Error ? e.message : String(e)); return null; }
+    if (!glyphInput.trim()) return null;
+    try { return glyphsToDecimal(glyphInput.trim()); }
+    catch { return null; }
+  }, [glyphInput]);
+
+  const glyphError = useMemo(() => {
+    if (!glyphInput.trim()) return '';
+    try { glyphsToDecimal(glyphInput.trim()); return ''; }
+    catch (e) { return e instanceof Error ? e.message : String(e); }
   }, [glyphInput]);
 
   /* Operation result */

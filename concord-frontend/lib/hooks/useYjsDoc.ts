@@ -47,13 +47,18 @@ export function useYjsDoc({ scope, docId, enabled = true }: UseYjsDocOptions): U
   const [synced, setSynced] = useState(false);
   const [socketReady, setSocketReady] = useState(false);
   const [resetVersion, setResetVersion] = useState(0);
-  const docRef = useRef<Y.Doc | null>(null);
+  // Real state (not a ref) so the returned `doc` re-renders consumers the
+  // moment it changes — on mount, `synced`/`socketReady` are already false,
+  // so setSynced(false)/setSocketReady(false) below are no-ops that would
+  // NOT have triggered a render, leaving a ref-based `doc` stale (null)
+  // until the socket happened to connect and flip socketReady later.
+  const [docInstance, setDocInstance] = useState<Y.Doc | null>(null);
 
   useEffect(() => {
     if (!enabled || !docId || typeof window === 'undefined') return;
 
     const doc = new Y.Doc();
-    docRef.current = doc;
+    setDocInstance(doc);
     setSynced(false);
     setSocketReady(false);
 
@@ -155,9 +160,9 @@ export function useYjsDoc({ scope, docId, enabled = true }: UseYjsDocOptions): U
       try { doc.off('update', onLocalUpdate); } catch { /* ignore */ }
       try { socket?.disconnect(); } catch { /* ignore */ }
       try { doc.destroy(); } catch { /* ignore */ }
-      docRef.current = null;
+      setDocInstance(null);
     };
   }, [enabled, scope, docId]);
 
-  return { doc: docRef.current, synced, socketReady, resetVersion };
+  return { doc: docInstance, synced, socketReady, resetVersion };
 }

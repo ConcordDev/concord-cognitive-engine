@@ -81,7 +81,10 @@ export function Soundboard({
 
     if (tab === 'all' || tab === 'instruments') {
       synthPresets.forEach(p => {
-        items.push({ id: p.id, type: 'instrument', title: p.name, tags: p.tags, timestamp: Date.now(), data: { preset: p }, favorite: favoriteIds.has(p.id) });
+        // Catalog presets have no real creation time — a fixed 0 (not Date.now())
+        // keeps them stably sorted after real dated items instead of jittering to
+        // the top with a fresh timestamp on every recompute.
+        items.push({ id: p.id, type: 'instrument', title: p.name, tags: p.tags, timestamp: 0, data: { preset: p }, favorite: favoriteIds.has(p.id) });
       });
       instrumentDTUs.forEach(e => {
         const id = String(e.data.presetId || e.timestamp);
@@ -98,7 +101,8 @@ export function Soundboard({
 
     if (tab === 'all' || tab === 'patterns') {
       drumPatterns.forEach(p => {
-        items.push({ id: p.id, type: 'pattern', title: p.name, tags: ['pattern', 'drums'], timestamp: Date.now(), data: { pattern: p }, favorite: favoriteIds.has(p.id) });
+        // Same stable-sort reasoning as the instrument-preset push above.
+        items.push({ id: p.id, type: 'pattern', title: p.name, tags: ['pattern', 'drums'], timestamp: 0, data: { pattern: p }, favorite: favoriteIds.has(p.id) });
       });
       patternDTUs.forEach(e => {
         const id = String(e.timestamp);

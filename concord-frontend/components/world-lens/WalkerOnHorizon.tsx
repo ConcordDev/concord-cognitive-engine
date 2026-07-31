@@ -76,7 +76,7 @@ const WALKER_MATERIAL = new THREE.MeshStandardMaterial({
 export default function WalkerOnHorizon({ worldId, anchorPositions }: Props) {
   const [journeys, setJourneys] = useState<Map<string, WalkerJourney>>(new Map());
   const journeysRef = useRef(journeys);
-  journeysRef.current = journeys;
+  useEffect(() => { journeysRef.current = journeys; }, [journeys]);
 
   // Subscribe to walker:dispatched on mount; remove on
   // concord-link:delivered. We keep the journey state in a Map keyed

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -255,28 +255,19 @@ export default function SoundSystem({
 }: SoundSystemProps) {
   const { setSoundscape, setWeather, setMusic, setInterior } = useSoundSystem();
 
-  // Sync props to sound state on each render
-  const prevDistrictRef = useRef<string | undefined>();
-  const prevWeatherRef = useRef<WeatherAudio | undefined>();
-  const prevMusicRef = useRef<MusicTrack | null | undefined>();
-  const prevInteriorRef = useRef<boolean | undefined>();
-
-  if (districtId !== undefined && districtId !== prevDistrictRef.current) {
-    prevDistrictRef.current = districtId;
-    setSoundscape(districtId);
-  }
-  if (weather !== undefined && weather !== prevWeatherRef.current) {
-    prevWeatherRef.current = weather;
-    setWeather(weather);
-  }
-  if (musicTrack !== undefined && musicTrack !== prevMusicRef.current) {
-    prevMusicRef.current = musicTrack;
-    setMusic(musicTrack);
-  }
-  if (isInterior !== undefined && isInterior !== prevInteriorRef.current) {
-    prevInteriorRef.current = isInterior;
-    setInterior(isInterior);
-  }
+  // Sync props to sound state when they change
+  useEffect(() => {
+    if (districtId !== undefined) setSoundscape(districtId);
+  }, [districtId, setSoundscape]);
+  useEffect(() => {
+    if (weather !== undefined) setWeather(weather);
+  }, [weather, setWeather]);
+  useEffect(() => {
+    if (musicTrack !== undefined) setMusic(musicTrack);
+  }, [musicTrack, setMusic]);
+  useEffect(() => {
+    if (isInterior !== undefined) setInterior(isInterior);
+  }, [isInterior, setInterior]);
 
   // This component renders nothing — it only manages audio state.
   return null;

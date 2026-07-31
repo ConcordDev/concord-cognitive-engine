@@ -573,7 +573,7 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
   const [matched, setMatched] = useState(0);
   const cursorRef = useRef<string | null>(null);
   const filterRef = useRef('');
-  filterRef.current = nameFilter;
+  useEffect(() => { filterRef.current = nameFilter; }, [nameFilter]);
 
   const poll = useCallback(async (reset: boolean) => {
     const r = await lensRun('analytics', 'event-stream', {

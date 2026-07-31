@@ -754,7 +754,11 @@ export default function CollabLensPage() {
 
 function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () => void }) {
   const TypeIcon = TYPE_ICONS[session.projectType];
-  const elapsed = Date.now() - session.startedAt;
+  const [elapsed, setElapsed] = useState(() => Date.now() - session.startedAt);
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(Date.now() - session.startedAt), 1000);
+    return () => clearInterval(t);
+  }, [session.startedAt]);
   const isPrivate = session.privacy === 'private' || session.privacy === 'invite-only';
 
   return (
