@@ -103,14 +103,30 @@ async function waitForGovernor() {
 // bounded wait, not indefinite - if lag never settles that's itself a real
 // regression the caller should see (falls through and lets the subsequent
 // registration failures surface it).
+// A single dip below threshold is not enough - measured live, lag can
+// settle once (e.g. 954ms) and then re-spike (1029ms) and keep oscillating
+// for 90-120s+ while RSS feed polling continues well past the first tick.
+// Require several CONSECUTIVE clean samples, spaced out, before declaring
+// settled; any breach resets the streak. Also widen the wait budget to
+// match the observed real ramp-down window.
 const LAG_SETTLE_THRESHOLD_MS = 250;
-async function waitForLagSettle(maxWaitS = 60) {
+const LAG_SETTLE_REQUIRED_STREAK = 5;
+const LAG_SETTLE_SAMPLE_INTERVAL_MS = 2000;
+async function waitForLagSettle(maxWaitS = 150) {
   const deadline = Date.now() + maxWaitS * 1000;
+  let streak = 0;
   while (Date.now() < deadline) {
     const lag = (await metrics()).concord_event_loop_lag_ms;
-    if (lag == null || lag <= LAG_SETTLE_THRESHOLD_MS) return true;
-    process.stdout.write(`(lag ${lag.toFixed(0)}ms) `);
-    await sleep(1000);
+    if (lag == null || lag <= LAG_SETTLE_THRESHOLD_MS) {
+      streak++;
+      process.stdout.write(`(ok ${streak}/${LAG_SETTLE_REQUIRED_STREAK}) `);
+      if (streak >= LAG_SETTLE_REQUIRED_STREAK) return true;
+    } else {
+      if (streak > 0) process.stdout.write(`(reset, lag ${lag.toFixed(0)}ms) `);
+      else process.stdout.write(`(lag ${lag.toFixed(0)}ms) `);
+      streak = 0;
+    }
+    await sleep(LAG_SETTLE_SAMPLE_INTERVAL_MS);
   }
   return false;
 }
