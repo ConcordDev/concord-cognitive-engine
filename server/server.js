@@ -2158,20 +2158,36 @@ const _securityLoadErrors = [];
 // load failure in CI showed up only as a downstream 503 on /api/auth/register
 // with no way to see why. Log unconditionally so a future flake is
 // diagnosable from the server log CI already dumps on failure.
-try { jwt = (await import("jsonwebtoken")).default; } catch (e) {
+//
+// These dynamic imports were also observed to fail intermittently in CI with
+// no reproducible cause (transient fs/cache contention on a shared runner,
+// not a missing package — `npm ci` had already installed it). A bounded
+// retry costs nothing on the success path and turns a transient blip into a
+// non-event instead of a flaked gate.
+async function importWithRetry(specifier, attempts = 3, delayMs = 200) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try { return await import(specifier); } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+try { jwt = (await importWithRetry("jsonwebtoken")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`jsonwebtoken: ${e.message}`);
   else logger.warn('server', 'jsonwebtoken failed to load', { error: e?.message, stack: e?.stack });
 }
-try { bcrypt = (await import("bcryptjs")).default; } catch (e) {
+try { bcrypt = (await importWithRetry("bcryptjs")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`bcryptjs: ${e.message}`);
   else logger.warn('server', 'bcryptjs failed to load', { error: e?.message, stack: e?.stack });
 }
 try { z = (await import("zod")).z || (await import("zod")).default?.z; } catch (_e) { logger.debug('server', 'optional in all envs', { error: _e?.message }); }
-try { rateLimit = (await import("express-rate-limit")).default; } catch (e) {
+try { rateLimit = (await importWithRetry("express-rate-limit")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`express-rate-limit: ${e.message}`);
   else logger.warn('server', 'express-rate-limit failed to load', { error: e?.message, stack: e?.stack });
 }
-try { helmet = (await import("helmet")).default; } catch (e) {
+try { helmet = (await importWithRetry("helmet")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`helmet: ${e.message}`);
   else logger.warn('server', 'helmet failed to load', { error: e?.message, stack: e?.stack });
 }
