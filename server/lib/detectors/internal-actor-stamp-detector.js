@@ -47,6 +47,12 @@ const ALLOWLIST = [
     reason:
       "runJob() gates this stamp behind an explicit isSystemJob check (job.actor.internal===true or role in {system,owner,founder}); a user-enqueued job takes the OTHER branch and gets ctx.internal=false + actor.internal=false. Fixed + reviewed 2026-07-27.",
   },
+  {
+    file: "server.js",
+    nearText: "function makeInternalCtx(source",
+    reason:
+      "This IS the canonical, single, trusted factory that mints an internal ctx (`makeInternalCtx`) — not a caller-influenced spread/assign. It unconditionally marks the context as internal regardless of its `source` parameter; `source` only ever becomes the actor's userId (an attribution string), never the internal-flag's value, so a caller cannot toggle whether internal status is granted by calling this function. The real question for this pattern is REACHABILITY — which code paths call makeInternalCtx(), not what its own definition does — and that's a call-site-by-call-site review question this static detector can't answer generically (the same reason the jobs.enqueue bug was a reachability bug, not a value-control bug). Reviewed 2026-07-31 (public-read-write-verb-detector pass).",
+  },
 ];
 
 function isAllowlisted(rel, content, matchIndex) {
@@ -94,11 +100,21 @@ export async function runInternalActorStampDetector({ root, opts = {} } = {}) {
   const t0 = Date.now();
   if (!root) return makeError("internal-actor-stamp", "no_root", null, t0);
   try {
+    // server/lib/detectors/*.js is excluded: this whole suite is static
+    // analysis code that never constructs a privileged runtime ctx, and its
+    // own ALLOWLIST entries necessarily quote the risky pattern in prose
+    // (a `reason:` STRING, which stripComments() correctly does not touch —
+    // stripping string content would be wrong in general). This detector
+    // self-matched its own allowlist reason text twice this session before
+    // this exclusion was added; excluding the directory is the durable fix,
+    // not just careful wording (which the next added ALLOWLIST entry could
+    // just as easily reintroduce).
+    const detectorsDir = path.join(root, "server", "lib", "detectors") + path.sep;
     const files = [
       path.join(root, "server", "server.js"),
       ...(await walk(path.join(root, "server", "domains"), [".js"])),
       ...(await walk(path.join(root, "server", "routes"), [".js"])),
-      ...(await walk(path.join(root, "server", "lib"), [".js"])),
+      ...(await walk(path.join(root, "server", "lib"), [".js"])).filter((f) => !f.startsWith(detectorsDir)),
     ];
 
     const findings = [];

@@ -22,6 +22,39 @@
 // Both scanned for a write statement (INSERT/UPDATE/DELETE, or a bare
 // db.prepare(...).run(...) built from a template containing the table name)
 // targeting a table in PER_WORLD_WRITE_TABLES.
+//
+// Severity + fingerprinting, corrected after running this detector against
+// the live tree (not just synthetic fixtures):
+//
+// - `world_shard_write_from_global_heartbeat` never set a `location` field
+//   at all. The ratchet fingerprints on sha256(detector|ruleId|location|
+//   severity), and an absent location becomes the empty string — so EVERY
+//   finding of this ruleId collapsed onto ONE shared fingerprint regardless
+//   of which heartbeat/table it was about, hiding all but the first from
+//   baseline/ratchet tracking (the exact bug class public-read-write-verb-
+//   detector was independently found and fixed for). Fixed: every finding
+//   now resolves the handler's real defining file, and `location` is that
+//   file's `path:line`, which is unique per handler.
+//
+// - Both finding severities were downgraded from "high" to "medium" after
+//   running against the live tree: CONCORD_SHARD_WORLDS defaults off, and —
+//   confirmed by reading world-shard-manager.js and grepping every call site
+//   of shardingEnabled() — NO write-forwarding plumbing exists anywhere in
+//   this codebase for HTTP routes today (the manager only forks child
+//   processes to run scope:"world" HEARTBEATS; there is no mechanism for a
+//   synchronous Express route to defer its write to a shard and wait for
+//   the result). That means virtually every per-world-table write in the
+//   ENTIRE codebase currently originates from the parent process — this is
+//   the app's actual, universal, working architecture today, not a
+//   localized bug in freshly-written code. A "high" severity blocking gate
+//   on a condition this systemic and this far from exploitable (sharding
+//   isn't live anywhere) would never be clearable without either building
+//   the (currently nonexistent) route-to-shard forwarding infrastructure
+//   for the whole app in one pass, or systematically muting the detector —
+//   neither of which this pass does. "Medium" keeps the signal — real,
+//   worth fixing when Phase F write-forwarding is actually built — without
+//   miscalibrating a first-time severity guess as an actionable blocker for
+//   debt that predates this detector and spans the whole write layer.
 
 import path from "node:path";
 import { readSafe, makeReport, makeError, relPath, lineOf, walk } from "./_framework.js";
@@ -51,6 +84,25 @@ export function findFunctionBody(blob, name) {
   return null;
 }
 function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+// Reviewed, confirmed-intentional instances — same posture as
+// internal-actor-stamp-detector.js's ALLOWLIST: named exact site + reason.
+const ALLOWLIST = [
+  {
+    heartbeat: "npc-ambition-cycle",
+    reason:
+      "Deliberately scope:'global' per the adjacent server.js comment (Phase T, right above the registerHeartbeat call): its top-N-ambitious query is a single cross-world budget with no world_id filter, and sharding it per-world would either duplicate-process the same rows on every shard or silently never run at all — the same documented tradeoff already made for its two sibling heartbeats (npc-travel-cycle, npc-vs-npc-combat). This is a reviewed, load-bearing design choice, not an oversight.",
+  },
+  {
+    heartbeat: "npc-travel-cycle",
+    reason:
+      "Same adjacent server.js comment as npc-ambition-cycle (Phase T): explicitly moves NPCs BETWEEN worlds in one operation and its candidate query has no world_id filter — sharding it per-world would either duplicate-process the same rows on every shard or silently never run at all. Reviewed, load-bearing design choice, not an oversight.",
+  },
+];
+
+function isAllowlisted(heartbeatName) {
+  return ALLOWLIST.some((a) => a.heartbeat === heartbeatName);
+}
 
 export async function runWorldShardWriteBoundaryDetector({ root, opts = {} } = {}) {
   const t0 = Date.now();
@@ -82,11 +134,11 @@ export async function runWorldShardWriteBoundaryDetector({ root, opts = {} } = {
         const lineNo = lineOf(content, m.index);
         findings.push({
           id: "world_shard_write_from_route",
-          severity: "high",
+          severity: "medium",
           kind: "static",
           category: "correctness",
           subject: { kind: "file", path: rel, table },
-          message: `${rel}:${lineNo} writes to per-world table "${table}" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true`,
+          message: `${rel}:${lineNo} writes to per-world table "${table}" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard write forwarding exists anywhere in this codebase yet (sharding only forks scope:'world' heartbeats), so this reflects the app's current universal architecture, not a localized new-code bug.`,
           location: `${rel}:${lineNo}`,
           evidence: { table, surface: "route" },
           fixHint: "move_write_into_world_shard_or_tag_scope_world",
@@ -95,19 +147,21 @@ export async function runWorldShardWriteBoundaryDetector({ root, opts = {} } = {
     }
 
     // (b) scope:"global" heartbeat handlers — resolve the handler function's
-    // definition anywhere under server/ and scan its body.
+    // definition anywhere under server/ and scan its body. Search each file
+    // individually (not one concatenated blob) so a resolved handler's
+    // location can point at its real defining file:line — a shared/absent
+    // location collapses every finding of this ruleId onto one fingerprint
+    // (see file header).
     const serverFiles = [
       path.join(root, "server", "server.js"),
       ...(await walk(path.join(root, "server", "emergent"), [".js"])),
       ...(await walk(path.join(root, "server", "lib"), [".js"])),
     ];
-    let wholeBlob = "";
     const blobByFile = [];
     for (const f of serverFiles) {
       const c = await readSafe(f);
       if (!c) continue;
-      blobByFile.push({ file: f, content: c });
-      wholeBlob += "\n" + c;
+      blobByFile.push({ rel: relPath(root, f), content: c });
     }
 
     const globalHeartbeats = [];
@@ -121,22 +175,31 @@ export async function runWorldShardWriteBoundaryDetector({ root, opts = {} } = {
       }
     }
 
-    let scanned = 0;
+    let scanned = 0, allowlistedCount = 0;
     for (const { name, handlerIdent } of globalHeartbeats) {
-      const found = findFunctionBody(wholeBlob, handlerIdent);
+      let found = null, foundRel = null, foundContent = null;
+      for (const bf of blobByFile) {
+        found = findFunctionBody(bf.content, handlerIdent);
+        if (found) { foundRel = bf.rel; foundContent = bf.content; break; }
+      }
       if (!found) continue; // can't locate — not a finding, just unresolved (info-level noise avoided)
       scanned++;
       writeRe.lastIndex = 0;
       let m;
       while ((m = writeRe.exec(found.body)) != null) {
         const table = m[1];
+        if (isAllowlisted(name)) { allowlistedCount++; continue; }
+        // Absolute offset within the real file = where the function body
+        // started + how far into that body the write statement is.
+        const lineNo = lineOf(foundContent, found.offset + m.index);
         findings.push({
           id: "world_shard_write_from_global_heartbeat",
-          severity: "high",
+          severity: "medium",
           kind: "static",
           category: "correctness",
           subject: { kind: "heartbeat", name, table },
-          message: `heartbeat "${name}" (scope:"global", handler ${handlerIdent}) writes to per-world table "${table}" — global-scope heartbeats run on the parent process and will race the world-shard writer once CONCORD_SHARD_WORLDS=true`,
+          message: `heartbeat "${name}" (scope:"global", handler ${handlerIdent} at ${foundRel}) writes to per-world table "${table}" — global-scope heartbeats run on the parent process and will race the world-shard writer once CONCORD_SHARD_WORLDS=true.`,
+          location: `${foundRel}:${lineNo}:${name}`,
           evidence: { heartbeat: name, handlerIdent, table, surface: "global-heartbeat" },
           fixHint: "retag_heartbeat_scope_world_or_move_write_into_shard",
         });
@@ -148,8 +211,8 @@ export async function runWorldShardWriteBoundaryDetector({ root, opts = {} } = {
       severity: "info",
       kind: "static",
       category: "correctness",
-      message: `Scanned ${routeFiles.length} route file(s) + ${scanned}/${globalHeartbeats.length} resolvable global-scope heartbeat handler(s) against ${tables.size} per-world write-owned table(s)`,
-      evidence: { routeFiles: routeFiles.length, globalHeartbeats: globalHeartbeats.length, resolved: scanned, tableCount: tables.size },
+      message: `Scanned ${routeFiles.length} route file(s) + ${scanned}/${globalHeartbeats.length} resolvable global-scope heartbeat handler(s) against ${tables.size} per-world write-owned table(s); ${allowlistedCount} write(s) already reviewed+allowlisted`,
+      evidence: { routeFiles: routeFiles.length, globalHeartbeats: globalHeartbeats.length, resolved: scanned, tableCount: tables.size, allowlistedCount },
     });
 
     return makeReport("world-shard-write-boundary", findings, t0);

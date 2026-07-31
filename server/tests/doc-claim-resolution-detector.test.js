@@ -105,6 +105,31 @@ describe("doc-claim-resolution detector — end to end", () => {
     assert.ok(hit, "a genuinely stale shorthand ref with no external-repo citation nearby must still be flagged");
   });
 
+  it("STILL flags a claim citing a lookalike host that is NOT github.com (host-anchoring — CodeQL alert #4772)", async () => {
+    // "notgithub.com/x" and "evilgithubusercontent.com" contain the strings
+    // "github.com/" and "githubusercontent.com" as unanchored substrings —
+    // the pre-fix regex (no left-boundary) would have treated these as a
+    // real external-repo citation and wrongly suppressed the finding.
+    const claudeMd = `CLOSED — verified against notgithub.com/freelawproject/courtlistener \`cl/search/forms.py\`.`;
+    dir = await tmpRepo({ claudeMd });
+    const r = await runDocClaimResolutionDetector({ root: dir });
+    const hit = r.findings.find((f) => f.evidence?.ref === "cl/search/forms.py");
+    assert.ok(hit, "a lookalike host (notgithub.com) must NOT be treated as the real github.com");
+  });
+
+  it("does NOT flag a file reference cited via a genuine dot-separated GitHub subdomain other than raw.", async () => {
+    // The host-anchor must allow ANY dot-separated subdomain of
+    // githubusercontent.com/github.com (real CDN/API hosts use several),
+    // not just the one literal fixture string "raw." — distinguishing a
+    // real subdomain (preceded by ".") from a glued-on lookalike prefix
+    // (preceded by a word character, no separator) is the actual fix.
+    const claudeMd = `CLOSED — re-fetched \`cl/search/forms.py\` from media.githubusercontent.com and confirmed the field.`;
+    dir = await tmpRepo({ claudeMd });
+    const r = await runDocClaimResolutionDetector({ root: dir });
+    const hit = r.findings.find((f) => f.evidence?.ref === "cl/search/forms.py");
+    assert.equal(hit, undefined, "any dot-separated githubusercontent.com subdomain is a real external-source signal");
+  });
+
   it("does NOT flag a `path:123` reference where 123 is a line number, not a symbol", async () => {
     const claudeMd = `Fixed at \`server/lib/real-file.js:42\`.`;
     dir = await tmpRepo({ claudeMd, serverFiles: { "real-file.js": "line1\nline2" } });

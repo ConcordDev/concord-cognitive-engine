@@ -10,10 +10,14 @@ import os from "node:os";
 import path from "node:path";
 import { runInternalActorStampDetector } from "../lib/detectors/internal-actor-stamp-detector.js";
 
-async function tmpRepo({ serverJs = "" }) {
+async function tmpRepo({ serverJs = "", detectorFiles = {} }) {
   const dir = await mkdtemp(path.join(os.tmpdir(), "ias-"));
   await mkdir(path.join(dir, "server"), { recursive: true });
+  await mkdir(path.join(dir, "server", "lib", "detectors"), { recursive: true });
   await writeFile(path.join(dir, "server", "server.js"), serverJs, "utf8");
+  for (const [name, content] of Object.entries(detectorFiles)) {
+    await writeFile(path.join(dir, "server", "lib", "detectors", name), content, "utf8");
+  }
   return dir;
 }
 
@@ -91,6 +95,28 @@ function realCode() {
     const r = await runInternalActorStampDetector({ root: dir });
     const nonInfo = r.findings.filter((f) => f.severity !== "info");
     assert.equal(nonInfo.length, 0, "a comment-only mention of the risky shape must not be flagged");
+  });
+
+  it("does NOT scan server/lib/detectors/*.js at all (self-match guard: an ALLOWLIST reason string quoting the risky pattern in prose must not self-flag)", async () => {
+    // Real bug found twice this session: a detector's own ALLOWLIST entry
+    // explains WHY a site is safe by describing the pattern in prose inside
+    // a `reason:` string — which stripComments() correctly does NOT strip
+    // (it's real string data, not a comment) — so the detector flagged its
+    // own explanatory text as a fresh violation. The durable fix is
+    // excluding server/lib/detectors/ from the scan entirely (this whole
+    // directory is static-analysis code that never constructs a privileged
+    // runtime ctx), not just careful wording.
+    const detectorFiles = {
+      "some-other-detector.js": `
+const ALLOWLIST = [{
+  reason: "this site sets ctx.internal = true safely because of a guard",
+}];
+`,
+    };
+    dir = await tmpRepo({ serverJs: "", detectorFiles });
+    const r = await runInternalActorStampDetector({ root: dir });
+    const nonInfo = r.findings.filter((f) => f.severity !== "info");
+    assert.equal(nonInfo.length, 0, "server/lib/detectors/*.js must never be scanned by this detector");
   });
 
   it("does NOT flag a fully-literal system actor with no spread/variable", async () => {

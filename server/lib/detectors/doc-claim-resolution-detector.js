@@ -54,7 +54,19 @@ const PLACEHOLDER_RE = /path\/to\/|yourname|\.\.\.\//;
 // githubusercontent.com alone (no trailing path) is already a strong enough
 // external-source signal on its own; github.com specifically still requires
 // a path so a bare mention of "github.com" in passing doesn't over-trigger.
-const EXTERNAL_GITHUB_URL_RE = /githubusercontent\.com\b|github\.com\/(?!concorddev\/)[\w-]+(?:\/[\w.-]+)?/i;
+// Host-anchored (CodeQL flagged the prior version — "may match anywhere,
+// arbitrary hosts may come before or after it"): a negative lookbehind for
+// `[\w-]` (NOT `.`) immediately before "github" stops a substring match
+// inside a LOOKALIKE host label like "notgithub.com/x" or
+// "evilgithubusercontent.com" (glued directly onto the real label, no
+// separator) from being read as the real github.com/githubusercontent.com
+// host, while still allowing a genuine dot-separated subdomain like
+// "raw.githubusercontent.com" (real GitHub CDN host, and a fixture this
+// detector must keep recognizing — see the doc-claim-resolution test).
+// This scanner never makes a network request or an authz decision off this
+// regex (it only classifies doc prose), but the anchor is the correct fix
+// regardless of blast radius.
+const EXTERNAL_GITHUB_URL_RE = /(?<![\w-])githubusercontent\.com\b|(?<![\w-])github\.com\/(?!concorddev\/)[\w-]+(?:\/[\w.-]+)?/i;
 const EXTERNAL_OWNER_REPO_NEAR_GITHUB_RE = /\bGitHub\b[\s\S]{0,80}?\b(?!concorddev\/)([\w-]+)\/([\w.-]+)\b|\b([\w-]+)\/([\w.-]+)\b[\s\S]{0,80}?\bGitHub\b/i;
 
 function citesExternalRepo(line) {
