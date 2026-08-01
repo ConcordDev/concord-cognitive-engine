@@ -149,19 +149,33 @@ A pitch that hides these gets found out; one that names them gets believed:
   not a load test. A literal heavy-concurrency / high-volume-traffic run against the live
   deployment has not been performed. (`docs/STATE_OF_CONCORD.md §7`.)
 - **A handful of systems are research-grade** — the Foundation signal-layer (signal
-  tomography, EM-fingerprint identity) and some emergent-civilization systems are built
-  and wired but not battle-tested against the physical world. Flagged as such in the
-  inventory.
+  tomography, EM-fingerprint identity) and some emergent-civilization systems are built,
+  wired, and running today; "research-grade" here is a specific, narrow claim — not yet
+  validated against real-world physical conditions — not a broader claim that the code is
+  incomplete or unreal. Flagged as such in the inventory.
 - **"Novel" ≠ "global-first."** The inventory claims *distinctive / distinctively-
   composed*, grounded in the cited file — not that each item was invented here.
-- **The honest residual is external data + platform maturity, not a per-feature loss.**
+- **The honest residual is external data + external adoption, not a per-lens quality gap or a
+  missing-infrastructure gap — three different claims, easy to collapse into one and wrong to.**
   Post-WAVE4 every lens is built and judged to stand alone against its category leader
-  (CLAUDE.md's 4th/6th hard invariants), and many match or beat it on capability — so the
-  old "loses on any single checkbox" framing is retired as stale. What genuinely still
-  trails is narrower and specific: a set of lenses have documented **external-data gaps**
-  (no free/open feed for e.g. live flight pricing or CAD-grade parcel tiles — the
-  DATA-SOURCING rows in `docs/WAVE4_INVENTORY.md`), and platform *maturity* — scale,
-  ecosystem, brand — trails the incumbents. Those are the real limits, named honestly.
+  (CLAUDE.md's 4th/6th hard invariants), and many match or beat it on capability — so the old
+  "loses on any single checkbox" framing is retired as stale. What genuinely still trails is
+  narrower and specific: a set of lenses have documented **external-data gaps** (no free/open
+  feed for e.g. live flight pricing or CAD-grade parcel tiles — the DATA-SOURCING rows in
+  `docs/WAVE4_INVENTORY.md`), and Concord has no **external developer ecosystem** yet — nobody
+  outside the team has published a plugin, built an integration, or earned a certification.
+  **The infrastructure for that ecosystem is built, not missing**: a mounted MCP server with
+  OAuth 2.1 + PKCE and RFC 9728/8414 metadata (`server.js`, `mcp_server_mounted`), an
+  Ed25519-signed plugin gallery + a confined plugin-execution sandbox
+  (`server/lib/plugin-{gallery,signing,sandbox,api-version}.js`, ~1,100 LOC), and a publishable
+  SDK with examples and its own README (`sdk/`). `docs/DEVELOPER_PLATFORM_GTM.md` states this
+  plainly: *"the technical platform is already built... this doc is the motion, not the build."*
+  What's actually missing is **adoption** — external developers publishing to that gallery,
+  building against that SDK, earning a certification that doesn't exist yet — which cannot exist
+  before marketing does, on any project, regardless of how good the underlying infrastructure
+  is. Conflating "hasn't been marketed yet" with "can't do it" or "each lens is amateur" would be
+  its own dishonesty in the other direction; the per-lens quality claim above already answers
+  that question, and this bullet answers a different one.
 
 ---
 

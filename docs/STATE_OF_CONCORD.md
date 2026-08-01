@@ -1,119 +1,103 @@
-# State of Concord — verified snapshot (2026-06-09)
+# State of Concord — verified snapshot (2026-08-01)
 
 > Every number here is reproduced from a command, not memory. Re-run the command
 > in the caption to verify. This doc supersedes the stale counts scattered in
-> CLAUDE.md and AUDIT_INVENTORY.md (a 2026-06-09 sweep found 10 of 13 CLAUDE.md
-> count-claims had drifted — all **undercounting**; the real numbers are below).
+> CLAUDE.md and AUDIT_INVENTORY.md. **This is itself a re-refresh** — the prior
+> 2026-06-09 snapshot had drifted stale on every row in §1/§2/§3/§4 by the time
+> this pass checked it (all **undercounting**, same direction as the drift this
+> doc was originally written to correct — see the note in each section below).
+> The lesson generalizes: even a "verified snapshot" doc goes stale the moment
+> the codebase keeps growing after it's written; re-run the commands, don't
+> trust the date in this header past its own re-run.
 
 ## 1. Scale (reproduce: `npm run count-loc`)
 
-| Metric | Verified | Prior doc |
+| Metric | Verified (2026-08-01) | Prior doc (2026-06-09) |
 |---|---|---|
-| Authored **source** LOC | **2,160,246** (7,374 files) | ~2.05M (stale low) |
-| Authored **content** LOC | **851,292** (978 files) | — |
-| **Total** | **3,011,538** | ~2.91M (stale low) |
+| Authored **source** LOC | **2,624,326** (9,413 files) | 2,160,246 (stale low) |
+| Authored **content** LOC | **1,746,872** (2,951 files) | 851,292 (stale low) |
+| **Total** | **4,371,198** | 3,011,538 (stale low) |
 
-Top languages: js 1.13M · tsx 860k · ts 148k · mjs 13k. The counter honestly
-reclassifies 8 data-modules (168k lines, e.g. the deprecated 145k-line
+Top languages: js 1.40M · tsx 1.02M · ts 171k · mjs 24k. The counter honestly
+reclassifies 10 data-modules (172k lines, e.g. the deprecated 145k-line
 `server/dtus.js` seed pack at 0% code density) OUT of the source total.
 
 ## 2. Surface (reproduce commands in each row)
 
-| Surface | Verified | Reproduce |
+| Surface | Verified (2026-08-01) | Reproduce |
 |---|---|---|
-| Frontend lens directories | **265** | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
-| Lens wiring | **257 WIRED · 0 broken · 2 by-design** | `node scripts/verify-lens-backends.mjs` |
-| Macro domains | **492** | verifier `macroDomains` |
-| Route prefixes | **2,973** | verifier `routePrefixes` |
-| Backend domain files | **419** | `ls server/domains/*.js \| wc -l` |
-| Numbered migrations | **394** | `ls server/migrations/[0-9]*.js \| wc -l` |
+| Frontend lens directories | **266** | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
+| Lens wiring | **263 WIRED · 0 broken · 2 by-design** | `node scripts/verify-lens-backends.mjs` |
+| Macro domains | **547** | verifier `macroDomains` |
+| Route prefixes | **2,983** | verifier `routePrefixes` |
+| Backend domain files | **420** | `ls server/domains/*.js \| wc -l` |
+| Numbered migrations | **398 files** (highest `399`) | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **131** | `ls server/routes/*.js \| wc -l` |
-| Lib modules | **680** top (`ls server/lib/*.js \| wc -l`) · **1,035** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
-| `server/server.js` | **81,861 lines** | `wc -l server/server.js` |
-| DB tables (cartographer) | **690** | `npm run cartograph:static` |
-| Socket events | **277** | cartographer |
-| Heartbeats (registered) | **105 static** | cartographer / detector summary |
-| Macros (graded) | **8,825 pairs** | `npm run grade-macros` |
+| Lib modules | **691** top (`ls server/lib/*.js \| wc -l`) · **1,052** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
+| `server/server.js` | **83,290 lines** | `wc -l server/server.js` |
+| DB tables (cartographer) | **765** | `cd server && npm run cartograph:static` |
+| Socket events (cartographer) | **337** | cartographer |
+| Heartbeats (registered) | **168** | `grep -rohE "registerHeartbeat\(['\"][a-z0-9-]+['\"]" server/ \| sort -u \| wc -l` |
+| Macros (graded) | **9,495 pairs** | `npm run grade-macros` |
 
 ## 3. Macro depth — read BOTH numbers (reproduce: `npm run grade-macros[:honest]`)
 
 | Mode | Score | Distribution |
 |---|---|---|
-| **Default (generous)** | **1.000** | stub 0 · functional 4 · utility 4,878 (55%) · production 3,943 (45%) |
-| **Honest floor** | **0.687** | stub 443 (5%) · functional 1,477 (17%) · utility 3,591 (41%) · production 3,314 (38%) |
+| **Default (generous)** | **0.999** | stub 1 (0.0%) · functional 13 (0.1%) · utility 5,161 (54.4%) · production 4,320 (45.5%) |
+| **Honest floor** | **0.696** | stub 458 (4.8%) · functional 1,457 (15.3%) · utility 3,897 (41.0%) · production 3,683 (38.8%) |
 
-**These measure TEST-coverage depth, not feature depth.** The honest 0.687 is a
+**These measure TEST-coverage depth, not feature depth.** The honest 0.696 is a
 *behavioral-test-coverage* score that taxes correctly-small `utility` code at 0.6
-**by design** — it is NOT "31% untested" and NOT a feature-quality grade. Feature
+**by design** — it is NOT "30% untested" and NOT a feature-quality grade. Feature
 depth (destinations built deep by composition; the novel primitives in §5) is a
-**different axis the grader doesn't measure.** Cite 0.687 for "how much is
-behaviorally tested," cite 1.0 / the novelty inventory for "is it real + deep."
+**different axis the grader doesn't measure.** Cite 0.696 for "how much is
+behaviorally tested," cite 0.999 / the novelty inventory for "is it real + deep."
+Note the total-macro-pair count here (9,495, the grader's own scan of registered
+`(domain, macro)` pairs) differs from CLAUDE.md's 10,399 (a broader direct-grep
+across `register`/`registerLensAction` call sites, including some the grader's
+narrower scan doesn't attribute) — both are current and reproducible; they
+measure via different methodologies, not disagreement about the codebase.
 
 ## 4. Code health (reproduce: `cd server && node scripts/run-detectors.js`; ratchet `… --diff --ci`)
 
-> **Code-health re-verified 2026-07-03** (fresh full run + fresh `--diff --ci`
-> against the committed baseline, both re-run for this doc pass). The
-> 2026-06-09 "73 high perf backlog" that used to stand here is **CLOSED** — 0
-> high today too. That 73 predated the 2026-06-29 baseline refresh; don't cite
-> it.
+> **Code-health re-verified 2026-08-01** (committed baseline read directly +
+> fresh `--diff --ci` ratchet run, both re-run for this doc pass). Every
+> narrative in the previous version of this section (2026-07-03 vintage:
+> "71 findings", "one command-injection at `lib.mjs:21`", "9 resource-leak /
+> 13 env-config-drift / 2 route_empty_render / 1 table_orphan") described a
+> baseline that has since been superseded by at least one further authorized
+> refresh — see CLAUDE.md's own detector-baseline paragraph, which documents
+> this exact class of drift happening repeatedly. Don't cite the old
+> per-finding breakdown below; it's preserved in git history only.
 
-- **0 critical · 0 high, both today's fresh run and the ratchet.** A fresh
-  full `node scripts/run-detectors.js` run (2026-07-03) totals **71 findings:
-  {critical:0, high:0, medium:26, low:15, info:30}**. This differs from the
-  committed baseline (`audit/detectors/BASELINE.json`, v1, 2026-06-29, 30
-  detectors: `{critical:0, high:0, medium:27, low:15, info:176} = 218`)
-  almost entirely in the **info** bucket — info findings are runtime
-  macro-usage telemetry (per CLAUDE.md), not static-code defects, so they're
-  inherently volatile run-to-run; medium/low are close to stable. The
-  `--diff --ci` ratchet (the actual PR gate) is the more meaningful signal:
-  **added 5** (0 critical, 0 high, 4 medium, 1 info) vs **removed 152**, **66
-  unchanged** — **CI check PASSED**, 0 new high/critical. `BUDGET.json` (v10,
-  maxTotal 225) still states "0 critical / 0 high" as its floor.
-- **The perf backlog is closed, and its named sites were largely false-positives.**
-  art/studio/whiteboard carry only module-scope `fs.existsSync` (runs once at boot —
-  the detector explicitly exempts sync-fs outside a handler body); `dream-engine.js`
-  uses the correct `.all()`-then-iterate (one query, not an N+1). The 2026-06-09
-  `cmd_injection` critical fix (`workers/cognitive-worker.js` `execSync`→`execFileSync`
-  + format-validated) still holds → **0 critical**.
-- **Two residual findings named in earlier snapshots of this doc are now FIXED
-  (verified against today's fresh run — neither appears in current findings):**
-  the `emergent/nemesis-cycle.js:123-127` query-in-loop and the
-  `server/lib/world-snapshot.js:77` `db_prepare_in_loop` were both closed by
-  commit `4b2384da` ("perf: hoist per-table prepared statement in
-  world-snapshot; collapse nemesis-cycle N+1") — `world-snapshot.js#restoreWorld`
-  now hoists one prepared INSERT per table outside the row loop, and
-  `nemesis-cycle.js#_processSchemeBetrayals` now does one batched
-  `character_opinions` lookup via `WHERE npc_id IN (...) AND target_id IN
-  (...)` instead of a per-row query, correlated in-memory via a Map. Both
-  behavior-identical (`world-snapshot.test.js` 4/4, `nemesis-cycle.test.js`
-  19/19).
-- **Command-injection: the earlier "2 medium" figure and its `scripts/autoloop/lib.mjs:21`
-  citation need a correction.** Today's fresh run confirms exactly **one**
-  current command-injection finding — `cmd_injection_variable_command` at
-  **`scripts/autoloop/lib.mjs:21`** (dev-script scope, real security-relevant
-  signal, PROTECTed autoloop file — not something this doc pass can or should
-  edit). The *second* command-injection finding that used to make the count
-  "2" was `scripts/repair-surgeon.js:113` (`executeFixCommand`'s
-  `execSync(cmd)`), and it is now **FIXED** — commit `4c2546ea` switched it to
-  `execFileSync("/bin/sh", ["-c", cmd], ...)` (an explicit argv shape instead
-  of a single interpolated string handed to a shell-spawning exec; the
-  injection surface was already closed upstream by the pre-validated
-  `safePkg`/`safePort`/`safePath` captures, this closes the pattern at the
-  sink too). Confirmed absent from today's findings. So the current, accurate
-  count is **1 medium command-injection finding**, at `lib.mjs:21`.
-- **Other residual (medium, tracked — none high, none corrupt data):** 9
-  `resource-leak` findings, 13 `env-config-drift` findings (hardcoded
-  connector URLs — Notion's OAuth/API endpoints in
-  `server/lib/connector-client.js:392` and
-  `server/routes/connector-oauth.js:106-107` are the newest, added this
-  session), 2 `route_empty_render` (both in
-  `concord-frontend/app/lenses/quantum/page.tsx`), 1 `stale-code` /
-  `table_orphan` (`server/migrations/275_evo_asset_fk_repair.js:35` — a table
-  created but never read/written outside migrations).
-- **Clean:** 0 secret leaks · 0 DTU-lineage issues · 0 orphan modules · 0 dormant
-  modules · 0 decorative-state lens issues.
-- The prior "980 findings / 1,131 floor" line was the 2026-06-09 pre-refresh snapshot
-  (info-heavy). Trust a fresh run + the ratchet, not that number.
+- **`audit/detectors/BASELINE.json` is v1, generated 2026-08-01T15:56:15Z —
+  70 fingerprints, `detectorCount` 51, totals `{critical:0, high:7, medium:17,
+  low:2, info:45, total:71}`.** This is an owner-authorized refresh
+  (`15ec8fd4`) of the prior 2026-07-25 snapshot (44 fingerprints / 46
+  detectors). `BUDGET.json` is v13 (`maxTotal` 460, generated 2026-07-19),
+  unchanged by the baseline refresh.
+- **The ratchet is green.** A fresh `cd server && node scripts/run-detectors.js
+  --diff --ci` run against this baseline reports **CI check PASSED** — 0 new
+  high/critical.
+- **The 7 highs are a known, documented false-positive class**, not live
+  defects: `money-txn-hygiene-detector.js`'s own header names
+  `server.js#creditWallet`/`debitWallet` verbatim as control-flow-blind noise
+  — each wallet function's two `economy_ledger` writes are a primary insert
+  and a mutually-exclusive catch-branch fallback, never sequential in the
+  same call. Full accounting in `docs/DETECTOR_DEBT_TRIAGE.md` rows H5/H6.
+- **0 critical**, holding since the 2026-06-09 `cmd_injection` fix
+  (`workers/cognitive-worker.js` `execSync`→`execFileSync` + format-validated).
+- **Clean on the historically-tracked classes:** 0 secret leaks (see the
+  2026-07-27 P0 triage in `docs/SECURITY_SCAN_TRIAGE_2026-07.md`, which
+  investigated both Aikido-flagged "secrets in git history" findings and
+  confirmed both false positives) · 0 DTU-lineage issues · 0 orphan modules ·
+  0 dormant modules.
+- Any per-finding breakdown below the totals above is dated the moment it's
+  written — the `macro-usage` detector emits RUNTIME telemetry, so the info
+  tier (and total) genuinely varies run-to-run. Read
+  `audit/detectors/BASELINE.json` directly for the current per-finding list
+  rather than trusting a hand-copied breakdown in this doc.
 
 ## 5. What's genuinely novel
 
@@ -153,7 +137,20 @@ or that Concord composes distinctively:
 
 ## 6. Shipped this arc (not yet in any other doc)
 
-The ConKay-as-builder + safety + distribution stack, all tested + dark-by-default:
+**This section is a compressed pointer, not the changelog.** CLAUDE.md's "Recent
+shipped work" table is the maintained, chronologically-ordered ledger and is more
+current than anything that could be hand-copied here — read it for the full list.
+As of this refresh (2026-08-01), its most recent entries are the 2026-07-31
+codebase-audit + prod-readiness pass (deploy fixes, connection-reliability fixes,
+LLM-pipeline fixes, Private Mode / High Power Mode per-account LLM routing, 5
+security findings fixed including a critical authenticated-RCE, CI honesty fixes
+including a Trivy gate that had never actually scanned anything, and root-caused
+test-suite flakes) and the 2026-06-07 ConKay prod-audit (a critical double-credit
+money bug fixed, earned-only CC withdrawals, front-door/onboarding fixes,
+compute-don't-guess math routing, semantic archive search).
+
+The ConKay-as-builder + safety + distribution stack (still current, tested +
+dark-by-default):
 
 - **Builder spine:** TS LanguageService semantic layer · confined-ctx capability
   sandbox · verifiable build loop (honesty invariant: never "done" until run+lint+
@@ -169,23 +166,23 @@ The ConKay-as-builder + safety + distribution stack, all tested + dark-by-defaul
   8414 metadata, `server/mcp-server.json` for the official registry.
 - **Publish boundary:** content-safety gate (`screenForPublish`) at promotion/post/
   upload — local checks always on, classifier + CSAM auto-engage when keyed.
-- **Marquee connectors made real (2026-06-09):** Gmail + Google Calendar are now
-  real two-way. Send/push were already real; this arc added the read side —
-  `connector-client.js` Gmail read (`readGmailMessages`/`readGmailMessage` full
-  MIME parse, `modifyGmailMessage`, `listGmailLabels`) + Calendar pull
-  (`readGoogleCalendarEvents`), `domains/gmail.js`
-  `list/get/modify/trash/labels`, `domains/calendar.js#accounts-pull-events` —
-  all on the SSRF-guarded `connectorFetch` chokepoint (encrypted per-user tokens,
-  auto refresh). Frontend: a polished **GmailSection** inbox client in the
-  message lens + a **Sync Google** overlay in the calendar lens. Tests:
-  `connector-read-paths` (11) + `connector-oauth*` (23). Live use needs only a
-  Google OAuth client (operational — `docs/CONNECTORS_GO_LIVE.md`).
+- **Marquee connectors: all six code-complete (superseded from the 2026-06-09
+  "Gmail + Calendar only" framing this section used to carry).** Gmail + Google
+  Calendar are real two-way (send/push + read/inbox/pull, `connector-client.js` +
+  `domains/{gmail,calendar}.js`, SSRF-guarded `connectorFetch` chokepoint,
+  encrypted per-user tokens). Slack/Sheets/GitHub/Notion were built in the same
+  arc — real `server/domains/{slack,sheets,github,notion}.js` + `connector-client.js`
+  readers on the same chokepoint, contract-tested with injected fetch. Going live
+  on any of the six needs only operator-supplied OAuth client credentials — an
+  operational gate, not a code gap. See `docs/CONNECTORS_GO_LIVE.md`.
 
 ## 7. Honest maturity (TRL-style)
 
 Core engine ~7 · builder spine ~6 · safety ~6 · distribution wedge ~5 · connectors
-**~6** (Gmail + Google Calendar real two-way as of 2026-06-09; other connectors
-still to wire). **Deployed and live at [concord-os.org](https://concord-os.org) — deployment is
+**~7** (all six marquee connectors — Gmail, Google Calendar, Slack, Sheets,
+GitHub, Notion — are code-complete and contract-tested as of this arc; live use
+on any of them is gated only on operator OAuth client credentials, not code).
+**Deployed and live at [concord-os.org](https://concord-os.org) — deployment is
 proven and repeatable, and real users' requests drive the work.** The flag posture is
 production-correct: secrets hard-required where loss = compromise, dangerous modes
 prod-blocked, features on, infra/secret-gated features off until provisioned.

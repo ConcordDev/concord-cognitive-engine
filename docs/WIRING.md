@@ -1,6 +1,6 @@
 # Concord — Wiring Status (GENERATED — do not hand-edit)
 
-> Generated from commit `41867615` by `scripts/generate-wiring-doc.mjs`.
+> Generated from commit `e8081198` by `scripts/generate-wiring-doc.mjs`.
 > Every number below is COMPUTED by the named verifier at generation time.
 > Regenerate: `node scripts/generate-wiring-doc.mjs` · Drift gate: `--check` in CI.
 
@@ -8,15 +8,15 @@
 
 | Metric | Value |
 |---|---|
-| Lenses WIRED | 258 |
+| Lenses WIRED | 263 |
 | Lenses NO-BACKEND-CALL | 2 |
-| Total lenses | 260 |
-| Macro domains | 531 |
-| Route prefixes | 2965 |
+| Total lenses | 265 |
+| Macro domains | 547 |
+| Route prefixes | 2983 |
 
 ## Invariant → test-link integrity — `scripts/verify-invariant-test-links.mjs` (live run)
 
-- 99/99 `pinned by tests/…` claims resolve to real files on disk.
+- 191/191 `pinned by tests/…` claims resolve to real files on disk.
 - All invariant proofs exist. A missing one fails CI (detectors-cartography workflow).
 
 ## Lens UX polish — `scripts/grade-ux-polish.mjs` (committed artifact `audit/ux-polish.json`)

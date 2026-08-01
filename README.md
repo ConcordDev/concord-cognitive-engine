@@ -8,10 +8,10 @@
 
 [**🌐 deployment will be on concord-os.org**](https://concord-os.org) &nbsp;·&nbsp; [**Why it's different →**](docs/WHY_CONCORD_IS_DIFFERENT.md) &nbsp;·&nbsp; [**The 326 novelties →**](docs/NOVELTY_INVENTORY.md) &nbsp;·&nbsp; [**Verified snapshot →**](docs/STATE_OF_CONCORD.md)
 
-![lenses](https://img.shields.io/badge/lenses-260-22d3ee)
-![macros](https://img.shields.io/badge/macros-~9,600-22c55e)
+![lenses](https://img.shields.io/badge/lenses-266-22d3ee)
+![macros](https://img.shields.io/badge/macros-~10,399-22c55e)
 ![brains](https://img.shields.io/badge/AI_brains-5-f59e0b)
-![tests](https://img.shields.io/badge/tests-27,912_passing-16a34a)
+![tests](https://img.shields.io/badge/tests-38,371_passing-16a34a)
 ![board](https://img.shields.io/badge/detector_board-0_critical-16a34a)
 
 </div>
@@ -48,10 +48,10 @@ flowchart TD
         MESH["7-transport mesh · cnet federation<br/>works without the internet"]
     end
     subgraph R6["🔍 Self-aware meta-layer"]
-        META["Cartographer · 34 detectors · drift monitor<br/>repair cortex → governance-gated self-surgery"]
+        META["Cartographer · 51 detectors · drift monitor<br/>repair cortex → governance-gated self-surgery"]
     end
     subgraph R7["🚀 Outer layer"]
-        OUTER["ConKay builder · CaMeL safety<br/>real Gmail/Calendar · MCP verified-compute wedge"]
+        OUTER["ConKay builder · CaMeL safety<br/>6 real connectors · MCP verified-compute wedge"]
     end
     DTU --> BRAINS --> ECON --> WORLD --> MESH
     META -.audits + repairs.-> DTU & BRAINS & ECON & WORLD & MESH
@@ -64,16 +64,16 @@ flowchart TD
 
 | Metric | Value | Reproduce |
 |---|---|---|
-| Authored source | **~2.16M LOC** (3.01M incl. content) | `npm run count-loc` |
-| Frontend lenses | **260** | `ls -d concord-frontend/app/lenses/*/` |
-| Backend domains | **366** | `ls server/domains/*.js` |
-| Macro domains · pairs | **492 · ~9,600** | `node scripts/verify-lens-backends.mjs` |
-| DB tables · migrations | **690 · 333** | `npm run cartograph:static` |
-| Heartbeats (live sim) | **127** | cartographer |
+| Authored source | **~2.62M LOC** (4.37M incl. content) | `npm run count-loc` |
+| Frontend lenses | **266** | `ls -d concord-frontend/app/lenses/*/` |
+| Backend domains | **420** | `ls server/domains/*.js` |
+| Macro domains · pairs | **547 · ~10,399** | `node scripts/verify-lens-backends.mjs` |
+| DB tables · migrations | **765 · 398** | `cd server && npm run cartograph:static` |
+| Heartbeats (live sim) | **168** | cartographer / `registerHeartbeat` grep |
 | AI brains | **5** (4 cognitive + vision) | `server/lib/brain-config.js` |
 | Catalogued novelties | **326 / 34 groups** | [`docs/NOVELTY_INVENTORY.md`](docs/NOVELTY_INVENTORY.md) |
-| Tests passing | **27,912** | `cd server && npm test` |
-| Code-health board | **122 findings · 0 critical** | `cd server && node scripts/run-detectors.js` |
+| Tests passing | **38,371** | `cd server && npm test` |
+| Code-health board | **71 findings · 0 critical** | `cd server && node scripts/run-detectors.js` |
 
 > **Everything here is falsifiable by design.** `npm run check-doc-claims` re-runs the reproduction command behind every numeric claim in the docs and fails on drift.
 
@@ -116,8 +116,8 @@ The knowledge graph, the economy, the game, and the codebase's own self-repair a
 
 Concord carries a **running model of itself** and acts on it — the part that's genuinely hard to find anywhere:
 
-- **Cartographer** auto-maps its own anatomy (690 tables, 127 heartbeats, ~9,600 macros) every pass.
-- **34 detectors + a baseline-ratchet** audit its own honesty — CI fails on any new high/critical. *(It's why this repo's docs are falsifiable.)*
+- **Cartographer** auto-maps its own anatomy (765 tables, 168 heartbeats, ~10,399 macros) every pass.
+- **51 detectors + a baseline-ratchet** audit its own honesty — CI fails on any new high/critical. *(It's why this repo's docs are falsifiable.)*
 - **Drift monitor** watches the corpus for 6 ways the system can lie to itself.
 - **Repair cortex** proposes its own surgery but **can't perform it unsupervised** — every code fix routes through a governance gate.
 
@@ -129,7 +129,7 @@ A system engineered to **distrust itself** is the right architecture for the one
 
 **Real deterministic compute — not LLM-guessed.** A symbolic CAS, direct-stiffness **FEA**, a gate-based **quantum statevector simulator**, stoichiometry, orbital mechanics, **causal-closure analysis**, NEC electrical code, aircraft weight & balance, k-anonymity, double-entry accounting, an epidemiology sim. *(Inventory groups O · U · AH.)* This is the R&D wedge: an agent that **computes the answer instead of hallucinating it.**
 
-**Real connectors.** Gmail + Google Calendar are real two-way (send/push + read/inbox/pull) on an SSRF-guarded chokepoint with encrypted per-user tokens.
+**Real connectors.** All six marquee connectors are code-complete: Gmail + Google Calendar are real two-way (send/push + read/inbox/pull); Slack, Sheets, GitHub, and Notion are built and contract-tested on the same SSRF-guarded chokepoint with encrypted per-user tokens. Going live on any of them needs only operator-supplied OAuth client credentials.
 
 ---
 
@@ -139,7 +139,7 @@ A system engineered to **distrust itself** is the right architecture for the one
 sequenceDiagram
     participant U as User / Agent / MCP client
     participant G as 3-gate permission
-    participant M as runMacro (~9,600)
+    participant M as runMacro (~10,399)
     participant B as 5-brain router
     participant D as DTU substrate
     participant E as Citation→royalty economy
@@ -179,7 +179,7 @@ one economy:
 
 ## Maturity — honest
 
-**Deployed and live at [concord-os.org](https://concord-os.org) — deployment is proven and repeatable.** This backlog is built and shipped through that deploy path, and real users' requests drive the work. What's still ahead is *scale*, not shipping: it hasn't yet been hardened against heavy concurrent load or high-volume external/Google traffic. A handful of systems (the Foundation signal-layer, some emergent-civilization systems) are research-grade — built, wired, and running, but not yet stress-proven against the physical world. *(Full caveats: [`docs/WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md) · [`docs/STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md).)*
+**Deployed and live at [concord-os.org](https://concord-os.org) — deployment is proven and repeatable.** This backlog is built and shipped through that deploy path, and real users' requests drive the work. A dedicated audit pass went looking specifically for concurrent-load, high-volume-traffic, and money-at-volume failure modes and fixed real instances of each (a connection-dropping root cause, LLM-pipeline truncation, a critical wallet-drain IDOR, an authenticated RCE, and more) rather than leaving them theoretical — but no literal heavy-load run has been executed against the live deployment, so "proven under real traffic" remains future work. A handful of systems (the Foundation signal-layer, some emergent-civilization systems) are research-grade — built, wired, and running, but not yet stress-proven against the physical world. *(Full caveats: [`docs/WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md) · [`docs/STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md).)*
 
 ---
 
@@ -193,7 +193,7 @@ cd concord-frontend && npm install && npm run dev             # :3000
 # Full stack (backend + frontend + 5 Ollama brains + nginx/redis/qdrant/prometheus)
 docker-compose up
 ```
-Requires `JWT_SECRET` in production. Five Ollama instances are tuned for an RTX PRO 4500 Blackwell (override any model via env). See [`docs/CONNECTORS_GO_LIVE.md`](docs/CONNECTORS_GO_LIVE.md) for connector setup.
+Requires `JWT_SECRET` in production. Five Ollama instances default to models originally sized for an RTX PRO 4500 Blackwell; the real deployed target is a single NVIDIA A40 (48GB), with per-deployment overrides tuned for that box (override any model via env). See [`docs/CONNECTORS_GO_LIVE.md`](docs/CONNECTORS_GO_LIVE.md) for connector setup.
 
 Running the frontend standalone (`npm run dev`, not `docker-compose up`)? Copy
 `concord-frontend/.env.example` to `concord-frontend/.env.local` first — an
@@ -218,12 +218,12 @@ production.
 
 | Path | What's there |
 |---|---|
-| `server/server.js` | The 76k-line monolith — all routes, the macro dispatcher, the tick loop |
-| `server/domains/` | 366 domain engines (the lens backends) |
-| `server/emergent/` | 214 simulation modules (the living layer) |
-| `server/lib/` | 580+ subsystem libs (brains, DTUs, embodied, repair cortex, detectors) |
-| `server/migrations/` | 333 numbered migrations (690 tables) |
-| `concord-frontend/` | Next.js 15 — 260 lenses, the lens-runtime framework, Concordia 3D |
+| `server/server.js` | The 83k-line monolith — all routes, the macro dispatcher, the tick loop |
+| `server/domains/` | 420 domain engines (the lens backends) |
+| `server/emergent/` | 231 simulation modules (the living layer) |
+| `server/lib/` | 690+ subsystem libs (brains, DTUs, embodied, repair cortex, detectors) |
+| `server/migrations/` | 398 numbered migrations (765 tables) |
+| `concord-frontend/` | Next.js 16 — 266 lenses, the lens-runtime framework, Concordia 3D + a real Godot client |
 | `concord-mobile/` | React Native — real BLE/WiFi-P2P/NFC, mesh-aware, offline-first |
 | `docs/` | The strategic + verified docs (below) |
 
