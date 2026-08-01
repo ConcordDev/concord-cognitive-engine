@@ -25,9 +25,9 @@ still lives in `docs/CONKAY_HONEST_HOLOGRAM_PLAN.md` (Track-B design source; not
 
 ## What This Is
 
-Concord Cognitive Engine is a cognitive operating system — a knowledge platform with **260 frontend lens directories**, **366 backend domain files**, four parallel LLM brains + LLaVA vision, a self-compressing knowledge substrate (DTUs), a creator economy with perpetual royalties, a seven-layer mesh network, and a 3D civilization simulator (Concordia). Live at concord-os.org. **For a verified current snapshot (numbers reproduced from commands, this-arc shipped work, novelty inventory, audit results) see `docs/STATE_OF_CONCORD.md`.** **Before building anything new, check `docs/NOVELTY_INVENTORY.md` (~326 distinct novelties / 34 groups, each with its source file) — it's the build-reference map for "does X already exist / where does it live," so you don't rebuild or break an existing subsystem.** Run `npm run count-loc` for the current authored-source LOC when a figure is actually needed (excludes node_modules/build/generated; reclassifies data-modules masquerading as code — e.g. the deprecated 145k-line `server/dtus.js` seed pack at 0% code density — out of the source total). Cite the counter's output, never a remembered number. (LOC is an internal engineering signal, not a headline — don't lead with it.)
+Concord Cognitive Engine is a cognitive operating system — a knowledge platform with **266 frontend lens directories**, **420 backend domain files**, four parallel LLM brains + LLaVA vision, a self-compressing knowledge substrate (DTUs), a creator economy with perpetual royalties, a seven-layer mesh network, and a 3D civilization simulator (Concordia). Live at concord-os.org. **For a verified current snapshot (numbers reproduced from commands, this-arc shipped work, novelty inventory, audit results) see `docs/STATE_OF_CONCORD.md`.** **Before building anything new, check `docs/NOVELTY_INVENTORY.md` (~326 distinct novelties / 34 groups, each with its source file) — it's the build-reference map for "does X already exist / where does it live," so you don't rebuild or break an existing subsystem.** Run `npm run count-loc` for the current authored-source LOC when a figure is actually needed (excludes node_modules/build/generated; reclassifies data-modules masquerading as code — e.g. the deprecated 145k-line `server/dtus.js` seed pack at 0% code density — out of the source total). Cite the counter's output, never a remembered number. (LOC is an internal engineering signal, not a headline — don't lead with it.)
 
-**Wiring status** — reproducible via `node scripts/verify-lens-backends.mjs` (**re-run 2026-07-25: `{WIRED:262, NO-BACKEND-CALL:2, total:264, macroDomains:546, routePrefixes:2979}`** — the prior "231 WIRED / 3 broken" below is superseded; the 3 broken wires were closed and the verifier now reports 0 broken / 0 partial):
+**Wiring status** — reproducible via `node scripts/verify-lens-backends.mjs` (**re-run 2026-08-01: `{WIRED:263, NO-BACKEND-CALL:2, total:265, macroDomains:547, routePrefixes:2983}`** — the prior "231 WIRED / 3 broken" below is superseded; the 3 broken wires were closed and the verifier now reports 0 broken / 0 partial):
 - 262 lenses **WIRED** (99%) — page or imported child component calls a registered macro / known REST route / generic lens hook.
 - **What "WIRED" measures:** the verifier checks that a lens *reaches* a registered macro or REST route — a reachability/coverage check, run statically. Behavioral testing is the separate signal for whether the reached code does the right thing: the depth-fleet sweep behaviorally tested ~21 waves of macros + a de-demo pass + 15 new backend domains and surfaced only ~9 real source bugs total — a low defect rate, so wired lenses mostly work front-to-back. The genuine remaining weaknesses are in presentation polish + connector depth, not in the macro layer. For a specific lens's behavior, read its macro + its depth/behavior test.
 - **0 PARTIAL** post-Phase-Z (previously 3): the `feed` + `social` lenses now resolve through a Z4 POST alias on `/api/connective-tissue/search`. **The `personas` line below is superseded (2026-07-10 Wave 3 audit) — `server.js`'s `register("personas", ...)` shadow loop + 5 Z4 stubs still exist (marked `note: "intentional_shadow_ok"`) but a full 17-macro Character.AI-parity domain (`server/domains/personas.js`: create/update/get/mine/delete/publish/browse/facets/chat_open/chat_send/chat_history/rate/stats/install/revise/versions/regenerate_portrait) now registers via `registerLensAction` into `LENS_ACTIONS`, which `/api/lens/run` prefers over the `MACROS`-registered shadow loop (`server.js:39592`) — so the real domain wins for all frontend traffic, and the Z4 stubs' `{ok:false, reason:'roadmap'}` "coming soon" behavior no longer fires. Publish/install/versions/rate/chat are all real and wired; see `docs/lens-specs/personas-capability-map.md`.**
@@ -227,9 +227,9 @@ Every frontend API call passes three gates in `server.js`:
 
 ### The macro system
 Frontend calls `POST /api/lens/run` with `{ domain, name, input }`. This routes to `runMacro(domain, name, input, ctx)` in `server.js`. Direct grep at HEAD `21c8f34`:
-- **~546 unique macro domains** (re-verified 2026-07-25 via the verifier — see below). NOTE: the old `awk -F"'"` direct-grep is methodology-fragile — it breaks on double-quoted registrations (returns 14 on the current tree), so it's superseded; trust the verifier's `macroDomains` field.
+- **~547 unique macro domains** (re-verified 2026-08-01 via the verifier — see below). NOTE: the old `awk -F"'"` direct-grep is methodology-fragile — it breaks on double-quoted registrations (returns 14 on the current tree), so it's superseded; trust the verifier's `macroDomains` field.
 - **10,399 unique `(domain, macro)` pairs** (re-verified 2026-07-25); per-domain counts skew heavily — `accounting` ~118 macros, `projects` ~99, `game-design` ~98, `code` ~81, `healthcare` ~82. The earlier "~826 / ~429" range in this file came from a stricter grep that missed many of the dynamically-named pairs.
-- The verifier in `scripts/verify-lens-backends.mjs` reports 546 macro domains and 2,979 route prefixes (`macroDomains`/`routePrefixes` fields) — it walks the tree including `register*` variants. This is the reproducible source of truth for the domain count.
+- The verifier in `scripts/verify-lens-backends.mjs` reports 547 macro domains and 2,983 route prefixes (`macroDomains`/`routePrefixes` fields) — it walks the tree including `register*` variants. This is the reproducible source of truth for the domain count.
 
 Wiring-wise (verifier at HEAD `21c8f34`): every lens but 4 reaches a registered macro or REST route — see "Missing (needs building)" below for the four exceptions. Domain logic lives in `server/domains/<domain>.js`; some domains additionally register macros inline from `server/server.js` or other top-level files like `server/guidance.js`.
 
@@ -299,7 +299,7 @@ Direct-grep counts **re-verified 2026-06-02** (via `npm run check-doc-claims`, w
 | Surface | Count | Reproduce |
 |---|---|---|
 | Frontend lens directories | **266** | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
-| Lens backend wiring | **262 WIRED / 0 broken / 2 by-design** (re-run 2026-07-25) | `node scripts/verify-lens-backends.mjs` |
+| Lens backend wiring | **263 WIRED / 0 broken / 2 by-design** (re-run 2026-08-01) | `node scripts/verify-lens-backends.mjs` |
 | Backend domain files | **420** | `ls server/domains/*.js \| wc -l` |
 | Numbered migrations | **398 files** (highest number `399`) | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **131** | `ls server/routes/*.js \| wc -l` |
@@ -307,11 +307,11 @@ Direct-grep counts **re-verified 2026-06-02** (via `npm run check-doc-claims`, w
 | Lib modules | **680** top-level (`ls server/lib/*.js \| wc -l`) · **1,035** recursive (`find server/lib -name "*.js" \| wc -l`) | — |
 | `server/server.js` line count | **83,290** | `wc -l server/server.js` |
 | HTTP routes (server.js + routes/*.js) | **~3,353 total** (1,397 + 1,956) | `grep -cE "^\\s*(app\|router)\\.(get\|post\|put\|delete\|patch\|all)\\(['\"]/" …` |
-| Unique macro domains | **546** (verifier `macroDomains`) | see "macro system" section above |
+| Unique macro domains | **547** (verifier `macroDomains`) | see "macro system" section above |
 | Unique `(domain, macro)` pairs | **10,399** | `grep -rhoE "\\b(register\|registerLensAction)\\(['\"][a-zA-Z0-9_.\\-]+['\"]\\s*,\\s*['\"][a-zA-Z0-9_.\\-]+['\"]" server/ \| sed ... \| sort -u \| wc -l` |
 | Distinct CREATE TABLE statements | **743** | see Database section |
 | Unique heartbeats | **127** | `grep -rohE "registerHeartbeat\\(['\"][a-z0-9-]+['\"]" server/ \| sort -u \| wc -l` |
-| Authored source LOC | **~2.50M** (3.68M incl. content) | `npm run count-loc` |
+| Authored source LOC | **~2.62M** (4.35M incl. content) | `npm run count-loc` |
 
 **Keeping this table honest:** `npm run check-doc-claims` extracts every `(bold number, reproduction command)` pair in this file, re-runs the command, and reports drift (`--ci` to fail the build). The 2026-06-02 refresh above was driven by it. Re-run it before trusting any count here; the `docs/AUDIT_INVENTORY.md` file is older still and is superseded by these.
 
