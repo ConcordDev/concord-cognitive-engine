@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthSuccess, mockAuthUnauthenticated } from './_helpers';
+import { mockAuthSuccess, mockAuthUnauthenticated, corsFulfill } from './_helpers';
 
 test.describe('Authentication Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -555,6 +555,20 @@ test.describe('Authentication Flow', () => {
       },
     ]);
 
+    // Mock /api/auth/refresh: this fake cookie is not a real signed JWT, so
+    // the moment /lenses/chat's own data-fetching 401s, the axios interceptor
+    // (lib/api/client.ts) auto-POSTs the REAL /api/auth/refresh — which the
+    // real server rejects, clearing BOTH auth cookies (server/routes/auth.js's
+    // `clearAuthCookie`, called from the invalid-refresh-token branch). That
+    // was the root cause `mockAuthSuccess` in _helpers.ts was built to close
+    // for the mocked-login flows; this pair of tests predates that helper and
+    // never got the same treatment. Only middleware's cookie-existence check
+    // is under test here, not the full auth hydration, so mock just enough to
+    // stop the destructive real refresh — not the heavier `mockAuthSuccess`.
+    await page.route('**/api/auth/refresh', (route) =>
+      corsFulfill(route, { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+    );
+
     const response = await page.goto('/lenses/chat');
 
     // Should NOT be redirected to login — the page should load
@@ -572,6 +586,16 @@ test.describe('Authentication Flow', () => {
         httpOnly: true,
       },
     ]);
+
+    // See the sibling test above for why this mock is load-bearing, not
+    // decorative: without it, a 401 from /lenses/chat's real data-fetching
+    // auto-triggers the real /api/auth/refresh, which rejects this fake
+    // token and clears the cookie server-side — exactly the race this test
+    // was intermittently catching (passed when the refresh cycle didn't
+    // finish before the assertion below; failed under CI load when it did).
+    await page.route('**/api/auth/refresh', (route) =>
+      corsFulfill(route, { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+    );
 
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);

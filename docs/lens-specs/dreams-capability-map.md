@@ -46,7 +46,7 @@ unrelated systems that all use "dream" in their name:
    DreamPanel.tsx`, mounted in the `command-center` (sovereign console)
    lens.
 
-**Defect found and fixed:** `components/dreams/DreamConvergences.tsx` was
+**Defect found, then the component deleted outright (see "What this rebuild changed" below — it no longer exists in the tree):** `components/dreams/DreamConvergences.tsx` was
 mounted inside *this* player-facing lens's page but called
 `domain: 'dream'` (singular), macros `convergences`/`count` — system (3)
 above, the owner-only tool. For a normal player this rendered a "Dream

@@ -204,12 +204,26 @@ promoted into the blocking gate.
 
 ## Known-open, deliberately not closed here
 
-- **The security detector gate is RED** on one pre-existing `authz-coverage`
-  high: `/api/welding/portal/` in `WRITE_AUTH_PUBLIC_PATHS`. It is a reviewed,
-  intentional, end-to-end-tested bypass that was never baselined. It predates
-  this branch (present on `origin/main`). Clearing it requires a deliberate
-  BASELINE refresh, which is human-authorized by design — not something to do
-  as a side effect of a triage pass.
+- ~~The security detector gate is RED on one pre-existing `authz-coverage`
+  high~~ **CLOSED (2026-08-01, `15ec8fd4`), and the "RED" framing above was
+  itself already stale by the time this was checked.** `/api/welding/portal/`
+  in `WRITE_AUTH_PUBLIC_PATHS` is the reviewed, intentional, end-to-end-tested
+  bypass this bullet describes (`server/tests/e2e/welding-portal-routes.
+  test.js`, 13/13, re-verified passing before touching anything) — but live
+  `node scripts/run-detectors.js --diff --ci` (both the `security`-consumer
+  scope and the full suite) reported **"CI check PASSED"** even against the
+  stale baseline: the fingerprint scheme's line-shift matcher had already
+  classified the finding as "moved" (same message, new location), not "new,"
+  so it was never actually failing the ratchet. What *was* real: the finding
+  sat baselined at two stale locations (`server.js:7331` and `:7508`) instead
+  of its current `:7557`, alongside 29 other real-but-tolerated (medium/low/
+  info, 0 critical/high) findings accumulated since the 2026-07-25 baseline.
+  Owner explicitly authorized a refresh; `--rewrite-baseline` took it from 45
+  to 70 fingerprints, and a follow-up `--diff --ci` against the fresh
+  baseline came back an exact match (0 added/removed/moved). `BUDGET.json`
+  untouched (well under its `maxTotal`). This is baseline hygiene, not an
+  unblock — the lesson for next time is to run the live diff before writing
+  down that something is red.
 - **`next` 15→16 — done (`3f1a08f6`)**, closing 15 flagged CVEs. Full
   production build + `type-check:ci` + the whole vitest suite (7433/7433
   passing) all verified clean; two real Next 16 changes handled (mandatory

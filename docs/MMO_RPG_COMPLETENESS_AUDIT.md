@@ -66,7 +66,7 @@ For each pillar: the completeness bar + the retention driver (condensed from the
 | 11 | Group & endgame content | **Solid** | `lib/dungeon-instance.js`, `lib/world-bosses.js`, `lib/sovereign/raid-event.js`, `lib/party-combat.js` |
 | 12 | Endgame/retention cadence | **Solid** | `lib/achievement-engine.js` (38), `lib/weekly-objectives.js`, `emergent/personal-beat-scheduler.js`, seasonal achievements (no battle pass by design) |
 | 13 | Death & consequence | **Solid** | `lib/player-corpse.js`, `lib/npc-legacy.js`, `lib/avatar-scars.js` |
-| 14 | Player expression | **Solid** (+ real customizer) | `lib/player-housing.js`, `lib/mounts.js`, `CompanionRosterPanel.tsx`; **fixed:** CharacterCustomizer now uses a real `appearance.options` catalog (no fabricated data) |
+| 14 | Player expression | **Solid** (+ real customizer) | `lib/player-housing.js`, `domains/mounts.js` (mount system domain surface; the underlying logic is split across `lib/companions-mount.js`/`lib/mount-gear.js`/`lib/mount-care.js`/`lib/ecosystem/mount-eligibility.js` — there is no single lib/mounts.js file, a stale citation corrected here), `CompanionRosterPanel.tsx`; **fixed:** CharacterCustomizer now uses a real `appearance.options` catalog (no fabricated data) |
 | 15 | UX/UI/QoL | **Partial → improving** | Inventory/quests/settings/map exist; **new:** character sheet, ability-cooldown HUD, target nameplate; **gaps:** durability bars, in-world AH browse |
 | 16 | Onboarding/NPE | **Solid** | `OnboardingTutorial.tsx`, `FirstWinWizard`, `content/quests/onboarding.json` |
 | 17 | Multiplayer infra | **Solid** | spatial chunking, anti-cheat (`_validateCombatReach`/`_validateDamageCap`), shard protocol; **fixed:** unknown-macro masking |

@@ -263,7 +263,7 @@ Grepped `app/lenses/world/`, `components/world/`, `components/concordia/`, `comp
 
 | Component | Issue | Mounted at |
 |---|---|---|
-| `components/world/CharacterCustomizer.tsx:88` | ✅ **CONFIRMED-FIXED (2026-07-02).** No longer fabricated — the component now fetches the real backend catalog via `lensRun('appearance','options',{})` (with genuine loading/error states) against the `appearance.options` macro (`server/domains/appearance.js:265`), a per-slot renderable-enum catalog with no fabricated prices (base options free/owned). `generateSlotOptions()` is gone. | `app/onboarding/character/page.tsx`, `components/world/concordia-hud/PanelHost.tsx` → `panels/CharacterCustomizerPanel.tsx` |
+| `components/world/CharacterCustomizer.tsx:88` | ✅ **CONFIRMED-FIXED (2026-07-02).** No longer fabricated — the component now fetches the real backend catalog via `lensRun('appearance','options',{})` (with genuine loading/error states) against the `appearance.options` macro (`server/domains/appearance.js:265`), a per-slot renderable-enum catalog with no fabricated prices (base options free/owned). `generateSlotOptions()` is gone. | `app/onboarding/character/page.tsx`, `components/world/concordia-hud/PanelHost.tsx` → `components/world/concordia-hud/panels/CharacterCustomizerPanel.tsx` |
 
 Honest-empty-state references (NOT defects, listed so they aren't re-flagged): `AgentBuilder.tsx:130`, `CombatSystem.tsx:84`, `MarketplacePalette.tsx:32`, `StandardsLibrary.tsx:161`, `DistrictTimeline.tsx:24`, `PlayerPresence.tsx:29,115` — all explicitly "never fabricate / honest empty on error".
 
