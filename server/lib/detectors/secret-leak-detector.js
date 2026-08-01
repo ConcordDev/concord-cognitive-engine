@@ -119,7 +119,18 @@ export async function runSecretLeakDetector({ root, opts = {} } = {}) {
 
     for (const f of files) {
       const rel = relPath(root, f);
-      if (SKIP_FILES.some(re => re.test(rel))) continue;
+      // Real bug found while writing this detector's pinning test: the
+      // directory-shaped entries in SKIP_FILES (e.g. `/\/docs\//`) require a
+      // LEADING slash before the directory name, but `relPath()` never
+      // returns one for a top-level path (`path.relative` never starts with
+      // "/") — so a genuinely top-level excluded directory (docs/, skills/,
+      // monitoring/, load-tests/, extension/, test-fixtures/, __mocks__/)
+      // silently bypassed the skip list while an identically-named NESTED
+      // directory correctly matched. Prepending a virtual leading slash
+      // before testing normalizes both cases; the suffix-anchored entries
+      // (`$`-terminated) are unaffected since a leading prefix never changes
+      // what the string ends with.
+      if (SKIP_FILES.some(re => re.test("/" + rel))) continue;
       const c = await readSafe(f);
       if (!c) continue;
 
