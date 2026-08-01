@@ -20,9 +20,9 @@
 
 ## TL;DR
 
-Most AI tools **generate**. Concord generates **and verifies, attributes, and remembers** — then audits and repairs *itself*. It's a single knowledge substrate (the **DTU**) expressed through 260 domain "lenses," welded to a creator economy, a 3D civilization simulator, and a mesh network that works without the internet. In a market where the bottleneck has shifted from *generating* to *trusting*, **verification is the product.**
+Most AI tools **generate**. Concord generates **and verifies, attributes, and remembers** — then audits and repairs *itself*. It's a single knowledge substrate (the **DTU**) expressed through 266 domain "lenses," welded to a creator economy, a 3D civilization simulator, and a mesh network that works without the internet. In a market where the bottleneck has shifted from *generating* to *trusting*, **verification is the product.**
 
-> Not "ChatGPT with more features." A verifying substrate that happens to wear 260 faces — and the moat isn't any one face, it's that they're all the same fabric, the fabric audits and repairs itself, and the whole thing refuses what it can't prove.
+> Not "ChatGPT with more features." A verifying substrate that happens to wear 266 faces — and the moat isn't any one face, it's that they're all the same fabric, the fabric audits and repairs itself, and the whole thing refuses what it can't prove.
 
 ---
 
@@ -86,7 +86,7 @@ Every incumbent owns exactly **one** vector. None ship the intersection. *(full 
 | Vector | Who owns it | Concord |
 |---|---|---|
 | Grounded / verified | Perplexity, Wolfram | ✅ `reason.verify` + citation floors + drift monitor |
-| General capability | ChatGPT | ✅ 5-brain router + ~9,600 macros |
+| General capability | ChatGPT | ✅ 5-brain router + ~10,399 macros |
 | Private / local | Ollama | ✅ local brains + consent gates + no-leak invariant |
 | Controllable memory | Notion | ✅ DTU substrate + scope/consent gates |
 | Owned / no-subscription | *(unowned)* | ✅ free + local + 95%-to-creator economy |
@@ -179,7 +179,7 @@ one economy:
 
 ## Maturity — honest
 
-**Deployed and live at [concord-os.org](https://concord-os.org) — deployment is proven and repeatable.** This backlog is built and shipped through that deploy path, and real users' requests drive the work. A dedicated audit pass went looking specifically for concurrent-load, high-volume-traffic, and money-at-volume failure modes and fixed real instances of each (a connection-dropping root cause, LLM-pipeline truncation, a critical wallet-drain IDOR, an authenticated RCE, and more) rather than leaving them theoretical — but no literal heavy-load run has been executed against the live deployment, so "proven under real traffic" remains future work. A handful of systems (the Foundation signal-layer, some emergent-civilization systems) are research-grade — built, wired, and running, but not yet stress-proven against the physical world. *(Full caveats: [`docs/WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md) · [`docs/STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md).)*
+**Deployed and live at [concord-os.org](https://concord-os.org) — deployment is proven and repeatable.** This backlog is built and shipped through that deploy path, and real users' requests drive the work. A dedicated audit pass went looking specifically for concurrent-load, high-volume-traffic, and money-at-volume failure modes and fixed real instances of each (a connection-dropping root cause, LLM-pipeline truncation, a critical wallet-drain IDOR, an authenticated RCE, and more) rather than leaving them theoretical, and a real admission-control layer sheds excess load under measured event-loop lag instead of degrading uncontrolled — but no literal heavy-load run has been executed against the live deployment, so "proven under real traffic" remains future work, not a claim made here. A handful of systems (the Foundation signal-layer, some emergent-civilization systems) are research-grade — built, wired, and running today, just not yet validated against real-world physical conditions specifically. Depth isn't papered over with generic scaffolding either: a dedicated detector mechanically checks every lens for auto-generated-template patterns, and the current count is 0/265. *(Full caveats: [`docs/WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md) · [`docs/STATE_OF_CONCORD.md`](docs/STATE_OF_CONCORD.md).)*
 
 ---
 
@@ -218,7 +218,7 @@ production.
 
 | Path | What's there |
 |---|---|
-| `server/server.js` | The 83k-line monolith — all routes, the macro dispatcher, the tick loop |
+| `server/server.js` | One file by deliberate choice (IP protection), not organic sprawl — every route is independently dispatched (no single blocking call path), background simulation runs on a strictly-sequential, per-module-isolated tick (one handler at a time, a crash or timeout in one never stops the next), and a real front-door admission-control layer (`lib/request-admission.js`) sheds load under measured event-loop lag rather than degrading uncontrolled |
 | `server/domains/` | 420 domain engines (the lens backends) |
 | `server/emergent/` | 231 simulation modules (the living layer) |
 | `server/lib/` | 690+ subsystem libs (brains, DTUs, embodied, repair cortex, detectors) |
