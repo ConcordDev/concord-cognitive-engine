@@ -144,7 +144,21 @@ function _queueFor(ws) {
   }
   return q;
 }
-function nextFrame(ws, timeoutMs = 5000) {
+// 5000ms was the original default. CI's own logs (both the real GH Actions
+// runs failing this file and a local repro under the identical env vars)
+// record real event_loop_lag_spike WARNs up to ~4.6s under full-suite
+// contention — leaving as little as ~0.4s of actual round-trip budget
+// before a real WebSocket auth+dispatch+reply cycle trips this timeout and
+// surfaces as a plain assertion-shaped failure (the reject message never
+// makes it into ci-tolerant's captured "not ok" summary line, which is why
+// this read as a mysterious flake rather than an obvious timeout at first).
+// Bumped to give real margin above the measured ceiling — same
+// measured-floor-plus-margin discipline as this repo's other timeout/
+// tolerance constants (see CANCEL_TOLERANCE / FLAKE_RERUN_MAX in
+// scripts/ci-test-tolerant.mjs) — while staying well under the 180s
+// isolated-rerun / 300s main-suite outer timeouts so a genuinely hung
+// server still fails in reasonable time.
+function nextFrame(ws, timeoutMs = 15000) {
   const q = _queueFor(ws);
   if (q.pending.length > 0) return Promise.resolve(q.pending.shift());
   return new Promise((resolve, reject) => {
@@ -175,7 +189,8 @@ function sendMsg(ws, evt, data) { ws.send(JSON.stringify({ evt, data })); }
 // broadcast can arrive interleaved with the direct design_command:result
 // reply, in either order. Skips unrelated frames instead of assuming the
 // very next queued frame is the one under test.
-async function waitForEvt(ws, evtName, timeoutMs = 5000) {
+// Same measured-lag-margin reasoning as nextFrame's default above.
+async function waitForEvt(ws, evtName, timeoutMs = 15000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const remaining = deadline - Date.now();
