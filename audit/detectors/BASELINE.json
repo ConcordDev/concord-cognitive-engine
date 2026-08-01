@@ -1,15 +1,15 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-25T18:54:15.501Z",
+  "generatedAt": "2026-08-01T15:56:15.555Z",
   "totals": {
     "critical": 0,
     "high": 7,
-    "medium": 0,
-    "low": 0,
-    "info": 37,
-    "total": 44
+    "medium": 17,
+    "low": 2,
+    "info": 45,
+    "total": 71
   },
-  "detectorCount": 46,
+  "detectorCount": 51,
   "fingerprints": {
     "7702b52eea3af593": {
       "detector": "stale-code",
@@ -25,31 +25,47 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "859 macros · 0 dead · 397 single-caller · 2 popular · 352 dispatcher-reach (2 runtime-live, 350 retirement-candidates)"
+      "message": "860 macros · 0 dead · 392 single-caller · 2 popular · 353 dispatcher-reach (0 runtime-live, 353 retirement-candidates)"
     },
-    "9d83f4a6fe552b2a": {
-      "detector": "macro-usage",
-      "id": "macro_runtime_live",
-      "severity": "info",
-      "kind": "semantic",
-      "location": "server/server.js:79067",
-      "message": "Macro refusal.composition fired 56 time(s) at runtime — live"
-    },
-    "f9e8af906863d65d": {
-      "detector": "macro-usage",
-      "id": "macro_runtime_live",
-      "severity": "info",
-      "kind": "semantic",
-      "location": "server/server.js:80625",
-      "message": "Macro world.gatherings fired 9 time(s) at runtime — live"
-    },
-    "9c6176383f6bf175": {
+    "8f70e0343caa4ccb": {
       "detector": "macro-usage",
       "id": "dispatcher_reach",
       "severity": "info",
       "kind": "static",
-      "location": "server/routes/domain.js:225",
-      "message": "Open dispatcher detected — all macros reachable via server/routes/domain.js:225"
+      "location": "server/routes/domain.js:226",
+      "message": "Open dispatcher detected — all macros reachable via server/routes/domain.js:226"
+    },
+    "6b733168ae73bfa4": {
+      "detector": "macro-usage",
+      "id": "dispatcher_reach",
+      "severity": "info",
+      "kind": "static",
+      "location": "server/tests/macro-usage-detector.test.js:67",
+      "message": "Open dispatcher detected — all macros reachable via server/tests/macro-usage-detector.test.js:67"
+    },
+    "66191601e06d15d4": {
+      "detector": "macro-usage",
+      "id": "dispatcher_reach",
+      "severity": "info",
+      "kind": "static",
+      "location": "server/tests/macro-usage-detector.test.js:85",
+      "message": "Open dispatcher detected — all macros reachable via server/tests/macro-usage-detector.test.js:85"
+    },
+    "20c83444d4d736f6": {
+      "detector": "macro-usage",
+      "id": "dispatcher_reach",
+      "severity": "info",
+      "kind": "static",
+      "location": "server/tests/macro-usage-detector.test.js:106",
+      "message": "Open dispatcher detected — all macros reachable via server/tests/macro-usage-detector.test.js:106"
+    },
+    "c7462c6d7f7515cc": {
+      "detector": "macro-usage",
+      "id": "dispatcher_reach",
+      "severity": "info",
+      "kind": "static",
+      "location": "server/tests/macro-usage-detector.test.js:135",
+      "message": "Open dispatcher detected — all macros reachable via server/tests/macro-usage-detector.test.js:135"
     },
     "333eee035da98fae": {
       "detector": "lens-health",
@@ -57,14 +73,14 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 264 lenses · 1 issues found"
+      "message": "Scanned 265 lenses · 1 issues found"
     },
-    "20a6ba9ee475213f": {
+    "b188dc8c34801012": {
       "detector": "lens-health",
       "id": "lens_unknown_domain",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/world/page.tsx:6242",
+      "location": "concord-frontend/app/lenses/world/page.tsx:6234",
       "message": "Lens world calls domain \"mainland\" — no dedicated handler registered; runtime routes via utility-brain AI catch-all. Adding a register(\"mainland\", ...) handler would give deterministic behavior."
     },
     "2f600c033f853e95": {
@@ -73,7 +89,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 264 lenses · 0 decorative-state issues found"
+      "message": "Scanned 265 lenses · 0 decorative-state issues found"
     },
     "bc7153daf3c21158": {
       "detector": "dtu-lineage",
@@ -97,7 +113,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 9161 files; flagged 0"
+      "message": "Scanned 9306 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -105,7 +121,23 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 4390 server files"
+      "message": "Scanned 4490 server files"
+    },
+    "ee9eb15cff6c4bab": {
+      "detector": "performance-hotspot",
+      "id": "perf_select_star_hot",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/domains/vault.js:659",
+      "message": "SELECT * full-scan or JOIN — project explicit columns"
+    },
+    "d6c211622a635350": {
+      "detector": "performance-hotspot",
+      "id": "perf_unbounded_cache_growth",
+      "severity": "low",
+      "kind": "static",
+      "location": "server/lib/combat/damage-calculator.js:132",
+      "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
     "3b5cf89535467e0d": {
       "detector": "historical-trend",
@@ -121,7 +153,7 @@
       "severity": "info",
       "kind": "predictive",
       "location": null,
-      "message": "30 samples · 14 tables observed · heap 13MB"
+      "message": "20 samples · 14 tables observed · heap 13MB"
     },
     "7d25275889c77630": {
       "detector": "architectural-hub",
@@ -129,7 +161,15 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 4390 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 4490 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+    },
+    "e9e6b86b11f791e2": {
+      "detector": "architectural-hub",
+      "id": "architectural_leaf_utility",
+      "severity": "info",
+      "kind": "architectural",
+      "location": "server/lib/detectors/_framework.js",
+      "message": "Module server/lib/detectors/_framework.js fan-in=54 fan-out=0 (leaf utility — wide use is by design)"
     },
     "8124c3bcdf890d24": {
       "detector": "architectural-hub",
@@ -145,7 +185,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": "server/logger.js",
-      "message": "Module server/logger.js fan-in=319 fan-out=0 (leaf utility — wide use is by design)"
+      "message": "Module server/logger.js fan-in=321 fan-out=0 (leaf utility — wide use is by design)"
     },
     "e8ca0dab4cb5f073": {
       "detector": "fake-data",
@@ -153,7 +193,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "2253 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
+      "message": "2311 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
     },
     "efc9d1d4b9d4111b": {
       "detector": "frontend-fake-data",
@@ -161,7 +201,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3000 frontend file(s) under app/lenses + components; flagged 0"
+      "message": "Scanned 3013 frontend file(s) under app/lenses + components; flagged 0"
     },
     "2d470ae36f577f2e": {
       "detector": "asymmetric-status-update",
@@ -169,7 +209,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3000 frontend file(s) under app/lenses + components; flagged 0"
+      "message": "Scanned 3013 frontend file(s) under app/lenses + components; flagged 0"
     },
     "5fc62141c912ecc8": {
       "detector": "unused-destructured-param",
@@ -177,7 +217,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 5810 file(s); 5662 had analyzable function signatures; flagged 0"
+      "message": "Scanned 5849 file(s); 5699 had analyzable function signatures; flagged 0"
     },
     "e780256036c63ff8": {
       "detector": "dead-envelope-field-access",
@@ -185,7 +225,39 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3454 frontend file(s); 1403 called lensRun(); flagged 0; 42 candidate read(s) suppressed because the backend macro's return shape is flat or unknown (not provably dead)"
+      "message": "Scanned 3473 frontend file(s); 1405 called lensRun(); flagged 0; 42 candidate read(s) suppressed because the backend macro's return shape is flat or unknown (not provably dead)"
+    },
+    "6e13ff6d110d16d8": {
+      "detector": "http-error",
+      "id": "req_body_used_without_validation",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/operations.js:235",
+      "message": "Route reads req.body.tier without prior validation (Zod / Joi / explicit guard / defensive coalesce) — malformed bodies surface as 400 or 500."
+    },
+    "4254becfd479fc83": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/quest-rewards.js",
+      "message": "Server broadcasts socket event 'system:notice' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "4444fed22d3deca4": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/skill-evolution.js",
+      "message": "Server broadcasts socket event 'system:skill-evolved' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "2e47e5dc81cd0477": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/skills/skill-engine.js",
+      "message": "Server broadcasts socket event 'system:level-up' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
     },
     "54bf106d12062895": {
       "detector": "command-injection",
@@ -193,7 +265,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 42 child_process-importing file(s) of 9238; flagged 0"
+      "message": "Scanned 43 child_process-importing file(s) of 9385; flagged 0"
     },
     "4baf9918ecae7d2c": {
       "detector": "authz-coverage",
@@ -203,12 +275,12 @@
       "location": null,
       "message": "Authz-gate integrity check on the server.js global write-auth middleware"
     },
-    "32ea6b43a87ae2b4": {
+    "e3c131a1815b6ef9": {
       "detector": "authz-coverage",
       "id": "authz_write_auth_bypass",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:7331",
+      "location": "server/server.js:7557",
       "message": "\"/api/welding/portal/\" is in WRITE_AUTH_PUBLIC_PATHS — unauthenticated writes to this prefix bypass the global gate (intentional bypasses are baselined; a NEW one needs review)"
     },
     "e121a6cd28c4c7a7": {
@@ -217,7 +289,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "server/server.js: global write-auth gate present (mount line 7353); 648 mutating route(s) behind it; 8 bypass path(s)"
+      "message": "server/server.js: global write-auth gate present (mount line 7579); 647 mutating route(s) behind it; 8 bypass path(s)"
     },
     "23522addb854db0a": {
       "detector": "frontend-unsafe-chain",
@@ -225,7 +297,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3454 frontend file(s); 1563 had fetch/macro-sourced data; flagged 0"
+      "message": "Scanned 3473 frontend file(s); 1564 had fetch/macro-sourced data; flagged 0"
     },
     "c4a010146d380e31": {
       "detector": "duplicate-handler-race",
@@ -233,7 +305,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3565 frontend file(s) + 2357 server file(s); flagged 0."
+      "message": "Scanned 3585 frontend file(s) + 2375 server file(s); flagged 0."
     },
     "d462654fb51261ca": {
       "detector": "fabrication-mechanism",
@@ -241,7 +313,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 6140 file(s); flagged 0"
+      "message": "Scanned 6182 file(s); flagged 0"
     },
     "d0df7c8fcaee4508": {
       "detector": "workflow-gate-integrity",
@@ -249,7 +321,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 23 workflow file(s); flagged 0 finding(s) (manifest present, 14 exemption(s))."
+      "message": "Scanned 25 workflow file(s); flagged 0 finding(s) (manifest present, 15 exemption(s))."
     },
     "baa6a3adbd8b86e4": {
       "detector": "money-txn-hygiene",
@@ -257,7 +329,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 228 money-shaped file(s) of 4402 under server/; flagged 6"
+      "message": "Scanned 231 money-shaped file(s) of 4502 under server/; flagged 6"
     },
     "28713dd4b913d372": {
       "detector": "money-txn-hygiene",
@@ -275,12 +347,12 @@
       "location": "server/economy/stripe.js:188",
       "message": "handleWebhook() performs 2 money-table write(s) (1 direct + 1 delegated, tables: economy_withdrawals) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "099aa2cb4ec132d6": {
+    "245a829c5113076b": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/lib/account-lifecycle.js:42",
+      "location": "server/lib/account-lifecycle.js:43",
       "message": "requestAccountDeletion() performs 2 money-table write(s) (1 direct + 1 delegated, tables: balance_at_request) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of "
     },
     "ca5409e0d1cd7cdc": {
@@ -291,20 +363,20 @@
       "location": "server/routes/wagers.js:12",
       "message": "createWagersRouter() performs 5 money-table write(s) (0 direct + 5 delegated) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "62b34a8a35d12bfb": {
+    "fa1961c1a429e76a": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:74445",
+      "location": "server/server.js:75883",
       "message": "creditWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
-    "ea1dd5a9bef5d2d8": {
+    "b02e21a7eb493bf7": {
       "detector": "money-txn-hygiene",
       "id": "money_txn_untransacted_writes",
       "severity": "high",
       "kind": "static",
-      "location": "server/server.js:74505",
+      "location": "server/server.js:75943",
       "message": "debitWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
     },
     "577671649c5313ca": {
@@ -313,7 +385,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 95 realtimeEmit-mentioning file(s) of 9238; 218 call site(s); flagged 0"
+      "message": "Scanned 100 realtimeEmit-mentioning file(s) of 9385; 225 call site(s); flagged 0"
     },
     "da8b979a5bb58c77": {
       "detector": "stale-lying-test",
@@ -321,7 +393,23 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 90 readFileSync-using test file(s) of 934 test file(s); flagged 0"
+      "message": "Scanned 92 readFileSync-using test file(s) of 957 test file(s); flagged 2"
+    },
+    "c836118380287d7e": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/vault-tokens.test.tsx:172",
+      "message": "it(\"wires the serif through next/font in the root layout, like the other two faces\") claims a runtime behavior but only regex/substring-matches source text (LAYOUT_TSX) — no render/fireEvent/dispatchE"
+    },
+    "af3fc3655f8a7819": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/world-lens-double-light-fix.test.ts:123",
+      "message": "it(\"auto-detection only fires when the prop is genuinely undefined, not when it equ…\") claims a runtime behavior but only regex/substring-matches source text (concordiaSceneSrc) — no render/fireEvent/"
     },
     "5645d17312ed6ec6": {
       "detector": "dead-macro-call",
@@ -329,7 +417,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "10724 registered (domain, macro) pairs; scanned 1616 frontend file(s) with macro-run call sites, checked 6839 literal call site(s), flagged 0"
+      "message": "10739 registered (domain, macro) pairs; scanned 1618 frontend file(s) with macro-run call sites, checked 6844 literal call site(s), flagged 0"
     },
     "b1edad482c167c53": {
       "detector": "hardcoded-literal-data-prop",
@@ -337,7 +425,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3089 JSX file(s) of 3728; flagged 0"
+      "message": "Scanned 3103 JSX file(s) of 3758; flagged 0"
     },
     "3a206e9b65e3bf45": {
       "detector": "domain-reachability",
@@ -345,7 +433,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 418 server/domains/*.js file(s): 415 registrar(s) (0 unreachable), 3 helper module(s) (0 unreachable)"
+      "message": "Scanned 419 server/domains/*.js file(s): 416 registrar(s) (0 unreachable), 3 helper module(s) (0 unreachable)"
     },
     "43ee1a756747d978": {
       "detector": "lens-manifest-capability",
@@ -353,7 +441,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 1683 lens-manifest macro claim(s): 1683 checkable (0 unbacked), 0 uncheckable (no dot / malformed)"
+      "message": "Scanned 1686 lens-manifest macro claim(s): 1686 checkable (0 unbacked), 0 uncheckable (no dot / malformed)"
     },
     "95179a1d1d67fcd8": {
       "detector": "constant-time",
@@ -361,15 +449,127 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 2366 of 4403 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
+      "message": "Scanned 2386 of 4503 candidate file(s) under server/; flagged 0 secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means \"no pattern match"
     },
-    "378ee97a38835512": {
-      "detector": "authz-coverage",
-      "id": "authz_write_auth_bypass",
-      "severity": "high",
+    "c72d3dbe6c669c25": {
+      "detector": "public-read-write-verb",
+      "id": "public_read_write_verb_summary",
+      "severity": "info",
       "kind": "static",
-      "location": "server/server.js:7508",
-      "message": "\"/api/welding/portal/\" is in WRITE_AUTH_PUBLIC_PATHS — unauthenticated writes to this prefix bypass the global gate (intentional bypasses are baselined; a NEW one needs review)"
+      "location": null,
+      "message": "publicReadDomains: 20 write-shaped macro name(s) found in the anonymous-read allowlist; 0 flagged for missing/unverifiable ownership checks, 1 already reviewed+allowlisted"
+    },
+    "58e7cf61327c0c90": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_boundary_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 131 route file(s) + 58/81 resolvable global-scope heartbeat handler(s) against 52 per-world write-owned table(s); 4 write(s) already reviewed+allowlisted"
+    },
+    "4827126825e14750": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_route",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/world-creature.js:61",
+      "message": "server/routes/world-creature.js:61 writes to per-world table \"world_npcs\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard write "
+    },
+    "c297921806f58362": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_route",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/world-creature.js:86",
+      "message": "server/routes/world-creature.js:86 writes to per-world table \"creature_corpses\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard "
+    },
+    "41429781370b4d20": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_route",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/world-creature.js:93",
+      "message": "server/routes/world-creature.js:93 writes to per-world table \"creature_corpses\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard "
+    },
+    "45f27a3bf9977fcb": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_route",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/world-creature.js:178",
+      "message": "server/routes/world-creature.js:178 writes to per-world table \"creature_corpses\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard"
+    },
+    "b85051faf8e5b884": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_route",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/world-creature.js:196",
+      "message": "server/routes/world-creature.js:196 writes to per-world table \"creature_corpses\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard"
+    },
+    "087af726c7a11bd4": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_route",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/worlds.js:1981",
+      "message": "server/routes/worlds.js:1981 writes to per-world table \"world_buildings\" from a route (parent-process-only) — will race the world-shard writer once CONCORD_SHARD_WORLDS=true. No route-to-shard write f"
+    },
+    "ef7f0579fe4a1ec1": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_global_heartbeat",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/ecosystem/fauna-spawner.js:221:fauna-spawner",
+      "message": "heartbeat \"fauna-spawner\" (scope:\"global\", handler runFaunaSpawner at server/lib/ecosystem/fauna-spawner.js) writes to per-world table \"world_npcs\" — global-scope heartbeats run on the parent process "
+    },
+    "0b25b9057535b48e": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_global_heartbeat",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/ecosystem/fauna-spawner.js:226:fauna-spawner",
+      "message": "heartbeat \"fauna-spawner\" (scope:\"global\", handler runFaunaSpawner at server/lib/ecosystem/fauna-spawner.js) writes to per-world table \"world_npcs\" — global-scope heartbeats run on the parent process "
+    },
+    "370a4c5e6107f5fb": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_global_heartbeat",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/affect-trace-cycle.js:65:affect-trace-cycle",
+      "message": "heartbeat \"affect-trace-cycle\" (scope:\"global\", handler runAffectTraceCycle at server/emergent/affect-trace-cycle.js) writes to per-world table \"creature_affect_trace\" — global-scope heartbeats run on"
+    },
+    "0a76706e79e1a9cb": {
+      "detector": "world-shard-write-boundary",
+      "id": "world_shard_write_from_global_heartbeat",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/affect-trace-cycle.js:118:affect-trace-cycle",
+      "message": "heartbeat \"affect-trace-cycle\" (scope:\"global\", handler runAffectTraceCycle at server/emergent/affect-trace-cycle.js) writes to per-world table \"world_npcs\" — global-scope heartbeats run on the parent"
+    },
+    "7ff40d0fbb682248": {
+      "detector": "internal-actor-stamp",
+      "id": "internal_actor_stamp_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 1547 file(s) for internal:true stamps built from a non-literal source; 0 require review, 2 already reviewed+allowlisted"
+    },
+    "8fb06d6f053ab061": {
+      "detector": "checker-self-coverage",
+      "id": "checker_self_coverage_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "53 detector(s) + 23 gate script(s) checked against 2942 test file(s): 0 detector(s) and 0 script(s) have no referencing test"
+    },
+    "a39844d9add9db1f": {
+      "detector": "doc-claim-resolution",
+      "id": "doc_claim_resolution_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Checked 420 \"fixed/closed\"-adjacent file reference(s) across 679 doc file(s); 0 no longer resolve"
     }
   }
 }
