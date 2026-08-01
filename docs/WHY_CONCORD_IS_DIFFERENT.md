@@ -154,14 +154,23 @@ A pitch that hides these gets found out; one that names them gets believed:
   inventory.
 - **"Novel" ≠ "global-first."** The inventory claims *distinctive / distinctively-
   composed*, grounded in the cited file — not that each item was invented here.
-- **The honest residual is external data + platform maturity, not a per-feature loss.**
-  Post-WAVE4 every lens is built and judged to stand alone against its category leader
-  (CLAUDE.md's 4th/6th hard invariants), and many match or beat it on capability — so the
-  old "loses on any single checkbox" framing is retired as stale. What genuinely still
-  trails is narrower and specific: a set of lenses have documented **external-data gaps**
-  (no free/open feed for e.g. live flight pricing or CAD-grade parcel tiles — the
-  DATA-SOURCING rows in `docs/WAVE4_INVENTORY.md`), and platform *maturity* — scale,
-  ecosystem, brand — trails the incumbents. Those are the real limits, named honestly.
+- **The honest residual is external data + third-party ecosystem, not a per-lens quality gap —
+  and those are different claims, not a spectrum of the same weakness.** Post-WAVE4 every lens
+  is built and judged to stand alone against its category leader (CLAUDE.md's 4th/6th hard
+  invariants), and many match or beat it on capability — so the old "loses on any single
+  checkbox" framing is retired as stale. What genuinely still trails is narrower, specific, and
+  structural rather than a quality judgment: a set of lenses have documented **external-data
+  gaps** (no free/open feed for e.g. live flight pricing or CAD-grade parcel tiles — the
+  DATA-SOURCING rows in `docs/WAVE4_INVENTORY.md`), and Concord has no **third-party ecosystem**
+  around any given lens — no plugin marketplace of outside-built add-ons (the way Bloomberg
+  Terminal or Salesforce's AppExchange have thousands), no professional certification an
+  employer screens for (no "Concord Certified Accountant"), no years of external integrations
+  built by other companies. That gap is a function of *adoption time*, not of how the lens
+  itself is built — it can't be closed by writing more code, only by years of outside developers
+  choosing to build on the platform. Naming it honestly is not the same claim as "each lens is
+  amateur"; conflating the two would itself be a dishonesty in the other direction; the
+  per-lens quality claim above already answers that question, and this bullet answers a
+  different one.
 
 ---
 
