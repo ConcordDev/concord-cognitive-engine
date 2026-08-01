@@ -12962,7 +12962,11 @@ async function runMacro(domain, name, input, ctx) {
     // douse mutate and require an actor, so they're NOT here).
     elements: new Set(["matrix"]),
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
-    dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
+    // "bulkCreate"/"promote" removed (public-read-write-verb-detector,
+    // confirmed dead 2026-07-31): no register("dtu","bulkCreate"|"promote",...)
+    // exists anywhere — these names were never real macros, so listing them
+    // here was inert allowlist drift, not a live anonymous-write path.
+    dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete"]),
     // Phase 1 (UX completeness sprint) — per-lens auto-save drafts.
     // Handlers self-scope by ctx.actor.userId; anonymous callers return
     // {ok:false,reason:'no_user'}. Listing here bypasses the heavy
@@ -13051,7 +13055,11 @@ async function runMacro(domain, name, input, ctx) {
     graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors"]),
     events: new Set(["list", "recent", "log", "paginated"]),
     worldmodel: new Set(["list_relations", "get", "status", "entities", "simulations"]),
-    goals: new Set(["list", "get", "status", "config", "create", "update", "delete", "complete"]),
+    // "create"/"update"/"delete" removed (public-read-write-verb-detector,
+    // confirmed dead 2026-07-31): the real goals macros are
+    // propose/approve/activate/complete/abandon — bare create/update/delete
+    // were never registered, so these entries were inert allowlist drift.
+    goals: new Set(["list", "get", "status", "config", "complete"]),
     council: new Set(["tally", "status", "list"]),
     hypothesis: new Set(["list", "get", "status"]),
     analytics: new Set(["dashboard", "growth", "density", "citations", "marketplace", "personal"]),
@@ -13133,10 +13141,28 @@ async function runMacro(domain, name, input, ctx) {
       "upsert_shadow", "list_shadows", "get_weight",
     ]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
-    sandbox: new Set(["create", "status", "action", "list", "pause", "resume", "provision", "kill"]),
-    collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
-    social: new Set(["profile", "followers", "following", "discover", "cited-by", "post", "react", "share", "comment", "follow", "unfollow"]),
-    economy: new Set(["status", "balance", "transactions", "withdrawals", "transfer", "tip"]),
+    // "create" removed (public-read-write-verb-detector, confirmed dead
+    // 2026-07-31): the real sandbox macros are provision/kill/list/status/
+    // action/pause/resume — bare "create" was never registered.
+    sandbox: new Set(["status", "action", "list", "pause", "resume", "provision", "kill"]),
+    // "comments"/"edit-session"/"create"/"update"/"delete" removed
+    // (public-read-write-verb-detector, confirmed dead 2026-07-31): the real
+    // write macros are createSession/edit/merge — these bare names were
+    // never registered. "join" stays and is reviewed+allowlisted in the
+    // detector (session-link-based join, not an ownership-check gap).
+    collab: new Set(["revisions", "workspace", "join"]),
+    // "followers"/"following"/"post"/"comment"/"follow"/"unfollow" removed
+    // (public-read-write-verb-detector, confirmed dead 2026-07-31): the real
+    // functionality is the authenticated HTTP routes /api/social/follow,
+    // /api/social/unfollow, etc. — no register("social", ...) macro of
+    // these names was ever wired, so calling them via /api/lens/run was a
+    // harmless no-op (macro_not_found), never a live anonymous-write path.
+    social: new Set(["profile", "discover", "cited-by", "react", "share"]),
+    // "withdrawals"/"transfer"/"tip" removed (public-read-write-verb-detector,
+    // confirmed dead 2026-07-31): the real functionality is the authenticated
+    // HTTP routes /api/economy/transfer etc. — no matching macro was ever
+    // registered.
+    economy: new Set(["status", "balance", "transactions"]),
     marketplace: new Set(["listings", "list", "get", "browse", "submit", "install", "review", "purchase"]),
     credits: new Set(["balance", "status"]),
     hive: new Set(["status", "list"]),
@@ -13159,7 +13185,10 @@ async function runMacro(domain, name, input, ctx) {
     // Extended domains (three-gate audit)
     quest: new Set(["list", "get", "active", "progress", "metrics"]),
     teaching: new Set(["list", "get", "profile", "metrics", "expertise"]),
-    creative: new Set(["list", "get", "exhibition", "metrics", "profile", "masterworks", "registry", "domains", "generate", "create", "run"]),
+    // "create" removed (public-read-write-verb-detector, confirmed dead
+    // 2026-07-31): the real macro is "create_work" (underscore), never
+    // bare "create" — this entry was never callable.
+    creative: new Set(["list", "get", "exhibition", "metrics", "profile", "masterworks", "registry", "domains", "generate", "run"]),
     culture: new Set(["status", "traditions", "values", "stories", "metrics", "identity"]),
     trust: new Set(["get", "network", "metrics"]),
     federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox", "actor", "inbox"]),
@@ -13187,7 +13216,13 @@ async function runMacro(domain, name, input, ctx) {
     experience: new Set(["status", "patterns", "recent", "strategies", "consolidate", "retrieve"]),
     explore: new Set(["history"]),
     flywheel: new Set(["history", "metrics"]),
-    inheritance: new Set(["bequests", "claim", "create-bequest", "revoke", "list_open"]),
+    // "claim"/"create-bequest"/"revoke" removed (public-read-write-verb-
+    // detector, confirmed dead 2026-07-31): the real inheritance macros are
+    // open_listing/claim_slot/list_open — these three names were never
+    // registered; the real functionality for "revoke" lives at the
+    // authenticated HTTP route /api/inheritance/revoke, entirely separate
+    // from the macro dispatcher, so this entry never actually bypassed auth.
+    inheritance: new Set(["bequests", "list_open"]),
     pipeline: new Set(["execute", "executions"]),
     quality: new Set(["stats", "domain", "thresholds"]),
     sovereignty: new Set(["status", "audit", "setup", "preferences"]),
@@ -31572,12 +31607,21 @@ register("jobs","get", (ctx, input) => {
 
 // ---- Agents ----
 register("agent","create", (ctx, input) => {
+  // SECURITY: this macro is anonymous-callable (publicReadDomains lists
+  // "agent" -> "create"), and the handler previously had no ownership gate
+  // at all — any unauthenticated caller could mint persistent, unscoped
+  // records in the shared STATE.personas map with an attacker-controlled
+  // allowedMacros list. Require a real caller identity; the created agent
+  // is now stamped with it so a future ownership check (enable/tick/list)
+  // has something to check against. Flagged by public-read-write-verb-detector.
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
   const name = normalizeText(input.name || "Agent");
   const goal = normalizeText(input.goal || "");
   const cadenceMs = clamp(Number(input.cadenceMs||60000), 5000, 86400000);
   const allowed = Array.isArray(input.allowedMacros) ? input.allowedMacros.map(String) : ["dtu.create","dtu.list","system.synthesize"];
   const id = uid("agent");
-  const agent = { id, orgId: ctx.actor.orgId, name, goal, cadenceMs, allowedMacros: allowed, enabled: false, createdAt: nowISO(), lastTickAt: null };
+  const agent = { id, orgId: ctx.actor.orgId, ownerId: userId, name, goal, cadenceMs, allowedMacros: allowed, enabled: false, createdAt: nowISO(), lastTickAt: null };
   STATE.queues.agents = Array.isArray(STATE.queues.agents) ? STATE.queues.agents : [];
   STATE.queues.agents.push(id);
   STATE.personas.set(id, agent); // store in personas map as lightweight agent record (no new map needed)
@@ -40843,6 +40887,14 @@ function computeRoyaltyCascade(dtu) {
 // ── Scope Promotion Macro (Dual Global) ─────────────────────────────────────
 
 register("scope", "promote", async (ctx, input) => {
+  // SECURITY: anonymous-callable (publicReadDomains lists "scope" ->
+  // "promote") but operates on an arbitrary caller-supplied dtuId with no
+  // ownership check on the requester — the actual admission decision is
+  // made by the pre-submission + council/review gates below, not by who's
+  // asking, so "any logged-in community member can nominate a DTU for
+  // promotion" is the intended shape. Require real authentication only,
+  // not DTU ownership. Flagged by public-read-write-verb-detector.
+  if (!ctx?.actor?.userId) return { ok: false, reason: "no_user" };
   const { dtuId, targetScope } = input || {};
   const dtu = STATE.dtus.get(dtuId);
 

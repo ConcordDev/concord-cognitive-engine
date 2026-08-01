@@ -35,6 +35,27 @@ function backdateProject(db, projectId, secondsAgo) {
   db.prepare(`UPDATE projects SET updated_at = unixepoch() - ? WHERE id = ?`).run(secondsAgo, projectId);
 }
 
+/**
+ * Pre-existing bug found running this file's tests for real (not just at a
+ * convenient moment): initiative-engine.js's DEFAULT quiet-hours window is
+ * 22:00-08:00 (server/lib/initiative-engine.js:503-504) — a ~10h/day
+ * overnight span covering ~42% of any given day. Any subtest that expects
+ * `proposed: 1` runs straight into checkRateLimits()'s quiet-hours gate and
+ * fails with reason:"quiet_hours" whenever CI happens to execute during that
+ * window (confirmed live: 23:58 UTC, `_isQuietHours("22:00","08:00")` true).
+ * This has nothing to do with any of this test file's actual assertions —
+ * it's a wall-clock-time-of-day dependency the tests never neutralized.
+ * quietStart===quietEnd="00:00" makes _isQuietHours's same-day-range branch
+ * evaluate `currentMinutes >= 0 && currentMinutes < 0`, which is always
+ * false — a permanent, deterministic "never quiet" override, not a clock
+ * mock. The engine persists settings in `db`, so a second
+ * createInitiativeEngine(db) instance (e.g. the one project-continuation-
+ * initiative.js's own engineFor() lazily creates) reads the same override.
+ */
+function disableQuietHours(db, userId) {
+  createInitiativeEngine(db).updateSettings(userId, { quietStart: "00:00", quietEnd: "00:00" });
+}
+
 /** Build a project with a real goal tree + one actionable subgoal, backdated
  *  past the idle threshold. */
 function makeIdleActionableProject(db, userId, name) {
@@ -60,6 +81,7 @@ test("Project continuation initiative — suggestion-only, gated pass", async (t
     db.pragma("foreign_keys = ON");
     return runMigrations(db).then(() => {
       const { project } = makeIdleActionableProject(db, "u1", "Ship the R&D engine");
+      disableQuietHours(db, "u1");
       const engine = createInitiativeEngine(db);
       const r = runProjectContinuationPass(db, { engine });
 
@@ -81,6 +103,7 @@ test("Project continuation initiative — suggestion-only, gated pass", async (t
     db.pragma("foreign_keys = ON");
     return runMigrations(db).then(() => {
       makeIdleActionableProject(db, "u2", "Second gating project");
+      disableQuietHours(db, "u2");
       const engine = createInitiativeEngine(db);
 
       const first = runProjectContinuationPass(db, { engine });
@@ -144,6 +167,7 @@ test("Project continuation initiative — suggestion-only, gated pass", async (t
       linkMarathonToProject(db, project.id, mar.sessionId); // bumps projects.updated_at — real activity
       db.prepare(`UPDATE agent_marathon_sessions SET status = 'paused' WHERE id = ?`).run(mar.sessionId);
       backdateProject(db, project.id, 3600); // re-idle it AFTER the link, so only `paused` is under test
+      disableQuietHours(db, "u5");
 
       const engine = createInitiativeEngine(db);
       const r = runProjectContinuationPass(db, { engine });
@@ -185,6 +209,7 @@ test("Project continuation initiative — suggestion-only, gated pass", async (t
     db.pragma("foreign_keys = ON");
     return runMigrations(db).then(() => {
       makeIdleActionableProject(db, "u7", "Via heartbeat wrapper");
+      disableQuietHours(db, "u7");
       _resetProjectContinuationEngine();
       const r = runProjectContinuationCycle({ db });
       assert.equal(r.ok, true);
