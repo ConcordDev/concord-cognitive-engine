@@ -1,32 +1,29 @@
 'use client';
 
 /**
- * /explore — public, no-account entry fork.
+ * /explore/world — the Concordia half of the split /explore fork.
  *
- * Split entry paths (was a single page mixing two audiences that repel each
- * other): a sovereign-data/knowledge-engine pitch ("no ads, no extraction,
- * you own every byte") was sitting in the same equal-weight tile grid as
- * "violent, bloody world (18+)", then the closing CTA restated the content
- * warning right under the trust band. A visitor drawn by one framing reads
- * the other as a red flag. This page no longer pitches either audience
- * directly — it forks immediately into `/explore/engine` (the knowledge
- * substrate: DTUs, citation economy, sovereignty — zero combat/violence
- * framing) and `/explore/world` (Concordia: living NPCs, factions, real
- * combat — 18+ stated plainly, once, where it belongs). The live
- * cross-world activity feed stays here since it's a real, honest draw for
- * both audiences and doesn't front-load either pitch.
- *
- * Read-only. Pulls from public-read endpoints (no auth). Degrades gracefully
- * to static-but-true showcase content if a fetch fails.
+ * Leads with the world/combat pitch and states 18+ once, plainly, where a
+ * visitor who chose this path expects it — instead of sitting in an
+ * equal-weight tile next to a "no data extraction, sovereign" pitch aimed
+ * at a different audience. See `/explore/page.tsx`'s header comment for why
+ * this split exists.
  */
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, ArrowRight, Globe, Brain, Swords, Activity } from 'lucide-react';
+import { Sparkles, ArrowRight, Globe, Swords, Users, Coins, Activity, ShieldAlert } from 'lucide-react';
 
 interface WorldEvent { kind?: string; summary?: string; ts?: number; worldId?: string }
 
-export default function ExplorePage() {
+const PILLARS = [
+  { icon: Globe, title: 'A living 3D world', body: 'A civilization simulator with hundreds of NPCs running their own lives, factions, schemes, and wars in real time — not scripted, emergent.' },
+  { icon: Swords, title: 'Real, visceral combat', body: 'Skyrim-style action combat with procedural biomechanics and momentum-based impact — a violent, bloody world.' },
+  { icon: Coins, title: 'Loot, craft, and get paid', body: 'Author recipes, gear, and blueprints — earn perpetual royalties when other players build on what you made.' },
+  { icon: Users, title: 'You carry an identity across it all', body: 'One inventory, one character, one economy — everywhere you go in the world stays connected.' },
+];
+
+export default function ExploreWorldPage() {
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [worlds, setWorlds] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +49,6 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen bg-lattice-void text-white">
-      {/* Header */}
       <header className="flex items-center justify-between px-6 py-5 border-b border-lattice-border">
         <Link href="/" className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-blue flex items-center justify-center">
@@ -61,6 +57,7 @@ export default function ExplorePage() {
           <span className="text-xl font-bold">Concordos</span>
         </Link>
         <div className="flex items-center gap-3 text-sm">
+          <Link href="/explore" className="text-gray-400 hover:text-white transition-colors">← Back</Link>
           <Link href="/login" className="text-gray-300 hover:text-white transition-colors">Sign in</Link>
           <Link href="/register" className="px-4 py-2 rounded-lg bg-gradient-to-r from-neon-cyan to-neon-blue text-white font-semibold hover:shadow-lg hover:shadow-neon-cyan/25 transition-all">
             Create free account
@@ -69,49 +66,22 @@ export default function ExplorePage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-12">
-        {/* Hero */}
         <div className="text-center mb-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-xs font-semibold mb-5">
-            <Activity className="w-3.5 h-3.5" /> Look around first — no account needed
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold mb-5">
+            <ShieldAlert className="w-3.5 h-3.5" /> Mature content — 18+
           </span>
           <h1 className="text-4xl md:text-6xl font-bold mb-5 leading-tight">
-            <span className="text-white">See it before</span>{' '}
-            <span className="bg-gradient-to-r from-neon-cyan via-neon-blue to-neon-purple bg-clip-text text-transparent">you commit</span>
+            <span className="text-white">A world that</span>{' '}
+            <span className="bg-gradient-to-r from-red-400 via-orange-400 to-neon-purple bg-clip-text text-transparent">lives without you</span>
           </h1>
           <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-            One substrate, two very different front doors. Pick the one you came for —
-            you can always find the other later.
+            Concordia — hundreds of NPCs running their own lives, real combat, real
+            consequences. This is running right now, whether you&apos;re watching or not.
           </p>
         </div>
 
-        {/* The fork */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
-          <Link href="/explore/engine" className="group bg-lattice-surface border border-lattice-border hover:border-neon-cyan/50 rounded-xl p-6 transition-colors">
-            <Brain className="w-8 h-8 text-neon-cyan mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">A sovereign second brain</h2>
-            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-              Capture knowledge as DTUs you own, cite, and get paid when others build on it.
-              No ads, no data extraction, real deterministic compute for the domains that need it.
-            </p>
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-neon-cyan">
-              See the knowledge engine <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </span>
-          </Link>
-          <Link href="/explore/world" className="group bg-lattice-surface border border-lattice-border hover:border-red-500/50 rounded-xl p-6 transition-colors">
-            <Swords className="w-8 h-8 text-red-400 mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">A living, violent 3D world</h2>
-            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-              Concordia — hundreds of NPCs running their own lives, factions, and wars,
-              with real Skyrim-style combat. Mature content, 18+.
-            </p>
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-400">
-              See the world <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </span>
-          </Link>
-        </section>
-
-        {/* Live activity — the ghost-town antidote, honest draw for both audiences */}
-        <section className="mb-4">
+        {/* Live activity — the ghost-town antidote */}
+        <section className="mt-12 mb-16">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -136,14 +106,44 @@ export default function ExplorePage() {
                 </div>
               ))
             ) : (
-              // Honest fallback: the world is always simulating — the feed
-              // window was just quiet. Say so rather than show a fake stream.
               <div className="p-6 text-center text-gray-400 text-sm">
                 Hundreds of NPCs are living their lives, forming factions, and trading right now —
                 <Link href="/register" className="text-neon-cyan hover:underline"> step in to watch it unfold.</Link>
               </div>
             )}
           </div>
+          <p className="mt-3 text-center text-xs">
+            <Link href={`/spectate/concordia-hub`} className="text-neon-cyan hover:underline">
+              Watch the live feed without an account →
+            </Link>
+          </p>
+        </section>
+
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
+          {PILLARS.map((p) => (
+            <div key={p.title} className="bg-lattice-surface border border-lattice-border rounded-xl p-5">
+              <p.icon className="w-6 h-6 text-red-400 mb-3" />
+              <h3 className="text-white font-semibold mb-1.5">{p.title}</h3>
+              <p className="text-gray-400 text-sm leading-relaxed">{p.body}</p>
+            </div>
+          ))}
+        </section>
+
+        <section className="text-center bg-gradient-to-b from-lattice-surface to-lattice-void border border-lattice-border rounded-2xl p-10">
+          <Activity className="w-8 h-8 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Ready to step in?</h2>
+          <p className="text-gray-400 mb-6 max-w-md mx-auto">
+            Creating an account is free and takes a minute. You must be 18+ —
+            Concordia is a world with mature, violent content.
+          </p>
+          <Link href="/register" className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-gradient-to-r from-red-500 to-orange-500 text-white font-semibold hover:shadow-lg hover:shadow-red-500/25 transition-all">
+            Create your free account <ArrowRight className="w-4 h-4" />
+          </Link>
+          <p className="mt-4 text-xs text-gray-500">
+            Already have one? <Link href="/login" className="text-neon-cyan hover:underline">Sign in</Link>
+            {' · '}
+            <Link href="/explore/engine" className="text-neon-cyan hover:underline">Here for the knowledge engine instead?</Link>
+          </p>
         </section>
       </main>
     </div>
