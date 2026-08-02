@@ -27,6 +27,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { validateSafeFetchUrl } from "./ssrf-guard.js";
 
 // ── Client side: in-memory registry of connected MCP servers ──────
 
@@ -34,6 +35,26 @@ const _clients = new Map(); // serverId → { client, transport, tools, info }
 
 /**
  * Connect to an external MCP server.
+ *
+ * SECURITY CHOKEPOINT (2026-08-02): `kind: 'stdio'` hands `config.command` +
+ * `config.args` straight to `StdioClientTransport`, which spawns it as a
+ * real local subprocess — that is unrestricted local code execution for
+ * whoever can reach this function, so every caller MUST gate stdio behind
+ * an admin/operator role check of its own (see `domains/mcp.js`'s
+ * `requireAdminRole` — the same in-handler idiom `domains/admin.js` uses).
+ * This module has no actor/role context, so it cannot enforce that gate
+ * itself; it only enforces what it CAN verify structurally: `kind: 'http'`
+ * is validated through the same SSRF guard (`validateSafeFetchUrl` —
+ * scheme allowlist + private-IP/cloud-metadata block) every other
+ * user-supplied-URL fetch in this codebase goes through
+ * (`public-fetch.js#fetchPublicUrl`, `connector-client.js#connectorFetch`).
+ * Pre-fix, an `http`-kind connect only checked `^https?://` — any
+ * authenticated caller could point it at a loopback Ollama brain, an
+ * internal service, or a cloud metadata endpoint. The SDK's own
+ * `StreamableHTTPClientTransport` does its later requests itself (unlike
+ * `fetchWithPinnedIp`), so this is a pre-connect validation, not a
+ * DNS-rebind-proof pin — a real, honestly-documented residual, same class
+ * as every other pre-connect-only guard in this file's sibling modules.
  *
  * @param {string} serverId      caller-provided id ("filesystem", "github", etc.)
  * @param {object} config        { kind: 'stdio' | 'http', command?, args?, url?, env? }
@@ -56,6 +77,8 @@ export async function connectMcpServer(serverId, config = {}) {
       if (!config.url || !/^https?:\/\//.test(String(config.url))) {
         return { ok: false, reason: "http_invalid_url" };
       }
+      const safe = await validateSafeFetchUrl(String(config.url));
+      if (!safe.ok) return { ok: false, reason: "http_url_blocked", error: safe.error };
       transport = new StreamableHTTPClientTransport(new URL(String(config.url)));
     } else {
       return { ok: false, reason: "unknown_kind", kind: config.kind };

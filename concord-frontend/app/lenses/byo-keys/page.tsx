@@ -32,6 +32,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
 import { BrainModePanel } from '@/components/byo-keys/BrainModePanel';
+import { McpServersPanel } from '@/components/byo-keys/McpServersPanel';
 import { UsageSpendPanel } from '@/components/byo-keys/UsageSpendPanel';
 import { BudgetPanel } from '@/components/byo-keys/BudgetPanel';
 import { RateLimitPanel } from '@/components/byo-keys/RateLimitPanel';
@@ -378,6 +379,7 @@ export default function ByoKeysLens() {
           <KeyHealthPanel />
           <FallbackChainPanel />
           <OrgKeysPanel />
+          <McpServersPanel />
         </div>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

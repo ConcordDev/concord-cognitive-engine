@@ -260,6 +260,47 @@ test("formatToolResults renders run_python stdout/stderr/return value", () => {
   assert.match(rendered, /return value: 42/);
 });
 
+test("mcp_connect requires serverId and url", async () => {
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "mcp_connect", params: { serverId: "", url: "" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /requires serverId and url/);
+});
+
+test("mcp_connect is SSRF-guarded — a loopback URL is blocked via the real mcp-bridge.js chokepoint (no mocking)", async () => {
+  // Deliberately calls through the REAL mcp-bridge.js (this case does a raw
+  // dynamic import, same as the pre-existing mcp_call/mcp_list cases) so
+  // this pins the actual security boundary, not a stand-in.
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "mcp_connect", params: { serverId: "t-agent-loopback", url: "http://127.0.0.1:1/mcp" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /private|reserved|blocked|invalid/i);
+});
+
+test("mcp_connect always dispatches as kind='http' — a brain-supplied kind:'stdio' has zero effect (no subprocess is ever spawned from this tool)", async () => {
+  // If this case honored an attacker/brain-supplied `kind`, this call would
+  // try to spawn `command` as a local subprocess. Since the case hardcodes
+  // kind:"http" regardless of params, it hits the SSRF guard on `url`
+  // instead — proving `kind` and `command` are ignored.
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "mcp_connect",
+    params: { serverId: "t-agent-stdio-attempt", url: "http://127.0.0.1:1/mcp", kind: "stdio", command: "/bin/true" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /private|reserved|blocked|invalid/i);
+});
+
+test("formatToolResults renders mcp_connect success with server id + tool count", () => {
+  const rendered = formatToolResults([
+    { tool: "mcp_connect", ok: true, serverId: "github", toolCount: 2, tools: [{ name: "read_file" }, { name: "list_prs" }] },
+  ]);
+  assert.match(rendered, /\[TOOL_RESULT: mcp_connect github\]/);
+  assert.match(rendered, /Connected/);
+  assert.match(rendered, /read_file, list_prs/);
+});
+
 test("browse_url rejects non-http URLs", async () => {
   // Use a non-http scheme that isn't in the eslint script-url denylist.
   const result = await executeToolCall({}, () => null, new Map(), {

@@ -13,6 +13,11 @@
 //   - run_lens_action  (invoke ANY of Concord's 200+ lens domain actions)
 //   - create_dtu       (mint a DTU from the conversation)
 //   - expert_mode      (Perplexity-style cited answer with revolving-door corpus)
+//   - mcp_connect      (connect ANY remote MCP server over http — the wider
+//                        public MCP ecosystem, not just Concord's own tools;
+//                        stdio/local-subprocess servers stay admin-only, see
+//                        domains/mcp.js)
+//   - mcp_call/mcp_list (use tools on already-connected MCP servers)
 //
 // Critical wire-ups vs the old chat.respond path:
 //   • Brain calls go through Sprint 10's brainChat() router so the
@@ -64,6 +69,7 @@ Available tools:
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
 - expert_mode: Run a Perplexity-style cited answer over the global corpus. Params: {"query": "your question"}
 - generate_image: Generate an image. Params: {"prompt": "describe the image", "size": "1024x1024", "quality": "standard"}
+- mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
 - mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
 - mcp_list: List all tools available across connected external MCP servers. Params: {}
 - browser_act: Take actions on a web page — click, fill forms, select dropdowns, screenshot. Use when read-only browse_url isn't enough (need to log in, submit forms, navigate UI). Params: {"url": "https://...", "actions": [{"kind": "fill", "selector": "input[name='q']", "value": "..."}, {"kind": "click", "selector": "button[type='submit']"}, {"kind": "screenshot"}]}
@@ -282,6 +288,28 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const { listAllMcpTools } = await import("./mcp-bridge.js");
         return { tool: call.tool, ok: true, tools: listAllMcpTools() };
       }
+      case "mcp_connect": {
+        // "Any and all" MCP servers, safely scoped: the agent may connect to
+        // ANY remote (http/https Streamable HTTP) MCP server autonomously —
+        // that's the actual breadth of the public MCP ecosystem (10,000+
+        // servers per mcp-bridge.js's header) and is the same risk class as
+        // the browse_url tool it already has (arbitrary caller-influenced
+        // URL, no admin in the loop). `kind` is HARDCODED to "http" here —
+        // never taken from call.params — so this call site can never reach
+        // the stdio (local-subprocess-spawn) branch no matter what the
+        // brain outputs; that branch stays admin-only, gated in
+        // domains/mcp.js's requireAdminRole and enforced independently of
+        // this tool. The URL itself is still SSRF-validated inside
+        // connectMcpServer (mcp-bridge.js's chokepoint) before any request
+        // leaves the process.
+        const serverId = String(call.params.serverId || "").trim();
+        const url = String(call.params.url || "").trim();
+        if (!serverId || !url) return { tool: call.tool, ok: false, error: "mcp_connect requires serverId and url" };
+        const { connectMcpServer } = await import("./mcp-bridge.js");
+        const r = await connectMcpServer(serverId, { kind: "http", url });
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || r?.reason || "mcp_connect failed" };
+        return { tool: call.tool, ok: true, serverId, toolCount: (r.tools || []).length, tools: r.tools || [] };
+      }
       case "mcp_call": {
         const { invokeMcpTool } = await import("./mcp-bridge.js");
         const r = await invokeMcpTool(
@@ -405,6 +433,7 @@ export function formatToolResults(results) {
     if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
     if (r.tool === "expert_mode")  return `[TOOL_RESULT: expert_mode] ${(r.answer || "").slice(0, 4000)}`;
     if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image source=${r.source}] Image generated for prompt "${r.prompt}". Artifact attached.`;
+    if (r.tool === "mcp_connect")  return `[TOOL_RESULT: mcp_connect ${r.serverId}] Connected. ${r.toolCount} tool(s) available: ${(r.tools || []).map(t => t.name).slice(0, 30).join(", ")}`;
     if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
     if (r.tool === "mcp_call")     return _screenUntrusted(`mcp_call ${r.serverId}/${r.toolName}`, "mcp_external", (typeof r.result === "string" ? r.result : JSON.stringify(r.result)), (t) => `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${t.slice(0, 4000)}`);
     if (r.tool === "browser_act")  return _screenUntrusted(`browser_act ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browser_act ${r.url}] ${r.actionsExecuted} actions executed. finalUrl=${r.finalUrl || r.url}\n${t.slice(0, 4000)}`);
