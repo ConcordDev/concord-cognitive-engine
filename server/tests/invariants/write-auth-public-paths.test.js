@@ -68,6 +68,15 @@ const SERVER_JS = path.join(
  *         token, scoped server-side to exactly one estimate/invoice. Covered
  *         end-to-end by tests/e2e/welding-portal-routes.test.js (cross-tenant
  *         isolation, no fabricated payment success, invalid-token rejection).
+ *   /api/spectate/
+ *       — the Godot spectator-viewer milestone. `POST /api/spectate/:worldId/
+ *         subscribe` and `POST /api/spectate/heartbeat` are genuinely
+ *         anonymous-capable POSTs that open/refresh a READ-ONLY spectator
+ *         session (this gate's automatic GET/HEAD/OPTIONS exemption doesn't
+ *         cover them, since they're POSTs by necessity — a session token has
+ *         to be minted/refreshed somehow). The actual world feed is a GET
+ *         (`/api/spectate/:worldId/feed`) and needs no exemption. See the
+ *         inline justification at this array's own declaration in server.js.
  */
 const EXPECTED = [
   "/api/auth/login",
@@ -78,6 +87,7 @@ const EXPECTED = [
   "/metrics",
   "/api/stripe/webhook",
   "/api/welding/portal/",
+  "/api/spectate/",
 ];
 
 function parseAllowlist() {
