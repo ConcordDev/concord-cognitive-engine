@@ -52,15 +52,20 @@ export const CONKAY_VOICE_HINTS = [
 // PIPER_VOICE the server happens to be configured with. 'en_US-amy-medium' is
 // a real, commonly-shipped voice in the public Piper voice catalog
 // (rhasspy/piper-voices) — calm, female, English — chosen to match the
-// CONKAY_VOICE_HINTS profile above. PLACEHOLDER CAVEAT: this repo has no
-// checked-in Piper voice manifest to confirm which .onnx models are actually
-// installed on the deployment box, and the current `voice.tts` macro
-// (server.js) only honors the server-side `PIPER_VOICE` env var — it does not
-// yet read a per-request voice id. Confirm this id against the real installed
-// catalog (or wire the macro to accept `input.voice`) before relying on it to
-// change the sound in production; until then this is the identity the
-// frontend REQUESTS, honestly threaded through, not a guaranteed audible
-// change server-side.
+// CONKAY_VOICE_HINTS profile above. This is now genuinely enforced, not just
+// requested: `piper-stream.ts` sends this id as `input.voice` on every
+// `voice.tts` call, and the server-side macro (server.js's `register("voice",
+// "tts", ...)`) resolves it via `server/lib/voice-piper-voice.js#resolvePiperVoice`
+// — a closed allowlist validator (never a blocklist, since the value is
+// passed to `spawnSync` as `--model`) that honors a validated per-request
+// voice, optionally checked against an actual `.onnx` file under
+// `PIPER_VOICES_DIR` when that env var is set. RESIDUAL CAVEAT: this repo has
+// no checked-in Piper voice manifest, so if `PIPER_VOICES_DIR` isn't
+// configured on the deployment box, an invalid/missing id silently falls
+// back to `PIPER_VOICE` (reported honestly via the macro's `voiceFallback`
+// field) rather than erroring — confirm this id is actually installed there,
+// or set `PIPER_VOICES_DIR` so a missing voice fails visibly instead of
+// silently substituting.
 export const CONKAY_VOICE_ID = 'en_US-amy-medium';
 
 // Terse, non-overclaiming line ConKay speaks the moment she's first summoned
