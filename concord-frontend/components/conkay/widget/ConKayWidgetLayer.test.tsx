@@ -90,7 +90,7 @@ describe('ConKayWidgetLayer — CK4 real pending-initiative count', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     render(<ConKayWidgetLayer />);
-    await new Promise((r) => queueMicrotask(r));
+    await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
     expect(fetchMock).not.toHaveBeenCalledWith('/api/initiative/pending', { credentials: 'include' });
   });
 });
