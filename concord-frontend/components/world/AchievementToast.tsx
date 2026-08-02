@@ -50,7 +50,13 @@ export function AchievementToast() {
   if (queue.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed right-3 top-16 z-40 flex flex-col gap-2">
+    <div
+      className="pointer-events-none fixed right-3 top-16 z-40 flex flex-col gap-2"
+      /* Visually covers the top-right corner (ConKayWidgetLayer's mount
+         point) even though it doesn't block clicks. See the matching
+         marker + comment in SystemGuidePanel.tsx. */
+      data-conkay-occludes-top-right="true"
+    >
       {queue.slice(0, 3).map((u, idx) => (
         <div
           key={`${u.achievementId}-${idx}`}

@@ -45,12 +45,27 @@
 // is only the default.
 //
 // Later units attach here, not inside ConKayWidget:
-//   - CK3 will replace the static `top-16 right-4` position below with a
-//     safe-region-solver-driven walk target.
+//   - CK3 (SHIPPED, narrower than originally staged — see
+//     `useConkayOccluded.ts`'s header for why): rather than walking to an
+//     alternate free corner (an audit found none — every corner besides
+//     this one is already a documented real occupant per z-index.ts), this
+//     layer now hides the widget while a REAL, currently-mounted element
+//     (SystemGuidePanel's expanded rail / PersistentChatRail's expanded
+//     rail / AchievementToast's toast stack) is genuinely covering this
+//     exact spot, detected via `data-conkay-occludes-top-right` DOM
+//     markers + a MutationObserver (no polling).
+//   - CK4 (SHIPPED): this layer now owns `useConkayInitiativePoll` (the
+//     single writer for `conkayInitiativeStore.ts`) and threads the real
+//     pending count into `ConKayWidget`'s `pendingCount` prop. Polling is
+//     gated OFF while the widget is `hidden` or the full overlay is
+//     `open` — no point polling a signal the user can't currently see the
+//     badge for, and the overlay itself is a much richer surface once open.
 
 import { useCallback, useEffect, useState } from 'react';
 import { ConKayWidget, type ConKayWidgetState } from './ConKayWidget';
 import { useConKayWidgetState, useConkayAttentionStore } from '../conkayAttentionStore';
+import { useConkayInitiativePoll, useConkayInitiativeStore } from '../conkayInitiativeStore';
+import { useConkayOccluded } from './useConkayOccluded';
 import { Z_INDEX } from '@/lib/ui/z-index';
 
 /** localStorage key for the user's "hide the ConKay widget" preference. */
@@ -106,6 +121,18 @@ export function ConKayWidgetLayer({ state, onActivate }: ConKayWidgetLayerProps)
     setHidden(readHidden());
   }, []);
 
+  // CK4: poll the real initiative feed only while there's a point — the
+  // widget is visible and the full overlay isn't already open (which has
+  // its own, richer surfaces for this). See conkayInitiativeStore.ts for
+  // why this reuses InitiativeBell.tsx's exact endpoint rather than
+  // inventing anything.
+  useConkayInitiativePoll(!hidden && !overlayOpen);
+  const pendingCount = useConkayInitiativeStore((s) => s.pending.length);
+
+  // CK3: real occlusion check — see useConkayOccluded.ts for why this
+  // hides rather than relocates.
+  const occluded = useConkayOccluded();
+
   const dismiss = useCallback(() => {
     setHidden(true);
     try {
@@ -128,11 +155,11 @@ export function ConKayWidgetLayer({ state, onActivate }: ConKayWidgetLayerProps)
     window.dispatchEvent(new Event(overlayOpen ? 'conkay:dismiss' : 'conkay:summon'));
   }, [onActivate, overlayOpen]);
 
-  if (hidden) return null;
+  if (hidden || occluded) return null;
 
   return (
     <div style={{ zIndex: Z_INDEX.STATUS }} className="fixed top-16 right-4 md:top-20 md:right-6">
-      <ConKayWidget state={effectiveState} onActivate={activate} onDismiss={dismiss} />
+      <ConKayWidget state={effectiveState} onActivate={activate} onDismiss={dismiss} pendingCount={pendingCount} />
     </div>
   );
 }

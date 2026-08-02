@@ -336,11 +336,29 @@ grep-back.
   (CK1, prop-driven idle/stand visuals, zero internal timers — grep
   `setInterval|setTimeout` in `components/conkay/widget/` must stay empty) +
   `conkayAttentionStore.ts` (CK2, single-writer bridge from ConKayOverlay's
-  real open/busy/listening/speaking state). **CK3 (layout-aware "safe region"
-  positioning) and CK4 (proactive narration) were staged in the same file's
-  header comment but never built** — `ConKayWidgetLayer.tsx` still hardcodes
-  `top-16 right-4`, and the widget has no unprompted-speech path. This is the
-  one real gap in the whole ConKay surface as of this audit.
+  real open/busy/listening/speaking state).
+  **CK3+CK4 SHIPPED (2026-08-02, same session as this audit).** CK4 bridges
+  the widget to the real `initiative-engine.js` feed described below —
+  `conkayInitiativeStore.ts` polls the exact same `/api/initiative/pending`
+  endpoint `InitiativeBell.tsx` uses, and `ConKayWidget.tsx` gained an
+  additive `pendingCount` badge prop (never reusing `state="speaking"` for
+  this, since that would have violated the widget's own "state is only a
+  real observed event" honesty contract). CK3 turned out narrower than
+  originally staged: an audit of every real fixed-position element found no
+  free alternate corner to relocate to (every corner besides top-right is
+  already a documented occupant per `lib/ui/z-index.ts`), but DID find three
+  real, currently-shipped colliders that genuinely cover the widget's exact
+  spot when open — `SystemGuidePanel.tsx`'s expanded rail, `PersistentChatRail.tsx`'s
+  expanded rail, and `AchievementToast.tsx`'s toast stack. All three now
+  carry a `data-conkay-occludes-top-right` marker (truthful — only present
+  in the DOM while genuinely visible), and `useConkayOccluded.ts`
+  (`ConKayWidgetLayer.tsx`) uses a `MutationObserver` — not polling — to
+  hide the widget while one is real, rather than painting over live content
+  or inventing a fictitious free spot. 23 new/updated tests across
+  `conkayInitiativeStore.test.ts`, `ConKayWidget.test.tsx`,
+  `useConkayOccluded.test.ts`, `ConKayWidgetLayer.test.tsx` (the latter two
+  files had ZERO test coverage before this pass, despite CK1/CK2 being
+  shipped since V1.1).
 - **Mission control + action confirm (V1.2 Wave A, `fe7bd685`/`4a2a632c`)** —
   `ConKayMissionControl.tsx` (A4: renders `conkayRunStore`'s real
   `/api/chat-agent/stream` tool-call receipts as a numbered plan, nothing
@@ -382,9 +400,19 @@ grep-back.
   learning (V1.3, `d174fa77`). Not yet audited in depth this pass — flagged
   for a future session, not re-verified line-by-line here.
 
-**If you're picking ConKay work back up:** CK3+CK4 (the ambient-widget gap
-above) is the one concrete, scoped remaining item this audit found. Everything
-else in this subsection is shipped and tested; don't re-plan it.
+**If you're picking ConKay work back up:** every item in this subsection —
+including CK3+CK4 — is now shipped and tested. The tool-authoring line above
+is the one item flagged for a future audit pass, not re-verified line-by-line
+this session. A separate, real finding surfaced while researching CK4 and is
+worth a look next: `components/chat/useChatProactive.ts` (the general chat
+rail's OWN proactive system, unrelated to `initiative-engine.js`) generates
+"proactive suggestion" content via `Math.random()` picks over hardcoded
+string arrays (`getTimeSuggestion`/`getLensNavigationSuggestion`/`getIdleSuggestions`)
+with no real signal behind them — a genuine zero-demo-content violation
+sitting right next to that same file's honest, server-pushed
+`initiative:new` socket listener. Not fixed this session (out of the
+explicitly approved scope); flagged here so it doesn't stay invisible the
+way the CK3/CK4 gap did.
 
 ### Honesty bindings per concept-image element (the fake-temptation map)
 

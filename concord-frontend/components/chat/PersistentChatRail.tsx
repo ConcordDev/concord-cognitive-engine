@@ -785,6 +785,10 @@ export function PersistentChatRail({
         'transition-all duration-300',
         isExpanded ? 'w-[600px]' : 'w-[380px]'
       )}
+      /* This expanded rail genuinely covers the top-right corner
+         (components/conkay/widget/ConKayWidgetLayer.tsx's mount point).
+         See the matching marker + comment in SystemGuidePanel.tsx. */
+      data-conkay-occludes-top-right="true"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border bg-lattice-surface">
