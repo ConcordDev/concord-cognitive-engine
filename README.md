@@ -6,7 +6,37 @@
 
 **Proves what it claims. Refuses what it can't. Remembers everything — and pays you when your work gets built on.**
 
-[**🌐 deployment will be on concord-os.org**](https://concord-os.org) &nbsp;·&nbsp; [**Why it's different →**](docs/WHY_CONCORD_IS_DIFFERENT.md) &nbsp;·&nbsp; [**The 326 novelties →**](docs/NOVELTY_INVENTORY.md) &nbsp;·&nbsp; [**Verified snapshot →**](docs/STATE_OF_CONCORD.md)
+</div>
+
+---
+
+## See it running — no signup, no waiting
+
+![Concord landing](docs/images/01-landing.png)
+
+Most platforms ask you to trust the pitch first and see the product later. Don't. Walk in yourself, right now, with no account:
+
+**[→ concord-os.org/explore](https://concord-os.org/explore)** — a live public entry point, forked into whichever half you're actually here for:
+
+- **[The knowledge engine](https://concord-os.org/explore/engine)** — DTUs, a citation economy that pays you, real deterministic compute (a symbolic CAS, structural FEA, orbital mechanics) instead of an LLM guessing the answer.
+- **[The living world](https://concord-os.org/explore/world)** — Concordia, hundreds of NPCs running their own factions, schemes, and wars, with real Skyrim-style combat. Mature content, 18+.
+
+Or skip the tour and just [**watch the world live**](https://concord-os.org/spectate/concordia-hub) — a read-only feed of what's happening right now, updating in real time, no account, no download. Nothing here is staged for a demo. It's the same substrate real users are on.
+
+---
+
+Most AI tools **generate**. Concord generates **and verifies, attributes, and remembers** — then audits and repairs *itself*. One knowledge substrate (the **DTU**), expressed through 266 domain "lenses," welded to a creator economy, a 3D civilization simulator, and a mesh network that works without the internet.
+
+| | |
+|---|---|
+| 🧠 **A second brain that compounds** | Knowledge you own, cited, and growing into a living substrate — get paid when someone else builds on it. |
+| 🌍 **A world that runs without you** | Hundreds of NPCs living their own lives, forming factions, waging wars, whether you're watching or not. |
+| 🔬 **Real math, not a guess** | A symbolic CAS, direct-stiffness FEA, orbital mechanics, double-entry accounting — it computes the answer instead of hallucinating it. |
+| 🔍 **It audits itself** | 51 detectors, a drift monitor, and a repair cortex that proposes its own fixes but can't apply them unsupervised. |
+
+In a market where the bottleneck has shifted from *generating* to *trusting*, **verification is the product.**
+
+[**Why it's different →**](docs/WHY_CONCORD_IS_DIFFERENT.md) &nbsp;·&nbsp; [**The 326 novelties →**](docs/NOVELTY_INVENTORY.md) &nbsp;·&nbsp; [**Verified snapshot →**](docs/STATE_OF_CONCORD.md)
 
 ![lenses](https://img.shields.io/badge/lenses-266-22d3ee)
 ![macros](https://img.shields.io/badge/macros-~10,399-22c55e)
@@ -14,15 +44,50 @@
 ![tests](https://img.shields.io/badge/tests-38,371_passing-16a34a)
 ![board](https://img.shields.io/badge/detector_board-0_critical-16a34a)
 
+---
+
+## Why it's different — the white space
+
+Every incumbent owns exactly **one** vector. None ship the intersection. *(full argument: [`docs/WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md))*
+
+| Vector | Who owns it | Concord |
+|---|---|---|
+| Grounded / verified | Perplexity, Wolfram | ✅ `reason.verify` + citation floors + drift monitor |
+| General capability | ChatGPT | ✅ 5-brain router + ~10,399 macros |
+| Private / local | Ollama | ✅ local brains + consent gates + no-leak invariant |
+| Controllable memory | Notion | ✅ DTU substrate + scope/consent gates |
+| Owned / no-subscription | *(unowned)* | ✅ free + local + 95%-to-creator economy |
+
+The closest one-liner: **Wolfram × Roblox, built by one person** — a verified-compute knowledge engine fused with a creator-economy world platform, plus a self-auditing layer neither has.
+
+---
+
+<div align="center">
+
+## ↓ Everything below this line is the receipts ↓
+
+*Numbers, architecture, and internals — for the people who want to check, not just read.*
+
 </div>
 
 ---
 
-## TL;DR
+## By the numbers (reproduce every one)
 
-Most AI tools **generate**. Concord generates **and verifies, attributes, and remembers** — then audits and repairs *itself*. It's a single knowledge substrate (the **DTU**) expressed through 266 domain "lenses," welded to a creator economy, a 3D civilization simulator, and a mesh network that works without the internet. In a market where the bottleneck has shifted from *generating* to *trusting*, **verification is the product.**
+| Metric | Value | Reproduce |
+|---|---|---|
+| Authored source | **~2.62M LOC** (4.37M incl. content) | `npm run count-loc` |
+| Frontend lenses | **266** | `ls -d concord-frontend/app/lenses/*/` |
+| Backend domains | **420** | `ls server/domains/*.js` |
+| Macro domains · pairs | **547 · ~10,399** | `node scripts/verify-lens-backends.mjs` |
+| DB tables · migrations | **765 · 398** | `cd server && npm run cartograph:static` |
+| Heartbeats (live sim) | **168** | cartographer / `registerHeartbeat` grep |
+| AI brains | **5** (4 cognitive + vision) | `server/lib/brain-config.js` |
+| Catalogued novelties | **326 / 34 groups** | [`docs/NOVELTY_INVENTORY.md`](docs/NOVELTY_INVENTORY.md) |
+| Tests passing | **38,371** | `cd server && npm test` |
+| Code-health board | **71 findings · 0 critical** | `cd server && node scripts/run-detectors.js` |
 
-> Not "ChatGPT with more features." A verifying substrate that happens to wear 266 faces — and the moat isn't any one face, it's that they're all the same fabric, the fabric audits and repairs itself, and the whole thing refuses what it can't prove.
+> **Everything here is falsifiable by design.** `npm run check-doc-claims` re-runs the reproduction command behind every numeric claim in the docs and fails on drift.
 
 ---
 
@@ -57,41 +122,6 @@ flowchart TD
     META -.audits + repairs.-> DTU & BRAINS & ECON & WORLD & MESH
     OUTER --> DTU
 ```
-
----
-
-## By the numbers (reproduce every one)
-
-| Metric | Value | Reproduce |
-|---|---|---|
-| Authored source | **~2.62M LOC** (4.37M incl. content) | `npm run count-loc` |
-| Frontend lenses | **266** | `ls -d concord-frontend/app/lenses/*/` |
-| Backend domains | **420** | `ls server/domains/*.js` |
-| Macro domains · pairs | **547 · ~10,399** | `node scripts/verify-lens-backends.mjs` |
-| DB tables · migrations | **765 · 398** | `cd server && npm run cartograph:static` |
-| Heartbeats (live sim) | **168** | cartographer / `registerHeartbeat` grep |
-| AI brains | **5** (4 cognitive + vision) | `server/lib/brain-config.js` |
-| Catalogued novelties | **326 / 34 groups** | [`docs/NOVELTY_INVENTORY.md`](docs/NOVELTY_INVENTORY.md) |
-| Tests passing | **38,371** | `cd server && npm test` |
-| Code-health board | **71 findings · 0 critical** | `cd server && node scripts/run-detectors.js` |
-
-> **Everything here is falsifiable by design.** `npm run check-doc-claims` re-runs the reproduction command behind every numeric claim in the docs and fails on drift.
-
----
-
-## Why it's different — the white space
-
-Every incumbent owns exactly **one** vector. None ship the intersection. *(full argument: [`docs/WHY_CONCORD_IS_DIFFERENT.md`](docs/WHY_CONCORD_IS_DIFFERENT.md))*
-
-| Vector | Who owns it | Concord |
-|---|---|---|
-| Grounded / verified | Perplexity, Wolfram | ✅ `reason.verify` + citation floors + drift monitor |
-| General capability | ChatGPT | ✅ 5-brain router + ~10,399 macros |
-| Private / local | Ollama | ✅ local brains + consent gates + no-leak invariant |
-| Controllable memory | Notion | ✅ DTU substrate + scope/consent gates |
-| Owned / no-subscription | *(unowned)* | ✅ free + local + 95%-to-creator economy |
-
-The closest one-liner: **Wolfram × Roblox, built by one person** — a verified-compute knowledge engine fused with a creator-economy world platform, plus a self-auditing layer neither has.
 
 ---
 
@@ -153,9 +183,7 @@ sequenceDiagram
 
 ---
 
-## Screenshots
-
-![Concord landing](docs/images/01-landing.png)
+## More screenshots
 
 A lens — Finance (left), Code (right). Each lens reads as the app it replaces (a
 trading dashboard, a VS Code shell) while sharing one substrate, one macro spine,
@@ -241,7 +269,7 @@ production.
 
 <div align="center">
 
-**The artifact is the pitch.** Clone it, run the commands, read the receipts.
+**The artifact is the pitch.** Clone it, run the commands, read the receipts — or just [walk in the door](https://concord-os.org/explore) and see for yourself.
 
 *In an AI market where the bottleneck shifted from generating to trusting — that's the bet, and it's already built.*
 

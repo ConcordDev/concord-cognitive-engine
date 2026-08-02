@@ -116,11 +116,13 @@ describe("code.exec — real macro the retargeted 'Run Script' button now calls"
     registerCodeActions(register);
   });
 
-  it("executes real JS and returns stdout (when CONCORD_CODE_EXEC_ENABLED)", () => {
+  it("executes real JS and returns stdout (when CONCORD_CODE_EXEC_ENABLED)", async () => {
     const prevEnv = process.env.CONCORD_CODE_EXEC_ENABLED;
     process.env.CONCORD_CODE_EXEC_ENABLED = "1";
     try {
-      const r = call("code", "exec", {}, { code: "console.log(2 + 2)", language: "javascript" });
+      // code.exec became async when real Python execution (Pyodide) was
+      // added alongside the pre-existing node:vm JS path (2026-08-02).
+      const r = await call("code", "exec", {}, { code: "console.log(2 + 2)", language: "javascript" });
       assert.equal(r.ok, true);
       assert.match(r.result.stdout, /4/);
     } finally {

@@ -15,6 +15,7 @@ import tsLang from "../lib/ts-language-service.js";
 import { runBuildLoop } from "../lib/build-loop.js";
 // Item 6 — CaMeL: file content fed to the LLM is untrusted data, never instructions.
 import { scanForInjection } from "../lib/provenance-guard.js";
+import { runPython } from "../lib/python-sandbox.js";
 // GH-3a — real ranked code retrieval (replaces naive @-mention-or-recency
 // selection in codebase-chat; also the file-manifest source for multi-file-plan
 // when the caller opts into useRetrieval instead of supplying an explicit list).
@@ -116,6 +117,23 @@ function buildVerifyFeedback(verification) {
 // prod (only after fronting it with isolated-vm / a worker-or-container sandbox).
 export function codeExecEnabled() {
   const v = process.env.CONCORD_CODE_EXEC_ENABLED;
+  if (v === "1" || v === "true") return true;
+  if (v === "0" || v === "false") return false;
+  return (process.env.NODE_ENV || "development") !== "production";
+}
+
+// Independent gate from codeExecEnabled() above — deliberately not the same
+// flag. The Python path (server/lib/python-sandbox.js, Pyodide in a
+// worker_threads Worker) has a genuinely different risk/resource profile
+// than the node:vm JS path: real network + filesystem isolation (verified
+// by hand — see that file's header), but NO Node permission-model layer
+// (structurally incompatible with Pyodide's loader), a ~2s cold-load cost
+// per call, and a wall-clock timeout as the primary defense against both
+// infinite loops and memory growth rather than a reliable resource cap.
+// An operator who's comfortable with one path isn't necessarily comfortable
+// with the other's tradeoffs, so each gets its own opt-in.
+export function pythonExecEnabled() {
+  const v = process.env.CONCORD_PYTHON_EXEC_ENABLED;
   if (v === "1" || v === "true") return true;
   if (v === "0" || v === "false") return false;
   return (process.env.NODE_ENV || "development") !== "production";
@@ -589,7 +607,7 @@ export default function registerCodeActions(registerLensAction) {
    * return `{ supported: false }` so the caller can fall back to the broader
    * runner pipeline.
    */
-  registerLensAction("code", "exec", (_ctx, _artifact, params = {}) => {
+  registerLensAction("code", "exec", async (_ctx, _artifact, params = {}) => {
     // Accept `source` as an alias for `code` (the productivity notebook + some callers
     // use `source`). node:vm here is the accepted boundary for a personal JS notebook —
     // no I/O globals + a 4s timeout — not a hardened multi-tenant sandbox.
@@ -604,12 +622,30 @@ export default function registerCodeActions(registerLensAction) {
       return execJavaScript(code, language);
     }
 
+    if (language === "python" || language === "python3" || language === "py") {
+      if (!pythonExecEnabled()) {
+        return { ok: false, error: "python_exec_disabled", result: { supported: false, stdout: "", stderr: "Live Python execution is disabled in this environment. Enable with CONCORD_PYTHON_EXEC_ENABLED=1 — see server/lib/python-sandbox.js's header for the real, verified security envelope before enabling in production.", exitCode: -1 } };
+      }
+      const r = await runPython(code);
+      return {
+        ok: r.ok,
+        error: r.ok ? undefined : "python_exec_failed",
+        result: {
+          supported: true,
+          stdout: r.stdout,
+          stderr: r.ok ? r.stderr : (r.error || r.stderr || "python execution failed"),
+          exitCode: r.ok ? 0 : 1,
+          returnValue: r.result,
+        },
+      };
+    }
+
     return {
       ok: true,
       result: {
         supported: false,
         stdout: "",
-        stderr: `Language "${language}" cannot run in the sandbox. Use the Run button for the broader runner pipeline.`,
+        stderr: `Language "${language}" cannot run in the sandbox. Supported: javascript/typescript, python.`,
         exitCode: -1,
       },
     };

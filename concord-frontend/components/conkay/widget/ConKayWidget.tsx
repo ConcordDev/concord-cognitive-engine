@@ -16,10 +16,20 @@
 //     into the existing `ConKayOverlay` — this component doesn't know or
 //     care what `onActivate` does; that decision lives entirely with the
 //     caller (see `ConKayWidgetLayer`).
-//   - CK3 will position this component via its wrapping layer using a
-//     "safe region" solver; this component has no opinion on where it sits
-//     on screen — it only fills whatever container it's given.
-//   - CK4 will reuse `onActivate` + a `state="speaking"` prop to narrate.
+//   - CK3 (SHIPPED) positions this component via its wrapping layer, per
+//     the plan here — this component still has no opinion on where it sits
+//     on screen, it only fills whatever container it's given. The actual
+//     mechanism ended up narrower than "safe region solver" implies: see
+//     `useConkayOccluded.ts`'s header for why (no free alternate corner
+//     exists, so real occlusion means "hide," not "relocate").
+//   - CK4 (SHIPPED) added `pendingCount` below rather than reusing
+//     `state="speaking"` as originally staged here — narrating via a fake
+//     "speaking" visual with no real audio playing would have violated this
+//     file's own honesty contract (`state` may only report a REAL observed
+//     event). `pendingCount` is a second, independent pure prop mirroring
+//     `components/chat/InitiativeBell.tsx`'s real pending-initiative badge,
+//     sourced from the same tested `server/lib/initiative-engine.js` feed
+//     via `conkayInitiativeStore.ts` — never invented client-side.
 //
 // ── HONESTY CONTRACT (hard invariant — see CLAUDE.md "Honest by
 // construction" + the plan's Clippy research note) ─────────────────────────
@@ -79,6 +89,15 @@ export interface ConKayWidgetProps {
    * props. Omit to render without a dismiss control.
    */
   onDismiss?: () => void;
+  /**
+   * Count of REAL pending initiatives from `server/lib/initiative-engine.js`
+   * (via `conkayInitiativeStore.ts`, which polls the exact same
+   * `/api/initiative/pending` endpoint `InitiativeBell.tsx` uses). Omit or
+   * pass 0/undefined to render no badge — never pass a guessed or
+   * client-invented count. See the file-header honesty contract: this is a
+   * pure prop, same rule as `state`.
+   */
+  pendingCount?: number;
   /** Override the accessible name. Defaults to a ConKay-branded label. */
   label?: string;
   className?: string;
@@ -91,8 +110,10 @@ const STATE_DESCRIPTION: Record<ConKayWidgetState, string> = {
   speaking: 'Speaking a real response right now.',
 };
 
-export function ConKayWidget({ state = 'idle', onActivate, onDismiss, label, className }: ConKayWidgetProps) {
+export function ConKayWidget({ state = 'idle', onActivate, onDismiss, pendingCount, label, className }: ConKayWidgetProps) {
   const descId = useId();
+  const pendingDescId = useId();
+  const hasPending = typeof pendingCount === 'number' && pendingCount > 0;
 
   const activate = () => {
     onActivate?.();
@@ -115,8 +136,9 @@ export function ConKayWidget({ state = 'idle', onActivate, onDismiss, label, cla
         role="button"
         tabIndex={0}
         aria-label={label ?? 'ConKay — your Concord assistant'}
-        aria-describedby={descId}
+        aria-describedby={hasPending ? `${descId} ${pendingDescId}` : descId}
         data-conkay-widget-state={state}
+        data-conkay-pending-count={hasPending ? pendingCount : undefined}
         onClick={activate}
         onKeyDown={onKeyDown}
         className="ck-widget relative flex h-12 w-12 cursor-pointer select-none items-center justify-center rounded-full border border-cyan-400/40 bg-black/70 shadow-lg shadow-cyan-500/20 backdrop-blur outline-none transition hover:scale-105 hover:border-cyan-300/70 focus-visible:ring-2 focus-visible:ring-cyan-300"
@@ -169,11 +191,31 @@ export function ConKayWidget({ state = 'idle', onActivate, onDismiss, label, cla
         </svg>
       </div>
 
+      {/* Pending-initiative badge — rendered ONLY when a real pendingCount
+          was passed. Same amber "there's something real waiting" visual
+          language as InitiativeBell.tsx's own badge, deliberately reused
+          rather than invented, since it mirrors the same real backend
+          feed. Not a "speaking" claim — see the file-header note on why
+          CK4 didn't reuse the speaking state for this. */}
+      {hasPending && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-amber-50 shadow"
+        >
+          {pendingCount! > 9 ? '9+' : pendingCount}
+        </span>
+      )}
+
       {/* Visually-hidden text alternative — the SAME information sighted
           users get from the animated state above, exposed to assistive tech. */}
       <span id={descId} className="sr-only">
         {STATE_DESCRIPTION[state]}
       </span>
+      {hasPending && (
+        <span id={pendingDescId} className="sr-only">
+          {pendingCount} real update{pendingCount === 1 ? '' : 's'} waiting from Concord. Activate to view.
+        </span>
+      )}
 
       {onDismiss && (
         <button

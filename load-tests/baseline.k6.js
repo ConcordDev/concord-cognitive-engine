@@ -12,12 +12,24 @@ const chatLatency = new Trend("chat_latency_ms", true);
 const inferenceLatency = new Trend("inference_latency_ms", true);
 
 export const options = {
+  // Ceiling raised 200 -> 500 (2026-08-02). None of the 4 endpoints this
+  // script hits are LLM-calling (health/traces/costs/an auth-check) — the
+  // real constraint on the deploy box is Ollama's ~9 vCPU budget (see
+  // CLAUDE.md's LLM_CONCURRENCY note), which this test never touches, so
+  // 200 was testing plain Express/SQLite request handling, not the box's
+  // actual bottleneck. The front-door admission-control layer
+  // (lib/request-admission.js) sheds load under measured event-loop lag
+  // before this ceiling could cause an uncontrolled failure, so a real run
+  // against it is the honest way to find where that shedding kicks in —
+  // watch for `errors`/`http_req_failed` climbing as VUs approach 500 and
+  // re-tune from there; this number is a starting point to gather real
+  // data against, not a load estimate.
   stages: [
-    { duration: "2m", target: 10 },   // ramp-up
-    { duration: "5m", target: 50 },   // sustained moderate
-    { duration: "5m", target: 200 },  // sustained heavy
-    { duration: "5m", target: 200 },  // hold
-    { duration: "5m", target: 50 },   // ramp-down
+    { duration: "2m", target: 25 },   // ramp-up
+    { duration: "5m", target: 100 },  // sustained moderate
+    { duration: "5m", target: 500 },  // sustained heavy
+    { duration: "5m", target: 500 },  // hold
+    { duration: "5m", target: 100 },  // ramp-down
     { duration: "2m", target: 0 },    // cleanup
   ],
   thresholds: {

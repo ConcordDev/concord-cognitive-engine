@@ -214,7 +214,7 @@ The server requires `JWT_SECRET` in production. Without it, the boot log prints 
 ## Architecture
 
 ### The monolith: `server/server.js`
-**83,290 lines** (`wc -l server/server.js`, re-verified 2026-08-01). All routes, middleware, startup, and tick logic live here. It is intentionally monolithic (comment in code: "for IP protection"). Adding new routes means adding them directly to this file. It imports from `server/lib/`, `server/emergent/`, `server/domains/`, and `server/routes/`.
+**83,425 lines** (`wc -l server/server.js`, re-verified 2026-08-02). All routes, middleware, startup, and tick logic live here. It is intentionally monolithic (comment in code: "for IP protection"). Adding new routes means adding them directly to this file. It imports from `server/lib/`, `server/emergent/`, `server/domains/`, and `server/routes/`.
 
 **Boot-order TDZ hazard.** `const app = express()` is at `server.js:27554` and `const LENS_ACTIONS = new Map()` is at `server.js:36537` — code at the top of the file that references either at module-eval time hits a temporal-dead-zone ReferenceError. Two mount blocks (`mountChatAgentStream`, `mountMcpServer`) sat ~4k–13k lines too early and silently dead-mounted `/api/chat-agent/stream` + `/mcp` for months until commit `7e83685` moved them to right after `LENS_ACTIONS`. Sprint 18.5 had deferred the `__concordLensActions` globalThis assignment for the same reason. **New code that references `app` or `LENS_ACTIONS` at top-level must sit after their declaration, or be wrapped in a function that runs post-boot.**
 
@@ -304,7 +304,7 @@ Direct-grep counts **re-verified 2026-06-02** (via `npm run check-doc-claims`, w
 | Route files | **131** | `ls server/routes/*.js \| wc -l` |
 | Emergent modules | **231** | `ls server/emergent/*.js \| wc -l` |
 | Lib modules | **691** top-level (`ls server/lib/*.js \| wc -l`) · **1,052** recursive (`find server/lib -name "*.js" \| wc -l`) | — |
-| `server/server.js` line count | **83,290** | `wc -l server/server.js` |
+| `server/server.js` line count | **83,425** | `wc -l server/server.js` |
 | HTTP routes (server.js + routes/*.js) | **~3,371 total** (1,414 + 1,957) | `grep -cE "^\\s*(app\|router)\\.(get\|post\|put\|delete\|patch\|all)\\(['\"]/" …` |
 | Unique macro domains | **547** (verifier `macroDomains`) | see "macro system" section above |
 | Unique `(domain, macro)` pairs | **10,399** | `grep -rhoE "\\b(register\|registerLensAction)\\(['\"][a-zA-Z0-9_.\\-]+['\"]\\s*,\\s*['\"][a-zA-Z0-9_.\\-]+['\"]" server/ \| sed ... \| sort -u \| wc -l` |

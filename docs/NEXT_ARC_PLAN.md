@@ -305,13 +305,114 @@ envelope. Selective Bloom with `luminanceThreshold: 1` so a panel glows
 
 **SHIPPED (K6-voice, `707d34c1`; Bloom via K4's `0c6f1ff6`).**
 `conkay-persona.ts` pins `CONKAY_VOICE_ID = 'en_US-amy-medium'` and
-`CONKAY_SIGNATURE_GREETING = 'Kay, online.'` — see the corrected §B ground
-truth bullet above for the honest caveat about the server-side `voice.tts`
-macro not yet reading a per-request voice override.
+`CONKAY_SIGNATURE_GREETING = 'Kay, online.'`. **The per-request voice gap
+noted here at ship time is now CLOSED** (2026-08-02 audit): `server.js`'s
+`register("voice","tts", ...)` resolves `input.voice` via
+`server/lib/voice-piper-voice.js#resolvePiperVoice` (closed allowlist, since
+the value reaches `spawnSync` as `--model`), `lib/voice/piper-stream.ts`
+already sends `input: { text, voice: profile.voice }` on every call, and
+`useConKayVoice.ts` already requests `CONKAY_VOICE_ID` — the wire was
+end-to-end before this doc was corrected to say so. Pinned by
+`server/tests/voice-tts-voice-param.test.js` (15/15). Residual: no checked-in
+Piper voice manifest, so an unconfigured `PIPER_VOICES_DIR` means a
+missing/invalid voice silently falls back to `PIPER_VOICE` rather than
+erroring (honestly reported via the macro's `voiceFallback` field).
 
 **Sequencing (all phases now SHIPPED):** K1 first → then K2 ∥ K6-voice → then K3 ∥ K4 → then K5. Each
 phase is a disjoint-file subagent unit landing with vitest (frontend bindings)
 + node--test (stage emission) + the conkay honesty grep clean.
+
+### K-continuation — "Deep ConKay Agency" (V1.1–V1.5, undocumented until this
+### 2026-08-02 audit; landed entirely after the K1–K6 snapshot above)
+
+Read this before scoping any new ConKay work — a grounding pass found a whole
+second wave of shipped ConKay features this doc never mentioned, discovered
+only by `git log` against `components/conkay/` and `server/lib/`, not by
+anything in this file. Treat the file inventory below as current; the phase
+labels (V1.1, ConKay-B/D/E, etc.) are the real commit-message names, kept for
+grep-back.
+
+- **Ambient widget shell (V1.1, commit `b0cd0831`)** — `components/conkay/widget/ConKayWidget.tsx`
+  (CK1, prop-driven idle/stand visuals, zero internal timers — grep
+  `setInterval|setTimeout` in `components/conkay/widget/` must stay empty) +
+  `conkayAttentionStore.ts` (CK2, single-writer bridge from ConKayOverlay's
+  real open/busy/listening/speaking state).
+  **CK3+CK4 SHIPPED (2026-08-02, same session as this audit).** CK4 bridges
+  the widget to the real `initiative-engine.js` feed described below —
+  `conkayInitiativeStore.ts` polls the exact same `/api/initiative/pending`
+  endpoint `InitiativeBell.tsx` uses, and `ConKayWidget.tsx` gained an
+  additive `pendingCount` badge prop (never reusing `state="speaking"` for
+  this, since that would have violated the widget's own "state is only a
+  real observed event" honesty contract). CK3 turned out narrower than
+  originally staged: an audit of every real fixed-position element found no
+  free alternate corner to relocate to (every corner besides top-right is
+  already a documented occupant per `lib/ui/z-index.ts`), but DID find three
+  real, currently-shipped colliders that genuinely cover the widget's exact
+  spot when open — `SystemGuidePanel.tsx`'s expanded rail, `PersistentChatRail.tsx`'s
+  expanded rail, and `AchievementToast.tsx`'s toast stack. All three now
+  carry a `data-conkay-occludes-top-right` marker (truthful — only present
+  in the DOM while genuinely visible), and `useConkayOccluded.ts`
+  (`ConKayWidgetLayer.tsx`) uses a `MutationObserver` — not polling — to
+  hide the widget while one is real, rather than painting over live content
+  or inventing a fictitious free spot. 23 new/updated tests across
+  `conkayInitiativeStore.test.ts`, `ConKayWidget.test.tsx`,
+  `useConkayOccluded.test.ts`, `ConKayWidgetLayer.test.tsx` (the latter two
+  files had ZERO test coverage before this pass, despite CK1/CK2 being
+  shipped since V1.1).
+- **Mission control + action confirm (V1.2 Wave A, `fe7bd685`/`4a2a632c`)** —
+  `ConKayMissionControl.tsx` (A4: renders `conkayRunStore`'s real
+  `/api/chat-agent/stream` tool-call receipts as a numbered plan, nothing
+  invented/forward-looking) and `ConKayActionConfirm.tsx` (A2: pre-execution
+  confirm card for any `isMutatingMacro()`-flagged client-initiated call,
+  self-documented as NOT covering the server-side agent-loop path since that
+  already executed before the client sees the event — an honest scope
+  boundary, not a hole).
+- **Cross-session continuity (V1.2 Wave B → V1.4, `0d53fc82`…`33451f3e`)** —
+  `server/lib/project-thread.js` (migration 378 `projects`) links the durable
+  goal tree (`goal-decomposition.js`), marathon sessions
+  (`agent-marathon.js`), and conversation memory
+  (`conversation-memory.js`) into one addressable, re-openable "project."
+  `ConKayProjectPanel.tsx` / `ConKayMemoryPanel.tsx` are its UI, registered
+  via `lib/panel-registry.ts` (`conkay.projects` / `conkay.memory` — any
+  registered `conkay.*` panel id self-mounts into the cockpit grid, no
+  `ConKayOverlay.tsx` edit needed). V1.4's `marathon-plan-context.js` closed
+  the last gap: a marathon now actually reads `nextActionable()` and
+  write-backs `setNodeStatus` instead of re-deriving a plan from a compacted
+  transcript every tick.
+- **Proactive nudges are REAL and already shipped — but not through ConKay's
+  widget (ConKay-B/D/E, `814d4a7f`/`941eea37`/`b196194f`, 2026-07-24).**
+  `server/lib/initiative-engine.js` ("Concord Conversational Initiative
+  Engine — The Living Chat") is a mature, tested proactive-outreach substrate
+  — 8 trigger types, rate limiting (3/day, 10/week, 4h min gap), quiet hours,
+  exponential backoff, style-matched fluidity. `project-continuation-initiative.js`
+  (heartbeat `project-continuation-cycle`, ~10min, kill-switch
+  `CONCORD_PROJECT_CONTINUATION=0`) and `agent-marathon.js#maybeFireMarathonCheckIn`
+  both fire real rows through this same gate. **The surface today is
+  `components/chat/InitiativeBell.tsx`/`InitiativeChip.tsx` in the general
+  chat UI (`GET /api/initiative/pending`, poll-based) — completely
+  disconnected from ConKay's own ambient character.** This is what CK4
+  actually is: not inventing a new proactive-suggestion heuristic (which
+  would risk the honesty invariant), but bridging the ambient widget to this
+  already-tested, already-rate-limited real feed.
+- **Tool-authoring (V1.2 Wave E → V1.3, `a3724ec8`/`19011411`)** — a governed
+  spec + first-buildable slice letting ConKay author new tools (migration 385
+  `conkay_authored_tools`), plus a tool-preference signal folded into style
+  learning (V1.3, `d174fa77`). Not yet audited in depth this pass — flagged
+  for a future session, not re-verified line-by-line here.
+
+**If you're picking ConKay work back up:** every item in this subsection —
+including CK3+CK4 — is now shipped and tested. The tool-authoring line above
+is the one item flagged for a future audit pass, not re-verified line-by-line
+this session. A separate, real finding surfaced while researching CK4 and is
+worth a look next: `components/chat/useChatProactive.ts` (the general chat
+rail's OWN proactive system, unrelated to `initiative-engine.js`) generates
+"proactive suggestion" content via `Math.random()` picks over hardcoded
+string arrays (`getTimeSuggestion`/`getLensNavigationSuggestion`/`getIdleSuggestions`)
+with no real signal behind them — a genuine zero-demo-content violation
+sitting right next to that same file's honest, server-pushed
+`initiative:new` socket listener. Not fixed this session (out of the
+explicitly approved scope); flagged here so it doesn't stay invisible the
+way the CK3/CK4 gap did.
 
 ### Honesty bindings per concept-image element (the fake-temptation map)
 

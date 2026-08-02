@@ -119,6 +119,12 @@ function SystemGuidePanel() {
     <div
       style={{ zIndex: Z_INDEX.GUIDE_PASSIVE }}
       className="fixed top-16 right-0 w-72 h-[calc(100vh-4rem)] bg-lattice-surface border-l border-lattice-border overflow-y-auto"
+      /* This expanded rail genuinely covers the top-right corner
+         (components/conkay/widget/ConKayWidgetLayer.tsx's mount point).
+         The marker below is how that widget's real occlusion check
+         (useConkayOccluded, no polling — a MutationObserver on this exact
+         attribute) tells a real cover-up from nothing happening. */
+      data-conkay-occludes-top-right="true"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-lattice-border sticky top-0 bg-lattice-surface z-10">

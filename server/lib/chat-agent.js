@@ -5,10 +5,19 @@
 // Runs an agentic tool-use loop where the brain can call into:
 //   - web_search       (any current information)
 //   - run_compute      (chemistry/physics/math/quantum/engineering/stats)
+//   - run_python       (real Python via Pyodide/WASM in an isolated worker,
+//                        for scripting/data-wrangling — see
+//                        server/lib/python-sandbox.js's header for the
+//                        real, hand-verified security envelope)
 //   - browse_url       (read any web page)
 //   - run_lens_action  (invoke ANY of Concord's 200+ lens domain actions)
 //   - create_dtu       (mint a DTU from the conversation)
 //   - expert_mode      (Perplexity-style cited answer with revolving-door corpus)
+//   - mcp_connect      (connect ANY remote MCP server over http — the wider
+//                        public MCP ecosystem, not just Concord's own tools;
+//                        stdio/local-subprocess servers stay admin-only, see
+//                        domains/mcp.js)
+//   - mcp_call/mcp_list (use tools on already-connected MCP servers)
 //
 // Critical wire-ups vs the old chat.respond path:
 //   • Brain calls go through Sprint 10's brainChat() router so the
@@ -54,11 +63,13 @@ const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, i
 Available tools:
 - web_search: Search the web for current information. Params: {"query": "search terms"}
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}
+- run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Params: {"code": "python source"}
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
 - expert_mode: Run a Perplexity-style cited answer over the global corpus. Params: {"query": "your question"}
 - generate_image: Generate an image. Params: {"prompt": "describe the image", "size": "1024x1024", "quality": "standard"}
+- mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
 - mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
 - mcp_list: List all tools available across connected external MCP servers. Params: {}
 - browser_act: Take actions on a web page — click, fill forms, select dropdowns, screenshot. Use when read-only browse_url isn't enough (need to log in, submit forms, navigate UI). Params: {"url": "https://...", "actions": [{"kind": "fill", "selector": "input[name='q']", "value": "..."}, {"kind": "click", "selector": "button[type='submit']"}, {"kind": "screenshot"}]}
@@ -138,6 +149,24 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         } catch (err) {
           return { tool: call.tool, ok: false, error: `compute error: ${err?.message || err}` };
         }
+      }
+      case "run_python": {
+        const code = String(call.params.code || "");
+        if (!code.trim()) return { tool: call.tool, ok: false, error: "run_python requires non-empty code" };
+        const r = await runMacro("code", "exec", { code, language: "python" }, ctx);
+        if (!r?.ok) {
+          return {
+            tool: call.tool, ok: false,
+            error: r?.error || "run_python failed",
+            stderr: (r?.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
+          };
+        }
+        return {
+          tool: call.tool, ok: true,
+          stdout: (r.result?.stdout || "").slice(0, MAX_TOOL_RESULT_LEN),
+          stderr: (r.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
+          returnValue: r.result?.returnValue ?? null,
+        };
       }
       case "browse_url": {
         const { url = "", selector } = call.params || {};
@@ -259,6 +288,28 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const { listAllMcpTools } = await import("./mcp-bridge.js");
         return { tool: call.tool, ok: true, tools: listAllMcpTools() };
       }
+      case "mcp_connect": {
+        // "Any and all" MCP servers, safely scoped: the agent may connect to
+        // ANY remote (http/https Streamable HTTP) MCP server autonomously —
+        // that's the actual breadth of the public MCP ecosystem (10,000+
+        // servers per mcp-bridge.js's header) and is the same risk class as
+        // the browse_url tool it already has (arbitrary caller-influenced
+        // URL, no admin in the loop). `kind` is HARDCODED to "http" here —
+        // never taken from call.params — so this call site can never reach
+        // the stdio (local-subprocess-spawn) branch no matter what the
+        // brain outputs; that branch stays admin-only, gated in
+        // domains/mcp.js's requireAdminRole and enforced independently of
+        // this tool. The URL itself is still SSRF-validated inside
+        // connectMcpServer (mcp-bridge.js's chokepoint) before any request
+        // leaves the process.
+        const serverId = String(call.params.serverId || "").trim();
+        const url = String(call.params.url || "").trim();
+        if (!serverId || !url) return { tool: call.tool, ok: false, error: "mcp_connect requires serverId and url" };
+        const { connectMcpServer } = await import("./mcp-bridge.js");
+        const r = await connectMcpServer(serverId, { kind: "http", url });
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || r?.reason || "mcp_connect failed" };
+        return { tool: call.tool, ok: true, serverId, toolCount: (r.tools || []).length, tools: r.tools || [] };
+      }
       case "mcp_call": {
         const { invokeMcpTool } = await import("./mcp-bridge.js");
         const r = await invokeMcpTool(
@@ -370,11 +421,19 @@ export function formatToolResults(results) {
     if (!r.ok) return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}`;
     if (r.tool === "web_search") return _screenUntrusted("web_search", "web_search", r.result, (t) => `[TOOL_RESULT: web_search] ${t}`);
     if (r.tool === "run_compute")  return `[TOOL_RESULT: run_compute key=${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "run_python") {
+      const parts = [];
+      if (r.stdout) parts.push(`stdout:\n${r.stdout}`);
+      if (r.stderr) parts.push(`stderr:\n${r.stderr}`);
+      if (r.returnValue != null) parts.push(`return value: ${r.returnValue}`);
+      return `[TOOL_RESULT: run_python] ${parts.join("\n") || "(no output)"}`;
+    }
     if (r.tool === "browse_url")   return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}] title="${r.title}"\n${t}`);
     if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
     if (r.tool === "expert_mode")  return `[TOOL_RESULT: expert_mode] ${(r.answer || "").slice(0, 4000)}`;
     if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image source=${r.source}] Image generated for prompt "${r.prompt}". Artifact attached.`;
+    if (r.tool === "mcp_connect")  return `[TOOL_RESULT: mcp_connect ${r.serverId}] Connected. ${r.toolCount} tool(s) available: ${(r.tools || []).map(t => t.name).slice(0, 30).join(", ")}`;
     if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
     if (r.tool === "mcp_call")     return _screenUntrusted(`mcp_call ${r.serverId}/${r.toolName}`, "mcp_external", (typeof r.result === "string" ? r.result : JSON.stringify(r.result)), (t) => `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${t.slice(0, 4000)}`);
     if (r.tool === "browser_act")  return _screenUntrusted(`browser_act ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browser_act ${r.url}] ${r.actionsExecuted} actions executed. finalUrl=${r.finalUrl || r.url}\n${t.slice(0, 4000)}`);

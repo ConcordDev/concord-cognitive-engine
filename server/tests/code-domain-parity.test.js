@@ -182,47 +182,53 @@ describe("code.search-project", () => {
   });
 });
 
+// code.exec became `async` when real Python execution (Pyodide) was added
+// alongside the pre-existing node:vm JavaScript path (2026-08-02) — every
+// call site, including these tests, must now await it. And the language
+// this block probes for "genuinely unsupported" can no longer be Python:
+// that's now a real, intentional third supported language (see
+// server/lib/python-sandbox.js), not an example of the sandbox's boundary.
 describe("code.exec (JS sandbox)", () => {
-  it("runs JS and captures console.log", () => {
-    const r = call("exec", ctxFor(userA), { code: "console.log('hi'); console.log(1 + 2)", language: "javascript" });
+  it("runs JS and captures console.log", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "console.log('hi'); console.log(1 + 2)", language: "javascript" });
     assert.equal(r.ok, true);
     assert.equal(r.result.exitCode, 0);
     assert.equal(r.result.stdout, "hi\n3");
     assert.equal(r.result.supported, true);
   });
 
-  it("captures thrown errors as stderr with exitCode=1", () => {
-    const r = call("exec", ctxFor(userA), { code: "throw new Error('boom')", language: "javascript" });
+  it("captures thrown errors as stderr with exitCode=1", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "throw new Error('boom')", language: "javascript" });
     assert.equal(r.result.exitCode, 1);
     assert.match(r.result.stderr, /Error: boom/);
   });
 
-  it("times out runaway loops", () => {
-    const r = call("exec", ctxFor(userA), { code: "while(true){}", language: "javascript" });
+  it("times out runaway loops", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "while(true){}", language: "javascript" });
     assert.equal(r.result.exitCode, 1);
     assert.match(r.result.stderr, /timed?\s*out|Script execution timed out/i);
   });
 
-  it("returns the last expression value when no logs", () => {
-    const r = call("exec", ctxFor(userA), { code: "1 + 2 + 3", language: "javascript" });
+  it("returns the last expression value when no logs", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "1 + 2 + 3", language: "javascript" });
     assert.equal(r.result.exitCode, 0);
     assert.equal(r.result.stdout, "6");
   });
 
-  it("strips simple TS annotations before running", () => {
-    const r = call("exec", ctxFor(userA), { code: "function add(a: number, b: number) { return a + b; }\nconsole.log(add(2, 3))", language: "typescript" });
+  it("strips simple TS annotations before running", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "function add(a: number, b: number) { return a + b; }\nconsole.log(add(2, 3))", language: "typescript" });
     assert.equal(r.result.exitCode, 0);
     assert.equal(r.result.stdout, "5");
   });
 
-  it("returns supported:false for languages outside the sandbox", () => {
-    const r = call("exec", ctxFor(userA), { code: "print('x')", language: "python" });
+  it("returns supported:false for a language genuinely outside the sandbox (javascript/typescript/python are all real now)", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "puts 'x'", language: "ruby" });
     assert.equal(r.result.supported, false);
     assert.equal(r.result.exitCode, -1);
   });
 
-  it("does not expose process / require / Buffer / global", () => {
-    const r = call("exec", ctxFor(userA), { code: "typeof process + ',' + typeof require + ',' + typeof Buffer + ',' + typeof global", language: "javascript" });
+  it("does not expose process / require / Buffer / global", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "typeof process + ',' + typeof require + ',' + typeof Buffer + ',' + typeof global", language: "javascript" });
     assert.equal(r.result.exitCode, 0);
     // All four are undefined in the sandbox
     assert.equal(r.result.stdout, "undefined,undefined,undefined,undefined");
