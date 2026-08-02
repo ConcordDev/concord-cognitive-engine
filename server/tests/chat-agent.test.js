@@ -200,6 +200,66 @@ test("run_compute requires module.function key format", async () => {
   assert.match(result.error, /module\.function/);
 });
 
+test("run_python delegates to code.exec with language:python", async () => {
+  let calledWith = null;
+  const fakeRunMacro = async (domain, name, input) => {
+    calledWith = { domain, name, input };
+    return { ok: true, result: { stdout: "hi\n", stderr: "", exitCode: 0, returnValue: "42" } };
+  };
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "run_python", params: { code: "print('hi')\n42" },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(calledWith.domain, "code");
+  assert.equal(calledWith.name, "exec");
+  assert.equal(calledWith.input.language, "python");
+  assert.equal(calledWith.input.code, "print('hi')\n42");
+  assert.equal(result.stdout, "hi\n");
+  assert.equal(result.returnValue, "42");
+});
+
+test("run_python requires non-empty code", async () => {
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "run_python", params: { code: "" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /non-empty code/);
+});
+
+test("run_python surfaces a real execution failure honestly, including stderr", async () => {
+  const fakeRunMacro = async () => ({
+    ok: false, error: "python_exec_failed",
+    result: { stdout: "", stderr: "ZeroDivisionError: division by zero", exitCode: 1 },
+  });
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "run_python", params: { code: "1/0" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "python_exec_failed");
+  assert.match(result.stderr, /ZeroDivisionError/);
+});
+
+test("run_python respects the code_exec/python_exec_disabled kill-switch response", async () => {
+  const fakeRunMacro = async () => ({
+    ok: false, error: "python_exec_disabled",
+    result: { supported: false, stdout: "", stderr: "Live Python execution is disabled in this environment.", exitCode: -1 },
+  });
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "run_python", params: { code: "print(1)" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "python_exec_disabled");
+});
+
+test("formatToolResults renders run_python stdout/stderr/return value", () => {
+  const rendered = formatToolResults([
+    { tool: "run_python", ok: true, stdout: "hello\n", stderr: "", returnValue: "42" },
+  ]);
+  assert.match(rendered, /\[TOOL_RESULT: run_python\]/);
+  assert.match(rendered, /stdout:\nhello/);
+  assert.match(rendered, /return value: 42/);
+});
+
 test("browse_url rejects non-http URLs", async () => {
   // Use a non-http scheme that isn't in the eslint script-url denylist.
   const result = await executeToolCall({}, () => null, new Map(), {

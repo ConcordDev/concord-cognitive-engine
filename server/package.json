@@ -76,6 +76,7 @@
     "pdfkit": "^0.17.2",
     "playwright": "^1.59.1",
     "prom-client": "^15.1.0",
+    "pyodide": "^314.0.3",
     "socket.io": "^4.7.4",
     "sqlite-vec": "^0.1.9",
     "stripe": "^17.4.0",

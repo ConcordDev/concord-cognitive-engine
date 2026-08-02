@@ -5,6 +5,10 @@
 // Runs an agentic tool-use loop where the brain can call into:
 //   - web_search       (any current information)
 //   - run_compute      (chemistry/physics/math/quantum/engineering/stats)
+//   - run_python       (real Python via Pyodide/WASM in an isolated worker,
+//                        for scripting/data-wrangling — see
+//                        server/lib/python-sandbox.js's header for the
+//                        real, hand-verified security envelope)
 //   - browse_url       (read any web page)
 //   - run_lens_action  (invoke ANY of Concord's 200+ lens domain actions)
 //   - create_dtu       (mint a DTU from the conversation)
@@ -54,6 +58,7 @@ const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, i
 Available tools:
 - web_search: Search the web for current information. Params: {"query": "search terms"}
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}
+- run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Params: {"code": "python source"}
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
@@ -138,6 +143,24 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         } catch (err) {
           return { tool: call.tool, ok: false, error: `compute error: ${err?.message || err}` };
         }
+      }
+      case "run_python": {
+        const code = String(call.params.code || "");
+        if (!code.trim()) return { tool: call.tool, ok: false, error: "run_python requires non-empty code" };
+        const r = await runMacro("code", "exec", { code, language: "python" }, ctx);
+        if (!r?.ok) {
+          return {
+            tool: call.tool, ok: false,
+            error: r?.error || "run_python failed",
+            stderr: (r?.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
+          };
+        }
+        return {
+          tool: call.tool, ok: true,
+          stdout: (r.result?.stdout || "").slice(0, MAX_TOOL_RESULT_LEN),
+          stderr: (r.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
+          returnValue: r.result?.returnValue ?? null,
+        };
       }
       case "browse_url": {
         const { url = "", selector } = call.params || {};
@@ -370,6 +393,13 @@ export function formatToolResults(results) {
     if (!r.ok) return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}`;
     if (r.tool === "web_search") return _screenUntrusted("web_search", "web_search", r.result, (t) => `[TOOL_RESULT: web_search] ${t}`);
     if (r.tool === "run_compute")  return `[TOOL_RESULT: run_compute key=${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "run_python") {
+      const parts = [];
+      if (r.stdout) parts.push(`stdout:\n${r.stdout}`);
+      if (r.stderr) parts.push(`stderr:\n${r.stderr}`);
+      if (r.returnValue != null) parts.push(`return value: ${r.returnValue}`);
+      return `[TOOL_RESULT: run_python] ${parts.join("\n") || "(no output)"}`;
+    }
     if (r.tool === "browse_url")   return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}] title="${r.title}"\n${t}`);
     if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
