@@ -7411,6 +7411,43 @@ function authMiddleware(req, res, next) {
   // animation action.
   if (req.method === "GET" && /^\/api\/animation\/share\/[^/]+$/.test(req.path)) return next();
 
+  // Chat public share viewer — same shape as the animation bypass directly
+  // above (Wave 4 gap closure): an anonymous visitor with a
+  // `/share/chat/:token` link. The token IS the authentication (unguessable,
+  // minted server-side by `chat.share-create`, scoped to exactly one
+  // shared thread — see `server/domains/chat.js`'s `shareIndex`/
+  // `shareLinks`). This route never goes through `/api/lens/run` — it
+  // calls the `chat.share-view` LENS_ACTIONS handler directly with the
+  // token as the only caller-supplied identifier (see `_runChatShareAction`
+  // near `/api/animation/share` below), so there is no domain/macro
+  // passthrough an anonymous caller could widen to reach any other chat
+  // action. Before this bypass existed, EVERY copied chat share link
+  // required the *recipient* to already have a Concord account, because
+  // Gate 1 had no path for an anonymous GET into the `chat` prefix at all
+  // (see the "/api/chat" alwaysPublic removal comment above — that removal
+  // was correct, this is the narrow, correct replacement for this one path).
+  if (req.method === "GET" && /^\/api\/chat\/share\/[^/]+$/.test(req.path)) return next();
+
+  // Spectate public viewer — a read-only live world feed (spectator count +
+  // goddess dispatches, no intervention) meant to be watchable by anyone
+  // with the link, no account required — the always-on embeddable surface
+  // `/spectate/:worldId` (frontend) is built for. Before this bypass
+  // existed, EVERY call the page made (`spectator.subscribe`/`heartbeat`/
+  // `list_for_world` via `/api/lens/run`) 401'd for an anonymous visitor:
+  // `spectator.list_for_world` was already in Gate 2's `publicReadDomains`,
+  // but that only matters for requests that already cleared Gate 1 — Gate 1
+  // hard-401s any unauthenticated POST to `/api/lens/run` with no matching
+  // bypass here, regardless of Gate 2, which made the Gate-2 entry a dead
+  // letter for a genuinely logged-out caller (confirmed empirically before
+  // this fix: an anonymous POST to /api/lens/run with
+  // domain:"spectator",name:"list_for_world" still 401'd). These three
+  // dedicated public routes (registered near `/api/animation/share` below)
+  // bypass `/api/lens/run` and its ACL/c2 pipeline entirely, mirroring the
+  // animation/chat-share pattern.
+  if (req.method === "POST" && /^\/api\/spectate\/[^/]+\/subscribe$/.test(req.path)) return next();
+  if (req.method === "POST" && req.path === "/api/spectate/heartbeat") return next();
+  if (req.method === "GET" && /^\/api\/spectate\/[^/]+\/feed$/.test(req.path)) return next();
+
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
   const apiKey = req.headers["x-api-key"] || "";
@@ -7554,7 +7591,7 @@ function requireRole(...roles) {
 // comment on the Gate-1 bypass above). No Concord account exists to
 // authenticate, and the token itself is the access control, scoped
 // server-side to exactly one estimate/invoice.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/"]; // NOTE: /api/animation/share/ intentionally NOT here — this gate already exempts GET/HEAD/OPTIONS above, so the public GET-only share viewer needs no entry; adding the prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection).
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -53140,6 +53177,104 @@ app.get("/api/animation/share/:token", async (req, res) => {
     const result = await _runAnimationShareAction(req.params.token);
     if (!result?.ok) return res.status(404).json(result);
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Chat share viewer — anyone with the link opens it, no account required.
+// Security shape (mirrors `_runAnimationShareAction`/`_runWeldingPortalAction`
+// exactly, same class of route): the LENS_ACTIONS handler is invoked
+// DIRECTLY, never via `runMacro`/`lens.run` — the action name is hardcoded
+// here, never accepted as a request param, so this route can never be
+// widened to reach a different chat action. The only caller-supplied
+// identifier is the token itself; `share-view` (server/domains/chat.js)
+// resolves the owner/thread from its own server-side `shareIndex`/
+// `shareLinks` maps keyed by the token — a valid token for thread A can
+// only ever resolve thread A's snapshot, never anyone else's, and the
+// handler itself never checks ownership, only token validity + revocation.
+//
+// Before this route existed, `/share/chat/[token]` (the frontend page a
+// "copy link" button in ChatStudioPanel's ShareTab actually produces) had
+// no way to fetch a shared thread without a signed-in session, because the
+// only path to `chat.share-view` was the cookie-authenticated
+// `/api/lens/run` surface and the `chat` domain's public-read allowlist
+// didn't cover `share-view` — every copied link required the *recipient*
+// to have a Concord account, defeating the point of a share link for the
+// #1 organic loop of an AI product. This route closes that gap the same
+// way the animation share link was closed.
+function _runChatShareAction(token) {
+  const handler = LENS_ACTIONS.get("chat.share-view");
+  if (!handler) return { ok: false, error: "share_unavailable" };
+  const data = { token: String(token == null ? "" : token).slice(0, 120) };
+  const virtualCtx = { db: STATE?.db || globalThis._concordDB, actor: null, state: STATE };
+  const virtualArtifact = { id: null, domain: "chat", type: "domain_action", data, meta: {} };
+  return handler(virtualCtx, virtualArtifact, data);
+}
+
+app.get("/api/chat/share/:token", async (req, res) => {
+  try {
+    const result = await _runChatShareAction(req.params.token);
+    if (!result?.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Spectate public viewer — anyone with the link watches a world's live feed
+// (spectator count + goddess dispatches), no account required, no
+// intervention possible. Security shape: invokes the registered MACROS
+// handler DIRECTLY (`MACROS.get(domain).get(name).fn`), never via
+// `runMacro`, so none of runMacro's ACL/c2/heavy-macro-pool machinery
+// (built for authenticated actors) applies — the three action names below
+// are hardcoded here, never accepted as a request param, so this can never
+// be widened to reach any other spectator/goddess/betting action (in
+// particular, `betting.place_bet` — a real-money SPARKS debit — is on the
+// same MACROS map but nothing here can reach it). `spectator.subscribe`'s
+// own handler already treats a null actor as a first-class case
+// (`ctx?.actor?.userId || null` — an anonymous viewer's session just has
+// `viewer_user_id: null`), so no shape change was needed there.
+function _runSpectateMacro(domain, name, input) {
+  const entry = MACROS.get(domain)?.get(name);
+  if (!entry) return { ok: false, error: "spectate_unavailable" };
+  const virtualCtx = { actor: null, state: STATE };
+  return entry.fn(virtualCtx, input || {});
+}
+
+app.post("/api/spectate/:worldId/subscribe", async (req, res) => {
+  try {
+    const result = await _runSpectateMacro("spectator", "subscribe", { worldId: req.params.worldId });
+    if (!result?.ok) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post("/api/spectate/heartbeat", async (req, res) => {
+  try {
+    const result = await _runSpectateMacro("spectator", "heartbeat", { sessionToken: req.body?.sessionToken });
+    if (!result?.ok) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/spectate/:worldId/feed", async (req, res) => {
+  try {
+    const worldId = req.params.worldId;
+    const [spectators, dispatches] = await Promise.all([
+      _runSpectateMacro("spectator", "list_for_world", { worldId }),
+      _runSpectateMacro("goddess", "recent", { worldId, limit: 10 }),
+    ]);
+    res.json({
+      ok: true,
+      worldId,
+      spectators: spectators?.ok ? spectators.spectators || [] : [],
+      dispatches: dispatches?.ok ? dispatches.dispatches || [] : [],
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

@@ -1,11 +1,18 @@
 'use client';
 
 /**
- * /spectate/[worldId] — read-only world feed.
+ * /spectate/[worldId] — public, read-only world feed.
  *
- * Phase 9.2 #9: live-streamable Concordia. Subscribes to a world
- * via spectator.subscribe + heartbeats every 30s. Shows ambient
- * stats overlay + real-time event feed. No combat, no intervention.
+ * Genuinely public (no account required): calls the dedicated public REST
+ * routes `POST /api/spectate/:worldId/subscribe`, `POST /api/spectate/heartbeat`,
+ * `GET /api/spectate/:worldId/feed` (server.js) with a plain, unauthenticated
+ * `fetch` — no cookie, no Authorization header. Those routes invoke the
+ * `spectator.subscribe`/`heartbeat`/`list_for_world` + `goddess.recent`
+ * MACROS handlers directly, bypassing the authenticated `/api/lens/run`
+ * surface entirely (the same pattern used for the animation and chat share
+ * viewers). Subscribes to a world via spectator.subscribe + heartbeats every
+ * 30s. Shows ambient stats overlay + real-time event feed. No combat, no
+ * intervention — built to be watched, not played.
  */
 
 import { useEffect, useState } from 'react';
@@ -24,18 +31,18 @@ interface Dispatch {
   composed_at: number;
 }
 
-async function macro(domain: string, name: string, input: Record<string, unknown> = {}) {
-  const r = await fetch('/api/lens/run', {
+async function publicPost(path: string, body: Record<string, unknown> = {}) {
+  const r = await fetch(path, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ domain, name, input }),
+    body: JSON.stringify(body),
   }).catch(() => null);
-  const j = r ? await r.json().catch(() => null) : null;
-  // POST /api/lens/run wraps the macro's own payload in a transport
-  // envelope `{ ok: true, result: PAYLOAD }` — unwrap to the payload so
-  // callers can read the macro's real ok/sessionToken/spectators/dispatches.
-  return j?.result ?? j;
+  return r ? await r.json().catch(() => null) : null;
+}
+
+async function publicGet(path: string) {
+  const r = await fetch(path).catch(() => null);
+  return r ? await r.json().catch(() => null) : null;
 }
 
 export default function SpectatePage() {
@@ -51,22 +58,21 @@ export default function SpectatePage() {
     let refreshInterval: number | null = null;
 
     (async () => {
-      const sub = await macro('spectator', 'subscribe', { worldId });
+      const sub = await publicPost(`/api/spectate/${encodeURIComponent(worldId)}/subscribe`);
       if (!alive || !sub?.ok) return;
       setToken(sub.sessionToken);
 
       heartbeatInterval = window.setInterval(() => {
-        macro('spectator', 'heartbeat', { sessionToken: sub.sessionToken });
+        publicPost('/api/spectate/heartbeat', { sessionToken: sub.sessionToken });
       }, 30_000);
 
       const refresh = async () => {
-        const [s, d] = await Promise.all([
-          macro('spectator', 'list_for_world', { worldId }),
-          macro('goddess', 'recent', { worldId, limit: 10 }),
-        ]);
+        const feed = await publicGet(`/api/spectate/${encodeURIComponent(worldId)}/feed`);
         if (!alive) return;
-        if (s?.ok) setSpectators(s.spectators || []);
-        if (d?.ok) setDispatches(d.dispatches || []);
+        if (feed?.ok) {
+          setSpectators(feed.spectators || []);
+          setDispatches(feed.dispatches || []);
+        }
       };
       void refresh();
       refreshInterval = window.setInterval(refresh, 15_000);

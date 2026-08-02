@@ -159,6 +159,24 @@ const PUBLIC_PREFIXES = [
   // the middleware would 307 the visitor to /login before the page ever
   // renders, defeating the whole point of a logged-out-viewable share link.
   '/share/animation/',
+  // Chat public share viewer — an anonymous visitor with a share link opens
+  // `/share/chat/:token`, backed by the public `/api/chat/share/:token`
+  // route (server.js). Without this prefix the middleware would 307 the
+  // visitor to /login before the page ever renders, same as the animation
+  // share fix above — this is the #1 organic loop for a chat product.
+  '/share/chat/',
+  // Spectate public viewer — a read-only, no-account-required live world
+  // feed at `/spectate/:worldId`, backed by the public
+  // `/api/spectate/:worldId/subscribe|feed` + `/api/spectate/heartbeat`
+  // routes (server.js). Without this prefix the middleware would 307 an
+  // anonymous visitor to /login before the page ever renders, defeating
+  // the point of an always-on embeddable spectator feed. Distinct from
+  // `/lenses/spectate/:worldId`, the authenticated in-app version.
+  '/spectate/',
+  // Explore fork sub-pages (`/explore/engine`, `/explore/world`) — same
+  // public "look around first" showcase as the top-level `/explore` (in
+  // PUBLIC_PATHS above), just split into two audience-specific entry paths.
+  '/explore/',
   // PWA service worker + its scope assets must serve unauthenticated, or the SW
   // script is fetched via a 307→/login redirect and the browser refuses to register
   // it ("The script resource is behind a redirect, which is disallowed").
