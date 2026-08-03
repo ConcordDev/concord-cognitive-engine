@@ -5,7 +5,7 @@
     "noEmit": true,
     "target": "ES2022",
     "module": "ES2022",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
     "lib": ["ES2022"],
     "strict": false,

@@ -45,7 +45,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
 
       # Guards the exact assumption fetch-godot.mjs's detectVersion() and
       # launch-godot-client.sh's version check both make: project.godot's

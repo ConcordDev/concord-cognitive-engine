@@ -25,7 +25,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   # BACKEND_IMAGE/FRONTEND_IMAGE deliberately NOT defined here: Docker repository
   # names must be all-lowercase, but `github.repository_owner` for this repo is
   # "ConcordDev" (mixed case) and GitHub Actions expressions have no built-in

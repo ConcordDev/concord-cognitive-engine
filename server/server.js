@@ -2745,8 +2745,14 @@ function sanitizationMiddleware(req, res, next) {
   }
 
   // Sanitize query params
+  // In Express 5, req.query is a read-only getter, so we can't reassign it.
+  // Instead, mutate the existing object in-place.
   if (req.query && typeof req.query === "object") {
-    req.query = sanitizeObject(req.query, { maxLength: 1000 });
+    const sanitized = sanitizeObject(req.query, { maxLength: 1000 });
+    for (const key of Object.keys(req.query)) {
+      if (!(key in sanitized)) delete req.query[key];
+    }
+    Object.assign(req.query, sanitized);
   }
 
   next();
